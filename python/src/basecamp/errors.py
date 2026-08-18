@@ -69,6 +69,27 @@ class BasecampError(Exception):
         self.request_id = request_id
 
     @property
+    def cause(self) -> BaseException | None:
+        """The failure this error was raised from, or ``None``.
+
+        The slot the other five SDKs spell ``Cause``/``cause``/``decodeFailure``,
+        and the reason it is a property rather than a constructor keyword: the
+        refusal sites that have an underlying failure — the page-body decode in
+        ``_base``/``_async_base`` — are all inside an ``except`` block and all
+        ``raise ... from e``, which is Python's own way of recording it. A
+        keyword would be a second place to set the same fact, free to disagree
+        with ``__cause__`` and easy to forget at the next site. What was missing
+        was the NAME: a caller reading a malformed-body refusal had to know to
+        reach for a dunder to get what every other SDK hands over (#750).
+
+        Reading the decoder's own error, rather than the message it was
+        interpolated into, is the point. The message says which page failed; the
+        exception says whether the body was truncated mid-object or was never
+        JSON, and it is not parsed back out of a sentence.
+        """
+        return self.__cause__
+
+    @property
     def exit_code(self) -> int:
         try:
             return _EXIT_CODE_MAP.get(ErrorCode(self.code), ExitCode.API)

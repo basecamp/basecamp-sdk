@@ -551,7 +551,11 @@ private fun runTest(tc: TestCase): TestResult {
             // failure and let a fixture pinning `errorCode: api_error` be
             // satisfied by a decoder rejection, which is exactly what
             // `caughtException` is withheld to prevent.
-            val decodeFailure = (e as? BasecampException.Api)?.cause as? SerializationException
+            //
+            // The SDK is asked which shape this is rather than told: see
+            // malformedBodyFailure (MalformedBody.kt) for why inspecting `cause`
+            // is not the same question, and for why the branch lives there.
+            val decodeFailure = malformedBodyFailure(e)
             if (decodeFailure != null) {
                 if (!expectsFailure) {
                     client.close()

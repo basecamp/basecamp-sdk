@@ -296,6 +296,43 @@ final class SchedulesServiceExtensionsTests: XCTestCase {
         try await assertMalformedReadAborts(body: wrongType)
     }
 
+    /// The composite restates the base layer's decode failure with its own
+    /// escape hatch, and the restatement is still that decode failure: it
+    /// carries `decodeFailure` forward (#750). Dropping it would tell the
+    /// conformance runner — and any caller reading the property — that this was
+    /// not a malformed body.
+    ///
+    /// The blank-summary case is the control: a hand-written guard on a body that
+    /// decoded fine, so its marker is nil.
+    func testUpdateEntry_restatementKeepsTheDecodeFailureMarker() async throws {
+        var wrongType = fullScheduleEntryJSON()
+        wrongType["description"] = 42
+        let decodeError = try await malformedReadError(body: wrongType)
+        XCTAssertNotNil(
+            decodeError?.decodeFailure, "the restatement must keep the marker")
+        XCTAssertNotNil(decodeError?.hint, "and must add its own escape hatch")
+
+        var blank = fullScheduleEntryJSON()
+        blank["summary"] = "   "
+        let guardError = try await malformedReadError(body: blank)
+        XCTAssertNil(
+            guardError?.decodeFailure,
+            "a hand-written guard on a body that decoded is not a decode failure")
+    }
+
+    private func malformedReadError(body: [String: Any]) async throws -> BasecampError? {
+        let log = ScheduleEntryRequestLog()
+        let account = try makeSchedulesClient(log: log, body: body)
+        do {
+            _ = try await account.schedules.updateEntry(
+                entryId: 1069479523, req: UpdateScheduleEntryRequest(summary: "never written"))
+            XCTFail("expected the call to fail, but it succeeded")
+            return nil
+        } catch let error as BasecampError {
+            return error
+        }
+    }
+
     /// Every malformed read must abort BEFORE the PUT with the SDK's statusless,
     /// non-retryable `api_error`.
     private func assertMalformedReadAborts(
@@ -309,7 +346,7 @@ final class SchedulesServiceExtensionsTests: XCTestCase {
                 entryId: 1069479523, req: UpdateScheduleEntryRequest(summary: "never written"))
             XCTFail("expected the call to fail, but it succeeded", file: file, line: line)
         } catch let error as BasecampError {
-            guard case .api(_, let httpStatus, let hint, _) = error else {
+            guard case .api(_, let httpStatus, let hint, _, _) = error else {
                 return XCTFail("expected .api, got \(error)", file: file, line: line)
             }
             XCTAssertNil(httpStatus, "a malformed 2xx body carries no status", file: file, line: line)

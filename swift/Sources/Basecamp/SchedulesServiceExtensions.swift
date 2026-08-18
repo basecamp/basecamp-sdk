@@ -161,7 +161,8 @@ public struct ScheduleEntryFields: Sendable {
                 hint: "The merge-safe updateEntry/editEntry resend this field verbatim, so a "
                     + "blank value would overwrite the current one. Use "
                     + "replaceEntry(entryId:req:) to write the record deliberately.",
-                requestId: nil
+                requestId: nil,
+                decodeFailure: nil
             )
         }
         return value
@@ -284,21 +285,25 @@ extension SchedulesService {
         // renders that as the SPEC §6 malformed-2xx-body shape for every
         // operation (#604) — statusless, non-retryable `api_error` — so what is
         // left to add here is the part the base layer cannot know: the
-        // composite's escape hatch. `BaseService.malformedBodyMessage` is what
+        // composite's escape hatch. `BasecampError.decodeFailure` is what
         // recognizes that one failure — statuslessness alone would also match
         // the pagination same-origin guard — so every other error passes
-        // through untouched.
+        // through untouched. The restatement carries the marker forward: it is
+        // the same malformed body with a better hint, and dropping it would tell
+        // the conformance runner (and any caller) this was not a decode failure
+        // (#750).
         do {
             return try await getEntry(entryId: entryId)
         } catch let error as BasecampError {
-            guard let message = BaseService.malformedBodyMessage(error) else { throw error }
+            guard let decodeFailure = error.decodeFailure else { throw error }
             throw BasecampError.api(
-                message: message,
+                message: error.message,
                 httpStatus: nil,
                 hint: "The merge-safe updateEntry/editEntry resend this record's fields verbatim, "
                     + "so a malformed response cannot be written back safely. Use "
                     + "replaceEntry(entryId:req:) to write the record deliberately.",
-                requestId: nil
+                requestId: nil,
+                decodeFailure: decodeFailure
             )
         }
     }

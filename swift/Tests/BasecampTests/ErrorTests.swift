@@ -48,14 +48,14 @@ final class ErrorTests: XCTestCase {
     }
 
     func testApiErrorProperties() {
-        let error = BasecampError.api(message: "Server error", httpStatus: 500, hint: nil, requestId: nil)
+        let error = BasecampError.api(message: "Server error", httpStatus: 500, hint: nil, requestId: nil, decodeFailure: nil)
         XCTAssertEqual(error.httpStatusCode, 500)
         XCTAssertEqual(error.exitCode, 7)
         XCTAssertTrue(error.isRetryable)
     }
 
     func testApiError4xxNotRetryable() {
-        let error = BasecampError.api(message: "Bad", httpStatus: 418, hint: nil, requestId: nil)
+        let error = BasecampError.api(message: "Bad", httpStatus: 418, hint: nil, requestId: nil, decodeFailure: nil)
         XCTAssertFalse(error.isRetryable)
     }
 
@@ -270,7 +270,7 @@ final class ErrorTests: XCTestCase {
 
     func testFromHTTPResponse500() {
         let error = BasecampError.fromHTTPResponse(status: 500, data: nil, headers: [:], requestId: nil)
-        if case .api(_, let status, _, _) = error {
+        if case .api(_, let status, _, _, _) = error {
             XCTAssertEqual(status, 500)
         } else {
             XCTFail("Expected .api")

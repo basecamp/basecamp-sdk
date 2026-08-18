@@ -23,7 +23,7 @@
  */
 
 import type { BasecampHooks, OperationInfo, OperationResult } from "../hooks.js";
-import { BasecampError, errorFromParsedBody, errorFromResponse } from "../errors.js";
+import { BasecampError, errorFromParsedBody, errorFromResponse, truncateErrorMessage } from "../errors.js";
 import metadata from "../generated/metadata.js";
 import { ListResult, parseTotalCount, type PaginationOptions } from "../pagination.js";
 import { parseNextLink, resolveURL, isSameOrigin, DEFAULT_MAX_PAGES, assertValidMaxPages } from "../pagination-utils.js";
@@ -123,6 +123,30 @@ function normalizePersonIds(obj: unknown): void {
   for (const val of Object.values(rec)) {
     if (typeof val === "object" && val !== null) normalizePersonIds(val);
   }
+}
+
+/**
+ * Whether a rejection denotes invalid JSON rather than a failed read.
+ *
+ * `response.json()` rejects for two unrelated reasons, and only one of them is
+ * a malformed body: the bytes arrived and would not parse (SyntaxError), or the
+ * bytes never finished arriving — a socket reset or a decompression failure
+ * (TypeError), an aborted read (AbortError). Those are transport failures and
+ * keep their own semantics.
+ *
+ * Matched on `name`, not `instanceof`, and the engines force that rather than
+ * merely permitting it: Node/undici rejects with a real `SyntaxError`, but
+ * WebKit rejects with a **DOMException** named "SyntaxError", which
+ * `instanceof SyntaxError` answers `false` for. Narrowing by constructor would
+ * classify nothing in Safari and let every malformed body escape there — and
+ * excluding DOMException, to keep a DOMException named "SyntaxError" from
+ * matching, would break exactly the engine that produces one. A cross-realm
+ * error is the third case the name survives and `instanceof` does not, which is
+ * why the OAuth device flow matches AbortError the same way. Nothing else
+ * `response.json()` can reject with is named "SyntaxError".
+ */
+function isJsonSyntaxError(err: unknown): err is SyntaxError {
+  return typeof err === "object" && err !== null && (err as { name?: unknown }).name === "SyntaxError";
 }
 
 export abstract class BaseService {
@@ -549,6 +573,41 @@ export abstract class BaseService {
   }
 
   /**
+   * Decodes a followed page's body, refusing one that is not JSON.
+   *
+   * The raw-fetch pagination path is the only place this SDK decodes a body
+   * itself — every other response comes back through `openapi-fetch` — and an
+   * unwrapped `await response.json()` let a `SyntaxError` escape with no code,
+   * no hint and nothing to distinguish "the server sent garbage on page 4" from
+   * a bug in the caller's own code. Ruby and Python already classify this exact
+   * failure with this exact message; TypeScript was the outlier.
+   *
+   * `cause` carries the decoder's own error, which is the #750 contract: the
+   * message says which page failed, the slot says whether the body was truncated
+   * mid-object or was never JSON, and neither answer is parsed back out of the
+   * other. Statusless per SPEC §6 — the transport returned 2xx — and
+   * non-retryable, because re-requesting cannot repair a malformed body.
+   *
+   * Only a syntax failure is classified. A read that dies partway through — a
+   * reset socket, a corrupt gzip stream, an aborted request — rejects here too,
+   * and it is transient: relabelling it non-retryable would be a worse answer
+   * than the bare error this replaced. It propagates with its own type.
+   */
+  private async parsePage<T>(response: Response, page: number): Promise<T> {
+    try {
+      return (await response.json()) as T;
+    } catch (err) {
+      throw isJsonSyntaxError(err)
+        ? new BasecampError(
+            "api_error",
+            truncateErrorMessage(`Failed to parse paginated response (page ${page}): ${err.message}`),
+            { retryable: false, cause: err },
+          )
+        : err;
+    }
+  }
+
+  /**
    * Follows Link header pagination, accumulating items across pages.
    * Returns items and whether results were truncated: true only when items
    * beyond maxItems were dropped, or a next-page link was left unfetched
@@ -583,7 +642,7 @@ export abstract class BaseService {
         throw await errorFromResponse(response, response.headers.get("X-Request-Id") ?? undefined);
       }
 
-      const pageItems: T[] = (await response.json()) as T[];
+      const pageItems: T[] = await this.parsePage<T[]>(response, page + 1);
       normalizePersonIds(pageItems);
       allItems.push(...pageItems);
 
@@ -635,7 +694,7 @@ export abstract class BaseService {
         throw await errorFromResponse(response, response.headers.get("X-Request-Id") ?? undefined);
       }
 
-      const pageData = (await response.json()) as Record<string, unknown>;
+      const pageData = await this.parsePage<Record<string, unknown>>(response, page + 1);
       normalizePersonIds(pageData);
       const pageItems: T[] = (pageData[key] as T[]) ?? [];
       allItems.push(...pageItems);

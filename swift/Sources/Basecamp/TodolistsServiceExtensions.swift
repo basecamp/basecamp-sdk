@@ -124,21 +124,25 @@ extension TodolistsService {
         // malformed-2xx-body shape for every operation (#604) — statusless,
         // non-retryable `api_error` — so what is left to add here is the part
         // the base layer cannot know: the composite's escape hatch.
-        // `BaseService.malformedBodyMessage` is what recognizes that one
-        // failure — statuslessness alone would also match the pagination
-        // same-origin guard — so every other error passes through untouched.
+        // `BasecampError.decodeFailure` is what recognizes that one failure —
+        // statuslessness alone would also match the pagination same-origin
+        // guard — so every other error passes through untouched. The restatement
+        // carries the marker forward: it is the same malformed body with a
+        // better hint, and dropping it would tell the conformance runner (and
+        // any caller) this was not a decode failure (#750).
         let todolist: Todolist
         do {
             todolist = try await get(id: id)
         } catch let error as BasecampError {
-            guard let message = BaseService.malformedBodyMessage(error) else { throw error }
+            guard let decodeFailure = error.decodeFailure else { throw error }
             throw BasecampError.api(
-                message: message,
+                message: error.message,
                 httpStatus: nil,
                 hint: "The merge-safe update/edit resend this record's fields verbatim, so a "
                     + "malformed response cannot be written back safely. Use replace(id:req:) "
                     + "to write the record deliberately.",
-                requestId: nil
+                requestId: nil,
+                decodeFailure: decodeFailure
             )
         }
 
@@ -156,7 +160,8 @@ extension TodolistsService {
                 httpStatus: nil,
                 hint: "The name is presence-validated server-side, so an empty one is a "
                     + "malformed response. The caller did not ask to clear it.",
-                requestId: nil
+                requestId: nil,
+                decodeFailure: nil
             )
         }
         return todolist

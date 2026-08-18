@@ -38,7 +38,20 @@ public enum BasecampError: Error, Sendable, LocalizedError {
     case network(message: String, cause: (any Error & Sendable)?)
 
     /// Server or API error (typically 5xx).
-    case api(message: String, httpStatus: Int?, hint: String?, requestId: String?)
+    ///
+    /// `decodeFailure` is the response decoder's own refusal, and it is set on
+    /// exactly one thing: the SPEC §6 statusless `api_error` raised for a 2xx
+    /// body the model would not decode, plus the §18 composites' restatement of
+    /// that same failure with their escape hatch attached. Nil on every other
+    /// `.api`, including the *other* statusless one — the pagination
+    /// same-origin refusal, which is a deliberate guard and not a bad body.
+    ///
+    /// Read it through ``decodeFailure``, not by matching this case: that
+    /// property is nil for every other error shape, and it will not move again
+    /// when this case gains a sixth value.
+    case api(
+        message: String, httpStatus: Int?, hint: String?, requestId: String?,
+        decodeFailure: (any Error & Sendable)?)
 
     /// Validation error (HTTP 400, 422).
     ///
@@ -70,7 +83,7 @@ public enum BasecampError: Error, Sendable, LocalizedError {
         switch self {
         case .rateLimit: true
         case .network: true
-        case .api(_, let status, _, _): status.map { $0 >= 500 } ?? false
+        case .api(_, let status, _, _, _): status.map { $0 >= 500 } ?? false
         case .limitExceeded: false
         case .ambiguous: false
         default: false
@@ -85,7 +98,7 @@ public enum BasecampError: Error, Sendable, LocalizedError {
         case .notFound: 404
         case .rateLimit: 429
         case .validation(_, let status, _, _, _): status
-        case .api(_, let status, _, _): status
+        case .api(_, let status, _, _, _): status
         case .limitExceeded: 507
         case .ambiguous: nil
         case .network: nil
@@ -117,7 +130,7 @@ public enum BasecampError: Error, Sendable, LocalizedError {
         case .notFound(_, let hint, _): hint
         case .rateLimit(_, _, let hint, _): hint
         case .network: "Check your network connection"
-        case .api(_, _, let hint, _): hint
+        case .api(_, _, let hint, _, _): hint
         case .limitExceeded(_, let hint, _): hint
         case .ambiguous(_, _, let hint): hint
         case .validation(_, _, let hint, _, _): hint
@@ -133,7 +146,7 @@ public enum BasecampError: Error, Sendable, LocalizedError {
         case .notFound(let msg, _, _): msg
         case .rateLimit(let msg, _, _, _): msg
         case .network(let msg, _): msg
-        case .api(let msg, _, _, _): msg
+        case .api(let msg, _, _, _, _): msg
         case .limitExceeded(let msg, _, _): msg
         case .ambiguous(let resource, _, _): "Ambiguous \(resource)"
         case .validation(let msg, _, _, _, _): msg
@@ -148,7 +161,7 @@ public enum BasecampError: Error, Sendable, LocalizedError {
         case .forbidden(_, _, let id): id
         case .notFound(_, _, let id): id
         case .rateLimit(_, _, _, let id): id
-        case .api(_, _, _, let id): id
+        case .api(_, _, _, let id, _): id
         case .limitExceeded(_, _, let id): id
         case .ambiguous: nil
         case .validation(_, _, _, let id, _): id
@@ -165,6 +178,35 @@ public enum BasecampError: Error, Sendable, LocalizedError {
     public var fieldErrors: [String: [String]]? {
         switch self {
         case .validation(_, _, _, _, let fieldErrors): fieldErrors
+        default: nil
+        }
+    }
+
+    /// The response decoder's own refusal, for a 2xx body this SDK would not
+    /// decode; nil for every other error shape.
+    ///
+    /// Presence is the answer to "is this a malformed response body". Statuslessness
+    /// is not: the pagination same-origin guard throws a statusless `.api` too,
+    /// and the message is not either — it used to be, through a
+    /// `@_spi(Conformance)` substring test whose contract was the wording of a
+    /// sentence, so a reworded message moved the answer and a caller composing
+    /// their own `.api` containing the phrase forged one (#750).
+    ///
+    /// The value is a `DecodingError` for a typed decode and a `CocoaError` for
+    /// a body that is not JSON at all (the wrapped-list path reaches
+    /// `JSONSerialization`, which reports that instead) — so match on the
+    /// concrete type when the distinction matters rather than assuming one.
+    ///
+    /// This is a marker against an *accident*, not a forgery: `.api` is a public
+    /// case with no private payload, so a caller can construct one carrying
+    /// anything. That is unchanged from the phrase it replaces, and there is
+    /// nothing to gain — the same caller can already throw an `.api` carrying a
+    /// composite's message and hint verbatim. What it buys is that the SDK's own
+    /// two producers are the only *plausible* ones, and that nobody has to know
+    /// how this SDK words a sentence to tell the shapes apart.
+    public var decodeFailure: (any Error & Sendable)? {
+        switch self {
+        case .api(_, _, _, _, let decodeFailure): decodeFailure
         default: nil
         }
     }
@@ -230,7 +272,7 @@ public enum BasecampError: Error, Sendable, LocalizedError {
         default:
             return .api(
                 message: message, httpStatus: status,
-                hint: hint, requestId: requestId
+                hint: hint, requestId: requestId, decodeFailure: nil
             )
         }
     }

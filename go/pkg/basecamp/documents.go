@@ -144,6 +144,13 @@ func (f *DocumentFields) fullBody() (generated.ReplaceDocumentJSONRequestBody, e
 // AuthStrategy may each return any sentinel they like. So DocumentsService.Get
 // splits the request from the decode and calls this on the decode step only,
 // where the origin is known by construction rather than guessed.
+//
+// The decoder's error is kept as Cause, not just interpolated into Message
+// (#750). Every SDK renders it into the message; only the ones that keep it let
+// a caller act on it, and Go's is the errors.As/errors.Is chain — a caller who
+// wants to know whether the field was the wrong type or the body was not JSON
+// at all reaches *json.UnmarshalTypeError or *json.SyntaxError through Unwrap
+// instead of pattern-matching a sentence.
 func documentDecodeError(err error) error {
 	return &Error{
 		Code:    CodeAPI,
@@ -151,6 +158,7 @@ func documentDecodeError(err error) error {
 		Hint: "The merge-safe Update/Edit resend this record's fields verbatim, so a malformed " +
 			"response cannot be written back safely. Use Replace to write the record deliberately.",
 		Retryable: false,
+		Cause:     err,
 	}
 }
 

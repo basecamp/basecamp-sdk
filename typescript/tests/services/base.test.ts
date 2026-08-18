@@ -334,6 +334,141 @@ describe("BaseService", () => {
       expect(pageRequests).toBe(2);
     });
 
+    // A followed page whose body is not JSON is "the server sent something I
+    // could not decode", and it used to escape as a bare SyntaxError: no code, no
+    // hint, indistinguishable from a bug in the caller's own code. Ruby and
+    // Python already classified it with this message; #750 gives all six the same
+    // shape and the same reachable cause.
+    it("should classify an unparseable followed page and keep the decoder error", async () => {
+      server.use(
+        http.get(`${BASE_URL}/test-list`, ({ request }) => {
+          const url = new URL(request.url);
+          if (url.searchParams.get("page") === "2") {
+            return new HttpResponse('[{"id": 3', {
+              headers: { "Content-Type": "application/json" },
+            });
+          }
+          return HttpResponse.json([{ id: 1 }, { id: 2 }], {
+            headers: { Link: `<${BASE_URL}/test-list?page=2>; rel="next"` },
+          });
+        })
+      );
+
+      const client = createBasecampClient({ accountId: "12345", accessToken: "test-token" });
+      const paginatedService = new TestService(client.raw, undefined, async (url: string) => {
+        return fetch(url, { headers: { Accept: "application/json" } });
+      });
+
+      const error = await paginatedService
+        .testPaginatedGet<{ id: number }>("/test-list", listInfo)
+        .then(() => null, (err: unknown) => err);
+
+      expect(error).toBeInstanceOf(BasecampError);
+      const basecampError = error as BasecampError;
+      expect(basecampError.code).toBe("api_error");
+      // Statusless per SPEC §6 — the transport returned 2xx — and re-requesting
+      // cannot repair a malformed body.
+      expect(basecampError.httpStatus).toBeUndefined();
+      expect(basecampError.retryable).toBe(false);
+      expect(basecampError.message).toContain("page 2");
+      // The marker: the decoder's own error, not a phrase to match on.
+      expect(basecampError.cause).toBeInstanceOf(SyntaxError);
+    });
+
+    // Vitest runs on Node, where a JSON syntax failure is a real SyntaxError, so
+    // nothing above would notice the discriminator being "simplified" back to
+    // `instanceof SyntaxError`. WebKit rejects the same malformed body with a
+    // DOMException *named* SyntaxError, which that test answers false for — the
+    // whole class would escape unclassified in Safari, and no Node test can see
+    // it. This case is that engine's shape, pinned where it can fail.
+    it("should classify a syntax failure the engine reports as a DOMException", async () => {
+      server.use(
+        http.get(`${BASE_URL}/test-list`, () => {
+          return HttpResponse.json([{ id: 1 }, { id: 2 }], {
+            headers: { Link: `<${BASE_URL}/test-list?page=2>; rel="next"` },
+          });
+        })
+      );
+
+      const thrown = new DOMException("JSON Parse error: Unexpected EOF", "SyntaxError");
+      expect(thrown).not.toBeInstanceOf(SyntaxError);
+
+      const client = createBasecampClient({ accountId: "12345", accessToken: "test-token" });
+      const paginatedService = new TestService(client.raw, undefined, async () => {
+        const body = new ReadableStream<Uint8Array>({
+          start(controller) {
+            controller.error(thrown);
+          },
+        });
+        return new Response(body, {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      });
+
+      const error = await paginatedService
+        .testPaginatedGet<{ id: number }>("/test-list", listInfo)
+        .then(() => null, (err: unknown) => err);
+
+      expect(error).toBeInstanceOf(BasecampError);
+      const basecampError = error as BasecampError;
+      expect(basecampError.code).toBe("api_error");
+      expect(basecampError.retryable).toBe(false);
+      expect(basecampError.cause).toBe(thrown);
+    });
+
+    // `response.json()` rejects for two unrelated reasons: the bytes arrived and
+    // were not JSON, or the bytes never finished arriving. Only the first is a
+    // malformed body. A socket reset surfaces as TypeError, an aborted read as
+    // AbortError, and both are transient — classifying either as a statusless
+    // non-retryable api_error would tell a caller reading `retryable` that a
+    // failure it should retry is permanent. They propagate untouched, with the
+    // type the runtime gave them, so the SDK's own retry layer still sees them
+    // for what they are.
+    for (const { label, failure, expectedName } of [
+      { label: "a socket reset", failure: () => new TypeError("terminated"), expectedName: "TypeError" },
+      {
+        label: "an aborted read",
+        failure: () => new DOMException("The operation was aborted", "AbortError"),
+        expectedName: "AbortError",
+      },
+    ]) {
+      it(`should propagate ${label} during a followed page's body read`, async () => {
+        server.use(
+          http.get(`${BASE_URL}/test-list`, () => {
+            return HttpResponse.json([{ id: 1 }, { id: 2 }], {
+              headers: { Link: `<${BASE_URL}/test-list?page=2>; rel="next"` },
+            });
+          })
+        );
+
+        const thrown = failure();
+        const client = createBasecampClient({ accountId: "12345", accessToken: "test-token" });
+        // The page arrives with a 200 and a body stream that fails partway
+        // through, which is what the transport failure looks like from here.
+        const paginatedService = new TestService(client.raw, undefined, async () => {
+          const body = new ReadableStream<Uint8Array>({
+            start(controller) {
+              controller.enqueue(new TextEncoder().encode('[{"id": 3}'));
+              controller.error(thrown);
+            },
+          });
+          return new Response(body, {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          });
+        });
+
+        const error = await paginatedService
+          .testPaginatedGet<{ id: number }>("/test-list", listInfo)
+          .then(() => null, (err: unknown) => err);
+
+        expect(error).not.toBeInstanceOf(BasecampError);
+        expect(error).toBe(thrown);
+        expect((error as Error).name).toBe(expectedName);
+      });
+    }
+
     it("should throw BasecampError on cross-origin Link header", async () => {
       server.use(
         http.get(`${BASE_URL}/test-list`, () => {
@@ -755,6 +890,45 @@ describe("BaseService", () => {
       const events = result.events;
       expect(events.length).toBe(3);
       expect(events.meta.truncated).toBe(false);
+    });
+
+    // The wrapped loop decodes its pages at its own call site, so it is a second
+    // case rather than a second assertion about the first: routing both through
+    // one helper is not what makes them both classified.
+    it("should classify an unparseable followed page and keep the decoder error", async () => {
+      server.use(
+        http.get(`${BASE_URL}/test-wrapped`, ({ request }) => {
+          const url = new URL(request.url);
+          if (url.searchParams.get("page") === "2") {
+            return new HttpResponse("not json at all", {
+              headers: { "Content-Type": "application/json" },
+            });
+          }
+          return HttpResponse.json({
+            person: { id: 456, name: "Jane Doe" },
+            events: [{ id: 1, action: "created" }],
+          }, {
+            headers: { Link: `<${BASE_URL}/test-wrapped?page=2>; rel="next"` },
+          });
+        })
+      );
+
+      const client = createBasecampClient({ accountId: "12345", accessToken: "test-token" });
+      const wrappedService = new TestService(client.raw, undefined, async (url: string) => {
+        return fetch(url, { headers: { Accept: "application/json" } });
+      });
+
+      const error = await wrappedService
+        .testPaginatedWrappedGet<"events", { id: number; action: string }>("/test-wrapped", listInfo, "events")
+        .then(() => null, (err: unknown) => err);
+
+      expect(error).toBeInstanceOf(BasecampError);
+      const basecampError = error as BasecampError;
+      expect(basecampError.code).toBe("api_error");
+      expect(basecampError.httpStatus).toBeUndefined();
+      expect(basecampError.retryable).toBe(false);
+      expect(basecampError.message).toContain("page 2");
+      expect(basecampError.cause).toBeInstanceOf(SyntaxError);
     });
   });
 

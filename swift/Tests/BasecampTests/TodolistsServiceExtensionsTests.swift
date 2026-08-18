@@ -485,10 +485,11 @@ final class TodolistsServiceExtensionsTests: XCTestCase {
             XCTFail("expected a decoding error, got \(todolist)")
         } catch let error as BasecampError {
             // Since #604 the decoder's refusal wears the SPEC §6
-            // malformed-2xx-body shape. `BasecampError.api` has no `cause` slot
-            // — adding one would break every `switch` over the case — so the
-            // `DecodingError`'s own description, coding path included, is
-            // carried in the message and asserted there.
+            // malformed-2xx-body shape, and since #750 it carries the
+            // `DecodingError` itself in `decodeFailure` (asserted by the helper
+            // below). Its own description, coding path included, is still
+            // interpolated into the message, which is what these assertions
+            // read — the message is where a human looks.
             let message = assertStatuslessDecodeFailure(error)
             XCTAssertTrue(message.contains("typeMismatch"), message)
             // camelCase because BaseService.decoder applies .convertFromSnakeCase.
@@ -581,7 +582,7 @@ final class TodolistsServiceExtensionsTests: XCTestCase {
                 id: 2, req: UpdateTodolistRequest(description: "<p>New</p>"))
             XCTFail("expected an empty name from the wire to be refused")
         } catch let error as BasecampError {
-            guard case .api(let message, _, _, _) = error else {
+            guard case .api(let message, _, _, _, _) = error else {
                 return XCTFail("expected .api for a malformed response, got \(error)")
             }
             XCTAssertTrue(
@@ -608,13 +609,18 @@ final class TodolistsServiceExtensionsTests: XCTestCase {
                 id: 2, req: UpdateTodolistRequest(name: "Renamed"))
             XCTFail("expected a decode failure to surface as a BasecampError")
         } catch let error as BasecampError {
-            guard case .api(let message, let httpStatus, let hint, _) = error else {
+            guard case .api(let message, let httpStatus, let hint, _, _) = error else {
                 return XCTFail("expected .api for a malformed body, got \(error)")
             }
             XCTAssertNil(httpStatus, "the transport succeeded, so there is no status to report")
             XCTAssertNotNil(hint)
             XCTAssertLessThanOrEqual(message.count, 500, "SPEC section 9 caps the message")
             XCTAssertTrue(message.contains("does not decode"), message)
+            // The restatement is still that decode failure, so it carries the
+            // marker forward (#750). The message assertion above is a
+            // convenience for a human reading a failure; this is the contract.
+            XCTAssertNotNil(
+                error.decodeFailure, "the composite's restatement must keep the marker")
         } catch {
             XCTFail("expected BasecampError, got a raw \(type(of: error)): \(error)")
         }
@@ -653,7 +659,7 @@ extension XCTestCase {
     func assertStatuslessDecodeFailure(
         _ error: BasecampError, file: StaticString = #filePath, line: UInt = #line
     ) -> String {
-        guard case .api(let message, let httpStatus, _, _) = error else {
+        guard case .api(let message, let httpStatus, _, _, _) = error else {
             XCTFail("expected .api for a malformed body, got \(error)", file: file, line: line)
             return ""
         }
@@ -662,6 +668,9 @@ extension XCTestCase {
             line: line)
         XCTAssertFalse(
             error.isRetryable, "re-requesting cannot repair a malformed body", file: file,
+            line: line)
+        XCTAssertNotNil(
+            error.decodeFailure, "the base layer's producer sets the #750 marker", file: file,
             line: line)
         return message
     }

@@ -1,4 +1,4 @@
-@_spi(Conformance) import Basecamp
+import Basecamp
 import ConformanceSupport
 import Foundation
 
@@ -325,9 +325,11 @@ struct Runner {
                 // The SDK is asked which shape this is rather than told: a
                 // statusless `.api` is also what the pagination same-origin
                 // guard throws, and `security.json` asserts on that refusal.
-                // `malformedBodyMessage` is `@_spi(Conformance)` precisely so
-                // this seam cannot hold a second, drifting copy of the phrase.
-                if let decodeFailure = BaseService.malformedBodyMessage(error) {
+                // `decodeFailure` is set by the SDK's decode wrapper and by the
+                // §18 composites restating that same failure, and by nothing
+                // else — so this seam holds no copy of a message to drift from
+                // (#750, replacing a `@_spi(Conformance)` substring test).
+                if let decodeFailure = error.decodeFailure {
                     guard expectsFailure else {
                         return .fail("Mock body lacks required Swift model fields: \(decodeFailure)")
                     }

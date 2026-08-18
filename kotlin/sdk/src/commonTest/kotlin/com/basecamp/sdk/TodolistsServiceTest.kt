@@ -348,6 +348,10 @@ class TodolistsServiceTest {
                 ),
                 "expected the composite's message, got: ${error.message}",
             )
+            assertNotNull(
+                error.decodeFailure,
+                "the restatement must keep the decode-failure marker (#750)",
+            )
             assertTrue(
                 error.hint?.contains("Use replace to write the record deliberately") == true,
                 "expected a hint naming the escape hatch, got: ${error.hint}",

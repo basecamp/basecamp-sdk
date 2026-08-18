@@ -479,6 +479,11 @@ func nonNilIDs(ids []int64) []int64 {
 // are the errors that precede a response. So getEntryWithBody splits the
 // request from the decode and calls this on the decode step only, where the
 // origin is known by construction rather than guessed.
+//
+// The decoder's error is kept as Cause the way documentDecodeError keeps it
+// (#750): interpolating it into Message tells a human what happened and leaves
+// a caller nothing to switch on, where Unwrap puts *json.UnmarshalTypeError and
+// *json.SyntaxError back within reach of errors.As.
 func scheduleEntryDecodeError(err error) error {
 	return &Error{
 		Code:    CodeAPI,
@@ -486,6 +491,7 @@ func scheduleEntryDecodeError(err error) error {
 		Hint: "The merge-safe UpdateEntry/EditEntry resend this record's fields verbatim, so a malformed " +
 			"response cannot be written back safely. Use ReplaceEntry to write the record deliberately.",
 		Retryable: false,
+		Cause:     err,
 	}
 }
 

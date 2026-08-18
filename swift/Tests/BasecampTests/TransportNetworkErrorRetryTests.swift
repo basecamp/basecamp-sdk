@@ -165,7 +165,7 @@ final class TransportNetworkErrorRetryTests: XCTestCase {
         for error in [
             BasecampError.auth(message: "nope", hint: nil, requestId: nil),
             BasecampError.usage(message: "bad config", hint: nil),
-            BasecampError.api(message: "boom", httpStatus: 500, hint: nil, requestId: nil),
+            BasecampError.api(message: "boom", httpStatus: 500, hint: nil, requestId: nil, decodeFailure: nil),
         ] {
             let counter = AttemptCounter()
             let transport = BasecampErrorTransport(
