@@ -561,9 +561,10 @@ abstract class BaseService(
         }
 
     /**
-     * The one place a decode failure is rendered — and, through the internal
-     * factory it calls, the only producer of
-     * [BasecampException.Api.decodeFailure]. That slot is how the §18
+     * The one place a decode failure is first rendered — and, through the
+     * internal factory it calls, one of the two producers of
+     * [BasecampException.Api.decodeFailure]; the §18 composites are the other,
+     * restating this exception through the same factory. That slot is how the §18
      * composites and the conformance runner tell this exception from any other
      * `api_error` that happens to carry a [SerializationException] as its
      * `cause`, which an auth strategy's already-classified failure can (#730).

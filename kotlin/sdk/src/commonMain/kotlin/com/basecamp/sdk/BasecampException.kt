@@ -102,9 +102,11 @@ sealed class BasecampException(
         requestId: String?,
         cause: Throwable?,
         /**
-         * The response decoder's own refusal, set on the exception
-         * [com.basecamp.sdk.services.BaseService] raises for a malformed 2xx
-         * body and on nothing else.
+         * The response decoder's own refusal, set on exactly two things: the
+         * exception [com.basecamp.sdk.services.BaseService] raises for a
+         * malformed 2xx body, and the SPEC §18 composites' restatement of that
+         * same failure with their own escape hatch attached. Null on every
+         * other [Api].
          *
          * The SPEC §18 composites re-hint a decode failure of the GET they
          * issue, so what they have to answer is "did this come out of the
