@@ -1,0 +1,27 @@
+typescript/tests/retry-after.test.ts
+  s_bcb193599a4870::t_083066e9d8d839 210
+  s_bcb193599a4870::t_1b73c6f14d38ac 38-43,45
+  s_bcb193599a4870::t_f4ccb8d6ff326f 62-68
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/PaginationTest.kt
+  s_bcb193599a4870::t_fcebf190a7eb4d 406-423,428
+MIGRATING.md
+  s_bcb193599a4870::t_e76b834833b81e 131-138
+typescript/tests/account-logo.test.ts
+  s_bcb193599a4870::t_490c26305c09b3 213-219,222
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "24bbca411ae5c882c584929827d51b3a3be1ade7",
+  "prompts": {},
+  "sessions": {
+    "s_bcb193599a4870": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5ae90ec8-5ed7-4774-88d9-9d66550a5643",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
