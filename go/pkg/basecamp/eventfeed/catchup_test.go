@@ -1097,6 +1097,79 @@ func TestProtocolFatalDuringDrainingIsImmediate(t *testing.T) {
 		assertIDs(t, h.deliveredIDs())
 	})
 
+	// #760: the fatal frame is queued while the deferral slot is ALREADY
+	// occupied by a non-fatal socket outcome. The scan used to return the
+	// moment it found the slot occupied — "everything the pump has queued
+	// arrived behind this one, so the scan stops here either way" — which is a
+	// claim about arrival order where the carve-out is a claim about which
+	// VERDICT governs. The drain then completed, the held position saved and
+	// caught_up announced: the three things §23 says a fatal observed during
+	// Draining must prevent.
+	//
+	// This needs BOTH halves of the two subtests around it, and neither alone
+	// reaches it. Deferring during the entry poll is what occupies the slot;
+	// queuing the fatal frame mid-drain is what puts it somewhere only the
+	// scan can find. Queued any earlier, the ownership cut consumes it first
+	// and the carve-out fires without the scan being involved at all — which
+	// is how the first draft of this test passed against the un-fixed code.
+	//
+	// A regression shows up as the watchdog rather than as a failed assertion
+	// on the save, and that IS the un-fixed behavior rather than a weak test:
+	// the drain completes, the held position saves, caught_up announces, and
+	// the recoverable disconnect is then dispatched — so the feed reconnects
+	// and parks in Backoff on a clock only the test advances. The iteration
+	// never ending is precisely the carve-out having failed.
+	t.Run("queued mid-drain behind an occupied deferral slot", func(t *testing.T) {
+		var caughtUp int
+		h, store := newDrainingHarness(t, &caughtUp)
+		h.pauseAfter = 1
+		deferred := make(chan struct{}, 4)
+		h.conn.OnFrameDeferred(func() { deferred <- struct{}{} })
+		handedOff := make(chan struct{}, 32)
+		h.conn.OnPumpHandedOff(func(bool) {
+			select {
+			case handedOff <- struct{}{}:
+			default:
+			}
+		})
+		var conn *feedtest.Conn
+		h.polls.OnCall(func(feedtest.PollCall) {
+			// A reconnecting disconnect is recoverable, so it parks in the slot
+			// rather than ending the cycle — and it is still there when the
+			// drain begins, because the walk's dispatch points are the page
+			// boundary and the walk's END, and this page carries no `next`.
+			conn.Serve(frameDisconnect("server_restart", true))
+			select {
+			case <-deferred:
+			case <-time.After(watchdog):
+				t.Error("the recoverable disconnect frame was never deferred")
+			}
+		})
+		h.start()
+		conn = h.driveToSubscribed()
+		h.serveSettled(conn, frameMessage(noFilterIdentifier, 41))
+		conn.Serve(frameConfirm(noFilterIdentifier))
+
+		// The consumer parks inside the drain's delivery of the retained event.
+		h.waitUntil("the drain parked mid-delivery", func() bool { return len(h.deliveredIDs()) == 1 })
+		for len(handedOff) > 0 {
+			<-handedOff
+		}
+		// The fatal frame must be IN the queue before the drain's next scan:
+		// that receive is non-blocking by design.
+		conn.Serve(frameDisconnect("invalid_event_stream_command", false))
+		select {
+		case <-handedOff:
+		case <-time.After(watchdog):
+			t.Error("the fatal frame never reached the pump's queue")
+		}
+		h.resume()
+		h.join()
+
+		assertProtocolFatalDrain(t, h, store, caughtUp)
+		assertIDs(t, h.deliveredIDs(), 41)
+	})
+
 	t.Run("queued while the drain is delivering", func(t *testing.T) {
 		var caughtUp int
 		h, store := newDrainingHarness(t, &caughtUp)
