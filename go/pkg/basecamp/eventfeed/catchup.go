@@ -428,6 +428,33 @@ func (l *loop) pollPage(at *attempt, cursor Cursor) pollAttempt {
 // used: SPEC.md §23 pins exactly six timer kinds AND every state's exact
 // timer set, both asserted by the cross-SDK fixtures, so a seventh kind is a
 // spec change across six SDKs rather than a fix to the Go reference.
+//
+// # The worst case is TWO staleness windows, and that is the published bound
+//
+// Borrowing the window means the wait wakes on the window's cadence, not the
+// deadline's, so it can overshoot — and the size of the overshoot is worth
+// stating rather than discovering.
+//
+// The window in flight was armed at the last frame receipt, at or before the
+// deferral, so it fires at or before the deadline. If the pump is blocked at
+// that moment the firing is not evidence (a full queue is a fast peer, not a
+// dead one), evaluate re-arms, and the NEXT wake is a full window later — past
+// the deadline by however much of the first window had already elapsed when
+// the deferral happened. A deferral landing immediately after a frame
+// therefore waits close to two windows in total: one for the in-flight window
+// to close, one for the re-armed window to deliver the wake that lets the
+// post-select predicate observe the lapse.
+//
+// It cannot exceed two. The post-select check runs on EVERY wake, and by the
+// first re-armed firing the clock is necessarily past a deadline set one
+// window after the deferral — so a second re-arm is never waited out, however
+// long the pump stays blocked.
+//
+// This is a property of borrowing the timer, not a defect to patch: a shorter
+// re-armed window would be a staleness window that is not one, and a dedicated
+// one is the seventh kind above. It is carried to bc3 as an open §23 contract
+// question (staleness × in-flight-poll deferral) rather than asserted as
+// settled contract here.
 func (l *loop) awaitSupersededPoll(at *attempt, done <-chan pollResult, deadline time.Time) pollAttempt {
 	for {
 		staleTimer, staleGen := at.lc.stale.current()
@@ -694,24 +721,32 @@ func (l *loop) drain(at *attempt) (cycleOutcome, bool) {
 // queue's own depth (see drain); an ordinary frame consuming it must never be
 // able to end the scan short of a fatal frame the pump had already queued.
 func (l *loop) drainScan(at *attempt, budget *int) (cycleOutcome, bool) {
-	if d := l.deferred; d != nil {
-		// A fatal frame already in the slot is dispatched now rather than
-		// after the save: the carve-out is about what governs, not about
-		// which queue the frame is sitting in. Everything the pump has
-		// queued arrived behind this one, so the scan stops here either way.
-		if !d.closed {
-			if f, ok := protocolFatalFrame(d.item); ok {
-				l.deferred = nil
-				return l.terminateProtocolFatal(at, f), true
-			}
+	// A fatal frame already in the slot is dispatched now rather than after
+	// the save: the carve-out is about what governs, not about which queue the
+	// frame is sitting in.
+	if d := l.deferred; d != nil && !d.closed {
+		if f, ok := protocolFatalFrame(d.item); ok {
+			l.deferred = nil
+			return l.terminateProtocolFatal(at, f), true
 		}
-		return cycleOutcome{}, false
 	}
+	// An occupied slot no longer ENDS the scan (#760). It used to, on the
+	// reasoning that "everything the pump has queued arrived behind this one,
+	// so the scan stops here either way" — which is a statement about arrival
+	// order, where the carve-out is a statement about which VERDICT governs. A
+	// raw invalid_event_stream_command the pump had already read went unseen
+	// whenever any non-fatal frame happened to be parked ahead of it; the drain
+	// then completed, the held entry position saved, and caught_up announced —
+	// the three things §23 says a fatal observed during Draining must prevent.
+	//
+	// The budget above is sized at pumpDepth+1 for the express purpose of
+	// reaching every frame the pump had already read. An occupied slot spent
+	// NONE of it.
 	for *budget > 0 {
 		select {
 		case item, ok := <-at.lc.frames:
 			if !ok {
-				l.deferred = &deferredFrame{closed: true}
+				l.deferForDrain(&deferredFrame{closed: true})
 				return cycleOutcome{}, false
 			}
 			*budget--
@@ -724,14 +759,34 @@ func (l *loop) drainScan(at *attempt, budget *int) (cycleOutcome, bool) {
 				if f, ok := protocolFatalFrame(item); ok {
 					return l.terminateProtocolFatal(at, f), true
 				}
-				l.deferred = &deferredFrame{item: item}
-				return cycleOutcome{}, false
+				l.deferForDrain(&deferredFrame{item: item})
 			}
 		default:
 			return cycleOutcome{}, false
 		}
 	}
 	return cycleOutcome{}, false
+}
+
+// deferForDrain parks one socket outcome the scan passed over, keeping the
+// FIRST and discarding the rest.
+//
+// Discarding is not a shortcut; it is what the dispatch path makes of them.
+// Only one deferral is ever dispatched: dispatchDeferred sends it to
+// pumpExited, to dispatchDisconnect, or to the invalid-frame teardown, and
+// every one of those ENDS THE CYCLE. A second entry could never be reached, so
+// a queue of them would be a buffer sized for a delivery that cannot happen.
+// Keeping the first is what preserves arrival order for the one outcome that
+// is actually reported.
+//
+// This is why the scan needs no queue and no share of pumpDepth: it retains
+// exactly what the single slot always retained. The connector's published
+// memory bound — (pump depth + liveBufferCapacity) × MAX_FRAME_BYTES — is
+// untouched, and so is the depth at which the pump blocks.
+func (l *loop) deferForDrain(d *deferredFrame) {
+	if l.deferred == nil {
+		l.deferred = d
+	}
 }
 
 // terminateProtocolFatal takes the raw disconnect's state-generic terminal
