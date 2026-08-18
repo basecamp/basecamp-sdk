@@ -13,6 +13,70 @@ what wrong behaviour you get if you ignore one. This file is that half.
 
 # Unreleased
 
+### `BasecampError.api` gained a fifth associated value (#750)
+
+**Swift only, and it is a compile error** — the one shape of break you cannot
+miss.
+
+```swift
+case .api(let message, let status, _, _, _):      // one more `_`
+    print("API error (\(status ?? 0)): \(message)")
+
+// …or better, stop matching the case:
+if let decodeFailure = error.decodeFailure {
+    print("Basecamp sent a body this SDK could not decode: \(decodeFailure)")
+}
+```
+
+The case is now
+`api(message: String, httpStatus: Int?, hint: String?, requestId: String?, decodeFailure: (any Error & Sendable)?)`.
+Add one more `_` to every match and `decodeFailure: nil` to every construction —
+or better, stop matching the case and read the new `error.decodeFailure`
+property, defined on every `BasecampError` (nil for all other shapes), which will
+not move again when a case gains a sixth value. A bare `case .api` match, and a
+`switch` with a `default`, keep compiling untouched.
+
+**What the slot means.** It is the response decoder's own refusal, and it is set
+on exactly two things: the SPEC §6 statusless `api_error` raised for a 2xx body
+the model would not decode, and the merge-safe composites' restatement of that
+same failure with their escape hatch attached. It is nil everywhere else —
+including the *other* statusless `.api`, the pagination same-origin guard, which
+is a deliberate refusal and not a bad body. The value is a `DecodingError` for a
+typed decode and a `CocoaError` for a body that is not JSON at all, so match the
+concrete type if you need to tell those apart.
+
+**Why the break was worth taking.** Swift used to answer "is this a malformed
+response body?" by looking for the phrase `"returned a body that does not
+decode"` inside the message, through an `@_spi(Conformance)` helper whose own
+docstring named the reason: `.api` had no slot to answer it structurally, and
+statuslessness alone would also match the pagination guard. That made the
+*wording of a sentence* the contract — rewording the message moved the answer,
+and a caller composing their own `.api` around the phrase produced one. Kotlin
+has answered the same question structurally since #730. The helper, the phrase
+constant and the SPI are gone.
+
+**Wrong behaviour you get if you ignore it:** you cannot ignore it — it does not
+build. Once it does, nothing else changed: the message still carries the
+decoder's account of the failure, and the classification (`api_error`, statusless,
+non-retryable) is unchanged.
+
+**Related, non-breaking, in the other five SDKs.** The same question now has the
+same structural answer everywhere, and none of it needs anything from you:
+Kotlin's `BasecampException.Api.decodeFailure` became a public read-only property
+(it was `internal`, invisible to a separate Gradle module); Go's two composite
+decode refusals set `Cause`, so `errors.As` reaches `*json.UnmarshalTypeError`
+and `*json.SyntaxError` through `Unwrap`; Ruby's paginated-page parse failure
+carries the `JSON::ParserError` in `cause`; Python's `BasecampError` grew a
+`cause` property over `__cause__`, which its refusal sites already set.
+
+**TypeScript has one behaviour change.** A followed pagination page whose body is
+not JSON used to escape as a bare `SyntaxError` — no code, no hint,
+indistinguishable from a bug in your own code. It is now the same statusless,
+non-retryable `api_error` Ruby and Python already raised there, with the
+`SyntaxError` in `cause` and the page number in the message. A `catch` for
+`SyntaxError` around a paginated call stops matching; a `catch` on
+`BasecampError` starts.
+
 ### Go: typed operations now honour `WithMaxRetries`, and `0` is a legal cap (#718)
 
 Two changes to the same knob, one of them a bug fix you may feel in production.
@@ -201,7 +265,7 @@ hand. The one exception is called out below.
 | SDK | was | now |
 |---|---|---|
 | Kotlin | `kotlinx.serialization.SerializationException` (incl. `MissingFieldException`) | `BasecampException.Api` with `httpStatus == null`, `retryable == false`, and the `SerializationException` as `cause` |
-| Swift | `DecodingError` — and, on the wrapped-list path, a raw `NSError` from `JSONSerialization` for a body that is not JSON at all | `BasecampError.api(message:httpStatus:hint:requestId:)` with `httpStatus == nil` (so `isRetryable == false`); the underlying error's description is interpolated into `message` |
+| Swift | `DecodingError` — and, on the wrapped-list path, a raw `NSError` from `JSONSerialization` for a body that is not JSON at all | `BasecampError.api(message:httpStatus:hint:requestId:decodeFailure:)` with `httpStatus == nil` (so `isRetryable == false`), the underlying error's description interpolated into `message` and the error itself in `decodeFailure` (see below) |
 | Go, TypeScript, Ruby, Python | unchanged | unchanged |
 
 **Wrong behaviour you get if you ignore it:** a `catch (e: SerializationException)`
@@ -215,9 +279,9 @@ What did **not** move: an auth-strategy throw, a transport failure and a
 that distinction is load-bearing — the request body is serialized inside the
 same `try`, and throws the same `SerializationException` type the decoder does.
 
-`BasecampError.api` gained no `cause` slot: adding an associated value would
-break every `switch` over the case. Swift carries the underlying error in the
-message, as its composites already did.
+`BasecampError.api` did gain a slot in the end, and it is a compile break — see
+[`BasecampError.api` gained a fifth associated value](#basecamperrorapi-gained-a-fifth-associated-value-750)
+above. It ships in this same release, so there is one migration to do, not two.
 
 **One operation is exempt, and it is `GetPersonProgress`.** Its wrapper is
 decoded by generated code that runs *after* the request primitive returns — the
