@@ -125,6 +125,30 @@ function normalizePersonIds(obj: unknown): void {
   }
 }
 
+/**
+ * Whether a rejection denotes invalid JSON rather than a failed read.
+ *
+ * `response.json()` rejects for two unrelated reasons, and only one of them is
+ * a malformed body: the bytes arrived and would not parse (SyntaxError), or the
+ * bytes never finished arriving — a socket reset or a decompression failure
+ * (TypeError), an aborted read (AbortError). Those are transport failures and
+ * keep their own semantics.
+ *
+ * Matched on `name`, not `instanceof`, and the engines force that rather than
+ * merely permitting it: Node/undici rejects with a real `SyntaxError`, but
+ * WebKit rejects with a **DOMException** named "SyntaxError", which
+ * `instanceof SyntaxError` answers `false` for. Narrowing by constructor would
+ * classify nothing in Safari and let every malformed body escape there — and
+ * excluding DOMException, to keep a DOMException named "SyntaxError" from
+ * matching, would break exactly the engine that produces one. A cross-realm
+ * error is the third case the name survives and `instanceof` does not, which is
+ * why the OAuth device flow matches AbortError the same way. Nothing else
+ * `response.json()` can reject with is named "SyntaxError".
+ */
+function isJsonSyntaxError(err: unknown): err is SyntaxError {
+  return typeof err === "object" && err !== null && (err as { name?: unknown }).name === "SyntaxError";
+}
+
 export abstract class BaseService {
   /** The underlying openapi-fetch client */
   protected readonly client: RawClient;
@@ -563,17 +587,23 @@ export abstract class BaseService {
    * mid-object or was never JSON, and neither answer is parsed back out of the
    * other. Statusless per SPEC §6 — the transport returned 2xx — and
    * non-retryable, because re-requesting cannot repair a malformed body.
+   *
+   * Only a syntax failure is classified. A read that dies partway through — a
+   * reset socket, a corrupt gzip stream, an aborted request — rejects here too,
+   * and it is transient: relabelling it non-retryable would be a worse answer
+   * than the bare error this replaced. It propagates with its own type.
    */
   private async parsePage<T>(response: Response, page: number): Promise<T> {
     try {
       return (await response.json()) as T;
     } catch (err) {
-      const detail = err instanceof Error ? err.message : String(err);
-      throw new BasecampError(
-        "api_error",
-        truncateErrorMessage(`Failed to parse paginated response (page ${page}): ${detail}`),
-        { retryable: false, cause: err instanceof Error ? err : undefined },
-      );
+      throw isJsonSyntaxError(err)
+        ? new BasecampError(
+            "api_error",
+            truncateErrorMessage(`Failed to parse paginated response (page ${page}): ${err.message}`),
+            { retryable: false, cause: err },
+          )
+        : err;
     }
   }
 
