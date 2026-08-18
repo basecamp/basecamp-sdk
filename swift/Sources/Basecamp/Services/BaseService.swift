@@ -503,11 +503,15 @@ open class BaseService: @unchecked Sendable {
     /// All four steps are the decode of this response and nothing else, so the
     /// whole body is the decode expression `decoding(_:_:)` isolates.
     ///
-    /// **Every shape but the right one is refused**, and the two guards that say
-    /// so used to be `?? [:]` and `else { return [] }` — a non-object body and an
+    /// **Every shape but the right one is refused.** Two of the three guards
+    /// used to be `?? [:]` and `else { return [] }` — a non-object body and an
     /// absent key both decoded to an empty list, so the SDK reported a
     /// successful read of zero items for a response it had not understood, and
-    /// disagreed with Kotlin, which threw on the same body (#728). BC3 settles
+    /// disagreed with Kotlin, which threw on the same body (#728). The third,
+    /// on the member's type, is new for a different reason: only a dictionary or
+    /// an array is valid input to `JSONSerialization.data(withJSONObject:)`, and
+    /// a string or number at this key made it answer with an
+    /// `NSInvalidArgumentException` — not a Swift error, and not catchable. BC3 settles
     /// which reading is right: the wrapped-pagination envelope is rendered by
     /// `app/views/api/users/timelines/show.json.jbuilder`, two unconditional
     /// `json.` lines, so an absent member is a malformed body and never an empty

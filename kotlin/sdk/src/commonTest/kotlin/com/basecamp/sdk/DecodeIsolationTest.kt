@@ -231,13 +231,20 @@ class DecodeIsolationTest {
     // -- The wrapped-pagination envelope, member by member (#728) --
     //
     // `GetPersonProgress` is the SDK's only wrapped-pagination operation, and
-    // both halves of its envelope used to be decoded by GENERATED code running
-    // after the request primitive returned: `["events"]!!.jsonArray` for the
-    // items and `decodeFromJsonElement<Person>(wrapper["person"]!!)` for the
-    // rest. Neither raised the one exception type the decode mapping catches, so
-    // an absent member surfaced as a NullPointerException and a non-array one as
-    // an IllegalArgumentException — raw, in both cases, past every guarantee
-    // this file is about. Both decodes now run inside the primitive.
+    // its envelope used to fail two DIFFERENT ways, which is worth keeping
+    // straight because the fix has two halves for that reason.
+    //
+    // The `person` decode was outside the boundary: generated code ran
+    // `decodeFromJsonElement<Person>(wrapper["person"]!!)` after the primitive
+    // had already returned, so nothing could have mapped it.
+    //
+    // The `events` decode was inside it — `parseItems` runs within
+    // `decodeOrApiError` — and still surfaced raw, because the generated
+    // accessor `["events"]!!.jsonArray` throws NullPointerException and
+    // IllegalArgumentException, and the mapping catches neither, deliberately.
+    // A boundary problem and an exception-type problem, and both are fixed
+    // here: the wrapper decode moved inside, and the accessors were changed to
+    // speak SerializationException.
     //
     // Absence is malformed, not empty, on BC3's authority: the envelope comes
     // from app/views/api/users/timelines/show.json.jbuilder, which is two

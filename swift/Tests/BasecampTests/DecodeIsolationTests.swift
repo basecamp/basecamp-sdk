@@ -194,8 +194,14 @@ final class DecodeIsolationTests: XCTestCase {
         _ = try await personProgressFailureMessage(#"{"events":[],"person":42}"#)
     }
 
-    /// A non-array `events` used to reach `JSONSerialization.data(withJSONObject:)`
-    /// with a value it cannot serialize at top level.
+    /// The one case here that was **already** an `api_error`: `{}` is valid
+    /// input to `JSONSerialization.data(withJSONObject:)`, so the old path
+    /// serialized it and the `[T]` decoder then rejected it. What the guard adds
+    /// is a message that names the member — and cover for the values `{}` does
+    /// not stand in for. A string or a number at `events` is not a valid
+    /// top-level JSON object, and `data(withJSONObject:)` answers that with an
+    /// `NSInvalidArgumentException`, which is not a Swift error and cannot be
+    /// caught. Refusing the shape first is what keeps that unreachable.
     func testANonArrayItemsKeyIsAStatuslessApiError() async throws {
         let message = try await personProgressFailureMessage(
             #"{"person":{"id":45678,"name":"Victor Cooper"},"events":{}}"#)
