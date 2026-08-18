@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -13,6 +14,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 )
 
 func schedulesFixturesDir() string {
@@ -1605,6 +1607,100 @@ func TestSchedulesService_UpdateEntryKeepsTheDecoderErrorReachable(t *testing.T)
 	var apiErr *Error
 	if !errors.As(err, &apiErr) || apiErr.Code != CodeAPI {
 		t.Fatalf("expected a statusless api_error over the decoder error, got %T: %v", err, err)
+	}
+}
+
+// #773 at the second of the two sites. getEntryWithBody reads through
+// ParseGetScheduleEntryResponse, whose first statement is io.ReadAll, so a body
+// that never finished arriving reaches scheduleEntryDecodeError by the same path
+// a JSON fault does. Same three cases as
+// TestDocumentsService_GetSeparatesTransportFailuresFromDecodeFailures, and the
+// third is the one an allow-list of encoding/json sentinels would have broken.
+func TestSchedulesService_GetEntrySeparatesTransportFailuresFromDecodeFailures(t *testing.T) {
+	// 1. Truncated mid-body: a transient failure, not a malformed record.
+	t.Run("a body that stops mid-read stays the transport's error", func(t *testing.T) {
+		srv, puts := truncatedBodyServer(t)
+		cfg := DefaultConfig()
+		cfg.BaseURL = srv.URL
+		client := NewClient(cfg, &StaticTokenProvider{Token: "test-token"})
+
+		_, err := client.ForAccount("99999").Schedules().UpdateEntry(context.Background(), 1069479400,
+			&UpdateScheduleEntryRequest{Summary: strPtr("Q3 Kickoff")})
+		if err == nil {
+			t.Fatal("expected the call to fail, but it succeeded")
+		}
+		if !errors.Is(err, io.ErrUnexpectedEOF) {
+			t.Fatalf("expected the read failure to reach the caller as itself, got %T: %v", err, err)
+		}
+		if apiErr, ok := errors.AsType[*Error](err); ok {
+			t.Fatalf("expected the transport error verbatim, got a %q *Error (retryable=%v): %v",
+				apiErr.Code, apiErr.Retryable, err)
+		}
+		if n := puts.Load(); n != 0 {
+			t.Fatalf("expected no write-back after a failed read, got %d PUT(s)", n)
+		}
+	})
+
+	// 2. Arrived whole, not JSON: still the statusless api_error.
+	t.Run("a malformed body is the statusless api_error", func(t *testing.T) {
+		base := scheduleEntryReadBack(t)
+		svc, reqs := testSchedulesCaptureServer(t, []byte(`{"id":1069479400,`), base, nil)
+
+		_, err := svc.UpdateEntry(context.Background(), 1069479400,
+			&UpdateScheduleEntryRequest{Summary: strPtr("Q3 Kickoff")})
+		if err == nil {
+			t.Fatal("expected the call to fail, but it succeeded")
+		}
+		assertStatuslessScheduleEntryAPIError(t, err)
+		if _, ok := errors.AsType[*json.SyntaxError](err); !ok {
+			t.Errorf("expected the JSON error to be reachable through Cause, got %v", err)
+		}
+		if errors.Is(err, io.ErrUnexpectedEOF) {
+			t.Error("a body that arrived whole must not be reported as a truncated read")
+		}
+		assertNoPUT(t, reqs)
+	})
+
+	// 3. Neither. This is the case the originally-proposed allow-list fix broke.
+	t.Run("a decoder error that is neither is still the statusless api_error", func(t *testing.T) {
+		base := scheduleEntryReadBack(t)
+		get := patchScheduleEntryFixture(t, base, map[string]any{"created_at": "not-a-date"})
+		svc, reqs := testSchedulesCaptureServer(t, get, base, nil)
+
+		_, err := svc.UpdateEntry(context.Background(), 1069479400,
+			&UpdateScheduleEntryRequest{Summary: strPtr("Q3 Kickoff")})
+		if err == nil {
+			t.Fatal("expected the call to fail, but it succeeded")
+		}
+		// The premise, pinned alongside the conclusion: created_at has to still
+		// be a time.Time for this case to be testing what it says it is.
+		if _, ok := errors.AsType[*time.ParseError](err); !ok {
+			t.Fatalf("expected a *time.ParseError from created_at, got %T: %v", err, err)
+		}
+		assertStatuslessScheduleEntryAPIError(t, err)
+		assertNoPUT(t, reqs)
+	})
+}
+
+// assertStatuslessScheduleEntryAPIError pins the SPEC §6 shape for the entry
+// read, the way assertStatuslessDocumentAPIError does for the document read.
+func assertStatuslessScheduleEntryAPIError(t *testing.T, err error) {
+	t.Helper()
+	apiErr, ok := errors.AsType[*Error](err)
+	if !ok {
+		t.Fatalf("expected *Error, got %T: %v", err, err)
+	}
+	if apiErr.Code != CodeAPI {
+		t.Errorf("expected code %q, got %q", CodeAPI, apiErr.Code)
+	}
+	if apiErr.HTTPStatus != 0 {
+		t.Errorf("expected a statusless error, got HTTP %d", apiErr.HTTPStatus)
+	}
+	if apiErr.Retryable {
+		t.Error("re-requesting cannot repair a malformed body")
+	}
+	if apiErr.Hint == "" {
+		t.Error("expected a hint naming the deliberate-overwrite escape hatch")
 	}
 }
 

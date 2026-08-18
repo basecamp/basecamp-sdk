@@ -472,19 +472,30 @@ func nonNilIDs(ids []int64) []int64 {
 // that as a raw decoder error, which callers switching on *Error would miss and
 // which carries no hint.
 //
-// There is no classification here, deliberately: decoder errors are not
-// enumerable (created_at is time.Time, whose UnmarshalJSON returns
-// *time.ParseError; description_attachments carries *types.FlexInt dimensions
-// rejected with a plain fmt.Errorf that is no named type at all), and neither
-// are the errors that precede a response. So getEntryWithBody splits the
-// request from the decode and calls this on the decode step only, where the
-// origin is known by construction rather than guessed.
+// The decoder half is not classified by inspection, deliberately: decoder
+// errors are not enumerable (created_at is time.Time, whose UnmarshalJSON
+// returns *time.ParseError; description_attachments carries *types.FlexInt
+// dimensions rejected with a plain fmt.Errorf that is no named type at all),
+// and neither are the errors that precede a response. So getEntryWithBody
+// splits the request from the decode and calls this on the decode step only,
+// where the origin is known by construction rather than guessed.
+//
+// The decode step's errors are not all decode errors, though: io.ReadAll runs
+// INSIDE the generated parse, so a body that never finished arriving lands here
+// too (#773). transportFailure in documents.go names that closed set and those
+// return verbatim — a deny-list of the transport, never an allow-list of the
+// decoder, for the reason written out in full at its definition.
 //
 // The decoder's error is kept as Cause the way documentDecodeError keeps it
 // (#750): interpolating it into Message tells a human what happened and leaves
 // a caller nothing to switch on, where Unwrap puts *json.UnmarshalTypeError and
 // *json.SyntaxError back within reach of errors.As.
 func scheduleEntryDecodeError(err error) error {
+	// A body that never finished arriving is not a malformed body. Deny-list,
+	// never allow-list — transportFailure in documents.go explains why.
+	if transportFailure(err) {
+		return err
+	}
 	return &Error{
 		Code:    CodeAPI,
 		Message: truncate(fmt.Sprintf("GetScheduleEntry returned a body that does not decode as a schedule entry: %v", err)),
@@ -783,13 +794,19 @@ func (s *SchedulesService) GetEntry(ctx context.Context, entryID int64) (*Schedu
 // GetScheduleEntryWithResponse, so the two error origins never mix. The
 // merge-safe composites read this body and write every field of it back, so a
 // malformed one has to arrive as the documented statusless api_error
-// (scheduleEntryDecodeError) — but everything BEFORE the response is a different
+// (scheduleEntryDecodeError) — but a failure to REACH a response is a different
 // failure with its own meaning, and no inspection of the returned error can
-// reliably tell them apart. GetScheduleEntry covers the gate's successors: the
+// reliably tell those apart. GetScheduleEntry covers the gate's successors: the
 // per-request auth editor (a token provider or custom AuthStrategy may return
-// ANY error), the transport, and context cancellation. Those return verbatim, so
-// errors.Is keeps working; only ParseGetScheduleEntryResponse's failure is a
-// decode failure. Same split as DocumentsService.Get.
+// ANY error), the request half of the transport, and context cancellation.
+// Those return verbatim, so errors.Is keeps working.
+//
+// The split is by origin, not by position in the exchange, and the difference
+// matters: the body is STREAMED, so the transport is still running when
+// ParseGetScheduleEntryResponse calls io.ReadAll on it, and a truncated or reset
+// body surfaces from the parse rather than from the call above it (#773).
+// scheduleEntryDecodeError gates that closed set out before classifying. Same
+// split as DocumentsService.Get.
 func (s *SchedulesService) getEntryWithBody(ctx context.Context, entryID int64) (result *ScheduleEntry, body []byte, err error) {
 	op := OperationInfo{
 		Service: "Schedules", Operation: "GetEntry",

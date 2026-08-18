@@ -2,7 +2,10 @@ package basecamp
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
+	"net"
 	"strings"
 	"time"
 
@@ -127,6 +130,60 @@ func (f *DocumentFields) fullBody() (generated.ReplaceDocumentJSONRequestBody, e
 	}, nil
 }
 
+// transportFailure reports whether err is the response body failing to ARRIVE
+// rather than failing to DECODE. It is the gate both decode-error renderers —
+// documentDecodeError below and scheduleEntryDecodeError in schedules.go — run
+// before they classify anything.
+//
+// It has to exist because Go streams the response body: io.ReadAll(rsp.Body) is
+// the FIRST statement of every generated Parse* function and its error is
+// returned verbatim, so a truncated body, a reset connection or an expired
+// deadline reaches those renderers by exactly the same path a JSON syntax error
+// does. Before #773 both were stamped CodeAPI, statusless, Retryable: false — a
+// caller reading Retryable treated a transient failure as permanent, and a
+// caller reaching for a JSON error through errors.As found a transport error.
+//
+// This is a DENY-LIST of the transport, and it must never be inverted into an
+// ALLOW-LIST of the decoder. The asymmetry is the whole reason:
+//
+//   - The transport's error set is CLOSED. It is the standard library's, and
+//     nothing this SDK models can extend it: io.ErrUnexpectedEOF for a body
+//     that stopped early, net.Error for resets, DNS, TLS and timeouts, and the
+//     two context sentinels.
+//   - The decoder's error set is OPEN, and grows with the model graph. The
+//     renderers' own doc comments name two members no encoding/json allow-list
+//     can reach: created_at/updated_at are time.Time, whose UnmarshalJSON
+//     returns *time.ParseError, and content_attachments /
+//     description_attachments carry *types.FlexInt dimensions rejected with a
+//     plain fmt.Errorf that has no named type at all.
+//
+// So the two mistakes are not the same size. A deny-list that misses a
+// transport case degrades to the pre-#773 behaviour for that ONE case. An
+// allow-list that misses a decoder case degrades for EVERY field type nobody
+// enumerated — silently, the day that type is added, and for the two that exist
+// today. Do not "simplify" this into errors.AsType[*json.SyntaxError] /
+// [*json.UnmarshalTypeError]: that is the shape #773 was originally filed with,
+// and it is the wrong one.
+//
+// The two sets are disjoint, which is what makes a deny-list safe to run first.
+// The one sentinel that could plausibly appear on both sides is
+// io.ErrUnexpectedEOF, and it cannot: the generated parse decodes with
+// json.Unmarshal over an already-read []byte, never a streaming json.Decoder, so
+// JSON that stops early is *json.SyntaxError ("unexpected end of JSON input")
+// and only the read itself yields io.ErrUnexpectedEOF. Both halves of that are
+// pinned by the "malformed body" case in the tests.
+func transportFailure(err error) bool {
+	switch {
+	case errors.Is(err, io.ErrUnexpectedEOF),
+		errors.Is(err, context.DeadlineExceeded),
+		errors.Is(err, context.Canceled):
+		return true
+	default:
+		_, isNetError := errors.AsType[net.Error](err)
+		return isNetError
+	}
+}
+
 // documentDecodeError renders a response-decoder failure in the SPEC §6 shape.
 //
 // Go's json.Unmarshal is the typed guard the dynamic SDKs write by hand, and it
@@ -134,16 +191,22 @@ func (f *DocumentFields) fullBody() (generated.ReplaceDocumentJSONRequestBody, e
 // that as a raw decoder error, which callers switching on *Error would miss and
 // which carries no hint. (The Swift composite does the same with DecodingError.)
 //
-// There is no classification here, deliberately. Deciding whether an error came
-// from the decoder by INSPECTING it does not work in either direction: decoder
-// errors are not enumerable (created_at/updated_at are time.Time, whose
-// UnmarshalJSON returns *time.ParseError rather than an encoding/json sentinel,
-// and content_attachments carries *types.FlexInt dimensions rejected with a
-// plain fmt.Errorf that is no named type at all), and neither are the errors
-// that precede a response — a gating hook, a token provider or a custom
+// The decoder half is not classified by INSPECTING the error, deliberately.
+// That inspection does not work in either direction: decoder errors are not
+// enumerable (created_at/updated_at are time.Time, whose UnmarshalJSON returns
+// *time.ParseError rather than an encoding/json sentinel, and
+// content_attachments carries *types.FlexInt dimensions rejected with a plain
+// fmt.Errorf that is no named type at all), and neither are the errors that
+// precede a response — a gating hook, a token provider or a custom
 // AuthStrategy may each return any sentinel they like. So DocumentsService.Get
 // splits the request from the decode and calls this on the decode step only,
 // where the origin is known by construction rather than guessed.
+//
+// Exactly one inspection survives that argument, because the split is not as
+// clean as it reads: io.ReadAll runs INSIDE the generated parse, so the decode
+// step's errors are not all decode errors (#773). transportFailure above names
+// the closed set that is not, and those pass through verbatim; everything else
+// gets the §6 shape below.
 //
 // The decoder's error is kept as Cause, not just interpolated into Message
 // (#750). Every SDK renders it into the message; only the ones that keep it let
@@ -152,6 +215,11 @@ func (f *DocumentFields) fullBody() (generated.ReplaceDocumentJSONRequestBody, e
 // at all reaches *json.UnmarshalTypeError or *json.SyntaxError through Unwrap
 // instead of pattern-matching a sentence.
 func documentDecodeError(err error) error {
+	// A body that never finished arriving is not a malformed body. Deny-list,
+	// never allow-list — transportFailure explains why.
+	if transportFailure(err) {
+		return err
+	}
 	return &Error{
 		Code:    CodeAPI,
 		Message: truncate(fmt.Sprintf("GetDocument returned a body that does not decode as a document: %v", err)),

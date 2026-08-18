@@ -5,9 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"sync/atomic"
 	"testing"
+	"time"
 )
 
 // The documents write surface: the merge-safe Update, the read-modify-write
@@ -734,6 +737,156 @@ func TestDocumentsService_UpdateKeepsTheDecoderErrorReachable(t *testing.T) {
 	var apiErr *Error
 	if !errors.As(err, &apiErr) || apiErr.Code != CodeAPI {
 		t.Fatalf("expected a statusless api_error over the decoder error, got %T: %v", err, err)
+	}
+}
+
+// truncatedBodyServer answers every request with a 200 whose Content-Length
+// promises 4096 bytes and then writes a few dozen before hanging up. It also
+// counts the PUTs it saw, so a caller can prove no write-back followed.
+//
+// That is the wire shape of a connection dropped mid-body, and net/http reports
+// it to io.ReadAll as io.ErrUnexpectedEOF (transfer.go turns an early EOF on a
+// Content-Length body into exactly that). Hijacking is the only way to stage it:
+// a normal handler's ResponseWriter derives Content-Length from what was
+// actually written, so it cannot be made to contradict itself.
+//
+// Shared with schedules_test.go — the two composites read through the same two
+// generated Parse* functions, and #773 is a property of both.
+func truncatedBodyServer(t *testing.T) (*httptest.Server, *atomic.Int64) {
+	t.Helper()
+	puts := &atomic.Int64{}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPut {
+			puts.Add(1)
+		}
+		hj, ok := w.(http.Hijacker)
+		if !ok {
+			t.Error("the test server does not support hijacking, so a mid-body truncation cannot be staged")
+			return
+		}
+		conn, buf, err := hj.Hijack()
+		if err != nil {
+			t.Errorf("hijack failed: %v", err)
+			return
+		}
+		defer conn.Close()
+		_, _ = buf.WriteString("HTTP/1.1 200 OK\r\n" +
+			"Content-Type: application/json\r\n" +
+			"Content-Length: 4096\r\n" +
+			"\r\n" +
+			`{"id":1069479300,"title":"Q3 P`)
+		_ = buf.Flush()
+	}))
+	t.Cleanup(srv.Close)
+	return srv, puts
+}
+
+// #773: the document read's decode step sees three different failures and only
+// two of them are the decoder's, because io.ReadAll runs INSIDE
+// ParseGetDocumentResponse. All three arrive at documentDecodeError by the same
+// path, so the gate is what tells them apart — and the three cases here are one
+// test rather than three so that a later "simplification" has to look at all of
+// them at once.
+//
+// The third case is the load-bearing one. The obvious fix for #773 — allow-list
+// *json.SyntaxError and *json.UnmarshalTypeError, return everything else
+// verbatim — passes the first two and silently breaks the third, because
+// created_at is a time.Time and time.Time.UnmarshalJSON returns *time.ParseError,
+// which is not an encoding/json type at all.
+func TestDocumentsService_GetSeparatesTransportFailuresFromDecodeFailures(t *testing.T) {
+	// 1. The body never finished arriving. There is nothing malformed about it —
+	// re-requesting is exactly the right move — so the read error has to survive
+	// as itself rather than becoming a statusless, permanently non-retryable
+	// api_error.
+	t.Run("a body that stops mid-read stays the transport's error", func(t *testing.T) {
+		srv, puts := truncatedBodyServer(t)
+		cfg := DefaultConfig()
+		cfg.BaseURL = srv.URL
+		client := NewClient(cfg, &StaticTokenProvider{Token: "test-token"})
+
+		_, err := client.ForAccount("99999").Documents().Update(context.Background(), 1069479300,
+			&UpdateDocumentRequest{Title: "Q3 Plan"})
+		if err == nil {
+			t.Fatal("expected the call to fail, but it succeeded")
+		}
+		if !errors.Is(err, io.ErrUnexpectedEOF) {
+			t.Fatalf("expected the read failure to reach the caller as itself, got %T: %v", err, err)
+		}
+		if apiErr, ok := errors.AsType[*Error](err); ok {
+			t.Fatalf("expected the transport error verbatim, got a %q *Error (retryable=%v): %v",
+				apiErr.Code, apiErr.Retryable, err)
+		}
+		if n := puts.Load(); n != 0 {
+			t.Fatalf("expected no write-back after a failed read, got %d PUT(s)", n)
+		}
+	})
+
+	// 2. The body arrived whole and is not JSON. Re-requesting cannot repair it,
+	// and the merge-safe composites would write it back, so this keeps the
+	// statusless api_error — with the decoder's own error still reachable.
+	t.Run("a malformed body is the statusless api_error", func(t *testing.T) {
+		fixture := loadDocumentsFixture(t, "get.json")
+		svc, reqs := testDocumentsCaptureServer(t, []byte(`{"id":1069479300,`), fixture, nil)
+
+		_, err := svc.Update(context.Background(), 1069479300, &UpdateDocumentRequest{Title: "Q3 Plan"})
+		if err == nil {
+			t.Fatal("expected the call to fail, but it succeeded")
+		}
+		assertStatuslessDocumentAPIError(t, err)
+		if _, ok := errors.AsType[*json.SyntaxError](err); !ok {
+			t.Errorf("expected the JSON error to be reachable through Cause, got %v", err)
+		}
+		if errors.Is(err, io.ErrUnexpectedEOF) {
+			t.Error("a body that arrived whole must not be reported as a truncated read")
+		}
+		for _, r := range *reqs {
+			if r.method == "PUT" {
+				t.Fatalf("expected no PUT after a decode failure, got %+v", r)
+			}
+		}
+	})
+
+	// 3. Neither: valid JSON, decoded by a type encoding/json does not own. An
+	// allow-list of encoding/json sentinels drops the §6 classification here, so
+	// this case is the one that decides the shape of the gate.
+	t.Run("a decoder error that is neither is still the statusless api_error", func(t *testing.T) {
+		fixture := loadDocumentsFixture(t, "get.json")
+		getBody := patchDocumentFixture(t, fixture, map[string]any{"created_at": "not-a-date"})
+		svc, _ := testDocumentsCaptureServer(t, getBody, fixture, nil)
+
+		_, err := svc.Update(context.Background(), 1069479300, &UpdateDocumentRequest{Title: "Q3 Plan"})
+		if err == nil {
+			t.Fatal("expected the call to fail, but it succeeded")
+		}
+		// Pin the premise as well as the conclusion: if created_at ever stops
+		// being a time.Time this case silently stops testing what it claims to.
+		if _, ok := errors.AsType[*time.ParseError](err); !ok {
+			t.Fatalf("expected a *time.ParseError from created_at, got %T: %v", err, err)
+		}
+		assertStatuslessDocumentAPIError(t, err)
+	})
+}
+
+// assertStatuslessDocumentAPIError pins the SPEC §6 shape the merge-safe
+// composites depend on: an api_error with no HTTP status, not retryable, and
+// carrying the escape-hatch hint.
+func assertStatuslessDocumentAPIError(t *testing.T, err error) {
+	t.Helper()
+	apiErr, ok := errors.AsType[*Error](err)
+	if !ok {
+		t.Fatalf("expected *Error, got %T: %v", err, err)
+	}
+	if apiErr.Code != CodeAPI {
+		t.Errorf("expected code %q, got %q", CodeAPI, apiErr.Code)
+	}
+	if apiErr.HTTPStatus != 0 {
+		t.Errorf("expected a statusless error, got HTTP %d", apiErr.HTTPStatus)
+	}
+	if apiErr.Retryable {
+		t.Error("re-requesting cannot repair a malformed body")
+	}
+	if apiErr.Hint == "" {
+		t.Error("expected a hint naming the deliberate-overwrite escape hatch")
 	}
 }
 
