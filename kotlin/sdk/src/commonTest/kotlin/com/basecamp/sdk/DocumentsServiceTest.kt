@@ -13,6 +13,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
@@ -118,6 +119,11 @@ class DocumentsServiceTest {
             error.message!!.contains("GetDocument returned a body that does not decode as a document"),
             "expected the composite's message, got: ${error.message}",
         )
+        // The restatement is still a malformed body, so it carries the marker
+        // forward: rebuilding through the public constructor would drop it and
+        // tell a caller — and the conformance runner — that this was not a
+        // decode failure (#750).
+        assertNotNull(error.decodeFailure, "the restatement must keep the decode-failure marker")
         assertTrue(
             error.hint?.contains("Use replace to write the record deliberately") == true,
             "expected a hint naming the escape hatch, got: ${error.hint}",

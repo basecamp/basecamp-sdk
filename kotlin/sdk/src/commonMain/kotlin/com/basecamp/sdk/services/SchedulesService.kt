@@ -280,8 +280,12 @@ class SchedulesService(client: AccountClient) :
      * writing it deliberately. That is what is restated here.
      *
      * The restatement is keyed off [BasecampException.Api.decodeFailure], the
-     * internal slot the base layer's decoder wrapper alone fills, so any other
-     * [BasecampException.Api] passes through untouched. Reading `cause is
+     * slot the base layer's decoder wrapper alone fills, so any other
+     * [BasecampException.Api] passes through untouched — and it carries that
+     * slot forward through the internal factory, because a restatement of a
+     * malformed body is still a malformed body. Rebuilding through the public
+     * constructor would drop the marker and tell everything downstream this was
+     * not a decode failure (#750). Reading `cause is
      * SerializationException` instead would catch more than this GET's decode:
      * an auth strategy that classifies its own JSON failure that way has its
      * exception propagated untouched by `BasecampHttpClient`, and would arrive
@@ -297,12 +301,11 @@ class SchedulesService(client: AccountClient) :
             getEntry(entryId)
         } catch (e: BasecampException.Api) {
             val decodeFailure = e.decodeFailure ?: throw e
-            throw BasecampException.Api(
+            throw BasecampException.Api.malformedBody(
                 message = "GetScheduleEntry returned a body that does not decode as a schedule " +
                     "entry: ${decodeFailure.message}",
                 hint = MALFORMED_HINT,
-                retryable = false,
-                cause = decodeFailure,
+                decodeFailure = decodeFailure,
             )
         }
 

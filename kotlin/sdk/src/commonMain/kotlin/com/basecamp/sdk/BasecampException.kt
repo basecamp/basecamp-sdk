@@ -165,6 +165,15 @@ sealed class BasecampException(
              * caller's to vary, which is why they are fixed here rather than
              * passed.
              *
+             * [hint] is passed, because the §18 composites restate this failure
+             * with their own escape hatch attached and the restatement is still
+             * the same malformed body. Restating it through the public
+             * constructor would have dropped the marker, which reads as "this
+             * was not a decode failure after all" to everything downstream —
+             * the conformance runner included, where it means "a mock body that
+             * needs repairing" is reported as an ordinary `api_error` instead
+             * (#750).
+             *
              * A factory and not a constructor, because `internal` does not
              * survive the JVM boundary for `<init>`: constructors cannot be
              * name-mangled, so an internal *constructor* is emitted public and
@@ -192,11 +201,12 @@ sealed class BasecampException(
              */
             internal fun malformedBody(
                 message: String,
+                hint: String? = null,
                 decodeFailure: SerializationException,
             ): Api = Api(
                 message,
                 httpStatus = null,
-                hint = null,
+                hint = hint,
                 retryable = false,
                 requestId = null,
                 cause = decodeFailure,
