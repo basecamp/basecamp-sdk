@@ -27,6 +27,21 @@ func checkCableURL(wsURL string) *DialError {
 		// URL, query string included.
 		return &DialError{Kind: DialPolicy, Reason: "unparseable cable URL"}
 	}
+	// Userinfo is refused outright, before anything else looks at the URL.
+	// net/http's send() turns URL userinfo into a Basic Authorization header
+	// (`if u := req.URL.User; u != nil && req.Header.Get("Authorization") ==
+	// ""`), so a mint whose url carried userinfo would make the connector
+	// AUTHENTICATE to the cable origin with a credential the server chose —
+	// and that origin is cross-host by design. There is no legitimate reading
+	// of userinfo on a cable URL: the ticket is the credential, and it rides
+	// in the query.
+	//
+	// Neither the username nor the password is named in the reason: the
+	// password is obviously secret, and the username is attacker-controlled
+	// text that would otherwise be echoed into an observer's log.
+	if u.User != nil {
+		return &DialError{Kind: DialPolicy, Reason: "cable URL carries userinfo"}
+	}
 	switch scheme := strings.ToLower(u.Scheme); scheme {
 	case "wss":
 	case "ws":
