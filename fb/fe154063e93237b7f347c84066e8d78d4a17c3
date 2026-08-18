@@ -1,0 +1,22 @@
+typescript/tests/services/base.test.ts
+  s_bd904175ffa79c::t_bbe1719bb6b592 378-429
+typescript/src/services/base.ts
+  s_bd904175ffa79c::t_0042b120aef39f 128-146
+  s_bd904175ffa79c::t_17e8314f69a555 585-589,595-601
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "fbfe154063e93237b7f347c84066e8d78d4a17c3",
+  "prompts": {},
+  "sessions": {
+    "s_bd904175ffa79c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84276f22-32e4-44d3-bb44-8c35d734d9eb",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
