@@ -93,7 +93,21 @@ describe("updateAccountLogo", () => {
     );
   });
 
-  it("should retry on 429 and fire onRetry hook", async () => {
+  /**
+   * The multipart transport runs its own retry loop, separate from `retry.ts`,
+   * and conformance cannot reach it — no fixture drives an upload through a
+   * 429. So this is the only guard on that loop's Retry-After handling.
+   *
+   * `Retry-After: 0` is the case that matters. SPEC §6 step 1 returns a value
+   * only when the integer is > 0, so a zero must fall through to the backoff
+   * formula; this loop's own `parseInt` copy guarded with `>= 0` and honoured
+   * it as a zero-millisecond delay, retrying with no wait at all (#564). The
+   * assertion is therefore on the delay handed to `onRetry`, not merely on the
+   * retry happening — and note that this test previously sent `Retry-After: 0`
+   * precisely BECAUSE it collapsed the backoff and kept the test fast, which is
+   * how a defect ends up load-bearing in its own coverage.
+   */
+  it("rejects Retry-After: 0 on the upload path and backs off instead", async () => {
     let attempts = 0;
 
     server.use(
@@ -118,14 +132,57 @@ describe("updateAccountLogo", () => {
     });
 
     const blob = new Blob(["data"], { type: "image/png" });
+    const started = performance.now();
     await client.account.updateAccountLogo(blob, "logo.png");
+    const elapsed = performance.now() - started;
 
     expect(attempts).toBe(2);
     expect(onRetry).toHaveBeenCalledWith(
       expect.objectContaining({ method: "PUT", url: expect.stringContaining("/account/logo.json") }),
       expect.any(Number),
       expect.any(Error),
-      expect.any(Number),
+      // The upload loop's backoff term for attempt 0 — no jitter on this path.
+      1000,
     );
+    // The hook argument alone would pass if the loop announced 1000ms and then
+    // slept on a separately computed value, so the wall clock is checked too.
+    expect(elapsed).toBeGreaterThanOrEqual(950);
   });
+
+  it("honours a positive Retry-After on the upload path", async () => {
+    let attempts = 0;
+
+    server.use(
+      http.put(`${BASE_URL}/account/logo.json`, () => {
+        attempts++;
+        if (attempts === 1) {
+          return new HttpResponse(null, {
+            status: 429,
+            headers: { "Retry-After": "2" },
+          });
+        }
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+
+    const onRetry = vi.fn();
+
+    const client = createBasecampClient({
+      accountId: "12345",
+      accessToken: "test-token",
+      hooks: { onRetry },
+    });
+
+    const blob = new Blob(["data"], { type: "image/png" });
+    await client.account.updateAccountLogo(blob, "logo.png");
+
+    expect(attempts).toBe(2);
+    // 2000ms, not the 1000ms backoff: the header still wins when it is valid.
+    expect(onRetry).toHaveBeenCalledWith(
+      expect.objectContaining({ method: "PUT" }),
+      expect.any(Number),
+      expect.any(Error),
+      2000,
+    );
+  }, 10_000);
 });

@@ -7,6 +7,9 @@
  * emission via `RetryEmit`.
  */
 
+// errors.ts imports nothing, so this edge introduces no cycle.
+import { parseRetryAfter } from "./errors.js";
+
 /**
  * Retry configuration matching x-basecamp-retry extension schema.
  */
@@ -142,16 +145,19 @@ export async function executeWithRetry(
       return response;
     }
 
-    // For 429, respect Retry-After; otherwise back off.
-    let delay: number;
-    const retryAfter =
-      response.status === 429 ? response.headers.get("Retry-After") : null;
-    const retryAfterSeconds = retryAfter ? parseInt(retryAfter, 10) : NaN;
-    if (!isNaN(retryAfterSeconds)) {
-      delay = retryAfterSeconds * 1000;
-    } else {
-      delay = calculateBackoffDelay(config, attempt - 1);
-    }
+    // For 429, respect Retry-After; otherwise back off. The header goes through
+    // errors.ts's parseRetryAfter — the single SPEC §6 implementation — rather
+    // than a local parseInt: 0, a negative value and an unparseable one all
+    // come back undefined and fall through to backoff, where the local copy
+    // this replaced turned them into a zero or negative sleep.
+    const retryAfterSeconds =
+      response.status === 429
+        ? parseRetryAfter(response.headers.get("Retry-After"))
+        : undefined;
+    const delay =
+      retryAfterSeconds !== undefined
+        ? retryAfterSeconds * 1000
+        : calculateBackoffDelay(config, attempt - 1);
 
     const statusError = new Error(
       `HTTP ${response.status}: ${response.statusText || "Request failed"}`,

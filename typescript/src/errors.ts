@@ -459,10 +459,21 @@ function flattenFieldErrors(fieldErrors: Record<string, string[]>): string {
 }
 
 /**
- * Parses the Retry-After header value.
- * Supports both seconds (integer) and HTTP-date formats.
+ * Parses the Retry-After header value (SPEC §6, "Retry-After Parsing
+ * Algorithm"): integer seconds when > 0, else an RFC 7231 HTTP-date reduced to
+ * `max(0, date - now())` seconds when that is > 0, else `undefined` — which
+ * means "no server-directed delay", and every caller falls through to the
+ * backoff formula.
+ *
+ * This is the SDK's ONE implementation of that algorithm. The retry loop
+ * (`retry.ts`) and the multipart upload loop (`services/base.ts`) each carried
+ * their own `parseInt` copy until #564; both were missing the date branch, and
+ * one of them honoured `Retry-After: 0` as a zero-millisecond delay, which
+ * collapsed the backoff outright. Exported for those two callers rather than
+ * re-derived — it is deliberately NOT re-exported from `index.ts`, so this
+ * stays off the package's public surface.
  */
-function parseRetryAfter(value: string | null): number | undefined {
+export function parseRetryAfter(value: string | null): number | undefined {
   if (!value) return undefined;
 
   // Try parsing as integer (seconds)
