@@ -120,15 +120,28 @@ retried in 2ms; it now gets the longest wait the platform can actually
 schedule. `oauth/device.ts` already bounded its own `Retry-After` at the same
 number.
 
-**Wrong behaviour you get if you ignore it:** none — this direction only ever
-shortens a wait that should not have happened. The two worst cases are worth
-naming, though, because they are why the change is not merely tidiness. A
-malformed header that `Date.parse` read as a future date made the SDK sleep for
-**decades**. And an oversized digit string became `Infinity`, which
-`setTimeout` does not treat as "forever" — it **clamps out-of-range delays to
-1ms**, so the longest instruction a server could send collapsed into a tight
-retry loop against an origin already answering 429. That is precisely the
-failure SPEC §7's backoff ceiling exists to prevent.
+**Wrong behaviour you get if you ignore it:** none, but waits move in **both**
+directions and it is worth knowing which is which.
+
+*Shorter*, for **rejected** values: a malformed header that used to buy 120 or
+3000 seconds now costs the ordinary ~1s backoff.
+
+*Longer*, for **valid** ones: `0` and negatives used to retry instantly and now
+back off ~1s, and — the big one — a genuinely oversized `Retry-After` used to
+retry after about **1ms** and now waits up to **24.85 days**. That is not a
+regression, it is the point: above the 32-bit bound `setTimeout` does not sleep
+longer, it clamps to 1ms, so the longest instruction a server could send
+collapsed into a tight retry loop against an origin already answering 429 —
+precisely the failure SPEC §7's backoff ceiling exists to prevent. If your code
+assumed a retry would always come back quickly, that assumption was resting on
+the bug.
+
+One clarification, because it changes who is affected: the retry loops never
+had a date branch before this PR, so an HTTP-date could not make the SDK
+*sleep* for decades. It could only be reported that way through
+`BasecampError.retryAfter`, which is metadata — so anything that read that
+property and slept on it saw the decades; anything that let the SDK retry saw
+backoff.
 
 **If you were relying on the old leniency** — e.g. an internal service emitting
 `Retry-After: 30s` or an ISO-8601 timestamp — send `1*DIGIT` seconds or an

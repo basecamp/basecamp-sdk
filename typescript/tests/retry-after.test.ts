@@ -33,6 +33,22 @@ const BACKOFF_MIN_MS = 1000;
 const BACKOFF_MAX_MS = 1100;
 
 /**
+ * An IMF-fixdate comfortably past the ~24.85-day timer ceiling, built relative
+ * to the current clock.
+ *
+ * Every assertion about a date's MAGNITUDE generates its date this way, and
+ * only the wire-format tests hold a fixed literal — because a literal plus a
+ * magnitude bound is a test that expires. This PR shipped three of those before
+ * the rule was written down: a Kotlin bound that died in April 2028, and two
+ * here that died in August 2028 and December 2034. A literal is fine when the
+ * assertion is "this shape parses"; it is a time bomb the moment a number is
+ * compared against it.
+ */
+function overCeilingHttpDate(): string {
+  return new Date(Date.now() + 5_000_000_000).toUTCString();
+}
+
+/**
  * Drives one 429 carrying `retryAfter` through the retry loop and returns the
  * delay the loop chose, without waiting it out.
  *
@@ -140,7 +156,11 @@ describe("Retry-After parsing", () => {
   it("reports the server's value without imposing a timer ceiling", () => {
     expect(parseRetryAfter("2147484")).toBe(2_147_484);
     expect(parseRetryAfter("3000000")).toBe(3_000_000);
-    expect(parseRetryAfter("Mon, 01 Jan 2035 00:00:00 GMT")).toBeGreaterThan(200_000_000);
+    // Generated, not a literal: a fixed far-future date makes the MAGNITUDE
+    // assertion decay — `Mon, 01 Jan 2035` sat above 200,000,000 seconds only
+    // until about August 2028. Only the wire-format test may hold a literal,
+    // and it asserts nothing about magnitude for exactly this reason.
+    expect(parseRetryAfter(overCeilingHttpDate())).toBeGreaterThan(4_000_000);
   });
 
   it("returns the seconds remaining until a future HTTP-date", () => {
@@ -223,11 +243,21 @@ describe("the shared retry loop honours the parsed value", () => {
    */
   it("never chooses a delay the platform would silently collapse to 1ms", async () => {
     const MAX_TIMEOUT_MS = 2_147_483_647;
-    for (const header of ["2147484", "999999999", "Mon, 01 Jan 2035 00:00:00 GMT"]) {
+    const cases: Array<[string, string | (() => string)]> = [
+      ["2147484", "2147484"],
+      ["999999999", "999999999"],
+      // Generated for the same reason as above: a literal 2035 stops being
+      // over the ceiling in December 2034 and stops being a date at all in
+      // January 2035, at which point this silently tests something else and
+      // then fails.
+      ["an HTTP-date well past the ceiling", overCeilingHttpDate],
+    ];
+
+    for (const [label, header] of cases) {
       const delay = await delayChosenFor(header);
-      expect(delay, `Retry-After: ${header}`).toBeLessThanOrEqual(MAX_TIMEOUT_MS);
+      expect(delay, `Retry-After: ${label}`).toBeLessThanOrEqual(MAX_TIMEOUT_MS);
       // Still a real server-directed wait, not a fall-through to ~1s backoff.
-      expect(delay, `Retry-After: ${header}`).toBeGreaterThan(1_000_000);
+      expect(delay, `Retry-After: ${label}`).toBeGreaterThan(1_000_000);
     }
   });
 

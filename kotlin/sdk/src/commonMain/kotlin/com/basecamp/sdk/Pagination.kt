@@ -187,10 +187,11 @@ internal fun parseRetryAfter(value: String?): Int? {
 }
 
 /**
- * SPEC §6 step 2. Returns null for anything that is not a future IMF-fixdate —
- * including a malformed one, since `fromHttpToGmtDate` signals that by throwing
- * and this sits on the retry path, where an escaping exception would replace a
- * backoff with a crash.
+ * SPEC §6 step 2. Returns null for anything that is not a future HTTP-date in
+ * one of the forms ktor accepts (the set is wider than IMF-fixdate and is
+ * enumerated above) — including a malformed one, since `fromHttpToGmtDate`
+ * signals that by throwing, and this sits on the retry path where an escaping
+ * exception would replace a backoff with a crash.
  */
 private fun httpDateDelaySeconds(value: String): Int? {
     val target = try {
