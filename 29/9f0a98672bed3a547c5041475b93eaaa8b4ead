@@ -1,0 +1,37 @@
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/serialization/WrapperMembers.kt
+  s_bcb193599a4870::t_ce7c66493c6d8a 1-31
+kotlin/generator/src/main/kotlin/com/basecamp/sdk/generator/ServiceEmitter.kt
+  s_bcb193599a4870::t_aad1147b177d98 23-29,38
+  s_bcb193599a4870::t_f33d884fea388a 181,183-185
+  s_bcb193599a4870::t_adc71d3faa0e1d 18-19,30
+  s_bcb193599a4870::t_29a0111234196d 162-171,175-180,194,198,201,203-204
+  s_bcb193599a4870::t_9a8eeef308ff3e 182
+  s_bcb193599a4870::t_3c80bdd3817f04 16-17,22
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/services/BaseService.kt
+  s_bcb193599a4870::t_8cdfd0c281a133 327-341,347-351,353,358-359
+  s_bcb193599a4870::t_48130dbd1a618a 387-390,397-400
+  s_bcb193599a4870::t_785d48a9afae4b 456-479
+  s_bcb193599a4870::t_1c9bd4376cf0bd 432-435,440-443
+  s_bcb193599a4870::t_07811c6338da97 581-590
+  s_bcb193599a4870::t_09e88288b395a5 455
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/DecodeIsolationTest.kt
+  s_bcb193599a4870::t_59719283dbf52a 225,228-307,309-310,314-316,318-325
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/reports.kt
+  s_bcb193599a4870::t_8b41672040b477 5,10,153,155-164
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "299f0a98672bed3a547c5041475b93eaaa8b4ead",
+  "prompts": {},
+  "sessions": {
+    "s_bcb193599a4870": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5ae90ec8-5ed7-4774-88d9-9d66550a5643",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
