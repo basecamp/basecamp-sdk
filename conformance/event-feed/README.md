@@ -136,6 +136,24 @@ documented divergence). Each language's test clock passes the shared semantics
 checklist (deadline order, reentrant scheduling within an advance, creation-order
 tie-break) before its tier-2 results count.
 
+**The reentrant clause is unscriptable where the connector runs concurrently,
+so no fixture may rely on it.** In a single-threaded test clock, "a timer armed
+during the window also fires" is exact. Where the connector runs on its own
+thread or goroutine it is a scheduling question: the same fixture can fire the
+follow-on in one language and not in another. There is no settle that fixes
+this — waiting for the firing to be CONSUMED deadlocks against §23's own
+requirement that a staleness window closing during a delivery is latched and
+observed later, and waiting for the follow-on ARMING requires knowing one is
+coming, which nothing can tell you.
+
+Every driver must therefore FAIL an `advance` during which the connector arms
+anything, naming `fireTimer` as the deterministic alternative — it fires one
+named timer without moving the clock, so no re-selection is involved. This is
+unconditional, not a per-fixture opt-in: a flag would let a fixture author take
+the divergence instead of avoiding it. The Go driver implements it and
+self-tests both arms (rejection, and an ordinary quiet-window advance still
+passing).
+
 ## Contract notes the fixtures encode (SDK-owned, final)
 
 - **Connect-to-mint-URL-verbatim.** The connector never assembles cable topology
