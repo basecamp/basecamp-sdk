@@ -257,6 +257,7 @@ revoked-mint threshold).
 | 28 | `28-checkpoint-load-failure.json` | store load Failed → Terminal(`checkpoint_load`) with ZERO wire attempts; distinct from Missing (which proceeds to a present entry) |
 | 29 | `29-checkpoint-save-failure-continues.json` | save Failed → feed continues and a SUBSEQUENT save is attempted (exact store-call script: no save circuit breaker) |
 | 30 | `30-continuation-redirect-cross-origin.json` | validated same-origin `next` answering 302 + cross-origin Location → Terminal(`invalid_continuation`), zero foreign egress |
+| 31 | `31-post-snapshot-straggler-below-served-id.json` | post-snapshot straggler with an id BELOW the entry page's served id delivered live; the re-push of that served id still suppressed |
 
 **Hostile-URL coverage note (stated author's choice, per the PR-1 review):** the
 downgrade (HTTPS→HTTP) variant is deliberately not a separate fixture here. Tier-2
@@ -282,7 +283,7 @@ reason via a constant, not the literal.
 | Disconnect reason literal `unauthorized` (arrives only pre-welcome) | 1 (+ 2 for the pre-welcome timing) | 07 |
 | Disconnect reason literal `invalid_event_stream_command`, `reconnect:false` | 1 | 06 |
 | Disconnect reason literal `remote`, `reconnect:true` | 1 — **no transcript capture exists**; source-verified against the pinned Rails; its freeze rides bc3's disconnect-matrix re-verification plus the one requested capture frame | 17 |
-| Poll body envelope keys `events` / `position` / `next` | 1 | every fixture serving a 200 poll: 01, 02, 05, 07, 12, 16, 17, 19, 20, 22, 26, 29, 30 (mechanically derived from the fixture files; re-derive when the set changes) |
+| Poll body envelope keys `events` / `position` / `next` | 1 | every fixture serving a 200 poll: 01, 02, 05, 07, 12, 16, 17, 19, 20, 22, 26, 29, 30, 31 (mechanically derived from the fixture files; re-derive when the set changes) |
 | Mint response body `{ticket, expires_in, url}`, status 200 | 1 | every fixture with `expectMint` (all but 28) |
 | Subscribe identifier literals: channel `EventsChannel`, param spellings `types`/`buckets`/`creators`, comma-joined values | 1 | channel: every `expectSubscribe`; `types` spelling: 01 (its `expectSubscribe` pins `params` explicitly, single-valued); `buckets`/`creators` spellings + comma-joining: no PR-2 fixture — pinned at PR-4 (fixture 15, whose retransmit case also pins byte-identity of the identifier) |
 | 409 body: all three keys `error` / `position_digest` / `filters_digest` required; digest values bare 16-hex (no `srv1-` prefix), `error` content unconstrained | 1 | schema-pinned shape only (the 409 respond variant requires all three keys); **no PR-2 fixture serves a 409** — pinned live at PR-4 (the tier-1 dispatch case additionally owns the wire pin when tier 1 lands) |
@@ -293,7 +294,7 @@ reason via a constant, not the literal.
 | Filter raw bounds: a filter list of > 1,000 elements or > 16 KB → filter 400 | 2 | unreachable through validated construction (the client caps at 100 ids); recorded, unpinned |
 | `since=now` / bare entry mints the cursor at the newest visible id; an empty entry page positions above an in-flight lower id N | 2 | 19, 20 |
 | Safety-horizon bound: position-relative, best-effort, ~30s — never wall-clock | 2 | premise of 19/20 (not directly assertable client-side; the entry-boundary fixtures encode its consequence) |
-| Frozen-head `next` predicate: absent `next` = the walk reached its head | 2 | every fixture whose walk ends on a 200 page without `next`: 01, 02, 05, 07, 12, 16, 17, 19, 20, 22, 29 (mechanically derived; re-derive when the set changes) |
+| Frozen-head `next` predicate: absent `next` = the walk reached its head | 2 | every fixture whose walk ends on a 200 page without `next`: 01, 02, 05, 07, 12, 16, 17, 19, 20, 22, 29, 31 (mechanically derived; re-derive when the set changes) |
 | 410 `resume` re-enters at `since=now` with the canonical filter set preserved | 2 | 16 (resume URL followed verbatim); 27 (hostile variant) |
 | 400-position / 409 re-entry semantics (`since=<last poll-served id>`, present-class fallback) | 2 | no PR-2 fixture — pinned at PR-4 |
 | Ticket statelessness + ~120s TTL (server-owned `expires_in`) | 2 | 05 (TTL-advance premise; `expires_in` never schedules anything) |
@@ -361,6 +362,7 @@ implementation PR's body before it counts.
 | 13 | `follow-cross-origin-continuation` (skips §8 validation, polls the hostile URL) | 26, 27 |
 | 14 | `collapse-load-error-to-missing` | 28 |
 | 15 | `follow-cross-origin-redirect` (follows a 302 to a foreign Location) | 30 — **partially**, and the boundary is below the seam. See the note under this table. |
+| 16 | `discard-live-id-at-or-below-served-id` (streaming lane orders live ids against the highest poll-served id) | 31 — and 31 alone: verified to pass all of 01–30, because every other straggler either arrives with nothing yet served (20) or is buffered pre-cut (01, 12, 19) |
 
 **Row 15 is the family's one partial kill, and the reason is structural.** In
 tier 2 the poll lane is a SEAM: the driver receives the fixture's scripted 302
