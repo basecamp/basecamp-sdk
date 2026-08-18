@@ -1,0 +1,22 @@
+go/pkg/basecamp/eventfeed/dedupe_test.go
+  s_fb34b5676f6c5e::t_d4ba8f5b827b39 45-57,61-62,66,71-72
+  s_fb34b5676f6c5e::t_adc568c6b2b7e8 68-70,74-75
+go/pkg/basecamp/eventfeed/dedupe.go
+  s_fb34b5676f6c5e::t_4f97fedfd4a4ec 32-51,53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "a7017f8ee2ad0cc7b92a422ca716aa0b91d96be9",
+  "prompts": {},
+  "sessions": {
+    "s_fb34b5676f6c5e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f987d172-c77f-49b4-a021-cf647b5678b0",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
