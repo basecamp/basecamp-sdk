@@ -1610,3 +1610,132 @@ func TestProtocolFatalBehindTheBlockedHandOffIsImmediate(t *testing.T) {
 	assertProtocolFatalDrain(t, h, store, caughtUp)
 	assertIDs(t, h.deliveredIDs(), 41)
 }
+
+// TestPollPageWithNoPositionIsMalformed is daybreak blocker 2. A page without
+// a position is refused before delivery, before any counter reset, and before
+// any mutation of the walk's state.
+//
+// Both entry classes are covered because they fail DIFFERENTLY, and the
+// present-class one is the worse of the two — an assertion written only
+// against the position-resume path would miss it entirely.
+func TestPollPageWithNoPositionIsMalformed(t *testing.T) {
+	// Position-resume entry: acceptPosition("") would set l.position = "",
+	// and entryCursor selects on `l.position != ""` — so it does not keep the
+	// old cursor, it falls through to the StartResume default, which is a bare
+	// present entry. The feed would resume at the server's head with every
+	// event between the real position and now skipped, and no signal at all.
+	t.Run("position-resume entry", func(t *testing.T) {
+		store := feedtest.NewStore()
+		store.Stored("pos-0")
+		h := storedHarness(t, store)
+		h.minter.ScriptTicket(ticket(1))
+		h.polls.ScriptPage(eventfeed.PollPage{
+			Events:   []eventfeed.Event{pollEvent(101)},
+			Position: "",
+		})
+		h.start()
+
+		conn := h.driveToSubscribed()
+		conn.Serve(frameConfirm(noFilterIdentifier))
+		h.join()
+
+		_, terminal, _ := h.snapshot()
+		if terminal == nil || terminal.Reason != eventfeed.ReasonPollFailed {
+			t.Fatalf("terminal = %v, want reason %q", terminal, eventfeed.ReasonPollFailed)
+		}
+		// Nothing durable moved, and the page's events were never delivered:
+		// the refusal precedes both.
+		assertPositions(t, store.Saves())
+		assertIDs(t, h.deliveredIDs())
+		if !conn.Closed() {
+			t.Error("teardown must close the socket")
+		}
+	})
+
+	// Present-class entry, and the reason this subtest exists. `held` uses ""
+	// as its sentinel for "the final entry was not present-class", so an empty
+	// position does not get saved as empty — it collapses into that sentinel,
+	// `held != ""` skips acceptPosition AND saveCheckpoint outright, and
+	// caught_up is announced anyway. The entry position is DISCARDED, with the
+	// drain's deliveries already handed to the consumer.
+	t.Run("present-class entry", func(t *testing.T) {
+		store := feedtest.NewStore()
+		caughtUp := 0
+		h := storedHarness(t, store,
+			eventfeed.WithStart(eventfeed.StartPresent()),
+			eventfeed.WithObserver(eventfeed.Observer{CaughtUp: func() { caughtUp++ }}),
+		)
+		h.minter.ScriptTicket(ticket(1))
+		h.polls.ScriptPage(eventfeed.PollPage{
+			Events:   []eventfeed.Event{pollEvent(101)},
+			Position: "",
+		})
+		h.start()
+
+		conn := h.driveToSubscribed()
+		conn.Serve(frameConfirm(noFilterIdentifier))
+		h.join()
+
+		_, terminal, _ := h.snapshot()
+		if terminal == nil || terminal.Reason != eventfeed.ReasonPollFailed {
+			t.Fatalf("terminal = %v, want reason %q", terminal, eventfeed.ReasonPollFailed)
+		}
+		assertPositions(t, store.Saves())
+		assertIDs(t, h.deliveredIDs())
+		if caughtUp != 0 {
+			t.Errorf("caught_up announcements = %d, want 0 — the walk never completed", caughtUp)
+		}
+	})
+
+	// The refusal is not retried. A server that answered without a position
+	// answers the same way to the same request, so a poll-retry loop would
+	// spin: exactly one seam call is made.
+	t.Run("is not retried", func(t *testing.T) {
+		store := feedtest.NewStore()
+		store.Stored("pos-0")
+		h := storedHarness(t, store)
+		h.minter.ScriptTicket(ticket(1))
+		h.polls.ScriptPage(eventfeed.PollPage{Position: ""})
+		h.start()
+
+		conn := h.driveToSubscribed()
+		conn.Serve(frameConfirm(noFilterIdentifier))
+		h.join()
+
+		if n := len(h.polls.Calls()); n != 1 {
+			t.Errorf("poll seam calls = %d, want 1 — a malformed shape must not be retried", n)
+		}
+	})
+
+	// A page on the SECOND hop of the walk is refused the same way, and the
+	// first page's save stands: the refusal is per-page, not a rollback.
+	t.Run("mid-walk page", func(t *testing.T) {
+		store := feedtest.NewStore()
+		store.Stored("pos-0")
+		h := storedHarness(t, store)
+		h.minter.ScriptTicket(ticket(1))
+		next := testOrigin + "/999/events.json?after=101"
+		h.polls.ScriptPage(eventfeed.PollPage{
+			Events:   []eventfeed.Event{pollEvent(101)},
+			Position: "pos-1",
+			Next:     next,
+		})
+		h.polls.ScriptPage(eventfeed.PollPage{
+			Events:   []eventfeed.Event{pollEvent(102)},
+			Position: "",
+		})
+		h.start()
+
+		conn := h.driveToSubscribed()
+		conn.Serve(frameConfirm(noFilterIdentifier))
+		h.join()
+
+		_, terminal, _ := h.snapshot()
+		if terminal == nil || terminal.Reason != eventfeed.ReasonPollFailed {
+			t.Fatalf("terminal = %v, want reason %q", terminal, eventfeed.ReasonPollFailed)
+		}
+		// The first page completed normally; only the malformed one is refused.
+		assertPositions(t, store.Saves(), "pos-1")
+		assertIDs(t, h.deliveredIDs(), 101)
+	})
+}

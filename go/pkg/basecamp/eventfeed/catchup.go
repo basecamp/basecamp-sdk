@@ -184,6 +184,44 @@ func (l *loop) walk(at *attempt, cursor Cursor, presentClass bool) (out cycleOut
 			}
 			continue
 		}
+		// A page carrying no position is a malformed poll response, and it is
+		// refused HERE — before any delivery, any counter reset, and any
+		// mutation of the walk's own state.
+		//
+		// Everything downstream treats a position as present. acceptPosition
+		// assigns it to l.position, and entryCursor selects on
+		// `l.position != ""`, so an empty one does not "keep the old cursor" —
+		// it falls through to the StartResume default, which is a BARE PRESENT
+		// ENTRY. The feed would then resume at the server's head, having
+		// skipped everything between the real position and now, and report
+		// nothing: the same silent history skip that a found-but-empty stored
+		// position is refused for at load (loadCheckpoint), arriving by the
+		// other door.
+		//
+		// The present-class branch fails differently and worse. `held` uses ""
+		// as its sentinel for "the final entry was not present-class", so an
+		// empty position does not get saved as empty — it collapses into that
+		// sentinel, the `held != ""` guard skips acceptPosition AND
+		// saveCheckpoint outright, and `caught_up` is still announced. The
+		// entry position is not blanked, it is DISCARDED, with the drain's
+		// deliveries already handed to the consumer and nothing durable
+		// recording that they happened.
+		//
+		// Refusing it is also what makes saveCheckpoint's stated contract true.
+		// It documents that "the live cursor is neither regressed nor blanked",
+		// and the assignment one line above its call site did exactly that.
+		//
+		// Terminal(poll_failed) is the classification §23 already gives "an
+		// unexpected shape" from the poll lane, and it is not retried: a server
+		// that answered without a position answers the same way to the same
+		// request, so a retry loop would spin. Nothing durable has moved.
+		if p.page.Position == "" {
+			l.disposeAttempt(at, nil)
+			return cycleOutcome{kind: outcomeTerminal, term: &TerminalError{
+				Reason: ReasonPollFailed,
+				Msg:    "the poll response carried no position; an empty position cannot be told apart from having none",
+			}}, "", true
+		}
 		// A successful page resets both consecutive-failure counters: the
 		// poll-retry index, and the shared connection-level authorization
 		// counter — the ONLY thing that resets the latter (a confirmation
