@@ -1,0 +1,24 @@
+typescript/src/services/base.ts
+  s_bd904175ffa79c::t_0042b120aef39f 128-136,147-151
+  s_bd904175ffa79c::t_17e8314f69a555 590-594,600-606
+  s_bd904175ffa79c::t_a02d64ddd922dd 137-146
+typescript/tests/services/base.test.ts
+  s_bd904175ffa79c::t_c86bdaaee8a5e8 378-419
+  s_bd904175ffa79c::t_bbe1719bb6b592 420-471
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "526d53d33bf631fb7ae580f4767dc608ae41c6c2",
+  "prompts": {},
+  "sessions": {
+    "s_bd904175ffa79c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84276f22-32e4-44d3-bb44-8c35d734d9eb",
+        "model": "claude-opus-5"
+      },
+      "human_author": null
+    }
+  }
+}
