@@ -1,0 +1,21 @@
+typescript/src/errors.ts
+  s_bcb193599a4870::t_7f2b0fa5e0cd66 461-483,505-507
+MIGRATING.md
+  s_bcb193599a4870::t_6b0f86cff9d730 80-138
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "216a56915f9e2d945d4e878a3bcf8c3d2061b24b",
+  "prompts": {},
+  "sessions": {
+    "s_bcb193599a4870": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5ae90ec8-5ed7-4774-88d9-9d66550a5643",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
