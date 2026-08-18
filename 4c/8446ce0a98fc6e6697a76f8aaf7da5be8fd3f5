@@ -1,0 +1,23 @@
+conformance/event-feed/README.md
+  s_fb34b5676f6c5e::t_2a71d5eb865915 240,266,277,345
+conformance/event-feed/fixtures/31-post-snapshot-straggler-below-served-id.json
+  s_fb34b5676f6c5e::t_5e596ff691237f 18-37,39-41,60-71,75-79,90-91,93-100,114-115,130-131,135-143,149-166
+  s_fb34b5676f6c5e::t_03b1a8a574861c 1-2,4-17,38,42-59,72-74,80-89,92,101-113,116-129,132-134,144-148,167-169
+  s_fb34b5676f6c5e::t_2a71d5eb865915 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "4c8446ce0a98fc6e6697a76f8aaf7da5be8fd3f5",
+  "prompts": {},
+  "sessions": {
+    "s_fb34b5676f6c5e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f987d172-c77f-49b4-a021-cf647b5678b0",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
