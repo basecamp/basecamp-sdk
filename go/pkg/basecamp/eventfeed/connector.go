@@ -208,8 +208,8 @@ type Connector struct {
 // A save is the connector's only effect that outlives the process, and the
 // failure this prevents is sequential rather than adversarial: a consumer calls
 // Close, opens a second connector over the same checkpoint file, and a save the
-// first connector had not yet commenced lands afterwards — on top of a lineage
-// the new run has already loaded and may already have advanced.
+// first connector had not yet begun lands afterwards — on top of a lineage the
+// new run has already loaded and may already have advanced.
 //
 // Cancellation alone cannot prevent it. A CheckpointStore is entitled to ignore
 // ctx, and the built-in FileCheckpointStore documents that it does, deliberately:
@@ -218,39 +218,40 @@ type Connector struct {
 // cancelled context Close publishes is exactly the signal this store is
 // specified not to act on.
 //
-// It is a lock of its own, not the Connector's mu, because a save must not hold
-// mu across host store I/O — that would block every concurrent Close caller for
-// as long as the host's write takes, and mu's whole job is that Close's callers
-// are serialized cheaply.
+// # Close does not wait, and must not
 //
-// A save that has ALREADY commenced runs to completion and Close waits for it.
-// That is the intended trade: its position was accepted and delivered before
-// Close was called, and abandoning a durable write half-way is worse than
-// finishing it. The wait is bounded by one store write.
+// The guarantee is that no save COMMENCES after Close returns, where commencing
+// is claiming the gate — an operation that is atomic against Close and takes no
+// host code with it. The lock is never held across CheckpointStore.Save.
+//
+// Holding it across the store call was the obvious spelling and is wrong twice
+// over. A store whose Save calls Connector.Close self-deadlocks on the caller's
+// own goroutine, and Close is documented as callable from anywhere; and a store
+// that merely stalls blocks EVERY Close for as long as it stalls, which
+// contradicts the one thing Close promises unconditionally — that cancellation
+// is visible before it returns.
+//
+// A save that claimed the gate before Close therefore runs to completion after
+// Close returns. That is the intended reading rather than a gap: its position
+// was accepted and delivered before Close was called, and abandoning a durable
+// write half-way is worse than finishing it. What cannot happen is a save the
+// connector had not yet decided to make.
 type durableGate struct {
 	mu     sync.Mutex
 	closed bool
 }
 
 // begin claims the right to start one durable operation, reporting whether it
-// was granted. The caller MUST call end when it returns. The gate is held for
-// the whole operation, which is what makes the ordering against Close exact
-// rather than a check-then-act.
+// was granted. The lock is released before returning: the claim is the
+// serialized act, not the write.
 func (g *durableGate) begin() bool {
 	g.mu.Lock()
-	if g.closed {
-		g.mu.Unlock()
-		return false
-	}
-	return true
+	defer g.mu.Unlock()
+	return !g.closed
 }
 
-// end releases the gate after a granted begin.
-func (g *durableGate) end() { g.mu.Unlock() }
-
-// close latches the gate, waiting for any operation already in flight. Called
-// by Close, on the caller's goroutine, so that no save can COMMENCE after
-// Close returns.
+// close latches the gate. It never waits for an operation already in flight —
+// see the type comment.
 func (g *durableGate) close() {
 	g.mu.Lock()
 	g.closed = true
@@ -550,15 +551,12 @@ func (c *Connector) Close() error {
 		c.cancelRun = nil
 	}
 	c.mu.Unlock()
-	// After the cancel, and outside mu: latch the durable gate, waiting for at
-	// most one checkpoint save already in flight. This is the one effect that
-	// outlives the process, so it is the one whose COMMENCEMENT is ordered
-	// against Close rather than merely cancelled — a CheckpointStore may
-	// ignore ctx, and the built-in one documents that it does.
-	//
-	// Outside mu so a host store's write cannot hold up a concurrent Close
-	// caller's cheap serialization, and after the cancel so the cancellation is
-	// already visible while this waits.
+	// After the cancel, and outside mu: latch the durable gate, so no
+	// checkpoint save COMMENCES from here on. This is the one effect that
+	// outlives the process, and the one cancellation cannot stop — a
+	// CheckpointStore may ignore ctx, and the built-in one documents that it
+	// does. Latching does not wait for a save already under way; see
+	// durableGate for why waiting is the wrong trade.
 	c.cfg.durable.close()
 	return nil
 }

@@ -1812,3 +1812,41 @@ func TestPollPageWithNoPositionIsMalformed(t *testing.T) {
 		assertIDs(t, h.deliveredIDs(), 101)
 	})
 }
+
+// TestDeferredFatalOutranksAMalformedPage is the precedence half of the
+// empty-position guard. A socket outcome deferred while the call was in flight
+// is the server's own verdict, and disposal discards the deferral — so
+// classifying the malformed page first loses it, and a raw
+// invalid_event_stream_command is reported as poll_failed.
+//
+// This mirrors the failed-poll branch, which already dispatches the deferral
+// before classifying, for the same reason and with the same comment.
+func TestDeferredFatalOutranksAMalformedPage(t *testing.T) {
+	store := feedtest.NewStore()
+	store.Stored("pos-0")
+	h := storedHarness(t, store)
+	h.minter.ScriptTicket(ticket(1))
+	h.polls.ScriptPage(eventfeed.PollPage{Position: ""}) // malformed
+	deferred := make(chan struct{}, 4)
+	h.conn.OnFrameDeferred(func() { deferred <- struct{}{} })
+	var conn *feedtest.Conn
+	h.polls.OnCall(func(feedtest.PollCall) {
+		conn.Serve(frameDisconnect("invalid_event_stream_command", false))
+		select {
+		case <-deferred:
+		case <-time.After(watchdog):
+			t.Error("the fatal frame was never deferred")
+		}
+	})
+	h.start()
+	conn = h.driveToSubscribed()
+	conn.Serve(frameConfirm(noFilterIdentifier))
+	h.join()
+
+	_, terminal, _ := h.snapshot()
+	if terminal == nil || terminal.Reason != eventfeed.ReasonProtocolFatal {
+		t.Fatalf("terminal = %v, want reason %q — the server's verdict outranks the malformed page",
+			terminal, eventfeed.ReasonProtocolFatal)
+	}
+	assertPositions(t, store.Saves())
+}

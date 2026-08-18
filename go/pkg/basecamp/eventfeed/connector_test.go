@@ -687,18 +687,20 @@ func (s *blockingStore) attemptCount() int {
 	return s.attempts
 }
 
-// TestCloseWaitsForAnInFlightCheckpointSave is the ordered half of blocker 6.
-// A checkpoint save is the connector's only effect that outlives the process,
-// so its COMMENCEMENT is ordered against Close: one already in flight runs to
-// completion and Close waits for it, rather than Close returning while a
-// durable write is still pending against a lineage a second connector may
-// already have loaded.
+// TestCloseDoesNotBlockOnAnInFlightCheckpointSave pins the half of the durable
+// gate that is about Close's own promise.
 //
-// Cancellation cannot substitute. A CheckpointStore is entitled to ignore ctx —
-// the built-in FileCheckpointStore documents that it does, so a position
-// already accepted is not dropped by a shutdown race — so the cancelled context
-// Close publishes is precisely the signal such a store is specified to ignore.
-func TestCloseWaitsForAnInFlightCheckpointSave(t *testing.T) {
+// Holding the gate across CheckpointStore.Save was the obvious spelling and is
+// wrong twice: a store whose Save calls Close self-deadlocks on the caller's
+// goroutine (Close is documented as callable from anywhere), and a store that
+// merely stalls blocks EVERY Close for as long as it stalls — contradicting the
+// one thing Close promises unconditionally, that cancellation is visible before
+// it returns.
+//
+// So Close latches and returns. The save that already claimed the gate still
+// completes: its position was accepted and delivered before Close was called,
+// and abandoning a durable write half-way is worse than finishing it.
+func TestCloseDoesNotBlockOnAnInFlightCheckpointSave(t *testing.T) {
 	store := newBlockingStore()
 	h := newHarness(t,
 		eventfeed.WithCheckpointStore(store),
@@ -706,11 +708,10 @@ func TestCloseWaitsForAnInFlightCheckpointSave(t *testing.T) {
 	h.minter.ScriptTicket(ticket(1))
 	h.polls.ScriptPage(eventfeed.PollPage{Events: []eventfeed.Event{pollEvent(101)}, Position: "pos-1"})
 	h.start()
-
 	sock := h.driveToSubscribed()
 	sock.Serve(frameConfirm(noFilterIdentifier))
 
-	// The save is now parked inside the store, on the run goroutine.
+	// The save is parked inside the store, on the run goroutine.
 	select {
 	case <-store.entered:
 	case <-time.After(watchdog):
@@ -719,46 +720,59 @@ func TestCloseWaitsForAnInFlightCheckpointSave(t *testing.T) {
 
 	closeReturned := make(chan struct{})
 	go func() { _ = h.conn.Close(); close(closeReturned) }()
-
-	// Close must NOT return while the write is pending.
-	select {
-	case <-closeReturned:
-		t.Fatal("Close returned while a checkpoint save was still in flight")
-	case <-time.After(150 * time.Millisecond):
-	}
-
-	close(store.release)
 	select {
 	case <-closeReturned:
 	case <-time.After(watchdog):
-		t.Fatal("Close did not return after the save completed")
+		t.Fatal("Close blocked behind an in-flight checkpoint save; a stalled store must not hold up Close")
+	}
+
+	close(store.release)
+	deadline := time.Now().Add(watchdog)
+	for len(store.recorded()) == 0 && time.Now().Before(deadline) {
+		time.Sleep(time.Millisecond)
 	}
 	if got := store.recorded(); len(got) != 1 || got[0] != "pos-1" {
-		t.Errorf("recorded saves = %v, want [pos-1] — an in-flight write completes", got)
+		t.Errorf("recorded saves = %v, want [pos-1] — a write that already commenced completes", got)
 	}
 }
 
 // TestNoCheckpointSaveCommencesAfterClose is the other direction: once Close
-// has returned, a save that had not begun does not begin. Without the gate the
-// run goroutine's next accepted page would write through on a cancelled
-// context, which a store is allowed to ignore.
+// has returned, a save that had not begun does not begin.
+//
+// Close is taken from inside Observer.PageDelivered — the callback that fires
+// on the consumer's goroutine immediately BEFORE the page's save — so the run
+// is demonstrably at the save boundary when it lands. An earlier version closed
+// before the feed ever reached a page and passed with the gate removed
+// entirely, which is no test at all.
 func TestNoCheckpointSaveCommencesAfterClose(t *testing.T) {
 	store := newBlockingStore()
-	close(store.release) // saves complete immediately
-	h := newHarness(t,
+	close(store.release) // any save that does commence completes immediately
+	var h *harness
+	h = newHarness(t,
 		eventfeed.WithCheckpointStore(store),
-		eventfeed.WithConsumerNamespace("agent"))
+		eventfeed.WithConsumerNamespace("agent"),
+		eventfeed.WithObserver(eventfeed.Observer{
+			PageDelivered: func(int, string) {
+				if err := h.conn.Close(); err != nil {
+					t.Errorf("Close: %v", err)
+				}
+			},
+		}))
 	h.minter.ScriptTicket(ticket(1))
+	h.polls.ScriptPage(eventfeed.PollPage{
+		Events:   []eventfeed.Event{pollEvent(101)},
+		Position: "pos-1",
+	})
 	h.start()
-
-	// Close before any page is accepted, so no save has commenced.
-	if err := h.conn.Close(); err != nil {
-		t.Fatalf("Close() = %v", err)
-	}
+	sock := h.driveToSubscribed()
+	sock.Serve(frameConfirm(noFilterIdentifier))
 	h.join()
 
 	if n := store.attemptCount(); n != 0 {
 		t.Errorf("store.Save was entered %d time(s) after Close returned, want 0", n)
+	}
+	if got := store.recorded(); len(got) != 0 {
+		t.Errorf("recorded saves = %v, want none", got)
 	}
 }
 
@@ -940,5 +954,68 @@ func TestConcurrentCloseIsSerializedAndIdempotent(t *testing.T) {
 	h.join()
 	if _, terminal, _ := h.snapshot(); terminal != nil {
 		t.Errorf("terminal = %v, want none", terminal)
+	}
+}
+
+// TestCloseFromConnectedOutranksAQueuedFatalFrame is the precedence #763
+// reopened. Arming staleness before Observer.Connected also starts the frame
+// pump before it, so by the time that callback runs the peer can already have
+// queued a fatal frame. If the callback then calls Close, the state machine's
+// next select has two ready cases — the frame and the cancellation — and Go
+// picks freely.
+//
+// §23 makes close() a universal edge from every non-absorbing state and ends
+// the iterator with NO error element, so the terminal must never win. The guard
+// is central (emitTerminal), not per-select: there are many selects and one
+// exit, and a rule every future select has to remember is the shape that
+// produced this.
+//
+// Driven repeatedly because the underlying choice is random: with the guard the
+// count is deterministically zero, and without it a terminal escapes within a
+// handful of rounds.
+func TestCloseFromConnectedOutranksAQueuedFatalFrame(t *testing.T) {
+	const rounds = 50
+	terminals := 0
+	for i := range rounds {
+		var h *harness
+		handedOff := make(chan struct{}, 8)
+		h = newHarness(t, eventfeed.WithObserver(eventfeed.Observer{
+			Connected: func() {
+				// Connected now fires with the pump already running, so the
+				// peer's fatal frame can be queued before the consumer decides
+				// to stop — and then both are ready at the same select.
+				if sock := h.tr.LastConn(); sock != nil {
+					sock.Serve(frameDisconnect("invalid_event_stream_command", false))
+					// Wait until the pump has actually QUEUED it, so the
+					// cancellation below genuinely races a ready frame rather
+					// than beating it to the channel.
+					select {
+					case <-handedOff:
+					case <-time.After(watchdog):
+					}
+				}
+				h.conn.Close() //nolint:errcheck // asserted via the element count
+			},
+		}))
+		h.conn.OnPumpHandedOff(func(bool) {
+			select {
+			case handedOff <- struct{}{}:
+			default:
+			}
+		})
+		h.minter.ScriptTicket(ticket(1))
+		h.polls.ScriptPage(eventfeed.PollPage{Position: "pos-1"})
+		h.start()
+		h.join()
+		if _, terminal, _ := h.snapshot(); terminal != nil {
+			terminals++
+			if i == 0 || terminals == 1 {
+				t.Logf("round %d emitted %v after Close", i, terminal)
+			}
+		}
+	}
+	if terminals != 0 {
+		t.Errorf("%d/%d rounds emitted a terminal element after Close returned; the Closed edge must win",
+			terminals, rounds)
 	}
 }

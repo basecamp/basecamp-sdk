@@ -1797,3 +1797,81 @@ func TestStalenessArmsBeforeConnectedObserver(t *testing.T) {
 			armedAtConnected, timerStaleness)
 	}
 }
+
+// TestDisconnectObserverNeverEchoesPeerText is the canary for the credential
+// boundary's logging half.
+//
+// Observer.Disconnected is a logging surface, and both of its arguments can be
+// fed by the peer: a raw disconnect frame's reason, and a WebSocket close
+// reason rendered through the error. §23 declares the ticket an "opaque bearer
+// credential; never logged", and the cable server is exactly who knows it — it
+// was dialed with it. A server that echoes the URL it was dialed with, whether
+// maliciously or by logging its own request line into an error, puts the ticket
+// in the host's logs.
+//
+// Truncation was the old defense and does not work: it bounds the length of a
+// leak, not whether there is one. This asserts the property instead of the
+// mechanism, so it stays true whatever the rendering becomes — the canary is
+// planted in every peer-controlled string the teardown path can carry.
+func TestDisconnectObserverNeverEchoesPeerText(t *testing.T) {
+	const canary = "sekrit-ticket-value"
+	peerText := "wss://28.cable.basecamp.com/cable?ticket=" + canary
+
+	for _, tc := range []struct {
+		name string
+		//nolint:revive // the fixture drives one teardown shape per case
+		drive func(t *testing.T, h *harness, sock *feedtest.Conn)
+	}{
+		{"raw disconnect frame reason", func(_ *testing.T, _ *harness, sock *feedtest.Conn) {
+			sock.Serve(frameDisconnect(peerText, false))
+		}},
+		{"peer close reason", func(_ *testing.T, _ *harness, sock *feedtest.Conn) {
+			sock.FailReads(&eventfeed.CloseError{Code: 1011, Reason: peerText})
+		}},
+		{"raw read error", func(_ *testing.T, _ *harness, sock *feedtest.Conn) {
+			sock.FailReads(errors.New("read tcp: " + peerText))
+		}},
+		{"invalid frame payload", func(_ *testing.T, _ *harness, sock *feedtest.Conn) {
+			sock.Serve([]byte(`{"type":"message","identifier":"` + peerText + `","message":{`))
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var mu sync.Mutex
+			var seen []string
+			h := newHarness(t, eventfeed.WithObserver(eventfeed.Observer{
+				Disconnected: func(reason string, err error) {
+					mu.Lock()
+					defer mu.Unlock()
+					seen = append(seen, reason)
+					if err != nil {
+						// The whole chain, not just the top: Error() walks it.
+						seen = append(seen, err.Error())
+						for e := err; e != nil; e = errors.Unwrap(e) {
+							seen = append(seen, e.Error())
+						}
+					}
+				},
+			}))
+			h.minter.ScriptTicket(ticket(1))
+			h.polls.ScriptPage(eventfeed.PollPage{Position: "pos-1"})
+			h.start()
+			sock := h.driveToSubscribed()
+			tc.drive(t, h, sock)
+			h.awaitTimer(timerBackoff)
+
+			mu.Lock()
+			defer mu.Unlock()
+			if len(seen) == 0 {
+				t.Fatal("Observer.Disconnected never fired; the canary proves nothing")
+			}
+			for _, got := range seen {
+				if strings.Contains(got, canary) {
+					t.Errorf("Observer.Disconnected echoed the peer's ticket: %q", got)
+				}
+				if strings.Contains(got, "ticket=") {
+					t.Errorf("Observer.Disconnected echoed a ticket-bearing query: %q", got)
+				}
+			}
+		})
+	}
+}

@@ -320,7 +320,9 @@ type CloseError struct {
 // comfortably, and §9's 500-byte cap bounds without redacting. So the
 // rendering withholds it behind a fixed marker, and with no unbounded input
 // left there is nothing to truncate. The type stays flat: no cause, nothing
-// a chain walk recovers.
+// a chain walk recovers. Reason remains a FIELD, so a host that has decided
+// its cable server is trustworthy can read it deliberately — what changes is
+// that the connector no longer puts it in front of every logger by default.
 func (e *CloseError) Error() string {
 	if e.Reason != "" {
 		return fmt.Sprintf("cable connection closed by peer: code %d (peer reason withheld)", e.Code)
@@ -374,7 +376,9 @@ type DialError struct {
 	// Err is the underlying cause. Never the dialed URL or an error that
 	// renders it — the ticket rides in its query string, and url.Error
 	// renders the full URL. The built-in transport stores only causes
-	// flattened to a closed vocabulary (dialFailure).
+	// flattened to a closed vocabulary (dialFailure); the connector treats
+	// every seam-returned value as untrusted regardless (it reads Kind and
+	// nothing else).
 	Err error
 }
 

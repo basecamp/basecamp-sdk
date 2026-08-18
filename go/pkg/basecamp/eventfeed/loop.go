@@ -640,8 +640,7 @@ func (l *loop) run(yield func(Event, error) bool) {
 		return
 	}
 	if terr := l.loadCheckpoint(); terr != nil {
-		l.setState(stateTerminal)
-		l.yield(Event{}, terr)
+		l.emitTerminal(terr)
 		return
 	}
 	var delay time.Duration
@@ -652,8 +651,7 @@ func (l *loop) run(yield func(Event, error) bool) {
 			l.setState(stateClosed)
 			return
 		case outcomeTerminal:
-			l.setState(stateTerminal)
-			l.yield(Event{}, out.term)
+			l.emitTerminal(out.term)
 			return
 		case outcomeFailed:
 			// The failed attempt is fully disposed, so the exact
@@ -681,6 +679,30 @@ func (l *loop) run(yield func(Event, error) bool) {
 // confirmation. Every exit path has disposed the attempt (socket closed,
 // pump joined, timers stopped) before returning — except the confirmed
 // handoff, which transfers ownership to the catch-up continuation.
+// emitTerminal is the ONE place a terminal element reaches the consumer, and
+// it defers to Close.
+//
+// §23 makes close() a universal edge from every non-absorbing state and ends
+// the iterator with NO error element, so a terminal must never outrank a Close
+// the consumer has already taken. The race is real and is not hypothetical
+// scheduling paranoia: the frame pump runs from socket open, so by the time a
+// consumer callback calls Close there can already be a fatal frame queued, and
+// the state machine's next select has two ready cases with no ordering between
+// them. Go may take the frame.
+//
+// Checking here rather than at each select is deliberate. There are many
+// selects and one exit, so the invariant belongs at the exit — a per-select
+// check is a rule every future select has to remember, which is the shape that
+// produced this defect in the first place.
+func (l *loop) emitTerminal(term *TerminalError) {
+	if l.runCtx.Err() != nil {
+		l.setState(stateClosed)
+		return
+	}
+	l.setState(stateTerminal)
+	l.yield(Event{}, term)
+}
+
 func (l *loop) runCycle(delay time.Duration) cycleOutcome {
 	at := &attempt{}
 	at.ctx, at.cancel = context.WithCancel(l.runCtx)
@@ -1068,7 +1090,7 @@ func (l *loop) handleFrame(at *attempt, deadline *Timer, item pumpItem) (cycleOu
 func (l *loop) dispatchDisconnect(at *attempt, deadline Timer, f frame) cycleOutcome {
 	preWelcome := l.state == stateAwaitingWelcome
 	l.disposeAttempt(at, deadline)
-	l.observeDisconnected(f.reason, nil)
+	l.observeDisconnected(observableDisconnectReason(f.reason), nil)
 	switch f.reason {
 	case disconnectReasonProtocolFatal:
 		// Transition 13 — and the state-generic rule for AwaitingWelcome:
@@ -1224,15 +1246,98 @@ func (l *loop) disposeAttempt(at *attempt, deadline Timer) {
 	}
 }
 
-// observeDisconnected reports one socket teardown. The reason is frame-derived
-// (a raw disconnect frame's reason string, bounded only by the 1 MiB frame
-// limit) and observers log it, so it is bounded by the same §9 cap the
-// invalid-frame rendering uses — §23's Security Invariants apply it to frame
-// contents generally, not just to errors. Dispatch reads f.reason itself, so
-// the cap can never widen an unrecognized reason into a recognized one.
+// observeDisconnected reports one socket teardown. Both arguments are reduced
+// to closed vocabularies first: reason by observableDisconnectReason, err by
+// observableSocketError.
 func (l *loop) observeDisconnected(reason string, err error) {
 	if l.cfg.observer.Disconnected != nil {
-		l.cfg.observer.Disconnected(truncateErrorText(reason), err)
+		l.cfg.observer.Disconnected(truncateErrorText(reason), observableSocketError(err))
+	}
+}
+
+// errSocketFailed is the generic cause an unrecognized socket failure is
+// reported as.
+var errSocketFailed = errors.New("event feed socket failed")
+
+// observableSocketError reduces a teardown cause to what may be logged.
+//
+// The connector's OWN errors pass through: they are sentinels and typed values
+// it constructs, so their text is its own. Anything else came out of a seam —
+// CableConn.ReadFrame, WriteFrame, or a CableTransport's Dial — and a seam is
+// host code wrapping a library. CableTransport is a documented extension point,
+// and the seam contract requires those errors not to render the cable URL; this
+// is what makes the connector not DEPEND on that requirement being met, because
+// Observer.Disconnected is a logging surface and the ticket rides in the URL
+// the peer was dialed with.
+//
+// Recognition is by TYPE and sentinel identity, never by matching text, so no
+// arm can be widened by something a peer wrote. An unrecognized cause degrades
+// to errSocketFailed: the direction of failure is "less diagnostic", never
+// "leaks". The typed values the connector needs to ACT on are matched before
+// this is ever called — dispatch reads them directly — so nothing here changes
+// a verdict.
+func observableSocketError(err error) error {
+	switch {
+	case err == nil:
+		return nil
+	case errors.Is(err, errStaleConnection),
+		errors.Is(err, errCableConnClosed),
+		errors.Is(err, context.Canceled),
+		errors.Is(err, context.DeadlineExceeded):
+		return err
+	}
+	var ce *CloseError
+	if errors.As(err, &ce) {
+		// Flat by construction and renders only its code — an integer cannot
+		// carry a credential. See CloseError.Error.
+		return ce
+	}
+	var ife *invalidFrameError
+	if errors.As(err, &ife) {
+		return ife
+	}
+	var de *DialError
+	if errors.As(err, &de) {
+		return de
+	}
+	var terr *TerminalError
+	if errors.As(err, &terr) {
+		return terr
+	}
+	return errSocketFailed
+}
+
+// disconnectReasonOther is what an unrecognized disconnect reason is reported
+// as. Deliberately not the peer's text, and deliberately not a truncation of
+// it.
+const disconnectReasonOther = "other"
+
+// observableDisconnectReason maps a raw disconnect reason onto the closed set
+// the observer may see.
+//
+// The raw string is PEER-SUPPLIED and Observer.Disconnected is a logging
+// surface, so forwarding it — even bounded — hands the peer a channel into the
+// host's logs. §23 declares the ticket an "opaque bearer credential; never
+// logged", and a peer that echoes the ticket-bearing URL it was dialed with
+// puts it there. Truncation does not help: it bounds the length of a leak, not
+// whether there is one. This is the identical trap dialFailure documents three
+// review rounds of, and the same answer — a closed vocabulary — applies, for
+// the same reason: to strip a credential out of arbitrary text you must MODEL
+// it, and "opaque" is precisely the assumption that forbids modelling it.
+//
+// Nothing is lost that the observer could act on. Dispatch reads the raw reason
+// itself, so the two reasons that CHANGE behavior are named exactly; everything
+// else is, by construction, a reason this connector does not act on. An
+// operator needing the verbatim string reads it from the server's own logs,
+// where it did not have to cross a trust boundary to arrive.
+func observableDisconnectReason(raw string) string {
+	switch raw {
+	case disconnectReasonUnauthorized, disconnectReasonProtocolFatal:
+		return raw
+	case "":
+		return ""
+	default:
+		return disconnectReasonOther
 	}
 }
 
@@ -1272,27 +1377,26 @@ func (l *loop) loadCheckpoint() *TerminalError {
 		return nil
 	}
 	position, ok, err := l.cfg.store.Load(l.runCtx, l.checkpointKey())
+	// One cancellation check, covering EVERY load result rather than only the
+	// failing one. The load runs on the first iteration and before the first
+	// mint, which is exactly the window a prompt Close lands in, and each
+	// result misbehaves differently if it is not checked: a failure becomes
+	// Terminal(checkpoint_load) — diagnosing the consumer's store for the
+	// consumer's own shutdown — a found-but-empty result becomes the same
+	// terminal, and a successful one lets the run walk on and fire
+	// Observer.Connecting after Close returned. §23 ends a closed iterator with
+	// no error element; the run's next check takes the Closed edge.
+	//
+	// Checked on the CONTEXT, not on the error's shape: a store is under no
+	// obligation to wrap ctx.Err(), and one returning its own error type would
+	// be misclassified.
+	if l.runCtx.Err() != nil {
+		//nolint:nilerr // Deliberate: any error here is real, but it is not a
+		// STORE failure — it is this run being closed underneath a load that
+		// was already in flight.
+		return nil
+	}
 	if err != nil {
-		// A load that failed because the RUN was cancelled is not a store
-		// failure, and must not be reported as one. Close is a universal edge
-		// from every non-absorbing state and ends the iterator with no error
-		// element; surfacing Terminal(checkpoint_load) here would turn an
-		// ordinary shutdown — a Close racing the first iteration, which is the
-		// one iteration this load happens on — into a diagnosis of the
-		// consumer's own store. The run's next check takes the Closed edge.
-		//
-		// Checked on the CONTEXT rather than on the error's shape: a store is
-		// under no obligation to wrap ctx.Err(), and one that returns its own
-		// error type would otherwise be misclassified.
-		if l.runCtx.Err() != nil {
-			//nolint:nilerr // Deliberate: the error is real but it is not a
-			// STORE failure, it is this run being closed underneath a load that
-			// was already in flight. Returning it would give the consumer
-			// Terminal(checkpoint_load) for its own shutdown; §23 ends a closed
-			// iterator with no error element, and the run's next check takes
-			// the Closed edge.
-			return nil
-		}
 		return &TerminalError{
 			Reason: ReasonCheckpointLoad,
 			Msg:    "the checkpoint store failed to load the stored position",
@@ -1347,11 +1451,6 @@ func (l *loop) saveCheckpoint(position string) {
 		return
 	}
 	err := l.cfg.store.Save(l.runCtx, l.checkpointKey(), position)
-	// Released before either observer callback fires. Holding it across host
-	// code would deadlock the documented case of Close being called from
-	// inside a callback, and the gate's job is finished the moment the write
-	// is: it orders COMMENCEMENT, not notification.
-	l.cfg.durable.end()
 	if err != nil {
 		if l.cfg.observer.CheckpointSaveFailed != nil {
 			l.cfg.observer.CheckpointSaveFailed(err)
