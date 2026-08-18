@@ -1,0 +1,34 @@
+go/pkg/basecamp/eventfeed/catchup.go
+  s_fb34b5676f6c5e::t_61f42e7930808b 37-42
+go/pkg/basecamp/eventfeed/recovery.go
+  s_fb34b5676f6c5e::t_61f42e7930808b 48,105-112
+go/pkg/basecamp/eventfeed/recovery_test.go
+  s_fb34b5676f6c5e::t_8b7cbefcf1fec7 782-797,806,813,816-817,821,828-829,840-843,846-850
+  s_fb34b5676f6c5e::t_d76feab2754e2c 781,798,809,815,819-820,822-825,839
+  s_fb34b5676f6c5e::t_7e3be7204e2c22 127-136,139-149
+  s_fb34b5676f6c5e::t_c5380ce956e015 780,799-805,807-808,810-812,814,818,826-827,830-838,844-845,851-852
+go/pkg/basecamp/eventfeed/loop_test.go
+  s_fb34b5676f6c5e::t_5ac990d80dde07 16
+  s_fb34b5676f6c5e::t_9d100397b424b8 1761-1773,1779-1799
+  s_fb34b5676f6c5e::t_62c3da73f54be0 1774-1778
+go/pkg/basecamp/eventfeed/loop.go
+  s_fb34b5676f6c5e::t_192e12ba528f59 775-791
+go/pkg/basecamp/eventfeed/seams.go
+  s_fb34b5676f6c5e::t_e97c75cc21e6c5 250-258,268-270,274-275,337-342,426-437
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "73d1c8d102fc6bd7beb028c6f87c2af356a0e2bc",
+  "prompts": {},
+  "sessions": {
+    "s_fb34b5676f6c5e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f987d172-c77f-49b4-a021-cf647b5678b0",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
