@@ -185,4 +185,55 @@ describe("updateAccountLogo", () => {
       2000,
     );
   }, 10_000);
+
+  /**
+   * The integer branch alone would still pass if this loop reverted to an
+   * integer-only parser, so the HTTP-date branch is proven here too — once per
+   * formerly duplicated retry loop.
+   *
+   * This is the coverage the shared conformance fixture cannot supply, and it
+   * is worth naming why the same date works here and not there: a unit test has
+   * a clock. It computes the header at run time, three seconds ahead of THIS
+   * run, where a fixture is a static JSON literal that would have to choose
+   * between expiring and asking for a multi-year sleep (#780). So this is the
+   * cheap half of that coverage, available now.
+   *
+   * `toUTCString()` truncates to the second, so the remaining interval is
+   * somewhere in (2s, 3s] and rounds up to either 2 or 3 — the assertion is a
+   * range. Its floor is still double the 1000ms backoff, which is the only
+   * value it has to be distinguishable from.
+   */
+  it("honours a future HTTP-date Retry-After on the upload path", async () => {
+    let attempts = 0;
+    const threeSecondsOut = new Date(Date.now() + 3000).toUTCString();
+
+    server.use(
+      http.put(`${BASE_URL}/account/logo.json`, () => {
+        attempts++;
+        if (attempts === 1) {
+          return new HttpResponse(null, {
+            status: 429,
+            headers: { "Retry-After": threeSecondsOut },
+          });
+        }
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+
+    const onRetry = vi.fn();
+
+    const client = createBasecampClient({
+      accountId: "12345",
+      accessToken: "test-token",
+      hooks: { onRetry },
+    });
+
+    const blob = new Blob(["data"], { type: "image/png" });
+    await client.account.updateAccountLogo(blob, "logo.png");
+
+    expect(attempts).toBe(2);
+    const delay = onRetry.mock.calls[0]?.[3] as number;
+    expect(delay).toBeGreaterThanOrEqual(2000);
+    expect(delay).toBeLessThanOrEqual(3000);
+  }, 10_000);
 });

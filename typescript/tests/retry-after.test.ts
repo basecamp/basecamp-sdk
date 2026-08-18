@@ -74,6 +74,48 @@ describe("Retry-After parsing", () => {
     expect(parseRetryAfter("soon")).toBeUndefined();
   });
 
+  /**
+   * Step 1 must validate the WHOLE value, not read a prefix off the front.
+   * RFC 9110 spells `delay-seconds` as `1*DIGIT`, and `parseInt` does not — it
+   * stops at the first non-digit and returns what it has, so `120junk` bought a
+   * 120-second delay where every other SDK falls through to backoff
+   * (`strconv.Atoi`, `int()`, `Integer(exception: false)`, `Int()` and
+   * `toIntOrNull()` all reject a trailing-junk value). TypeScript was the lone
+   * outlier in step 1 of the algorithm this module exists to make uniform.
+   */
+  it("rejects a value that is only partly numeric", () => {
+    expect(parseRetryAfter("120junk")).toBeUndefined();
+    expect(parseRetryAfter("120 junk")).toBeUndefined();
+    expect(parseRetryAfter("12.5")).toBeUndefined();
+    expect(parseRetryAfter("1e3")).toBeUndefined();
+    expect(parseRetryAfter("0x10")).toBeUndefined();
+  });
+
+  /**
+   * A leading sign is not junk: `Atoi`, `int()`, `Integer()`, `Int()` and
+   * `toIntOrNull()` all consume one, so `+120` is 120 everywhere and `-120` is
+   * a negative that step 1 then rejects for not being > 0. Surrounding
+   * whitespace is likewise tolerated, which is what `parseInt` already did.
+   */
+  it("accepts a leading sign and surrounding whitespace, as the other five do", () => {
+    expect(parseRetryAfter("+120")).toBe(120);
+    expect(parseRetryAfter(" 120 ")).toBe(120);
+    expect(parseRetryAfter("-120")).toBeUndefined();
+  });
+
+  /**
+   * A digit string too large for a JS number became `Infinity`, and
+   * `setTimeout(Infinity)` does not sleep forever — it CLAMPS TO 1ms, turning
+   * the longest possible instruction into a tight retry loop against a server
+   * already answering 429. That is the failure SPEC §7's backoff ceiling exists
+   * to prevent, and `oauth/device.ts` already guards its own copy against it.
+   * Go, Kotlin and Swift reject an out-of-range value outright; this does too.
+   */
+  it("rejects a value too large to represent rather than yielding Infinity", () => {
+    expect(parseRetryAfter("9".repeat(400))).toBeUndefined();
+    expect(parseRetryAfter("99999999999999999999")).toBeUndefined();
+  });
+
   it("returns the seconds remaining until a future HTTP-date", () => {
     const threeMinutesOut = new Date(Date.now() + 180_000).toUTCString();
     const seconds = parseRetryAfter(threeMinutesOut);
@@ -85,6 +127,35 @@ describe("Retry-After parsing", () => {
     // Step 2 computes max(0, date - now) but returns only a POSITIVE value:
     // handing back 0 would mean "retry immediately", the opposite instruction.
     expect(parseRetryAfter("Wed, 09 Jun 2021 10:18:14 GMT")).toBeUndefined();
+  });
+
+  /**
+   * Step 2 says RFC 7231 HTTP-date, and `Date.parse` is very much wider than
+   * that: it reads `2099-01-01`, `Jan 1 2099`, a bare `3000` and even
+   * `3000junk` as real dates, all of them in the future. Tightening step 1
+   * without tightening step 2 does not merely leave that standing, it makes it
+   * REACHABLE — `3000junk` stops at step 1 today for 3000 seconds, and would
+   * otherwise arrive at step 2 as the year 3000 and buy a ~975-year sleep.
+   *
+   * So the value is shape-checked against IMF-fixdate before `Date.parse` sees
+   * it, which is where Ruby (`Time.httpdate`), Swift and Kotlin already are.
+   * `Date.parse` still does the calendar arithmetic and still rejects an
+   * impossible day or hour, which is why the last two cases hold.
+   */
+  it("accepts only the IMF-fixdate form, not everything Date.parse tolerates", () => {
+    const future = new Date(Date.now() + 180_000);
+    expect(parseRetryAfter(future.toUTCString())).toBeGreaterThan(0);
+
+    expect(parseRetryAfter("2099-01-01")).toBeUndefined();
+    expect(parseRetryAfter("2099-01-01T00:00:00Z")).toBeUndefined();
+    expect(parseRetryAfter("Jan 1 2099")).toBeUndefined();
+    expect(parseRetryAfter("3000junk")).toBeUndefined();
+    // Not a date: a bare `3000` is a valid `delay-seconds` and step 1 claims it,
+    // which is the whole reason the compound case above is the dangerous one —
+    // `3000junk` is the value that falls out of step 1 and into step 2's lap.
+    expect(parseRetryAfter("3000")).toBe(3000);
+    expect(parseRetryAfter("Mon, 32 Jan 2099 00:00:00 GMT")).toBeUndefined();
+    expect(parseRetryAfter("Mon, 01 Jan 2099 25:00:00 GMT")).toBeUndefined();
   });
 });
 
@@ -104,7 +175,7 @@ describe("the shared retry loop honours the parsed value", () => {
   });
 
   it("falls through to backoff for a zero, a negative and an unparseable value", async () => {
-    for (const header of ["0", "-5", "whenever"]) {
+    for (const header of ["0", "-5", "whenever", "120junk", "2099-01-01", "9".repeat(400)]) {
       const delay = await delayChosenFor(header);
       // Before #564: 0ms for "0" and -5000ms for "-5", both of which retry with
       // no wait at all — the backoff collapsed rather than being replaced.

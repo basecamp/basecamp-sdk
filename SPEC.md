@@ -3490,6 +3490,7 @@ what `make doc-constants-check` asserts — not a case-by-case index.
 | `retry.json` | 403 not retried | §7 (Gate 3) |
 | `retry.json` | Retry-After HTTP-date in the past falls through to backoff | §6, §7 |
 | `retry.json` | Retry-After of 0, and a negative value, rejected | §6, §7 |
+| `retry.json` | Partly numeric Retry-After rejected (`1*DIGIT`) | §6, §7 |
 | `security.json` | Cross-origin Link rejected | §8, §9 |
 | `security.json` | HTTPS enforced (non-localhost) | §9 |
 | `security.json` | HTTP allowed for localhost | §9 |

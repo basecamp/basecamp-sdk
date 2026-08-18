@@ -123,6 +123,24 @@
     "tags": ["retry", "429", "retry-after-rejected"]
   },
   {
+    "name": "Partly numeric Retry-After is rejected and falls through to backoff",
+    "description": "RFC 9110 spells `delay-seconds` as `1*DIGIT`, so SPEC §6 step 1 must validate the WHOLE value rather than read a number off the front of it. `120junk` is not 120 seconds; it is malformed, and malformed input costs the ordinary backoff.\n\nFive SDKs got this free from their integer parsers — `strconv.Atoi`, `int()`, `Integer(exception: false)`, `Int()` and `toIntOrNull()` all refuse a trailing-junk value — and TypeScript alone did not, because `parseInt` stops at the first non-digit and returns what it has. That made a malformed header worth a 120-second delay in one SDK and ~1s in the other five, inside the very algorithm this file exists to keep uniform. The case is added alongside the zero and negative ones because it is the same shape and the other five pass it unchanged, which is exactly what makes it worth pinning: it converts five accidental agreements into one stated contract.",
+    "operation": "GetProject",
+    "method": "GET",
+    "path": "/projects/{projectId}",
+    "pathParams": {"projectId": 12345},
+    "mockResponses": [
+      {"status": 429, "headers": {"Retry-After": "120junk"}},
+      {"status": 200, "body": {"id": 12345, "name": "Test Project", "status": "active", "created_at": "2025-01-01T00:00:00Z", "updated_at": "2025-01-01T00:00:00Z", "url": "https://3.basecampapi.com/999/projects/12345.json", "app_url": "https://3.basecamp.com/999/projects/12345"}}
+    ],
+    "assertions": [
+      {"type": "requestCount", "expected": 2},
+      {"type": "delayBetweenRequests", "min": 1000},
+      {"type": "noError"}
+    ],
+    "tags": ["retry", "429", "retry-after-rejected"]
+  },
+  {
     "name": "POST with 429 is not retried",
     "description": "Verifies that POST operations receiving 429 are NOT retried since POST is not idempotent (2B.4)",
     "operation": "CreateProject",
