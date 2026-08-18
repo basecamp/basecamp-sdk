@@ -1,0 +1,22 @@
+swift/Tests/BasecampTests/DecodeIsolationTests.swift
+  s_bcb193599a4870::t_95882d46e7aa75 181
+  s_bcb193599a4870::t_4a71d807e91ac1 203
+  s_bcb193599a4870::t_eb9e9dd86f8c4f 218-225
+  s_bcb193599a4870::t_a328cbea0ea7d4 215-217,226-237
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "82914765dd66f48c1960a01e23dda5e394d9a196",
+  "prompts": {},
+  "sessions": {
+    "s_bcb193599a4870": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5ae90ec8-5ed7-4774-88d9-9d66550a5643",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
