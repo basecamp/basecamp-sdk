@@ -1149,7 +1149,23 @@ jobs:
           command -v apidiff || go install golang.org/x/exp/cmd/apidiff@v0.0.0-20241217172543-b2144cdd0a67
 
       - name: Check for breaking API changes
+        env:
+          # An intentional break is declared by labelling the PR `breaking`
+          # ("Breaking change to public API"). The gate still runs and still
+          # prints everything it found — the label suppresses the failure, not
+          # the report, so the break stays visible in the log and in the
+          # label itself rather than being argued in a thread nobody reads
+          # later. Without a hatch this gate could not block at all: the SDK is
+          # pre-1.0 and removes surface on purpose (#504 withdrew
+          # GetEverythingBoosts), so a hard fail with no override would just be
+          # switched off the first time it was right.
+          BREAKING_ACKNOWLEDGED: ${{ contains(github.event.pull_request.labels.*.name, 'breaking') }}
         run: |
+          # A failed export must abort rather than leave a missing .api file
+          # for the comparison to read as "nothing changed" — the whole gate
+          # would then pass for the wrong reason.
+          set -eu
+
           # Store the checked-out commit — the PR-on-base merge, not the branch
           # head. Restoring head.sha instead left go/ dirty (and failed the
           # manifest guard) on any PR whose base had since touched go/, which a
@@ -1158,8 +1174,27 @@ jobs:
           ORIG_SHA="$(git rev-parse HEAD)"
           BASE_REF="${GITHUB_BASE_REF}"
 
-          # Export the current (PR) API
-          apidiff -w pr.api ./pkg/basecamp
+          WORK="${RUNNER_TEMP}/apidiff"
+          mkdir -p "$WORK"
+
+          # apidiff compares one package at a time, so the set of packages IS
+          # the scope of this gate. It used to be the single literal
+          # `./pkg/basecamp`, which exempted every other importable package in
+          # the module — pkg/basecamp/oauth, pkg/basecamp/otel,
+          # pkg/basecamp/prometheus, pkg/types and pkg/generated were never
+          # checked, and pkg/basecamp/eventfeed was about to enter the module
+          # the same way. Enumerating instead of listing means a package added
+          # later is covered on the day it appears rather than on the day
+          # someone remembers to widen this line.
+          export_apis() {
+            local prefix="$1" list="$2"
+            go list ./... > "$list"
+            while read -r pkg; do
+              apidiff -w "${WORK}/${prefix}.$(printf '%s' "$pkg" | tr / _).api" "$pkg"
+            done < "$list"
+          }
+
+          export_apis pr "${WORK}/pr.pkgs"
 
           # Find files added in PR that don't exist on base branch
           # These need to be removed after checkout since git checkout doesn't remove them
@@ -1175,9 +1210,13 @@ jobs:
             echo "$ADDED_FILES"
             echo "$ADDED_FILES" | xargs rm -f
           fi
+          # A PR that adds a whole package leaves its directory behind, empty.
+          # `go list ./...` fails on a directory with no buildable Go files, so
+          # the base enumeration would abort on exactly the PRs this widening
+          # exists to cover.
+          find . -type d -empty -delete
 
-          # Export the base API
-          apidiff -w base.api ./pkg/basecamp
+          export_apis base "${WORK}/base.pkgs"
 
           # Restore what was checked out, using the stored SHA
           git checkout "${ORIG_SHA}" -- .
@@ -1186,22 +1225,37 @@ jobs:
           echo "## API Compatibility Check"
           echo ""
 
-          if apidiff -incompatible base.api pr.api > breaking.txt 2>&1; then
-            if [ -s breaking.txt ]; then
-              echo "### Breaking Changes Detected"
+          breaking=0
+          while read -r pkg; do
+            slug="$(printf '%s' "$pkg" | tr / _)"
+            # A package present on base and absent from the PR is itself an
+            # incompatible change, and apidiff cannot see it: it compares two
+            # exports, and there is no second export to compare.
+            if ! grep -Fxq "$pkg" "${WORK}/pr.pkgs"; then
+              echo "### Package removed: \`${pkg}\`"
               echo ""
-              echo "The following incompatible API changes were found:"
-              echo ""
-              echo '```'
-              cat breaking.txt
-              echo '```'
-              echo ""
-              echo "If these changes are intentional, ensure they are documented in the changelog."
-              # Don't fail the build, just warn
-            else
-              echo "No breaking changes detected."
+              breaking=1
+              continue
             fi
-          else
+            if apidiff -incompatible "${WORK}/base.${slug}.api" "${WORK}/pr.${slug}.api" > "${WORK}/breaking.${slug}.txt" 2>&1 \
+              && [ -s "${WORK}/breaking.${slug}.txt" ]; then
+              echo "### Breaking changes in \`${pkg}\`"
+              echo ""
+              echo '```'
+              cat "${WORK}/breaking.${slug}.txt"
+              echo '```'
+              echo ""
+              breaking=1
+            fi
+          done < "${WORK}/base.pkgs"
+
+          # A package the PR adds is additive by construction: nothing outside
+          # the PR could have imported it, so there is nothing it can break.
+          while read -r pkg; do
+            grep -Fxq "$pkg" "${WORK}/base.pkgs" || echo "New package (additive, not compared): \`${pkg}\`"
+          done < "${WORK}/pr.pkgs"
+
+          if [ "$breaking" -eq 0 ]; then
             echo "No breaking changes detected."
           fi
 
@@ -1209,12 +1263,32 @@ jobs:
           echo ""
           echo "### All API Changes"
           echo ""
-          if apidiff base.api pr.api > changes.txt 2>&1 && [ -s changes.txt ]; then
-            echo '```'
-            cat changes.txt
-            echo '```'
-          else
+          changed=0
+          while read -r pkg; do
+            grep -Fxq "$pkg" "${WORK}/pr.pkgs" || continue
+            slug="$(printf '%s' "$pkg" | tr / _)"
+            if apidiff "${WORK}/base.${slug}.api" "${WORK}/pr.${slug}.api" > "${WORK}/changes.${slug}.txt" 2>&1 \
+              && [ -s "${WORK}/changes.${slug}.txt" ]; then
+              echo "#### \`${pkg}\`"
+              echo '```'
+              cat "${WORK}/changes.${slug}.txt"
+              echo '```'
+              changed=1
+            fi
+          done < "${WORK}/base.pkgs"
+          if [ "$changed" -eq 0 ]; then
             echo "No API changes detected."
+          fi
+
+          if [ "$breaking" -eq 1 ]; then
+            echo ""
+            if [ "$BREAKING_ACKNOWLEDGED" = "true" ]; then
+              echo "Incompatible changes are present and the PR carries the \`breaking\` label — not failing."
+              echo "Document them in the changelog."
+            else
+              echo "::error::Incompatible public API changes. If they are intentional, label this PR \`breaking\` and document them in the changelog."
+              exit 1
+            fi
           fi
 
       # Ground truth, and the authoritative check: the static parser predicts
