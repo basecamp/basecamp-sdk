@@ -16,7 +16,9 @@ import (
 	"errors"
 	"net"
 	"net/http"
+	"net/http/cookiejar"
 	"net/http/httptest"
+	"net/url"
 	"slices"
 	"strings"
 	"sync"
@@ -618,4 +620,151 @@ func TestWebSocketTransport_DialErrorKeepsTheStatusCode(t *testing.T) {
 		t.Errorf("dial error = %q, want the HTTP status preserved", err)
 	}
 	assertNoTicket(t, err)
+}
+
+// ---------------------------------------------------------------------------
+// Credential boundary (SPEC.md §23 "Security Invariants").
+//
+// The cable origin is CROSS-HOST BY DESIGN: the mint returns whatever host the
+// server directs the subscription to, and the connector dials it verbatim. The
+// ticket in its query string is the only credential that origin is entitled
+// to. Anything else the handshake carries — the caller's bearer, a cookie, a
+// proxy credential — is a credential sent to a host chosen by the response to
+// an earlier request, which is the whole hazard.
+//
+// These assert the boundary from the origin's side and the proxy's side,
+// because that is where a violation is observable. A structural assertion
+// ("the transport has no client field") would go stale the moment a credential
+// arrived by some other route.
+// ---------------------------------------------------------------------------
+
+// injectingRoundTripper is the credential-bearing client an unsuspecting host
+// would plausibly install process-wide — an auth-injecting RoundTripper of
+// exactly the shape an SDK, a tracing wrapper or a corporate mTLS bootstrap
+// installs on http.DefaultClient.
+type injectingRoundTripper struct{ base http.RoundTripper }
+
+func (rt injectingRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	req = req.Clone(req.Context())
+	req.Header.Set("Authorization", "Bearer caller-bearer-token")
+	req.Header.Set("Proxy-Authorization", "Basic cHJveHk6c2VjcmV0")
+	return rt.base.RoundTrip(req)
+}
+
+// TestWebSocketTransport_CableOriginReceivesNoCallerCredential is daybreak
+// blocker 1. The cable dial must not inherit process-global HTTP
+// configuration: not http.DefaultClient's Transport, not its cookie jar.
+//
+// This composes two files, which is why eight review rounds walked past it —
+// transport.go's URL policy is impeccable in isolation and
+// websocket_transport.go's fallback to http.DefaultClient is unremarkable in
+// isolation. Together they hand every credential the ambient client carries to
+// a host the server nominated.
+func TestWebSocketTransport_CableOriginReceivesNoCallerCredential(t *testing.T) {
+	var mu sync.Mutex
+	var seen []http.Header
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		seen = append(seen, r.Header.Clone())
+		mu.Unlock()
+		c, err := websocket.Accept(w, r, &websocket.AcceptOptions{
+			Subprotocols: []string{"actioncable-v1-json"},
+		})
+		if err != nil {
+			return
+		}
+		_ = c.CloseNow()
+	}))
+	defer srv.Close()
+
+	jar, err := cookiejar.New(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	u, err := url.Parse(srv.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	jar.SetCookies(u, []*http.Cookie{{Name: "session", Value: "caller-session-cookie"}})
+
+	// Pollute the process-global client, as a host embedding this SDK
+	// alongside its own HTTP stack routinely does. Restored on the way out.
+	prev := http.DefaultClient
+	http.DefaultClient = &http.Client{
+		Transport: injectingRoundTripper{base: http.DefaultTransport},
+		Jar:       jar,
+	}
+	t.Cleanup(func() { http.DefaultClient = prev })
+
+	tr := &eventfeed.WebSocketTransport{}
+	conn, derr := tr.Dial(context.Background(), "ws"+strings.TrimPrefix(srv.URL, "http")+"/cable?ticket=sekrit-ticket-value", 1<<20)
+	if derr == nil {
+		_ = conn.Close(1000, "")
+	}
+
+	mu.Lock()
+	defer mu.Unlock()
+	if len(seen) == 0 {
+		t.Fatal("the cable origin saw no handshake at all; the test proves nothing")
+	}
+	for i, h := range seen {
+		for _, header := range []string{"Authorization", "Proxy-Authorization", "Cookie"} {
+			if got := h.Get(header); got != "" {
+				t.Errorf("handshake %d sent %s: %q — the cable origin must receive no caller credential", i, header, got)
+			}
+		}
+	}
+}
+
+// TestWebSocketTransport_RejectsUserinfoBeforeAnyNetworkIO is the second half
+// of the same boundary, and it is not hypothetical: net/http's send() turns
+// URL userinfo into a Basic Authorization header
+// (`if u := req.URL.User; u != nil && ...`), so a mint URL carrying userinfo
+// makes the connector authenticate to the cable origin with credentials the
+// SERVER chose. The policy must refuse it before any network I/O — nothing
+// about a URL like this becomes acceptable after a TCP connect.
+func TestWebSocketTransport_RejectsUserinfoBeforeAnyNetworkIO(t *testing.T) {
+	var conns atomic.Int64
+	srv := httptest.NewUnstartedServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
+	srv.Config.ConnState = func(_ net.Conn, state http.ConnState) {
+		if state == http.StateNew {
+			conns.Add(1)
+		}
+	}
+	srv.Start()
+	defer srv.Close()
+
+	hostport := strings.TrimPrefix(srv.URL, "http://")
+	for _, tc := range []struct {
+		name  string
+		wsURL string
+	}{
+		{"user and password", "ws://attacker:hunter2@" + hostport + "/cable?ticket=sekrit-ticket-value"},
+		{"bare user", "ws://attacker@" + hostport + "/cable?ticket=sekrit-ticket-value"},
+		{"empty password", "ws://attacker:@" + hostport + "/cable?ticket=sekrit-ticket-value"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			conns.Store(0)
+			tr := &eventfeed.WebSocketTransport{}
+			conn, err := tr.Dial(context.Background(), tc.wsURL, 1<<20)
+			if err == nil {
+				_ = conn.Close(1000, "")
+				t.Fatal("dial accepted a cable URL carrying userinfo")
+			}
+			var derr *eventfeed.DialError
+			if !errors.As(err, &derr) || derr.Kind != eventfeed.DialPolicy {
+				t.Errorf("err = %v (%T), want a policy-kind *DialError", err, err)
+			}
+			if n := conns.Load(); n != 0 {
+				t.Errorf("the server accepted %d connection(s); the refusal must precede all network I/O", n)
+			}
+			// The rejection is reported without echoing the credential or the
+			// ticket that rode alongside it.
+			for _, secret := range []string{"attacker", "hunter2", "sekrit-ticket-value"} {
+				if strings.Contains(err.Error(), secret) {
+					t.Errorf("rejection leaked %q: %s", secret, err)
+				}
+			}
+		})
+	}
 }

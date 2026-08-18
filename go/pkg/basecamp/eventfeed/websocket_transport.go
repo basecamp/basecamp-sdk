@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -24,13 +25,13 @@ import (
 // socket read limit — an over-limit message aborts the read without being
 // materialized. No error it returns ever carries the dialed URL's query
 // string: the ticket rides in it.
-type WebSocketTransport struct {
-	// HTTPClient performs the WebSocket handshake. nil means
-	// http.DefaultClient. Dial only — frames ride the upgraded connection.
-	// Its redirect policy is overridden for the handshake: redirects are
-	// refused per SPEC §23 Security Invariants.
-	HTTPClient *http.Client
-}
+//
+// It is deliberately configuration-free. A host that needs different dial
+// behavior — a custom root pool for a self-hosted install, a bespoke proxy
+// policy — implements CableTransport itself; that is what the seam is for. It
+// must not be done by handing this transport an *http.Client, for the reason
+// in cableHTTPClient.
+type WebSocketTransport struct{}
 
 var _ CableTransport = (*WebSocketTransport)(nil)
 
@@ -47,6 +48,77 @@ var errRedirectRefused = errors.New("eventfeed: cable dial redirect refused")
 // close.
 var errCableConnClosed = errors.New("eventfeed: cable connection closed")
 
+// proxyFromEnvironment is net/http's environment proxy resolution, indirected
+// only so cableProxy's rule can be tested deterministically:
+// http.ProxyFromEnvironment reads HTTP_PROXY and friends behind a package-wide
+// sync.Once, so a test that sets them is silently vacuous whenever anything
+// earlier in the binary already resolved a proxy.
+var proxyFromEnvironment = http.ProxyFromEnvironment
+
+// cableProxy resolves the handshake's proxy, and refuses to use one for a
+// cleartext dial.
+//
+// A wss:// handshake reaches a proxy as CONNECT host:port — the proxy learns
+// which host is being reached and nothing more, so the ticket stays inside the
+// tunnel. A ws:// handshake is forwarded in absolute form, which puts
+// "/cable?ticket=…" in the proxy's request line, its access log, and every hop
+// in between, in the clear.
+//
+// That combination is reachable rather than theoretical. SPEC.md §9's carve-out
+// admits ws:// for *.localhost, and net/http's proxy rules exempt the literal
+// "localhost" and loopback IPs but NOT *.localhost subdomains — so
+// "ws://app.localhost:3000/cable?ticket=…" with HTTP_PROXY set in the
+// environment is proxied, cleartext, ticket included.
+func cableProxy(req *http.Request) (*url.URL, error) {
+	if req.URL.Scheme != "https" {
+		return nil, nil
+	}
+	return proxyFromEnvironment(req)
+}
+
+// cableHTTPClient performs every cable handshake. It is package-owned and
+// takes nothing from the caller, which is the point.
+//
+// The cable origin is chosen by the SERVER: the mint returns a url and the
+// connector dials it verbatim, cross-host by design (SPEC.md §23 "Classification:
+// Infrastructure, Not a Composite"). The short-lived ticket in its query is
+// the only credential that origin is entitled to. An *http.Client accepted
+// from the caller carries three more, none of them visible at the call site: a
+// RoundTripper may inject Authorization, a Jar attaches cookies, and a
+// TLSClientConfig may present a client certificate. Falling back to
+// http.DefaultClient is the same hazard with no call site at all — any library
+// in the process can have installed a credential-bearing default, and the
+// handshake would forward it to a host named by a response.
+//
+// A RoundTripper is opaque, so a caller-supplied client cannot be inspected
+// and rejected at runtime. Owning the client outright is the only form this
+// boundary can take.
+//
+// Field by field: Proxy is cableProxy, not http.ProxyFromEnvironment. No Jar,
+// so no cookie is ever attached. No TLSClientConfig, so verification uses the
+// system roots and no client certificate is presented. The timeouts mirror
+// http.DefaultTransport's, which they exist to replace rather than to tune.
+var cableHTTPClient = &http.Client{
+	Transport: &http.Transport{
+		Proxy: cableProxy,
+		DialContext: (&net.Dialer{
+			Timeout:   30 * time.Second,
+			KeepAlive: 30 * time.Second,
+		}).DialContext,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+		// The handshake must be HTTP/1.1: the upgrade depends on hijacking
+		// the connection, which HTTP/2 does not offer.
+		ForceAttemptHTTP2: false,
+	},
+	// Every redirect is refused (a fresh mint returns the same redirecting
+	// URL, so retrying cannot help), and refusing them is also what stops a
+	// redirect from carrying the ticket to a second, unvetted origin.
+	CheckRedirect: func(*http.Request, []*http.Request) error {
+		return errRedirectRefused
+	},
+}
+
 // Dial implements CableTransport: policy pre-check, handshake, read limit.
 func (t *WebSocketTransport) Dial(ctx context.Context, wsURL string, maxFrameBytes int64) (CableConn, error) {
 	if derr := checkCableURL(wsURL); derr != nil {
@@ -55,24 +127,15 @@ func (t *WebSocketTransport) Dial(ctx context.Context, wsURL string, maxFrameByt
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	base := t.HTTPClient
-	if base == nil {
-		base = http.DefaultClient
-	}
-	// Shallow copy so the caller's client keeps its own redirect policy
-	// elsewhere; the handshake itself always refuses redirects.
-	// coder/websocket clones this client again and chains to our
-	// CheckRedirect, so the sentinel survives its defaults.
-	client := *base
-	client.CheckRedirect = func(*http.Request, []*http.Request) error {
-		return errRedirectRefused
-	}
+	// cableHTTPClient, never the caller's and never http.DefaultClient.
+	// coder/websocket shallow-copies it and chains to its CheckRedirect, so
+	// the redirect sentinel survives the library's own defaults.
 	//nolint:bodyclose // coder/websocket owns the handshake response ("You
 	// never need to close resp.Body yourself" — Dial docs): on failure it
 	// reads and replaces the body itself, and on success the body is the
 	// upgraded connection, closed via CableConn.Close.
 	conn, resp, err := websocket.Dial(ctx, wsURL, &websocket.DialOptions{
-		HTTPClient:   &client,
+		HTTPClient:   cableHTTPClient,
 		Subprotocols: []string{cableSubprotocol},
 	})
 	if err != nil {
