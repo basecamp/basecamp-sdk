@@ -1,0 +1,26 @@
+SPEC.md
+  s_bd904175ffa79c::t_dd3debf5302168 310
+  s_bd904175ffa79c::t_641d870d10403b 3664-3665
+  s_bd904175ffa79c::t_9e746332dfeda0 3669-3675
+  s_bd904175ffa79c::t_812c66e1e622e1 3650-3658
+scripts/check-service-inventory-parity
+  s_bd904175ffa79c::t_f3192ea2313d59 115-121,123-129
+scripts/test-check-service-inventory-parity.rb
+  s_bd904175ffa79c::t_db4f641c7e683c 410,412-417
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "6b64ce14cbe5511c5b11edd0ef3ec66a977f8089",
+  "prompts": {},
+  "sessions": {
+    "s_bd904175ffa79c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84276f22-32e4-44d3-bb44-8c35d734d9eb",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
