@@ -1,0 +1,43 @@
+go/pkg/basecamp/documents.go
+  s_bd904175ffa79c::t_298fcc0ca83310 147-153,161
+typescript/tests/services/base.test.ts
+  s_bd904175ffa79c::t_465ff70dd40ffd 337-377
+  s_bd904175ffa79c::t_a4bafb387cb83a 800-838
+go/pkg/basecamp/documents_test.go
+  s_bd904175ffa79c::t_823b22b74c53c5 707-739
+ruby/lib/basecamp/http.rb
+  s_bd904175ffa79c::t_918bfa38904db0 345-354
+go/pkg/basecamp/schedules.go
+  s_bd904175ffa79c::t_1ce9937576ba63 482-486,494
+python/src/basecamp/errors.py
+  s_bd904175ffa79c::t_a9c8d5fc569c3a 72-91
+  s_bd904175ffa79c::t_98d3e3ceaac7fe 71
+go/pkg/basecamp/schedules_test.go
+  s_bd904175ffa79c::t_245099d8adbf73 1582-1610
+ruby/test/basecamp/http_test.rb
+  s_bd904175ffa79c::t_88a7a7c78f1d61 650-671
+python/tests/test_malformed_body.py
+  s_bd904175ffa79c::t_6e37670b4855e6 1-78
+typescript/src/services/base.ts
+  s_bd904175ffa79c::t_578e224a87b154 552-579
+  s_bd904175ffa79c::t_372c3764e75065 667
+  s_bd904175ffa79c::t_269d3b84688929 26
+  s_bd904175ffa79c::t_c8c254d231b855 615
+  s_bd904175ffa79c::t_f0880db410b5bd 551
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "4abb2dde1a083ed8dff27dfa23c827f639c12daa",
+  "prompts": {},
+  "sessions": {
+    "s_bd904175ffa79c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84276f22-32e4-44d3-bb44-8c35d734d9eb",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
