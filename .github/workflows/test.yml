@@ -734,20 +734,15 @@ jobs:
         if: matrix.python == '3.13'
         run: uv run mypy src/basecamp/ --ignore-missing-imports
 
+      # Runs the same script `make py-check-drift` runs, matching the other five
+      # SDKs' drift steps. It regenerates into a tmpdir and diffs, rather than
+      # regenerating in place and reading `git status` — so the tree it judges
+      # is never the tree it mutates, and it detects extra committed artifacts
+      # as well as missing ones. Canonical matrix entry only; the generated
+      # output is Python-version independent.
       - name: Check generated code drift
         if: matrix.python == '3.13'
-        run: |
-          uv run python scripts/generate_services.py
-          uv run python scripts/generate_metadata.py
-          uv run python scripts/generate_types.py
-          uv run ruff format src/basecamp/generated/
-          if [ -n "$(git status --porcelain -- src/basecamp/generated/)" ]; then
-            echo "::error::Generated Python code is out of date. Run 'make py-generate' and commit."
-            git status --short -- src/basecamp/generated/
-            git diff --stat -- src/basecamp/generated/ || true
-            exit 1
-          fi
-          echo "Generated code is up to date"
+        run: ../scripts/check-python-service-drift.sh
 
       - name: Test with coverage
         run: uv run pytest --cov --cov-report=term-missing --cov-fail-under=60
