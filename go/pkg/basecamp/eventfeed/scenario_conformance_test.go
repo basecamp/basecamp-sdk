@@ -295,14 +295,7 @@ func (d *driver) runStep(step scenarioStep) error {
 	case *expectClientCloseStep:
 		return d.expectClientClose()
 	case *advanceStep:
-		// Plain Advance: no fixture scripts a firing that arms a follow-on
-		// timer due inside the same window — 05, the suite's only advance,
-		// deliberately configures staleness and repair-poll out of it, so the
-		// window fires nothing. A script that did want a chained firing would
-		// pass feedtest.Clock.AdvanceSettling the rendezvous for the arming,
-		// since the connector arms on its own goroutine.
-		d.h.clock.Advance(millis(payload.Ms))
-		return nil
+		return d.advance(payload)
 	case *fireTimerStep:
 		return d.fireTimer(payload)
 	case *exactIDs:
@@ -578,6 +571,53 @@ func (d *driver) nextClientFrame(what string) (clientFrame, error) {
 }
 
 // --- time ----------------------------------------------------------------
+
+// advance runs an `advance` directive under the family's virtual-advance
+// algorithm, and REJECTS the one shape of script the algorithm cannot resolve
+// identically in every language.
+//
+// The algorithm says timers armed during a window whose deadlines land inside
+// it also fire. In a single-threaded test clock that is exact. In Go the
+// connector arms on its own goroutine, so whether the re-selection sees the
+// follow-on timer is a scheduling question — the same fixture could fire it in
+// TypeScript and not in Go, which is the divergence, not a flake.
+//
+// It is not fixable by settling, and that is worth writing down because the
+// obvious fixes both fail:
+//
+//   - Waiting for the firing to be CONSUMED hangs. The connector deliberately
+//     does not consume a staleness firing promptly — a window that closes while
+//     the consumer is inside a delivery is latched and observed later, by
+//     design (staleHolder). A clock that waited would deadlock against the very
+//     behavior §23 requires.
+//   - Waiting for the follow-on ARMING requires knowing one is coming. Nothing
+//     can distinguish "has not armed yet" from "will not arm", so any such wait
+//     is either a guess or the same hang.
+//
+// So the divergence is made impossible to script instead of impossible to hit:
+// an advance during which the connector arms anything is failed, loudly, with
+// fireTimer named as the deterministic alternative (it fires one named timer
+// without moving the clock, so no re-selection is involved). This is checked on
+// EVERY advance rather than behind a schema opt-in — a field would let the next
+// fixture author take the divergence rather than avoid it, which is precisely
+// the thing being prevented.
+func (d *driver) advance(step *advanceStep) error {
+	before := timerCounts(d.h.clock)
+	armed := false
+	d.h.clock.AdvanceSettling(millis(step.Ms), func() {
+		if !maps.Equal(timerCounts(d.h.clock), before) {
+			armed = true
+		}
+	})
+	if armed || !maps.Equal(timerCounts(d.h.clock), before) {
+		return fmt.Errorf(
+			"advance of %dms changed the outstanding timer set (%v -> %v): a timer armed inside an advance window "+
+				"fires or not depending on goroutine scheduling, so this script cannot mean the same thing in every "+
+				"language — use fireTimer, which fires one named timer without re-selecting",
+			step.Ms, before, timerCounts(d.h.clock))
+	}
+	return nil
+}
 
 func (d *driver) fireTimer(step *fireTimerStep) error {
 	if err := d.awaitTimerArmed(step.Kind); err != nil {

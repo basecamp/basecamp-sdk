@@ -477,6 +477,52 @@ func TestScenarioDriverRejectsUnmatchedActions(t *testing.T) {
 	})
 }
 
+// TestScenarioDriverRejectsSchedulingDependentAdvance pins the advance guard.
+// A driver that quietly took the scheduling-dependent path would produce a
+// result that differs between languages for the same fixture, which is worse
+// than a failure because nothing reports it.
+//
+// The control matters as much as the mutant: an advance over a window in which
+// the connector arms nothing is ordinary and must still pass, or the guard
+// would be rejecting every advance and the suite's one real advance (fixture
+// 05) would be failing for the wrong reason.
+func TestScenarioDriverRejectsSchedulingDependentAdvance(t *testing.T) {
+	t.Run("an advance during which the connector arms a timer", func(t *testing.T) {
+		// Advancing past the handshake deadline makes the connector tear the
+		// attempt down and arm `backoff` — a timer armed INSIDE the window,
+		// which is exactly the reentrant clause the algorithm cannot resolve
+		// identically across languages when the recipient is another goroutine.
+		script := `{"name":"x","description":"d","steps":[
+			{"expectMint":{"respond":{"status":200,"body":{"ticket":"{{TICKET:1}}","expires_in":120,"url":"{{CABLE_URL:1}}"}}}},
+			{"expectConnect":{"url":"{{CABLE_URL:1}}"}},
+			{"advance":{"ms":30000}}],
+			"finally":{"state":"backoff"}}`
+		err := underShortWatchdog(func() error { return runScenarioBytes([]byte(script), "x.json") })
+		if err == nil {
+			t.Fatal("an advance that changes the outstanding timer set must fail the scenario")
+		}
+		if !strings.Contains(err.Error(), "outstanding timer set") {
+			t.Fatalf("failed for the wrong reason: %v", err)
+		}
+		if !strings.Contains(err.Error(), "fireTimer") {
+			t.Errorf("the rejection must name the deterministic alternative: %v", err)
+		}
+	})
+
+	t.Run("an advance over a quiet window is ordinary", func(t *testing.T) {
+		// No connection yet, so nothing is armed and nothing can be: the
+		// guard must not reject an advance merely for existing.
+		script := `{"name":"x","description":"d","steps":[
+			{"advance":{"ms":1000}},
+			{"expectMint":{"respond":{"status":200,"body":{"ticket":"{{TICKET:1}}","expires_in":120,"url":"{{CABLE_URL:1}}"}}}},
+			{"expectConnect":{"url":"{{CABLE_URL:1}}"}}],
+			"finally":{"state":"awaiting_welcome"}}`
+		if err := runScenarioBytes([]byte(script), "x.json"); err != nil {
+			t.Fatalf("an advance over a window that arms nothing must pass: %v", err)
+		}
+	})
+}
+
 // underShortWatchdog runs a scenario that is EXPECTED to fail under a short
 // rendezvous window. A hostile scenario often fails by never satisfying a
 // rendezvous, and waiting the full window for each would cost more than the
