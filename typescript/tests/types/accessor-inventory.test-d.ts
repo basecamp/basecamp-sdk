@@ -29,6 +29,13 @@
  * clean, passes every runtime test, and hands a consumer calling
  * `client.fanfares.list()` a TypeError. That direction is asserted below too.
  *
+ * Three, because both of those compare only names. An accessor can be present,
+ * backed by a generated service, and declared as the *wrong* one; the runtime
+ * file cannot see that either, since the getter still returns the right class.
+ * The declared type is checked against the generated service last, and that
+ * assertion carries a measured account of what structural typing still lets
+ * through.
+ *
  * The roster is derived in the type system from the generated barrel. The
  * derivation is the same one the runtime test performs on filenames, expressed
  * as a type: strip the `Service` suffix from each exported class name and
@@ -145,4 +152,111 @@ type BeyondGeneratedServices = Exclude<InterfaceAccessor, ExpectedAccessor>;
 
 export type NoAccessorBeyondGeneratedServices = Expect<
   [BeyondGeneratedServices] extends [never] ? true : BeyondGeneratedServices
+>;
+
+/**
+ * Both directions above compare *names*, and a name is not an API. Retype
+ * `readonly clientApprovals: ClientRepliesService` and nothing said so far
+ * moves: the accessor is still on the interface and still backed by a generated
+ * service, so `MissingFromInterface` and `BeyondGeneratedServices` are both
+ * still empty. What changed is everything a consumer can call on it, and the
+ * runtime file cannot see it — the getter really does return a
+ * `ClientApprovalsService`, so `toBeInstanceOf` is satisfied and 109 assertions
+ * stay green while `client.clientApprovals.get(123)` stops typechecking outside
+ * this repo.
+ *
+ * That is the identity axis the runtime file already asserts for the three
+ * renderings it can reach (`expect(service).toBeInstanceOf(cls)`), asked of the
+ * fourth. The generated service each accessor is *paired with* is derived by
+ * inverting the same name rule, so nothing is listed here either.
+ */
+type GeneratedServiceFor<Accessor extends string> = {
+  [Name in GeneratedServiceClassName]: AccessorName<Name> extends Accessor
+    ? InstanceType<(typeof GeneratedServices)[Name]>
+    : never;
+}[GeneratedServiceClassName];
+
+/**
+ * Assignable to the generated service, and unchanged on the members it declares.
+ *
+ * The first clause cannot be identity: six accessors (§18's merge-safe
+ * composites — todos, todolists, cards, documents, uploads, schedules) are
+ * declared as hand-written subclasses that add methods to the generated service,
+ * and the runtime file makes the same allowance for the index.ts exports
+ * (`exported === cls || exported.prototype instanceof cls`). So extra members
+ * are fine.
+ *
+ * On their own, extra members are also how a *different* service satisfies the
+ * first clause — structural typing does not care that `ClientCorrespondences`
+ * is a different service, only that it happens to carry a compatible `list` and
+ * `get`. The second clause is what stops that without a roster of which six are
+ * subclassed: restricted to the members the generated service declares, the two
+ * must agree in both directions. A subclass agrees by definition, because it
+ * inherits those members verbatim; an unrelated service agrees only if its
+ * signatures are identical, not merely compatible.
+ *
+ * MEASURED, not assumed. Over all 53x52 ordered pairs of generated services,
+ * plain assignability admits 45 wrong pairings; this rule admits 11. The
+ * remainder is structural typing's floor, and one pair shows why it cannot be
+ * driven to zero: `CardTablesService` and `MessageBoardsService` are a single
+ * `get(bucketId, id)` each, over schema types that are themselves mutually
+ * assignable, so the two are indistinguishable to any type-level rule whatsoever
+ * — no assertion written here can tell `cardTables` from `messageBoards`. The
+ * other nine are cross-domain pairs (`campfires`/`schedules`/`vaults` declared as
+ * one of those two, `documents` as `clientApprovals`, `forwards` as
+ * `clientCorrespondences`, `todolists` as `todolistGroups`) that survive for the
+ * same reason: the target declares few enough members that a richer service
+ * matches all of them exactly. The pairing Codex named — `clientApprovals`
+ * declared as `ClientRepliesService` — is not among them and is pinned as a
+ * floor below.
+ */
+type DeclaresItsGeneratedService<Declared, Generated> = Declared extends Generated
+  ? Generated extends Pick<Declared, keyof Generated & keyof Declared>
+    ? true
+    : false
+  : false;
+
+/**
+ * This direction's non-vacuity floor, and it takes three parts because the rule
+ * above can degenerate in three ways. The mapping can resolve to `never` — every
+ * accessor would then be reported, so that one fails loudly rather than
+ * silently, but it is cheap to name. The rule can degenerate to `false`, which
+ * the second part catches by pairing a service with itself. And the rule can
+ * degenerate to `true`, which nothing else here would notice at all: the third
+ * part pins the mutation the finding is about, asserting that
+ * `ClientRepliesService` is *rejected* for `clientApprovals`.
+ */
+type IdentityRuleDiscriminates = [GeneratedServiceFor<"gauges">] extends [never]
+  ? false
+  : DeclaresItsGeneratedService<
+        InstanceType<typeof GeneratedServices.GaugesService>,
+        GeneratedServiceFor<"gauges">
+      > extends true
+    ? DeclaresItsGeneratedService<
+          InstanceType<typeof GeneratedServices.ClientRepliesService>,
+          GeneratedServiceFor<"clientApprovals">
+        > extends false
+      ? true
+      : false
+    : false;
+
+export type AccessorIdentityRuleDiscriminates = Expect<IdentityRuleDiscriminates>;
+
+/**
+ * Any accessor whose declared type is not its generated service survives, and is
+ * named by `Expect` for the same reason as above. Accessors absent from the
+ * interface are skipped rather than reported twice — that is
+ * `NoAccessorMissingFromBasecampClient`'s question, and `BasecampClient[K]` is
+ * not even a legal lookup for them.
+ */
+type MisdeclaredAccessor = {
+  [K in ExpectedAccessor]: K extends keyof BasecampClient
+    ? DeclaresItsGeneratedService<BasecampClient[K], GeneratedServiceFor<K>> extends true
+      ? never
+      : K
+    : never;
+}[ExpectedAccessor];
+
+export type EveryAccessorDeclaresItsGeneratedService = Expect<
+  [MisdeclaredAccessor] extends [never] ? true : MisdeclaredAccessor
 >;
