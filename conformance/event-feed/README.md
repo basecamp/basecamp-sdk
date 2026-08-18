@@ -342,7 +342,27 @@ implementation PR's body before it counts.
 | 12 | `bypass-configured-handler` (handler registered but skipped; default-terminal applied) | 24, 25 (via `handlerInvocations` exact-set) |
 | 13 | `follow-cross-origin-continuation` (skips §8 validation, polls the hostile URL) | 26, 27 |
 | 14 | `collapse-load-error-to-missing` | 28 |
-| 15 | `follow-cross-origin-redirect` (follows a 302 to a foreign Location) | 30 — killed by **outcome divergence**: the mutant's redirect-follow happens inside the poll seam call, which the harness cannot instrument, and leads to a divergent end state; PLUS the harness obligation that the fixture's foreign origin is bound to a sentinel listener whose any-request fails the scenario |
+| 15 | `follow-cross-origin-redirect` (follows a 302 to a foreign Location) | 30 — **partially**, and the boundary is below the seam. See the note under this table. |
+
+**Row 15 is the family's one partial kill, and the reason is structural.** In
+tier 2 the poll lane is a SEAM: the driver receives the fixture's scripted 302
+and hands the connector an already-formed redirect-refused verdict. The
+connector never sees a `Location` header and never decides whether to follow
+one, so the `follow-cross-origin-redirect` mutation lives **below** the seam
+and no tier-2 harness can reach it. What fixture 30 does kill is the half above
+the seam: a connector that mishandles the verdict — retrying it, classifying it
+as anything but Terminal(`invalid_continuation`), or echoing more of the
+`Location` than its origin — diverges on `finally` and fails.
+
+An earlier revision of this row claimed a harness obligation to "bind the
+foreign origin to a sentinel listener whose any-request fails the scenario".
+That is withdrawn. No implementation met it, and meeting it would prove
+nothing: the foreign origin is unreachable **by construction of the harness**,
+because the harness is the seam, so a silent sentinel is a statement about the
+driver rather than about the connector. Zero egress to a foreign redirect
+target is a Layer-1 property, and its proof is the Layer-1 seam adapter's own
+302 test, where a real generated `PollEvents` call meets a real redirect.
+Tracked for G1b.
 
 Auto-continue-past-unhandled-gap needs no separate mutation — fixture 23's
 exact-set `finally` is its direct test. Fixture 29's exact store-call script is the
