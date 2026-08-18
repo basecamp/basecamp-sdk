@@ -150,11 +150,15 @@ final class DecodeIsolationTests: XCTestCase {
     /// `GetPersonProgress` is the SDK's only wrapped-pagination operation, and
     /// its envelope used to be half-decoded outside the primitive: `person` by
     /// GENERATED code running after `requestPaginatedWrapped` returned, so a
-    /// missing or wrong-typed one threw a raw `DecodingError`. The `events` half
-    /// was worse than raw — `decodeWrappedItems` answered an absent key, and a
-    /// body that was not an object at all, with an EMPTY LIST and no error, so
-    /// the SDK reported a successful read of a response it had not understood
-    /// and disagreed with Kotlin, which threw on the same body.
+    /// missing or wrong-typed one threw a raw `DecodingError`. One case was
+    /// worse than raw: an absent `events` alongside a valid `person`, where
+    /// `decodeWrappedItems` answered with an EMPTY LIST and the wrapper decode
+    /// was then happy with the rest, so the whole operation SUCCEEDED on a
+    /// response the SDK had not understood — where Kotlin threw.
+    ///
+    /// That is the only silent success, and the tests below are careful about
+    /// it. A non-object body reached the same `?? [:]` fallback, but the wrapper
+    /// decode rejected it a line later, so that case failed — just unmapped.
     ///
     /// Absence is malformed, not empty, on BC3's authority:
     /// `app/views/api/users/timelines/show.json.jbuilder` is two unconditional
@@ -173,7 +177,11 @@ final class DecodeIsolationTests: XCTestCase {
         XCTAssertEqual(result.events.count, 0)
     }
 
-    /// An absent `events` used to succeed with an empty list.
+    /// **The silent one.** With `person` valid and only `events` absent, nothing
+    /// downstream objected, so this body used to come back as a successful read
+    /// of zero events. The `person` in this fixture is deliberately well-formed:
+    /// break it and the wrapper decode fails instead, and the case stops being
+    /// about the items key at all.
     func testAnAbsentItemsKeyIsAStatuslessApiError() async throws {
         let message = try await personProgressFailureMessage(
             #"{"person":{"id":45678,"name":"Victor Cooper"}}"#)
@@ -227,8 +235,12 @@ final class DecodeIsolationTests: XCTestCase {
         assertNamesTheMember(message, "events", saying: "not an array")
     }
 
-    /// A top-level array — valid JSON, wrong shape — used to succeed with an
-    /// empty list, because `as? [String: Any] ?? [:]` swallowed it.
+    /// A top-level array — valid JSON, wrong shape. `as? [String: Any] ?? [:]`
+    /// swallowed it far enough to yield an empty items list, but the wrapper
+    /// decode then rejected the same body, so this case *did* fail before —
+    /// with a raw `DecodingError` about `person`, naming the wrong member. What
+    /// changes is that it is now mapped, and refused for what is actually wrong
+    /// with it.
     func testANonObjectWrappedBodyIsAStatuslessApiError() async throws {
         let message = try await personProgressFailureMessage(#"[{"id":1}]"#)
 

@@ -298,10 +298,19 @@ paragraphs above draw.
   catching them would swallow every `!!` and `require()` in the SDK.
 
 Both are the statusless `api_error` now. **Swift has a third change, and it is
-the sharpest:** it stops answering an incomplete wrapper with an empty list. An
-absent `events` key, and a top-level body that was not a JSON object at all,
-both used to decode to `events: []` with no error — a silent wrong answer, not a
-changed error type. BC3 settles which reading is right:
+the sharpest: one malformed wrapper used to be answered with a successful,
+empty result.** An absent `events` alongside a valid `person` returned
+`events: []` and no error at all — a silent wrong answer, not a changed error
+type, and the one case in this whole issue where the SDK reported success for a
+body it had not understood. It is now the statusless `api_error`, matching
+Kotlin, which always threw on that body.
+
+Two neighbouring cases look like that one and are not, so they are worth
+separating: a top-level body that is not a JSON object, and a non-array
+`events`, both made the *items* helper hand back an empty list, but the wrapper
+decode that ran next then rejected the same body — so the operation did fail,
+just with a raw `DecodingError` rather than a mapped one. Those two move from
+unmapped to mapped, like everything else here. BC3 settles which reading is right:
 `app/views/api/users/timelines/show.json.jbuilder` writes `person` and `events`
 unconditionally, so an absent one is a malformed body and never an empty result.
 

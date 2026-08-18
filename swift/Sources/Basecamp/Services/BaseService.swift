@@ -504,10 +504,15 @@ open class BaseService: @unchecked Sendable {
     /// whole body is the decode expression `decoding(_:_:)` isolates.
     ///
     /// **Every shape but the right one is refused.** Two of the three guards
-    /// used to be `?? [:]` and `else { return [] }` — a non-object body and an
-    /// absent key both decoded to an empty list, so the SDK reported a
-    /// successful read of zero items for a response it had not understood, and
-    /// disagreed with Kotlin, which threw on the same body (#728). The third,
+    /// used to be `?? [:]` and `else { return [] }`, and the difference between
+    /// them is worth keeping: an absent key made this helper return an empty
+    /// list *and the operation succeed*, because the wrapper decode that ran
+    /// next was happy with the rest of the body — a successful read of a
+    /// response the SDK had not understood, where Kotlin threw. A non-object
+    /// body also reached that fallback, but the wrapper decode then rejected the
+    /// same body, so the operation failed with an unmapped `DecodingError`
+    /// rather than succeeding (#728). One was a wrong answer, the other a raw
+    /// error; both are the statusless `api_error` now. The third,
     /// on the member's type, is new for a different reason: only a dictionary or
     /// an array is valid input to `JSONSerialization.data(withJSONObject:)`, and
     /// a string or number at this key made it answer with an
