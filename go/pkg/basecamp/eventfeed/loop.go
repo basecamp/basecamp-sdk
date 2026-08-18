@@ -1138,6 +1138,14 @@ type reentryCursor struct {
 // it" is exactly this assignment, so a present-class re-entry stays latched
 // through its whole walk and drain (nothing durable has moved until the held
 // save) while a position-resume one is released by its first saved page.
+//
+// position is non-empty at both call sites, and must stay that way: the walk
+// refuses a page that carries no position outright, and the held save is
+// guarded on `held != ""`. An empty one assigned here does not preserve the
+// old cursor — entryCursor selects on `l.position != ""`, so it falls through
+// to a bare present entry and silently skips history. (`l.position = ""` IS
+// legitimate, but only from reenterAtResetCursor, which means it deliberately:
+// the server refused the cursor and there is nothing to resume from.)
 func (l *loop) acceptPosition(position string) {
 	l.position = position
 	l.reentry = nil
