@@ -997,6 +997,47 @@ def generate_init_file(services: dict[str, dict]) -> str:
     return "\n".join(lines)
 
 
+def remove_stale_files(output_dir: Path, generated_files: list[str]) -> None:
+    """Delete modules this generator used to emit and no longer does.
+
+    Without this, removing or renaming a service in the mapping leaves the old
+    module on disk forever: `__init__.py` is rewritten whole and stops importing
+    it, but nothing deletes it, so `git status` has nothing to report and a CI
+    step that regenerates in place cannot see the corpse (#757).
+
+    Three stacked guards, copied from `ruby/scripts/generate-services.rb`:
+
+    1. the glob is restricted to the shape this generator emits — top-level
+       `*.py` in the output directory, no recursion;
+    2. anything written by this run is skipped;
+    3. the file must carry the `@generated` marker this generator writes on
+       line 1 before it is eligible for deletion.
+
+    `_base.py` and `_async_base.py` are hand-written infrastructure living under
+    `generated/` by exception (AGENTS.md Hard Rule 1). They are excluded twice
+    over, by the `_` prefix and by carrying no marker, and either exclusion
+    suffices — the prefix rule states the intent, the marker rule survives a
+    future hand-written file that is not underscore-prefixed.
+
+    The head read is bounded at 256 *characters* on a text handle with the
+    encoding pinned to UTF-8. Both halves matter: the marker contains an
+    em-dash, so a byte-bounded read could split it, and an unpinned handle
+    decodes as ASCII under `LC_ALL=C` and raises on it.
+    """
+    emitted = set(generated_files)
+
+    for existing in sorted(output_dir.glob("*.py")):
+        if existing.name in emitted or existing.name.startswith("_"):
+            continue
+        with open(existing, encoding="utf-8") as f:
+            head = f.read(256)
+        if "@generated" not in head:
+            continue
+
+        existing.unlink()
+        print(f"Removed stale {existing.name}")
+
+
 def main() -> None:
     import argparse
     parser = argparse.ArgumentParser(description="Generate Python service classes from OpenAPI spec")
@@ -1034,7 +1075,10 @@ def main() -> None:
     init_code = generate_init_file(services)
     init_path = output_dir / "__init__.py"
     init_path.write_text(init_code, encoding="utf-8")
+    generated_files.append(init_path.name)
     print(f"Generated __init__.py")
+
+    remove_stale_files(output_dir, generated_files)
 
     print(f"\nGenerated {len(services)} services with {total_ops} operations total.")
 
