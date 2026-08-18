@@ -51,10 +51,14 @@
 # states the method and the path for all 250, because it has to in order to make
 # the request.
 #
-# AND IT IS A MULTISET-SHAPED KEY, NOT A `{service -> path set}`, which is how
-# #756 words it. Paths collide verb-agnostically inside a single service:
-# `boosts` has GET and DELETE on /boosts/{}, `campfires` has GET and POST on
-# .../integrations.json. A set of paths per service silently loses those.
+# THE METHOD IS PART OF THE KEY, WHICH IS WHY IT IS NOT THE `{service -> path
+# set}` #756 words it as. Paths collide verb-agnostically inside a single
+# service: `boosts` has GET and DELETE on /boosts/{}, `campfires` has GET and
+# POST on .../integrations.json. A set of paths per service silently merges
+# those, so a reassignment of one of a pair would leave the set unchanged. With
+# the method included the key identifies exactly one operation — asserted against
+# openapi.json below rather than assumed, which is what lets the assignment be a
+# plain map instead of something that has to count.
 #
 # NO SIXTH HAND-COPY. openapi.json appears below for exactly two things: the
 # ROSTER of operations each SDK must be shown to emit, and the operationId used
@@ -332,9 +336,11 @@ if expected.length < MIN_OPERATIONS
        "the anchor collapsed, so nothing could be checked against it"])
 end
 
+# Only ever called with a key that came OUT of `expected`, so there is no
+# not-found branch to write.
 def label(expected, key)
-  op_id, sdk_path = expected[key]
-  op_id ? "#{op_id} (#{key.first} #{sdk_path})" : "#{key.first} #{key.last}"
+  op_id, sdk_path = expected.fetch(key)
+  "#{op_id} (#{key.first} #{sdk_path})"
 end
 
 # ---------------------------------------------------------------- extraction
