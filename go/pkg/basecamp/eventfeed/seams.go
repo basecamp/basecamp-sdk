@@ -288,16 +288,28 @@ type CloseError struct {
 	Reason string
 }
 
-// Error implements the error interface. Reason is peer-supplied, so the
-// rendering is bounded by §9's MAX_ERROR_MESSAGE_LENGTH like every other
-// rendering of peer-derived text in this package, and the type is flat — it
-// retains no cause a chain walk could recover the unbounded original from.
-// RFC 6455 already caps a close reason at 123 bytes and the default transport
-// enforces it, so the truncation binds only on a transport that does not.
+// Error implements the error interface, and deliberately does NOT render
+// Reason.
+//
+// Reason is peer-supplied, and this error reaches Observer.Disconnected, which
+// hosts log. The cable server is precisely the party that knows the ticket — it
+// was dialed with it — so a server that echoes the URL it was dialed with, by
+// malice or by putting its own request line in a close reason, would put the
+// ticket in the host's logs. §23 declares the ticket an "opaque bearer
+// credential; never logged".
+//
+// This used to be bounded by §9's cap rather than withheld. Bounding is not
+// redaction: it limits how much of a credential escapes, not whether any does.
+// It is the same trap WebSocketTransport's dialFailure documents three review
+// rounds of, and the answer is the same — to strip a credential out of
+// arbitrary text you must MODEL it, and "opaque" forbids that.
+//
+// The code survives, and is the useful half: an integer is structurally
+// incapable of carrying a credential, and RFC 6455 close codes are what an
+// operator classifies on. Reason remains a FIELD, so a host that has decided
+// its cable server is trustworthy can read it deliberately — what changes is
+// that the connector no longer puts it in front of every logger by default.
 func (e *CloseError) Error() string {
-	if e.Reason != "" {
-		return truncateErrorText(fmt.Sprintf("cable connection closed by peer: code %d: %s", e.Code, e.Reason))
-	}
 	return fmt.Sprintf("cable connection closed by peer: code %d", e.Code)
 }
 

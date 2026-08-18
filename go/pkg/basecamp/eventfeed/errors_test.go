@@ -2,6 +2,7 @@ package eventfeed
 
 import (
 	"errors"
+	"strings"
 	"testing"
 )
 
@@ -127,13 +128,34 @@ func TestSeamErrors_UnwrapReachesTheCause(t *testing.T) {
 	}
 }
 
-func TestCloseError_Message(t *testing.T) {
-	withReason := &CloseError{Code: 1008, Reason: "policy violation"}
-	if got := withReason.Error(); got != "cable connection closed by peer: code 1008: policy violation" {
-		t.Errorf("Error() = %q", got)
+// TestCloseError_MessageWithholdsThePeerReason inverts what this test asserted.
+// It previously required Error() to RENDER Reason, bounded by §9's cap; that
+// pinned the wrong contract, so nothing short of inverting it is honest.
+//
+// Reason is peer-supplied and this error reaches Observer.Disconnected, which
+// hosts log. The cable server is precisely the party that knows the ticket — it
+// was dialed with it — so a server echoing the URL it was dialed with puts the
+// ticket in the host's logs, and §23 says the ticket is never logged. Bounding
+// limits how much of a credential escapes, not whether any does.
+func TestCloseError_MessageWithholdsThePeerReason(t *testing.T) {
+	const canary = "sekrit-ticket-value"
+	withReason := &CloseError{Code: 1008, Reason: "closing wss://x/cable?ticket=" + canary}
+	got := withReason.Error()
+	if got != "cable connection closed by peer: code 1008" {
+		t.Errorf("Error() = %q, want the code alone", got)
 	}
+	if strings.Contains(got, canary) || strings.Contains(got, "ticket=") {
+		t.Errorf("Error() echoed peer text: %q", got)
+	}
+	// The code survives: an integer cannot carry a credential, and RFC 6455
+	// close codes are what an operator classifies on.
 	bare := &CloseError{Code: 1006}
 	if got := bare.Error(); got != "cable connection closed by peer: code 1006" {
 		t.Errorf("Error() = %q", got)
+	}
+	// Reason remains a FIELD, so a host that has decided its server is
+	// trustworthy can read it deliberately.
+	if withReason.Reason == "" {
+		t.Error("Reason must remain readable on the struct")
 	}
 }
