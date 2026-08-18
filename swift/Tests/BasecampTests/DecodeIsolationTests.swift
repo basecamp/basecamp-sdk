@@ -178,8 +178,7 @@ final class DecodeIsolationTests: XCTestCase {
         let message = try await personProgressFailureMessage(
             #"{"person":{"id":45678,"name":"Victor Cooper"}}"#)
 
-        XCTAssertTrue(
-            message.contains("'events'"), "the absent member must be named, got: \(message)")
+        assertNamesTheMember(message, "events", saying: "is absent")
     }
 
     /// An absent `person` used to throw a raw `DecodingError.keyNotFound`.
@@ -201,8 +200,7 @@ final class DecodeIsolationTests: XCTestCase {
         let message = try await personProgressFailureMessage(
             #"{"person":{"id":45678,"name":"Victor Cooper"},"events":{}}"#)
 
-        XCTAssertTrue(
-            message.contains("'events'"), "the wrong-typed member must be named, got: \(message)")
+        assertNamesTheMember(message, "events", saying: "not an array")
     }
 
     /// A top-level array — valid JSON, wrong shape — used to succeed with an
@@ -212,6 +210,29 @@ final class DecodeIsolationTests: XCTestCase {
 
         XCTAssertTrue(
             message.contains("not a JSON object"), "expected the shape refusal, got: \(message)")
+    }
+
+    /// Asserts the message names the member and says what was wrong with it,
+    /// **without quoting the quotes around it**. The guards in `BaseService`
+    /// write `'events'`, but the message reaches here through
+    /// `String(describing: DecodingError)`, and that rendering is a toolchain
+    /// detail rather than a contract. Swift 6.4 has a `CustomStringConvertible`
+    /// for `DecodingError` and prints the `debugDescription` verbatim; the CI
+    /// toolchain falls back to reflecting the enum, which escapes the nested
+    /// string's apostrophes to `\'`. An assertion on `'events'` therefore passed
+    /// here and failed there while both SDKs behaved identically — a test
+    /// coupled to the renderer, not to the behaviour. The member name and the
+    /// complaint survive either rendering.
+    private func assertNamesTheMember(
+        _ message: String, _ member: String, saying complaint: String,
+        file: StaticString = #filePath, line: UInt = #line
+    ) {
+        XCTAssertTrue(
+            message.contains(member), "the member must be named, got: \(message)", file: file,
+            line: line)
+        XCTAssertTrue(
+            message.contains(complaint), "expected \"\(complaint)\", got: \(message)", file: file,
+            line: line)
     }
 
     /// Drives `GetPersonProgress` against `body` and asserts the SPEC §6
