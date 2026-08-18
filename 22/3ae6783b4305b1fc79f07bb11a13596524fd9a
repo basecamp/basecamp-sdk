@@ -1,0 +1,25 @@
+swift/Tests/BasecampTests/DecodeIsolationTests.swift
+  s_bcb193599a4870::t_825e3c527a473b 153-161
+  s_bcb193599a4870::t_2556eae98642a3 180-184
+  s_bcb193599a4870::t_9fe05bd13d27e9 238-243
+MIGRATING.md
+  s_bcb193599a4870::t_c99910912d9c39 301-313
+swift/Sources/Basecamp/Services/BaseService.swift
+  s_bcb193599a4870::t_0f1add95628cef 507-515
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "223ae6783b4305b1fc79f07bb11a13596524fd9a",
+  "prompts": {},
+  "sessions": {
+    "s_bcb193599a4870": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5ae90ec8-5ed7-4774-88d9-9d66550a5643",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
