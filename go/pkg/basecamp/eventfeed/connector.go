@@ -96,15 +96,18 @@ type config struct {
 	// input, two consumers: it is CheckpointKey.Origin, and it is the
 	// same-origin reference every continuation and resume URL is validated
 	// against before an authenticated follow.
-	origin               string
-	accountID            string
-	minter               TicketMinter
-	polls                PollSource
-	filters              Filters
-	start                Start
-	transport            CableTransport
-	clock                Clock
-	store                CheckpointStore
+	origin    string
+	accountID string
+	minter    TicketMinter
+	polls     PollSource
+	filters   Filters
+	start     Start
+	transport CableTransport
+	clock     Clock
+	store     CheckpointStore
+	// durable serializes the commencement of a checkpoint save against Close.
+	// Always non-nil after New; see durableGate.
+	durable              *durableGate
 	consumerNamespace    string
 	confirmationDeadline time.Duration
 	repairInterval       time.Duration
@@ -200,6 +203,60 @@ type Connector struct {
 	cancelRun context.CancelFunc
 }
 
+// durableGate serializes the COMMENCEMENT of a checkpoint save against Close.
+//
+// A save is the connector's only effect that outlives the process, and the
+// failure this prevents is sequential rather than adversarial: a consumer calls
+// Close, opens a second connector over the same checkpoint file, and a save the
+// first connector had not yet commenced lands afterwards — on top of a lineage
+// the new run has already loaded and may already have advanced.
+//
+// Cancellation alone cannot prevent it. A CheckpointStore is entitled to ignore
+// ctx, and the built-in FileCheckpointStore documents that it does, deliberately:
+// a position the connector already accepted must not be dropped because the
+// run's context was cancelled between acceptance and write-through. So the
+// cancelled context Close publishes is exactly the signal this store is
+// specified not to act on.
+//
+// It is a lock of its own, not the Connector's mu, because a save must not hold
+// mu across host store I/O — that would block every concurrent Close caller for
+// as long as the host's write takes, and mu's whole job is that Close's callers
+// are serialized cheaply.
+//
+// A save that has ALREADY commenced runs to completion and Close waits for it.
+// That is the intended trade: its position was accepted and delivered before
+// Close was called, and abandoning a durable write half-way is worse than
+// finishing it. The wait is bounded by one store write.
+type durableGate struct {
+	mu     sync.Mutex
+	closed bool
+}
+
+// begin claims the right to start one durable operation, reporting whether it
+// was granted. The caller MUST call end when it returns. The gate is held for
+// the whole operation, which is what makes the ordering against Close exact
+// rather than a check-then-act.
+func (g *durableGate) begin() bool {
+	g.mu.Lock()
+	if g.closed {
+		g.mu.Unlock()
+		return false
+	}
+	return true
+}
+
+// end releases the gate after a granted begin.
+func (g *durableGate) end() { g.mu.Unlock() }
+
+// close latches the gate, waiting for any operation already in flight. Called
+// by Close, on the caller's goroutine, so that no save can COMMENCE after
+// Close returns.
+func (g *durableGate) close() {
+	g.mu.Lock()
+	g.closed = true
+	g.mu.Unlock()
+}
+
 // testHooks are unexported in-package observation points for the tier-2/3
 // harnesses (rendezvous without wall-clock sleeps). Production code never
 // sets them.
@@ -287,6 +344,7 @@ func New(origin, accountID string, minter TicketMinter, polls PollSource, opts .
 	if cfg.clock == nil {
 		cfg.clock = SystemClock()
 	}
+	cfg.durable = &durableGate{}
 	if err := validateConfig(&cfg); err != nil {
 		return nil, err
 	}
@@ -443,12 +501,30 @@ func (c *Connector) Events(ctx context.Context) iter.Seq2[Event, error] {
 // itself. The iterator ends with no error element.
 //
 // Cancellation is SYNCHRONOUS with the return: an active run's context is
-// cancelled here, on the caller's goroutine, so no seam call (mint, dial,
-// poll) and no delivery can BEGIN after Close has returned. §23 makes
-// close() a universal edge from every non-absorbing state, and delegating the
-// cancel to an independently scheduled goroutine would leave the edge merely
-// eventual — a Close taken inside Observer.Connecting would return, and the
-// mint one statement later would still go out.
+// cancelled here, on the caller's goroutine, so the cancellation is visible
+// before Close returns, and any seam call (mint, dial, poll) or delivery that
+// begins afterwards begins on an ALREADY-CANCELLED context. §23 makes close()
+// a universal edge from every non-absorbing state, and delegating the cancel to
+// an independently scheduled goroutine would leave the edge merely eventual — a
+// Close taken inside Observer.Connecting would return, and the mint one
+// statement later would still go out.
+//
+// What that does NOT promise, and used to: that no seam call can BEGIN after
+// Close returns. Close is not the only goroutine involved. The run goroutine
+// checks its context at each dispatch point and then acts, so a Close landing
+// between one of those checks and the call it guards cannot stop the call from
+// starting — only from starting on a live context. Closing that window would
+// mean holding a lock across every seam call, i.e. across arbitrary host code,
+// which trades a benign race for a deadlock reachable from any callback.
+//
+// The distinction matters for exactly one effect, and that one is ordered:
+// a CHECKPOINT SAVE cannot commence after Close returns (durableGate). It is
+// the only thing the connector does that outlives the process, and the only one
+// where "began a moment late" is not self-limiting — a store may ignore the
+// cancelled context, and the built-in one documents that it does. Everything
+// else that can start in the window is a read whose context is already dead:
+// it returns promptly, its result is discarded, and the run takes the Closed
+// edge.
 //
 // What Close deliberately does NOT do is wait for the run goroutine to exit.
 // Close is callable from inside a consumer callback — an observer, a signal
@@ -468,11 +544,21 @@ func (c *Connector) Events(ctx context.Context) iter.Seq2[Event, error] {
 // triggers runs on its own goroutine, so it cannot re-enter Close.
 func (c *Connector) Close() error {
 	c.mu.Lock()
-	defer c.mu.Unlock()
 	c.isClosed = true
 	if c.cancelRun != nil {
 		c.cancelRun()
 		c.cancelRun = nil
 	}
+	c.mu.Unlock()
+	// After the cancel, and outside mu: latch the durable gate, waiting for at
+	// most one checkpoint save already in flight. This is the one effect that
+	// outlives the process, so it is the one whose COMMENCEMENT is ordered
+	// against Close rather than merely cancelled — a CheckpointStore may
+	// ignore ctx, and the built-in one documents that it does.
+	//
+	// Outside mu so a host store's write cannot hold up a concurrent Close
+	// caller's cheap serialization, and after the cancel so the cancellation is
+	// already visible while this waits.
+	c.cfg.durable.close()
 	return nil
 }
