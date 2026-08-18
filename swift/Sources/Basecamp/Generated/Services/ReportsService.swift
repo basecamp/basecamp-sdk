@@ -67,19 +67,20 @@ public final class ReportsService: BaseService, @unchecked Sendable {
         if let page = options?.page {
             queryItems.append(URLQueryItem(name: "page", value: String(page)))
         }
-        let (wrapperData, items): (Data, ListResult<TimelineEvent>) = try await requestPaginatedWrapped(
+        struct Wrapper: Decodable {
+            let person: Person
+        }
+        return try await requestPaginatedWrapped(
             OperationInfo(service: "Reports", operation: "GetPersonProgress", resourceType: "person_progress", isMutation: false, resourceId: personId),
             path: "/reports/users/progress/\(personId).json",
             itemsKey: "events",
             queryItems: queryItems.isEmpty ? nil : queryItems,
             paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems, page: $0.page) },
             retryConfig: Metadata.retryConfig(for: "GetPersonProgress")
-        )
-        struct Wrapper: Decodable {
-            let person: Person
+        ) { (wrapperData: Data, items: ListResult<TimelineEvent>) -> PersonProgressResult in
+            let wrapper = try Self.decoder.decode(Wrapper.self, from: wrapperData)
+            return PersonProgressResult(events: items, person: wrapper.person)
         }
-        let wrapper = try Self.decoder.decode(Wrapper.self, from: wrapperData)
-        return PersonProgressResult(events: items, person: wrapper.person)
     }
 
     public func progress(options: ProgressReportOptions? = nil) async throws -> ListResult<TimelineEvent> {

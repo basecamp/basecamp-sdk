@@ -231,15 +231,27 @@ open class BaseService: @unchecked Sendable {
     ///   - queryItems: Optional query parameters.
     ///   - paginationOpts: Optional pagination control.
     ///   - retryConfig: Optional per-operation retry configuration.
-    /// - Returns: A tuple of the first page's raw data and a `ListResult` of all items.
-    public func requestPaginatedWrapped<T: Decodable & Sendable>(
+    ///   - buildResult: Decodes the first page's remaining wrapper members and
+    ///     combines them with the accumulated items. It runs **inside this
+    ///     primitive's decode isolation**, which is why it is a parameter rather
+    ///     than the caller's next statement: for as long as this function handed
+    ///     back raw `Data`, the wrapper's other members were decoded by
+    ///     generated code after the primitive had returned, and a malformed one
+    ///     surfaced as a raw `DecodingError` instead of SPEC §6's statusless
+    ///     `api_error` (#728). Threading the closure makes the isolation
+    ///     structural — the wrapper body cannot be reached without passing
+    ///     through `decoding(_:_:)` — so a wrapped operation added later
+    ///     inherits the guarantee rather than having to remember it.
+    /// - Returns: Whatever `buildResult` returns.
+    public func requestPaginatedWrapped<T: Decodable & Sendable, R: Sendable>(
         _ info: OperationInfo,
         path: String,
         itemsKey: String,
         queryItems: [URLQueryItem]? = nil,
         paginationOpts: PaginationOptions? = nil,
-        retryConfig: RetryConfig? = nil
-    ) async throws -> (Data, ListResult<T>) {
+        retryConfig: RetryConfig? = nil,
+        buildResult: (Data, ListResult<T>) throws -> R
+    ) async throws -> R {
         let startTime = CFAbsoluteTimeGetCurrent()
 
         safeInvokeHooks { $0.onOperationStart(info) }
@@ -272,22 +284,25 @@ open class BaseService: @unchecked Sendable {
             let maxItems = paginationOpts?.maxItems
 
             if (paginationOpts?.page ?? 0) > 0 {
-                let durationMs = millisSince(startTime)
-                safeInvokeHooks { $0.onOperationEnd(info, result: OperationResult(durationMs: durationMs)) }
-                return (firstPageData, selectedPageResult(
-                    firstPageItems, response: response, totalCount: totalCount, maxItems: maxItems))
+                return try finishWrapped(
+                    info, startTime: startTime, wrapperData: firstPageData,
+                    items: selectedPageResult(
+                        firstPageItems, response: response, totalCount: totalCount,
+                        maxItems: maxItems),
+                    buildResult: buildResult)
             }
 
             // If maxItems is set and first page satisfies it, return early
             if let maxItems, maxItems > 0, firstPageItems.count >= maxItems {
                 let hasMore = firstPageItems.count > maxItems
                     || parseNextLink(response.value(forHTTPHeaderField: "Link")) != nil
-                let durationMs = millisSince(startTime)
-                safeInvokeHooks { $0.onOperationEnd(info, result: OperationResult(durationMs: durationMs)) }
-                return (firstPageData, ListResult(
-                    Array(firstPageItems.prefix(maxItems)),
-                    meta: ListMeta(totalCount: totalCount, truncated: hasMore)
-                ))
+                return try finishWrapped(
+                    info, startTime: startTime, wrapperData: firstPageData,
+                    items: ListResult(
+                        Array(firstPageItems.prefix(maxItems)),
+                        meta: ListMeta(totalCount: totalCount, truncated: hasMore)
+                    ),
+                    buildResult: buildResult)
             }
 
             // Follow pagination
@@ -300,14 +315,39 @@ open class BaseService: @unchecked Sendable {
                 maxItems: maxItems
             )
 
-            let durationMs = millisSince(startTime)
-            safeInvokeHooks { $0.onOperationEnd(info, result: OperationResult(durationMs: durationMs)) }
-            return (firstPageData, ListResult(allItems, meta: ListMeta(totalCount: totalCount, truncated: truncated)))
+            return try finishWrapped(
+                info, startTime: startTime, wrapperData: firstPageData,
+                items: ListResult(
+                    allItems, meta: ListMeta(totalCount: totalCount, truncated: truncated)),
+                buildResult: buildResult)
         } catch {
             let durationMs = millisSince(startTime)
             safeInvokeHooks { $0.onOperationEnd(info, result: OperationResult(durationMs: durationMs, error: error)) }
             throw error
         }
+    }
+
+    /// The single exit of `requestPaginatedWrapped`: decode the wrapper, then
+    /// report the operation as ended.
+    ///
+    /// Ordering is the reason this is a function rather than three repetitions.
+    /// The wrapper decode has to happen BEFORE `onOperationEnd` fires, or a
+    /// malformed wrapper would be reported to hooks as a success and then thrown
+    /// — which is exactly what happened while generated code did this decode
+    /// after the primitive had returned. Raising here instead leaves the throw
+    /// inside the caller's `do`, so the existing `catch` reports the operation as
+    /// failed, once, with the error.
+    private func finishWrapped<T: Decodable & Sendable, R: Sendable>(
+        _ info: OperationInfo,
+        startTime: CFAbsoluteTime,
+        wrapperData: Data,
+        items: ListResult<T>,
+        buildResult: (Data, ListResult<T>) throws -> R
+    ) throws -> R {
+        let result = try Self.decoding(info.operation) { try buildResult(wrapperData, items) }
+        let durationMs = millisSince(startTime)
+        safeInvokeHooks { $0.onOperationEnd(info, result: OperationResult(durationMs: durationMs)) }
+        return result
     }
 
     /// A pinned page is the whole answer (SPEC section 8): the caller gets
@@ -445,17 +485,56 @@ open class BaseService: @unchecked Sendable {
         return (allItems, hasMore)
     }
 
+    /// A wrapper member named at runtime, so a refusal below can report the key
+    /// it was looking for the way `Decodable` would have.
+    private struct WrapperKey: CodingKey {
+        let stringValue: String
+        var intValue: Int? { nil }
+        init(_ stringValue: String) { self.stringValue = stringValue }
+        init?(stringValue: String) { self.init(stringValue) }
+        init?(intValue: Int) { nil }
+    }
+
     /// Decodes items from a wrapped JSON response by extracting the array at the given key.
     ///
-    /// All three steps are the decode of this response and nothing else, so the
+    /// All four steps are the decode of this response and nothing else, so the
     /// whole body is the decode expression `decoding(_:_:)` isolates.
+    ///
+    /// **Every shape but the right one is refused**, and the two guards that say
+    /// so used to be `?? [:]` and `else { return [] }` — a non-object body and an
+    /// absent key both decoded to an empty list, so the SDK reported a
+    /// successful read of zero items for a response it had not understood, and
+    /// disagreed with Kotlin, which threw on the same body (#728). BC3 settles
+    /// which reading is right: the wrapped-pagination envelope is rendered by
+    /// `app/views/api/users/timelines/show.json.jbuilder`, two unconditional
+    /// `json.` lines, so an absent member is a malformed body and never an empty
+    /// result. `DecodingError` is the type the guards raise because it is what
+    /// `decoding(_:_:)` maps to SPEC §6's statusless `api_error` — the same
+    /// answer the typed decoder on the next line would give.
     private static func decodeWrappedItems<T: Decodable>(
         _ operation: String, data: Data, key: String
     ) throws -> [T] {
         try decoding(operation) {
-            let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] ?? [:]
-            guard let itemsArray = json[key] else {
-                return []
+            guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+                throw DecodingError.typeMismatch(
+                    [String: Any].self,
+                    DecodingError.Context(
+                        codingPath: [],
+                        debugDescription: "response wrapper is not a JSON object"))
+            }
+            guard let member = json[key] else {
+                throw DecodingError.keyNotFound(
+                    WrapperKey(key),
+                    DecodingError.Context(
+                        codingPath: [],
+                        debugDescription: "required member '\(key)' is absent from the response wrapper"))
+            }
+            guard let itemsArray = member as? [Any] else {
+                throw DecodingError.typeMismatch(
+                    [Any].self,
+                    DecodingError.Context(
+                        codingPath: [WrapperKey(key)],
+                        debugDescription: "member '\(key)' is not an array"))
             }
             let itemsData = try JSONSerialization.data(withJSONObject: itemsArray)
             return try decoder.decode([T].self, from: Self.normalizePersonIds(in: itemsData))

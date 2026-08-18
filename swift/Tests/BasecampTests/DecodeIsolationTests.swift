@@ -145,6 +145,108 @@ final class DecodeIsolationTests: XCTestCase {
         }
     }
 
+    // MARK: - The wrapped-pagination envelope, member by member (#728)
+
+    /// `GetPersonProgress` is the SDK's only wrapped-pagination operation, and
+    /// its envelope used to be half-decoded outside the primitive: `person` by
+    /// GENERATED code running after `requestPaginatedWrapped` returned, so a
+    /// missing or wrong-typed one threw a raw `DecodingError`. The `events` half
+    /// was worse than raw — `decodeWrappedItems` answered an absent key, and a
+    /// body that was not an object at all, with an EMPTY LIST and no error, so
+    /// the SDK reported a successful read of a response it had not understood
+    /// and disagreed with Kotlin, which threw on the same body.
+    ///
+    /// Absence is malformed, not empty, on BC3's authority:
+    /// `app/views/api/users/timelines/show.json.jbuilder` is two unconditional
+    /// `json.` lines — `person` and `events` — with no `if` between them, so
+    /// every member below is always on the wire.
+
+    /// The control: both members present, so the envelope decodes.
+    func testAWellFormedWrapperStillDecodes() async throws {
+        let account = makeTestAccountClient(
+            transport: transport(
+                body: #"{"person":{"id":45678,"name":"Victor Cooper"},"events":[]}"#))
+
+        let result = try await account.reports.personProgress(personId: 7)
+
+        XCTAssertEqual(result.person.id, 45678)
+        XCTAssertEqual(result.events.count, 0)
+    }
+
+    /// An absent `events` used to succeed with an empty list.
+    func testAnAbsentItemsKeyIsAStatuslessApiError() async throws {
+        let message = try await personProgressFailureMessage(
+            #"{"person":{"id":45678,"name":"Victor Cooper"}}"#)
+
+        XCTAssertTrue(
+            message.contains("'events'"), "the absent member must be named, got: \(message)")
+    }
+
+    /// An absent `person` used to throw a raw `DecodingError.keyNotFound`.
+    func testAnAbsentWrapperMemberIsAStatuslessApiError() async throws {
+        let message = try await personProgressFailureMessage(#"{"events":[]}"#)
+
+        XCTAssertTrue(
+            message.contains("person"), "the decoder's own account must survive: \(message)")
+    }
+
+    /// A wrong-typed `person` used to throw a raw `DecodingError.typeMismatch`.
+    func testAWrongTypedWrapperMemberIsAStatuslessApiError() async throws {
+        _ = try await personProgressFailureMessage(#"{"events":[],"person":42}"#)
+    }
+
+    /// A non-array `events` used to reach `JSONSerialization.data(withJSONObject:)`
+    /// with a value it cannot serialize at top level.
+    func testANonArrayItemsKeyIsAStatuslessApiError() async throws {
+        let message = try await personProgressFailureMessage(
+            #"{"person":{"id":45678,"name":"Victor Cooper"},"events":{}}"#)
+
+        XCTAssertTrue(
+            message.contains("'events'"), "the wrong-typed member must be named, got: \(message)")
+    }
+
+    /// A top-level array — valid JSON, wrong shape — used to succeed with an
+    /// empty list, because `as? [String: Any] ?? [:]` swallowed it.
+    func testANonObjectWrappedBodyIsAStatuslessApiError() async throws {
+        let message = try await personProgressFailureMessage(#"[{"id":1}]"#)
+
+        XCTAssertTrue(
+            message.contains("not a JSON object"), "expected the shape refusal, got: \(message)")
+    }
+
+    /// Drives `GetPersonProgress` against `body` and asserts the SPEC §6
+    /// statusless shape, returning the message so each case can pin what the
+    /// decoder said about its own member.
+    private func personProgressFailureMessage(
+        _ body: String, file: StaticString = #filePath, line: UInt = #line
+    ) async throws -> String {
+        let account = makeTestAccountClient(transport: transport(body: body))
+
+        do {
+            _ = try await account.reports.personProgress(personId: 7)
+            XCTFail("expected a malformed wrapper to fail", file: file, line: line)
+            return ""
+        } catch let error as BasecampError {
+            guard case .api(let message, let httpStatus, _, _, let decodeFailure) = error else {
+                XCTFail("expected .api, got \(error)", file: file, line: line)
+                return ""
+            }
+            XCTAssertNil(
+                httpStatus, "the transport succeeded, so no status describes this", file: file,
+                line: line)
+            XCTAssertFalse(
+                error.isRetryable, "re-requesting cannot repair a malformed body", file: file,
+                line: line)
+            XCTAssertNotNil(
+                decodeFailure, "the structural marker separates this from any other .api",
+                file: file, line: line)
+            XCTAssertTrue(
+                message.contains("GetPersonProgress returned a body that does not decode"), message,
+                file: file, line: line)
+            return message
+        }
+    }
+
     // MARK: - The marker: which statusless api_error is this?
 
     /// The two statusless `.api`s the SDK produces, told apart structurally
