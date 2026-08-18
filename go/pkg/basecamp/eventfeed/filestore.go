@@ -5,9 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 )
 
@@ -81,6 +83,17 @@ type FileCheckpointStore struct {
 // FileCheckpointStore fills the CheckpointStore seam.
 var _ CheckpointStore = (*FileCheckpointStore)(nil)
 
+// maxCheckpointStoreBytes bounds a single read of the store file.
+//
+// The file is one JSON object of {FlatKey: position}. A flat key is the four
+// identity strings — origin, account, consumer namespace, filter key — so a
+// generous entry is a few hundred bytes, and 8 MiB is room for tens of
+// thousands of lineages in one file. A store past that is not a store this
+// code wrote; refusing it is a bounded, reported failure
+// (Terminal(checkpoint_load) with zero wire attempts) instead of an
+// unbounded allocation on a path that runs before the first mint.
+const maxCheckpointStoreBytes = 8 << 20
+
 // NewFileCheckpointStore returns a store backed by the JSON file at path. The
 // file and its parent directories are created on the first successful Save;
 // constructing a store touches the filesystem not at all, so a path that does
@@ -117,16 +130,45 @@ var (
 // pathLock returns the lock serializing every store over path's canonical
 // spelling, creating it on first use.
 func pathLock(path string) *sync.RWMutex {
-	canonical := canonicalStorePath(path)
+	key := storeLockKey(path)
 
 	pathLocksMu.Lock()
 	defer pathLocksMu.Unlock()
-	lock, ok := pathLocks[canonical]
+	lock, ok := pathLocks[key]
 	if !ok {
 		lock = new(sync.RWMutex)
-		pathLocks[canonical] = lock
+		pathLocks[key] = lock
 	}
 	return lock
+}
+
+// storeLockKey is the lock-registry key for path: the canonical path, CASE
+// FOLDED. It is deliberately coarser than the path the store reads and writes
+// (#761).
+//
+// The registry's whole job is that one file takes one mutex. On a
+// case-insensitive filesystem — APFS as macOS ships it, and NTFS — "feed.json"
+// and "Feed.json" ARE one file, and keying the registry on the exact spelling
+// handed them two mutexes: two unserialized read-modify-write cycles over one
+// file, which is the lost update the registry exists to prevent, reachable by
+// nothing more exotic than two call sites disagreeing about capitalization.
+//
+// Folding unconditionally rather than detecting the filesystem is deliberate.
+// Detection would have to probe a directory that need not exist yet (the file
+// is created on the first Save) and would answer per-mount, so it is both
+// unreliable and far more machinery than the thing it saves. What folding
+// costs on a case-sensitive filesystem is that two genuinely distinct files
+// differing only in case share one mutex — they serialize with each other
+// instead of running concurrently. The two error directions are not
+// comparable: over-serializing costs a few microseconds on a local write that
+// is already serialized against itself, and under-serializing silently drops a
+// lineage's cursor.
+//
+// Case folding only. Unicode normalization is a real second axis on APFS, but
+// it is not what #761 reports and a half-applied normalization would read as a
+// guarantee this does not make.
+func storeLockKey(path string) string {
+	return strings.ToLower(canonicalStorePath(path))
 }
 
 // canonicalStorePath is a store file's lock identity: the cleaned absolute
@@ -244,12 +286,66 @@ func (s *FileCheckpointStore) Save(_ context.Context, key CheckpointKey, positio
 // Errors name the path and the parse failure only; the file's contents are
 // never echoed, since a corrupt store holds arbitrary bytes.
 func (s *FileCheckpointStore) read() (map[string]string, bool, error) {
-	data, err := os.ReadFile(s.path)
+	// Stat before opening, and reject anything that is not a regular file.
+	//
+	// os.ReadFile followed whatever the path named. A FIFO blocks the open
+	// until some writer appears, which hangs Load — and Load runs before the
+	// first mint, so the whole feed hangs with it, with no timeout to escape
+	// through (ctx is deliberately not honored here). A character device reads
+	// without end: /dev/zero fills memory until the process dies. Neither is a
+	// store this code can make sense of, so neither is worth following.
+	//
+	// Stat rather than Lstat, so a symlink to a regular file still works — an
+	// operator pointing the store through a symlink is ordinary — and stat
+	// never blocks, including on a FIFO, which is what lets the type be
+	// checked before an open that could hang.
+	//
+	// The failure this guards is a misconfiguration, not an adversary: a path
+	// aimed at /dev/null, a leftover FIFO, a device node. A live attacker
+	// swapping the path between this stat and the open below would need write
+	// access to the store's own 0700 directory, which is already enough to
+	// rewrite the checkpoint outright — a shorter path to the same damage. The
+	// fd-level re-check after the open is kept because it is nearly free, not
+	// because that race is the point.
+	info, err := os.Stat(s.path)
 	switch {
 	case errors.Is(err, fs.ErrNotExist):
 		return nil, false, nil
 	case err != nil:
 		return nil, false, fmt.Errorf("eventfeed: reading checkpoint store %s: %w", s.path, err)
+	}
+	if !info.Mode().IsRegular() {
+		return nil, false, fmt.Errorf(
+			"eventfeed: checkpoint store %s is not a regular file (mode %s); refusing to read it",
+			s.path, info.Mode().Type())
+	}
+
+	f, err := os.Open(s.path)
+	switch {
+	case errors.Is(err, fs.ErrNotExist):
+		return nil, false, nil
+	case err != nil:
+		return nil, false, fmt.Errorf("eventfeed: reading checkpoint store %s: %w", s.path, err)
+	}
+	defer f.Close() //nolint:errcheck // read-only; nothing to report on close
+
+	if fi, ferr := f.Stat(); ferr == nil && !fi.Mode().IsRegular() {
+		return nil, false, fmt.Errorf(
+			"eventfeed: checkpoint store %s is not a regular file (mode %s); refusing to read it",
+			s.path, fi.Mode().Type())
+	}
+
+	// Read one byte past the cap so an over-size file is detected from what
+	// was actually read, rather than trusted from the size stat reported —
+	// which is zero for several things that nonetheless produce bytes.
+	data, err := io.ReadAll(io.LimitReader(f, maxCheckpointStoreBytes+1))
+	if err != nil {
+		return nil, false, fmt.Errorf("eventfeed: reading checkpoint store %s: %w", s.path, err)
+	}
+	if int64(len(data)) > maxCheckpointStoreBytes {
+		return nil, false, fmt.Errorf(
+			"eventfeed: checkpoint store %s exceeds the %d-byte limit; refusing to read it",
+			s.path, maxCheckpointStoreBytes)
 	}
 
 	var entries map[string]string
