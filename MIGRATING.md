@@ -260,7 +260,7 @@ exception — indistinguishable from the auth strategy throwing or the socket
 dropping, and invisible to a caller catching the SDK's error type. Only the
 decode expression is wrapped now, in **every request primitive** — so every
 operation's response decode, not just the §18 composites that already did this by
-hand. The one exception is called out below.
+hand.
 
 | SDK | was | now |
 |---|---|---|
@@ -283,17 +283,24 @@ same `try`, and throws the same `SerializationException` type the decoder does.
 [`BasecampError.api` gained a fifth associated value](#basecamperrorapi-gained-a-fifth-associated-value-750)
 above. It ships in this same release, so there is one migration to do, not two.
 
-**One operation is exempt, and it is `GetPersonProgress`.** Its wrapper is
-decoded by generated code that runs *after* the request primitive returns — the
-`person` member in both SDKs, plus the `events` array, which the Kotlin
-generator reaches through `["events"]!!.jsonArray`. A wrong-shaped or incomplete
-wrapper therefore still surfaces a raw `DecodingError` (Swift) or a
-`NullPointerException`/`IllegalArgumentException` (Kotlin), and Swift's missing
-`events` is not refused at all — it decodes to an empty list. Nothing about that
-changed in this release; it is the one place the contract above does not yet
-reach, it needs both service generators plus a regeneration to fix, and it is
-tracked in #728. If you catch decoder exceptions anywhere, keep doing so
-around this operation.
+**`GetPersonProgress` is included, and for Swift that is a second change (#728).**
+Its wrapper used to be decoded by generated code running *after* the primitive
+returned, so the paragraphs above did not reach it: a wrong-shaped wrapper
+surfaced a raw `DecodingError` (Swift) or a `NullPointerException` /
+`IllegalArgumentException` (Kotlin). It reaches it now. But Swift also **stops
+answering an incomplete wrapper with an empty list**: an absent `events` key,
+and a top-level body that was not a JSON object at all, both used to decode to
+`events: []` with no error at all, which is a silent wrong answer rather than a
+changed error type. Both are the statusless `api_error` now, matching Kotlin,
+which always threw on the same bodies. BC3 settles which reading is right —
+`app/views/api/users/timelines/show.json.jbuilder` writes `person` and `events`
+unconditionally, so an absent one is a malformed body and never an empty result.
+
+**Only if you subclass `BaseService` directly:** `requestPaginatedWrapped` no
+longer hands back the first page's raw body for you to decode afterwards. It
+takes the wrapper decode as a trailing closure and returns whatever that closure
+returns, which is what puts the decode inside the mapping above. Generated
+services are its only callers in this repo.
 
 ### `SearchResult` lost five required members and gained the special-branch keys (#651)
 
