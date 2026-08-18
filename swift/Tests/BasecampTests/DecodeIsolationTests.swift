@@ -209,6 +209,24 @@ final class DecodeIsolationTests: XCTestCase {
         assertNamesTheMember(message, "events", saying: "not an array")
     }
 
+    /// The case `{}` above does **not** stand in for, and the one the type guard
+    /// genuinely exists for. A scalar at `events` is not a valid top-level JSON
+    /// object, so the old path reached
+    /// `JSONSerialization.data(withJSONObject:)` with a value it answers by
+    /// raising `NSInvalidArgumentException` — an Objective-C exception, which is
+    /// not a Swift error and which no `catch` in this SDK can see.
+    ///
+    /// So this test does not assert an error type so much as assert that the
+    /// process is still alive to report one: delete the guard and it does not
+    /// fail, it takes the test runner down with it. That is the whole reason it
+    /// is a separate case from the dictionary above.
+    func testAScalarItemsKeyIsRefusedRatherThanCrashing() async throws {
+        let message = try await personProgressFailureMessage(
+            #"{"person":{"id":45678,"name":"Victor Cooper"},"events":42}"#)
+
+        assertNamesTheMember(message, "events", saying: "not an array")
+    }
+
     /// A top-level array — valid JSON, wrong shape — used to succeed with an
     /// empty list, because `as? [String: Any] ?? [:]` swallowed it.
     func testANonObjectWrappedBodyIsAStatuslessApiError() async throws {

@@ -283,29 +283,50 @@ same `try`, and throws the same `SerializationException` type the decoder does.
 [`BasecampError.api` gained a fifth associated value](#basecamperrorapi-gained-a-fifth-associated-value-750)
 above. It ships in this same release, so there is one migration to do, not two.
 
-**`GetPersonProgress` is included, and for Swift that is a second change (#728).**
-Its wrapper used to be decoded by generated code running *after* the primitive
-returned, so the paragraphs above did not reach it: a wrong-shaped wrapper
-surfaced a raw `DecodingError` (Swift) or a `NullPointerException` /
-`IllegalArgumentException` (Kotlin). It reaches it now. But Swift also **stops
-answering an incomplete wrapper with an empty list**: an absent `events` key,
-and a top-level body that was not a JSON object at all, both used to decode to
-`events: []` with no error at all, which is a silent wrong answer rather than a
-changed error type. Both are the statusless `api_error` now, matching Kotlin,
-which always threw on the same bodies. BC3 settles which reading is right —
+**`GetPersonProgress` is included, and it failed two different ways (#728).**
+Keeping them apart matters, because only one is about the boundary the
+paragraphs above draw.
+
+- **Outside the boundary.** The wrapper's `person` member was decoded by
+  generated code running *after* the primitive returned, in both SDKs, so
+  nothing could have mapped it. A missing or wrong-typed one surfaced as a raw
+  `DecodingError` (Swift) or `SerializationException` (Kotlin).
+- **Inside it, but speaking the wrong exception.** The `events` array was always
+  parsed inside the mapping. Kotlin still leaked it, because the generated
+  accessor `["events"]!!.jsonArray` throws `NullPointerException` and
+  `IllegalArgumentException`, which the mapping catches neither of, on purpose —
+  catching them would swallow every `!!` and `require()` in the SDK.
+
+Both are the statusless `api_error` now. **Swift has a third change, and it is
+the sharpest:** it stops answering an incomplete wrapper with an empty list. An
+absent `events` key, and a top-level body that was not a JSON object at all,
+both used to decode to `events: []` with no error — a silent wrong answer, not a
+changed error type. BC3 settles which reading is right:
 `app/views/api/users/timelines/show.json.jbuilder` writes `person` and `events`
 unconditionally, so an absent one is a malformed body and never an empty result.
 
 **`GetPersonProgressResponseContent.person` and `.events` became required.** The
-model now says what the jbuilder does, so the four SDKs that never typed-decode
-this envelope stop describing always-present members as optional. Both lose
-their optionality: `person?`/`events?` → `person`/`events` in TypeScript's
-`schema.d.ts` and Python's `TypedDict`, `NotRequired` gone; Go's `Person *Person`
-→ `Person Person`; Swift's `var …?` with a zero-argument `init` →
-`let` with a two-argument one. Only the Swift and Go changes can fail to
-compile, and only where you constructed the type yourself — the SDKs' own
-`PersonProgress` surfaces are unchanged, Go's included, which still returns
-`*Person`.
+model now says what the jbuilder does. Kotlin and Swift already enforced it at
+runtime; the model is where the other four have to say it, because Go
+typed-decodes this envelope but `encoding/json` has no notion of a required
+member, and TypeScript, Ruby and Python do not typed-decode it at all.
+
+**Class B, and in more places than construction.** `person?`/`events?` →
+`person`/`events` in TypeScript's `schema.d.ts` and in Python's `TypedDict`
+(`NotRequired` gone); `Person *Person` → `Person Person` in Go; `var …?` with a
+zero-argument `init` → `let` with a two-argument one in Swift. What can stop
+compiling, or stop type-checking:
+
+| | breaks on |
+|---|---|
+| TypeScript | an object literal typed as this schema that omits either key |
+| Python | a `TypedDict` literal missing either key, under a type checker |
+| Go | `resp.JSON200.Person != nil`, `*resp.JSON200.Person`, or assigning a `*Person` |
+| Swift | `GetPersonProgressResponseContent()`, `if let`/`?.` on either member, or assigning after construction (they are `let` now) |
+| Ruby | nothing — its generated types carry no per-member optionality |
+
+The SDKs' own `PersonProgress` surfaces are unchanged, Go's included: it still
+returns `*Person`.
 
 **Only if you subclass `BaseService` directly:** `requestPaginatedWrapped` no
 longer hands back the first page's raw body for you to decode afterwards. It
