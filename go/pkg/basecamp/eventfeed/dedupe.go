@@ -29,12 +29,28 @@ func newDedupe(capacity int) *dedupe {
 	}
 }
 
-// Seen tests and records id in one step: a hit refreshes the id's recency
-// and returns true; a miss records it — evicting the least-recently-seen id
-// past capacity — and returns false.
+// Seen tests and records id in one step: a hit returns true and changes
+// nothing; a miss records it — evicting the least-recently-delivered id past
+// capacity — and returns false.
+//
+// A hit deliberately does NOT refresh recency. SPEC.md §23 "Dedupe" defines
+// the LRU as "actually-delivered event ids", recorded by "every delivery —
+// poll page, drain, or streaming — [which] checks the LRU before delivering
+// and records the delivered id". A hit is the case where the event is
+// SUPPRESSED, so it is not a delivery, and its recency is not a delivery's
+// recency.
+//
+// The difference is observable, and it fails in the unsafe direction.
+// Refreshing on a hit lets an id that is being suppressed over and over — the
+// poll lane re-serving what streaming already delivered, which §23 says to
+// expect continuously — sit at the front of the LRU forever, evicting ids that
+// were genuinely delivered once and never seen again. Those evicted ids are
+// then eligible for RE-DELIVERY the next time a poll re-serves them, which is
+// precisely the duplicate the LRU exists to suppress. Recording deliveries
+// only, and ageing everything else out, keeps the window a window over the
+// last `capacity` deliveries.
 func (d *dedupe) Seen(id int64) bool {
-	if el, ok := d.index[id]; ok {
-		d.order.MoveToFront(el)
+	if _, ok := d.index[id]; ok {
 		return true
 	}
 	d.index[id] = d.order.PushFront(id)
