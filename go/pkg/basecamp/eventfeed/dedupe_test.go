@@ -42,20 +42,36 @@ func TestDedupe_EvictsLeastRecentlySeenPastCapacity(t *testing.T) {
 	}
 }
 
-func TestDedupe_HitRefreshesRecency(t *testing.T) {
+// TestDedupe_HitDoesNotRefreshRecency pins the contract this test previously
+// asserted the negation of. SPEC.md §23 "Dedupe": the LRU holds
+// "actually-delivered event ids", and "every delivery — poll page, drain, or
+// streaming — checks the LRU before delivering and records the delivered id."
+// A hit is the SUPPRESSED case: no delivery happened, so nothing about the
+// delivery ordering changed.
+//
+// The old spelling was not a harmless difference. Refreshing on a hit pins an
+// id that is being suppressed repeatedly — §23 says to expect exactly that,
+// continuously, in both directions — at the front of the LRU, which evicts ids
+// delivered once and never seen again, and those become eligible for the
+// re-delivery the LRU exists to prevent.
+func TestDedupe_HitDoesNotRefreshRecency(t *testing.T) {
 	d := newDedupe(2)
 	d.Seen(1)
 	d.Seen(2)
-	// A hit on 1 makes 2 the least-recently-seen entry...
+	// A hit on 1 is a suppression, not a delivery: 1 stays the
+	// least-recently-DELIVERED entry.
 	if !d.Seen(1) {
 		t.Fatal("Seen(1) = false, want true")
 	}
-	// ...so recording 3 evicts 2, not 1.
+	// ...so recording 3 evicts 1, not 2.
 	d.Seen(3)
-	if !d.Seen(1) {
-		t.Error("Seen(1) = false, want true (refreshed, not evicted)")
+	// Order matters: Seen both tests AND records, so a probe that misses
+	// re-records the id and evicts something. Check the survivor first — its
+	// probe is a hit and changes nothing — then the evicted one.
+	if !d.Seen(2) {
+		t.Error("Seen(2) = false, want true (still within the last 2 deliveries)")
 	}
-	if d.Seen(2) {
-		t.Error("Seen(2) = true, want false (evicted)")
+	if d.Seen(1) {
+		t.Error("Seen(1) = true, want false (evicted: a hit is not a delivery)")
 	}
 }
