@@ -11,6 +11,7 @@ This generator:
 """
 from __future__ import annotations
 
+import ast
 import json
 import re
 import sys
@@ -905,6 +906,31 @@ def _await(is_async: bool) -> str:
     return "await " if is_async else ""
 
 
+# SENTINEL. The import package every generated service module lives in, and the
+# one string the stale-file sweep needs to survive unchanged between two runs.
+# The barrel this generator writes imports its siblings from here; the next run
+# reads those imports back out (`previously_emitted_modules`) to learn what the
+# last run emitted. So this is not merely a code path — it is the format of a
+# record written by one run and read by the next.
+#
+# Change it and the run that lands the change reads an unparseable-to-it barrel,
+# finds nothing, and sweeps nothing: any module the same change drops must be
+# removed by hand, once. That is the whole residual, and it is why the record is
+# a package path rather than a comment. Renaming this package rewrites the
+# imports of every generated module and of every consumer that imports a service
+# directly — it is not a thing that happens as a drive-by edit to a preamble,
+# which is exactly what the previous content-fingerprint predicate was.
+SERVICE_PACKAGE = "basecamp.generated.services"
+
+SERVICE_MODULE_MARKER = "# @generated from OpenAPI spec — do not edit manually"
+SERVICE_MODULE_BASE_IMPORT = f"from {SERVICE_PACKAGE}._base import BaseService"
+
+# The barrel's filename, named once because three things spell it: the writer,
+# the reader that recovers the previous run's roster from it, and `main`, which
+# has to count it as this run's output *before* it has been written.
+SERVICE_BARREL = "__init__.py"
+
+
 def generate_service_file(service: dict) -> str:
     """Generate complete Python file content for a service."""
     name = service["name"]
@@ -912,13 +938,13 @@ def generate_service_file(service: dict) -> str:
     async_class = f"Async{name}Service"
 
     lines = [
-        "# @generated from OpenAPI spec — do not edit manually",
+        SERVICE_MODULE_MARKER,
         "",
         "from __future__ import annotations",
         "",
         "from typing import Any",
         "",
-        "from basecamp.generated.services._base import BaseService",
+        SERVICE_MODULE_BASE_IMPORT,
         "from basecamp.generated.services._async_base import AsyncBaseService",
         "from basecamp._pagination import ListResult",
         "from basecamp.hooks import OperationInfo",
@@ -966,9 +992,18 @@ def service_filename(name: str) -> str:
 
 
 def generate_init_file(services: dict[str, dict]) -> str:
-    """Generate __init__.py with all service imports."""
+    """Generate __init__.py with all service imports.
+
+    Doubles as this generator's record of what it emitted: `remove_stale_files`
+    reads the *previous* run's barrel to learn which modules to sweep, so the
+    import statements below are read as well as written. Emitted from
+    `SERVICE_PACKAGE`, which is where that coupling is documented.
+
+    Written last, after the sweep, so that the record it replaces outlives every
+    deletion it authorises — see `main`.
+    """
     lines = [
-        "# @generated from OpenAPI spec — do not edit manually",
+        SERVICE_MODULE_MARKER,
         "",
     ]
 
@@ -981,7 +1016,7 @@ def generate_init_file(services: dict[str, dict]) -> str:
         imports.append((module, sync_class, async_class))
 
     for module, sync_cls, async_cls in imports:
-        lines.append(f"from basecamp.generated.services.{module} import {sync_cls}, {async_cls}")
+        lines.append(f"from {SERVICE_PACKAGE}.{module} import {sync_cls}, {async_cls}")
 
     all_names = []
     for _, sync_cls, async_cls in imports:
@@ -995,6 +1030,99 @@ def generate_init_file(services: dict[str, dict]) -> str:
     lines.append("")
 
     return "\n".join(lines)
+
+
+def previously_emitted_modules(output_dir: Path) -> set[str]:
+    """The service modules the barrel already on disk says the last run emitted.
+
+    `__init__.py` is this generator's own committed record of its own output:
+    every run rewrites it whole from the current mapping, importing exactly the
+    modules it just wrote. Read while the *previous* run's copy is still on disk,
+    it answers the only question the sweep has — which modules did we produce
+    last time — from a record we wrote, rather than by guessing from the contents
+    of files we find. `main` does not overwrite it until the sweep has finished,
+    so this read and every deletion it feeds happen against the same record.
+
+    That is the whole reason this replaced a content predicate. Recognising past
+    output by the text in its preamble couples deletion to strings that move: a
+    change that renames a service *and* touches the `@generated` line or the base
+    import in the same commit leaves the dropped module carrying the old preamble,
+    unrecognised, unswept, and unfixable by rerunning the generator. Names in a
+    barrel do not move when a preamble does.
+
+    It also removes the reason the content predicate needed a second clause. Point
+    `--output` at `.../generated` instead of `.../generated/services` and the
+    barrel there is the empty package marker: no imports, empty drop list, nothing
+    deleted, `types.py` untouched. The wrong-directory slip is answered by the
+    mechanism rather than by a guard bolted to it.
+
+    Read via `ast` rather than a regex so line wrapping, parenthesised imports and
+    import ordering are all beneath notice; only the package path itself is load
+    bearing, and `SERVICE_PACKAGE` carries that warning. A barrel that is missing,
+    unreadable or unparseable yields an empty set: this run sweeps nothing, which
+    is the direction to fail in when the alternative is unlinking on a guess.
+    """
+    barrel = output_dir / SERVICE_BARREL
+    try:
+        tree = ast.parse(barrel.read_text(encoding="utf-8"))
+    except (OSError, SyntaxError, ValueError):
+        return set()
+
+    prefix = f"{SERVICE_PACKAGE}."
+    modules = set()
+    for node in tree.body:
+        if isinstance(node, ast.ImportFrom) and node.level == 0 and node.module and node.module.startswith(prefix):
+            tail = node.module[len(prefix):]
+            if "." not in tail:
+                modules.add(tail)
+    return modules
+
+
+def remove_stale_files(output_dir: Path, previous_modules: set[str], emitted_files: list[str]) -> None:
+    """Delete modules this generator used to emit and no longer does.
+
+    Without this, removing or renaming a service in the mapping leaves the old
+    module on disk forever: `__init__.py` is rewritten whole and stops importing
+    it, but nothing deletes it, so `git status` has nothing to report and a CI
+    step that regenerates in place cannot see the corpse (#757).
+
+    The sweep set is exactly `previous_modules - this run's output`. Nothing is
+    inspected, nothing is pattern-matched, and no file this generator did not
+    record emitting is a candidate — a hand-written module in this directory is
+    safe because it was never in the barrel, not because it failed a test.
+
+    Called by `main` while the barrel that produced `previous_modules` is still
+    the one on disk, which is what makes a failed run retryable: this loop can
+    stop anywhere — an unlink that raises, a process killed between two of them —
+    and the record naming everything it had not got to yet is still intact, so
+    the next run nominates the remainder and finishes. Sweeping after the barrel
+    was replaced would destroy that record first, and a module left behind by an
+    interrupted sweep would never be nominated again by any run.
+
+    What that does not cover, stated plainly: a module the barrel never named is
+    never swept. Reachable two ways — a barrel hand-deleted or truncated between
+    runs, and a module dropped while this sweep was absent or broken (that is,
+    every corpse that predates the sweep). Both still need one manual `rm`. The
+    trade is deliberate: a drop list can only be too short, where a content
+    predicate can be wrong in the other direction, and this generator has already
+    demonstrated once what it costs to delete another generator's output.
+
+    `_base.py` and `_async_base.py` are hand-written infrastructure living under
+    `generated/` by exception (AGENTS.md Hard Rule 1), and they are the only files
+    here that a regeneration could not put back. The barrel does not import them,
+    so they are already outside the drop list; the `_` prefix check is kept anyway
+    because the drop list is read off disk, and the one irreversible loss in this
+    directory is worth not making contingent on a file's contents being intact.
+    """
+    emitted = {Path(name).stem for name in emitted_files}
+
+    for module in sorted(previous_modules - emitted):
+        if module.startswith("_"):
+            continue
+        stale = output_dir / f"{module}.py"
+        if stale.is_file():
+            stale.unlink()
+            print(f"Removed stale {stale.name}")
 
 
 def main() -> None:
@@ -1017,6 +1145,11 @@ def main() -> None:
     services = group_operations(spec)
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    # The barrel on disk right now is the last run's record of what it emitted,
+    # and this run replaces it. Read it first; nothing below writes it until the
+    # sweep has finished with it.
+    previous_modules = previously_emitted_modules(output_dir)
+
     total_ops = 0
     generated_files: list[str] = []
 
@@ -1030,11 +1163,38 @@ def main() -> None:
         generated_files.append(fname)
         print(f"Generated {fname} ({op_count} operations)")
 
-    # Generate __init__.py
-    init_code = generate_init_file(services)
-    init_path = output_dir / "__init__.py"
-    init_path.write_text(init_code, encoding="utf-8")
-    print(f"Generated __init__.py")
+    # This run's output in full, named at the point the sweep needs it rather
+    # than accumulated by the writes: the barrel is written last now, so a list
+    # that grew as a side effect of writing would be short by exactly the barrel
+    # at the moment the sweep subtracts it from the previous record. Naming it
+    # here says what `emitted_files` means, which appending it after the fact did
+    # not.
+    #
+    # It is belt and braces, and measured so rather than assumed: drop the barrel
+    # from this list and no case in the fixture moves. A barrel never imports
+    # itself, so `__init__` cannot be in `previous_modules`, and the `_` prefix
+    # guard in the sweep would decline it anyway. Both of those are properties of
+    # other code; this is the statement local to the sweep.
+    emitted_files = [*generated_files, SERVICE_BARREL]
+
+    # Sweep while the previous barrel is still on disk, and only then replace it.
+    # That record is the sole thing that can nominate a stale module, so it has
+    # to outlive the deletions it authorises: an interrupted run — a raising
+    # unlink, a killed process — then leaves the record intact and the next clean
+    # run finishes the job. Rewriting the barrel first would erase the record
+    # before the work it describes was done, and anything the interrupted sweep
+    # missed would be invisible to every later run and removable only by hand.
+    #
+    # The trade, stated rather than left to be discovered: between the first
+    # unlink and the barrel write the package on disk imports a module that is
+    # gone, so a run killed in that window leaves it unimportable. That is loud
+    # and one rerun away from fixed, where the ordering it replaces left a
+    # package that imported cleanly and was quietly wrong forever.
+    remove_stale_files(output_dir, previous_modules, emitted_files)
+
+    init_path = output_dir / SERVICE_BARREL
+    init_path.write_text(generate_init_file(services), encoding="utf-8")
+    print(f"Generated {SERVICE_BARREL}")
 
     print(f"\nGenerated {len(services)} services with {total_ops} operations total.")
 

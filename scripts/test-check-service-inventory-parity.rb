@@ -407,11 +407,14 @@ expect_fail(failures, "10. Go exposing both Timesheet and Timesheets", out, stat
 # --- 11. A stale Python module on disk, absent from the barrel -----------------
 #
 # The one source read from a barrel rather than a directory, and the reason why.
-# `python/scripts/generate_services.py` does not delete outputs the current
+# `python/scripts/generate_services.py` did not delete outputs the current
 # mapping stopped producing — unlike generate-services.ts:1736,
-# generate-services.rb:344 and Main.kt:65, which all do. So a mapping that DROPS
-# a Python service leaves `fanfares.py` on disk, and a directory listing counts
-# the corpse as still emitted.
+# generate-services.rb:344 and Main.kt:65, which all do — so a mapping that
+# DROPPED a Python service left `fanfares.py` on disk for a directory listing to
+# count as still emitted. It sweeps now (#757), which means this input describes
+# a state the generator no longer produces. The case is kept as the pin on the
+# barrel reading, which is retained as defence in depth against a regression in
+# that sweep: this gate is the one reader such a regression cannot fool.
 #
 # This case EXPECTS A PASS, which is the only shape that can pin the fix: the
 # stale module must not make Python look like it emits a service the other seven

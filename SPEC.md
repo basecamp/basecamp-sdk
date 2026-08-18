@@ -307,7 +307,7 @@ That roster is the canonical surface, not a per-SDK inventory. Accessor counts v
 
 ### Derivation Rule `[static]`
 
-The OpenAPI spec groups operations under coarse tags (e.g., `Automation`, `Todos`, `Files`). The service generators split those tags into the `53` fine-grained services above <!-- @service-count --> using a two-table mapping: `TAG_TO_SERVICE` (tag → default service name) and `SERVICE_SPLITS` (tag → {service → [operationIds]}). For example, the `Todos` tag splits into `Todos`, `Todolists`, `Todosets`, `TodolistGroups`, `HillCharts`; the `Files` tag splits into `Attachments`, `Uploads`, `Vaults`, `Documents`, `CloudFiles`, `GoogleDocuments`. Both examples are exhaustive on purpose: an abridged one is how `cloudFiles` and `googleDocuments` stayed invisible to this section for so long — a service that arrives through a split rather than a tag of its own is named nowhere a reader would look. These mappings are defined in each language's generator script. They are five hand-maintained copies of one table, and `make check-service-inventory-parity` compares what those copies **emitted** — the TypeScript, Ruby, Kotlin and Swift generated service directories, Python's generated `__init__.py` barrel, the two generated accessor files this section's roster is derived from, and Go's hand-written accessors — so identical service sets are enforced rather than merely expected. It reads what each generator already emitted rather than reimplementing the mappings, which is what keeps it from being a sixth copy — with Go the one exception, having no generated per-service files, so its hand-written accessors are compared against the others' generated output and carry the carve-outs noted below. (Python is read from its barrel because its generator, alone among the five, does not delete outputs a mapping stopped producing; the barrel is rewritten whole every run and so cannot name a service that is no longer emitted.) Each per-SDK `check-*-service-drift` script remains the freshness gate for its own SDK; none of them can see another SDK, which is the axis this one adds. Go's three divergences (it folds `automation` and `clientVisibility` into other services and spells `timesheets` singular) are stated as data in that gate and fail it if they ever stop applying; Appendix F records them.
+The OpenAPI spec groups operations under coarse tags (e.g., `Automation`, `Todos`, `Files`). The service generators split those tags into the `53` fine-grained services above <!-- @service-count --> using a two-table mapping: `TAG_TO_SERVICE` (tag → default service name) and `SERVICE_SPLITS` (tag → {service → [operationIds]}). For example, the `Todos` tag splits into `Todos`, `Todolists`, `Todosets`, `TodolistGroups`, `HillCharts`; the `Files` tag splits into `Attachments`, `Uploads`, `Vaults`, `Documents`, `CloudFiles`, `GoogleDocuments`. Both examples are exhaustive on purpose: an abridged one is how `cloudFiles` and `googleDocuments` stayed invisible to this section for so long — a service that arrives through a split rather than a tag of its own is named nowhere a reader would look. These mappings are defined in each language's generator script. They are five hand-maintained copies of one table, and `make check-service-inventory-parity` compares what those copies **emitted** — the TypeScript, Ruby, Kotlin and Swift generated service directories, Python's generated `__init__.py` barrel, the two generated accessor files this section's roster is derived from, and Go's hand-written accessors — so identical service sets are enforced rather than merely expected. It reads what each generator already emitted rather than reimplementing the mappings, which is what keeps it from being a sixth copy — with Go the one exception, having no generated per-service files, so its hand-written accessors are compared against the others' generated output and carry the carve-outs noted below. (Python is read from its barrel rather than its directory. That began as a workaround: its generator, alone among the five, did not delete outputs a mapping stopped producing, so a directory listing counted the corpse as still emitted. The generator sweeps now (#757), which fixes it at the source. That sweep reads this same barrel — it is the generator's own record of what it last emitted, and each run deletes `that record minus its own output`, inspecting no file's contents; the two readers share a source and remain independent, since a sweep that stops working leaves the barrel correct and the corpse invisible to a barrel reader exactly as before. The barrel reading is kept for that reason and because it names exactly the modules the mapping produced, excluding the two hand-written base files without a drop-list.) Each per-SDK `check-*-service-drift` script remains the freshness gate for its own SDK; none of them can see another SDK, which is the axis this one adds. Go's three divergences (it folds `automation` and `clientVisibility` into other services and spells `timesheets` singular) are stated as data in that gate and fail it if they ever stop applying; Appendix F records them.
 
 ### Merge-Safe Write Surface (Cards)
 
@@ -3647,28 +3647,32 @@ For ASCII text (all conformance test fixtures today), these are equivalent.
 Counts are of accessors actually wired onto the client, against §5's canonical
 roster. The Kotlin and Swift rows are marked, because §5's roster is derived from
 exactly those two files and a restatement of a gated value has to be gated too.
-Of the other four, Python's is held by its own accessor-inventory test, which
-derives the roster from `python/src/basecamp/generated/services/` and fails when
-an accessor is missing, and Go's is read by `make check-service-inventory-parity`
-— including the three carve-outs its row states, which that gate fails if they
-stop applying. Ruby's and TypeScript's client wiring is hand-verified and dated
-below; the parity gate reads their generated service directories, which is what
-each generator emitted rather than what the client exposes.
+Of the other four, Python's, Ruby's and TypeScript's are each held by that SDK's
+own accessor-roster test, which derives the roster from its generated services
+directory and fails both when an accessor is missing and when one outlives its
+service; Go's is read by `make check-service-inventory-parity` — including the
+three carve-outs its row states, which that gate fails if they stop applying.
+The parity gate reads the generated service directories, which is what each
+generator emitted rather than what the client exposes: reachability is the axis
+the per-SDK tests add, and it is per-SDK by nature, the thing checked being that
+SDK's own hand-written file.
 
 | SDK | Account-scoped services |
 |-----|------------------------|
 | Swift | `53` — full canonical set (`AccountClient+Services.swift`, generated; one of §5's two sources) <!-- @service-count --> |
 | Kotlin | `53` — full canonical set (`ServiceAccessors.kt`, generated; §5's other source). Six accessors expose handwritten composites that subclass their generated service — `cards`, `documents`, `schedules`, `todolists`, `todos`, `uploads`, per the generator's `HAND_WRITTEN_SERVICES` — and the rest are the generated classes directly. The accessor set is identical either way, which is why §5 derives from this file regardless <!-- @service-count --> |
-| Ruby | 53 — full canonical set |
-| TypeScript | 53 — full canonical set, on the flat client alongside `authorization` (no `AccountClient` tier; see Client Topology above) |
+| Ruby | 53 — full canonical set. Held by its own accessor-roster test (`ruby/test/basecamp/accessor_inventory_test.rb`, added in #755) deriving the roster from `lib/basecamp/generated/services/`, so the next unwired service fails rather than going unnoticed. The five hand-written composites are `prepend`ed onto their generated classes rather than subclassing them, so every accessor's class is the generated constant exactly. |
+| TypeScript | 53 — full canonical set, on the flat client alongside `authorization` (no `AccountClient` tier; see Client Topology above). Held by its own accessor-roster tests (`typescript/tests/accessor-inventory.test.ts` and `tests/types/accessor-inventory.test-d.ts`, added in #755) deriving the roster from `src/generated/services/`. Four hand-maintained renderings, so two instruments: the imports and `defineService` calls are resolved on a constructed client, the `index.ts` export blocks get their own assertion (a missing export is invisible at runtime to an in-repo importer and only bites a consumer), and the `BasecampClient` interface is asserted type-level, the factory returning `client as BasecampClient` so no runtime check can see it. Six accessors expose hand-written composites that subclass their generated service, which the class assertions allow for. |
 | Go | 51 accessors. Two services are folded rather than missing: `automation`'s sole operation is `LineupService.ListMarkers`, and `clientVisibility`'s is `RecordingsService.SetClientVisibility`. `timesheets` is spelled `Timesheet` (singular). Capability is 53/53; the surface is not. Hand-written service wrappers around the generated OpenAPI client — not fully generated. |
 | Python | 53 — full canonical set. `gauges` and `my_notifications` were a wiring gap rather than a fold, and were wired in #732; the same change added an accessor-inventory test (`python/tests/test_client.py`) deriving its roster from `generated/services/`, so the next unwired service fails rather than going unnoticed. Sync and async agree exactly. |
 
-Verified 2026-08-13 against the accessor declarations in each SDK's client
-(Go `AccountClient` methods, Ruby `Client#for_account` accessors, TS
-`defineService` calls). Python was re-verified 2026-08-16 when #732 wired the
-last two, and no longer relies on that date: its `_service` properties are
-checked against the generated package on every `make py-check`.
+No row rests on a dated hand-verification any more. The 2026-08-13 sweep of the
+accessor declarations (Go `AccountClient` methods, Ruby `Client#for_account`
+accessors, TS `defineService` calls) was the backstop for Ruby and TypeScript,
+and #755 retired it: both rosters are now re-derived from their generated
+directories on every `make rb-check` and `make ts-check`, as #732 did for Python
+on `make py-check`. A dated number is a constant that rots, and each of these
+six counts is now restated by something that recomputes it.
 
 ### Event Feed Connector Scenario Lane (§23)
 
