@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -482,19 +483,19 @@ func nonNilIDs(ids []int64) []int64 {
 //
 // The decode step's errors are not all decode errors, though: io.ReadAll runs
 // INSIDE the generated parse, so a body that never finished arriving lands here
-// too (#773). transportFailure in documents.go names that closed set and those
-// return verbatim — a deny-list of the transport, never an allow-list of the
-// decoder, for the reason written out in full at its definition.
+// too (#773). getEntryWithBody wraps the body in markBodyReadFailures
+// (documents.go) so those arrive tagged and return verbatim, rather than being
+// guessed at from the error's type — see bodyReadError for why guessing failed.
 //
 // The decoder's error is kept as Cause the way documentDecodeError keeps it
 // (#750): interpolating it into Message tells a human what happened and leaves
 // a caller nothing to switch on, where Unwrap puts *json.UnmarshalTypeError and
 // *json.SyntaxError back within reach of errors.As.
 func scheduleEntryDecodeError(err error) error {
-	// A body that never finished arriving is not a malformed body. Deny-list,
-	// never allow-list — transportFailure in documents.go explains why.
-	if transportFailure(err) {
-		return err
+	// A body that never finished arriving is not a malformed body. Unwrap the
+	// marker so the caller sees the transport's own error, not our plumbing.
+	if marked, ok := errors.AsType[*bodyReadError](err); ok {
+		return marked.err
 	}
 	return &Error{
 		Code:    CodeAPI,
@@ -805,8 +806,9 @@ func (s *SchedulesService) GetEntry(ctx context.Context, entryID int64) (*Schedu
 // matters: the body is STREAMED, so the transport is still running when
 // ParseGetScheduleEntryResponse calls io.ReadAll on it, and a truncated or reset
 // body surfaces from the parse rather than from the call above it (#773).
-// scheduleEntryDecodeError gates that closed set out before classifying. Same
-// split as DocumentsService.Get.
+// Wrapping the body marks those where they happen, so scheduleEntryDecodeError
+// can return them verbatim instead of guessing at them from the error's type
+// afterwards. Same split as DocumentsService.Get.
 func (s *SchedulesService) getEntryWithBody(ctx context.Context, entryID int64) (result *ScheduleEntry, body []byte, err error) {
 	op := OperationInfo{
 		Service: "Schedules", Operation: "GetEntry",
@@ -828,6 +830,7 @@ func (s *SchedulesService) getEntryWithBody(ctx context.Context, entryID int64) 
 	if err != nil {
 		return nil, nil, err
 	}
+	httpResp.Body = markBodyReadFailures(httpResp.Body)
 	resp, decodeErr := generated.ParseGetScheduleEntryResponse(httpResp)
 	if decodeErr != nil {
 		err = scheduleEntryDecodeError(decodeErr)

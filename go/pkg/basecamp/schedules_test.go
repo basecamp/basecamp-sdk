@@ -1613,31 +1613,20 @@ func TestSchedulesService_UpdateEntryKeepsTheDecoderErrorReachable(t *testing.T)
 // #773 at the second of the two sites. getEntryWithBody reads through
 // ParseGetScheduleEntryResponse, whose first statement is io.ReadAll, so a body
 // that never finished arriving reaches scheduleEntryDecodeError by the same path
-// a JSON fault does. Same three cases as
-// TestDocumentsService_GetSeparatesTransportFailuresFromDecodeFailures, and the
-// third is the one an allow-list of encoding/json sentinels would have broken.
+// a JSON fault does. Same four cases as
+// TestDocumentsService_GetSeparatesTransportFailuresFromDecodeFailures, whose
+// comment carries the argument: 3 and 4 fail in opposite directions and rule out
+// inferring the origin from the error's type in either direction.
 func TestSchedulesService_GetEntrySeparatesTransportFailuresFromDecodeFailures(t *testing.T) {
 	// 1. Truncated mid-body: a transient failure, not a malformed record.
 	t.Run("a body that stops mid-read stays the transport's error", func(t *testing.T) {
-		srv, puts := truncatedBodyServer(t)
-		cfg := DefaultConfig()
-		cfg.BaseURL = srv.URL
-		client := NewClient(cfg, &StaticTokenProvider{Token: "test-token"})
+		ac, puts := brokenBodyClient(t, truncatedResponse)
 
-		_, err := client.ForAccount("99999").Schedules().UpdateEntry(context.Background(), 1069479400,
+		_, err := ac.Schedules().UpdateEntry(context.Background(), 1069479400,
 			&UpdateScheduleEntryRequest{Summary: strPtr("Q3 Kickoff")})
-		if err == nil {
-			t.Fatal("expected the call to fail, but it succeeded")
-		}
+		assertUnclassifiedReadFailure(t, err, puts)
 		if !errors.Is(err, io.ErrUnexpectedEOF) {
 			t.Fatalf("expected the read failure to reach the caller as itself, got %T: %v", err, err)
-		}
-		if apiErr, ok := errors.AsType[*Error](err); ok {
-			t.Fatalf("expected the transport error verbatim, got a %q *Error (retryable=%v): %v",
-				apiErr.Code, apiErr.Retryable, err)
-		}
-		if n := puts.Load(); n != 0 {
-			t.Fatalf("expected no write-back after a failed read, got %d PUT(s)", n)
 		}
 	})
 
@@ -1679,6 +1668,18 @@ func TestSchedulesService_GetEntrySeparatesTransportFailuresFromDecodeFailures(t
 		}
 		assertStatuslessScheduleEntryAPIError(t, err)
 		assertNoPUT(t, reqs)
+	})
+
+	// 4. A read failure with no type to match on — corrupt chunk framing. The
+	// mirror of case 3, and the case a deny-list of transport types drops.
+	// Raised by Copilot on PR #779.
+	t.Run("a read failure with no matchable type stays the transport's error", func(t *testing.T) {
+		ac, puts := brokenBodyClient(t, chunkedGarbageResponse)
+
+		_, err := ac.Schedules().UpdateEntry(context.Background(), 1069479400,
+			&UpdateScheduleEntryRequest{Summary: strPtr("Q3 Kickoff")})
+		assertUnclassifiedReadFailure(t, err, puts)
+		assertOutsideEveryTransportDenyList(t, err)
 	})
 }
 

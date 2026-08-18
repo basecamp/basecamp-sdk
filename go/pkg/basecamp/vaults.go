@@ -503,14 +503,16 @@ func (s *DocumentsService) Get(ctx context.Context, documentID int64) (result *D
 	// The split is by origin, not by position in the exchange: the body is
 	// STREAMED, so the transport is still running when ParseGetDocumentResponse
 	// calls io.ReadAll on it, and a truncated or reset body surfaces from the
-	// parse rather than from the call above it (#773). documentDecodeError gates
-	// that closed set out before classifying.
+	// parse rather than from the call above it (#773). Wrapping the body marks
+	// those where they happen, so documentDecodeError can return them verbatim
+	// instead of guessing at them from the error's type afterwards.
 	//nolint:bodyclose // ParseGetDocumentResponse below closes the body (it defers
 	// rsp.Body.Close()), and it is called unconditionally on the next line.
 	httpResp, err := s.client.parent.gen.GetDocument(ctx, s.client.accountID, documentID)
 	if err != nil {
 		return nil, err
 	}
+	httpResp.Body = markBodyReadFailures(httpResp.Body)
 	resp, decodeErr := generated.ParseGetDocumentResponse(httpResp)
 	if decodeErr != nil {
 		err = documentDecodeError(decodeErr)

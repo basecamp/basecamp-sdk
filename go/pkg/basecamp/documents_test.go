@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"sync/atomic"
@@ -740,19 +741,40 @@ func TestDocumentsService_UpdateKeepsTheDecoderErrorReachable(t *testing.T) {
 	}
 }
 
-// truncatedBodyServer answers every request with a 200 whose Content-Length
-// promises 4096 bytes and then writes a few dozen before hanging up. It also
-// counts the PUTs it saw, so a caller can prove no write-back followed.
+// A 200 whose Content-Length promises 4096 bytes and then stops after thirty:
+// the wire shape of a connection dropped mid-body. net/http's transfer.go turns
+// an early EOF on a Content-Length body into io.ErrUnexpectedEOF.
+const truncatedResponse = "HTTP/1.1 200 OK\r\n" +
+	"Content-Type: application/json\r\n" +
+	"Content-Length: 4096\r\n" +
+	"\r\n" +
+	`{"id":1069479300,"title":"Q3 P`
+
+// A 200 whose chunked framing is corrupt. net/http reports that as a bare
+// errors.New("invalid byte in chunk length") — no named type, not a net.Error,
+// not io.ErrUnexpectedEOF, and so invisible to any deny-list of transport error
+// TYPES. It shares that property with the transport's automatic gunzip
+// (gzip.ErrHeader) and with anything a WithTransport-supplied body chooses to
+// return, which is why the origin is marked at the read rather than inferred
+// from the error afterwards.
+const chunkedGarbageResponse = "HTTP/1.1 200 OK\r\n" +
+	"Content-Type: application/json\r\n" +
+	"Transfer-Encoding: chunked\r\n" +
+	"\r\n" +
+	"zz\r\n"
+
+// brokenBodyServer answers every request by hijacking the connection, writing
+// raw verbatim, and hanging up. It also counts the PUTs it saw, so a caller can
+// prove no write-back followed a failed read.
 //
-// That is the wire shape of a connection dropped mid-body, and net/http reports
-// it to io.ReadAll as io.ErrUnexpectedEOF (transfer.go turns an early EOF on a
-// Content-Length body into exactly that). Hijacking is the only way to stage it:
-// a normal handler's ResponseWriter derives Content-Length from what was
-// actually written, so it cannot be made to contradict itself.
+// Hijacking is the only way to stage a body that fails mid-read: a normal
+// handler's ResponseWriter derives Content-Length from what was actually
+// written and re-frames chunked output itself, so it cannot be made to
+// contradict itself.
 //
 // Shared with schedules_test.go — the two composites read through the same two
 // generated Parse* functions, and #773 is a property of both.
-func truncatedBodyServer(t *testing.T) (*httptest.Server, *atomic.Int64) {
+func brokenBodyServer(t *testing.T, raw string) (*httptest.Server, *atomic.Int64) {
 	t.Helper()
 	puts := &atomic.Int64{}
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -761,7 +783,7 @@ func truncatedBodyServer(t *testing.T) (*httptest.Server, *atomic.Int64) {
 		}
 		hj, ok := w.(http.Hijacker)
 		if !ok {
-			t.Error("the test server does not support hijacking, so a mid-body truncation cannot be staged")
+			t.Error("the test server does not support hijacking, so a mid-body failure cannot be staged")
 			return
 		}
 		conn, buf, err := hj.Hijack()
@@ -770,54 +792,73 @@ func truncatedBodyServer(t *testing.T) (*httptest.Server, *atomic.Int64) {
 			return
 		}
 		defer conn.Close()
-		_, _ = buf.WriteString("HTTP/1.1 200 OK\r\n" +
-			"Content-Type: application/json\r\n" +
-			"Content-Length: 4096\r\n" +
-			"\r\n" +
-			`{"id":1069479300,"title":"Q3 P`)
+		_, _ = buf.WriteString(raw)
 		_ = buf.Flush()
 	}))
 	t.Cleanup(srv.Close)
 	return srv, puts
 }
 
+// brokenBodyClient points a client at a brokenBodyServer serving raw.
+func brokenBodyClient(t *testing.T, raw string) (*AccountClient, *atomic.Int64) {
+	t.Helper()
+	srv, puts := brokenBodyServer(t, raw)
+	cfg := DefaultConfig()
+	cfg.BaseURL = srv.URL
+	return NewClient(cfg, &StaticTokenProvider{Token: "test-token"}).ForAccount("99999"), puts
+}
+
+// assertUnclassifiedReadFailure pins what a failed body read owes the caller: it
+// reaches them as itself, and it is NOT the statusless non-retryable api_error
+// that a malformed body gets. Nothing wrote back afterwards, either — a read
+// that failed cannot be merge-safely echoed.
+func assertUnclassifiedReadFailure(t *testing.T, err error, puts *atomic.Int64) {
+	t.Helper()
+	if err == nil {
+		t.Fatal("expected the call to fail, but it succeeded")
+	}
+	if apiErr, ok := errors.AsType[*Error](err); ok {
+		t.Fatalf("expected the read failure verbatim, got a %q *Error (retryable=%v): %v",
+			apiErr.Code, apiErr.Retryable, err)
+	}
+	if n := puts.Load(); n != 0 {
+		t.Fatalf("expected no write-back after a failed read, got %d PUT(s)", n)
+	}
+}
+
 // #773: the document read's decode step sees three different failures and only
 // two of them are the decoder's, because io.ReadAll runs INSIDE
 // ParseGetDocumentResponse. All three arrive at documentDecodeError by the same
 // path, so the gate is what tells them apart — and the three cases here are one
-// test rather than three so that a later "simplification" has to look at all of
+// test rather than four so that a later "simplification" has to look at all of
 // them at once.
 //
-// The third case is the load-bearing one. The obvious fix for #773 — allow-list
-// *json.SyntaxError and *json.UnmarshalTypeError, return everything else
-// verbatim — passes the first two and silently breaks the third, because
-// created_at is a time.Time and time.Time.UnmarshalJSON returns *time.ParseError,
-// which is not an encoding/json type at all.
+// Cases 3 and 4 are the load-bearing pair, and they fail in opposite directions:
+//
+//   - An ALLOW-LIST of the decoder (*json.SyntaxError, *json.UnmarshalTypeError,
+//     everything else verbatim) breaks case 3, because created_at is a time.Time
+//     and time.Time.UnmarshalJSON returns *time.ParseError, which is not an
+//     encoding/json type at all.
+//   - A DENY-LIST of the transport (io.ErrUnexpectedEOF, net.Error, the context
+//     sentinels — classify everything else) breaks case 4, because net/http
+//     reports corrupt chunk framing as a bare errors.New with no type to match.
+//
+// Both were tried on this branch. Neither survives both cases, because both
+// INFER the origin from the error's type, and neither error set is closed
+// enough to infer from. Marking the origin at the read is what passes all four.
 func TestDocumentsService_GetSeparatesTransportFailuresFromDecodeFailures(t *testing.T) {
 	// 1. The body never finished arriving. There is nothing malformed about it —
 	// re-requesting is exactly the right move — so the read error has to survive
 	// as itself rather than becoming a statusless, permanently non-retryable
 	// api_error.
 	t.Run("a body that stops mid-read stays the transport's error", func(t *testing.T) {
-		srv, puts := truncatedBodyServer(t)
-		cfg := DefaultConfig()
-		cfg.BaseURL = srv.URL
-		client := NewClient(cfg, &StaticTokenProvider{Token: "test-token"})
+		ac, puts := brokenBodyClient(t, truncatedResponse)
 
-		_, err := client.ForAccount("99999").Documents().Update(context.Background(), 1069479300,
+		_, err := ac.Documents().Update(context.Background(), 1069479300,
 			&UpdateDocumentRequest{Title: "Q3 Plan"})
-		if err == nil {
-			t.Fatal("expected the call to fail, but it succeeded")
-		}
+		assertUnclassifiedReadFailure(t, err, puts)
 		if !errors.Is(err, io.ErrUnexpectedEOF) {
 			t.Fatalf("expected the read failure to reach the caller as itself, got %T: %v", err, err)
-		}
-		if apiErr, ok := errors.AsType[*Error](err); ok {
-			t.Fatalf("expected the transport error verbatim, got a %q *Error (retryable=%v): %v",
-				apiErr.Code, apiErr.Retryable, err)
-		}
-		if n := puts.Load(); n != 0 {
-			t.Fatalf("expected no write-back after a failed read, got %d PUT(s)", n)
 		}
 	})
 
@@ -865,6 +906,37 @@ func TestDocumentsService_GetSeparatesTransportFailuresFromDecodeFailures(t *tes
 		}
 		assertStatuslessDocumentAPIError(t, err)
 	})
+
+	// 4. A read failure with no type to match on: corrupt chunk framing, which
+	// net/http reports as a bare errors.New. It is the mirror of case 3 — where
+	// an allow-list of decoder types drops a decode failure, a deny-list of
+	// transport types drops THIS, and stamps a transient failure permanently
+	// non-retryable exactly as #773 described. Raised by Copilot on PR #779.
+	t.Run("a read failure with no matchable type stays the transport's error", func(t *testing.T) {
+		ac, puts := brokenBodyClient(t, chunkedGarbageResponse)
+
+		_, err := ac.Documents().Update(context.Background(), 1069479300,
+			&UpdateDocumentRequest{Title: "Q3 Plan"})
+		assertUnclassifiedReadFailure(t, err, puts)
+		assertOutsideEveryTransportDenyList(t, err)
+	})
+}
+
+// assertOutsideEveryTransportDenyList pins this case's PREMISE: the framing
+// error carries none of the marks a type-based gate could have recognised. If
+// net/http ever gives it a named type or makes it a net.Error, this case
+// silently stops being the thing it was added to prove and has to be restaged.
+func assertOutsideEveryTransportDenyList(t *testing.T, err error) {
+	t.Helper()
+	if errors.Is(err, io.ErrUnexpectedEOF) {
+		t.Error("this case only proves anything while the framing error is NOT io.ErrUnexpectedEOF")
+	}
+	if _, ok := errors.AsType[net.Error](err); ok {
+		t.Error("this case only proves anything while the framing error is NOT a net.Error")
+	}
+	if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+		t.Error("this case only proves anything while the framing error is NOT a context sentinel")
+	}
 }
 
 // assertStatuslessDocumentAPIError pins the SPEC §6 shape the merge-safe

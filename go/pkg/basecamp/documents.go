@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net"
 	"strings"
 	"time"
 
@@ -130,58 +129,56 @@ func (f *DocumentFields) fullBody() (generated.ReplaceDocumentJSONRequestBody, e
 	}, nil
 }
 
-// transportFailure reports whether err is the response body failing to ARRIVE
-// rather than failing to DECODE. It is the gate both decode-error renderers —
-// documentDecodeError below and scheduleEntryDecodeError in schedules.go — run
-// before they classify anything.
+// bodyReadError marks an error as the response body failing to ARRIVE rather
+// than failing to DECODE.
 //
-// It has to exist because Go streams the response body: io.ReadAll(rsp.Body) is
-// the FIRST statement of every generated Parse* function and its error is
-// returned verbatim, so a truncated body, a reset connection or an expired
-// deadline reaches those renderers by exactly the same path a JSON syntax error
-// does. Before #773 both were stamped CodeAPI, statusless, Retryable: false — a
-// caller reading Retryable treated a transient failure as permanent, and a
-// caller reaching for a JSON error through errors.As found a transport error.
+// The two are indistinguishable at the two call sites that parse a response by
+// hand, because io.ReadAll(rsp.Body) is the FIRST statement of every generated
+// Parse* function and its error comes back verbatim. So a truncated body, a
+// reset connection or a bad chunk header reached documentDecodeError and
+// scheduleEntryDecodeError by exactly the same path a JSON fault does, and got
+// the same statusless CodeAPI with Retryable: false — a transient failure made
+// to look permanent (#773).
 //
-// This is a DENY-LIST of the transport, and it must never be inverted into an
-// ALLOW-LIST of the decoder. The asymmetry is the whole reason:
+// Inferring the origin from the error afterwards was tried and abandoned: there
+// is no error set to match on. net/http reports bad chunk framing as a bare
+// errors.New("invalid byte in chunk length"), the transport's automatic gunzip
+// returns gzip.ErrHeader, and WithTransport lets a caller supply a body whose
+// Read returns anything at all — none of them a net.Error, none of them a named
+// type. Marking the read is what the call sites' doc comments already claim
+// happens ("the origin is known by construction rather than guessed"), so the
+// marker makes that true instead of approximating it.
+type bodyReadError struct{ err error }
+
+func (e *bodyReadError) Error() string { return e.err.Error() }
+func (e *bodyReadError) Unwrap() error { return e.err }
+
+// markedBody tags every read failure of the body it wraps.
+type markedBody struct{ inner io.ReadCloser }
+
+// Read forwards to the wrapped body and marks anything it fails with.
 //
-//   - The transport's error set is CLOSED. It is the standard library's, and
-//     nothing this SDK models can extend it: io.ErrUnexpectedEOF for a body
-//     that stopped early, net.Error for resets, DNS, TLS and timeouts, and the
-//     two context sentinels.
-//   - The decoder's error set is OPEN, and grows with the model graph. The
-//     renderers' own doc comments name two members no encoding/json allow-list
-//     can reach: created_at/updated_at are time.Time, whose UnmarshalJSON
-//     returns *time.ParseError, and content_attachments /
-//     description_attachments carry *types.FlexInt dimensions rejected with a
-//     plain fmt.Errorf that has no named type at all.
-//
-// So the two mistakes are not the same size. A deny-list that misses a
-// transport case degrades to the pre-#773 behaviour for that ONE case. An
-// allow-list that misses a decoder case degrades for EVERY field type nobody
-// enumerated — silently, the day that type is added, and for the two that exist
-// today. Do not "simplify" this into errors.AsType[*json.SyntaxError] /
-// [*json.UnmarshalTypeError]: that is the shape #773 was originally filed with,
-// and it is the wrong one.
-//
-// The two sets are disjoint, which is what makes a deny-list safe to run first.
-// The one sentinel that could plausibly appear on both sides is
-// io.ErrUnexpectedEOF, and it cannot: the generated parse decodes with
-// json.Unmarshal over an already-read []byte, never a streaming json.Decoder, so
-// JSON that stops early is *json.SyntaxError ("unexpected end of JSON input")
-// and only the read itself yields io.ErrUnexpectedEOF. Both halves of that are
-// pinned by the "malformed body" case in the tests.
-func transportFailure(err error) bool {
-	switch {
-	case errors.Is(err, io.ErrUnexpectedEOF),
-		errors.Is(err, context.DeadlineExceeded),
-		errors.Is(err, context.Canceled):
-		return true
-	default:
-		_, isNetError := errors.AsType[net.Error](err)
-		return isNetError
+// io.EOF alone passes through untouched, and the comparison is deliberately
+// against that exact value rather than errors.Is: io.ReadAll ends its loop on
+// `err == io.EOF` and treats every other value as a failure, so matching its
+// test exactly is what guarantees the marker covers precisely the errors
+// io.ReadAll will hand back — including a wrapped EOF, which io.ReadAll would
+// surface as an error too.
+func (b *markedBody) Read(p []byte) (int, error) {
+	n, err := b.inner.Read(p)
+	if err != nil && err != io.EOF { //nolint:errorlint // matching io.ReadAll's own exact test, deliberately
+		err = &bodyReadError{err: err}
 	}
+	return n, err
+}
+
+func (b *markedBody) Close() error { return b.inner.Close() }
+
+// markBodyReadFailures wraps a response body so the two decode-error renderers
+// can tell a failed read from a failed decode by construction. Call it on
+// httpResp.Body before handing the response to a generated Parse* function.
+func markBodyReadFailures(body io.ReadCloser) io.ReadCloser {
+	return &markedBody{inner: body}
 }
 
 // documentDecodeError renders a response-decoder failure in the SPEC §6 shape.
@@ -202,11 +199,10 @@ func transportFailure(err error) bool {
 // splits the request from the decode and calls this on the decode step only,
 // where the origin is known by construction rather than guessed.
 //
-// Exactly one inspection survives that argument, because the split is not as
-// clean as it reads: io.ReadAll runs INSIDE the generated parse, so the decode
-// step's errors are not all decode errors (#773). transportFailure above names
-// the closed set that is not, and those pass through verbatim; everything else
-// gets the §6 shape below.
+// The split needs one piece of help, because it is not as clean as it reads:
+// io.ReadAll runs INSIDE the generated parse, so the decode step's errors are
+// not all decode errors (#773). markBodyReadFailures above tags the ones that
+// are not, at the read, and those pass through verbatim.
 //
 // The decoder's error is kept as Cause, not just interpolated into Message
 // (#750). Every SDK renders it into the message; only the ones that keep it let
@@ -215,10 +211,10 @@ func transportFailure(err error) bool {
 // at all reaches *json.UnmarshalTypeError or *json.SyntaxError through Unwrap
 // instead of pattern-matching a sentence.
 func documentDecodeError(err error) error {
-	// A body that never finished arriving is not a malformed body. Deny-list,
-	// never allow-list — transportFailure explains why.
-	if transportFailure(err) {
-		return err
+	// A body that never finished arriving is not a malformed body. Unwrap the
+	// marker so the caller sees the transport's own error, not our plumbing.
+	if marked, ok := errors.AsType[*bodyReadError](err); ok {
+		return marked.err
 	}
 	return &Error{
 		Code:    CodeAPI,
