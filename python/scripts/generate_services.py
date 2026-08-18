@@ -905,6 +905,18 @@ def _await(is_async: bool) -> str:
     return "await " if is_async else ""
 
 
+# The two lines `remove_stale_files` recognizes a generated service module by.
+# Named once and emitted from here, so the predicate can only ever check text
+# this generator actually writes; `main` re-checks each module it emits against
+# the predicate, so a preamble change cannot silently turn the sweep into a no-op.
+SERVICE_MODULE_MARKER = "# @generated from OpenAPI spec — do not edit manually"
+SERVICE_MODULE_BASE_IMPORT = "from basecamp.generated.services._base import BaseService"
+
+# Enough of the head to hold the preamble both markers live in, with room for it
+# to grow. Characters, not bytes — see `remove_stale_files`.
+SERVICE_MODULE_HEAD_CHARS = 1024
+
+
 def generate_service_file(service: dict) -> str:
     """Generate complete Python file content for a service."""
     name = service["name"]
@@ -912,13 +924,13 @@ def generate_service_file(service: dict) -> str:
     async_class = f"Async{name}Service"
 
     lines = [
-        "# @generated from OpenAPI spec — do not edit manually",
+        SERVICE_MODULE_MARKER,
         "",
         "from __future__ import annotations",
         "",
         "from typing import Any",
         "",
-        "from basecamp.generated.services._base import BaseService",
+        SERVICE_MODULE_BASE_IMPORT,
         "from basecamp.generated.services._async_base import AsyncBaseService",
         "from basecamp._pagination import ListResult",
         "from basecamp.hooks import OperationInfo",
@@ -997,6 +1009,23 @@ def generate_init_file(services: dict[str, dict]) -> str:
     return "\n".join(lines)
 
 
+def is_generated_service_module(head: str) -> bool:
+    """Whether a file's head is one this generator emitted for a service.
+
+    Both halves are required, and the second is the one Ruby gets for free.
+    `ruby/scripts/generate-services.rb` narrows its glob to `*_service.rb`,
+    which cannot match `types.rb` or `metadata.json` no matter what marker they
+    carry. Python's service modules are plain `<snake>.py`, indistinguishable by
+    name from `types.py` — which the types generator emits one directory up with
+    the *identical* `@generated` marker line. Marker-only, this predicate deletes
+    it when handed `--output .../generated` instead of `.../generated/services`,
+    which is a plausible slip: the flag exists, one caller already passes it, and
+    the default is spelled out in full beside it. Requiring the service base
+    import restores the shape restriction Ruby's suffix gives it.
+    """
+    return SERVICE_MODULE_MARKER in head and SERVICE_MODULE_BASE_IMPORT in head
+
+
 def remove_stale_files(output_dir: Path, generated_files: list[str]) -> None:
     """Delete modules this generator used to emit and no longer does.
 
@@ -1005,13 +1034,14 @@ def remove_stale_files(output_dir: Path, generated_files: list[str]) -> None:
     it, but nothing deletes it, so `git status` has nothing to report and a CI
     step that regenerates in place cannot see the corpse (#757).
 
-    Three stacked guards, copied from `ruby/scripts/generate-services.rb`:
+    Three stacked guards, the shape of `ruby/scripts/generate-services.rb`'s:
 
-    1. the glob is restricted to the shape this generator emits — top-level
-       `*.py` in the output directory, no recursion;
+    1. the candidate must look like a file this generator emitted for a service —
+       top-level `*.py`, no recursion, and `is_generated_service_module` over its
+       head;
     2. anything written by this run is skipped;
-    3. the file must carry the `@generated` marker this generator writes on
-       line 1 before it is eligible for deletion.
+    3. and therefore only a module carrying the `@generated` marker is ever
+       unlinked.
 
     `_base.py` and `_async_base.py` are hand-written infrastructure living under
     `generated/` by exception (AGENTS.md Hard Rule 1). They are excluded twice
@@ -1019,10 +1049,10 @@ def remove_stale_files(output_dir: Path, generated_files: list[str]) -> None:
     suffices — the prefix rule states the intent, the marker rule survives a
     future hand-written file that is not underscore-prefixed.
 
-    The head read is bounded at 256 *characters* on a text handle with the
-    encoding pinned to UTF-8. Both halves matter: the marker contains an
-    em-dash, so a byte-bounded read could split it, and an unpinned handle
-    decodes as ASCII under `LC_ALL=C` and raises on it.
+    The head read is bounded in *characters* on a text handle with the encoding
+    pinned to UTF-8. Both halves matter: the marker contains an em-dash, so a
+    byte-bounded read could split it, and an unpinned handle decodes as ASCII
+    under `LC_ALL=C` and raises on it.
     """
     emitted = set(generated_files)
 
@@ -1030,8 +1060,8 @@ def remove_stale_files(output_dir: Path, generated_files: list[str]) -> None:
         if existing.name in emitted or existing.name.startswith("_"):
             continue
         with open(existing, encoding="utf-8") as f:
-            head = f.read(256)
-        if "@generated" not in head:
+            head = f.read(SERVICE_MODULE_HEAD_CHARS)
+        if not is_generated_service_module(head):
             continue
 
         existing.unlink()
@@ -1064,6 +1094,16 @@ def main() -> None:
     for name, service in sorted(services.items()):
         code = generate_service_file(service)
         fname = service_filename(name)
+        # The sweep recognizes its own past output by content, so a preamble
+        # change that stopped matching would silently turn it into a no-op.
+        # Checked against this run's output rather than trusted.
+        if not is_generated_service_module(code[:SERVICE_MODULE_HEAD_CHARS]):
+            print(
+                f"Error: emitted {fname} does not match the marker the stale-file sweep "
+                f"looks for; update SERVICE_MODULE_MARKER / SERVICE_MODULE_BASE_IMPORT",
+                file=sys.stderr,
+            )
+            sys.exit(1)
         filepath = output_dir / fname
         filepath.write_text(code, encoding="utf-8")
         op_count = len(service["operations"])
