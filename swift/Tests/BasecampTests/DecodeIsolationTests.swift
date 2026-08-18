@@ -43,7 +43,7 @@ final class DecodeIsolationTests: XCTestCase {
             _ = try await account.projects.get(projectId: 1)
             XCTFail("expected a malformed body to fail")
         } catch let error as BasecampError {
-            guard case .api(let message, let httpStatus, _, _) = error else {
+            guard case .api(let message, let httpStatus, _, _, _) = error else {
                 return XCTFail("expected .api for a malformed body, got \(error)")
             }
             XCTAssertNil(httpStatus, "the transport succeeded, so no status describes this")
@@ -68,7 +68,7 @@ final class DecodeIsolationTests: XCTestCase {
             _ = try await account.projects.list()
             XCTFail("expected a malformed page to fail")
         } catch let error as BasecampError {
-            guard case .api(let message, let httpStatus, _, _) = error else {
+            guard case .api(let message, let httpStatus, _, _, _) = error else {
                 return XCTFail("expected .api, got \(error)")
             }
             XCTAssertNil(httpStatus)
@@ -112,7 +112,7 @@ final class DecodeIsolationTests: XCTestCase {
             _ = try await account.projects.list()
             XCTFail("expected the malformed second page to fail")
         } catch let error as BasecampError {
-            guard case .api(_, let httpStatus, _, _) = error else {
+            guard case .api(_, let httpStatus, _, _, _) = error else {
                 return XCTFail("expected .api, got \(error)")
             }
             XCTAssertEqual(pages.count, 2, "the second page must actually have been fetched")
@@ -133,7 +133,7 @@ final class DecodeIsolationTests: XCTestCase {
             _ = try await account.reports.personProgress(personId: 7)
             XCTFail("expected a body that is not JSON to fail")
         } catch let error as BasecampError {
-            guard case .api(let message, let httpStatus, _, _) = error else {
+            guard case .api(let message, let httpStatus, _, _, _) = error else {
                 return XCTFail("expected .api, got \(error)")
             }
             XCTAssertNil(httpStatus)
@@ -143,6 +143,101 @@ final class DecodeIsolationTests: XCTestCase {
         } catch {
             XCTFail("expected BasecampError, got a raw \(type(of: error)): \(error)")
         }
+    }
+
+    // MARK: - The marker: which statusless api_error is this?
+
+    /// The two statusless `.api`s the SDK produces, told apart structurally
+    /// (#750).
+    ///
+    /// This is one test and not two on purpose: the question is not "does a
+    /// decode failure carry the marker" but "does the marker SEPARATE the two
+    /// shapes", and the pagination same-origin refusal is the other one. Both
+    /// carry a nil `httpStatus` and both are `.api`, so before the marker the
+    /// only thing distinguishing them was a phrase inside the message — read
+    /// back through a `@_spi(Conformance)` substring test whose contract was
+    /// therefore the wording of a sentence.
+    func testTheMarkerSeparatesADecodeFailureFromThePaginationRefusal() async throws {
+        // Shape 1: a body the model refuses.
+        let decodeAccount = makeTestAccountClient(transport: transport(body: "{}"))
+        var decodeError: BasecampError?
+        do {
+            _ = try await decodeAccount.projects.get(projectId: 1)
+            XCTFail("expected a malformed body to fail")
+        } catch let error as BasecampError {
+            decodeError = error
+        }
+
+        // Shape 2: a Link header pointing off-origin. A deliberate guard, not a
+        // bad body — and `security.json` asserts on this refusal, so mislabelling
+        // it as a fixture-repair job would lose the assertion.
+        let page1 = Data("[]".utf8)
+        let refusalTransport = MockTransport { request in
+            (
+                page1,
+                makeHTTPResponse(
+                    url: request.url!.absoluteString, statusCode: 200,
+                    headers: [
+                        "Content-Type": "application/json",
+                        "Link": "<https://evil.example.com/steal?page=2>; rel=\"next\"",
+                    ])
+            )
+        }
+        let refusalAccount = makeTestAccountClient(transport: refusalTransport)
+        var refusalError: BasecampError?
+        do {
+            _ = try await refusalAccount.projects.list()
+            XCTFail("expected the off-origin Link header to be refused")
+        } catch let error as BasecampError {
+            refusalError = error
+        }
+
+        // Both are statusless `.api`, which is what makes the message the only
+        // thing that used to separate them.
+        XCTAssertNil(decodeError?.httpStatusCode)
+        XCTAssertNil(refusalError?.httpStatusCode)
+
+        // The marker separates them, and no substring is consulted to do it.
+        XCTAssertTrue(
+            decodeError?.decodeFailure is DecodingError,
+            "the decoder's own refusal must be the marker's value, got: "
+                + String(describing: decodeError?.decodeFailure))
+        XCTAssertNil(
+            refusalError?.decodeFailure,
+            "a deliberate guard is not a malformed body")
+    }
+
+    /// A body that is not JSON at all is refused by `JSONSerialization` on the
+    /// wrapped-list path, which reports a `CocoaError` rather than a
+    /// `DecodingError`. The marker carries whichever one refused, so a caller
+    /// telling those apart matches the concrete type instead of a message.
+    func testTheMarkerCarriesACocoaErrorForABodyThatIsNotJSON() async throws {
+        let account = makeTestAccountClient(transport: transport(body: "not json at all"))
+
+        do {
+            _ = try await account.reports.personProgress(personId: 7)
+            XCTFail("expected a body that is not JSON to fail")
+        } catch let error as BasecampError {
+            XCTAssertNotNil(error.decodeFailure, "this is still a malformed body")
+            XCTAssertFalse(
+                error.decodeFailure is DecodingError,
+                "JSONSerialization refused it, so the marker is not a DecodingError")
+        }
+    }
+
+    /// `decodeFailure` is nil for every error shape that is not `.api`, the way
+    /// `fieldErrors` is nil for everything that is not `.validation`. The
+    /// property is what callers are steered to read, so its behaviour off the
+    /// case it belongs to is part of the contract.
+    func testTheMarkerIsNilForEveryOtherErrorShape() {
+        XCTAssertNil(BasecampError.usage(message: "bad argument", hint: nil).decodeFailure)
+        XCTAssertNil(
+            BasecampError.network(message: "socket dropped", cause: nil).decodeFailure)
+        XCTAssertNil(
+            BasecampError.validation(
+                message: "invalid", httpStatus: 422, hint: nil, requestId: nil,
+                fieldErrors: ["title": ["is required"]]
+            ).decodeFailure)
     }
 
     // MARK: - Negative: everything else in the block keeps its own identity

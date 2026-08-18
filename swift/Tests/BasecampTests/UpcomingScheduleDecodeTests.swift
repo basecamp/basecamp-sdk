@@ -139,7 +139,8 @@ final class UpcomingScheduleDecodeTests: XCTestCase {
         } catch let error as BasecampError {
             // Since #604 the decoder's refusal wears the SPEC §6
             // malformed-2xx-body shape; the `DecodingError`'s own description
-            // rides in the message, which is where `.api` can carry it.
+            // rides in the message, and since #750 the exception itself rides in
+            // `decodeFailure`.
             let message = assertStatuslessDecodeFailure(error)
             XCTAssertTrue(message.contains("keyNotFound"), message)
             XCTAssertTrue(message.contains("assignables"), message)

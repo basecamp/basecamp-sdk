@@ -354,7 +354,7 @@ open class BaseService: @unchecked Sendable {
             guard isSameOrigin(nextURL, initialURL) else {
                 throw BasecampError.api(
                     message: "Pagination Link header points to different origin: \(nextURL)",
-                    httpStatus: nil, hint: nil, requestId: nil
+                    httpStatus: nil, hint: nil, requestId: nil, decodeFailure: nil
                 )
             }
 
@@ -412,7 +412,7 @@ open class BaseService: @unchecked Sendable {
             guard isSameOrigin(nextURL, initialURL) else {
                 throw BasecampError.api(
                     message: "Pagination Link header points to different origin: \(nextURL)",
-                    httpStatus: nil, hint: nil, requestId: nil
+                    httpStatus: nil, hint: nil, requestId: nil, decodeFailure: nil
                 )
             }
 
@@ -470,10 +470,11 @@ open class BaseService: @unchecked Sendable {
     /// Statusless because the request succeeded, so no HTTP status describes the
     /// failure; non-retryable because re-requesting cannot repair a malformed
     /// body (`isRetryable` reads `false` off the nil status). The underlying
-    /// error's own account of what was wrong is interpolated into the message,
-    /// which is where `BasecampError.api` can carry it: unlike `.network`, that
-    /// case has no `cause` slot, and adding one would break every `switch` over
-    /// it. This matches what the §18 composites already did by hand.
+    /// error goes in two places: interpolated into the message, for a human
+    /// reading a log, and structurally into ``BasecampError/decodeFailure``, for
+    /// code that has to tell this failure from any other statusless `.api`
+    /// (#750). This is the one producer of that slot besides the §18 composites'
+    /// restatement of the same failure.
     ///
     /// **Wrap the decode expression, never the block.** Each primitive above
     /// runs encode → URL build → auth → transport → status check → decode inside
@@ -498,43 +499,25 @@ open class BaseService: @unchecked Sendable {
         }
     }
 
-    /// The phrase that identifies a malformed-body error, since `.api` carries
-    /// no `cause` to identify one structurally and statuslessness alone will not
-    /// do it: the pagination same-origin guard above throws a statusless `.api`
-    /// too. Written once, read back by ``malformedBodyMessage(_:)``.
-    private static let malformedBodyPhrase = "returned a body that does not decode"
-
     /// The one place a decode failure is rendered.
-    private static func malformedBody(_ operation: String, _ error: any Error) -> BasecampError {
+    ///
+    /// The message still says "returned a body that does not decode", but that
+    /// wording is no longer a contract: it used to be read back by a
+    /// `malformedBodyMessage(_:)` substring test that the composites and the
+    /// conformance runner asked "is this a malformed body?", so rewording it
+    /// moved the answer and a caller composing their own `.api` around the
+    /// phrase forged one. The answer is ``BasecampError/decodeFailure`` now
+    /// (#750), which is also what Kotlin's `BasecampException.Api.decodeFailure`
+    /// has answered since #730.
+    private static func malformedBody(_ operation: String, _ error: any Error & Sendable) -> BasecampError {
         .api(
             message: BasecampError.truncate(
-                "\(operation) \(malformedBodyPhrase): \(error)"),
+                "\(operation) returned a body that does not decode: \(error)"),
             httpStatus: nil,
             hint: nil,
-            requestId: nil
+            requestId: nil,
+            decodeFailure: error
         )
-    }
-
-    /// The message of a malformed-body error, or nil for any other
-    /// ``BasecampError`` — including the *other* statusless `.api`, the
-    /// pagination same-origin refusal, which is a deliberate guard rather than a
-    /// bad body.
-    ///
-    /// The composites ask this to add their own hint to that failure and only
-    /// that one. The conformance runner asks it to decide whether a fixture body
-    /// needs repairing (its #555 policy), and reaches it through
-    /// `@_spi(Conformance) import Basecamp`: it links the SDK as a product, and
-    /// the alternative — a second copy of ``malformedBodyPhrase`` in the runner —
-    /// is a constant nothing checks, which is what this SPI exists to avoid. SPI
-    /// rather than `public` because the answer is only meaningful to a caller
-    /// that already knows how this SDK renders the failure.
-    @_spi(Conformance) public static func malformedBodyMessage(_ error: BasecampError) -> String? {
-        guard case .api(let message, let httpStatus, _, _) = error, httpStatus == nil,
-            message.contains(malformedBodyPhrase)
-        else {
-            return nil
-        }
-        return message
     }
 
     // MARK: - Shared Coders

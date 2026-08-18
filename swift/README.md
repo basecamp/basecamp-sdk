@@ -354,7 +354,7 @@ do {
         }
     case .network(let message, _):
         print("Network error: \(message)")
-    case .api(let message, let status, _, _):
+    case .api(let message, let status, _, _, _):
         print("API error (\(status ?? 0)): \(message)")
     case .validation(let message, _, _, _, let fieldErrors):
         print("Validation: \(message)")
@@ -373,6 +373,15 @@ do {
     // Common properties available on all cases
     print("Hint: \(error.hint ?? "none")")
     print("Retryable: \(error.isRetryable)")
+
+    // A 2xx body this SDK could not decode. Set on that refusal and on the
+    // merge-safe composites' restatement of it, nil on everything else —
+    // including the other statusless `.api`, the pagination same-origin guard.
+    // Prefer this property over matching the case: it does not move when a case
+    // gains another associated value.
+    if let decodeFailure = error.decodeFailure {
+        print("Basecamp sent a body this SDK could not decode: \(decodeFailure)")
+    }
 
     // CLI exit codes (matches Go/TS/Ruby SDKs)
     Foundation.exit(Int32(error.exitCode))

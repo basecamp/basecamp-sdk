@@ -141,7 +141,7 @@ final class DocumentsServiceExtensionsTests: XCTestCase {
                 documentId: 42, req: UpdateDocumentRequest(content: "<p>New body.</p>"))
             XCTFail("expected the call to fail, but it succeeded")
         } catch let error as BasecampError {
-            guard case .api(_, let httpStatus, let hint, _) = error else {
+            guard case .api(_, let httpStatus, let hint, _, _) = error else {
                 return XCTFail("expected .api, got \(error)")
             }
             XCTAssertNil(httpStatus, "a malformed 2xx body carries no status")
@@ -151,6 +151,78 @@ final class DocumentsServiceExtensionsTests: XCTestCase {
         XCTAssertEqual(log.methods, ["GET"], "the guard must fire before the PUT")
     }
 
+    /// The composite restates the base layer's decode failure with its own
+    /// escape hatch, and the restatement is still that decode failure: it
+    /// carries `decodeFailure` forward (#750).
+    ///
+    /// Dropping it would say "this was not a malformed body after all" to
+    /// everything downstream — the conformance runner included, where the answer
+    /// decides between "repair the fixture body" and "hand this to the
+    /// assertions". Read through the property, not by matching the case, which is
+    /// what the migration entry steers callers to do.
+    ///
+    /// The blank-title refusal above is the control: it is a hand-written guard
+    /// on a body that decoded fine, so its marker is nil.
+    func testUpdate_restatementKeepsTheDecodeFailureMarker() async throws {
+        let log = DocumentRequestLog()
+        var wrongType = fullDocumentJSON()
+        wrongType["title"] = 42
+        let wrongTypeData = try JSONSerialization.data(withJSONObject: wrongType)
+        let transport = MockTransport { request in
+            log.record(request)
+            return (
+                wrongTypeData,
+                makeHTTPResponse(
+                    url: request.url!.absoluteString,
+                    statusCode: 200,
+                    headers: ["Content-Type": "application/json"]
+                )
+            )
+        }
+        let account = makeTestAccountClient(transport: transport)
+
+        do {
+            _ = try await account.documents.update(
+                documentId: 42, req: UpdateDocumentRequest(content: "<p>New body.</p>"))
+            XCTFail("expected the call to fail, but it succeeded")
+        } catch let error as BasecampError {
+            XCTAssertNotNil(
+                error.decodeFailure,
+                "the composite's restatement must keep the marker")
+            XCTAssertNotNil(error.hint, "and must add its own escape hatch")
+        }
+
+        XCTAssertEqual(log.methods, ["GET"], "the guard must fire before the PUT")
+    }
+
+    func testUpdate_blankTitleRefusalCarriesNoDecodeFailureMarker() async throws {
+        let log = DocumentRequestLog()
+        var blank = fullDocumentJSON()
+        blank["title"] = "   "
+        let blankData = try JSONSerialization.data(withJSONObject: blank)
+        let transport = MockTransport { request in
+            log.record(request)
+            return (
+                blankData,
+                makeHTTPResponse(
+                    url: request.url!.absoluteString,
+                    statusCode: 200,
+                    headers: ["Content-Type": "application/json"]
+                )
+            )
+        }
+        let account = makeTestAccountClient(transport: transport)
+
+        do {
+            _ = try await account.documents.update(
+                documentId: 42, req: UpdateDocumentRequest(content: "<p>New body.</p>"))
+            XCTFail("expected the call to fail, but it succeeded")
+        } catch let error as BasecampError {
+            XCTAssertNil(
+                error.decodeFailure,
+                "a hand-written guard on a body that decoded is not a decode failure")
+        }
+    }
 
     func testUpdate_mergesUnsetFields() async throws {
         let log = DocumentRequestLog()

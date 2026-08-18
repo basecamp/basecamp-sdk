@@ -355,7 +355,7 @@ final class PaginationTests: XCTestCase {
             let _: ListResult<Project> = try await account.projects.list()
             XCTFail("Expected SSRF error for different-origin Link header")
         } catch let error as BasecampError {
-            if case .api(let message, _, _, _) = error {
+            if case .api(let message, _, _, _, _) = error {
                 XCTAssertTrue(message.contains("different origin"),
                               "Error should mention different origin, got: \(message)")
             } else {

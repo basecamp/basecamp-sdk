@@ -101,7 +101,7 @@ extension AccountClient {
                       !location.isEmpty else {
                     throw BasecampError.api(
                         message: "redirect \(statusCode) with no Location header",
-                        httpStatus: statusCode, hint: nil, requestId: nil
+                        httpStatus: statusCode, hint: nil, requestId: nil, decodeFailure: nil
                     )
                 }
 
@@ -114,7 +114,7 @@ extension AccountClient {
                 guard signedResponse.statusCode >= 200 && signedResponse.statusCode < 300 else {
                     throw BasecampError.api(
                         message: "download failed with status \(signedResponse.statusCode)",
-                        httpStatus: signedResponse.statusCode, hint: nil, requestId: nil
+                        httpStatus: signedResponse.statusCode, hint: nil, requestId: nil, decodeFailure: nil
                     )
                 }
 
