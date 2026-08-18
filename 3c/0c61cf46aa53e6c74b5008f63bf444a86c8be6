@@ -1,0 +1,21 @@
+MIGRATING.md
+  s_bd904175ffa79c::t_1cd79436b979fb 268
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/BasecampException.kt
+  s_bd904175ffa79c::t_fa1c742f46081a 123-127
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "3c0c61cf46aa53e6c74b5008f63bf444a86c8be6",
+  "prompts": {},
+  "sessions": {
+    "s_bd904175ffa79c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84276f22-32e4-44d3-bb44-8c35d734d9eb",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
