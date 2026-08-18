@@ -98,6 +98,15 @@ the ordinary exponential backoff:
 A leading sign and surrounding whitespace are still accepted (`+120` is 120),
 because every other SDK's integer parser consumes them.
 
+**A valid but enormous wait is now clamped, not collapsed.** A `Retry-After`
+above **2,147,483 seconds (~24.85 days)** — whether spelled as seconds or as a
+far-future HTTP-date — is capped at that value. It is the largest delay a
+32-bit millisecond timer can serve, and above it `setTimeout` does not wait
+longer: it clamps to **1ms**. So a server asking for a month used to get
+retried in 2ms; it now gets the longest wait the platform can actually
+schedule. `oauth/device.ts` already bounded its own `Retry-After` at the same
+number.
+
 **Wrong behaviour you get if you ignore it:** none — this direction only ever
 shortens a wait that should not have happened. The two worst cases are worth
 naming, though, because they are why the change is not merely tidiness. A

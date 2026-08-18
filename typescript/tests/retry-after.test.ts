@@ -116,6 +116,40 @@ describe("Retry-After parsing", () => {
     expect(parseRetryAfter("99999999999999999999")).toBeUndefined();
   });
 
+  /**
+   * Representable is not the same as schedulable, and the gap between them is
+   * where the tight loop actually lives. Both retry loops multiply this value
+   * by 1000 and hand it to `setTimeout`, whose delay is a signed 32-bit int:
+   * anything above 2_147_483_647ms is CLAMPED TO 1ms, not honoured. So
+   * `Retry-After: 2147484` — a perfectly safe integer, a hair over 24.85 days —
+   * became a 1ms retry against a server asking for a month, which is the same
+   * failure as the `Infinity` case reached by a legal value.
+   *
+   * Clamping rather than rejecting is deliberate and follows `oauth/device.ts`,
+   * which bounds its own `Retry-After` at the same `MAX_DEVICE_SECONDS =
+   * 2_147_483`: waiting the longest the platform can schedule honours the
+   * throttle, where falling through to a ~1s backoff would defeat it outright.
+   * An UNREPRESENTABLE value still falls through — that is garbage, not an
+   * instruction — which is the same two tiers device.ts draws.
+   */
+  it("clamps a representable but unschedulable value to the timer bound", () => {
+    expect(parseRetryAfter("2147483")).toBe(2_147_483);
+    expect(parseRetryAfter("2147484")).toBe(2_147_483);
+    expect(parseRetryAfter("999999999")).toBe(2_147_483);
+  });
+
+  /**
+   * The date branch has the same ceiling and reaches it far more easily: any
+   * HTTP-date more than ~24.85 days out. Before the clamp, a `Retry-After`
+   * naming 2035 computed ~264 billion ms and fired the timer after 2ms —
+   * measured, not theorised. That is the branch this PR exists to add, so it
+   * would have shipped the defect it was written to fix.
+   */
+  it("clamps a far-future HTTP-date to the same bound", () => {
+    expect(parseRetryAfter("Mon, 01 Jan 2035 00:00:00 GMT")).toBe(2_147_483);
+    expect(parseRetryAfter("Thu, 01 Jan 2060 00:00:00 GMT")).toBe(2_147_483);
+  });
+
   it("returns the seconds remaining until a future HTTP-date", () => {
     const threeMinutesOut = new Date(Date.now() + 180_000).toUTCString();
     const seconds = parseRetryAfter(threeMinutesOut);
@@ -181,6 +215,23 @@ describe("the shared retry loop honours the parsed value", () => {
       // no wait at all — the backoff collapsed rather than being replaced.
       expect(delay, `Retry-After: ${header}`).toBeGreaterThanOrEqual(BACKOFF_MIN_MS);
       expect(delay, `Retry-After: ${header}`).toBeLessThanOrEqual(BACKOFF_MAX_MS);
+    }
+  });
+
+  /**
+   * The property that matters end-to-end: whatever the loop chooses must be a
+   * delay `setTimeout` will actually serve. A value above the 32-bit bound is
+   * not a long sleep, it is a 1ms one — so an unschedulable delay arriving here
+   * would mean the loop retries essentially immediately against a server that
+   * asked for a month.
+   */
+  it("never chooses a delay the platform would silently collapse to 1ms", async () => {
+    const MAX_TIMEOUT_MS = 2_147_483_647;
+    for (const header of ["2147484", "999999999", "Mon, 01 Jan 2035 00:00:00 GMT"]) {
+      const delay = await delayChosenFor(header);
+      expect(delay, `Retry-After: ${header}`).toBeLessThanOrEqual(MAX_TIMEOUT_MS);
+      // Still a real server-directed wait, not a fall-through to ~1s backoff.
+      expect(delay, `Retry-After: ${header}`).toBeGreaterThan(1_000_000);
     }
   });
 

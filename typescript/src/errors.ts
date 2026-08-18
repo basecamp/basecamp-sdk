@@ -482,6 +482,25 @@ const IMF_FIXDATE =
   /^(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun), \d{2} (?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) \d{4} \d{2}:\d{2}:\d{2} GMT$/;
 
 /**
+ * Largest delay this SDK can actually WAIT: 2_147_483 s (~24.85 days), whose
+ * millisecond form fits the signed 32-bit int backing Node's timers. Above it,
+ * `setTimeout` does not sleep longer — it CLAMPS TO 1ms, so an over-bound delay
+ * is not a long wait but an immediate retry against a server asking for a month.
+ * `client.ts` states the same bound in milliseconds (`MAX_TIMEOUT_MS`) and
+ * `oauth/device.ts` in seconds (`MAX_DEVICE_SECONDS`); this is a third unit-mate
+ * of one platform limit rather than a new policy, and it is deliberately local
+ * so `errors.ts` keeps importing nothing (which is what makes `retry.ts`'s edge
+ * to it acyclic).
+ *
+ * Both steps clamp to it rather than rejecting, following device.ts: waiting the
+ * longest the platform can schedule honours the throttle, where falling through
+ * to a ~1s backoff would defeat it. A value too large to REPRESENT still falls
+ * through — that is garbage rather than an instruction — which is the same two
+ * tiers device.ts draws.
+ */
+const MAX_RETRY_AFTER_SECONDS = 2_147_483;
+
+/**
  * Parses the Retry-After header value (SPEC §6, "Retry-After Parsing
  * Algorithm"): integer seconds when > 0, else an RFC 7231 HTTP-date reduced to
  * `max(0, date - now())` seconds when that is > 0, else `undefined` — which
@@ -517,18 +536,22 @@ export function parseRetryAfter(value: string | null): number | undefined {
   // answering 429 (SPEC §7's backoff ceiling exists for exactly this).
   if (DELAY_SECONDS.test(trimmed)) {
     const seconds = Number(trimmed);
-    return Number.isSafeInteger(seconds) && seconds > 0 ? seconds : undefined;
+    return Number.isSafeInteger(seconds) && seconds > 0
+      ? Math.min(seconds, MAX_RETRY_AFTER_SECONDS)
+      : undefined;
   }
 
   // Step 2 — an HTTP-date, reduced to the seconds remaining and honoured when
   // that is positive. A past date returns undefined rather than 0: handing back
-  // 0 would mean "retry immediately", the opposite instruction.
+  // 0 would mean "retry immediately", the opposite instruction. The same clamp
+  // applies, and this branch reaches it far more easily — any date more than
+  // ~24.85 days out, which is one line of a config file away.
   if (IMF_FIXDATE.test(trimmed)) {
     const date = Date.parse(trimmed);
     if (!isNaN(date)) {
       const diffMs = date - Date.now();
       if (diffMs > 0) {
-        return Math.ceil(diffMs / 1000);
+        return Math.min(Math.ceil(diffMs / 1000), MAX_RETRY_AFTER_SECONDS);
       }
     }
   }
