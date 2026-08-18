@@ -1,0 +1,33 @@
+Makefile
+  s_bd904175ffa79c::t_88a145a659cfa2 1286-1307
+  s_bd904175ffa79c::t_8cb94ad1ae1c6f 1255,1568
+.github/workflows/test.yml
+  s_bd904175ffa79c::t_f9d5fc519228b4 214-243
+scripts/check-operation-assignment-parity
+  s_bd904175ffa79c::t_6f9837c05472cb 1-76,95-170,172-351,356,358-367,369-371,377-384,386,397-447
+  s_bd904175ffa79c::t_ff8b5f31c3ee9b 171
+  s_bd904175ffa79c::t_f1bb70a8c71684 77-94
+  s_bd904175ffa79c::t_24608b3b52b845 352-355,357,368,372-376,385,387-396
+scripts/test-check-operation-assignment-parity.rb
+  s_bd904175ffa79c::t_b3f81af4d77788 53-55,57-70,72-88,96-97,101,112-113
+  s_bd904175ffa79c::t_c614e89d337454 102-111
+  s_bd904175ffa79c::t_01d7c016e7a985 684-685
+  s_bd904175ffa79c::t_f64ebb36de5ba2 56
+  s_bd904175ffa79c::t_87c926093477d0 1-52,71,89-95,98-100,114-683,686-746
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "de7a07e045538695a4a5ccf355398af041d1aead",
+  "prompts": {},
+  "sessions": {
+    "s_bd904175ffa79c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84276f22-32e4-44d3-bb44-8c35d734d9eb",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
