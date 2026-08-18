@@ -620,3 +620,325 @@ func TestFoundButEmptyPositionIsALoadFailure(t *testing.T) {
 		t.Errorf("dials = %d, want 0", got)
 	}
 }
+
+// blockingStore is a CheckpointStore whose Save parks until released, so a
+// test can hold one durable write in flight across a concurrent Close. Load is
+// scripted separately.
+type blockingStore struct {
+	entered     chan struct{}
+	release     chan struct{}
+	loadErr     error
+	loadCtx     chan context.Context
+	loadEntered chan struct{}
+	loadRelease chan struct{}
+	mu          sync.Mutex
+	saves       []string
+	attempts    int
+}
+
+func newBlockingStore() *blockingStore {
+	return &blockingStore{
+		entered: make(chan struct{}, 8),
+		release: make(chan struct{}),
+		loadCtx: make(chan context.Context, 4),
+	}
+}
+
+func (s *blockingStore) Load(ctx context.Context, _ eventfeed.CheckpointKey) (string, bool, error) {
+	select {
+	case s.loadCtx <- ctx:
+	default:
+	}
+	// Parkable, so a test can hold the load in flight and land a Close on it.
+	// That window is the only one the cancelled-load classification governs:
+	// closing BEFORE the run starts never reaches this function at all, since
+	// Events takes the isClosed latch with zero wire attempts.
+	if s.loadEntered != nil {
+		s.loadEntered <- struct{}{}
+		<-s.loadRelease
+	}
+	if s.loadErr != nil {
+		return "", false, s.loadErr
+	}
+	return "pos-0", true, nil
+}
+
+func (s *blockingStore) Save(_ context.Context, _ eventfeed.CheckpointKey, position string) error {
+	s.mu.Lock()
+	s.attempts++
+	s.mu.Unlock()
+	s.entered <- struct{}{}
+	<-s.release
+	s.mu.Lock()
+	s.saves = append(s.saves, position)
+	s.mu.Unlock()
+	return nil
+}
+
+func (s *blockingStore) recorded() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return append([]string(nil), s.saves...)
+}
+
+func (s *blockingStore) attemptCount() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.attempts
+}
+
+// TestCloseWaitsForAnInFlightCheckpointSave is the ordered half of blocker 6.
+// A checkpoint save is the connector's only effect that outlives the process,
+// so its COMMENCEMENT is ordered against Close: one already in flight runs to
+// completion and Close waits for it, rather than Close returning while a
+// durable write is still pending against a lineage a second connector may
+// already have loaded.
+//
+// Cancellation cannot substitute. A CheckpointStore is entitled to ignore ctx —
+// the built-in FileCheckpointStore documents that it does, so a position
+// already accepted is not dropped by a shutdown race — so the cancelled context
+// Close publishes is precisely the signal such a store is specified to ignore.
+func TestCloseWaitsForAnInFlightCheckpointSave(t *testing.T) {
+	store := newBlockingStore()
+	h := newHarness(t,
+		eventfeed.WithCheckpointStore(store),
+		eventfeed.WithConsumerNamespace("agent"))
+	h.minter.ScriptTicket(ticket(1))
+	h.polls.ScriptPage(eventfeed.PollPage{Events: []eventfeed.Event{pollEvent(101)}, Position: "pos-1"})
+	h.start()
+
+	sock := h.driveToSubscribed()
+	sock.Serve(frameConfirm(noFilterIdentifier))
+
+	// The save is now parked inside the store, on the run goroutine.
+	select {
+	case <-store.entered:
+	case <-time.After(watchdog):
+		t.Fatal("the checkpoint save never reached the store")
+	}
+
+	closeReturned := make(chan struct{})
+	go func() { _ = h.conn.Close(); close(closeReturned) }()
+
+	// Close must NOT return while the write is pending.
+	select {
+	case <-closeReturned:
+		t.Fatal("Close returned while a checkpoint save was still in flight")
+	case <-time.After(150 * time.Millisecond):
+	}
+
+	close(store.release)
+	select {
+	case <-closeReturned:
+	case <-time.After(watchdog):
+		t.Fatal("Close did not return after the save completed")
+	}
+	if got := store.recorded(); len(got) != 1 || got[0] != "pos-1" {
+		t.Errorf("recorded saves = %v, want [pos-1] — an in-flight write completes", got)
+	}
+}
+
+// TestNoCheckpointSaveCommencesAfterClose is the other direction: once Close
+// has returned, a save that had not begun does not begin. Without the gate the
+// run goroutine's next accepted page would write through on a cancelled
+// context, which a store is allowed to ignore.
+func TestNoCheckpointSaveCommencesAfterClose(t *testing.T) {
+	store := newBlockingStore()
+	close(store.release) // saves complete immediately
+	h := newHarness(t,
+		eventfeed.WithCheckpointStore(store),
+		eventfeed.WithConsumerNamespace("agent"))
+	h.minter.ScriptTicket(ticket(1))
+	h.start()
+
+	// Close before any page is accepted, so no save has commenced.
+	if err := h.conn.Close(); err != nil {
+		t.Fatalf("Close() = %v", err)
+	}
+	h.join()
+
+	if n := store.attemptCount(); n != 0 {
+		t.Errorf("store.Save was entered %d time(s) after Close returned, want 0", n)
+	}
+}
+
+// TestCancelledCheckpointLoadIsNotAStoreFailure is the third item. The load
+// happens on the first iteration and before the first mint, so it is exactly
+// the window a prompt Close lands in. Reporting Terminal(checkpoint_load) for
+// it would diagnose the consumer's store for the consumer's own shutdown — and
+// §23 says Close ends the iterator with NO error element.
+//
+// The load is held IN FLIGHT and Close lands on it. Closing before the run
+// starts proves nothing: Events takes the isClosed latch with zero wire
+// attempts and never calls the store at all. Verified — written that way
+// first, it passed with the classification deleted.
+func TestCancelledCheckpointLoadIsNotAStoreFailure(t *testing.T) {
+	store := newBlockingStore()
+	store.loadEntered = make(chan struct{}, 1)
+	store.loadRelease = make(chan struct{})
+	// The store reports its OWN error type, not a wrapped ctx.Err(), which is
+	// what a store is entitled to do and why the classification reads the
+	// context rather than the error's shape.
+	store.loadErr = errors.New("store: request aborted")
+	h := newHarness(t,
+		eventfeed.WithCheckpointStore(store),
+		eventfeed.WithConsumerNamespace("agent"))
+	h.minter.ScriptTicket(ticket(1))
+	h.start()
+
+	select {
+	case <-store.loadEntered:
+	case <-time.After(watchdog):
+		t.Fatal("the checkpoint load never reached the store")
+	}
+	if err := h.conn.Close(); err != nil {
+		t.Fatalf("Close() = %v", err)
+	}
+	close(store.loadRelease)
+	h.join()
+
+	_, terminal, elements := h.snapshot()
+	if terminal != nil {
+		t.Errorf("terminal = %v, want none — a cancelled load is a shutdown, not a store failure", terminal)
+	}
+	if elements != 0 {
+		t.Errorf("iteration elements = %d, want 0", elements)
+	}
+	if got := h.minter.Calls(); got != 0 {
+		t.Errorf("mint seam calls = %d, want 0", got)
+	}
+}
+
+// An UNCANCELLED load failure is still Terminal(checkpoint_load): the guard
+// above must not swallow the real edge. Without this the previous test would be
+// satisfied by deleting the classification entirely.
+func TestUncancelledCheckpointLoadFailureIsStillTerminal(t *testing.T) {
+	store := feedtest.NewStore()
+	store.FailLoad(errors.New("disk on fire"))
+	h := newHarness(t,
+		eventfeed.WithCheckpointStore(store),
+		eventfeed.WithConsumerNamespace("agent"))
+	h.minter.ScriptTicket(ticket(1))
+	h.start()
+	h.join()
+
+	_, terminal, _ := h.snapshot()
+	if terminal == nil || terminal.Reason != eventfeed.ReasonCheckpointLoad {
+		t.Fatalf("terminal = %v, want reason %q", terminal, eventfeed.ReasonCheckpointLoad)
+	}
+	if got := h.minter.Calls(); got != 0 {
+		t.Errorf("mint seam calls = %d, want 0 (zero wire attempts)", got)
+	}
+}
+
+// TestCloseFromEveryCallbackSiteDoesNotDeadlock covers the hazard the durable
+// gate introduces. saveCheckpoint holds a lock across host store I/O, and Close
+// waits for that lock — so if the gate were still held while a consumer callback
+// ran, a Close taken from inside Observer.Checkpoint would deadlock against the
+// very save that fired it. Close from inside a callback is documented as
+// supported, so this is the case that has to be right, not merely likely.
+//
+// The release therefore happens before either observer callback. Each site below
+// ends the iteration cleanly with no error element; a deadlock fails as the
+// watchdog rather than hanging the package.
+func TestCloseFromEveryCallbackSiteDoesNotDeadlock(t *testing.T) {
+	sites := []struct {
+		name     string
+		observer func(closeFeed func()) eventfeed.Observer
+		failSave bool
+	}{
+		{"Checkpoint", func(cl func()) eventfeed.Observer {
+			return eventfeed.Observer{Checkpoint: func(string) { cl() }}
+		}, false},
+		{"CheckpointSaveFailed", func(cl func()) eventfeed.Observer {
+			return eventfeed.Observer{CheckpointSaveFailed: func(error) { cl() }}
+		}, true},
+		{"PageDelivered", func(cl func()) eventfeed.Observer {
+			return eventfeed.Observer{PageDelivered: func(int, string) { cl() }}
+		}, false},
+		{"CaughtUp", func(cl func()) eventfeed.Observer {
+			return eventfeed.Observer{CaughtUp: func() { cl() }}
+		}, false},
+		{"CatchUpStarted", func(cl func()) eventfeed.Observer {
+			return eventfeed.Observer{CatchUpStarted: func(eventfeed.Cursor) { cl() }}
+		}, false},
+		{"Confirmed", func(cl func()) eventfeed.Observer {
+			return eventfeed.Observer{Confirmed: func() { cl() }}
+		}, false},
+	}
+	for _, site := range sites {
+		t.Run(site.name, func(t *testing.T) {
+			store := feedtest.NewStore()
+			store.Stored("pos-0")
+			if site.failSave {
+				store.FailNextSave(errors.New("store unavailable"))
+			}
+			var h *harness
+			h = newHarness(t,
+				eventfeed.WithCheckpointStore(store),
+				eventfeed.WithConsumerNamespace("agent"),
+				eventfeed.WithObserver(site.observer(func() {
+					if err := h.conn.Close(); err != nil {
+						t.Errorf("Close from %s: %v", site.name, err)
+					}
+				})))
+			h.minter.ScriptTicket(ticket(1))
+			h.polls.ScriptPage(eventfeed.PollPage{
+				Events:   []eventfeed.Event{pollEvent(101)},
+				Position: "pos-1",
+			})
+			h.start()
+			sock := h.driveToSubscribed()
+			sock.Serve(frameConfirm(noFilterIdentifier))
+			// The watchdog inside join is what reports a deadlock as itself.
+			h.join()
+
+			if _, terminal, _ := h.snapshot(); terminal != nil {
+				t.Errorf("terminal = %v, want none — Close ends the iterator with no error element", terminal)
+			}
+		})
+	}
+}
+
+// TestConcurrentCloseIsSerializedAndIdempotent drives Close from many
+// goroutines at once, which is what the mutex across the cancel is for: a
+// second Close must not observe a cleared cancelRun and return while the run
+// context is still live. Under -race this also covers the durable gate being
+// latched by whichever caller gets there.
+func TestConcurrentCloseIsSerializedAndIdempotent(t *testing.T) {
+	store := feedtest.NewStore()
+	store.Stored("pos-0")
+	h := newHarness(t,
+		eventfeed.WithCheckpointStore(store),
+		eventfeed.WithConsumerNamespace("agent"))
+	h.minter.ScriptTicket(ticket(1))
+	h.polls.ScriptPage(eventfeed.PollPage{Position: "pos-1"})
+	h.start()
+	sock := h.driveToSubscribed()
+	sock.Serve(frameConfirm(noFilterIdentifier))
+
+	const closers = 16
+	var wg sync.WaitGroup
+	start := make(chan struct{})
+	errs := make(chan error, closers)
+	for range closers {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			<-start
+			if err := h.conn.Close(); err != nil {
+				errs <- err
+			}
+		}()
+	}
+	close(start)
+	wg.Wait()
+	close(errs)
+	for err := range errs {
+		t.Errorf("Close returned %v, want nil from every caller", err)
+	}
+	h.join()
+	if _, terminal, _ := h.snapshot(); terminal != nil {
+		t.Errorf("terminal = %v, want none", terminal)
+	}
+}

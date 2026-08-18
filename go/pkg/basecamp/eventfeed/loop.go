@@ -1273,6 +1273,26 @@ func (l *loop) loadCheckpoint() *TerminalError {
 	}
 	position, ok, err := l.cfg.store.Load(l.runCtx, l.checkpointKey())
 	if err != nil {
+		// A load that failed because the RUN was cancelled is not a store
+		// failure, and must not be reported as one. Close is a universal edge
+		// from every non-absorbing state and ends the iterator with no error
+		// element; surfacing Terminal(checkpoint_load) here would turn an
+		// ordinary shutdown — a Close racing the first iteration, which is the
+		// one iteration this load happens on — into a diagnosis of the
+		// consumer's own store. The run's next check takes the Closed edge.
+		//
+		// Checked on the CONTEXT rather than on the error's shape: a store is
+		// under no obligation to wrap ctx.Err(), and one that returns its own
+		// error type would otherwise be misclassified.
+		if l.runCtx.Err() != nil {
+			//nolint:nilerr // Deliberate: the error is real but it is not a
+			// STORE failure, it is this run being closed underneath a load that
+			// was already in flight. Returning it would give the consumer
+			// Terminal(checkpoint_load) for its own shutdown; §23 ends a closed
+			// iterator with no error element, and the run's next check takes
+			// the Closed edge.
+			return nil
+		}
 		return &TerminalError{
 			Reason: ReasonCheckpointLoad,
 			Msg:    "the checkpoint store failed to load the stored position",
@@ -1318,7 +1338,21 @@ func (l *loop) saveCheckpoint(position string) {
 	if l.cfg.store == nil {
 		return
 	}
-	if err := l.cfg.store.Save(l.runCtx, l.checkpointKey(), position); err != nil {
+	// The store call runs under the durable gate, so a save either commenced
+	// before Close or does not commence at all (durableGate). A refused save is
+	// silent by design: Close abandons, and reporting a save that was declined
+	// BECAUSE the consumer closed would be reporting the consumer's own
+	// decision back to it as a store failure.
+	if !l.cfg.durable.begin() {
+		return
+	}
+	err := l.cfg.store.Save(l.runCtx, l.checkpointKey(), position)
+	// Released before either observer callback fires. Holding it across host
+	// code would deadlock the documented case of Close being called from
+	// inside a callback, and the gate's job is finished the moment the write
+	// is: it orders COMMENCEMENT, not notification.
+	l.cfg.durable.end()
+	if err != nil {
 		if l.cfg.observer.CheckpointSaveFailed != nil {
 			l.cfg.observer.CheckpointSaveFailed(err)
 		}
