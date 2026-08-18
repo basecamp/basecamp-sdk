@@ -211,6 +211,36 @@ jobs:
         env:
           LC_ALL: C
 
+      # The sibling of the two steps above and a different invariant: not which
+      # services exist, but which service each OPERATION hangs off. An operation
+      # routed to a different but already-existing service in ONE generator's
+      # table leaves the service-name union unchanged (so the gate above passes),
+      # the global operationId set unchanged (so every per-SDK
+      # check-*-service-drift passes), and the SDK compiling with its tests
+      # exercising the method wherever it now lives. Nothing else in this
+      # workflow looks at the pairing.
+      #
+      # Its own step rather than relying on `make check` membership: no CI job
+      # runs the full `make check`, so a gate that is only wired into that target
+      # is not covered here at all.
+      #
+      # Under LC_ALL=C so CI exercises the non-UTF-8-locale path (the reads are
+      # pinned to UTF-8; this proves it stays that way). The generated trees carry
+      # non-ASCII text in their @generated banners, so an unpinned read raises
+      # InvalidByteSequenceError before anything is compared.
+      - name: Five SDKs agree which service each operation lives on
+        run: make check-operation-assignment-parity
+        env:
+          LC_ALL: C
+
+      # The run above only ever exercises the PASSING case. This drives synthetic
+      # five-SDK trees through the same gate, including the wholesale class-swap
+      # case that a cheaper grouping comparison would pass.
+      - name: Operation assignment parity gate self-test (synthetic trees)
+        run: make test-check-operation-assignment-parity
+        env:
+          LC_ALL: C
+
       # The third Go surface. go-check-drift compares generated operations
       # against the hand-written go/pkg/basecamp wrappers; nothing watched the
       # GROUPED client until this gate, which is how ArchiveProject and
