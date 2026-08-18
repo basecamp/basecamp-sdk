@@ -307,6 +307,21 @@ class DecodeIsolationTest {
         )
     }
 
+    /**
+     * A scalar `events`, kept separate from the object above because Swift's
+     * two cases are not the same failure — a scalar is not valid input to its
+     * `JSONSerialization.data(withJSONObject:)`, and used to abort the process.
+     * Kotlin has no such cliff; both are `.jsonArray` cast failures. The case is
+     * here so the cross-SDK table in MIGRATING has a Kotlin cell it was actually
+     * run for, rather than one reasoned about.
+     */
+    @Test
+    fun aScalarItemsKeyIsAStatuslessApiError() = runTest {
+        assertMalformedWrapper(
+            personProgressFailure("""{"person":{"id":45678,"name":"Victor Cooper"},"events":42}"""),
+        )
+    }
+
     /** A top-level array — valid JSON, wrong shape — was an IllegalArgumentException out of `.jsonObject`. */
     @Test
     fun aNonObjectWrappedBodyIsAStatuslessApiError() = runTest {

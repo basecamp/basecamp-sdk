@@ -283,34 +283,38 @@ same `try`, and throws the same `SerializationException` type the decoder does.
 [`BasecampError.api` gained a fifth associated value](#basecamperrorapi-gained-a-fifth-associated-value-750)
 above. It ships in this same release, so there is one migration to do, not two.
 
-**`GetPersonProgress` is included, and it failed two different ways (#728).**
-Keeping them apart matters, because only one is about the boundary the
-paragraphs above draw.
+**`GetPersonProgress` is included (#728).** Every malformed wrapper now raises
+the statusless `api_error`. What it raised *before* differs per body and per SDK
+far more than a sentence can carry, so here is the whole thing — one row per
+body, taken from the tests in `DecodeIsolationTest.kt` and
+`DecodeIsolationTests.swift`, each of which was run against the pre-change code
+to get the left-hand columns:
 
-- **Outside the boundary.** The wrapper's `person` member was decoded by
-  generated code running *after* the primitive returned, in both SDKs, so
-  nothing could have mapped it. A missing or wrong-typed one surfaced as a raw
-  `DecodingError` (Swift) or `SerializationException` (Kotlin).
-- **Inside it, but speaking the wrong exception.** The `events` array was always
-  parsed inside the mapping. Kotlin still leaked it, because the generated
-  accessor `["events"]!!.jsonArray` throws `NullPointerException` and
-  `IllegalArgumentException`, which the mapping catches neither of, on purpose —
-  catching them would swallow every `!!` and `require()` in the SDK.
+| body | Kotlin, before | Swift, before |
+|---|---|---|
+| `events` absent, `person` valid | `NullPointerException` | **succeeded, `events: []`** |
+| `person` absent, `events` valid | `NullPointerException` | raw `DecodingError.keyNotFound` |
+| `person` wrong-typed | raw `SerializationException` | raw `DecodingError.typeMismatch` |
+| `events` a JSON object | `IllegalArgumentException` | already the `api_error`; the message did not name `events` |
+| `events` a scalar | `IllegalArgumentException` | **uncaught `NSInvalidArgumentException`** — not a Swift error, no `catch` reaches it |
+| body not a JSON object | `IllegalArgumentException` | raw `DecodingError.typeMismatch` from the wrapper decode |
 
-Both are the statusless `api_error` now. **Swift has a third change, and it is
-the sharpest: one malformed wrapper used to be answered with a successful,
-empty result.** An absent `events` alongside a valid `person` returned
-`events: []` and no error at all — a silent wrong answer, not a changed error
-type, and the one case in this whole issue where the SDK reported success for a
-body it had not understood. It is now the statusless `api_error`, matching
-Kotlin, which always threw on that body.
+Two rows are the ones to read closely, because they are not merely a changed
+error type. **Swift row 1 is the only silent success in this whole issue:** with
+`person` valid and only `events` absent, nothing downstream objected, so the SDK
+reported a zero-event read of a response it had not understood. **Swift row 5
+was not an error at all but a process abort**, because a scalar is not valid
+input to `JSONSerialization.data(withJSONObject:)`.
 
-Two neighbouring cases look like that one and are not, so they are worth
-separating: a top-level body that is not a JSON object, and a non-array
-`events`, both made the *items* helper hand back an empty list, but the wrapper
-decode that ran next then rejected the same body — so the operation did fail,
-just with a raw `DecodingError` rather than a mapped one. Those two move from
-unmapped to mapped, like everything else here. BC3 settles which reading is right:
+Two mechanisms produced the rest, and they are worth telling apart. The `person`
+decode ran *outside* the boundary — generated code, after the primitive returned
+— so nothing could have mapped it, in either SDK. The `events` parse always ran
+*inside* it, and Kotlin leaked anyway, because `["events"]!!.jsonArray` throws
+`NullPointerException` and `IllegalArgumentException` and the mapping catches
+neither, on purpose: catching them would swallow every `!!` and `require()` in
+the SDK.
+
+BC3 settles which reading is right:
 `app/views/api/users/timelines/show.json.jbuilder` writes `person` and `events`
 unconditionally, so an absent one is a malformed body and never an empty result.
 
