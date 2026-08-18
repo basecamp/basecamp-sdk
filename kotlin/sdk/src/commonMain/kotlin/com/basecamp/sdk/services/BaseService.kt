@@ -525,11 +525,11 @@ abstract class BaseService(
      *
      * **One mapped type, deliberately.** [SerializationException] is the type
      * kotlinx uses to say "this body is not what the model expects", and the
-     * `cause` it becomes here is a contract other code reads: the conformance
-     * runner tells a decoder rejection from a real `api_error` that way, and
-     * the §18 composites read the same exception through
-     * [BasecampException.Api.decodeFailure], the internal slot [malformedBody]
-     * alone fills. A second mapped type would be a second cause type they would
+     * `cause` it becomes here is a contract other code reads: the §18
+     * composites and the conformance runner both tell a decoder rejection from a
+     * real `api_error` through [BasecampException.Api.decodeFailure], the slot
+     * [malformedBody] alone fills, and read the exception itself back out of
+     * it. A second mapped type would be a second cause type they would
      * each have to learn, so anything that is a decode failure is made to speak
      * this one *where it is raised* instead — see
      * [com.basecamp.sdk.serialization.FlexibleLongSerializer], whose numeric
@@ -564,9 +564,9 @@ abstract class BaseService(
      * The one place a decode failure is rendered — and, through the internal
      * factory it calls, the only producer of
      * [BasecampException.Api.decodeFailure]. That slot is how the §18
-     * composites tell this exception from any other `api_error` that happens to
-     * carry a [SerializationException] as its `cause`, which an auth strategy's
-     * already-classified failure can (#730).
+     * composites and the conformance runner tell this exception from any other
+     * `api_error` that happens to carry a [SerializationException] as its
+     * `cause`, which an auth strategy's already-classified failure can (#730).
      */
     private fun malformedBody(operation: String, cause: SerializationException): BasecampException.Api =
         BasecampException.Api.malformedBody(

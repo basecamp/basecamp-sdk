@@ -125,13 +125,26 @@ sealed class BasecampException(
          * That is an accident guarantee and not an unforgeable one — see
          * [Companion.malformedBody] for what it does and does not stop.
          *
-         * [cause] still carries the same exception it always did — callers and
-         * the **Kotlin** conformance runner read it (Swift's has no `cause` to
-         * read: `BasecampError.api` carries none, which is the whole premise of
-         * #750), and a [kotlinx.serialization.MissingFieldException] there still
-         * reports its `missingFields`.
+         * **Readable everywhere, settable in one place.** The guarantee above is
+         * a property of the *producer*, not of who can look: the constructor
+         * that fills this slot is private and the factory that reaches it is
+         * internal, so widening the getter takes nothing away. It has to be
+         * public. The Kotlin conformance runner asks this same question and
+         * `:conformance` is a separate Gradle module, so `internal` is invisible
+         * to it — it read `cause is SerializationException` instead and carried
+         * the #730 misread one module over until #750. `@PublishedApi internal`
+         * does not help: it lifts an internal declaration into the ABI for
+         * public inline functions *of the same module* and still cannot be
+         * named from another module's source. Swift's `BasecampError`
+         * `decodeFailure` is public for the same reason and answers the same
+         * question (#750).
+         *
+         * [cause] still carries the same exception it always did, and a
+         * [kotlinx.serialization.MissingFieldException] there still reports its
+         * `missingFields`. It is not the discriminator: reading it as one is
+         * exactly the #730 bug.
          */
-        internal val decodeFailure: SerializationException?,
+        val decodeFailure: SerializationException?,
     ) : BasecampException(message, CODE_API, hint, httpStatus, retryable, requestId, cause) {
 
         constructor(
