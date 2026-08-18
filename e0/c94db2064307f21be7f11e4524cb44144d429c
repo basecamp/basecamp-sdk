@@ -1,0 +1,29 @@
+swift/Sources/Basecamp/Services/BaseService.swift
+  s_bcb193599a4870::t_1eb0dcde579f09 351,488-497,500,502-513,518-537
+  s_bcb193599a4870::t_5e6b2f8a94297d 287-292,299-305
+  s_bcb193599a4870::t_982466527221f6 234-246,252-254
+  s_bcb193599a4870::t_8cafd63d4ee58b 318-322,330-350
+  s_bcb193599a4870::t_869cd00910ab6d 352
+swift/Sources/BasecampGenerator/ServiceEmitter.swift
+  s_bcb193599a4870::t_146f73d034bdfc 211-218,233-246,262-263
+swift/Tests/BasecampTests/DecodeIsolationTests.swift
+  s_bcb193599a4870::t_c079a6a86faeb8 148-249
+swift/Sources/Basecamp/Generated/Services/ReportsService.swift
+  s_bcb193599a4870::t_014699b2a34175 70-73,80-82
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "e0c94db2064307f21be7f11e4524cb44144d429c",
+  "prompts": {},
+  "sessions": {
+    "s_bcb193599a4870": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5ae90ec8-5ed7-4774-88d9-9d66550a5643",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
