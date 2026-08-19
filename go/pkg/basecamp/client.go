@@ -1109,11 +1109,23 @@ const maxRetryAfterSeconds = int64(math.MaxInt64) / int64(time.Second)
 // narrowing before the clamp is what the clamp exists to prevent. The ceiling
 // is therefore whichever of the two host limits binds first — the Duration's
 // and int's — so the returned value is always exactly representable.
+// The two bounds are separate comparisons rather than one `min` of three
+// values because CodeQL's go/incorrect-integer-conversion reads the guard, not
+// the arithmetic: it could not see through the variadic `min` and reported the
+// int64→int conversion as unbounded (a high-severity alert, and a failing
+// check). Spelled this way the bound is legible to the query and to a reader,
+// and the conversion is provably exact.
 func clampRetryAfterSeconds(seconds int64) int {
 	if seconds <= 0 {
 		return 0
 	}
-	return int(min(seconds, maxRetryAfterSeconds, int64(math.MaxInt)))
+	if seconds > maxRetryAfterSeconds {
+		seconds = maxRetryAfterSeconds
+	}
+	if seconds > int64(math.MaxInt) {
+		return math.MaxInt
+	}
+	return int(seconds)
 }
 
 // parseRetryAfter parses the Retry-After header value.
