@@ -134,22 +134,39 @@ The same rule reads sideways in Ruby: a value written by a server thread is
 read by the test only across an explicit happens-before edge — a `Queue`, or a
 `join` — never "in practice, via the socket close" (#739).
 
-#655 swept for this class and missed two instances, because its selector
-required a **no-argument** `abort()` and both survivors passed a reason (#783).
-The sweep is a manual `rg`, not a gate, so the corrected form lives here:
+**This half is enforced, so you should not need to remember it.**
+`typescript/lint-rules/no-timer-scheduled-abort.js` is an oxlint rule that fails
+the build on a timer-scheduled `abort()` anywhere under `typescript/tests/`:
 
 ```sh
-# The class, without spelling the abort's arguments or its receiver:
-rg -nU --pcre2 'setTimeout\([\s\S]{0,300}?\.abort\(' typescript/tests
+cd typescript && npm run test:lint-rules && npm run lint:test-timers
 ```
 
-It over-matches — a `setTimeout` and an unrelated `.abort(` within 300
-characters both hit — and that bias is deliberate: a false positive costs a
-glance, a false negative costs the next contributor an hour deciding whether
-they caused somebody else's red. It still cannot see an abort scheduled through
-a wrapper or a renamed timer, so treat `rg -n '\.abort\(' typescript/tests` as
-the real population bound and classify each site by *what makes the abort
-land*, not by the shape it is written in.
+Both run in `make ts-check` and as their own steps in the TypeScript CI job. Run
+the self-test first and always — oxlint's JS plugin API is alpha, so a version
+bump could disarm the rule silently, and the self-test is what turns that into a
+build failure instead of a green gate enforcing nothing.
+
+A test whose *subject* is a caller's own timer-driven abort is a legitimate
+exception; suppress it at the site with the reason, never by widening the rule:
+
+```ts
+// oxlint-disable-next-line basecamp-tests/no-timer-scheduled-abort -- why
+```
+
+#655 tried to scope this class with an `rg` typed into an issue body that
+required a **no-argument** `abort()`. Both survivors passed a reason, so they
+shipped and one later went red in CI (#783) — which is why the rule reads syntax
+rather than text: it can tell a timer that *schedules* an abort from one the
+abort is merely racing, and a proximity selector cannot.
+
+**What the rule does not cover** is stated in its own header rather than
+restated here: a renamed timer, a callback passed by reference, a computed
+`.abort` access. The honest population bound is
+`rg -n '\.abort\(' typescript/tests` — classify each site by *what makes the
+abort land*, not by the shape it is written in. The rest of this rule, above,
+is judgment the linter cannot hold: which assertion is the discriminating one,
+and when a wall-clock ceiling is redundant with it.
 
 ## Commit Conventions
 
