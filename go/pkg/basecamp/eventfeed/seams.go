@@ -452,16 +452,24 @@ type Observer struct {
 	// reason goes through observableDisconnectReason: the two reasons dispatch
 	// actually acts on are named exactly, an absent reason stays empty, and
 	// every other peer-supplied string — however short — becomes "other". err
-	// goes through observableSocketError: the connector's own sentinels and
-	// typed errors are preserved (errStaleConnection, errCableConnClosed, the
-	// context sentinels, *CloseError, *DialError, *TerminalError,
-	// *invalidFrameError), and ANY other error is replaced by errSocketFailed.
+	// goes through observableSocketError, whose vocabulary is CLOSED and
+	// short: the staleness and conn-closed sentinels, the two context
+	// sentinels, *CloseError (which renders its integer code alone), and
+	// *invalidFrameError (which renders one of two shape constants). ANY other
+	// error — including a *DialError or *TerminalError, both of which a seam
+	// can construct and both of which render free text — becomes
+	// errSocketFailed.
 	//
 	// "Preserved" means reduced to the connector's OWN value, not passed
 	// along. A seam error that merely WRAPS a recognized sentinel —
 	// fmt.Errorf("read %s: %w", cableURL, context.Canceled) — reduces to the
 	// bare sentinel, because the wrapper's text is exactly where a cable URL
 	// would ride. errors.Is still matches for a consumer that checks.
+	//
+	// This is a LOGGING surface, and its vocabulary is chosen accordingly. A
+	// terminated feed's reason and detail reach you through the iteration's
+	// terminal *TerminalError, which is the semantic channel and is not
+	// reduced.
 	//
 	// The normalization is deliberate, and it is the connector's own defense
 	// rather than a restatement of the seam's. §23 declares the ticket an

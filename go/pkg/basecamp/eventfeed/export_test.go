@@ -122,6 +122,12 @@ func ExportStaleConnectionErr() error { return errStaleConnection }
 // exposed for the same reason as ExportStaleConnectionErr.
 func ExportCableConnClosedErr() error { return errCableConnClosed }
 
+// ExportSocketFailedErr returns the generic cause an unrecognized teardown is
+// reported as — what a seam-authored error must reduce to. Exposed so the
+// reduction can be asserted by IDENTITY: an assertion that merely checks the
+// canary is absent passes for any of several wrong answers, including nil.
+func ExportSocketFailedErr() error { return errSocketFailed }
+
 // ExportSubscribeIdentifier exposes the exact EventsChannel subscription
 // identifier for frame construction in tests.
 func ExportSubscribeIdentifier(f Filters) string { return subscribeIdentifier(f) }
