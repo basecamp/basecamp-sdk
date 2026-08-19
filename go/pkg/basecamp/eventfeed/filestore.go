@@ -276,7 +276,29 @@ func (s *FileCheckpointStore) Save(_ context.Context, key CheckpointKey, positio
 	if err != nil {
 		return fmt.Errorf("eventfeed: encoding checkpoint store %s: %w", s.path, err)
 	}
-	return s.writeAtomic(append(data, '\n'))
+	payload := append(data, '\n')
+	// The write is bound by the same limit the read is, and refuses BEFORE
+	// replacing the last usable file. Without this the store bricks itself
+	// through its own supported path: a Save whose result crosses the cap
+	// renames a file that every later Load rejects — and every later Save
+	// too, since Save reads before it writes — so there is no in-band way
+	// back. The operator's only recovery is deleting the file, which discards
+	// every other lineage's cursor with it.
+	//
+	// Reaching the cap is accretion rather than an adversary: there is no
+	// delete, so a filter change mints a new FlatKey and leaves the old
+	// lineage in the file for the life of the process. Refusing degrades to
+	// the outcome the seam already documents for a failed save — reported
+	// through Observer.CheckpointSaveFailed, the connector continues past it —
+	// instead of an unrecoverable one. The rendering carries sizes only; the
+	// position that pushed it over is caller- and server-supplied text.
+	if int64(len(payload)) > maxCheckpointStoreBytes {
+		return fmt.Errorf(
+			"eventfeed: refusing to save to checkpoint store %s: the result would be %d bytes, past the %d-byte limit a load enforces; "+
+				"the previous file is left in place",
+			s.path, len(payload), maxCheckpointStoreBytes)
+	}
+	return s.writeAtomic(payload)
 }
 
 // read loads the whole file. It reports (entries, true, nil) when the file
