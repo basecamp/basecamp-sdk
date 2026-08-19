@@ -1277,6 +1277,28 @@ var errSocketFailed = errors.New("event feed socket failed")
 // this is ever called — dispatch reads them directly — so nothing here changes
 // a verdict.
 //
+// # "The connector's own" means the connector is the only possible author
+//
+// Two types used to pass through that fail that test. *DialError and
+// *TerminalError are both EXPORTED with exported fields, so a seam can
+// construct one, and both render free text — DialError its Reason plus
+// Err.Error(), TerminalError its Msg plus Err.Error(). A CableConn.ReadFrame
+// returning &TerminalError{Msg: cableURL} therefore reached
+// Observer.Disconnected verbatim: recognition by type is only as strong as the
+// type's authorship, and neither of those types is authored solely here.
+//
+// So neither passes through any more. The three that remain are safe by
+// construction rather than by convention: the sentinels are package-level
+// values whose text is fixed in this file, *CloseError renders an integer code
+// and nothing else, and *invalidFrameError renders one of two shape constants.
+//
+// Nothing is lost on the live path. Dial failures do not reach this function
+// at all — they are dispatched before any teardown is observed — and a
+// TerminalError's reason and text reach the consumer through the iteration's
+// terminal element, which is the semantic channel and keeps its SPEC-mandated
+// wording (§23's filter_invalid preserves the server's message). This callback
+// is a log, not that channel.
+//
 // # Every arm returns a value the CONNECTOR owns, never the argument
 //
 // Matching a sentinel is not the same as being one. errors.Is walks the chain,
@@ -1313,15 +1335,9 @@ func observableSocketError(err error) error {
 	}
 	var ife *invalidFrameError
 	if errors.As(err, &ife) {
+		// Flat by construction and renders only its shape, over a closed
+		// two-value vocabulary. See invalidFrameError.
 		return ife
-	}
-	var de *DialError
-	if errors.As(err, &de) {
-		return de
-	}
-	var terr *TerminalError
-	if errors.As(err, &terr) {
-		return terr
 	}
 	return errSocketFailed
 }

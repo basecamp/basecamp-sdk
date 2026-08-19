@@ -383,12 +383,20 @@ func frameDisconnect(reason string, reconnect bool) []byte {
 }
 
 func frameMessage(identifier string, id int64) []byte {
+	return frameMessageCreatedAt(identifier, id, "2026-08-01T12:00:00Z")
+}
+
+// frameMessageCreatedAt builds a correlated broadcast with a caller-chosen
+// created_at. Well-formed JSON with no "type" key and the connector's own
+// identifier, so it reaches decodeMessageEvent — which is the point when
+// createdAt is deliberately unparseable.
+func frameMessageCreatedAt(identifier string, id int64, createdAt string) []byte {
 	payload := map[string]any{
 		"id":                 id,
 		"kind":               "message",
 		"event_type":         "message.created",
 		"action":             "created",
-		"created_at":         "2026-08-01T12:00:00Z",
+		"created_at":         createdAt,
 		"bucket_id":          2,
 		"creator_id":         3,
 		"recording_id":       900,
@@ -1858,6 +1866,37 @@ func TestObservableSocketErrorDropsWrapperText(t *testing.T) {
 			fmt.Errorf("read %s: %w", cableURL, &eventfeed.CloseError{Code: 1011, Reason: cableURL}),
 			nil, // typed arm: identity is not pinned, only the absence of the canary
 		},
+		// The two types a SEAM can author. Both are exported with exported
+		// fields and both render free text — DialError its Reason plus
+		// Err.Error(), TerminalError its Msg plus Err.Error() — so recognizing
+		// them by type recognized nothing about who wrote them. A
+		// CableConn.ReadFrame returning either put its text on this callback
+		// verbatim. They must now reduce to the generic sentinel.
+		{
+			"seam-constructed DialError",
+			&eventfeed.DialError{Kind: eventfeed.DialPolicy, Reason: cableURL},
+			eventfeed.ExportSocketFailedErr(),
+		},
+		{
+			"seam-constructed DialError with a cause",
+			&eventfeed.DialError{Kind: eventfeed.DialTransient, Err: errors.New("dial " + cableURL)},
+			eventfeed.ExportSocketFailedErr(),
+		},
+		{
+			"seam-constructed TerminalError",
+			&eventfeed.TerminalError{Reason: eventfeed.ReasonPollFailed, Msg: cableURL},
+			eventfeed.ExportSocketFailedErr(),
+		},
+		{
+			"seam-constructed TerminalError with a cause",
+			&eventfeed.TerminalError{Reason: eventfeed.ReasonMintFailed, Err: errors.New("mint " + cableURL)},
+			eventfeed.ExportSocketFailedErr(),
+		},
+		{
+			"seam error wrapping a TerminalError",
+			fmt.Errorf("read: %w", &eventfeed.TerminalError{Reason: eventfeed.ReasonPollFailed, Msg: cableURL}),
+			eventfeed.ExportSocketFailedErr(),
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			got := eventfeed.ExportObservableSocketError(tc.err)
@@ -1896,28 +1935,78 @@ func TestDisconnectObserverNeverEchoesPeerText(t *testing.T) {
 		name string
 		//nolint:revive // the fixture drives one teardown shape per case
 		drive func(t *testing.T, h *harness, sock *feedtest.Conn)
+		// beforeWelcome runs drive against a dialed-but-pre-welcome socket,
+		// for the one failure that has to be armed before the subscribe write.
+		beforeWelcome bool
+		// wantErr, when set, is the exact error Disconnected must carry.
+		wantErr error
 	}{
-		{"raw disconnect frame reason", func(_ *testing.T, _ *harness, sock *feedtest.Conn) {
+		{name: "raw disconnect frame reason", drive: func(_ *testing.T, _ *harness, sock *feedtest.Conn) {
 			sock.Serve(frameDisconnect(peerText, false))
 		}},
-		{"peer close reason", func(_ *testing.T, _ *harness, sock *feedtest.Conn) {
+		{name: "peer close reason", drive: func(_ *testing.T, _ *harness, sock *feedtest.Conn) {
 			sock.FailReads(&eventfeed.CloseError{Code: 1011, Reason: peerText})
 		}},
-		{"raw read error", func(_ *testing.T, _ *harness, sock *feedtest.Conn) {
-			sock.FailReads(errors.New("read tcp: " + peerText))
+		{
+			name: "raw read error",
+			drive: func(_ *testing.T, _ *harness, sock *feedtest.Conn) {
+				sock.FailReads(errors.New("read tcp: " + peerText))
+			},
+			wantErr: eventfeed.ExportSocketFailedErr(),
+		},
+		// The event-decode shape, which is the ONLY frame path where a decoder
+		// quotes peer bytes back (time.Time's UnmarshalJSON does, verbatim).
+		// Reaching it takes three things the predecessor of this case got
+		// wrong, each of which alone made the canary unobservable: NO "type"
+		// key, because a correlated broadcast is the typeless shape and
+		// `{"type":"message"}` is merely an unrecognized type; the connector's
+		// OWN identifier, because a frame that fails correlation is dropped
+		// before decode; and WELL-FORMED JSON, because truncated bytes fail
+		// the envelope unmarshal first and never reach the payload. The canary
+		// also has to sit in a field something renders — it sat in
+		// `identifier`, which nothing does — so it goes in created_at.
+		{name: "invalid frame payload", drive: func(_ *testing.T, _ *harness, sock *feedtest.Conn) {
+			sock.Serve(frameMessageCreatedAt(noFilterIdentifier, 107, peerText))
 		}},
-		{"invalid frame payload", func(_ *testing.T, _ *harness, sock *feedtest.Conn) {
-			sock.Serve([]byte(`{"type":"message","identifier":"` + peerText + `","message":{`))
-		}},
+		// A seam authoring one of the two exported error types. Both render
+		// free text and neither is the connector's to write, so both must
+		// reduce to the generic cause before they reach the callback.
+		{
+			name: "seam-authored TerminalError from ReadFrame",
+			drive: func(_ *testing.T, _ *harness, sock *feedtest.Conn) {
+				sock.FailReads(&eventfeed.TerminalError{Reason: eventfeed.ReasonPollFailed, Msg: peerText})
+			},
+			wantErr: eventfeed.ExportSocketFailedErr(),
+		},
+		{
+			name: "seam-authored DialError from ReadFrame",
+			drive: func(_ *testing.T, _ *harness, sock *feedtest.Conn) {
+				sock.FailReads(&eventfeed.DialError{Kind: eventfeed.DialPolicy, Reason: peerText})
+			},
+			wantErr: eventfeed.ExportSocketFailedErr(),
+		},
+		// The subscribe write is the one WriteFrame the connector makes on this
+		// path, and it happens ON welcome — so this case has to arm the failure
+		// BEFORE welcome is served, which is what beforeWelcome buys.
+		{
+			name: "seam-authored TerminalError from WriteFrame",
+			drive: func(_ *testing.T, _ *harness, sock *feedtest.Conn) {
+				sock.FailWrites(&eventfeed.TerminalError{Reason: eventfeed.ReasonMintFailed, Msg: peerText})
+			},
+			beforeWelcome: true,
+			wantErr:       eventfeed.ExportSocketFailedErr(),
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var mu sync.Mutex
 			var seen []string
+			var sawErrs []error
 			h := newHarness(t, eventfeed.WithObserver(eventfeed.Observer{
 				Disconnected: func(reason string, err error) {
 					mu.Lock()
 					defer mu.Unlock()
 					seen = append(seen, reason)
+					sawErrs = append(sawErrs, err)
 					if err != nil {
 						// The whole chain, not just the top: Error() walks it.
 						seen = append(seen, err.Error())
@@ -1930,8 +2019,15 @@ func TestDisconnectObserverNeverEchoesPeerText(t *testing.T) {
 			h.minter.ScriptTicket(ticket(1))
 			h.polls.ScriptPage(eventfeed.PollPage{Position: "pos-1"})
 			h.start()
-			sock := h.driveToSubscribed()
-			tc.drive(t, h, sock)
+			var sock *feedtest.Conn
+			if tc.beforeWelcome {
+				sock = h.liveConn()
+				tc.drive(t, h, sock)
+				sock.Serve(frameWelcome())
+			} else {
+				sock = h.driveToSubscribed()
+				tc.drive(t, h, sock)
+			}
 			h.awaitTimer(timerBackoff)
 
 			mu.Lock()
@@ -1945,6 +2041,20 @@ func TestDisconnectObserverNeverEchoesPeerText(t *testing.T) {
 				}
 				if strings.Contains(got, "ticket=") {
 					t.Errorf("Observer.Disconnected echoed a ticket-bearing query: %q", got)
+				}
+			}
+			// Absence of the canary is satisfied by a callback that fires with
+			// a nil err, which is not the guarantee. Where the reduction has a
+			// determinate answer, pin it by identity.
+			if tc.wantErr != nil {
+				found := false
+				for _, err := range sawErrs {
+					if err == tc.wantErr { //nolint:errorlint // identity is the assertion
+						found = true
+					}
+				}
+				if !found {
+					t.Errorf("Disconnected never carried the reduced cause %#v; saw %#v", tc.wantErr, sawErrs)
 				}
 			}
 		})
