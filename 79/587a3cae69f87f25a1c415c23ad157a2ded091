@@ -1,0 +1,23 @@
+go.work.sum
+  s_b98b4a85078d3e::t_e51d83fcb9c24e 187,191-192,200,215,222-223,228
+go/go.sum
+  s_b98b4a85078d3e::t_76a76fb6eda994 159-160,168-169,203-204
+go/go.mod
+  s_b98b4a85078d3e::t_3ade0d83e1b601 44,48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "79587a3cae69f87f25a1c415c23ad157a2ded091",
+  "prompts": {},
+  "sessions": {
+    "s_b98b4a85078d3e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5bbef980-f552-48e7-bb51-0b748caa71ac",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
