@@ -3,6 +3,7 @@ package basecamp
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -1074,20 +1075,27 @@ func parseNextLink(linkHeader string) string {
 	return ""
 }
 
-// maxRetryAfterSeconds is the largest delta-seconds value this SDK can turn
-// into a time.Duration at all: a Duration counts nanoseconds in an int64, so
-// seconds × time.Second wraps past math.MaxInt64. It is a REPRESENTABILITY
-// bound, not a policy ceiling — SPEC §7's "Retry-After is exempt" note already
+// maxRetryAfterSeconds is the largest delta-seconds value this SDK honours:
+// 2147483647, ~68 years. It is a REPRESENTABILITY bound taken at the portable
+// limit, not a policy ceiling — SPEC §7's "Retry-After is exempt" note already
 // carves out exactly this ("implementations may still bound it against host
-// limits"), and Swift clamps its own seconds→nanoseconds conversion for the
-// same reason. Deciding a *policy* cap on server-directed waits is #793's, and
-// this is not one: at ~292 years, nothing a server could sensibly ask for is
+// limits"), and Kotlin saturates this same header at the same number while
+// Swift clamps its own seconds→nanoseconds conversion for the same class of
+// reason. Deciding a *policy* cap on server-directed waits is #793's, and this
+// is not one: at ~68 years, nothing a server could sensibly ask for is
 // affected.
-const maxRetryAfterSeconds = int64(math.MaxInt64) / int64(time.Second)
+//
+// Two host limits sit above it and this is at or below both, which is why the
+// answer does not depend on the word size: `seconds × time.Second` wraps past
+// math.MaxInt64 above ~292 years, and RetryAfter is an `int`, which is 32 bits
+// on a 32-bit target. Taking the smaller keeps one documented number for every
+// platform — the same 2147483647 SPEC §16 already names as a shared cross-SDK
+// ceiling — instead of an answer a reader has to compute from GOARCH.
+const maxRetryAfterSeconds = math.MaxInt32
 
 // clampRetryAfterSeconds normalizes a delta-seconds value to the range Error's
 // RetryAfter field promises: non-negative, and small enough that the retry
-// loops' `time.Duration(n) * time.Second` stays positive.
+// loops' `time.Duration(n) * time.Second` stays positive on every target.
 //
 // The failure this closes is not hypothetical arithmetic. `Retry-After:
 // 9223372036854775807` parses cleanly on a 64-bit build, and the product wraps
@@ -1099,31 +1107,20 @@ const maxRetryAfterSeconds = int64(math.MaxInt64) / int64(time.Second)
 // what honours the server: falling back would compute the millisecond backoff
 // curve instead and hammer a peer that just asked for a long wait, which is the
 // same tight loop by another route. The wait is a select on ctx.Done(), so an
-// absurd clamped delay is abandonable rather than a hang. This mirrors the
-// device-flow parser (SPEC §16): a digit string too long to be an int is
-// malformed and falls back, while a value that parses but exceeds what we can
-// honour is clamped.
+// absurd clamped delay is abandonable rather than a hang.
 //
-// It takes an int64 because the HTTP-date branch has one: seconds are derived
-// from a time.Duration there, whose range exceeds int on a 32-bit build, and
-// narrowing before the clamp is what the clamp exists to prevent. The ceiling
-// is therefore whichever of the two host limits binds first — the Duration's
-// and int's — so the returned value is always exactly representable.
-// The two bounds are separate comparisons rather than one `min` of three
-// values because CodeQL's go/incorrect-integer-conversion reads the guard, not
-// the arithmetic: it could not see through the variadic `min` and reported the
-// int64→int conversion as unbounded (a high-severity alert, and a failing
-// check). Spelled this way the bound is legible to the query and to a reader,
-// and the conversion is provably exact.
+// It takes an int64 because both callers have one — the date branch derives
+// seconds from a time.Duration, and the delta-seconds branch parses into 64
+// bits so the answer cannot depend on the word size. A single comparison
+// against a bound below every target's int range is also what makes the
+// narrowing legible to CodeQL's go/incorrect-integer-conversion, which reads
+// the guard rather than the arithmetic and flagged the previous spelling.
 func clampRetryAfterSeconds(seconds int64) int {
 	if seconds <= 0 {
 		return 0
 	}
 	if seconds > maxRetryAfterSeconds {
-		seconds = maxRetryAfterSeconds
-	}
-	if seconds > int64(math.MaxInt) {
-		return math.MaxInt
+		return maxRetryAfterSeconds
 	}
 	return int(seconds)
 }
@@ -1137,14 +1134,29 @@ func parseRetryAfter(header string) int {
 	if header == "" {
 		return 0
 	}
-	// Try parsing as seconds (integer). Parsed as an int64, not through Atoi:
-	// Atoi's range is int's, so on a 32-bit build `Retry-After: 2147483648`
-	// would be ErrRange → malformed → the millisecond backoff curve, while the
-	// same header on a 64-bit build is honoured. The clamp already bounds the
-	// result by what this host can hold, so the parse has no business deciding
-	// it. A digit string too long for an int64 is still malformed everywhere,
-	// which is the boundary SPEC §16's device parser draws too.
-	if seconds, err := strconv.ParseInt(header, 10, 64); err == nil && seconds > 0 {
+	// Try parsing as seconds (integer). Parsed as an int64 rather than through
+	// Atoi, whose range is int's: `Retry-After: 2147483648` would otherwise be
+	// ErrRange, hence malformed, hence the millisecond backoff on a 32-bit
+	// build while the same header is honoured on a 64-bit one. Deciding the
+	// ceiling is the clamp's job, not the parse's.
+	//
+	// A POSITIVE range error saturates too, and deliberately. ParseInt reports
+	// ErrRange with the value already clamped to math.MaxInt64, so
+	// `9223372036854775808` — one past the largest int64, and still `1*DIGIT`,
+	// which is all RFC 9110 requires of delay-seconds — lands on the ceiling
+	// like every other over-range value instead of falling off a boundary that
+	// exists only because of Go's word size. The alternative would honour
+	// 9223372036854775807 and hammer the server for 9223372036854775808, one
+	// digit apart, which no reader could predict and no server could intend.
+	// Truly malformed input ("120junk", "-5", "") still falls through: ParseInt
+	// returns 0 with ErrSyntax, and a negative range error clamps to
+	// math.MinInt64, both caught by the `> 0` guard.
+	//
+	// TypeScript (`Number.isSafeInteger`) and Kotlin (`toIntOrNull`) fall back
+	// to the backoff curve at their own parse limits rather than saturating;
+	// that divergence is #799.
+	if seconds, err := strconv.ParseInt(header, 10, 64); seconds > 0 &&
+		(err == nil || errors.Is(err, strconv.ErrRange)) {
 		return clampRetryAfterSeconds(seconds)
 	}
 	// Try parsing as HTTP-date (e.g., "Wed, 21 Oct 2015 07:28:00 GMT")

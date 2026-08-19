@@ -185,11 +185,6 @@ func TestClient_RetryAfterAbsentOrUnusableKeepsBackoff(t *testing.T) {
 		{"zero", "0"},
 		{"negative", "-5"},
 		{"http-date in the past", "Wed, 09 Jun 2021 10:18:14 GMT"},
-		// The boundary on the other side of the clamp below: a digit string
-		// too long to be an int at all is malformed, not over-range, so it
-		// falls through to the curve exactly like "sometime next week". Same
-		// split the device-flow parser draws (SPEC §16).
-		{"digits beyond int range", "99999999999999999999"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			delays, err := retryAfterProbe(t, rateLimited(tc.header))
@@ -209,28 +204,6 @@ func TestClient_RetryAfterAbsentOrUnusableKeepsBackoff(t *testing.T) {
 	}
 }
 
-// skipUnlessIntWiderThanDurationSeconds skips a case whose whole subject is a
-// value that parses as an int but overflows a Duration of seconds. On a build
-// where int is narrower than that bound (32-bit), the class is empty — such a
-// header fails strconv.Atoi and is malformed, covered by the case above.
-func skipUnlessIntWiderThanDurationSeconds(t *testing.T) {
-	t.Helper()
-	if int64(math.MaxInt) <= maxRetryAfterSeconds {
-		t.Skip("int cannot hold a value beyond the Duration-seconds bound on this platform")
-	}
-}
-
-// durationSecondsCeiling is maxRetryAfterSeconds as an int, and the assignment
-// is what makes it legal: `int(maxRetryAfterSeconds)` is a CONSTANT conversion,
-// and a 32-bit build rejects it where it is written — "constant 9223372036
-// overflows int" — so the test binary would not compile at all, and the skip
-// above could never run to spare it. Converting a variable is checked at run
-// time instead, where the skip has already fired.
-func durationSecondsCeiling() int {
-	ceiling := maxRetryAfterSeconds
-	return int(ceiling)
-}
-
 // TestClient_RetryAfterSaturatesAtDurationCeiling is the regression test for a
 // server turning the retry loop into a tight loop with a syntactically valid
 // header. time.Duration counts nanoseconds in an int64, so an unclamped
@@ -239,12 +212,23 @@ func durationSecondsCeiling() int {
 // burn its whole attempt budget back-to-back against a peer that just asked it
 // to wait. Against the unclamped code this observes -1s and fails.
 //
-// The delay is asserted, not the elapsed time — a clamped wait is ~292 years,
+// The delay is asserted, not the elapsed time — a clamped wait is ~68 years,
 // which is precisely why nothing here may sleep it.
+//
+// Both headers saturate, and the second is the point: `…808` is one past the
+// largest int64, so ParseInt reports it as out of range. Honouring `…807` and
+// discarding `…808` would put a cliff between two values one digit apart, for
+// no reason a server could see — RFC 9110 asks only for `1*DIGIT` (review
+// follow-up, Codex).
 func TestClient_RetryAfterSaturatesAtDurationCeiling(t *testing.T) {
-	skipUnlessIntWiderThanDurationSeconds(t)
+	for _, header := range []string{"9223372036854775807", "9223372036854775808", "99999999999999999999"} {
+		t.Run(header, func(t *testing.T) { assertSaturatedRetryAfter(t, header) })
+	}
+}
 
-	delays, err := retryAfterProbe(t, rateLimited("9223372036854775807"))
+func assertSaturatedRetryAfter(t *testing.T, header string) {
+	t.Helper()
+	delays, err := retryAfterProbe(t, rateLimited(header))
 
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("Get returned %v, want context.Canceled", err)
@@ -258,7 +242,7 @@ func TestClient_RetryAfterSaturatesAtDurationCeiling(t *testing.T) {
 	}
 	if want := time.Duration(maxRetryAfterSeconds) * time.Second; delays[0] != want {
 		t.Errorf("computed a %v retry delay, want %v — an over-range Retry-After saturates at "+
-			"what a Duration can hold rather than falling back to the ~1ms backoff curve", delays[0], want)
+			"the honoured ceiling rather than falling back to the ~1ms backoff curve", delays[0], want)
 	}
 }
 
@@ -293,25 +277,42 @@ func TestParseRetryAfter_FarFutureHTTPDateSaturates(t *testing.T) {
 
 // TestParseRetryAfter_HTTPDateRoundsUp covers the other end of the same branch.
 // A remainder truncated toward zero turns the shortest honoured delay into "no
-// delay at all" — a date under a second out became 0, which every caller reads
-// as absent, so the request fell onto the millisecond backoff curve instead of
+// delay at all" — a date under a second out becomes 0, which every caller reads
+// as absent, so the request falls onto the millisecond backoff curve instead of
 // waiting. It also retries before the moment the server named. TypeScript
 // (`Math.ceil`), Kotlin (`(remainingMs + 999) / 1000`) and Swift
 // (`.rounded(.up)`) all round up for those two reasons; Go now joins them, and
 // SPEC §6 step 2 says so. Python and Ruby still truncate (#799).
 //
-// The effect is exactly one second wide, which is the whole distance between
-// truncating and rounding up, so this case tolerates up to a second of
-// scheduling delay between naming the date and parsing it — and no more,
-// because there is no more to give. Against truncation it fails by 1.
+// The assertion is ONE-SIDED, which is what keeps it out of #783's territory
+// (review follow-up, Codex). An equality against a literal cannot work here:
+// the wire form carries whole seconds, so the remaining time is
+// `offset - frac(now) - scheduling delay`, and the room before the answer drops
+// by one is `1 - frac(now)` — arbitrarily small, entirely at the clock's
+// discretion. Instead the bound is re-measured AFTER the parse, making it a
+// lower bound on what the parser itself saw: scheduling delay can only weaken
+// this toward vacuity, never turn it red.
 func TestParseRetryAfter_HTTPDateRoundsUp(t *testing.T) {
-	// A whole-second HTTP-date 5s out leaves a sub-second remainder against
-	// now(), since now() is not on a second boundary: 4.xx seconds remain.
-	future := time.Now().Add(5 * time.Second).UTC().Format(http.TimeFormat)
+	// The next whole second is the shortest future date the wire form can
+	// express, and the case with the widest gap between the two roundings:
+	// under a second remains, which truncation reports as 0 — discarded — and
+	// rounding up reports as 1.
+	target := time.Now().Truncate(time.Second).Add(time.Second)
 
-	if seconds := parseRetryAfter(future); seconds != 5 {
-		t.Errorf("parseRetryAfter(a date 5s out) = %d, want 5 — a truncated remainder "+
-			"waits less than the server asked, and under a second it rounds to 0 and is discarded", seconds)
+	seconds := parseRetryAfter(target.UTC().Format(http.TimeFormat))
+
+	remaining := time.Until(target)
+	if remaining <= 0 {
+		// The target second passed between formatting and measuring, so there
+		// is nothing left to be right or wrong about: a parser returning 0 for
+		// a past date is correct, and asserting anything here would be
+		// asserting the scheduler.
+		t.Skip("the target second elapsed during the test; nothing to assert")
+	}
+	if delay := time.Duration(seconds) * time.Second; delay < remaining {
+		t.Errorf("parseRetryAfter(a date %v away) = %ds, shorter than the wait the server named — "+
+			"truncating a sub-second remainder yields 0, which reads as absent and drops the "+
+			"request onto the backoff curve; any truncation retries early", remaining, seconds)
 	}
 }
 
@@ -343,10 +344,8 @@ func TestErrRateLimit_NormalizesRetryAfter(t *testing.T) {
 	}
 
 	t.Run("beyond duration range", func(t *testing.T) {
-		skipUnlessIntWiderThanDurationSeconds(t)
-
 		err := ErrRateLimit(math.MaxInt)
-		want := durationSecondsCeiling()
+		want := maxRetryAfterSeconds
 		if err.RetryAfter != want {
 			t.Errorf("ErrRateLimit(math.MaxInt).RetryAfter = %d, want %d (saturated, so the "+
 				"retry loop's seconds→Duration conversion stays positive)", err.RetryAfter, want)
@@ -386,10 +385,9 @@ func TestClient_RetryAfterErrorCarriesSeconds(t *testing.T) {
 // typed one.
 func TestCheckResponse_CarriesRetryAfter(t *testing.T) {
 	for _, tc := range []struct {
-		name         string
-		header       string
-		want         int
-		needsWideInt bool
+		name   string
+		header string
+		want   int
 	}{
 		{name: "seconds", header: "17", want: 17},
 		{name: "absent", header: "", want: 0},
@@ -401,12 +399,9 @@ func TestCheckResponse_CarriesRetryAfter(t *testing.T) {
 		// multiplies it by time.Second, which is what downloadURL, the
 		// resilience hook's rate-limiter block, and any caller rescheduling
 		// off err.RetryAfter all do.
-		{name: "beyond duration range", header: "9223372036854775807", want: durationSecondsCeiling(), needsWideInt: true},
+		{name: "beyond duration range", header: "9223372036854775807", want: maxRetryAfterSeconds},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			if tc.needsWideInt {
-				skipUnlessIntWiderThanDurationSeconds(t)
-			}
 			resp := &http.Response{StatusCode: http.StatusTooManyRequests, Header: http.Header{}}
 			if tc.header != "" {
 				resp.Header.Set("Retry-After", tc.header)
