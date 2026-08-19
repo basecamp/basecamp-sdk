@@ -1,0 +1,22 @@
+CONTRIBUTING.md
+  s_b98b4a85078d3e::t_84c87068f1b1a5 128-149
+typescript/tests/middleware-lifecycle.test.ts
+  s_b98b4a85078d3e::t_6a10de329da2cc 92-101
+  s_b98b4a85078d3e::t_512008ead3d965 319-328,330-331,333-340,342-362,364,366-370,372-377,379-408
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "f0149bc84fd3bafcf915b35967dd766315139ad8",
+  "prompts": {},
+  "sessions": {
+    "s_b98b4a85078d3e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5bbef980-f552-48e7-bb51-0b748caa71ac",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}

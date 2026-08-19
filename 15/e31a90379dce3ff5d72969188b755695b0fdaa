@@ -1,0 +1,38 @@
+CONTRIBUTING.md
+  s_b98b4a85078d3e::t_526f9221ea49d9 165-170
+typescript/lint-rules/no-timer-scheduled-abort.js
+  s_b98b4a85078d3e::t_2ac1a0673d9577 155-158,163
+  s_b98b4a85078d3e::t_794901edae7d02 31-32
+  s_b98b4a85078d3e::t_34ba49e58d9349 112-136
+  s_b98b4a85078d3e::t_b4eae0485d361f 51-60
+typescript/tests/middleware-lifecycle.test.ts
+  s_b98b4a85078d3e::t_59027a44c8f8d8 293-315,317-318,320-327,329-357,359-364,366-401
+  s_b98b4a85078d3e::t_1b19839c8ad45c 73-88
+typescript/lint-rules/test-no-timer-scheduled-abort.mjs
+  s_b98b4a85078d3e::t_cb71ea77236514 79-90
+  s_09297614e4690f::t_1a8f6a92eb7baf 75-78
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "15e31a90379dce3ff5d72969188b755695b0fdaa",
+  "prompts": {},
+  "sessions": {
+    "s_09297614e4690f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a00e05-d489-7cc0-9c27-ccfc76a1acfb",
+        "model": "gpt-daybreak-blue-latest"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_b98b4a85078d3e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5bbef980-f552-48e7-bb51-0b748caa71ac",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
