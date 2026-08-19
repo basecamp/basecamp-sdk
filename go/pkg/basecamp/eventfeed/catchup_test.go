@@ -15,6 +15,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -2040,4 +2041,85 @@ func TestDeferredFatalOutranksAMalformedPage(t *testing.T) {
 			terminal, eventfeed.ReasonProtocolFatal)
 	}
 	assertPositions(t, store.Saves())
+}
+
+// TestProtocolFatalReadButNotYetHandedOffIsImmediate closes the last gap in
+// the carve-out's stated boundary.
+//
+// The guarantee is over "every frame the pump had ALREADY READ", and the
+// pumpDepth+1 budget delivers that only for a frame blocked INSIDE the
+// hand-off with a full queue — Go moves a blocked sender's value into the
+// buffer on the first receive, so the budget's +1 reaches it. It says nothing
+// about the window between ReadFrame returning and the send starting. A scan
+// sampling inside that window sees an empty queue, concludes there is nothing
+// to find, and completes the drain: the held entry position saves and
+// caught_up announces, with the fatal frame sitting in the pump's own stack.
+//
+// The window is short but it is not theoretical — it is a preemption point
+// like any other, and the drain's scan runs on every replay iteration, so the
+// last iteration is one scheduling decision away from missing it.
+//
+// It cannot be closed by peeking at what the pump holds: the pump would still
+// have to publish it, leaving the same race one instruction earlier. So the
+// scan's completion condition changes instead, from "the queue is momentarily
+// empty" to "the queue is empty AND the pump holds nothing it has read". The
+// second half is an atomic flag the pump sets before the hand-off and clears
+// after it, and the scan spins on it — bounded, because the flag covers a
+// stretch of code with no I/O and no blocking except the hand-off itself,
+// which the scan's own dequeue releases.
+func TestProtocolFatalReadButNotYetHandedOffIsImmediate(t *testing.T) {
+	var caughtUp int
+	store := feedtest.NewStore()
+	h := storedHarness(t, store, eventfeed.WithObserver(eventfeed.Observer{
+		CaughtUp: func() { caughtUp++ },
+	}))
+	h.minter.ScriptTicket(ticket(1))
+	h.polls.ScriptPage(eventfeed.PollPage{Position: "pos-1"})
+	h.drainHandled()
+
+	// The pump parks in the read→hand-off window on the fatal frame, and only
+	// on it: parking every read would stall the handshake.
+	parked := make(chan struct{}, 1)
+	release := make(chan struct{})
+	var armed atomic.Bool
+	h.conn.OnPumpRead(func() {
+		if !armed.Load() {
+			return
+		}
+		armed.Store(false)
+		select {
+		case parked <- struct{}{}:
+		default:
+		}
+		<-release
+	})
+	h.pauseAfter = 1
+	h.start()
+
+	conn := h.driveToSubscribed()
+	h.serveSettled(conn, frameMessage(noFilterIdentifier, 41))
+	conn.Serve(frameConfirm(noFilterIdentifier))
+
+	// The consumer parks inside the drain's delivery of the retained event, so
+	// the drain is mid-flight when the fatal frame is read.
+	h.waitUntil("the drain parked mid-delivery", func() bool { return len(h.deliveredIDs()) == 1 })
+	armed.Store(true)
+	conn.Serve(frameDisconnect("invalid_event_stream_command", false))
+	select {
+	case <-parked:
+	case <-time.After(watchdog):
+		t.Fatal("the pump never parked between reading the fatal frame and handing it off")
+	}
+
+	// Resume the drain with the fatal frame READ and unqueued. The scan must
+	// not treat the empty queue as proof there is nothing to find.
+	h.resume()
+	// Give the scan a moment to reach its completion condition while the pump
+	// is still parked; then let the hand-off proceed.
+	time.Sleep(50 * time.Millisecond)
+	close(release)
+	h.join()
+
+	assertProtocolFatalDrain(t, h, store, caughtUp)
+	assertIDs(t, h.deliveredIDs(), 41)
 }

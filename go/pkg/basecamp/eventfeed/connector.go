@@ -230,6 +230,12 @@ type testHooks struct {
 	// observable well before the pump's release runs, and only the release
 	// settles which window a subsequent expiry is evaluated against.
 	pumpReleased func()
+	// pumpRead fires immediately after a pump read returns and after the
+	// holding flag is set, but BEFORE the hand-off — the one window in which
+	// the pump owns a frame no other goroutine can observe through the queue.
+	// It exists so the protocol-fatal scan's rendezvous with that window can
+	// be driven deterministically instead of raced.
+	pumpRead func()
 	// pumpHandedOff fires once an item reaches the hand-off queue, reporting
 	// whether it is the pump's terminating error.
 	pumpHandedOff func(isErr bool)
