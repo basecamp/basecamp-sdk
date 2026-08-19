@@ -633,7 +633,6 @@ type blockingStore struct {
 	loadRelease chan struct{}
 	mu          sync.Mutex
 	saves       []string
-	attempts    int
 }
 
 func newBlockingStore() *blockingStore {
@@ -664,9 +663,6 @@ func (s *blockingStore) Load(ctx context.Context, _ eventfeed.CheckpointKey) (st
 }
 
 func (s *blockingStore) Save(_ context.Context, _ eventfeed.CheckpointKey, position string) error {
-	s.mu.Lock()
-	s.attempts++
-	s.mu.Unlock()
 	s.entered <- struct{}{}
 	<-s.release
 	s.mu.Lock()
@@ -681,25 +677,18 @@ func (s *blockingStore) recorded() []string {
 	return append([]string(nil), s.saves...)
 }
 
-func (s *blockingStore) attemptCount() int {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.attempts
-}
-
-// TestCloseDoesNotBlockOnAnInFlightCheckpointSave pins the half of the durable
-// gate that is about Close's own promise.
+// TestCloseDoesNotBlockOnAnInFlightCheckpointSave pins Close's own promise.
 //
-// Holding the gate across CheckpointStore.Save was the obvious spelling and is
-// wrong twice: a store whose Save calls Close self-deadlocks on the caller's
-// goroutine (Close is documented as callable from anywhere), and a store that
-// merely stalls blocks EVERY Close for as long as it stalls — contradicting the
-// one thing Close promises unconditionally, that cancellation is visible before
-// it returns.
+// Waiting on CheckpointStore.Save was the obvious spelling and is wrong twice:
+// a store whose Save calls Close self-deadlocks on the caller's goroutine
+// (Close is documented as callable from anywhere), and a store that merely
+// stalls blocks EVERY Close for as long as it stalls — contradicting the one
+// thing Close promises unconditionally, that cancellation is visible before it
+// returns.
 //
-// So Close latches and returns. The save that already claimed the gate still
-// completes: its position was accepted and delivered before Close was called,
-// and abandoning a durable write half-way is worse than finishing it.
+// So Close cancels and returns. The in-flight save still completes: its
+// position was accepted and delivered before Close was called, and abandoning a
+// durable write half-way is worse than finishing it.
 func TestCloseDoesNotBlockOnAnInFlightCheckpointSave(t *testing.T) {
 	store := newBlockingStore()
 	h := newHarness(t,
@@ -736,17 +725,25 @@ func TestCloseDoesNotBlockOnAnInFlightCheckpointSave(t *testing.T) {
 	}
 }
 
-// TestNoCheckpointSaveCommencesAfterClose is the other direction: once Close
-// has returned, a save that had not begun does not begin.
+// TestAnAcceptedPositionSavesEvenWhenCloseLandsFirst is the other direction,
+// and it is the inverse of what this test used to assert.
 //
-// Close is taken from inside Observer.PageDelivered — the callback that fires
-// on the consumer's goroutine immediately BEFORE the page's save — so the run
-// is demonstrably at the save boundary when it lands. An earlier version closed
-// before the feed ever reached a page and passed with the gate removed
-// entirely, which is no test at all.
-func TestNoCheckpointSaveCommencesAfterClose(t *testing.T) {
+// It used to pin a gate that REFUSED a save once Close had returned. Close is
+// taken from inside Observer.PageDelivered, which fires immediately after the
+// page's events have been handed to the consumer and immediately before the
+// page's position is written — so what the gate actually bought here was a
+// silent dropped save for events the consumer had already received. The next
+// run then re-delivers them, having no record they ever arrived.
+//
+// That was the whole of the gate's cost, and against it stood a guarantee it
+// did not deliver: the overwrite window it existed to close was narrowed, not
+// closed (claiming the gate and writing are not atomic together), and the harm
+// it narrowed — a checkpoint moving backward — is bounded replay, the same
+// class as the drop it caused. Quiescence is what actually closes it, and the
+// iterator returning IS quiescence. See Connector.Wait.
+func TestAnAcceptedPositionSavesEvenWhenCloseLandsFirst(t *testing.T) {
 	store := newBlockingStore()
-	close(store.release) // any save that does commence completes immediately
+	close(store.release) // saves complete immediately
 	var h *harness
 	h = newHarness(t,
 		eventfeed.WithCheckpointStore(store),
@@ -768,12 +765,91 @@ func TestNoCheckpointSaveCommencesAfterClose(t *testing.T) {
 	sock.Serve(frameConfirm(noFilterIdentifier))
 	h.join()
 
-	if n := store.attemptCount(); n != 0 {
-		t.Errorf("store.Save was entered %d time(s) after Close returned, want 0", n)
+	if got := store.recorded(); len(got) != 1 || got[0] != "pos-1" {
+		t.Errorf("recorded saves = %v, want [pos-1] — event 101 was delivered, so its position must be durable", got)
 	}
-	if got := store.recorded(); len(got) != 0 {
-		t.Errorf("recorded saves = %v, want none", got)
+}
+
+// TestWaitReturnsOnlyAfterTheRunHasExited pins the guarantee that replaced the
+// durable gate, and pins it against the thing it must not be confused with.
+//
+// Close cancels and returns while the run is still unwinding — deliberately,
+// since it is callable from inside a callback that runs ON the run's goroutine.
+// So Close alone cannot order a second connector over the same store. Wait can,
+// because it reports the run's exit, at which point no save can be in flight by
+// construction rather than by a window narrow enough to be unlikely.
+//
+// The save is held INSIDE the store so the two are distinguishable: a Wait that
+// merely mirrored Close would return here, with the write still pending.
+func TestWaitReturnsOnlyAfterTheRunHasExited(t *testing.T) {
+	store := newBlockingStore()
+	h := newHarness(t,
+		eventfeed.WithCheckpointStore(store),
+		eventfeed.WithConsumerNamespace("agent"))
+	h.minter.ScriptTicket(ticket(1))
+	h.polls.ScriptPage(eventfeed.PollPage{Events: []eventfeed.Event{pollEvent(101)}, Position: "pos-1"})
+	h.start()
+	sock := h.driveToSubscribed()
+	sock.Serve(frameConfirm(noFilterIdentifier))
+
+	// The run goroutine is parked inside CheckpointStore.Save.
+	select {
+	case <-store.entered:
+	case <-time.After(watchdog):
+		t.Fatal("the checkpoint save never reached the store")
 	}
+	if err := h.conn.Close(); err != nil {
+		t.Fatalf("Close: %v", err)
+	}
+
+	waited := make(chan struct{})
+	go func() { h.conn.Wait(); close(waited) }()
+	select {
+	case <-waited:
+		t.Fatal("Wait returned with a checkpoint save still in flight; it must report the run's EXIT, not Close's return")
+	case <-time.After(50 * time.Millisecond):
+	}
+
+	close(store.release)
+	select {
+	case <-waited:
+	case <-time.After(watchdog):
+		t.Fatal("Wait did not return after the run exited")
+	}
+	// Quiescence is the point: by the time Wait returns, the write a second
+	// connector would race is already durable.
+	if got := store.recorded(); len(got) != 1 || got[0] != "pos-1" {
+		t.Errorf("recorded saves = %v, want [pos-1] before Wait returns", got)
+	}
+	h.join()
+}
+
+// TestWaitWithNoActiveRunReturnsImmediately covers the two shapes that are not
+// a running feed: never consumed, and already finished. Neither may block.
+func TestWaitWithNoActiveRunReturnsImmediately(t *testing.T) {
+	t.Run("never consumed", func(t *testing.T) {
+		h := newHarness(t)
+		done := make(chan struct{})
+		go func() { h.conn.Wait(); close(done) }()
+		select {
+		case <-done:
+		case <-time.After(watchdog):
+			t.Fatal("Wait blocked on a connector that was never consumed")
+		}
+	})
+	t.Run("run already finished", func(t *testing.T) {
+		h := newHarness(t)
+		h.minter.ScriptError(&eventfeed.MintError{Kind: eventfeed.MintUnrecoverable})
+		h.start()
+		h.join()
+		done := make(chan struct{})
+		go func() { h.conn.Wait(); close(done) }()
+		select {
+		case <-done:
+		case <-time.After(watchdog):
+			t.Fatal("Wait blocked after the run had already exited")
+		}
+	})
 }
 
 // TestCancelledCheckpointLoadIsNotAStoreFailure is the third item. The load
@@ -845,16 +921,333 @@ func TestUncancelledCheckpointLoadFailureIsStillTerminal(t *testing.T) {
 	}
 }
 
-// TestCloseFromEveryCallbackSiteDoesNotDeadlock covers the hazard the durable
-// gate introduces. saveCheckpoint holds a lock across host store I/O, and Close
-// waits for that lock — so if the gate were still held while a consumer callback
-// ran, a Close taken from inside Observer.Checkpoint would deadlock against the
-// very save that fired it. Close from inside a callback is documented as
-// supported, so this is the case that has to be right, not merely likely.
+// hookedStore is a CheckpointStore that runs a hook inside Load — the one
+// callback site that is not an Observer, and the only deterministic way to
+// take a Close between the run starting and its first Observer.Connecting.
+type hookedStore struct {
+	onLoad func()
+	mu     sync.Mutex
+	saves  []string
+}
+
+func (s *hookedStore) Load(context.Context, eventfeed.CheckpointKey) (string, bool, error) {
+	if s.onLoad != nil {
+		s.onLoad()
+	}
+	return "pos-0", true, nil
+}
+
+func (s *hookedStore) Save(_ context.Context, _ eventfeed.CheckpointKey, position string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.saves = append(s.saves, position)
+	return nil
+}
+
+func (s *hookedStore) recorded() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return append([]string(nil), s.saves...)
+}
+
+// TestCloseOutranksTheNextLifecycleAnnouncement extends to the observer what
+// emitTerminal already does for the terminal element: a Close the consumer has
+// already taken outranks what the connector says next.
 //
-// The release therefore happens before either observer callback. Each site below
-// ends the iteration cleanly with no error element; a deadlock fails as the
-// watchdog rather than hanging the package.
+// emitTerminal made exactly ONE exit Close-ordered. Every lifecycle
+// announcement kept firing, because the nearest runCtx check sat AFTER the
+// callback rather than before it — a check placed to catch a Close taken from
+// INSIDE the callback, which is a different Close from one taken earlier. So a
+// consumer that closed during `confirmed` was still told `catch_up_started`,
+// and one that closed during `catch_up_started` was still told a page had been
+// delivered.
+//
+// Each case closes from one callback and names the announcement that must not
+// follow it. The pairing is the assertion: "the feed stopped" is satisfied by
+// almost any behavior, where "this specific next thing was not announced" is
+// satisfied only by the ordering.
+func TestCloseOutranksTheNextLifecycleAnnouncement(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		// observer wires the CLOSING callback and the one that must not fire
+		// after it; forbidden records the latter.
+		observer func(closeFeed func(), forbidden func(string)) eventfeed.Observer
+		// notAfter names the announcement under test, for the failure message.
+		notAfter string
+		// presentAt enters present-class, which HOLDS its position to the end
+		// of the walk instead of saving per page.
+		presentAt bool
+	}{
+		{
+			name:     "Connecting after a Close taken during the checkpoint load",
+			notAfter: "connecting",
+			observer: func(_ func(), forbidden func(string)) eventfeed.Observer {
+				return eventfeed.Observer{
+					Connecting: func(int, time.Duration) { forbidden("connecting") },
+				}
+			},
+		},
+		{
+			name:     "CatchUpStarted after a Close taken during Confirmed",
+			notAfter: "catch_up_started",
+			observer: func(cl func(), forbidden func(string)) eventfeed.Observer {
+				return eventfeed.Observer{
+					Confirmed:      func() { cl() },
+					CatchUpStarted: func(eventfeed.Cursor) { forbidden("catch_up_started") },
+				}
+			},
+		},
+		{
+			name:     "PageDelivered after a Close taken during CatchUpStarted",
+			notAfter: "page_delivered",
+			observer: func(cl func(), forbidden func(string)) eventfeed.Observer {
+				return eventfeed.Observer{
+					CatchUpStarted: func(eventfeed.Cursor) { cl() },
+					PageDelivered:  func(int, string) { forbidden("page_delivered") },
+				}
+			},
+		},
+		{
+			name:     "CaughtUp after a Close taken during PageDelivered",
+			notAfter: "caught_up",
+			observer: func(cl func(), forbidden func(string)) eventfeed.Observer {
+				return eventfeed.Observer{
+					PageDelivered: func(int, string) { cl() },
+					CaughtUp:      func() { forbidden("caught_up") },
+				}
+			},
+		},
+		{
+			name:     "CaughtUp after a Close taken during Checkpoint",
+			notAfter: "caught_up",
+			observer: func(cl func(), forbidden func(string)) eventfeed.Observer {
+				return eventfeed.Observer{
+					Checkpoint: func(string) { cl() },
+					CaughtUp:   func() { forbidden("caught_up") },
+				}
+			},
+		},
+		// The case above cannot isolate the check before `caught_up`: on a
+		// position-resume entry the save fires per page, so the walk's own
+		// boundary check ends things first and either check alone would pass
+		// it. A PRESENT-class entry HOLDS its position to the end, so its
+		// Checkpoint callback fires after the walk has already returned and
+		// after the drain — leaving the check before `caught_up` as the only
+		// thing standing between that Close and the announcement.
+		{
+			name:      "CaughtUp after a Close taken during the HELD save",
+			notAfter:  "caught_up",
+			presentAt: true,
+			observer: func(cl func(), forbidden func(string)) eventfeed.Observer {
+				return eventfeed.Observer{
+					Checkpoint: func(string) { cl() },
+					CaughtUp:   func() { forbidden("caught_up") },
+				}
+			},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var mu sync.Mutex
+			var seen []string
+			forbidden := func(name string) {
+				mu.Lock()
+				defer mu.Unlock()
+				seen = append(seen, name)
+			}
+			var h *harness
+			closeFeed := func() {
+				if err := h.conn.Close(); err != nil {
+					t.Errorf("Close: %v", err)
+				}
+			}
+			store := &hookedStore{}
+			if tc.notAfter == "connecting" {
+				// The load runs before the first mint and before the first
+				// Connecting announcement, so it is the deterministic way to
+				// take a Close in that window. Every other case closes from an
+				// Observer callback.
+				store.onLoad = func() { closeFeed() }
+			}
+			opts := []eventfeed.Option{
+				eventfeed.WithCheckpointStore(store),
+				eventfeed.WithConsumerNamespace("agent"),
+				eventfeed.WithObserver(tc.observer(closeFeed, forbidden)),
+			}
+			if tc.presentAt {
+				opts = append(opts, eventfeed.WithStart(eventfeed.StartPresent()))
+			}
+			h = newHarness(t, opts...)
+			h.minter.ScriptTicket(ticket(1))
+			h.polls.ScriptPage(eventfeed.PollPage{
+				Events:   []eventfeed.Event{pollEvent(101)},
+				Position: "pos-1",
+			})
+			h.start()
+			if tc.notAfter != "connecting" {
+				sock := h.driveToSubscribed()
+				sock.Serve(frameConfirm(noFilterIdentifier))
+			}
+			h.join()
+
+			mu.Lock()
+			defer mu.Unlock()
+			if len(seen) != 0 {
+				t.Errorf("%q fired after Close; §23 makes close() a universal edge from every non-absorbing state", tc.notAfter)
+			}
+			if _, terminal, _ := h.snapshot(); terminal != nil {
+				t.Errorf("terminal = %v, want none — Close ends the iterator with no error element", terminal)
+			}
+		})
+	}
+}
+
+// TestCloseDuringPageDeliveredFinishesThePageAndStops is the other half of the
+// ordering above, and the half that must NOT be a suppression.
+//
+// A Close taken from Observer.PageDelivered ends the walk — no second poll,
+// whatever `next` says. But the page it interrupted is finished first: its
+// events were already handed to the consumer, so its position is written. The
+// check sits after the save for exactly that reason, and a check placed before
+// it would reintroduce the silent dropped save the durable gate was deleted
+// for.
+func TestCloseDuringPageDeliveredFinishesThePageAndStops(t *testing.T) {
+	store := &hookedStore{}
+	var h *harness
+	h = newHarness(t,
+		eventfeed.WithCheckpointStore(store),
+		eventfeed.WithConsumerNamespace("agent"),
+		eventfeed.WithObserver(eventfeed.Observer{
+			PageDelivered: func(int, string) {
+				if err := h.conn.Close(); err != nil {
+					t.Errorf("Close: %v", err)
+				}
+			},
+		}))
+	h.minter.ScriptTicket(ticket(1))
+	h.polls.ScriptPage(eventfeed.PollPage{
+		Events:   []eventfeed.Event{pollEvent(101)},
+		Position: "pos-1",
+		Next:     testOrigin + "/999/events.json?after=101",
+	})
+	h.polls.ScriptPage(eventfeed.PollPage{Events: []eventfeed.Event{pollEvent(102)}, Position: "pos-2"})
+	h.start()
+	sock := h.driveToSubscribed()
+	sock.Serve(frameConfirm(noFilterIdentifier))
+	h.join()
+
+	if got := store.recorded(); len(got) != 1 || got[0] != "pos-1" {
+		t.Errorf("recorded saves = %v, want [pos-1] — event 101 was delivered, so its position must be durable", got)
+	}
+	if got := h.polls.Calls(); len(got) != 1 {
+		t.Errorf("poll seam calls = %d, want 1 — Close must stop the walk before it follows `next`", len(got))
+	}
+	assertIDs(t, h.deliveredIDs(), 101)
+}
+
+// TestCloseDuringPageDeliveredSilencesThePageBoundary is what the page
+// boundary's own checks buy that the walk's top-of-loop check does not.
+//
+// The top-of-loop check is later, and between it and PageDelivered sit two
+// passes that DISPATCH what they dequeue: the ownership cut on a present-class
+// entry, and socketCheck before following `next`. With a disconnect frame
+// queued when the consumer closes, either announces `disconnected` — a
+// teardown report for a socket the consumer had already stopped caring about,
+// after the universal Closed edge was taken.
+//
+// Both entry classes, because they reach different passes and a single case
+// would leave one of the two checks unexercised. That is not hypothetical: the
+// first version of this test used the default harness, which resolves to
+// PRESENT-class, so it drove only the ownership cut while claiming to be about
+// socketCheck.
+func TestCloseDuringPageDeliveredSilencesThePageBoundary(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		// stored gives the entry a position, which makes it position-resume
+		// and routes the page through socketCheck rather than the cut.
+		stored bool
+	}{
+		{name: "present-class entry, at the ownership cut"},
+		{name: "position-resume entry, at socketCheck", stored: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var mu sync.Mutex
+			var disconnects int
+			var h *harness
+			var conn *feedtest.Conn
+			queued := make(chan struct{}, 8)
+			store := feedtest.NewStore()
+			if tc.stored {
+				store.Stored("pos-0")
+			}
+			h = newHarness(t,
+				eventfeed.WithCheckpointStore(store),
+				eventfeed.WithConsumerNamespace("agent"),
+				eventfeed.WithObserver(eventfeed.Observer{
+					PageDelivered: func(int, string) {
+						// Served HERE, not during the poll: a frame arriving
+						// while the call is in flight is parked in the
+						// deferral slot, which neither pass looks at. This one
+						// goes into the pump's QUEUE, which is what they drain.
+						//
+						// The drain first is load-bearing: welcome and confirm
+						// have already handed off, so an undrained channel
+						// satisfies the wait below on a STALE token, and Close
+						// then lands before the disconnect is queued at all —
+						// leaving nothing for the code under test to find.
+						drain(queued)
+						conn.Serve(frameDisconnect("remote", true))
+						select {
+						case <-queued:
+						case <-time.After(watchdog):
+							t.Error("the disconnect frame never reached the hand-off queue")
+							return
+						}
+						if err := h.conn.Close(); err != nil {
+							t.Errorf("Close: %v", err)
+						}
+					},
+					Disconnected: func(string, error) {
+						mu.Lock()
+						defer mu.Unlock()
+						disconnects++
+					},
+				}))
+			h.conn.OnPumpHandedOff(func(bool) {
+				select {
+				case queued <- struct{}{}:
+				default:
+				}
+			})
+			h.minter.ScriptTicket(ticket(1))
+			h.polls.ScriptPage(eventfeed.PollPage{
+				Events:   []eventfeed.Event{pollEvent(101)},
+				Position: "pos-1",
+				Next:     testOrigin + "/999/events.json?after=101",
+			})
+			h.polls.ScriptPage(eventfeed.PollPage{Position: "pos-2"})
+			h.start()
+			conn = h.driveToSubscribed()
+			conn.Serve(frameConfirm(noFilterIdentifier))
+			h.join()
+
+			mu.Lock()
+			defer mu.Unlock()
+			if disconnects != 0 {
+				t.Errorf("Observer.Disconnected fired %d time(s) after Close; the page boundary must end the walk before its dispatching passes run", disconnects)
+			}
+		})
+	}
+}
+
+// TestCloseFromEveryCallbackSiteDoesNotDeadlock pins that Close is callable
+// from inside a consumer callback, which is documented as supported and is the
+// case that has to be right rather than merely likely. Every callback runs ON
+// the run goroutine, and Close takes the connector's own mutex, so a Close that
+// waited for anything the run goroutine still owed would deadlock against the
+// very callback that made it.
+//
+// Each site below ends the iteration cleanly with no error element; a deadlock
+// fails as the watchdog rather than hanging the package.
 func TestCloseFromEveryCallbackSiteDoesNotDeadlock(t *testing.T) {
 	sites := []struct {
 		name     string

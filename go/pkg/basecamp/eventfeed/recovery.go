@@ -44,6 +44,12 @@ import (
 func (l *loop) repairWalk(at *attempt) (cycleOutcome, bool) {
 	cursor, presentClass := l.repairCursor()
 	l.setState(stateCatchingUp)
+	// Close outranks the announcement, on the repair path for the same reason
+	// as on the post-confirmation one: no walk is about to start.
+	if l.runCtx.Err() != nil {
+		l.disposeAttempt(at, nil)
+		return cycleOutcome{kind: outcomeClosed}, true
+	}
 	if l.cfg.observer.CatchUpStarted != nil {
 		l.cfg.observer.CatchUpStarted(redactCursor(cursor))
 	}

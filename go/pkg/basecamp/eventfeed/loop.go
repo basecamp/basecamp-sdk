@@ -712,6 +712,14 @@ func (l *loop) runCycle(delay time.Duration) cycleOutcome {
 	// invariant: Minting's set is {}); mint cancellation rides the attempt
 	// context.
 	l.setState(stateMinting)
+	// Close outranks the announcement, not just the act. A Connecting callback
+	// after Close tells the host a connect attempt is beginning when §23's
+	// universal Closed edge has already ruled one out — and the check that used
+	// to be the only one here sat AFTER the callback, so it caught a Close
+	// taken INSIDE the callback and missed every Close taken before it.
+	if l.runCtx.Err() != nil {
+		return cycleOutcome{kind: outcomeClosed}
+	}
 	if l.cfg.observer.Connecting != nil {
 		l.cfg.observer.Connecting(l.failedCycles+1, delay)
 	}
@@ -1477,14 +1485,13 @@ func (l *loop) saveCheckpoint(position string) {
 	if l.cfg.store == nil {
 		return
 	}
-	// The store call runs under the durable gate, so a save either commenced
-	// before Close or does not commence at all (durableGate). A refused save is
-	// silent by design: Close abandons, and reporting a save that was declined
-	// BECAUSE the consumer closed would be reporting the consumer's own
-	// decision back to it as a store failure.
-	if !l.cfg.durable.begin() {
-		return
-	}
+	// A position that reached here was ACCEPTED, and its events were delivered
+	// to the consumer before it was. It is written unconditionally, including
+	// after Close: the store is what tells the next run where those deliveries
+	// stopped, and dropping the write because the consumer closed a moment
+	// earlier silently re-delivers them. Ordering a second connector against
+	// this one is the consumer's to arrange, and Connector.Wait is what it
+	// arranges with.
 	err := l.cfg.store.Save(l.runCtx, l.checkpointKey(), position)
 	if err != nil {
 		if l.cfg.observer.CheckpointSaveFailed != nil {
