@@ -1121,6 +1121,10 @@ jobs:
     if: github.event_name == 'pull_request'
     permissions:
       contents: read
+      # Reads this PR's labels back from the API when the gate is failing, to
+      # see the `breaking` acknowledgement as it stands now rather than as the
+      # event payload froze it. See breaking_acknowledged() below.
+      pull-requests: read
     defaults:
       run:
         working-directory: go
@@ -1150,16 +1154,13 @@ jobs:
 
       - name: Check for breaking API changes
         env:
-          # An intentional break is declared by labelling the PR `breaking`
-          # ("Breaking change to public API"). The gate still runs and still
-          # prints everything it found — the label suppresses the failure, not
-          # the report, so the break stays visible in the log and in the
-          # label itself rather than being argued in a thread nobody reads
-          # later. Without a hatch this gate could not block at all: the SDK is
-          # pre-1.0 and removes surface on purpose (#504 withdrew
-          # GetEverythingBoosts), so a hard fail with no override would just be
-          # switched off the first time it was right.
-          BREAKING_ACKNOWLEDGED: ${{ contains(github.event.pull_request.labels.*.name, 'breaking') }}
+          # The `breaking` acknowledgement is not passed in here as a
+          # pre-computed boolean; it is read from the API at the point of use,
+          # for the reasons on breaking_acknowledged() below. These two are the
+          # ingredients for that read, and PR_NUMBER is empty on any event that
+          # has no pull request.
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           # A failed export must abort rather than leave a missing .api file
           # for the comparison to read as "nothing changed" — the whole gate
@@ -1276,17 +1277,73 @@ jobs:
               changed=1
             fi
           done < "${WORK}/base.pkgs"
+          # Qualified to what the loop above actually measured. It walks the
+          # base package list and skips anything the PR does not also have, so
+          # a package that was only added or only removed never reaches it —
+          # yet both are already reported further up, one of them as a break.
+          # An unqualified "no API changes" would therefore contradict the
+          # report it is part of, and on a removal it would do so in the same
+          # log as the failure that removal just caused. Folding the package
+          # set into `changed` would silence the line instead, which leaves the
+          # section empty and says less than naming its scope does.
           if [ "$changed" -eq 0 ]; then
-            echo "No API changes detected."
+            echo "No API changes detected in packages present in both revisions."
           fi
+
+          # An intentional break is declared by labelling the PR `breaking`
+          # ("Breaking change to public API"). The gate still runs and still
+          # prints everything it found — the label suppresses the failure, not
+          # the report, so the break stays visible in the log and in the label
+          # itself rather than being argued in a thread nobody reads later.
+          # Without a hatch this gate could not block at all: the SDK is
+          # pre-1.0 and removes surface on purpose (#504 withdrew
+          # GetEverythingBoosts), so a hard fail with no override would just be
+          # switched off the first time it was right.
+          #
+          # The label is read from the API here rather than out of the event
+          # payload, because the payload is a snapshot of the event that
+          # started the run and this workflow's `pull_request:` trigger does
+          # not fire on `labeled`. A payload read can therefore only ever see
+          # labels that predate the run: applying `breaking` after a failure
+          # starts no new run, and re-running replays the same payload, so the
+          # very remedy printed below — label it, re-run — was the one thing
+          # that could not work. Reading it live is what makes that instruction
+          # true. Subscribing to `labeled`/`unlabeled` would close it too, but
+          # this file is the whole Test workflow, so it would re-run every
+          # check in it on every label edit on every PR.
+          breaking_acknowledged() {
+            # Events with no pull request (a push to main, a manual dispatch)
+            # have nothing to carry a label, so say that rather than letting an
+            # empty label set pass for a considered "not acknowledged". The
+            # job's `if:` already keeps this step off those events; stating it
+            # here means the script does not silently depend on a condition
+            # written forty lines away and outside its own text.
+            if [ -z "${PR_NUMBER}" ]; then
+              echo "No pull request in scope, so there is no \`breaking\` label to honour."
+              return 1
+            fi
+
+            # Consulted only once the gate is already failing, which is what
+            # keeps a GitHub API outage away from every PR that has no break to
+            # acknowledge. On the ones that do, a failed read fails the step
+            # and says which half broke: staying quiet would wave real breaks
+            # through during an outage, and reporting a plain "unacknowledged"
+            # would send you off to re-apply a label that is already there.
+            if ! labels="$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}" --jq '.labels[].name')"; then
+              echo "::error::Could not read this PR's labels, so the \`breaking\` acknowledgement could not be checked. This is a failed API read, not a verdict on the label — re-run this job."
+              exit 1
+            fi
+
+            printf '%s\n' "$labels" | grep -Fxq 'breaking'
+          }
 
           if [ "$breaking" -eq 1 ]; then
             echo ""
-            if [ "$BREAKING_ACKNOWLEDGED" = "true" ]; then
+            if breaking_acknowledged; then
               echo "Incompatible changes are present and the PR carries the \`breaking\` label — not failing."
               echo "Document them in the changelog."
             else
-              echo "::error::Incompatible public API changes. If they are intentional, label this PR \`breaking\` and document them in the changelog."
+              echo "::error::Incompatible public API changes. If they are intentional, label this PR \`breaking\` and re-run this job, and document them in the changelog."
               exit 1
             fi
           fi
