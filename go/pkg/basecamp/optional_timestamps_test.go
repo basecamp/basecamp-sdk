@@ -321,6 +321,11 @@ type timestampField struct {
 // types.FlexibleTime, types.Date), in both value and pointer form. The json
 // key is the pairing axis rather than the Go field name: the wrapper renames
 // fields (Id → ID) but the wire key is the thing both sides must agree about.
+//
+// An anonymous embedded field carries neither a name nor (usually) a tag, and
+// promotes its own JSON keys into the enclosing struct. This walk does not
+// model promotion, so it hands every embed to assertEmbedPromotesNoTimestamps,
+// which fails the test on anything that could promote a timestamp (#722).
 func collectTimestampFields(t *testing.T, files map[string]*ast.File, wrappers map[string]bool) map[[2]string]timestampField {
 	t.Helper()
 	out := map[[2]string]timestampField{}
@@ -335,7 +340,11 @@ func collectTimestampFields(t *testing.T, files map[string]*ast.File, wrappers m
 				return true
 			}
 			for _, f := range st.Fields.List {
-				if f.Tag == nil || len(f.Names) == 0 {
+				if len(f.Names) == 0 {
+					assertEmbedPromotesNoTimestamps(t, path, ts.Name.Name, f.Type, files, wrappers)
+					continue
+				}
+				if f.Tag == nil {
 					continue
 				}
 				value := isTimeLike(f.Type, wrappers)
@@ -366,6 +375,93 @@ func collectTimestampFields(t *testing.T, files map[string]*ast.File, wrappers m
 		})
 	}
 	return out
+}
+
+// assertEmbedPromotesNoTimestamps fails unless an anonymous embedded field is
+// one of the shapes that promote no JSON-tagged fields at all.
+//
+// #722: this walk used to drop an anonymous embed with the same `continue`
+// that drops an untagged field — an embed has no Names AND no Tag, so both
+// halves of that one guard matched it. Every timestamp the embed promotes then
+// fell out of the (struct name, json key) pairing, and the value/pointer
+// parity assertion simply never ran on it. That is the UNDER-report direction:
+// the suite stays green while the exact class this file exists to catch ships
+// unremarked. #721's invariant for the sibling gate holds here too — an embed
+// the walker cannot resolve is REPORTED, never skipped.
+//
+// What this deliberately is NOT, recorded here rather than in a PR nobody
+// re-reads: the promotion walk scripts/check-wrapper-drift carries
+// (shallowest-wins, same-depth annihilation, transitive embeds, pointer
+// embeds, cycle termination). Nothing in this walk's input promotes anything —
+// the only anonymous embeds in go/pkg/basecamp and in client.gen.go are the
+// two recognised below — so that walk would today be several hundred lines
+// certifying an empty set, and #741 inventories the shapes such a walk gets
+// confidently wrong. Failing loudly here closes the dangerous direction at
+// zero risk and leaves the walk to whoever first needs it, who will have a
+// real embed to test it against.
+func assertEmbedPromotesNoTimestamps(t *testing.T, path, owner string, expr ast.Expr, files map[string]*ast.File, wrappers map[string]bool) {
+	t.Helper()
+
+	// A time wrapper embedding a value time.Time (FlexTime here,
+	// types.FlexibleTime one package over): time.Time's own fields are
+	// unexported and it marshals through MarshalJSON, so it promotes nothing.
+	if isTimeLike(expr, wrappers) {
+		return
+	}
+	// A name these sources declare as an interface, map, slice, func or chan —
+	// today generated.ClientWithResponses embedding ClientInterface. Same
+	// carve-out scripts/check-wrapper-drift records, for the same reason: a
+	// non-struct has no JSON-tagged fields to promote. A name resolving to
+	// another NAME (`type Alias Base`) is not accepted here: it can reach a
+	// struct, and a walk that credits it would be back to skipping silently.
+	if ident, ok := expr.(*ast.Ident); ok && declaresNonPromotingType(files, ident.Name) {
+		return
+	}
+
+	t.Fatalf("%s: %s embeds %s, which this walk cannot resolve. encoding/json promotes "+
+		"the embedded type's JSON-tagged fields into %s, so any timestamp among them is "+
+		"absent from the (struct, json key) pairing below and its value/pointer parity "+
+		"goes unchecked — silently, which is why this is fatal rather than skipped. "+
+		"Teach this walk encoding/json's promotion rules (scripts/check-wrapper-drift "+
+		"implements them) before embedding here",
+		path, owner, embeddedTypeName(expr), owner)
+}
+
+// declaresNonPromotingType reports whether name is declared in files as a type
+// whose underlying type cannot carry a JSON-tagged field. Only the forms that
+// are conclusively non-promoting count; anything else — including a name that
+// resolves to another name — is left for the caller to report.
+func declaresNonPromotingType(files map[string]*ast.File, name string) bool {
+	found := false
+	for _, file := range files {
+		ast.Inspect(file, func(n ast.Node) bool {
+			ts, ok := n.(*ast.TypeSpec)
+			if !ok || ts.Name.Name != name {
+				return true
+			}
+			switch ts.Type.(type) {
+			case *ast.InterfaceType, *ast.MapType, *ast.ArrayType, *ast.FuncType, *ast.ChanType:
+				found = true
+			}
+			return true
+		})
+	}
+	return found
+}
+
+// embeddedTypeName renders an embedded field's type for a failure message.
+func embeddedTypeName(expr ast.Expr) string {
+	switch e := expr.(type) {
+	case *ast.StarExpr:
+		return "*" + embeddedTypeName(e.X)
+	case *ast.Ident:
+		return e.Name
+	case *ast.SelectorExpr:
+		if x, ok := e.X.(*ast.Ident); ok {
+			return x.Name + "." + e.Sel.Name
+		}
+	}
+	return "an unrecognised type expression"
 }
 
 func parseGoFiles(t *testing.T, paths []string) map[string]*ast.File {

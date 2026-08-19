@@ -328,8 +328,10 @@
 // Demanding initialization means recognizing every spelling that provides it,
 // and a walk that misses one manufactures drift — which is the failure #599
 // itself was: it trains people to work around the guard rather than read it.
-// Nil-capability analysis is #621's subject; this walk is the input it needs,
-// not the place to do it.
+// Nil-capability analysis is not this walk's job either, and no longer anyone's
+// open question: TestNoWrapperTimestampNarrowerThanGenerated in
+// go/pkg/basecamp/optional_timestamps_test.go owns it, pairing the two sides by
+// struct name + json key so it is blind to these tiers (#620, #621).
 //
 // `intentionally-omitted` markers are NOT inherited through an embed: a marker
 // declares that one wrapper deliberately drops a tag of ITS generated
