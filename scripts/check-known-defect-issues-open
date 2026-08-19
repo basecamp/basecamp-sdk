@@ -63,8 +63,19 @@ unless File.exist?(allow_path)
 end
 allow = YAML.safe_load(File.read(allow_path)) || {}
 
+# REQUIRED, not optional. Treating an absent registry as an empty one is a
+# fail-OPEN path in a gate whose entire purpose is failing closed: delete the
+# file (or typo the override) and the checker reports "nothing to verify" and
+# exits 0, with every prose claim in the repository unverified. That is the
+# #588 failure with an extra step, which is what this script exists to end.
 tracking_path = ENV['TRACKING_ISSUES'] || File.join(ROOT, 'spec', 'tracking-issues.yml')
-tracking = File.exist?(tracking_path) ? (YAML.safe_load(File.read(tracking_path)) || {}) : {}
+unless File.exist?(tracking_path)
+  warn "ERROR: tracking registry not found at #{tracking_path}"
+  warn '  This check fails closed by design: a missing registry is indistinguishable'
+  warn '  from one whose claims are all unverified. Restore it, or empty its list.'
+  exit 1
+end
+tracking = YAML.safe_load(File.read(tracking_path)) || {}
 
 # (issue number, human-readable site) pairs, so a failure names the entry that
 # has to change rather than just the number.
@@ -78,9 +89,31 @@ end
   refs << [e['tracking_issue'], "bc3_routes_not_modeled #{e['method']} #{e['path']}"]
 end
 
-(tracking['prose_tracking_issues'] || []).each do |e|
-  next unless e['issue'].is_a?(Integer)
-  refs << [e['issue'], e['site'].to_s.empty? ? "prose_tracking_issues ##{e['issue']}" : e['site']]
+# Every row is VALIDATED rather than skipped. `next unless Integer` is how the
+# allowlist entries are read, and there it is tolerable because an entry with no
+# issue number is making no claim. Here the row IS the claim: a malformed one is
+# a promise the author wrote and the gate silently dropped, which is worse than
+# either a failure or an absent row.
+rows = tracking['prose_tracking_issues']
+unless rows.nil? || rows.is_a?(Array)
+  warn "ERROR: prose_tracking_issues in #{tracking_path} must be a list, got #{rows.class}"
+  exit 1
+end
+(rows || []).each_with_index do |e, i|
+  unless e.is_a?(Hash)
+    warn "ERROR: prose_tracking_issues[#{i}] in #{tracking_path} must be a mapping, got #{e.class}"
+    exit 1
+  end
+  unless e['issue'].is_a?(Integer) && e['issue'].positive?
+    warn "ERROR: prose_tracking_issues[#{i}] in #{tracking_path} needs a positive integer `issue`, got #{e['issue'].inspect}"
+    exit 1
+  end
+  if e['site'].to_s.strip.empty?
+    warn "ERROR: prose_tracking_issues[#{i}] (##{e['issue']}) in #{tracking_path} needs a `site` naming " \
+         'the sentence that leans on it — a bare number tells the next reader nothing to go fix.'
+    exit 1
+  end
+  refs << [e['issue'], e['site']]
 end
 
 if refs.empty?
