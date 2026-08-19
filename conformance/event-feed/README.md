@@ -351,10 +351,17 @@ when every line is done:
 7. Any drifted row: fix fixtures, schema, and SPEC §23 together in the true-up PR —
    never fixture-only.
 
-## Mutation kill matrix (fifteen)
+## Mutation kill matrix (sixteen)
 
 Each mutation is shown red against at least one fixture in the reference
 implementation PR's body before it counts.
+
+**One row is an exception, and it is the reason this heading is worth reading
+twice.** Row 15's mutation lives BELOW the tier-2 seam, so this suite kills
+only the half above it; the note under the table states the boundary and names
+where the other half is proven. Every other row is a whole kill. A matrix that
+counted the partial row as a kill would be making exactly the class of claim
+this family exists to check.
 
 | # | Mutation | Killed by |
 |---|---|---|
