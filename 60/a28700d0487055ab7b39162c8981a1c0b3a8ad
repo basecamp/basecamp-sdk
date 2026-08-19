@@ -1,0 +1,21 @@
+AGENTS.md
+  s_bcb193599a4870::t_b99e7392d56626 35
+go/pkg/basecamp/eventfeed/doc.go
+  s_bcb193599a4870::t_44f8db39162a31 7-24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "60a28700d0487055ab7b39162c8981a1c0b3a8ad",
+  "prompts": {},
+  "sessions": {
+    "s_bcb193599a4870": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5ae90ec8-5ed7-4774-88d9-9d66550a5643",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
