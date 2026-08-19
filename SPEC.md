@@ -636,21 +636,17 @@ Given header value `value`:
 **An over-range step 1 value either saturates at the implementation's ceiling or is rejected**, and
 §7's note 4 permits both — a host-limit bound on the conversion, or refusing a value the parser's own
 numeric type cannot hold. What neither may be is a *policy* cap. The two readings are observably
-different (saturating waits as long as the host can express; rejecting falls through to the local
-formula and retries a server that asked for a long wait after a few milliseconds), and converging
-them is #799 rather than something this section decides.
+different: saturating waits as long as the host can express, while rejecting falls through to the
+local formula and retries a server that asked for a long wait after a few milliseconds. All six SDKs
+differ here, and two of them reach the boundary *after* parsing rather than during it, which no
+single sentence describes honestly — #799 carries the table and the convergence.
 
-Go's hand-written client saturates, at 2,147,483,647s (~68 years):
-`seconds × time.Second` wraps past `math.MaxInt64` above ~292 years, and the value is surfaced in an
-`int`, which is 32 bits on a 32-bit target — 2,147,483,647 is at or below both, so the answer does
-not vary with `GOARCH`, and it is both the number Kotlin already saturates this header at and the
-shared ceiling §16 names. Wrapping is not a cosmetic concern: a negative duration makes a timer fire
-at once, turning a server-directed wait into a tight retry loop (#795). Go's **generated** retry loop
-keeps an independent, unclamped copy of this conversion and still wraps; that is #798.
-
-Go and Swift saturate; TypeScript (above `Number.MAX_SAFE_INTEGER`) and Kotlin (above
-`Int.MAX_VALUE`) reject and fall through; Python and Ruby have arbitrary-precision integers and never
-reach the boundary. #799 carries that table alongside step 2's.
+Go's hand-written client saturates, at 2,147,483,647s (~68 years): `seconds × time.Second` wraps past
+`math.MaxInt64` above ~292 years, and the value is surfaced in an `int`, which is 32 bits on a 32-bit
+target — 2,147,483,647 is at or below both, so the answer does not vary with `GOARCH`, and it is the
+shared ceiling §16 already names. Wrapping is not a cosmetic concern: a negative duration makes a
+timer fire at once, turning a server-directed wait into a tight retry loop (#795). Go's **generated**
+retry loop keeps an independent, unclamped copy of this conversion and still wraps; that is #798.
 
 Step 2's rounding is up, not truncating, for two reasons: a positive remainder must never round to
 zero, because zero is read as "no usable value" and drops the request onto the local backoff curve —

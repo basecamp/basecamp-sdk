@@ -185,6 +185,13 @@ func TestClient_RetryAfterAbsentOrUnusableKeepsBackoff(t *testing.T) {
 		{"zero", "0"},
 		{"negative", "-5"},
 		{"http-date in the past", "Wed, 09 Jun 2021 10:18:14 GMT"},
+		// RFC 9110's delay-seconds is `1*DIGIT`, so a sign is not a delay —
+		// and strconv accepts one, which would otherwise synthesize a ~68-year
+		// saturated wait out of `+9223372036854775808` (review follow-up,
+		// Codex). Both magnitudes are covered: in range and over.
+		{"signed, in range", "+5"},
+		{"signed, over range", "+9223372036854775808"},
+		{"signed negative, over range", "-9223372036854775809"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			delays, err := retryAfterProbe(t, rateLimited(tc.header))
