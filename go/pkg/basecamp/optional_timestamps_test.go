@@ -316,17 +316,33 @@ type timestampField struct {
 	file    string
 }
 
+// fatalReporter is the slice of *testing.T the AST walk below uses: enough to
+// report an embed it cannot resolve, and narrow enough that
+// TestCollectTimestampFieldsReportsUnresolvableEmbed can hand it a recorder in
+// place of a real T and observe the report instead of dying of it. Without the
+// seam the #722 branch is untestable from inside the suite it aborts, and an
+// untested fatal is one a later `continue` can delete in silence.
+type fatalReporter interface {
+	Helper()
+	Fatalf(format string, args ...any)
+}
+
 // collectTimestampFields keys every timestamp-typed struct field by
 // (struct name, json key) — time.Time and the named time wrappers (FlexTime,
 // types.FlexibleTime, types.Date), in both value and pointer form. The json
 // key is the pairing axis rather than the Go field name: the wrapper renames
 // fields (Id → ID) but the wire key is the thing both sides must agree about.
 //
-// An anonymous embedded field carries neither a name nor (usually) a tag, and
+// An anonymous embedded field usually carries neither a name nor a tag, and
 // promotes its own JSON keys into the enclosing struct. This walk does not
-// model promotion, so it hands every embed to assertEmbedPromotesNoTimestamps,
-// which fails the test on anything that could promote a timestamp (#722).
-func collectTimestampFields(t *testing.T, files map[string]*ast.File, wrappers map[string]bool) map[[2]string]timestampField {
+// model promotion, so such an embed goes to assertEmbedPromotesNoTimestamps,
+// which fails the test on anything that could promote a timestamp (#722). A
+// TAGGED anonymous field is the other case and is not a promotion source at
+// all: encoding/json treats it as an ordinary field under its json name, and
+// so does this walk — the same reading scripts/check-wrapper-drift pins for
+// the shape (see its header, "An anonymous field that carries its own
+// json:"…" tag is NOT promoted").
+func collectTimestampFields(t fatalReporter, files map[string]*ast.File, wrappers map[string]bool) map[[2]string]timestampField {
 	t.Helper()
 	out := map[[2]string]timestampField{}
 	for path, file := range files {
@@ -340,11 +356,22 @@ func collectTimestampFields(t *testing.T, files map[string]*ast.File, wrappers m
 				return true
 			}
 			for _, f := range st.Fields.List {
+				key, tagged := jsonKey(f)
 				if len(f.Names) == 0 {
-					assertEmbedPromotesNoTimestamps(t, path, ts.Name.Name, f.Type, files, wrappers)
-					continue
-				}
-				if f.Tag == nil {
+					// encoding/json's three readings of an anonymous field:
+					// `json:"-"` is dropped outright, a non-empty json name
+					// makes it an ordinary field under that name (fall
+					// through), and anything else — no tag, no json key, an
+					// unparsable tag, or an empty name like `json:",omitempty"`
+					// — promotes the embedded type's own fields.
+					if tagged && key == "-" {
+						continue
+					}
+					if key == "" {
+						assertEmbedPromotesNoTimestamps(t, path, ts.Name.Name, f.Type, files, wrappers)
+						continue
+					}
+				} else if !tagged || key == "" || key == "-" {
 					continue
 				}
 				value := isTimeLike(f.Type, wrappers)
@@ -353,21 +380,9 @@ func collectTimestampFields(t *testing.T, files map[string]*ast.File, wrappers m
 				if !value && !pointer {
 					continue
 				}
-				raw, err := strconv.Unquote(f.Tag.Value)
-				if err != nil {
-					continue
-				}
-				jsonTag, ok := reflect.StructTag(raw).Lookup("json")
-				if !ok {
-					continue
-				}
-				key := strings.Split(jsonTag, ",")[0]
-				if key == "" || key == "-" {
-					continue
-				}
 				out[[2]string{ts.Name.Name, key}] = timestampField{
 					pointer: pointer,
-					field:   f.Names[0].Name,
+					field:   goFieldName(f),
 					file:    filepath.Base(path),
 				}
 			}
@@ -375,6 +390,47 @@ func collectTimestampFields(t *testing.T, files map[string]*ast.File, wrappers m
 		})
 	}
 	return out
+}
+
+// jsonKey returns a field's json name and whether it carries a readable json
+// tag at all. A missing tag, an unparsable one, and one without a json key all
+// read as untagged — which for an anonymous field means "promotion source",
+// the reported side of the choice rather than the credited one.
+func jsonKey(f *ast.Field) (string, bool) {
+	if f.Tag == nil {
+		return "", false
+	}
+	raw, err := strconv.Unquote(f.Tag.Value)
+	if err != nil {
+		return "", false
+	}
+	tag, ok := reflect.StructTag(raw).Lookup("json")
+	if !ok {
+		return "", false
+	}
+	return strings.Split(tag, ",")[0], true
+}
+
+// goFieldName is the Go identifier a field is reported under. A tagged
+// anonymous field has no declared name, so — as encoding/json and
+// scripts/check-wrapper-drift both do — it is named by its embedded type, with
+// any pointer and package qualifier stripped (`*types.Date` is the field
+// `Date`).
+func goFieldName(f *ast.Field) string {
+	if len(f.Names) > 0 {
+		return f.Names[0].Name
+	}
+	expr := f.Type
+	if star, ok := expr.(*ast.StarExpr); ok {
+		expr = star.X
+	}
+	switch e := expr.(type) {
+	case *ast.Ident:
+		return e.Name
+	case *ast.SelectorExpr:
+		return e.Sel.Name
+	}
+	return embeddedTypeName(f.Type)
 }
 
 // assertEmbedPromotesNoTimestamps fails unless an anonymous embedded field is
@@ -399,7 +455,7 @@ func collectTimestampFields(t *testing.T, files map[string]*ast.File, wrappers m
 // confidently wrong. Failing loudly here closes the dangerous direction at
 // zero risk and leaves the walk to whoever first needs it, who will have a
 // real embed to test it against.
-func assertEmbedPromotesNoTimestamps(t *testing.T, path, owner string, expr ast.Expr, files map[string]*ast.File, wrappers map[string]bool) {
+func assertEmbedPromotesNoTimestamps(t fatalReporter, path, owner string, expr ast.Expr, files map[string]*ast.File, wrappers map[string]bool) {
 	t.Helper()
 
 	// A time wrapper embedding a value time.Time (FlexTime here,
@@ -462,6 +518,161 @@ func embeddedTypeName(expr ast.Expr) string {
 		}
 	}
 	return "an unrecognised type expression"
+}
+
+// embedRecorder stands in for *testing.T so the meta-tests below can watch
+// collectTimestampFields report rather than be killed by the report. Fatalf
+// must not return — the walk it interrupts is written on the assumption that
+// it doesn't — so it panics with a sentinel the runner recovers, standing in
+// for testing's own runtime.Goexit.
+type embedRecorder struct {
+	fatal   bool
+	message string
+}
+
+type recordedFatal struct{}
+
+func (r *embedRecorder) Helper() {}
+
+func (r *embedRecorder) Fatalf(format string, args ...any) {
+	r.fatal = true
+	r.message = fmt.Sprintf(format, args...)
+	panic(recordedFatal{})
+}
+
+// collectFromSource runs collectTimestampFields over one synthetic file and
+// returns both what it reported and what it collected. The collected map is
+// nil when a report fired, since the walk is aborted exactly as a real
+// t.Fatalf aborts it.
+func collectFromSource(t *testing.T, src string, wrappers map[string]bool) (*embedRecorder, map[[2]string]timestampField) {
+	t.Helper()
+	file, err := parser.ParseFile(token.NewFileSet(), "synthetic.go", src, 0)
+	if err != nil {
+		t.Fatalf("parse synthetic source: %v", err)
+	}
+	rec := &embedRecorder{}
+	var collected map[[2]string]timestampField
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				if _, ok := r.(recordedFatal); !ok {
+					panic(r)
+				}
+			}
+		}()
+		collected = collectTimestampFields(rec, map[string]*ast.File{"synthetic.go": file}, wrappers)
+	}()
+	return rec, collected
+}
+
+// TestCollectTimestampFieldsReportsUnresolvableEmbed is the committed proof of
+// the #722 branch. The two anonymous embeds in the real corpus (FlexTime
+// embedding time.Time, generated.ClientWithResponses embedding ClientInterface)
+// only ever reach assertEmbedPromotesNoTimestamps' two ACCEPTING arms, so the
+// whole reporting path — the half that closes the under-report — would ship
+// with nothing holding it, and reverting it to the `continue` it replaced would
+// leave the suite green. That is the same vacuity the guards at the ends of
+// TestNoValueTypedOptionalTimestamps and TestNoWrapperTimestampNarrowerThanGenerated
+// exist to refuse, one level up: those assert the walk saw something, this
+// asserts the walk still objects to something.
+func TestCollectTimestampFieldsReportsUnresolvableEmbed(t *testing.T) {
+	cases := []struct {
+		name string
+		src  string
+	}{
+		{
+			// The plain #722 shape: an untagged embed whose type carries a
+			// timestamp. `created_at` is promoted onto Wrapper, so pairing
+			// Wrapper by (struct, json key) never sees it.
+			name: "untagged embed",
+			src: "package p\n\nimport \"time\"\n\n" +
+				"type Audit struct {\n\tCreatedAt *time.Time `json:\"created_at\"`\n}\n\n" +
+				"type Wrapper struct {\n\tAudit\n\tID string `json:\"id\"`\n}\n",
+		},
+		{
+			// A json tag with an EMPTY name does not stop promotion —
+			// encoding/json explores the embed exactly as if untagged — so
+			// this must reach the report too, not the ordinary-field path.
+			name: "embed tagged with an empty json name",
+			src: "package p\n\nimport \"time\"\n\n" +
+				"type Audit struct {\n\tCreatedAt *time.Time `json:\"created_at\"`\n}\n\n" +
+				"type Wrapper struct {\n\tAudit `json:\",omitempty\"`\n}\n",
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			rec, collected := collectFromSource(t, c.src, map[string]bool{})
+			if !rec.fatal {
+				t.Fatalf("collectTimestampFields walked a struct embedding a timestamp-carrying "+
+					"struct without reporting it, collecting %d field(s) instead. Promotion is "+
+					"deliberately unmodelled here, so a silent skip is precisely the #722 "+
+					"under-report: the promoted timestamp drops out of the (struct, json key) "+
+					"pairing and its value/pointer parity is never asserted", len(collected))
+			}
+			for _, want := range []string{"Wrapper", "Audit"} {
+				if !strings.Contains(rec.message, want) {
+					t.Errorf("report does not name %s, so it cannot be acted on: %s", want, rec.message)
+				}
+			}
+		})
+	}
+}
+
+// TestCollectTimestampFieldsTreatsTaggedEmbedAsOrdinaryField pins the other
+// side of the same branch. A tagged anonymous field is NOT a promotion source
+// — encoding/json puts it on the wire under its own json name — so reporting
+// it would be a false alarm against a shape that is safe, and the field itself
+// still has to be collected with the parity the rest of the walk checks.
+func TestCollectTimestampFieldsTreatsTaggedEmbedAsOrdinaryField(t *testing.T) {
+	src := "package p\n\nimport \"time\"\n\n" +
+		"type Audit struct {\n\tCreatedAt *time.Time `json:\"created_at\"`\n}\n\n" +
+		"type Nested struct {\n\tAudit `json:\"audit\"`\n}\n\n" +
+		"type Wrapper struct {\n\tFlexTime `json:\"created_at\"`\n}\n\n" +
+		"type PointerWrapper struct {\n\t*FlexTime `json:\"updated_at\"`\n}\n\n" +
+		"type Dropped struct {\n\tFlexTime `json:\"-\"`\n}\n"
+
+	rec, collected := collectFromSource(t, src, map[string]bool{"FlexTime": true})
+	if rec.fatal {
+		t.Fatalf("a tagged embed was reported as an unresolvable promotion source, "+
+			"but encoding/json treats it as an ordinary field under its json name "+
+			"(scripts/check-wrapper-drift pins the same reading): %s", rec.message)
+	}
+
+	for _, want := range []struct {
+		key     [2]string
+		field   string
+		pointer bool
+	}{
+		{key: [2]string{"Wrapper", "created_at"}, field: "FlexTime"},
+		{key: [2]string{"PointerWrapper", "updated_at"}, field: "FlexTime", pointer: true},
+	} {
+		got, ok := collected[want.key]
+		if !ok {
+			t.Errorf("%s.%s was not collected — a tagged embed is a wire field and must be "+
+				"paired like one", want.key[0], want.key[1])
+			continue
+		}
+		if got.field != want.field {
+			t.Errorf("%s.%s collected under Go field %q, want %q — a tagged embed's field name "+
+				"is its embedded type", want.key[0], want.key[1], got.field, want.field)
+		}
+		if got.pointer != want.pointer {
+			t.Errorf("%s.%s collected with pointer=%v, want %v", want.key[0], want.key[1], got.pointer, want.pointer)
+		}
+	}
+
+	if _, ok := collected[[2]string{"Dropped", "-"}]; ok {
+		t.Error("an embed tagged `json:\"-\"` was collected — it is not on the wire at all")
+	}
+	// Nested's tagged embed is an ordinary field of a non-timestamp type: it
+	// belongs in neither the report nor the pairing. Audit.CreatedAt is Audit's
+	// OWN field, nested under `audit` on Nested's wire, so no (Nested, …) key
+	// may claim it.
+	if _, ok := collected[[2]string{"Nested", "created_at"}]; ok {
+		t.Error("a tagged embed's inner timestamp was paired against the EMBEDDING struct — " +
+			"a tagged embed nests its fields under its own key, it does not promote them")
+	}
 }
 
 func parseGoFiles(t *testing.T, paths []string) map[string]*ast.File {
