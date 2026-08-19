@@ -1276,15 +1276,34 @@ var errSocketFailed = errors.New("event feed socket failed")
 // "leaks". The typed values the connector needs to ACT on are matched before
 // this is ever called — dispatch reads them directly — so nothing here changes
 // a verdict.
+//
+// # Every arm returns a value the CONNECTOR owns, never the argument
+//
+// Matching a sentinel is not the same as being one. errors.Is walks the chain,
+// so a seam that returns fmt.Errorf("read %s: %w", cableURL, context.Canceled)
+// MATCHES here while its text carries the ticket — and returning err would hand
+// that wrapper to Observer.Disconnected verbatim, defeating the whole closed
+// vocabulary for precisely the errors most likely to be wrapped. So each arm
+// returns the canonical sentinel rather than the argument. errors.Is still
+// matches for a consumer that checks, because the sentinel IS what it would
+// have matched; what does not survive is the wrapper's text.
+//
+// The typed arms below are already safe for the same reason by a different
+// mechanism: errors.As assigns the INNER typed value, so returning it drops any
+// wrapper. That asymmetry — As extracts, Is only reports — is why the two
+// halves of this function look different and must.
 func observableSocketError(err error) error {
 	switch {
 	case err == nil:
 		return nil
-	case errors.Is(err, errStaleConnection),
-		errors.Is(err, errCableConnClosed),
-		errors.Is(err, context.Canceled),
-		errors.Is(err, context.DeadlineExceeded):
-		return err
+	case errors.Is(err, errStaleConnection):
+		return errStaleConnection
+	case errors.Is(err, errCableConnClosed):
+		return errCableConnClosed
+	case errors.Is(err, context.Canceled):
+		return context.Canceled
+	case errors.Is(err, context.DeadlineExceeded):
+		return context.DeadlineExceeded
 	}
 	var ce *CloseError
 	if errors.As(err, &ce) {
