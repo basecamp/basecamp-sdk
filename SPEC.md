@@ -663,10 +663,41 @@ requirement 4): the ceiling governs the locally computed formula, and a client t
 server's instruction retries sooner than the origin asked for. An implementation MAY bound it against
 a **host limit** — a seconds→nanoseconds conversion that would trap, a timer that cannot schedule the
 value — and that bound belongs at the sleep, never in the parser, so a caller reading the error's
-`retry_after` still sees what the server said. There is deliberately **no policy cap**: a hostile or
-misconfigured origin sending `Retry-After: 3600` buys an hour's sleep in the SDKs that apply no host
-limit. That is a property of honouring the header at all, not of which statuses honour it — it is
-reachable at 429 today — but it is the cost of this position and is written down rather than implied.
+`retry_after` still sees what the server said.
+
+**The exemption is conditioned on the escape, not on a number.** There is deliberately no policy cap;
+in its place, **a honoured `Retry-After` delay MUST be awaited through the platform's cancellation
+primitive, with the caller's cancellation handle threaded into the sleep.** A cancellation primitive
+is the better control precisely because it is not a cap: it bounds the caller's *total* wait,
+including the network time no ceiling on a header value can reach, and it lets the caller choose that
+bound instead of the SDK guessing one on their behalf. Where such a primitive is threaded through, a
+policy cap is redundant. Where none is, the caller holds nothing, and a server-directed sleep that is
+merely long becomes a sleep that cannot be abandoned.
+
+That is where the cost of this position actually lands, and it is **not uniform across the six**:
+
+| Path | Honoured `Retry-After` sleeps through | Caller escape |
+|---|---|---|
+| Go — all six sleep sites | `select` on `ctx.Done()` vs `time.After(delay)` | yes — `context` |
+| Kotlin — all four sites | `kotlinx.coroutines.delay` inside `suspend` functions | yes — job cancellation |
+| Swift — both sites | `try await Task.sleep(nanoseconds:)` | yes — `Task` cancellation |
+| TypeScript — JSON client path | `sleep(delay, signal)`, which rejects with the signal's abort reason | yes — `AbortSignal` |
+| Python — async client | `await asyncio.sleep(delay)` | yes — task cancellation |
+| **TypeScript — multipart upload path** | bare `setTimeout` promise, no signal | **none** |
+| **Ruby** | bare `sleep(delay)` | **none** |
+| **Python — sync client** | bare `time.sleep(delay)` | **none** |
+
+The three rows without an escape are the ones that owe work, and this position makes them owe it
+sooner rather than creating the exposure: Python's **sync** client already honours `Retry-After` at
+any status, unclamped, in a bare `time.sleep`, so an origin sending `Retry-After: 3600` buys an hour
+the caller cannot abandon **today**. Widening the status set adds 503 to that reach in Ruby and on
+TypeScript's upload path. The remedy is open — an interruptible incremental sleep, or a bound against
+a caller-supplied total-time budget — and each shape has a caller-facing API dimension in its
+language, so it is not settled here. Tracked with the rest of the convergence in #775.
+
+Strictly, none of those three is *uninterruptible*: a signal on the main thread, or `Thread#raise`
+from another, will break any of them. What they lack is a cancellation handle the caller can **hold**,
+and the requirement above is about the handle, not about whether the platform can ever intervene.
 
 `[CONFLICT: the spec prescribes any retryable status; five SDKs gate on 429 alone. Converging is a
 behaviour change across five SDKs, tracked in #775 — the divergence below is the current state, not
@@ -894,7 +925,9 @@ Requirements:
    `UInt64(_:)` on an out-of-range `Double` is a trap, and TypeScript clamps to the
    2,147,483,647ms `setTimeout` can schedule. Those two bounds differ by ~24× and the
    other four SDKs apply none, because a host limit is not a policy cap; §6 records that
-   divergence and the exposure it leaves.
+   divergence and the exposure it leaves. The exemption is not unconditional: §6 requires
+   the honoured delay to be awaited through the caller's cancellation primitive, and that
+   requirement — not a number — is what stands in for a policy cap here.
 
 **Reachability.** Every SDK exposes a path to a high attempt count: Kotlin's builder
 validates `maxRetries >= 0` with no upper bound, Go's `WithMaxRetries` only rejects
