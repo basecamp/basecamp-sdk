@@ -1412,3 +1412,76 @@ func TestCloseFromConnectedOutranksAQueuedFatalFrame(t *testing.T) {
 			terminals, rounds)
 	}
 }
+
+// ctxAwareStore is a CheckpointStore that HONORS its context, which the
+// interface permits and this package's own tests never exercised: both
+// feedtest.Store and the built-in FileCheckpointStore ignore ctx, so a save
+// handed a cancelled context still landed and every assertion passed.
+type ctxAwareStore struct {
+	mu    sync.Mutex
+	saves []string
+}
+
+func (s *ctxAwareStore) Load(context.Context, eventfeed.CheckpointKey) (string, bool, error) {
+	return "pos-0", true, nil
+}
+
+func (s *ctxAwareStore) Save(ctx context.Context, _ eventfeed.CheckpointKey, position string) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.saves = append(s.saves, position)
+	return nil
+}
+
+func (s *ctxAwareStore) recorded() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return append([]string(nil), s.saves...)
+}
+
+// TestAcceptedPositionSavesAgainstAContextHonoringStore is what
+// TestAnAcceptedPositionSavesEvenWhenCloseLandsFirst could not see.
+//
+// Deleting the durable gate was supposed to make an accepted page's position
+// durable even when Close lands at the save boundary — its events were already
+// delivered, so dropping the write silently re-delivers them. But the save was
+// still handed l.runCtx, which Close cancels synchronously. A store that
+// ignores ctx (both of the ones this package ships) writes anyway; a store that
+// HONORS it returns ctx.Err() and the position is lost — the exact outcome the
+// gate was deleted to prevent, reached by a different route and invisible to
+// every existing test.
+//
+// CheckpointStore.Save takes a context and nothing in its contract says to
+// ignore it, so honoring it is compliant. The save therefore runs under a
+// context detached from the run's cancellation.
+func TestAcceptedPositionSavesAgainstAContextHonoringStore(t *testing.T) {
+	store := &ctxAwareStore{}
+	var h *harness
+	h = newHarness(t,
+		eventfeed.WithCheckpointStore(store),
+		eventfeed.WithConsumerNamespace("agent"),
+		eventfeed.WithObserver(eventfeed.Observer{
+			PageDelivered: func(int, string) {
+				if err := h.conn.Close(); err != nil {
+					t.Errorf("Close: %v", err)
+				}
+			},
+		}))
+	h.minter.ScriptTicket(ticket(1))
+	h.polls.ScriptPage(eventfeed.PollPage{
+		Events:   []eventfeed.Event{pollEvent(101)},
+		Position: "pos-1",
+	})
+	h.start()
+	sock := h.driveToSubscribed()
+	sock.Serve(frameConfirm(noFilterIdentifier))
+	h.join()
+
+	if got := store.recorded(); len(got) != 1 || got[0] != "pos-1" {
+		t.Errorf("recorded saves = %v, want [pos-1] — event 101 was delivered, so its position must be durable "+
+			"even against a store that honors the cancelled run context", got)
+	}
+}

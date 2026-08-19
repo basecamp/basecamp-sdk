@@ -2083,3 +2083,88 @@ func TestDisconnectObserverNeverEchoesPeerText(t *testing.T) {
 		})
 	}
 }
+
+// TestSeamAuthoredDialPolicyDoesNotReachTheTerminal is the terminal-channel
+// half of the ticket-secrecy rule, and the half an earlier pass exempted.
+//
+// The reasoning that exempted it was "terminal elements keep their typed
+// errors and their SPEC-mandated text", which is true of the ONE case §23
+// actually mandates — filter_invalid preserves the server's message — and
+// false as a blanket. A DialPolicy verdict is not SPEC-mandated text: it is
+// authored by whatever CableTransport the host installed, and CableTransport
+// is a documented extension point. Copying its Reason into TerminalError.Msg
+// and the error itself into the chain hands that text to every consumer,
+// through exactly the channel that was hardened for Observer.Disconnected.
+//
+// The connector's OWN pre-check keeps its text and is not affected: its two
+// interpolations are a URL scheme and a port, both of which url.Parse
+// constrains to alphanumerics and digits, so neither can carry a credential.
+func TestSeamAuthoredDialPolicyDoesNotReachTheTerminal(t *testing.T) {
+	const canary = "sekrit-ticket-value"
+	cableURL := "wss://28.cable.basecamp.com/cable?ticket=" + canary
+
+	for _, tc := range []struct {
+		name string
+		err  error
+	}{
+		{"reason", &eventfeed.DialError{Kind: eventfeed.DialPolicy, Reason: cableURL}},
+		{"cause", &eventfeed.DialError{Kind: eventfeed.DialPolicy, Err: errors.New("dial " + cableURL)}},
+		{"wrapped", fmt.Errorf("transport: %w", &eventfeed.DialError{Kind: eventfeed.DialPolicy, Reason: cableURL})},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			h := newHarness(t)
+			h.minter.ScriptTicket(ticket(1))
+			h.tr.FailNextDial(tc.err)
+			h.start()
+			h.join()
+
+			_, terminal, _ := h.snapshot()
+			if terminal == nil || terminal.Reason != eventfeed.ReasonInvalidCableURL {
+				t.Fatalf("terminal = %v, want reason %q", terminal, eventfeed.ReasonInvalidCableURL)
+			}
+			// The whole chain, not just the top: Error() walks it, and so does
+			// any consumer that logs %+v or unwraps.
+			for err := error(terminal); err != nil; err = errors.Unwrap(err) {
+				if strings.Contains(err.Error(), canary) {
+					t.Errorf("%T in the terminal chain echoed the ticket: %q", err, err.Error())
+				}
+				if strings.Contains(err.Error(), "ticket=") {
+					t.Errorf("%T in the terminal chain echoed a ticket-bearing query: %q", err, err.Error())
+				}
+			}
+			// A seam-authored DialError must not be recoverable from the
+			// chain at all: retaining it would hand back through errors.As
+			// exactly what the rendering withheld.
+			var de *eventfeed.DialError
+			if errors.As(error(terminal), &de) {
+				t.Errorf("the terminal retains the seam's *DialError (%+v); the chain is the same leak as the rendering", de)
+			}
+		})
+	}
+}
+
+// TestObservableCloseErrorCarriesNoPeerReason: CloseError.Error renders only
+// the integer code, which is why the reduction let the value through — but
+// Reason is an EXPORTED field holding peer text, and it survived intact. A
+// host that logs the error's fields, formats it with %+v, or reads ce.Reason
+// gets the peer's string on the surface the closed vocabulary exists to
+// protect. Rendering is not the only way out of a struct.
+func TestObservableCloseErrorCarriesNoPeerReason(t *testing.T) {
+	const canary = "sekrit-ticket-value"
+	peerText := "wss://28.cable.basecamp.com/cable?ticket=" + canary
+
+	got := eventfeed.ExportObservableSocketError(&eventfeed.CloseError{Code: 1011, Reason: peerText})
+	var ce *eventfeed.CloseError
+	if !errors.As(got, &ce) {
+		t.Fatalf("reduced to %T, want a *CloseError — the code is diagnostic and must survive", got)
+	}
+	if ce.Reason != "" {
+		t.Errorf("the reduced CloseError still carries the peer's reason %q", ce.Reason)
+	}
+	if ce.Code != 1011 {
+		t.Errorf("the reduced CloseError lost its code: %d", ce.Code)
+	}
+	if fmt.Sprintf("%+v", ce) != fmt.Sprintf("%+v", &eventfeed.CloseError{Code: 1011}) {
+		t.Errorf("field-wise rendering still differs from a code-only close error: %+v", ce)
+	}
+}
