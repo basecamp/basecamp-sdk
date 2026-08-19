@@ -24,6 +24,25 @@ import { fileURLToPath } from "node:url";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const CONFIG = join(HERE, "oxlintrc.json");
+const OXLINT = join(HERE, "..", "node_modules", ".bin", "oxlint");
+
+/**
+ * `--format json`, and every case is run twice — once with `GITHUB_ACTIONS`
+ * unset and once with it set.
+ *
+ * The first CI run of this gate failed for exactly this reason: oxlint detects
+ * `GITHUB_ACTIONS` and switches to the `##[error]…` annotation format, which the
+ * original line-scraping parser did not match. The rule was firing perfectly;
+ * the harness could not see it. That is a harness that reads differently on the
+ * machine that matters, so the environment is now part of the matrix rather
+ * than something the local run happens to get right.
+ */
+const ENVIRONMENTS = [
+  ["local", { GITHUB_ACTIONS: undefined }],
+  ["github-actions", { GITHUB_ACTIONS: "true" }],
+];
+
+const RULE_CODE = "basecamp-tests(no-timer-scheduled-abort)";
 
 /** [name, source, expected 1-based lines that must report] */
 const CASES = [
@@ -116,38 +135,59 @@ export const t = setTimeout(() => controller.abort(), 50);
 
 const dir = mkdtempSync(join(tmpdir(), "abort-timer-rule-"));
 const failures = [];
+let checks = 0;
 
 try {
-  for (const [name, source, expected] of CASES) {
-    const file = join(dir, "case.ts");
-    writeFileSync(file, source);
+  for (const [envName, envOverrides] of ENVIRONMENTS) {
+    const env = { ...process.env, ...envOverrides };
+    if (envOverrides.GITHUB_ACTIONS === undefined) delete env.GITHUB_ACTIONS;
 
-    let output = "";
-    try {
-      output = execFileSync("npx", ["oxlint", "-c", CONFIG, file], {
-        cwd: join(HERE, ".."),
-        encoding: "utf8",
-        stdio: ["ignore", "pipe", "pipe"],
-      });
-    } catch (error) {
-      // oxlint exits 1 when it reports an error; that is a result, not a crash.
-      // Anything else — a plugin that failed to load, a config it could not
-      // parse — must fail loudly rather than read as "no findings".
-      if (error.status !== 1) {
-        failures.push(`${name}: oxlint exited ${error.status}\n${error.stdout ?? ""}${error.stderr ?? ""}`);
+    for (const [name, source, expected] of CASES) {
+      checks += 1;
+      const label = `[${envName}] ${name}`;
+      const file = join(dir, "case.ts");
+      writeFileSync(file, source);
+
+      let output = "";
+      try {
+        output = execFileSync(OXLINT, ["-c", CONFIG, "--format", "json", file], {
+          cwd: join(HERE, ".."),
+          encoding: "utf8",
+          env,
+          stdio: ["ignore", "pipe", "pipe"],
+        });
+      } catch (error) {
+        // oxlint exits 1 when it reports an error; that is a result, not a
+        // crash. Anything else — a plugin that failed to load, a config it
+        // could not parse — must fail loudly rather than read as "no findings".
+        if (error.status !== 1) {
+          failures.push(`${label}: oxlint exited ${error.status}\n${error.stdout ?? ""}${error.stderr ?? ""}`);
+          continue;
+        }
+        output = `${error.stdout ?? ""}`;
+      }
+
+      let parsed;
+      try {
+        parsed = JSON.parse(output);
+      } catch {
+        failures.push(`${label}: could not parse oxlint --format json output\n${output}`);
         continue;
       }
-      output = `${error.stdout ?? ""}${error.stderr ?? ""}`;
-    }
 
-    const reported = [...output.matchAll(/case\.ts:(\d+):\d+: error basecamp-tests\(no-timer-scheduled-abort\)/g)]
-      .map((m) => Number(m[1]))
-      .sort((a, b) => a - b);
+      // Match on the rule CODE, not on message text: this asserts the finding
+      // came from this rule rather than from anything else oxlint decided to
+      // report.
+      const reported = (parsed.diagnostics ?? [])
+        .filter((d) => d.code === RULE_CODE)
+        .map((d) => d.labels?.[0]?.span?.line)
+        .sort((a, b) => a - b);
 
-    const want = JSON.stringify(expected);
-    const got = JSON.stringify(reported);
-    if (want !== got) {
-      failures.push(`${name}: expected reports on lines ${want}, got ${got}\n${output}`);
+      const want = JSON.stringify(expected);
+      const got = JSON.stringify(reported);
+      if (want !== got) {
+        failures.push(`${label}: expected reports on lines ${want}, got ${got}\n${output}`);
+      }
     }
   }
 } finally {
@@ -160,4 +200,4 @@ if (failures.length > 0) {
   process.exit(1);
 }
 
-console.log(`no-timer-scheduled-abort self-test: ${CASES.length} cases passed.`);
+console.log(`no-timer-scheduled-abort self-test: ${checks} checks passed (${CASES.length} cases x ${ENVIRONMENTS.length} environments).`);
