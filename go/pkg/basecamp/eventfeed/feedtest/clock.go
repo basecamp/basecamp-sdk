@@ -78,6 +78,25 @@ func (c *Clock) Outstanding() []string {
 	return names
 }
 
+// ArmCount returns how many timers have been armed on this clock since it was
+// created. It only ever rises: firing a timer, stopping one, or arming a
+// replacement under a name that already existed all leave it alone or raise
+// it, never lower it.
+//
+// That monotonicity is the whole point, because Outstanding() cannot answer
+// "did the connector arm anything". Outstanding() reports the live set, and
+// two different histories collapse onto the same set: a timer that fired and
+// was rearmed under its own name is indistinguishable from one that never
+// moved, while a timer that merely expired changes the set without anything
+// having been armed at all. A caller comparing snapshots of the set therefore
+// reads expiries as arms and misses same-name rearms entirely. ArmCount
+// counts the events themselves.
+func (c *Clock) ArmCount() int {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.seq
+}
+
 // Advance moves virtual time forward by d, firing due timers in deadline
 // order (ties by creation order), re-evaluating the registry after each fire
 // so a timer armed mid-advance with a deadline inside the window also fires.
