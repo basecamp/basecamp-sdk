@@ -16,6 +16,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/basecamp/basecamp-sdk/go/pkg/basecamp/eventfeed"
 )
 
 // TestScenarioDriverRejectsMutatedFixtures is the driver's kill test: a
@@ -375,4 +377,97 @@ func descend(t *testing.T, cursor any, segment, path string) any {
 		t.Fatalf("path %s: %q has no children", path, segment)
 		return nil
 	}
+}
+
+// TestScenarioDriverEnforcesTheFinalErrorElement pins the three halves of
+// §23's "exactly one final error element that ends iteration" that no
+// end-state assertion can catch.
+//
+// The driver used to record a terminal and `continue` ranging, keeping only
+// the LATEST element. So a connector that yielded the expected reason twice,
+// or delivered an event after it, or never ended iteration at all, passed
+// every terminal fixture identically to a compliant one — the defining
+// property of a test that cannot fail the contract it enforces.
+//
+// Each case drives the harness's own record path, which is where the guard
+// lives, and asserts through `await` — the same call every expect step makes,
+// and the one that consults recorded violations. That is what ties these
+// guards to scenario failure rather than to a flag nobody reads.
+func TestScenarioDriverEnforcesTheFinalErrorElement(t *testing.T) {
+	terminal := func(reason eventfeed.TerminalReason) error {
+		return &eventfeed.TerminalError{Reason: reason, Msg: "scenario selftest"}
+	}
+	// A check that always passes: any failure returned by await is therefore
+	// the recorded violation, never the predicate.
+	passes := func() (bool, string) { return true, "" }
+
+	t.Run("a second error element is rejected", func(t *testing.T) {
+		h := newScenarioHarness()
+		defer h.close()
+		h.recordTerminal(terminal(eventfeed.ReasonProtocolFatal))
+		h.recordTerminal(terminal(eventfeed.ReasonProtocolFatal))
+
+		err := underShortWatchdog(func() error { return h.await("anything", passes) })
+		if err == nil {
+			t.Fatal("the driver accepted two error elements; §23 gives the feed exactly one")
+		}
+		if !strings.Contains(err.Error(), "exactly one") {
+			t.Fatalf("failed for the wrong reason: %v", err)
+		}
+	})
+
+	t.Run("a delivery after the error element is rejected", func(t *testing.T) {
+		h := newScenarioHarness()
+		defer h.close()
+		h.recordTerminal(terminal(eventfeed.ReasonProtocolFatal))
+		h.recordDelivered(42)
+
+		err := underShortWatchdog(func() error { return h.await("anything", passes) })
+		if err == nil {
+			t.Fatal("the driver accepted an event delivered after the final error element")
+		}
+		if !strings.Contains(err.Error(), "after its error element") {
+			t.Fatalf("failed for the wrong reason: %v", err)
+		}
+	})
+
+	t.Run("an iteration that never ends is rejected", func(t *testing.T) {
+		h := newScenarioHarness()
+		defer h.close()
+		const state = "terminal"
+		h.recordState(state)
+		h.recordTerminal(terminal(eventfeed.ReasonProtocolFatal))
+		// Deliberately no recordIterDone: the connector yielded the right
+		// element and stayed open.
+
+		d := &driver{h: h, sc: &scenario{Finally: scenarioFinally{
+			State: state,
+			Error: &errorExpect{Reason: string(eventfeed.ReasonProtocolFatal)},
+		}}}
+		err := underShortWatchdog(d.runFinally)
+		if err == nil {
+			t.Fatal("the driver accepted a terminal scenario whose iteration never ended")
+		}
+		if !strings.Contains(err.Error(), "end on its final error element") {
+			t.Fatalf("failed for the wrong reason: %v", err)
+		}
+	})
+
+	t.Run("the compliant shape still passes", func(t *testing.T) {
+		h := newScenarioHarness()
+		defer h.close()
+		const state = "terminal"
+		h.recordState(state)
+		h.recordDelivered(41)
+		h.recordTerminal(terminal(eventfeed.ReasonProtocolFatal))
+		h.recordIterDone()
+
+		d := &driver{h: h, sc: &scenario{Finally: scenarioFinally{
+			State: state,
+			Error: &errorExpect{Reason: string(eventfeed.ReasonProtocolFatal)},
+		}}}
+		if err := underShortWatchdog(d.runFinally); err != nil {
+			t.Fatalf("the compliant shape must pass, else the three probes above prove nothing: %v", err)
+		}
+	})
 }
