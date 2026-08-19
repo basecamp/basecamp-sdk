@@ -2850,10 +2850,16 @@ Two dispatch clarifications, pinned:
   overflow signal is the only drop signal. Worst-case connector memory is therefore
   bounded multiplicatively — every queued or buffered item is itself bounded by
   `EVENT_FEED_MAX_FRAME_BYTES`, so the ceiling is
-  (pump depth + `EVENT_FEED_LIVE_BUFFER_CAPACITY`) × `EVENT_FEED_MAX_FRAME_BYTES`
+  (pump depth + 1 + `EVENT_FEED_LIVE_BUFFER_CAPACITY`) × `EVENT_FEED_MAX_FRAME_BYTES`
   (≈ 10 GiB at the defaults' extreme, reached only if every slot holds a maximum-size
-  frame) — even under a slow consumer. Implementations MAY additionally impose a total
-  byte cap on the live buffer; if they do, eviction routes through the same overflow
+  frame) — even under a slow consumer. The **+ 1** is the pump's own in-flight frame: the
+  pump is a single reader, so it may hold exactly one frame it has already READ and is
+  blocked handing off, over and above the queue's depth. It is one frame rather than an
+  unbounded number for the same reason — one reader can hold no more than one frame
+  outside the queue — and it is the same quantity the drain's protocol-fatal scan is
+  budgeted at (`pump depth + 1`), because "every frame the pump had already read" is one
+  more than "every frame sitting in the queue". Implementations MAY additionally impose a
+  total byte cap on the live buffer; if they do, eviction routes through the same overflow
   signal, never a silent drop.
 - The transport negotiates subprotocol `actioncable-v1-json`, sends no `Origin` header
   (non-browser clients), and passes the mint URL through untouched, query string included.
@@ -3209,9 +3215,21 @@ logged (Security Invariants below).
 
 Required tier-2 coverage: a hostile cross-origin `next` mid-walk, a hostile 410
 `resume` URL, and a validated same-origin `next` answering 302 with a cross-origin
-`Location` each terminate with `invalid_continuation` and zero requests to the foreign
-origin; store-failure coverage proves Failed(load) terminates with zero wire attempts and
-Failed(save) continues with the observer signal and a subsequent save attempt.
+`Location` each terminate with `invalid_continuation`, are not retried, and issue no
+further poll; store-failure coverage proves Failed(load) terminates with zero wire
+attempts and Failed(save) continues with the observer signal and a subsequent save
+attempt.
+
+**Zero egress to the foreign origin is a Layer-1 obligation, not tier-2 coverage**, and
+this paragraph used to require it here. Tier 2 cannot deliver it: the poll lane IS the
+seam, so the driver reduces the `Location` to its origin and hands the connector a
+refusal verdict. The connector never sees a `Location` and never decides whether to
+follow one, which makes the foreign origin unreachable by construction of the harness —
+a harness that asserted no request reached it would be asserting something about itself.
+The obligation belongs to the Layer-1 seam adapter's own 302 test, where a real
+generated `PollEvents` call meets a real redirect against an adapter with automatic
+redirect-following disabled. `conformance/event-feed/README.md`'s row-15 note records it
+as a pending obligation rather than a proof the repository contains.
 
 ### Clock, Timers, and Virtual Time `[conformance]`
 
@@ -3252,8 +3270,21 @@ the advance whose deadlines land inside the window also fire; ties break by crea
 order.* A harness may additionally fire a named timer without advancing the clock,
 asserting its scheduled delay against a `{min, max}` envelope — that is how jitter is
 asserted without a cross-language RNG seam. Each language's test clock passes a shared
-semantics checklist (deadline order, reentrant scheduling within an advance, creation-order
-tie-break) before its tier-2 results count.
+semantics checklist (deadline order, creation-order tie-break) before its tier-2 results
+count.
+
+**The reentrant clause is normative for the algorithm and forbidden as a fixture
+dependency.** It stays in the algorithm because a clock that ignored it would fire the
+wrong set. But it is UNSCRIPTABLE wherever the connector runs concurrently with the
+driver: whether a timer armed during the window lands inside it depends on when the
+connector's goroutine, thread, or task got scheduled, which no fixture can pin. So **no
+fixture may rely on it, and every driver MUST fail an advance during which the connector
+arms any timer**, naming `fireTimer` as the deterministic alternative. Detect the ARMING
+itself — a monotonic count of timer creations — never a change in the outstanding-timer
+set: a firing removes its timer before any observer runs, and a same-name rearm leaves the
+set identical, so a set comparison reports nothing in exactly the case that matters. This
+is what `conformance/event-feed/schema.json`'s `$defs.advance` states, and the driver
+obligation is enforced there.
 
 Teardown discipline: disposing a connection attempt — deadline lapse, staleness, socket
 death, terminal — cancels the frame pump, **cancels any in-flight seam call belonging to

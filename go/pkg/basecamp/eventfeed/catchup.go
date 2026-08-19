@@ -1017,7 +1017,7 @@ func (l *loop) probeFatal(at *attempt) (cycleOutcome, bool) {
 //
 // This is why the scan needs no queue and no share of pumpDepth: it retains
 // exactly what the single slot always retained. The connector's published
-// memory bound — (pump depth + liveBufferCapacity) × MAX_FRAME_BYTES — is
+// memory bound — (pump depth + 1 + liveBufferCapacity) × MAX_FRAME_BYTES — is
 // untouched, and so is the depth at which the pump blocks.
 func (l *loop) deferForDrain(d *deferredFrame) {
 	if l.deferred == nil {
