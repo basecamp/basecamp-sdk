@@ -57,7 +57,7 @@ When artifacts conflict, this precedence governs:
 | **BaseService** | Abstract base for generated services. Provides request execution, error mapping, pagination following, hooks integration. |
 | **HTTP Transport** | Executes HTTP requests. Applies auth headers, User-Agent, Content-Type. Implements retry, caching. |
 | **Errors** | Structured error hierarchy. Maps HTTP statuses to typed error codes with exit codes. |
-| **Security** | HTTPS enforcement, body size limits, message truncation, header redaction, same-origin validation. |
+| **Security** | HTTPS enforcement, body size limits, message truncation, closed-vocabulary rendering of peer-derived error text, header redaction, same-origin validation. |
 
 ### Two-Tier Topology
 
@@ -633,11 +633,67 @@ Given header value `value`:
 2. Attempt parse as HTTP-date (RFC 7231, e.g., `Wed, 09 Jun 2021 10:18:14 GMT`). If valid → compute `max(0, date - now())` in seconds; if > 0 → return.
 3. → `undefined` (fall through to backoff formula).
 
-This algorithm defines **parsing** only — how a header value becomes a number of seconds. It does not
-say which response statuses a parsed value is honoured at, and the SDKs do not agree: Python honours
-it on any status, Go on 429 and 503, and Ruby, Kotlin, Swift and TypeScript on 429 alone. That
-divergence is real (a 503 carrying `Retry-After` is obeyed by two SDKs and ignored by four) and is
-tracked in #775; do not read a status set into the steps above.
+This algorithm defines **parsing** only — how a header value becomes a number of seconds. Which
+statuses honour the result, and what bounds the sleep it buys, is the next section; do not read a
+status set into the steps above.
+
+### Retry-After Honouring `[CONFLICT]`
+
+**A parsed `Retry-After` is honoured at any status a retry is already going to happen at.** There is
+no status gate of its own. §7's three gates decide whether *this* response is retried, and where they
+say yes the parsed value replaces the backoff term — at 429, at 503, and at every status a declared
+`retryOn` set carries today or grows to carry later. Where they say no, the value may still be parsed
+and surfaced on the error for the caller to read, but nothing sleeps on it.
+
+RFC 9110 §10.2.3 defines `Retry-After` as a general response header field restricted to no status
+set, and gives **503** the one case with explicit semantics — how long the service expects to be
+unavailable. RFC 6585 §4 says a **429** *MAY* carry it. So 429 is the permitted use and 503 is the
+canonical one, which makes a 429-only rule narrowest exactly where the RFCs are most specific.
+Deriving the answer from retry eligibility rather than from a status list is also the only position
+that needs no amendment when an operation's `retryOn` grows: a status worth retrying is a status
+whose `Retry-After` was worth reading.
+
+It is also what §7's Retry Algorithm has always spelled. Step 3h reads "if `last_response` exists and
+has a valid `Retry-After` header" with no status test of its own, and it is reachable only for a
+response that already passed step 3f's `status IN retry_config.retry_on`. The status gates the five
+SDKs grew are narrower than the algorithm they implement; what was missing was this section saying so.
+
+**The value is honoured as given.** It is exempt from §7's backoff ceiling (§7 "Backoff Ceiling",
+requirement 4): the ceiling governs the locally computed formula, and a client that silently caps a
+server's instruction retries sooner than the origin asked for. An implementation MAY bound it against
+a **host limit** — a seconds→nanoseconds conversion that would trap, a timer that cannot schedule the
+value — and that bound belongs at the sleep, never in the parser, so a caller reading the error's
+`retry_after` still sees what the server said. There is deliberately **no policy cap**: a hostile or
+misconfigured origin sending `Retry-After: 3600` buys an hour's sleep in the SDKs that apply no host
+limit. That is a property of honouring the header at all, not of which statuses honour it — it is
+reachable at 429 today — but it is the cost of this position and is written down rather than implied.
+
+`[CONFLICT: the spec prescribes any retryable status; five SDKs gate on 429 alone. Converging is a
+behaviour change across five SDKs, tracked in #775 — the divergence below is the current state, not
+the contract.]`
+
+- **Python** already matches. `_parse_retry_after` runs on every response and `_calculate_delay`
+  returns a positive value in place of the backoff term whatever the status
+  (`python/src/basecamp/_http.py`, `_async_http.py`), so a 503 carrying `Retry-After: 120` waits 120s.
+- **Ruby**, **Kotlin**, **Swift** and **TypeScript** parse the header on any status but gate the
+  *sleep* on 429 (`ruby/lib/basecamp/http.rb`, `kotlin/.../http/BasecampHttpClient.kt`,
+  `swift/.../HTTP/HTTPClient.swift`, `typescript/src/retry.ts` and `typescript/src/services/base.ts`).
+  A 503 carrying `Retry-After: 120` backs off ~1s instead. 503 is in every operation's declared
+  `retryOn`, so this is a live difference, not a theoretical one.
+- **Go** is a third shape rather than a stricter one. The hand-written retry loop's `Retry-After`
+  branch reads a field off a `retryableError` that nothing ever constructs, and the 429 arm returns a
+  rate-limit error carrying the seconds in a message string, so the loop falls through to the plain
+  backoff: the header is honoured on **no** status on that path. It *is* honoured, unclamped, on the
+  download path and inside the rate-limiter's hook, and the generated client gates on 429. Go's
+  convergence is therefore "make the loop see the value at all", not "widen a status check".
+- **Host limits** also diverge: TypeScript clamps to what `setTimeout` can schedule (2,147,483,647ms,
+  ~24.85 days); Swift clamps its `Double`→`UInt64` nanosecond conversion at 86,400s; Go, Python,
+  Ruby and Kotlin apply none. All three positions are permitted by §7 requirement 4, and none of them
+  is a policy cap.
+
+Which **date forms** step 2 accepts diverges on a second axis — 3 SDKs IMF-fixdate-only, 2 broadly
+permissive, and Kotlin idiosyncratic (a transport library's pattern list, accepting neither canonical
+obsolete form). That is the same contract and is tracked in the same issue.
 
 ---
 
@@ -774,7 +830,8 @@ Where `retry_index` is the 0-indexed retry count (first retry = 0, second retry 
 - `max_jitter` = 100ms (from Config; not part of `retry_config` — sourced from the client's Config RECORD)
 - `MAX_BACKOFF_DELAY_MS` = 30,000 (30s) — the ceiling on the backoff term, below
 
-Retry-After header value takes precedence when present and valid.
+Retry-After header value takes precedence when present and valid, at every status this loop reaches
+(§6 "Retry-After Honouring").
 
 ### Backoff Ceiling `[CONFLICT]`
 
@@ -830,10 +887,14 @@ Requirements:
    `behavior-model.json` tops out at `base_delay_ms: 2000`, and the default three
    attempts never compute past `2000 × 2 = 4000ms`, so the ceiling is unreachable on
    default paths and changes no shipped behavior.
-4. **`Retry-After` is exempt.** It is server-directed and takes precedence per step 3h;
-   the ceiling governs the locally-computed formula only. Implementations may still
-   bound it against host limits — Swift clamps its seconds→nanoseconds conversion to
-   86,400s because `UInt64(_:)` on an out-of-range `Double` is a trap.
+4. **`Retry-After` is exempt.** It is server-directed and takes precedence per step 3h,
+   at every status that step reaches (§6 "Retry-After Honouring"); the ceiling governs
+   the locally-computed formula only. Implementations may still bound it against host
+   limits — Swift clamps its seconds→nanoseconds conversion to 86,400s because
+   `UInt64(_:)` on an out-of-range `Double` is a trap, and TypeScript clamps to the
+   2,147,483,647ms `setTimeout` can schedule. Those two bounds differ by ~24× and the
+   other four SDKs apply none, because a host limit is not a policy cap; §6 records that
+   divergence and the exposure it leaves.
 
 **Reachability.** Every SDK exposes a path to a high attempt count: Kotlin's builder
 validates `maxRetries >= 0` with no upper bound, Go's `WithMaxRetries` only rejects
@@ -1106,6 +1167,36 @@ MAX_ERROR_MESSAGE_LENGTH = 500
 Error messages extracted from response bodies are truncated to 500 units. If the string exceeds the limit, the last 3 units are replaced with `"..."`, so the result is at most 500 units long.
 
 **Unit semantics:** The unit is language-defined: Go (`len()`), Ruby (`bytesize`), and Python (`len(s.encode())`) use bytes; TypeScript (`s.length`), Swift (`s.count`), and Kotlin (`s.length`) use character/code-unit length. For ASCII text (which conformance test fixtures use today), these coincide. Unicode truncation semantics are a per-language divergence documented in Appendix F. Note: byte-level truncation (Go/Ruby) can produce invalid UTF-8 mid-codepoint; this is accepted behavior. Python slices bytes too but decodes with `errors="ignore"`, so it drops the partial codepoint instead of emitting it.
+
+**Scope, and what this cap is not.** It governs §6's Error Body Parsing Algorithm `message` and the field-keyed composition built on it — modelled fields of the API's own error body, surfaced because reading them *is* the caller's contract. There it is a resource bound sitting under `MAX_ERROR_BODY_BYTES`, and it answers *how much* text reaches the caller. It never answers *whether* text the peer chose reaches the caller at all. Where that second question is the one being asked, the next section governs and this cap does not stand in for it.
+
+That is the whole boundary between the two sections, and it is not "which peer": this cap applies where a contract requires the text to reach the caller, and the next section applies where nothing does — a decoder's rendering of bad bytes, a transport library's rendering of a URL, a close reason no caller asked to see.
+
+### Peer-Derived Text in Observer-Facing Errors `[manual]`
+
+**Peer-derived text in an observer-facing error is rendered from a closed vocabulary keyed on the error's type. It is never composed from peer input and then bounded by length.**
+
+Truncation is not redaction. A length bound limits how much of a credential escapes, not whether any does, and the two are different controls answering different questions. This section is the answer to the second one.
+
+Two definitions, stated because leaving them to each call site is what made this cost four review rounds (#788):
+
+- **Peer-derived** — text whose content the remote party chooses. Directly: a response or frame body, a header value, a WebSocket close reason, a URL the peer supplied or redirected to. Indirectly, and this is the half that gets missed: **anything a decoder, a transport, or a client library renders from those bytes**. `encoding/json`'s own errors carry offsets and type names, but a type's `UnmarshalJSON` may quote the offending input — Go's `time.Time` does — and a standard-library `*url.Error` renders the URL it failed on. The SDK did not compose that text, and it is peer-derived all the same, because the peer chose what the composer saw.
+- **Observer-facing** — any rendering that leaves the SDK as text: an error's `Error()` / `message` / `localizedDescription`, an argument to an observer or hook callback, anything an SDK log line emits or a host's log aggregator captures. A typed field retained on the error is **not** observer-facing; see rule 4.
+
+The rule has four parts:
+
+1. **Classify on types, never on text.** Every arm of the vocabulary matches an error type or a sentinel value, so no arm can be widened by something the peer wrote. Diagnostics structurally incapable of carrying text may still be rendered: an HTTP status code, an integer close code, a standard library's own fixed verb set.
+2. **Degrade, never leak.** An unrecognized cause renders the vocabulary's generic phrase. The failure direction is "less diagnostic", never "leaks".
+3. **Do not leave the cause in the chain.** Wrapping the original so callers can unwrap it hands the unbounded original straight back and undoes the rendering. Typed classification is unaffected — it lives on the error's type, which is what `errors.As` and its equivalents match.
+4. **Retention is a separate question from rendering, and retention is allowed.** The peer's value may stay on the error as a typed field — `CloseError.Reason`, a `DialError.Kind` — so a caller who wants it reaches for it deliberately. What is forbidden is putting it in the default rendering, where nobody chose to receive it.
+
+**The rule binds at construction.** The property "is this text peer-derived?" belongs to the constructor that composed the message, not to the type. An allowlist of error types permitted to cross an observability boundary structurally cannot answer it, which is why widening one never closed the class: three consecutive rounds found three different spellings that slipped a redactor's model in turn — a value below a length threshold, a percent-encoded form, a query carrying the credential with no `=` in it at all — and a fourth found peer text riding a wrapper that `errors.Is` matched but did not strip. That is one control having to anticipate its own input, with the peer choosing the input. To strip a credential out of arbitrary text you must model it, and where the credential is contractually **opaque** (§23's stream ticket), modelling it is precisely what the contract forbids. A closed vocabulary has nothing to model.
+
+**Projection is permitted; redaction is not.** Extracting a structurally defined component of a *successfully parsed* value and discarding the rest is an allowlist, and stays lawful: §23 carries a refused redirect `Location` and a rejected continuation URL as their **origin only**, which cannot hold a query-string credential because the parse already dropped the query. Searching arbitrary text for a credential and removing what matched is a blocklist, and is the thing this section forbids.
+
+**The vocabulary's wording is per-SDK; its shape is not.** Nothing here fixes the English. What every SDK owes is that an observer-facing rendering of this class is drawn from a fixed set chosen by error type and carries no peer bytes. §23's conformance surface asserts the typed terminal `reason` and the invalid-frame indication as a flag (`conformance/event-feed/schema.json`), never a rendered message, so the six SDKs owe the classification rather than a string.
+
+**§23 interaction — the reason-string dispatch is not an exception.** §23's Disconnect Dispatch matches the `reason` of the Action Cable `disconnect` **text frame** against a closed, server-owned set (`unauthorized`, `remote`, `invalid_event_stream_command`). That is inbound routing on parsed wire data, not error rendering, and this section leaves it untouched. What this section governs on that path is the error *text* the connector produces — the dial failure, the invalid-frame violation, and the peer close — all three of which reach `Observer.disconnected`.
 
 ### Sensitive Header Redaction `[static]`
 
@@ -3299,10 +3390,15 @@ resume_url)`, `position_rejected(kind)`, `stale_connection(since_last_frame)`,
 ### Security Invariants `[static]`
 
 - **Never log the ticket or the mint URL's query string** — the ticket rides in it.
-  Observer callbacks and error renderings carry redacted URLs.
-- **Bound the inbound frame size** (`EVENT_FEED_MAX_FRAME_BYTES`, 1 MiB default) and
-  bound/truncate any error rendering of frame contents (§9's `MAX_ERROR_MESSAGE_LENGTH`
-  applies).
+  Observer callbacks and error renderings carry a URL's **origin only**, projected out of
+  a successful parse (§9 "Peer-Derived Text in Observer-Facing Errors"), never a URL a
+  redactor searched for a credential.
+- **Bound the inbound frame size** (`EVENT_FEED_MAX_FRAME_BYTES`, 1 MiB default) — and
+  render no frame contents in an error at all. The dial failure, the invalid-frame
+  violation and the peer close (`CloseError`) all reach `Observer.disconnected`, so each
+  is rendered from §9's closed vocabulary keyed on error type. §9's
+  `MAX_ERROR_MESSAGE_LENGTH` does not stand in for that: bounding a rendering limits how
+  much of a credential escapes, not whether any does.
 - **Require `wss://`** for the cable URL, with the §9 localhost/loopback carve-out.
 - **Refuse mint-URL redirects** — a redirect on dial is a hard error, never followed.
 - **Validate every continuation and resume URL** before following it — §8's same-origin
