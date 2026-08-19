@@ -89,6 +89,16 @@ async function drainEventLoop(turns: number): Promise<void> {
 describe("middleware request lifecycle", () => {
   afterEach(() => {
     vi.restoreAllMocks();
+    // Review follow-up (Copilot). The backoff-abort test below installs fake
+    // timers, and restoring them in its own `finally` does NOT cover the path
+    // that matters: if a regression stops `onRetry` firing, the test awaits
+    // forever, vitest marks it timed out — and the suspended async function is
+    // never resumed, so the `finally` never runs and a frozen clock leaks into
+    // every later test in this file. Measured: on a timed-out test the
+    // `finally` does not run and this hook does, with `vi.isFakeTimers()` still
+    // true. So the restore lives here, where both paths reach it, instead of in
+    // two places where one is unreachable exactly when it is needed.
+    vi.useRealTimers();
   });
 
   // Defect 1. Two concurrent same-method/same-URL mutations with Date.now()
@@ -306,98 +316,96 @@ describe("middleware request lifecycle", () => {
     // the request path sees a stopped clock.
     vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
 
-    try {
-      server.use(
-        http.get(`${BASE_URL}/projects.json`, () =>
-          // Retry-After: 2 puts the loop into a 2s backoff we can abort inside.
-          new HttpResponse(null, { status: 429, headers: { "Retry-After": "2" } })
-        )
+    // Restored in this describe's afterEach rather than in a `finally` here:
+    // a timed-out test never resumes to run its own finally, and the timeout
+    // is exactly the failure this test produces when the abort stops reaching
+    // the sleep. One restore, on every path.
+    server.use(
+      http.get(`${BASE_URL}/projects.json`, () =>
+        // Retry-After: 2 puts the loop into a 2s backoff we can abort inside.
+        new HttpResponse(null, { status: 429, headers: { "Retry-After": "2" } })
+      )
+    );
+
+    const reason = new Error("caller cancelled during backoff");
+    const controller = new AbortController();
+
+    // Resolved once the abort has actually been delivered, so the barrier
+    // below starts counting from the abort rather than from the start of the
+    // request — attempt 1's round trip legitimately spans several turns, and
+    // only what happens AFTER the abort is under test.
+    let abortDelivered!: () => void;
+    const aborted = new Promise<void>((resolve) => {
+      abortDelivered = resolve;
+    });
+
+    const { hooks, events } = recordingHooks();
+    const announce = hooks.onRetry!;
+    hooks.onRetry = (info, upcoming, error, delayMs) => {
+      announce(info, upcoming, error, delayMs);
+      // Abort from the hook the loop fires immediately before it sleeps, so
+      // the abort lands inside the backoff BY CONSTRUCTION rather than by a
+      // timer beating a 2s window under whatever load the runner is carrying
+      // (#783). #781 aborts from the same seam one layer down.
+      //
+      // The microtask is what puts it INSIDE the sleep rather than before it.
+      // executeWithRetry calls sleep() synchronously once this hook returns,
+      // and sleep's promise executor registers its abort listener
+      // synchronously in turn — so a queued abort cannot run until that
+      // listener exists, and it is the listener that has to reject. Aborting
+      // synchronously here would only ever reach sleep's already-aborted fast
+      // path, leaving the listener untested. If a future `await` appears
+      // between the hook and the sleep, this degrades to that fast path — it
+      // gets weaker, never flaky.
+      queueMicrotask(() => {
+        controller.abort(reason);
+        abortDelivered();
+      });
+    };
+
+    const client = createBasecampClient({
+      accountId: "12345",
+      accessToken: "test-token",
+      hooks,
+    });
+
+    const request = client
+      .GET("/projects.json", { signal: controller.signal } as never)
+      .then(
+        () => undefined,
+        (e: unknown) => e
       );
 
-      const reason = new Error("caller cancelled during backoff");
-      const controller = new AbortController();
+    let settled = false;
+    void request.then(() => {
+      settled = true;
+    });
 
-      // Resolved once the abort has actually been delivered, so the barrier
-      // below starts counting from the abort rather than from the start of the
-      // request — attempt 1's round trip legitimately spans several turns, and
-      // only what happens AFTER the abort is under test.
-      let abortDelivered!: () => void;
-      const aborted = new Promise<void>((resolve) => {
-        abortDelivered = resolve;
-      });
+    await aborted;
+    await drainEventLoop(5);
 
-      const { hooks, events } = recordingHooks();
-      const announce = hooks.onRetry!;
-      hooks.onRetry = (info, upcoming, error, delayMs) => {
-        announce(info, upcoming, error, delayMs);
-        // Abort from the hook the loop fires immediately before it sleeps, so
-        // the abort lands inside the backoff BY CONSTRUCTION rather than by a
-        // timer beating a 2s window under whatever load the runner is carrying
-        // (#783). #781 aborts from the same seam one layer down.
-        //
-        // The microtask is what puts it INSIDE the sleep rather than before it.
-        // executeWithRetry calls sleep() synchronously once this hook returns,
-        // and sleep's promise executor registers its abort listener
-        // synchronously in turn — so a queued abort cannot run until that
-        // listener exists, and it is the listener that has to reject. Aborting
-        // synchronously here would only ever reach sleep's already-aborted fast
-        // path, leaving the listener untested. If a future `await` appears
-        // between the hook and the sleep, this degrades to that fast path — it
-        // gets weaker, never flaky.
-        queueMicrotask(() => {
-          controller.abort(reason);
-          abortDelivered();
-        });
-      };
+    // Promptness, asserted rather than named. The rejection travels from the
+    // sleep's abort listener to here through microtasks alone, so one turn
+    // is enough and five are slack; nothing in that chain waits on a timer.
+    // A rejection deferred to the backoff timer cannot arrive at all while
+    // the clock is frozen, so it reads as `false` here — immediately, and
+    // for the same reason every time.
+    expect(settled).toBe(true);
 
-      const client = createBasecampClient({
-        accountId: "12345",
-        accessToken: "test-token",
-        hooks,
-      });
-
-      const request = client
-        .GET("/projects.json", { signal: controller.signal } as never)
-        .then(
-          () => undefined,
-          (e: unknown) => e
-        );
-
-      let settled = false;
-      void request.then(() => {
-        settled = true;
-      });
-
-      await aborted;
-      await drainEventLoop(5);
-
-      // Promptness, asserted rather than named. The rejection travels from the
-      // sleep's abort listener to here through microtasks alone, so one turn
-      // is enough and five are slack; nothing in that chain waits on a timer.
-      // A rejection deferred to the backoff timer cannot arrive at all while
-      // the clock is frozen, so it reads as `false` here — immediately, and
-      // for the same reason every time.
-      expect(settled).toBe(true);
-
-      const err = await request;
-      expect(err).toBe(reason);
-      // The mechanism, not the clock. Attempt 1 was started and ended (429)
-      // before the backoff; attempt 2 must never start. A backoff sleep that
-      // ignored the signal ENTIRELY would run the full 2s Retry-After and only
-      // then begin attempt 2 — start, auth refresh, fetch — against an
-      // already-aborted signal, which surfaces here as starts [1, 2].
-      //
-      // onRetry had already announced attempt 2 — that is the inherent race of
-      // cancelling between announce and begin — but starts and ends stay
-      // balanced.
-      expect(starts(events).map((e) => e.attempt)).toEqual([1]);
-      expect(ends(events).map((e) => e.attempt)).toEqual([1]);
-      expect(ends(events)[0]!.statusCode).toBe(429);
-    } finally {
-      // Restored on the failure path too: leaking a frozen clock into the rest
-      // of the file would hang the next test that backs off.
-      vi.useRealTimers();
-    }
+    const err = await request;
+    expect(err).toBe(reason);
+    // The mechanism, not the clock. Attempt 1 was started and ended (429)
+    // before the backoff; attempt 2 must never start. A backoff sleep that
+    // ignored the signal ENTIRELY would run the full 2s Retry-After and only
+    // then begin attempt 2 — start, auth refresh, fetch — against an
+    // already-aborted signal, which surfaces here as starts [1, 2].
+    //
+    // onRetry had already announced attempt 2 — that is the inherent race of
+    // cancelling between announce and begin — but starts and ends stay
+    // balanced.
+    expect(starts(events).map((e) => e.attempt)).toEqual([1]);
+    expect(ends(events).map((e) => e.attempt)).toEqual([1]);
+    expect(ends(events)[0]!.statusCode).toBe(429);
     // Hang guard only: the assertions above carry the discrimination.
   }, 10_000);
 

@@ -125,10 +125,28 @@ response is asserting machine load, not behavior. Abort from a seam that proves
 the request is already in flight: from inside the MSW handler
 (`typescript/tests/client.test.ts`), or from the retry hook the loop fires
 immediately before it sleeps (`typescript/tests/retry-after.test.ts`,
-`typescript/tests/middleware-lifecycle.test.ts`). Then drop any accompanying
-`Date.now() - startedAt < N` bound — the error's identity (`AbortError` vs
-`TimeoutError`, or `err === reason`) and the attempt ledger already
-discriminate, and the ceiling contributes only load sensitivity.
+`typescript/tests/middleware-lifecycle.test.ts`). Then replace any accompanying
+`Date.now() - startedAt < N` bound. Usually there is nothing to put in its
+place: the error's identity (`AbortError` vs `TimeoutError`, or
+`err === reason`) and the attempt ledger already discriminate, and the ceiling
+was contributing only load sensitivity.
+
+**But check what the ceiling was carrying before you delete it.** If the named
+behavior is *promptness* — "rejects as soon as the abort lands" rather than
+"rejects with the right reason, eventually" — identity and the ledger do not
+cover it: a sleep that notices the abort and then waits out its timer anyway
+satisfies both, late. Assert promptness by freezing the clock instead of
+bounding it. Fake `setTimeout`/`clearTimeout` (`vi.useFakeTimers({ toFake: […] })`),
+never advance it, and assert the request settled after a barrier counted in
+event-loop turns (`setImmediate`), not milliseconds — a delay that only the test
+can release cannot have been waited out. `middleware-lifecycle.test.ts`'s
+"rejects promptly when the caller aborts during a retry backoff" is the worked
+example; the mutant it kills is precisely the sleep described above.
+
+Restore real timers from the suite's `afterEach`, not from the test's own
+`finally`: a timed-out test is never resumed, so its `finally` does not run —
+and a hung test is exactly the failure a broken abort produces — which would
+leak a frozen clock into every test after it.
 
 The same rule reads sideways in Ruby: a value written by a server thread is
 read by the test only across an explicit happens-before edge — a `Queue`, or a
