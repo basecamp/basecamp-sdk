@@ -45,6 +45,23 @@ The strict-match rule splits by action class; every driver implements exactly th
   unmatched when the script ends fails the scenario, and the seam-call counts in
   `finally` count it either way.
 
+**The Go reference driver does not implement the arrival-strict half yet**, and
+saying so here is the point: it queues saves and outbound frames and matches them
+to their expect steps in ORDER, so an action that arrived during an earlier,
+non-matching step still satisfies its expectation. The rule above is the contract
+every driver is held to; this is a gap in one implementation, not a weakening of
+it. The hard part is the atomic handoff the rule already names — an action that
+becomes legal the instant a rendezvous is satisfied must match the next step
+rather than fail against the stale one — which is why it is a tracked change
+rather than a queue check.
+
+What that gap does NOT cover for is early-save ordering, which has its own
+witness rather than relying on arrival strictness: every `save` records the
+delivery count at the moment it arrived, and fixture 12 fails a save that
+precedes its page's deliveries. The residue is narrower than the rule — an
+outbound frame written earlier than its step, most concretely a subscribe
+command sent before `welcome`. Tracked in #792.
+
 ## Validation
 
 `schema.json` is the contract. `make event-feed-fixtures-check` validates the schema
