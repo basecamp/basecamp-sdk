@@ -33,7 +33,9 @@ LIVE_FIXTURE = Path(__file__).parent.parent.parent / "tests" / "live-my-surface.
 
 
 def _live_operations() -> set[str]:
-    tests = json.loads(LIVE_FIXTURE.read_text())
+    # Pinned like every other fixture read: the file carries non-ASCII, and
+    # read_text() follows the process locale unless told otherwise.
+    tests = json.loads(LIVE_FIXTURE.read_text(encoding="utf-8"))
     ops = {t["operation"] for t in tests if t.get("mode") == "live"}
     # Fail closed: an empty set would make the assertions below vacuous.
     assert ops, f"{LIVE_FIXTURE} declared no live operations — the reader is broken"

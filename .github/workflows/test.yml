@@ -650,8 +650,15 @@ jobs:
         working-directory: conformance/runner/ruby
         # Frozen: the runner Gemfile.lock is tracked (#670), so the install
         # must fail fast rather than rewrite it.
+        #
+        # LC_ALL=C for the same reason as the `Test (LC_ALL=C)` leg above: the
+        # runner's fixture reads are pinned to encoding: "UTF-8", fixtures under
+        # conformance/tests/ carry non-ASCII, and an unpinned read decodes them
+        # as US-ASCII and raises before a single case runs (#774). This is what
+        # turns the pin from asserted into proven.
         env:
           BUNDLE_FROZEN: 'true'
+          LC_ALL: C
         run: |
           bundle install
           ruby runner.rb
@@ -766,6 +773,19 @@ jobs:
         working-directory: conformance/runner/python
         # --locked: the runner uv.lock is tracked (#670), so a missing or
         # out-of-date lockfile must fail the install, not regenerate it.
+        #
+        # The three env vars together are what hold the runner's UTF-8 pins
+        # (#774), and LC_ALL alone would not: under a C/POSIX locale CPython
+        # auto-enables UTF-8 mode (PEP 540), so `Path.read_text()` with no
+        # encoding= still decodes UTF-8 and an unpinned read passes. PYTHONUTF8=0
+        # turns that rescue off, which is the only way this step can observe the
+        # locale-following read it exists to catch. PYTHONIOENCODING keeps stdout
+        # on UTF-8 so the check stays about the FILE reads under test rather than
+        # failing later on a case name someone writes with an em dash.
+        env:
+          LC_ALL: C
+          PYTHONUTF8: '0'
+          PYTHONIOENCODING: utf-8
         run: |
           uv sync --locked --python ${{ matrix.python }}
           uv run --python ${{ matrix.python }} python runner.py
@@ -801,8 +821,15 @@ jobs:
         # so the target itself stays version-agnostic.
         if: matrix.python == '3.13'
         working-directory: .
+        # Same locale trio as the conformance step above, for the same reason:
+        # this suite reads conformance/tests/live-my-surface.json, which carries
+        # non-ASCII, so its read is pinned too and the pin needs a leg that can
+        # see it break (#774).
         env:
           UV_PYTHON: ${{ matrix.python }}
+          LC_ALL: C
+          PYTHONUTF8: '0'
+          PYTHONIOENCODING: utf-8
         run: make conformance-runner-tests-python
 
       # Ground truth, and the authoritative check: the static parser predicts

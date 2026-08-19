@@ -118,7 +118,8 @@ module CaseCensus
 
     files.sum do |file|
       begin
-        parsed = JSON.parse(File.read(file))
+        # UTF-8 regardless of process locale (LC_ALL=C would otherwise read as US-ASCII)
+        parsed = JSON.parse(File.read(file, encoding: "UTF-8"))
       rescue JSON::ParserError, SystemCallError => e
         raise Error, "#{file}: #{e.message}"
       end

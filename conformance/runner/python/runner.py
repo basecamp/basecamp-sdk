@@ -137,7 +137,9 @@ def count_non_live_cases(tests_dir: str | Path) -> int:
     cases = 0
     for file in files:
         try:
-            parsed = json.loads(file.read_text())
+            # UTF-8 regardless of process locale (LC_ALL=C would otherwise read
+            # as US-ASCII whenever UTF-8 mode is off)
+            parsed = json.loads(file.read_text(encoding="utf-8"))
         except (json.JSONDecodeError, OSError) as e:
             raise RuntimeError(f"{file}: {e}") from e
         if not isinstance(parsed, list):
@@ -1532,7 +1534,9 @@ class ConformanceRunner:
         excluded: list[tuple[str, str, str]] = []
 
         for file in files:
-            tests = json.loads(file.read_text())
+            # UTF-8 regardless of process locale (LC_ALL=C would otherwise read
+            # as US-ASCII whenever UTF-8 mode is off)
+            tests = json.loads(file.read_text(encoding="utf-8"))
             # Live tests are TS-only (canonical wire-capturer); filter them out
             # before mock dispatch so unresolved ${PROJECT_ID} fixtures and
             # live-only operations don't surface here.
