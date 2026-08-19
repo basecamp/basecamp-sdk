@@ -629,9 +629,18 @@ Swift carries the slot as a fifth associated value on `.validation` plus a `fiel
 
 Given header value `value`:
 
-1. Attempt parse as integer. If valid and > 0 → return as seconds. A positive value too large for the SDK's integer type is **over-range, not malformed**: RFC 9110 spells `delay-seconds` as `1*DIGIT` and sets no upper bound, so it saturates at the implementation's ceiling (see §7's note 4) rather than falling through. Only input that is not `1*DIGIT` at all is malformed.
+1. Attempt parse as integer. If valid and > 0 → return as seconds. A positive value too large for the SDK's integer type is **over-range, not malformed**: RFC 9110 spells `delay-seconds` as `1*DIGIT` and sets no upper bound, so it saturates at the implementation's ceiling (below, and permitted by §7's note 4) rather than falling through. Only input that is not `1*DIGIT` at all is malformed.
 2. Attempt parse as HTTP-date (RFC 7231, e.g., `Wed, 09 Jun 2021 10:18:14 GMT`). If valid → compute `max(0, date - now())` in seconds, **rounding a sub-second remainder up**; if > 0 → return.
 3. → `undefined` (fall through to backoff formula).
+
+**The ceiling step 1 saturates at is the implementation's own**, and §7's note 4 permits it as a
+host-limit bound rather than a policy cap. Go's hand-written client uses 2,147,483,647s (~68 years):
+`seconds × time.Second` wraps past `math.MaxInt64` above ~292 years, and the value is surfaced in an
+`int`, which is 32 bits on a 32-bit target — 2,147,483,647 is at or below both, so the answer does
+not vary with `GOARCH`, and it is both the number Kotlin already saturates this header at and the
+shared ceiling §16 names. Wrapping is not a cosmetic concern: a negative duration makes a timer fire
+at once, turning a server-directed wait into a tight retry loop (#795). Go's **generated** retry loop
+keeps an independent, unclamped copy of this conversion and still wraps; that is #798.
 
 Go saturates at both boundaries. TypeScript (above `Number.MAX_SAFE_INTEGER`) and Kotlin (above
 `Int.MAX_VALUE`) fall through to the backoff formula instead, which retries a server that asked for
@@ -843,20 +852,7 @@ Requirements:
 4. **`Retry-After` is exempt.** It is server-directed and takes precedence per step 3h;
    the ceiling governs the locally-computed formula only. Implementations may still
    bound it against host limits — Swift clamps its seconds→nanoseconds conversion to
-   86,400s because `UInt64(_:)` on an out-of-range `Double` is a trap, and Go's
-   hand-written client saturates at 2,147,483,647s (~68 years) because
-   `seconds × time.Second` otherwise wraps past `math.MaxInt64` and `time.After` on
-   a non-positive duration fires at once — turning a server-directed wait into a
-   tight retry loop. Two host limits sit above Go's number (the `Duration` product,
-   and the `int` it surfaces the value in, which is 32 bits on a 32-bit target) and
-   it is at or below both, so the answer does not vary with `GOARCH`; it is also the
-   value Kotlin already saturates this header at, and the shared ceiling §16 names.
-   All are *representability* bounds
-   on the conversion, not policy caps on what a server may ask for: an over-range
-   value saturates rather than falling back to the local formula, so the wait is
-   still as long as the host can express. Go's **generated** retry loop keeps an
-   independent, unclamped copy of that conversion and so still wraps; it is tracked
-   in #798, with the two other divergences in the same loop.
+   86,400s because `UInt64(_:)` on an out-of-range `Double` is a trap.
 
 **Reachability.** Every SDK exposes a path to a high attempt count: Kotlin's builder
 validates `maxRetries >= 0` with no upper bound, Go's `WithMaxRetries` only rejects
