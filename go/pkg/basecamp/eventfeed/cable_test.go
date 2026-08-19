@@ -252,32 +252,112 @@ func TestParseFrame_NullTypeIsNeverABroadcast(t *testing.T) {
 	}
 }
 
-func TestInvalidFrameErrorRenderingIsBounded(t *testing.T) {
-	// SPEC §23 "Security Invariants": bound/truncate any error rendering of
-	// frame contents (§9's MAX_ERROR_MESSAGE_LENGTH). time.Time's decoder
-	// embeds the offending value in its parse error, so an attacker-chosen
-	// created_at would otherwise reach Observer.Disconnected at frame scale.
-	oversized := strings.Repeat("a", 4096)
-	raw := []byte(`{"id":105,"kind":"message","event_type":"message.created","action":"created","created_at":"` +
-		oversized + `","bucket_id":2,"creator_id":3,"recording_id":900}`)
-	_, err := decodeMessageEvent(raw)
-	if err == nil {
-		t.Fatal("decodeMessageEvent succeeded, want an invalid-frame error")
+// frameCanary is a SHORT peer-supplied marker. Its shortness is the whole
+// instrument: the predecessor of this test planted 4096 bytes and asserted the
+// rendering neither exceeded §9's 500-byte cap nor contained the marker, both
+// of which the cap alone made true. It therefore passed against code that
+// concatenated the cause verbatim, which is precisely the leak it was written
+// to catch. A marker that fits well inside the cap survives truncation, so
+// only the absence of concatenation can make the assertion hold.
+const frameCanary = "CANARY-8f3a"
+
+// TestInvalidFrameErrorRendersShapeOnly: an invalid-frame error renders its
+// SHAPE and nothing else (SPEC §23 "Security Invariants").
+//
+// The failure it forecloses is concrete. time.Time's UnmarshalJSON quotes its
+// input verbatim — `parsing time "<peer bytes>" as "2006-01-02T15:04:05Z07:00"`
+// — so a malformed created_at on a correlated broadcast put up to ~430 bytes
+// of peer-chosen text (500-byte cap less the fixed prose) into whatever
+// Observer.Disconnected forwards it to: a log, an error tracker, a metrics
+// label. Bounding that text is not redacting it.
+//
+// The assertion is EXACT EQUALITY rather than containment, because a
+// containment check is what failed here before: `!strings.Contains(rendered,
+// marker)` is satisfiable by truncating the marker away, whereas equality with
+// the shape rendering is satisfiable only by rendering the shape alone.
+func TestInvalidFrameErrorRendersShapeOnly(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		err       error
+		wantShape string
+		// canaryReachable records whether the peer can steer this shape's
+		// cause text at all. It can for the decode shape (time.ParseError);
+		// it CANNOT for the parse shape, where every reachable cause is one of
+		// encoding/json's own errors, and those quote a JSON kind word
+		// ("number", "array"), a connector-authored struct field name, a Go
+		// type name, or a single offending character — never a peer-chosen
+		// value. Saying so here keeps the parse case from reading as an
+		// absence proof it structurally cannot be: equality carries it.
+		canaryReachable bool
+	}{
+		{
+			name: "event decode shape",
+			err: mustErr(t, func() error {
+				_, err := decodeMessageEvent([]byte(`{"id":105,"kind":"message","event_type":"message.created","action":"created","created_at":"` +
+					frameCanary + `","bucket_id":2,"creator_id":3,"recording_id":900,"visible_to_clients":false}`))
+				return err
+			}),
+			wantShape:       invalidFrameEventDecode,
+			canaryReachable: true,
+		},
+		{
+			name: "event decode shape, missing key",
+			err: mustErr(t, func() error {
+				_, err := decodeMessageEvent([]byte(`{"id":105,"kind":"message","event_type":"message.created","action":"created","bucket_id":2,"creator_id":3,"recording_id":900,"visible_to_clients":false}`))
+				return err
+			}),
+			wantShape: invalidFrameEventDecode,
+		},
+		{
+			name: "parse shape, wrong-typed identifier",
+			err: mustErr(t, func() error {
+				_, err := parseFrame([]byte(`{"type":"confirm_subscription","identifier":["` + frameCanary + `"]}`))
+				return err
+			}),
+			wantShape: invalidFrameParse,
+		},
+		{
+			name: "parse shape, non-object",
+			err: mustErr(t, func() error {
+				_, err := parseFrame([]byte(`null`))
+				return err
+			}),
+			wantShape: invalidFrameParse,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			want := "event feed invalid inbound frame (" + tc.wantShape + ")"
+			if got := tc.err.Error(); got != want {
+				t.Fatalf("rendered error = %q, want exactly %q", got, want)
+			}
+			if tc.canaryReachable && strings.Contains(tc.err.Error(), frameCanary) {
+				t.Fatalf("the rendering embeds the frame-supplied value %q", frameCanary)
+			}
+			var ife *invalidFrameError
+			if !errors.As(tc.err, &ife) {
+				t.Fatalf("errors.As lost the invalid-frame classification of %T", tc.err)
+			}
+			if ife.shape != tc.wantShape {
+				t.Fatalf("shape = %q, want %q", ife.shape, tc.wantShape)
+			}
+		})
 	}
-	if got := len(err.Error()); got > maxErrorMessageBytes {
-		t.Fatalf("rendered error length = %d bytes, want at most %d", got, maxErrorMessageBytes)
-	}
-	if strings.Contains(err.Error(), oversized) {
-		t.Fatal("the rendered error embeds the frame-supplied value verbatim")
-	}
-	// The same bound covers the parse shape, whose decoder errors can quote
-	// frame bytes too.
-	_, perr := parseFrame([]byte(`{"type":"` + oversized + `"`))
-	if perr == nil {
-		t.Fatal("parseFrame succeeded, want an invalid-frame error")
-	}
-	if got := len(perr.Error()); got > maxErrorMessageBytes {
-		t.Fatalf("rendered parse error length = %d bytes, want at most %d", got, maxErrorMessageBytes)
+}
+
+// TestInvalidFrameShapeVocabularyIsClosed is what makes the equality assertion
+// above a bound on the whole class rather than on the four inputs it names:
+// the rendering is a function of `shape` alone, so pinning the vocabulary
+// pins every rendering the type can ever produce.
+func TestInvalidFrameShapeVocabularyIsClosed(t *testing.T) {
+	for _, shape := range []string{invalidFrameParse, invalidFrameEventDecode} {
+		err := newInvalidFrameError(shape)
+		want := "event feed invalid inbound frame (" + shape + ")"
+		if got := err.Error(); got != want {
+			t.Fatalf("newInvalidFrameError(%q) renders %q, want %q", shape, got, want)
+		}
+		if got := len(err.Error()); got > maxErrorMessageBytes {
+			t.Fatalf("shape %q renders %d bytes, want at most %d", shape, got, maxErrorMessageBytes)
+		}
 	}
 }
 
@@ -293,25 +373,39 @@ func TestInvalidFrameErrorRenderingIsBounded(t *testing.T) {
 // types still matches, because it is the type that carries the classification
 // and only the RAW CAUSE that is dropped.
 func TestFrameDerivedErrorsAreFlat(t *testing.T) {
-	oversized := strings.Repeat("a", 4096)
+	// The canary is SHORT for the reason frameCanary documents: planted at
+	// 4096 bytes, every assertion below is satisfied by the 500-byte cap
+	// regardless of what the chain holds.
 	raw := []byte(`{"id":105,"kind":"message","event_type":"message.created","action":"created","created_at":"` +
-		oversized + `","bucket_id":2,"creator_id":3,"recording_id":900}`)
+		frameCanary + `","bucket_id":2,"creator_id":3,"recording_id":900,"visible_to_clients":false}`)
 
 	for _, tc := range []struct {
 		name string
 		err  error
 	}{
 		{"event decode shape", mustErr(t, func() error { _, err := decodeMessageEvent(raw); return err })},
-		{"parse shape", mustErr(t, func() error { _, err := parseFrame([]byte(`{"type":"` + oversized + `"`)); return err })},
+		{"parse shape", mustErr(t, func() error {
+			_, err := parseFrame([]byte(`{"type":"confirm_subscription","identifier":["` + frameCanary + `"]}`))
+			return err
+		})},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			depth := 0
 			for err := tc.err; err != nil; err = errors.Unwrap(err) {
-				if strings.Contains(err.Error(), oversized) {
+				depth++
+				if strings.Contains(err.Error(), frameCanary) {
 					t.Fatalf("%T in the chain re-exposes the frame-supplied value", err)
 				}
 				if got := len(err.Error()); got > maxErrorMessageBytes {
 					t.Fatalf("%T in the chain renders %d bytes, want at most %d", err, got, maxErrorMessageBytes)
 				}
+			}
+			// Flat means flat: exactly one link. Walking a chain and finding
+			// nothing is also what a one-link chain looks like, so the walk
+			// above cannot distinguish "the cause was dropped" from "the walk
+			// stopped early" without this.
+			if depth != 1 {
+				t.Fatalf("error chain depth = %d, want 1: a frame-derived error retains no cause", depth)
 			}
 			// The classification survives the flattening.
 			var ife *invalidFrameError
