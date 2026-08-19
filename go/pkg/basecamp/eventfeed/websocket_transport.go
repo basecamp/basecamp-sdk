@@ -180,7 +180,8 @@ func (t *WebSocketTransport) Dial(ctx context.Context, wsURL string, maxFrameByt
 	} else {
 		conn.SetReadLimit(-1)
 	}
-	return &wsConn{conn: conn}, nil
+	lifetime, endLifetime := context.WithCancel(context.Background())
+	return &wsConn{conn: conn, lifetime: lifetime, endLifetime: endLifetime}, nil
 }
 
 // dialFailure renders a transient dial failure WITHOUT forwarding any text
@@ -251,6 +252,15 @@ func dialFailureCause(err error) string {
 type wsConn struct {
 	conn *websocket.Conn
 
+	// lifetime is the connection-owned cancellation path CableConn.Close's
+	// "unblocks ReadFrame and WriteFrame" needs, cancelled by endLifetime once
+	// Close is done waiting on the graceful handshake. Every read and write
+	// runs under a context derived from BOTH it and the caller's, which is
+	// what lets a Close that returned on its own budget reach I/O still parked
+	// inside the library. See underLifetime.
+	lifetime    context.Context
+	endLifetime context.CancelFunc
+
 	mu     sync.Mutex
 	closed bool
 }
@@ -261,6 +271,30 @@ func (c *wsConn) isClosed() bool {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	return c.closed
+}
+
+// underLifetime derives ctx so that cancelling the connection's lifetime
+// cancels it too, returning the derived context and a release func the caller
+// must always run.
+//
+// This is what makes the library's I/O interruptible AT ALL, not merely
+// interruptible sooner. coder/websocket installs its cancellation hook only
+// when the operation's context has a Done channel — conn.go's setupReadTimeout
+// and setupWriteTimeout both return early on a nil Done — so a
+// ReadFrame(context.Background()), which is exactly how a run loop parks a read
+// pump, hands the library nothing to cancel and cannot be interrupted by
+// anything short of the socket dying. The derived context always has a Done
+// channel, so the hook is always installed, and cancelling it closes the
+// underlying socket and unblocks the operation.
+func (c *wsConn) underLifetime(ctx context.Context) (context.Context, func()) {
+	ctx, cancel := context.WithCancel(ctx)
+	// AfterFunc on an already-cancelled lifetime runs immediately, so a read
+	// racing a Close that already lapsed is cancelled before it blocks.
+	stop := context.AfterFunc(c.lifetime, cancel)
+	return ctx, func() {
+		stop()
+		cancel()
+	}
 }
 
 // ReadFrame implements CableConn: the next text frame verbatim.
@@ -274,7 +308,11 @@ func (c *wsConn) ReadFrame(ctx context.Context) ([]byte, error) {
 	if c.isClosed() {
 		return nil, errCableConnClosed
 	}
-	typ, data, err := c.conn.Read(ctx)
+	// The caller's ctx is what the error precedence below reports on; readCtx
+	// only adds the connection's own cancellation.
+	readCtx, release := c.underLifetime(ctx)
+	defer release()
+	typ, data, err := c.conn.Read(readCtx)
 	if err != nil {
 		if cerr := ctx.Err(); cerr != nil {
 			return nil, cerr
@@ -305,7 +343,18 @@ func (c *wsConn) WriteFrame(ctx context.Context, data []byte) error {
 	if c.isClosed() {
 		return errCableConnClosed
 	}
-	return c.conn.Write(ctx, websocket.MessageText, data)
+	writeCtx, release := c.underLifetime(ctx)
+	defer release()
+	if err := c.conn.Write(writeCtx, websocket.MessageText, data); err != nil {
+		if cerr := ctx.Err(); cerr != nil {
+			return cerr
+		}
+		if c.isClosed() {
+			return errCableConnClosed
+		}
+		return err
+	}
+	return nil
 }
 
 // closeGraceBudget bounds how long Close waits on the graceful close
@@ -340,16 +389,22 @@ var errCloseNotAcknowledged = errors.New("eventfeed: cable close handshake not a
 // ReadFrame and WriteFrame. The first call runs the graceful close handshake
 // and waits at most closeGraceBudget for it; repeats are no-ops.
 //
-// Past the budget the handshake is left to finish off-caller. That is not a
-// leak and not an abandoned close: coder/websocket's Conn.Close tears the
-// underlying socket down unconditionally once its handshake attempt ends
-// (close.go calls c.close() whether the handshake succeeded or not), within
-// its own 5s+5s ceiling, so the socket always dies and any read still blocked
-// inside the library unblocks with it. What the caller trades for returning
-// early is the last word on whether the peer acknowledged — and, if the
-// attempt's context is cancelled immediately afterward (dispose does exactly
-// that), the tail of a close frame a peer that already ignored it for a second
-// might not have flushed anyway.
+// Past the budget the handshake is left to finish off-caller, and the
+// connection's lifetime is cancelled — which is what makes returning early a
+// bound rather than a relocation of the wait. Waiting for coder/websocket to
+// tear the socket down on its own (close.go calls c.close() once the handshake
+// attempt ends, within its 5s+5s ceiling) does unblock a parked read
+// eventually, but four seconds after Close returned, so a run loop that joins
+// its read pump pays the same stall this budget was written to remove.
+// Cancelling the lifetime closes the socket now instead, through the
+// cancellation hook every read and write installs (underLifetime).
+//
+// Cancelling AFTER the budget, never before, is what keeps the close frame
+// intact: writeClose is the first thing the library's Close does, so by the
+// time the budget lapses the frame has been written to an open socket
+// (microseconds, bounded by the kernel's send buffer, not the peer) and only
+// the politeness phase is still running. What the caller trades for returning
+// early is the last word on whether the peer acknowledged.
 func (c *wsConn) Close(code int, reason string) error {
 	c.mu.Lock()
 	if c.closed {
@@ -368,8 +423,12 @@ func (c *wsConn) Close(code int, reason string) error {
 	go func() { done <- c.conn.Close(websocket.StatusCode(code), reason) }()
 	select {
 	case err := <-done:
+		// The library closed the socket itself; cancelling now only releases
+		// the lifetime context.
+		c.endLifetime()
 		return err
 	case <-time.After(closeGraceBudget):
+		c.endLifetime()
 		return errCloseNotAcknowledged
 	}
 }
