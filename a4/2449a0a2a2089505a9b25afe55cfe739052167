@@ -1,0 +1,26 @@
+go/pkg/basecamp/eventfeed/loop.go
+  s_bcb193599a4870::t_99b03eb88a5c18 1279-1294,1299-1306
+go/pkg/basecamp/eventfeed/export_test.go
+  s_bcb193599a4870::t_cda05895c61afd 115-119,121-123
+  s_bcb193599a4870::t_3342118412334a 107-114,120,124
+go/pkg/basecamp/eventfeed/seams.go
+  s_bcb193599a4870::t_8c528e30e16a3e 450-455
+go/pkg/basecamp/eventfeed/loop_test.go
+  s_bcb193599a4870::t_13d2dedd6f4d4d 1816-1890
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "a42449a0a2a2089505a9b25afe55cfe739052167",
+  "prompts": {},
+  "sessions": {
+    "s_bcb193599a4870": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5ae90ec8-5ed7-4774-88d9-9d66550a5643",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
