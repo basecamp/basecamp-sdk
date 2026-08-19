@@ -698,19 +698,32 @@ rejects above `Number.MAX_SAFE_INTEGER`, Kotlin above `Int.MAX_VALUE`, Go and Sw
 without any of them misbehaving — a `Retry-After` that names a wait longer than the host can count is
 not a delay any caller is worse off for missing.
 
-`[CONFLICT: Ruby and Python have no such width, and that is a defect rather than a third position.
-Both parse arbitrary-precision integers and hand them straight to the sleep, where Ruby raises
-RangeError out of the retry loop and Python's sync client raises OverflowError — so a response that
-was merely retryable becomes an unrelated exception the caller never asked to handle. Python's async
-client neither raises nor sleeps usefully; it waits effectively forever. Both owe the first tier
-above. Tracked in #775 with the rest.]`
+`[CONFLICT: Ruby and Python have no such width, and that is a defect rather than a third position —
+but it is the **second** tier they owe, not the first. `Integer` and `int` are arbitrary-precision, so
+the parse cannot fail on magnitude: `parse_retry_after` (`ruby/lib/basecamp/http.rb`) and
+`_parse_retry_after` (`python/src/basecamp/errors.py`) return the value intact, and the first tier has
+nothing to fire on. The failure is one layer down, at the scheduler: Ruby's `sleep` raises
+`RangeError` ("bignum too big to convert into 'long'") and Python's `time.sleep` raises
+`OverflowError` ("timestamp too large to convert to C _PyTime_t") — so a response that was merely
+retryable becomes an unrelated exception the caller never asked to handle. Reading that as the first
+tier would oblige an implementer to invent a parser limit this section otherwise forbids, and to
+discard a value the parser represented correctly. What both owe is the second tier as stated:
+saturate at what their own sleep can schedule, at the sleep. Python's intermediate `float(...)` in
+`_calculate_delay` is a second host limit on the same path (it raises `OverflowError` above the
+double range) and needs no separate rule — a value already saturated to the sleep's ceiling is
+representable as a double by construction. Python's **async** client is not a defect on this axis:
+`asyncio.sleep` schedules a float delay without raising, so above `time.sleep`'s ceiling it simply
+waits a long time — through `await`, so the task stays cancellable and the escape this section
+requires is intact. That is precisely what "no policy cap" means, so it is conformant. Tracked in
+#775 with the rest.]`
 
 Go owes the second tier and is getting it: its parser returns an `int` that three call sites multiply
 by `time.Second`, and `math.MaxInt64` seconds × 1e9 wraps negative, on which `time.After` fires at
 once — the longest expressible instruction producing the tightest possible loop. #796 saturates at
 `math.MaxInt64 / time.Second` in the parser for the hand-written paths; the identical unclamped
 conversion in `go/pkg/generated/client.gen.go`, and an `Atoi` there whose range error is discarded
-into a rate-limit hint, need a template change and are tracked in #798.
+into a rate-limit hint, are fixed in `go/templates/client.tmpl` — the generated file is emitted from
+it and must never be edited directly — and are tracked in #798.
 
 **The exemption is conditioned on the escape, not on a number.** There is deliberately no policy cap;
 in its place, **an honoured `Retry-After` delay MUST be awaited through the platform's cancellation
@@ -807,9 +820,27 @@ not the contract.]`
   gates, tracked in the same issue: converge it to the representability bound or drop it. Go, Python,
   Ruby and Kotlin bound nothing.
 
-Which **date forms** step 2 accepts diverges on a second axis — 3 SDKs IMF-fixdate-only, 2 broadly
-permissive, and Kotlin idiosyncratic (a transport library's pattern list, accepting neither canonical
-obsolete form). That is the same contract and is tracked in the same issue.
+Which **date forms** step 2 accepts diverges on a second axis, and the inventory is over *parsers*
+rather than over SDKs — Go has two, and they do not agree:
+
+| Parser | Accepts | Note |
+|---|---|---|
+| Go, hand-written — `parseRetryAfter`, `go/pkg/basecamp/client.go` | all three RFC 7231 forms | `http.ParseTime` |
+| Ruby — `parse_retry_after`, `ruby/lib/basecamp/http.rb` | all three | `Time.httpdate`; its three regexes are IMF-fixdate, RFC 850 and asctime |
+| Python — `_parse_retry_after`, `python/src/basecamp/errors.py` | IMF-fixdate and RFC 850 | `parsedate_to_datetime` *parses* asctime but returns a naive datetime, and the subtraction against an aware `now` raises `TypeError`, which the `except` swallows — so asctime falls through |
+| Kotlin — `parseRetryAfter`, `kotlin/.../Pagination.kt` | wider than IMF-fixdate, neither canonical obsolete form | ktor's `fromHttpToGmtDate` pattern list; the spellings are pinned by probe in `PaginationTest` |
+| TypeScript — `parseRetryAfter`, `typescript/src/errors.ts` | IMF-fixdate only | an explicit shape regex gates `Date.parse` |
+| Swift — `BasecampError.parseRetryAfter` | IMF-fixdate only | one fixed `DateFormatter` pattern |
+| **Go, generated — `go/templates/client.tmpl` → `go/pkg/generated/client.gen.go`** | **no date form at all** | `strconv.Atoi` only, at both sites |
+
+That last row is why Go cannot be counted once. The generated client attempts nothing but an integer
+parse, so **every** HTTP-date form falls through to local backoff on **every** generated wire
+operation — which is the whole retried surface of the Go SDK. Convergence work scoped by SDK name
+would fix the hand-written parser and leave that untouched, so the required work here is a change to
+`go/templates/client.tmpl`, not to any file under `go/pkg/generated/`. The divergence is the same
+contract as the rest of this section and is tracked with it in #775; the fix site is the template,
+which #798 already owns for the other two `Retry-After` defects at those same two lines, so all three
+land as one template change.
 
 ---
 
@@ -1313,14 +1344,34 @@ The rule has four parts:
 
 1. **Classify on types, never on text.** Every arm of the vocabulary matches an error type or a sentinel value, so no arm can be widened by something the peer wrote. Diagnostics structurally incapable of carrying text may still be rendered: an HTTP status code, an integer close code, a standard library's own fixed verb set.
 2. **Degrade, never leak.** An unrecognized cause renders the vocabulary's generic phrase. The failure direction is "less diagnostic", never "leaks".
-3. **Do not leave the cause in the chain.** Wrapping the original so callers can unwrap it hands the unbounded original straight back and undoes the rendering. Typed classification is unaffected — it lives on the error's type, which is what `errors.As` and its equivalents match.
+3. **Do not leave the peer-bearing cause in the chain — project it out first.** Wrapping the original so callers can unwrap it hands the unbounded original straight back and undoes the rendering. But severing the chain outright breaks classification that legitimately reads *through* it, so the order is load-bearing: **before the peer-bearing wrapper is discarded, a cause the constructor recognizes is projected onto a freshly constructed, peer-free value of the same identity, and that is what gets chained.** Recognition is by type or sentinel (rule 1); the projection is a re-construction, never the received instance; and an unrecognized cause is chained as nothing at all (rule 2). What survives is an identity the SDK chose the entire content of.
+
+   This is not hypothetical tidiness — two live classifiers walk that chain today, and a literal reading of the old wording broke both. Go's `shouldTripCircuit` (`go/pkg/basecamp/resilience.go`) calls `errors.Is(err, context.Canceled)`, and reaches it only through `(*Error).Unwrap` returning `Cause`, which `ErrNetwork` populates; sever the chain and a **cancelled request falls through to the `Code == CodeNetwork` arm and trips the circuit breaker**. Swift's `isCancellation` (`swift/Sources/Basecamp/HTTP/HTTPClient.swift`) walks `BasecampError.network(_, cause:)` looking for `CancellationError` or a `URLError` with code `.cancelled`, and its result is what makes cancellation terminal; sever the chain and a **cancelled request is retried** instead.
+
+   Projection preserves both, and the mechanism is the point. Go chains the bare `context.Canceled` sentinel in place of the `*url.Error` it recognized it inside: `errors.Is` still returns true because it compares against that same sentinel value, and the rendering becomes the standard library's own fixed `"context canceled"` — where the discarded `*url.Error` rendered the URL it failed on. Swift chains a `CancellationError()` the SDK constructs, or a `URLError(.cancelled)` it constructs — not the instance `URLSession` returned, whose `userInfo` carries the failing URL — and `isCancellation` matches on the same walk because it tests type and code, not identity. In both cases the classifier's own predicate is unchanged; only the value it finds is one with nothing peer-chosen left in it.
+
+   Typed classification on the *outer* error is unaffected either way — it lives on that error's type, which is what `errors.As` and its equivalents match.
 4. **Retention is a separate question from rendering, and retention is allowed.** The peer's value may stay on the error as a typed field — `CloseError.Reason`, a `DialError.Kind` — so a caller who wants it reaches for it deliberately. What is forbidden is putting it in the default rendering, where nobody chose to receive it.
+
+   This is what rule 3 does *not* forbid, and the line between them is the slot rather than the value. A **named, purpose-built field** is reached for by name: nothing generic traverses it, so nothing renders it by accident. The **generic unwrap slot** — Go's `Unwrap`, a `cause` an `Error` subclass exposes, an enum case's associated cause a classifier walks — is traversed by machinery that never saw the constructor's intent, and that is the slot rule 3 governs. Retain freely by name; project before chaining.
 
 **The rule binds at construction.** The property "is this text peer-derived?" belongs to the constructor that composed the message, not to the type. An allowlist of error types permitted to cross an observability boundary structurally cannot answer it, which is why widening one never closed the class: three consecutive rounds found three different spellings that slipped a redactor's model in turn — a value below a length threshold, a percent-encoded form, a query carrying the credential with no `=` in it at all — and a fourth found peer text riding a wrapper that `errors.Is` matched but did not strip. That is one control having to anticipate its own input, with the peer choosing the input. To strip a credential out of arbitrary text you must model it, and where the credential is contractually **opaque** (§23's stream ticket), modelling it is precisely what the contract forbids. A closed vocabulary has nothing to model.
 
 **Projection is permitted; redaction is not.** Extracting a structurally defined component of a *successfully parsed* value and discarding the rest is an allowlist, and stays lawful: §23 carries a refused redirect `Location` and a rejected continuation URL as their **origin only**, which cannot hold a query-string credential because the parse already dropped the query. Searching arbitrary text for a credential and removing what matched is a blocklist, and is the thing this section forbids.
 
+**A projection needs a successful parse to project from, and one rejection path has none.** §8's Same-Origin Validation Algorithm returns false at step 2 when *either* URL fails to parse, so the input most in need of rejecting — `http://[::1`, a bare fragment, anything a peer cared to send — is exactly the input with no origin to render. §23 nonetheless requires `invalid_continuation` and `redirect_refused` to carry the rejected URL's origin, so an implementer meeting both sentences literally would have to either omit contract-required text or fall back to the raw value, which is peer bytes. Neither is the answer. **Where the parse fails, the origin component is the fixed token `unparsable`** — one more arm of the closed vocabulary, selected by the parse *outcome* and never composed from the input, and the same token serves a value that parses but yields no host. It is a rendering, not a wire value: §23's conformance surface asserts the typed terminal `reason`, so nothing here adds an assertion.
+
 **The vocabulary's wording is per-SDK; its shape is not.** Nothing here fixes the English. What every SDK owes is that an observer-facing rendering of this class is drawn from a fixed set chosen by error type and carries no peer bytes. §23's conformance surface asserts the typed terminal `reason` and the invalid-frame indication as a flag (`conformance/event-feed/schema.json`), never a rendered message, so the six SDKs owe the classification rather than a string.
+
+**The scope is the repository, and the primary transports are inside it.** #788 is written against the event-feed connector because that is where the four rounds happened, but nothing in the sentence that binds is connector-specific, and three primary-transport constructors are in scope today and non-conformant:
+
+| Constructor | Renders | Chains |
+|---|---|---|
+| `ErrNetwork`, `go/pkg/basecamp/errors.go` | `Hint: cause.Error()`, which `Error()` appends to `Message` — a `*url.Error` renders the URL it failed on | `Cause: cause`, returned by `Unwrap` |
+| `BasecampException.Network`, `kotlin/.../http/BasecampHttpClient.kt` | `"Network error: ${outcome.cause.message}"` | `cause = outcome.cause` |
+| `NetworkError`, `python/src/basecamp/_http.py` (and `_async_http.py`) | `f"Connection failed: {e}"` | `raise error from e` |
+
+Naming them is the point of naming them: a contract that reads repository-wide while its only tracked work is one connector is a contract that quietly accrues untracked convergence, which is the failure this section exists to stop. Go's row is also the one rule 3 turns on — its `Cause` is simultaneously the peer-bearing chain to project out and the chain `shouldTripCircuit` reads through — so the two changes are one change, not two. Tracked in #788 alongside the connector renderings. The other two are lighter but not empty: Swift's `.network` renders a fixed `"Network error"` and *retains* its cause, which rule 4 permits, but that cause is the generic slot `isCancellation` walks, so what it owes is rule 3's projection there rather than a rewording; and TypeScript's main loop composes no peer text, while `typescript/src/download.ts` throws `Errors.network(error.message, error)` at two sites, interpolating the transport's own rendering, and is in scope for the same reason the three above are.
 
 **§23 interaction — the reason-string dispatch is not an exception.** §23's Disconnect Dispatch matches the `reason` of the Action Cable `disconnect` **text frame** against a closed, server-owned set (`unauthorized`, `remote`, `invalid_event_stream_command`). That is inbound routing on parsed wire data, not error rendering, and this section leaves it untouched. What this section governs on that path is the error *text* the connector produces — the dial failure, the invalid-frame violation, and the peer close — all three of which reach `Observer.disconnected`.
 
@@ -3334,8 +3385,11 @@ downgrade (HTTPS → HTTP) — the same rule, for the same reason, as §8's pagi
 rejection: a cross-origin or downgraded URL in a response body must never redirect an
 authenticated request (SSRF and token leakage). A URL that fails validation is
 Terminal(`invalid_continuation`) — no request is issued to the failing URL, and the
-rejected URL is carried redacted (origin only) in the error. There is no retry and no
-handler for this condition: a hostile continuation is not an operable feed state.
+rejected URL is carried redacted (origin only) in the error. Validation fails at step 2 of
+that algorithm for a URL that does not parse at all, and such a URL has no origin to
+carry: the origin component is then the fixed token `unparsable`, per §9 "Peer-Derived
+Text in Observer-Facing Errors". There is no retry and no handler for this condition: a
+hostile continuation is not an operable feed state.
 
 **Prevalidation does not cover redirects, so the poll seam must.** The underlying HTTP
 stacks auto-follow redirects (Go strips `Authorization` on a cross-origin hop but still
@@ -3524,7 +3578,8 @@ resume_url)`, `position_rejected(kind)`, `stale_connection(since_last_frame)`,
   vocabulary rather than inside it — the scope clause of §9 "Peer-Derived Text in
   Observer-Facing Errors" names it, and that section's projection-versus-redaction rule is
   why an origin is safe to require: the parse has already dropped the query the ticket
-  rides in, so there is nothing left to search for.
+  rides in, so there is nothing left to search for. A URL that does not parse has no origin
+  to project, and renders the fixed token `unparsable` rather than the raw value.
 - **Bound the inbound frame size** (`EVENT_FEED_MAX_FRAME_BYTES`, 1 MiB default) — and
   render no frame contents in an error at all. The dial failure, the invalid-frame
   violation and the peer close (`CloseError`) all reach `Observer.disconnected`, so each
