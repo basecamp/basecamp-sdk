@@ -1,0 +1,25 @@
+conformance/runner/ruby/replay-runner.rb
+  s_b98b4a85078d3e::t_cf8184885a2baf 117-119
+conformance/runner/python/runner.py
+  s_b98b4a85078d3e::t_fb75c8ed831281 199-205
+conformance/runner/ruby/runner.rb
+  s_b98b4a85078d3e::t_07b583bf5785ac 196-203
+conformance/runner/python/replay_runner.py
+  s_b98b4a85078d3e::t_ba05f89143467b 244-245
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "5c174b96f9085c99d389e349f91639a6a7f929b0",
+  "prompts": {},
+  "sessions": {
+    "s_b98b4a85078d3e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5bbef980-f552-48e7-bb51-0b748caa71ac",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
