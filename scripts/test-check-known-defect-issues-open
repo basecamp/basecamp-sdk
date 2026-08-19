@@ -109,7 +109,9 @@ def run_checker(allowlist:, tracking: {}, states: nil, gh_fail: false, repo: nil
     # which would make these cases depend on live issue state and on the
     # network, the two things the stub exists to remove.
     tracking_path = File.join(dir, "tracking-issues.yml")
-    File.write(tracking_path, YAML.dump(tracking))
+    # nil means "do not create the file", which is how the missing-registry
+    # case is expressed without deleting the repository's real one.
+    File.write(tracking_path, YAML.dump(tracking)) unless tracking.nil?
 
     env = {
       "PATH" => path_dir,
@@ -342,6 +344,45 @@ out, status, _ = run_checker(
 )
 expect_fail(failures, "N+2. a closed registry entry fails even with a green allowlist", out, status,
             "README.md — a gap points at #303, which is CLOSED")
+
+# --- N+3. A MISSING registry fails closed ---------------------------------------
+#
+# The fail-open path this gate cannot have. Treating an absent file as an empty
+# one means deleting it (or typoing the override) reports "nothing to verify"
+# and exits 0, with every prose claim unverified — the #588 failure with an
+# extra step, in the script written to end it.
+
+out, status, _ = run_checker(
+  allowlist: { "sdk_routes_known_defective" => [], "bc3_routes_not_modeled" => [] },
+  tracking: nil
+)
+expect_fail(failures, "N+3. a missing registry fails closed", out, status,
+            "tracking registry not found")
+
+# --- N+4. Malformed rows fail rather than being skipped --------------------------
+#
+# The allowlist skips entries without an issue number, and there that is right:
+# such an entry makes no claim. Here the row IS the claim, so a malformed one is
+# a promise the author wrote and the gate silently dropped.
+
+out, status, _ = run_checker(
+  allowlist: { "sdk_routes_known_defective" => [], "bc3_routes_not_modeled" => [] },
+  tracking: { "prose_tracking_issues" => [ { "issue" => 303 } ] }
+)
+expect_fail(failures, "N+4. a row with no site fails", out, status, "needs a `site`")
+
+out, status, _ = run_checker(
+  allowlist: { "sdk_routes_known_defective" => [], "bc3_routes_not_modeled" => [] },
+  tracking: { "prose_tracking_issues" => [ { "site" => "README.md — a gap" } ] }
+)
+expect_fail(failures, "N+5. a row with no issue number fails", out, status,
+            "needs a positive integer `issue`")
+
+out, status, _ = run_checker(
+  allowlist: { "sdk_routes_known_defective" => [], "bc3_routes_not_modeled" => [] },
+  tracking: { "prose_tracking_issues" => "not a list" }
+)
+expect_fail(failures, "N+6. a non-list registry fails", out, status, "must be a list")
 
 if failures.empty?
   puts "==> known-defect tracking-issue self-test passed — #{CASES[0]} cases"
