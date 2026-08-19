@@ -151,9 +151,10 @@ func (e *invalidFrameError) Error() string {
 }
 
 // parseFrame parses and classifies one raw inbound text frame. Dispatch is on
-// the "type" key; a type the connector doesn't recognize is frameUnknown
-// (liveness only). A frame with no type is a correlated broadcast when it
-// carries both "identifier" and "message", else frameUnknown. A frame that
+// the "type" key; a type the connector doesn't recognize — including a present
+// but null one, which names no type to recognize — is frameUnknown (liveness
+// only). A frame with NO type key is a correlated broadcast when it carries
+// both "identifier" and "message", else frameUnknown. A frame that
 // fails to parse as a JSON object envelope — unparseable bytes, non-object
 // JSON, a wrong-typed "type", or a wrong-typed field the SELECTED frame kind
 // reads — is the invalid-frame class's parse shape.
@@ -183,14 +184,35 @@ func parseFrame(data []byte) (frame, error) {
 		// delivering no protocol traffic at all.
 		return frame{}, newInvalidFrameError(invalidFrameParse, errors.New("frame is not a JSON object"))
 	}
+	// The type key's PRESENCE is decoded separately from its value: a `*string`
+	// gives the same nil for an absent key and for a JSON `null`, which put one
+	// wire value in two classes depending on its siblings — `{"type":null}`
+	// alone fell through to frameUnknown, while
+	// `{"type":null,"identifier":…,"message":…}` fell through to the
+	// correlated-broadcast shape below and was DELIVERED as an event. A raw
+	// message distinguishes them, so presence is decided here and the value
+	// below.
 	var envType struct {
-		Type *string `json:"type"`
+		Type json.RawMessage `json:"type"`
 	}
 	if err := json.Unmarshal(data, &envType); err != nil {
 		return frame{}, newInvalidFrameError(invalidFrameParse, err)
 	}
-	if envType.Type != nil {
-		switch *envType.Type {
+	if len(envType.Type) > 0 {
+		// The key is present. A wrong-typed value (a number, an array) fails
+		// this unmarshal and is the parse shape, as it always was; `null`
+		// decodes to a nil pointer WITHOUT error and is the unrecognized-type
+		// case — a type key carrying no type to recognize is liveness-only, not
+		// invalid, so a frame §23 says to ignore never tears the socket down.
+		// What it is NOT is a broadcast: that shape is "no type key at all".
+		var typ *string
+		if err := json.Unmarshal(envType.Type, &typ); err != nil {
+			return frame{}, newInvalidFrameError(invalidFrameParse, err)
+		}
+		if typ == nil {
+			return frame{kind: frameUnknown}, nil
+		}
+		switch *typ {
 		case frameTypeWelcome:
 			return frame{kind: frameWelcome}, nil
 		case frameTypePing:
@@ -206,7 +228,7 @@ func parseFrame(data []byte) (frame, error) {
 				return frame{}, newInvalidFrameError(invalidFrameParse, err)
 			}
 			kind := frameConfirm
-			if *envType.Type == frameTypeReject {
+			if *typ == frameTypeReject {
 				kind = frameReject
 			}
 			return frame{kind: kind, identifier: env.Identifier}, nil
@@ -223,7 +245,7 @@ func parseFrame(data []byte) (frame, error) {
 			return frame{kind: frameUnknown}, nil
 		}
 	}
-	// No "type" at all: this is the correlated-broadcast shape, which reads
+	// No "type" KEY at all: this is the correlated-broadcast shape, which reads
 	// BOTH fields, so both are validated. It is not §23's unrecognized-type
 	// case — there is no type to be unrecognized — and a wrong-typed
 	// correlation field here still stops the frame stream meaning anything.

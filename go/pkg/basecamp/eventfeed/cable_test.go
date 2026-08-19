@@ -218,6 +218,40 @@ func TestParseFrame_NullIsInvalid(t *testing.T) {
 	}
 }
 
+// TestParseFrame_NullTypeIsNeverABroadcast pins the classification a nil
+// *string could not express. `{"type":null}` is frameUnknown above —
+// liveness-only — so adding the two correlation fields must not flip the SAME
+// key's value into a delivered event. A `*string` type field decodes an ABSENT
+// key and a JSON `null` to the same nil, which put one wire value in two
+// classes depending on its siblings, and made the second class a delivery.
+//
+// The broadcast shape is "no type key at all" (§23: a correlated broadcast
+// carries no "type" on the wire); a type key that is present but carries no
+// type to recognize is the unrecognized-type case — liveness-only, never
+// invalid, so a frame the protocol says to ignore never tears the socket down.
+func TestParseFrame_NullTypeIsNeverABroadcast(t *testing.T) {
+	payload := `{"id":105,"kind":"message","event_type":"message.created","action":"created","created_at":"2026-08-01T12:00:00Z","bucket_id":2,"creator_id":3,"recording_id":900,"visible_to_clients":false}`
+	for _, raw := range []string{
+		`{"type":null,"identifier":"{\"channel\":\"EventsChannel\"}","message":` + payload + `}`,
+		// Key order must not decide it either.
+		`{"identifier":"{\"channel\":\"EventsChannel\"}","message":` + payload + `,"type":null}`,
+	} {
+		f, err := parseFrame([]byte(raw))
+		if err != nil {
+			t.Fatalf("parseFrame(%s) = %v, want frameUnknown — a present-but-null type is liveness-only, not an invalid frame", raw, err)
+		}
+		if f.kind != frameUnknown {
+			t.Errorf("parseFrame(%s) kind = %v, want %v", raw, f.kind, frameUnknown)
+		}
+		if f.identifier != "" {
+			t.Errorf("parseFrame(%s) identifier = %q, want empty: an ignored frame correlates with nothing", raw, f.identifier)
+		}
+		if f.message != nil {
+			t.Errorf("parseFrame(%s) message = %s, want nil: an ignored frame carries no deliverable payload", raw, f.message)
+		}
+	}
+}
+
 func TestInvalidFrameErrorRenderingIsBounded(t *testing.T) {
 	// SPEC §23 "Security Invariants": bound/truncate any error rendering of
 	// frame contents (§9's MAX_ERROR_MESSAGE_LENGTH). time.Time's decoder
