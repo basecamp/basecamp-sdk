@@ -1813,6 +1813,81 @@ func TestStalenessArmsBeforeConnectedObserver(t *testing.T) {
 // leak, not whether there is one. This asserts the property instead of the
 // mechanism, so it stays true whatever the rendering becomes — the canary is
 // planted in every peer-controlled string the teardown path can carry.
+// TestObservableSocketErrorDropsWrapperText pins the half of the closed
+// vocabulary that errors.Is cannot enforce on its own.
+//
+// TestDisconnectObserverNeverEchoesPeerText covers the shapes a peer controls
+// directly. This covers the one a conforming-looking SEAM controls: a transport
+// that annotates its read failure with the URL it was reading —
+// fmt.Errorf("read %s: %w", cableURL, context.Canceled) — produces an error that
+// MATCHES a recognized sentinel while carrying a ticket in its text. Returning
+// the argument on a match would forward that wrapper to Observer.Disconnected,
+// so every arm must return the connector's own value instead.
+//
+// The typed arms are included to prove the same property holds through the
+// other mechanism (errors.As extracting the inner value), because a future
+// refactor that unified the two halves onto errors.Is would silently reopen
+// exactly this hole.
+func TestObservableSocketErrorDropsWrapperText(t *testing.T) {
+	const canary = "sekrit-ticket-value"
+	cableURL := "wss://28.cable.basecamp.com/cable?ticket=" + canary
+
+	for _, tc := range []struct {
+		name string
+		err  error
+		want error
+	}{
+		{"wrapped context.Canceled", fmt.Errorf("read %s: %w", cableURL, context.Canceled), context.Canceled},
+		{
+			"wrapped context.DeadlineExceeded",
+			fmt.Errorf("read %s: %w", cableURL, context.DeadlineExceeded),
+			context.DeadlineExceeded,
+		},
+		{
+			"wrapped staleness sentinel",
+			fmt.Errorf("read %s: %w", cableURL, eventfeed.ExportStaleConnectionErr()),
+			eventfeed.ExportStaleConnectionErr(),
+		},
+		{
+			"wrapped conn-closed sentinel",
+			fmt.Errorf("read %s: %w", cableURL, eventfeed.ExportCableConnClosedErr()),
+			eventfeed.ExportCableConnClosedErr(),
+		},
+		{
+			"wrapped CloseError",
+			fmt.Errorf("read %s: %w", cableURL, &eventfeed.CloseError{Code: 1011, Reason: cableURL}),
+			nil, // typed arm: identity is not pinned, only the absence of the canary
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := eventfeed.ExportObservableSocketError(tc.err)
+			if got == nil {
+				t.Fatal("observableSocketError returned nil for a non-nil cause")
+			}
+			// The whole chain, not just the top: Error() walks it, and so does
+			// any observer that logs %+v.
+			for e := got; e != nil; e = errors.Unwrap(e) {
+				if strings.Contains(e.Error(), canary) {
+					t.Errorf("reduced error echoed the ticket: %q", e.Error())
+				}
+				if strings.Contains(e.Error(), "ticket=") {
+					t.Errorf("reduced error echoed a ticket-bearing query: %q", e.Error())
+				}
+			}
+			// Recognition must survive the reduction, or a consumer that
+			// branches on the sentinel silently stops matching.
+			if tc.want != nil {
+				if got != tc.want { //nolint:errorlint // identity is the assertion
+					t.Errorf("reduced to %#v, want the canonical sentinel %#v", got, tc.want)
+				}
+				if !errors.Is(got, tc.want) {
+					t.Errorf("errors.Is no longer matches after reduction: %#v", got)
+				}
+			}
+		})
+	}
+}
+
 func TestDisconnectObserverNeverEchoesPeerText(t *testing.T) {
 	const canary = "sekrit-ticket-value"
 	peerText := "wss://28.cable.basecamp.com/cable?ticket=" + canary
