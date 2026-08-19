@@ -1187,9 +1187,30 @@ jobs:
           # the same way. Enumerating instead of listing means a package added
           # later is covered on the day it appears rather than on the day
           # someone remembers to widen this line.
+          #
+          # `internal/...` is excluded for the same reason a newly added package
+          # is reported but not compared: it has no external consumer to break,
+          # since nothing outside this module subtree can import it. Excluding
+          # it is not just tidiness. apidiff refuses to compare an internal
+          # package and says so on stderr ("Ignoring internal package ..."),
+          # exiting 0; the comparisons below fold stderr into the report file
+          # and read any non-empty report as a finding, so the first internal
+          # package to exist in both revisions would be announced as a breaking
+          # change and fail this gate. A gate that fails on something that
+          # cannot break anyone is how a `breaking` label gets applied to a
+          # non-break — or how the gate gets switched off.
+          #
+          # `all` is assigned on its own line, not filtered through a pipeline,
+          # so a failing `go list` still aborts the step under `set -e` —
+          # inside a pipeline only the last command's status would survive, and
+          # enumeration silently returning nothing is how this gate would pass
+          # while checking no packages at all. awk rather than grep because it
+          # exits 0 whether or not it matched, and its `NF` drops the empty
+          # line `printf` would otherwise produce from an empty list.
           export_apis() {
-            local prefix="$1" list="$2"
-            go list ./... > "$list"
+            local prefix="$1" list="$2" all
+            all="$(go list ./...)"
+            printf '%s\n' "$all" | awk 'NF && !/\/internal\// && !/\/internal$/' > "$list"
             while read -r pkg; do
               apidiff -w "${WORK}/${prefix}.$(printf '%s' "$pkg" | tr / _).api" "$pkg"
             done < "$list"
@@ -1222,6 +1243,39 @@ jobs:
           # Restore what was checked out, using the stored SHA
           git checkout "${ORIG_SHA}" -- .
 
+          # apidiff has three outcomes, and only two of them are verdicts about
+          # the API: a clean comparison exits 0 and writes nothing, a
+          # comparison that found differences exits 0 and writes them to
+          # stdout, and a comparison that could not run at all exits non-zero
+          # with its reason on stderr. Both call sites below used to test
+          # `apidiff ... && [ -s report ]`, which folds the third outcome into
+          # the first — `set -e` does not fire for a command used as an `if`
+          # condition, so a non-zero apidiff simply short-circuited the `&&`,
+          # left `breaking` at 0, and the gate printed "No breaking changes
+          # detected" and passed. That is this gate failing open, and it is the
+          # exact failure the comment at the top of this step already rules out
+          # for the export phase: a report that cannot be produced must not be
+          # read as "nothing changed".
+          #
+          # It was also silent. The comparator's stderr went into the report
+          # file, and that file is only ever printed on the differences path,
+          # so the reason was written down and then discarded. This prints it.
+          #
+          # Both sites go through one helper rather than repeating the check,
+          # because the way this reappears is the two drifting apart.
+          run_apidiff() {
+            local out="$1"; shift
+            local status=0
+            apidiff "$@" > "$out" 2>&1 || status=$?
+            if [ "$status" -ne 0 ]; then
+              echo "::error::apidiff exited ${status} comparing ${*} — the comparison could not be run. This is a tool failure, not a verdict on the API, so it is not something the \`breaking\` label should be used to wave through."
+              echo '```'
+              cat "$out"
+              echo '```'
+              exit 1
+            fi
+          }
+
           # Compare APIs and report breaking changes
           echo "## API Compatibility Check"
           echo ""
@@ -1238,8 +1292,9 @@ jobs:
               breaking=1
               continue
             fi
-            if apidiff -incompatible "${WORK}/base.${slug}.api" "${WORK}/pr.${slug}.api" > "${WORK}/breaking.${slug}.txt" 2>&1 \
-              && [ -s "${WORK}/breaking.${slug}.txt" ]; then
+            run_apidiff "${WORK}/breaking.${slug}.txt" -incompatible \
+              "${WORK}/base.${slug}.api" "${WORK}/pr.${slug}.api"
+            if [ -s "${WORK}/breaking.${slug}.txt" ]; then
               echo "### Breaking changes in \`${pkg}\`"
               echo ""
               echo '```'
@@ -1268,8 +1323,9 @@ jobs:
           while read -r pkg; do
             grep -Fxq "$pkg" "${WORK}/pr.pkgs" || continue
             slug="$(printf '%s' "$pkg" | tr / _)"
-            if apidiff "${WORK}/base.${slug}.api" "${WORK}/pr.${slug}.api" > "${WORK}/changes.${slug}.txt" 2>&1 \
-              && [ -s "${WORK}/changes.${slug}.txt" ]; then
+            run_apidiff "${WORK}/changes.${slug}.txt" \
+              "${WORK}/base.${slug}.api" "${WORK}/pr.${slug}.api"
+            if [ -s "${WORK}/changes.${slug}.txt" ]; then
               echo "#### \`${pkg}\`"
               echo '```'
               cat "${WORK}/changes.${slug}.txt"
