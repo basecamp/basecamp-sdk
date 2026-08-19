@@ -1,0 +1,32 @@
+go/pkg/basecamp/eventfeed/loop_test.go
+  s_a2830db3382bee::t_2937873e078da4 1988-1998,2003,2009,2022-2030,2046-2059
+  s_a2830db3382bee::t_7c9f299131f9d7 1869-1899
+  s_a2830db3382bee::t_572bacde6162a7 1938-1942,1944,1947,1950-1956
+  s_a2830db3382bee::t_2eaa8abf30d5b2 1968,1974-1987
+  s_a2830db3382bee::t_49bfe55287530d 386-393,399
+  s_a2830db3382bee::t_e41658695ab6c2 1957-1967,1969,1971-1973
+go/pkg/basecamp/eventfeed/loop.go
+  s_a2830db3382bee::t_a6dc19b42fee3c 1338-1339
+  s_a2830db3382bee::t_ac7dd9ff3dbd04 1280-1301
+go/pkg/basecamp/eventfeed/seams.go
+  s_a2830db3382bee::t_a967cabd9ca489 455-461,469-472
+  s_a2830db3382bee::t_bcd8b716660eeb 473
+go/pkg/basecamp/eventfeed/export_test.go
+  s_a2830db3382bee::t_def91b3d5c0338 125-130
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "1c7c7fb28b06129773520df79f71a8e71e437e49",
+  "prompts": {},
+  "sessions": {
+    "s_a2830db3382bee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3ea572e5-a707-465c-97cf-ea7330f74fc8",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}

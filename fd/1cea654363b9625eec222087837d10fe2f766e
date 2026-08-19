@@ -1,0 +1,24 @@
+go/pkg/basecamp/eventfeed/scenario_conformance_test.go
+  s_bcb193599a4870::t_3472d655158263 586-595
+  s_bcb193599a4870::t_43b5023efc8dda 723-730
+go/pkg/basecamp/eventfeed/scenario_harness_test.go
+  s_bcb193599a4870::t_8c51d2e43fd39c 437-445
+  s_bcb193599a4870::t_16cbe7c899efef 109
+  s_bcb193599a4870::t_bc66036d5b58db 450-461,469-476
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "fd1cea654363b9625eec222087837d10fe2f766e",
+  "prompts": {},
+  "sessions": {
+    "s_bcb193599a4870": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5ae90ec8-5ed7-4774-88d9-9d66550a5643",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
