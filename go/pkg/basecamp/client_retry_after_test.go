@@ -200,6 +200,17 @@ func skipUnlessIntWiderThanDurationSeconds(t *testing.T) {
 	}
 }
 
+// durationSecondsCeiling is maxRetryAfterSeconds as an int, and the assignment
+// is what makes it legal: `int(maxRetryAfterSeconds)` is a CONSTANT conversion,
+// and a 32-bit build rejects it where it is written — "constant 9223372036
+// overflows int" — so the test binary would not compile at all, and the skip
+// above could never run to spare it. Converting a variable is checked at run
+// time instead, where the skip has already fired.
+func durationSecondsCeiling() int {
+	ceiling := maxRetryAfterSeconds
+	return int(ceiling)
+}
+
 // TestClient_RetryAfterSaturatesAtDurationCeiling is the regression test for a
 // server turning the retry loop into a tight loop with a syntactically valid
 // header. time.Duration counts nanoseconds in an int64, so an unclamped
@@ -262,7 +273,7 @@ func TestErrRateLimit_NormalizesRetryAfter(t *testing.T) {
 		skipUnlessIntWiderThanDurationSeconds(t)
 
 		err := ErrRateLimit(math.MaxInt)
-		want := int(maxRetryAfterSeconds)
+		want := durationSecondsCeiling()
 		if err.RetryAfter != want {
 			t.Errorf("ErrRateLimit(math.MaxInt).RetryAfter = %d, want %d (saturated, so the "+
 				"retry loop's seconds→Duration conversion stays positive)", err.RetryAfter, want)
@@ -317,7 +328,7 @@ func TestCheckResponse_CarriesRetryAfter(t *testing.T) {
 		// multiplies it by time.Second, which is what downloadURL, the
 		// resilience hook's rate-limiter block, and any caller rescheduling
 		// off err.RetryAfter all do.
-		{name: "beyond duration range", header: "9223372036854775807", want: int(maxRetryAfterSeconds), needsWideInt: true},
+		{name: "beyond duration range", header: "9223372036854775807", want: durationSecondsCeiling(), needsWideInt: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			if tc.needsWideInt {
