@@ -1,0 +1,29 @@
+SPEC.md
+  s_b98b4a85078d3e::t_da6d77a0763808 840-843
+  s_b98b4a85078d3e::t_9a10bba6bbac86 3581-3582
+  s_b98b4a85078d3e::t_ccbc0a2a61e98e 701-718
+  s_b98b4a85078d3e::t_93bc25542910c1 1362-1363
+  s_b98b4a85078d3e::t_2da985a425ea29 1347-1353
+  s_b98b4a85078d3e::t_5ea03199e5881b 1366-1373,1375
+  s_b98b4a85078d3e::t_8f54ef784c4721 725-726
+  s_b98b4a85078d3e::t_f665e69c0898ce 1356-1357
+  s_b98b4a85078d3e::t_3e2ffc026537ea 1374
+  s_b98b4a85078d3e::t_99a0f5f3335748 3388-3392
+  s_b98b4a85078d3e::t_0b6dbe9b07e8eb 823-839
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "edff845fec335d8dac8aed3f78ab10a47303013f",
+  "prompts": {},
+  "sessions": {
+    "s_b98b4a85078d3e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5bbef980-f552-48e7-bb51-0b748caa71ac",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
