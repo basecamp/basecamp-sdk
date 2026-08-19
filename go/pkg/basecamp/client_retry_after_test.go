@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"sync"
@@ -164,6 +165,11 @@ func TestClient_RetryAfterAbsentOrUnusableKeepsBackoff(t *testing.T) {
 		{"zero", "0"},
 		{"negative", "-5"},
 		{"http-date in the past", "Wed, 09 Jun 2021 10:18:14 GMT"},
+		// The boundary on the other side of the clamp below: a digit string
+		// too long to be an int at all is malformed, not over-range, so it
+		// falls through to the curve exactly like "sometime next week". Same
+		// split the device-flow parser draws (SPEC §16).
+		{"digits beyond int range", "99999999999999999999"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			delays, err := retryAfterProbe(t, rateLimited(tc.header))
@@ -181,6 +187,90 @@ func TestClient_RetryAfterAbsentOrUnusableKeepsBackoff(t *testing.T) {
 			}
 		})
 	}
+}
+
+// skipUnlessIntWiderThanDurationSeconds skips a case whose whole subject is a
+// value that parses as an int but overflows a Duration of seconds. On a build
+// where int is narrower than that bound (32-bit), the class is empty — such a
+// header fails strconv.Atoi and is malformed, covered by the case above.
+func skipUnlessIntWiderThanDurationSeconds(t *testing.T) {
+	t.Helper()
+	if int64(math.MaxInt) <= maxRetryAfterSeconds {
+		t.Skip("int cannot hold a value beyond the Duration-seconds bound on this platform")
+	}
+}
+
+// TestClient_RetryAfterSaturatesAtDurationCeiling is the regression test for a
+// server turning the retry loop into a tight loop with a syntactically valid
+// header. time.Duration counts nanoseconds in an int64, so an unclamped
+// `Retry-After: 9223372036854775807` multiplied by time.Second wraps to -1s,
+// and time.After on a non-positive duration fires immediately: the loop would
+// burn its whole attempt budget back-to-back against a peer that just asked it
+// to wait. Against the unclamped code this observes -1s and fails.
+//
+// The delay is asserted, not the elapsed time — a clamped wait is ~292 years,
+// which is precisely why nothing here may sleep it.
+func TestClient_RetryAfterSaturatesAtDurationCeiling(t *testing.T) {
+	skipUnlessIntWiderThanDurationSeconds(t)
+
+	delays, err := retryAfterProbe(t, rateLimited("9223372036854775807"))
+
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("Get returned %v, want context.Canceled", err)
+	}
+	if len(delays) != 1 {
+		t.Fatalf("loop computed %d delays (%v), want exactly 1", len(delays), delays)
+	}
+	if delays[0] <= 0 {
+		t.Fatalf("computed a %v retry delay from an over-range Retry-After; a non-positive "+
+			"delay makes time.After fire at once, so the server-directed wait becomes a tight loop", delays[0])
+	}
+	if want := time.Duration(maxRetryAfterSeconds) * time.Second; delays[0] != want {
+		t.Errorf("computed a %v retry delay, want %v — an over-range Retry-After saturates at "+
+			"what a Duration can hold rather than falling back to the ~1ms backoff curve", delays[0], want)
+	}
+}
+
+// TestErrRateLimit_NormalizesRetryAfter covers the one door onto Error.RetryAfter
+// the wire parser does not guard: an exported constructor taking a bare int.
+// The field documents zero as "no delay", so a negative argument must not reach
+// it — and the hint, which has always read non-positive as absent, must keep
+// saying the same thing the field does.
+func TestErrRateLimit_NormalizesRetryAfter(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		retryAfter int
+		want       int
+		wantHint   string
+	}{
+		{"positive", 42, 42, "Try again in 42 seconds"},
+		{"zero", 0, 0, "Try again later"},
+		{"negative", -5, 0, "Try again later"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			err := ErrRateLimit(tc.retryAfter)
+			if err.RetryAfter != tc.want {
+				t.Errorf("ErrRateLimit(%d).RetryAfter = %d, want %d", tc.retryAfter, err.RetryAfter, tc.want)
+			}
+			if err.Hint != tc.wantHint {
+				t.Errorf("ErrRateLimit(%d).Hint = %q, want %q", tc.retryAfter, err.Hint, tc.wantHint)
+			}
+		})
+	}
+
+	t.Run("beyond duration range", func(t *testing.T) {
+		skipUnlessIntWiderThanDurationSeconds(t)
+
+		err := ErrRateLimit(math.MaxInt)
+		want := int(maxRetryAfterSeconds)
+		if err.RetryAfter != want {
+			t.Errorf("ErrRateLimit(math.MaxInt).RetryAfter = %d, want %d (saturated, so the "+
+				"retry loop's seconds→Duration conversion stays positive)", err.RetryAfter, want)
+		}
+		if delay := time.Duration(err.RetryAfter) * time.Second; delay <= 0 {
+			t.Errorf("time.Duration(RetryAfter) * time.Second = %v, want a positive duration", delay)
+		}
+	})
 }
 
 // TestClient_RetryAfterErrorCarriesSeconds pins the value onto the error the
@@ -212,15 +302,27 @@ func TestClient_RetryAfterErrorCarriesSeconds(t *testing.T) {
 // typed one.
 func TestCheckResponse_CarriesRetryAfter(t *testing.T) {
 	for _, tc := range []struct {
-		name   string
-		header string
-		want   int
+		name         string
+		header       string
+		want         int
+		needsWideInt bool
 	}{
-		{"seconds", "17", 17},
-		{"absent", "", 0},
-		{"unparseable", "whenever", 0},
+		{name: "seconds", header: "17", want: 17},
+		{name: "absent", header: "", want: 0},
+		{name: "unparseable", header: "whenever", want: 0},
+		// The typed path builds its *Error directly from the parsed header —
+		// it never passes through ErrRateLimit — so this is the case that
+		// holds the parser's own clamp. Without it a generated service method
+		// hands the caller a RetryAfter that overflows the moment anyone
+		// multiplies it by time.Second, which is what downloadURL, the
+		// resilience hook's rate-limiter block, and any caller rescheduling
+		// off err.RetryAfter all do.
+		{name: "beyond duration range", header: "9223372036854775807", want: int(maxRetryAfterSeconds), needsWideInt: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			if tc.needsWideInt {
+				skipUnlessIntWiderThanDurationSeconds(t)
+			}
 			resp := &http.Response{StatusCode: http.StatusTooManyRequests, Header: http.Header{}}
 			if tc.header != "" {
 				resp.Header.Set("Retry-After", tc.header)

@@ -833,7 +833,13 @@ Requirements:
 4. **`Retry-After` is exempt.** It is server-directed and takes precedence per step 3h;
    the ceiling governs the locally-computed formula only. Implementations may still
    bound it against host limits — Swift clamps its seconds→nanoseconds conversion to
-   86,400s because `UInt64(_:)` on an out-of-range `Double` is a trap.
+   86,400s because `UInt64(_:)` on an out-of-range `Double` is a trap, and Go
+   saturates its seconds→`time.Duration` conversion at `math.MaxInt64 / time.Second`
+   (~292 years) because the product otherwise wraps negative and `time.After` on a
+   non-positive duration fires at once — turning a server-directed wait into a tight
+   retry loop. Both are *representability* bounds on the conversion, not policy caps
+   on what a server may ask for: an over-range value saturates rather than falling
+   back to the local formula, so the wait is still as long as the host can express.
 
 **Reachability.** Every SDK exposes a path to a high attempt count: Kotlin's builder
 validates `maxRetries >= 0` with no upper bound, Go's `WithMaxRetries` only rejects

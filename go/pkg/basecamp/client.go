@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"math"
 	"math/rand"
 	"net/http"
 	"net/url"
@@ -1073,22 +1074,60 @@ func parseNextLink(linkHeader string) string {
 	return ""
 }
 
+// maxRetryAfterSeconds is the largest delta-seconds value this SDK can turn
+// into a time.Duration at all: a Duration counts nanoseconds in an int64, so
+// seconds × time.Second wraps past math.MaxInt64. It is a REPRESENTABILITY
+// bound, not a policy ceiling — SPEC §7's "Retry-After is exempt" note already
+// carves out exactly this ("implementations may still bound it against host
+// limits"), and Swift clamps its own seconds→nanoseconds conversion for the
+// same reason. Deciding a *policy* cap on server-directed waits is #793's, and
+// this is not one: at ~292 years, nothing a server could sensibly ask for is
+// affected.
+const maxRetryAfterSeconds = int64(math.MaxInt64) / int64(time.Second)
+
+// clampRetryAfterSeconds normalizes a delta-seconds value to the range Error's
+// RetryAfter field promises: non-negative, and small enough that the retry
+// loops' `time.Duration(n) * time.Second` stays positive.
+//
+// The failure this closes is not hypothetical arithmetic. `Retry-After:
+// 9223372036854775807` parses cleanly on a 64-bit build, and the product wraps
+// to -1s; `time.After` on a non-positive duration fires immediately, so a
+// server-directed wait becomes a tight retry loop — the opposite of what the
+// header asked for.
+//
+// Over-range clamps rather than falling back to "absent" because clamping is
+// what honours the server: falling back would compute the millisecond backoff
+// curve instead and hammer a peer that just asked for a long wait, which is the
+// same tight loop by another route. The wait is a select on ctx.Done(), so an
+// absurd clamped delay is abandonable rather than a hang. This mirrors the
+// device-flow parser (SPEC §16): a digit string too long to be an int is
+// malformed and falls back, while a value that parses but exceeds what we can
+// honour is clamped.
+func clampRetryAfterSeconds(seconds int) int {
+	if seconds <= 0 {
+		return 0
+	}
+	return int(min(int64(seconds), maxRetryAfterSeconds))
+}
+
 // parseRetryAfter parses the Retry-After header value.
 // It handles both seconds (integer) and HTTP-date formats.
-// Returns 0 if the header is empty or cannot be parsed.
+// Returns 0 if the header is empty or cannot be parsed, and clamps a parsed
+// value to what a time.Duration can hold — every caller multiplies the result
+// by time.Second.
 func parseRetryAfter(header string) int {
 	if header == "" {
 		return 0
 	}
 	// Try parsing as seconds (integer)
 	if seconds, err := strconv.Atoi(header); err == nil && seconds > 0 {
-		return seconds
+		return clampRetryAfterSeconds(seconds)
 	}
 	// Try parsing as HTTP-date (e.g., "Wed, 21 Oct 2015 07:28:00 GMT")
 	if t, err := http.ParseTime(header); err == nil {
 		seconds := int(time.Until(t).Seconds())
 		if seconds > 0 {
-			return seconds
+			return clampRetryAfterSeconds(seconds)
 		}
 	}
 	return 0
