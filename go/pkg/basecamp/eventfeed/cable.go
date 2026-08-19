@@ -2,7 +2,6 @@ package eventfeed
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -115,39 +114,49 @@ const (
 // terminal (a garbled frame is transport-level corruption, unlike the
 // server's own invalid_event_stream_command verdict), never a silent skip.
 //
-// The type is deliberately FLAT — the rule for every error in this package
-// that can carry frame-derived, URL-derived, or ticket-adjacent text, of
-// which redactDialErr is the precedent. The connector never renders frame
-// contents itself, but a decoder underneath it can: encoding/json's own
-// errors carry offsets and type names only, while a type's UnmarshalJSON can
-// quote the offending input — time.Time's does, so an attacker-chosen
-// created_at reaches Observer.Disconnected at frame scale. The message is
-// therefore composed and bounded ONCE, at construction, by §9's
-// MAX_ERROR_MESSAGE_LENGTH; retaining the decoder's error as a cause would
-// hand the unbounded original straight back through errors.Unwrap and undo
-// the bound the rendering applied. Typed-kind matching is unaffected:
-// errors.As matches on this type, which is what carries the classification.
+// The type is deliberately FLAT and its rendering deliberately CLOSED — the
+// rule for every error in this package that can carry frame-derived,
+// URL-derived, or ticket-adjacent text, of which redactDialErr is the
+// precedent. The connector never renders frame contents itself, but a decoder
+// underneath it can: encoding/json's own errors carry offsets, kind words and
+// type names only, while a type's UnmarshalJSON can quote the offending input
+// — time.Time's does, verbatim — so an attacker-chosen created_at on a
+// correlated broadcast reached Observer.Disconnected, a surface whose
+// destination the connector knows nothing about.
+//
+// Bounding that text by §9's MAX_ERROR_MESSAGE_LENGTH, which is what this type
+// used to do, is not redacting it: a 500-byte cap still forwards ~430 bytes of
+// peer-chosen text. So the cause is dropped from the RENDERING as well as from
+// the chain, and the message is a function of `shape` alone — a closed
+// two-value vocabulary, fixed in this file. Nothing peer-derived can reach it,
+// which is also why no truncation is applied here any more: there is no longer
+// an unbounded input to bound.
+//
+// The trade is diagnostic detail: an operator sees "event_decode", not which
+// key was missing or which value failed to parse. That is the intended
+// direction — the same "less diagnostic, never leaks" failure direction
+// redactURL commits to — and the shape is what decides disposition anyway.
+//
+// Typed-kind matching is unaffected: errors.As matches on this type, which is
+// what carries the classification.
 type invalidFrameError struct {
 	// shape names the violation shape (invalidFrameParse /
-	// invalidFrameEventDecode).
+	// invalidFrameEventDecode), and is the whole of the rendering.
 	shape string
-	// msg is the fully composed, bounded rendering, fixed at construction.
-	msg string
 }
 
-// newInvalidFrameError composes the bounded rendering, dropping the cause.
-func newInvalidFrameError(shape string, cause error) *invalidFrameError {
-	msg := "event feed invalid inbound frame (" + shape + ")"
-	if cause != nil {
-		msg += ": " + cause.Error()
-	}
-	return &invalidFrameError{shape: shape, msg: truncateErrorText(msg)}
+// newInvalidFrameError builds the error for shape. It deliberately takes NO
+// cause: a cause parameter is the leak, whether it is rendered or merely
+// retained, and a signature that cannot accept one cannot regrow it at a call
+// site added later.
+func newInvalidFrameError(shape string) *invalidFrameError {
+	return &invalidFrameError{shape: shape}
 }
 
-// Error implements the error interface. It renders the message composed at
-// construction; there is deliberately no Unwrap (see the type's doc).
+// Error implements the error interface. There is deliberately no Unwrap, and
+// deliberately nothing here but the shape (see the type's doc).
 func (e *invalidFrameError) Error() string {
-	return e.msg
+	return "event feed invalid inbound frame (" + e.shape + ")"
 }
 
 // parseFrame parses and classifies one raw inbound text frame. Dispatch is on
@@ -182,7 +191,7 @@ func parseFrame(data []byte) (frame, error) {
 		// sending nothing but `null` frames would then hold the socket open
 		// indefinitely (the pump re-arms staleness before parsing) while
 		// delivering no protocol traffic at all.
-		return frame{}, newInvalidFrameError(invalidFrameParse, errors.New("frame is not a JSON object"))
+		return frame{}, newInvalidFrameError(invalidFrameParse)
 	}
 	// The type key's PRESENCE is decoded separately from its value: a `*string`
 	// gives the same nil for an absent key and for a JSON `null`, which put one
@@ -196,7 +205,7 @@ func parseFrame(data []byte) (frame, error) {
 		Type json.RawMessage `json:"type"`
 	}
 	if err := json.Unmarshal(data, &envType); err != nil {
-		return frame{}, newInvalidFrameError(invalidFrameParse, err)
+		return frame{}, newInvalidFrameError(invalidFrameParse)
 	}
 	if len(envType.Type) > 0 {
 		// The key is present. A wrong-typed value (a number, an array) fails
@@ -207,7 +216,7 @@ func parseFrame(data []byte) (frame, error) {
 		// What it is NOT is a broadcast: that shape is "no type key at all".
 		var typ *string
 		if err := json.Unmarshal(envType.Type, &typ); err != nil {
-			return frame{}, newInvalidFrameError(invalidFrameParse, err)
+			return frame{}, newInvalidFrameError(invalidFrameParse)
 		}
 		if typ == nil {
 			return frame{kind: frameUnknown}, nil
@@ -225,7 +234,7 @@ func parseFrame(data []byte) (frame, error) {
 				Identifier string `json:"identifier"`
 			}
 			if err := json.Unmarshal(data, &env); err != nil {
-				return frame{}, newInvalidFrameError(invalidFrameParse, err)
+				return frame{}, newInvalidFrameError(invalidFrameParse)
 			}
 			kind := frameConfirm
 			if *typ == frameTypeReject {
@@ -238,7 +247,7 @@ func parseFrame(data []byte) (frame, error) {
 				Reconnect *bool  `json:"reconnect"`
 			}
 			if err := json.Unmarshal(data, &env); err != nil {
-				return frame{}, newInvalidFrameError(invalidFrameParse, err)
+				return frame{}, newInvalidFrameError(invalidFrameParse)
 			}
 			return frame{kind: frameDisconnect, reason: env.Reason, reconnect: env.Reconnect}, nil
 		default:
@@ -254,7 +263,7 @@ func parseFrame(data []byte) (frame, error) {
 		Message    json.RawMessage `json:"message"`
 	}
 	if err := json.Unmarshal(data, &env); err != nil {
-		return frame{}, newInvalidFrameError(invalidFrameParse, err)
+		return frame{}, newInvalidFrameError(invalidFrameParse)
 	}
 	if env.Identifier != "" && len(env.Message) > 0 {
 		return frame{kind: frameMessage, identifier: env.Identifier, message: env.Message}, nil
@@ -312,25 +321,26 @@ func decodeMessageEvent(raw json.RawMessage) (Event, error) {
 		VisibleToClients *bool      `json:"visible_to_clients"`
 	}
 	if err := json.Unmarshal(raw, &p); err != nil {
-		return Event{}, newInvalidFrameError(invalidFrameEventDecode, err)
+		return Event{}, newInvalidFrameError(invalidFrameEventDecode)
 	}
-	for _, req := range []struct {
-		key     string
-		present bool
-	}{
-		{"id", p.ID != nil},
-		{"kind", p.Kind != nil},
-		{"event_type", p.EventType != nil},
-		{"action", p.Action != nil},
-		{"created_at", p.CreatedAt != nil},
-		{"bucket_id", p.BucketID != nil},
-		{"creator_id", p.CreatorID != nil},
-		{"recording_id", p.RecordingID != nil},
-		{"visible_to_clients", p.VisibleToClients != nil},
+	// The nine required keys, in conformance/event-feed/schema.json's pushEvent
+	// order. The key names ride as comments rather than as data because the
+	// error deliberately cannot name the offender (see invalidFrameError): a
+	// string field carried here would be a value with no reader, which is
+	// exactly how a rendering regrows one.
+	for _, present := range []bool{
+		p.ID != nil,               // id
+		p.Kind != nil,             // kind
+		p.EventType != nil,        // event_type
+		p.Action != nil,           // action
+		p.CreatedAt != nil,        // created_at
+		p.BucketID != nil,         // bucket_id
+		p.CreatorID != nil,        // creator_id
+		p.RecordingID != nil,      // recording_id
+		p.VisibleToClients != nil, // visible_to_clients
 	} {
-		if !req.present {
-			return Event{}, newInvalidFrameError(invalidFrameEventDecode,
-				fmt.Errorf("event payload missing required key %q", req.key))
+		if !present {
+			return Event{}, newInvalidFrameError(invalidFrameEventDecode)
 		}
 	}
 	return Event{
