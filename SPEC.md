@@ -2502,10 +2502,16 @@ is shared:
   returns; it does **not** wait for the run to unwind, because every consumer callback runs
   on the run's own execution context and waiting there would deadlock on the caller.
 - **`close()` does not order a second connector over the same checkpoint store, and cannot.**
-  A save decided just before the close may still be written just after — a store is entitled
-  to ignore the cancelled context, and the reference `FileCheckpointStore` does. That is
-  intended: the position was accepted and its events delivered before the close, so dropping
-  the write would silently re-deliver them. **`wait()`** is the quiescence point — it blocks
+  A save decided just before the close is still written after it. That is intended: the
+  position was accepted and its events delivered before the close, so dropping the write
+  would silently re-deliver them. **The save therefore runs under a context detached from
+  the run's cancellation** — carrying the run's context values, but not its cancellation.
+  Passing the live run context instead makes the guarantee conditional on the store: one
+  that ignores its context writes anyway, and one that honors it — which this contract
+  permits, and says nothing against — sees a cancelled context and drops the position. The
+  trade is explicit: a store that blocks indefinitely delays the run's exit, and therefore
+  `wait()`, rather than being released by `close()`. That is bounded by the store's own
+  behavior, where a dropped position is unbounded re-delivery with nothing recording it. **`wait()`** is the quiescence point — it blocks
   until the run has exited, after which no save can be in flight. A consumer that owns the
   iteration needs nothing extra, since the iteration terminating is the same guarantee.
   Await termination — or `wait()` — before opening a second connector over the same store.
