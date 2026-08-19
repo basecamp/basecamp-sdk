@@ -1,0 +1,26 @@
+# Prose claims that discharge an obligation by pointing at an issue number.
+#
+# A sentence like "Tracked in #792" is a promise that someone owns the gap it
+# describes. If that issue closes without the gap closing, the sentence becomes
+# a documentation lie and nothing notices — which is exactly what happened to
+# the bc3 route allowlist when #588 auto-closed with nine live 404s pointing at
+# it (see scripts/check-known-defect-issues-open).
+#
+# The route allowlist gets that check because its entries are structured data.
+# Prose is not, so the claims are registered here instead: one entry per
+# sentence that leans on an issue, verified OPEN by the same gate, failing
+# closed the same way.
+#
+# This is deliberately a REGISTRY and not a scanner. A regex over prose for
+# "#\d+" would sweep up every historical citation — "shipped in #12380", "the
+# fix in #760" — which are as-of facts that must never be reopened, and would
+# need an ever-growing exclusion list to tell the two apart. The registry makes
+# the author say which kind they meant, once, where the reason is visible.
+#
+# Add an entry when you write a sentence promising an issue owns something.
+# Remove it when the sentence goes, and the gate stops asking.
+prose_tracking_issues:
+  - issue: 792
+    site: "conformance/event-feed/README.md — the Go driver's arrival-strict gap"
+  - issue: 758
+    site: "go/pkg/basecamp/eventfeed/catchup.go awaitSupersededPoll — the superseded-poll bound's overshoot"

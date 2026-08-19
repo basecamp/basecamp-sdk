@@ -9,6 +9,13 @@
 #   bc3_routes_not_modeled[].tracking_issue
 #                                        "an OPEN issue owns absorbing it"
 #
+# spec/tracking-issues.yml discharges the same kind of claim made in PROSE —
+# "Tracked in #N" in a README or a code comment. Same failure, same remedy: a
+# closed issue tracks nothing, and a sentence saying otherwise is a lie nobody
+# is told about. It is a registry rather than a scan of the prose because
+# "#\d+" cannot tell a tracking promise from an as-of citation ("shipped in
+# #12380"), and sorting those needs the author, not a matcher.
+#
 # check-bc3-route-parity already requires those to be numeric. A number is not a
 # tracker: #588 auto-closed while nine live 404s still pointed at it, and that
 # gate stayed green the whole time because "is an Integer" was the entire test.
@@ -56,6 +63,9 @@ unless File.exist?(allow_path)
 end
 allow = YAML.safe_load(File.read(allow_path)) || {}
 
+tracking_path = ENV['TRACKING_ISSUES'] || File.join(ROOT, 'spec', 'tracking-issues.yml')
+tracking = File.exist?(tracking_path) ? (YAML.safe_load(File.read(tracking_path)) || {}) : {}
+
 # (issue number, human-readable site) pairs, so a failure names the entry that
 # has to change rather than just the number.
 refs = []
@@ -68,8 +78,13 @@ end
   refs << [e['tracking_issue'], "bc3_routes_not_modeled #{e['method']} #{e['path']}"]
 end
 
+(tracking['prose_tracking_issues'] || []).each do |e|
+  next unless e['issue'].is_a?(Integer)
+  refs << [e['issue'], e['site'].to_s.empty? ? "prose_tracking_issues ##{e['issue']}" : e['site']]
+end
+
 if refs.empty?
-  puts '  ✓ bc3 route allowlist references no tracking issues — nothing to verify'
+  puts '  ✓ no tracking issues referenced — nothing to verify'
   exit 0
 end
 
@@ -98,8 +113,8 @@ refs.each do |number, site|
   next if state.nil? || state == 'open'
   failures << "#{site} points at ##{number}, which is #{state.upcase}. " \
               'A closed issue tracks nothing: reopen it, repoint the entry at the ' \
-              'issue that now owns the defect, or remove the entry because the ' \
-              'route is fixed.'
+              'issue that now owns the defect, or remove the entry because what it ' \
+              'tracked is fixed — and delete the claim that leaned on it.'
 end
 
 unless failures.empty?
