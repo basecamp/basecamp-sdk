@@ -2698,6 +2698,18 @@ Draining is Terminal(`protocol_fatal`) immediately (the state-generic rule under
 Disconnect Dispatch) — the drain is not completed, the held entry position is NOT saved,
 and no `caught_up` is announced; only recoverable failures defer.
 
+**"Observed" means handed to the state machine, and the boundary is normative.** A frame
+the transport reader has taken off the socket but not yet handed over is not observed, and
+no implementation is required to find it. That is not a tolerance granted for convenience:
+making it observable requires the read to complete inside a critical section the scan can
+enter, and the read blocks indefinitely on a quiet socket, so the lock deadlocks the drain
+against a peer that simply stopped talking. Sampling a flag the reader sets after its read
+does not close it either — the flag is published after the read returns, and the scan reads
+it after its own check of the queue, so a frame can arrive and the flag clear between the
+two. What every implementation MUST cover is everything handed over, **plus the one frame a
+blocked hand-off is holding** — the reader is a single goroutine, so there is exactly one,
+and it is why the scan's budget is pump depth + 1 rather than pump depth.
+
 ### Disconnect Dispatch `[conformance]`
 
 Action Cable's `disconnect` is a **text frame**, not a WebSocket close frame, and stock

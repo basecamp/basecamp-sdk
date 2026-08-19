@@ -121,7 +121,14 @@ func (h *harness) ledger() []string {
 // start ranges Events on a collector goroutine.
 func (h *harness) start() {
 	h.t.Helper()
-	ctx, cancel := context.WithCancel(context.Background())
+	h.startCtx(context.Background())
+}
+
+// startCtx starts the iteration under a caller-supplied parent context, for
+// the one assertion that needs a context VALUE to travel into a seam.
+func (h *harness) startCtx(parent context.Context) {
+	h.t.Helper()
+	ctx, cancel := context.WithCancel(parent)
 	h.cancel = cancel
 	h.t.Cleanup(cancel)
 	h.t.Cleanup(func() { h.conn.Close() })

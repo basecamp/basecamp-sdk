@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"strconv"
 	"sync"
-	"sync/atomic"
 	"time"
 )
 
@@ -139,13 +138,6 @@ type liveConn struct {
 	frames chan pumpItem
 	stale  *staleHolder
 	hooks  testHooks
-	// holding reports that the pump has READ a frame it has not yet handed
-	// off. It is what makes "every frame the pump has already read" an
-	// observable condition rather than an aspiration: without it, the window
-	// between ReadFrame returning and the channel send is invisible, and a
-	// non-blocking scan that samples inside it concludes the queue is empty
-	// when a frame — possibly the protocol-fatal one — has already arrived.
-	holding atomic.Bool
 }
 
 // newLiveConn arms staleness (socket open) and then starts the pump, in that
@@ -172,22 +164,12 @@ func (lc *liveConn) pump(ctx context.Context) {
 	defer close(lc.frames)
 	for {
 		data, err := lc.conn.ReadFrame(ctx)
-		// Set BEFORE anything else the read leads to, and cleared only once
-		// the item is in the queue: the flag must cover the whole interval in
-		// which this goroutine holds a frame no other goroutine can see.
-		lc.holding.Store(true)
-		if lc.hooks.pumpRead != nil {
-			lc.hooks.pumpRead()
-		}
 		if err != nil {
 			lc.handOff(ctx, pumpItem{err: err})
-			lc.holding.Store(false)
 			return
 		}
 		lc.stale.reset()
-		handed := lc.handOff(ctx, pumpItem{data: data})
-		lc.holding.Store(false)
-		if !handed {
+		if !lc.handOff(ctx, pumpItem{data: data}) {
 			return
 		}
 	}
@@ -791,6 +773,14 @@ func (l *loop) runCycle(delay time.Duration) cycleOutcome {
 		}
 		if r.err != nil {
 			hs.Stop()
+			// A seam may return BOTH a connection and an error — Go permits
+			// it and a transport that fails during the handshake can easily
+			// do it — and the connection is ours to dispose of the moment we
+			// decline it. Not closing leaked a socket per failed dial, which
+			// under the reconnect cycle is a leak per backoff round.
+			if r.conn != nil {
+				_ = r.conn.Close(closeCodeNormal, "")
+			}
 			var derr *DialError
 			if errors.As(r.err, &derr) && derr.Kind == DialPolicy {
 				// The KIND is read; the text is not. This DialError came out
@@ -811,6 +801,14 @@ func (l *loop) runCycle(delay time.Duration) cycleOutcome {
 				}}
 			}
 			return cycleOutcome{kind: outcomeFailed} // transition 7
+		}
+		if r.conn == nil {
+			// (nil, nil) from a seam. Proceeding would install a nil
+			// CableConn and panic on the first read; treating it as a
+			// transient dial failure keeps the reconnect cycle honest and
+			// costs one backoff round against a transport that is already
+			// violating its contract.
+			return cycleOutcome{kind: outcomeFailed}
 		}
 		conn = r.conn
 	case <-hs.C():

@@ -1418,8 +1418,9 @@ func TestCloseFromConnectedOutranksAQueuedFatalFrame(t *testing.T) {
 // feedtest.Store and the built-in FileCheckpointStore ignore ctx, so a save
 // handed a cancelled context still landed and every assertion passed.
 type ctxAwareStore struct {
-	mu    sync.Mutex
-	saves []string
+	mu        sync.Mutex
+	saves     []string
+	valueSeen []any
 }
 
 func (s *ctxAwareStore) Load(context.Context, eventfeed.CheckpointKey) (string, bool, error) {
@@ -1433,13 +1434,28 @@ func (s *ctxAwareStore) Save(ctx context.Context, _ eventfeed.CheckpointKey, pos
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.saves = append(s.saves, position)
+	// WithoutCancel drops cancellation and KEEPS values, and the difference
+	// matters to real stores: a trace span, a tenant, or a request id rides on
+	// the context, and swapping in context.Background() to dodge cancellation
+	// would silently strip all of it. Recorded here so the distinction is
+	// asserted rather than assumed.
+	s.valueSeen = append(s.valueSeen, ctx.Value(saveProbeKey{}))
 	return nil
 }
+
+// saveProbeKey types the context value the run carries into the store.
+type saveProbeKey struct{}
 
 func (s *ctxAwareStore) recorded() []string {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return append([]string(nil), s.saves...)
+}
+
+func (s *ctxAwareStore) values() []any {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return append([]any(nil), s.valueSeen...)
 }
 
 // TestAcceptedPositionSavesAgainstAContextHonoringStore is what
@@ -1475,7 +1491,7 @@ func TestAcceptedPositionSavesAgainstAContextHonoringStore(t *testing.T) {
 		Events:   []eventfeed.Event{pollEvent(101)},
 		Position: "pos-1",
 	})
-	h.start()
+	h.startCtx(context.WithValue(context.Background(), saveProbeKey{}, "probe-value"))
 	sock := h.driveToSubscribed()
 	sock.Serve(frameConfirm(noFilterIdentifier))
 	h.join()
@@ -1483,5 +1499,13 @@ func TestAcceptedPositionSavesAgainstAContextHonoringStore(t *testing.T) {
 	if got := store.recorded(); len(got) != 1 || got[0] != "pos-1" {
 		t.Errorf("recorded saves = %v, want [pos-1] — event 101 was delivered, so its position must be durable "+
 			"even against a store that honors the cancelled run context", got)
+	}
+	// Detaching must drop CANCELLATION only. context.Background() would also
+	// pass the assertion above while stripping every value the caller put on
+	// the context, which a store using them would notice and this test would
+	// not.
+	if got := store.values(); len(got) != 1 || got[0] != "probe-value" {
+		t.Errorf("context values seen by the store = %v, want [probe-value] — the save's context must keep "+
+			"the run's values and drop only its cancellation", got)
 	}
 }

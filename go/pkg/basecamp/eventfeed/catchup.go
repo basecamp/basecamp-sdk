@@ -3,7 +3,6 @@ package eventfeed
 import (
 	"errors"
 	"fmt"
-	"runtime"
 	"time"
 )
 
@@ -869,24 +868,28 @@ func (l *loop) fatalScan(at *attempt, budget *int) (cycleOutcome, bool) {
 				l.deferForDrain(&deferredFrame{item: item})
 			}
 		default:
-			// An empty queue is proof there is nothing to find ONLY if the
-			// pump also holds nothing it has already read. The two are not
-			// the same instant: the pump sets `holding` when ReadFrame
-			// returns and clears it when the item is in the queue, and a scan
-			// sampling between those points sees an empty queue with the
-			// frame — possibly the fatal one — sitting in the pump's own
-			// stack. The carve-out is stated over what the pump has READ, so
-			// the scan waits out that window rather than reading it as quiet.
+			// The scan's boundary is what the STATE MACHINE can observe, and
+			// observation happens at hand-off. A frame the pump has read but
+			// not yet handed off is not reachable from here at any price:
+			// closing that window needs the read itself to complete inside a
+			// critical section the scan can enter, and the read blocks
+			// indefinitely on a quiet socket, so the lock would deadlock the
+			// drain against a peer that simply stopped talking.
 			//
-			// It terminates. The interval `holding` covers contains no I/O
-			// and no blocking except the hand-off itself, and a hand-off can
-			// only block on a FULL queue — which is not this branch, since a
-			// full queue is dequeued above and each dequeue releases it. The
-			// budget bounds the loop either way.
-			if !at.lc.holding.Load() {
-				return cycleOutcome{}, false
-			}
-			runtime.Gosched()
+			// A sampled flag does not close it either, and one was tried: the
+			// pump publishing "I hold a frame" after the read leaves the
+			// pre-publish window, and the scan loading that flag after its own
+			// empty select leaves a second window where the frame arrives and
+			// the flag clears between the two reads. Two samples cannot make
+			// a happens-before, and a mechanism that narrows a race while the
+			// spec claims it closed is worse than the honest boundary.
+			//
+			// So the boundary is stated where it holds: every frame handed
+			// off, plus the one a blocked hand-off is holding — which the
+			// pumpDepth+1 budget reaches, because Go moves a blocked sender's
+			// value into the buffer on the first receive. That is also what
+			// §23 means by "observed during Draining".
+			return cycleOutcome{}, false
 		}
 	}
 	return cycleOutcome{}, false
