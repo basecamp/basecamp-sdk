@@ -1,0 +1,20 @@
+typescript/tests/middleware-lifecycle.test.ts
+  s_b98b4a85078d3e::t_b5c33f969f1b9e 284-286,288-307,314-337
+  s_b98b4a85078d3e::t_0ffaeff017c58d 228-230,233-238,251-268
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "2496039f7965f07dd15149c402613e0e41fd95aa",
+  "prompts": {},
+  "sessions": {
+    "s_b98b4a85078d3e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5bbef980-f552-48e7-bb51-0b748caa71ac",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
