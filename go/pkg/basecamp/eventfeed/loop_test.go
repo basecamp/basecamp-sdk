@@ -268,6 +268,29 @@ func (h *harness) serveSettled(conn *feedtest.Conn, frames ...[]byte) {
 	h.waitUntil("pump took the served frames", func() bool { return conn.Pending() == 0 })
 }
 
+// drainHandled consumes frame-handled notifications for the rest of the test.
+//
+// The notification send is BLOCKING, and the protocol-fatal probe handles a
+// whole queue's worth of frames in a single pass — far more than the channel
+// buffers. A test that fills the pump's queue and does not itself await
+// handled frames must drain them, or the loop wedges inside the probe on a
+// send nobody is receiving. That is a property of the harness's notification,
+// not of the connector: the wedge shows up as the state machine parked in
+// newHarness's OnFrameHandled callback.
+func (h *harness) drainHandled() {
+	done := make(chan struct{})
+	go func() {
+		for {
+			select {
+			case <-h.handled:
+			case <-done:
+				return
+			}
+		}
+	}()
+	h.t.Cleanup(func() { close(done) })
+}
+
 // awaitFrameHandled consumes handled-frame notifications until the given
 // kind is seen.
 func (h *harness) awaitFrameHandled(kind string) {

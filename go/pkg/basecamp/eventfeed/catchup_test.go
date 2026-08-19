@@ -12,7 +12,9 @@ import (
 	"errors"
 	"fmt"
 	"runtime"
+	"slices"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -1542,6 +1544,9 @@ func TestSupersededPollBoundSurvivesPumpBackPressure(t *testing.T) {
 		default:
 		}
 	})
+	// The probe at the superseded boundary handles the whole queue this test
+	// fills, in one pass; nothing here awaits handled frames.
+	h.drainHandled()
 	var conn *feedtest.Conn
 	h.polls.OnCall(func(feedtest.PollCall) {
 		// The socket speaks its last word while the entry poll is
@@ -1617,6 +1622,202 @@ func TestDeferredProtocolFatalOutranksAFailedPoll(t *testing.T) {
 	assertPositions(t, store.Saves())
 }
 
+// TestProtocolFatalBehindADeferredRecoverableOutranksIt is the walk's version
+// of the hole #760 closed inside the drain, and it is the same hole: a
+// protocol-fatal verdict the pump has ALREADY READ loses to whatever
+// non-fatal outcome happens to be parked ahead of it.
+//
+// SPEC §23 is state-generic about this and says so twice — "the protocol-fatal
+// disconnect is terminal from EVERY socket-open state", and "a raw
+// invalid_event_stream_command frame READ in AwaitingWelcome, CatchingUp, or
+// Draining ... Terminal(protocol_fatal), never Backoff. An explicitly
+// non-retryable protocol rejection must not reconnect from any state." Reading
+// is the boundary the obligation attaches to, not dispatch order.
+//
+// So the deferral slot holds a `remote` disconnect — recoverable, arrived
+// first — and the fatal sits in the pump's queue behind it. dispatchDeferred
+// reported the `remote`, ended the cycle as a plain socket failure, and
+// reconnected: a second mint, against a server that had already refused the
+// command. The fatal died with the socket.
+//
+// The assertions are the ones the carve-out is about. The terminal reason,
+// because reporting the recoverable verdict is the defect itself; and ZERO
+// reconnects, because "never Backoff" is the half a reason assertion alone
+// would not catch (a connector that reconnects once and then terminates on the
+// re-issued frame still ends at protocol_fatal).
+//
+// There is one case per deferred-disposition boundary the walk has, because
+// each is a separate hole: a probe removed at any ONE of them must fail
+// exactly its own case, and a case that passes with every probe removed is
+// pinning nothing.
+func TestProtocolFatalBehindADeferredRecoverableOutranksIt(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		opts []eventfeed.Option
+		// arm scripts the poll outcome that decides WHICH deferred-disposition
+		// boundary the walk reaches with the slot occupied.
+		arm func(h *harness)
+		// wedge serves whatever must sit between the deferred recoverable and
+		// the fatal, for the boundaries where merely queueing the fatal is not
+		// enough to keep an ordinary admission pass from reaching it first.
+		wedge func(conn *feedtest.Conn)
+		// stalled marks the boundary reached by abandoning a stalled call
+		// rather than by the call returning.
+		stalled bool
+		// wantSaves is what may legitimately have been persisted BEFORE the
+		// fatal was observed.
+		wantSaves []string
+	}{
+		// The ordinary page boundary. The page succeeds and its position
+		// saves; the walk then loops back to the top with the slot occupied.
+		// A ping is wedged ahead of the fatal and the buffer is sized to 1,
+		// because otherwise the entry cut's admission pass — bounded by
+		// liveBufferCapacity, which defaults large — dequeues the fatal on its
+		// own and the boundary's own probe is never what catches it. That
+		// bound is caller-configurable down to 1, which is the whole reason
+		// the probe carries pumpDepth+1 instead of borrowing it.
+		{
+			name: "page boundary",
+			opts: []eventfeed.Option{eventfeed.WithLiveBufferCapacity(1)},
+			arm: func(h *harness) {
+				h.polls.ScriptPage(eventfeed.PollPage{Position: "pos-1", Next: testOrigin + "/999/events.json?after=1"})
+				h.polls.ScriptPage(eventfeed.PollPage{Position: "pos-2"})
+			},
+			wedge:     func(conn *feedtest.Conn) { conn.Serve(framePing()) },
+			wantSaves: []string{"pos-1"},
+		},
+		// The superseded boundary: the call is abandoned with the deferral
+		// still parked, and its teardown is what cancels the call.
+		{
+			name:    "superseded boundary",
+			arm:     func(h *harness) { h.polls.StallNext() },
+			stalled: true,
+		},
+		// The poll-error boundary: recoverPoll's terminal and re-entry
+		// branches dispose the attempt, discarding everything the pump read.
+		{
+			name: "poll error boundary",
+			arm: func(h *harness) {
+				h.polls.ScriptError(&eventfeed.PollError{Kind: eventfeed.PollUnauthorized})
+			},
+		},
+		// The malformed-page boundary: a page with no position is refused,
+		// and the refusal is classified after the deferral is dispatched.
+		{
+			name: "malformed page boundary",
+			arm:  func(h *harness) { h.polls.ScriptPage(eventfeed.PollPage{Position: ""}) },
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			store := feedtest.NewStore()
+			store.Stored("pos-0")
+			h := storedHarness(t, store, tc.opts...)
+			h.minter.ScriptTicket(ticket(1))
+			// The second mint is scripted to fail TERMINALLY. A reconnecting
+			// connector therefore ends at Terminal(mint_failed) having made
+			// two mint calls, and a correct one ends at
+			// Terminal(protocol_fatal) having made one — so both assertions
+			// discriminate, and neither outcome strands the run on a socket
+			// the test never serves.
+			h.minter.ScriptError(&eventfeed.MintError{Kind: eventfeed.MintUnrecoverable})
+			tc.arm(h)
+			h.drainHandled()
+
+			deferred := make(chan struct{}, 4)
+			h.conn.OnFrameDeferred(func() { deferred <- struct{}{} })
+			queued := make(chan struct{}, eventfeed.ExportPumpDepth)
+			h.conn.OnPumpHandedOff(func(bool) {
+				select {
+				case queued <- struct{}{}:
+				default:
+				}
+			})
+			var conn *feedtest.Conn
+			var once sync.Once
+			h.polls.OnCall(func(feedtest.PollCall) {
+				once.Do(func() {
+					// Recoverable FIRST, so it takes the single deferral slot.
+					conn.Serve(frameDisconnect("remote", true))
+					select {
+					case <-deferred:
+					case <-time.After(watchdog):
+						t.Error("the recoverable disconnect was never deferred")
+						return
+					}
+					if tc.wedge != nil {
+						tc.wedge(conn)
+					}
+					// Fatal LAST, and only once the pump has handed it off:
+					// the guarantee is about a frame the pump has READ, so a
+					// test that raced the read would prove nothing.
+					drain(queued)
+					conn.Serve(frameDisconnect("invalid_event_stream_command", false))
+					select {
+					case <-queued:
+					case <-time.After(watchdog):
+						t.Error("the fatal frame never reached the hand-off queue")
+					}
+					if tc.stalled {
+						// Lapse the superseded-poll bound so the walk
+						// abandons the call it is still inside.
+						h.clock.Advance(staleAfter)
+					}
+				})
+			})
+			h.start()
+			conn = h.driveToSubscribed()
+			conn.Serve(frameConfirm(noFilterIdentifier))
+			h.awaitEndOrReconnect()
+			h.join()
+
+			_, terminal, _ := h.snapshot()
+			if terminal == nil || terminal.Reason != eventfeed.ReasonProtocolFatal {
+				t.Fatalf("terminal = %v, want reason %q — the server's verdict was already read", terminal, eventfeed.ReasonProtocolFatal)
+			}
+			if got := h.minter.Calls(); got != 1 {
+				t.Fatalf("mint calls = %d, want 1: a protocol-fatal rejection must not reconnect from any state", got)
+			}
+			assertPositions(t, store.Saves(), tc.wantSaves...)
+		})
+	}
+}
+
+// drain empties a buffered signal channel without blocking.
+func drain(ch chan struct{}) {
+	for {
+		select {
+		case <-ch:
+		default:
+			return
+		}
+	}
+}
+
+// awaitEndOrReconnect returns once the run has ended, or once a reconnect has
+// armed the backoff timer — firing it in that case so the run proceeds to its
+// scripted terminal mint failure instead of parking on a virtual clock nothing
+// advances. Without it a run that wrongly reconnects hangs, and a hang reports
+// as "the watchdog expired" rather than as the defect under test.
+func (h *harness) awaitEndOrReconnect() {
+	h.t.Helper()
+	deadline := time.Now().Add(watchdog)
+	for {
+		select {
+		case <-h.done:
+			return
+		default:
+		}
+		if slices.Contains(h.clock.Outstanding(), timerBackoff) {
+			h.fireTimer(timerBackoff)
+			return
+		}
+		if time.Now().After(deadline) {
+			h.t.Fatal("the run neither ended nor reconnected within the watchdog")
+		}
+		time.Sleep(time.Millisecond)
+	}
+}
+
 // TestProtocolFatalBehindTheBlockedHandOffIsImmediate extends the carve-out's
 // scan bound to the frame the pump has already READ but not yet handed off.
 //
@@ -1656,18 +1857,8 @@ func TestProtocolFatalBehindTheBlockedHandOffIsImmediate(t *testing.T) {
 	h.waitUntil("the drain parked mid-delivery", func() bool { return len(h.deliveredIDs()) == 1 })
 	// The scan handles a whole queue's worth of frames in one pass, which is
 	// more than the harness's frame-handled channel holds; nothing waits on
-	// it from here, so it is drained for the rest of the test.
-	drained := make(chan struct{})
-	go func() {
-		for {
-			select {
-			case <-h.handled:
-			case <-drained:
-				return
-			}
-		}
-	}()
-	t.Cleanup(func() { close(drained) })
+	// it from here.
+	h.drainHandled()
 	for i := 0; i < eventfeed.ExportPumpDepth; i++ {
 		conn.Serve(framePing())
 	}
