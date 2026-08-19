@@ -120,6 +120,16 @@ func (l *loop) walk(at *attempt, cursor Cursor, presentClass bool) (out cycleOut
 		// dispatched here, before anything else this iteration does: the page
 		// that was in flight has been fully accepted, delivered and saved, so
 		// this IS transition 21's page boundary.
+		//
+		// The probe runs FIRST, over every frame the pump has already read.
+		// Reaching them was previously left to the next poll's admission pass,
+		// which is bounded by the caller-configurable liveBufferCapacity — one
+		// queued ping under WithLiveBufferCapacity(1) spends the whole pass —
+		// and, more simply, never runs at all when the slot below ends the
+		// cycle first.
+		if out, done := l.probeFatal(at); done {
+			return out, "", true
+		}
 		if out, done := l.dispatchDeferred(at); done {
 			return out, "", true
 		}
@@ -148,7 +158,11 @@ func (l *loop) walk(at *attempt, cursor Cursor, presentClass bool) (out cycleOut
 			// The socket's own outcome, deferred while the seam call was in
 			// flight, outlived the staleness window with the call still
 			// outstanding. It IS the disposition — transition 21 — and its
-			// teardown is what cancels the abandoned call.
+			// teardown is what cancels the abandoned call. The server's own
+			// verdict outranks it if the pump had already read one.
+			if out, done := l.probeFatal(at); done {
+				return out, "", true
+			}
 			if out, done := l.dispatchDeferred(at); done {
 				return out, "", true
 			}
@@ -172,6 +186,14 @@ func (l *loop) walk(at *attempt, cursor Cursor, presentClass bool) (out cycleOut
 			// reported instead as authorization_failed or poll_failed, or
 			// retried indefinitely behind poll-retry waits when the error is
 			// transient.
+			//
+			// The probe extends that reasoning from the slot to the queue:
+			// recoverPoll's disposal discards everything the pump read, not
+			// just the parked frame, so a fatal sitting behind a recoverable
+			// one was replaced by the poll's own error just the same.
+			if out, done := l.probeFatal(at); done {
+				return out, "", true
+			}
 			if out, done := l.dispatchDeferred(at); done {
 				return out, "", true
 			}
@@ -230,7 +252,11 @@ func (l *loop) walk(at *attempt, cursor Cursor, presentClass bool) (out cycleOut
 			// Terminal(protocol_fatal). Transition 21's finish-the-page
 			// ordering does not apply here — it exists so an ACCEPTED page's
 			// deliveries and save are not stranded by the socket's death, and
-			// this page is being refused, so there is nothing to strand.
+			// this page is being refused, so there is nothing to strand. The
+			// probe covers the queue for the same reason it covers the slot.
+			if out, done := l.probeFatal(at); done {
+				return out, "", true
+			}
 			if out, done := l.dispatchDeferred(at); done {
 				return out, "", true
 			}
@@ -685,7 +711,7 @@ func (l *loop) drain(at *attempt) (cycleOutcome, bool) {
 	// Because nothing is held outside the buffer, an admission that overflows
 	// evicts the oldest events still pending — including ones this drain has
 	// not replayed yet. That is the same pre-cut loss condition the buffer
-	// always had, taking its drop-time dispatch in drainScan, before the held
+	// always had, taking its drop-time dispatch in fatalScan, before the held
 	// save: the conjunctive invariant asks that every such loss be explicitly
 	// accepted, not that a drain be exempt from the capacity it was
 	// configured with.
@@ -697,7 +723,7 @@ func (l *loop) drain(at *attempt) (cycleOutcome, bool) {
 	// plus pumpDepth+1.
 	budget := pumpDepth + 1
 	for {
-		if out, done := l.drainScan(at, &budget); done {
+		if out, done := l.fatalScan(at, &budget); done {
 			return out, true
 		}
 		ev, ok := l.buffer.shift()
@@ -711,15 +737,42 @@ func (l *loop) drain(at *attempt) (cycleOutcome, bool) {
 	}
 }
 
-// drainScan is Draining's protocol-fatal carve-out, and the ONLY reason the
-// drain looks at the frame queue at all. SPEC.md §23: "a raw
-// `invalid_event_stream_command` observed during Draining is
-// Terminal(`protocol_fatal`) immediately — the drain is not completed, the
+// fatalScan is the protocol-fatal carve-out's probe, and the ONLY reason the
+// drain or the walk looks at the frame queue outside an ordinary admission.
+// SPEC.md §23: "a raw `invalid_event_stream_command` observed during Draining
+// is Terminal(`protocol_fatal`) immediately — the drain is not completed, the
 // held entry position is NOT saved, and no `caught_up` is announced; only
 // recoverable failures defer." Without the scan a fatal frame — one the walk
 // left deferred, or one the pump has already queued — is seen only in
 // Streaming, after the held save and the caught_up announcement have both
 // happened.
+//
+// # Why the walk runs it too
+//
+// The obligation is not Draining's. §23 states it state-generically, twice:
+// "the protocol-fatal disconnect is terminal from EVERY socket-open state",
+// and "a raw invalid_event_stream_command frame READ in AwaitingWelcome,
+// CatchingUp, or Draining — the pump runs throughout — is the same
+// reason-level dispatch applied state-generically: Terminal(protocol_fatal),
+// never Backoff. An explicitly non-retryable protocol rejection must not
+// reconnect from any state." READ is the boundary the obligation attaches to.
+//
+// The walk has four points where it disposes of a deferred receive, and every
+// one of them ENDS THE CYCLE with the pump's queue never inspected. So a
+// `remote` disconnect parked in the slot — recoverable, arrived first — beat a
+// fatal the pump had already read sitting right behind it: the cycle ended as
+// an ordinary socket failure, the connector re-minted, and the fatal died with
+// the socket. That is the identical hole #760 closed inside the drain,
+// arriving through the other door, and it is why this is a shared helper
+// rather than a second copy.
+//
+// The treatment of what it dequeues is what makes it safe to run mid-walk.
+// Live events are admitted to the buffer, which is what CatchingUp does with
+// them anyway; the FIRST non-fatal socket outcome is parked in the same single
+// slot the caller is about to dispatch from, so arrival order for the reported
+// outcome is preserved; and later ones are discarded, which is all that could
+// ever happen to them (every dispatch of a socket outcome ends the cycle, so a
+// second could never be reached).
 //
 // Everything else keeps Draining's deferred consumption, which is §23's one
 // deliberate deferred-consumption case: a recoverable socket failure, a
@@ -733,7 +786,7 @@ func (l *loop) drain(at *attempt) (cycleOutcome, bool) {
 // budget is the drain's shared dequeue allowance, sized at the scanned
 // queue's own depth (see drain); an ordinary frame consuming it must never be
 // able to end the scan short of a fatal frame the pump had already queued.
-func (l *loop) drainScan(at *attempt, budget *int) (cycleOutcome, bool) {
+func (l *loop) fatalScan(at *attempt, budget *int) (cycleOutcome, bool) {
 	// A fatal frame already in the slot is dispatched now rather than after
 	// the save: the carve-out is about what governs, not about which queue the
 	// frame is sitting in.
@@ -779,6 +832,25 @@ func (l *loop) drainScan(at *attempt, budget *int) (cycleOutcome, bool) {
 		}
 	}
 	return cycleOutcome{}, false
+}
+
+// probeFatal runs one fatalScan over everything the pump has already read, at
+// a walk boundary that is about to dispose of a deferred receive.
+//
+// The budget is a fresh pumpDepth+1 per boundary, and for the same reason the
+// drain's is: the queue holds at most pumpDepth items, while the pump — a
+// single goroutine — may be blocked inside handOff with one more, and a budget
+// of pumpDepth spends itself on that frame's predecessors. It is deliberately
+// NOT the ownership cut's liveBufferCapacity, which is caller-configurable
+// down to 1 and measures the state machine's buffer rather than the pump's
+// queue.
+//
+// A fresh budget per boundary is bounded work, not an unbounded scan: the scan
+// stops the moment the queue is momentarily empty, so a boundary reached with
+// nothing queued costs one non-blocking receive.
+func (l *loop) probeFatal(at *attempt) (cycleOutcome, bool) {
+	budget := pumpDepth + 1
+	return l.fatalScan(at, &budget)
 }
 
 // deferForDrain parks one socket outcome the scan passed over, keeping the
