@@ -1,0 +1,34 @@
+Makefile
+  s_b98b4a85078d3e::t_16cffaf8d3ca9d 466-480,482
+  s_b98b4a85078d3e::t_d30303944dced4 416
+.github/workflows/test.yml
+  s_b98b4a85078d3e::t_6e91792438a1ad 514-527
+CONTRIBUTING.md
+  s_b98b4a85078d3e::t_05d5c48eff814d 137-139,142,145-169
+typescript/lint-rules/test-no-timer-scheduled-abort.mjs
+  s_b98b4a85078d3e::t_15d1f1e7ebfb7b 1-163
+typescript/lint-rules/oxlintrc.json
+  s_b98b4a85078d3e::t_c23907ea4e34fd 3
+  s_b98b4a85078d3e::t_8d36b473f31aba 4-12
+  s_b98b4a85078d3e::t_5897babca83999 1-2,13-16
+typescript/package.json
+  s_b98b4a85078d3e::t_18b84948c5ab43 32-34
+typescript/lint-rules/no-timer-scheduled-abort.js
+  s_b98b4a85078d3e::t_8fbd7d719a56d6 1-149
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "5adafd28a59c8eca161259ee5ee4103713c5351a",
+  "prompts": {},
+  "sessions": {
+    "s_b98b4a85078d3e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5bbef980-f552-48e7-bb51-0b748caa71ac",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
