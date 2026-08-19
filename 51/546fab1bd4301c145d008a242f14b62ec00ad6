@@ -1,0 +1,20 @@
+go/pkg/basecamp/client_retry_after_test.go
+  s_b98b4a85078d3e::t_9e4b582b9fc16b 203-213
+  s_b98b4a85078d3e::t_fe7094c15bac06 276,331
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "51546fab1bd4301c145d008a242f14b62ec00ad6",
+  "prompts": {},
+  "sessions": {
+    "s_b98b4a85078d3e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5bbef980-f552-48e7-bb51-0b748caa71ac",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
