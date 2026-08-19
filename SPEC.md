@@ -629,12 +629,18 @@ Swift carries the slot as a fifth associated value on `.validation` plus a `fiel
 
 Given header value `value`:
 
-1. Attempt parse as integer. If valid and > 0 → return as seconds. A positive value too large for the SDK's integer type is **over-range, not malformed**: RFC 9110 spells `delay-seconds` as `1*DIGIT` and sets no upper bound, so it saturates at the implementation's ceiling (below, and permitted by §7's note 4) rather than falling through. Only input that is not `1*DIGIT` at all is malformed.
+1. Attempt parse as integer. If valid and > 0 → return as seconds. A positive value too large for the SDK's integer type is **over-range, not malformed** — RFC 9110 spells `delay-seconds` as `1*DIGIT` and sets no upper bound — and the SDKs treat that class differently today; see below. Only input that is not `1*DIGIT` at all is malformed.
 2. Attempt parse as HTTP-date (RFC 7231, e.g., `Wed, 09 Jun 2021 10:18:14 GMT`). If valid → compute `max(0, date - now())` in seconds, **rounding a sub-second remainder up**; if > 0 → return.
 3. → `undefined` (fall through to backoff formula).
 
-**The ceiling step 1 saturates at is the implementation's own**, and §7's note 4 permits it as a
-host-limit bound rather than a policy cap. Go's hand-written client uses 2,147,483,647s (~68 years):
+**An over-range step 1 value either saturates at the implementation's ceiling or is rejected**, and
+§7's note 4 permits both — a host-limit bound on the conversion, or refusing a value the parser's own
+numeric type cannot hold. What neither may be is a *policy* cap. The two readings are observably
+different (saturating waits as long as the host can express; rejecting falls through to the local
+formula and retries a server that asked for a long wait after a few milliseconds), and converging
+them is #799 rather than something this section decides.
+
+Go's hand-written client saturates, at 2,147,483,647s (~68 years):
 `seconds × time.Second` wraps past `math.MaxInt64` above ~292 years, and the value is surfaced in an
 `int`, which is 32 bits on a 32-bit target — 2,147,483,647 is at or below both, so the answer does
 not vary with `GOARCH`, and it is both the number Kotlin already saturates this header at and the
@@ -642,9 +648,9 @@ shared ceiling §16 names. Wrapping is not a cosmetic concern: a negative durati
 at once, turning a server-directed wait into a tight retry loop (#795). Go's **generated** retry loop
 keeps an independent, unclamped copy of this conversion and still wraps; that is #798.
 
-Go saturates at both boundaries. TypeScript (above `Number.MAX_SAFE_INTEGER`) and Kotlin (above
-`Int.MAX_VALUE`) fall through to the backoff formula instead, which retries a server that asked for
-a very long wait after a few milliseconds; that divergence is tracked in #799 alongside step 2's.
+Go and Swift saturate; TypeScript (above `Number.MAX_SAFE_INTEGER`) and Kotlin (above
+`Int.MAX_VALUE`) reject and fall through; Python and Ruby have arbitrary-precision integers and never
+reach the boundary. #799 carries that table alongside step 2's.
 
 Step 2's rounding is up, not truncating, for two reasons: a positive remainder must never round to
 zero, because zero is read as "no usable value" and drops the request onto the local backoff curve —
