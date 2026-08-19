@@ -63,12 +63,6 @@ func (c *Connector) OnPumpReleased(f func()) { c.hooks.pumpReleased = f }
 // rendezvous for "the socket's death is queued for the state machine".
 func (c *Connector) OnPumpHandedOff(f func(isErr bool)) { c.hooks.pumpHandedOff = f }
 
-// OnPumpRead registers a hook fired after a pump read returns and before its
-// hand-off — the window in which a frame is READ but not yet observable
-// through the queue. Parking here is the only deterministic way to put the
-// protocol-fatal scan and an already-read frame in the same instant.
-func (c *Connector) OnPumpRead(f func()) { c.hooks.pumpRead = f }
-
 // OnFrameDeferred registers a hook fired when the in-flight-poll servicing
 // parks one receive — always a socket outcome — for the walk's next dispatch
 // point. It is the rendezvous for "the walk is now waiting on nothing but the
