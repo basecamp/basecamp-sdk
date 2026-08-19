@@ -1,0 +1,23 @@
+SPEC.md
+  s_b98b4a85078d3e::t_fedb5833314f22 639-649
+go/pkg/basecamp/client.go
+  s_b98b4a85078d3e::t_02ed6e53fbfac1 1128-1141,1172-1185
+go/pkg/basecamp/client_retry_after_test.go
+  s_b98b4a85078d3e::t_d18020247b7d74 188-194
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "f56784fb56413e446f77b14a7ede663cb36c27bf",
+  "prompts": {},
+  "sessions": {
+    "s_b98b4a85078d3e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5bbef980-f552-48e7-bb51-0b748caa71ac",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
