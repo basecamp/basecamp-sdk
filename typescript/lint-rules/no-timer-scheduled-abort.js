@@ -28,7 +28,8 @@
  * `setTimeout` / `setInterval`, spelled bare or as a member access
  * (`globalThis.setTimeout`, `window.setTimeout`). Nesting is followed: an abort
  * inside a function inside the timer callback still reports, because the timer
- * is still what schedules it.
+ * is still what schedules it. So is type-only syntax around the callback —
+ * `as`, `satisfies`, `!` — which changes the AST without changing what runs.
  *
  * ## What it cannot see
  *
@@ -47,10 +48,16 @@
  * So this holds a SYNTACTIC invariant across the call sites its matcher
  * recognizes, including ones not written yet. It does not observe what a test
  * does at runtime, and it is not the whole guarantee — the population bound is
- * `rg -n '\.abort\(' typescript/tests`, and each site should be classified by
- * what makes the abort land. At the time this rule was written that was 14 call
- * sites: stubbed sleep or fetch 5, MSW handler 3, retry hook 3, already aborted
- * before the call 2, synchronous after dispatch 1. None timer-scheduled.
+ *
+ *     rg -n 'abort\s*\(|\["abort"\]\s*\(' typescript/tests
+ *
+ * which covers every spelling the rule recognizes (`x.abort(`, bare `abort(`,
+ * `x["abort"](`) rather than dot-member access alone, so a sweep cannot report
+ * clean while a form the rule treats as an abort is live. Each site should be
+ * classified by what makes the abort land. At the time this rule was written
+ * that was 14 call sites: stubbed sleep or fetch 5, MSW handler 3, retry hook
+ * 3, already aborted before the call 2, synchronous after dispatch 1. None
+ * timer-scheduled, and the two spellings return the same set today.
  *
  * ## Suppressing it
  *
@@ -102,6 +109,31 @@ function isFunction(node) {
   );
 }
 
+/**
+ * Type-only syntax that can sit between a callback and the call it is an
+ * argument of. These wrap the function in an extra AST node while erasing to
+ * nothing at runtime, so `setTimeout((() => c.abort()) as () => void, 50)` has
+ * a TSAsExpression — not the arrow function — as `arguments[0]`. Comparing the
+ * function itself against `arguments[0]` therefore missed every one of them.
+ */
+const TYPE_ONLY_WRAPPERS = new Set([
+  "TSAsExpression",
+  "TSSatisfiesExpression",
+  "TSNonNullExpression",
+  "TSTypeAssertion",
+  "TSInstantiationExpression",
+  "ParenthesizedExpression",
+]);
+
+/** The outermost node that IS `node` once type-only syntax is erased. */
+function withTypeWrappers(node) {
+  let outermost = node;
+  while (outermost.parent && TYPE_ONLY_WRAPPERS.has(outermost.parent.type)) {
+    outermost = outermost.parent;
+  }
+  return outermost;
+}
+
 const rule = {
   meta: {
     type: "problem",
@@ -120,12 +152,15 @@ const rule = {
         // directly at any nesting depth without a hand-rolled subtree walk.
         for (let current = node.parent; current; current = current.parent) {
           if (!isFunction(current)) continue;
-          const parent = current.parent;
+          // Compare the callback WITH any type-only wrappers around it: those
+          // are what the call actually holds as `arguments[0]`.
+          const callback = withTypeWrappers(current);
+          const parent = callback.parent;
           if (
             parent &&
             parent.type === "CallExpression" &&
             isTimerCall(parent) &&
-            parent.arguments[0] === current
+            parent.arguments[0] === callback
           ) {
             context.report({
               node,

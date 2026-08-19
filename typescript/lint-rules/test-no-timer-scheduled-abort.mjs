@@ -76,6 +76,22 @@ export const c = setTimeout(() => { const inner = () => controller.abort(); inne
     [2, 3, 4],
   ],
   [
+    // Review follow-up (Copilot). TypeScript-only syntax between the callback
+    // and the timer changes the AST shape without changing what runs, and the
+    // ancestor walk used to compare the FUNCTION against `arguments[0]` — which
+    // is the wrapper node here, so all three of these slipped the gate while
+    // the rule's header claimed inline callbacks were covered. These are
+    // spellings of the shape the rule targets, not the renamed-timer /
+    // by-reference classes it declares out of scope.
+    "TypeScript wrappers between the callback and the timer",
+    `const controller = new AbortController();
+export const a = setTimeout((() => controller.abort()) as () => void, 50);
+export const b = setTimeout((() => controller.abort())!, 50);
+export const c = setTimeout((() => controller.abort()) satisfies () => void, 50);
+`,
+    [2, 3, 4],
+  ],
+  [
     // The seams that replaced them: abort from inside the MSW handler, and
     // abort queued from the retry hook. Neither is timer-scheduled.
     "in-flight seams are allowed",

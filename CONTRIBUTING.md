@@ -162,9 +162,12 @@ abort is merely racing, and a proximity selector cannot.
 
 **What the rule does not cover** is stated in its own header rather than
 restated here: a renamed timer, a callback passed by reference, a computed
-`.abort` access. The honest population bound is
-`rg -n '\.abort\(' typescript/tests` — classify each site by *what makes the
-abort land*, not by the shape it is written in. The rest of this rule, above,
+`.abort` access whose key is not a literal. The honest population bound is
+`rg -n 'abort\s*\(|\["abort"\]\s*\(' typescript/tests` — every spelling the
+rule treats as an abort, not dot-member access alone, so a later sweep cannot
+come back clean while a bare `abort()` or `controller["abort"]()` is live.
+Classify each site by *what makes the abort land*, not by the shape it is
+written in. The rest of this rule, above,
 is judgment the linter cannot hold: which assertion is the discriminating one,
 and when a wall-clock ceiling is redundant with it.
 
