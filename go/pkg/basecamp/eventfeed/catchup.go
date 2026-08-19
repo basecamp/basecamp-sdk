@@ -3,6 +3,7 @@ package eventfeed
 import (
 	"errors"
 	"fmt"
+	"runtime"
 	"time"
 )
 
@@ -868,7 +869,24 @@ func (l *loop) fatalScan(at *attempt, budget *int) (cycleOutcome, bool) {
 				l.deferForDrain(&deferredFrame{item: item})
 			}
 		default:
-			return cycleOutcome{}, false
+			// An empty queue is proof there is nothing to find ONLY if the
+			// pump also holds nothing it has already read. The two are not
+			// the same instant: the pump sets `holding` when ReadFrame
+			// returns and clears it when the item is in the queue, and a scan
+			// sampling between those points sees an empty queue with the
+			// frame — possibly the fatal one — sitting in the pump's own
+			// stack. The carve-out is stated over what the pump has READ, so
+			// the scan waits out that window rather than reading it as quiet.
+			//
+			// It terminates. The interval `holding` covers contains no I/O
+			// and no blocking except the hand-off itself, and a hand-off can
+			// only block on a FULL queue — which is not this branch, since a
+			// full queue is dequeued above and each dequeue releases it. The
+			// budget bounds the loop either way.
+			if !at.lc.holding.Load() {
+				return cycleOutcome{}, false
+			}
+			runtime.Gosched()
 		}
 	}
 	return cycleOutcome{}, false

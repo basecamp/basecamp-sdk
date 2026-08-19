@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -138,6 +139,13 @@ type liveConn struct {
 	frames chan pumpItem
 	stale  *staleHolder
 	hooks  testHooks
+	// holding reports that the pump has READ a frame it has not yet handed
+	// off. It is what makes "every frame the pump has already read" an
+	// observable condition rather than an aspiration: without it, the window
+	// between ReadFrame returning and the channel send is invisible, and a
+	// non-blocking scan that samples inside it concludes the queue is empty
+	// when a frame — possibly the protocol-fatal one — has already arrived.
+	holding atomic.Bool
 }
 
 // newLiveConn arms staleness (socket open) and then starts the pump, in that
@@ -164,12 +172,22 @@ func (lc *liveConn) pump(ctx context.Context) {
 	defer close(lc.frames)
 	for {
 		data, err := lc.conn.ReadFrame(ctx)
+		// Set BEFORE anything else the read leads to, and cleared only once
+		// the item is in the queue: the flag must cover the whole interval in
+		// which this goroutine holds a frame no other goroutine can see.
+		lc.holding.Store(true)
+		if lc.hooks.pumpRead != nil {
+			lc.hooks.pumpRead()
+		}
 		if err != nil {
 			lc.handOff(ctx, pumpItem{err: err})
+			lc.holding.Store(false)
 			return
 		}
 		lc.stale.reset()
-		if !lc.handOff(ctx, pumpItem{data: data}) {
+		handed := lc.handOff(ctx, pumpItem{data: data})
+		lc.holding.Store(false)
+		if !handed {
 			return
 		}
 	}
@@ -775,8 +793,21 @@ func (l *loop) runCycle(delay time.Duration) cycleOutcome {
 			hs.Stop()
 			var derr *DialError
 			if errors.As(r.err, &derr) && derr.Kind == DialPolicy {
+				// The KIND is read; the text is not. This DialError came out
+				// of CableTransport.Dial, a documented extension point, so
+				// its Reason and its cause are host-authored — and the dialed
+				// URL carries the ticket in its query string. Copying either
+				// into the terminal would hand it to every consumer through
+				// the channel Observer.Disconnected was hardened for, so the
+				// message is the connector's own and no cause is retained.
+				//
+				// The pre-check above keeps its text and is not the same
+				// case: its reasons are written in transport.go, and its two
+				// interpolations are a URL scheme and a port, which url.Parse
+				// constrains to alphanumerics and digits respectively.
 				return cycleOutcome{kind: outcomeTerminal, term: &TerminalError{
-					Reason: ReasonInvalidCableURL, Msg: derr.Reason, Err: derr,
+					Reason: ReasonInvalidCableURL,
+					Msg:    "the cable transport refused the mint's url as a policy violation",
 				}}
 			}
 			return cycleOutcome{kind: outcomeFailed} // transition 7
@@ -1337,9 +1368,14 @@ func observableSocketError(err error) error {
 	}
 	var ce *CloseError
 	if errors.As(err, &ce) {
-		// Flat by construction and renders only its code — an integer cannot
-		// carry a credential. See CloseError.Error.
-		return ce
+		// REBUILT code-only, not passed along. CloseError.Error renders the
+		// integer alone, which is what made passing the value through look
+		// safe — but Reason is an exported field holding the peer's string,
+		// and it survives the rendering untouched. A host that logs the
+		// error's fields, formats it with %+v, or simply reads ce.Reason gets
+		// the peer's text on the surface this vocabulary exists to protect.
+		// Rendering is not the only way out of a struct.
+		return &CloseError{Code: ce.Code}
 	}
 	var ife *invalidFrameError
 	if errors.As(err, &ife) {
@@ -1492,7 +1528,27 @@ func (l *loop) saveCheckpoint(position string) {
 	// earlier silently re-delivers them. Ordering a second connector against
 	// this one is the consumer's to arrange, and Connector.Wait is what it
 	// arranges with.
-	err := l.cfg.store.Save(l.runCtx, l.checkpointKey(), position)
+	//
+	// "Unconditionally" requires DETACHING the context, and passing l.runCtx
+	// here made the guarantee empty for half the stores that could implement
+	// it. Close cancels runCtx synchronously, so a store that honors its
+	// context — which CheckpointStore's contract permits, and says nothing
+	// against — receives a cancelled one and returns ctx.Err(). The position
+	// is then lost exactly as it was under the durable gate, by a different
+	// route. Neither store this package ships honors ctx, which is why every
+	// test passed: the defect was invisible to the only implementations it was
+	// tested against.
+	//
+	// WithoutCancel keeps the run's context VALUES — a store carrying a trace
+	// or a tenant on the context still sees them — and drops only the
+	// cancellation. The trade is that a store which blocks forever now blocks
+	// the run's exit, and therefore Wait, rather than being released by Close.
+	// That is the lesser harm and the narrower one: a store is already
+	// entitled to ignore ctx entirely (the built-in FileCheckpointStore
+	// documents that it does), so a blocking store could already do this,
+	// while a silently dropped position is unbounded re-delivery with nothing
+	// recording that it happened.
+	err := l.cfg.store.Save(context.WithoutCancel(l.runCtx), l.checkpointKey(), position)
 	if err != nil {
 		if l.cfg.observer.CheckpointSaveFailed != nil {
 			l.cfg.observer.CheckpointSaveFailed(err)
