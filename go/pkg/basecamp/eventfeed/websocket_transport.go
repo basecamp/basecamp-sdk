@@ -413,6 +413,25 @@ var errCloseNotAcknowledged = errors.New("eventfeed: cable close handshake not a
 // (microseconds, bounded by the kernel's send buffer, not the peer) and only
 // the politeness phase is still running. What the caller trades for returning
 // early is the last word on whether the peer acknowledged.
+//
+// # A concurrent second caller returns nil before the first has finished
+//
+// The latch is taken before the handshake, so a Close racing another Close
+// reports success while the first is still inside its budget. That is the
+// intended trade, not an oversight, and the alternative was considered: making
+// repeats wait on a shared completion signal would make every extra caller
+// block for up to closeGraceBudget, which is precisely the property the layer
+// above refuses — Connector.Close is documented as callable from inside a
+// consumer callback and must never wait on host I/O.
+//
+// Nothing is unsound about the early return. The FIRST caller's budget still
+// bounds the teardown for everyone: the lifetime is cancelled either way,
+// within closeGraceBudget, and every parked read and write is unblocked by
+// that cancellation rather than by any caller's return. So what a second
+// caller loses is the peer's acknowledgement — the same thing the first caller
+// trades away past the budget — and never the teardown itself. The connector
+// itself never races here: it closes each attempt's socket once, from the run
+// goroutine.
 func (c *wsConn) Close(code int, reason string) error {
 	c.mu.Lock()
 	if c.closed {
