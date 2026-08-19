@@ -1103,11 +1103,17 @@ const maxRetryAfterSeconds = int64(math.MaxInt64) / int64(time.Second)
 // device-flow parser (SPEC §16): a digit string too long to be an int is
 // malformed and falls back, while a value that parses but exceeds what we can
 // honour is clamped.
-func clampRetryAfterSeconds(seconds int) int {
+//
+// It takes an int64 because the HTTP-date branch has one: seconds are derived
+// from a time.Duration there, whose range exceeds int on a 32-bit build, and
+// narrowing before the clamp is what the clamp exists to prevent. The ceiling
+// is therefore whichever of the two host limits binds first — the Duration's
+// and int's — so the returned value is always exactly representable.
+func clampRetryAfterSeconds(seconds int64) int {
 	if seconds <= 0 {
 		return 0
 	}
-	return int(min(int64(seconds), maxRetryAfterSeconds))
+	return int(min(seconds, maxRetryAfterSeconds, int64(math.MaxInt)))
 }
 
 // parseRetryAfter parses the Retry-After header value.
@@ -1121,12 +1127,21 @@ func parseRetryAfter(header string) int {
 	}
 	// Try parsing as seconds (integer)
 	if seconds, err := strconv.Atoi(header); err == nil && seconds > 0 {
-		return clampRetryAfterSeconds(seconds)
+		return clampRetryAfterSeconds(int64(seconds))
 	}
 	// Try parsing as HTTP-date (e.g., "Wed, 21 Oct 2015 07:28:00 GMT")
 	if t, err := http.ParseTime(header); err == nil {
-		seconds := int(time.Until(t).Seconds())
-		if seconds > 0 {
+		// Whole seconds by integer division of the Duration, NOT via
+		// `int(d.Seconds())`. That spelling narrows a float64 to an int, and
+		// Go leaves an out-of-range float→int conversion implementation-
+		// defined: where int is 32 bits, a date more than ~68 years out (and
+		// time.Until saturates at ~292 for anything further, including the
+		// year-9999 dates a server can legally send) produced a garbage value
+		// that read as non-positive, so the header was discarded and the loop
+		// fell back to its millisecond backoff — the one outcome this clamp
+		// exists to avoid. Integer division cannot leave the Duration's range,
+		// and clampRetryAfterSeconds bounds the result by int's.
+		if seconds := int64(time.Until(t) / time.Second); seconds > 0 {
 			return clampRetryAfterSeconds(seconds)
 		}
 	}

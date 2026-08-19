@@ -88,17 +88,37 @@ func retryAfterProbe(t *testing.T, handler http.HandlerFunc) ([]time.Duration, e
 	client.logger = slog.New(delays)
 	client.hooks = &cancelOnRetryHooks{cancel: cancel}
 
-	start := time.Now()
-	_, err := client.Get(ctx, "/test.json")
 	// Not the assertion — the assertions are all exact equalities below. This
 	// is the guard that keeps the whole file honest: if the loop's wait ever
 	// stopped observing cancellation, every case here would spend its full
 	// Retry-After instead of returning at once, and this says so in one line
 	// rather than hanging until the package test timeout.
-	if elapsed := time.Since(start); elapsed > 5*time.Second {
-		t.Fatalf("Get took %v after cancellation at the retry boundary; the retry wait is not interruptible", elapsed)
+	//
+	// Get runs in a goroutine so the guard can actually fire (review
+	// follow-up, Copilot). Called inline, a wait that ignored cancellation
+	// would simply never return, and an elapsed-time check placed after it is
+	// unreachable — most obviously now that an over-range Retry-After
+	// saturates at ~292 years rather than wrapping to a negative delay. The
+	// abandoned goroutine outlives the test; that is the cost of reporting a
+	// hang instead of becoming one.
+	type outcome struct {
+		delays []time.Duration
+		err    error
 	}
-	return delays.snapshot(), err
+	done := make(chan outcome, 1)
+	go func() {
+		_, err := client.Get(ctx, "/test.json")
+		done <- outcome{delays: delays.snapshot(), err: err}
+	}()
+
+	select {
+	case got := <-done:
+		return got.delays, got.err
+	case <-time.After(5 * time.Second):
+		t.Fatalf("Get had not returned 5s after cancellation at the retry boundary; "+
+			"the retry wait is not interruptible (delays computed so far: %v)", delays.snapshot())
+		return nil, nil
+	}
 }
 
 func rateLimited(retryAfter string) http.HandlerFunc {
@@ -239,6 +259,35 @@ func TestClient_RetryAfterSaturatesAtDurationCeiling(t *testing.T) {
 	if want := time.Duration(maxRetryAfterSeconds) * time.Second; delays[0] != want {
 		t.Errorf("computed a %v retry delay, want %v — an over-range Retry-After saturates at "+
 			"what a Duration can hold rather than falling back to the ~1ms backoff curve", delays[0], want)
+	}
+}
+
+// TestParseRetryAfter_FarFutureHTTPDateSaturates covers the header's other wire
+// form at the same boundary. A server may legally name a date beyond anything a
+// Duration can hold — RFC 7231 puts no bound on it, and year-9999 dates are
+// real — for which time.Until saturates at ~292 years. That must saturate the
+// parsed delay too, not be discarded onto the millisecond backoff curve.
+//
+// Stated honestly (review follow-up, Codex/Copilot): the defect this guards is
+// 32-bit-only and therefore cannot be executed here. `int(d.Seconds())` narrows
+// a float64, and Go leaves an out-of-range float→int conversion
+// implementation-defined; where int is 32 bits that produced a non-positive
+// value and the header was dropped. The remedy is to remove the narrowing —
+// whole seconds now come from integer division in the Duration domain — so this
+// pins the resulting contract on every platform rather than proving the fix on
+// the one that had the bug.
+func TestParseRetryAfter_FarFutureHTTPDateSaturates(t *testing.T) {
+	seconds := parseRetryAfter("Fri, 31 Dec 9999 23:59:59 GMT")
+
+	if seconds <= 0 {
+		t.Fatalf("parseRetryAfter(a year-9999 HTTP-date) = %d, want a positive saturated delay — "+
+			"a non-positive result reads as 'no delay' and drops the server's wait onto the backoff curve", seconds)
+	}
+	if int64(seconds) > maxRetryAfterSeconds {
+		t.Errorf("parseRetryAfter(a year-9999 HTTP-date) = %d, want at most %d", seconds, maxRetryAfterSeconds)
+	}
+	if delay := time.Duration(seconds) * time.Second; delay <= 0 {
+		t.Errorf("time.Duration(%d) * time.Second = %v, want a positive duration", seconds, delay)
 	}
 }
 

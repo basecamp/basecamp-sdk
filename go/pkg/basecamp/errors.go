@@ -199,7 +199,7 @@ func ErrRateLimit(retryAfter int) *Error {
 	// whose seconds→Duration conversion overflows would make the retry loop
 	// wait a negative delay, i.e. not wait at all. The hint already treated
 	// non-positive as absent; now the field agrees with it.
-	retryAfter = clampRetryAfterSeconds(retryAfter)
+	retryAfter = clampRetryAfterSeconds(int64(retryAfter))
 
 	hint := "Try again later"
 	if retryAfter > 0 {
