@@ -305,6 +305,14 @@ func (c *wsConn) underLifetime(ctx context.Context) (context.Context, func()) {
 // rejects an over-limit message during the read, without materializing it,
 // and the connection is dead from then on).
 func (c *wsConn) ReadFrame(ctx context.Context) ([]byte, error) {
+	// The precedence holds on entry too, not only on the way out. Checking the
+	// local close first reversed it whenever both were already true — the
+	// shutdown a run loop performs, cancel then close — and reported a
+	// cancelled read as a connection failure. WriteFrame checks the context
+	// first; the two must not disagree.
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	if c.isClosed() {
 		return nil, errCableConnClosed
 	}

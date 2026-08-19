@@ -223,6 +223,32 @@ func runTransportContract(t *testing.T, newHarness func(t *testing.T) contractHa
 		}
 	})
 
+	t.Run("cancellation outranks local close when both already happened", func(t *testing.T) {
+		// The precedence — cancellation, then local close, then peer close —
+		// is only observable when two of them are true at once, which is
+		// exactly the shutdown a run loop performs: cancel the run context,
+		// then close the connection. A caller sorting "my shutdown" from "the
+		// socket died" reads the wrong answer if the order flips, and the two
+		// methods must not disagree with each other about it either.
+		h := newHarness(t)
+		conn, _, err := h.Dial(context.Background(), "/cable", 1<<20)
+		if err != nil {
+			t.Fatalf("dial: %v", err)
+		}
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+		// A transport may report an unacknowledged close handshake; the
+		// precedence is what is under test, not the close's own verdict.
+		_ = conn.Close(1000, "teardown")
+
+		if _, err := conn.ReadFrame(ctx); !errors.Is(err, context.Canceled) {
+			t.Errorf("ReadFrame with a cancelled ctx over a closed conn = %v, want context.Canceled", err)
+		}
+		if err := conn.WriteFrame(ctx, []byte("x")); !errors.Is(err, context.Canceled) {
+			t.Errorf("WriteFrame with a cancelled ctx over a closed conn = %v, want context.Canceled", err)
+		}
+	})
+
 	t.Run("context cancellation unblocks a pending read", func(t *testing.T) {
 		h := newHarness(t)
 		conn, _, err := h.Dial(context.Background(), "/cable", 1<<20)
