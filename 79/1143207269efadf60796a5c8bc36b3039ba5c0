@@ -1,0 +1,21 @@
+go/pkg/basecamp/eventfeed/filestore.go
+  s_bcb193599a4870::t_feb70b3f6eca7f 279-301
+go/pkg/basecamp/eventfeed/filestore_test.go
+  s_bcb193599a4870::t_570b64921d6b76 910-960
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "791143207269efadf60796a5c8bc36b3039ba5c0",
+  "prompts": {},
+  "sessions": {
+    "s_bcb193599a4870": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5ae90ec8-5ed7-4774-88d9-9d66550a5643",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
