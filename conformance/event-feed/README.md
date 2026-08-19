@@ -357,11 +357,12 @@ Each mutation is shown red against at least one fixture in the reference
 implementation PR's body before it counts.
 
 **One row is an exception, and it is the reason this heading is worth reading
-twice.** Row 15's mutation lives BELOW the tier-2 seam, so this suite kills
-only the half above it; the note under the table states the boundary and names
-where the other half is proven. Every other row is a whole kill. A matrix that
-counted the partial row as a kill would be making exactly the class of claim
-this family exists to check.
+twice.** Row 15's mutation is **not killed at tier 2 at all** — it lives below
+the poll seam, where no tier-2 harness can reach it. Fixture 30 is named
+against it because it pins a different fault class at the same boundary, not
+because it kills the mutant. Every other row is a real kill. A matrix that
+counted an unreachable mutant as killed — or as half-killed — would be making
+exactly the class of claim this family exists to check.
 
 | # | Mutation | Killed by |
 |---|---|---|
@@ -379,18 +380,32 @@ this family exists to check.
 | 12 | `bypass-configured-handler` (handler registered but skipped; default-terminal applied) | 24, 25 (via `handlerInvocations` exact-set) |
 | 13 | `follow-cross-origin-continuation` (skips §8 validation, polls the hostile URL) | 26, 27 |
 | 14 | `collapse-load-error-to-missing` | 28 |
-| 15 | `follow-cross-origin-redirect` (follows a 302 to a foreign Location) | 30 — **partially**, and the boundary is below the seam. See the note under this table. |
+| 15 | `follow-cross-origin-redirect` (follows a 302 to a foreign Location) | **not killed at tier 2** — below the poll seam; Layer 1 owns it. Fixture 30 pins a different fault class above the seam. See the note under this table. |
 | 16 | `discard-live-id-at-or-below-served-id` (streaming lane orders live ids against the highest poll-served id) | 31 — and 31 alone: verified to pass all of 01–30, because every other straggler either arrives with nothing yet served (20) or is buffered pre-cut (01, 12, 19) |
 
-**Row 15 is the family's one partial kill, and the reason is structural.** In
-tier 2 the poll lane is a SEAM: the driver receives the fixture's scripted 302
-and hands the connector an already-formed redirect-refused verdict. The
+**Row 15 is not killed at tier 2, and the reason is structural.** In tier 2 the
+poll lane is a SEAM. The driver receives the fixture's scripted 302, reduces
+the `Location` to its origin with `CanonicalOrigin`, and hands the connector a
+`PollRedirectRefused` verdict carrying that origin and a generic cause. The
 connector never sees a `Location` header and never decides whether to follow
-one, so the `follow-cross-origin-redirect` mutation lives **below** the seam
-and no tier-2 harness can reach it. What fixture 30 does kill is the half above
-the seam: a connector that mishandles the verdict — retrying it, classifying it
-as anything but Terminal(`invalid_continuation`), or echoing more of the
-`Location` than its origin — diverges on `finally` and fails.
+one, so `follow-cross-origin-redirect` is not merely hard to observe here — it
+is **unreachable**, and an unreachable mutant is not a partial kill.
+
+What fixture 30 does pin is a different fault class, above the seam: given a
+`PollRedirectRefused` verdict, a connector must classify it as
+Terminal(`invalid_continuation`) and must not retry it. Its `finally` makes
+both fail loudly — the reason is asserted exactly, and `mintCount: 1` /
+`connectCount: 1` / `timers: {}` / `socket: closed` leave no room for a retry,
+a reconnect, or a lingering timer.
+
+**Redaction is not among them**, and an earlier revision of this note said it
+was. The driver performs the redaction itself, before the connector runs: no
+path or query text from the `Location` ever reaches the connector, so a
+connector that echoed its entire input verbatim would pass fixture 30
+unchanged. Claiming it here would have been a kill that cannot fail. That proof
+belongs to `TestRedirectRefusalExposesOnlyTheLocationOrigin`, which feeds a
+secret-bearing cause and asserts the terminal's whole rendering and cause chain
+never carry it, and to the Layer-1 adapter.
 
 An earlier revision of this row claimed a harness obligation to "bind the
 foreign origin to a sentinel listener whose any-request fails the scenario".
