@@ -462,6 +462,81 @@ func TestWebSocketTransport_CloseIsBoundedAgainstAnUnresponsivePeer(t *testing.T
 	}
 }
 
+// TestWebSocketTransport_CloseUnblocksAPendingReadAgainstASilentPeer is the
+// other half of the bound above, and the half a cooperative peer cannot see.
+// The contract suite's "close unblocks a pending read" runs against a harness
+// peer that answers the close handshake, so coder/websocket's Conn.Close
+// returns at once and the socket dies with it. Against a peer that stays alive
+// and silent, Close returns on the transport's own budget while the library is
+// still inside waitCloseHandshake — and the socket, which is what actually
+// unblocks a read, is not torn down until that finishes ~5s later. A pending
+// ReadFrame(context.Background()) is doubly stranded there: coder/websocket
+// installs its read-cancellation hook only when the read ctx HAS a Done
+// channel (conn.go setupReadTimeout returns early otherwise), so a background
+// read is not cancellable at all.
+//
+// That is the CableConn.Close contract — "unblocks ReadFrame and WriteFrame" —
+// and the reason closeGraceBudget exists: a teardown the caller waits a second
+// for, whose read pump then stalls four more, has moved the stall rather than
+// bounded it. The elapsed time is measured from Close's RETURN, so the budget
+// itself is not what is being asserted here.
+//
+// Both halves again: the read unblocks, AND the close frame still reached the
+// peer — the discriminator against "cancel everything the moment Close is
+// called", which would unblock the read by killing the socket out from under
+// the close frame §23 requires the peer to see. That second half catches such a
+// regression on most runs rather than every one (moving the cancel ahead of the
+// handshake races the close-frame write against the socket teardown, and the
+// write sometimes wins); it is a backstop on top of the bound above, not a
+// deterministic gate, and there is no synchronization point in the seam that
+// would make it one.
+func TestWebSocketTransport_CloseUnblocksAPendingReadAgainstASilentPeer(t *testing.T) {
+	accepted := make(chan *websocket.Conn, 1)
+	srv := newParkedWSServer(t, accepted, []string{"actioncable-v1-json"})
+
+	tr := &eventfeed.WebSocketTransport{}
+	conn, err := tr.Dial(context.Background(), "ws"+strings.TrimPrefix(srv.URL, "http")+"/cable", 1<<20)
+	if err != nil {
+		t.Fatalf("dial: %v", err)
+	}
+	peer := awaitPeer(t, accepted)
+
+	read := make(chan error, 1)
+	go func() {
+		_, err := conn.ReadFrame(context.Background())
+		read <- err
+	}()
+	time.Sleep(50 * time.Millisecond) // let the read block inside the library
+
+	if err := conn.Close(1000, "teardown"); err != nil && !strings.Contains(err.Error(), "not acknowledged") {
+		t.Fatalf("close: %v", err)
+	}
+	closeReturned := time.Now()
+
+	select {
+	case err := <-read:
+		if err == nil {
+			t.Fatal("the pending read returned a frame after close, want an error")
+		}
+		var ce *eventfeed.CloseError
+		if errors.As(err, &ce) {
+			t.Errorf("pending read error = *CloseError %v; CloseError is reserved for a PEER close", ce)
+		}
+		if waited := time.Since(closeReturned); waited > closeBoundWatchdog {
+			t.Errorf("the pending read unblocked %v after Close returned, want under %v", waited, closeBoundWatchdog)
+		}
+	case <-time.After(closeBoundWatchdog):
+		t.Fatalf("the pending read stayed blocked more than %v after Close returned, against a peer that never answers the close handshake", closeBoundWatchdog)
+	}
+
+	// The close frame must still have been written: unblocking the read must
+	// not come from tearing the socket down before the peer could see it.
+	if err := awaitPeerRead(t, peer); websocket.CloseStatus(err) != websocket.StatusNormalClosure {
+		t.Errorf("peer read after teardown = %v, want a %d close frame: the close frame must still be written",
+			err, websocket.StatusNormalClosure)
+	}
+}
+
 // newParkedWSServer starts a WebSocket server whose handler accepts one
 // connection, publishes it on accepted, and then parks WITHOUT READING until
 // the test ends — the shape both the subprotocol refusal and the close-bound
