@@ -89,7 +89,7 @@ failures = []
 # all, when gh is meant to be absent), so the real gh can never answer. The
 # interpreter is invoked by absolute path for the same reason. Returns
 # [combined_output, status, gh_log_lines].
-def run_checker(allowlist:, states: nil, gh_fail: false, repo: nil, github_repository: nil)
+def run_checker(allowlist:, tracking: {}, states: nil, gh_fail: false, repo: nil, github_repository: nil)
   Dir.mktmpdir("known-defect-selftest") do |dir|
     path_dir = File.join(dir, "bin")
     Dir.mkdir(path_dir)
@@ -104,9 +104,17 @@ def run_checker(allowlist:, states: nil, gh_fail: false, repo: nil, github_repos
     allow_path = File.join(dir, "bc3-route-allowlist.yml")
     File.write(allow_path, YAML.dump(allowlist))
 
+    # Pointed at a temp file even when the case supplies nothing, so the
+    # checker can never read the repository's REAL registry mid-self-test —
+    # which would make these cases depend on live issue state and on the
+    # network, the two things the stub exists to remove.
+    tracking_path = File.join(dir, "tracking-issues.yml")
+    File.write(tracking_path, YAML.dump(tracking))
+
     env = {
       "PATH" => path_dir,
       "BC3_ROUTE_ALLOWLIST" => allow_path,
+      "TRACKING_ISSUES" => tracking_path,
       "GH_STUB_LOG" => gh_log,
       "GH_STUB_STATES" => states,
       "GH_STUB_FAIL" => (gh_fail ? "1" : nil),
@@ -120,7 +128,13 @@ def run_checker(allowlist:, states: nil, gh_fail: false, repo: nil, github_repos
   end
 end
 
+# CASES counts what actually ran. The summary used to restate the number by
+# hand, and it was wrong the moment a case was added — the same stale-constant
+# failure the gates in this directory exist to catch, in the gate's own tests.
+CASES = [ 0 ]
+
 def expect_pass(failures, label, out, status, fragment = nil)
+  CASES[0] += 1
   if !status.success?
     puts "  FAIL  #{label}"
     failures << "#{label}: expected PASS but checker exited #{status.exitstatus}:\n#{out}"
@@ -133,6 +147,7 @@ def expect_pass(failures, label, out, status, fragment = nil)
 end
 
 def expect_fail(failures, label, out, status, fragment)
+  CASES[0] += 1
   if status.success?
     puts "  FAIL  #{label}"
     failures << "#{label}: expected FAILURE but checker passed:\n#{out}"
@@ -161,7 +176,7 @@ puts "==> known-defect tracking-issue self-test (checker: #{CHECKER.sub("#{ROOT}
 
 out, status, calls = run_checker(allowlist: { "sdk_routes_known_defective" => [], "bc3_routes_not_modeled" => [] })
 expect_pass(failures, "1. empty allowlist is a no-op", out, status,
-            "references no tracking issues")
+            "no tracking issues referenced")
 unless calls.empty?
   puts "  FAIL  1a. empty allowlist makes no API calls"
   failures << "1a: expected no gh calls, got #{calls.inspect}"
@@ -281,8 +296,55 @@ expect_fail(failures, "9. missing gh fails closed", out, status,
 
 # --- Report ------------------------------------------------------------------------
 
+# --- N. Prose tracking claims are collected from the registry --------------------
+#
+# "Tracked in #N" in a README is the same claim the allowlist makes in
+# structured form, and it fails the same way: the issue closes, the sentence
+# keeps promising someone owns the gap, and nothing says otherwise. The registry
+# exists because prose cannot be scanned for this — "#\d+" cannot separate a
+# tracking promise from an as-of citation — so the author registers the promise
+# and the gate verifies it alongside the allowlist's.
+
+out, status, calls = run_checker(
+  allowlist: { "sdk_routes_known_defective" => [], "bc3_routes_not_modeled" => [] },
+  tracking: { "prose_tracking_issues" => [ { "issue" => 303, "site" => "README.md — a gap" } ] },
+  states: "303=open"
+)
+expect_pass(failures, "N. prose registry entries are collected", out, status,
+            "README.md — a gap")
+unless calls.any? { |c| c.end_with?("/issues/303") }
+  puts "  FAIL  Na. prose entry is looked up"
+  failures << "Na: expected a lookup of #303, got #{calls.inspect}"
+end
+
+# --- N+1. A closed prose tracking issue fails the gate --------------------------
+#
+# The whole point. A registry that reported a closed issue as fine would be the
+# #588 failure with extra steps.
+
+out, status, _ = run_checker(
+  allowlist: { "sdk_routes_known_defective" => [], "bc3_routes_not_modeled" => [] },
+  tracking: { "prose_tracking_issues" => [ { "issue" => 404, "site" => "SPEC.md — a bound" } ] },
+  states: "404=closed"
+)
+expect_fail(failures, "N+1. a CLOSED prose tracking issue fails", out, status,
+            "SPEC.md — a bound points at #404, which is CLOSED")
+
+# --- N+2. Allowlist and registry are collected together -------------------------
+#
+# Neither source may mask the other: a green allowlist must not make an unread
+# registry look verified, which is what a single-source read would do.
+
+out, status, _ = run_checker(
+  allowlist: { "sdk_routes_known_defective" => [ defective(101) ], "bc3_routes_not_modeled" => [] },
+  tracking: { "prose_tracking_issues" => [ { "issue" => 303, "site" => "README.md — a gap" } ] },
+  states: "101=open,303=closed"
+)
+expect_fail(failures, "N+2. a closed registry entry fails even with a green allowlist", out, status,
+            "README.md — a gap points at #303, which is CLOSED")
+
 if failures.empty?
-  puts "==> known-defect tracking-issue self-test passed — 9 cases"
+  puts "==> known-defect tracking-issue self-test passed — #{CASES[0]} cases"
   exit 0
 else
   warn "known-defect tracking-issue self-test FAILED:"
