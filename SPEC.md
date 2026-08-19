@@ -580,7 +580,7 @@ The mapping above is keyed on an HTTP status, because it maps *failed* responses
 
 That error is `api_error` with **no `http_status`** and **`retryable: false`**. Statusless because no status describes it (the request succeeded), and non-retryable because re-requesting cannot repair a malformed body. It is deliberately *not* `usage`/`validation`: the value came off the wire, so nothing the caller passed is at fault. The mirror case — the *caller* supplying the offending value — stays a usage error. **Classification is by origin, not by value:** the same empty string is a caller error when the caller passed it and a malformed response when the server did, so each provenance is checked where it is unambiguous (the read step owns the response, the write step owns the caller).
 
-Message is truncated to `MAX_ERROR_MESSAGE_LENGTH` like any other (§9) — the malformed value is embedded in it, so the cap is load-bearing rather than cosmetic.
+Message is truncated to `MAX_ERROR_MESSAGE_LENGTH` like any other (§9) — the malformed value is embedded in it, so the cap is load-bearing rather than cosmetic. That embedding is a contract: the offending value is the entire diagnostic, and without it the error says only that *something* on the wire was wrong. §9's closed-vocabulary rule for peer-derived text is scoped around exactly this case and makes no demand of it; the cap is the whole control here.
 
 The composites are where this shape is *required*, not where it is *bounded*. Kotlin and Swift decode into typed models, so their decoder refuses a malformed body, and each **request primitive** maps that failure to this same shape rather than leaking `SerializationException`/`DecodingError` (#604). The mapping is scoped to the decode expression alone: an auth-phase throw, a transport failure and a *request-body* encoding failure are not malformed responses and keep their own classification — in Kotlin the request body is serialized inside the same `try` and raises the identical exception type, so the distinction is positional, not type-based.
 
@@ -640,17 +640,22 @@ status set into the steps above.
 ### Retry-After Honouring `[CONFLICT]`
 
 **A parsed `Retry-After` is honoured at any status a retry is already going to happen at.** There is
-no status gate of its own. §7's three gates decide whether *this* response is retried, and where they
-say yes the parsed value replaces the backoff term — at 429, at 503, and at every status a declared
-`retryOn` set carries today or grows to carry later. Where they say no, the value may still be parsed
-and surfaced on the error for the caller to read, but nothing sleeps on it.
+no status gate of its own, and this is a property of retrying rather than of one loop: §7's three
+gates decide whether *this* response is retried on the generated-operation path, and §14's hop-1
+policy decides it for `DownloadURL`. Wherever the deciding rule says yes, the parsed value replaces
+the backoff term — at 429, at 503, and at every status a declared retry set carries today or grows to
+carry later. Where it says no, the value may still be parsed and surfaced on the error for the caller
+to read, but nothing sleeps on it.
 
 RFC 9110 §10.2.3 defines `Retry-After` as a general response header field restricted to no status
-set, and gives **503** the one case with explicit semantics — how long the service expects to be
-unavailable. RFC 6585 §4 says a **429** *MAY* carry it. So 429 is the permitted use and 503 is the
-canonical one, which makes a 429-only rule narrowest exactly where the RFCs are most specific.
-Deriving the answer from retry eligibility rather than from a status list is also the only position
-that needs no amendment when an operation's `retryOn` grows: a status worth retrying is a status
+set, and attaches explicit semantics to two cases: **503**, where the value is how long the service
+expects to be unavailable, and **3xx**, where it is the minimum wait before issuing the redirected
+request. Of the statuses this SDK's retry sets carry, 503 is therefore the only one the RFC speaks to
+directly — a redirect is followed or refused (§8, §14 hop 1) and never retried, so the 3xx case never
+reaches this rule. RFC 6585 §4 says a **429** *MAY* carry it. So among retried statuses 429 is the
+permitted use and 503 the canonical one, which makes a 429-only rule narrowest exactly where the RFCs
+are most specific. Deriving the answer from retry eligibility rather than from a status list is also
+the only position that needs no amendment when a retry set grows: a status worth retrying is a status
 whose `Retry-After` was worth reading.
 
 It is also what §7's Retry Algorithm has always spelled. Step 3h reads "if `last_response` exists and
@@ -660,13 +665,55 @@ SDKs grew are narrower than the algorithm they implement; what was missing was t
 
 **The value is honoured as given.** It is exempt from §7's backoff ceiling (§7 "Backoff Ceiling",
 requirement 4): the ceiling governs the locally computed formula, and a client that silently caps a
-server's instruction retries sooner than the origin asked for. An implementation MAY bound it against
-a **host limit** — a seconds→nanoseconds conversion that would trap, a timer that cannot schedule the
-value — and that bound belongs at the sleep, never in the parser, so a caller reading the error's
-`retry_after` still sees what the server said.
+server's instruction retries sooner than the origin asked for. **Nothing is added to it either** — a
+jitter term is part of the locally computed formula, where it exists to decorrelate clients choosing
+the same delay independently; a delay the origin named is already the origin's choice, so adding to
+it makes the client wait longer than it was told for no benefit. An implementation MAY bound it
+against a **host limit** — a timer that cannot schedule the value, a conversion that would trap or
+wrap — and a bound of that kind belongs at the sleep, so a caller reading the error's `retry_after`
+still sees what the server said. TypeScript's `Math.min(seconds × 1000, MAX_TIMEOUT_MS)`, applied in
+both of its retry loops as the delay is computed, is the worked example: the parser's result stays
+the public `retryAfter`, and only what reaches the timer is clamped.
+
+**Representability is not a policy cap, and it is exempt from the "never in the parser" rule.** A
+policy cap answers "how long *should* a caller wait"; representability answers "can this host express
+the value at all", and where the answer is no there is nothing to preserve. Two tiers, in the shape
+§16's device-flow parser already settled — its second tier bounds against a domain ceiling (the
+remaining device-code lifetime) rather than a host one, but the fall-back-versus-clamp split is the
+same and is adopted here:
+
+- **Unrepresentable in the parser's own numeric type → malformed.** It falls out at step 3 of the
+  Parsing Algorithm to the local backoff, exactly like a fractional or non-positive value. Nothing is
+  surfaced on the error, because nothing was parsed.
+- **Representable by the parser but beyond what the host can schedule → saturate**, never fall back.
+  Falling back would replace a server's request for a long wait with the millisecond backoff curve
+  and hammer a peer that just asked to be left alone — the same tight loop by another route. Where
+  the overflowing conversion is the one *feeding* the parser's own output type, the saturation may
+  sit in the parser, and the caller then reads the saturated value; that is accepted, and it is the
+  one carve-out from the paragraph above.
+
+The width itself is deliberately not fixed here, because it is a property of the host: TypeScript
+rejects above `Number.MAX_SAFE_INTEGER`, Kotlin above `Int.MAX_VALUE`, Go and Swift above their
+64-bit integers. All four reject cleanly, and their thresholds differ by nine orders of magnitude
+without any of them misbehaving — a `Retry-After` that names a wait longer than the host can count is
+not a delay any caller is worse off for missing.
+
+`[CONFLICT: Ruby and Python have no such width, and that is a defect rather than a third position.
+Both parse arbitrary-precision integers and hand them straight to the sleep, where Ruby raises
+RangeError out of the retry loop and Python's sync client raises OverflowError — so a response that
+was merely retryable becomes an unrelated exception the caller never asked to handle. Python's async
+client neither raises nor sleeps usefully; it waits effectively forever. Both owe the first tier
+above. Tracked in #775 with the rest.]`
+
+Go owes the second tier and is getting it: its parser returns an `int` that three call sites multiply
+by `time.Second`, and `math.MaxInt64` seconds × 1e9 wraps negative, on which `time.After` fires at
+once — the longest expressible instruction producing the tightest possible loop. #796 saturates at
+`math.MaxInt64 / time.Second` in the parser for the hand-written paths; the identical unclamped
+conversion in `go/pkg/generated/client.gen.go`, and an `Atoi` there whose range error is discarded
+into a rate-limit hint, need a template change and are tracked in #798.
 
 **The exemption is conditioned on the escape, not on a number.** There is deliberately no policy cap;
-in its place, **a honoured `Retry-After` delay MUST be awaited through the platform's cancellation
+in its place, **an honoured `Retry-After` delay MUST be awaited through the platform's cancellation
 primitive, with the caller's cancellation handle threaded into the sleep.** A cancellation primitive
 is the better control precisely because it is not a cap: it bounds the caller's *total* wait,
 including the network time no ceiling on a header value can reach, and it lets the caller choose that
@@ -684,10 +731,11 @@ That is where the cost of this position actually lands, and it is **not uniform 
 | TypeScript — JSON client path | `sleep(delay, signal)`, which rejects with the signal's abort reason | yes — `AbortSignal` |
 | Python — async client | `await asyncio.sleep(delay)` | yes — task cancellation |
 | **TypeScript — multipart upload path** | bare `setTimeout` promise, no signal | **none** |
+| **TypeScript — `DownloadURL` hop-1 loop** | `executeWithRetry` called with no signal, so the same `sleep()` degrades to a bare `setTimeout` | **none** |
 | **Ruby** | bare `sleep(delay)` | **none** |
 | **Python — sync client** | bare `time.sleep(delay)` | **none** |
 
-The three rows without an escape are the ones that owe work, and this position makes them owe it
+The four rows without an escape are the ones that owe work, and this position makes them owe it
 sooner rather than creating the exposure: Python's **sync** client already honours `Retry-After` at
 any status, unclamped, in a bare `time.sleep`, so an origin sending `Retry-After: 3600` buys an hour
 the caller cannot abandon **today**. Widening the status set adds 503 to that reach in Ruby and on
@@ -695,32 +743,69 @@ TypeScript's upload path. The remedy is open — an interruptible incremental sl
 a caller-supplied total-time budget — and each shape has a caller-facing API dimension in its
 language, so it is not settled here. Tracked with the rest of the convergence in #775.
 
-Strictly, none of those three is *uninterruptible*: a signal on the main thread, or `Thread#raise`
+TypeScript's download path is the fourth and it is a distinct shape: `sleep()` *does* take a signal
+and honours it, and the download loop simply never supplies one — `executeWithRetry(makeAttempt,
+downloadRetryConfig, emit)` omits the argument, and the public `downloadURL(rawURL)` takes no options
+bag a caller could put one in. The per-attempt `AbortController` is not a substitute: it exists only
+to enforce the request timeout, and its `clearTimeout` runs in the `finally` around the `fetch`, so
+it is already discharged before the retry sleep begins. That path also already honours `Retry-After`
+on 429, so its exposure, like Python sync's, predates this position. Its remedy is smaller than the
+other three — thread a signal that already exists — but it is a caller-facing signature change all
+the same, so it is tracked with them.
+
+Strictly, none of those four is *uninterruptible*: a signal on the main thread, or `Thread#raise`
 from another, will break any of them. What they lack is a cancellation handle the caller can **hold**,
 and the requirement above is about the handle, not about whether the platform can ever intervene.
 
-`[CONFLICT: the spec prescribes any retryable status; five SDKs gate on 429 alone. Converging is a
-behaviour change across five SDKs, tracked in #775 — the divergence below is the current state, not
-the contract.]`
+`[CONFLICT: the spec prescribes any retryable status; five of the six SDKs diverge from that, in
+three different shapes — four gate on 429 alone, and Go's main loop honours it at no status. Also
+divergent on this section's other two clauses: one policy cap, and one added jitter term. Converging
+is a behaviour change across five SDKs, tracked in #775 — the divergence below is the current state,
+not the contract.]`
 
-- **Python** already matches. `_parse_retry_after` runs on every response and `_calculate_delay`
-  returns a positive value in place of the backoff term whatever the status
+- **Python** already matches on status. `_parse_retry_after` runs on every response and
+  `_calculate_delay` returns a positive value in place of the backoff term whatever the status
   (`python/src/basecamp/_http.py`, `_async_http.py`), so a 503 carrying `Retry-After: 120` waits 120s.
-- **Ruby**, **Kotlin**, **Swift** and **TypeScript** parse the header on any status but gate the
-  *sleep* on 429 (`ruby/lib/basecamp/http.rb`, `kotlin/.../http/BasecampHttpClient.kt`,
-  `swift/.../HTTP/HTTPClient.swift`, `typescript/src/retry.ts` and `typescript/src/services/base.ts`).
-  A 503 carrying `Retry-After: 120` backs off ~1s instead. 503 is in every operation's declared
-  `retryOn`, so this is a live difference, not a theoretical one.
+- **Ruby** and **Kotlin** parse the header on any status and gate only the *use* of the parsed value
+  on 429: Ruby parses in `handle_error` and attaches the result solely to `RateLimitError`, so the
+  delay path sees `nil` for every other status (`ruby/lib/basecamp/http.rb`); Kotlin parses
+  unconditionally and picks between it and the backoff on `status == 429`
+  (`kotlin/.../http/BasecampHttpClient.kt`).
+- **Swift** and **TypeScript** gate the *parser call itself* on 429 —
+  `swift/.../HTTP/HTTPClient.swift`'s `calculateDelay` short-circuits its `if statusCode == 429, let
+  retryAfter = ...` clause list, and `typescript/src/retry.ts` and `typescript/src/services/base.ts`
+  each guard `parseRetryAfter` behind a `response.status === 429` ternary. The distinction is not
+  cosmetic: the paragraph above permits parsing and surfacing the value even where nothing sleeps on
+  it, so these two must move a call rather than widen a condition. TypeScript already parses
+  unconditionally on its *error-construction* path (`typescript/src/errors.ts`); Swift gates there
+  too (`BasecampError.swift`), so Swift alone surfaces no `retry_after` off a 503.
+- The behavioural upshot for all four is the same: a 503 carrying `Retry-After: 120` backs off ~1s
+  instead. 503 is in every operation's declared `retryOn`, so this is a live difference, not a
+  theoretical one.
 - **Go** is a third shape rather than a stricter one. The hand-written retry loop's `Retry-After`
   branch reads a field off a `retryableError` that nothing ever constructs, and the 429 arm returns a
   rate-limit error carrying the seconds in a message string, so the loop falls through to the plain
   backoff: the header is honoured on **no** status on that path. It *is* honoured, unclamped, on the
   download path and inside the rate-limiter's hook, and the generated client gates on 429. Go's
   convergence is therefore "make the loop see the value at all", not "widen a status check".
-- **Host limits** also diverge: TypeScript clamps to what `setTimeout` can schedule (2,147,483,647ms,
-  ~24.85 days); Swift clamps its `Double`→`UInt64` nanosecond conversion at 86,400s; Go, Python,
-  Ruby and Kotlin apply none. All three positions are permitted by §7 requirement 4, and none of them
-  is a policy cap.
+- **Added jitter** — the generated Go client is the one place a server-directed delay is not slept as
+  given. `go/pkg/generated/client.gen.go` assigns the parsed value to `retryDelay` and then sleeps
+  `retryDelay + rand(0, 100ms)`, the same expression the sibling network-error path applies to the
+  local backoff, with no branch distinguishing the two. Go's three hand-written loops do not:
+  `client.go` and `download.go` each *replace* the jittered backoff with the parsed value, and
+  `rate_limit.go` waits to a computed deadline. Removing that addend from the server-directed arm is
+  part of Go's convergence, not a separate cleanup.
+- **Bounds** also diverge, and only one of the two is the host limit this section permits.
+  TypeScript's is: it clamps to the 2,147,483,647ms `setTimeout` can schedule, which is exactly the
+  value beyond which the platform cannot express the delay. Swift's is not. It clamps its
+  `Double`→`UInt64` nanosecond conversion at 86,400s, and the trap it cites is real, but the trapping
+  threshold is `UInt64.max` nanoseconds — about 1.8×10¹⁰ seconds, some five orders of magnitude
+  above where the clamp sits. The code's own comment concedes the gap ("Clamp to a day *instead*: no
+  SDK retry is worth sleeping longer"), which is a policy judgement about what a caller should have
+  to wait, and this section declines to make that judgement — the cancellation requirement above is
+  what stands in its place. So Swift's 86,400s is a **conflict** on the same footing as the status
+  gates, tracked in the same issue: converge it to the representability bound or drop it. Go, Python,
+  Ruby and Kotlin bound nothing.
 
 Which **date forms** step 2 accepts diverges on a second axis — 3 SDKs IMF-fixdate-only, 2 broadly
 permissive, and Kotlin idiosyncratic (a transport library's pattern list, accepting neither canonical
@@ -920,14 +1005,18 @@ Requirements:
    default paths and changes no shipped behavior.
 4. **`Retry-After` is exempt.** It is server-directed and takes precedence per step 3h,
    at every status that step reaches (§6 "Retry-After Honouring"); the ceiling governs
-   the locally-computed formula only. Implementations may still bound it against host
-   limits — Swift clamps its seconds→nanoseconds conversion to 86,400s because
-   `UInt64(_:)` on an out-of-range `Double` is a trap, and TypeScript clamps to the
-   2,147,483,647ms `setTimeout` can schedule. Those two bounds differ by ~24× and the
-   other four SDKs apply none, because a host limit is not a policy cap; §6 records that
-   divergence and the exposure it leaves. The exemption is not unconditional: §6 requires
-   the honoured delay to be awaited through the caller's cancellation primitive, and that
-   requirement — not a number — is what stands in for a policy cap here.
+   the locally-computed formula only, and step 2's jitter is part of that formula rather
+   than an addend on a server-directed delay. Implementations may still bound it against
+   **host limits** — a timer that cannot schedule the value, such as TypeScript's clamp to
+   the 2,147,483,647ms `setTimeout` accepts, or a conversion that would trap or wrap, such
+   as Go's saturation of seconds→`time.Duration` (#796) — and may reject outright a value
+   the parser's own numeric type cannot hold. §6 "Retry-After Honouring" governs which of
+   those belongs at the sleep and which may sit in the parser. A **policy** cap is a
+   different thing and is not permitted: Swift's 86,400s clamp is one (the `UInt64`
+   nanosecond trap it cites sits five orders of magnitude higher), and §6 records it as a
+   conflict alongside the status divergence. The exemption is not unconditional: §6
+   requires the honoured delay to be awaited through the caller's cancellation primitive,
+   and that requirement — not a number — is what stands in for a policy cap here.
 
 **Reachability.** Every SDK exposes a path to a high attempt count: Kotlin's builder
 validates `maxRetries >= 0` with no upper bound, Go's `WithMaxRetries` only rejects
@@ -1201,13 +1290,17 @@ Error messages extracted from response bodies are truncated to 500 units. If the
 
 **Unit semantics:** The unit is language-defined: Go (`len()`), Ruby (`bytesize`), and Python (`len(s.encode())`) use bytes; TypeScript (`s.length`), Swift (`s.count`), and Kotlin (`s.length`) use character/code-unit length. For ASCII text (which conformance test fixtures use today), these coincide. Unicode truncation semantics are a per-language divergence documented in Appendix F. Note: byte-level truncation (Go/Ruby) can produce invalid UTF-8 mid-codepoint; this is accepted behavior. Python slices bytes too but decodes with `errors="ignore"`, so it drops the partial codepoint instead of emitting it.
 
-**Scope, and what this cap is not.** It governs §6's Error Body Parsing Algorithm `message` and the field-keyed composition built on it — modelled fields of the API's own error body, surfaced because reading them *is* the caller's contract. There it is a resource bound sitting under `MAX_ERROR_BODY_BYTES`, and it answers *how much* text reaches the caller. It never answers *whether* text the peer chose reaches the caller at all. Where that second question is the one being asked, the next section governs and this cap does not stand in for it.
+**Scope, and what this cap is not.** It governs §6's Error Body Parsing Algorithm `message` and the field-keyed composition built on it — modelled fields of the API's own error body, surfaced because reading them *is* the caller's contract — and it governs the other two renderings this document contractually requires: §6's statusless `api_error` for a malformed 2xx body, which embeds the offending wire value because that value is the whole diagnostic, and §23's origin-only projection of a refused redirect or rejected continuation URL. There it is a resource bound sitting under `MAX_ERROR_BODY_BYTES`, and it answers *how much* text reaches the caller. It never answers *whether* text the peer chose reaches the caller at all. Where that second question is the one being asked, the next section governs and this cap does not stand in for it.
 
 That is the whole boundary between the two sections, and it is not "which peer": this cap applies where a contract requires the text to reach the caller, and the next section applies where nothing does — a decoder's rendering of bad bytes, a transport library's rendering of a URL, a close reason no caller asked to see.
 
 ### Peer-Derived Text in Observer-Facing Errors `[manual]`
 
-**Peer-derived text in an observer-facing error is rendered from a closed vocabulary keyed on the error's type. It is never composed from peer input and then bounded by length.**
+**Where no contract requires the text to reach the caller, peer-derived text in an observer-facing error is rendered from a closed vocabulary keyed on the error's type. It is never composed from peer input and then bounded by length.**
+
+The leading clause is the scope, not a hedge: it is the boundary the previous section just drew, carried into the sentence that binds so the sentence cannot override it. Three contracts already sit on the other side and are untouched — §6's Error Body Parsing Algorithm `message` and the field-keyed composition over it; §6's statusless `api_error` for a malformed 2xx body, whose entire diagnostic *is* the malformed wire value it embeds; and §23's origin-only rendering of a refused redirect `Location` or a rejected continuation URL. Each requires specific text to reach the caller, so each is governed by the truncation cap above and this section makes no demand of it. What is left is the class four rounds on #788 were actually about — a decoder's rendering of bad bytes, a transport library's rendering of a URL it failed on, a close reason nobody asked to see — and there no contract stands behind the text, so this section governs.
+
+"A contract requires it" means one this document already states, naming the text and saying why the caller needs it. It is not established by a call site pointing at this sentence; a rendering with no such contract behind it is in scope, whatever it would prefer to be.
 
 Truncation is not redaction. A length bound limits how much of a credential escapes, not whether any does, and the two are different controls answering different questions. This section is the answer to the second one.
 
@@ -1536,7 +1629,7 @@ FUNCTION downloadURL(raw_url: String) → DownloadResult
   3. Hop 1 — Authenticated API GET, wrapped in the hop-1 retry loop (below):
      a. Set Authorization and User-Agent headers only (no Accept or Content-Type — this is a binary download, not a JSON API call). Every attempt is authenticated — re-run the auth strategy on retry so a rotated token is picked up.
      b. Fetch with redirect: manual (do not follow redirects automatically).
-     c. If the attempt fails with a network error, or the response status is in DOWNLOAD_RETRY_ON = {429, 502, 503, 504}: retry with exponential backoff while attempts remain (honor Retry-After on 429), else surface the failure. 500 is DELIBERATELY outside the set — it is never retried.
+     c. If the attempt fails with a network error, or the response status is in DOWNLOAD_RETRY_ON = {429, 502, 503, 504}: retry with exponential backoff while attempts remain (honor Retry-After at every status in the set, per §6), else surface the failure. 500 is DELIBERATELY outside the set — it is never retried.
      d. If response is redirect (301, 302, 303, 307, 308):
         - Extract Location header. ⊥ if absent.
         - Resolve Location against rewritten URL (handle relative redirects).
@@ -1555,7 +1648,9 @@ END
 
 ### Hop-1 Retry `[conformance]`
 
-The authenticated first hop retries on **network errors plus {429, 502, 503, 504}** — never 500. The set is declared here rather than inherited from anywhere else, and it matches neither of the two sets an SDK already has to hand: it is broader than the per-operation `retry_on` in `behavior-model.json` (`{429, 503}` for all `250` operations, which never governs `DownloadURL` because it has no entry there), and narrower than the error taxonomy's "all 5xx retryable" flag, which would sweep in the 500 this policy deliberately excludes. It is the gateway-error set Go's hand-written `singleRequest` already uses for GETs. <!-- @operation-count --> Backoff is exponential from a 1-second base with jitter; `Retry-After` is honored on 429. The second hop is exempt: no retry, no auth.
+The authenticated first hop retries on **network errors plus {429, 502, 503, 504}** — never 500. The set is declared here rather than inherited from anywhere else, and it matches neither of the two sets an SDK already has to hand: it is broader than the per-operation `retry_on` in `behavior-model.json` (`{429, 503}` for all `250` operations, which never governs `DownloadURL` because it has no entry there), and narrower than the error taxonomy's "all 5xx retryable" flag, which would sweep in the 500 this policy deliberately excludes. It is the gateway-error set Go's hand-written `singleRequest` already uses for GETs. <!-- @operation-count --> Backoff is exponential from a 1-second base with jitter; `Retry-After` is honoured at **every status in that set**, not at 429 alone. The second hop is exempt: no retry, no auth.
+
+That last clause changed with §6's "Retry-After Honouring", and the reason it changed is the reason this set is declared here at all: honouring is derived from retry eligibility, so a loop that declares its own eligibility set inherits the honouring rule over that set rather than over §7's. A 502, 503 or 504 on hop 1 carrying `Retry-After` therefore waits what the origin named, exactly as a 429 does. `[CONFLICT: every SDK's download loop honours it on 429 alone today — go/pkg/basecamp/download.go, typescript/src/download.ts and their four counterparts — so this is owed convergence, tracked with the rest in #775. The existing downloads.json case covering the 429 path stays valid; the other three statuses need cases of their own.]` The honoured value is subject to §6's other two clauses on this path as well: nothing is added to it, and it must be awaited through a cancellation handle the caller holds — which TypeScript's download loop, listed in §6's table, does not yet give them.
 
 "Network error" means a transport failure, with one carve-out that SDKs inherit from their main GET loop rather than restate: an attempt that exhausted the caller's entire per-attempt time budget (a request timeout) is not retried. The timeout is per attempt, so a retry spends another full budget on the same slowness rather than riding out a blip. Kotlin implements this explicitly; SDKs whose transports surface timeouts indistinguishably from other connection failures retry them.
 
@@ -3424,8 +3519,12 @@ resume_url)`, `position_rejected(kind)`, `stale_connection(since_last_frame)`,
 
 - **Never log the ticket or the mint URL's query string** — the ticket rides in it.
   Observer callbacks and error renderings carry a URL's **origin only**, projected out of
-  a successful parse (§9 "Peer-Derived Text in Observer-Facing Errors"), never a URL a
-  redactor searched for a credential.
+  a successful parse, never a URL a redactor searched for a credential. This bullet is a
+  contract requiring that text to reach the caller, so it sits outside the closed
+  vocabulary rather than inside it — the scope clause of §9 "Peer-Derived Text in
+  Observer-Facing Errors" names it, and that section's projection-versus-redaction rule is
+  why an origin is safe to require: the parse has already dropped the query the ticket
+  rides in, so there is nothing left to search for.
 - **Bound the inbound frame size** (`EVENT_FEED_MAX_FRAME_BYTES`, 1 MiB default) — and
   render no frame contents in an error at all. The dial failure, the invalid-frame
   violation and the peer close (`CloseError`) all reach `Observer.disconnected`, so each
