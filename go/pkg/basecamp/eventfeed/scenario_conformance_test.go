@@ -583,6 +583,16 @@ func (d *driver) awaitTerminal(reason string) error {
 	})
 }
 
+// awaitIterationEnded waits for the consumer's range over Events to return of
+// its own accord — the observable half of "the error element ends iteration".
+// Bounded by the same watchdog as every other await, so a connector that stays
+// open fails here instead of hanging the scenario.
+func (d *driver) awaitIterationEnded() error {
+	return d.h.await("the iteration to end on its final error element", func() (bool, string) {
+		return d.h.iterDone, ""
+	})
+}
+
 func (d *driver) expectGap(epochAfterID int64) error {
 	return d.h.await(fmt.Sprintf("Observer.gap(%d)", epochAfterID), func() (bool, string) {
 		if d.h.gapsTaken >= len(d.h.gaps) {
@@ -708,6 +718,14 @@ func (d *driver) runFinally() error {
 	}
 	if fin.Error != nil {
 		if err := d.awaitTerminal(fin.Error.Reason); err != nil {
+			return fmt.Errorf("finally.error: %w", err)
+		}
+		// The element is only the FINAL one if iteration actually ended on it.
+		// Without this, a connector that yields the right terminal and then
+		// stays open passes every terminal fixture: the deferred cancel ends
+		// the range afterwards, so nothing downstream can tell an iteration
+		// that ended by itself from one that had to be cancelled.
+		if err := d.awaitIterationEnded(); err != nil {
 			return fmt.Errorf("finally.error: %w", err)
 		}
 	} else if terminal := d.h.terminalError(); terminal != nil {

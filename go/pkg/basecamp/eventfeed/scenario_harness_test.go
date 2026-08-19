@@ -106,6 +106,7 @@ type scenarioHarness struct {
 	invalidFramesTaken int
 	state              string
 	terminal           *eventfeed.TerminalError
+	terminalCount      int
 	iterDone           bool
 	violations         []string
 }
@@ -433,10 +434,31 @@ func (h *scenarioHarness) writeFrame(peer *cablePeer, data []byte) error {
 func (h *scenarioHarness) recordDelivered(id int64) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
+	// The error element is FINAL: nothing may be yielded after it. Recorded as
+	// a violation rather than dropped, so the delivered ledger still shows what
+	// arrived and the failure names the ordering rather than an exact-set
+	// mismatch that reads as a missing event.
+	if h.terminalCount > 0 {
+		h.violations = append(h.violations, fmt.Sprintf(
+			"the feed delivered event %d after its error element (%v); §23's final error element ends iteration",
+			id, h.terminal))
+	}
 	h.delivered = append(h.delivered, id)
 	h.notifyLocked()
 }
 
+// recordTerminal records one error element yielded by the iteration.
+//
+// §23 gives the feed EXACTLY ONE final error element, and it ends iteration.
+// Both halves are enforced here rather than assumed, because neither is
+// observable from an end-state assertion: keeping only the latest terminal —
+// which this did — silently accepts a connector that yields the expected
+// reason twice, since the second overwrites the first with an equal value and
+// every later assertion still passes.
+//
+// The FIRST element is retained. A second is a violation naming both, and
+// violations block every subsequent await, so the scenario fails at its next
+// step rather than at the end.
 func (h *scenarioHarness) recordTerminal(err error) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
@@ -444,7 +466,14 @@ func (h *scenarioHarness) recordTerminal(err error) {
 	if !errors.As(err, &terr) {
 		h.violations = append(h.violations, fmt.Sprintf("the feed yielded a non-terminal error element: %v", err))
 	} else {
-		h.terminal = terr
+		h.terminalCount++
+		if h.terminalCount > 1 {
+			h.violations = append(h.violations, fmt.Sprintf(
+				"the feed yielded %d error elements (%v after %v); §23 gives it exactly one, and it ends iteration",
+				h.terminalCount, terr, h.terminal))
+		} else {
+			h.terminal = terr
+		}
 	}
 	h.notifyLocked()
 }
