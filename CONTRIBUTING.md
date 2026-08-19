@@ -118,6 +118,39 @@ A Basecamp account is optional (for integration testing only).
 - Mock HTTP responses using `httptest`
 - Test both success and error paths
 
+#### Never schedule a cancellation on a wall clock
+
+A test that arms `setTimeout(… abort …, N)` and races it against a mocked
+response is asserting machine load, not behavior. Abort from a seam that proves
+the request is already in flight: from inside the MSW handler
+(`typescript/tests/client.test.ts`), or from the retry hook the loop fires
+immediately before it sleeps (`typescript/tests/retry-after.test.ts`,
+`typescript/tests/middleware-lifecycle.test.ts`). Then drop any accompanying
+`Date.now() - startedAt < N` bound — the error's identity (`AbortError` vs
+`TimeoutError`, or `err === reason`) and the attempt ledger already
+discriminate, and the ceiling contributes only load sensitivity.
+
+The same rule reads sideways in Ruby: a value written by a server thread is
+read by the test only across an explicit happens-before edge — a `Queue`, or a
+`join` — never "in practice, via the socket close" (#739).
+
+#655 swept for this class and missed two instances, because its selector
+required a **no-argument** `abort()` and both survivors passed a reason (#783).
+The sweep is a manual `rg`, not a gate, so the corrected form lives here:
+
+```sh
+# The class, without spelling the abort's arguments or its receiver:
+rg -nU --pcre2 'setTimeout\([\s\S]{0,300}?\.abort\(' typescript/tests
+```
+
+It over-matches — a `setTimeout` and an unrelated `.abort(` within 300
+characters both hit — and that bias is deliberate: a false positive costs a
+glance, a false negative costs the next contributor an hour deciding whether
+they caused somebody else's red. It still cannot see an abort scheduled through
+a wrapper or a renamed timer, so treat `rg -n '\.abort\(' typescript/tests` as
+the real population bound and classify each site by *what makes the abort
+land*, not by the shape it is written in.
+
 ## Commit Conventions
 
 We follow [Conventional Commits](https://www.conventionalcommits.org/) for clear, structured commit history.
