@@ -1,0 +1,208 @@
+go/pkg/basecamp/eventfeed/continuation.go
+  s_fb34b5676f6c5e::t_5af4510a7e9a56 1-49
+go/pkg/basecamp/eventfeed/feedtest/clock.go
+  s_fb34b5676f6c5e::t_5af4510a7e9a56 1-239
+go/pkg/basecamp/eventfeed/feedtest/transport_test.go
+  s_fb34b5676f6c5e::t_5af4510a7e9a56 1-161
+go/pkg/basecamp/eventfeed/errors.go
+  s_fb34b5676f6c5e::t_5af4510a7e9a56 1-119
+go/pkg/basecamp/eventfeed/backoff_test.go
+  s_fb34b5676f6c5e::t_5af4510a7e9a56 1-183
+go/pkg/basecamp/eventfeed/cable_test.go
+  s_fb34b5676f6c5e::t_5af4510a7e9a56 1-220,255-547
+go/pkg/basecamp/eventfeed/event.go
+  s_fb34b5676f6c5e::t_5af4510a7e9a56 1-32
+go/pkg/basecamp/eventfeed/filters_test.go
+  s_fb34b5676f6c5e::t_5af4510a7e9a56 1-115
+go/go.mod
+  s_fb34b5676f6c5e::t_5af4510a7e9a56 6
+go/pkg/basecamp/eventfeed/transport.go
+  s_fb34b5676f6c5e::t_5af4510a7e9a56 1-29,45-97
+  s_fb34b5676f6c5e::t_7b1f4b7ec2a6e4 30-44
+go/pkg/basecamp/eventfeed/transport_contract_test.go
+  s_fb34b5676f6c5e::t_5af4510a7e9a56 1-373
+go/pkg/basecamp/eventfeed/clock_test.go
+  s_fb34b5676f6c5e::t_5af4510a7e9a56 1-41
+go/pkg/basecamp/eventfeed/filestore.go
+  s_fb34b5676f6c5e::t_5af4510a7e9a56 1-7,9-11,13-85,97-132,134-136,138-139,141-144,174-288,324-329,350-402
+  s_fb34b5676f6c5e::t_a89c4e78c9962a 86-96
+  s_fb34b5676f6c5e::t_38f2197e76502b 8,12
+  s_fb34b5676f6c5e::t_921a9fa1145010 133,137,140,145-171
+  s_fb34b5676f6c5e::t_6125e9ee8b84e5 289-323,330-349
+  s_fb34b5676f6c5e::t_e15c9425f8981b 172-173
+go/pkg/basecamp/eventfeed/checkpoint.go
+  s_fb34b5676f6c5e::t_5af4510a7e9a56 1-128
+go/pkg/basecamp/eventfeed/digest_test.go
+  s_fb34b5676f6c5e::t_5af4510a7e9a56 1-141
+go/pkg/basecamp/eventfeed/feedtest/polls.go
+  s_fb34b5676f6c5e::t_5af4510a7e9a56 1-124
+go/pkg/basecamp/eventfeed/websocket_transport_test.go
+  s_fb34b5676f6c5e::t_5af4510a7e9a56 1-18,20,22-464,540-698
+  s_fb34b5676f6c5e::t_43194c789ae64c 19,21
+  s_fb34b5676f6c5e::t_220798f79eb7e8 699-845
+go/pkg/basecamp/eventfeed/seams.go
+  s_fb34b5676f6c5e::t_5af4510a7e9a56 1-249,269-277,281-283,286-300,322,323-358,365-447,483-507
+  s_fb34b5676f6c5e::t_e97c75cc21e6c5 250-251,253-257,278-280,284-285,359-364,479
+  s_fb34b5676f6c5e::t_4e0a99e9ed094f 301-321
+go/pkg/basecamp/eventfeed/filestore_test.go
+  s_fb34b5676f6c5e::t_5af4510a7e9a56 1-18,20-24,26,28-766
+  s_fb34b5676f6c5e::t_a9a9e3da4f51cb 827,834,838-843,846-849,851-871
+  s_fb34b5676f6c5e::t_0c0444204c95f5 767-826,828-833,835-837,844-845,850,872-934
+  s_fb34b5676f6c5e::t_c2c7bfcfefe1e3 19,25,27
+go/pkg/basecamp/eventfeed/feedtest/transport.go
+  s_fb34b5676f6c5e::t_5af4510a7e9a56 1-361
+go/pkg/basecamp/eventfeed/websocket_transport.go
+  s_fb34b5676f6c5e::t_5af4510a7e9a56 1-9,11-27,35-50,122-129,133-137,139-182,185-254,264-275,300-310,316-345,358-391,408-425,429-430,432-434
+  s_fb34b5676f6c5e::t_a0630d11b45710 10
+  s_fb34b5676f6c5e::t_b2a04990fcebf5 28-34
+  s_fb34b5676f6c5e::t_44e5b2baeb3e12 130-132,138
+  s_fb34b5676f6c5e::t_3684449cb2aaa6 51-121
+go/pkg/basecamp/eventfeed/feedtest/clock_test.go
+  s_fb34b5676f6c5e::t_5af4510a7e9a56 1-211
+go/pkg/basecamp/eventfeed/feedtest/minter_test.go
+  s_fb34b5676f6c5e::t_5af4510a7e9a56 1-64
+go/pkg/basecamp/eventfeed/transport_test.go
+  s_fb34b5676f6c5e::t_5af4510a7e9a56 1-3,10,13,15-143
+  s_fb34b5676f6c5e::t_2597753e28fe9c 5,7,144-225
+  s_fb34b5676f6c5e::t_75671d11701085 8,273-308,310
+  s_fb34b5676f6c5e::t_5d26e122fc5eaa 4,6,9,11-12,14,226-272,309
+go/pkg/basecamp/eventfeed/dedupe.go
+  s_fb34b5676f6c5e::t_5af4510a7e9a56 1-31,52,54-68
+  s_fb34b5676f6c5e::t_4f97fedfd4a4ec 32-51,53
+go/pkg/basecamp/eventfeed/dedupe_test.go
+  s_fb34b5676f6c5e::t_5af4510a7e9a56 1-44,58-60,63-65,67,73,76-77
+  s_fb34b5676f6c5e::t_d4ba8f5b827b39 45-57,61-62,66,71-72
+  s_fb34b5676f6c5e::t_adc568c6b2b7e8 68-70,74-75
+go/pkg/basecamp/eventfeed/event_test.go
+  s_fb34b5676f6c5e::t_5af4510a7e9a56 1-72
+go/pkg/basecamp/eventfeed/backoff.go
+  s_fb34b5676f6c5e::t_5af4510a7e9a56 1-105
+go/pkg/basecamp/eventfeed/clock.go
+  s_fb34b5676f6c5e::t_5af4510a7e9a56 1-111
+go/pkg/basecamp/eventfeed/doc.go
+  s_fb34b5676f6c5e::t_5af4510a7e9a56 1-6,25-49
+go/pkg/basecamp/eventfeed/cable.go
+  s_fb34b5676f6c5e::t_5af4510a7e9a56 1-153,158-186,195,197-200,216-230,232-247,249-411
+go/pkg/basecamp/eventfeed/continuation_test.go
+  s_fb34b5676f6c5e::t_5af4510a7e9a56 1-126
+go/pkg/basecamp/eventfeed/digest.go
+  s_fb34b5676f6c5e::t_5af4510a7e9a56 1-130
+go/pkg/basecamp/eventfeed/errors_test.go
+  s_fb34b5676f6c5e::t_5af4510a7e9a56 1-4,6-130,152-155,161
+  s_fb34b5676f6c5e::t_17df7a2c7a6b75 5,131-151,156-160
+go/pkg/basecamp/eventfeed/feedtest/minter.go
+  s_fb34b5676f6c5e::t_5af4510a7e9a56 1-93
+go/pkg/basecamp/eventfeed/filters.go
+  s_fb34b5676f6c5e::t_5af4510a7e9a56 1-82
+go/pkg/basecamp/eventfeed/feedtest/polls_test.go
+  s_fb34b5676f6c5e::t_5af4510a7e9a56 1-61
+go/pkg/basecamp/eventfeed/feedtest/store.go
+  s_fb34b5676f6c5e::t_5af4510a7e9a56 1-124
+go/go.sum
+  s_fb34b5676f6c5e::t_1d41f3fc8392a8 12-13
+go/pkg/basecamp/eventfeed/redact.go
+  s_fb34b5676f6c5e::t_7b5d5b663c02c1 1-55
+go/pkg/basecamp/eventfeed/redact_test.go
+  s_fb34b5676f6c5e::t_f12c33fda2591b 1-147
+go/pkg/basecamp/eventfeed/connector.go
+  s_fb34b5676f6c5e::t_e766dd8fc34566 1-98,111-205,283-369,371-526,551-569,570-574,583-584
+  s_fb34b5676f6c5e::t_bf599210cbb0f1 108-109,206-210,213-220,222,261-266,269-270,273-274,277-282,370
+  s_fb34b5676f6c5e::t_5c16397984cee4 527-550
+  s_fb34b5676f6c5e::t_b1251d7f04e832 99-107,110
+  s_fb34b5676f6c5e::t_5564b3c8ce6bc7 575,582
+  s_fb34b5676f6c5e::t_0fa66cb44ae0ed 576-581
+  s_fb34b5676f6c5e::t_3602a4981348d1 211-212,221,223-238,267-268,271-272,275-276
+CONTRIBUTING.md
+  s_fb34b5676f6c5e::t_e766dd8fc34566 230-235
+go/pkg/basecamp/eventfeed/recovery.go
+  s_fb34b5676f6c5e::t_e766dd8fc34566 1-47,49-104,113-188
+  s_fb34b5676f6c5e::t_61f42e7930808b 48,105-112
+go/pkg/basecamp/eventfeed/scenario_harness_test.go
+  s_fb34b5676f6c5e::t_e766dd8fc34566 1-626
+go/pkg/basecamp/eventfeed/loop.go
+  s_fb34b5676f6c5e::t_e766dd8fc34566 1-642,644-653,655-681,706-796,814-816,817-1092,1094-1178,1187-1248,1252-1253,1360-1398,1418-1463,1474-1482
+  s_fb34b5676f6c5e::t_5825a1bf0e567a 1179-1186
+  s_fb34b5676f6c5e::t_192e12ba528f59 797-813
+  s_fb34b5676f6c5e::t_5564b3c8ce6bc7 1464-1472,1473
+  s_fb34b5676f6c5e::t_c8bdc1c2e67ea7 1249-1251,1254,1256-1278,1295-1298,1307-1326
+  s_fb34b5676f6c5e::t_17df7a2c7a6b75 1399-1417
+  s_fb34b5676f6c5e::t_7d43c90c47309c 643,654,682-705
+  s_fb34b5676f6c5e::t_091aa70c1d456a 1093,1255,1327-1359
+go/pkg/basecamp/eventfeed/loop_test.go
+  s_fb34b5676f6c5e::t_e766dd8fc34566 1-15,17-1760
+  s_fb34b5676f6c5e::t_5ac990d80dde07 16
+  s_fb34b5676f6c5e::t_9d100397b424b8 1761-1773,1779-1799
+  s_fb34b5676f6c5e::t_62c3da73f54be0 1774-1778
+  s_fb34b5676f6c5e::t_f93fb93ca0f3fa 1800-1815,1891-1952
+go/pkg/basecamp/eventfeed/reconnect_test.go
+  s_fb34b5676f6c5e::t_e766dd8fc34566 1-453
+go/README.md
+  s_fb34b5676f6c5e::t_e766dd8fc34566 602-610,618-737
+go/pkg/basecamp/eventfeed/scenario_fixture_test.go
+  s_fb34b5676f6c5e::t_e766dd8fc34566 1-807
+go/pkg/basecamp/eventfeed/buffer_test.go
+  s_fb34b5676f6c5e::t_e766dd8fc34566 1-36
+go/pkg/basecamp/eventfeed/scenario_conformance_test.go
+  s_fb34b5676f6c5e::t_e766dd8fc34566 1-1077
+go/pkg/basecamp/eventfeed/recovery_test.go
+  s_fb34b5676f6c5e::t_e766dd8fc34566 1-126,137-138,150-779
+  s_fb34b5676f6c5e::t_8b7cbefcf1fec7 782-797,806,813,816-817,821,828-829,840-843,846-850
+  s_fb34b5676f6c5e::t_d76feab2754e2c 781,798,809,815,819-820,822-825,839
+  s_fb34b5676f6c5e::t_7e3be7204e2c22 127-136,139-149
+  s_fb34b5676f6c5e::t_c5380ce956e015 780,799-805,807-808,810-812,814,818,826-827,830-838,844-845,851-852
+go/pkg/basecamp/eventfeed/export_test.go
+  s_fb34b5676f6c5e::t_e766dd8fc34566 1-106,125-149
+go/pkg/basecamp/eventfeed/scenario_selftest_test.go
+  s_fb34b5676f6c5e::t_e766dd8fc34566 1-378
+go/pkg/basecamp/eventfeed/connector_test.go
+  s_fb34b5676f6c5e::t_e766dd8fc34566 1-622
+  s_fb34b5676f6c5e::t_8332bda56a66b4 711-712,722,808
+  s_fb34b5676f6c5e::t_64adb99c9e8c83 623-627,637-651,660-689,692,704-710,713,715-721,723-724,727-729,733-734,736-739,747-748,752,761,766,769-773,777-783,789-790,794-800,802,809-810,812-846
+  s_fb34b5676f6c5e::t_ca1e43f50863fa 628-636,652-659,784-788,791-793,801,803-807,811
+  s_fb34b5676f6c5e::t_feb6ce45e811cd 847-860,862-958
+  s_fb34b5676f6c5e::t_84ea338faa1562 861
+  s_fb34b5676f6c5e::t_26d87db31070c9 776,959-980,982-983,997-999,1006-1007,1009-1021
+  s_fb34b5676f6c5e::t_ba5b49ed75ae8a 981,989-995,1000-1005
+  s_fb34b5676f6c5e::t_08901af20b06ff 690-691,693-703,714,725-726,730-732,735,740-746,749-751,753-760,762-765,767-768,774-775
+  s_fb34b5676f6c5e::t_5e1e8e76f27a04 984-988,996,1008
+go/pkg/basecamp/eventfeed/catchup.go
+  s_fb34b5676f6c5e::t_e766dd8fc34566 1-36,43-191,243-443,471-736,744,745,758-761,763-774,776-783,805-892,905-1114
+  s_fb34b5676f6c5e::t_22c897cc61faba 192-203,214-223,237-242
+  s_fb34b5676f6c5e::t_b6020e22026bdf 204-213
+  s_fb34b5676f6c5e::t_61f42e7930808b 37-42
+  s_fb34b5676f6c5e::t_3b58d3f258082c 444-470
+  s_fb34b5676f6c5e::t_0b320c8b17ca66 737-739,746-757,762,775,784-802
+  s_fb34b5676f6c5e::t_09492437122b5c 740-743
+  s_fb34b5676f6c5e::t_42a92e1f7449b8 803-804
+  s_fb34b5676f6c5e::t_1c65978c43ec70 224-236
+  s_fb34b5676f6c5e::t_5028a8f149ed99 893-904
+go/pkg/basecamp/eventfeed/catchup_test.go
+  s_fb34b5676f6c5e::t_e766dd8fc34566 1-1099,1173-1685
+  s_fb34b5676f6c5e::t_2c2005f2adcd48 1715,1722,1752,1757,1806,1812
+  s_fb34b5676f6c5e::t_ca7722bd63a6a0 1686-1714,1716-1721,1723-1751,1753-1756,1758-1805,1807-1811,1813-1814
+  s_fb34b5676f6c5e::t_67a903323ea18b 1100-1114,1122-1125,1138-1140,1150-1170
+  s_fb34b5676f6c5e::t_1b2d7a0f95177a 1115-1121
+  s_fb34b5676f6c5e::t_c926866208492b 1128-1134,1142,1146-1147
+  s_fb34b5676f6c5e::t_7b652f69edf1ab 1126-1127,1135-1137,1141,1143-1145,1148-1149,1171-1172
+  s_fb34b5676f6c5e::t_dbacecb9a1a685 1815-1852
+conformance/event-feed/README.md
+  s_fb34b5676f6c5e::t_88c3dda30d950e 325-345
+conformance/event-feed/fixtures/30-continuation-redirect-cross-origin.json
+  s_fb34b5676f6c5e::t_3024012757f7ff 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "7f81625e3814cc252c62ed4531879cb25d14cecb",
+  "prompts": {},
+  "sessions": {
+    "s_fb34b5676f6c5e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f987d172-c77f-49b4-a021-cf647b5678b0",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
