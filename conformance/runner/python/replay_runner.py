@@ -241,6 +241,8 @@ class ReplayRunner:
                 print(f"skip {snapshot['operation']}: {result['skip_reason']}")
             else:
                 result = self._decode_snapshot(snapshot)
+            # Same ensure_ascii=True dependency as the execution manifest in
+            # runner.py — see the comment there before changing this call.
             (out_dir / f"{_safe_name(t['name'])}.json").write_text(
                 json.dumps(result, indent=2)
             )

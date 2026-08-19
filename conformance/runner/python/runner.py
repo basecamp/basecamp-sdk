@@ -196,6 +196,13 @@ def write_execution_manifest(runner: str, total: int, executed: int,
         "executed": executed,
         "excluded": [{"file": f, "name": n, "reason": r} for f, n, r in sorted(excluded)],
     }
+    # `ensure_ascii=True` is json.dumps' default and it is load-bearing here, not
+    # incidental: `excluded` carries case names straight from the fixtures, and
+    # write_text() with no encoding= encodes in the locale's. The conformance
+    # step runs under LC_ALL=C PYTHONUTF8=0, so the moment someone passes
+    # ensure_ascii=False for prettier manifests this line raises
+    # UnicodeEncodeError on the first case name with an em dash. Pass an
+    # encoding= here if that day comes; do not just flip the flag.
     (path / f"{runner}.json").write_text(json.dumps(body, indent=2) + "\n")
 
 
