@@ -230,6 +230,43 @@ is always made. Only a negative cap now panics, with a new message:
 (a `recover` that inspects the message, as the conformance runner did) needs
 updating; code that simply never passed `0` is unaffected.
 
+### Go: `Error` gained `RetryAfter` mid-struct, and raw GETs now sleep it (#795)
+
+**The compile error, if you get one:** an unkeyed composite literal
+`basecamp.Error{code, msg, hint, fieldErrors, status, retryable, reqID, cause}`
+no longer compiles — the field is inserted between `Retryable` and `RequestID`,
+so the eight-value form is now too short. Same break `FieldErrors` caused in
+#541 (below, under Go → Behavioural); the remedy is the same, and permanent:
+use keyed fields.
+
+```go
+// before
+err := &basecamp.Error{basecamp.CodeRateLimit, "Rate limited", "", nil, 429, true, "", nil}
+// after — and it will not break again
+err := &basecamp.Error{Code: basecamp.CodeRateLimit, Message: "Rate limited", HTTPStatus: 429, Retryable: true}
+```
+
+`apidiff` reports this as compatible, and it is right about what it measures:
+the field is additive to the *exported API surface*. Unkeyed literals are a
+source-compatibility hazard the tool does not model, which is why this note
+exists rather than the gate catching it.
+
+**The behaviour change:** `Client.Get`/`GetAll` and the raw escape hatch used to
+back off on their own local curve after a 429 even when the server named a
+delay, because the loop read that delay off a type nothing in the package ever
+constructed. They now sleep the server's `Retry-After` — both wire forms,
+delta-seconds and HTTP-date — in place of the backoff, with no jitter and no
+ceiling beyond what a `time.Duration` can represent (over-range values saturate
+at ~292 years rather than wrapping negative). Typed service methods, downloads
+and the rate-limiter hook already honoured the header and are unchanged.
+
+**Wrong behaviour you get if you ignore it:** none, but the wait between
+attempts on a throttled account can now be seconds or minutes where it used to
+be milliseconds, so a caller that sized a `context` timeout against the old
+backoff may now hit it. The wait observes cancellation — the loop selects on
+`ctx.Done()` — so cancelling is the escape, and `err.RetryAfter` on the returned
+`*Error` is there if you would rather reschedule the work yourself.
+
 ### Kotlin: `search.search` returns `ListResult<SearchResult>`, not `ListResult<JsonElement>` (#717)
 
 ```kotlin
