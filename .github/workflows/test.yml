@@ -1162,188 +1162,158 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          # A failed export must abort rather than leave a missing .api file
-          # for the comparison to read as "nothing changed" — the whole gate
-          # would then pass for the wrong reason.
+          # An export that cannot run must abort rather than leave a missing
+          # .api file for the comparison to read as "nothing changed" — the
+          # whole gate would then pass for the wrong reason.
           set -eu
-
-          # Store the checked-out commit — the PR-on-base merge, not the branch
-          # head. Restoring head.sha instead left go/ dirty (and failed the
-          # manifest guard) on any PR whose base had since touched go/, which a
-          # dependabot batch makes routine: the first sibling to merge changes
-          # go/go.sum under every other open PR in the group.
-          ORIG_SHA="$(git rev-parse HEAD)"
-          BASE_REF="${GITHUB_BASE_REF}"
 
           WORK="${RUNNER_TEMP}/apidiff"
           mkdir -p "$WORK"
 
-          # apidiff compares one package at a time, so the set of packages IS
-          # the scope of this gate. It used to be the single literal
-          # `./pkg/basecamp`, which exempted every other importable package in
-          # the module — pkg/basecamp/oauth, pkg/basecamp/otel,
-          # pkg/basecamp/prometheus, pkg/types and pkg/generated were never
-          # checked, and pkg/basecamp/eventfeed was about to enter the module
-          # the same way. Enumerating instead of listing means a package added
-          # later is covered on the day it appears rather than on the day
-          # someone remembers to widen this line.
+          # Both sides of the comparison have to be taken from one fixed point.
+          # The PR side is whatever `actions/checkout` left here, which for a
+          # `pull_request` event is `refs/pull/N/merge`: this PR merged onto the
+          # base. The base side used to be `origin/${GITHUB_BASE_REF}`, a moving
+          # ref that `fetch-depth: 0` refreshes at job start, so the two sides
+          # could straddle a base that had advanced in between — and then a
+          # package the BASE gained is reported as one this PR REMOVED, failing
+          # a PR that changed nothing. `main` takes several commits on an
+          # ordinary day. Reading the `breaking` label live (below) widened the
+          # window further, by making "label it and re-run" a normal flow that
+          # can happen long after the merge commit was cut.
           #
-          # `internal/...` is excluded for the same reason a newly added package
-          # is reported but not compared: it has no external consumer to break,
-          # since nothing outside this module subtree can import it. Excluding
-          # it is not just tidiness. apidiff refuses to compare an internal
-          # package and says so on stderr ("Ignoring internal package ..."),
-          # exiting 0; the comparisons below fold stderr into the report file
-          # and read any non-empty report as a finding, so the first internal
-          # package to exist in both revisions would be announced as a breaking
-          # change and fail this gate. A gate that fails on something that
-          # cannot break anyone is how a `breaking` label gets applied to a
-          # non-break — or how the gate gets switched off.
-          #
-          # `all` is assigned on its own line, not filtered through a pipeline,
-          # so a failing `go list` still aborts the step under `set -e` —
-          # inside a pipeline only the last command's status would survive, and
-          # enumeration silently returning nothing is how this gate would pass
-          # while checking no packages at all. awk rather than grep because it
-          # exits 0 whether or not it matched, and its `NF` drops the empty
-          # line `printf` would otherwise produce from an empty list.
-          export_apis() {
-            local prefix="$1" list="$2" all
-            all="$(go list ./...)"
-            printf '%s\n' "$all" | awk 'NF && !/\/internal\// && !/\/internal$/' > "$list"
-            while read -r pkg; do
-              apidiff -w "${WORK}/${prefix}.$(printf '%s' "$pkg" | tr / _).api" "$pkg"
-            done < "$list"
-          }
-
-          export_apis pr "${WORK}/pr.pkgs"
-
-          # Find files added in PR that don't exist on base branch
-          # These need to be removed after checkout since git checkout doesn't remove them
-          # Strip 'go/' prefix since we're running from go/ directory
-          ADDED_FILES=$(git diff --name-only --diff-filter=A "origin/${BASE_REF}" -- . 2>/dev/null | sed 's|^go/||' || true)
-
-          # Check out the base branch to compare against
-          git checkout "origin/${BASE_REF}" -- .
-
-          # Remove files that were added in PR (they don't exist on base)
-          if [ -n "$ADDED_FILES" ]; then
-            echo "Removing files added in PR:"
-            echo "$ADDED_FILES"
-            echo "$ADDED_FILES" | xargs rm -f
+          # The merge commit's own first parent is that fixed point: it is the
+          # base commit this tree was merged onto. It cannot drift, and it needs
+          # no second ref to look up.
+          ORIG_SHA="$(git rev-parse HEAD)"
+          if ! git rev-parse --verify --quiet "${ORIG_SHA}^2" > /dev/null; then
+            echo "::error::HEAD (${ORIG_SHA}) is not a merge commit, so its first parent is not this PR's base. The baseline here is derived from the checked-out refs/pull/N/merge commit; if the checkout step above is ever changed to fetch the branch head instead, this gate would silently narrow to 'did the last commit break the API'."
+            exit 1
           fi
-          # A PR that adds a whole package leaves its directory behind, empty.
-          # `go list ./...` fails on a directory with no buildable Go files, so
-          # the base enumeration would abort on exactly the PRs this widening
-          # exists to cover.
-          find . -type d -empty -delete
+          BASE_SHA="$(git rev-parse --verify "${ORIG_SHA}^1")"
+          echo "Comparing ${ORIG_SHA} (this PR merged onto its base) against ${BASE_SHA} (that base)."
 
-          export_apis base "${WORK}/base.pkgs"
+          # The base revision is exported from its own worktree rather than by
+          # checking it out over this one. Checking out meant deleting the files
+          # the PR added, deleting the directories that left empty, and checking
+          # the original tree back out — three steps whose only job was to undo
+          # the first, each able to leave `go/` dirty and fail the manifest
+          # guard that runs after this step. A worktree under RUNNER_TEMP is
+          # outside the repository and touches neither. It is not removed
+          # afterwards: the runner is ephemeral, and a removal on the success
+          # path alone would be skipped by every path that exits early.
+          BASE_TREE="${WORK}/base"
+          git worktree add --detach "$BASE_TREE" "$BASE_SHA"
 
-          # Restore what was checked out, using the stored SHA
-          git checkout "${ORIG_SHA}" -- .
-
-          # apidiff has three outcomes, and only two of them are verdicts about
-          # the API: a clean comparison exits 0 and writes nothing, a
-          # comparison that found differences exits 0 and writes them to
-          # stdout, and a comparison that could not run at all exits non-zero
-          # with its reason on stderr. Both call sites below used to test
-          # `apidiff ... && [ -s report ]`, which folds the third outcome into
-          # the first — `set -e` does not fire for a command used as an `if`
-          # condition, so a non-zero apidiff simply short-circuited the `&&`,
-          # left `breaking` at 0, and the gate printed "No breaking changes
-          # detected" and passed. That is this gate failing open, and it is the
-          # exact failure the comment at the top of this step already rules out
-          # for the export phase: a report that cannot be produced must not be
-          # read as "nothing changed".
+          # apidiff's module mode answers the whole scope question. `-m`
+          # compares every package in the module, classifies an added package as
+          # compatible and a removed one as incompatible, and drops `internal/`
+          # before comparing. This step used to hand-roll all of that around
+          # per-package exports: a `go list ./...` enumeration, an internal
+          # filter, underscore-slugged filenames (two import paths can slug to
+          # the same name), a removed-package check the per-package comparison
+          # structurally cannot make, and two comparison loops. Three review
+          # rounds found three defects and every one of them was in that
+          # machinery — none in the policy around it. Module mode is in the
+          # pinned build, so none of it needs owning here.
           #
-          # It was also silent. The comparator's stderr went into the report
-          # file, and that file is only ever printed on the differences path,
-          # so the reason was written down and then discarded. This prints it.
+          # GOWORK=off, for two reasons. The repository root carries a `go.work`
+          # covering three modules, so a bare `go list -m` prints all three and
+          # `apidiff -m` would be handed a "module path" three lines long — it
+          # fails, but only after the workspace has been read, and the failure
+          # names all three. And the module a consumer resolves is this one
+          # alone, from its own go.mod and go.sum, not one wired to sibling
+          # directories that are never published; measuring the published shape
+          # is the whole point of the gate. Both spellings export byte-identical
+          # data today, since nothing here depends on a workspace sibling.
+          export GOWORK=off
+          MODULE_PATH="$(go list -m)"
+          BASE_MODULE_PATH="$(cd "$BASE_TREE/go" && go list -m)"
+
+          apidiff -m -w "${WORK}/pr.api" "$MODULE_PATH"
+          ( cd "$BASE_TREE/go" && apidiff -m -w "${WORK}/base.api" "$BASE_MODULE_PATH" )
+
+          # apidiff has three outcomes and only two of them are verdicts about
+          # the API: a clean comparison exits 0 and writes nothing to stdout, a
+          # comparison that found differences exits 0 and writes them to stdout,
+          # and a comparison that could not run exits non-zero with its reason
+          # on stderr. Both call sites used to be written `apidiff ... && [ -s
+          # report ]`, which folds the third outcome into the first — `set -e`
+          # does not fire for a command used as an `if` condition, so a failed
+          # comparison simply skipped the branch, left `breaking` at 0, and the
+          # gate printed "No breaking changes detected" and passed.
           #
-          # Both sites go through one helper rather than repeating the check,
-          # because the way this reappears is the two drifting apart.
+          # The two streams are kept apart rather than merged with `2>&1`.
+          # Module mode writes one benign line per internal package to stderr
+          # ("Ignoring internal package ...") on every comparison; merging that
+          # into the report would announce it as a finding, which is how the
+          # previous shape turned excluding `internal/` from a nicety into a
+          # requirement. On exit 0 stdout is the entire verdict; on non-zero
+          # stderr is the entire reason, and this prints it — a reason captured
+          # to a file nothing ever prints is how the fail-open survived review.
           run_apidiff() {
             local out="$1"; shift
             local status=0
-            apidiff "$@" > "$out" 2>&1 || status=$?
+            apidiff "$@" > "$out" 2> "${out}.err" || status=$?
             if [ "$status" -ne 0 ]; then
               echo "::error::apidiff exited ${status} comparing ${*} — the comparison could not be run. This is a tool failure, not a verdict on the API, so it is not something the \`breaking\` label should be used to wave through."
               echo '```'
-              cat "$out"
+              cat "${out}.err"
               echo '```'
               exit 1
             fi
           }
 
-          # Compare APIs and report breaking changes
           echo "## API Compatibility Check"
           echo ""
 
           breaking=0
-          while read -r pkg; do
-            slug="$(printf '%s' "$pkg" | tr / _)"
-            # A package present on base and absent from the PR is itself an
-            # incompatible change, and apidiff cannot see it: it compares two
-            # exports, and there is no second export to compare.
-            if ! grep -Fxq "$pkg" "${WORK}/pr.pkgs"; then
-              echo "### Package removed: \`${pkg}\`"
-              echo ""
-              breaking=1
-              continue
-            fi
-            run_apidiff "${WORK}/breaking.${slug}.txt" -incompatible \
-              "${WORK}/base.${slug}.api" "${WORK}/pr.${slug}.api"
-            if [ -s "${WORK}/breaking.${slug}.txt" ]; then
-              echo "### Breaking changes in \`${pkg}\`"
-              echo ""
-              echo '```'
-              cat "${WORK}/breaking.${slug}.txt"
-              echo '```'
-              echo ""
-              breaking=1
-            fi
-          done < "${WORK}/base.pkgs"
 
-          # A package the PR adds is additive by construction: nothing outside
-          # the PR could have imported it, so there is nothing it can break.
-          while read -r pkg; do
-            grep -Fxq "$pkg" "${WORK}/base.pkgs" || echo "New package (additive, not compared): \`${pkg}\`"
-          done < "${WORK}/pr.pkgs"
+          # `apidiff -m` keys packages by their path relative to the module, so
+          # a module whose path changed compares as though nothing moved and
+          # reports nothing at all. That is the one break module mode cannot
+          # see, and it is the break that invalidates every import at once.
+          if [ "$MODULE_PATH" != "$BASE_MODULE_PATH" ]; then
+            echo "### Module path changed: \`${BASE_MODULE_PATH}\` → \`${MODULE_PATH}\`"
+            echo ""
+            echo "Every existing import of the old path stops resolving."
+            echo ""
+            breaking=1
+          fi
+
+          run_apidiff "${WORK}/breaking.txt" -m -incompatible "${WORK}/base.api" "${WORK}/pr.api"
+          if [ -s "${WORK}/breaking.txt" ]; then
+            echo "### Breaking Changes Detected"
+            echo ""
+            echo "The following incompatible API changes were found:"
+            echo ""
+            echo '```'
+            cat "${WORK}/breaking.txt"
+            echo '```'
+            echo ""
+            breaking=1
+          fi
 
           if [ "$breaking" -eq 0 ]; then
             echo "No breaking changes detected."
           fi
 
-          # Also show all changes for reference
+          # Unqualified, and true: a module comparison covers the package set as
+          # well as each package's surface, so an added or removed package is a
+          # change this report has already named. The per-package shape could
+          # not say that — it walked one package list and skipped anything the
+          # other revision lacked, so "no API changes" could contradict a
+          # package removal reported four lines above it.
           echo ""
           echo "### All API Changes"
           echo ""
-          changed=0
-          while read -r pkg; do
-            grep -Fxq "$pkg" "${WORK}/pr.pkgs" || continue
-            slug="$(printf '%s' "$pkg" | tr / _)"
-            run_apidiff "${WORK}/changes.${slug}.txt" \
-              "${WORK}/base.${slug}.api" "${WORK}/pr.${slug}.api"
-            if [ -s "${WORK}/changes.${slug}.txt" ]; then
-              echo "#### \`${pkg}\`"
-              echo '```'
-              cat "${WORK}/changes.${slug}.txt"
-              echo '```'
-              changed=1
-            fi
-          done < "${WORK}/base.pkgs"
-          # Qualified to what the loop above actually measured. It walks the
-          # base package list and skips anything the PR does not also have, so
-          # a package that was only added or only removed never reaches it —
-          # yet both are already reported further up, one of them as a break.
-          # An unqualified "no API changes" would therefore contradict the
-          # report it is part of, and on a removal it would do so in the same
-          # log as the failure that removal just caused. Folding the package
-          # set into `changed` would silence the line instead, which leaves the
-          # section empty and says less than naming its scope does.
-          if [ "$changed" -eq 0 ]; then
-            echo "No API changes detected in packages present in both revisions."
+          run_apidiff "${WORK}/changes.txt" -m "${WORK}/base.api" "${WORK}/pr.api"
+          if [ -s "${WORK}/changes.txt" ]; then
+            echo '```'
+            cat "${WORK}/changes.txt"
+            echo '```'
+          else
+            echo "No API changes detected."
           fi
 
           # An intentional break is declared by labelling the PR `breaking`
@@ -1351,22 +1321,50 @@ jobs:
           # prints everything it found — the label suppresses the failure, not
           # the report, so the break stays visible in the log and in the label
           # itself rather than being argued in a thread nobody reads later.
-          # Without a hatch this gate could not block at all: the SDK is
-          # pre-1.0 and removes surface on purpose (#504 withdrew
-          # GetEverythingBoosts), so a hard fail with no override would just be
-          # switched off the first time it was right.
+          # Without a hatch this gate could not block at all: the SDK is pre-1.0
+          # and removes surface on purpose (#504 withdrew GetEverythingBoosts),
+          # so a hard fail with no override would just be switched off the first
+          # time it was right.
           #
           # The label is read from the API here rather than out of the event
-          # payload, because the payload is a snapshot of the event that
-          # started the run and this workflow's `pull_request:` trigger does
-          # not fire on `labeled`. A payload read can therefore only ever see
-          # labels that predate the run: applying `breaking` after a failure
-          # starts no new run, and re-running replays the same payload, so the
-          # very remedy printed below — label it, re-run — was the one thing
-          # that could not work. Reading it live is what makes that instruction
-          # true. Subscribing to `labeled`/`unlabeled` would close it too, but
-          # this file is the whole Test workflow, so it would re-run every
-          # check in it on every label edit on every PR.
+          # payload, because the payload is a snapshot of the event that started
+          # the run and this workflow's `pull_request:` trigger does not fire on
+          # `labeled`. A payload read can therefore only ever see labels that
+          # predate the run: applying `breaking` after a failure starts no new
+          # run, and re-running replays the same payload, so the very remedy
+          # printed below — label it, re-run — was the one thing that could not
+          # work. Reading it live is what makes that instruction true.
+          #
+          # The reverse case is left open on purpose: removing `breaking` after
+          # a green run leaves that run green, because nothing re-runs to notice.
+          # Closing it needs a trigger that fires on label events, and both
+          # shapes cost more than the hole. Adding `labeled`/`unlabeled` here
+          # re-runs all 23 jobs in this workflow on every label event on every
+          # PR — and `labeler.yml` runs `actions/labeler` with `sync-labels:
+          # true` on every push, so label events are emitted automatically
+          # whenever a push moves the changed-path set across one of its 9
+          # globs. That is amplification on the ordinary path, not an occasional
+          # extra run. Splitting this job into its own workflow file would make
+          # the extra run one job rather than 23, but it renames the required
+          # check, so it cannot land without an admin changing branch protection
+          # in the same breath — and between the two, every PR blocks on a check
+          # that no longer reports.
+          #
+          # What is left open is narrow. `breaking` is not in
+          # `.github/labeler.yml`, so `sync-labels: true` cannot remove it: only
+          # a person can, deliberately. Doing so buys them nothing they did not
+          # already have, because the label acknowledges a break rather than
+          # approving a merge — anyone who can remove it can equally leave it on
+          # and merge. And it is not free elsewhere: `.github/release.yml` files
+          # `breaking` PRs under "Breaking Changes", so removing the label drops
+          # the break from the release notes, which is the consequence this gate
+          # could not have prevented in any case. The acknowledged-pass message
+          # below says out loud that the run is only as good as the label at the
+          # moment it read it.
+          #
+          # Revisit if `breaking` ever becomes automated, or if a merge queue
+          # lands: a queue re-runs required checks against the merge result,
+          # which closes this for free.
           breaking_acknowledged() {
             # Events with no pull request (a push to main, a manual dispatch)
             # have nothing to carry a label, so say that rather than letting an
@@ -1397,7 +1395,7 @@ jobs:
             echo ""
             if breaking_acknowledged; then
               echo "Incompatible changes are present and the PR carries the \`breaking\` label — not failing."
-              echo "Document them in the changelog."
+              echo "Document them in the changelog. This run passed on the label as it stood when this step read it; removing the label later does not re-run this gate, so re-run it if the acknowledgement changes."
             else
               echo "::error::Incompatible public API changes. If they are intentional, label this PR \`breaking\` and re-run this job, and document them in the changelog."
               exit 1
