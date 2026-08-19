@@ -903,7 +903,7 @@
             "status",
             "headers"
           ],
-          "description": "Redirect on a continuation (fixture 30): the seam suppresses automatic following; a cross-origin/downgraded Location is Terminal(invalid_continuation) with zero egress. Harness obligation: the fixture's foreign origin is bound to a sentinel listener — any request reaching it fails the scenario.",
+          "description": "Redirect on a continuation (fixture 30): the seam suppresses automatic following; a cross-origin/downgraded Location is Terminal(invalid_continuation). At tier 2 the poll lane is a SEAM, so the driver forms the redirect-refused verdict and the connector never sees a Location header: this pins the half above the seam (mishandling the verdict — retrying it, misclassifying it, or echoing more of the Location than its origin), not redirect-following itself, which lives below the seam and is proven by the Layer-1 adapter's own 302 test. No sentinel-listener obligation is imposed on the harness: the foreign origin is unreachable by construction of the harness, so a silent sentinel would be a statement about the driver rather than about the connector. See the row-15 note in README.md.",
           "properties": {
             "status": {
               "const": 302
@@ -1205,7 +1205,7 @@
       "required": [
         "ms"
       ],
-      "description": "Advance virtual now by ms, firing due timers in deadline order per the normative virtual-advance algorithm (README): re-evaluate after each fire; timers scheduled during the advance whose deadlines land inside the window also fire; ties break by creation order.",
+      "description": "Advance virtual now by ms, firing due timers in deadline order per the normative virtual-advance algorithm (README): re-evaluate after each fire; timers scheduled during the advance whose deadlines land inside the window also fire; ties break by creation order. That reentrant clause is UNSCRIPTABLE wherever the connector runs concurrently with the driver, so no fixture may rely on it: every driver MUST fail an advance during which the connector arms any timer, naming fireTimer as the deterministic alternative. Detect arming itself (a monotonic count of timer creations), never a change in the outstanding-timer set — a firing removes its timer before any observer runs, and a same-name rearm leaves the set identical.",
       "properties": {
         "ms": {
           "type": "integer",

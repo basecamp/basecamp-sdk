@@ -150,9 +150,20 @@ Every driver must therefore FAIL an `advance` during which the connector arms
 anything, naming `fireTimer` as the deterministic alternative — it fires one
 named timer without moving the clock, so no re-selection is involved. This is
 unconditional, not a per-fixture opt-in: a flag would let a fixture author take
-the divergence instead of avoiding it. The Go driver implements it and
-self-tests both arms (rejection, and an ordinary quiet-window advance still
-passing).
+the divergence instead of avoiding it.
+
+**Detect the arming itself — a monotonic count of timer creations on the test
+clock — and never a change in the outstanding-timer set.** The set is the wrong
+instrument in both directions, and a driver using it reports the opposite of
+what this rule says on both: a firing removes its timer from the set before any
+observer can run, so an ordinary expiry that arms nothing is read as an arm;
+and a timer rearmed under a name it already had leaves the set byte-identical,
+so the connector's own same-name rearms (`repair-poll`, `poll-retry`) are
+invisible. Only the creation count separates the two histories. The Go driver
+implements this and self-tests three arms: the rejection, an ordinary
+quiet-window advance still passing, and — the control that discriminates the
+instruments — an advance whose window fires a due timer that is *not* replaced,
+which must pass.
 
 ## Contract notes the fixtures encode (SDK-owned, final)
 
@@ -256,7 +267,7 @@ revoked-mint threshold).
 | 27 | `27-hostile-resume-cross-origin.json` | accepted 410 with a cross-origin `resume` → Terminal(`invalid_continuation`), zero foreign requests |
 | 28 | `28-checkpoint-load-failure.json` | store load Failed → Terminal(`checkpoint_load`) with ZERO wire attempts; distinct from Missing (which proceeds to a present entry) |
 | 29 | `29-checkpoint-save-failure-continues.json` | save Failed → feed continues and a SUBSEQUENT save is attempted (exact store-call script: no save circuit breaker) |
-| 30 | `30-continuation-redirect-cross-origin.json` | validated same-origin `next` answering 302 + cross-origin Location → Terminal(`invalid_continuation`), zero foreign egress |
+| 30 | `30-continuation-redirect-cross-origin.json` | validated same-origin `next` answering 302 + cross-origin Location → Terminal(`invalid_continuation`); zero foreign egress holds by construction of the seam and is proven at Layer 1, not here — see the row-15 note |
 | 31 | `31-post-snapshot-straggler-below-served-id.json` | post-snapshot straggler with an id BELOW the entry page's served id delivered live; the re-push of that served id still suppressed |
 
 **Hostile-URL coverage note (stated author's choice, per the PR-1 review):** the
