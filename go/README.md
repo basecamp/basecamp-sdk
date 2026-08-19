@@ -608,11 +608,13 @@ stream of events; the connector owns reconnection, backoff, staleness detection,
 the durable position.
 
 **Experimental: the Layer-1 seam adapters have not landed yet.** The connector performs
-no wire I/O of its own — every HTTP exchange reaches the wire through a seam backed by
-a generated operation — and the adapters that build those seams over the generated
-`CreateStreamTicket` and `PollEvents` operations are still to come. Until they do, a
-consumer must supply the `TicketMinter` and `PollSource` implementations itself, and the
-exported surface may still change as they land.
+no HTTP API I/O of its own: every HTTP exchange reaches the wire through a seam backed by
+a generated operation. Its one direct wire act is the Action Cable dial above — the
+connector connects verbatim to the URL a generated `CreateStreamTicket` call returned,
+which is the sanctioned non-HTTP wire act. The adapters that build those seams over the
+generated `CreateStreamTicket` and `PollEvents` operations are still to come. Until they
+do, a consumer must supply the `TicketMinter` and `PollSource` implementations itself, and
+the exported surface may still change as they land.
 
 ```go
 import (

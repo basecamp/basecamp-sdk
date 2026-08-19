@@ -236,6 +236,28 @@ type Connector struct {
 // was accepted and delivered before Close was called, and abandoning a durable
 // write half-way is worse than finishing it. What cannot happen is a save the
 // connector had not yet decided to make.
+//
+// # The residual, stated rather than left to be rediscovered
+//
+// "Begun" in the opening paragraph is this gate's term of art — claiming the
+// gate — and the failure described there is prevented only under that reading.
+// Say so plainly, because a reader who takes "begun" to mean the store call
+// reads the opening as a stronger promise than the gate delivers.
+//
+// The claim and the store call are not atomic together: a save can be
+// descheduled between them for as long as the scheduler likes. So the window
+// in which a replacement connector's newer position can be overwritten is
+// NARROWED, from [decision, write] to [claim, write], rather than closed. The
+// overwrite moves the checkpoint BACKWARD, against §23's "checkpoints only
+// move forward"; its cost is bounded replay on the next entry rather than
+// skipped events, because the position that survives is the older one.
+//
+// Closing it needs one of two things this type cannot have: Close waiting on
+// the store call (rejected above, and reachable as a deadlock from any
+// callback), or a fencing token the store can use to refuse a write from a
+// superseded run — a CheckpointStore contract change normative for all six
+// SDKs. Tracked in #784 with a third option, declaring the residual
+// in-contract, rather than decided here.
 type durableGate struct {
 	mu     sync.Mutex
 	closed bool

@@ -435,18 +435,35 @@ type Observer struct {
 	Connected func()
 	// Confirmed fires on confirm_subscription.
 	Confirmed func()
-	// Disconnected fires when a socket is torn down. reason is the
-	// frame-derived disconnect reason, bounded by the §9 cap; err is the
-	// failure that ended the socket.
+	// Disconnected fires when a socket is torn down. reason describes why; err
+	// is the failure that ended the socket. NEITHER is peer text: both are
+	// mapped onto closed vocabularies before they reach here.
 	//
-	// err is passed through UNREDACTED, deliberately: it is an error, i.e.
-	// opaque text, and stripping a credential out of arbitrary text requires
-	// modelling the credential — the one thing §23's "opaque bearer" contract
-	// rules out. Every error the connector puts here is either one of its own
-	// sentinels or a seam error, and Dial, ReadFrame and WriteFrame each carry
-	// the obligation not to render the cable URL. A custom transport that
-	// breaks that obligation leaks through this callback, which is why the
-	// obligation is stated on the seam rather than defended here.
+	// reason goes through observableDisconnectReason: the two reasons dispatch
+	// actually acts on are named exactly, an absent reason stays empty, and
+	// every other peer-supplied string — however short — becomes "other". err
+	// goes through observableSocketError: the connector's own sentinels and
+	// typed errors are preserved (errStaleConnection, errCableConnClosed, the
+	// context sentinels, *CloseError, *DialError, *TerminalError,
+	// *invalidFrameError), and ANY other error is replaced by errSocketFailed.
+	//
+	// The normalization is deliberate, and it is the connector's own defense
+	// rather than a restatement of the seam's. §23 declares the ticket an
+	// opaque bearer credential that is never logged; this callback is a
+	// logging surface; and stripping a credential out of arbitrary text would
+	// require MODELLING the credential, which "opaque" is precisely the
+	// assumption that forbids. A closed vocabulary is the only answer that
+	// does not depend on the peer, or on a custom transport, behaving.
+	//
+	// Dial, ReadFrame and WriteFrame still carry the obligation not to render
+	// the cable URL, and that obligation is what keeps a PRESERVED typed error
+	// safe. What changed is the consequence of breaking it: a transport that
+	// renders the URL into an unrecognized error no longer leaks through this
+	// callback, because that error does not survive the mapping.
+	//
+	// The corollary for custom transports: diagnostics you attach to an error
+	// the connector does not recognize do NOT reach this callback. Report them
+	// through your own logging, not through this seam.
 	Disconnected func(reason string, err error)
 	// CatchUpStarted fires when a poll walk begins.
 	CatchUpStarted func(cursor Cursor)
