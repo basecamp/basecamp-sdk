@@ -821,10 +821,15 @@ jobs:
         # so the target itself stays version-agnostic.
         if: matrix.python == '3.13'
         working-directory: .
-        # Same locale trio as the conformance step above, for the same reason:
-        # this suite reads conformance/tests/live-my-surface.json, which carries
-        # non-ASCII, so its read is pinned too and the pin needs a leg that can
-        # see it break (#774).
+        # Same locale trio as the conformance step above, and this is the step
+        # that holds most of the Python pins (#774). It reads
+        # conformance/tests/live-my-surface.json, which carries non-ASCII, so
+        # its own read is pinned too — but it is also the ONLY thing that
+        # executes the replay path: runner.py never constructs ReplayRunner or
+        # SchemaWalker, so the pins in replay_runner.py and schema_walker.py are
+        # unreachable from the conformance step above. Utf8ReplayPathTest and
+        # SchemaWalkerUtf8Test drive that path over well-formed non-ASCII UTF-8;
+        # drop any one of those four pins and this step reds.
         env:
           UV_PYTHON: ${{ matrix.python }}
           LC_ALL: C
