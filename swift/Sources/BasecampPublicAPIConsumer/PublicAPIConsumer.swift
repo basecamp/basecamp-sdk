@@ -87,9 +87,13 @@ public enum PublicAPIConsumer {
     ///
     /// Listing all of them rather than a sample is deliberate: each line is an
     /// independent compile-time assertion, so reverting the generator fix
-    /// produces 35 errors here instead of one that could be argued away. A
+    /// produces 34 errors here instead of one that could be argued away. A
     /// model that disappears or is renamed also breaks this list, which is the
     /// intended signal — the roster is meant to be re-read, not auto-followed.
+    /// It was 35 until `GetPersonProgressResponseContent`'s two members were
+    /// modeled `@required` (#728), which moved it to the required-member
+    /// function below — a model leaving this roster because it gained a
+    /// required member is the roster working, not shrinking.
     ///
     /// The complementary guarantee lives in `PublicInitCoverageTests`, which scans
     /// *every* generated model for a `public init` and so covers models added
@@ -110,7 +114,6 @@ public enum PublicAPIConsumer {
         _ = GetAssignedTodosResponseContent()
         _ = GetMyAssignmentsResponseContent()
         _ = GetOverdueTodosResponseContent()
-        _ = GetPersonProgressResponseContent()
         _ = OutOfOffice()
         _ = PauseQuestionResponseContent()
         _ = Preferences()
@@ -142,5 +145,12 @@ public enum PublicAPIConsumer {
     public static func requiredMemberModelsKeepTheirInitShape() {
         _ = GaugeNeedlePayload(position: 50)
         _ = GaugeNeedlePayload(position: 50, color: "#00ff00", description: "<div>note</div>")
+        // Arrived here from the all-optional roster above when both its members
+        // were modeled @required (#728). A response model rather than a payload,
+        // which is the point of keeping it: the generator widens the init for
+        // all-optional models in either direction, and this is the one model in
+        // the package that has crossed the line.
+        _ = GetPersonProgressResponseContent(
+            events: [], person: Person(id: 1, name: "Victor Cooper"))
     }
 }

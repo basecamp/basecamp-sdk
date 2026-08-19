@@ -359,7 +359,7 @@ exception — indistinguishable from the auth strategy throwing or the socket
 dropping, and invisible to a caller catching the SDK's error type. Only the
 decode expression is wrapped now, in **every request primitive** — so every
 operation's response decode, not just the §18 composites that already did this by
-hand. The one exception is called out below.
+hand.
 
 | SDK | was | now |
 |---|---|---|
@@ -382,17 +382,69 @@ same `try`, and throws the same `SerializationException` type the decoder does.
 [`BasecampError.api` gained a fifth associated value](#basecamperrorapi-gained-a-fifth-associated-value-750)
 above. It ships in this same release, so there is one migration to do, not two.
 
-**One operation is exempt, and it is `GetPersonProgress`.** Its wrapper is
-decoded by generated code that runs *after* the request primitive returns — the
-`person` member in both SDKs, plus the `events` array, which the Kotlin
-generator reaches through `["events"]!!.jsonArray`. A wrong-shaped or incomplete
-wrapper therefore still surfaces a raw `DecodingError` (Swift) or a
-`NullPointerException`/`IllegalArgumentException` (Kotlin), and Swift's missing
-`events` is not refused at all — it decodes to an empty list. Nothing about that
-changed in this release; it is the one place the contract above does not yet
-reach, it needs both service generators plus a regeneration to fix, and it is
-tracked in #728. If you catch decoder exceptions anywhere, keep doing so
-around this operation.
+**`GetPersonProgress` is included (#728).** Every malformed wrapper now raises
+the statusless `api_error`. What it raised *before* differs per body and per SDK
+far more than a sentence can carry, so here is the whole thing — one row per
+body, taken from the tests in `DecodeIsolationTest.kt` and
+`DecodeIsolationTests.swift`, each of which was run against the pre-change code
+to get the left-hand columns:
+
+| body | Kotlin, before | Swift, before |
+|---|---|---|
+| `events` absent, `person` valid | `NullPointerException` | **succeeded, `events: []`** |
+| `person` absent, `events` valid | `NullPointerException` | raw `DecodingError.keyNotFound` |
+| `person` wrong-typed | raw `SerializationException` | raw `DecodingError.typeMismatch` |
+| `events` a JSON object | `IllegalArgumentException` | already the `api_error`; the message did not name `events` |
+| `events` a scalar | `IllegalArgumentException` | **uncaught `NSInvalidArgumentException`** — not a Swift error, no `catch` reaches it |
+| body not a JSON object | `IllegalArgumentException` | raw `DecodingError.typeMismatch` from the wrapper decode |
+
+Two rows are the ones to read closely, because they are not merely a changed
+error type. **Swift row 1 is the only silent success in this whole issue:** with
+`person` valid and only `events` absent, nothing downstream objected, so the SDK
+reported a zero-event read of a response it had not understood. **Swift row 5
+was not an error at all but a process abort**, because a scalar is not valid
+input to `JSONSerialization.data(withJSONObject:)`.
+
+Two mechanisms produced the rest, and they are worth telling apart. The `person`
+decode ran *outside* the boundary — generated code, after the primitive returned
+— so nothing could have mapped it, in either SDK. The `events` parse always ran
+*inside* it, and Kotlin leaked anyway, because `["events"]!!.jsonArray` throws
+`NullPointerException` and `IllegalArgumentException` and the mapping catches
+neither, on purpose: catching them would swallow every `!!` and `require()` in
+the SDK.
+
+BC3 settles which reading is right:
+`app/views/api/users/timelines/show.json.jbuilder` writes `person` and `events`
+unconditionally, so an absent one is a malformed body and never an empty result.
+
+**`GetPersonProgressResponseContent.person` and `.events` became required.** The
+model now says what the jbuilder does. Kotlin and Swift already enforced it at
+runtime; the model is where the other four have to say it, because Go
+typed-decodes this envelope but `encoding/json` has no notion of a required
+member, and TypeScript, Ruby and Python do not typed-decode it at all.
+
+**Class B, and in more places than construction.** `person?`/`events?` →
+`person`/`events` in TypeScript's `schema.d.ts` and in Python's `TypedDict`
+(`NotRequired` gone); `Person *Person` → `Person Person` in Go; `var …?` with a
+zero-argument `init` → `let` with a two-argument one in Swift. What can stop
+compiling, or stop type-checking:
+
+| | breaks on |
+|---|---|
+| TypeScript | an object literal typed as this schema that omits either key |
+| Python | a `TypedDict` literal missing either key, under a type checker |
+| Go | `resp.JSON200.Person != nil`, `*resp.JSON200.Person`, or assigning a `*Person` |
+| Swift | `GetPersonProgressResponseContent()`, `if let`/`?.` on either member, or assigning after construction (they are `let` now) |
+| Ruby | nothing — its generated types carry no per-member optionality |
+
+The SDKs' own `PersonProgress` surfaces are unchanged, Go's included: it still
+returns `*Person`.
+
+**Only if you subclass `BaseService` directly:** `requestPaginatedWrapped` no
+longer hands back the first page's raw body for you to decode afterwards. It
+takes the wrapper decode as a trailing closure and returns whatever that closure
+returns, which is what puts the decode inside the mapping above. Generated
+services are its only callers in this repo.
 
 ### `SearchResult` lost five required members and gained the special-branch keys (#651)
 

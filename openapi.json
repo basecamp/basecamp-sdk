@@ -30728,10 +30728,13 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/TimelineEvent"
-            },
-            "x-go-type-skip-optional-pointer": true
+            }
           }
-        }
+        },
+        "required": [
+          "events",
+          "person"
+        ]
       },
       "GetPersonResponseContent": {
         "$ref": "#/components/schemas/Person"

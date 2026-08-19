@@ -145,6 +145,204 @@ final class DecodeIsolationTests: XCTestCase {
         }
     }
 
+    // MARK: - The wrapped-pagination envelope, member by member (#728)
+
+    /// `GetPersonProgress` is the SDK's only wrapped-pagination operation, and
+    /// its envelope used to be half-decoded outside the primitive: `person` by
+    /// GENERATED code running after `requestPaginatedWrapped` returned, so a
+    /// missing or wrong-typed one threw a raw `DecodingError`. One case was
+    /// worse than raw: an absent `events` alongside a valid `person`, where
+    /// `decodeWrappedItems` answered with an EMPTY LIST and the wrapper decode
+    /// was then happy with the rest, so the whole operation SUCCEEDED on a
+    /// response the SDK had not understood — where Kotlin threw.
+    ///
+    /// That is the only silent success, and the tests below are careful about
+    /// it. A non-object body reached the same `?? [:]` fallback, but the wrapper
+    /// decode rejected it a line later, so that case failed — just unmapped.
+    ///
+    /// Absence is malformed, not empty, on BC3's authority:
+    /// `app/views/api/users/timelines/show.json.jbuilder` is two unconditional
+    /// `json.` lines — `person` and `events` — with no `if` between them, so
+    /// every member below is always on the wire.
+
+    /// The control: both members present, so the envelope decodes.
+    func testAWellFormedWrapperStillDecodes() async throws {
+        let account = makeTestAccountClient(
+            transport: transport(
+                body: #"{"person":{"id":45678,"name":"Victor Cooper"},"events":[]}"#))
+
+        let result = try await account.reports.personProgress(personId: 7)
+
+        XCTAssertEqual(result.person.id, 45678)
+        XCTAssertEqual(result.events.count, 0)
+    }
+
+    /// **The silent one.** With `person` valid and only `events` absent, nothing
+    /// downstream objected, so this body used to come back as a successful read
+    /// of zero events. The `person` in this fixture is deliberately well-formed:
+    /// break it and the wrapper decode fails instead, and the case stops being
+    /// about the items key at all.
+    func testAnAbsentItemsKeyIsAStatuslessApiError() async throws {
+        let message = try await personProgressFailureMessage(
+            #"{"person":{"id":45678,"name":"Victor Cooper"}}"#)
+
+        assertNamesTheMember(message, "events", saying: "is absent")
+    }
+
+    /// An absent `person` used to throw a raw `DecodingError.keyNotFound`.
+    func testAnAbsentWrapperMemberIsAStatuslessApiError() async throws {
+        let message = try await personProgressFailureMessage(#"{"events":[]}"#)
+
+        XCTAssertTrue(
+            message.contains("person"), "the decoder's own account must survive: \(message)")
+    }
+
+    /// A wrong-typed `person` used to throw a raw `DecodingError.typeMismatch`.
+    func testAWrongTypedWrapperMemberIsAStatuslessApiError() async throws {
+        _ = try await personProgressFailureMessage(#"{"events":[],"person":42}"#)
+    }
+
+    /// The one case here that was **already** an `api_error`: `{}` is valid
+    /// input to `JSONSerialization.data(withJSONObject:)`, so the old path
+    /// serialized it and the `[T]` decoder then rejected it. What the guard adds
+    /// is a message that names the member — and cover for the values `{}` does
+    /// not stand in for. A string or a number at `events` is not a valid
+    /// top-level JSON object, and `data(withJSONObject:)` answers that with an
+    /// `NSInvalidArgumentException`, which is not a Swift error and cannot be
+    /// caught. Refusing the shape first is what keeps that unreachable.
+    func testANonArrayItemsKeyIsAStatuslessApiError() async throws {
+        let message = try await personProgressFailureMessage(
+            #"{"person":{"id":45678,"name":"Victor Cooper"},"events":{}}"#)
+
+        assertNamesTheMember(message, "events", saying: "not an array")
+    }
+
+    /// The case `{}` above does **not** stand in for, and the one the type guard
+    /// genuinely exists for. A scalar at `events` is not a valid top-level JSON
+    /// object, so the old path reached
+    /// `JSONSerialization.data(withJSONObject:)` with a value it answers by
+    /// raising `NSInvalidArgumentException` — an Objective-C exception, which is
+    /// not a Swift error and which no `catch` in this SDK can see.
+    ///
+    /// So this test does not assert an error type so much as assert that the
+    /// process is still alive to report one: delete the guard and it does not
+    /// fail, it takes the test runner down with it. That is the whole reason it
+    /// is a separate case from the dictionary above.
+    func testAScalarItemsKeyIsRefusedRatherThanCrashing() async throws {
+        let message = try await personProgressFailureMessage(
+            #"{"person":{"id":45678,"name":"Victor Cooper"},"events":42}"#)
+
+        assertNamesTheMember(message, "events", saying: "not an array")
+    }
+
+    /// A top-level array — valid JSON, wrong shape. `as? [String: Any] ?? [:]`
+    /// swallowed it far enough to yield an empty items list, but the wrapper
+    /// decode then rejected the same body, so this case *did* fail before —
+    /// with a raw `DecodingError` about `person`, naming the wrong member. What
+    /// changes is that it is now mapped, and refused for what is actually wrong
+    /// with it.
+    func testANonObjectWrappedBodyIsAStatuslessApiError() async throws {
+        let message = try await personProgressFailureMessage(#"[{"id":1}]"#)
+
+        XCTAssertTrue(
+            message.contains("not a JSON object"), "expected the shape refusal, got: \(message)")
+    }
+
+    /// The ordering `finishWrapped` exists to hold: the wrapper decode runs
+    /// BEFORE `onOperationEnd`, so a malformed wrapper is reported once, as a
+    /// failure.
+    ///
+    /// Without this, moving the hook call ahead of `decoding(_:_:)` — the exact
+    /// regression the helper is written to prevent, and what the generated code
+    /// did before this change — would pass every other test in this file,
+    /// because they only read the thrown error. Both halves are one test on
+    /// purpose: the claim is that the hook reports what actually happened, so
+    /// the well-formed body has to be shown reporting a SUCCESS through the same
+    /// path, or "always attaches an error" would satisfy the malformed half.
+    func testAMalformedWrapperIsReportedToHooksOnceAsAFailure() async throws {
+        let badSpy = EndSpy()
+        let bad = makeTestAccountClient(
+            transport: transport(body: #"{"events":[]}"#), hooks: badSpy)
+        do {
+            _ = try await bad.reports.personProgress(personId: 7)
+            XCTFail("expected a malformed wrapper to fail")
+        } catch is BasecampError {}
+
+        XCTAssertEqual(
+            badSpy.ends.count, 1, "a malformed wrapper must end the operation exactly once")
+        guard let recorded = badSpy.ends.first, let reported = recorded else {
+            return XCTFail("the end event must carry the mapped error, not report a success")
+        }
+        XCTAssertTrue(reported is BasecampError, "got a raw \(type(of: reported))")
+
+        let goodSpy = EndSpy()
+        let good = makeTestAccountClient(
+            transport: transport(
+                body: #"{"person":{"id":45678,"name":"Victor Cooper"},"events":[]}"#),
+            hooks: goodSpy)
+        _ = try await good.reports.personProgress(personId: 7)
+
+        XCTAssertEqual(goodSpy.ends.count, 1)
+        XCTAssertNil(
+            goodSpy.ends.first ?? nil, "a well-formed wrapper must still report a success")
+    }
+
+    /// Asserts the message names the member and says what was wrong with it,
+    /// **without quoting the quotes around it**. The guards in `BaseService`
+    /// write `'events'`, but the message reaches here through
+    /// `String(describing: DecodingError)`, and that rendering is a toolchain
+    /// detail rather than a contract. Swift 6.4 has a `CustomStringConvertible`
+    /// for `DecodingError` and prints the `debugDescription` verbatim; the CI
+    /// toolchain falls back to reflecting the enum, which escapes the nested
+    /// string's apostrophes to `\'`. An assertion on `'events'` therefore passed
+    /// here and failed there while both SDKs behaved identically — a test
+    /// coupled to the renderer, not to the behaviour. The member name and the
+    /// complaint survive either rendering.
+    private func assertNamesTheMember(
+        _ message: String, _ member: String, saying complaint: String,
+        file: StaticString = #filePath, line: UInt = #line
+    ) {
+        XCTAssertTrue(
+            message.contains(member), "the member must be named, got: \(message)", file: file,
+            line: line)
+        XCTAssertTrue(
+            message.contains(complaint), "expected \"\(complaint)\", got: \(message)", file: file,
+            line: line)
+    }
+
+    /// Drives `GetPersonProgress` against `body` and asserts the SPEC §6
+    /// statusless shape, returning the message so each case can pin what the
+    /// decoder said about its own member.
+    private func personProgressFailureMessage(
+        _ body: String, file: StaticString = #filePath, line: UInt = #line
+    ) async throws -> String {
+        let account = makeTestAccountClient(transport: transport(body: body))
+
+        do {
+            _ = try await account.reports.personProgress(personId: 7)
+            XCTFail("expected a malformed wrapper to fail", file: file, line: line)
+            return ""
+        } catch let error as BasecampError {
+            guard case .api(let message, let httpStatus, _, _, let decodeFailure) = error else {
+                XCTFail("expected .api, got \(error)", file: file, line: line)
+                return ""
+            }
+            XCTAssertNil(
+                httpStatus, "the transport succeeded, so no status describes this", file: file,
+                line: line)
+            XCTAssertFalse(
+                error.isRetryable, "re-requesting cannot repair a malformed body", file: file,
+                line: line)
+            XCTAssertNotNil(
+                decodeFailure, "the structural marker separates this from any other .api",
+                file: file, line: line)
+            XCTAssertTrue(
+                message.contains("GetPersonProgress returned a body that does not decode"), message,
+                file: file, line: line)
+            return message
+        }
+    }
+
     // MARK: - The marker: which statusless api_error is this?
 
     /// The two statusless `.api`s the SDK produces, told apart structurally
@@ -348,5 +546,19 @@ private final class PageCounter: @unchecked Sendable {
             value += 1
             return value
         }
+    }
+}
+
+/// Records only what `testAMalformedWrapperIsReportedToHooksOnceAsAFailure`
+/// reads: one entry per `onOperationEnd`, carrying its error or `nil`. Its own
+/// spy rather than `HooksTests`', which is private to that file.
+private final class EndSpy: BasecampHooks, @unchecked Sendable {
+    private let lock = NSLock()
+    private var _ends: [(any Error)?] = []
+
+    var ends: [(any Error)?] { lock.withLock { _ends } }
+
+    func onOperationEnd(_ info: OperationInfo, result: OperationResult) {
+        lock.withLock { _ends.append(result.error) }
     }
 }

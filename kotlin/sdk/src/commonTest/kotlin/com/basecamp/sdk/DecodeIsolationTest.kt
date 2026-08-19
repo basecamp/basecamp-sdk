@@ -222,31 +222,181 @@ class DecodeIsolationTest {
         client.close()
     }
 
-    /**
-     * `requestPaginatedWrapped`: a body that is not JSON at all.
-     *
-     * Deliberately not a valid-JSON-wrong-shape body. The generated wrapper
-     * accessor for this operation reaches `["events"]!!.jsonArray`, whose
-     * `NullPointerException`/`IllegalArgumentException` this helper does not map
-     * — a generated-code defect tracked with the rest of the wrapper-decode gap
-     * (#728), not an exception type to widen the catch for.
-     */
+    /** `requestPaginatedWrapped`: a body that is not JSON at all. */
     @Test
     fun malformedWrappedBodyIsAStatuslessApiError() = runTest {
-        val client = mockClient { respond("not json at all", HttpStatusCode.OK, jsonHeaders) }
+        assertMalformedWrapper(personProgressFailure("not json at all"))
+    }
 
+    // -- The wrapped-pagination envelope, member by member (#728) --
+    //
+    // `GetPersonProgress` is the SDK's only wrapped-pagination operation, and
+    // its envelope used to fail two DIFFERENT ways, which is worth keeping
+    // straight because the fix has two halves for that reason.
+    //
+    // The `person` decode was outside the boundary: generated code ran
+    // `decodeFromJsonElement<Person>(wrapper["person"]!!)` after the primitive
+    // had already returned, so nothing could have mapped it.
+    //
+    // The `events` decode was inside it — `parseItems` runs within
+    // `decodeOrApiError` — and still surfaced raw, because the generated
+    // accessor `["events"]!!.jsonArray` throws NullPointerException and
+    // IllegalArgumentException, and the mapping catches neither, deliberately.
+    // A boundary problem and an exception-type problem, and both are fixed
+    // here: the wrapper decode moved inside, and the accessors were changed to
+    // speak SerializationException.
+    //
+    // Absence is malformed, not empty, on BC3's authority: the envelope comes
+    // from app/views/api/users/timelines/show.json.jbuilder, which is two
+    // unconditional `json.` lines — `person` and `events` — with no `if` between
+    // them. Every member below is therefore always on the wire.
+
+    /** The control: both members present, so the envelope decodes. */
+    @Test
+    fun aWellFormedWrapperStillDecodes() = runTest {
+        val client = mockClient {
+            respond(
+                """{"person":{"id":45678,"name":"Victor Cooper"},"events":[]}""",
+                HttpStatusCode.OK,
+                jsonHeaders,
+            )
+        }
+
+        val result = client.forAccount("12345").reports.personProgress(7L)
+
+        assertEquals(45678L, result.person.id)
+        assertEquals(0, result.events.size)
+        client.close()
+    }
+
+    /** An absent `events` was a NullPointerException out of `["events"]!!`. */
+    @Test
+    fun anAbsentItemsKeyIsAStatuslessApiError() = runTest {
+        val error = personProgressFailure("""{"person":{"id":45678,"name":"Victor Cooper"}}""")
+
+        assertMalformedWrapper(error)
+        assertTrue(
+            error.message!!.contains("'events'"),
+            "the absent member must be named, got: ${error.message}",
+        )
+    }
+
+    /** An absent `person` was a NullPointerException out of `["person"]!!`. */
+    @Test
+    fun anAbsentWrapperMemberIsAStatuslessApiError() = runTest {
+        val error = personProgressFailure("""{"events":[]}""")
+
+        assertMalformedWrapper(error)
+        assertTrue(
+            error.message!!.contains("'person'"),
+            "the absent member must be named, got: ${error.message}",
+        )
+    }
+
+    /** A wrong-typed `person` already raised a SerializationException — but outside the mapping. */
+    @Test
+    fun aWrongTypedWrapperMemberIsAStatuslessApiError() = runTest {
+        assertMalformedWrapper(personProgressFailure("""{"events":[],"person":42}"""))
+    }
+
+    /** A non-array `events` was an IllegalArgumentException out of `.jsonArray`. */
+    @Test
+    fun aNonArrayItemsKeyIsAStatuslessApiError() = runTest {
+        assertMalformedWrapper(
+            personProgressFailure("""{"person":{"id":45678,"name":"Victor Cooper"},"events":{}}"""),
+        )
+    }
+
+    /**
+     * A scalar `events`, kept separate from the object above because Swift's
+     * two cases are not the same failure — a scalar is not valid input to its
+     * `JSONSerialization.data(withJSONObject:)`, and used to abort the process.
+     * Kotlin has no such cliff; both are `.jsonArray` cast failures. The case is
+     * here so the cross-SDK table in MIGRATING has a Kotlin cell it was actually
+     * run for, rather than one reasoned about.
+     */
+    @Test
+    fun aScalarItemsKeyIsAStatuslessApiError() = runTest {
+        assertMalformedWrapper(
+            personProgressFailure("""{"person":{"id":45678,"name":"Victor Cooper"},"events":42}"""),
+        )
+    }
+
+    /** A top-level array — valid JSON, wrong shape — was an IllegalArgumentException out of `.jsonObject`. */
+    @Test
+    fun aNonObjectWrappedBodyIsAStatuslessApiError() = runTest {
+        assertMalformedWrapper(personProgressFailure("""[{"id":1}]"""))
+    }
+
+    /**
+     * The ordering `finishWrapped` exists to hold: the wrapper decode runs
+     * BEFORE `onOperationEnd`, so a malformed wrapper is reported once, as a
+     * failure.
+     *
+     * Without this, moving the hook call ahead of `decodeOrApiError` — the exact
+     * regression the helper is written to prevent, and what the generated code
+     * did before this change — would pass every other test in this file, because
+     * they only read the thrown exception. Both halves are one test on purpose:
+     * the claim is that the hook reports what actually happened, so the
+     * well-formed body has to be shown reporting a SUCCESS through the same
+     * path, or "always attaches an error" would satisfy the malformed half.
+     */
+    @Test
+    fun aMalformedWrapperIsReportedToHooksOnceAsAFailure() = runTest {
+        val ends = mutableListOf<OperationResult>()
+        val spy = object : BasecampHooks {
+            override fun onOperationEnd(info: OperationInfo, result: OperationResult) {
+                ends.add(result)
+            }
+        }
+        fun clientFor(body: String) = testBasecampClient {
+            accessToken("test-token")
+            baseUrl = "http://localhost:3000"
+            engine = MockEngine { respond(body, HttpStatusCode.OK, jsonHeaders) }
+            enableRetry = false
+            hooks = spy
+        }
+
+        val bad = clientFor("""{"events":[]}""")
+        assertFailsWith<BasecampException.Api> { bad.forAccount("12345").reports.personProgress(7L) }
+        bad.close()
+
+        assertEquals(1, ends.size, "a malformed wrapper must end the operation exactly once")
+        assertIs<BasecampException.Api>(
+            ends.single().error,
+            "the end event must carry the mapped error, not report a success",
+        )
+
+        ends.clear()
+        val good = clientFor("""{"person":{"id":45678,"name":"Victor Cooper"},"events":[]}""")
+        good.forAccount("12345").reports.personProgress(7L)
+        good.close()
+
+        assertEquals(1, ends.size)
+        assertNull(ends.single().error, "a well-formed wrapper must still report a success")
+    }
+
+    private suspend fun personProgressFailure(body: String): BasecampException.Api {
+        val client = mockClient { respond(body, HttpStatusCode.OK, jsonHeaders) }
         val error = assertFailsWith<BasecampException.Api> {
             client.forAccount("12345").reports.personProgress(7L)
         }
+        client.close()
+        return error
+    }
 
-        assertNull(error.httpStatus)
-        assertFalse(error.retryable)
-        assertIs<SerializationException>(error.cause)
+    private fun assertMalformedWrapper(error: BasecampException.Api) {
+        assertNull(error.httpStatus, "the transport succeeded, so no status describes this")
+        assertFalse(error.retryable, "re-requesting cannot repair a malformed body")
+        assertIs<SerializationException>(
+            error.cause,
+            "the decoder's own exception must survive as the cause, got ${error.cause}",
+        )
+        assertNotNull(error.decodeFailure, "the structural marker separates this from any other api_error")
         assertTrue(
             error.message!!.contains("GetPersonProgress returned a body that does not decode"),
             "got: ${error.message}",
         )
-        client.close()
     }
 
     // -- Negative: everything else in the block keeps its own identity --

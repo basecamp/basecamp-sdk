@@ -208,24 +208,17 @@ private func emitMethod(_ op: ParsedOperation, serviceName: String, schemas: [St
     let opInfoStr = opInfoParts.joined(separator: ", ")
 
     if isWrappedPaginated {
-        // requestPaginatedWrapped call — returns both wrapper data and paginated items
+        // requestPaginatedWrapped call — the items array is decoded per page by
+        // the primitive, and the wrapper's remaining members by the trailing
+        // closure, which the primitive runs inside its own decode isolation. A
+        // malformed wrapper therefore lands on SPEC §6's statusless api_error
+        // like every other decode, rather than throwing a raw DecodingError out
+        // of this method after the primitive returned (#728). `Wrapper` is
+        // declared in the method body rather than inside the closure: local
+        // types are a function-body construct in Swift.
         let resultClassName = buildWrappedResultClassName(op, serviceName: serviceName)
         let entityName = getEntityTypeName(op.responseSchemaRef ?? "", schemas: schemas, paginationKey: op.paginationKey) ?? "Any"
 
-        lines.append("        let (wrapperData, items): (Data, ListResult<\(entityName)>) = try await requestPaginatedWrapped(")
-        lines.append("            OperationInfo(\(opInfoStr)),")
-        lines.append("            path: \"\(swiftPath)\",")
-        lines.append("            itemsKey: \"\(op.paginationKey!)\",")
-        if hasQueryItems {
-            lines.append("            queryItems: queryItems.isEmpty ? nil : queryItems,")
-        }
-        if hasOptions {
-            lines.append("            paginationOpts: \(paginationOptsArg),")
-        }
-        lines.append("            retryConfig: Metadata.retryConfig(for: \"\(op.operationId)\")")
-        lines.append("        )")
-
-        // Decode wrapper fields from first page data
         lines.append("        struct Wrapper: Decodable {")
         if let responseRef = op.responseSchemaRef,
            let schema = schemas[responseRef] as? [String: Any],
@@ -237,7 +230,20 @@ private func emitMethod(_ op: ParsedOperation, serviceName: String, schemas: [St
             }
         }
         lines.append("        }")
-        lines.append("        let wrapper = try Self.decoder.decode(Wrapper.self, from: wrapperData)")
+
+        lines.append("        return try await requestPaginatedWrapped(")
+        lines.append("            OperationInfo(\(opInfoStr)),")
+        lines.append("            path: \"\(swiftPath)\",")
+        lines.append("            itemsKey: \"\(op.paginationKey!)\",")
+        if hasQueryItems {
+            lines.append("            queryItems: queryItems.isEmpty ? nil : queryItems,")
+        }
+        if hasOptions {
+            lines.append("            paginationOpts: \(paginationOptsArg),")
+        }
+        lines.append("            retryConfig: Metadata.retryConfig(for: \"\(op.operationId)\")")
+        lines.append("        ) { (wrapperData: Data, items: ListResult<\(entityName)>) -> \(resultClassName) in")
+        lines.append("            let wrapper = try Self.decoder.decode(Wrapper.self, from: wrapperData)")
 
         // Build result struct
         var constructorArgs: [String] = []
@@ -253,7 +259,8 @@ private func emitMethod(_ op: ParsedOperation, serviceName: String, schemas: [St
                 }
             }
         }
-        lines.append("        return \(resultClassName)(\(constructorArgs.joined(separator: ", ")))")
+        lines.append("            return \(resultClassName)(\(constructorArgs.joined(separator: ", ")))")
+        lines.append("        }")
     } else if isPaginated {
         // requestPaginated call
         lines.append("        return try await requestPaginated(")

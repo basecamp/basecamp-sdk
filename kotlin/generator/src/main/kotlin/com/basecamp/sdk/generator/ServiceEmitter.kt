@@ -13,22 +13,30 @@ class ServiceEmitter(private val api: OpenApiParser) {
         // Header
         sb.appendLine("package com.basecamp.sdk.generated.services")
         sb.appendLine()
+        val needsWrappedPagination = service.operations.any {
+            it.hasPagination && it.paginationKey != null
+        }
+
         sb.appendLine("import com.basecamp.sdk.*")
         sb.appendLine("import com.basecamp.sdk.generated.models.*")
+        if (needsWrappedPagination) {
+            // `requiredMember` and `decodeFromJsonElement` between them raise a
+            // SerializationException for every way a wrapper can be wrong, which
+            // is the one type BaseService maps to the statusless api_error
+            // (#728). The `jsonObject`/`jsonArray` casts this replaces raised
+            // IllegalArgumentException, and `["key"]!!` a NullPointerException —
+            // neither mapped, and neither safe to map.
+            sb.appendLine("import com.basecamp.sdk.serialization.requiredMember")
+        }
         sb.appendLine("import com.basecamp.sdk.services.BaseService")
         if (service.operations.any { arrayEnvelopeMembers(it) != null }) {
             sb.appendLine("import kotlinx.serialization.SerialName")
             sb.appendLine("import kotlinx.serialization.Serializable")
         }
         sb.appendLine("import kotlinx.serialization.json.JsonElement")
-
-        val needsWrappedPagination = service.operations.any {
-            it.hasPagination && it.paginationKey != null
-        }
         if (needsWrappedPagination) {
+            sb.appendLine("import kotlinx.serialization.json.JsonObject")
             sb.appendLine("import kotlinx.serialization.json.decodeFromJsonElement")
-            sb.appendLine("import kotlinx.serialization.json.jsonArray")
-            sb.appendLine("import kotlinx.serialization.json.jsonObject")
         }
 
         val needsPagination = service.operations.any { it.hasPagination && (it.returnsArray || it.paginationKey != null) }
@@ -151,18 +159,30 @@ class ServiceEmitter(private val api: OpenApiParser) {
             val wrappedHasOptionalQuery = op.queryParams.any { !it.required }
             val wrappedOptionsArg = if (wrappedHasOptionalQuery) "${optionsAccess(op)}toPaginationOptions()" else "options"
 
-            sb.appendLine("        val (firstPageBody, items) = requestPaginatedWrapped<$entityType>(info, $wrappedOptionsArg, {")
-            sb.appendLine("            httpGet($pathWithQuery, operationName = info.operation)")
-            sb.appendLine("        }) { body ->")
-            sb.appendLine("            json.parseToJsonElement(body).jsonObject[\"${op.paginationKey}\"]!!")
-            sb.appendLine("                .jsonArray.map { json.decodeFromJsonElement<$entityType>(it) }")
-            sb.appendLine("        }")
-
-            // Decode wrapper fields from first page body
+            // Both halves of a wrapped response — the items array on every page,
+            // and the first page's remaining members — are decoded INSIDE
+            // `requestPaginatedWrapped`, the second through its `buildResult`
+            // lambda. Every accessor below therefore has to fail as a
+            // SerializationException, the one type the primitive maps to SPEC §6's
+            // statusless `api_error`: `decodeFromString<JsonObject>` for a body
+            // that is not an object, `requiredMember` for an absent member, and
+            // `decodeFromJsonElement` for a wrong-typed one. The `!!` and
+            // `.jsonArray` this replaces raised NullPointerException and
+            // IllegalArgumentException, which surfaced raw (#728).
             val schema = api.getSchema(op.responseSchemaRef!!)
             val properties = schema?.get("properties")?.jsonObject ?: JsonObject(emptyMap())
 
-            sb.appendLine("        val wrapper = json.parseToJsonElement(firstPageBody).jsonObject")
+            sb.appendLine("        return requestPaginatedWrapped<$entityType, $resultClassName>(info, $wrappedOptionsArg, {")
+            sb.appendLine("            httpGet($pathWithQuery, operationName = info.operation)")
+            sb.appendLine("        }, { body ->")
+            sb.appendLine("            json.decodeFromJsonElement<List<$entityType>>(")
+            sb.appendLine("                json.decodeFromString<JsonObject>(body).requiredMember(\"${op.paginationKey}\")")
+            sb.appendLine("            )")
+            val hasWrapperMembers = properties.keys.any { it != op.paginationKey }
+            sb.appendLine("        }) { ${if (hasWrapperMembers) "firstPageBody" else "_"}, items ->")
+            if (hasWrapperMembers) {
+                sb.appendLine("            val wrapper = json.decodeFromString<JsonObject>(firstPageBody)")
+            }
 
             val constructorArgs = mutableListOf<String>()
             for (propName in properties.keys.sorted()) {
@@ -171,16 +191,17 @@ class ServiceEmitter(private val api: OpenApiParser) {
                     constructorArgs.add("$camelName = items")
                 } else {
                     val propType = resolveWrapperPropertyType(op.responseSchemaRef!!, propName)
-                    constructorArgs.add("$camelName = json.decodeFromJsonElement<$propType>(wrapper[\"$propName\"]!!)")
+                    constructorArgs.add("$camelName = json.decodeFromJsonElement<$propType>(wrapper.requiredMember(\"$propName\"))")
                 }
             }
 
-            sb.appendLine("        return $resultClassName(")
+            sb.appendLine("            $resultClassName(")
             for ((i, arg) in constructorArgs.withIndex()) {
                 val comma = if (i < constructorArgs.size - 1) "," else ""
-                sb.appendLine("            $arg$comma")
+                sb.appendLine("                $arg$comma")
             }
-            sb.appendLine("        )")
+            sb.appendLine("            )")
+            sb.appendLine("        }")
         } else if (isPaginated) {
             val entitySchema = op.responseSchemaRef?.let { api.findUnderlyingEntitySchema(it, op.paginationKey) }
             val entityType = entitySchema?.let { TYPE_ALIASES[it] } ?: "JsonElement"

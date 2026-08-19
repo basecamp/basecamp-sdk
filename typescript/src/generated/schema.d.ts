@@ -4771,8 +4771,8 @@ export interface components {
             over_three_months_late?: components["schemas"]["Todo"][];
         };
         GetPersonProgressResponseContent: {
-            person?: components["schemas"]["Person"];
-            events?: components["schemas"]["TimelineEvent"][];
+            person: components["schemas"]["Person"];
+            events: components["schemas"]["TimelineEvent"][];
         };
         GetPersonResponseContent: components["schemas"]["Person"];
         GetProgressReportResponseContent: components["schemas"]["TimelineEvent"][];
