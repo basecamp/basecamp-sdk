@@ -601,20 +601,35 @@ func (d *driver) nextClientFrame(what string) (clientFrame, error) {
 // EVERY advance rather than behind a schema opt-in — a field would let the next
 // fixture author take the divergence rather than avoid it, which is precisely
 // the thing being prevented.
+//
+// What is measured is ARMING, via the clock's monotonic ArmCount, and not the
+// outstanding-timer set. The set is the wrong instrument in both directions:
+// a firing removes its timer from the set before any observer runs, so an
+// ordinary expiry that arms nothing looks exactly like an arm; and a timer
+// rearmed under a name it already had leaves the set identical, so the one
+// case §23 most needs caught — the connector's same-name rearms, e.g.
+// repair-poll — is the case a set comparison cannot see.
+//
+// The wait after Advance is the other half. The connector arms on its own
+// goroutine, so an arm caused by a firing inside the window can land just
+// after Advance returns; sampling immediately would make the guard a race.
+// The wait is bounded by the family's one wall-clock knob and ends the instant
+// an arm appears, so only a legitimately quiet advance pays it in full — and
+// the suite contains exactly one such advance (fixture 05).
 func (d *driver) advance(step *advanceStep) error {
-	before := timerCounts(d.h.clock)
-	armed := false
-	d.h.clock.AdvanceSettling(millis(step.Ms), func() {
-		if !maps.Equal(timerCounts(d.h.clock), before) {
-			armed = true
-		}
-	})
-	if armed || !maps.Equal(timerCounts(d.h.clock), before) {
+	before := d.h.clock.ArmCount()
+	d.h.clock.Advance(millis(step.Ms))
+
+	deadline := time.Now().Add(scenarioWatchdog)
+	for d.h.clock.ArmCount() == before && time.Now().Before(deadline) {
+		time.Sleep(time.Millisecond)
+	}
+	if armed := d.h.clock.ArmCount() - before; armed > 0 {
 		return fmt.Errorf(
-			"advance of %dms changed the outstanding timer set (%v -> %v): a timer armed inside an advance window "+
+			"advance of %dms armed %d timer(s) (outstanding now %v): a timer armed inside an advance window "+
 				"fires or not depending on goroutine scheduling, so this script cannot mean the same thing in every "+
 				"language — use fireTimer, which fires one named timer without re-selecting",
-			step.Ms, before, timerCounts(d.h.clock))
+			step.Ms, armed, timerCounts(d.h.clock))
 	}
 	return nil
 }

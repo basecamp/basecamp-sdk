@@ -501,7 +501,7 @@ func TestScenarioDriverRejectsSchedulingDependentAdvance(t *testing.T) {
 		if err == nil {
 			t.Fatal("an advance that changes the outstanding timer set must fail the scenario")
 		}
-		if !strings.Contains(err.Error(), "outstanding timer set") {
+		if !strings.Contains(err.Error(), "armed 1 timer(s)") {
 			t.Fatalf("failed for the wrong reason: %v", err)
 		}
 		if !strings.Contains(err.Error(), "fireTimer") {
@@ -517,14 +517,42 @@ func TestScenarioDriverRejectsSchedulingDependentAdvance(t *testing.T) {
 			{"expectMint":{"respond":{"status":200,"body":{"ticket":"{{TICKET:1}}","expires_in":120,"url":"{{CABLE_URL:1}}"}}}},
 			{"expectConnect":{"url":"{{CABLE_URL:1}}"}}],
 			"finally":{"state":"awaiting_welcome"}}`
-		if err := runScenarioBytes([]byte(script), "x.json"); err != nil {
+		if err := underShortWatchdog(func() error { return runScenarioBytes([]byte(script), "x.json") }); err != nil {
 			t.Fatalf("an advance over a window that arms nothing must pass: %v", err)
+		}
+	})
+
+	// The control that separates "arms anything" from "the timer set moved".
+	// Here a due timer FIRES and is not replaced: the backoff deadline expires
+	// and the connector's next act is a mint, which parks inside the seam
+	// until the driver releases it, so no timer is armed anywhere in the
+	// window. The rule says reject ARMING, so this advance is legal and must
+	// pass — and it is the case a driver comparing outstanding-timer snapshots
+	// gets wrong, because the fired timer's own removal moves the set.
+	t.Run("an advance in which a due timer fires without replacement", func(t *testing.T) {
+		script := `{"name":"x","description":"d","steps":[
+			{"expectMint":{"respond":{"status":200,"body":{"ticket":"{{TICKET:1}}","expires_in":120,"url":"{{CABLE_URL:1}}"}}}},
+			{"expectConnect":{"url":"{{CABLE_URL:1}}"}},
+			{"serve":{"frame":"welcome"}},
+			{"expectSubscribe":{"channel":"EventsChannel"}},
+			{"fireTimer":{"kind":"confirmation-deadline"}},
+			{"expectClientClose":{}},
+			{"expectTimers":{"exact":{"backoff":1}}},
+			{"advance":{"ms":1000}},
+			{"expectMint":{"respond":{"status":200,"body":{"ticket":"{{TICKET:2}}","expires_in":120,"url":"{{CABLE_URL:2}}"}}}},
+			{"expectConnect":{"url":"{{CABLE_URL:2}}"}}],
+			"finally":{"state":"awaiting_welcome"}}`
+		if err := underShortWatchdog(func() error { return runScenarioBytes([]byte(script), "x.json") }); err != nil {
+			t.Fatalf("an advance whose window fires a timer but arms nothing must pass: %v", err)
 		}
 	})
 }
 
-// underShortWatchdog runs a scenario that is EXPECTED to fail under a short
-// rendezvous window. A hostile scenario often fails by never satisfying a
+// underShortWatchdog runs a scenario under a short rendezvous window. Its
+// usual use is a scenario EXPECTED to fail, but it serves any case whose waits
+// are all short by construction — including the advance guard's passing cases,
+// where the guard must wait out the window to conclude that nothing armed.
+// A hostile scenario often fails by never satisfying a
 // rendezvous, and waiting the full window for each would cost more than the
 // whole conformance suite; every caller still pins the failure's reason, so a
 // mutant rejected for the wrong reason cannot pass as the pin firing.
