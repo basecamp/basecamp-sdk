@@ -691,20 +691,20 @@ func (c *Client) doRequestURL(ctx context.Context, method, url string, body any)
 
 		// Check for retryable error with server-specified delay
 		var delay time.Duration
-		if re, ok := err.(*retryableError); ok {
-			lastErr = re.err
-			if re.retryAfter > 0 {
-				// Use server-specified Retry-After delay
-				delay = re.retryAfter
-			} else {
-				delay = c.backoffDelay(attempt)
-			}
-		} else if apiErr, ok := err.(*Error); ok {
+		if apiErr, ok := err.(*Error); ok {
 			if !apiErr.Retryable {
 				return nil, err
 			}
 			lastErr = err
-			delay = c.backoffDelay(attempt)
+			// A server-specified Retry-After replaces the backoff curve
+			// outright — no jitter, no ceiling, same idiom as downloadURL.
+			// Only the 429 arm of singleRequest sets it today; widening the
+			// set of statuses that carry one is #775's call, not this loop's.
+			if apiErr.RetryAfter > 0 {
+				delay = time.Duration(apiErr.RetryAfter) * time.Second
+			} else {
+				delay = c.backoffDelay(attempt)
+			}
 		} else {
 			return nil, err
 		}
@@ -722,6 +722,10 @@ func (c *Client) doRequestURL(ctx context.Context, method, url string, body any)
 		info := RequestInfo{Method: method, URL: url, Attempt: attempt}
 		c.hooks.OnRetry(ctx, info, attempt+1, lastErr)
 
+		// Cancellation must win over the wait. A server-specified Retry-After
+		// carries no ceiling by design, so an uninterruptible sleep would let a
+		// server pin a request the caller already abandoned open for as long as
+		// it liked.
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()

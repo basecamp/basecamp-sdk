@@ -64,8 +64,15 @@ type Error struct {
 	FieldErrors map[string][]string
 	HTTPStatus  int
 	Retryable   bool
-	RequestID   string
-	Cause       error
+	// RetryAfter is the server-specified delay in seconds from a 429's
+	// Retry-After header, resolved from either wire form (delta-seconds or
+	// HTTP-date). Zero when the server named no delay, which is every status
+	// but 429 today. The GET retry loop sleeps this instead of its backoff
+	// curve when it is positive; callers that give up and reschedule the work
+	// themselves read it off the returned error.
+	RetryAfter int
+	RequestID  string
+	Cause      error
 }
 
 // Error implements the error interface.
@@ -191,6 +198,7 @@ func ErrRateLimit(retryAfter int) *Error {
 		Hint:       hint,
 		HTTPStatus: 429,
 		Retryable:  true,
+		RetryAfter: retryAfter,
 	}
 }
 

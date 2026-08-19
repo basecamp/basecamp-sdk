@@ -530,7 +530,7 @@ RECORD BasecampError extends Error
 END
 ```
 
-**Go divergence:** Go's `Error` struct omits `retry_after`; retry delay is tracked on `RequestResult` instead. Go also exposes a `Cause` field (the underlying error) not present in this canonical RECORD — a language-specific extension.
+**Go divergence:** Go exposes a `Cause` field (the underlying error) not present in this canonical RECORD — a language-specific extension. `retry_after` is no longer a divergence: Go's `Error` carries it, populated at both 429 construction sites, and the raw GET retry loop sleeps it in place of the backoff curve. `RequestResult.retry_after` is unchanged and remains the hook-facing copy rather than the only one.
 
 ### Error Code Table
 
