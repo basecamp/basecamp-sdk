@@ -4,14 +4,24 @@
 //
 // # Experimental
 //
-// This package is experimental and incomplete. The connector runs the whole
-// protocol — the first mint through the catch-up walk, the entry boundary,
-// the drain, streaming delivery, the repair poll, and the recovery matrix a
-// poll's 410, 400-position, or 409 re-enters through; still to land are the
-// Layer-1 adapters over the generated CreateStreamTicket and PollEvents
-// operations that back the mint and poll seams, which is what a host needs to
-// use it against the live API. The exported surface may still change as they
-// land.
+// This package is experimental and incomplete, and today it is FOUNDATIONS
+// ONLY: there is no consumer entry point yet — no Connector, no constructor,
+// no run loop — so nothing here can be pointed at the live API. What has
+// landed is the material a run loop is assembled from: the event and filter
+// models, the seam interfaces and their error taxonomies, the Action Cable
+// frame codecs, deduplication, the backoff and repair-jitter envelopes, the
+// checkpoint store, the cable-URL policy and its WebSocket transport, and the
+// deterministic fakes the conformance harness drives.
+//
+// Two pieces are still to land, and the package is not usable until both do:
+// the run loop that plays the protocol described below — the first mint
+// through the catch-up walk, the entry boundary, the drain, streaming
+// delivery, the repair poll, and the recovery matrix a poll's 410,
+// 400-position, or 409 re-enters through — and the Layer-1 adapters over the
+// generated CreateStreamTicket and PollEvents operations that back the mint
+// and poll seams. Everything below this section documents the architecture
+// those pieces implement, not behavior this package performs today, and the
+// exported surface may still change as they land.
 //
 // # Seams-first architecture
 //
