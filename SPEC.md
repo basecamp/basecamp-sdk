@@ -2498,7 +2498,18 @@ is shared:
   which keeps hosts and tests deterministic.
 - **`close()`** is idempotent and callable from any context: it abandons, never drains.
   Undelivered buffered events are abandoned — the next run re-serves from the last **usable**
-  checkpoint (see the exclusion under Entry Boundary).
+  checkpoint (see the exclusion under Entry Boundary). Cancellation is visible before it
+  returns; it does **not** wait for the run to unwind, because every consumer callback runs
+  on the run's own execution context and waiting there would deadlock on the caller.
+- **`close()` does not order a second connector over the same checkpoint store, and cannot.**
+  A save decided just before the close may still be written just after — a store is entitled
+  to ignore the cancelled context, and the reference `FileCheckpointStore` does. That is
+  intended: the position was accepted and its events delivered before the close, so dropping
+  the write would silently re-deliver them. **`wait()`** is the quiescence point — it blocks
+  until the run has exited, after which no save can be in flight. A consumer that owns the
+  iteration needs nothing extra, since the iteration terminating is the same guarantee.
+  Await termination — or `wait()` — before opening a second connector over the same store.
+  `wait()` is not callable from a consumer callback, for the reason `close()` does not wait.
 - A consumer break takes the identical teardown path; the in-flight page's checkpoint is
   **not** saved.
 - All Observer callbacks fire on the consumer's execution context, never concurrently with a
@@ -3287,6 +3298,13 @@ options object with optional fields; Python and Ruby keyword arguments (Ruby wit
 | Live buffer capacity (10,000) | `WithLiveBufferCapacity` | `liveBufferCapacity?` | `live_buffer_capacity` | `liveBufferCapacity` |
 | Signal handler (none ⇒ default-terminal) | `WithSignalHandler` | `signalHandler?` | `signal_handler` | `signalHandler` |
 | Observer (none) | `WithObserver` | `observer?` | `observer` | `observer` |
+
+The two lifecycle methods take each language's native spelling of the same two acts: Go
+`Close()` / `Wait()`, TypeScript `close()` / `wait()`, Python and Ruby `close` / `wait`,
+Kotlin `close()` / `join()`, Swift `close()` / `wait()`. Where the language's streaming
+idiom already exposes the run's completion — a Kotlin `Job`, a Swift `Task` — that handle
+IS `wait()` and no second method is added; what must exist is a way to observe the run's
+exit that is not `close()`.
 
 The Observer is a struct of optional callbacks in the `httptrace.ClientTrace` style —
 extensible without breaking implementers: `connecting(attempt, delay)`, `connected()`,
