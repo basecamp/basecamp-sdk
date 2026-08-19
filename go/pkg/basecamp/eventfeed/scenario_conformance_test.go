@@ -616,6 +616,18 @@ func (d *driver) nextClientFrame(what string) (clientFrame, error) {
 // The wait is bounded by the family's one wall-clock knob and ends the instant
 // an arm appears, so only a legitimately quiet advance pays it in full — and
 // the suite contains exactly one such advance (fixture 05).
+//
+// That bound makes this a HEURISTIC, and it is worth saying so rather than
+// letting the guard read as a proof. "No arm within the watchdog" is treated
+// as "no arm", so an arm landing later is missed. It cannot be otherwise from
+// outside: the connector arms on its own goroutine with no rendezvous the
+// driver can take, and the only alternative — holding the advance until the
+// connector says it is quiet — is the rendezvous a scheduling-dependent
+// fixture would need in the first place, which is the thing being refused.
+// The failure direction is the safe one: a missed arm lets a
+// scheduling-dependent fixture through, where the fixture then fails
+// non-deterministically instead of silently meaning different things in
+// different languages.
 func (d *driver) advance(step *advanceStep) error {
 	before := d.h.clock.ArmCount()
 	d.h.clock.Advance(millis(step.Ms))

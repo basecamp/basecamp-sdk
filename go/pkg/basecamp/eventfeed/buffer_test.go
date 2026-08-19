@@ -4,7 +4,7 @@ import "testing"
 
 // TestLiveBufferAddClearsEvictedSlots pins the eviction half of the live
 // buffer's memory ceiling. SPEC.md §23 publishes the connector's worst case
-// as (pump depth + 1 + EVENT_FEED_LIVE_BUFFER_CAPACITY) × EVENT_FEED_MAX_FRAME_BYTES;
+// as (pump depth + 2 + EVENT_FEED_LIVE_BUFFER_CAPACITY) × EVENT_FEED_MAX_FRAME_BYTES;
 // a reslice alone removes the evicted event LOGICALLY while the slice that
 // results still points into the same backing array, whose prefix keeps that
 // event's strings reachable until a later reallocation. Under sustained

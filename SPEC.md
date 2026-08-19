@@ -2850,15 +2850,22 @@ Two dispatch clarifications, pinned:
   overflow signal is the only drop signal. Worst-case connector memory is therefore
   bounded multiplicatively — every queued or buffered item is itself bounded by
   `EVENT_FEED_MAX_FRAME_BYTES`, so the ceiling is
-  (pump depth + 1 + `EVENT_FEED_LIVE_BUFFER_CAPACITY`) × `EVENT_FEED_MAX_FRAME_BYTES`
+  (pump depth + 2 + `EVENT_FEED_LIVE_BUFFER_CAPACITY`) × `EVENT_FEED_MAX_FRAME_BYTES`
   (≈ 10 GiB at the defaults' extreme, reached only if every slot holds a maximum-size
-  frame) — even under a slow consumer. The **+ 1** is the pump's own in-flight frame: the
-  pump is a single reader, so it may hold exactly one frame it has already READ and is
-  blocked handing off, over and above the queue's depth. It is one frame rather than an
-  unbounded number for the same reason — one reader can hold no more than one frame
-  outside the queue — and it is the same quantity the drain's protocol-fatal scan is
-  budgeted at (`pump depth + 1`), because "every frame the pump had already read" is one
-  more than "every frame sitting in the queue". Implementations MAY additionally impose a
+  frame) — even under a slow consumer. The **+ 2** is two raw frames the queue's depth does
+  not count, and they are retained by different parties at the same time:
+  - the **pump's own in-flight frame** — the pump is a single reader, so it may hold exactly
+    one frame it has already READ and not yet handed off. One rather than an unbounded
+    number for that reason: one reader holds at most one frame outside the queue.
+  - the **deferred socket outcome** — the single slot the in-flight-poll servicing and the
+    drain's scan park one receive in. It is retained while the queue behind it refills, so it
+    is concurrent with a full queue and with the pump's held frame, not an alternative to
+    either.
+
+  The drain's protocol-fatal scan is budgeted at `pump depth + 1` and not at this figure,
+  which is not an inconsistency: the budget counts what the scan may DEQUEUE — the queue plus
+  the pump's held frame — while the ceiling counts what may be RETAINED, and the deferral slot
+  is retained without being dequeued by that scan. Implementations MAY additionally impose a
   total byte cap on the live buffer; if they do, eviction routes through the same overflow
   signal, never a silent drop.
 - The transport negotiates subprotocol `actioncable-v1-json`, sends no `Origin` header
