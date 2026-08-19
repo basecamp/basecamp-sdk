@@ -1,0 +1,28 @@
+go/pkg/basecamp/eventfeed/websocket_transport.go
+  s_bcb193599a4870::t_b7d1625e292927 255-263,276-297
+  s_bcb193599a4870::t_d3f9b36766dab2 183-184
+  s_bcb193599a4870::t_7c4dac5199bfd9 346-357
+  s_bcb193599a4870::t_937aabcf462947 392-407,426-428,431
+  s_bcb193599a4870::t_0a76d4a7d42c85 311-315
+  s_bcb193599a4870::t_4063394f2692c7 298-299
+go/pkg/basecamp/eventfeed/websocket_transport_test.go
+  s_bcb193599a4870::t_f6f909874b6f0a 462,465-486,493-536
+  s_bcb193599a4870::t_704fbacf65ad68 487-492
+  s_bcb193599a4870::t_b5dc72487129dd 463-464
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "854f30ae7d104786c52b10e206de059472a76ca4",
+  "prompts": {},
+  "sessions": {
+    "s_bcb193599a4870": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5ae90ec8-5ed7-4774-88d9-9d66550a5643",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
