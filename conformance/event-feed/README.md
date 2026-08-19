@@ -111,8 +111,16 @@ teeth):
 
 Literal origins (e.g. `https://attacker.example.com`) are intentional and must
 **not** be substituted — the hostile-continuation fixtures depend on them staying
-foreign, and the harness must assert those hosts receive **zero** requests
-(structurally guaranteed: no expect step ever serves them).
+foreign, and **where the connector itself holds such a URL as a continuation
+target** (fixtures 26 and 27) the harness must assert those hosts receive
+**zero** requests (structurally guaranteed: no expect step ever serves them).
+
+That obligation is deliberately scoped to connector-visible targets. Where a
+foreign origin reaches the connector only through a value the seam has already
+converted — fixture 30's redirect `Location`, which the driver reduces to an
+origin before the connector sees anything — there is no egress for a harness to
+observe, and asserting its absence would be a statement about the driver rather
+than about the connector. See the row-15 note under the mutation kill matrix.
 
 ## Count semantics: seam calls, never wire attempts
 
