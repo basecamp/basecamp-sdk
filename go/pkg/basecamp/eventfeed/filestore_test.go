@@ -907,6 +907,57 @@ func TestFileStore_RefusesOversizedFile(t *testing.T) {
 	}
 }
 
+// TestFileStore_SaveRefusesToWritePastTheReadLimit closes the other half of
+// the bound above. The read enforces the cap; the write did not, so a Save
+// whose result crossed it replaced a good file with one nothing can ever read
+// again — every later Load AND every later Save fails on the same limit, and
+// since Save's read-modify-write reads first, there is no in-band way back:
+// the operator's only recovery is deleting the file, which discards every
+// OTHER lineage's cursor with it. The store bricks itself, permanently,
+// through its own supported path.
+//
+// The failure is accretion, not an adversary. There is no delete method — a
+// filter change mints a new FlatKey and the old lineage "simply goes cold" in
+// the file forever — so a long-lived host that varies filters only ever adds
+// entries. Refusing the write instead degrades to the outcome the seam already
+// documents for a failed save: reported through Observer.CheckpointSaveFailed,
+// the connector continues, and the last usable file is still there.
+func TestFileStore_SaveRefusesToWritePastTheReadLimit(t *testing.T) {
+	ctx := context.Background()
+	store := NewFileCheckpointStore(storePath(t))
+	if err := store.Save(ctx, storeKey("first"), "pos-keep"); err != nil {
+		t.Fatalf("seeding the store: %v", err)
+	}
+
+	// One position past the cap on its own: the smallest input that makes the
+	// marshaled file exceed the limit, without staging millions of lineages.
+	oversized := strings.Repeat("p", maxCheckpointStoreBytes+1)
+	err := store.Save(ctx, storeKey("second"), oversized)
+	if err == nil {
+		t.Fatal("Save wrote a store past the read limit; it must refuse before replacing the last usable file")
+	}
+	if !strings.Contains(err.Error(), "limit") {
+		t.Errorf("Save error = %v, want a size-limit refusal", err)
+	}
+	// The refusal must not echo the position it declined.
+	if strings.Contains(err.Error(), "pppppppppp") {
+		t.Errorf("Save error echoed the position: %v", err)
+	}
+
+	// The point of refusing: the previous file is intact and still readable.
+	got, ok, loadErr := store.Load(ctx, storeKey("first"))
+	if loadErr != nil {
+		t.Fatalf("Load after the refused Save = %v, want the previous file intact", loadErr)
+	}
+	if !ok || got != "pos-keep" {
+		t.Errorf("Load after the refused Save = (%q, %v), want (\"pos-keep\", true)", got, ok)
+	}
+	// And a subsequent ordinary Save still works — the store is not wedged.
+	if err := store.Save(ctx, storeKey("third"), "pos-3"); err != nil {
+		t.Errorf("Save after the refused Save = %v, want the store still usable", err)
+	}
+}
+
 // A file just under the cap still loads: the bound must not be so eager that
 // it refuses a legitimate store.
 func TestFileStore_AcceptsFileUnderTheLimit(t *testing.T) {
