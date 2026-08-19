@@ -33,6 +33,11 @@ func (l *loop) runCatchUp(h catchUpHandoff) cycleOutcome {
 	if l.hooks.catchUpEntered != nil {
 		l.hooks.catchUpEntered(h)
 	}
+	// Close outranks the announcement: no walk is about to start.
+	if l.runCtx.Err() != nil {
+		l.disposeAttempt(h.at, nil)
+		return cycleOutcome{kind: outcomeClosed}
+	}
 	if l.cfg.observer.CatchUpStarted != nil {
 		// Cursor.PageURL is redacted to its origin: on a 410-accepted re-entry
 		// it IS the server-supplied resume URL, carrying whatever query the
@@ -80,6 +85,17 @@ func (l *loop) walkThenDrain(at *attempt, cursor Cursor, presentClass bool) (cyc
 	if held != "" {
 		l.acceptPosition(held)
 		l.saveCheckpoint(held)
+	}
+	// Close outranks the announcement, and the ordering with the held save
+	// above is deliberate in BOTH directions. The save comes first because its
+	// events were already delivered, and dropping the write because the
+	// consumer closed a moment later silently re-delivers them. `caught_up`
+	// comes after the check because it is an announcement about a feed that is
+	// now Closed — it would be reporting a steady state the connector is not
+	// about to enter.
+	if l.runCtx.Err() != nil {
+		l.disposeAttempt(at, nil)
+		return cycleOutcome{kind: outcomeClosed}, true
 	}
 	if l.cfg.observer.CaughtUp != nil {
 		l.cfg.observer.CaughtUp()
@@ -299,6 +315,15 @@ func (l *loop) walk(at *attempt, cursor Cursor, presentClass bool) (out cycleOut
 			// delivered before anything durable moves.
 			held = page.Position
 			if !cutTaken {
+				// The cut's admission pass DISPATCHES what it dequeues, so it
+				// is a second place a page boundary can announce a teardown
+				// the consumer has already closed past. It is also pure
+				// preparation for the held save, which a closing walk will
+				// never reach — so on Close there is nothing to prepare.
+				if l.runCtx.Err() != nil {
+					l.disposeAttempt(at, nil)
+					return cycleOutcome{kind: outcomeClosed}, "", true
+				}
 				if out, done := l.ownershipCut(at); done {
 					return out, "", true
 				}
@@ -309,6 +334,21 @@ func (l *loop) walk(at *attempt, cursor Cursor, presentClass bool) (out cycleOut
 			l.saveCheckpoint(page.Position)
 		}
 
+		// The page is FINISHED — delivered, and its position accepted and
+		// saved — so a Close taken from inside PageDelivered, or from any
+		// other callback this page ran, ends the walk here rather than
+		// following `next` into another poll.
+		//
+		// After the save, never before it. A check between PageDelivered and
+		// the save would drop the write for events the consumer has already
+		// received, which the next run then re-delivers with no record they
+		// arrived. That is the same trade the deleted durable gate was making,
+		// and it is the wrong one in both places: finish the page, then
+		// observe the close.
+		if l.runCtx.Err() != nil {
+			l.disposeAttempt(at, nil)
+			return cycleOutcome{kind: outcomeClosed}, "", true
+		}
 		if page.Next == "" {
 			return cycleOutcome{}, held, false
 		}

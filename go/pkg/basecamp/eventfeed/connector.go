@@ -96,18 +96,15 @@ type config struct {
 	// input, two consumers: it is CheckpointKey.Origin, and it is the
 	// same-origin reference every continuation and resume URL is validated
 	// against before an authenticated follow.
-	origin    string
-	accountID string
-	minter    TicketMinter
-	polls     PollSource
-	filters   Filters
-	start     Start
-	transport CableTransport
-	clock     Clock
-	store     CheckpointStore
-	// durable serializes the commencement of a checkpoint save against Close.
-	// Always non-nil after New; see durableGate.
-	durable              *durableGate
+	origin               string
+	accountID            string
+	minter               TicketMinter
+	polls                PollSource
+	filters              Filters
+	start                Start
+	transport            CableTransport
+	clock                Clock
+	store                CheckpointStore
 	consumerNamespace    string
 	confirmationDeadline time.Duration
 	repairInterval       time.Duration
@@ -201,83 +198,10 @@ type Connector struct {
 	// cancelRun cancels the active run's context. Registered by Events for
 	// exactly the span of one iteration, nil otherwise.
 	cancelRun context.CancelFunc
-}
-
-// durableGate serializes the COMMENCEMENT of a checkpoint save against Close.
-//
-// A save is the connector's only effect that outlives the process, and the
-// failure this prevents is sequential rather than adversarial: a consumer calls
-// Close, opens a second connector over the same checkpoint file, and a save the
-// first connector had not yet begun lands afterwards — on top of a lineage the
-// new run has already loaded and may already have advanced.
-//
-// Cancellation alone cannot prevent it. A CheckpointStore is entitled to ignore
-// ctx, and the built-in FileCheckpointStore documents that it does, deliberately:
-// a position the connector already accepted must not be dropped because the
-// run's context was cancelled between acceptance and write-through. So the
-// cancelled context Close publishes is exactly the signal this store is
-// specified not to act on.
-//
-// # Close does not wait, and must not
-//
-// The guarantee is that no save COMMENCES after Close returns, where commencing
-// is claiming the gate — an operation that is atomic against Close and takes no
-// host code with it. The lock is never held across CheckpointStore.Save.
-//
-// Holding it across the store call was the obvious spelling and is wrong twice
-// over. A store whose Save calls Connector.Close self-deadlocks on the caller's
-// own goroutine, and Close is documented as callable from anywhere; and a store
-// that merely stalls blocks EVERY Close for as long as it stalls, which
-// contradicts the one thing Close promises unconditionally — that cancellation
-// is visible before it returns.
-//
-// A save that claimed the gate before Close therefore runs to completion after
-// Close returns. That is the intended reading rather than a gap: its position
-// was accepted and delivered before Close was called, and abandoning a durable
-// write half-way is worse than finishing it. What cannot happen is a save the
-// connector had not yet decided to make.
-//
-// # The residual, stated rather than left to be rediscovered
-//
-// "Begun" in the opening paragraph is this gate's term of art — claiming the
-// gate — and the failure described there is prevented only under that reading.
-// Say so plainly, because a reader who takes "begun" to mean the store call
-// reads the opening as a stronger promise than the gate delivers.
-//
-// The claim and the store call are not atomic together: a save can be
-// descheduled between them for as long as the scheduler likes. So the window
-// in which a replacement connector's newer position can be overwritten is
-// NARROWED, from [decision, write] to [claim, write], rather than closed. The
-// overwrite moves the checkpoint BACKWARD, against §23's "checkpoints only
-// move forward"; its cost is bounded replay on the next entry rather than
-// skipped events, because the position that survives is the older one.
-//
-// Closing it needs one of two things this type cannot have: Close waiting on
-// the store call (rejected above, and reachable as a deadlock from any
-// callback), or a fencing token the store can use to refuse a write from a
-// superseded run — a CheckpointStore contract change normative for all six
-// SDKs. Tracked in #784 with a third option, declaring the residual
-// in-contract, rather than decided here.
-type durableGate struct {
-	mu     sync.Mutex
-	closed bool
-}
-
-// begin claims the right to start one durable operation, reporting whether it
-// was granted. The lock is released before returning: the claim is the
-// serialized act, not the write.
-func (g *durableGate) begin() bool {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-	return !g.closed
-}
-
-// close latches the gate. It never waits for an operation already in flight —
-// see the type comment.
-func (g *durableGate) close() {
-	g.mu.Lock()
-	g.closed = true
-	g.mu.Unlock()
+	// runDone is closed when the iteration function returns. Published by
+	// Events at the start of a run and never cleared, so Wait either finds no
+	// run at all or a channel that is closed exactly when the run has exited.
+	runDone chan struct{}
 }
 
 // testHooks are unexported in-package observation points for the tier-2/3
@@ -367,7 +291,6 @@ func New(origin, accountID string, minter TicketMinter, polls PollSource, opts .
 	if cfg.clock == nil {
 		cfg.clock = SystemClock()
 	}
-	cfg.durable = &durableGate{}
 	if err := validateConfig(&cfg); err != nil {
 		return nil, err
 	}
@@ -488,12 +411,19 @@ func (c *Connector) Events(ctx context.Context) iter.Seq2[Event, error] {
 		}
 		runCtx, cancel := context.WithCancel(ctx)
 		defer cancel()
+		// Published under the same lock as the cancel func, and CLOSED rather
+		// than cleared on exit: clearing it would leave a window where Wait
+		// reads nil — and returns at once — while this function has not
+		// finished unwinding, which is the one instant Wait exists to cover.
+		done := make(chan struct{})
+		defer close(done)
 		// Register this run's cancellation under the same lock Close latches
 		// under, so the two cannot straddle each other: a Close that already
 		// latched cancels here, and one that latches later finds the func and
 		// cancels it itself. Either way runCtx is done before Close returns —
 		// there is no window in which the run proceeds past a returned Close.
 		c.mu.Lock()
+		c.runDone = done
 		if c.isClosed {
 			// Closed before the first iteration: end cleanly with zero wire
 			// attempts, deterministically.
@@ -540,14 +470,23 @@ func (c *Connector) Events(ctx context.Context) iter.Seq2[Event, error] {
 // mean holding a lock across every seam call, i.e. across arbitrary host code,
 // which trades a benign race for a deadlock reachable from any callback.
 //
-// The distinction matters for exactly one effect, and that one is ordered:
-// a CHECKPOINT SAVE cannot commence after Close returns (durableGate). It is
-// the only thing the connector does that outlives the process, and the only one
-// where "began a moment late" is not self-limiting — a store may ignore the
-// cancelled context, and the built-in one documents that it does. Everything
-// else that can start in the window is a read whose context is already dead:
-// it returns promptly, its result is discarded, and the run takes the Closed
-// edge.
+// A CHECKPOINT SAVE is the one effect where that matters, because it is the
+// only one that outlives the process: a store may ignore the cancelled context,
+// and the built-in one documents that it deliberately does. So a save decided
+// just before Close can still be written just after. That is intended. The
+// position was accepted and its events were delivered before Close was called,
+// and the store is what tells the next run where those deliveries stopped —
+// dropping the write would silently re-deliver them. Everything else that can
+// start in the window is a read whose context is already dead: it returns
+// promptly, its result is discarded, and the run takes the Closed edge.
+//
+// # Ordering a second connector over the same store is the CONSUMER's to do
+//
+// Close does not order it, and no gate inside Close can. Wait does: the run
+// goroutine has exited, so no save can be in flight, by construction rather
+// than by a window narrow enough to be unlikely. Await the iterator's
+// termination — or Wait — before opening a second connector over the same
+// checkpoint store.
 //
 // What Close deliberately does NOT do is wait for the run goroutine to exit.
 // Close is callable from inside a consumer callback — an observer, a signal
@@ -573,12 +512,26 @@ func (c *Connector) Close() error {
 		c.cancelRun = nil
 	}
 	c.mu.Unlock()
-	// After the cancel, and outside mu: latch the durable gate, so no
-	// checkpoint save COMMENCES from here on. This is the one effect that
-	// outlives the process, and the one cancellation cannot stop — a
-	// CheckpointStore may ignore ctx, and the built-in one documents that it
-	// does. Latching does not wait for a save already under way; see
-	// durableGate for why waiting is the wrong trade.
-	c.cfg.durable.close()
 	return nil
+}
+
+// Wait blocks until the run goroutine has exited, and returns immediately when
+// no run is active. It is the quiescence point Close deliberately is not.
+//
+// Use it before opening a second connector over the same checkpoint store from
+// a goroutine that does not own the range loop. A consumer that DOES own the
+// loop needs nothing extra: the iterator returning is the same guarantee — the
+// run goroutine has exited by then, so no save can be in flight.
+//
+// It is not callable from a consumer callback. Every callback — an observer, a
+// signal handler, the loop body — runs ON the run goroutine, so waiting for
+// that goroutine from inside one waits for itself. Close is the call that is
+// safe from anywhere; this is the one that is safe from anywhere ELSE.
+func (c *Connector) Wait() {
+	c.mu.Lock()
+	done := c.runDone
+	c.mu.Unlock()
+	if done != nil {
+		<-done
+	}
 }
