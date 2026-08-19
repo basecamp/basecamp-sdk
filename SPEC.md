@@ -630,8 +630,14 @@ Swift carries the slot as a fifth associated value on `.validation` plus a `fiel
 Given header value `value`:
 
 1. Attempt parse as integer. If valid and > 0 → return as seconds.
-2. Attempt parse as HTTP-date (RFC 7231, e.g., `Wed, 09 Jun 2021 10:18:14 GMT`). If valid → compute `max(0, date - now())` in seconds; if > 0 → return.
+2. Attempt parse as HTTP-date (RFC 7231, e.g., `Wed, 09 Jun 2021 10:18:14 GMT`). If valid → compute `max(0, date - now())` in seconds, **rounding a sub-second remainder up**; if > 0 → return.
 3. → `undefined` (fall through to backoff formula).
+
+Step 2's rounding is up, not truncating, for two reasons: a positive remainder must never round to
+zero, because zero is read as "no usable value" and drops the request onto the local backoff curve —
+the opposite of what the header said; and rounding down retries up to a second *before* the moment
+the server named, which is the one thing a date is unambiguous about. TypeScript, Kotlin, Swift and
+Go round up. Python and Ruby still truncate, tracked in #799.
 
 This algorithm defines **parsing** only — how a header value becomes a number of seconds. It does not
 say which response statuses a parsed value is honoured at, and the SDKs do not agree: Python honours
@@ -835,9 +841,12 @@ Requirements:
    bound it against host limits — Swift clamps its seconds→nanoseconds conversion to
    86,400s because `UInt64(_:)` on an out-of-range `Double` is a trap, and Go's
    hand-written client saturates its seconds→`time.Duration` conversion at
-   `math.MaxInt64 / time.Second` (~292 years) because the product otherwise wraps
-   negative and `time.After` on a non-positive duration fires at once — turning a
-   server-directed wait into a tight retry loop. Both are *representability* bounds
+   `min(math.MaxInt64 / time.Second, math.MaxInt)` because the product otherwise
+   wraps negative and `time.After` on a non-positive duration fires at once —
+   turning a server-directed wait into a tight retry loop. Which of the two host
+   limits binds depends on the target: ~292 years where `int` is 64 bits, ~68 years
+   where it is 32, since the value is surfaced as an `int`. Both are
+   *representability* bounds
    on the conversion, not policy caps on what a server may ask for: an over-range
    value saturates rather than falling back to the local formula, so the wait is
    still as long as the host can express. Go's **generated** retry loop keeps an

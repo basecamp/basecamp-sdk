@@ -256,9 +256,11 @@ back off on their own local curve after a 429 even when the server named a
 delay, because the loop read that delay off a type nothing in the package ever
 constructed. They now sleep the server's `Retry-After` — both wire forms,
 delta-seconds and HTTP-date — in place of the backoff, with no jitter and no
-ceiling beyond what a `time.Duration` can represent (over-range values saturate
-at ~292 years rather than wrapping negative). Typed service methods, downloads
-and the rate-limiter hook already honoured the header and are unchanged.
+ceiling beyond what the host can represent: an over-range value saturates rather
+than wrapping negative, at ~292 years where `int` is 64 bits and ~68 years
+(`math.MaxInt`) where it is 32, since `RetryAfter` is an `int`. Do not read the
+larger figure as portable. Typed service methods, downloads and the
+rate-limiter hook already honoured the header and are unchanged.
 
 **Wrong behaviour you get if you ignore it:** none, but the wait between
 attempts on a throttled account can now be seconds or minutes where it used to

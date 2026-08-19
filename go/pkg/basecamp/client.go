@@ -1125,9 +1125,15 @@ func parseRetryAfter(header string) int {
 	if header == "" {
 		return 0
 	}
-	// Try parsing as seconds (integer)
-	if seconds, err := strconv.Atoi(header); err == nil && seconds > 0 {
-		return clampRetryAfterSeconds(int64(seconds))
+	// Try parsing as seconds (integer). Parsed as an int64, not through Atoi:
+	// Atoi's range is int's, so on a 32-bit build `Retry-After: 2147483648`
+	// would be ErrRange → malformed → the millisecond backoff curve, while the
+	// same header on a 64-bit build is honoured. The clamp already bounds the
+	// result by what this host can hold, so the parse has no business deciding
+	// it. A digit string too long for an int64 is still malformed everywhere,
+	// which is the boundary SPEC §16's device parser draws too.
+	if seconds, err := strconv.ParseInt(header, 10, 64); err == nil && seconds > 0 {
+		return clampRetryAfterSeconds(seconds)
 	}
 	// Try parsing as HTTP-date (e.g., "Wed, 21 Oct 2015 07:28:00 GMT")
 	if t, err := http.ParseTime(header); err == nil {
@@ -1141,7 +1147,19 @@ func parseRetryAfter(header string) int {
 		// fell back to its millisecond backoff — the one outcome this clamp
 		// exists to avoid. Integer division cannot leave the Duration's range,
 		// and clampRetryAfterSeconds bounds the result by int's.
-		if seconds := int64(time.Until(t) / time.Second); seconds > 0 {
+		//
+		// Rounded UP, matching Kotlin's `(remainingMs + 999) / 1000`, Swift's
+		// `.rounded(.up)` and TypeScript's `Math.ceil`, whose shared reason is
+		// that truncating a sub-second remainder toward zero turns the
+		// shortest honoured delay into "retry immediately": a date 400ms out
+		// became 0, was read as "no delay", and fell onto the backoff curve.
+		// Rounding up also never retries before the moment the server named.
+		// Python and Ruby still truncate; that half of the divergence is #799.
+		if remaining := time.Until(t); remaining > 0 {
+			seconds := int64(remaining / time.Second)
+			if remaining%time.Second != 0 {
+				seconds++
+			}
 			return clampRetryAfterSeconds(seconds)
 		}
 	}

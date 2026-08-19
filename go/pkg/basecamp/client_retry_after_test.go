@@ -291,6 +291,30 @@ func TestParseRetryAfter_FarFutureHTTPDateSaturates(t *testing.T) {
 	}
 }
 
+// TestParseRetryAfter_HTTPDateRoundsUp covers the other end of the same branch.
+// A remainder truncated toward zero turns the shortest honoured delay into "no
+// delay at all" — a date under a second out became 0, which every caller reads
+// as absent, so the request fell onto the millisecond backoff curve instead of
+// waiting. It also retries before the moment the server named. TypeScript
+// (`Math.ceil`), Kotlin (`(remainingMs + 999) / 1000`) and Swift
+// (`.rounded(.up)`) all round up for those two reasons; Go now joins them, and
+// SPEC §6 step 2 says so. Python and Ruby still truncate (#799).
+//
+// The effect is exactly one second wide, which is the whole distance between
+// truncating and rounding up, so this case tolerates up to a second of
+// scheduling delay between naming the date and parsing it — and no more,
+// because there is no more to give. Against truncation it fails by 1.
+func TestParseRetryAfter_HTTPDateRoundsUp(t *testing.T) {
+	// A whole-second HTTP-date 5s out leaves a sub-second remainder against
+	// now(), since now() is not on a second boundary: 4.xx seconds remain.
+	future := time.Now().Add(5 * time.Second).UTC().Format(http.TimeFormat)
+
+	if seconds := parseRetryAfter(future); seconds != 5 {
+		t.Errorf("parseRetryAfter(a date 5s out) = %d, want 5 — a truncated remainder "+
+			"waits less than the server asked, and under a second it rounds to 0 and is discarded", seconds)
+	}
+}
+
 // TestErrRateLimit_NormalizesRetryAfter covers the one door onto Error.RetryAfter
 // the wire parser does not guard: an exported constructor taking a bare int.
 // The field documents zero as "no delay", so a negative argument must not reach
