@@ -225,8 +225,17 @@ describe("middleware request lifecycle", () => {
   // that path too: no retry, no backoff, and the caller's reason surfaces
   // untouched.
   it("treats a caller abort with a custom reason as terminal", async () => {
+    const reason = new Error("caller cancelled");
+    const controller = new AbortController();
+
     server.use(
       http.get(`${BASE_URL}/projects.json`, async () => {
+        // Abort from INSIDE the handler, per #655's option 1: the request has
+        // demonstrably reached the transport, so nothing is racing a timer
+        // against machine load (#783). The delayed response stays behind it as
+        // the fallback — if the caller's signal ever stopped reaching the
+        // request, this resolves and `err` below is undefined.
+        controller.abort(reason);
         await new Promise((r) => setTimeout(r, 1000));
         return HttpResponse.json([]);
       })
@@ -239,26 +248,24 @@ describe("middleware request lifecycle", () => {
       hooks,
     });
 
-    const reason = new Error("caller cancelled");
-    const controller = new AbortController();
-    const abortTimer = setTimeout(() => controller.abort(reason), 50);
+    const err = await client
+      .GET("/projects.json", { signal: controller.signal } as never)
+      .then(
+        () => undefined,
+        (e: unknown) => e
+      );
 
-    try {
-      const err = await client
-        .GET("/projects.json", { signal: controller.signal } as never)
-        .then(
-          () => undefined,
-          (e: unknown) => e
-        );
-
-      expect(err).toBe(reason);
-      // Terminal on attempt 1: no retry started, no onRetry announced.
-      expect(starts(events).map((e) => e.attempt)).toEqual([1]);
-      expect(ends(events).map((e) => e.attempt)).toEqual([1]);
-      expect(events.filter((e) => e.kind === "retry")).toHaveLength(0);
-    } finally {
-      clearTimeout(abortTimer);
-    }
+    // Identity, not elapsed time: the caller's own reason OBJECT came back,
+    // which nothing else on this path can produce — the request timeout aborts
+    // with a TimeoutError DOMException, and a completed request resolves. A
+    // wall-clock ceiling would add no discriminating power here, only load
+    // sensitivity (#655).
+    expect(err).toBe(reason);
+    // Terminal on attempt 1: no retry started, no onRetry announced.
+    expect(starts(events).map((e) => e.attempt)).toEqual([1]);
+    expect(ends(events).map((e) => e.attempt)).toEqual([1]);
+    expect(events.filter((e) => e.kind === "retry")).toHaveLength(0);
+    // Hang guard only — the assertions above carry the discrimination.
   }, 10_000);
 
   // Review follow-up (Codex, round 2). An abort that fires DURING the backoff
@@ -274,39 +281,60 @@ describe("middleware request lifecycle", () => {
       )
     );
 
+    const reason = new Error("caller cancelled during backoff");
+    const controller = new AbortController();
+
     const { hooks, events } = recordingHooks();
+    const announce = hooks.onRetry!;
+    hooks.onRetry = (info, upcoming, error, delayMs) => {
+      announce(info, upcoming, error, delayMs);
+      // Abort from the hook the loop fires immediately before it sleeps, so
+      // the abort lands inside the backoff BY CONSTRUCTION rather than by a
+      // timer beating a 2s window under whatever load the runner is carrying
+      // (#783). #781 aborts from the same seam one layer down.
+      //
+      // The microtask is what puts it INSIDE the sleep rather than before it.
+      // executeWithRetry calls sleep() synchronously once this hook returns,
+      // and sleep's promise executor registers its abort listener
+      // synchronously in turn — so a queued abort cannot run until that
+      // listener exists, and it is the listener that has to reject. Aborting
+      // synchronously here would only ever reach sleep's already-aborted fast
+      // path, leaving the listener untested. If a future `await` appears
+      // between the hook and the sleep, this degrades to that fast path — it
+      // gets weaker, never flaky.
+      queueMicrotask(() => controller.abort(reason));
+    };
+
     const client = createBasecampClient({
       accountId: "12345",
       accessToken: "test-token",
       hooks,
     });
 
-    const reason = new Error("caller cancelled during backoff");
-    const controller = new AbortController();
-    const abortTimer = setTimeout(() => controller.abort(reason), 100);
+    const err = await client
+      .GET("/projects.json", { signal: controller.signal } as never)
+      .then(
+        () => undefined,
+        (e: unknown) => e
+      );
 
-    try {
-      const startedAt = Date.now();
-      const err = await client
-        .GET("/projects.json", { signal: controller.signal } as never)
-        .then(
-          () => undefined,
-          (e: unknown) => e
-        );
-
-      expect(err).toBe(reason);
-      // Prompt: nowhere near the 2s Retry-After backoff.
-      expect(Date.now() - startedAt).toBeLessThan(1000);
-      // Attempt 1 was started and ended (429) before the backoff; attempt 2
-      // must never start. onRetry had already announced it — that is the
-      // inherent race of cancelling between announce and begin — but starts
-      // and ends stay balanced.
-      expect(starts(events).map((e) => e.attempt)).toEqual([1]);
-      expect(ends(events).map((e) => e.attempt)).toEqual([1]);
-      expect(ends(events)[0]!.statusCode).toBe(429);
-    } finally {
-      clearTimeout(abortTimer);
-    }
+    expect(err).toBe(reason);
+    // The mechanism, not the clock. Attempt 1 was started and ended (429)
+    // before the backoff; attempt 2 must never start. A backoff sleep that
+    // ignored the signal would run the full 2s Retry-After and only then begin
+    // attempt 2 — start, auth refresh, fetch — against an already-aborted
+    // signal, which surfaces here as starts [1, 2]. That is what the deleted
+    // `Date.now() - startedAt < 1000` was standing in for, and these say it
+    // without consulting a clock.
+    //
+    // onRetry had already announced attempt 2 — that is the inherent race of
+    // cancelling between announce and begin — but starts and ends stay
+    // balanced.
+    expect(starts(events).map((e) => e.attempt)).toEqual([1]);
+    expect(ends(events).map((e) => e.attempt)).toEqual([1]);
+    expect(ends(events)[0]!.statusCode).toBe(429);
+    // Hang guard only: a non-signal-aware sleep fails the assertions above,
+    // and this just stops it wedging the file if it fails some other way.
   }, 10_000);
 
   // Defect 4, updated for network-error retry. A 503 followed by fetch
