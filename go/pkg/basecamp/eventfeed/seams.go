@@ -447,6 +447,12 @@ type Observer struct {
 	// context sentinels, *CloseError, *DialError, *TerminalError,
 	// *invalidFrameError), and ANY other error is replaced by errSocketFailed.
 	//
+	// "Preserved" means reduced to the connector's OWN value, not passed
+	// along. A seam error that merely WRAPS a recognized sentinel —
+	// fmt.Errorf("read %s: %w", cableURL, context.Canceled) — reduces to the
+	// bare sentinel, because the wrapper's text is exactly where a cable URL
+	// would ride. errors.Is still matches for a consumer that checks.
+	//
 	// The normalization is deliberate, and it is the connector's own defense
 	// rather than a restatement of the seam's. §23 declares the ticket an
 	// opaque bearer credential that is never logged; this callback is a

@@ -104,6 +104,24 @@ func ExportIsInvalidFrameError(err error) bool {
 	return errors.As(err, &ife)
 }
 
+// ExportObservableSocketError exposes the teardown-cause reduction that guards
+// Observer.Disconnected's error argument. Tested directly rather than only
+// through a socket because the leak it must prevent is in the SHAPE of the
+// error handed to it — a seam error WRAPPING a sentinel — and driving every
+// such shape through a live teardown proves less about the mapping than
+// calling it does.
+func ExportObservableSocketError(err error) error { return observableSocketError(err) }
+
+// ExportStaleConnectionErr returns the connector's staleness sentinel, for
+// asserting that a wrapped one reduces to the sentinel itself rather than to
+// its wrapper. A func rather than a var so the errname linter does not read a
+// test-only bridge as a package sentinel needing the ErrXxx spelling.
+func ExportStaleConnectionErr() error { return errStaleConnection }
+
+// ExportCableConnClosedErr returns the connector's socket-closed sentinel,
+// exposed for the same reason as ExportStaleConnectionErr.
+func ExportCableConnClosedErr() error { return errCableConnClosed }
+
 // ExportSubscribeIdentifier exposes the exact EventsChannel subscription
 // identifier for frame construction in tests.
 func ExportSubscribeIdentifier(f Filters) string { return subscribeIdentifier(f) }
