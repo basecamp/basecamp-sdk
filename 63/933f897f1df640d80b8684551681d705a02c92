@@ -1,0 +1,25 @@
+go/pkg/basecamp/optional_timestamps_test.go
+  s_b98b4a85078d3e::t_fa621d07bb5f25 399-406,408,412,416,418
+  s_b98b4a85078d3e::t_c7a6b261da1810 433-438
+  s_b98b4a85078d3e::t_a6994e124e1a0b 448-454
+  s_b98b4a85078d3e::t_dd28e8a8162dd6 457,563,704-706,708-736,738-743,746-759
+  s_b98b4a85078d3e::t_97b2d840472d31 671,963-968,971,979
+  s_b98b4a85078d3e::t_a7a248592dc7ef 336-339,351-355,366
+  s_b98b4a85078d3e::t_905ca55ef029f8 421-424,426,428-432,440-443,445,447,456,458-477,479-492,555-562,564-568,575-576,583-586,589,592-611,618-647,658-661,663-667,669-670,672-673
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "63933f897f1df640d80b8684551681d705a02c92",
+  "prompts": {},
+  "sessions": {
+    "s_b98b4a85078d3e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5bbef980-f552-48e7-bb51-0b748caa71ac",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
