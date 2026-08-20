@@ -422,6 +422,43 @@ func (h *staleHolder) evaluate(gen int) (time.Duration, bool) {
 	return h.clock.Now().Sub(h.last), true
 }
 
+// graceWake re-arms the staleness timer purely as a WAKE, after an
+// authoritative expiry has already been decided and parked. It is the grace
+// phase's only source of wake-ups (SPEC.md §23 "the bound on a superseded poll
+// seam call"), and it is deliberately not a re-armed staleness WINDOW: the
+// verdict is already rendered, and nothing re-evaluates it.
+//
+// Two things make it that rather than an ordinary re-arm, and both are
+// requirements of the phase it wakes rather than conveniences.
+//
+// It LATCHES the expiry, which is what makes the phase immune to frame resets
+// and to suspension. Once expired is set, arm returns false to everyone: the
+// pump's per-frame reset no longer swaps the timer out, and neither does a
+// blocked hand-off's release. The wake therefore lands at a fixed instant no
+// peer can push, which is the property the phase needs — it bounds how long the
+// connector waits for an abandoned seam call, and that has nothing to do with
+// whether the peer is still talking.
+//
+// And it replaces the FIRED timer rather than leaving it. An authoritative
+// firing is consumed from the channel, and latching stops anything from arming
+// another, so after the expiry there is no wake left at all — which is exactly
+// how the bounded wait became unbounded again.
+//
+// It arms the same `staleness` kind: SPEC.md §23 pins exactly six timer kinds
+// and every state's exact timer set, both asserted by the cross-SDK fixtures,
+// so a dedicated grace timer would be a spec change across six SDKs. The
+// outstanding set is unchanged — {staleness} stays {staleness}.
+func (h *staleHolder) graceWake() {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if h.stopped {
+		return
+	}
+	h.expired = true
+	h.timer.Stop()
+	h.timer = h.clock.NewTimer(h.d, timerStaleness)
+}
+
 // stop cancels the timer permanently.
 func (h *staleHolder) stop() {
 	h.mu.Lock()

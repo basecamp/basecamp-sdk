@@ -364,9 +364,18 @@ func (l *loop) walk(at *attempt, cursor Cursor, presentClass bool) (out cycleOut
 	}
 }
 
-// deferredFrame is one pump receive taken out of band while a poll seam call
-// was in flight and left for the walk's ordinary dispatch point. closed
-// records the pump's channel closing, which carries no item.
+// deferredFrame is one socket outcome taken out of band while a poll seam call
+// was in flight and left for the walk's ordinary dispatch point. It has three
+// forms, and only the first carries a frame: an ordinary pump receive; closed,
+// the pump's channel closing, which carries no item; and stale, a staleness
+// expiry, which carries no item either and instead carries the age
+// Observer.StaleConnection reports.
+//
+// The stale form exists because a silently half-open socket produces NEITHER a
+// frame nor a read error. The expiry is the only evidence there is, and it is
+// as much a socket outcome as a read error — so it takes the same treatment
+// rather than a teardown where it is observed, which would strand the in-flight
+// page's deliveries and its save.
 //
 // Every deferral is a SOCKET outcome (or the pump's exit), which is transition
 // 21: the page boundary deliberately observes it AFTER the in-flight page has
@@ -376,6 +385,9 @@ func (l *loop) walk(at *attempt, cursor Cursor, presentClass bool) (out cycleOut
 type deferredFrame struct {
 	item   pumpItem
 	closed bool
+	stale  bool
+	// age is the silence the expiry measured, for the stale form only.
+	age time.Duration
 }
 
 // pollResult is one poll seam call's outcome, carried back from the call's
@@ -428,13 +440,25 @@ type pollAttempt struct {
 // before the walk stops, and frame order is preserved because the servicing
 // stops at the deferred receive.
 //
+// A STALENESS EXPIRY defers on identical terms, and this select is where it is
+// observed — every other socket-open wait in the connector carries the case,
+// and for a long time this one did not (#758). The hole it left is the socket
+// that goes silently half-open: it produces no frame and no read error, so the
+// firing is the only evidence there is. Unconsumed, it sat there while a
+// PollSource that returns only on cancellation held CatchingUp forever, with
+// nothing able to cancel it — the cancel would have come from the teardown the
+// wait was preventing.
+//
+// Disposing the attempt where the expiry is observed is the obvious remedy and
+// it is wrong: transition 21 says an accepted page's deliveries and its save
+// are not stranded by the socket's death, and the expiry is a socket outcome
+// like any other. So it is deferred, and dispatched at the page boundary.
+//
 // It reports superseded=true when it gave up on the call: a deferred SOCKET
-// outcome is still awaited, but only for as long as the staleness window,
-// because a PollSource that returns only on context cancellation would
-// otherwise hold the consumer's goroutine forever behind a socket that has
-// already spoken (and the staleness expiry that would tear that socket down
-// is unobservable while the call is outstanding). The caller dispatches the
-// deferred outcome, whose teardown cancels the abandoned call.
+// outcome is still awaited, but only for the grace phase, because a PollSource
+// that returns only on context cancellation would otherwise hold the consumer's
+// goroutine forever behind a socket that has already spoken. The caller
+// dispatches the deferred outcome, whose teardown cancels the abandoned call.
 func (l *loop) pollPage(at *attempt, cursor Cursor) pollAttempt {
 	done := make(chan pollResult, 1)
 	go func() {
@@ -446,9 +470,25 @@ func (l *loop) pollPage(at *attempt, cursor Cursor) pollAttempt {
 		done <- pollResult{page: p, err: perr}
 	}()
 	for {
+		staleTimer, staleGen := at.lc.stale.current()
+		stale := false
 		select {
 		case r := <-done:
 			return pollAttempt{page: r.page, err: r.err}
+		case <-at.lc.stale.rearmed():
+			// The pump swapped the window out; a parked select holds one timer,
+			// so the swap is invisible until something wakes it. Re-read it.
+			continue
+		case <-staleTimer.C():
+			age, ok := at.lc.stale.evaluate(staleGen)
+			if !ok {
+				// Superseded by a frame the pump received first, or suspended
+				// by a blocked hand-off and re-armed. Neither is evidence, and
+				// neither may consume the call: the wait continues on the
+				// window evaluate just re-armed.
+				continue
+			}
+			l.deferred, stale = &deferredFrame{stale: true, age: age}, true
 		case item, ok := <-at.lc.frames:
 			if !ok {
 				l.deferred = &deferredFrame{closed: true}
@@ -464,15 +504,24 @@ func (l *loop) pollPage(at *attempt, cursor Cursor) pollAttempt {
 				}
 				l.deferred = &deferredFrame{item: item}
 			}
-			// The superseded-poll bound starts HERE, at the deferral, and is
-			// read before the hook fires so nothing observing the deferral
-			// can race the deadline into existence behind it.
-			deadline := l.cfg.clock.Now().Add(l.cfg.staleAfter)
-			if l.hooks.frameDeferred != nil {
-				l.hooks.frameDeferred()
-			}
-			return l.awaitSupersededPoll(at, done, deadline)
 		}
+		// The grace phase starts HERE, at the deferral, and its deadline is
+		// read before the hook fires so nothing observing the deferral can
+		// race the deadline into existence behind it.
+		deadline := l.cfg.clock.Now().Add(l.cfg.staleAfter)
+		if stale {
+			// The firing this branch consumed was the wait's own wake source,
+			// and an authoritative expiry latches — so without this there is
+			// nothing left to wake the grace phase at all, and the bounded wait
+			// becomes unbounded again. Armed BEFORE the hook, so a test that
+			// rendezvouses on the deferral cannot advance past a wake that is
+			// not yet armed.
+			at.lc.stale.graceWake()
+		}
+		if l.hooks.frameDeferred != nil {
+			l.hooks.frameDeferred()
+		}
+		return l.awaitSupersededPoll(at, done, deadline, stale)
 	}
 }
 
@@ -498,43 +547,47 @@ func (l *loop) pollPage(at *attempt, cursor Cursor) pollAttempt {
 // then enough to keep an already-dead socket's verdict from ever landing.
 //
 // The staleness firing and the re-arm wake are demoted to WAKE-UPS; the
-// deadline alone decides. evaluate is still called on a firing, and still
-// re-arms a suspended window — that re-arm is what guarantees the next wake
-// when the pump is blocked and no frame can deliver one — so the lapse is
-// observed at the first wake at or after the deadline.
+// deadline alone decides, and the post-select check runs on every wake, so an
+// early or late one costs a loop turn rather than the verdict. Where the wake
+// comes from depends on which outcome was deferred. For a frame, evaluate is
+// still called on a firing and still re-arms a suspended window — that re-arm
+// is what guarantees the next wake when the pump is blocked and no frame can
+// deliver one. For a staleness expiry, evaluate has already spoken and the
+// firing that carried its verdict is consumed, so graceWake supplies the wake
+// instead.
 //
 // A dedicated timer would express this more directly, and is deliberately not
 // used: SPEC.md §23 pins exactly six timer kinds AND every state's exact
 // timer set, both asserted by the cross-SDK fixtures, so a seventh kind is a
 // spec change across six SDKs rather than a fix to the Go reference.
 //
-// # The worst case is TWO staleness windows, and that is the published bound
+// # The published bound: detection window + grace phase
 //
-// Borrowing the window means the wait wakes on the window's cadence, not the
-// deadline's, so it can overshoot — and the size of the overshoot is worth
-// stating rather than discovering.
+// SPEC.md §23 ("the bound on a superseded poll seam call") states it
+// normatively for all six SDKs, and this is the Go reference's realization of
+// it. A socket that dies during a poll is detected within one DETECTION WINDOW
+// — EVENT_FEED_STALE_AFTER, and for a silently half-open socket that window IS
+// the detection, there being no frame and no read error to observe — and the
+// call it superseded is then abandoned within one GRACE PHASE, which is
+// `deadline` here and is also one window long. Nothing waits longer than their
+// sum.
 //
-// The window in flight was armed at the last frame receipt, at or before the
-// deferral, so it fires at or before the deadline. If the pump is blocked at
-// that moment the firing is not evidence (a full queue is a fast peer, not a
-// dead one), evaluate re-arms, and the NEXT wake is a full window later — past
-// the deadline by however much of the first window had already elapsed when
-// the deferral happened. A deferral landing immediately after a frame
-// therefore waits close to two windows in total: one for the in-flight window
-// to close, one for the re-armed window to deliver the wake that lets the
-// post-select predicate observe the lapse.
+// The grace phase is a value, not a timer, and it has two immunities that are
+// the point of naming it. It is immune to FRAME RESETS: a frame arriving inside
+// it re-arms staleness, and must not move a deadline that bounds the wait for
+// an abandoned call rather than the peer's liveness. And it is immune to
+// SUSPENSION: a blocked hand-off suspends staleness evaluation on the premise
+// that a full queue proves the peer is outrunning a connector that is still
+// consuming, and this is the one wait that deliberately stops consuming, so the
+// premise is false here by construction.
 //
-// It cannot exceed two. The post-select check runs on EVERY wake, and by the
-// first re-armed firing the clock is necessarily past a deadline set one
-// window after the deferral — so a second re-arm is never waited out, however
-// long the pump stays blocked.
-//
-// This is a property of borrowing the timer, not a defect to patch: a shorter
-// re-armed window would be a staleness window that is not one, and a dedicated
-// one is the seventh kind above. It is carried to bc3 as an open §23 contract
-// question (staleness × in-flight-poll deferral) rather than asserted as
-// settled contract here.
-func (l *loop) awaitSupersededPoll(at *attempt, done <-chan pollResult, deadline time.Time) pollAttempt {
+// The stale caller gets both from graceWake's latch, which stops the pump's
+// resets and a hand-off's release from touching the timer at all. The frame
+// caller gets them from the deadline: its wakes come from an ordinary staleness
+// window that a peer CAN push, but the post-select check runs on every wake,
+// and a re-armed window under a blocked pump still delivers one within a window
+// — so a peer that keeps sending can move a wake, never the verdict.
+func (l *loop) awaitSupersededPoll(at *attempt, done <-chan pollResult, deadline time.Time, stale bool) pollAttempt {
 	for {
 		staleTimer, staleGen := at.lc.stale.current()
 		select {
@@ -544,9 +597,19 @@ func (l *loop) awaitSupersededPoll(at *attempt, done <-chan pollResult, deadline
 			return pollAttempt{superseded: true}
 		case <-at.lc.stale.rearmed():
 		case <-staleTimer.C():
-			if _, ok := at.lc.stale.evaluate(staleGen); ok {
+			if stale {
+				// The verdict is already rendered and parked; this firing is a
+				// wake and nothing else, so nothing re-evaluates it. Re-arming
+				// keeps a wake in hand for the next turn, which is what makes
+				// the phase's end depend on the deadline rather than on a
+				// timer landing exactly on it.
+				at.lc.stale.graceWake()
+			} else if _, ok := at.lc.stale.evaluate(staleGen); ok {
 				return pollAttempt{superseded: true}
 			}
+		}
+		if l.hooks.supersededWake != nil {
+			l.hooks.supersededWake()
 		}
 		if !l.cfg.clock.Now().Before(deadline) {
 			return pollAttempt{superseded: true}
@@ -603,8 +666,8 @@ func (l *loop) admitDuringPoll(at *attempt, item pumpItem) (handled bool, out cy
 	return true, cycleOutcome{}, false
 }
 
-// dispatchDeferred dispatches the frame the in-flight-poll servicing deferred,
-// if any, through the ordinary post-confirmation dispatch.
+// dispatchDeferred dispatches the socket outcome the in-flight-poll servicing
+// deferred, if any, through the ordinary post-confirmation dispatch.
 //
 // Its two call sites are the walk's dispatch points — the page boundary and
 // the walk's end — and deliberately not the `poll-retry` wait, which holds a
@@ -612,13 +675,33 @@ func (l *loop) admitDuringPoll(at *attempt, item pumpItem) (handled bool, out cy
 // omission: a deferred receive is either the pump's terminating error, which
 // nothing can follow, or a disconnect frame, the server's last word on the
 // socket; both are dispatched at the next page boundary either way.
+//
+// The stale form takes transition 21's staleness trigger verbatim — the same
+// teardown, a StaleConnection carrying the age, then the same
+// errStaleConnection disconnect, in the order socketCheck fires them in. That
+// identity is the contract: whether the expiry was observed at the page
+// boundary or deferred from inside a poll is an implementation detail of WHEN,
+// never of WHAT an observer sees.
+//
+// The age is the one thing that is carried rather than recomputed, and
+// deliberately: it was measured when the verdict was RENDERED, so it reports
+// the silence the connector actually detected rather than the silence plus
+// however long the abandoned call went on for afterwards.
 func (l *loop) dispatchDeferred(at *attempt) (cycleOutcome, bool) {
 	d := l.deferred
 	if d == nil {
 		return cycleOutcome{}, false
 	}
 	l.deferred = nil
-	if d.closed {
+	switch {
+	case d.stale:
+		l.disposeAttempt(at, nil)
+		if l.cfg.observer.StaleConnection != nil {
+			l.cfg.observer.StaleConnection(d.age)
+		}
+		l.observeDisconnected("", errStaleConnection)
+		return cycleOutcome{kind: outcomeFailed}, true
+	case d.closed:
 		return l.pumpExited(at, nil), true
 	}
 	return l.handleLiveFrame(at, nil, d.item, false)
@@ -830,7 +913,14 @@ func (l *loop) fatalScan(at *attempt, budget *int) (cycleOutcome, bool) {
 	// A fatal frame already in the slot is dispatched now rather than after
 	// the save: the carve-out is about what governs, not about which queue the
 	// frame is sitting in.
-	if d := l.deferred; d != nil && !d.closed {
+	//
+	// Only ONE of the slot's three forms carries a frame, and the other two are
+	// excluded by name rather than by what parsing their zero pumpItem happens
+	// to return. protocolFatalFrame does reject it today — parseFrame fails on
+	// nil bytes — but that is an accident of an unrelated function's error
+	// handling, and a probe whose correctness rests on it is one refactor away
+	// from reading a staleness expiry as a disconnect frame.
+	if d := l.deferred; d != nil && !d.closed && !d.stale {
 		if f, ok := protocolFatalFrame(d.item); ok {
 			l.deferred = nil
 			return l.terminateProtocolFatal(at, f), true

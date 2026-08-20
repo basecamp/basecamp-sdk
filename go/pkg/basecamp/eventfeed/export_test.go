@@ -71,6 +71,13 @@ func (c *Connector) OnPumpHandedOff(f func(isErr bool)) { c.hooks.pumpHandedOff 
 // and the completed call.
 func (c *Connector) OnFrameDeferred(f func()) { c.hooks.frameDeferred = f }
 
+// OnSupersededWake registers a hook fired each time the grace phase following a
+// deferral takes a wake, before that wake's deadline check. It is the
+// rendezvous for "the connector has consumed the wake a frame's staleness
+// re-arm produced" — the only way to tell a phase that ends on its own deadline
+// from one a peer's frame carried it to.
+func (c *Connector) OnSupersededWake(f func()) { c.hooks.supersededWake = f }
+
 // ExportPumpDepth is the frame pump's bounded hand-off queue depth: the
 // number of frames a test must serve to make the pump block.
 const ExportPumpDepth = pumpDepth
