@@ -239,6 +239,15 @@ type testHooks struct {
 	// on", which is what makes transition 21's deferral assertable without
 	// racing the seam call's own completion.
 	frameDeferred func()
+	// supersededWake fires each time the grace phase that follows a deferral
+	// takes a WAKE — a staleness firing or a window swap — and before the
+	// deadline that wake is checked against. Wakes are allowed to be early, and
+	// the deadline is what decides; the difference is invisible from outside,
+	// which is why the phase's immunity to frame resets could not be asserted
+	// without it. A frame arriving inside the phase re-arms staleness and
+	// produces exactly one such wake, and a test must know that wake has been
+	// consumed before it can assert the phase still ends on its own.
+	supersededWake func()
 	// subscribeWritten fires once the subscribe command has been written and
 	// BEFORE the phase deadline is stopped. It exists for the one ordering
 	// this package cannot otherwise assert: the deadline expiring in the

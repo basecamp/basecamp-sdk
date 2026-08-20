@@ -2698,6 +2698,47 @@ Draining is Terminal(`protocol_fatal`) immediately (the state-generic rule under
 Disconnect Dispatch) — the drain is not completed, the held entry position is NOT saved,
 and no `caught_up` is announced; only recoverable failures defer.
 
+**A socket outcome observed while a poll seam call is in flight is deferred to the page
+boundary, and the wait for that call is bounded by DETECTION WINDOW + GRACE PHASE.** This
+is transition 21 in CatchingUp, the only state that holds a wire call open across a socket
+event, and it is normative for every SDK.
+
+The deferral itself is the finish-the-page ordering the rest of §23 already states: the
+in-flight page is accepted, delivered and saved, and only then is the socket's outcome
+dispatched. It applies to **every** socket outcome, and that expressly includes a staleness
+expiry — a socket that goes silently half-open produces no frame and no read error, so its
+expiry is the only evidence there will ever be, and an implementation whose in-flight-poll
+wait does not observe `staleness` cannot detect that socket at all. Disposing the attempt
+where the expiry is observed is NOT conformant: it strands the deliveries and the save of a
+page the server had already served.
+
+The two intervals bound the whole sequence, and their sum is the worst case:
+
+- **Detection window** — `EVENT_FEED_STALE_AFTER`, the staleness window, measured from the
+  last inbound frame. It is what decides the socket is dead, under the ordinary evaluation
+  rule: a firing superseded by a frame the reader took first, or one whose window
+  overlapped a blocked hand-off, is not evidence and must not be deferred.
+- **Grace phase** — one further `EVENT_FEED_STALE_AFTER`, measured from the deferral, after
+  which the seam call is abandoned to the deferred outcome's teardown (the teardown
+  cancels it — Seam-Call Semantics). It is a **deadline read from the clock at the instant
+  of deferral**, not a window, and it carries two immunities that are the point of naming
+  it:
+  - **Immune to frame resets.** A frame arriving inside the phase re-arms `staleness` in
+    the ordinary way and MUST NOT move the deadline. The phase bounds how long the
+    connector waits for an abandoned call, which is unrelated to whether the peer is still
+    talking.
+  - **Immune to suspension.** The full-queue suspension rule below rests on a full queue
+    proving the peer is outrunning a connector that is still consuming. This is the one
+    wait that deliberately stops consuming — an outcome already occupies the single
+    deferral slot — so the premise is false here by construction, and a suspended
+    evaluation MUST NOT extend the phase.
+
+An implementation may wake as often as it likes and from whatever source it has; wakes may
+be early or late, and the deadline is what decides. In particular this introduces **no new
+timer kind**: the six kinds and the per-state exact timer sets are both unchanged, and an
+implementation that re-arms `staleness` purely to obtain a wake keeps CatchingUp's set at
+{`staleness`}.
+
 **"Observed" means handed to the state machine, and the boundary is normative.** A frame
 the transport reader has taken off the socket but not yet handed over is not observed, and
 no implementation is required to find it. That is not a tolerance granted for convenience:
@@ -3022,6 +3063,9 @@ INTERFACE PollSource
   -- triggered on close(), caller cancellation, AND any teardown of the attempt the call
   -- belongs to (mid-walk socket failure, staleness, a terminal): a superseded poll must
   -- not stall reconnection or return into a disposed attempt. Prompt return required.
+  -- The connector's own side of that is bounded rather than trusting: an outcome observed
+  -- while the call is in flight is awaited for the grace phase and then abandoned to the
+  -- teardown (detection window + grace phase, under the state machine above).
 END
 
 RECORD Cursor           -- exactly one field set; the zero Cursor is the bare present entry
