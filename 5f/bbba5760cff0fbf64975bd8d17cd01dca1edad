@@ -1,0 +1,35 @@
+conformance/runner/python/test_replay_runner.py
+  s_b98b4a85078d3e::t_d6ea41702a04c6 36-38
+conformance/runner/python/schema_walker.py
+  s_b98b4a85078d3e::t_e42e7fc8368f14 42-45
+.github/workflows/test.yml
+  s_b98b4a85078d3e::t_aee791200a4ae5 776-788
+  s_b98b4a85078d3e::t_9b6a995924ee1c 824-827,830-832
+  s_b98b4a85078d3e::t_656eb283927d51 655-658
+  s_b98b4a85078d3e::t_7ee41d733a5c9b 653-654,661
+conformance/runner/python/replay_runner.py
+  s_b98b4a85078d3e::t_d67823ca9a4770 124-126,128
+  s_b98b4a85078d3e::t_94d8476d985622 160,165-169
+  s_b98b4a85078d3e::t_15a2cb4a139f42 254
+conformance/runner/ruby/runner.rb
+  s_b98b4a85078d3e::t_be69ba2f522b27 121-122
+conformance/runner/python/runner.py
+  s_b98b4a85078d3e::t_cb4e748b0d9ca2 140-142
+  s_b98b4a85078d3e::t_61ae3b5be71af3 1537-1539
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "5fbbba5760cff0fbf64975bd8d17cd01dca1edad",
+  "prompts": {},
+  "sessions": {
+    "s_b98b4a85078d3e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5bbef980-f552-48e7-bb51-0b748caa71ac",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
