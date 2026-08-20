@@ -664,9 +664,14 @@ retrying one.**
 
 Both halves carry weight, and the second is not decoration. §4's 401 refresh-and-retry re-issues after
 the origin declined to serve — but 401 is on §7's explicit never-retry list, so no loop declares it
-retryable, and §4 is outside. §7's `retry_on`, §14's hop-1 `{429, 502, 503, 504}`, §23's
-transient/throttled error kinds and §16's `429`-plus-`too_many_requests` pair are all declared sets, so
-all four are inside.
+retryable, and §4 is outside. §23's below-threshold authorization recovery is the same shape one level
+up, and is outside on the same clause: an unauthorized mint, disconnect or poll rides the reconnect
+cycle to a fresh mint, but the seam classifies 401/403 as `unauthorized` — a kind that carries no
+`retry_after` by construction, distinct from the `transient`/`throttled` kinds the `backoff` row
+declares — and the cycle is bounded by the shared authorization counter, not a retry budget. Nothing
+for the header to reach, and no declared retryable status. §7's `retry_on`, §14's hop-1
+`{429, 502, 503, 504}`, §23's transient/throttled error kinds and §16's `429`-plus-`too_many_requests`
+pair are all declared sets, so all four are inside.
 
 There is a second, independent reason the boundary falls here, and it is worth stating because it
 shows the definition is not merely stipulated. This section governs the relationship between a
@@ -688,14 +693,16 @@ someone noticing it. Every delay-bearing branch in this document, walked back th
 | §16 poll — `429` alone, or `too_many_requests` off 429 | nothing; terminal `api_error` | **out** |
 | §23 reconnect `backoff` | mint/connect outcomes classified transient or throttled | **in** |
 | §23 `poll-retry` | poll outcomes classified transient or throttled | **in** |
+| §23 `backoff` after an unauthorized mint, disconnect or poll (below threshold) | 401/403, classified `unauthorized` — a kind carrying no `retry_after`; authorization recovery bounded by the shared counter | **out** |
 | §23 `repair-poll` | a schedule — 60s ± 20% per cycle, no failure involved | **out** |
 | §23 `staleness`, `handshake-deadline`, `confirmation-deadline` | elapsed time; deadlines, not repeats | **out** |
 | §4 401 refresh-and-retry | a status no loop declares retryable, gated on a token refresh | **out** |
 
 Those verdicts are the contract — what the criterion decides, independent of what any SDK does today.
 Nothing above is a carve-out: `repair-poll` and the §16 pending branch are outside for the same reason
-as each other — they repeat without a failed attempt — and §4 is outside for the second clause alone,
-which is what shows that clause is load-bearing rather than restating the first.
+as each other — they repeat without a failed attempt — and §4 and §23's authorization recovery are
+outside for the second clause alone, which is what shows that clause is load-bearing rather than
+restating the first.
 
 *(As-of check, not a contract: the §7, §14, §16 and §4 rows were verified against shipped code —
 `wt/lane-spec` @ `fc5645dfe`, §16 read in four SDKs — and every one agreed with its verdict. The §23
@@ -737,10 +744,18 @@ jitter term is part of the locally computed formula, where it exists to decorrel
 the same delay independently; a delay the origin named is already the origin's choice, so adding to
 it makes the client wait longer than it was told for no benefit. An implementation MAY bound it
 against a **host limit** — a timer that cannot schedule the value, a conversion that would trap or
-wrap — and a bound of that kind belongs at the sleep, so a caller reading the error's `retry_after`
-still sees what the server said. TypeScript's `Math.min(seconds × 1000, MAX_TIMEOUT_MS)`, applied in
-both of its retry loops as the delay is computed, is the worked example: the parser's result stays
-the public `retryAfter`, and only what reaches the timer is clamped.
+wrap — and a bound of that kind belongs at the sleep, so wherever the error carries `retry_after` the
+caller reads what the server said, never the clamped copy. TypeScript's `Math.min(seconds × 1000,
+MAX_TIMEOUT_MS)`, applied in both of its retry loops as the delay is computed, is the worked example:
+the parser's result stays the public `retryAfter`, and only what reaches the timer is clamped.
+
+That is a guarantee about the field's *integrity*, not its *presence*. The Status Mapping Algorithm
+above populates `retry_after` in its 429 arm only, so today an exhausted 503 that was slept on for
+the value the origin named surfaces no `retry_after` to the caller, and neither does the error §7 step
+3i hands to `on_retry`. Whether the mapping grows the field at every status a declared retry set
+carries is part of the status convergence in #775, not decided here — for the SDKs whose delay loop
+reads the value off the constructed error, it is the same change as the status gate, because one
+parse feeds both.
 
 Read that paragraph narrowly: it says what may not be done *to* the value — not capped, not summed
 with a jitter term. It does not say what the value is combined *with*, which is the next paragraph's
@@ -754,18 +769,34 @@ are not one mechanism: two schedule a retry of the same request, one paces a pol
 throttling against a fixed code lifetime, and one selects a gap between whole reconnect cycles. A
 single composition asserted here would have silently overridden three of the five rows below.
 
-So the obligation runs the other way. **Each delay loop states its own composition in its own section,
-and a delay loop added to this document later MUST state its own rather than inherit one from here.**
-There is deliberately no default to fall back on: a loop that says nothing is under-specified, not
-governed by §7's answer. The rows that exist today:
+So the obligation runs the other way. **Each loop the definition above puts *inside* — one whose wait a
+`Retry-After` can reach — states its own composition in its own section, and such a loop added to this
+document later MUST state its own rather than inherit one from here.** There is deliberately no
+default to fall back on: an in-scope loop that says nothing is under-specified, not governed by §7's
+answer. A loop the definition puts outside — `repair-poll`, the §16 pending branch, the deadline
+timers — has no composition to state, because no header reaches it, and is not made under-specified
+by this rule. The rows that exist today:
 
 | Loop | Composition with the locally computed delay | Stated in |
 |---|---|---|
 | §7 generated-operation retry | **replaces** it — step 3h computes `parsed × 1000` *instead of* the backoff formula, never a sum | §7 "Retry Algorithm" step 3h, "Backoff Formula" |
 | §14 `DownloadURL` hop 1 | **replaces** it, at every status in that hop's own `{429, 502, 503, 504}` set | §14 "Hop-1 Retry" |
-| §16 device-flow poll | **`max` with the current `interval`** — a one-shot `nextWaitOverride = max(interval, retryAfter)`, still clamped to the remaining code lifetime by the wait rule, then decayed | §16 "RFC 8628 Device Authorization Grant" |
+| §16 device-flow poll | **`max` with the current `interval`** — a one-shot `nextWaitOverride = max(interval, retryAfter)`, still clamped to the remaining code lifetime by the wait rule, then decayed. Reads the **delta-seconds form only** — a declared exception to the Parsing Algorithm, reasoned below | §16 "RFC 8628 Device Authorization Grant" |
 | §23 reconnect `backoff` timer | **floors** the full-jitter draw, and wins outright when it exceeds the cap | §23 "Clock, Timers, and Virtual Time" |
 | §23 `poll-retry` timer | **replaces** the full-jitter draw — waited exactly | §23, same table |
+
+One row also departs from the Parsing Algorithm, and says so rather than leaving two prescriptions for
+one response. **§16's branch accepts delta-seconds and nothing else; an HTTP-date there is malformed
+and falls back to the current `interval`.** That is an exception, declared here, for a reason that is a
+property of that loop rather than of the header: the poll measures every wait on an injectable
+**monotonic** clock against a deadline fixed at code issuance (§16 `pollDeviceToken` step 2), and an
+HTTP-date is resolvable only against wall-clock `now()`, which that loop deliberately never reads — a
+wall-clock comparison is the one thing a monotonic deadline exists to exclude. The cost of the
+exception is bounded by the loop's own shape: the fallback is the cadence the same authorization
+server prescribed, not a locally computed backoff, and the wait rule clamps everything to the
+remaining code lifetime regardless. §16's block already pins the shape — digits-only, a shared
+significant-digit bound, clamped to the device ceiling; this paragraph is what makes it an exception
+instead of a contradiction.
 
 §23 is two rows because its two timers genuinely differ, and that is the sharpest evidence that one
 rule would not have fitted. A 1-second header against a 50-second selected reconnect delay waits 50
@@ -802,7 +833,9 @@ same and is adopted here:
 The width itself is deliberately not fixed here, because it is a property of the host. *(As-of
 observation, verified against `wt/lane-spec` @ `fc5645dfe` — kept because the decision not to fix a
 width is unreadable without it, not as a live claim: TypeScript rejects above
-`Number.MAX_SAFE_INTEGER`, Kotlin above `Int.MAX_VALUE`, Go and Swift above their 64-bit integers.)*
+`Number.MAX_SAFE_INTEGER`, Kotlin above `Int.MAX_VALUE` on the delta-seconds form — its date form
+computes in `Long` and saturates to `Int.MAX_VALUE` instead, which is the parser-output carve-out
+above rather than a rejection — Go and Swift above their 64-bit integers.)*
 Four hosts reject cleanly at thresholds differing by nine orders of magnitude without any of them
 misbehaving, which is the evidence that the width does not need fixing — a `Retry-After` naming a wait
 longer than the host can count is not a delay any caller is worse off for missing.
@@ -822,7 +855,10 @@ the backoff (first tier), while a value it holds but the host cannot schedule **
 tier) at a ceiling chosen to be portable rather than maximal — `math.MaxInt32` seconds, the same
 2,147,483,647 §16 already names as a shared cross-SDK ceiling. The portability matters because two
 host limits sit above a Go `Retry-After` and a ceiling derived from only the larger would change with
-`GOARCH`. Shipped in #796.
+`GOARCH`. `[PENDING #796: that is what #796 ships — `ParseInt` into `int64`, over-range malformed, a
+clamp at `math.MaxInt32` inside the shared hand-written `parseRetryAfter` that the raw retry loop,
+the download path and the hook result all read — and it merges after this PR. Until it lands, the
+hand-written path is unclamped and this paragraph describes the contract, not the tree.]`
 
 The identical unclamped conversion in `go/pkg/generated/client.gen.go`, and an `Atoi` there whose
 range error is discarded into a rate-limit hint, are **not yet fixed anywhere**. Their fix *belongs*
@@ -1073,7 +1109,7 @@ Requirements:
    than an addend on a server-directed delay. Implementations may still bound it against
    **host limits** — a timer that cannot schedule the value, such as TypeScript's clamp to
    the 2,147,483,647ms `setTimeout` accepts, or a conversion that would trap or wrap, such
-   as Go's saturation of seconds→`time.Duration` (#796) — and may reject outright a value
+   as the seconds→`time.Duration` saturation Go takes in #796 `[PENDING #796]` — and may reject outright a value
    the parser's own numeric type cannot hold. §6 "Retry-After Honouring" governs which of
    those belongs at the sleep and which may sit in the parser. A **policy** cap is a
    different thing and is not permitted: Swift's 86,400s clamp is one (the `UInt64`
@@ -2167,6 +2203,13 @@ further bounds, already stated in the block above, are properties of this flow r
 clamps it to the remaining code lifetime — a *domain* ceiling on how long polling can usefully
 continue, not the locally computed backoff ceiling §6 exempts the value from.
 
+**Parsing (§6 "Composition is per-loop", the paragraph under its table): this branch reads the
+delta-seconds form only, and that is a declared exception to §6's Parsing Algorithm, not a fourth
+parser.** An HTTP-date here is malformed and falls back to the current `interval`. The reason is
+this loop's clock: every wait is measured on the injectable monotonic `clock` against a deadline
+fixed at issuance, and a date can only be resolved against wall-clock `now()`, which this loop never
+reads. §6 records the exception and its cost; the block above is the contract.
+
 ```
 FUNCTION performDeviceLogin(config: OAuthConfig, clientId, scope?, display, clock?) → Token
   1. Capability guard: REQUIRE config.deviceAuthorizationEndpoint present
@@ -2830,7 +2873,7 @@ typed error element is emitted), `Closed` (absorbing; no error element).
 | 1 | Idle | Minting | first iteration (initial connect is immediate; no backoff) |
 | 2 | Backoff | Minting | `backoff` timer fired (a fresh ticket is ALWAYS minted next) |
 | 3 | Minting | Connecting | ticket minted; dial the mint's `url` verbatim |
-| 4 | Minting | Backoff | mint transient/throttled, or an unauthorized mint (401/403) below the shared-counter threshold (Retry-After honored as the floor of the next delay) |
+| 4 | Minting | Backoff | mint transient/throttled (Retry-After honored as the floor of the next delay), or an unauthorized mint (401/403) below the shared-counter threshold (`unauthorized` carries no `retry_after`, so the `backoff` draw alone governs — §6 "What 'retry' means here") |
 | 5 | Minting | Terminal(`authorization_failed`) | 3rd consecutive connection-level authorization failure (shared counter across unauthorized mints, `unauthorized` disconnects, and unauthorized polls; resets only on a successful poll page) |
 | 6 | Connecting | AwaitingWelcome | dial ok; frame pump started (`handshake-deadline` was armed on entry to Connecting, before `dial` — a stalled dial expires it) |
 | 7 | Connecting | Backoff | dial failed, or `handshake-deadline` expired mid-dial (the pending dial is cancelled). A dial refused by cable-URL policy is NOT this edge — it is Terminal(`invalid_cable_url`), below the table |
@@ -2885,6 +2928,9 @@ Interpretation, pinned:
   leaves a rejected socket open; an unhandled one stays registered server-side, receiving
   heartbeats forever while delivering nothing).
 - **Connection-level authorization failures retry, then surface — on ONE shared counter.**
+  ("Retry" in the connector's sense of re-entering the reconnect cycle; under §6's definition this
+  is authorization recovery, not a retry — the `unauthorized` kind carries no `retry_after`, so no
+  `Retry-After` reaches the `backoff` draw on this path.)
   Unauthorized mints (401/403), `unauthorized`-reason disconnects at connect
   (pre-welcome — rows 9/10; Disconnect Dispatch pins the arrival point), and
   `unauthorized`-kind poll errors (401/403 after the seam's own refresh/retry budget)
