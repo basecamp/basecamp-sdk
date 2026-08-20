@@ -185,13 +185,19 @@ func TestClient_RetryAfterAbsentOrUnusableKeepsBackoff(t *testing.T) {
 		{"zero", "0"},
 		{"negative", "-5"},
 		{"http-date in the past", "Wed, 09 Jun 2021 10:18:14 GMT"},
-		// RFC 9110's delay-seconds is `1*DIGIT`, so a sign is not a delay —
-		// and strconv accepts one, which would otherwise synthesize a ~68-year
-		// saturated wait out of `+9223372036854775808` (review follow-up,
-		// Codex). Both magnitudes are covered: in range and over.
-		{"signed, in range", "+5"},
-		{"signed, over range", "+9223372036854775808"},
-		{"signed negative, over range", "-9223372036854775809"},
+		// SPEC §6's first tier: too large for the parser's own int64, so
+		// malformed rather than over-range, and it falls through here rather
+		// than saturating. One past the largest int64 and a 20-digit value are
+		// the same case; both are pinned so the boundary cannot drift into the
+		// saturating table by accident.
+		{"one past the largest int64", "9223372036854775808"},
+		{"digits beyond int64 range", "99999999999999999999"},
+		// RFC 9110's delay-seconds is `1*DIGIT`, so a sign is not a delay, and
+		// strconv accepts one — without the digits-only guard ParseInt would
+		// honour this as 5 (review follow-up, Codex). This row is the one that
+		// kills that guard; the over-range signed forms would be refused by
+		// the parse anyway, so they would not.
+		{"signed", "+5"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			delays, err := retryAfterProbe(t, rateLimited(tc.header))
@@ -222,15 +228,12 @@ func TestClient_RetryAfterAbsentOrUnusableKeepsBackoff(t *testing.T) {
 // The delay is asserted, not the elapsed time — a clamped wait is ~68 years,
 // which is precisely why nothing here may sleep it.
 //
-// Both headers saturate, and the second is the point: `…808` is one past the
-// largest int64, so ParseInt reports it as out of range. Honouring `…807` and
-// discarding `…808` would put a cliff between two values one digit apart, for
-// no reason a server could see — RFC 9110 asks only for `1*DIGIT` (review
-// follow-up, Codex).
+// This is SPEC §6's SECOND tier: a value the parser holds but the host cannot
+// schedule. The first tier — a value the parser's own int64 cannot hold at all
+// — is malformed and belongs in the backoff table above, which is where
+// `9223372036854775808` and the 20-digit case are pinned.
 func TestClient_RetryAfterSaturatesAtDurationCeiling(t *testing.T) {
-	for _, header := range []string{"9223372036854775807", "9223372036854775808", "99999999999999999999"} {
-		t.Run(header, func(t *testing.T) { assertSaturatedRetryAfter(t, header) })
-	}
+	assertSaturatedRetryAfter(t, "9223372036854775807")
 }
 
 func assertSaturatedRetryAfter(t *testing.T, header string) {

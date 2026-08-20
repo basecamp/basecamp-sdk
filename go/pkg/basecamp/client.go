@@ -3,7 +3,6 @@ package basecamp
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -1170,17 +1169,19 @@ func parseRetryAfter(header string) int {
 	// to the backoff curve at their own parse limits rather than saturating;
 	// that divergence is #799.
 	//
-	// The digits are checked here rather than left to ParseInt, which accepts
-	// a leading `+` or `-`. RFC 9110 spells delay-seconds as `1*DIGIT` — no
-	// sign — so `+5` is not a delay at all, and without this check
-	// `+9223372036854775808` would come back as a positive range error and
-	// saturate: a ~68-year wait synthesized out of input the grammar does not
-	// admit. Same digits-only test SPEC §16's device parser makes, and the
-	// same reading conformance's "partly numeric rejected (`1*DIGIT`)" case
-	// already asserts.
+	// A value too large for that int64 is MALFORMED and falls through to step
+	// 3's backoff — SPEC §6's first tier — rather than saturating. The second
+	// tier, saturation, is for a value the parser holds but the host cannot
+	// schedule, and that is clampRetryAfterSeconds' job below. The tiers are
+	// stated once in SPEC and deliberately not restated here.
+	//
+	// The digits are checked rather than left to ParseInt, which accepts a
+	// leading `+` or `-`. RFC 9110 spells delay-seconds as `1*DIGIT` — no sign
+	// — so `+5` is not a delay at all, and ParseInt would otherwise honour it
+	// as 5. Same digits-only test SPEC §16's device parser makes, and the same
+	// reading conformance's "partly numeric rejected (`1*DIGIT`)" case asserts.
 	if isDelaySeconds(header) {
-		if seconds, err := strconv.ParseInt(header, 10, 64); seconds > 0 &&
-			(err == nil || errors.Is(err, strconv.ErrRange)) {
+		if seconds, err := strconv.ParseInt(header, 10, 64); err == nil && seconds > 0 {
 			return clampRetryAfterSeconds(seconds)
 		}
 	}
