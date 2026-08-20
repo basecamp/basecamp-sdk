@@ -1,0 +1,23 @@
+go/pkg/basecamp/eventfeed/connector.go
+  s_a2830db3382bee::t_febdb2fb811519 123-125,204-207,442-444,526-550
+go/pkg/basecamp/eventfeed/loop.go
+  s_a2830db3382bee::t_62729572aeb9e1 735-750,863-870
+go/pkg/basecamp/eventfeed/loop_test.go
+  s_a2830db3382bee::t_34f874dba618fe 2178-2223
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "049cfc5ca2d5cf8e2932f7ab1b66085faa483caf",
+  "prompts": {},
+  "sessions": {
+    "s_a2830db3382bee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3ea572e5-a707-465c-97cf-ea7330f74fc8",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
