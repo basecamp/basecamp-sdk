@@ -651,6 +651,65 @@ That is a rule about **which statuses**, and it is the only thing this section d
 at once. *How* the value composes with whatever delay the loop would otherwise have computed is a
 separate question with a separate answer per loop, settled under "Composition is per-loop" below.
 
+#### What "retry" means here
+
+The rule above turns entirely on that word, and leaving it to intuition cost three review rounds — each
+one finding another repeating loop the rule appeared to reach and the code deliberately did not. The
+answer is not a longer list of loops. It is that **a loop which repeats a request is not thereby
+retrying one.**
+
+> **A retry is the re-issue of a request whose previous attempt produced no answer** — the transport
+> failed, or the origin declined to serve it with a status the loop **declares retryable**. Re-issuing
+> a request because the answer was *"not yet"* is a **poll**, and this section does not reach it.
+
+Both halves carry weight, and the second is not decoration. §4's 401 refresh-and-retry re-issues after
+the origin declined to serve — but 401 is on §7's explicit never-retry list, so no loop declares it
+retryable, and §4 is outside. §7's `retry_on`, §14's hop-1 `{429, 502, 503, 504}`, §23's
+transient/throttled error kinds and §16's `429`-plus-`too_many_requests` pair are all declared sets, so
+all four are inside.
+
+There is a second, independent reason the boundary falls here, and it is worth stating because it
+shows the definition is not merely stipulated. This section governs the relationship between a
+server-directed delay and a **locally computed backoff** — what may replace it, floor it, cap it. A
+completion poll has no backoff to relate to. It waits a cadence the *same server* already prescribed
+(§16's `interval`, raised by each `slow_down`), so there is nothing for `Retry-After` to displace and
+no question for this section to answer. Where the rule has no subject, it does not apply.
+
+**The definition replaces the enumeration, so a loop is in or out by the criterion** rather than by
+someone noticing it. Walking every delay-bearing branch in this document back through it, against what
+the code actually does:
+
+| Loop / branch | Repeat is driven by | Verdict | Code today |
+|---|---|---|---|
+| §7 generated-operation retry | declared `retry_on` `{429, 503}`, or a network error | **in** | honours `Retry-After` |
+| §14 `DownloadURL` hop 1 | declared `{429, 502, 503, 504}`, or a network error | **in** | honours it (SDKs at 429 only — tracked conflict, not a boundary question) |
+| §16 poll — `authorization_pending`, `slow_down` | a 4xx protocol answer meaning "not yet" | **out** | never reads the header |
+| §16 poll — `429` + `too_many_requests` | the one pair §16 declares retryable; the origin refused to serve | **in** | reads it, `max(interval, retryAfter)` |
+| §16 poll — connection timeout | a network error | **in** | no response, so no header to read |
+| §16 poll — `429` alone, or `too_many_requests` off 429 | nothing; terminal `api_error` | **out** | no repeat at all |
+| §23 reconnect `backoff` | mint/connect outcomes classified transient or throttled | **in** | `Retry-After` floors the draw |
+| §23 `poll-retry` | poll outcomes classified transient or throttled | **in** | waits it exactly |
+| §23 `repair-poll` | a schedule — 60s ± 20% per cycle, no failure involved | **out** | never reads the header |
+| §23 `staleness`, `handshake-deadline`, `confirmation-deadline` | elapsed time; these are deadlines, not repeats | **out** | no header |
+| §4 401 refresh-and-retry | a status no loop declares retryable, gated on a token refresh | **out** | no delay of any kind exists on that path |
+
+Every row lands on the side its code already implements, including the three the enumeration kept
+missing. Nothing above is a carve-out: `repair-poll` and the §16 pending branch are outside for the
+same reason as each other — they repeat without a failed attempt — and §4 is outside for the second
+clause alone, which is what shows that clause is load-bearing rather than restating the first.
+
+§8's auto-pagination is the case that makes the distinction obvious, which is why it is worth naming
+even though it takes no delay and so has no row: it issues request after request, and not one of them
+is a retry — each asks for a *different* page and each previous one answered. It is also the cleanest
+illustration of how the two layers nest, because an individual request inside that loop **is** under
+§7, and is retried, and honours `Retry-After` accordingly. "Repeats requests" and "retries a request"
+are properties of different things, and conflating them is the specific mistake this definition exists
+to prevent.
+
+Verified across four SDKs rather than read off the spec: Go, Kotlin, TypeScript and Python all
+structure §16's poll the same way, and Go's own field comment states the boundary outright — the raw
+header is *"consumed by the loop's 429 `too_many_requests` handling only"*.
+
 RFC 9110 §10.2.3 defines `Retry-After` as a general response header field restricted to no status
 set, and attaches explicit semantics to two cases: **503**, where the value is how long the service
 expects to be unavailable, and **3xx**, where it is the minimum wait before issuing the redirected
@@ -2262,8 +2321,18 @@ FUNCTION pollDeviceToken(tokenEndpoint, clientId, deviceCode, interval, expiresI
 END
 ```
 
-**Composition (§6 "Composition is per-loop"): this loop takes `max(interval, retryAfter)`, not the
-value alone.** §6 settles that a `Retry-After` on a status about to be retried is honoured, and
+**Scope first (§6 "What 'retry' means here"): only the `429` + `too_many_requests` branch is a retry
+at all.** `authorization_pending` and `slow_down` are 4xx protocol *answers* — the completion poll
+asked whether the user had finished and was told "not yet" — so re-issuing the POST is polling, not
+re-attempting a failed request, and §6's honouring rule does not reach it. That is why this loop reads
+the header on one branch and not the others, and it is a boundary rather than an omission: there is
+also nothing for a `Retry-After` to displace on the pending branch, which waits the `interval` this
+same authorization server prescribed and then raised with each `slow_down`, not a locally computed
+backoff. A `429` without `too_many_requests`, or `too_many_requests` off any other status, is terminal
+and never repeats, so it is outside for the plainer reason that no wait follows it.
+
+**Composition (§6 "Composition is per-loop"): on the branch that *is* a retry, this loop takes
+`max(interval, retryAfter)`, not the value alone.** §6 settles that a `Retry-After` on a status about to be retried is honoured, and
 forbids capping it or adding jitter to it; `max` does neither — it selects between two waits rather
 than shortening or padding either. The `max` is what makes this loop's answer differ from §7's, and
 it is deliberate: `interval` here is not a backoff term the server is better informed about, it is
