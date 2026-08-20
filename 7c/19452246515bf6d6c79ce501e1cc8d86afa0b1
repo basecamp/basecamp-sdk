@@ -1,0 +1,37 @@
+go/pkg/basecamp/download.go
+  s_ae834582be36b9::t_43d0842ab9e2ac 205-212
+go/pkg/basecamp/client.go
+  s_ae834582be36b9::t_6ac7888e9dd639 1171-1182
+  s_ae834582be36b9::t_7fdff776825d60 1183-1185
+  s_ae834582be36b9::t_9baa4f1caeb32c 701-705
+  s_ae834582be36b9::t_a3c6453defc137 729-742
+  s_ae834582be36b9::t_986a55f8768021 1158-1160
+MIGRATING.md
+  s_ae834582be36b9::t_fca0e8f865e3f1 262-267
+go/pkg/basecamp/download_test.go
+  s_ae834582be36b9::t_50f56d52e20d5f 802-845
+go/pkg/basecamp/client_retry_after_test.go
+  s_ae834582be36b9::t_9d0a21af932074 11
+  s_ae834582be36b9::t_1b4b69b7b21c8b 244-247
+  s_ae834582be36b9::t_9ee901ee862528 80,273-327
+  s_ae834582be36b9::t_bba8beabcdf6fc 63-66,69-70,77-79
+  s_ae834582be36b9::t_f72c74d320020b 199-205
+  s_ae834582be36b9::t_e6aa8a9dbd76e7 349-356
+  s_ae834582be36b9::t_bfda6699649428 81
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "7c19452246515bf6d6c79ce501e1cc8d86afa0b1",
+  "prompts": {},
+  "sessions": {
+    "s_ae834582be36b9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4bd212bc-95a7-4dd6-a307-a1026f3e528a",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
