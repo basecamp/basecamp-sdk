@@ -20,7 +20,5 @@
 # Add an entry when you write a sentence promising an issue owns something.
 # Remove it when the sentence goes, and the gate stops asking.
 prose_tracking_issues:
-  - issue: 792
-    site: "conformance/event-feed/README.md — the Go driver's arrival-strict gap"
   - issue: 758
     site: "go/pkg/basecamp/eventfeed/catchup.go awaitSupersededPoll — the superseded-poll bound's overshoot"
