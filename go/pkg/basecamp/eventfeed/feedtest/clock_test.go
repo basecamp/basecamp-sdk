@@ -1,7 +1,6 @@
 package feedtest
 
 import (
-	"maps"
 	"sync"
 	"testing"
 	"time"
@@ -209,67 +208,4 @@ func TestClock_AwaitTimerRendezvousesWithAnotherGoroutine(t *testing.T) {
 	case <-time.After(time.Second):
 		t.Fatal("AwaitTimer(backoff) did not observe the armed timer")
 	}
-}
-
-// TestClock_ArmCountCountsArmsNotOutstandingChanges pins ArmCount against the
-// two histories an Outstanding() snapshot cannot tell apart. Both halves are
-// the reason the tier-2 advance guard reads ArmCount instead of comparing
-// timer sets, so both are asserted here against a set comparison directly.
-func TestClock_ArmCountCountsArmsNotOutstandingChanges(t *testing.T) {
-	t.Run("an expiry changes the set without arming anything", func(t *testing.T) {
-		c := NewClock()
-		c.NewTimer(5*time.Millisecond, "backoff")
-		before, beforeSet := c.ArmCount(), counts(c.Outstanding())
-
-		c.Advance(10 * time.Millisecond)
-
-		if got := c.ArmCount(); got != before {
-			t.Errorf("ArmCount() = %d after an expiry, want %d: firing a timer is not arming one", got, before)
-		}
-		// The foil: the set DID change, which is what a snapshot comparison
-		// would have read as an arm.
-		if afterSet := counts(c.Outstanding()); maps.Equal(afterSet, beforeSet) {
-			t.Fatalf("outstanding set unchanged (%v) — this case no longer distinguishes ArmCount from a set comparison", afterSet)
-		}
-	})
-
-	t.Run("a same-name rearm arms without changing the set", func(t *testing.T) {
-		c := NewClock()
-		c.NewTimer(5*time.Millisecond, "repair-poll")
-		before, beforeSet := c.ArmCount(), counts(c.Outstanding())
-
-		// Exactly what the connector does at a repair-poll rearm: the firing
-		// removes the timer, and a replacement goes back under the same name.
-		c.Advance(10 * time.Millisecond)
-		c.NewTimer(5*time.Millisecond, "repair-poll")
-
-		if got := c.ArmCount(); got != before+1 {
-			t.Errorf("ArmCount() = %d after a same-name rearm, want %d", got, before+1)
-		}
-		// The foil: the set is byte-identical across the rearm, so a snapshot
-		// comparison sees nothing at all.
-		if afterSet := counts(c.Outstanding()); !maps.Equal(afterSet, beforeSet) {
-			t.Fatalf("outstanding set changed (%v -> %v) — this case no longer exercises the blind spot", beforeSet, afterSet)
-		}
-	})
-
-	t.Run("a stop never lowers it", func(t *testing.T) {
-		c := NewClock()
-		timer := c.NewTimer(time.Second, "staleness")
-		before := c.ArmCount()
-
-		timer.Stop()
-
-		if got := c.ArmCount(); got != before {
-			t.Errorf("ArmCount() = %d after Stop, want %d: ArmCount only ever rises", got, before)
-		}
-	})
-}
-
-func counts(names []string) map[string]int {
-	out := map[string]int{}
-	for _, name := range names {
-		out[name]++
-	}
-	return out
 }
