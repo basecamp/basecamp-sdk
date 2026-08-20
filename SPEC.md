@@ -676,36 +676,31 @@ completion poll has no backoff to relate to. It waits a cadence the *same server
 no question for this section to answer. Where the rule has no subject, it does not apply.
 
 **The definition replaces the enumeration, so a loop is in or out by the criterion** rather than by
-someone noticing it. Walking every delay-bearing branch in this document back through it, against what
-the code actually does:
+someone noticing it. Every delay-bearing branch in this document, walked back through it:
 
-Two of the three sources differ in kind, and the last column says which, because "the code agrees"
-is only a claim where code exists. **§7, §14, §16 and §4 are shipped and were read.** **§23's rows are
-contract-only** — no event-feed connector ships in any of the six SDKs yet (Appendix A says the
-connector lands in later PRs), so those rows record what §23 *specifies*, and the definition's job
-there is to agree with the written contract rather than with an implementation.
+| Loop / branch | Repeat is driven by | Verdict |
+|---|---|---|
+| §7 generated-operation retry | declared `retry_on` `{429, 503}`, or a network error | **in** |
+| §14 `DownloadURL` hop 1 | declared `{429, 502, 503, 504}`, or a network error | **in** |
+| §16 poll — `authorization_pending`, `slow_down` | a 4xx protocol answer meaning "not yet" | **out** |
+| §16 poll — `429` + `too_many_requests` | the one pair §16 declares retryable; the origin refused to serve | **in** |
+| §16 poll — connection timeout | a network error | **in** |
+| §16 poll — `429` alone, or `too_many_requests` off 429 | nothing; terminal `api_error` | **out** |
+| §23 reconnect `backoff` | mint/connect outcomes classified transient or throttled | **in** |
+| §23 `poll-retry` | poll outcomes classified transient or throttled | **in** |
+| §23 `repair-poll` | a schedule — 60s ± 20% per cycle, no failure involved | **out** |
+| §23 `staleness`, `handshake-deadline`, `confirmation-deadline` | elapsed time; deadlines, not repeats | **out** |
+| §4 401 refresh-and-retry | a status no loop declares retryable, gated on a token refresh | **out** |
 
-| Loop / branch | Repeat is driven by | Verdict | Source |
-|---|---|---|---|
-| §7 generated-operation retry | declared `retry_on` `{429, 503}`, or a network error | **in** | *code:* honours `Retry-After` |
-| §14 `DownloadURL` hop 1 | declared `{429, 502, 503, 504}`, or a network error | **in** | *code:* honours it — Python at all four statuses, the other four SDKs at 429 only (tracked conflict, not a boundary question) |
-| §16 poll — `authorization_pending`, `slow_down` | a 4xx protocol answer meaning "not yet" | **out** | *code:* never reads the header (verified in Go, Kotlin, TypeScript, Python) |
-| §16 poll — `429` + `too_many_requests` | the one pair §16 declares retryable; the origin refused to serve | **in** | *code:* reads it, `max(interval, retryAfter)` |
-| §16 poll — connection timeout | a network error | **in** | *code:* no response, so no header to read |
-| §16 poll — `429` alone, or `too_many_requests` off 429 | nothing; terminal `api_error` | **out** | *code:* no repeat at all |
-| §23 reconnect `backoff` | mint/connect outcomes classified transient or throttled | **in** | *contract only:* `Retry-After` floors the draw |
-| §23 `poll-retry` | poll outcomes classified transient or throttled | **in** | *contract only:* waited exactly |
-| §23 `repair-poll` | a schedule — 60s ± 20% per cycle, no failure involved | **out** | *contract only:* no `Retry-After` in its timer row |
-| §23 `staleness`, `handshake-deadline`, `confirmation-deadline` | elapsed time; these are deadlines, not repeats | **out** | *contract only:* no header |
-| §4 401 refresh-and-retry | a status no loop declares retryable, gated on a token refresh | **out** | *code:* no delay of any kind exists on that path |
-
-Every row lands on the side its own source puts it — the seven code rows against what ships, the four
-§23 rows against what §23 already specifies — including the three the enumeration kept missing.
+Those verdicts are the contract — what the criterion decides, independent of what any SDK does today.
 Nothing above is a carve-out: `repair-poll` and the §16 pending branch are outside for the same reason
 as each other — they repeat without a failed attempt — and §4 is outside for the second clause alone,
-which is what shows that clause is load-bearing rather than restating the first. The §23 rows are the
-weaker evidence of the two kinds and are marked so deliberately: when that connector is implemented,
-they become checkable and should be re-checked rather than assumed.
+which is what shows that clause is load-bearing rather than restating the first.
+
+*(As-of check, not a contract: the §7, §14, §16 and §4 rows were verified against shipped code —
+`wt/lane-spec` @ `fc5645dfe`, §16 read in four SDKs — and every one agreed with its verdict. The §23
+rows could only be checked against §23's written text, because no event-feed connector ships in any
+SDK yet; they are the weaker evidence and should be re-checked, not assumed, once it does.)*
 
 §8's auto-pagination is the case that makes the distinction obvious, which is why it is worth naming
 even though it takes no delay and so has no row: it issues request after request, and not one of them
@@ -804,49 +799,30 @@ same and is adopted here:
   sit in the parser, and the caller then reads the saturated value; that is accepted, and it is the
   one carve-out from the paragraph above.
 
-The width itself is deliberately not fixed here, because it is a property of the host: TypeScript
-rejects above `Number.MAX_SAFE_INTEGER`, Kotlin above `Int.MAX_VALUE`, Go and Swift above their
-64-bit integers. All four reject cleanly, and their thresholds differ by nine orders of magnitude
-without any of them misbehaving — a `Retry-After` that names a wait longer than the host can count is
-not a delay any caller is worse off for missing.
+The width itself is deliberately not fixed here, because it is a property of the host. *(As-of
+observation, verified against `wt/lane-spec` @ `fc5645dfe` — kept because the decision not to fix a
+width is unreadable without it, not as a live claim: TypeScript rejects above
+`Number.MAX_SAFE_INTEGER`, Kotlin above `Int.MAX_VALUE`, Go and Swift above their 64-bit integers.)*
+Four hosts reject cleanly at thresholds differing by nine orders of magnitude without any of them
+misbehaving, which is the evidence that the width does not need fixing — a `Retry-After` naming a wait
+longer than the host can count is not a delay any caller is worse off for missing.
 
 `[CONFLICT: Ruby and Python have no such width, and that is a defect rather than a third position —
 but it is the **second** tier they owe, not the first. `Integer` and `int` are arbitrary-precision, so
-the parse cannot fail on magnitude: `parse_retry_after` (`ruby/lib/basecamp/http.rb`) and
-`_parse_retry_after` (`python/src/basecamp/errors.py`) return the value intact, and the first tier has
-nothing to fire on. The failure is one layer down, at the scheduler: Ruby's `sleep` raises
-`RangeError` ("bignum too big to convert into 'long'") and Python's `time.sleep` raises
-`OverflowError` ("timestamp too large to convert to C _PyTime_t") — so a response that was merely
-retryable becomes an unrelated exception the caller never asked to handle. Reading that as the first
-tier would oblige an implementer to invent a parser limit this section otherwise forbids, and to
-discard a value the parser represented correctly. What both owe is the second tier as stated:
-saturate at what their own sleep can schedule, at the sleep. Both Python clients owe it, and the
-ceiling differs between them because the binding host limit does: the **sync** client is bound first
-by `time.sleep`, which raises above roughly 9.2e9 seconds, whereas the **async** client's
-`asyncio.sleep` imposes no ceiling below the double range and is bound instead by `_calculate_delay`'s
-own `float(...)` conversion (`_http.py`, `_async_http.py`), which raises `OverflowError` above roughly
-1.8e308. That conversion is a host limit like any other and needs no separate rule — saturating each
-client at its own binding ceiling leaves a value that is double-representable by construction — but
-it does mean **the async client is not exempt from the second tier**, only bound at a higher number.
-Between `time.sleep`'s ceiling and the double range the async client neither raises nor saturates: it
-waits, for a very long time, through `await`, so the task stays cancellable and the escape this
-section requires is intact. That band alone is conformant — it is precisely what "no policy cap"
-means — and it is why the async client is a narrower defect than the sync one rather than an equal
-or an absent one. Tracked in #775 with the rest.]`
+the parse cannot fail on magnitude and the first tier has nothing to fire on; the failure is one layer
+down, at the scheduler, where the sleep raises rather than saturating. Reading it as the first tier
+would oblige an implementer to invent a parser limit this section otherwise forbids. Both owe
+saturation at whatever their own sleep can schedule, applied at the sleep — which for Python is two
+different ceilings for the sync and async clients, since the binding host limit differs. Exact
+ceilings, exception types and call sites in #775.]`
 
-Go owes the second tier and is getting it: its parser returns an `int` that three call sites multiply
-by `time.Second`, and `math.MaxInt64` seconds × 1e9 wraps negative, on which `time.After` fires at
-once — the longest expressible instruction producing the tightest possible loop. #796 saturates at
-**2,147,483,647 seconds (~68 years, `math.MaxInt32`)** in the hand-written paths, and the number is
-chosen to be portable rather than maximal: *two* host limits sit above a Go `Retry-After`, and this is
-at or below both. The `seconds × time.Second` product wraps past `math.MaxInt64` above ~292 years, and
-the value is surfaced in an `int`, which is 32 bits on a 32-bit target — so a ceiling derived from the
-first alone would be unrepresentable on such a build and the documented answer would change with
-`GOARCH`. Taking the smaller of the two yields one number for every platform, and it is the same
-2,147,483,647 §16 already names as a shared cross-SDK ceiling. Go also takes the **first** tier where
-this section requires it: a digit string too large for the parser's own `int64` is malformed and falls
-through to the backoff rather than saturating, so the two numbers govern different questions — `int64`
-bounds what the parser will hold, `math.MaxInt32` bounds what the host will be asked to schedule.
+Go is the worked example of the two tiers meeting in one parser, and the two numbers govern different
+questions: a digit string too large for the parser's own `int64` is **malformed** and falls through to
+the backoff (first tier), while a value it holds but the host cannot schedule **saturates** (second
+tier) at a ceiling chosen to be portable rather than maximal — `math.MaxInt32` seconds, the same
+2,147,483,647 §16 already names as a shared cross-SDK ceiling. The portability matters because two
+host limits sit above a Go `Retry-After` and a ceiling derived from only the larger would change with
+`GOARCH`. Shipped in #796.
 
 The identical unclamped conversion in `go/pkg/generated/client.gen.go`, and an `Atoi` there whose
 range error is discarded into a rate-limit hint, are **not yet fixed anywhere**. Their fix *belongs*
@@ -862,119 +838,36 @@ bound instead of the SDK guessing one on their behalf. Where such a primitive is
 policy cap is redundant. Where none is, the caller holds nothing, and a server-directed sleep that is
 merely long becomes a sleep that cannot be abandoned.
 
-That is where the cost of this position actually lands, and it is **not uniform across the six**:
+**What the requirement rules out, so a remedy is not chosen wrongly.** An interruptible incremental
+sleep polling a cancellation flag satisfies it. A bound against a caller-supplied **total-time budget
+does not** — a numeric deadline fixed before the call cannot be acted on during it, so a caller who
+changes their mind still waits it out, and bounding the worst case that way is a policy cap under
+another name. Which satisfying shape each language picks carries a caller-facing API dimension and is
+not settled here.
 
-| Path | Honoured `Retry-After` sleeps through | Caller escape |
-|---|---|---|
-| Go — all six sleep sites | `select` on `ctx.Done()` vs `time.After(delay)` | yes — `context` |
-| Kotlin — all four sites | `kotlinx.coroutines.delay` inside `suspend` functions | yes — job cancellation |
-| Swift — both sites | `try await Task.sleep(nanoseconds:)` | yes — `Task` cancellation |
-| TypeScript — JSON client path | `sleep(delay, signal)`, which rejects with the signal's abort reason | yes — `AbortSignal` |
-| Python — async client | `await asyncio.sleep(delay)` | yes — task cancellation |
-| **TypeScript — multipart upload path** | bare `setTimeout` promise, no signal | **none** |
-| **TypeScript — `DownloadURL` hop-1 loop** | `executeWithRetry` called with no signal, so the same `sleep()` degrades to a bare `setTimeout` | **none** |
-| **Ruby** | bare `sleep(delay)` | **none** |
-| **Python — sync client** | bare `time.sleep(delay)` | **none** |
-
-The four rows without an escape are the ones that owe work, and this position makes them owe it
-sooner rather than creating the exposure: Python's **sync** client already honours `Retry-After` at
-any status, unclamped, in a bare `time.sleep`, so an origin sending `Retry-After: 3600` buys an hour
-the caller cannot abandon **today**. Widening the status set adds 503 to that reach in Ruby and on
-TypeScript's upload path. The remedy is open in its *shape* but not in what it must achieve: whatever
-is chosen has to satisfy the MUST above, which asks for a handle the caller can act on **after the
-call has begun**. An interruptible incremental sleep polling a cancellation flag does satisfy it. A
-bound against a caller-supplied total-time budget **does not** — a numeric deadline fixed before the
-call cannot be cancelled during it, so a caller who changes their mind still waits it out. That
-distinction is why the budget is not offered here as an alternative: it bounds the worst case, which
-is a policy cap by another name, and this section declined to make that trade. Each satisfying shape
-still has a caller-facing API dimension in its language, so which one is not settled here. Tracked
-with the rest of the convergence in #775.
-
-TypeScript's download path is the fourth and it is a distinct shape: `sleep()` *does* take a signal
-and honours it, and the download loop simply never supplies one — `executeWithRetry(makeAttempt,
-downloadRetryConfig, emit)` omits the argument, and the public `downloadURL(rawURL)` takes no options
-bag a caller could put one in. The per-attempt `AbortController` is not a substitute: it exists only
-to enforce the request timeout, and its `clearTimeout` runs in the `finally` around the `fetch`, so
-it is already discharged before the retry sleep begins. That path also already honours `Retry-After`
-on 429, so its exposure, like Python sync's, predates this position. Its remedy is smaller than the
-other three — thread a signal that already exists — but it is a caller-facing signature change all
-the same, so it is tracked with them.
+`[CONFLICT: the cost of this position is not uniform — four of the SDK sleep paths give the caller no
+handle at all today, and two of those already carry the exposure independently of this decision.
+Per-path inventory and remedies in #775.]`
 
 Strictly, none of those four is *uninterruptible*: a signal on the main thread, or `Thread#raise`
 from another, will break any of them. What they lack is a cancellation handle the caller can **hold**,
 and the requirement above is about the handle, not about whether the platform can ever intervene.
 
-`[CONFLICT: the spec prescribes any retryable status; five of the six SDKs diverge from that, in
-three different shapes — four gate on 429 alone, and Go's main loop honours it at no status. Also
-divergent on this section's other two clauses: one policy cap, and one added jitter term. Converging
-is a behaviour change across five SDKs, tracked in #775 — the divergence below is the current state,
-not the contract.]`
-
-- **Python** already matches on status. `_parse_retry_after` runs on every response and
-  `_calculate_delay` returns a positive value in place of the backoff term whatever the status
-  (`python/src/basecamp/_http.py`, `_async_http.py`), so a 503 carrying `Retry-After: 120` waits 120s.
-- **Ruby** and **Kotlin** parse the header on any status and gate only the *use* of the parsed value
-  on 429: Ruby parses in `handle_error` and attaches the result solely to `RateLimitError`, so the
-  delay path sees `nil` for every other status (`ruby/lib/basecamp/http.rb`); Kotlin parses
-  unconditionally and picks between it and the backoff on `status == 429`
-  (`kotlin/.../http/BasecampHttpClient.kt`).
-- **Swift** and **TypeScript** gate the *parser call itself* on 429 —
-  `swift/.../HTTP/HTTPClient.swift`'s `calculateDelay` short-circuits its `if statusCode == 429, let
-  retryAfter = ...` clause list, and `typescript/src/retry.ts` and `typescript/src/services/base.ts`
-  each guard `parseRetryAfter` behind a `response.status === 429` ternary. The distinction is not
-  cosmetic: the paragraph above permits parsing and surfacing the value even where nothing sleeps on
-  it, so these two must move a call rather than widen a condition. TypeScript already parses
-  unconditionally on its *error-construction* path (`typescript/src/errors.ts`); Swift gates there
-  too (`BasecampError.swift`), so Swift alone surfaces no `retry_after` off a 503.
-- The behavioural upshot for all four is the same: a 503 carrying `Retry-After: 120` backs off ~1s
-  instead. 503 is in every operation's declared `retryOn`, so this is a live difference, not a
-  theoretical one.
-- **Go** is a third shape rather than a stricter one. The hand-written retry loop's `Retry-After`
-  branch reads a field off a `retryableError` that nothing ever constructs, and the 429 arm returns a
-  rate-limit error carrying the seconds in a message string, so the loop falls through to the plain
-  backoff: the header is honoured on **no** status on that path. It *is* honoured, unclamped, on the
-  download path and inside the rate-limiter's hook, and the generated client gates on 429. Go's
-  convergence is therefore "make the loop see the value at all", not "widen a status check".
-- **Added jitter** — the generated Go client is the one place a server-directed delay is not slept as
-  given. `go/pkg/generated/client.gen.go` assigns the parsed value to `retryDelay` and then sleeps
-  `retryDelay + rand(0, 100ms)`, the same expression the sibling network-error path applies to the
-  local backoff, with no branch distinguishing the two. Go's three hand-written loops do not:
-  `client.go` and `download.go` each *replace* the jittered backoff with the parsed value, and
-  `rate_limit.go` waits to a computed deadline. Removing that addend from the server-directed arm is
-  part of Go's convergence, not a separate cleanup.
-- **Bounds** also diverge, and only one of the two is the host limit this section permits.
-  TypeScript's is: it clamps to the 2,147,483,647ms `setTimeout` can schedule, which is exactly the
-  value beyond which the platform cannot express the delay. Swift's is not. It clamps its
-  `Double`→`UInt64` nanosecond conversion at 86,400s, and the trap it cites is real, but the trapping
-  threshold is `UInt64.max` nanoseconds — about 1.8×10¹⁰ seconds, some five orders of magnitude
-  above where the clamp sits. The code's own comment concedes the gap ("Clamp to a day *instead*: no
-  SDK retry is worth sleeping longer"), which is a policy judgement about what a caller should have
-  to wait, and this section declines to make that judgement — the cancellation requirement above is
-  what stands in its place. So Swift's 86,400s is a **conflict** on the same footing as the status
-  gates, tracked in the same issue: converge it to the representability bound or drop it. Go, Python,
-  Ruby and Kotlin bound nothing.
+`[CONFLICT: five of the six SDKs gate honouring on a narrower status set than this section
+prescribes, in three different shapes, and two of this section's other clauses are also divergent —
+one policy cap and one added jitter term. Converging is a behaviour change across five SDKs. The
+per-SDK inventory is deliberately NOT restated here: it states current behaviour, the convergence
+work below changes the very rows it would state, and no gate can catch it going stale. It lives in
+#775, verified as of that issue's dated comment.]`
 
 Which **date forms** step 2 accepts diverges on a second axis, and the inventory is over *parsers*
-rather than over SDKs — Go has two, and they do not agree:
-
-| Parser | Accepts | Note |
-|---|---|---|
-| Go, hand-written — `parseRetryAfter`, `go/pkg/basecamp/client.go` | all three RFC 7231 forms | `http.ParseTime` |
-| Ruby — `parse_retry_after`, `ruby/lib/basecamp/http.rb` | all three | `Time.httpdate`; its three regexes are IMF-fixdate, RFC 850 and asctime |
-| Python — `_parse_retry_after`, `python/src/basecamp/errors.py` | IMF-fixdate and RFC 850 | `parsedate_to_datetime` *parses* asctime but returns a naive datetime, and the subtraction against an aware `now` raises `TypeError`, which the `except` swallows — so asctime falls through |
-| Kotlin — `parseRetryAfter`, `kotlin/.../Pagination.kt` | wider than IMF-fixdate, neither canonical obsolete form | ktor's `fromHttpToGmtDate` pattern list; the spellings are pinned by probe in `PaginationTest` |
-| TypeScript — `parseRetryAfter`, `typescript/src/errors.ts` | IMF-fixdate only | an explicit shape regex gates `Date.parse` |
-| Swift — `BasecampError.parseRetryAfter` | IMF-fixdate only | one fixed `DateFormatter` pattern |
-| **Go, generated — `go/templates/client.tmpl` → `go/pkg/generated/client.gen.go`** | **no date form at all** | `strconv.Atoi` only, at both sites |
-
-That last row is why Go cannot be counted once. The generated client attempts nothing but an integer
-parse, so **every** HTTP-date form falls through to local backoff on **every** generated wire
-operation — which is the whole retried surface of the Go SDK. Convergence work scoped by SDK name
-would fix the hand-written parser and leave that untouched, so the required work here is a change to
-`go/templates/client.tmpl`, not to any file under `go/pkg/generated/`. The divergence is the same
-contract as the rest of this section and is tracked with it in #775; the fix site is the template,
-which #798 already owns for the other two `Retry-After` defects at those same two lines, so all three
-land as one template change.
+rather than one per SDK — Go has two and they do not agree, the generated one
+accepting no date form at all, so **every** HTTP-date falls through to local backoff on **every**
+generated Go wire operation. That matters to the contract in one way only, and it is the reason this
+sentence stays: convergence scoped by SDK name would fix the hand-written parser and leave the
+generated surface untouched, so the fix site is `go/templates/client.tmpl`, never a file under
+`go/pkg/generated/`. `[CONFLICT: per-parser inventory in #775; the template change rides with #798,
+which owns the other two `Retry-After` defects at those same two lines.]`
 
 ---
 
@@ -1787,7 +1680,7 @@ END
 
 The authenticated first hop retries on **network errors plus {429, 502, 503, 504}** — never 500. The set is declared here rather than inherited from anywhere else, and it matches neither of the two sets an SDK already has to hand: it is broader than the per-operation `retry_on` in `behavior-model.json` (`{429, 503}` for all `250` operations, which never governs `DownloadURL` because it has no entry there), and narrower than the error taxonomy's "all 5xx retryable" flag, which would sweep in the 500 this policy deliberately excludes. It is the gateway-error set Go's hand-written `singleRequest` already uses for GETs. <!-- @operation-count --> Backoff is exponential from a 1-second base with jitter; `Retry-After` is honoured at **every status in that set**, not at 429 alone. The second hop is exempt: no retry, no auth.
 
-That last clause changed with §6's "Retry-After Honouring", and the reason it changed is the reason this set is declared here at all: honouring is derived from retry eligibility, so a loop that declares its own eligibility set inherits the honouring rule over that set rather than over §7's. A 502, 503 or 504 on hop 1 carrying `Retry-After` therefore waits what the origin named, exactly as a 429 does. `[CONFLICT: four of the six download loops honour it on 429 alone today — go/pkg/basecamp/download.go, typescript/src/download.ts, and the Ruby and Swift counterparts — so this is owed convergence, tracked with the rest in #775. **Python is already conformant on this axis and owes nothing here:** `get_download` passes its own `DOWNLOAD_RETRY_ON = {429, 502, 503, 504}` into the shared retry loop (`_http.py`, `_async_http.py`), `error_from_response` attaches the parsed header to the resulting `ApiError` at every status (`err.retry_after = err.retry_after or retry_after`), and `_calculate_delay` honours any positive `error.retry_after` with no status test — so a Python hop-1 503 already waits the value the origin named. The existing downloads.json case covering the 429 path stays valid; the other three statuses need cases of their own.]` The honoured value is subject to §6's other two clauses on this path as well: nothing is added to it, and it must be awaited through a cancellation handle the caller holds — which TypeScript's download loop, listed in §6's table, does not yet give them.
+That last clause changed with §6's "Retry-After Honouring", and the reason it changed is the reason this set is declared here at all: honouring is derived from retry eligibility, so a loop that declares its own eligibility set inherits the honouring rule over that set rather than over §7's. A 502, 503 or 504 on hop 1 carrying `Retry-After` therefore waits what the origin named, exactly as a 429 does. `[CONFLICT: most download loops honour it on 429 alone today and owe convergence; one SDK already conforms. Per-SDK state and call sites in #775 — not restated here, because this is exactly the row that convergence changes. For conformance: the existing downloads.json case covering the 429 path stays valid; the other three statuses need cases of their own.]` The honoured value is subject to §6's other two clauses on this path as well: nothing is added to it, and it must be awaited through a cancellation handle the caller holds, which not every download path yet gives them (#775).
 
 **Composition (§6 "Composition is per-loop"): a valid `Retry-After` REPLACES this hop's exponential-plus-jitter delay**, the same answer §7's loop gives and for the same reason — the wait is pacing a retry of exactly the request the origin just answered. It is stated here rather than inherited: §6 supplies no default, so a loop that declares its own retry set (as this one does) declares its own composition too.
 
