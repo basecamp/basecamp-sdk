@@ -98,7 +98,7 @@ func retryAfterProbe(t *testing.T, handler http.HandlerFunc) ([]time.Duration, e
 	// follow-up, Copilot). Called inline, a wait that ignored cancellation
 	// would simply never return, and an elapsed-time check placed after it is
 	// unreachable — most obviously now that an over-range Retry-After
-	// saturates at ~292 years rather than wrapping to a negative delay. The
+	// saturates at ~68 years rather than wrapping to a negative delay. The
 	// abandoned goroutine outlives the test; that is the cost of reporting a
 	// hang instead of becoming one.
 	type outcome struct {
@@ -217,7 +217,7 @@ func TestClient_RetryAfterAbsentOrUnusableKeepsBackoff(t *testing.T) {
 	}
 }
 
-// TestClient_RetryAfterSaturatesAtDurationCeiling is the regression test for a
+// TestClient_RetryAfterSaturatesAtTheHonouredCeiling is the regression test for a
 // server turning the retry loop into a tight loop with a syntactically valid
 // header. time.Duration counts nanoseconds in an int64, so an unclamped
 // `Retry-After: 9223372036854775807` multiplied by time.Second wraps to -1s,
@@ -232,7 +232,7 @@ func TestClient_RetryAfterAbsentOrUnusableKeepsBackoff(t *testing.T) {
 // schedule. The first tier — a value the parser's own int64 cannot hold at all
 // — is malformed and belongs in the backoff table above, which is where
 // `9223372036854775808` and the 20-digit case are pinned.
-func TestClient_RetryAfterSaturatesAtDurationCeiling(t *testing.T) {
+func TestClient_RetryAfterSaturatesAtTheHonouredCeiling(t *testing.T) {
 	assertSaturatedRetryAfter(t, "9223372036854775807")
 }
 
@@ -353,7 +353,7 @@ func TestErrRateLimit_NormalizesRetryAfter(t *testing.T) {
 		})
 	}
 
-	t.Run("beyond duration range", func(t *testing.T) {
+	t.Run("beyond the honoured ceiling", func(t *testing.T) {
 		err := ErrRateLimit(math.MaxInt)
 		want := maxRetryAfterSeconds
 		if err.RetryAfter != want {
@@ -409,7 +409,7 @@ func TestCheckResponse_CarriesRetryAfter(t *testing.T) {
 		// multiplies it by time.Second, which is what downloadURL, the
 		// resilience hook's rate-limiter block, and any caller rescheduling
 		// off err.RetryAfter all do.
-		{name: "beyond duration range", header: "9223372036854775807", want: maxRetryAfterSeconds},
+		{name: "beyond the honoured ceiling", header: "9223372036854775807", want: maxRetryAfterSeconds},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			resp := &http.Response{StatusCode: http.StatusTooManyRequests, Header: http.Header{}}

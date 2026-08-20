@@ -1078,11 +1078,12 @@ func parseNextLink(linkHeader string) string {
 // 2147483647, ~68 years. It is a REPRESENTABILITY bound taken at the portable
 // limit, not a policy ceiling — SPEC §7's "Retry-After is exempt" note already
 // carves out exactly this ("implementations may still bound it against host
-// limits"), and Kotlin saturates this same header at the same number while
-// Swift clamps its own seconds→nanoseconds conversion for the same class of
-// reason. Deciding a *policy* cap on server-directed waits is #793's, and this
-// is not one: at ~68 years, nothing a server could sensibly ask for is
-// affected.
+// limits"), and Swift clamps its own seconds→nanoseconds conversion for the
+// same class of reason. Deciding a *policy* cap on server-directed waits is
+// #793's, and this is not one: at ~68 years, nothing a server could sensibly
+// ask for is affected. (Kotlin uses this same number, but only in its
+// HTTP-date branch — its integer branch rejects instead, so it is not the
+// precedent an earlier draft of this comment cited it as.)
 //
 // Two host limits sit above it and this is at or below both, which is why the
 // answer does not depend on the word size: `seconds × time.Second` wraps past
@@ -1153,27 +1154,14 @@ func parseRetryAfter(header string) int {
 	// build while the same header is honoured on a 64-bit one. Deciding the
 	// ceiling is the clamp's job, not the parse's.
 	//
-	// A POSITIVE range error saturates too, and deliberately. ParseInt reports
-	// ErrRange with the value already clamped to math.MaxInt64, so
-	// `9223372036854775808` — one past the largest int64, and still `1*DIGIT`,
-	// which is all RFC 9110 requires of delay-seconds — lands on the ceiling
-	// like every other over-range value instead of falling off a boundary that
-	// exists only because of Go's word size. The alternative would honour
-	// 9223372036854775807 and hammer the server for 9223372036854775808, one
-	// digit apart, which no reader could predict and no server could intend.
-	// Truly malformed input ("120junk", "-5", "") still falls through: ParseInt
-	// returns 0 with ErrSyntax, and a negative range error clamps to
-	// math.MinInt64, both caught by the `> 0` guard.
-	//
-	// TypeScript (`Number.isSafeInteger`) and Kotlin (`toIntOrNull`) fall back
-	// to the backoff curve at their own parse limits rather than saturating;
-	// that divergence is #799.
-	//
 	// A value too large for that int64 is MALFORMED and falls through to step
-	// 3's backoff — SPEC §6's first tier — rather than saturating. The second
-	// tier, saturation, is for a value the parser holds but the host cannot
-	// schedule, and that is clampRetryAfterSeconds' job below. The tiers are
-	// stated once in SPEC and deliberately not restated here.
+	// 3's backoff — SPEC §6's first tier — rather than saturating. So is any
+	// other unparseable input: ParseInt returns 0 with ErrSyntax, and a
+	// negative range error clamps to math.MinInt64, both caught by the `> 0`
+	// guard alongside the err check. The second tier, saturation, is for a
+	// value the parser holds but the host cannot schedule, and that is
+	// clampRetryAfterSeconds' job below. The tiers are stated once in SPEC and
+	// deliberately not restated here.
 	//
 	// The digits are checked rather than left to ParseInt, which accepts a
 	// leading `+` or `-`. RFC 9110 spells delay-seconds as `1*DIGIT` — no sign
