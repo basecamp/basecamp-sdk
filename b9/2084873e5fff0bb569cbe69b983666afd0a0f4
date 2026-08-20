@@ -1,0 +1,23 @@
+scripts/check-wrapper-drift/main.go
+  s_b98b4a85078d3e::t_4f93f3a91a170e 331-334
+go/pkg/basecamp/optional_timestamps_test.go
+  s_b98b4a85078d3e::t_52f9f233bc553b 380-466
+  s_b98b4a85078d3e::t_363d6fe0f33f93 324-328
+  s_b98b4a85078d3e::t_16fab8884d1928 343-347
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "b92084873e5fff0bb569cbe69b983666afd0a0f4",
+  "prompts": {},
+  "sessions": {
+    "s_b98b4a85078d3e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5bbef980-f552-48e7-bb51-0b748caa71ac",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
