@@ -259,8 +259,12 @@ delta-seconds and HTTP-date — in place of the backoff, with no jitter and no
 ceiling beyond what the host can represent: a value the parser holds but the
 host cannot schedule saturates at 2147483647 seconds (~68 years) rather than
 wrapping negative, and that figure does not vary by architecture. A value too
-large for the parser's own `int64` is malformed instead and falls through to the
-backoff curve, as it always did — SPEC §6 draws that line.
+large for the parser's own `int64` is treated as malformed instead and falls
+through to the backoff curve, as it always did. That split is Go's: SPEC §6's
+parsing algorithm says only to parse a positive integer, #793 states the
+two-tier rule (unrepresentable → malformed, unschedulable → saturate) in §6
+"Retry-After Honouring", and #799 tracks the cross-SDK convergence on
+over-range values, which the six SDKs still answer differently.
 
 **Two behaviours changed for `DownloadURL` and the rate-limiter hook as well**,
 because all three paths share `parseRetryAfter`: an HTTP-date's sub-second

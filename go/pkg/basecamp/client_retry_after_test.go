@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -59,13 +60,23 @@ func (d *delayRecorder) snapshot() []time.Duration {
 // tests free: the loop fires OnRetry with the delay already computed and
 // logged, and the very next thing it does is wait it out. Cancelling here means
 // the wait returns at once however long the delay was.
+//
+// It also counts the requests the transport was handed, which is how the
+// cancellation-ordering test below tells "returned at the wait" from "went
+// round once more on a dead context".
 type cancelOnRetryHooks struct {
 	NoopHooks
-	cancel context.CancelFunc
+	cancel   context.CancelFunc
+	requests atomic.Int32
 }
 
 func (h *cancelOnRetryHooks) OnRetry(context.Context, RequestInfo, int, error) {
 	h.cancel()
+}
+
+func (h *cancelOnRetryHooks) OnRequestStart(ctx context.Context, _ RequestInfo) context.Context {
+	h.requests.Add(1)
+	return ctx
 }
 
 // retryAfterProbe drives one GET against a handler, cancelling at the retry
@@ -185,11 +196,13 @@ func TestClient_RetryAfterAbsentOrUnusableKeepsBackoff(t *testing.T) {
 		{"zero", "0"},
 		{"negative", "-5"},
 		{"http-date in the past", "Wed, 09 Jun 2021 10:18:14 GMT"},
-		// SPEC §6's first tier: too large for the parser's own int64, so
-		// malformed rather than over-range, and it falls through here rather
-		// than saturating. One past the largest int64 and a 20-digit value are
-		// the same case; both are pinned so the boundary cannot drift into the
-		// saturating table by accident.
+		// Too large for the parser's own int64, so Go treats it as malformed
+		// rather than over-range, and it falls through here rather than
+		// saturating — the first of the two tiers #793 states in SPEC §6
+		// "Retry-After Honouring"; the cross-SDK convergence is #799. One past
+		// the largest int64 and a 20-digit value are the same case; both are
+		// pinned so the boundary cannot drift into the saturating table by
+		// accident.
 		{"one past the largest int64", "9223372036854775808"},
 		{"digits beyond int64 range", "99999999999999999999"},
 		// RFC 9110's delay-seconds is `1*DIGIT`, so a sign is not a delay, and
@@ -228,9 +241,10 @@ func TestClient_RetryAfterAbsentOrUnusableKeepsBackoff(t *testing.T) {
 // The delay is asserted, not the elapsed time — a clamped wait is ~68 years,
 // which is precisely why nothing here may sleep it.
 //
-// This is SPEC §6's SECOND tier: a value the parser holds but the host cannot
-// schedule. The first tier — a value the parser's own int64 cannot hold at all
-// — is malformed and belongs in the backoff table above, which is where
+// This is the SECOND of the two tiers #793 states in SPEC §6 "Retry-After
+// Honouring": a value the parser holds but the host cannot schedule. The first
+// — a value the parser's own int64 cannot hold at all — Go treats as malformed,
+// and it belongs in the backoff table above, which is where
 // `9223372036854775808` and the 20-digit case are pinned.
 func TestClient_RetryAfterSaturatesAtTheHonouredCeiling(t *testing.T) {
 	assertSaturatedRetryAfter(t, "9223372036854775807")
@@ -256,6 +270,61 @@ func assertSaturatedRetryAfter(t *testing.T, header string) {
 	}
 }
 
+// TestClient_RetryWaitChecksCancellationBeforeTheTimer pins the order in which
+// the wait observes its two inputs. A select with both cases ready picks one
+// pseudo-randomly — Go's rule, not a defect — so "cancellation wins" is not a
+// property the select alone can promise. The loop fires OnRetry and then
+// waits; a hook that cancels there, with a delay that has already elapsed,
+// would see the timer win about half the time and send one more request on a
+// context the caller had already abandoned. That request fails fast, but it is
+// a request the caller cancelled, and what comes back is the transport's
+// wrapping of context.Canceled rather than ctx.Err() itself (review follow-up,
+// Copilot). The loop therefore checks ctx.Err() before it enters the select.
+//
+// Stated honestly: the interleaving cannot be forced, because pseudo-random
+// means exactly that. What CAN be forced is the input — the context cancelled
+// before the wait and the delay already elapsed — so the contract is asserted
+// on every one of N runs: the loop returns ctx.Err() itself, having handed the
+// transport nothing further. Against the bare select this fails on the first
+// run the timer wins, which is all but certain over 64 (each run is a coin
+// flip, so the chance of a false pass is 2^-64); against the guard it cannot
+// fail, because the guard runs before there is anything to pick between.
+func TestClient_RetryWaitChecksCancellationBeforeTheTimer(t *testing.T) {
+	server := httptest.NewServer(rateLimited(""))
+	defer server.Close()
+
+	const runs = 64
+	for run := range runs {
+		ctx, cancel := context.WithCancel(context.Background())
+		hooks := &cancelOnRetryHooks{cancel: cancel}
+		client := NewClient(&Config{BaseURL: server.URL, CacheEnabled: false}, &StaticTokenProvider{Token: "test-token"})
+		client.httpOpts.MaxRetries = 3
+		// A zero backoff is the cheapest way to a timer that is already ready
+		// when the wait begins. It stands in for any hook that outlasts the
+		// computed delay — a millisecond curve and a hook that logs, say — and
+		// costs no wall clock. (Jitter stays at one nanosecond because a zero
+		// bound is not a valid argument to rand.Int63n; it contributes 0.)
+		client.httpOpts.BaseDelay = 0
+		client.httpOpts.MaxJitter = time.Nanosecond
+		client.hooks = hooks
+
+		_, err := client.Get(ctx, "/test.json")
+		cancel()
+
+		// Identity, not errors.Is: the transport's error for a request sent on
+		// a cancelled context also satisfies errors.Is(err, context.Canceled),
+		// and telling the two apart is the point.
+		if err != context.Canceled {
+			t.Fatalf("run %d: Get returned %v, want ctx.Err() itself (context.Canceled) — "+
+				"the loop went round again after the caller cancelled at the retry boundary", run, err)
+		}
+		if got := hooks.requests.Load(); got != 1 {
+			t.Fatalf("run %d: the transport was handed %d requests, want 1 — "+
+				"a cancellation delivered before the wait must not be followed by another attempt", run, got)
+		}
+	}
+}
+
 // TestParseRetryAfter_FarFutureHTTPDateSaturates covers the header's other wire
 // form at the same boundary. A server may legally name a date beyond anything a
 // Duration can hold — RFC 7231 puts no bound on it, and year-9999 dates are
@@ -277,8 +346,14 @@ func TestParseRetryAfter_FarFutureHTTPDateSaturates(t *testing.T) {
 		t.Fatalf("parseRetryAfter(a year-9999 HTTP-date) = %d, want a positive saturated delay — "+
 			"a non-positive result reads as 'no delay' and drops the server's wait onto the backoff curve", seconds)
 	}
-	if int64(seconds) > maxRetryAfterSeconds {
-		t.Errorf("parseRetryAfter(a year-9999 HTTP-date) = %d, want at most %d", seconds, maxRetryAfterSeconds)
+	// Equality, not an upper bound (review follow-up, Copilot): `<= ceiling`
+	// is satisfied by any positive number, including a parser that returned
+	// an arbitrary "safe" delay instead of saturating. time.Until saturates
+	// at the Duration maximum for a year-9999 date, which is far past the
+	// ceiling, so the saturated answer is exact and deterministic.
+	if seconds != maxRetryAfterSeconds {
+		t.Errorf("parseRetryAfter(a year-9999 HTTP-date) = %d, want exactly %d — the far-future "+
+			"date must saturate at the honoured ceiling, not land somewhere below it", seconds, maxRetryAfterSeconds)
 	}
 	if delay := time.Duration(seconds) * time.Second; delay <= 0 {
 		t.Errorf("time.Duration(%d) * time.Second = %v, want a positive duration", seconds, delay)

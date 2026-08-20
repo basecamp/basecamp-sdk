@@ -698,9 +698,11 @@ func (c *Client) doRequestURL(ctx context.Context, method, url string, body any)
 			}
 			lastErr = err
 			// A server-specified Retry-After replaces the backoff curve
-			// outright — no jitter, no ceiling, same idiom as downloadURL.
-			// Only the 429 arm of singleRequest sets it today; widening the
-			// set of statuses that carry one is #775's call, not this loop's.
+			// outright — no jitter, no policy ceiling (only the
+			// representability clamp parseRetryAfter already applied), same
+			// idiom as downloadURL. Only the 429 arm of singleRequest sets it
+			// today; widening the set of statuses that carry one is #775's
+			// call, not this loop's.
 			if apiErr.RetryAfter > 0 {
 				delay = time.Duration(apiErr.RetryAfter) * time.Second
 			} else {
@@ -724,9 +726,20 @@ func (c *Client) doRequestURL(ctx context.Context, method, url string, body any)
 		c.hooks.OnRetry(ctx, info, attempt+1, lastErr)
 
 		// Cancellation must win over the wait. A server-specified Retry-After
-		// carries no ceiling by design, so an uninterruptible sleep would let a
-		// server pin a request the caller already abandoned open for as long as
-		// it liked.
+		// has no policy ceiling by design — only the ~68-year representability
+		// clamp — so an uninterruptible sleep would let a server pin a request
+		// the caller already abandoned open for as long as it liked.
+		//
+		// The select alone cannot promise that. When both cases are ready Go
+		// picks one pseudo-randomly, and OnRetry has just run: a hook that
+		// cancels there, with a delay that has already elapsed, would see the
+		// timer win and one more request go out on a dead context — failing
+		// fast, but as the transport's wrapping of context.Canceled rather
+		// than ctx.Err(). So the context is checked first, where nothing
+		// competes with it.
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()
@@ -1142,8 +1155,9 @@ func isDelaySeconds(value string) bool {
 // parseRetryAfter parses the Retry-After header value.
 // It handles both seconds (integer) and HTTP-date formats.
 // Returns 0 if the header is empty or cannot be parsed, and clamps a parsed
-// value to what a time.Duration can hold — every caller multiplies the result
-// by time.Second.
+// value to maxRetryAfterSeconds, the portable ceiling — every caller
+// multiplies the result by time.Second, and the product must stay positive on
+// every target.
 func parseRetryAfter(header string) int {
 	if header == "" {
 		return 0
@@ -1154,14 +1168,21 @@ func parseRetryAfter(header string) int {
 	// build while the same header is honoured on a 64-bit one. Deciding the
 	// ceiling is the clamp's job, not the parse's.
 	//
-	// A value too large for that int64 is MALFORMED and falls through to step
-	// 3's backoff — SPEC §6's first tier — rather than saturating. So is any
-	// other unparseable input: ParseInt returns 0 with ErrSyntax, and a
-	// negative range error clamps to math.MinInt64, both caught by the `> 0`
-	// guard alongside the err check. The second tier, saturation, is for a
-	// value the parser holds but the host cannot schedule, and that is
-	// clampRetryAfterSeconds' job below. The tiers are stated once in SPEC and
-	// deliberately not restated here.
+	// A value too large for that int64 is treated as MALFORMED and falls
+	// through to step 3's backoff rather than saturating. So is any other
+	// unparseable input: ParseInt returns 0 with ErrSyntax, and a negative
+	// range error clamps to math.MinInt64, both caught by the `> 0` guard
+	// alongside the err check. Saturation is reserved for a value the parser
+	// holds but the host cannot schedule, and that is clampRetryAfterSeconds'
+	// job below.
+	//
+	// That split is Go's, not something §6's parsing algorithm mandates on
+	// its own — the algorithm says only "parse a positive integer". It is the
+	// two-tier rule #793 states in SPEC §6 "Retry-After Honouring"
+	// (unrepresentable in the parser's own type → malformed; representable but
+	// unschedulable → saturate); the cross-SDK convergence on over-range
+	// values, which the SDKs still answer differently, is #799's. The rule is
+	// deliberately not restated here; #793 is where it is argued.
 	//
 	// The digits are checked rather than left to ParseInt, which accepts a
 	// leading `+` or `-`. RFC 9110 spells delay-seconds as `1*DIGIT` — no sign

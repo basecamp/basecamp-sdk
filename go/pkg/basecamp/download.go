@@ -202,6 +202,14 @@ func (c *Client) fetchAPIDownload(ctx context.Context, rawURL string) (*Download
 		c.hooks.OnRetry(ctx, info, attempt+1, lastErr)
 		c.logger.Debug("retrying download request", "attempt", attempt, "maxRetries", maxAttempts, "delay", delay, "error", lastErr)
 
+		// Same order as Client.doRequestURL's wait, for the same reason: a
+		// select with both cases ready picks pseudo-randomly, and OnRetry has
+		// just run. A hook that cancels there, with the delay already elapsed,
+		// would otherwise see the timer win and one more request go out on a
+		// dead context. Check the context first, where nothing competes.
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()
