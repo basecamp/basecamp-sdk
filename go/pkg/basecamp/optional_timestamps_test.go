@@ -6,6 +6,7 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	gotypes "go/types"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -348,7 +349,7 @@ func collectTimestampFields(t fatalReporter, files map[string]*ast.File, wrapper
 			}
 			for _, f := range st.Fields.List {
 				if len(f.Names) == 0 {
-					assertEmbedIsAllowed(t, path, ts.Name.Name, f.Type)
+					assertEmbedIsAllowed(t, path, ts.Name.Name, f)
 					continue
 				}
 				key := jsonKey(f)
@@ -439,19 +440,35 @@ func jsonKey(f *ast.Field) string {
 //
 // So the modelling is gone. This guard now knows NOTHING about encoding/json —
 // not tag syntax, not the `-` sentinel, not promotion, not method sets, not
-// shadowing. It compares three strings. Everything it cannot match, it
+// shadowing. It compares four strings. Everything it cannot match, it
 // reports, and a human decides once and records the decision here.
 //
 // # What the matcher compares
 //
-// The key is (file base name, enclosing struct name, embedded type as
-// written) — filepath.Base of the parsed path, the TypeSpec's name, and the
-// source text of the embedded type expression including any star and package
-// qualifier. All three are syntax, deliberately: an entry records that
+// The key is (file base name, enclosing struct name, embedded type, raw
+// struct tag) — filepath.Base of the parsed path, the TypeSpec's name, the
+// embedded type expression rendered by go/types.ExprString (star, package
+// qualifier and any type arguments included, so `Base[int]` and `Base[string]`
+// are different keys), and the tag literal exactly as it appears in the
+// source, "" when there is none. That is the COMPLETE syntax of an anonymous
+// field; nothing outside the field's own line enters the key, and nothing on
+// it is left out. All four are syntax, deliberately: an entry records that
 // somebody read THAT line in THAT struct in THAT file, not that a type
-// resolves some way. Renaming the struct, moving it to another file, or
-// changing time.Time to *time.Time all invalidate the entry and re-open the
-// question, which is the intended sensitivity.
+// resolves some way. Renaming the struct, moving it to another file, changing
+// time.Time to *time.Time, or adding or removing a tag all invalidate the
+// entry and re-open the question, which is the intended sensitivity. The tag
+// is in the key for the same reason the star is: the reading that cleared an
+// embed may have depended on it, and the guard has no way to know whether it
+// did without modelling the semantics it refuses to model — so it re-asks.
+//
+// What the key does NOT carry, and will not: anything about the embedded
+// type's own declaration. An allowlisted type that later grows a timestamp
+// field keeps its key, and the clearance stands until someone re-reads it.
+// That is the residual every allowlist has, and it is accepted here on
+// purpose: re-verifying the declaration IS the analysis this guard replaced,
+// and the reader that did it was retired after four rounds of holes. Today
+// neither entry embeds a struct this package declares — one is time.Time, the
+// other an interface — so no walked declaration can grow a field under it.
 //
 // # Adding an entry
 //
@@ -461,19 +478,20 @@ func jsonKey(f *ast.Field) string {
 // teach the pairing about it, or drop the embed. TestAllowedEmbedsMatchesCorpus
 // keeps this list and the corpus in exact correspondence in both directions,
 // so a stale entry fails just as loudly as an unreviewed embed.
-var allowedEmbeds = map[[3]string]string{
-	{"authorization.go", "FlexTime", "time.Time"}: "time.Time's own fields are unexported and it " +
+var allowedEmbeds = map[[4]string]string{
+	{"authorization.go", "FlexTime", "time.Time", ""}: "time.Time's own fields are unexported and it " +
 		"marshals through its own MarshalJSON, so this embed contributes no JSON key to FlexTime",
-	{"client.gen.go", "ClientWithResponses", "ClientInterface"}: "an interface has no fields to " +
+	{"client.gen.go", "ClientWithResponses", "ClientInterface", ""}: "an interface has no fields to " +
 		"promote, and ClientWithResponses is an HTTP client that is never marshaled",
 }
 
 // assertEmbedIsAllowed fails unless this exact anonymous embed is on
 // allowedEmbeds. It resolves nothing and infers nothing; see that variable for
 // why the guard is shaped this way.
-func assertEmbedIsAllowed(t fatalReporter, path, owner string, expr ast.Expr) {
+func assertEmbedIsAllowed(t fatalReporter, path, owner string, f *ast.Field) {
 	t.Helper()
-	if _, ok := allowedEmbeds[embedKey(path, owner, expr)]; ok {
+	key := embedKey(path, owner, f)
+	if _, ok := allowedEmbeds[key]; ok {
 		return
 	}
 	t.Fatalf("%s: %s embeds %s, which nobody has cleared. encoding/json promotes an "+
@@ -481,30 +499,56 @@ func assertEmbedIsAllowed(t fatalReporter, path, owner string, expr ast.Expr) {
 		"outside the (struct, json key) pairing below and its value/pointer parity would go "+
 		"unchecked — silently, which is why this is fatal rather than skipped (#722). This "+
 		"guard deliberately models no encoding/json semantics: read the embed, and if it "+
-		"promotes no key this pairing needs, add {%q, %q, %q} to allowedEmbeds with the "+
+		"promotes no key this pairing needs, add {%q, %q, %q, %q} to allowedEmbeds with the "+
 		"reason",
-		path, owner, embeddedTypeName(expr), owner,
-		filepath.Base(path), owner, embeddedTypeName(expr))
+		path, owner, key[2], owner,
+		key[0], key[1], key[2], key[3])
 }
 
-// embedKey builds the allowlist key for one anonymous field.
-func embedKey(path, owner string, expr ast.Expr) [3]string {
-	return [3]string{filepath.Base(path), owner, embeddedTypeName(expr)}
+// embedKey builds the allowlist key for one anonymous field: the complete
+// syntax of that field, rendered, and nothing resolved. See allowedEmbeds.
+func embedKey(path, owner string, f *ast.Field) [4]string {
+	tag := ""
+	if f.Tag != nil {
+		tag = f.Tag.Value
+	}
+	return [4]string{filepath.Base(path), owner, gotypes.ExprString(f.Type), tag}
 }
 
-// embeddedTypeName renders an embedded field's type for a failure message.
-func embeddedTypeName(expr ast.Expr) string {
-	switch e := expr.(type) {
-	case *ast.StarExpr:
-		return "*" + embeddedTypeName(e.X)
-	case *ast.Ident:
-		return e.Name
-	case *ast.SelectorExpr:
-		if x, ok := e.X.(*ast.Ident); ok {
-			return x.Name + "." + e.Sel.Name
+// TestEmbedKeyIsTheCompleteFieldSyntax pins the identity contract of the key:
+// two anonymous fields that differ anywhere on their own line get different
+// keys. An earlier renderer collapsed every generic embed to one shared
+// fallback string and read no tag at all, so clearing one `Base[int]` embed
+// cleared every `Base[T]` beside it and a tag could come or go without the
+// entry noticing. No case here is about what any of these shapes MEANS to
+// encoding/json — only that the key tells them apart.
+func TestEmbedKeyIsTheCompleteFieldSyntax(t *testing.T) {
+	src := "package p\n\ntype W struct {\n" +
+		"\tBase[int]\n\tBase[string]\n\tpkg.Base[A, B]\n\t*Base[int]\n" +
+		"\tAudit\n\tAudit `json:\"audit\"`\n\tAudit `json:\"-\"`\n}\n"
+	file, err := parser.ParseFile(token.NewFileSet(), "w.go", src, 0)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	st := file.Decls[0].(*ast.GenDecl).Specs[0].(*ast.TypeSpec).Type.(*ast.StructType)
+
+	seen := map[[4]string]int{}
+	for _, f := range st.Fields.List {
+		seen[embedKey("w.go", "W", f)]++
+	}
+	if len(seen) != len(st.Fields.List) {
+		for key, n := range seen {
+			if n > 1 {
+				t.Errorf("%d distinct embeds share the key %q — clearing one would clear them all", n, key)
+			}
 		}
 	}
-	return "an unrecognised type expression"
+	if _, ok := seen[[4]string{"w.go", "W", "pkg.Base[A, B]", ""}]; !ok {
+		t.Errorf("a qualified generic embed was not rendered as written; keys: %v", seen)
+	}
+	if _, ok := seen[[4]string{"w.go", "W", "Audit", "`json:\"audit\"`"}]; !ok {
+		t.Errorf("the raw tag literal is not part of the key; keys: %v", seen)
+	}
 }
 
 // embedRecorder stands in for *testing.T so the meta-tests below can watch
@@ -712,7 +756,7 @@ func TestCollectTimestampFieldsIgnoresFunctionLocalTypes(t *testing.T) {
 // corpus embed matches fails too. Without it a stale exemption survives the
 // embed it was written for — the struct is renamed, the file split, the type
 // changed to a pointer — and sits there ready to excuse a future embed that
-// happens to land on the same three strings. It also makes every entry
+// happens to land on the same four strings. It also makes every entry
 // self-evidently non-vacuous: each one is matched by a real line today, or
 // this test is red.
 func TestAllowedEmbedsMatchesCorpus(t *testing.T) {
@@ -721,7 +765,7 @@ func TestAllowedEmbedsMatchesCorpus(t *testing.T) {
 		files[path] = file
 	}
 
-	found := map[[3]string]string{}
+	found := map[[4]string]string{}
 	for path, file := range files {
 		for _, ts := range packageTypeSpecs(file) {
 			st, ok := ts.Type.(*ast.StructType)
@@ -730,7 +774,7 @@ func TestAllowedEmbedsMatchesCorpus(t *testing.T) {
 			}
 			for _, f := range st.Fields.List {
 				if len(f.Names) == 0 {
-					found[embedKey(path, ts.Name.Name, f.Type)] = path
+					found[embedKey(path, ts.Name.Name, f)] = path
 				}
 			}
 		}
@@ -746,16 +790,16 @@ func TestAllowedEmbedsMatchesCorpus(t *testing.T) {
 	for key, path := range found {
 		if _, ok := allowedEmbeds[key]; !ok {
 			t.Errorf("%s: %s embeds %s and is not on allowedEmbeds. Read it: if it promotes no "+
-				"JSON key the (struct, json key) pairing needs, add {%q, %q, %q} with the reason; "+
+				"JSON key the (struct, json key) pairing needs, add {%q, %q, %q, %q} with the reason; "+
 				"if it does promote one, the pairing has to learn about it instead",
-				path, key[1], key[2], key[0], key[1], key[2])
+				path, key[1], key[2], key[0], key[1], key[2], key[3])
 		}
 	}
 	for key, why := range allowedEmbeds {
 		if _, ok := found[key]; !ok {
-			t.Errorf("allowedEmbeds carries {%q, %q, %q} (%q) but no embed in the walked sources "+
-				"matches it. A stale exemption excuses whatever next lands on those three strings — "+
-				"delete it, or correct it to the embed it was meant for", key[0], key[1], key[2], why)
+			t.Errorf("allowedEmbeds carries {%q, %q, %q, %q} (%q) but no embed in the walked sources "+
+				"matches it. A stale exemption excuses whatever next lands on those four strings — "+
+				"delete it, or correct it to the embed it was meant for", key[0], key[1], key[2], key[3], why)
 		}
 	}
 }
