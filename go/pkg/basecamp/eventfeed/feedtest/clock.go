@@ -66,6 +66,30 @@ func (c *Clock) NewTimer(d time.Duration, name string) eventfeed.Timer {
 	return t
 }
 
+// DueWithin returns the names of live timers due within d of the current
+// virtual time — exactly the set an Advance(d) would fire — in creation order.
+//
+// Read under the same lock advance selects under and NewTimer arms under, so
+// the answer is atomic with respect to both. That is what lets a caller turn a
+// racy question into a decidable one: an EMPTY result means the advance fires
+// nothing, and advance never unlocks unless it fires something, so no
+// recipient can be woken by it and no timer it could arm can land inside its
+// window. A non-empty result means the script is asking for a firing whose
+// aftermath races the re-selection, which is the thing no cross-language
+// fixture can mean the same way twice.
+func (c *Clock) DueWithin(d time.Duration) []string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	target := c.now.Add(d)
+	var names []string
+	for _, t := range c.live {
+		if !t.deadline.After(target) {
+			names = append(names, t.name)
+		}
+	}
+	return names
+}
+
 // Outstanding returns the names of live (unfired, unstopped) timers, in
 // creation order.
 func (c *Clock) Outstanding() []string {
@@ -76,25 +100,6 @@ func (c *Clock) Outstanding() []string {
 		names[i] = t.name
 	}
 	return names
-}
-
-// ArmCount returns how many timers have been armed on this clock since it was
-// created. It only ever rises: firing a timer, stopping one, or arming a
-// replacement under a name that already existed all leave it alone or raise
-// it, never lower it.
-//
-// That monotonicity is the whole point, because Outstanding() cannot answer
-// "did the connector arm anything". Outstanding() reports the live set, and
-// two different histories collapse onto the same set: a timer that fired and
-// was rearmed under its own name is indistinguishable from one that never
-// moved, while a timer that merely expired changes the set without anything
-// having been armed at all. A caller comparing snapshots of the set therefore
-// reads expiries as arms and misses same-name rearms entirely. ArmCount
-// counts the events themselves.
-func (c *Clock) ArmCount() int {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	return c.seq
 }
 
 // Advance moves virtual time forward by d, firing due timers in deadline

@@ -3285,13 +3285,19 @@ dependency.** It stays in the algorithm because a clock that ignored it would fi
 wrong set. But it is UNSCRIPTABLE wherever the connector runs concurrently with the
 driver: whether a timer armed during the window lands inside it depends on when the
 connector's goroutine, thread, or task got scheduled, which no fixture can pin. So **no
-fixture may rely on it, and every driver MUST fail an advance during which the connector
-arms any timer**, naming `fireTimer` as the deterministic alternative. Detect the ARMING
-itself — a monotonic count of timer creations — never a change in the outstanding-timer
-set: a firing removes its timer before any observer runs, and a same-name rearm leaves the
-set identical, so a set comparison reports nothing in exactly the case that matters. This
-is what `conformance/event-feed/schema.json`'s `$defs.advance` states, and the driver
-obligation is enforced there.
+fixture may rely on it, and every driver MUST REJECT an `advance` whose window would fire
+any timer**, naming `fireTimer` as the deterministic alternative.
+
+The test is what would FIRE, decided from the clock's state before time moves — not what
+gets ARMED. Arming happens on the connector's schedule, so a driver can only look for it
+by waiting and then assuming nothing further is coming, which is a heuristic wearing a
+MUST and passes a late arm in silence. Firing is one atomic read under the same lock the
+advance selects under. The inversion is sound because a test clock releases that lock only
+across a firing's aftermath — so an advance that fires nothing never wakes anything and
+cannot cause an arm, leaving nothing to detect. It is stricter than an arming rule (a
+firing that replaces nothing is rejected too) and that is the trade: a script wanting that
+firing writes `fireTimer` and names the timer. `conformance/event-feed/schema.json`'s
+`$defs.advance` states it, and the driver obligation is enforced there.
 
 Teardown discipline: disposing a connection attempt — deadline lapse, staleness, socket
 death, terminal — cancels the frame pump, **cancels any in-flight seam call belonging to

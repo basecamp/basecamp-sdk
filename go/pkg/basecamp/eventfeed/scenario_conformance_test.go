@@ -578,71 +578,44 @@ func (d *driver) nextClientFrame(what string) (clientFrame, error) {
 //
 // The algorithm says timers armed during a window whose deadlines land inside
 // it also fire. In a single-threaded test clock that is exact. In Go the
-// connector arms on its own goroutine, so whether the re-selection sees the
-// follow-on timer is a scheduling question — the same fixture could fire it in
-// TypeScript and not in Go, which is the divergence, not a flake.
+// connector arms on its own goroutine, so whether such a timer lands before
+// the re-selection that would fire it is a scheduling outcome — the same
+// script means two things, and a fixture cannot pin which.
 //
-// It is not fixable by settling, and that is worth writing down because the
-// obvious fixes both fail:
+// # Rejecting the shape, rather than detecting the divergence
 //
-//   - Waiting for the firing to be CONSUMED hangs. The connector deliberately
-//     does not consume a staleness firing promptly — a window that closes while
-//     the consumer is inside a delivery is latched and observed later, by
-//     design (staleHolder). A clock that waited would deadlock against the very
-//     behavior §23 requires.
-//   - Waiting for the follow-on ARMING requires knowing one is coming. Nothing
-//     can distinguish "has not armed yet" from "will not arm", so any such wait
-//     is either a guess or the same hang.
+// This used to detect: sample the clock's arm count, advance, wait out the
+// family's wall-clock watchdog for the count to move, and fail if it did. That
+// is a heuristic wearing a MUST, and it reads "no arm within five seconds" as
+// "no arm" — an arm landing later is simply missed. No wait makes it sound,
+// because there is no instant at which "nothing further will be armed" becomes
+// knowable from outside.
 //
-// So the divergence is made impossible to script instead of impossible to hit:
-// an advance during which the connector arms anything is failed, loudly, with
-// fireTimer named as the deterministic alternative (it fires one named timer
-// without moving the clock, so no re-selection is involved). This is checked on
-// EVERY advance rather than behind a schema opt-in — a field would let the next
-// fixture author take the divergence rather than avoid it, which is precisely
-// the thing being prevented.
+// So the question changes from "did the advance cause an arm?", which is racy,
+// to "can this advance fire anything at all?", which is decidable. feedtest's
+// clock selects due timers under its own lock and unlocks ONLY across a
+// firing's aftermath — deliberately, so a woken recipient can arm inside the
+// window. An advance with nothing due therefore never unlocks, never wakes
+// anything, and cannot be the cause of any arm. One atomic read of the clock
+// settles it before time moves.
 //
-// What is measured is ARMING, via the clock's monotonic ArmCount, and not the
-// outstanding-timer set. The set is the wrong instrument in both directions:
-// a firing removes its timer from the set before any observer runs, so an
-// ordinary expiry that arms nothing looks exactly like an arm; and a timer
-// rearmed under a name it already had leaves the set identical, so the one
-// case §23 most needs caught — the connector's same-name rearms, e.g.
-// repair-poll — is the case a set comparison cannot see.
+// A script that wants a firing writes `fireTimer`, which fires one named timer
+// without advancing the clock and so involves no re-selection at all. The
+// suite's only `advance` (fixture 05) sits in Streaming with staleness and
+// repair-poll configured to ~11 days against a 121-second window: it exists to
+// age a ticket past its TTL, not to fire anything, and it qualifies.
 //
-// The wait after Advance is the other half. The connector arms on its own
-// goroutine, so an arm caused by a firing inside the window can land just
-// after Advance returns; sampling immediately would make the guard a race.
-// The wait is bounded by the family's one wall-clock knob and ends the instant
-// an arm appears, so only a legitimately quiet advance pays it in full — and
-// the suite contains exactly one such advance (fixture 05).
-//
-// That bound makes this a HEURISTIC, and it is worth saying so rather than
-// letting the guard read as a proof. "No arm within the watchdog" is treated
-// as "no arm", so an arm landing later is missed. It cannot be otherwise from
-// outside: the connector arms on its own goroutine with no rendezvous the
-// driver can take, and the only alternative — holding the advance until the
-// connector says it is quiet — is the rendezvous a scheduling-dependent
-// fixture would need in the first place, which is the thing being refused.
-// The failure direction is the safe one: a missed arm lets a
-// scheduling-dependent fixture through, where the fixture then fails
-// non-deterministically instead of silently meaning different things in
-// different languages.
+// AdvanceSettling remains for a caller that genuinely wants a chained firing
+// with an explicit rendezvous. It is deliberately not reachable from a fixture.
 func (d *driver) advance(step *advanceStep) error {
-	before := d.h.clock.ArmCount()
-	d.h.clock.Advance(millis(step.Ms))
-
-	deadline := time.Now().Add(scenarioWatchdog)
-	for d.h.clock.ArmCount() == before && time.Now().Before(deadline) {
-		time.Sleep(time.Millisecond)
-	}
-	if armed := d.h.clock.ArmCount() - before; armed > 0 {
+	if due := d.h.clock.DueWithin(millis(step.Ms)); len(due) > 0 {
 		return fmt.Errorf(
-			"advance of %dms armed %d timer(s) (outstanding now %v): a timer armed inside an advance window "+
-				"fires or not depending on goroutine scheduling, so this script cannot mean the same thing in every "+
-				"language — use fireTimer, which fires one named timer without re-selecting",
-			step.Ms, armed, timerCounts(d.h.clock))
+			"advance of %dms would fire %v: whether a timer armed by one of those firings lands inside the "+
+				"same window depends on goroutine scheduling, so this script cannot mean the same thing in "+
+				"every language — use fireTimer, which fires one named timer without re-selecting",
+			step.Ms, due)
 	}
+	d.h.clock.Advance(millis(step.Ms))
 	return nil
 }
 
