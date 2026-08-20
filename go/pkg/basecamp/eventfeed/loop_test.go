@@ -2175,3 +2175,49 @@ func TestObservableCloseErrorCarriesNoPeerReason(t *testing.T) {
 		t.Errorf("field-wise rendering still differs from a code-only close error: %+v", ce)
 	}
 }
+
+// nilDialTransport returns (nil, nil) from Dial exactly once — a seam
+// violating its own contract — and then delegates. Nothing in feedtest can
+// express this, deliberately: it is not a shape a compliant transport
+// produces, and the connector's handling of it is a defensive edge rather
+// than a scripted one.
+type nilDialTransport struct {
+	inner eventfeed.CableTransport
+	once  sync.Once
+}
+
+func (t *nilDialTransport) Dial(ctx context.Context, url string, maxFrameBytes int64) (eventfeed.CableConn, error) {
+	first := false
+	t.once.Do(func() { first = true })
+	if first {
+		return nil, nil
+	}
+	return t.inner.Dial(ctx, url, maxFrameBytes)
+}
+
+// TestNilDialResultLeavesBackoffsTimerSetExact: a (nil, nil) dial takes the
+// transient failure edge, and must arrive in Backoff with the SAME exact timer
+// set every other transient failure produces.
+//
+// The handshake deadline is armed before the dial and every other exit from
+// this select stops it. This branch did not, so the deadline rode into Backoff
+// — whose exact set §23 pins at {backoff} — and a transport returning (nil,
+// nil) repeatedly accumulated one ghost handshake-deadline per cycle, each
+// firing later into a state with no edge for it.
+//
+// The assertion is the exact SET rather than "no panic", because the panic
+// this branch prevents was never the interesting part: a defensive edge that
+// leaves a timer behind has traded a crash for a leak.
+func TestNilDialResultLeavesBackoffsTimerSetExact(t *testing.T) {
+	h := newHarness(t)
+	h.tr = feedtest.NewTransport()
+	tr := &nilDialTransport{inner: h.tr}
+	h2 := newHarness(t, eventfeed.WithTransport(tr))
+	h2.minter.ScriptTicket(ticket(1))
+	h2.minter.ScriptTicket(ticket(2))
+	h2.start()
+
+	// The dial returns (nil, nil), the cycle fails, and Backoff is entered.
+	h2.awaitTimer(timerBackoff)
+	assertTimers(t, h2.clock, map[string]int{timerBackoff: 1})
+}
