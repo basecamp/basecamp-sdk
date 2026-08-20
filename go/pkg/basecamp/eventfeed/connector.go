@@ -120,6 +120,9 @@ type config struct {
 	// rand is the uniform [0, 1) source behind the jitter draws — white-box
 	// overridable in tests, no public option.
 	rand func() float64
+	// claimTerminal serializes the publication of a terminal element against
+	// Close. Installed by Events, which is the only thing that builds a run.
+	claimTerminal func() bool
 }
 
 // Option configures a Connector, functional-options house style (SPEC.md §23
@@ -198,6 +201,10 @@ type Connector struct {
 	// cancelRun cancels the active run's context. Registered by Events for
 	// exactly the span of one iteration, nil otherwise.
 	cancelRun context.CancelFunc
+	// terminalClaimed records that a terminal element won the race against
+	// Close and will be published. It is written under this mutex so the two
+	// decisions are ordered rather than merely likely to be.
+	terminalClaimed bool
 	// runDone is closed when the iteration function returns. Published by
 	// Events at the start of a run and never cleared, so Wait either finds no
 	// run at all or a channel that is closed exactly when the run has exited.
@@ -432,6 +439,9 @@ func (c *Connector) Events(ctx context.Context) iter.Seq2[Event, error] {
 		// cancels it itself. Either way runCtx is done before Close returns —
 		// there is no window in which the run proceeds past a returned Close.
 		c.mu.Lock()
+		// Installed before the loop is built, and under the same mutex Close
+		// takes, so the run cannot reach a terminal before the claim exists.
+		c.cfg.claimTerminal = c.claimTerminal
 		c.runDone = done
 		if c.isClosed {
 			// Closed before the first iteration: end cleanly with zero wire
@@ -513,6 +523,31 @@ func (c *Connector) Events(ctx context.Context) iter.Seq2[Event, error] {
 // thing Close promises does not happen. Holding the mutex across the cancel is
 // safe: a CancelFunc runs no consumer code, and any context.AfterFunc it
 // triggers runs on its own goroutine, so it cannot re-enter Close.
+// claimTerminal decides, atomically against Close, whether a terminal element
+// may still be published.
+//
+// emitTerminal used to read the run context and then yield, which is two acts
+// with a gap: a Close landing in that gap cancels the run and RETURNS while the
+// yield goes ahead, so a consumer that closed still receives an error element —
+// the one thing §23 says close() does not produce. A context read cannot fix
+// that, because the thing being raced is not the context's value but the order
+// of two decisions.
+//
+// So the decision moves under the mutex Close already serializes on. Whichever
+// call takes it first wins outright: a Close that arrives first makes this
+// return false and the run takes the Closed edge, while a terminal claimed
+// first is published even though Close cancels a moment later — which is
+// correct, because the feed had already terminated when the consumer closed.
+func (c *Connector) claimTerminal() bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.isClosed {
+		return false
+	}
+	c.terminalClaimed = true
+	return true
+}
+
 func (c *Connector) Close() error {
 	c.mu.Lock()
 	c.isClosed = true

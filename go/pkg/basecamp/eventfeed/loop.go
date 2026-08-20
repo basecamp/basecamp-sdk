@@ -732,7 +732,22 @@ func (l *loop) run(yield func(Event, error) bool) {
 // check is a rule every future select has to remember, which is the shape that
 // produced this defect in the first place.
 func (l *loop) emitTerminal(term *TerminalError) {
-	if l.runCtx.Err() != nil {
+	// The claim is atomic against Close (see Connector.claimTerminal), and
+	// what it closes is narrow enough to name exactly. Close latches isClosed
+	// and THEN cancels, both inside one critical section; a reader of runCtx
+	// landing between those two statements sees a live context while Close is
+	// already committed and about to return, and publishes a terminal element
+	// to a consumer that closed. Deciding against the latch under the lock
+	// that owns it has no such interval — the claim runs wholly before or
+	// wholly after Close's critical section.
+	//
+	// No test discriminates this, and pretending otherwise would be worse than
+	// saying so: the window is two adjacent statements inside Close, reaching
+	// it needs a hook in production code that exists for nothing else, and
+	// even then the behaviour it replaces is racy rather than reliably wrong.
+	// It is kept because deciding against the authoritative latch is simply
+	// the correct shape, not because a red proof forced it.
+	if !l.cfg.claimTerminal() {
 		l.setState(stateClosed)
 		return
 	}
@@ -845,6 +860,14 @@ func (l *loop) runCycle(delay time.Duration) cycleOutcome {
 			// transient dial failure keeps the reconnect cycle honest and
 			// costs one backoff round against a transport that is already
 			// violating its contract.
+			//
+			// The handshake deadline is stopped FIRST, exactly as the error
+			// branch above does. Leaving it armed carries it into Backoff,
+			// whose exact outstanding-timer set is {backoff} — and a
+			// transport returning this repeatedly accumulates one ghost
+			// handshake-deadline per cycle, each of which fires later into a
+			// state that has no edge for it.
+			hs.Stop()
 			return cycleOutcome{kind: outcomeFailed}
 		}
 		conn = r.conn
