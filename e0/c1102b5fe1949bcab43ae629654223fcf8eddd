@@ -1,0 +1,43 @@
+go/pkg/basecamp/eventfeed/scenario_conformance_test.go
+  s_a2830db3382bee::t_60525f60a3c1f1 90-94
+  s_a2830db3382bee::t_bd275c643db451 8-10
+  s_a2830db3382bee::t_84d88de442af36 5-7
+  s_a2830db3382bee::t_e42d3491bb324d 120,125
+  s_a2830db3382bee::t_c55507a0a4c2c0 166-273
+  s_a2830db3382bee::t_17d2bd42bbcd8f 360-364,367,371,375-379,381-382
+  s_a2830db3382bee::t_df6923f94d5984 11-16
+go/pkg/basecamp/eventfeed/scenario_harness_test.go
+  s_a2830db3382bee::t_e1b26617df604f 62-70
+  s_a2830db3382bee::t_9a1a108eefe175 391-392
+  s_a2830db3382bee::t_fcc36a3be40139 396
+  s_a2830db3382bee::t_b980fd7bedffe6 329-332
+  s_a2830db3382bee::t_e7068fd5610a76 464,475-495,497
+  s_a2830db3382bee::t_dba2e2628349d9 230-283,297-299
+go/pkg/basecamp/eventfeed/scenario_selftest_test.go
+  s_a2830db3382bee::t_83e0ccdc0a541c 176-177
+  s_a2830db3382bee::t_347d49c7d8d0de 178-179,181-239,246-291,295-322,326-347
+  s_a2830db3382bee::t_439084cc5ce0ad 138-146
+  s_a2830db3382bee::t_05fc2574f38d00 12
+  s_a2830db3382bee::t_b17b1d2e0338ca 240-245
+  s_a2830db3382bee::t_6fb9d53fa26702 292-294
+  s_a2830db3382bee::t_82029243e1db2d 180,348-349
+conformance/event-feed/README.md
+  s_a2830db3382bee::t_d5b3c464cbcd63 48-58
+  s_a2830db3382bee::t_1f3b5c055199f2 60-66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "e0c1102b5fe1949bcab43ae629654223fcf8eddd",
+  "prompts": {},
+  "sessions": {
+    "s_a2830db3382bee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3ea572e5-a707-465c-97cf-ea7330f74fc8",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
