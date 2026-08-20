@@ -769,10 +769,21 @@ or an absent one. Tracked in #775 with the rest.]`
 Go owes the second tier and is getting it: its parser returns an `int` that three call sites multiply
 by `time.Second`, and `math.MaxInt64` seconds × 1e9 wraps negative, on which `time.After` fires at
 once — the longest expressible instruction producing the tightest possible loop. #796 saturates at
-`math.MaxInt64 / time.Second` in the parser for the hand-written paths; the identical unclamped
-conversion in `go/pkg/generated/client.gen.go`, and an `Atoi` there whose range error is discarded
-into a rate-limit hint, are fixed in `go/templates/client.tmpl` — the generated file is emitted from
-it and must never be edited directly — and are tracked in #798.
+**2,147,483,647 seconds (~68 years, `math.MaxInt32`)** in the hand-written paths, and the number is
+chosen to be portable rather than maximal: *two* host limits sit above a Go `Retry-After`, and this is
+at or below both. The `seconds × time.Second` product wraps past `math.MaxInt64` above ~292 years, and
+the value is surfaced in an `int`, which is 32 bits on a 32-bit target — so a ceiling derived from the
+first alone would be unrepresentable on such a build and the documented answer would change with
+`GOARCH`. Taking the smaller of the two yields one number for every platform, and it is the same
+2,147,483,647 §16 already names as a shared cross-SDK ceiling. Go also takes the **first** tier where
+this section requires it: a digit string too large for the parser's own `int64` is malformed and falls
+through to the backoff rather than saturating, so the two numbers govern different questions — `int64`
+bounds what the parser will hold, `math.MaxInt32` bounds what the host will be asked to schedule.
+
+The identical unclamped conversion in `go/pkg/generated/client.gen.go`, and an `Atoi` there whose
+range error is discarded into a rate-limit hint, are **not yet fixed anywhere**. Their fix *belongs*
+in `go/templates/client.tmpl` — the generated file is emitted from it and must never be edited
+directly — and #798 is where the work is tracked, not where it has landed.
 
 **The exemption is conditioned on the escape, not on a number.** There is deliberately no policy cap;
 in its place, **an honoured `Retry-After` delay MUST be awaited through the platform's cancellation
@@ -1425,6 +1436,23 @@ The rule has four parts:
 **The obligation is stated at the sink, not as a list of call sites, and that is a correction.** Three consecutive review rounds each produced another transport path this paragraph had not named — first Go, Kotlin and Python's main loops; then Swift's chained cause and TypeScript's download; then generated Go, Ruby's two, and Python's signed-download and token-refresh sites. A sweep of every construction of each SDK's network-error type finds roughly thirty across the six, most of them interpolating a transport's own rendering. Each round's addition was individually correct and the list was still wrong after every one of them, which is the signal to reassess the instrument rather than add a seventh row: **a prose inventory that has to anticipate its own call sites is the same shape of control this section already rejected for redaction.**
 
 So the contract is: **every construction of an SDK's network-error type is in scope, and each SDK converges by routing them through one sanctioned constructor that performs rule 3's projection and composes its message from the closed vocabulary** — not by patching the sites listed below. Bounding where the type can be constructed at all is what makes the guarantee hold for the site added next week; widening a list never will. Where a language cannot enforce single-construction, the constructor is still the unit of review.
+
+**Python owes a second boundary, because in Python the constructor cannot discharge this alone.** What follows is an obligation on **Python only** — it falls out of a CPython runtime behaviour with no equivalent in the other five, which inherit nothing from it and owe nothing extra on its account.
+
+When an exception is raised while another is being handled, CPython assigns the active exception to the new one's `__context__` **at raise time — after the constructor has returned**. A sanctioned constructor can compose a message from the closed vocabulary and project the cause it was handed, and the runtime will still staple the raw `httpx` error onto the object afterwards. Deleting `raise ... from e` does not prevent this: implicit chaining is what `__context__` *is*, and `from` only controls the separate `__cause__` slot. Default rendering then prints it — `traceback.format_exception` and `logger.exception` both emit the peer's URL under "During handling of the above exception, another exception occurred", which is squarely observer-facing under this section's definition.
+
+The two remedies are **not** equivalent, and the difference is exactly the rule 3 / rule 4 boundary:
+
+| Spelling | Traceback and `logging` | `__context__` itself |
+|---|---|---|
+| `raise NetworkError()` inside `except` | **leaks** | populated with the peer exception |
+| `raise NetworkError() from None` | clean — sets `__suppress_context__` | **still populated**; anything walking `__context__` reads peer text |
+| raise where no exception is active | clean | `None` |
+| clear `__context__` at a catching boundary *after* the raise | clean | `None` |
+
+`from None` sets a *rendering* flag, so it discharges the observer-facing half and leaves the generic slot intact — acceptable only if nothing walks it, which is not a property a library can assert about its callers. **The trap worth stating outright: clearing `__context__` on the instance before raising it does not work.** The assignment happens at raise, so the runtime overwrites the cleared value and the leak returns silently — a fix that tests green in a unit test asserting on the constructed object and fails in production traceback output.
+
+So Python's obligation is a **raising boundary distinct from the constructing one**: the error is raised where no peer exception is active — construct inside the handler, raise after it has exited — or `__context__` is cleared at a boundary that runs after the raise. Routing every construction through one constructor is necessary and **not sufficient** here, and Python's convergence must not be marked done on the constructor change alone.
 
 The table is therefore **representative, not exhaustive** — it is the shape to look for, and the two rows whose fix site is non-obvious:
 
