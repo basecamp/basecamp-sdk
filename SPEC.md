@@ -679,24 +679,33 @@ no question for this section to answer. Where the rule has no subject, it does n
 someone noticing it. Walking every delay-bearing branch in this document back through it, against what
 the code actually does:
 
-| Loop / branch | Repeat is driven by | Verdict | Code today |
-|---|---|---|---|
-| §7 generated-operation retry | declared `retry_on` `{429, 503}`, or a network error | **in** | honours `Retry-After` |
-| §14 `DownloadURL` hop 1 | declared `{429, 502, 503, 504}`, or a network error | **in** | honours it (SDKs at 429 only — tracked conflict, not a boundary question) |
-| §16 poll — `authorization_pending`, `slow_down` | a 4xx protocol answer meaning "not yet" | **out** | never reads the header |
-| §16 poll — `429` + `too_many_requests` | the one pair §16 declares retryable; the origin refused to serve | **in** | reads it, `max(interval, retryAfter)` |
-| §16 poll — connection timeout | a network error | **in** | no response, so no header to read |
-| §16 poll — `429` alone, or `too_many_requests` off 429 | nothing; terminal `api_error` | **out** | no repeat at all |
-| §23 reconnect `backoff` | mint/connect outcomes classified transient or throttled | **in** | `Retry-After` floors the draw |
-| §23 `poll-retry` | poll outcomes classified transient or throttled | **in** | waits it exactly |
-| §23 `repair-poll` | a schedule — 60s ± 20% per cycle, no failure involved | **out** | never reads the header |
-| §23 `staleness`, `handshake-deadline`, `confirmation-deadline` | elapsed time; these are deadlines, not repeats | **out** | no header |
-| §4 401 refresh-and-retry | a status no loop declares retryable, gated on a token refresh | **out** | no delay of any kind exists on that path |
+Two of the three sources differ in kind, and the last column says which, because "the code agrees"
+is only a claim where code exists. **§7, §14, §16 and §4 are shipped and were read.** **§23's rows are
+contract-only** — no event-feed connector ships in any of the six SDKs yet (Appendix A says the
+connector lands in later PRs), so those rows record what §23 *specifies*, and the definition's job
+there is to agree with the written contract rather than with an implementation.
 
-Every row lands on the side its code already implements, including the three the enumeration kept
-missing. Nothing above is a carve-out: `repair-poll` and the §16 pending branch are outside for the
-same reason as each other — they repeat without a failed attempt — and §4 is outside for the second
-clause alone, which is what shows that clause is load-bearing rather than restating the first.
+| Loop / branch | Repeat is driven by | Verdict | Source |
+|---|---|---|---|
+| §7 generated-operation retry | declared `retry_on` `{429, 503}`, or a network error | **in** | *code:* honours `Retry-After` |
+| §14 `DownloadURL` hop 1 | declared `{429, 502, 503, 504}`, or a network error | **in** | *code:* honours it — Python at all four statuses, the other four SDKs at 429 only (tracked conflict, not a boundary question) |
+| §16 poll — `authorization_pending`, `slow_down` | a 4xx protocol answer meaning "not yet" | **out** | *code:* never reads the header (verified in Go, Kotlin, TypeScript, Python) |
+| §16 poll — `429` + `too_many_requests` | the one pair §16 declares retryable; the origin refused to serve | **in** | *code:* reads it, `max(interval, retryAfter)` |
+| §16 poll — connection timeout | a network error | **in** | *code:* no response, so no header to read |
+| §16 poll — `429` alone, or `too_many_requests` off 429 | nothing; terminal `api_error` | **out** | *code:* no repeat at all |
+| §23 reconnect `backoff` | mint/connect outcomes classified transient or throttled | **in** | *contract only:* `Retry-After` floors the draw |
+| §23 `poll-retry` | poll outcomes classified transient or throttled | **in** | *contract only:* waited exactly |
+| §23 `repair-poll` | a schedule — 60s ± 20% per cycle, no failure involved | **out** | *contract only:* no `Retry-After` in its timer row |
+| §23 `staleness`, `handshake-deadline`, `confirmation-deadline` | elapsed time; these are deadlines, not repeats | **out** | *contract only:* no header |
+| §4 401 refresh-and-retry | a status no loop declares retryable, gated on a token refresh | **out** | *code:* no delay of any kind exists on that path |
+
+Every row lands on the side its own source puts it — the seven code rows against what ships, the four
+§23 rows against what §23 already specifies — including the three the enumeration kept missing.
+Nothing above is a carve-out: `repair-poll` and the §16 pending branch are outside for the same reason
+as each other — they repeat without a failed attempt — and §4 is outside for the second clause alone,
+which is what shows that clause is load-bearing rather than restating the first. The §23 rows are the
+weaker evidence of the two kinds and are marked so deliberately: when that connector is implemented,
+they become checkable and should be re-checked rather than assumed.
 
 §8's auto-pagination is the case that makes the distinction obvious, which is why it is worth naming
 even though it takes no delay and so has no row: it issues request after request, and not one of them
@@ -871,9 +880,15 @@ The four rows without an escape are the ones that owe work, and this position ma
 sooner rather than creating the exposure: Python's **sync** client already honours `Retry-After` at
 any status, unclamped, in a bare `time.sleep`, so an origin sending `Retry-After: 3600` buys an hour
 the caller cannot abandon **today**. Widening the status set adds 503 to that reach in Ruby and on
-TypeScript's upload path. The remedy is open — an interruptible incremental sleep, or a bound against
-a caller-supplied total-time budget — and each shape has a caller-facing API dimension in its
-language, so it is not settled here. Tracked with the rest of the convergence in #775.
+TypeScript's upload path. The remedy is open in its *shape* but not in what it must achieve: whatever
+is chosen has to satisfy the MUST above, which asks for a handle the caller can act on **after the
+call has begun**. An interruptible incremental sleep polling a cancellation flag does satisfy it. A
+bound against a caller-supplied total-time budget **does not** — a numeric deadline fixed before the
+call cannot be cancelled during it, so a caller who changes their mind still waits it out. That
+distinction is why the budget is not offered here as an alternative: it bounds the worst case, which
+is a policy cap by another name, and this section declined to make that trade. Each satisfying shape
+still has a caller-facing API dimension in its language, so which one is not settled here. Tracked
+with the rest of the convergence in #775.
 
 TypeScript's download path is the fourth and it is a distinct shape: `sleep()` *does* take a signal
 and honours it, and the download loop simply never supplies one — `executeWithRetry(makeAttempt,
@@ -1772,7 +1787,7 @@ END
 
 The authenticated first hop retries on **network errors plus {429, 502, 503, 504}** — never 500. The set is declared here rather than inherited from anywhere else, and it matches neither of the two sets an SDK already has to hand: it is broader than the per-operation `retry_on` in `behavior-model.json` (`{429, 503}` for all `250` operations, which never governs `DownloadURL` because it has no entry there), and narrower than the error taxonomy's "all 5xx retryable" flag, which would sweep in the 500 this policy deliberately excludes. It is the gateway-error set Go's hand-written `singleRequest` already uses for GETs. <!-- @operation-count --> Backoff is exponential from a 1-second base with jitter; `Retry-After` is honoured at **every status in that set**, not at 429 alone. The second hop is exempt: no retry, no auth.
 
-That last clause changed with §6's "Retry-After Honouring", and the reason it changed is the reason this set is declared here at all: honouring is derived from retry eligibility, so a loop that declares its own eligibility set inherits the honouring rule over that set rather than over §7's. A 502, 503 or 504 on hop 1 carrying `Retry-After` therefore waits what the origin named, exactly as a 429 does. `[CONFLICT: every SDK's download loop honours it on 429 alone today — go/pkg/basecamp/download.go, typescript/src/download.ts and their four counterparts — so this is owed convergence, tracked with the rest in #775. The existing downloads.json case covering the 429 path stays valid; the other three statuses need cases of their own.]` The honoured value is subject to §6's other two clauses on this path as well: nothing is added to it, and it must be awaited through a cancellation handle the caller holds — which TypeScript's download loop, listed in §6's table, does not yet give them.
+That last clause changed with §6's "Retry-After Honouring", and the reason it changed is the reason this set is declared here at all: honouring is derived from retry eligibility, so a loop that declares its own eligibility set inherits the honouring rule over that set rather than over §7's. A 502, 503 or 504 on hop 1 carrying `Retry-After` therefore waits what the origin named, exactly as a 429 does. `[CONFLICT: four of the six download loops honour it on 429 alone today — go/pkg/basecamp/download.go, typescript/src/download.ts, and the Ruby and Swift counterparts — so this is owed convergence, tracked with the rest in #775. **Python is already conformant on this axis and owes nothing here:** `get_download` passes its own `DOWNLOAD_RETRY_ON = {429, 502, 503, 504}` into the shared retry loop (`_http.py`, `_async_http.py`), `error_from_response` attaches the parsed header to the resulting `ApiError` at every status (`err.retry_after = err.retry_after or retry_after`), and `_calculate_delay` honours any positive `error.retry_after` with no status test — so a Python hop-1 503 already waits the value the origin named. The existing downloads.json case covering the 429 path stays valid; the other three statuses need cases of their own.]` The honoured value is subject to §6's other two clauses on this path as well: nothing is added to it, and it must be awaited through a cancellation handle the caller holds — which TypeScript's download loop, listed in §6's table, does not yet give them.
 
 **Composition (§6 "Composition is per-loop"): a valid `Retry-After` REPLACES this hop's exponential-plus-jitter delay**, the same answer §7's loop gives and for the same reason — the wait is pacing a retry of exactly the request the origin just answered. It is stated here rather than inherited: §6 supplies no default, so a loop that declares its own retry set (as this one does) declares its own composition too.
 
