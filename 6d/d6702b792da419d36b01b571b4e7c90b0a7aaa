@@ -1,0 +1,29 @@
+go/pkg/basecamp/client.go
+  s_09297614e4690f::t_6b296880b209f5 1081-1086,1158-1164
+go/pkg/basecamp/client_retry_after_test.go
+  s_b98b4a85078d3e::t_574e63c74287dd 101,220,235,356,412
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "6dd6702b792da419d36b01b571b4e7c90b0a7aaa",
+  "prompts": {},
+  "sessions": {
+    "s_09297614e4690f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a00e05-d489-7cc0-9c27-ccfc76a1acfb",
+        "model": "gpt-daybreak-blue-latest"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_b98b4a85078d3e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5bbef980-f552-48e7-bb51-0b748caa71ac",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
