@@ -1,0 +1,22 @@
+SPEC.md
+  s_b98b4a85078d3e::t_c5ade446cbb701 655-700
+  s_b98b4a85078d3e::t_bb063dd1b74b26 2324-2335
+  s_b98b4a85078d3e::t_2f2eaaec4dc0aa 654
+  s_b98b4a85078d3e::t_b07b972da2265d 701-712
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "be60d01fed61835c3ce2010bda0a769878861de2",
+  "prompts": {},
+  "sessions": {
+    "s_b98b4a85078d3e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5bbef980-f552-48e7-bb51-0b748caa71ac",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
