@@ -1205,7 +1205,7 @@
       "required": [
         "ms"
       ],
-      "description": "Advance virtual now by ms, firing due timers in deadline order per the normative virtual-advance algorithm (README): re-evaluate after each fire; timers scheduled during the advance whose deadlines land inside the window also fire; ties break by creation order. That reentrant clause is UNSCRIPTABLE wherever the connector runs concurrently with the driver, so no fixture may rely on it: every driver MUST fail an advance during which the connector arms any timer, naming fireTimer as the deterministic alternative. Detect arming itself (a monotonic count of timer creations), never a change in the outstanding-timer set — a firing removes its timer before any observer runs, and a same-name rearm leaves the set identical.",
+      "description": "Advance virtual now by ms. The normative virtual-advance algorithm (README) fires due timers in deadline order, re-evaluating after each fire, with timers scheduled during the advance whose deadlines land inside the window also firing and ties breaking by creation order. That reentrant clause is UNSCRIPTABLE wherever the connector runs concurrently with the driver, so no fixture may rely on it: every driver MUST REJECT an advance whose window would fire ANY timer, naming fireTimer as the deterministic alternative. The test is what would FIRE, decided from the clock's state before time moves — not what gets armed, which happens on the connector's schedule and can only be sampled. An advance that fires nothing never wakes anything, so it cannot cause an arm; that is what makes the check complete rather than probabilistic. A firing that replaces nothing is rejected too.",
       "properties": {
         "ms": {
           "type": "integer",

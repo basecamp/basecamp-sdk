@@ -154,24 +154,32 @@ requirement that a staleness window closing during a delivery is latched and
 observed later, and waiting for the follow-on ARMING requires knowing one is
 coming, which nothing can tell you.
 
-Every driver must therefore FAIL an `advance` during which the connector arms
-anything, naming `fireTimer` as the deterministic alternative — it fires one
-named timer without moving the clock, so no re-selection is involved. This is
-unconditional, not a per-fixture opt-in: a flag would let a fixture author take
-the divergence instead of avoiding it.
+**So an `advance` whose window would fire ANY timer is rejected**, and the
+driver names `fireTimer` as the alternative — it fires one named timer without
+moving the clock, so no re-selection is involved. This is unconditional, not a
+per-fixture opt-in: a flag would let a fixture author take the divergence
+instead of avoiding it.
 
-**Detect the arming itself — a monotonic count of timer creations on the test
-clock — and never a change in the outstanding-timer set.** The set is the wrong
-instrument in both directions, and a driver using it reports the opposite of
-what this rule says on both: a firing removes its timer from the set before any
-observer can run, so an ordinary expiry that arms nothing is read as an arm;
-and a timer rearmed under a name it already had leaves the set byte-identical,
-so the connector's own same-name rearms (`repair-poll`, `poll-retry`) are
-invisible. Only the creation count separates the two histories. The Go driver
-implements this and self-tests three arms: the rejection, an ordinary
-quiet-window advance still passing, and — the control that discriminates the
-instruments — an advance whose window fires a due timer that is *not* replaced,
-which must pass.
+The rule asks what an advance would FIRE, not what it arms, and the difference
+is the whole reason it is enforceable. Arming happens on the connector's
+schedule, so a driver can only look for it by waiting and then guessing that
+nothing more is coming — a heuristic wearing a MUST, which silently passes a
+late arm. Firing is decided by the clock's own state before time moves: one
+atomic read, under the same lock the advance selects under, answers it
+completely.
+
+That inversion is sound because of what an advance does when it fires nothing.
+A test clock holds its lock while selecting due timers and releases it only
+across a firing's aftermath — deliberately, so a woken recipient can arm inside
+the window. An advance with nothing due therefore never releases the lock, never
+wakes anything, and cannot be the cause of any arm. There is nothing left to
+detect.
+
+It is stricter than an arming rule, and deliberately: a firing that replaces
+nothing is rejected too. A script that wants that firing writes `fireTimer` and
+says which timer it means, which is more legible anyway. The Go driver
+self-tests three arms — the rejection, an ordinary quiet-window advance still
+passing, and a firing that arms nothing being rejected all the same.
 
 ## Contract notes the fixtures encode (SDK-owned, final)
 
