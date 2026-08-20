@@ -2106,3 +2106,482 @@ func TestProtocolFatalHandedOffDuringADrainIsImmediate(t *testing.T) {
 	assertProtocolFatalDrain(t, h, store, caughtUp)
 	assertIDs(t, h.deliveredIDs(), 41)
 }
+
+// staleDeferralHarness wires the shape every grace-phase test needs: a
+// position-resume entry, a stalled entry poll — a PollSource that returns only
+// on cancellation — and observation points for the deferral and for the
+// StaleConnection age. The socket is SILENT throughout: no frame and no read
+// error, which is the whole point. A half-open socket produces neither, so the
+// staleness firing is the only evidence the connector will ever get, and until
+// #758 the one wait that could observe it did not carry the case.
+func staleDeferralHarness(t *testing.T, store *feedtest.Store, ages *[]time.Duration, mu *sync.Mutex) (*harness, *deferralWatch) {
+	t.Helper()
+	h := storedHarness(t, store, eventfeed.WithObserver(eventfeed.Observer{
+		StaleConnection: func(age time.Duration) {
+			mu.Lock()
+			*ages = append(*ages, age)
+			mu.Unlock()
+		},
+	}))
+	h.minter.ScriptTicket(ticket(1))
+	h.minter.ScriptTicket(ticket(2))
+	w := &deferralWatch{ch: make(chan struct{}, 4)}
+	h.conn.OnFrameDeferred(func() { w.ch <- struct{}{} })
+	t.Cleanup(func() { w.report(t) })
+	return h, w
+}
+
+// deferralWatch is the rendezvous for "the in-flight-poll servicing has parked
+// an outcome", waited on from the poll seam call's OWN goroutine — which is the
+// only place that can hold the call open across the deferral.
+//
+// It records a miss instead of failing, and the report is registered as a test
+// cleanup, because that goroutine outlives the test: a t.Error raised there
+// after the test has finished panics the whole binary, replacing a legible
+// assertion failure with a stack dump. The cleanup still runs while the test
+// can be failed, so the diagnostic survives.
+type deferralWatch struct {
+	ch chan struct{}
+	mu sync.Mutex
+	// missed records a lapsed wait — the shape the defect this file's
+	// grace-phase tests cover produces.
+	missed bool
+}
+
+// await blocks until a deferral lands, bounded by the watchdog, reporting
+// whether it did. A caller that gets false must stop rather than advance a
+// clock nothing is waiting on.
+func (w *deferralWatch) await() bool {
+	select {
+	case <-w.ch:
+		return true
+	case <-time.After(watchdog):
+		w.mu.Lock()
+		w.missed = true
+		w.mu.Unlock()
+		return false
+	}
+}
+
+func (w *deferralWatch) report(t *testing.T) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if w.missed {
+		t.Error("the staleness expiry was never deferred while the poll seam call was in flight")
+	}
+}
+
+// TestStalenessDuringAStalledPollTearsDownAtTheGraceDeadline is #758: a
+// silently half-open socket observed while a poll seam call is in flight.
+//
+// Nothing else can report it. The socket produces no frame and no read error,
+// so the `staleness` firing is the only evidence there is; the PollSource
+// returns only on cancellation, and the cancel would come from the teardown the
+// wait is preventing. Before this, pollPage's select carried neither staleness
+// case, the firing sat unconsumed, and CatchingUp waited forever.
+//
+// The wait terminates within DETECTION WINDOW + GRACE PHASE of the last frame:
+// one window to decide the socket is dead, one to bound the abandoned call.
+func TestStalenessDuringAStalledPollTearsDownAtTheGraceDeadline(t *testing.T) {
+	store := feedtest.NewStore()
+	store.Stored("pos-0")
+	var mu sync.Mutex
+	var ages []time.Duration
+	h, deferral := staleDeferralHarness(t, store, &ages, &mu)
+	h.polls.StallNext()
+
+	h.polls.OnCall(func(feedtest.PollCall) {
+		// The detection window lapses with the call outstanding.
+		h.clock.Advance(staleAfter)
+		if !deferral.await() {
+			return
+		}
+		// And then the grace phase.
+		h.clock.Advance(staleAfter)
+	})
+	h.start()
+	conn := h.driveToSubscribed()
+	conn.Serve(frameConfirm(noFilterIdentifier))
+
+	h.awaitTimer(timerBackoff)
+	if !conn.Closed() {
+		t.Fatal("the deferred staleness expiry must dispose the attempt")
+	}
+	if _, terminal, _ := h.snapshot(); terminal != nil {
+		t.Fatalf("staleness is never terminal; got %v", terminal)
+	}
+	assertPositions(t, store.Saves())
+	assertTimers(t, h.clock, map[string]int{timerBackoff: 1})
+	mu.Lock()
+	defer mu.Unlock()
+	if len(ages) != 1 || ages[0] != staleAfter {
+		t.Fatalf("StaleConnection ages = %v, want exactly one of %s", ages, staleAfter)
+	}
+}
+
+// TestStalenessDuringAnInFlightPollFinishesThePage is acceptance criterion 1
+// made deterministic. TestWalkFailureBetweenPages/staleness_expiry pins the
+// same ordering, but its poll returns while the firing is still unobserved, so
+// the state machine's select may take either ready case; this one holds the
+// seam call open until the deferral has demonstrably landed.
+//
+// The expiry is a SOCKET outcome, and transition 21 observes those at the page
+// boundary: the in-flight page is accepted, delivered and SAVED, and only then
+// is the socket torn down. Disposing the attempt where the expiry is observed
+// is the obvious remedy and it strands exactly that save.
+func TestStalenessDuringAnInFlightPollFinishesThePage(t *testing.T) {
+	store := feedtest.NewStore()
+	store.Stored("pos-0")
+	var mu sync.Mutex
+	var ages []time.Duration
+	h, deferral := staleDeferralHarness(t, store, &ages, &mu)
+	next := testOrigin + "/999/events.json?after=101"
+	h.polls.ScriptPage(eventfeed.PollPage{
+		Events:   []eventfeed.Event{pollEvent(101)},
+		Position: "pos-1",
+		Next:     next,
+	})
+	h.polls.ScriptPage(eventfeed.PollPage{Events: []eventfeed.Event{pollEvent(102)}, Position: "pos-2"})
+
+	var once sync.Once
+	h.polls.OnCall(func(feedtest.PollCall) {
+		once.Do(func() {
+			h.clock.Advance(staleAfter)
+			deferral.await()
+		})
+	})
+	h.start()
+	conn := h.driveToSubscribed()
+	conn.Serve(frameConfirm(noFilterIdentifier))
+
+	h.awaitTimer(timerBackoff)
+	if got := h.polls.CallCount(); got != 1 {
+		t.Fatalf("poll seam calls = %d, want 1 — the walk must not follow `next` on a stale socket", got)
+	}
+	if !conn.Closed() {
+		t.Fatal("the deferred staleness expiry must dispose the attempt")
+	}
+	assertLedger(t, h.ledger(), []string{"event 101", "save pos-1"})
+	assertPositions(t, store.Saves(), "pos-1")
+	assertIDs(t, h.deliveredIDs(), 101)
+	assertTimers(t, h.clock, map[string]int{timerBackoff: 1})
+	mu.Lock()
+	defer mu.Unlock()
+	if len(ages) != 1 || ages[0] != staleAfter {
+		t.Fatalf("StaleConnection ages = %v, want exactly one of %s", ages, staleAfter)
+	}
+}
+
+// settleWake bounds the one NEGATIVE rendezvous in this file: "the connector
+// did not take another wake". Nothing can satisfy it, so it is deliberately far
+// shorter than the watchdog — it is a wall-clock cost the passing path always
+// pays, and the price of the assertion having teeth. No virtual time and no
+// timing assertion depends on it; it only orders a wake that already happened
+// (or did not) ahead of the next clock advance.
+const settleWake = 250 * time.Millisecond
+
+// TestGracePhaseIsImmuneToFrameResets is the first half of acceptance
+// criterion 3. The grace phase is a fixed deadline read at the deferral, not a
+// window the peer can push: it bounds how long the connector waits for an
+// abandoned seam call, which has nothing to do with whether the peer is still
+// talking.
+//
+// The distinction is sharper than "does it eventually end", and the sharper
+// form is what is asserted. A frame arriving inside the phase re-arms staleness
+// and thereby hands the wait a WAKE, and a wake is enough to carry an
+// implementation that also moved its deadline to a correct-looking teardown.
+// So the test consumes that wake first, and then requires the phase to reach
+// its deadline on a wake of its OWN — which only a deadline the frame could not
+// move can produce.
+func TestGracePhaseIsImmuneToFrameResets(t *testing.T) {
+	store := feedtest.NewStore()
+	store.Stored("pos-0")
+	var mu sync.Mutex
+	var ages []time.Duration
+	h, deferral := staleDeferralHarness(t, store, &ages, &mu)
+	h.polls.StallNext()
+	h.drainHandled()
+	queued := make(chan struct{}, eventfeed.ExportPumpDepth)
+	h.conn.OnPumpHandedOff(func(bool) {
+		select {
+		case queued <- struct{}{}:
+		default:
+		}
+	})
+	wakes := make(chan struct{}, 8)
+	h.conn.OnSupersededWake(func() {
+		select {
+		case wakes <- struct{}{}:
+		default:
+		}
+	})
+
+	var conn *feedtest.Conn
+	h.polls.OnCall(func(feedtest.PollCall) {
+		h.clock.Advance(staleAfter)
+		if !deferral.await() {
+			return
+		}
+		// Half a window into the grace phase, the peer speaks again.
+		h.clock.Advance(staleAfter / 2)
+		drain(queued)
+		drain(wakes)
+		conn.Serve(framePing())
+		select {
+		case <-queued:
+		case <-time.After(watchdog):
+			t.Error("the ping never reached the hand-off queue")
+			return
+		}
+		// The ping's re-arm is legitimate and so is any wake it delivers —
+		// wakes may be early, and the deadline is what decides. Consuming it
+		// here is what leaves the phase nothing but its own wake to finish on.
+		select {
+		case <-wakes:
+		case <-time.After(settleWake):
+		}
+		// The remaining half still lapses the grace phase: had the ping moved
+		// it, nothing fires here and the wait is left holding a window half a
+		// window out of reach, with the wake it might have ridden already spent.
+		h.clock.Advance(staleAfter / 2)
+	})
+	h.start()
+	conn = h.driveToSubscribed()
+	conn.Serve(frameConfirm(noFilterIdentifier))
+
+	h.awaitTimer(timerBackoff)
+	if !conn.Closed() {
+		t.Fatal("a frame inside the grace phase must not extend it")
+	}
+	assertPositions(t, store.Saves())
+	mu.Lock()
+	defer mu.Unlock()
+	if len(ages) != 1 {
+		t.Fatalf("StaleConnection ages = %v, want exactly one", ages)
+	}
+}
+
+// TestGracePhaseIsImmuneToPumpSuspension is the second half of acceptance
+// criterion 3, and the one the previous borrowed bound failed.
+//
+// A blocked hand-off suspends staleness EVALUATION, on the premise that a full
+// queue proves the peer is outrunning a connector that is still consuming. This
+// wait is the one that deliberately stops consuming — an outcome is already
+// parked in the single deferral slot — so the premise is false by construction
+// here, and a bound that borrows the staleness VERDICT is re-armed forever by a
+// peer that keeps sending. The grace phase is a deadline instead, and a
+// deadline cannot be suspended.
+func TestGracePhaseIsImmuneToPumpSuspension(t *testing.T) {
+	store := feedtest.NewStore()
+	store.Stored("pos-0")
+	var mu sync.Mutex
+	var ages []time.Duration
+	h, deferral := staleDeferralHarness(t, store, &ages, &mu)
+	h.polls.StallNext()
+	h.drainHandled()
+	blocked := make(chan struct{}, 1)
+	h.conn.OnPumpBlocked(func() {
+		select {
+		case blocked <- struct{}{}:
+		default:
+		}
+	})
+
+	var conn *feedtest.Conn
+	h.polls.OnCall(func(feedtest.PollCall) {
+		h.clock.Advance(staleAfter)
+		if !deferral.await() {
+			return
+		}
+		// A peer that keeps sending fills the queue nothing is draining.
+		for i := 0; i <= eventfeed.ExportPumpDepth; i++ {
+			conn.Serve(framePing())
+		}
+		select {
+		case <-blocked:
+		case <-time.After(watchdog):
+			t.Error("the pump never blocked on a full hand-off queue")
+			return
+		}
+		// One grace phase from the deferral, with the suspension in force.
+		h.clock.Advance(staleAfter)
+	})
+	h.start()
+	conn = h.driveToSubscribed()
+	conn.Serve(frameConfirm(noFilterIdentifier))
+
+	h.awaitTimer(timerBackoff)
+	if !conn.Closed() {
+		t.Fatal("a blocked hand-off must not suspend the grace phase")
+	}
+	assertPositions(t, store.Saves())
+	mu.Lock()
+	defer mu.Unlock()
+	if len(ages) != 1 {
+		t.Fatalf("StaleConnection ages = %v, want exactly one", ages)
+	}
+}
+
+// TestDeferredFatalOutranksADeferredStalenessExpiry is acceptance criterion 4's
+// probe half. The deferral slot's third form carries no frame, and the
+// protocol-fatal probe runs at every deferred-disposition boundary — so it must
+// read the slot as "not a frame" explicitly rather than by accident of what
+// parsing a zero item happens to return, and it must still reach the fatal
+// frame the pump queued behind the expiry.
+//
+// The server's own verdict outranks the connector's: an
+// `invalid_event_stream_command` already read is Terminal(protocol_fatal), not
+// a staleness reconnect.
+func TestDeferredFatalOutranksADeferredStalenessExpiry(t *testing.T) {
+	store := feedtest.NewStore()
+	store.Stored("pos-0")
+	var mu sync.Mutex
+	var ages []time.Duration
+	h, deferral := staleDeferralHarness(t, store, &ages, &mu)
+	// A second mint that fails terminally: a connector that wrongly reconnects
+	// ends at Terminal(mint_failed) with two mint calls, so both assertions
+	// below discriminate rather than merely time out.
+	h.minter.ScriptError(&eventfeed.MintError{Kind: eventfeed.MintUnrecoverable})
+	h.polls.StallNext()
+	h.drainHandled()
+	queued := make(chan struct{}, eventfeed.ExportPumpDepth)
+	h.conn.OnPumpHandedOff(func(bool) {
+		select {
+		case queued <- struct{}{}:
+		default:
+		}
+	})
+
+	var conn *feedtest.Conn
+	h.polls.OnCall(func(feedtest.PollCall) {
+		h.clock.Advance(staleAfter)
+		if !deferral.await() {
+			return
+		}
+		// The fatal frame is served only once the expiry holds the slot, and
+		// the wait is for the pump's hand-off: the guarantee is about a frame
+		// the state machine can observe, so a test that raced the read would
+		// prove nothing.
+		drain(queued)
+		conn.Serve(frameDisconnect("invalid_event_stream_command", false))
+		select {
+		case <-queued:
+		case <-time.After(watchdog):
+			t.Error("the fatal frame never reached the hand-off queue")
+			return
+		}
+		h.clock.Advance(staleAfter)
+	})
+	h.start()
+	conn = h.driveToSubscribed()
+	conn.Serve(frameConfirm(noFilterIdentifier))
+	h.awaitEndOrReconnect()
+	h.join()
+
+	_, terminal, _ := h.snapshot()
+	if terminal == nil || terminal.Reason != eventfeed.ReasonProtocolFatal {
+		t.Fatalf("terminal = %v, want reason %q — the server's verdict was already read",
+			terminal, eventfeed.ReasonProtocolFatal)
+	}
+	if got := h.minter.Calls(); got != 1 {
+		t.Fatalf("mint calls = %d, want 1: a protocol-fatal rejection must not reconnect from any state", got)
+	}
+	assertPositions(t, store.Saves())
+	mu.Lock()
+	defer mu.Unlock()
+	if len(ages) != 0 {
+		t.Fatalf("StaleConnection ages = %v, want none — the fatal verdict governs", ages)
+	}
+}
+
+// TestSuspendedStalenessDuringAnInFlightPollDoesNotDefer is the other half of
+// acceptance criterion 1: the new cases in the in-flight-poll select evaluate
+// the firing under the SAME rule every other select applies, rather than
+// treating any firing as the socket's death.
+//
+// A firing whose window overlapped a blocked hand-off is not evidence — a full
+// queue proves the peer was sending faster than the connector consumed, the
+// opposite of a dead peer — so it is disregarded and re-armed, and the call is
+// still awaited. Deferring it instead abandons a live socket and a page the
+// server had already served.
+//
+// The arrangement is the only one that holds the suspension open across the
+// select: this wait DOES drain the hand-off queue, so a pump blocked while the
+// state machine is sitting in the select would be released by the very next
+// receive. Parking the state machine inside a frame-handled callback is what
+// keeps it from draining while the peer fills the queue.
+func TestSuspendedStalenessDuringAnInFlightPollDoesNotDefer(t *testing.T) {
+	store := feedtest.NewStore()
+	store.Stored("pos-0")
+	var mu sync.Mutex
+	var ages []time.Duration
+	h, _ := staleDeferralHarness(t, store, &ages, &mu)
+	h.polls.ScriptPage(eventfeed.PollPage{Position: "pos-1"})
+
+	gate := make(chan struct{})
+	parked := make(chan struct{})
+	var parkOnce sync.Once
+	h.conn.OnFrameHandled(func(kind string) {
+		if kind != "ping" {
+			return
+		}
+		parkOnce.Do(func() {
+			close(parked)
+			<-gate
+		})
+	})
+	blocked := make(chan struct{}, 1)
+	h.conn.OnPumpBlocked(func() {
+		select {
+		case blocked <- struct{}{}:
+		default:
+		}
+	})
+
+	var conn *feedtest.Conn
+	var once sync.Once
+	h.polls.OnCall(func(feedtest.PollCall) {
+		once.Do(func() {
+			// The state machine parks inside the callback for this ping, so it
+			// stops dequeuing while the peer keeps sending.
+			conn.Serve(framePing())
+			select {
+			case <-parked:
+			case <-time.After(watchdog):
+				t.Error("the state machine never parked in the frame-handled callback")
+				return
+			}
+			for i := 0; i <= eventfeed.ExportPumpDepth; i++ {
+				conn.Serve(framePing())
+			}
+			select {
+			case <-blocked:
+			case <-time.After(watchdog):
+				t.Error("the pump never blocked on a full hand-off queue")
+				return
+			}
+			// The window closes over a hand-off the pump spent blocked.
+			h.clock.Advance(staleAfter)
+			close(gate)
+		})
+	})
+	h.start()
+	conn = h.driveToSubscribed()
+	conn.Serve(frameConfirm(noFilterIdentifier))
+
+	// The socket survives, the page is served, and the walk reaches its head:
+	// a disregarded firing consumes neither the call nor the connection.
+	h.awaitStreaming()
+	if conn.Closed() {
+		t.Fatal("a firing whose window overlapped a blocked hand-off must not tear the socket down")
+	}
+	if _, terminal, _ := h.snapshot(); terminal != nil {
+		t.Fatalf("a suspended staleness firing is never terminal; got %v", terminal)
+	}
+	assertPositions(t, store.Saves(), "pos-1")
+	mu.Lock()
+	defer mu.Unlock()
+	if len(ages) != 0 {
+		t.Fatalf("StaleConnection ages = %v, want none — the firing was not evidence", ages)
+	}
+}
