@@ -642,10 +642,14 @@ status set into the steps above.
 **A parsed `Retry-After` is honoured at any status a retry is already going to happen at.** There is
 no status gate of its own, and this is a property of retrying rather than of one loop: §7's three
 gates decide whether *this* response is retried on the generated-operation path, and §14's hop-1
-policy decides it for `DownloadURL`. Wherever the deciding rule says yes, the parsed value replaces
-the backoff term — at 429, at 503, and at every status a declared retry set carries today or grows to
-carry later. Where it says no, the value may still be parsed and surfaced on the error for the caller
-to read, but nothing sleeps on it.
+policy decides it for `DownloadURL`. Wherever the deciding rule says yes, the parsed value governs the
+wait — at 429, at 503, and at every status a declared retry set carries today or grows to carry later.
+Where it says no, the value may still be parsed and surfaced on the error for the caller to read, but
+nothing sleeps on it.
+
+That is a rule about **which statuses**, and it is the only thing this section decides for every loop
+at once. *How* the value composes with whatever delay the loop would otherwise have computed is a
+separate question with a separate answer per loop, settled under "Composition is per-loop" below.
 
 RFC 9110 §10.2.3 defines `Retry-After` as a general response header field restricted to no status
 set, and attaches explicit semantics to two cases: **503**, where the value is how long the service
@@ -674,6 +678,46 @@ wrap — and a bound of that kind belongs at the sleep, so a caller reading the 
 still sees what the server said. TypeScript's `Math.min(seconds × 1000, MAX_TIMEOUT_MS)`, applied in
 both of its retry loops as the delay is computed, is the worked example: the parser's result stays
 the public `retryAfter`, and only what reaches the timer is clamped.
+
+Read that paragraph narrowly: it says what may not be done *to* the value — not capped, not summed
+with a jitter term. It does not say what the value is combined *with*, which is the next paragraph's
+subject and is not the same question. `max(interval, retryAfter)` neither caps the value nor adds to
+it.
+
+**Composition is per-loop, and every loop states its own.** Honouring settles that the parsed value
+governs the wait. Whether it *replaces* the delay the loop would otherwise have computed, *floors*
+it, or is combined with it some other way is not one answer, because the delay loops in this document
+are not one mechanism: two schedule a retry of the same request, one paces a poll the server is
+throttling against a fixed code lifetime, and one selects a gap between whole reconnect cycles. A
+single composition asserted here would have silently overridden three of the five rows below.
+
+So the obligation runs the other way. **Each delay loop states its own composition in its own section,
+and a delay loop added to this document later MUST state its own rather than inherit one from here.**
+There is deliberately no default to fall back on: a loop that says nothing is under-specified, not
+governed by §7's answer. The rows that exist today:
+
+| Loop | Composition with the locally computed delay | Stated in |
+|---|---|---|
+| §7 generated-operation retry | **replaces** it — step 3h computes `parsed × 1000` *instead of* the backoff formula, never a sum | §7 "Retry Algorithm" step 3h, "Backoff Formula" |
+| §14 `DownloadURL` hop 1 | **replaces** it, at every status in that hop's own `{429, 502, 503, 504}` set | §14 "Hop-1 Retry" |
+| §16 device-flow poll | **`max` with the current `interval`** — a one-shot `nextWaitOverride = max(interval, retryAfter)`, still clamped to the remaining code lifetime by the wait rule, then decayed | §16 "RFC 8628 Device Authorization Grant" |
+| §23 reconnect `backoff` timer | **floors** the full-jitter draw, and wins outright when it exceeds the cap | §23 "Clock, Timers, and Virtual Time" |
+| §23 `poll-retry` timer | **replaces** the full-jitter draw — waited exactly | §23, same table |
+
+§23 is two rows because its two timers genuinely differ, and that is the sharpest evidence that one
+rule would not have fitted. A 1-second header against a 50-second selected reconnect delay waits 50
+seconds: that timer's job is to space whole cycles apart after repeated failure, and a server naming
+one second has said nothing about whether the condition that failed the last four cycles has cleared.
+The same header on a `poll-retry` waits exactly one second, because there the server is pacing
+precisely the request that is about to be re-sent. Both are `Retry-After` honoured at a status that
+was going to be retried anyway; only the composition differs, which is the whole point.
+
+The five rows do not conflict with each other — they are five loops, not five answers to one
+question — and this paragraph converges nothing: each section keeps the behaviour it already has, and
+what changes is that it now states it on purpose rather than by omission. One *implementation*
+divergence sits on this axis and is already recorded below: the generated Go client sleeps
+`retryDelay + rand(0, 100ms)` on the §7 row, which is the added jitter the paragraph above forbids,
+and it is tracked with the rest in #775.
 
 **Representability is not a policy cap, and it is exempt from the "never in the parser" rule.** A
 policy cap answers "how long *should* a caller wait"; representability answers "can this host express
@@ -979,6 +1023,12 @@ Where `retry_index` is the 0-indexed retry count (first retry = 0, second retry 
 
 Retry-After header value takes precedence when present and valid, at every status this loop reaches
 (§6 "Retry-After Honouring").
+
+**Composition (§6 "Composition is per-loop"): a valid `Retry-After` REPLACES this formula.** Step 3h
+computes one branch or the other and never a sum, so neither the `2^(retry_index)` term nor the
+`random(0, max_jitter)` term is present in a server-directed delay. This loop's answer is stated here
+because §6 deliberately supplies no default: a delay loop that does not state its composition is
+under-specified rather than governed by this one.
 
 ### Backoff Ceiling `[CONFLICT]`
 
@@ -1703,6 +1753,8 @@ The authenticated first hop retries on **network errors plus {429, 502, 503, 504
 
 That last clause changed with §6's "Retry-After Honouring", and the reason it changed is the reason this set is declared here at all: honouring is derived from retry eligibility, so a loop that declares its own eligibility set inherits the honouring rule over that set rather than over §7's. A 502, 503 or 504 on hop 1 carrying `Retry-After` therefore waits what the origin named, exactly as a 429 does. `[CONFLICT: every SDK's download loop honours it on 429 alone today — go/pkg/basecamp/download.go, typescript/src/download.ts and their four counterparts — so this is owed convergence, tracked with the rest in #775. The existing downloads.json case covering the 429 path stays valid; the other three statuses need cases of their own.]` The honoured value is subject to §6's other two clauses on this path as well: nothing is added to it, and it must be awaited through a cancellation handle the caller holds — which TypeScript's download loop, listed in §6's table, does not yet give them.
 
+**Composition (§6 "Composition is per-loop"): a valid `Retry-After` REPLACES this hop's exponential-plus-jitter delay**, the same answer §7's loop gives and for the same reason — the wait is pacing a retry of exactly the request the origin just answered. It is stated here rather than inherited: §6 supplies no default, so a loop that declares its own retry set (as this one does) declares its own composition too.
+
 "Network error" means a transport failure, with one carve-out that SDKs inherit from their main GET loop rather than restate: an attempt that exhausted the caller's entire per-attempt time budget (a request timeout) is not retried. The timeout is per attempt, so a retry spends another full budget on the same slowness rather than riding out a blip. Kotlin implements this explicitly; SDKs whose transports surface timeouts indistinguishably from other connection failures retry them.
 
 Attempt budget per SDK — disabling retry (each SDK's spelling of `enable_retry=false` or a zero cap) yields exactly ONE hop-1 attempt:
@@ -2162,6 +2214,19 @@ FUNCTION pollDeviceToken(tokenEndpoint, clientId, deviceCode, interval, expiresI
        # wait and gone.
 END
 ```
+
+**Composition (§6 "Composition is per-loop"): this loop takes `max(interval, retryAfter)`, not the
+value alone.** §6 settles that a `Retry-After` on a status about to be retried is honoured, and
+forbids capping it or adding jitter to it; `max` does neither — it selects between two waits rather
+than shortening or padding either. The `max` is what makes this loop's answer differ from §7's, and
+it is deliberate: `interval` here is not a backoff term the server is better informed about, it is
+the polling cadence the authorization server itself handed out in the device-code response and then
+raised with each `slow_down`. A 429 naming a *shorter* wait than the cadence the same server just
+prescribed is not permission to poll faster than that cadence, so the larger of the two wins. Two
+further bounds, already stated in the block above, are properties of this flow rather than of
+`Retry-After`: the override applies to the next wait only and then decays, and the wait rule still
+clamps it to the remaining code lifetime — a *domain* ceiling on how long polling can usefully
+continue, not the locally computed backoff ceiling §6 exempts the value from.
 
 ```
 FUNCTION performDeviceLogin(config: OAuthConfig, clientId, scope?, display, clock?) → Token
@@ -3437,6 +3502,20 @@ term at `MAX_BACKOFF_DELAY_MS` = 30s and adds jitter on top; this one draws unif
 governs attempts inside a seam call; this governs cycles between them. The same 60s cap
 bounds `poll-retry`'s locally computed jitter draw; a server-directed `Retry-After` is
 exempt from both caps, per §7.
+
+**Composition (§6 "Composition is per-loop"): these two timers answer differently, and both
+answers are in the table above.** `backoff` takes `Retry-After` as a **floor** —
+`max(draw, retryAfter)` — so it wins only where it is the longer wait, and wins outright
+above the 60s cap. `poll-retry` takes it as an **exact** wait, replacing the draw. Nothing
+here is new behaviour; §6 supplies no default composition, so the connector states its own,
+and it needs two rows because the two timers are not doing the same job. `backoff` spaces
+whole reconnect cycles apart after repeated failure: a 1s header against a 50s draw waits
+50s, because a server naming one second has said nothing about whether the condition that
+failed the last several cycles has cleared, and the connector has no cheaper way to find
+out than to keep the gap it selected. `poll-retry` paces the re-send of one throttled poll
+against the same origin that just answered it, which is the §7 situation exactly, so it
+gets the §7 answer. Both are still `Retry-After` honoured at a status that was going to be
+retried anyway — only the composition differs.
 
 **Saturate before exponentiating** — §7's overflow rule applies to both formulas: an
 implementation MUST compare the failure index (n or k) against the cap-crossing exponent
