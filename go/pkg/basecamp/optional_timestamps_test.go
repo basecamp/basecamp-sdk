@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"unicode"
 
 	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
 	"github.com/basecamp/basecamp-sdk/go/pkg/types"
@@ -346,14 +347,10 @@ func collectTimestampFields(t fatalReporter, files map[string]*ast.File, wrapper
 	t.Helper()
 	out := map[[2]string]timestampField{}
 	for path, file := range files {
-		ast.Inspect(file, func(n ast.Node) bool {
-			ts, ok := n.(*ast.TypeSpec)
-			if !ok {
-				return true
-			}
+		for _, ts := range packageTypeSpecs(file) {
 			st, ok := ts.Type.(*ast.StructType)
 			if !ok {
-				return true
+				continue
 			}
 			for _, f := range st.Fields.List {
 				key, tagged := jsonKey(f)
@@ -386,16 +383,55 @@ func collectTimestampFields(t fatalReporter, files map[string]*ast.File, wrapper
 					file:    filepath.Base(path),
 				}
 			}
-			return true
-		})
+		}
 	}
 	return out
 }
 
-// jsonKey returns a field's json name and whether it carries a readable json
-// tag at all. A missing tag, an unparsable one, and one without a json key all
-// read as untagged — which for an anonymous field means "promotion source",
-// the reported side of the choice rather than the credited one.
+// packageTypeSpecs returns a file's PACKAGE-LEVEL type declarations, and only
+// those. A type declared inside a function body is reachable by ast.Inspect
+// but is never what a struct field resolves to, and this walk keys everything
+// — the (struct, json key) pairing and the embed lookup below — by bare type
+// name. A function-local `type Todo struct{…}` walked as if it were the
+// package's would overwrite the real Todo's entries with a declaration Go
+// never consults. There are none in the walked sources today; this keeps it
+// that way by construction rather than by luck.
+func packageTypeSpecs(file *ast.File) []*ast.TypeSpec {
+	var out []*ast.TypeSpec
+	for _, decl := range file.Decls {
+		gen, ok := decl.(*ast.GenDecl)
+		if !ok || gen.Tok != token.TYPE {
+			continue
+		}
+		for _, spec := range gen.Specs {
+			if ts, ok := spec.(*ast.TypeSpec); ok {
+				out = append(out, ts)
+			}
+		}
+	}
+	return out
+}
+
+// jsonKey returns the name encoding/json would give a field, and whether it
+// carries a json tag at all. A missing tag, an unparsable one, one without a
+// json key, and one whose name encoding/json REJECTS all yield the empty name
+// — which for an anonymous field means "promotion source", the reported side
+// of the choice rather than the credited one.
+//
+// The rejection is the subtle one. encoding/json runs its own isValidTag over
+// the name and, when it fails, RESETS the name to empty (encode.go's
+// typeFields: `if !isValidTag(name) { name = "" }`). An anonymous struct field
+// tagged `json:"bad\name"` is therefore promoted exactly as if it were
+// untagged — so reading the name structurally and stopping there would send a
+// promoting embed down the ordinary-field path and lose its timestamps from
+// the pairing without a word, which is the #722 direction in a narrower band.
+//
+// What this walk still does not pair on: a NAMED field whose json name is
+// rejected (or absent) goes on the wire under its Go identifier, and this walk
+// keys by json name only, so it is not collected. That blind spot predates
+// this helper — it is the same one an untagged named field has always had —
+// and it is in the harmless direction: nothing is promoted, so nothing moves
+// out from under the (struct, json key) pairing.
 func jsonKey(f *ast.Field) (string, bool) {
 	if f.Tag == nil {
 		return "", false
@@ -408,7 +444,33 @@ func jsonKey(f *ast.Field) (string, bool) {
 	if !ok {
 		return "", false
 	}
-	return strings.Split(tag, ",")[0], true
+	name := strings.Split(tag, ",")[0]
+	if !validJSONName(name) {
+		return "", true
+	}
+	return name, true
+}
+
+// validJSONName mirrors encoding/json's isValidTag (encode.go), which is what
+// decides whether a struct tag's name is honored or discarded. Transcribed
+// rather than approximated: the accepted punctuation set is exactly the
+// library's, since narrowing it re-creates the promotion bug this guards
+// against for the characters wrongly rejected, and widening it hides the bug
+// for the characters wrongly accepted. Backslash, quote and comma are absent
+// from the set on purpose — the library reserves them.
+func validJSONName(name string) bool {
+	if name == "" {
+		return false
+	}
+	for _, c := range name {
+		switch {
+		case strings.ContainsRune("!#$%&()*+-./:;<=>?@[]^_{|}~ ", c):
+			// Punctuation the library allows in a tag name.
+		case !unicode.IsLetter(c) && !unicode.IsDigit(c):
+			return false
+		}
+	}
+	return true
 }
 
 // goFieldName is the Go identifier a field is reported under. A tagged
@@ -487,20 +549,40 @@ func assertEmbedPromotesNoTimestamps(t fatalReporter, path, owner string, expr a
 // whose underlying type cannot carry a JSON-tagged field. Only the forms that
 // are conclusively non-promoting count; anything else — including a name that
 // resolves to another name — is left for the caller to report.
+//
+// # What this matcher can and cannot resolve
+//
+// It matches a BARE NAME against the package-level type declarations of the
+// files it was handed, which is the whole of its competence:
+//
+//   - Package-level only. A `type Audit interface{…}` declared inside some
+//     function body used to satisfy this lookup and vouch for an unrelated
+//     package-level `type Audit struct{…}` — the type Go actually resolves in
+//     the embedding struct — silently disabling the guard for a shape that
+//     really does promote. Only ast.File.Decls is read now.
+//   - One file set at a time. Each caller passes ONE package's files (the
+//     wrapper surface, or client.gen.go alone), so a name means what it means
+//     in that package. Nothing cross-references the two sets, which is why a
+//     name can be resolved by bare identifier at all.
+//   - Unqualified names only. The caller hands this an *ast.Ident, so a
+//     qualified embed (`generated.Foo`, `types.Bar`) never reaches here and
+//     falls straight to the report — the right answer, since another package's
+//     declarations are not in these files to read.
+//
+// Every one of those boundaries is safe in the same direction: a name this
+// cannot vouch for is REPORTED. The fatal is the protection, not this lookup.
 func declaresNonPromotingType(files map[string]*ast.File, name string) bool {
 	found := false
 	for _, file := range files {
-		ast.Inspect(file, func(n ast.Node) bool {
-			ts, ok := n.(*ast.TypeSpec)
-			if !ok || ts.Name.Name != name {
-				return true
+		for _, ts := range packageTypeSpecs(file) {
+			if ts.Name.Name != name {
+				continue
 			}
 			switch ts.Type.(type) {
 			case *ast.InterfaceType, *ast.MapType, *ast.ArrayType, *ast.FuncType, *ast.ChanType:
 				found = true
 			}
-			return true
-		})
+		}
 	}
 	return found
 }
@@ -598,6 +680,27 @@ func TestCollectTimestampFieldsReportsUnresolvableEmbed(t *testing.T) {
 				"type Audit struct {\n\tCreatedAt *time.Time `json:\"created_at\"`\n}\n\n" +
 				"type Wrapper struct {\n\tAudit `json:\",omitempty\"`\n}\n",
 		},
+		{
+			// A structurally readable but INVALID name is reset to empty by
+			// encoding/json, which then promotes the embed exactly as if it
+			// were untagged. Reading the name without validating it sends a
+			// promoting embed down the ordinary-field path — #722 again, in
+			// the band of names the library refuses.
+			name: "embed tagged with a name encoding/json rejects",
+			src: "package p\n\nimport \"time\"\n\n" +
+				"type Audit struct {\n\tCreatedAt *time.Time `json:\"created_at\"`\n}\n\n" +
+				"type Wrapper struct {\n\tAudit `json:\"bad\\\\name\"`\n}\n",
+		},
+		{
+			// The type Go resolves in Wrapper is the PACKAGE-LEVEL Audit. A
+			// function-local declaration of the same name must not vouch for
+			// it: that is a silent skip of a genuinely promoting embed.
+			name: "function-local type shadowing the embedded name",
+			src: "package p\n\nimport \"time\"\n\n" +
+				"type Audit struct {\n\tCreatedAt *time.Time `json:\"created_at\"`\n}\n\n" +
+				"type Wrapper struct {\n\tAudit\n}\n\n" +
+				"func shadow() {\n\ttype Audit interface{ Foo() }\n\tvar _ Audit\n}\n",
+		},
 	}
 
 	for _, c := range cases {
@@ -630,6 +733,7 @@ func TestCollectTimestampFieldsTreatsTaggedEmbedAsOrdinaryField(t *testing.T) {
 		"type Nested struct {\n\tAudit `json:\"audit\"`\n}\n\n" +
 		"type Wrapper struct {\n\tFlexTime `json:\"created_at\"`\n}\n\n" +
 		"type PointerWrapper struct {\n\t*FlexTime `json:\"updated_at\"`\n}\n\n" +
+		"type Punctuated struct {\n\t*FlexTime `json:\"created-at.v2\"`\n}\n\n" +
 		"type Dropped struct {\n\tFlexTime `json:\"-\"`\n}\n"
 
 	rec, collected := collectFromSource(t, src, map[string]bool{"FlexTime": true})
@@ -672,6 +776,97 @@ func TestCollectTimestampFieldsTreatsTaggedEmbedAsOrdinaryField(t *testing.T) {
 	if _, ok := collected[[2]string{"Nested", "created_at"}]; ok {
 		t.Error("a tagged embed's inner timestamp was paired against the EMBEDDING struct — " +
 			"a tagged embed nests its fields under its own key, it does not promote them")
+	}
+	// A name the library refuses is a name it does not use — but `created-at.v2`
+	// is made entirely of characters isValidTag allows, so treating it as
+	// invalid would push a safe ordinary field into the report instead.
+	if got, ok := collected[[2]string{"Punctuated", "created-at.v2"}]; !ok {
+		t.Error("a json name built from punctuation encoding/json ACCEPTS was not collected — " +
+			"the tag-name validation is narrower than the library's")
+	} else if !got.pointer {
+		t.Errorf("Punctuated.created-at.v2 collected with pointer=false, want true")
+	}
+}
+
+// TestCollectTimestampFieldsIgnoresFunctionLocalTypes pins the other half of
+// the package-level rule. The lookup that vouches for an embed is not the only
+// place a bare type name is resolved — the pairing map is keyed by one too, so
+// a function-local declaration walked as if it were the package's overwrites
+// the real entry and the parity assertion then judges a type no field has.
+func TestCollectTimestampFieldsIgnoresFunctionLocalTypes(t *testing.T) {
+	src := "package p\n\nimport \"time\"\n\n" +
+		"type Todo struct {\n\tCreatedAt *time.Time `json:\"created_at\"`\n}\n\n" +
+		"func helper() {\n\ttype Todo struct {\n\t\tCreatedAt time.Time `json:\"created_at\"`\n\t}\n\tvar _ Todo\n}\n"
+
+	rec, collected := collectFromSource(t, src, map[string]bool{})
+	if rec.fatal {
+		t.Fatalf("unexpected report: %s", rec.message)
+	}
+	got, ok := collected[[2]string{"Todo", "created_at"}]
+	if !ok {
+		t.Fatal("package-level Todo.created_at was not collected at all")
+	}
+	if !got.pointer {
+		t.Error("the function-local Todo overwrote the package-level one, which is the " +
+			"declaration Go actually resolves — its value-typed CreatedAt would be " +
+			"compared against the generated schema in place of the real field")
+	}
+}
+
+// TestValidJSONNameMatchesEncodingJSON is a differential test against the
+// library itself, because validJSONName is a transcription of unexported code
+// (encode.go's isValidTag) and a transcription is exactly the kind of thing
+// that is verified by reading and wrong anyway. Rather than restate the rule,
+// each name is put on a real struct tag through reflect.StructOf and marshaled:
+// encoding/json emits the tag name when it accepts it and falls back to the Go
+// field name when it does not, so the wire answers the question directly.
+//
+// Both directions matter. A name wrongly called invalid pushes a safe ordinary
+// field into the report (noise); a name wrongly called valid lets a promoting
+// embed past the report (silence, and the #722 bug back).
+func TestValidJSONNameMatchesEncodingJSON(t *testing.T) {
+	// The punctuation the library accepts, spelled out here independently of
+	// validJSONName so the two cannot drift together: every rune of it must
+	// survive on the wire below.
+	const accepted = "!#$%&()*+-./:;<=>?@[]^_{|}~ "
+	spelled := []string{
+		"created_at", "createdAt", "CreatedAt2", "é", "日付",
+		"", " ", "a b",
+		"bad\\name", "quote\"name", "tick`name", "apos'name",
+		"new\nline", "tab\tname",
+		"☃", "emoji😀",
+	}
+	names := make([]string, 0, len(spelled)+len(accepted))
+	names = append(names, spelled...)
+	for _, c := range accepted {
+		names = append(names, "a"+string(c)+"b")
+	}
+
+	for _, name := range names {
+		t.Run(fmt.Sprintf("%q", name), func(t *testing.T) {
+			typ := reflect.StructOf([]reflect.StructField{{
+				Name: "F",
+				Type: reflect.TypeOf(""),
+				Tag:  reflect.StructTag(`json:` + strconv.Quote(name)),
+			}})
+			b, err := json.Marshal(reflect.New(typ).Elem().Interface())
+			if err != nil {
+				t.Fatalf("marshal: %v", err)
+			}
+			var keyed map[string]string
+			if err := json.Unmarshal(b, &keyed); err != nil {
+				t.Fatalf("unmarshal %s: %v", b, err)
+			}
+			_, honored := keyed[name]
+			// The fallback key is the Go field name. A name that happens to BE
+			// "F" is honored and falls back to the same key, so it cannot
+			// distinguish the two — it is not in the table.
+			if honored != validJSONName(name) {
+				t.Errorf("validJSONName(%q) = %v, but encoding/json emitted %s — the "+
+					"transcription of isValidTag disagrees with the library it mirrors",
+					name, validJSONName(name), b)
+			}
+		})
 	}
 }
 
