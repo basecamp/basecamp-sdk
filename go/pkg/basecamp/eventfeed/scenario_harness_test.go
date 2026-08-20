@@ -59,6 +59,15 @@ type scenarioHarness struct {
 
 	clock *feedtest.Clock
 
+	// Arrival strictness. program is the step script a checkpoint save or an
+	// outbound frame is judged against when it arrives, and cursor is the step
+	// the driver has reached in it. Both live under h.mu because the judgement
+	// has to be made in the same critical section that records the action —
+	// that is the whole of the family README's "observed while the current
+	// step is anything other than their matching expect step".
+	program *driver
+	cursor  int
+
 	cableSrv  *httptest.Server
 	apiSrv    *httptest.Server
 	apiOrigin string
@@ -218,6 +227,60 @@ func (h *scenarioHarness) violate(format string, args ...any) {
 	h.notifyLocked()
 }
 
+// --- arrival strictness --------------------------------------------------
+
+// attach binds the driver whose step script the arrival rule judges against.
+// Until it is bound the harness has no script — the driver's own unit tests
+// construct a bare harness and drive its record paths directly — and the rule
+// records nothing.
+func (h *scenarioHarness) attach(d *driver) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.program = d
+}
+
+// enterStep moves the step pointer onto index. It only ever moves FORWARD:
+// `await` hands the pointer to the next step at the instant a rendezvous is
+// satisfied, so by the time the step loop reaches that step its own call is
+// already stale and must not rewind it.
+func (h *scenarioHarness) enterStep(index int) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if index > h.cursor {
+		h.cursor = index
+	}
+}
+
+// advanceLocked is the atomic half of the handoff the family README names: it
+// runs inside the SAME critical section that observed a rendezvous being
+// satisfied, so an action the connector emits the instant it is satisfied is
+// judged against the next step rather than against the stale one. Callers hold
+// h.mu.
+func (h *scenarioHarness) advanceLocked() {
+	if h.program != nil && h.cursor < len(h.program.sc.Steps) {
+		h.cursor++
+	}
+}
+
+// arrivalStrictLocked records a violation when an arrival-strict action —
+// a checkpoint save, or an outbound frame — is observed while the current step
+// is anything other than the expect step that matches it. Callers hold h.mu
+// and call this BEFORE recording the action, so the matching step's own
+// "an action of mine is waiting" condition is still false and cannot be
+// mistaken for the step having already been satisfied.
+func (h *scenarioHarness) arrivalStrictLocked(want, what string) {
+	if h.program == nil {
+		return
+	}
+	kind, where := h.program.currentStepLocked()
+	if kind == want {
+		return
+	}
+	h.violations = append(h.violations, fmt.Sprintf(
+		"%s arrived at %s, not at its matching %s step — checkpoint saves and outbound frames are arrival-strict",
+		what, where, want))
+}
+
 // await blocks until check reports satisfaction, fails immediately when check
 // reports an unsatisfiable state, and gives up at the watchdog. check runs
 // under h.mu and may consume harness state on the satisfying call.
@@ -231,7 +294,9 @@ func (h *scenarioHarness) await(what string, check func() (bool, string)) error 
 		}
 		ok, bad := false, ""
 		if violation == "" {
-			ok, bad = check()
+			if ok, bad = check(); ok {
+				h.advanceLocked()
+			}
 		}
 		wake := h.changed
 		h.mu.Unlock()
@@ -261,6 +326,10 @@ func (h *scenarioHarness) describe() string {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	var b strings.Builder
+	if h.program != nil {
+		_, where := h.program.currentStepLocked()
+		fmt.Fprintf(&b, "  current step: %s\n", where)
+	}
 	fmt.Fprintf(&b, "  state=%s delivered=%v buffered=%d\n", h.state, h.delivered, h.occupancy)
 	fmt.Fprintf(&b, "  mintCalls=%d (%d parked) pollCalls=%d (%d parked) connects=%d\n",
 		h.mintCalls, len(h.pendingMints), h.pollCalls, len(h.pendingPolls), len(h.connects))
@@ -319,10 +388,12 @@ func (h *scenarioHarness) Load(_ context.Context, _ eventfeed.CheckpointKey) (st
 // Save implements eventfeed.CheckpointStore's save, recording the call with
 // its ordering witness and returning the scripted outcome. A save beyond the
 // script is a violation — the exact store-call script is what proves a
-// subsequent save is attempted after a failure.
+// subsequent save is attempted after a failure — and so is a save that arrives
+// while the script is anywhere but its matching expectCheckpoint step.
 func (h *scenarioHarness) Save(_ context.Context, _ eventfeed.CheckpointKey, position string) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
+	h.arrivalStrictLocked("expectCheckpoint", fmt.Sprintf("the checkpoint save of %q", position))
 	h.saves = append(h.saves, saveRecord{position: position, deliveredAt: len(h.delivered)})
 	var err error
 	if h.saveScripted {
@@ -390,7 +461,7 @@ func (h *scenarioHarness) readPeer(peer *cablePeer) {
 			var closeErr websocket.CloseError
 			h.mu.Lock()
 			if errors.As(err, &closeErr) {
-				peer.frames = append(peer.frames, clientFrame{kind: "close", code: int(closeErr.Code)})
+				h.recordClientFrameLocked(peer, clientFrame{kind: "close", code: int(closeErr.Code)})
 			}
 			peer.dead = true
 			h.notifyLocked()
@@ -401,11 +472,29 @@ func (h *scenarioHarness) readPeer(peer *cablePeer) {
 			h.violate("the connector sent a non-text cable frame")
 			continue
 		}
-		h.mu.Lock()
-		peer.frames = append(peer.frames, clientFrame{kind: "text", data: slices.Clone(data)})
-		h.notifyLocked()
-		h.mu.Unlock()
+		h.recordClientFrame(peer, clientFrame{kind: "text", data: slices.Clone(data)})
 	}
+}
+
+// recordClientFrame records one outbound action under the arrival rule.
+func (h *scenarioHarness) recordClientFrame(peer *cablePeer, frame clientFrame) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.recordClientFrameLocked(peer, frame)
+	h.notifyLocked()
+}
+
+// recordClientFrameLocked is the arrival-strict half: an outbound frame is
+// legal only while the script is at the expect step that matches it. The close
+// arm shares this path because a close observed early is the same defect as a
+// subscribe observed early — the connector acting ahead of the script.
+func (h *scenarioHarness) recordClientFrameLocked(peer *cablePeer, frame clientFrame) {
+	if frame.kind == "close" {
+		h.arrivalStrictLocked("expectClientClose", "the connector's close of the socket")
+	} else {
+		h.arrivalStrictLocked("expectSubscribe", fmt.Sprintf("the outbound frame %s", frame.data))
+	}
+	peer.frames = append(peer.frames, frame)
 }
 
 // handleAPI is the API origin's sentinel: the connector reaches the mint and
