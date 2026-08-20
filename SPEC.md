@@ -742,10 +742,12 @@ requirement 4): the ceiling governs the locally computed formula, and a client t
 server's instruction retries sooner than the origin asked for. **Nothing is added to it either** — a
 jitter term is part of the locally computed formula, where it exists to decorrelate clients choosing
 the same delay independently; a delay the origin named is already the origin's choice, so adding to
-it makes the client wait longer than it was told for no benefit. An implementation MAY bound it
-against a **host limit** — a timer that cannot schedule the value, a conversion that would trap or
-wrap — and a bound of that kind belongs at the sleep, so wherever the error carries `retry_after` the
-caller reads what the server said, never the clamped copy. TypeScript's `Math.min(seconds × 1000,
+it makes the client wait longer than it was told for no benefit. An implementation MAY have a **host
+limit** — a timer that cannot schedule the value, a conversion that would trap or wrap — and where a
+parsed value meets one it MUST bound the value there: saturate, per the second representability tier
+below, never let the conversion trap or wrap, and never fall back to the local backoff. A bound of
+that kind belongs at the sleep, so wherever the error carries `retry_after` the caller reads what the
+server said, never the clamped copy. TypeScript's `Math.min(seconds × 1000,
 MAX_TIMEOUT_MS)`, applied in both of its retry loops as the delay is computed, is the worked example:
 the parser's result stays the public `retryAfter`, and only what reaches the timer is clamped.
 
@@ -835,7 +837,10 @@ observation, verified against `wt/lane-spec` @ `fc5645dfe` — kept because the 
 width is unreadable without it, not as a live claim: TypeScript rejects above
 `Number.MAX_SAFE_INTEGER`, Kotlin above `Int.MAX_VALUE` on the delta-seconds form — its date form
 computes in `Long` and saturates to `Int.MAX_VALUE` instead, which is the parser-output carve-out
-above rather than a rejection — Go and Swift above their 64-bit integers.)*
+above rather than a rejection — Swift above its 64-bit `Int`, and Go above native `int`: both its
+hand-written and its generated parser are `strconv.Atoi` at that revision, so the width is 32 bits on
+the 32-bit targets this repository keeps viable and 64 elsewhere. #796 moves the hand-written parser
+to `ParseInt` into `int64` `[PENDING #796]`; the generated one stays `Atoi` until #798.)*
 Four hosts reject cleanly at thresholds differing by nine orders of magnitude without any of them
 misbehaving, which is the evidence that the width does not need fixing — a `Retry-After` naming a wait
 longer than the host can count is not a delay any caller is worse off for missing.
@@ -2180,8 +2185,11 @@ FUNCTION pollDeviceToken(tokenEndpoint, clientId, deviceCode, interval, expiresI
 END
 ```
 
-**Scope first (§6 "What 'retry' means here"): only the `429` + `too_many_requests` branch is a retry
-at all.** `authorization_pending` and `slow_down` are 4xx protocol *answers* — the completion poll
+**Scope first (§6 "What 'retry' means here"): of the branches that received a response, only the
+`429` + `too_many_requests` branch is a retry.** The connection-timeout branch is the loop's other
+in-scope path — a transport failure re-issued with backoff, §6's first clause, and §6's table already
+lists it — but no response means no header, so it has nothing to honour and nothing to compose.
+`authorization_pending` and `slow_down` are 4xx protocol *answers* — the completion poll
 asked whether the user had finished and was told "not yet" — so re-issuing the POST is polling, not
 re-attempting a failed request, and §6's honouring rule does not reach it. That is why this loop reads
 the header on one branch and not the others, and it is a boundary rather than an omission: there is
