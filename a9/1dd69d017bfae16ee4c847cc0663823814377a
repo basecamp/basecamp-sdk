@@ -1,0 +1,30 @@
+SPEC.md
+  s_b98b4a85078d3e::t_cfe392a9bcca6f 1158-1171
+  s_b98b4a85078d3e::t_54ee9e26190e76 1155-1157
+  s_b98b4a85078d3e::t_68eb3d59a337b1 1172-1174
+  s_911d425132a6ca::t_1faa179da14424 60,583,1110-1154,1175-1216,3225-3229,3412-3425
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "a91dd69d017bfae16ee4c847cc0663823814377a",
+  "prompts": {},
+  "sessions": {
+    "s_911d425132a6ca": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a3d47ac199c0b7ca1",
+        "model": "unknown"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_b98b4a85078d3e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5bbef980-f552-48e7-bb51-0b748caa71ac",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
