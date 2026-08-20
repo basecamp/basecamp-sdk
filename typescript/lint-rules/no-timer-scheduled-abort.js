@@ -49,10 +49,12 @@
  * recognizes, including ones not written yet. It does not observe what a test
  * does at runtime, and it is not the whole guarantee — the population bound is
  *
- *     rg -n 'abort\s*\(|\["abort"\]\s*\(' typescript/tests
+ *     rg -n "abort\s*\(|\[[\"']abort[\"']\]\s*\(" typescript/tests
  *
  * which covers every spelling the rule recognizes (`x.abort(`, bare `abort(`,
- * `x["abort"](`) rather than dot-member access alone, so a sweep cannot report
+ * `x["abort"](` and `x['abort'](` — `isAbortCall` reads the literal's VALUE,
+ * so the quote style is invisible to it and must not be visible to the sweep
+ * either) rather than dot-member access alone, so a sweep cannot report
  * clean while a form the rule treats as an abort is live. Each site should be
  * classified by what makes the abort land. At the time this rule was written
  * that was 14 call sites: stubbed sleep or fetch 5, MSW handler 3, retry hook

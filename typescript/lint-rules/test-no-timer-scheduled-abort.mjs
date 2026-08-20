@@ -66,14 +66,18 @@ export const abortTimer = setTimeout(() => controller.abort(), 50);
   ],
   [
     // Spelling variations the original rg could not have seen. If the rule
-    // regressed to text matching, these are the first to go quiet.
-    "block body, member-spelled timer, computed abort, nested function",
+    // regressed to text matching, these are the first to go quiet. The
+    // computed access is spelled with both quote styles on purpose: the rule
+    // reads the literal's VALUE, and the documented population sweep has to
+    // match both too (review follow-up, Copilot).
+    "block body, member-spelled timer, computed abort in both quote styles, nested function",
     `const controller = new AbortController();
 export const a = globalThis.setTimeout(() => { controller.abort(); }, 10);
 export const b = setInterval(function () { controller["abort"](); }, 10);
 export const c = setTimeout(() => { const inner = () => controller.abort(); inner(); }, 10);
+export const d = setInterval(() => { controller['abort'](); }, 10);
 `,
-    [2, 3, 4],
+    [2, 3, 4, 5],
   ],
   [
     // Review follow-up (Copilot). TypeScript-only syntax between the callback
