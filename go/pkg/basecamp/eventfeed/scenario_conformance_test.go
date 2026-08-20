@@ -2,17 +2,18 @@
 // executed against the real connector through its seams.
 //
 // Strictness follows the family README's per-action-class rules exactly.
-// Checkpoint saves and outbound frames are ARRIVAL-STRICT: a save carries the
-// ordering witness (how many events had been delivered when it was made) and
-// is matched against the deliveries its step's predecessors required, so a
-// save that arrives while an `expectDelivered` rendezvous is still pending
-// fails; outbound frames are matched in socket order and an unmatched one
-// fails at `finally`. Mint and poll seam calls are PARKED: the call blocks
-// inside the seam and its scripted response is released only when the driver
-// reaches the matching expect step, so an early call cannot fail on arrival
-// and one still parked at the end fails. Observation directives are
-// rendezvous assertions under a wall-clock watchdog while virtual time stays
-// frozen.
+// Checkpoint saves and outbound frames are ARRIVAL-STRICT: each is judged, in
+// the critical section that records it, against the step the script is on, and
+// one arriving anywhere but its matching expect step fails the scenario there
+// and then. `beginStep`, `currentStepLocked` and `await`'s advance are what
+// make that survivable across a step boundary; a save additionally carries an
+// ordering witness (how many events had been delivered when it was made), and
+// an outbound frame no expect step matched still fails at `finally`. Mint and
+// poll seam calls are PARKED: the call blocks inside the seam and its scripted
+// response is released only when the driver reaches the matching expect step,
+// so an early call cannot fail on arrival and one still parked at the end
+// fails. Observation directives are rendezvous assertions under a wall-clock
+// watchdog while virtual time stays frozen.
 package eventfeed_test
 
 import (
@@ -86,6 +87,11 @@ func runScenario(h *scenarioHarness, sc *scenario) (err error) {
 	if cerr != nil {
 		return fmt.Errorf("connector construction: %w", cerr)
 	}
+	// The driver is bound to the harness BEFORE the iteration starts: the
+	// arrival rule judges against its step script, and a connector action
+	// observed before there is a script to judge it against would escape.
+	d := &driver{h: h, sc: sc}
+	h.attach(d)
 	ctx, cancel := context.WithCancel(context.Background())
 	iteration := make(chan struct{})
 	go func() {
@@ -110,12 +116,13 @@ func runScenario(h *scenarioHarness, sc *scenario) (err error) {
 		}
 	}()
 
-	d := &driver{h: h, sc: sc}
 	for i, step := range sc.Steps {
+		d.beginStep(i, step)
 		if stepErr := d.runStep(step); stepErr != nil {
 			return fmt.Errorf("step %d (%s): %w", i+1, step.Kind, stepErr)
 		}
 	}
+	d.h.enterStep(len(sc.Steps))
 	return d.runFinally()
 }
 
@@ -154,6 +161,114 @@ type driver struct {
 	// demanded so far — the ordering witness a checkpoint step is matched
 	// against.
 	requiredDeliveries int
+}
+
+// --- the arrival rule's step pointer -------------------------------------
+
+// beginStep moves the arrival rule's pointer onto step i before the step runs.
+//
+// A DRIVER ACTION — serving a frame, closing or severing the socket, advancing
+// or firing the clock — hands the pointer straight on to the next step instead.
+// The connector cannot react before the driver acts, so everything an action
+// provokes belongs to what FOLLOWS it; judging that reaction against the action
+// step itself would fail every fixture whose `serve` is answered with a
+// subscribe. It is also the only way an unexecuted action step keeps its teeth:
+// the lookahead below stops dead at one, which is exactly what makes a
+// subscribe written at dial — before the `serve welcome` that legalizes it —
+// an early arrival rather than a match on the step after.
+func (d *driver) beginStep(i int, step scenarioStep) {
+	d.h.enterStep(i)
+	if stepIsDriverAction(step) {
+		d.h.enterStep(i + 1)
+	}
+}
+
+// currentStepLocked names the step an arriving action is judged against: the
+// pointer, advanced over every step the recorded history has ALREADY satisfied
+// but the driver has not consumed yet.
+//
+// That lookahead is the other half of the atomic handoff. `await` advances the
+// pointer in the critical section that satisfies a rendezvous, which covers the
+// driver blocked ON that rendezvous; the lookahead covers the driver that has
+// not yet reached it — a page released at `expectPoll` is delivered and then
+// checkpointed by one causal chain in the connector, and the driver need not
+// have run its `expectDelivered` step by the time the save lands. Scanning is
+// safe because a step's condition is checked BEFORE the arriving action is
+// recorded: the matching step is still unsatisfied, so the scan stops there
+// rather than running past it.
+//
+// Callers hold h.mu.
+func (d *driver) currentStepLocked() (kind, where string) {
+	for i := d.h.cursor; i < len(d.sc.Steps); i++ {
+		step := d.sc.Steps[i]
+		if !d.stepSatisfiedLocked(step) {
+			return step.Kind, fmt.Sprintf("step %d (%s)", i+1, step.Kind)
+		}
+	}
+	return "", "the finally block"
+}
+
+// stepIsDriverAction reports whether a directive is something the DRIVER does
+// rather than something it waits for.
+func stepIsDriverAction(step scenarioStep) bool {
+	switch step.Payload.(type) {
+	case *serveStep, *serverCloseStep, *severStep, *advanceStep, *fireTimerStep:
+		return true
+	default:
+		return false
+	}
+}
+
+// stepSatisfiedLocked reports whether the recorded history already satisfies a
+// step, without consuming anything. It is deliberately a touch more permissive
+// than the executor's own rendezvous — it asks "has enough happened" rather
+// than "does it match" — because its job is only to say where the script has
+// got to. Erring permissive lets the pointer run on; erring strict would stall
+// it and fail a compliant connector, so the arms that gate the two
+// arrival-strict classes (expectCheckpoint, expectSubscribe/expectClientClose)
+// are the ones written tight.
+//
+// A directive with no arm is a driver action, and the scan stops at one.
+//
+//nolint:gocyclo,cyclop // one arm per directive, mirroring runStep's dispatch
+func (d *driver) stepSatisfiedLocked(step scenarioStep) bool {
+	h := d.h
+	switch payload := step.Payload.(type) {
+	case *expectMintStep:
+		return len(h.pendingMints) > 0
+	case *expectConnectStep:
+		return len(h.connects) > d.connectsTaken
+	case *expectSubscribeStep, *expectClientCloseStep:
+		return d.peer != nil && d.peer.taken < len(d.peer.frames)
+	case *expectPollStep:
+		return len(h.pendingPolls) > 0
+	case *exactIDs:
+		return len(h.delivered) >= len(payload.Exact)
+	case *expectCheckpointStep:
+		return h.savesTaken < len(h.saves)
+	case *timerSet:
+		return maps.Equal(timerCounts(h.clock), payload.Exact)
+	case *expectStateStep:
+		return h.state == payload.Is
+	case *errorExpect:
+		return h.terminal != nil
+	case *expectGapStep:
+		return h.gapsTaken < len(h.gaps)
+	case *expectBufferedStep:
+		return h.occupancy == payload.Count || slices.Contains(h.occupancyHistory, payload.Count)
+	case *expectSignalStep:
+		return h.signalsTaken < len(h.signals)
+	case *exactInvocations:
+		return len(h.invocations) >= len(payload.Exact)
+	case *expectSaveFailedStep:
+		return h.saveFailuresTaken < h.saveFailures
+	case *expectPositionRejectedStep:
+		return h.posRejectedTaken < len(h.positionRejected)
+	case *expectDisconnectedInvalidFrameStep:
+		return h.invalidFramesTaken < h.invalidFrames
+	default:
+		return false
+	}
 }
 
 // runStep dispatches one directive.
@@ -242,30 +357,30 @@ func (d *driver) expectMint(step *expectMintStep) error {
 	return nil
 }
 
+// expectConnect matches the next cable dial. It takes the dial and installs
+// the accepted socket UNDER h.mu, on the satisfying call: `d.peer` and
+// `d.connectsTaken` are read by the arrival rule's lookahead from the
+// connector's goroutines, so they cannot be settled after the rendezvous
+// returns.
 func (d *driver) expectConnect(step *expectConnectStep) error {
 	index := d.connectsTaken
-	var attempt *connectAttempt
-	err := d.h.await(fmt.Sprintf("a cable dial to %s", step.URL), func() (bool, string) {
+	return d.h.await(fmt.Sprintf("a cable dial to %s", step.URL), func() (bool, string) {
 		if len(d.h.connects) <= index {
 			return false, ""
 		}
-		attempt = d.h.connects[index]
+		attempt := d.h.connects[index]
 		if attempt.url != step.URL {
 			return false, fmt.Sprintf("the connector dialed\n  %s\nwant the mint's url verbatim\n  %s", attempt.url, step.URL)
 		}
-		if attempt.kind != "accept" {
-			return true, ""
+		if attempt.kind == "accept" {
+			if attempt.peer == nil {
+				return false, ""
+			}
+			d.peer = attempt.peer
 		}
-		return attempt.peer != nil, ""
+		d.connectsTaken++
+		return true, ""
 	})
-	if err != nil {
-		return err
-	}
-	d.connectsTaken++
-	if attempt.peer != nil {
-		d.peer = attempt.peer
-	}
-	return nil
 }
 
 func (d *driver) serve(step *serveStep) error {
