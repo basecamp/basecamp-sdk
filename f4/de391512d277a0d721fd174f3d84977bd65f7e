@@ -1,0 +1,40 @@
+go/pkg/basecamp/eventfeed/feedtest/clock.go
+  s_a2830db3382bee::t_5d6af6c594ab8a 69-92
+go/pkg/basecamp/eventfeed/scenario_conformance_test.go
+  s_a2830db3382bee::t_e9208af45848cd 581-583,585,587-592,594-600,602-606,608-609
+  s_a2830db3382bee::t_fb0369f4c41fde 611,613-616,618
+conformance/event-feed/README.md
+  s_a2830db3382bee::t_c1d2bac177e00f 157-182
+go/pkg/basecamp/eventfeed/scenario_selftest_test.go
+  s_a2830db3382bee::t_11a16cfd84010a 485-494,497-501,511,520,532-540,553-561,568
+conformance/event-feed/schema.json
+  s_a2830db3382bee::t_c1d2bac177e00f 1208
+SPEC.md
+  s_a2830db3382bee::t_8146b6c8d81d74 3288-3300
+.triage.md
+  s_c7205968e852ea::t_412d29f0b54184 1-92
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "f4de391512d277a0d721fd174f3d84977bd65f7e",
+  "prompts": {},
+  "sessions": {
+    "s_a2830db3382bee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3ea572e5-a707-465c-97cf-ea7330f74fc8",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_c7205968e852ea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "71cde228-33a3-49ef-a0c2-b38163bccd67",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}

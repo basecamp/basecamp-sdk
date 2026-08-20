@@ -1,0 +1,22 @@
+conformance/event-feed/README.md
+  s_bcb193599a4870::t_a70d15a349fb16 153-166
+  s_bcb193599a4870::t_978571713b4584 270
+conformance/event-feed/schema.json
+  s_bcb193599a4870::t_0b212b5bbc87f0 906,1208
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "6b69fd45cc9419250051fe01d46748ca05698ecf",
+  "prompts": {},
+  "sessions": {
+    "s_bcb193599a4870": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5ae90ec8-5ed7-4774-88d9-9d66550a5643",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
