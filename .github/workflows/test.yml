@@ -511,6 +511,20 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      # Two steps, deliberately. The self-test comes FIRST and is not optional:
+      # oxlint's JS plugin API is alpha and un-semvered behind a caret range, so
+      # a bump that stopped dispatching the rule's visitor would leave the gate
+      # below exiting 0 while enforcing nothing. The self-test asserts the rule
+      # still fires on the shapes #783 removed, so that fail-open reds here.
+      #
+      # `make ts-check` runs both too, but no CI job runs `make check`, so
+      # membership in a make target is not CI coverage in this repo.
+      - name: Self-test the timer-scheduled-abort lint rule
+        run: npm run test:lint-rules
+
+      - name: Check for timer-scheduled aborts in tests
+        run: npm run lint:test-timers
+
       - name: Type check
         run: npm run typecheck
 

@@ -413,7 +413,7 @@ auth-routable-check:
 # TypeScript SDK targets
 #------------------------------------------------------------------------------
 
-.PHONY: ts-install ts-generate ts-generate-services ts-build ts-test ts-typecheck ts-check ts-check-drift ts-clean
+.PHONY: ts-install ts-generate ts-generate-services ts-build ts-test ts-typecheck ts-check ts-check-drift ts-lint-test-timers ts-clean
 
 TS_NODE_STAMP := typescript/node_modules/.install-stamp
 
@@ -463,8 +463,23 @@ ts-check-drift: ts-install
 	@echo "==> Checking TypeScript generated code drift..."
 	@./scripts/check-typescript-service-drift.sh
 
+# Forbid scheduling an abort() on a wall-clock timer in typescript/tests/ — the
+# shape that flaked in #655 and again in #783. An oxlint JS plugin rather than a
+# grep: the AST can tell a timer that SCHEDULES the abort from one the abort is
+# racing, and a proximity selector cannot (see the rule's header).
+#
+# The self-test runs beside it, not only when someone edits the rule. oxlint's
+# JS plugin API is alpha and un-semvered behind a caret range, so a bump that
+# stopped dispatching the visitor would leave lint-test-timers exiting 0 while
+# matching nothing; the self-test asserts the rule still FIRES on the two forms
+# #783 removed, which turns that fail-open into a build failure.
+ts-lint-test-timers: ts-install
+	@echo "==> Checking for timer-scheduled aborts in TypeScript tests..."
+	cd typescript && npm run --silent test:lint-rules
+	cd typescript && npm run --silent lint:test-timers
+
 # Run all TypeScript checks
-ts-check: ts-check-drift ts-typecheck ts-test
+ts-check: ts-check-drift ts-typecheck ts-lint-test-timers ts-test
 	@echo "==> TypeScript SDK checks passed"
 
 # Clean TypeScript build artifacts
