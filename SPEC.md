@@ -1685,6 +1685,51 @@ every `fetchJSON` above MUST:
 
 Non-2xx on either hop → `api_error` (not `network`).
 
+##### 5. Judge the advertised issuer's ADDRESS, not only its spelling `[Go-first]`
+
+Requirements 1–4 apply to both hops, and hop 1 needs nothing further: its origin
+is the resource identifier the *caller* supplied. Hop 2 is different in kind.
+`discoverFromResource` lifts `authorization_servers[]` out of a parsed response
+body, and with no `expectedIssuer` the "single non-Launchpad entry wins"
+heuristic makes a remote peer's string the socket destination. `requireOriginRoot`
+is a syntax gate with no notion of what a host *resolves to*, and issuer binding
+runs only after the response comes back — so a refusal there is already too late
+to stop the connection from reporting whether an internal host and port are live.
+The exposure is bounded — fixed path, GET, no credentials, near-blind — but it is
+a working internal host/port oracle, and the discovery fetch is not where the
+selected issuer stops being used. The `Config` it returns carries
+`token_endpoint` (required) and `device_authorization_endpoint`, and those become
+the destinations of the grant itself: `performDeviceLogin` takes exactly this
+already-selected config and posts the `client_id` to one and the `device_code` to
+the other, and the token exchange and refresh post the authorization code,
+`client_secret`, or refresh token to `token_endpoint`. Those are form-body
+credentials, not an `Authorization: Bearer` header — no Bearer header is sent to
+a discovered issuer.
+
+Hop 2 therefore SHOULD refuse an advertised issuer whose **address** is in
+private, loopback, link-local, CGNAT, or IANA special-purpose space, judged at
+the moment of connection rather than by parsing the URL — which is also what
+catches a legacy-numeric spelling (`https://2130706433/` is `127.0.0.1`) and a
+name that resolves into that space. The refusal is the existing hard
+`invalid_issuer_origin`, not `as_fetch_failed`: it is a permanent verdict on the
+origin, and must not be marked retryable. It applies on **both** selection paths,
+`expectedIssuer` included — an SDK-level exemption for a caller-named issuer is
+silently wrong when the consumer computed that value from untrusted input.
+
+Because an SDK is a shared dependency, an implementation MUST expose an override
+for the policy, for the client that carries the hop, and to disable it — an
+internal deployment must be able to admit its own range without abandoning the
+rest of the deny tables.
+
+**Go is the only implementation today**, via
+`github.com/basecamp/surfguard/go`'s dial-time enforcement
+(`oauth.DefaultIssuerPolicy`, `WithIssuerPolicy` / `WithIssuerHTTPClient` /
+`WithoutIssuerPolicy`). It is written `SHOULD` and marked `[Go-first]` rather
+than folded into the `[conformance]` list above because the corpus cannot express
+it: the assertion is "no connection was attempted", which is not an observable
+of the mock-HTTP runner, and the remaining four SDKs have no equivalent
+enforcement layer to point at yet. See Appendix F.
+
 #### Injected-client fidelity tier `[static]`
 
 SDKs that accept a caller-supplied HTTP client (Ruby `http_client:`, and any
@@ -3589,6 +3634,28 @@ Every operation has a `retry` block, including non-idempotent POSTs. For non-ide
 ---
 
 ## Appendix F: Known Cross-SDK Divergences
+
+### Advertised-Issuer Address Policy (§16)
+
+§16's SSRF requirement 5 — judging the *address* an advertised
+`authorization_servers[]` entry resolves to, at connection time — is implemented
+in Go only. This is a deliberate Go-first move, not an oversight in the other
+five: the enforcement seam it needs (a dial-time `Control` hook, plus a shared
+classification table) exists cheaply in Go and does not in the others.
+
+| SDK | Advertised-issuer hop |
+|-----|----------------------|
+| Go | `oauth.DefaultIssuerPolicy()` — `surfguard.Policy{}.IANASpecialUse().AllowAllPorts()` — installed on a separate client that carries only that hop. Refused as hard `invalid_issuer_origin`, non-retryable, on both selection paths. Overrides: `WithIssuerPolicy`, `WithIssuerHTTPClient`, `WithoutIssuerPolicy` |
+| TypeScript, Ruby, Python, Kotlin | Requirements 1–4 only: origin-root syntax gate, HTTPS, bounded timeout, suppressed redirects, bounded body. An advertised issuer naming a private address is still dialed |
+| Swift | Not applicable — ships no OAuth discovery implementation |
+
+Two consequences are worth stating rather than discovering. First, this is a
+behavioral tightening, not a pure addition: a Go consumer whose BC5 issuer is
+advertised on loopback or in RFC 1918 space, and which worked before, now needs
+`WithIssuerPolicy`. Second, `Allow(prefix)` does **not** re-admit RFC 1918 under
+`IANASpecialUse()` — those tables outrank `Allow`, and `AllowLoopback()` is the
+only derivation that pierces them — so an on-premises policy is built as
+`surfguard.Policy{}.AllowAllPorts().Allow(...)` instead.
 
 ### Retry Strategy (§7)
 
