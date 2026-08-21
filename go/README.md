@@ -232,8 +232,11 @@ Notes:
   `DiscoverFromResource` judges the literal address at connection time via
   `oauth.DefaultIssuerPolicy()`, so a syntactically valid issuer pointing at
   private, loopback, link-local, or other special-use space is refused before a
-  socket opens — including legacy spellings like `http://2130706433/`, and
-  including a name that resolves to blocked space only at dial time. The
+  socket opens — including legacy spellings like `https://2130706433/`, and
+  including a name that resolves to blocked space only at dial time. (The
+  `https` here is load-bearing: on the `http` spelling of that same host the
+  origin-root profile refuses first, so it would demonstrate the pre-existing
+  scheme gate rather than the address policy.) The
   refusal surfaces as `ErrInvalidIssuerOrigin`; it also matches
   `errors.Is(err, surfguard.ErrBlocked)` and wraps a `*surfguard.Violation` if
   you need to tell the two causes apart. Hop 1 and `Discover` are unaffected —
