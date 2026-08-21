@@ -198,7 +198,7 @@ if err != nil {
     switch {
     case errors.Is(err, oauth.ErrAmbiguousIssuers):          // ≥2 non-Launchpad issuers, no expected issuer
     case errors.Is(err, oauth.ErrExpectedIssuerUnavailable): // expected issuer not advertised
-    case errors.Is(err, oauth.ErrInvalidIssuerOrigin):       // advertised issuer is not a valid origin root
+    case errors.Is(err, oauth.ErrInvalidIssuerOrigin):       // advertised issuer refused: bad origin root, or blocked address
     case errors.Is(err, oauth.ErrASFetchFailed):             // committed issuer's AS metadata unavailable
     case errors.Is(err, oauth.ErrIssuerMismatch):            // committed issuer's metadata fails issuer binding
     }
@@ -226,6 +226,39 @@ Notes:
   socket opens, HTTPS is required (localhost exempt), redirects are suppressed,
   timeouts are bounded, and bodies are read under a bounded cap. Non-2xx on
   either hop surfaces as an `api_error`.
+- **The advertised-issuer hop additionally enforces an address policy.** That
+  hop is the one whose destination comes from a parsed response body, so URL
+  syntax is not enough: `net/url` has no notion of what a host resolves to.
+  `DiscoverFromResource` judges the literal address at connection time via
+  `oauth.DefaultIssuerPolicy()`, so a syntactically valid issuer pointing at
+  private, loopback, link-local, or other special-use space is refused before a
+  socket opens — including legacy spellings like `http://2130706433/`, and
+  including a name that resolves to blocked space only at dial time. The
+  refusal surfaces as `ErrInvalidIssuerOrigin`; it also matches
+  `errors.Is(err, surfguard.ErrBlocked)` and wraps a `*surfguard.Violation` if
+  you need to tell the two causes apart. Hop 1 and `Discover` are unaffected —
+  their destinations are operator-configured.
+
+  A deployment whose issuer legitimately sits off the public internet re-admits
+  exactly the space it needs rather than switching the policy off. Mind
+  surfguard's precedence when you do: `Allow` re-admits space the default deny
+  tables refuse but **not** space the `IANASpecialUse` tables refuse, and those
+  cover all of RFC 1918.
+
+  ```go
+  // On-premises issuer in private space — build without IANASpecialUse.
+  oauth.NewDiscoverer(c, oauth.WithIssuerPolicy(
+      surfguard.Policy{}.AllowAllPorts().Allow(netip.MustParsePrefix("10.4.0.0/16"))))
+
+  // Local development — AllowLoopback does pierce those tables.
+  oauth.NewDiscoverer(c, oauth.WithIssuerPolicy(
+      oauth.DefaultIssuerPolicy().AllowLoopback()))
+  ```
+
+  `oauth.WithIssuerHTTPClient` carries the hop on your own client, which a
+  consumer egressing through a proxy needs since surfguard's transport sets
+  `Proxy: nil` by construction. `oauth.WithoutIssuerPolicy` restores the
+  pre-policy behavior outright.
 
 ### OAuth device authorization grant (RFC 8628)
 
