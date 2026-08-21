@@ -121,8 +121,11 @@ class ReplayRunner:
         self._replay_dir = replay_dir
         self._backend = backend
         self._walker = SchemaWalker(openapi_path)
+        # Fixture and snapshot reads are pinned to UTF-8 regardless of process
+        # locale (LC_ALL=C would otherwise read as US-ASCII whenever UTF-8 mode
+        # is off).
         self._fixture: list[dict] = [
-            t for t in json.loads(fixture_path.read_text())
+            t for t in json.loads(fixture_path.read_text(encoding="utf-8"))
             if t.get("mode") == "live"
         ]
 
@@ -154,14 +157,16 @@ class ReplayRunner:
         if wire_dir.exists():
             for f in sorted(wire_dir.glob("*.json")):
                 try:
-                    snap = json.loads(f.read_text())
+                    snap = json.loads(f.read_text(encoding="utf-8"))
                 except OSError as e:
                     msgs.append(f"Snapshot {f.name} could not be read: {type(e).__name__}: {e}.")
                     continue
                 except UnicodeDecodeError as e:
-                    # Path.read_text() decodes UTF-8 by default; malformed
-                    # bytes raise UnicodeDecodeError (a ValueError, NOT an
-                    # OSError), so it must be caught separately.
+                    # Path.read_text() follows the process locale unless an
+                    # encoding is given, which is why the call above pins one;
+                    # bytes that are not UTF-8 then raise UnicodeDecodeError (a
+                    # ValueError, NOT an OSError), so it must be caught
+                    # separately.
                     msgs.append(f"Snapshot {f.name} is not valid UTF-8: {e}.")
                     continue
                 except json.JSONDecodeError as e:
@@ -236,6 +241,8 @@ class ReplayRunner:
                 print(f"skip {snapshot['operation']}: {result['skip_reason']}")
             else:
                 result = self._decode_snapshot(snapshot)
+            # Same ensure_ascii=True dependency as the execution manifest in
+            # runner.py — see the comment there before changing this call.
             (out_dir / f"{_safe_name(t['name'])}.json").write_text(
                 json.dumps(result, indent=2)
             )
@@ -246,7 +253,7 @@ class ReplayRunner:
 
     def _read_snapshot(self, test_name: str) -> dict:
         path = self._replay_dir / self._backend / "wire" / f"{_safe_name(test_name)}.json"
-        return json.loads(path.read_text())
+        return json.loads(path.read_text(encoding="utf-8"))
 
     def _decode_snapshot(self, snapshot: dict) -> dict:
         operation = snapshot["operation"]
