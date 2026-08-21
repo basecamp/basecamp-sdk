@@ -1,0 +1,19 @@
+MIGRATING.md
+  s_94efcb3b9d036c::t_ff1999099a33e1 283-293
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "cf2a1e8749cf5612ab5dc3752e92ca9c6598d51e",
+  "prompts": {},
+  "sessions": {
+    "s_94efcb3b9d036c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "48c68c61-ee49-4c71-a3ce-ca220311ada5",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
