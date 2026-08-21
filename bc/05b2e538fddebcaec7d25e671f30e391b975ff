@@ -1,0 +1,23 @@
+.github/workflows/codeql.yml
+  s_fc8489cc62f186::t_c52a5b735477a8 189,254
+  s_fc8489cc62f186::t_2c8c5cbb4ba101 174-177
+.github/codeql/codeql-config.yml
+  s_fc8489cc62f186::t_d59af1d762b410 29-32,36
+  s_fc8489cc62f186::t_e3cdc5d9316170 51-55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "bc05b2e538fddebcaec7d25e671f30e391b975ff",
+  "prompts": {},
+  "sessions": {
+    "s_fc8489cc62f186": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "82e0a4f6-775a-4430-a5e5-e48cdfc33984",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
