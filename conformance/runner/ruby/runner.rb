@@ -118,7 +118,8 @@ module CaseCensus
 
     files.sum do |file|
       begin
-        parsed = JSON.parse(File.read(file))
+        # UTF-8 regardless of process locale (LC_ALL=C would otherwise read as US-ASCII)
+        parsed = JSON.parse(File.read(file, encoding: "UTF-8"))
       rescue JSON::ParserError, SystemCallError => e
         raise Error, "#{file}: #{e.message}"
       end
@@ -192,6 +193,14 @@ module ExecutionManifest
       "executed" => executed,
       "excluded" => excluded.sort.map { |file, name, reason| { "file" => file, "name" => name, "reason" => reason } }
     }
+    # Deliberately NOT pinned, unlike every read above, and the asymmetry is
+    # real rather than an oversight: Encoding.default_external governs how a
+    # read DECODES, but File.write emits the string's own bytes and transcodes
+    # only when an encoding: is passed explicitly. `excluded` carries case names
+    # straight from the fixtures, so this line writes UTF-8 under LC_ALL=C —
+    # verified by running the suite with a non-ASCII skipped case name, which
+    # landed in the manifest intact. Adding `encoding: "UTF-8"` here would be
+    # inert; naming the locale's encoding would be the only way to break it.
     File.write(File.join(dir, "#{runner}.json"), "#{JSON.pretty_generate(body)}\n")
   end
 end
