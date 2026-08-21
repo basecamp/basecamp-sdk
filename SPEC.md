@@ -673,6 +673,13 @@ for the header to reach, and no declared retryable status. §7's `retry_on`, §1
 `{429, 502, 503, 504}`, §23's transient/throttled error kinds and §16's `429`-plus-`too_many_requests`
 pair are all declared sets, so all four are inside.
 
+For §23 the *kind* is what carries the header across the seam, so the adapter's mapping is fixed
+here rather than left to each implementation: a retryable outcome exhausted inside the seam whose
+last response carried a parsed `Retry-After` maps to `throttled(retry_after)` **whatever its
+status**, and one without maps to `transient`. A mapping keyed on status instead — 429 to
+`throttled`, 503 to `transient` — would honour the header at one retryable status and drop it at
+another, which is exactly the gate this section removes.
+
 There is a second, independent reason the boundary falls here, and it is worth stating because it
 shows the definition is not merely stipulated. This section governs the relationship between a
 server-directed delay and a **locally computed backoff** — what may replace it, floor it, cap it. A
@@ -832,6 +839,14 @@ same and is adopted here:
   sit in the parser, and the caller then reads the saturated value; that is accepted, and it is the
   one carve-out from the paragraph above.
 
+The host whose limit binds is the one the build runs on, and an SDK that ships to more than one
+build target MAY pin the second-tier ceiling at the smallest value every supported target can
+represent and schedule, so the delay honoured does not vary by build. That is still a
+representability bound, not a policy cap: it is derived from a host limit — the narrowest one the
+SDK ships to — and answers "can every host express this value" rather than "how long should a caller
+wait". It clamps nothing the narrowest build could have honoured, and what it costs the wider builds
+is only the waits the narrowest one could never have scheduled.
+
 The width itself is deliberately not fixed here, because it is a property of the host. *(As-of
 observation, verified against `wt/lane-spec` @ `fc5645dfe` — kept because the decision not to fix a
 width is unreadable without it, not as a live claim: TypeScript rejects above
@@ -857,13 +872,15 @@ ceilings, exception types and call sites in #775.]`
 Go is the worked example of the two tiers meeting in one parser, and the two numbers govern different
 questions: a digit string too large for the parser's own `int64` is **malformed** and falls through to
 the backoff (first tier), while a value it holds but the host cannot schedule **saturates** (second
-tier) at a ceiling chosen to be portable rather than maximal — `math.MaxInt32` seconds, the same
-2,147,483,647 §16 already names as a shared cross-SDK ceiling. The portability matters because two
-host limits sit above a Go `Retry-After` and a ceiling derived from only the larger would change with
-`GOARCH`. `[PENDING #796: that is what #796 ships — `ParseInt` into `int64`, over-range malformed, a
-clamp at `math.MaxInt32` inside the shared hand-written `parseRetryAfter` that the raw retry loop,
-the download path and the hook result all read — and it merges after this PR. Until it lands, the
-hand-written path is unclamped and this paragraph describes the contract, not the tree.]`
+tier) at the pinned portable ceiling the tier permits — `math.MaxInt32` seconds, the smallest value
+every supported `GOARCH` can represent, and the same 2,147,483,647 §16 already names as a shared
+cross-SDK ceiling. Pinning matters because two host limits sit above a Go `Retry-After` — native
+`int`, which the public `Error.RetryAfter` field is and which is 32 bits wide on the 32-bit targets
+this repository keeps viable, and `time.Duration` — and a ceiling derived from only the larger would
+change with `GOARCH`. `[PENDING #796: that is what #796 ships — `ParseInt` into `int64`, over-range
+malformed, a clamp at `math.MaxInt32` inside the shared hand-written `parseRetryAfter` that the raw
+retry loop, the download path and the hook result all read — and it merges after this PR. Until it
+lands, the hand-written path is unclamped and this paragraph describes the contract, not the tree.]`
 
 The identical unclamped conversion in `go/pkg/generated/client.gen.go`, and an `Atoi` there whose
 range error is discarded into a rate-limit hint, are **not yet fixed anywhere**. Their fix *belongs*
@@ -887,8 +904,10 @@ another name. Which satisfying shape each language picks carries a caller-facing
 not settled here.
 
 `[CONFLICT: the cost of this position is not uniform — four of the SDK sleep paths give the caller no
-handle at all today, and two of those already carry the exposure independently of this decision.
-Per-path inventory and remedies in #775.]`
+handle at all today, and all four already carry the exposure independently of this decision: each
+honours Retry-After on its 429 path now, so the un-abandonable server-directed sleep predates the
+status rule, and widening the status set widens it rather than introducing it. Per-path inventory
+and remedies in #775.]`
 
 Strictly, none of those four is *uninterruptible*: a signal on the main thread, or `Thread#raise`
 from another, will break any of them. What they lack is a cancellation handle the caller can **hold**,
@@ -3311,9 +3330,11 @@ RECORD StreamTicket
 END
 -- Mint errors carry a kind: transient | throttled(retry_after) | unauthorized |
 -- unrecoverable(error). The adapter maps every §6/§7 outcome onto exactly one kind:
--- retryable outcomes exhausted inside the seam → transient/throttled; 401/403 →
--- unauthorized (shared counter); anything else non-retryable (404, 422, a malformed
--- success) → unrecoverable → Terminal(mint_failed), generated error attached.
+-- retryable outcomes exhausted inside the seam → throttled(retry_after) when the last
+-- response carried a parsed Retry-After, at ANY status, else transient (§6 "What
+-- 'retry' means here"); 401/403 → unauthorized (shared counter); anything else
+-- non-retryable (404, 422, a malformed success) → unrecoverable → Terminal(mint_failed),
+-- generated error attached.
 
 INTERFACE PollSource
   poll(cursor: Cursor, filters: Filters, cancellation) → PollPage
@@ -3342,7 +3363,8 @@ END
 -- filter_invalid(server message) | filter_changed | gone(epoch_after_id, resume_url) |
 -- unauthorized | redirect_refused(location_origin) | unrecoverable(error).
 -- The adapter maps every §6/§7 outcome of the generated call onto exactly one kind:
--- 429/503 and §7-retryable outcomes exhausted inside the seam → transient/throttled;
+-- 429/503 and §7-retryable outcomes exhausted inside the seam → throttled(retry_after)
+-- when the last response carried a parsed Retry-After, at ANY status, else transient;
 -- the feed's 400/409/410 matrix → its four kinds; 401/403 (after the seam's own token
 -- refresh and retry budget) → unauthorized; a 3xx whose Location fails the per-hop
 -- same-origin/no-downgrade validation (auto-follow is disabled — Continuation and
