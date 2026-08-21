@@ -171,7 +171,10 @@ jobs:
       # paths-ignore in codeql-config.yml only governs source extraction
       # (effective for JS/Ruby). For compiled languages the extractor traces
       # the build, so generated code enters the database. Strip those results
-      # from SARIF before upload.
+      # from SARIF before upload. Generated Python is stripped here too, but
+      # with a lookahead sparing services/_: that directory's _base.py and
+      # _async_base.py are hand-written (see codeql-config.yml) and paths-ignore
+      # can't express the exception.
 
       - name: Filter generated-code alerts from SARIF
         if: always() && matrix.language != 'actions'
@@ -183,7 +186,7 @@ jobs:
               .runs |= map(.results |= (. // [] | map(
                 select(
                   (.locations // [])[0].physicalLocation.artifactLocation.uri // "" |
-                  test("(^|/)(go/pkg/generated/|typescript/(src/generated|dist)/|ruby/lib/basecamp/generated/|swift/Sources/Basecamp/Generated/|kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/)") | not
+                  test("(^|/)(go/pkg/generated/|typescript/(src/generated|dist)/|ruby/lib/basecamp/generated/|swift/Sources/Basecamp/Generated/|kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/|python/src/basecamp/generated/(?!services/_))") | not
                 )
               )))
             ' "$sarif" > "${sarif}.tmp" && mv "${sarif}.tmp" "$sarif"
@@ -248,7 +251,7 @@ jobs:
               .runs |= map(.results |= (. // [] | map(
                 select(
                   (.locations // [])[0].physicalLocation.artifactLocation.uri // "" |
-                  test("(^|/)(go/pkg/generated/|typescript/(src/generated|dist)/|ruby/lib/basecamp/generated/|swift/Sources/Basecamp/Generated/|kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/)") | not
+                  test("(^|/)(go/pkg/generated/|typescript/(src/generated|dist)/|ruby/lib/basecamp/generated/|swift/Sources/Basecamp/Generated/|kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/|python/src/basecamp/generated/(?!services/_))") | not
                 )
               )))
             ' "$sarif" > "${sarif}.tmp" && mv "${sarif}.tmp" "$sarif"

@@ -26,12 +26,14 @@ paths-ignore:
   # hand-written files — services/_base.py and services/_async_base.py, the HTTP,
   # retry and pagination plumbing (AGENTS.md exempts them from the generator) —
   # i.e. exactly the code most worth scanning. paths-ignore has no negation, so
-  # excluding the directory would silently drop them. If generated Python turns
-  # out to be noisy, narrow it in codeql.yml's SARIF filter instead: that step is
-  # a jq test() regex and can express "generated/ but not services/_".
+  # excluding the directory would silently drop them. Generated Python did turn
+  # out to be noisy (py/unused-import in every generated service), so codeql.yml's
+  # SARIF filter now strips generated/ except services/_ — keeping both
+  # hand-written files scanned.
   # Test infrastructure
   - conformance/
   - kotlin/conformance/
+  - python/tests/
 
 query-filters:
   - exclude:
@@ -46,3 +48,8 @@ query-filters:
   # to the build would silently suppress this query there too.
   - exclude:
       id: java/class-name-matches-super-class
+  # Protocol and overload stubs use `...` as their body — idiomatic typing code
+  # that this query flags as a defect. auth.py and async_auth.py alone produced
+  # eight such alerts, and every future Protocol method adds another.
+  - exclude:
+      id: py/ineffectual-statement
