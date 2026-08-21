@@ -64,8 +64,19 @@ type Error struct {
 	FieldErrors map[string][]string
 	HTTPStatus  int
 	Retryable   bool
-	RequestID   string
-	Cause       error
+	// RetryAfter is the server-specified delay in seconds from a 429's
+	// Retry-After header, resolved from either wire form (delta-seconds or
+	// HTTP-date). Zero when the server named no delay, which is every status
+	// but 429 today. The GET retry loop sleeps this instead of its backoff
+	// curve when it is positive; callers that give up and reschedule the work
+	// themselves read it off the returned error.
+	//
+	// Never negative, and never large enough that `time.Duration(RetryAfter) *
+	// time.Second` overflows: both doors onto the field — the wire parser and
+	// ErrRateLimit — run it through clampRetryAfterSeconds.
+	RetryAfter int
+	RequestID  string
+	Cause      error
 }
 
 // Error implements the error interface.
@@ -181,6 +192,15 @@ func ErrForbiddenScope() *Error {
 
 // ErrRateLimit creates a rate-limit error.
 func ErrRateLimit(retryAfter int) *Error {
+	// Normalize before either the hint or the field reads it. This is an
+	// exported constructor taking a bare int, so it is the one door onto
+	// RetryAfter that the wire parser does not guard: a negative value would
+	// contradict the field's documented "zero means no delay", and a value
+	// whose seconds→Duration conversion overflows would make the retry loop
+	// wait a negative delay, i.e. not wait at all. The hint already treated
+	// non-positive as absent; now the field agrees with it.
+	retryAfter = clampRetryAfterSeconds(int64(retryAfter))
+
 	hint := "Try again later"
 	if retryAfter > 0 {
 		hint = fmt.Sprintf("Try again in %d seconds", retryAfter)
@@ -191,6 +211,7 @@ func ErrRateLimit(retryAfter int) *Error {
 		Hint:       hint,
 		HTTPStatus: 429,
 		Retryable:  true,
+		RetryAfter: retryAfter,
 	}
 }
 

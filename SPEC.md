@@ -530,7 +530,7 @@ RECORD BasecampError extends Error
 END
 ```
 
-**Go divergence:** Go's `Error` struct omits `retry_after`; retry delay is tracked on `RequestResult` instead. Go also exposes a `Cause` field (the underlying error) not present in this canonical RECORD — a language-specific extension.
+**Go divergence:** Go exposes a `Cause` field (the underlying error) not present in this canonical RECORD — a language-specific extension. `retry_after` is no longer a divergence: Go's `Error` carries it, populated at both 429 construction sites, and the raw GET retry loop sleeps it in place of the backoff curve. `RequestResult.retry_after` is unchanged and remains the hook-facing copy rather than the only one.
 
 ### Error Code Table
 
@@ -630,8 +630,14 @@ Swift carries the slot as a fifth associated value on `.validation` plus a `fiel
 Given header value `value`:
 
 1. Attempt parse as integer. If valid and > 0 → return as seconds.
-2. Attempt parse as HTTP-date (RFC 7231, e.g., `Wed, 09 Jun 2021 10:18:14 GMT`). If valid → compute `max(0, date - now())` in seconds; if > 0 → return.
+2. Attempt parse as HTTP-date (RFC 7231, e.g., `Wed, 09 Jun 2021 10:18:14 GMT`). If valid → compute `max(0, date - now())` in seconds, **rounding a sub-second remainder up**; if > 0 → return.
 3. → `undefined` (fall through to backoff formula).
+
+Step 2's rounding is up, not truncating, for two reasons: a positive remainder must never round to
+zero, because zero is read as "no usable value" and drops the request onto the local backoff curve —
+the opposite of what the header said; and rounding down retries up to a second *before* the moment
+the server named, which is the one thing a date is unambiguous about. TypeScript, Kotlin, Swift and
+Go round up. Python and Ruby still truncate, tracked in #799.
 
 This algorithm defines **parsing** only — how a header value becomes a number of seconds. Which
 statuses honour the result, and what bounds the sleep it buys, is the next section; do not read a
@@ -854,8 +860,8 @@ width is unreadable without it, not as a live claim: TypeScript rejects above
 computes in `Long` and saturates to `Int.MAX_VALUE` instead, which is the parser-output carve-out
 above rather than a rejection — Swift above its 64-bit `Int`, and Go above native `int`: both its
 hand-written and its generated parser are `strconv.Atoi` at that revision, so the width is 32 bits on
-the 32-bit targets this repository keeps viable and 64 elsewhere. #796 moves the hand-written parser
-to `ParseInt` into `int64` `[PENDING #796]`; the generated one stays `Atoi` until #798.)*
+the 32-bit targets this repository keeps viable and 64 elsewhere. #796 has since moved the
+hand-written parser to `ParseInt` into `int64`; the generated one stays `Atoi` until #798.)*
 Four hosts reject cleanly at thresholds differing by nine orders of magnitude without any of them
 misbehaving, which is the evidence that the width does not need fixing — a `Retry-After` naming a wait
 longer than the host can count is not a delay any caller is worse off for missing.
@@ -877,10 +883,9 @@ every supported `GOARCH` can represent, and the same 2,147,483,647 §16 already 
 cross-SDK ceiling. Pinning matters because two host limits sit above a Go `Retry-After` — native
 `int`, which the public `Error.RetryAfter` field is and which is 32 bits wide on the 32-bit targets
 this repository keeps viable, and `time.Duration` — and a ceiling derived from only the larger would
-change with `GOARCH`. `[PENDING #796: that is what #796 ships — `ParseInt` into `int64`, over-range
-malformed, a clamp at `math.MaxInt32` inside the shared hand-written `parseRetryAfter` that the raw
-retry loop, the download path and the hook result all read — and it merges after this PR. Until it
-lands, the hand-written path is unclamped and this paragraph describes the contract, not the tree.]`
+change with `GOARCH`. That is what #796 ships: `ParseInt` into `int64`, over-range malformed, and a
+clamp at `math.MaxInt32` inside the shared hand-written `parseRetryAfter` that the raw retry loop,
+the download path and the hook result all read.
 
 The identical unclamped conversion in `go/pkg/generated/client.gen.go`, and an `Atoi` there whose
 range error is discarded into a rate-limit hint, are **not yet fixed anywhere**. Their fix *belongs*
@@ -1133,9 +1138,9 @@ Requirements:
    than an addend on a server-directed delay. Implementations may still bound it against
    **host limits** — a timer that cannot schedule the value, such as TypeScript's clamp to
    the 2,147,483,647ms `setTimeout` accepts, or a conversion that would trap or wrap, such
-   as the seconds→`time.Duration` saturation Go takes in #796 `[PENDING #796]` — and may reject outright a value
-   the parser's own numeric type cannot hold. §6 "Retry-After Honouring" governs which of
-   those belongs at the sleep and which may sit in the parser. A **policy** cap is a
+   as the seconds→`time.Duration` saturation Go takes (#796) — and may reject outright a
+   value the parser's own numeric type cannot hold. §6 "Retry-After Honouring" governs
+   which of those belongs at the sleep and which may sit in the parser. A **policy** cap is a
    different thing and is not permitted: Swift's 86,400s clamp is one (the `UInt64`
    nanosecond trap it cites sits five orders of magnitude higher), and §6 records it as a
    conflict alongside the status divergence. The exemption is not unconditional: §6

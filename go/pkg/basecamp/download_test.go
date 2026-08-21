@@ -799,6 +799,50 @@ func TestDownloadURL_AuthHopRetriesOn429WithRetryAfter(t *testing.T) {
 	}
 }
 
+// TestDownloadURL_RetryWaitChecksCancellationBeforeTheTimer is the download
+// loop's copy of TestClient_RetryWaitChecksCancellationBeforeTheTimer: the same
+// select, the same fire-OnRetry-then-wait order, and so the same coin flip when
+// a hook cancels there and the delay has already elapsed. The reasoning — and
+// why the contract can only be asserted over N runs rather than forced — is in
+// that test; the assertion is the same: ctx.Err() itself, and the transport
+// handed exactly one request.
+func TestDownloadURL_RetryWaitChecksCancellationBeforeTheTimer(t *testing.T) {
+	apiServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusTooManyRequests)
+	}))
+	defer apiServer.Close()
+
+	const runs = 64
+	for run := range runs {
+		ctx, cancel := context.WithCancel(context.Background())
+		hooks := &cancelOnRetryHooks{cancel: cancel}
+		cfg := DefaultConfig()
+		cfg.BaseURL = apiServer.URL
+		client := NewClient(cfg, &StaticTokenProvider{Token: "test-token"},
+			WithMaxRetries(3),
+			// Zero backoff, so the timer is ready before the wait begins; see
+			// the Client test for why that is the honest stand-in.
+			WithBaseDelay(0),
+			WithMaxJitter(time.Nanosecond),
+			WithTransport(http.DefaultTransport),
+			WithHooks(hooks),
+		)
+		ac := client.ForAccount("12345")
+
+		_, err := ac.DownloadURL(ctx, "https://storage.3.basecamp.com/999/blobs/abc/download/file.png")
+		cancel()
+
+		if err != context.Canceled {
+			t.Fatalf("run %d: DownloadURL returned %v, want ctx.Err() itself (context.Canceled) — "+
+				"the loop went round again after the caller cancelled at the retry boundary", run, err)
+		}
+		if got := hooks.requests.Load(); got != 1 {
+			t.Fatalf("run %d: the transport was handed %d requests, want 1 — "+
+				"a cancellation delivered before the wait must not be followed by another attempt", run, got)
+		}
+	}
+}
+
 // flakyRoundTripper fails the first N RoundTrips with a synthetic network error,
 // then delegates to inner. Used to prove network-error retry without relying on
 // OS-level connection-reset semantics (which Go's transport sometimes retries
