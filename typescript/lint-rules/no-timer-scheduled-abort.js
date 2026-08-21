@@ -26,7 +26,9 @@
  * A call to something named `abort` — `x.abort(…)`, `x["abort"](…)`, or a bare
  * `abort(…)` — lexically inside a function passed as the FIRST argument of
  * `setTimeout` / `setInterval`, spelled bare or as a member access
- * (`globalThis.setTimeout`, `window.setTimeout`). Nesting is followed: an abort
+ * (`globalThis.setTimeout`, `window.setTimeout`, `globalThis["setTimeout"]` —
+ * like the abort, a computed property is read by its literal VALUE, so the
+ * quote style is invisible). Nesting is followed: an abort
  * inside a function inside the timer callback still reports, because the timer
  * is still what schedules it. So is type-only syntax around the callback —
  * `as`, `satisfies`, `!` — which changes the AST without changing what runs.
@@ -39,7 +41,8 @@
  *     an import alias, a wrapper such as `delay(() => c.abort(), 50)`;
  *   - a callback passed by reference rather than written inline —
  *     `setTimeout(cancel, 50)` where `cancel` aborts;
- *   - a computed abort access whose key is not a literal — `c[method]()`;
+ *   - a computed abort or timer access whose key is not a literal —
+ *     `c[method]()`, `globalThis[timer](…)`;
  *   - anything outside `typescript/tests/`, which is deliberate: production
  *     code schedules aborts on timers legitimately (`src/client.ts`,
  *     `src/download.ts`, `src/oauth/*`) and those are request timeouts, not
@@ -82,14 +85,15 @@
 
 const TIMER_NAMES = new Set(["setTimeout", "setInterval"]);
 
-/** `setTimeout(…)`, `globalThis.setTimeout(…)`, `window.setTimeout(…)`. */
+/** `setTimeout(…)`, `globalThis.setTimeout(…)`, `globalThis["setTimeout"](…)`. */
 function isTimerCall(node) {
   const callee = node.callee;
   if (callee.type === "Identifier") return TIMER_NAMES.has(callee.name);
-  if (callee.type === "MemberExpression" && !callee.computed && callee.property.type === "Identifier") {
-    return TIMER_NAMES.has(callee.property.name);
+  if (callee.type !== "MemberExpression") return false;
+  if (!callee.computed) {
+    return callee.property.type === "Identifier" && TIMER_NAMES.has(callee.property.name);
   }
-  return false;
+  return callee.property.type === "Literal" && TIMER_NAMES.has(callee.property.value);
 }
 
 /** `x.abort(…)`, `x["abort"](…)`, bare `abort(…)`. */

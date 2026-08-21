@@ -96,6 +96,21 @@ export const c = setTimeout((() => controller.abort()) satisfies () => void, 50)
     [2, 3, 4],
   ],
   [
+    // Review follow-up (Copilot). `isAbortCall` reads a computed literal's VALUE,
+    // so `c["abort"]()` is an abort; `isTimerCall` refused computed access
+    // outright, so `globalThis["setTimeout"](…)` was not a timer and the inline
+    // callback under it went unreported while the header claimed member-spelled
+    // timers were covered. Same class as the quote-style fix above: a spelling
+    // of the shape the rule targets, not a renamed timer or a dynamic key.
+    "computed-literal timer property, both quote styles",
+    `const controller = new AbortController();
+export const a = globalThis["setTimeout"](() => controller.abort(), 50);
+export const b = globalThis['setInterval'](() => controller.abort(), 50);
+export const c = window["setTimeout"](() => { controller["abort"](); }, 50);
+`,
+    [2, 3, 4],
+  ],
+  [
     // The seams that replaced them: abort from inside the MSW handler, and
     // abort queued from the retry hook. Neither is timer-scheduled.
     "in-flight seams are allowed",
