@@ -1,0 +1,37 @@
+.github/workflows/test.yml
+  s_94efcb3b9d036c::t_6095971b9ecd08 653-658,661,776-788,824-832,835-837
+SPEC.md
+  s_94efcb3b9d036c::t_5c39df023184db 642-936,1073-1080,1136-1149,1728,1747-1751,2213-2245,2909,2964-2966,3339-3343,3372-3373,3524-3537
+conformance/runner/python/replay_runner.py
+  s_94efcb3b9d036c::t_44a7b50bf14359 124-126,128,160,165-169,244-245,256
+conformance/runner/python/runner.py
+  s_94efcb3b9d036c::t_4181d1f8337939 140-142,199-205,1544-1546
+conformance/runner/python/schema_walker.py
+  s_94efcb3b9d036c::t_02185344756f20 42-45
+conformance/runner/python/test_replay_runner.py
+  s_94efcb3b9d036c::t_825a9af28e19a5 20-30,41-42,46-54,57-59,149-286
+conformance/runner/ruby/replay-runner.rb
+  s_94efcb3b9d036c::t_0e278ea4ab56f9 117-119
+conformance/runner/ruby/runner.rb
+  s_94efcb3b9d036c::t_6ad8192dbd19a5 121-122,196-203
+go/pkg/basecamp/optional_timestamps_test.go
+  s_94efcb3b9d036c::t_b92a311d9b0134 9,320-330,336-341,345,348,351-356,371-395,400-806,1007-1012,1015,1023
+scripts/check-wrapper-drift/main.go
+  s_94efcb3b9d036c::t_0086e7e23af5a2 331-336
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "92a2051154e11156c552bb763d997b068a25b884",
+  "prompts": {},
+  "sessions": {
+    "s_94efcb3b9d036c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "48c68c61-ee49-4c71-a3ce-ca220311ada5",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
