@@ -299,6 +299,45 @@ func TestWithoutIssuerPolicy_RestoresPrePolicyBehavior(t *testing.T) {
 	}
 }
 
+// TestIssuerPolicyTogglesAreLastWins pins the composition semantics of the two
+// mutually exclusive toggles. Options are appended by wrappers that cannot see
+// each other, so the resolution must depend on ORDER rather than on which
+// option is more permissive — otherwise a WithoutIssuerPolicy buried in a
+// shared default silently defeats a WithIssuerPolicy a wrapper appends after
+// it, and the hop runs unprotected while the code reads as though it is not.
+func TestIssuerPolicyTogglesAreLastWins(t *testing.T) {
+	// Off then on: the policy must be back in force, so the loopback issuer is
+	// refused and never contacted.
+	t.Run("policy_last_wins", func(t *testing.T) {
+		bc5, counter := bc5OnLoopback(t)
+		resourceOrigin := resourceAdvertising(t, bc5)
+
+		_, err := NewDiscoverer(nil, WithoutIssuerPolicy(), WithIssuerPolicy(DefaultIssuerPolicy())).
+			DiscoverFromResource(context.Background(), resourceOrigin)
+		assertBlockedIssuer(t, err, counter)
+	})
+
+	// On then off: the later WithoutIssuerPolicy must win, so the same issuer
+	// is reached. Without this direction the test would pass under a rule of
+	// "the strictest option wins", which is not the semantics being pinned.
+	t.Run("off_last_wins", func(t *testing.T) {
+		bc5, counter := bc5OnLoopback(t)
+		resourceOrigin := resourceAdvertising(t, bc5)
+
+		result, err := NewDiscoverer(nil, WithIssuerPolicy(DefaultIssuerPolicy()), WithoutIssuerPolicy()).
+			DiscoverFromResource(context.Background(), resourceOrigin)
+		if err != nil {
+			t.Fatalf("DiscoverFromResource() error = %v, want nil", err)
+		}
+		if result.Issuer != bc5 {
+			t.Fatalf("want the loopback issuer selected, got %+v", result)
+		}
+		if counter.hits.Load() != 1 {
+			t.Errorf("issuer hits = %d, want 1", counter.hits.Load())
+		}
+	})
+}
+
 // TestDefaultIssuerClientIsShared pins the resource invariant: the default
 // issuer client owns a transport, and a Discoverer has no Close, so building one
 // per Discoverer would leak a connection pool per construction.

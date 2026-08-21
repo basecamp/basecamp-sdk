@@ -125,7 +125,11 @@ var sharedIssuerClient = sync.OnceValue(func() *http.Client {
 // It has no effect alongside WithIssuerHTTPClient, which supplies the transport
 // the policy would otherwise be installed in.
 func WithIssuerPolicy(p surfguard.Policy) DiscovererOption {
-	return func(c *discovererConfig) { c.policy, c.policySet = p, true }
+	// Clears policyOff: these two are mutually exclusive, so the LAST one wins
+	// rather than the most permissive one. A wrapper appending a required
+	// WithIssuerPolicy after caller-supplied defaults must be able to override
+	// a WithoutIssuerPolicy sitting in those defaults.
+	return func(c *discovererConfig) { c.policy, c.policySet, c.policyOff = p, true, false }
 }
 
 // WithIssuerHTTPClient carries the advertised-issuer hop on the given client
@@ -149,7 +153,9 @@ func WithIssuerHTTPClient(client *http.Client) DiscovererOption {
 // process may connect. Prefer WithIssuerPolicy, which keeps the rest of the
 // deny tables in force while admitting the one range a deployment needs.
 func WithoutIssuerPolicy() DiscovererOption {
-	return func(c *discovererConfig) { c.policyOff = true }
+	// Clears policySet for the same reason WithIssuerPolicy clears policyOff:
+	// last one wins. See that option's note.
+	return func(c *discovererConfig) { c.policyOff, c.policySet = true, false }
 }
 
 // NewDiscoverer creates a Discoverer with the given HTTP client.
