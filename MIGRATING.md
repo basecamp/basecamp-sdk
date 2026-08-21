@@ -280,8 +280,17 @@ copy of the parse and is untouched (#798).
 attempts on a throttled account can now be seconds or minutes where it used to
 be milliseconds, so a caller that sized a `context` timeout against the old
 backoff may now hit it. The wait observes cancellation — the loop selects on
-`ctx.Done()` — so cancelling is the escape, and `err.RetryAfter` on the returned
-`*Error` is there if you would rather reschedule the work yourself.
+`ctx.Done()` — so cancelling is the escape. If you would rather reschedule the
+work yourself, the `*Error` carries `RetryAfter` — but the loop wraps it with
+`fmt.Errorf` on exhaustion, even at a cap of one attempt, so a type assertion
+on the returned error fails. Extract it with `errors.As`:
+
+```go
+var apiErr *basecamp.Error
+if errors.As(err, &apiErr) && apiErr.RetryAfter > 0 {
+    // reschedule after apiErr.RetryAfter seconds
+}
+```
 
 ### Kotlin: `search.search` returns `ListResult<SearchResult>`, not `ListResult<JsonElement>` (#717)
 
