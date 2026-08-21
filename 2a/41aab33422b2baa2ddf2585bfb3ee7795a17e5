@@ -1,0 +1,26 @@
+.github/codeql/testdata/sarif-filter-fixture.json
+  s_fc8489cc62f186::t_b2510c14e353bd 46-61
+.github/workflows/codeql.yml
+  s_fc8489cc62f186::t_78a366f7ebbb23 185,243
+  s_fc8489cc62f186::t_51ffc5a554d02c 173-177
+.github/codeql/test-sarif-filter.sh
+  s_fc8489cc62f186::t_505bc7cf74858e 3-4,10,12
+.github/codeql/sarif-filter.jq
+  s_fc8489cc62f186::t_7d5ce49d058353 1-14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "2a41aab33422b2baa2ddf2585bfb3ee7795a17e5",
+  "prompts": {},
+  "sessions": {
+    "s_fc8489cc62f186": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "82e0a4f6-775a-4430-a5e5-e48cdfc33984",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
