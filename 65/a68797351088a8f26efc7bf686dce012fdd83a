@@ -1,0 +1,21 @@
+typescript/lint-rules/no-timer-scheduled-abort.js
+  s_94efcb3b9d036c::t_2d0fab117f2cfb 29-31,44-45,88,92-94,96
+typescript/lint-rules/test-no-timer-scheduled-abort.mjs
+  s_94efcb3b9d036c::t_98fc0dcb1e8e37 95-109
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "65a68797351088a8f26efc7bf686dce012fdd83a",
+  "prompts": {},
+  "sessions": {
+    "s_94efcb3b9d036c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "48c68c61-ee49-4c71-a3ce-ca220311ada5",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
