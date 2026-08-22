@@ -120,6 +120,25 @@ func TestConn_ServesFramesThenScriptedTail(t *testing.T) {
 	}
 }
 
+func TestConn_OversizeFrameMatchesSentinelAndLatches(t *testing.T) {
+	tr := NewTransport()
+	conn, _ := tr.Dial(context.Background(), "wss://a/cable", 8)
+	tr.LastConn().Serve([]byte(`{"type":"welcome"}`)) // 18 bytes > the 8-byte cap
+
+	_, err := conn.ReadFrame(context.Background())
+	// The seam contract, not just an error: the run loop classifies an
+	// over-limit read by errors.Is against the sentinel, and a fake that
+	// returned an untyped error would keep every loop test green against a
+	// classification the real transport defeats.
+	if !errors.Is(err, eventfeed.ErrFrameOversize) {
+		t.Fatalf("oversize read = %v, want errors.Is ErrFrameOversize", err)
+	}
+	// The violation latches, as with a real dead connection.
+	if _, err2 := conn.ReadFrame(context.Background()); !errors.Is(err2, eventfeed.ErrFrameOversize) {
+		t.Fatalf("second read = %v, want the latched sentinel", err2)
+	}
+}
+
 func TestConn_WritesRecordedVerbatimAndCopied(t *testing.T) {
 	tr := NewTransport()
 	conn, _ := tr.Dial(context.Background(), "wss://a/cable", 1<<20)
