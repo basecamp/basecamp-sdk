@@ -43,7 +43,11 @@
 # fails rather than passing quietly, because an unverifiable "we know" claim is
 # indistinguishable from an untracked defect.
 #
-# No-op when the allowlist references no issues at all, which is today's state.
+# Every run verifies the registry's claims live (and the allowlist's, when it
+# references issues). A green live run proves only that today's referenced
+# issues are open; the offline self-test is what covers the failure branches —
+# closed issues, malformed rows, the fail-closed paths — that a green run
+# never exercises.
 #
 # Usage: ./check-known-defect-issues-open
 #        BC3_ROUTE_ALLOWLIST=... KNOWN_DEFECT_ISSUE_REPO=... \
