@@ -102,23 +102,23 @@ func TestReconnectDelay_RetryAfterWinsOutrightOverTheCap(t *testing.T) {
 
 func TestPollRetryDelay_RetryAfterIsExactAndCapExempt(t *testing.T) {
 	// A server-directed Retry-After is waited exactly — even beyond the cap.
-	if got := pollRetryDelay(PollThrottled, 5*time.Minute, 1, fixedRand(0.5)); got != 5*time.Minute {
+	if got := pollRetryDelay(5*time.Minute, 1, fixedRand(0.5)); got != 5*time.Minute {
 		t.Errorf("pollRetryDelay(5m Retry-After) = %v, want 5m", got)
 	}
 	// It is exact, not a floor: a Retry-After below the would-be draw wins.
-	if got := pollRetryDelay(PollThrottled, time.Second, 7, fixedRand(0.99)); got != time.Second {
+	if got := pollRetryDelay(time.Second, 7, fixedRand(0.99)); got != time.Second {
 		t.Errorf("pollRetryDelay(1s Retry-After) = %v, want exactly 1s", got)
 	}
 }
 
 func TestPollRetryDelay_FullJitterOverTheFailureIndex(t *testing.T) {
 	// Without Retry-After the wait is a full-jitter draw over k.
-	if got := pollRetryDelay(PollTransient, 0, 2, fixedRand(0.5)); got != time.Second {
+	if got := pollRetryDelay(0, 2, fixedRand(0.5)); got != time.Second {
 		t.Errorf("pollRetryDelay(k=2, r=0.5) = %v, want 1s", got)
 	}
 	rng := rand.New(rand.NewSource(2))
 	for i := 0; i < 1000; i++ {
-		d := pollRetryDelay(PollTransient, 0, 9, rng.Float64)
+		d := pollRetryDelay(0, 9, rng.Float64)
 		if d < 0 || d >= backoffCap {
 			t.Fatalf("pollRetryDelay(k=9) = %v, want in [0, %v)", d, backoffCap)
 		}
@@ -179,6 +179,20 @@ func TestRepairJitterSaturates(t *testing.T) {
 	const day = 24 * time.Hour
 	if got := repairJitter(day, fixedRand(1)); got <= day || got > time.Duration(1.2*float64(day)) {
 		t.Errorf("repairJitter(24h, draw=1) = %s, want just under +20%%", got)
+	}
+}
+
+func TestPollRetryDelay_UnusableValuesDrawTheJitterCurve(t *testing.T) {
+	// §6's parsing algorithm never yields zero ("zero is read as 'no usable
+	// value'"), so a conformant throttled always carries a positive value —
+	// and an unusable zero or negative, whatever kind a nonconforming
+	// adapter claims, draws local jitter rather than arming a zero-delay
+	// tight loop.
+	if got := pollRetryDelay(0, 2, fixedRand(0.5)); got != time.Second {
+		t.Errorf("pollRetryDelay(0, k=2, r=0.5) = %v, want the 1s jitter draw", got)
+	}
+	if got := pollRetryDelay(-time.Second, 2, fixedRand(0.5)); got != time.Second {
+		t.Errorf("pollRetryDelay(-1s, k=2, r=0.5) = %v, want the 1s jitter draw", got)
 	}
 }
 

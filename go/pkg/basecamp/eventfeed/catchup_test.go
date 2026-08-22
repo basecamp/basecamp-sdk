@@ -2739,28 +2739,6 @@ func TestExpiredStalenessOutranksThePollRetry(t *testing.T) {
 	}
 }
 
-// TestThrottledZeroRetryAfterIsWaitedExactly: SPEC §6 fixes the seam mapping
-// — "a retryable outcome exhausted inside the seam whose last response
-// carried a parsed Retry-After maps to throttled(retry_after) whatever its
-// status, and one without maps to transient" — so PollThrottled always
-// carries a server-directed wait, zero included (Retry-After: 0, or an
-// HTTP-date already reached), and §23 waits it "exactly, cap-exempt". A
-// delay selection gated on retryAfter > 0 reads a parsed zero as absence
-// and replaces an immediate-retry directive with up to 60 seconds of local
-// full-jitter backoff.
-func TestThrottledZeroRetryAfterIsWaitedExactly(t *testing.T) {
-	h := newHarness(t)
-	h.minter.ScriptTicket(ticket(1))
-	h.polls.ScriptError(&eventfeed.PollError{Kind: eventfeed.PollThrottled, RetryAfter: 0, Msg: "throttled"})
-	h.start()
-
-	conn := h.driveToSubscribed()
-	conn.Serve(frameConfirm(noFilterIdentifier))
-	if d := h.fireTimer(timerPollRetry); d != 0 {
-		t.Fatalf("poll-retry armed for %s after a parsed Retry-After of 0; a throttled zero is server-directed and waited exactly (0 = retry now), never replaced with local jitter", d)
-	}
-}
-
 // TestLatchedStalenessOutranksAReadyLiveFrame: a frame received AFTER the
 // staleness window fired does not reset it — staleHolder.arm latches the
 // expiry instead, per §23's "a fired staleness deadline observed on return
@@ -2812,4 +2790,88 @@ func TestLatchedStalenessOutranksAReadyLiveFrame(t *testing.T) {
 	if violations != 0 {
 		t.Errorf("%d/%d rounds delivered a live event past a latched staleness expiry; the frame arm must re-evaluate the verdict before delivering (transition 25 first)", violations, rounds)
 	}
+}
+
+// TestThrottledZeroRetryAfterFallsToLocalBackoff: §6's parsing algorithm
+// never yields zero — step 1 requires an integer > 0, step 2 takes
+// max(0, date − now) and returns only when > 0, and the rounding rationale
+// says it outright: "zero is read as 'no usable value' and drops the request
+// onto the local backoff curve". So a conformant adapter's PollThrottled
+// always carries a positive RetryAfter, and a throttled ZERO — a
+// nonconforming status-keyed adapter's 429 with no usable header — must fall
+// to the local jitter curve like any other absent value. Waiting it
+// "exactly" arms a zero-delay poll-retry and tight-loops the walk against a
+// server that is throttling it.
+func TestThrottledZeroRetryAfterFallsToLocalBackoff(t *testing.T) {
+	h := newHarness(t)
+	h.minter.ScriptTicket(ticket(1))
+	h.polls.ScriptError(&eventfeed.PollError{Kind: eventfeed.PollThrottled, RetryAfter: 0, Msg: "throttled"})
+	h.start()
+
+	conn := h.driveToSubscribed()
+	conn.Serve(frameConfirm(noFilterIdentifier))
+	if d := h.fireTimer(timerPollRetry); d <= 0 {
+		t.Fatalf("poll-retry armed for %s on a throttled zero; an unusable Retry-After is undefined and draws local jitter — a zero delay tight-loops against a throttling server", d)
+	}
+}
+
+// TestGracePhaseEndsAtItsDeadlineNotAWindowAfterItsLastWake pins the grace
+// phase's UPPER bound. The phase is a fixed deadline read at the deferral;
+// when the pre-existing staleness window fires just short of that deadline,
+// the wake re-armed for the remainder must land AT the deadline — re-arming
+// a full window there pushes the only remaining wake almost one whole window
+// past the deadline, and the wait ends nearly two windows after the deferral
+// instead of one.
+func TestGracePhaseEndsAtItsDeadlineNotAWindowAfterItsLastWake(t *testing.T) {
+	wakes := make(chan struct{}, 64)
+	deferred := make(chan struct{}, 1)
+	disconnected := make(chan error, 8)
+	h := newHarness(t, eventfeed.WithObserver(eventfeed.Observer{
+		Disconnected: func(_ string, err error) { disconnected <- err },
+	}))
+	h.conn.OnSupersededWake(func() {
+		select {
+		case wakes <- struct{}{}:
+		default:
+		}
+	})
+	h.conn.OnFrameDeferred(func() {
+		select {
+		case deferred <- struct{}{}:
+		default:
+		}
+	})
+	h.minter.ScriptTicket(ticket(1))
+	h.polls.StallNext()
+	h.start()
+
+	conn := h.driveToSubscribed()
+	conn.Serve(frameConfirm(noFilterIdentifier))
+	h.waitUntil("entry poll in flight", func() bool { return h.polls.CallCount() == 1 })
+	conn.FailReads(errors.New("read failed mid-poll"))
+	select {
+	case <-deferred:
+		// The grace deadline is now Now + 7500ms.
+	case <-time.After(watchdog):
+		t.Fatal("the read failure was not deferred")
+	}
+
+	// The pre-existing window fires 1ms short of the deadline.
+	h.clock.Advance(7499 * time.Millisecond)
+	h.fireTimer(timerStaleness)
+	select {
+	case <-wakes:
+	case <-time.After(watchdog):
+		t.Fatal("the staleness firing inside the grace phase did not wake the wait")
+	}
+
+	// One more millisecond reaches the deadline exactly; the wait must end
+	// there — not a full window later.
+	h.clock.Advance(time.Millisecond)
+	select {
+	case <-disconnected:
+	case <-time.After(watchdog):
+		t.Fatal("the grace deadline passed with the poll still awaited: the wake was re-armed a FULL window out (deadline + ~7.5s), not at the deadline")
+	}
+	h.awaitTimer(timerBackoff)
 }

@@ -74,20 +74,24 @@ func reconnectDelay(retryAfter time.Duration, n int, r func() float64) time.Dura
 // reconnect-cycle count, reset by any successful poll page and by socket
 // teardown. A server-directed Retry-After is waited exactly and is exempt
 // from local caps; otherwise the wait is a full-jitter draw over k.
-// The selection is kind-keyed, per SPEC §6's fixed adapter mapping: "a
-// retryable outcome exhausted inside the seam whose last response carried a
+// The gate is the VALUE, not the kind, and the two §6 texts compose to make
+// that correct rather than merely convenient. The seam mapping is
+// presence-keyed — "a retryable outcome ... whose last response carried a
 // parsed Retry-After maps to throttled(retry_after) whatever its status, and
-// one without maps to transient". PollThrottled therefore ALWAYS carries a
-// server-directed wait, zero included — Retry-After: 0, or an HTTP-date
-// already reached — and §23 waits it exactly, cap-exempt. Gating on
-// retryAfter > 0 alone read a parsed zero as absence and replaced an
-// immediate-retry directive with up to 60 seconds of local jitter. A
-// transient carrying a positive RetryAfter is still honored defensively; a
-// negative value (an adapter bug) clamps to zero rather than arming a
-// negative timer.
-func pollRetryDelay(kind PollErrorKind, retryAfter time.Duration, k int, r func() float64) time.Duration {
-	if kind == PollThrottled || retryAfter > 0 {
-		return max(retryAfter, 0)
+// one without maps to transient" — but "parsed" is defined by §6's parsing
+// algorithm, which never yields zero: step 1 requires an integer > 0, step 2
+// returns max(0, date − now) only when > 0, and the rounding rationale says
+// why — "zero is read as 'no usable value' and drops the request onto the
+// local backoff curve". A conformant adapter's throttled therefore ALWAYS
+// carries a positive value, and every such value passes this gate exactly,
+// cap-exempt. An earlier revision keyed on the kind instead and returned a
+// throttled zero verbatim, which turned a nonconforming adapter's
+// throttled-with-no-usable-header into a zero-delay poll-retry — a tight
+// loop against a server that is throttling the caller. Zero and negative
+// are "no usable value" whatever the kind claims, and draw the jitter curve.
+func pollRetryDelay(retryAfter time.Duration, k int, r func() float64) time.Duration {
+	if retryAfter > 0 {
+		return retryAfter
 	}
 	return fullJitterDelay(k, r)
 }
