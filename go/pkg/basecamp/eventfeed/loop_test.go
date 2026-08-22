@@ -2430,3 +2430,17 @@ func TestCloseFromDisconnectedDoesNotAnnounceBackoff(t *testing.T) {
 		t.Fatalf("states %v announced Backoff after Close returned from Disconnected; the Closed edge must win", states)
 	}
 }
+
+// TestUnauthorizedMintCarriesNoRetryAfterFloor: row 4 pins it — "unauthorized
+// carries no retry_after, so the backoff draw alone governs". A seam that
+// populates MintError.RetryAfter on a 401/403 anyway must not floor the
+// reconnect delay.
+func TestUnauthorizedMintCarriesNoRetryAfterFloor(t *testing.T) {
+	h := newHarness(t)
+	h.minter.ScriptError(&eventfeed.MintError{Kind: eventfeed.MintUnauthorized, RetryAfter: 5 * time.Minute})
+	h.start()
+
+	if d := h.fireTimer(timerBackoff); d >= 5*time.Minute {
+		t.Fatalf("backoff armed for %s: an unauthorized mint's seam-supplied RetryAfter floored the reconnect delay; unauthorized carries no retry_after and the local draw alone governs", d)
+	}
+}

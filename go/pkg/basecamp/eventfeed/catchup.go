@@ -1112,6 +1112,25 @@ func (l *loop) stream(at *attempt) cycleOutcome {
 			l.disposeAttempt(at, repair)
 			return cycleOutcome{kind: outcomeClosed}
 		case <-repair.C():
+			// The expired window outranks a ready repair cadence, as it does
+			// the poll-retry and live-frame arms: entering the walk makes the
+			// already-rendered stale verdict look in-flight — pollPage defers
+			// it and grants a grace phase, and the poll's page may even be
+			// accepted first — where transition 25 fires directly from every
+			// socket-open state, staleness among its triggers. evaluate
+			// arbitrates as ever.
+			select {
+			case <-staleTimer.C():
+				if age, authoritative := at.lc.stale.evaluate(staleGen); authoritative {
+					l.disposeAttempt(at, repair)
+					if l.cfg.observer.StaleConnection != nil {
+						l.cfg.observer.StaleConnection(age)
+					}
+					l.observeDisconnected("", errStaleConnection)
+					return cycleOutcome{kind: outcomeFailed}
+				}
+			default:
+			}
 			// Transition 24 → CatchingUp: one repair walk from the connector's
 			// current position, returning here through Draining. The next
 			// cadence is armed before Streaming is re-announced, for the same
@@ -1141,6 +1160,13 @@ func (l *loop) stream(at *attempt) cycleOutcome {
 		case item, ok := <-at.lc.frames:
 			if !ok {
 				return l.pumpExited(at, repair)
+			}
+			// Close outranks a ready item — the cancellation error the pump
+			// hands off after Close must not be dispatched as a socket
+			// failure (see awaitConfirmation's frame arm).
+			if l.runCtx.Err() != nil {
+				l.disposeAttempt(at, repair)
+				return cycleOutcome{kind: outcomeClosed}
 			}
 			// A latched expiry outranks a ready frame. The pump refuses the
 			// reset for a frame received after the window fired
@@ -1323,7 +1349,11 @@ func (l *loop) recoverPoll(at *attempt, cursor Cursor, err error) (walkStep, cyc
 				Err:    err,
 			}}, true
 		}
-		return walkStep{}, cycleOutcome{kind: outcomeFailed, retryAfter: pe.RetryAfter}, true
+		// No retryAfter: `unauthorized` is specified to carry none (the
+		// backoff draw alone governs, bounded by the shared counter), so a
+		// custom PollSource populating the field must not floor the
+		// reconnect delay.
+		return walkStep{}, cycleOutcome{kind: outcomeFailed}, true
 	case PollFilterInvalid:
 		// Transition 20: a configuration error a position reset won't help;
 		// the server's message naming the offending list is preserved.
@@ -1424,6 +1454,11 @@ func (l *loop) waitPollRetry(at *attempt, d time.Duration) (cycleOutcome, bool) 
 		case item, ok := <-at.lc.frames:
 			if !ok {
 				return l.pumpExited(at, t), true
+			}
+			// Close outranks a ready item (see awaitConfirmation's frame arm).
+			if l.runCtx.Err() != nil {
+				l.disposeAttempt(at, t)
+				return cycleOutcome{kind: outcomeClosed}, true
 			}
 			if out, done := l.handleLiveFrame(at, t, item, false); done {
 				return out, true

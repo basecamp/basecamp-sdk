@@ -1172,21 +1172,38 @@ func goneOutcome(body json.RawMessage) (pollOutcome, error) {
 // same-origin/no-downgrade validation is refused inside the call, with the
 // Location redacted to its origin. No request is ever issued to it — the
 // driver is the seam, so the foreign origin is unreachable by construction.
+// redirectRefusalFrom models the Layer-1 adapter's per-hop redirect rule,
+// and the rule it runs is the SHIPPED one: eventfeed.CheckContinuation is
+// the per-hop same-origin/no-downgrade validation the adapter is specified
+// to apply to a redirect Location ("a redirect Location failing per-hop
+// validation inside a poll seam call"). An earlier revision re-implemented
+// the decision as an ad-hoc origin comparison, which diverged at the edges —
+// a Location that cannot be reduced to an origin at all failed the SCENARIO,
+// as if the fixture were malformed rather than the peer hostile. What tier 2
+// verifies through this is the refusal DECISION and the loop's response to
+// it; that the adapter's HTTP client makes zero requests to the refused URL
+// is a below-the-seam property, owned by Layer-1 adapter conformance.
 func (d *driver) redirectRefusalFrom(headers map[string]string) (pollOutcome, error) {
 	location := headers["Location"]
 	if location == "" {
 		return pollOutcome{}, errors.New("a 302 poll response needs a Location header")
 	}
-	origin, err := eventfeed.CanonicalOrigin(location)
+	base, err := eventfeed.CanonicalOrigin(d.h.apiOrigin)
 	if err != nil {
-		return pollOutcome{}, fmt.Errorf("302 Location: %w", err)
+		return pollOutcome{}, fmt.Errorf("canonicalizing the API origin: %w", err)
 	}
-	if origin == d.h.apiOrigin {
+	if terr := eventfeed.ExportCheckContinuation(base, location); terr == nil {
 		return pollOutcome{}, errors.New("a same-origin 302 is not modeled: the seam would follow it, and no fixture scripts that hop")
+	}
+	// Redacted to its origin best-effort, exactly as the seam contract
+	// requires of the adapter; an unreducible Location carries none.
+	locationOrigin := ""
+	if origin, oerr := eventfeed.CanonicalOrigin(location); oerr == nil {
+		locationOrigin = origin
 	}
 	return pollOutcome{err: &eventfeed.PollError{
 		Kind:           eventfeed.PollRedirectRefused,
-		LocationOrigin: origin,
+		LocationOrigin: locationOrigin,
 		Err:            errors.New("poll refused a redirect"),
 	}}, nil
 }
