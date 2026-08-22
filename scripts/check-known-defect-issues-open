@@ -126,14 +126,17 @@ rows.each_with_index do |e, i|
     warn "ERROR: prose_tracking_issues[#{i}] in #{tracking_path} needs a positive integer `issue`, got #{e['issue'].inspect}"
     exit 1
   end
-  if e['site'].to_s.strip.empty?
-    warn "ERROR: prose_tracking_issues[#{i}] (##{e['issue']}) in #{tracking_path} needs a `site` naming " \
-         'the sentence that leans on it — a bare number tells the next reader nothing to go fix.'
+  # String-typed, not merely stringifiable: to_s coerces [] and {} and 123
+  # into non-empty text, which would register a promise into a shape nothing
+  # reads — the sweep's [file, issue] pair can never match a non-String file.
+  unless e['site'].is_a?(String) && !e['site'].strip.empty?
+    warn "ERROR: prose_tracking_issues[#{i}] (##{e['issue']}) in #{tracking_path} needs a `site` — a non-blank " \
+         'string naming the sentence that leans on it — got ' + e['site'].inspect
     exit 1
   end
-  if e['file'].to_s.strip.empty?
-    warn "ERROR: prose_tracking_issues[#{i}] (##{e['issue']}) in #{tracking_path} needs a `file` naming " \
-         'the path the sentence lives in — the discovery sweep keys coverage on [file, issue].'
+  unless e['file'].is_a?(String) && !e['file'].strip.empty?
+    warn "ERROR: prose_tracking_issues[#{i}] (##{e['issue']}) in #{tracking_path} needs a `file` — a non-blank " \
+         'string naming the path the sentence lives in (the sweep keys coverage on [file, issue]) — got ' + e['file'].inspect
     exit 1
   end
   refs << [e['issue'], e['site']]
