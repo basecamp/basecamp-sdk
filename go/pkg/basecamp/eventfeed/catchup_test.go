@@ -2585,3 +2585,156 @@ func TestSuspendedStalenessDuringAnInFlightPollDoesNotDefer(t *testing.T) {
 		t.Fatalf("StaleConnection ages = %v, want none — the firing was not evidence", ages)
 	}
 }
+
+// TestDeferredReadFailureGetsTheFullGracePhase: SPEC.md §23's grace phase is
+// "one further EVENT_FEED_STALE_AFTER, measured from the deferral, after
+// which the seam call is abandoned to the deferred outcome's teardown" — a
+// deadline, with every staleness firing inside it demoted to a wake ("wakes
+// may be early or late, and the deadline is what decides"). A read error does
+// not reset staleness in the pump, so the PRE-EXISTING window — armed at the
+// last inbound frame, mostly spent by the time the failure lands — fires
+// inside the grace phase of the deferred read error. That firing must wake
+// the wait, not abandon the in-flight poll: abandoned there, a failure
+// detected 7s after the last frame grants the poll 0.5s of the 7.5s phase,
+// and a page returning during the remainder is cancelled instead of being
+// delivered and checkpointed.
+func TestDeferredReadFailureGetsTheFullGracePhase(t *testing.T) {
+	wakes := make(chan struct{}, 64)
+	deferred := make(chan struct{}, 1)
+	disconnected := make(chan error, 8)
+	h := newHarness(t, eventfeed.WithObserver(eventfeed.Observer{
+		Disconnected: func(_ string, err error) { disconnected <- err },
+	}))
+	h.conn.OnSupersededWake(func() {
+		select {
+		case wakes <- struct{}{}:
+		default:
+		}
+	})
+	h.conn.OnFrameDeferred(func() {
+		select {
+		case deferred <- struct{}{}:
+		default:
+		}
+	})
+	h.minter.ScriptTicket(ticket(1))
+	h.polls.StallNext()
+	h.start()
+
+	conn := h.driveToSubscribed()
+	conn.Serve(frameConfirm(noFilterIdentifier))
+	h.waitUntil("entry poll in flight", func() bool { return h.polls.CallCount() == 1 })
+	conn.FailReads(errors.New("read failed mid-poll"))
+	select {
+	case <-deferred:
+	case <-time.After(watchdog):
+		t.Fatal("the read failure was not deferred")
+	}
+
+	// The pre-existing window fires INSIDE the grace phase.
+	h.fireTimer(timerStaleness)
+	select {
+	case <-wakes:
+		// Demoted to a wake; the deadline decides. SPEC behavior.
+	case err := <-disconnected:
+		t.Fatalf("the deferred read failure was abandoned at the OLD staleness firing (Disconnected: %v); the grace phase is measured from the deferral", err)
+	case <-time.After(watchdog):
+		t.Fatal("neither a wake nor a teardown followed the staleness firing")
+	}
+
+	// And the deadline still ends the wait: one full EVENT_FEED_STALE_AFTER
+	// after the deferral (7500ms, SPEC-pinned), the call is abandoned to the
+	// read error's teardown.
+	h.clock.Advance(7500 * time.Millisecond)
+	select {
+	case <-disconnected:
+	case <-time.After(watchdog):
+		t.Fatal("the grace deadline did not end the wait")
+	}
+	h.awaitTimer(timerBackoff)
+}
+
+// TestExpiredStalenessOutranksThePollRetry: when `poll-retry` and `staleness`
+// are both ready at waitPollRetry's select, taking the retry starts another
+// Poll on a socket whose expired window was already evidence — and if that
+// call blocks, the stale verdict is deferred and granted a fresh grace phase,
+// so the teardown lands beyond §23's published bound ("detection window +
+// grace phase... Nothing waits longer than their sum"). The expired window
+// must win however the select lands: the retry arm re-checks staleness before
+// issuing the poll. The select pick is random, so the race is driven in
+// rounds: the run goroutine is parked in a BufferOverflow handler while both
+// timers fire, and any round that issues a second poll is a violation.
+func TestExpiredStalenessOutranksThePollRetry(t *testing.T) {
+	const rounds = 40
+	violations := 0
+	for i := range rounds {
+		violations += func() int {
+			parked := make(chan struct{}, 1)
+			release := make(chan struct{})
+			var once sync.Once
+			rel := func() { once.Do(func() { close(release) }) }
+			t.Cleanup(rel)
+			disconnected := make(chan struct{}, 8)
+			h := newHarness(t,
+				eventfeed.WithLiveBufferCapacity(1),
+				eventfeed.WithSignalHandler(func(eventfeed.Signal) eventfeed.Disposition {
+					select {
+					case parked <- struct{}{}:
+					default:
+					}
+					<-release
+					return eventfeed.Accept
+				}),
+				eventfeed.WithObserver(eventfeed.Observer{
+					Disconnected: func(string, error) {
+						select {
+						case disconnected <- struct{}{}:
+						default:
+						}
+					},
+				}),
+			)
+			h.minter.ScriptTicket(ticket(1))
+			h.polls.ScriptError(&eventfeed.PollError{Kind: eventfeed.PollTransient, Msg: "transient"})
+			h.start()
+
+			conn := h.driveToSubscribed()
+			conn.Serve(frameConfirm(noFilterIdentifier))
+			h.awaitTimer(timerPollRetry)
+			// Two correlated events against capacity 1: the second drops, and
+			// its overflow handler parks the run goroutine mid-dispatch — so
+			// both timers below fire while nothing is selecting, and the next
+			// select finds both ready.
+			conn.Serve(frameMessage(noFilterIdentifier, 101))
+			conn.Serve(frameMessage(noFilterIdentifier, 102))
+			select {
+			case <-parked:
+			case <-time.After(watchdog):
+				t.Fatal("the overflow handler never parked the run goroutine")
+			}
+			h.fireTimer(timerStaleness)
+			h.fireTimer(timerPollRetry)
+			rel()
+
+			deadline := time.Now().Add(watchdog)
+			for {
+				if h.polls.CallCount() >= 2 {
+					t.Logf("round %d: poll-retry won over an expired staleness window (second poll issued)", i)
+					return 1
+				}
+				select {
+				case <-disconnected:
+					return 0
+				default:
+				}
+				if time.Now().After(deadline) {
+					t.Fatal("round undecided: neither a second poll nor a teardown")
+				}
+				time.Sleep(time.Millisecond)
+			}
+		}()
+	}
+	if violations != 0 {
+		t.Errorf("%d/%d rounds issued a poll on an already-expired socket; the retry must re-check staleness (transition 21) before polling", violations, rounds)
+	}
+}

@@ -1244,6 +1244,45 @@ func TestDuplicateWelcomeResendsSubscribe(t *testing.T) {
 	h.awaitBoundary()
 }
 
+// TestConnectedObserverRunsInAwaitingWelcome: transition 6 (Connecting →
+// AwaitingWelcome) is "dial ok; frame pump started" (SPEC.md §23), and both
+// are true the moment newLiveConn returns — so the state announcement must
+// precede Observer.Connected. Announced late, a Connected callback observes
+// the {handshake-deadline, staleness} timer set that §23's per-state exact
+// sets assign to AwaitingWelcome while the last announced state is still
+// Connecting, whose set is {handshake-deadline} — an inconsistent pair no
+// host telemetry can reconcile.
+func TestConnectedObserverRunsInAwaitingWelcome(t *testing.T) {
+	var mu sync.Mutex
+	last := ""
+	atConnected := make(chan string, 1)
+	h := newHarness(t, eventfeed.WithObserver(eventfeed.Observer{
+		Connected: func() {
+			mu.Lock()
+			s := last
+			mu.Unlock()
+			select {
+			case atConnected <- s:
+			default:
+			}
+		},
+	}))
+	// Overrides the harness's state hook; both callbacks run on the run
+	// goroutine, so `last` is ordered, not sampled.
+	h.conn.OnStateChanged(func(s string) { mu.Lock(); last = s; mu.Unlock() })
+	h.minter.ScriptTicket(ticket(1))
+	h.start()
+
+	select {
+	case s := <-atConnected:
+		if s != "awaiting_welcome" {
+			t.Fatalf("Connected fired with announced state %q, want %q: transition 6 must precede the callback", s, "awaiting_welcome")
+		}
+	case <-time.After(watchdog):
+		t.Fatal("Connected never fired")
+	}
+}
+
 // TestSubscribeWriteFailure: a failed subscribe write takes the socket-
 // failure path — Backoff, never terminal.
 func TestSubscribeWriteFailure(t *testing.T) {

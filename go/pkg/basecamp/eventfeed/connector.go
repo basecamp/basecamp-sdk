@@ -7,7 +7,6 @@ import (
 	"math/rand/v2"
 	"net/url"
 	"sync"
-	"sync/atomic"
 	"time"
 )
 
@@ -184,9 +183,8 @@ func WithObserver(o Observer) Option { return func(c *config) { c.observer = o }
 // Connector is the SPEC.md §23 Event Feed connector. Construct with New,
 // consume with Events (single-shot), stop with Close.
 type Connector struct {
-	cfg      config
-	consumed atomic.Bool
-	hooks    testHooks
+	cfg   config
+	hooks testHooks
 
 	// mu guards the close latch and the active run's cancellation, which have
 	// to move together: close() is a universal edge from every non-absorbing
@@ -195,6 +193,12 @@ type Connector struct {
 	// never across a seam call, a yield, or an observer callback — so a Close
 	// taken from inside any of them cannot contend with the run goroutine.
 	mu sync.Mutex
+	// consumed latches the single-shot claim (Events). Guarded by mu, in the
+	// SAME critical section that publishes runDone: claimed-but-unpublished
+	// was a window in which a concurrent Wait — synchronized with the claim
+	// through the usage terminal a second consumption yields — read a nil
+	// runDone and returned while the run it should await was starting.
+	consumed bool
 	// isClosed latches Close, so a run that starts afterwards cancels itself
 	// immediately rather than making one wire attempt first.
 	isClosed bool
@@ -426,30 +430,41 @@ func checkOriginScheme(canonical string) error {
 // error element — a clean stop, the feed is resumable by design.
 func (c *Connector) Events(ctx context.Context) iter.Seq2[Event, error] {
 	return func(yield func(Event, error) bool) {
-		if !c.consumed.CompareAndSwap(false, true) {
-			yield(Event{}, &TerminalError{
-				Reason: ReasonUsage,
-				Msg:    "Events is single-shot: this connector was already consumed",
-			})
-			return
-		}
 		runCtx, cancel := context.WithCancel(ctx)
-		defer cancel()
-		// Published under the same lock as the cancel func, and CLOSED rather
-		// than cleared on exit: clearing it would leave a window where Wait
-		// reads nil — and returns at once — while this function has not
-		// finished unwinding, which is the one instant Wait exists to cover.
 		done := make(chan struct{})
-		defer close(done)
+		// The single-shot claim is taken under c.mu, in the SAME critical
+		// section that publishes runDone — not before it. A claim taken first
+		// (the old atomic CompareAndSwap) left a window between winning and
+		// publishing in which the claim was already OBSERVABLE — a second
+		// consumption yields the usage terminal — while Wait still read a nil
+		// runDone and returned at once, reporting quiescence for a run that
+		// had started and not exited. One section leaves Wait nothing to
+		// linearize between: it runs wholly before the claim (no run to
+		// await) or wholly after runDone exists.
+		//
 		// Register this run's cancellation under the same lock Close latches
 		// under, so the two cannot straddle each other: a Close that already
 		// latched cancels here, and one that latches later finds the func and
 		// cancels it itself. Either way runCtx is done before Close returns —
 		// there is no window in which the run proceeds past a returned Close.
 		c.mu.Lock()
+		if c.consumed {
+			c.mu.Unlock()
+			cancel()
+			yield(Event{}, &TerminalError{
+				Reason: ReasonUsage,
+				Msg:    "Events is single-shot: this connector was already consumed",
+			})
+			return
+		}
+		c.consumed = true
 		// Installed before the loop is built, and under the same mutex Close
 		// takes, so the run cannot reach a terminal before the claim exists.
 		c.cfg.claimTerminal = c.claimTerminal
+		// runDone is CLOSED rather than cleared on exit: clearing it would
+		// leave a window where Wait reads nil — and returns at once — while
+		// this function has not finished unwinding, which is the one instant
+		// Wait exists to cover.
 		c.runDone = done
 		if c.isClosed {
 			// Closed before the first iteration: end cleanly with zero wire
@@ -459,6 +474,8 @@ func (c *Connector) Events(ctx context.Context) iter.Seq2[Event, error] {
 			c.cancelRun = cancel
 		}
 		c.mu.Unlock()
+		defer cancel()
+		defer close(done)
 		// Fired only once the cancellation is REGISTERED: before that point
 		// the run is protected by the isClosed latch checked just above, not
 		// by the cancel func, so a context handed out earlier would invite an
