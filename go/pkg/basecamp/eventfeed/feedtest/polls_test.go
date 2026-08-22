@@ -72,9 +72,18 @@ func TestPolls_LedgerOwnsItsFilterBytes(t *testing.T) {
 	if got := p.Calls()[0].Filters.Types[0]; got != "message.created" {
 		t.Fatalf("ledger says %q, want what was passed at call time", got)
 	}
-	// ...nor a test editing a returned snapshot rewrites history.
+	// ...nor a test editing a returned snapshot rewrites history...
 	p.Calls()[0].Filters.Types[0] = "edited.snapshot"
 	if got := p.Calls()[0].Filters.Types[0]; got != "message.created" {
 		t.Fatalf("snapshot edit corrupted the ledger: %q", got)
+	}
+	// ...nor an OnCall callback mutating its argument.
+	p.ScriptPage(eventfeed.PollPage{})
+	p.OnCall(func(call PollCall) { call.Filters.Types[0] = "mutated.in.callback" })
+	if _, err := p.Poll(context.Background(), eventfeed.Cursor{}, eventfeed.Filters{Types: []string{"todo.created"}}); err != nil {
+		t.Fatalf("poll = %v, want the scripted page", err)
+	}
+	if got := p.Calls()[1].Filters.Types[0]; got != "todo.created" {
+		t.Fatalf("callback mutation corrupted the ledger: %q", got)
 	}
 }
