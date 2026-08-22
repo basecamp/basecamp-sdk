@@ -903,6 +903,23 @@ func (l *loop) runCycle(delay time.Duration) cycleOutcome {
 		return cycleOutcome{kind: outcomeClosed}
 	}
 
+	// The dial's result can race the deadline: both ready, the select above
+	// is random, and accepting the dial then installed the pump and announced
+	// Connected for an attempt whose handshake window had already closed —
+	// transition 7 bypassed by a coin flip. The deadline is authoritative,
+	// the same expired-timer ordering the welcome and confirm branches read
+	// Stop for — expressed here as a drain, because a deadline that has NOT
+	// fired must keep running to `welcome` (it spans dial-to-welcome), so
+	// Stop cannot be the probe.
+	select {
+	case <-hs.C():
+		// Transition 7, exactly as if the deadline's own case had won.
+		at.cancel()
+		_ = conn.Close(closeCodeNormal, "")
+		return cycleOutcome{kind: outcomeFailed}
+	default:
+	}
+
 	// Transition 6 → AwaitingWelcome: staleness arms at socket open, the
 	// pump starts, and the handshake deadline keeps running to `welcome`.
 	//
@@ -1045,34 +1062,59 @@ func (l *loop) awaitConfirmation(at *attempt, deadline Timer) cycleOutcome {
 // it restores the bound: a lapse takes transition 9/14 exactly as it would
 // have had the write never blocked, and disposal's cancel is what returns the
 // abandoned write (the seam contract requires a cancelled write to return
-// promptly, and Close is documented to unblock it too). Staleness is
-// deliberately not in this select — the phase deadline is the tighter bound
-// on a handshake that is going nowhere, and adding a second timer here would
-// duplicate the generation dance for no additional guarantee.
+// promptly, and Close is documented to unblock it too).
+//
+// Staleness is in this select too. An earlier revision left it out on the
+// stated premise that the phase deadline is always the tighter bound, and the
+// premise is false twice over: the 7.5s staleness window undercuts even the
+// default 10s handshake deadline on an immediate first welcome, and a
+// duplicate welcome resends the subscribe under the confirmation deadline,
+// which is configurable to anything — a dead socket then sat blocked in the
+// write arbitrarily past the expiry that rows 9/15 say tears it down. So this
+// wait carries the case like every other socket-open wait, generation dance
+// and all.
 func (l *loop) writeSubscribe(at *attempt, deadline *Timer) (cycleOutcome, bool) {
 	written := make(chan error, 1)
 	go func() { written <- at.lc.conn.WriteFrame(at.ctx, l.subscribeFrame) }()
-	select {
-	case werr := <-written:
-		if werr != nil {
+	for {
+		staleTimer, staleGen := at.lc.stale.current()
+		select {
+		case werr := <-written:
+			if werr != nil {
+				l.disposeAttempt(at, *deadline)
+				l.observeDisconnected("", werr)
+				return cycleOutcome{kind: outcomeFailed}, true
+			}
+			if l.hooks.subscribeWritten != nil {
+				l.hooks.subscribeWritten()
+			}
+			return cycleOutcome{}, false
+		case <-l.runCtx.Done():
 			l.disposeAttempt(at, *deadline)
-			l.observeDisconnected("", werr)
+			return cycleOutcome{kind: outcomeClosed}, true
+		case <-(*deadline).C():
+			// The deadline is spent, so disposal is handed nil: the attempt's
+			// timer set is empty from here, as on every other lapse.
+			lapsed := errDeadlineLapsed(l.state)
+			l.disposeAttempt(at, nil)
+			l.observeDisconnected("", lapsed)
+			return cycleOutcome{kind: outcomeFailed}, true
+		case <-at.lc.stale.rearmed():
+		case <-staleTimer.C():
+			age, ok := at.lc.stale.evaluate(staleGen)
+			if !ok {
+				continue
+			}
+			// Rows 9/15's staleness trigger, observed mid-write: full
+			// teardown, and disposal's cancel is what returns the abandoned
+			// write.
+			l.disposeAttempt(at, *deadline)
+			if l.cfg.observer.StaleConnection != nil {
+				l.cfg.observer.StaleConnection(age)
+			}
+			l.observeDisconnected("", errStaleConnection)
 			return cycleOutcome{kind: outcomeFailed}, true
 		}
-		if l.hooks.subscribeWritten != nil {
-			l.hooks.subscribeWritten()
-		}
-		return cycleOutcome{}, false
-	case <-l.runCtx.Done():
-		l.disposeAttempt(at, *deadline)
-		return cycleOutcome{kind: outcomeClosed}, true
-	case <-(*deadline).C():
-		// The deadline is spent, so disposal is handed nil: the attempt's
-		// timer set is empty from here, as on every other lapse.
-		lapsed := errDeadlineLapsed(l.state)
-		l.disposeAttempt(at, nil)
-		l.observeDisconnected("", lapsed)
-		return cycleOutcome{kind: outcomeFailed}, true
 	}
 }
 

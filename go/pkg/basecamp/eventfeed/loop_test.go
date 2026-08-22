@@ -2303,3 +2303,100 @@ func TestNilDialResultLeavesBackoffsTimerSetExact(t *testing.T) {
 	h2.awaitTimer(timerBackoff)
 	assertTimers(t, h2.clock, map[string]int{timerBackoff: 1})
 }
+
+// deadlineFirstTransport fires the handshake deadline from INSIDE Dial,
+// before the dial result exists — so whenever the state machine's select
+// finds the dial result ready, the deadline's firing is sequenced strictly
+// before it. Connected can then fire only if the dial arm won a both-ready
+// select over an already-expired deadline.
+type deadlineFirstTransport struct {
+	inner *feedtest.Transport
+	fire  func()
+}
+
+func (d *deadlineFirstTransport) Dial(ctx context.Context, wsURL string, maxFrameBytes int64) (eventfeed.CableConn, error) {
+	d.fire()
+	return d.inner.Dial(ctx, wsURL, maxFrameBytes)
+}
+
+// TestExpiredHandshakeDeadlineOutranksTheDialResult: transition 7 says a
+// dial that exceeds the handshake window is cancelled; when the dial result
+// and the fired deadline are both ready, the select is random, and taking
+// the dial installed the pump, armed staleness, and announced Connected for
+// an attempt whose window had already closed. The deadline is authoritative
+// — the same expired-timer ordering the welcome and confirm branches read
+// Stop for. Driven in rounds: the transport fires the deadline before every
+// dial result, so any Connected at all is a violation.
+func TestExpiredHandshakeDeadlineOutranksTheDialResult(t *testing.T) {
+	const rounds = 100
+	violations := 0
+	for i := range rounds {
+		connected := make(chan struct{}, 1)
+		dt := &deadlineFirstTransport{}
+		h := newHarness(t,
+			eventfeed.WithTransport(dt),
+			eventfeed.WithObserver(eventfeed.Observer{
+				Connected: func() {
+					select {
+					case connected <- struct{}{}:
+					default:
+					}
+				},
+			}))
+		dt.inner = h.tr
+		dt.fire = func() { h.clock.FireTimer(timerHandshakeDeadline) }
+		h.minter.ScriptTicket(ticket(1))
+		h.start()
+
+		// Either path settles in Backoff: transition 7 directly, or — the
+		// violation — a Connected attempt whose fired deadline then lapses.
+		h.waitUntil("the cycle to settle in Backoff", func() bool {
+			return slices.Contains(h.clock.Outstanding(), timerBackoff)
+		})
+		select {
+		case <-connected:
+			violations++
+			t.Logf("round %d: Connected fired for an attempt whose handshake deadline had already expired", i)
+		default:
+		}
+	}
+	if violations != 0 {
+		t.Errorf("%d/%d rounds announced Connected past an expired handshake deadline; the deadline must be probed before the dial result is accepted", violations, rounds)
+	}
+}
+
+// TestStalledSubscribeWriteObservesStaleness: rows 9/15 give every
+// socket-open state a staleness edge, and the per-state exact timer sets
+// keep `staleness` armed through AwaitingWelcome and AwaitingConfirmation —
+// but the subscribe write's bounded wait selected only {written, close,
+// phase deadline}, on the stated premise that the phase deadline is always
+// tighter. It is not: staleness (7.5s) undercuts even the default 10s
+// handshake deadline on an immediate welcome, and a duplicate welcome under
+// a long WithConfirmationDeadline leaves a dead socket blocked in the write
+// arbitrarily past its expiry. The write's wait must observe the staleness
+// window like every other socket-open wait.
+func TestStalledSubscribeWriteObservesStaleness(t *testing.T) {
+	stale := make(chan time.Duration, 1)
+	h := newHarness(t, eventfeed.WithObserver(eventfeed.Observer{
+		StaleConnection: func(age time.Duration) {
+			select {
+			case stale <- age:
+			default:
+			}
+		},
+	}))
+	h.minter.ScriptTicket(ticket(1))
+	h.start()
+
+	conn := h.liveConn()
+	conn.StallWrites()
+	conn.Serve(frameWelcome())
+	h.awaitFrameHandled("welcome")
+	h.fireTimer(timerStaleness)
+	select {
+	case <-stale:
+	case <-time.After(watchdog):
+		t.Fatal("a staleness expiry during the blocked subscribe write was never observed; the dead socket sits in the write until the phase deadline")
+	}
+	h.awaitTimer(timerBackoff)
+}

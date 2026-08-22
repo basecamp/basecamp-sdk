@@ -1109,6 +1109,30 @@ func (l *loop) stream(at *attempt) cycleOutcome {
 			if !ok {
 				return l.pumpExited(at, repair)
 			}
+			// A latched expiry outranks a ready frame. The pump refuses the
+			// reset for a frame received after the window fired
+			// (staleHolder.arm latches instead), so the fired timer and that
+			// frame can both be ready here — and delivering first hands the
+			// consumer live events from a socket whose staleness verdict is
+			// already in, where §23 pins the fired deadline as authoritative
+			// over frames that did not reset it. evaluate is the arbiter: a
+			// frame the pump received FIRST moved the generation, so its
+			// firing is not evidence and the frame delivers as ever.
+			select {
+			case <-staleTimer.C():
+				if age, authoritative := at.lc.stale.evaluate(staleGen); authoritative {
+					// Transition 25 first; the frame is discarded with the
+					// socket — the reconnect walk repairs anything the
+					// stream carried.
+					l.disposeAttempt(at, repair)
+					if l.cfg.observer.StaleConnection != nil {
+						l.cfg.observer.StaleConnection(age)
+					}
+					l.observeDisconnected("", errStaleConnection)
+					return cycleOutcome{kind: outcomeFailed}
+				}
+			default:
+			}
 			if out, done := l.handleLiveFrame(at, repair, item, true); done {
 				return out
 			}
@@ -1251,7 +1275,7 @@ func (l *loop) recoverPoll(at *attempt, cursor Cursor, err error) (walkStep, cyc
 		// The self-loop inside CatchingUp: a wait, not a state change. The
 		// same cursor is re-polled.
 		l.pollFailures++
-		out, done := l.waitPollRetry(at, pollRetryDelay(pe.RetryAfter, l.pollFailures, l.cfg.rand))
+		out, done := l.waitPollRetry(at, pollRetryDelay(pe.Kind, pe.RetryAfter, l.pollFailures, l.cfg.rand))
 		return walkStep{cursor: cursor}, out, done
 	case PollUnauthorized:
 		// Recovery rides the reconnect cycle — the fresh mint/token pass —
