@@ -424,6 +424,24 @@ out, status, _ = run_checker(
 )
 expect_fail(failures, "N+6b. a non-string file fails", out, status, "needs a `file`")
 
+# --- N+6c/d. A non-mapping YAML top level fails with the gate's own words ---------
+#
+# YAML.safe_load of "- x" returns an Array, and Array#key? / Array#[String]
+# raise — the gate exited nonzero, but through a backtrace rather than a
+# diagnosis, telling the next reader nothing about which file is malformed or
+# how. Fail closed WITH the diagnostics.
+
+out, status, _ = run_checker(
+  allowlist: { "sdk_routes_known_defective" => [], "bc3_routes_not_modeled" => [] },
+  tracking: [ "not", "a", "mapping" ]
+)
+expect_fail(failures, "N+6c. a non-mapping registry file fails with a diagnosis", out, status,
+            "must be a YAML mapping")
+
+out, status, _ = run_checker(allowlist: [ "not", "a", "mapping" ])
+expect_fail(failures, "N+6d. a non-mapping allowlist fails with a diagnosis", out, status,
+            "must be a YAML mapping")
+
 # --- N+7. A registry file without the key fails -----------------------------------
 #
 # The missing-FILE case (N+3) fails closed; a file whose key is misspelled or

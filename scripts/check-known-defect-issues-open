@@ -76,6 +76,10 @@ unless File.exist?(allow_path)
   exit 1
 end
 allow = YAML.safe_load(File.read(allow_path)) || {}
+unless allow.is_a?(Hash)
+  warn "ERROR: #{allow_path} must be a YAML mapping of route lists, got #{allow.class}"
+  exit 1
+end
 
 # REQUIRED, not optional. Treating an absent registry as an empty one is a
 # fail-OPEN path in a gate whose entire purpose is failing closed: delete the
@@ -90,6 +94,12 @@ unless File.exist?(tracking_path)
   exit 1
 end
 tracking = YAML.safe_load(File.read(tracking_path)) || {}
+# A non-mapping top level ([] or a bare string) would crash on .key? below —
+# nonzero, but a backtrace is not a diagnosis. Same fail-closed, better words.
+unless tracking.is_a?(Hash)
+  warn "ERROR: #{tracking_path} must be a YAML mapping with a prose_tracking_issues list, got #{tracking.class}"
+  exit 1
+end
 
 # (issue number, human-readable site) pairs, so a failure names the entry that
 # has to change rather than just the number.
