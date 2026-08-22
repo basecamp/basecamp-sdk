@@ -478,6 +478,19 @@ out, status, _ = run_checker(
 expect_fail(failures, "N+11. a line-wrapped canonical mention is still caught", out, status,
             "not registered")
 
+# --- N+11a. The wrap is caught behind a Swift doc-comment leader too -------------
+#
+# `///` is three slashes; a leader that consumes exactly two leaves the third
+# in front of "separately" and reads the promise as absence. The leader must
+# take comment marks by class, not by count.
+
+out, status, _ = run_checker(
+  allowlist: { "sdk_routes_known_defective" => [], "bc3_routes_not_modeled" => [] },
+  sweep: { "Sources/Feed.swift" => "/// the six SDKs disagree and this is tracked\n/// separately in #909.\n" }
+)
+expect_fail(failures, "N+11a. a Swift doc-comment (///) wrapped mention is still caught", out, status,
+            "not registered")
+
 # --- N+12. A row with no file fails ----------------------------------------------
 #
 # The sweep keys coverage on [file, issue], so an entry without a file could
