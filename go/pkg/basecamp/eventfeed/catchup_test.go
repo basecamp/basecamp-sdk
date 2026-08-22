@@ -2738,3 +2738,78 @@ func TestExpiredStalenessOutranksThePollRetry(t *testing.T) {
 		t.Errorf("%d/%d rounds issued a poll on an already-expired socket; the retry must re-check staleness (transition 21) before polling", violations, rounds)
 	}
 }
+
+// TestThrottledZeroRetryAfterIsWaitedExactly: SPEC §6 fixes the seam mapping
+// — "a retryable outcome exhausted inside the seam whose last response
+// carried a parsed Retry-After maps to throttled(retry_after) whatever its
+// status, and one without maps to transient" — so PollThrottled always
+// carries a server-directed wait, zero included (Retry-After: 0, or an
+// HTTP-date already reached), and §23 waits it "exactly, cap-exempt". A
+// delay selection gated on retryAfter > 0 reads a parsed zero as absence
+// and replaces an immediate-retry directive with up to 60 seconds of local
+// full-jitter backoff.
+func TestThrottledZeroRetryAfterIsWaitedExactly(t *testing.T) {
+	h := newHarness(t)
+	h.minter.ScriptTicket(ticket(1))
+	h.polls.ScriptError(&eventfeed.PollError{Kind: eventfeed.PollThrottled, RetryAfter: 0, Msg: "throttled"})
+	h.start()
+
+	conn := h.driveToSubscribed()
+	conn.Serve(frameConfirm(noFilterIdentifier))
+	if d := h.fireTimer(timerPollRetry); d != 0 {
+		t.Fatalf("poll-retry armed for %s after a parsed Retry-After of 0; a throttled zero is server-directed and waited exactly (0 = retry now), never replaced with local jitter", d)
+	}
+}
+
+// TestLatchedStalenessOutranksAReadyLiveFrame: a frame received AFTER the
+// staleness window fired does not reset it — staleHolder.arm latches the
+// expiry instead, per §23's "a fired staleness deadline observed on return
+// from a slow delivery is authoritative, and frames still queued at that
+// moment were received before the firing and already reset the timer then".
+// Both the fired timer and that frame can then be ready at Streaming's
+// select, and delivering first hands the consumer live events from a socket
+// whose verdict is already in. Rounds-driven (the select pick is random):
+// the collector parks mid-delivery, the window fires, a second event
+// arrives past the firing, and any round that delivers it is a violation.
+func TestLatchedStalenessOutranksAReadyLiveFrame(t *testing.T) {
+	const rounds = 40
+	violations := 0
+	for i := range rounds {
+		func() {
+			h := newHarness(t)
+			h.pauseAfter = 1
+			h.minter.ScriptTicket(ticket(1))
+			h.polls.ScriptPage(eventfeed.PollPage{Position: "pos-1"})
+			h.start()
+
+			conn := h.driveToSubscribed()
+			conn.Serve(frameConfirm(noFilterIdentifier))
+			h.awaitStreaming()
+			conn.Serve(frameMessage(noFilterIdentifier, 101))
+			// The loop body IS the consumer, so the parked collector parks
+			// the state machine mid-delivery, between select turns.
+			h.waitUntil("the collector to park mid-delivery", func() bool {
+				return len(h.deliveredIDs()) == 1
+			})
+			h.fireTimer(timerStaleness)
+			// Received after the firing: the pump's reset is refused and the
+			// expiry latches; the frame is handed off regardless.
+			conn.Serve(frameMessage(noFilterIdentifier, 102))
+			h.waitUntil("frame 102 to reach the hand-off", func() bool {
+				return conn.Pending() == 0
+			})
+			h.resume()
+
+			h.waitUntil("the teardown to settle in Backoff", func() bool {
+				return slices.Contains(h.clock.Outstanding(), timerBackoff)
+			})
+			if slices.Contains(h.deliveredIDs(), 102) {
+				violations++
+				t.Logf("round %d: event 102 was delivered past a latched staleness expiry", i)
+			}
+		}()
+	}
+	if violations != 0 {
+		t.Errorf("%d/%d rounds delivered a live event past a latched staleness expiry; the frame arm must re-evaluate the verdict before delivering (transition 25 first)", violations, rounds)
+	}
+}

@@ -97,11 +97,18 @@ type scenarioHarness struct {
 	saveUsed     int
 
 	// Recorded history.
-	delivered          []int64
-	saves              []saveRecord
-	savesTaken         int
-	occupancy          int
-	occupancyHistory   []int
+	delivered        []int64
+	saves            []saveRecord
+	savesTaken       int
+	occupancy        int
+	occupancyHistory []int
+	// occupancyEra is the history length when the step pointer last moved:
+	// the boundary expectBuffered satisfaction scans from. Occupancy reached
+	// and left in an earlier era must not satisfy a later expectBuffered —
+	// the arrival-strict lookahead would read through it and accept an
+	// out-of-order save — while the CURRENT value satisfies regardless of
+	// when it was reached (the buffer simply is at N).
+	occupancyEra       int
 	signals            []eventfeed.Signal
 	signalsTaken       int
 	invocations        []invocation
@@ -248,6 +255,7 @@ func (h *scenarioHarness) enterStep(index int) {
 	defer h.mu.Unlock()
 	if index > h.cursor {
 		h.cursor = index
+		h.occupancyEra = len(h.occupancyHistory)
 	}
 }
 
@@ -259,6 +267,7 @@ func (h *scenarioHarness) enterStep(index int) {
 func (h *scenarioHarness) advanceLocked() {
 	if h.program != nil && h.cursor < len(h.program.sc.Steps) {
 		h.cursor++
+		h.occupancyEra = len(h.occupancyHistory)
 	}
 }
 
