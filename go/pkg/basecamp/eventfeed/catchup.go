@@ -549,12 +549,16 @@ func (l *loop) pollPage(at *attempt, cursor Cursor) pollAttempt {
 // The staleness firing and the re-arm wake are demoted to WAKE-UPS; the
 // deadline alone decides, and the post-select check runs on every wake, so an
 // early or late one costs a loop turn rather than the verdict. Where the wake
-// comes from depends on which outcome was deferred. For a frame, evaluate is
-// still called on a firing and still re-arms a suspended window — that re-arm
-// is what guarantees the next wake when the pump is blocked and no frame can
-// deliver one. For a staleness expiry, evaluate has already spoken and the
-// firing that carried its verdict is consumed, so graceWake supplies the wake
-// instead.
+// comes from depends on which outcome was deferred. For a frame or a read
+// error, evaluate is still called on a firing: a suspended window is re-armed
+// — the next wake when the pump is blocked and no frame can deliver one — and
+// an authoritative expiry is latched by graceWake exactly as the stale
+// caller's is, because the deferral slot already holds the socket's verdict
+// and the pre-existing window (which a read error does not reset) may be
+// nearly spent when that verdict lands. For a staleness expiry, evaluate has
+// already spoken and the firing that carried its verdict is consumed, so
+// graceWake supplies the wake instead. In every case the wake survives and
+// the verdict stays with the deadline.
 //
 // A dedicated timer would express this more directly, and is deliberately not
 // used: SPEC.md §23 pins exactly six timer kinds AND every state's exact
@@ -605,7 +609,18 @@ func (l *loop) awaitSupersededPoll(at *attempt, done <-chan pollResult, deadline
 				// timer landing exactly on it.
 				at.lc.stale.graceWake()
 			} else if _, ok := at.lc.stale.evaluate(staleGen); ok {
-				return pollAttempt{superseded: true}
+				// An authoritative expiry during another outcome's grace
+				// phase is ALSO only a wake. The deferral slot already holds
+				// the socket's verdict — a read error or a disconnect frame,
+				// which does not reset staleness — so the pre-existing
+				// window, mostly spent by the time that outcome landed, can
+				// fire here almost immediately, and abandoning the call on it
+				// granted the poll whatever sliver of the old window remained
+				// instead of the phase §23 measures from the deferral. The
+				// expiry adds nothing the deferred outcome's teardown will
+				// not do; graceWake latches it and keeps the next wake in
+				// hand, and the deadline below is what decides.
+				at.lc.stale.graceWake()
 			}
 		}
 		if l.hooks.supersededWake != nil {
@@ -1310,6 +1325,30 @@ func (l *loop) waitPollRetry(at *attempt, d time.Duration) (cycleOutcome, bool) 
 			l.disposeAttempt(at, t)
 			return cycleOutcome{kind: outcomeClosed}, true
 		case <-t.C():
+			// Both timers can be ready — the select is random — and taking
+			// the retry over an expired window starts another Poll on a
+			// socket already known dead: if that call blocks, the stale
+			// verdict is deferred and granted a fresh grace phase, so the
+			// teardown lands beyond §23's published bound (detection window
+			// + grace phase, once — "nothing waits longer than their sum").
+			// So the retry arm re-checks staleness before polling; an
+			// expired window takes transition 21 now, exactly as it would
+			// have had its case won the select. The retry timer has fired
+			// and is no longer outstanding, so disposal is handed nil.
+			select {
+			case <-staleTimer.C():
+				if age, ok := at.lc.stale.evaluate(staleGen); ok {
+					l.disposeAttempt(at, nil)
+					if l.cfg.observer.StaleConnection != nil {
+						l.cfg.observer.StaleConnection(age)
+					}
+					l.observeDisconnected("", errStaleConnection)
+					return cycleOutcome{kind: outcomeFailed}, true
+				}
+				// Superseded or suspended: not evidence, and evaluate has
+				// re-armed the window — proceed with the retry.
+			default:
+			}
 			return cycleOutcome{}, false
 		case <-at.lc.stale.rearmed():
 			continue

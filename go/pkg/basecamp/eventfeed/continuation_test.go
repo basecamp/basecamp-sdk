@@ -132,6 +132,33 @@ func TestCheckContinuation_VerdictFollowsTheConfiguredBase(t *testing.T) {
 	}
 }
 
+// TestCheckContinuation_RejectsInvalidUTF8BeforeCanonicalizing: same-origin
+// validation must never equate distinct byte strings. CanonicalOrigin
+// lowercases through strings.ToLower, which rewrites every invalid byte to
+// U+FFFD — so a continuation host carrying a raw invalid byte collapses to
+// the same canonical form as a configured origin that legitimately contains
+// the replacement character (valid UTF-8, so construction accepts it), and
+// the authenticated poll would follow a URL the server never named. The raw
+// bytes are refused before the lossy step, mirroring validateConfig's
+// raw-origin check; a conformant server's URLs are valid UTF-8, so refusal
+// is fail-closed.
+func TestCheckContinuation_RejectsInvalidUTF8BeforeCanonicalizing(t *testing.T) {
+	base, err := CanonicalOrigin("https://�.example.com")
+	if err != nil {
+		t.Fatalf("CanonicalOrigin: %v", err)
+	}
+	terr := checkContinuation(base, "https://\xff.example.com/5951425/events.json?page=2")
+	if terr == nil {
+		t.Fatal("an invalid-UTF-8 continuation host collapsed to the configured origin's U+FFFD and was accepted")
+	}
+	if terr.Reason != ReasonInvalidContinuation {
+		t.Fatalf("reason = %q, want %q", terr.Reason, ReasonInvalidContinuation)
+	}
+	if !strings.Contains(terr.Msg, "UTF-8") {
+		t.Fatalf("message %q does not name the UTF-8 refusal", terr.Msg)
+	}
+}
+
 // TestCanonicalOrigin_PortSpellingsCollapse pins that the canonical form is
 // a function of the ORIGIN, not the port's spelling — the identity-split
 // class checkIdentityText exists to refuse: two spellings of one origin
