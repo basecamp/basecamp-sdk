@@ -21,6 +21,9 @@ const DOWNLOAD_MAX_ATTEMPTS = 3;
 const DOWNLOAD_RETRY_ON = [429, 502, 503, 504];
 const DOWNLOAD_RETRY_BASE_DELAY_MS = 1000;
 
+/** The redirects hop 1 dispatches on (SPEC §14 step 3d) and hop 2 refuses. */
+const REDIRECT_STATUSES = [301, 302, 303, 307, 308];
+
 /**
  * Result of downloading file content from a URL.
  */
@@ -87,7 +90,9 @@ interface DownloadDeps {
  * authenticated first hop (which typically 302s to a signed download URL),
  * and unauthenticated second hop to fetch the actual file content. Common
  * inputs include storage blob URLs from <bc-attachment> elements and any
- * other signed-download URL that routes through the API.
+ * other signed-download URL that routes through the API. Neither hop follows
+ * a redirect on its own: hop 1's is the dispatch to hop 2, and a redirect on
+ * hop 2 is an error (SPEC §14 "Hop-2 Redirect Policy").
  */
 export function createDownloadURL(deps: DownloadDeps): (rawURL: string) => Promise<DownloadResult> {
   const { authStrategy, userAgent, baseUrl, hooks, requestTimeoutMs, enableRetry, retryBaseDelayMs } = deps;
@@ -222,7 +227,7 @@ export function createDownloadURL(deps: DownloadDeps): (rawURL: string) => Promi
       emit.finalize({ statusCode: response.status });
 
       // Dispatch on response status
-      const isRedirect = [301, 302, 303, 307, 308].includes(response.status);
+      const isRedirect = REDIRECT_STATUSES.includes(response.status);
       if (isRedirect) {
         // Redirect — extract Location, cancel body, proceed to hop 2
         const location = response.headers.get("Location");
@@ -236,13 +241,27 @@ export function createDownloadURL(deps: DownloadDeps): (rawURL: string) => Promi
         // Resolve relative Location against the rewritten API URL
         const resolvedLocation = new URL(location, rewrittenURL).href;
 
-        // Hop 2: fetch from signed URL (no auth, no timeout, no request hooks)
+        // Hop 2: fetch from signed URL (no auth, no timeout, no request hooks).
+        // `redirect: "manual"`, as on hop 1: the signed URL is the one
+        // destination the API host named, and a 3xx from it is refused below
+        // rather than followed wherever the storage host points (#805). Node's
+        // fetch hands the 3xx back with its status; a browser's yields an
+        // opaqueredirect (status 0), which the !ok branch refuses the same way.
         let signedResponse: Response;
         try {
-          signedResponse = await fetch(resolvedLocation);
+          signedResponse = await fetch(resolvedLocation, { redirect: "manual" });
         } catch (err) {
           const error = err instanceof Error ? err : new Error(String(err));
           throw Errors.network(error.message, error);
+        }
+
+        if (REDIRECT_STATUSES.includes(signedResponse.status)) {
+          signedResponse.body?.cancel();
+          throw new BasecampError(
+            "api_error",
+            `redirect ${signedResponse.status} on the signed download hop is not followed`,
+            { httpStatus: signedResponse.status },
+          );
         }
 
         if (!signedResponse.ok) {

@@ -132,5 +132,25 @@
       {"type": "errorMessage", "expected": "no Location"}
     ],
     "tags": ["download", "redirect", "error"]
+  },
+  {
+    "name": "DownloadURL refuses a redirect on the signed second hop",
+    "description": "Hop 2 is a presigned GET against the one host hop 1 named, and follows no redirect (SPEC 14 Hop-2 Redirect Policy): a 3xx from the signed host surfaces as an API error carrying that status, and its Location is never dialled. Exactly two requests — the third scripted response must stay unconsumed, which is what distinguishes refusing the redirect from following it.",
+    "operation": "DownloadURL",
+    "method": "GET",
+    "path": "/999999999/blobs/abcd1234/download/logo.png",
+    "mockResponses": [
+      {"status": 302, "headers": {"Location": "/signed/logo.png"}},
+      {"status": 302, "headers": {"Location": "/elsewhere/logo.png"}},
+      {"status": 200, "headers": {"Content-Type": "image/png"}, "body": "pixels"}
+    ],
+    "assertions": [
+      {"type": "requestCount", "expected": 2},
+      {"type": "statusCode", "expected": 302},
+      {"type": "errorMessage", "expected": "not followed"},
+      {"type": "headerAbsent", "path": "Authorization", "index": -1},
+      {"type": "requestPath", "expected": "/signed/logo.png", "index": -1}
+    ],
+    "tags": ["download", "redirect", "hop-2", "error"]
   }
 ]

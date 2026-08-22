@@ -8,6 +8,9 @@ import httpx
 from basecamp import _security
 from basecamp.errors import ApiError, NetworkError, UsageError
 
+# The redirects hop 1 dispatches on (SPEC §14 step 3d) and hop 2 refuses.
+_REDIRECT_STATUSES = frozenset({301, 302, 303, 307, 308})
+
 
 @dataclass(frozen=True)
 class DownloadResult:
@@ -51,7 +54,7 @@ def download_sync(raw_url: str, *, http_client, config) -> DownloadResult:
 
     response = http_client.get_download(rewritten_url)
 
-    if response.status_code in {301, 302, 303, 307, 308}:
+    if response.status_code in _REDIRECT_STATUSES:
         location = response.headers.get("Location") or response.headers.get("location")
         if not location:
             raise ApiError(f"redirect {response.status_code} with no Location header")
@@ -82,7 +85,7 @@ async def download_async(raw_url: str, *, http_client, config) -> DownloadResult
 
     response = await http_client.get_download(rewritten_url)
 
-    if response.status_code in {301, 302, 303, 307, 308}:
+    if response.status_code in _REDIRECT_STATUSES:
         location = response.headers.get("Location") or response.headers.get("location")
         if not location:
             raise ApiError(f"redirect {response.status_code} with no Location header")
@@ -116,25 +119,37 @@ def _validate_url(raw_url: str) -> None:
         raise UsageError("download URL scheme must be http or https")
 
 
+def _check_signed(response: httpx.Response) -> httpx.Response:
+    """Hop-2 dispatch: a redirect is refused, any other non-2xx is the download failing.
+
+    The signed URL is the one destination the API host named; a 3xx from it is
+    surfaced with its status, never dialled (SPEC §14 "Hop-2 Redirect Policy").
+    Checked as "not 2xx" rather than ">= 400" so the 3xx the client no longer
+    follows cannot pass as a success with an empty body.
+    """
+    status = response.status_code
+    if status in _REDIRECT_STATUSES:
+        raise ApiError(f"redirect {status} on the signed download hop is not followed", http_status=status)
+    if not 200 <= status < 300:
+        raise ApiError(f"download failed with status {status}", http_status=status)
+    return response
+
+
 def _fetch_signed(url: str, *, timeout: float) -> httpx.Response:
-    """Unauthenticated GET for signed download URL."""
+    """Unauthenticated GET for signed download URL. Follows no redirect (#805)."""
     try:
-        with httpx.Client(timeout=timeout, follow_redirects=True) as client:
+        with httpx.Client(timeout=timeout, follow_redirects=False) as client:
             response = client.get(url)
-        if response.status_code >= 400:
-            raise ApiError(f"download failed with status {response.status_code}", http_status=response.status_code)
-        return response
     except httpx.HTTPError as e:
         raise NetworkError(f"Download failed: {e}") from e
+    return _check_signed(response)
 
 
 async def _fetch_signed_async(url: str, *, timeout: float) -> httpx.Response:
-    """Async unauthenticated GET for signed download URL."""
+    """Async unauthenticated GET for signed download URL. Follows no redirect (#805)."""
     try:
-        async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
+        async with httpx.AsyncClient(timeout=timeout, follow_redirects=False) as client:
             response = await client.get(url)
-        if response.status_code >= 400:
-            raise ApiError(f"download failed with status {response.status_code}", http_status=response.status_code)
-        return response
     except httpx.HTTPError as e:
         raise NetworkError(f"Download failed: {e}") from e
+    return _check_signed(response)

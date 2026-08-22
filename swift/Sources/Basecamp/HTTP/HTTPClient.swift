@@ -495,8 +495,10 @@ package final class HTTPClient: Sendable {
         throw BasecampError.network(message: "Download failed after \(maxAttempts) attempts", cause: nil)
     }
 
-    /// Unauthenticated GET via bare transport. No hooks.
-    /// Used by downloadURL for the signed-URL hop.
+    /// Unauthenticated GET via bare transport. No hooks, and no redirect
+    /// following: the signed URL is the one destination the API host named,
+    /// and a 3xx from it is handed back for `downloadURL` to refuse (SPEC §14
+    /// "Hop-2 Redirect Policy"). Used by downloadURL for the signed-URL hop.
     package func fetchSignedDownload(url: String) async throws -> (Data, HTTPURLResponse) {
         guard let requestURL = URL(string: url) else {
             throw BasecampError.usage(message: "Invalid URL: \(url)", hint: nil)
@@ -507,7 +509,11 @@ package final class HTTPClient: Sendable {
         request.timeoutInterval = config.timeoutInterval
 
         do {
-            let (data, response) = try await transport.data(for: request)
+            // The no-redirect entry point, as on hop 1. `data(for:)` would follow
+            // wherever the storage host pointed — stripping credentials on a
+            // cross-origin hop, but still delivering the final body as if it
+            // were the requested file (#805).
+            let (data, response) = try await transport.dataNoRedirect(for: request)
 
             guard let httpResponse = response as? HTTPURLResponse else {
                 // Neither of these two helpers retries, so the guard can surface

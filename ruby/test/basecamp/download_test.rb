@@ -251,6 +251,47 @@ class DownloadTest < Minitest::Test
     end
   end
 
+  # SPEC §14 "Hop-2 Redirect Policy": the signed URL is the one destination the
+  # API host named. A 3xx from it surfaces with its status, and the Location it
+  # names is never dialled (#805). Net::HTTP#request never follows, so this pins
+  # the explicit refusal rather than an accident of the client.
+  def test_download_url_hop2_redirect_is_refused_not_followed
+    stub_request(:get, "#{base_url}/12345/attachments/abc/download/file.txt")
+      .with(headers: { "Authorization" => "Bearer #{access_token}" })
+      .to_return(status: 302, headers: { "Location" => "https://s3.amazonaws.com/bucket/file" })
+
+    stub_request(:get, "https://s3.amazonaws.com/bucket/file")
+      .to_return(status: 302, headers: { "Location" => "https://elsewhere.example.com/final/file" })
+
+    stub_request(:get, "https://elsewhere.example.com/final/file")
+      .to_return(status: 200, body: "SECRET")
+
+    error = assert_raises(Basecamp::ApiError) do
+      @account.download_url("https://3.basecampapi.com/12345/attachments/abc/download/file.txt")
+    end
+
+    assert_equal 302, error.http_status
+    assert_match(/not followed/, error.message)
+    assert_not_requested(:get, "https://elsewhere.example.com/final/file")
+  end
+
+  # 304 is Net::HTTPRedirection in net/http's class tree but not a redirect the
+  # flow dispatches on: it is the download failing, not a refused redirect.
+  def test_download_url_hop2_304_is_a_failure_not_a_refused_redirect
+    stub_request(:get, "#{base_url}/12345/attachments/abc/download/file.txt")
+      .with(headers: { "Authorization" => "Bearer #{access_token}" })
+      .to_return(status: 302, headers: { "Location" => "https://s3.amazonaws.com/bucket/file" })
+
+    stub_request(:get, "https://s3.amazonaws.com/bucket/file").to_return(status: 304)
+
+    error = assert_raises(Basecamp::ApiError) do
+      @account.download_url("https://3.basecampapi.com/12345/attachments/abc/download/file.txt")
+    end
+
+    assert_equal 304, error.http_status
+    assert_match(/download failed with status 304/, error.message)
+  end
+
   # -- Auth header tests --
 
   def test_download_url_auth_on_api_not_on_s3

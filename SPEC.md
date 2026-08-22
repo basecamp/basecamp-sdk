@@ -1705,7 +1705,10 @@ Where:
 
 ### Redirect Handling
 
-`follow_redirects = false` for download flow (§14). Redirect responses are handled explicitly.
+`follow_redirects = false` on **both** hops of the download flow (§14). Hop 1's redirect is the
+flow's own dispatch — the SDK reads `Location` itself and decides what to do with it — and a
+redirect on hop 2 is refused outright (§14 "Hop-2 Redirect Policy"). Redirect responses are
+handled explicitly, never by the HTTP stack's default policy.
 
 For cross-origin redirects, strip the `Authorization` header to prevent credential leakage.
 
@@ -1735,9 +1738,10 @@ FUNCTION downloadURL(raw_url: String) → DownloadResult
      f. If response is any other error → ⊥ BasecampError from response, without retry.
 
   4. Hop 2 — Unauthenticated fetch (signed URL):
-     a. Fetch Location URL with NO auth headers. Hop 2 is NEVER retried and NEVER authenticated — the signed URL is single-purpose and credentials must not leak to the storage host.
-     b. If not 2xx → ⊥ BasecampError.
-     c. → DownloadResult from response body.
+     a. Fetch Location URL with NO auth headers and redirect: manual. Hop 2 is NEVER retried, NEVER authenticated and NEVER redirected — the signed URL is single-purpose, credentials must not leak to the storage host, and the storage host does not get to choose a further destination (Hop-2 Redirect Policy below).
+     b. If response is a redirect (301, 302, 303, 307, 308) → ⊥ BasecampError api_error carrying that status; its Location is never dialled.
+     c. If not 2xx → ⊥ BasecampError.
+     d. → DownloadResult from response body.
 END
 ```
 
@@ -1763,6 +1767,43 @@ Attempt budget per SDK — disabling retry (each SDK's spelling of `enable_retry
 | Swift | Fixed three-attempt policy when `enableRetry` is true; one attempt when false. No public numeric knob. |
 
 Python and Ruby carve downloads out of their ungoverned GET taxonomy (which retries 500): the download hop uses the declared `{429, 502, 503, 504}` set, in both directions — the taxonomy neither widens nor vetoes it. `DownloadURL` is deliberately absent from `behavior-model.json`; SDKs pass this policy to their retry primitive directly rather than looking it up by operation.
+
+### Hop-2 Redirect Policy `[conformance]`
+
+The signed hop follows no redirect. A 3xx from the storage host surfaces as `api_error` carrying
+that status, with a message saying the redirect is **not followed** — the substring the conformance
+case asserts — and the `Location` it carries is never dialled. The refusal is a property of hop 2's
+own HTTP client, not of the dispatch around it: `CheckRedirect: ErrUseLastResponse` (Go),
+`redirect: "manual"` (TS), `follow_redirects=False` (httpx), `dataNoRedirect` (Swift's
+`Transport`), `followRedirects = false` (Ktor), `Net::HTTP#request` (Ruby, which never follows).
+Every other hop in the SDK that a response could steer already refuses redirects or validates
+each target — hop 1 here, §16's discovery fetches, §23's polls — and until #805 this hop was the
+exception in four SDKs, by four different stack defaults, none of them argued.
+
+**Why refuse rather than cap or validate.** Hop 2's target is the one URL the API host named, and
+that host is operator-configured; what a followed redirect adds is a destination chosen by whoever
+answers *that* URL. A hop cap bounds loops and resource use, not destination — one redirect to an
+internal address is under every cap. Per-hop validation has nothing to validate against: a signed
+URL is legitimately cross-origin to the API, and the SDK holds no roster of storage hosts, so the
+only policy it can state is "the host the API named, and nothing that host names in turn". Refusal
+states exactly that.
+
+**Why it is safe to refuse.** Upstream, hop 2 is a presigned GET against a single-endpoint
+S3-compatible object store (bc3 `config/storage.yml`; the redirect is minted by
+`Downloading#respond_with_download_redirect` from the blob's service URL, with no
+`direct_download_endpoint` configured). A presigned GET on a path-style single endpoint is answered
+by that endpoint — the region and virtual-host redirects that make "S3 redirects" a real phenomenon
+are artefacts of AWS's multi-region addressing, which this store does not have — and nothing
+redirecting sits in front of it. Local and test environments never reach hop 2 at all:
+`respond_with_download_on_disk` sends the body on hop 1. The strongest evidence is empirical,
+though: Kotlin (by design, reusing hop 1's `followRedirects = false` client) and Ruby (by
+`Net::HTTP`'s default) have refused hop-2 redirects since #178 introduced the download path, with
+no download reported broken.
+
+**What happens if that changes.** Should the storage tier ever start redirecting — a CDN in front of
+it, a region move — every SDK fails loudly with the 3xx and the "not followed" message rather than
+quietly following somewhere. That is deliberate: the remedy is then a spec change argued from the new
+evidence, with a destination policy attached, not a default that happened to work.
 
 ### DownloadResult RECORD
 
@@ -3887,6 +3928,7 @@ what `make doc-constants-check` asserts — not a case-by-case index.
 | `downloads.json` | DownloadURL does not retry hop 1 on 500 | §14, §7 |
 | `downloads.json` | DownloadURL honors Retry-After on 429 at the auth'd first hop | §14, §7 |
 | `downloads.json` | DownloadURL surfaces redirect with no Location | §14 |
+| `downloads.json` | DownloadURL refuses a redirect on the signed second hop | §14 |
 | `network-retry.json` | Network error on a non-idempotent POST is not retried | §7 (Gate 2) |
 | `network-retry.json` | Network error on an idempotent POST is retried then succeeds | §7 (Gate 2) |
 | `uploads_download.json` | UploadsDownload delegates through DownloadURL primitive | §14, §18 |

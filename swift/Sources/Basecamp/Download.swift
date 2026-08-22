@@ -43,7 +43,9 @@ extension AccountClient {
     ///
     /// Handles the full download flow: URL rewriting to the configured API host,
     /// authenticated first hop (which typically 302s to a signed download URL),
-    /// and unauthenticated second hop to fetch the actual file content.
+    /// and unauthenticated second hop to fetch the actual file content. Neither
+    /// hop follows a redirect on its own: hop 1's is the dispatch to hop 2, and
+    /// a redirect on hop 2 is an error (SPEC §14 "Hop-2 Redirect Policy").
     ///
     /// The first hop retries under the SPEC §14 policy — network errors plus
     /// {429, 502, 503, 504}, never 500 — with exponential backoff, honoring
@@ -110,6 +112,16 @@ extension AccountClient {
 
                 // Hop 2: fetch from signed URL (no auth, no hooks)
                 let (signedData, signedResponse) = try await httpClient.fetchSignedDownload(url: resolvedLocation)
+
+                // The transport's no-redirect entry point hands a 3xx back: the
+                // signed URL is the one destination the API host named, and its
+                // Location is never dialled (#805).
+                if [301, 302, 303, 307, 308].contains(signedResponse.statusCode) {
+                    throw BasecampError.api(
+                        message: "redirect \(signedResponse.statusCode) on the signed download hop is not followed",
+                        httpStatus: signedResponse.statusCode, hint: nil, requestId: nil, decodeFailure: nil
+                    )
+                }
 
                 guard signedResponse.statusCode >= 200 && signedResponse.statusCode < 300 else {
                     throw BasecampError.api(

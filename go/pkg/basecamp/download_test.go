@@ -689,6 +689,64 @@ func TestDownload_SecondLegNoTimeout(t *testing.T) {
 	}
 }
 
+// The signed hop follows no redirect (SPEC §14 "Hop-2 Redirect Policy"). A
+// storage host that answers the presigned GET with a 3xx is surfaced with that
+// status, and the Location it names is never dialled — the body a third server
+// would have returned must not reach the caller as if it were the file (#805).
+// Before CheckRedirect was set on the bare client, net/http followed this
+// chain and the caller received "SECRET".
+func TestDownload_SecondLegRefusesRedirect(t *testing.T) {
+	var thirdHits atomic.Int32
+	thirdServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		thirdHits.Add(1)
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("SECRET"))
+	}))
+	defer thirdServer.Close()
+
+	var signedHits atomic.Int32
+	signedServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		signedHits.Add(1)
+		w.Header().Set("Location", thirdServer.URL+"/elsewhere/file.png")
+		w.WriteHeader(http.StatusFound)
+	}))
+	defer signedServer.Close()
+
+	apiServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Location", signedServer.URL+"/bucket/signed-file.png")
+		w.WriteHeader(http.StatusFound)
+	}))
+	defer apiServer.Close()
+
+	cfg := DefaultConfig()
+	cfg.BaseURL = apiServer.URL
+	client := NewClient(cfg, &StaticTokenProvider{Token: "test-token"}, WithTransport(http.DefaultTransport))
+	ac := client.ForAccount("12345")
+
+	result, err := ac.DownloadURL(context.Background(),
+		"https://storage.3.basecamp.com/999/blobs/abc/download/photo.png")
+	if err == nil {
+		_ = result.Body.Close()
+		t.Fatal("expected the signed hop's redirect to be refused, got a result")
+	}
+	var apiErr *Error
+	if !errors.As(err, &apiErr) {
+		t.Fatalf("expected *Error, got %T: %v", err, err)
+	}
+	if apiErr.HTTPStatus != http.StatusFound {
+		t.Errorf("expected HTTPStatus 302, got %d", apiErr.HTTPStatus)
+	}
+	if !strings.Contains(apiErr.Message, "not followed") {
+		t.Errorf("expected the message to name the refusal, got %q", apiErr.Message)
+	}
+	if got := signedHits.Load(); got != 1 {
+		t.Errorf("expected exactly one request to the signed host, got %d", got)
+	}
+	if got := thirdHits.Load(); got != 0 {
+		t.Errorf("the redirect target was dialled %d time(s); hop 2 must not follow", got)
+	}
+}
+
 // --- Auth-hop retry behavior ---
 
 func TestDownloadURL_AuthHopRetriesOn503(t *testing.T) {
