@@ -140,15 +140,12 @@ func TestCloseError_Message(t *testing.T) {
 }
 
 // TestDialError_MessageIsBounded pins §9's MAX_ERROR_MESSAGE_LENGTH on
-// DialError renderings, CloseError-style. The reason can embed a mint-URL
-// component whose length url.Parse does not bound — an arbitrarily long
-// scheme parses — so the composed rendering must truncate rather than grow
-// with server-controlled text.
+// DialError renderings, CloseError-style. checkCableURL's own reasons are a
+// closed vocabulary now, so the cap binds on what the TYPE can carry — a
+// custom CableTransport composes its own DialError, and nothing bounds the
+// Reason or cause it chooses.
 func TestDialError_MessageIsBounded(t *testing.T) {
-	derr := checkCableURL(strings.Repeat("a", 2*maxErrorMessageBytes) + "://28.cable.basecamp.com/cable")
-	if derr == nil {
-		t.Fatal("checkCableURL accepted a non-ws(s) scheme")
-	}
+	derr := &DialError{Kind: DialPolicy, Reason: strings.Repeat("a", 2*maxErrorMessageBytes)}
 	msg := derr.Error()
 	if len(msg) > maxErrorMessageBytes {
 		t.Errorf("Error() is %d bytes, want at most %d", len(msg), maxErrorMessageBytes)
