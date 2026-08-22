@@ -3367,15 +3367,17 @@ Two dispatch clarifications, pinned:
   closes the count: a frame lives in the hand-off queue (≤ pump depth), in the live
   buffer (≤ `EVENT_FEED_LIVE_BUFFER_CAPACITY`), in the single deferral slot (≤ 1), or in
   the hands of one of the exactly two goroutines that touch frames. The pump's hand
-  holds one frame; the state machine's weighs up to TWO frame-sized allocations while a
-  message frame is decoded, because `parseFrame` unmarshals the payload into a
-  `json.RawMessage` — a copy — while the original bytes are still in hand. The ceiling
-  is
-  (pump depth + 4 + `EVENT_FEED_LIVE_BUFFER_CAPACITY`) × `EVENT_FEED_MAX_FRAME_BYTES`
+  holds one frame. The state machine's holds up to THREE frame-sized allocations at
+  once, and three is not a discovered constant but the decode chain's REPRESENTATION
+  COUNT: a message frame exists as the wire bytes, as `parseFrame`'s `json.RawMessage`
+  payload copy, and as the decoded `Event`'s strings — each step's output allocated
+  while its input is still in hand, and an adversarial near-limit payload can put
+  frame-scale text in any of the three. The ceiling is
+  (pump depth + 5 + `EVENT_FEED_LIVE_BUFFER_CAPACITY`) × `EVENT_FEED_MAX_FRAME_BYTES`
   (≈ 10 GiB at the defaults' extreme, reached only if every slot holds a maximum-size
-  frame) — even under a slow consumer. The **+ 4** is four frame-sized allocations the
+  frame) — even under a slow consumer. The **+ 5** is five frame-sized allocations the
   queue's depth does not count — the deferral slot, the pump's in-hand frame, and the
-  state machine's in-hand frame at its decode-time weight of two — retained by
+  state machine's in-hand frame at its decode-chain weight of three — retained by
   different parties at the same time:
   - the **pump's own in-flight frame** — the pump is a single reader, so it may hold exactly
     one frame it has already READ and not yet handed off. One rather than an unbounded
@@ -3384,9 +3386,11 @@ Two dispatch clarifications, pinned:
     receive that lets a blocked pump refill the queue, so while the scan still holds that
     frame — examining, admitting, or parking it — the queue is full again and the pump may
     already hold its next read. A single consumer, so one frame in hand, for the pump's
-    own reason — weighted at two because decoding it can briefly double it: the
-    `json.RawMessage` copy is transient and bounded by one extra frame, and it lives in
-    this holder's hands, not in a fourth party's.
+    own reason — weighted at the decode chain's length of three: wire bytes,
+    `RawMessage` copy, decoded `Event`, each transient past its step and every one in
+    this holder's hands, never a further party's. A fourth term here requires CODING a
+    fourth representation into the chain, not noticing one — which is what closes the
+    count.
   - the **deferred socket outcome** — the single slot the in-flight-poll servicing and the
     drain's scan park one receive in. It is retained while the queue behind it refills, so it
     is concurrent with a full queue and with both in-hand frames, not an alternative to
@@ -3394,7 +3398,12 @@ Two dispatch clarifications, pinned:
 
   The enumeration cannot grow by a further party being noticed: every frame-sized
   allocation is in one of the three counted structures or in the hands of the pump or
-  the state machine, and each holder is counted at its worst-case weight.
+  the state machine, each holder counted at its worst-case weight — the pump at one
+  (it never parses), the state machine at the decode chain's three. The live buffer's
+  own weight stays one per slot: a buffered `Event` retains only the chain's LAST
+  representation — its strings are copies, since Go's decoder never aliases its input
+  buffer, and `Event` carries no raw-bytes field — so nothing of the first two
+  representations survives admission.
 
   The formula is the cable lane's retention, and only that — every counted item is a
   raw socket frame or a buffered live event. The poll lane sits outside it on purpose:
