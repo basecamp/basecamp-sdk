@@ -239,8 +239,13 @@ func (c *Conn) ReadFrame(ctx context.Context) ([]byte, error) {
 			if c.maxFrameBytes > 0 && int64(len(frame)) > c.maxFrameBytes {
 				// Enforced while reading, never materialized to the caller;
 				// the connection is dead from here, as with a real
-				// read-limit breach.
-				c.violation = fmt.Errorf("feedtest: inbound frame of %d bytes exceeds max frame bytes %d", len(frame), c.maxFrameBytes)
+				// read-limit breach. Wraps ErrFrameOversize per the seam
+				// contract: an over-limit message surfaces as an error
+				// matching the sentinel (CableConn.ReadFrame), and a fake
+				// that returned an untyped error would let every test pass
+				// against a classification the real transport defeats.
+				c.violation = fmt.Errorf("feedtest: inbound frame of %d bytes exceeds max frame bytes %d: %w",
+					len(frame), c.maxFrameBytes, eventfeed.ErrFrameOversize)
 				return nil, c.violation
 			}
 			return frame, nil
