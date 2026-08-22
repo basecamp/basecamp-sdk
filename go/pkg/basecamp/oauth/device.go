@@ -13,6 +13,8 @@ import (
 	"strings"
 	"time"
 
+	surfguard "github.com/basecamp/surfguard/go"
+
 	"github.com/basecamp/basecamp-sdk/go/pkg/basecamp"
 )
 
@@ -74,25 +76,58 @@ type DeviceAuthorization struct {
 
 // deviceConfig holds the resolved options for a device-flow operation.
 type deviceConfig struct {
+	// httpClient carries every device-flow POST. Resolved by newDeviceConfig:
+	// a caller-supplied client, else a caller-supplied policy's client, else
+	// the shared DefaultIssuerPolicy client.
 	httpClient *http.Client
-	scope      string
-	hasScope   bool
-	timeout    time.Duration
-	clock      func() time.Time
-	sleep      func(ctx context.Context, d time.Duration) error
+	// policyClient is WithDevicePolicy's client, used only when no client was
+	// supplied directly.
+	policyClient *http.Client
+	scope        string
+	hasScope     bool
+	timeout      time.Duration
+	clock        func() time.Time
+	sleep        func(ctx context.Context, d time.Duration) error
 }
 
 // DeviceOption configures a device-flow operation.
 type DeviceOption func(*deviceConfig)
 
-// WithDeviceHTTPClient sets the HTTP client used for device-flow requests.
-// Nil leaves http.DefaultClient.
+// WithDeviceHTTPClient carries every device-flow request on the given client
+// instead of the policy-enforced default, and takes precedence over
+// WithDevicePolicy. Nil leaves the default.
+//
+// The client is the caller's, enforcement included: no address policy is
+// applied on top of it. A consumer that must egress through a proxy has no
+// other way to keep both, since surfguard's transport sets Proxy: nil by
+// construction — compose the client's transport from
+// DefaultIssuerPolicy().RoundTripper() where that is possible. Passing
+// http.DefaultClient restores the pre-policy behavior outright.
 func WithDeviceHTTPClient(c *http.Client) DeviceOption {
 	return func(cfg *deviceConfig) {
 		if c != nil {
 			cfg.httpClient = c
 		}
 	}
+}
+
+// WithDevicePolicy replaces [DefaultIssuerPolicy] for the device-authorization
+// and token endpoint POSTs, so a deployment whose authorization server is not
+// on the public internet re-admits exactly the space it needs rather than
+// switching the policy off. The derivations and the precedence trap are the
+// ones documented on [WithIssuerPolicy]: AllowLoopback for a local server,
+// surfguard.Policy{}.AllowAllPorts().Allow(...) for private space.
+//
+// It has no effect alongside WithDeviceHTTPClient, which supplies the transport
+// the policy would otherwise be installed in.
+//
+// The option builds its transport once, when it is constructed, and every
+// device-flow call it is passed to reuses it — so construct it once and keep
+// it, rather than rebuilding it per call, or each call leaks a connection
+// pool nothing can close.
+func WithDevicePolicy(p surfguard.Policy) DeviceOption {
+	client := newPolicyClient(p)
+	return func(cfg *deviceConfig) { cfg.policyClient = client }
 }
 
 // WithDeviceScope sets the requested scope. When omitted, scope is left out of
@@ -134,10 +169,9 @@ func WithDeviceSleep(sleep func(ctx context.Context, d time.Duration) error) Dev
 
 func newDeviceConfig(opts []DeviceOption) deviceConfig {
 	cfg := deviceConfig{
-		httpClient: http.DefaultClient,
-		timeout:    defaultDeviceRequestTimeout,
-		clock:      time.Now,
-		sleep:      defaultDeviceSleep,
+		timeout: defaultDeviceRequestTimeout,
+		clock:   time.Now,
+		sleep:   defaultDeviceSleep,
 	}
 	for _, o := range opts {
 		o(&cfg)
@@ -147,8 +181,23 @@ func newDeviceConfig(opts []DeviceOption) deviceConfig {
 	if cfg.timeout <= 0 || cfg.timeout > maxDeviceRequestTimeout {
 		cfg.timeout = defaultDeviceRequestTimeout
 	}
+	// Client precedence, the same on every surface of this package: a client
+	// the caller handed us is theirs, enforcement included; else a caller's
+	// policy; else the shared DefaultIssuerPolicy client. The default is
+	// policed because the endpoints these POSTs target may come from
+	// DiscoverFromResource's metadata, and nothing here can tell a discovered
+	// endpoint from a hand-configured one — "the policy applies sometimes" is
+	// the branch a bypass grows out of.
+	switch {
+	case cfg.httpClient != nil:
+	case cfg.policyClient != nil:
+		cfg.httpClient = cfg.policyClient
+	default:
+		cfg.httpClient = sharedPolicyClient()
+	}
 	// Suppress redirects on every device-flow POST so a 3xx surfaces as a non-2xx
 	// api_error rather than the client chasing an attacker-influenced Location.
+	// This copies, which is what keeps sharing the default client legal.
 	cfg.httpClient = suppressRedirects(cfg.httpClient)
 	return cfg
 }
@@ -254,9 +303,10 @@ func RequestDeviceAuthorization(ctx context.Context, deviceAuthEndpoint, clientI
 	// The suppression is about gosec's taint rule, not a claim that this URL is
 	// trusted. DeviceAuthorizationEndpoint may be caller-configured, but it may
 	// equally come from DiscoverFromResource's metadata, in which case a remote
-	// peer chose it and NOTHING here judges the address it resolves to — see
-	// issue #806. This request carries client_id.
-	resp, err := cfg.httpClient.Do(req) // #nosec G704 -- see the note above: not address-policed (#806)
+	// peer chose it — so by default the client judges the address it resolves
+	// to at dial time (DefaultIssuerPolicy, #806). This request carries
+	// client_id.
+	resp, err := cfg.httpClient.Do(req) // #nosec G704 -- see the note above: address-policed by default
 	if err != nil {
 		// A caller cancelling (or its deadline expiring) during the POST must
 		// surface as DeviceFlowCancelled, not a retryable transport failure. The
@@ -264,6 +314,12 @@ func RequestDeviceAuthorization(ctx context.Context, deviceAuthEndpoint, clientI
 		// per-request timeout is the child reqCtx, whose expiry stays transport.
 		if ctxErr := ctx.Err(); ctxErr != nil {
 			return nil, &DeviceFlowError{Reason: DeviceFlowCancelled, Err: ctxErr}
+		}
+		// A policy refusal is a permanent verdict on the endpoint, not a
+		// transport fault: classify it before the retryable transport case, or
+		// the consumer is told to retry a target it must stop talking to.
+		if errors.Is(err, surfguard.ErrBlocked) {
+			return nil, blockedEndpointError("device authorization endpoint", deviceAuthEndpoint, err)
 		}
 		return nil, &DeviceFlowError{Reason: DeviceFlowTransport, Err: fmt.Errorf("device authorization request failed: %w", err)}
 	}
@@ -487,6 +543,8 @@ func pollDeviceTokenUntil(ctx context.Context, cfg deviceConfig, tokenEndpoint, 
 		case pollInvalidResponse:
 			// Malformed 2xx token response — api_error, not a retryable transport.
 			return nil, basecamp.ErrAPI(result.status, result.err.Error())
+		case pollBlocked:
+			return nil, blockedEndpointError("token endpoint", tokenEndpoint, result.err)
 		case pollOAuthError:
 			// Any completed round-trip resets the timeout backoff to the
 			// server-driven interval.
@@ -542,6 +600,9 @@ const (
 	// 3xx (redirects are suppressed, never a valid token response), or any
 	// response whose body exceeds the size cap.
 	pollInvalidResponse
+	// pollBlocked is the address policy refusing the token endpoint before any
+	// connection opened (api_error, NOT retryable, and never backed off).
+	pollBlocked
 )
 
 type pollResult struct {
@@ -615,13 +676,20 @@ func postDeviceToken(ctx context.Context, cfg deviceConfig, tokenEndpoint string
 	req.Header.Set("Accept", "application/json")
 
 	// As above: TokenEndpoint may come from discovered metadata rather than from
-	// the caller, and its address is not policed (#806). This request carries
-	// the device_code.
-	resp, err := cfg.httpClient.Do(req) // #nosec G704 -- see the note above: not address-policed (#806)
+	// the caller, so by default its address is judged at dial time
+	// (DefaultIssuerPolicy, #806). This request carries the device_code.
+	resp, err := cfg.httpClient.Do(req) // #nosec G704 -- see the note above: address-policed by default
 	if err != nil {
 		// Parent cancellation ends the flow; a per-request timeout backs off.
 		if ctx.Err() != nil {
 			return pollResult{kind: pollCancelled, err: ctx.Err()}
+		}
+		// A policy refusal terminates the flow. It is classified ahead of the
+		// timeout and transport cases so the loop can neither back off and
+		// re-dial a target it must stop talking to, nor report it as a
+		// retryable transport failure.
+		if errors.Is(err, surfguard.ErrBlocked) {
+			return pollResult{kind: pollBlocked, err: err}
 		}
 		if errors.Is(err, context.DeadlineExceeded) || isTimeout(err) {
 			return pollResult{kind: pollTimeout, err: err}
