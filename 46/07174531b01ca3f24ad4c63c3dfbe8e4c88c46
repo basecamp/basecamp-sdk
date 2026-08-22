@@ -1,0 +1,125 @@
+.github/codeql/codeql-config.yml
+  s_1c9d086ab67253::t_6f0dd5edf2ee0b 29-32,36,51-55
+.github/codeql/sarif-filter.jq
+  s_1c9d086ab67253::t_32063c0b55f9c7 1-14
+.github/codeql/test-sarif-filter.sh
+  s_1c9d086ab67253::t_b8108aa63b15d5 3-4,10,12
+.github/codeql/testdata/sarif-filter-fixture.json
+  s_1c9d086ab67253::t_7a78a0bed8cd4d 46-61
+.github/workflows/codeql.yml
+  s_1c9d086ab67253::t_92c7c1b6c082c8 173-177,185,243
+.github/workflows/test.yml
+  s_1c9d086ab67253::t_5808b595f6b5d3 514-527,667-672,675,790-802,838-846,849-851
+CONTRIBUTING.md
+  s_1c9d086ab67253::t_742ca7883efca6 121-193
+MIGRATING.md
+  s_1c9d086ab67253::t_e11b963fba6c8c 16-90,308-369
+Makefile
+  s_1c9d086ab67253::t_55bfb0707c9674 416,466-480,482
+SPEC.md
+  s_1c9d086ab67253::t_45777f96b0dccf 533,633,636-935,1072-1079,1135-1148,1708-1711,1730,1741-1744,1750-1754,1771-1807,2045-2162,2247-2250,2374-2406,3070,3125-3127,3500-3504,3533-3534,3685-3698,4057,4130-4208
+conformance/runner/python/replay_runner.py
+  s_1c9d086ab67253::t_18242bd832ce01 124-126,128,160,165-169,244-245,256
+conformance/runner/python/runner.py
+  s_1c9d086ab67253::t_bb93f6b2ae32a1 140-142,199-205,1544-1546
+conformance/runner/python/schema_walker.py
+  s_1c9d086ab67253::t_840470f1129c41 42-45
+conformance/runner/python/test_replay_runner.py
+  s_1c9d086ab67253::t_f2f7c6c98190b8 20-30,41-42,46-54,57-59,149-286
+conformance/runner/ruby/replay-runner.rb
+  s_1c9d086ab67253::t_f9ab1291a025a3 117-119
+conformance/runner/ruby/runner.rb
+  s_1c9d086ab67253::t_72ee3f038c4a27 121-122,196-203
+conformance/tests/downloads.json
+  s_1c9d086ab67253::t_1fc66d80a898f3 135-154
+go/README.md
+  s_1c9d086ab67253::t_2e6155a2f35199 201,229-277,362-389
+go/go.mod
+  s_1c9d086ab67253::t_18072dbc365f2d 6
+go/go.sum
+  s_1c9d086ab67253::t_fa4c32bea6520e 4-5
+go/pkg/basecamp/client.go
+  s_1c9d086ab67253::t_dc3b6cebb9abbe 9,695,700-710,728-742,1090-1154,1157-1160,1165-1195,1199-1222
+go/pkg/basecamp/client_retry_after_test.go
+  s_1c9d086ab67253::t_009bee7af1c37f 1-504
+go/pkg/basecamp/download.go
+  s_1c9d086ab67253::t_a90c2289bb3ce3 15-17,31-37,45-49,64-66,221-228,248,295-305
+go/pkg/basecamp/download_test.go
+  s_1c9d086ab67253::t_978bfdeb53662d 692-749,860-903
+go/pkg/basecamp/errors.go
+  s_1c9d086ab67253::t_d637be2656774a 67-79,195-203,214
+go/pkg/basecamp/helpers.go
+  s_1c9d086ab67253::t_9be853b0616268 71
+go/pkg/basecamp/oauth/device.go
+  s_1c9d086ab67253::t_119001e05da2b8 16-17,79-81,83-90,96-105,114-132,172-174,184-197,200,303-309,318-323,546-547,603-605,678-681,687-693
+go/pkg/basecamp/oauth/discovery.go
+  s_1c9d086ab67253::t_3fec41632900b8 14,17-18,46-54,57-207,212-224,228-250,417-421,461-465,490,539-543,564-565,682-684,805-813,818-841
+go/pkg/basecamp/oauth/endpoint_policy_test.go
+  s_1c9d086ab67253::t_51db01d45aeedb 1-350
+go/pkg/basecamp/oauth/exchange.go
+  s_1c9d086ab67253::t_3a198ea71f0854 6,14-15,20-26,31-76,168-175,177-181
+go/pkg/basecamp/oauth/issuer_policy_test.go
+  s_1c9d086ab67253::t_29ddaed6c5bced 1-460
+go/pkg/basecamp/oauth/resource_discovery_test.go
+  s_1c9d086ab67253::t_ac65daec9f6ea6 20-21,141-161,280,570-571,613-614,679-680
+go/pkg/basecamp/oauth/types.go
+  s_1c9d086ab67253::t_468fcca164c134 107-130
+go/pkg/basecamp/optional_timestamps_test.go
+  s_1c9d086ab67253::t_25472e51be7289 9,320-330,336-341,345,348,351-356,371-395,400-806,1007-1012,1015,1023
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/Download.kt
+  s_1c9d086ab67253::t_6dbe72985d52f9 26-28,89-91,135-137,162,190-199
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/DownloadTest.kt
+  s_1c9d086ab67253::t_19f068c9437d96 316-354
+python/src/basecamp/download.py
+  s_1c9d086ab67253::t_25e7666d6ac895 11-13,57,88,122-137,139,141,145,149,151,155
+python/tests/test_download.py
+  s_1c9d086ab67253::t_325ceb6d57a9ff 113-171
+ruby/lib/basecamp/client.rb
+  s_1c9d086ab67253::t_b6878e51d3958d 243-245,649-653,659-664
+ruby/test/basecamp/download_test.rb
+  s_1c9d086ab67253::t_9c74c4d781bc21 254-294
+ruby/test/basecamp/oauth_transport_test.rb
+  s_1c9d086ab67253::t_f6585be0b13a32 818-833,837,839,841,853-859,861
+scripts/check-wrapper-drift/main.go
+  s_1c9d086ab67253::t_0423f03fd0c77e 331-336
+swift/Sources/Basecamp/Download.swift
+  s_1c9d086ab67253::t_20ca587df6c0b6 46-48,116-125
+swift/Sources/Basecamp/HTTP/HTTPClient.swift
+  s_1c9d086ab67253::t_6134c9e9857f9e 498-501,512-516
+swift/Sources/Basecamp/HTTP/Transport.swift
+  s_1c9d086ab67253::t_b29e208c3baf96 16-18,41-48
+swift/Tests/BasecampTests/DownloadTests.swift
+  s_1c9d086ab67253::t_280bf5d120539c 303-342
+swift/Tests/BasecampTests/Support/MockTransport.swift
+  s_1c9d086ab67253::t_cf1063a637f268 21-25,64,68-75
+typescript/lint-rules/no-timer-scheduled-abort.js
+  s_1c9d086ab67253::t_b49cfefd7e2aab 1-190
+typescript/lint-rules/oxlintrc.json
+  s_1c9d086ab67253::t_84d7a428df6b9d 1-16
+typescript/lint-rules/test-no-timer-scheduled-abort.mjs
+  s_1c9d086ab67253::t_8428952821f14c 1-238
+typescript/package.json
+  s_1c9d086ab67253::t_2f2c4b02e4593b 32-34
+typescript/src/download.ts
+  s_1c9d086ab67253::t_5d1362f4ef6c51 24-26,93-95,230,244-249,252,258-266
+typescript/tests/download.test.ts
+  s_1c9d086ab67253::t_52d96383c0664d 12-13,319-349
+typescript/tests/middleware-lifecycle.test.ts
+  s_1c9d086ab67253::t_f9cf9a6d9b82cc 73-88,92-101,254-256,259-264,277-294,303-322,330-341,343-365,372-409
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "4607174531b01ca3f24ad4c63c3dfbe8e4c88c46",
+  "prompts": {},
+  "sessions": {
+    "s_1c9d086ab67253": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1f5628ec-50ac-4d8d-a2cc-cee5b0112903",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
