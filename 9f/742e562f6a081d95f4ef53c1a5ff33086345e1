@@ -1,0 +1,29 @@
+.github/workflows/test.yml
+  s_1c9d086ab67253::t_11b886bf9a0266 168-176
+MIGRATING.md
+  s_1c9d086ab67253::t_d8a64483e4f2a4 3925-3926
+Makefile
+  s_1c9d086ab67253::t_a952436e231220 272,305-308,1602
+scripts/bump-version.sh
+  s_1c9d086ab67253::t_f5d897249e3f03 30-34
+scripts/promote-migrating.sh
+  s_1c9d086ab67253::t_6f94a7247dd07d 2-11,14-16,19,21-22,26-60
+scripts/test-promote-migrating.sh
+  s_1c9d086ab67253::t_8a4878bf50fffd 1-78
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "9f742e562f6a081d95f4ef53c1a5ff33086345e1",
+  "prompts": {},
+  "sessions": {
+    "s_1c9d086ab67253": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1f5628ec-50ac-4d8d-a2cc-cee5b0112903",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
