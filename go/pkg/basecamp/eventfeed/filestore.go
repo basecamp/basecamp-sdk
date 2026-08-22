@@ -454,7 +454,7 @@ func resolveStorePath(path string) (string, error) {
 			// Absent (first save) or a real file: this is the entry to
 			// replace. A stat error other than absence surfaces on the
 			// open/rename that follows, with its own context.
-			return path, nil
+			return path, nil //nolint:nilerr // deliberate: the follow-up open/rename reports the failure with better context
 		}
 		dest, err := os.Readlink(path)
 		if err != nil {
