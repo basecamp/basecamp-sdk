@@ -1,0 +1,29 @@
+go/pkg/basecamp/eventfeed/feedtest/transport.go
+  s_1c9d086ab67253::t_8d73384c669158 46-48,64-72
+go/pkg/basecamp/eventfeed/filestore.go
+  s_1c9d086ab67253::t_fecc22cc4c289a 393-403,405-409,414,435,440-469
+go/pkg/basecamp/eventfeed/filestore_test.go
+  s_1c9d086ab67253::t_5e419ff0a29dc2 119-182
+go/pkg/basecamp/eventfeed/seams.go
+  s_1c9d086ab67253::t_5d4c1b6ba28175 259-262
+go/pkg/basecamp/eventfeed/transport_contract_test.go
+  s_1c9d086ab67253::t_79269c45d7a5f9 277-294
+go/pkg/basecamp/eventfeed/websocket_transport.go
+  s_1c9d086ab67253::t_1cf86cf008d656 124-132,187
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "7b81c43224b89066dd35bb450c5d4ae0b36d0c1e",
+  "prompts": {},
+  "sessions": {
+    "s_1c9d086ab67253": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1f5628ec-50ac-4d8d-a2cc-cee5b0112903",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
