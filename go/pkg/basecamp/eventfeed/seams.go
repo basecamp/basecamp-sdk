@@ -49,8 +49,10 @@ const (
 	// MintTransient — a retryable outcome exhausted inside the seam; rides
 	// the reconnect cycle (Backoff).
 	MintTransient MintErrorKind = iota + 1
-	// MintThrottled — 429/503; RetryAfter honored as the floor of the next
-	// reconnect delay.
+	// MintThrottled — a retryable outcome whose last response carried a
+	// §6-parsed Retry-After, whatever its status (the same presence-keyed
+	// adapter mapping as PollThrottled; the parsed value is always > 0).
+	// RetryAfter is honored as the floor of the next reconnect delay.
 	MintThrottled
 	// MintUnauthorized — 401/403; increments the shared connection-level
 	// authorization counter (terminal authorization_failed at threshold 3).
@@ -148,7 +150,12 @@ const (
 	// PollTransient — a retryable outcome exhausted inside the seam; retries
 	// on the poll-retry timer, never terminal.
 	PollTransient PollErrorKind = iota + 1
-	// PollThrottled — 429/503; RetryAfter waited exactly, cap-exempt.
+	// PollThrottled — a retryable outcome whose last response carried a
+	// §6-parsed Retry-After, whatever its status (SPEC §6 fixes the adapter
+	// mapping by presence of the parsed value, not by status — a status
+	// key would honour the header at one retryable status and drop it at
+	// another). The parsing algorithm yields only positive values, so
+	// RetryAfter is always > 0; it is waited exactly, cap-exempt.
 	PollThrottled
 	// PollPositionInvalid — 400-position: re-enter since=<last poll-served
 	// id> (or a present-class entry with none).

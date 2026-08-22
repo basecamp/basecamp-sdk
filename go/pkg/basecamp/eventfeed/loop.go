@@ -444,11 +444,19 @@ func (h *staleHolder) evaluate(gen int) (time.Duration, bool) {
 // another, so after the expiry there is no wake left at all — which is exactly
 // how the bounded wait became unbounded again.
 //
+// The caller names the wake's distance — the remainder to ITS deadline, not a
+// window. An earlier revision always armed a full window, and a firing that
+// landed late in the grace phase then pushed the only remaining wake almost a
+// whole window past the deadline: the wait ended nearly two windows after the
+// deferral instead of one. A non-positive remainder arms at zero — the
+// deadline is due, and the immediate firing is the wake that lets the
+// post-select check say so.
+//
 // It arms the same `staleness` kind: SPEC.md §23 pins exactly six timer kinds
 // and every state's exact timer set, both asserted by the cross-SDK fixtures,
 // so a dedicated grace timer would be a spec change across six SDKs. The
 // outstanding set is unchanged — {staleness} stays {staleness}.
-func (h *staleHolder) graceWake() {
+func (h *staleHolder) graceWake(d time.Duration) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	if h.stopped {
@@ -456,7 +464,7 @@ func (h *staleHolder) graceWake() {
 	}
 	h.expired = true
 	h.timer.Stop()
-	h.timer = h.clock.NewTimer(h.d, timerStaleness)
+	h.timer = h.clock.NewTimer(max(d, 0), timerStaleness)
 }
 
 // stop cancels the timer permanently.
