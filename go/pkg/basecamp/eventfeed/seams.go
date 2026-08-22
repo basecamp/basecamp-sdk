@@ -472,8 +472,10 @@ type Observer struct {
 	// actually acts on are named exactly, an absent reason stays empty, and
 	// every other peer-supplied string — however short — becomes "other". err
 	// goes through observableSocketError, whose vocabulary is CLOSED and
-	// short: the staleness and conn-closed sentinels, the two context
-	// sentinels, *CloseError (which renders its integer code alone), and
+	// short: the staleness, conn-closed, and frame-oversize sentinels (the
+	// last being ErrFrameOversize, the invalid-frame class's one
+	// transport-decided shape), the two context sentinels, *CloseError (which
+	// renders its integer code alone), and
 	// *invalidFrameError (which renders one of two shape constants). ANY other
 	// error — including a *DialError or *TerminalError, both of which a seam
 	// can construct and both of which render free text — becomes

@@ -1400,8 +1400,11 @@ var errSocketFailed = errors.New("event feed socket failed")
 //
 // So neither passes through any more. The three that remain are safe by
 // construction rather than by convention: the sentinels are package-level
-// values whose text is fixed in this file, *CloseError renders an integer code
-// and nothing else, and *invalidFrameError renders one of two shape constants.
+// values whose text is fixed in this package (ErrFrameOversize is exported so
+// the transport seam can RETURN it, but a var can only be referenced — unlike
+// an exported struct type, it cannot be rebuilt around peer text), *CloseError
+// renders an integer code and nothing else, and *invalidFrameError renders one
+// of two shape constants.
 //
 // Nothing is lost on the live path. Dial failures do not reach this function
 // at all — they are dispatched before any teardown is observed — and a
@@ -1433,6 +1436,16 @@ func observableSocketError(err error) error {
 		return errStaleConnection
 	case errors.Is(err, errCableConnClosed):
 		return errCableConnClosed
+	case errors.Is(err, ErrFrameOversize):
+		// §23's invalid-frame class, size shape. The size check binds inside
+		// the transport — the frame is rejected during the read, never
+		// materialized — so the sentinel the seam returned IS the
+		// classification, and this is what carries the invalid-frame
+		// indication to Observer.Disconnected instead of degrading the one
+		// transport-decided shape to errSocketFailed. Reduced to the bare
+		// package value like every other sentinel arm: the seam's wrapper
+		// text is where a cable URL rides.
+		return ErrFrameOversize
 	case errors.Is(err, context.Canceled):
 		return context.Canceled
 	case errors.Is(err, context.DeadlineExceeded):
