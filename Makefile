@@ -272,15 +272,15 @@ endif
 	@# Verify lockfiles are frozen against their manifests
 	@test "$$(jq -r '.version' typescript/package-lock.json)" = "$(VERSION)" -a "$$(jq -r '.packages[""].version' typescript/package-lock.json)" = "$(VERSION)" || \
 		{ echo "ERROR: typescript/package-lock.json records a stale SDK version. Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
-	@grep -qF 'basecamp-sdk ($(VERSION))' ruby/Gemfile.lock || \
-		{ echo "ERROR: ruby/Gemfile.lock records a stale SDK version. Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
+	@grep -qxF '    basecamp-sdk ($(VERSION))' ruby/Gemfile.lock || \
+		{ echo "ERROR: ruby/Gemfile.lock's PATH spec records a stale SDK version. Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
 	@cd python && uv lock --check || \
 		{ echo "ERROR: python/uv.lock is stale. Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
 	@test "$$(jq -r '.packages["../../../typescript"].version' conformance/runner/typescript/package-lock.json)" = "$(VERSION)" || \
 		{ echo "ERROR: conformance/runner/typescript/package-lock.json records a stale SDK version. Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
 	@# The conformance Ruby/Python runner lockfiles are tracked (#670), so they
 	@# are always present; a stale one breaks the frozen conformance installs (#671).
-	@grep -qF 'basecamp-sdk ($(VERSION))' conformance/runner/ruby/Gemfile.lock || \
+	@grep -qxF '    basecamp-sdk ($(VERSION))' conformance/runner/ruby/Gemfile.lock || \
 		{ echo "ERROR: conformance/runner/ruby/Gemfile.lock records a stale SDK version. Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
 	@(cd conformance/runner/python && uv lock --check) || \
 		{ echo "ERROR: conformance/runner/python/uv.lock is stale. Run 'make bump VERSION=$(VERSION)' first."; exit 1; }

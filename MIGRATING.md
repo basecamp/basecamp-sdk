@@ -125,7 +125,8 @@ required-member models always had — required parameters take no default,
 optional ones default to `nil` — and no existing initializer changed its
 signature, so there is nothing to migrate. This entry exists because the fix
 is consumer-visible where the SDK's own test suite could not see it: every
-test file uses `@testable import`, which raises `internal` to visible, so
+test file that imports the SDK module imports it `@testable`, which raises
+`internal` to visible, so
 constructing these models passed in tests against a surface no consumer had.
 A plain-`import` consumer target now builds in CI to keep it that way.
 
@@ -394,10 +395,11 @@ if errors.As(err, &apiErr) && apiErr.RetryAfter > 0 {
 
 ### Go: a body that never arrived is no longer stamped as permanently malformed (#773)
 
-**Nothing to change, but two error classifications move** on the merge-safe
-Documents composites (`Update`, `Edit`) and the carve-out-aware ScheduleEntry
-composites (`UpdateEntry`, `EditEntry`) — the paths that read a response body
-by hand.
+**Nothing to change, but two error classifications move** on the paths that
+read a response body by hand: `Documents.Get` and the merge-safe `Update`/
+`Edit` built on it, and `Schedules.GetEntry` and the carve-out-aware
+`UpdateEntry`/`EditEntry` built on that — direct getter calls are in scope,
+not just the composites.
 
 Go streams response bodies, so the `io.ReadAll` inside the generated parser is
 where a truncated body, a reset connection or an expired deadline actually
