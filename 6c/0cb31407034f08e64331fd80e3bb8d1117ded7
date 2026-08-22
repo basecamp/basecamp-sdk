@@ -1,0 +1,35 @@
+conformance/event-feed/fixtures/30-continuation-redirect-cross-origin.json
+  s_1c9d086ab67253::t_3f4b29be299f5b 3
+go/pkg/basecamp/eventfeed/catchup.go
+  s_1c9d086ab67253::t_e2fe79f7df04d1 1115-1133,1164-1170,1352-1356,1458-1462
+go/pkg/basecamp/eventfeed/catchup_test.go
+  s_1c9d086ab67253::t_2a7378c1fc4a08 3107-3248
+go/pkg/basecamp/eventfeed/connector_test.go
+  s_1c9d086ab67253::t_e3586a4ae7b63e 9,1592-1628
+go/pkg/basecamp/eventfeed/export_test.go
+  s_1c9d086ab67253::t_d6c92c77eec5f5 163-169
+go/pkg/basecamp/eventfeed/loop.go
+  s_1c9d086ab67253::t_3031bfae8b663e 796-813,1023-1027,1083-1092
+go/pkg/basecamp/eventfeed/loop_test.go
+  s_1c9d086ab67253::t_f4dc3a24b58988 2433-2446
+go/pkg/basecamp/eventfeed/scenario_conformance_test.go
+  s_1c9d086ab67253::t_6bbab954d9c002 1175-1185,1191,1193,1195,1198-1203,1206
+go/pkg/basecamp/eventfeed/scenario_selftest_test.go
+  s_1c9d086ab67253::t_e396b39d3a5a23 861-899
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "6c0cb31407034f08e64331fd80e3bb8d1117ded7",
+  "prompts": {},
+  "sessions": {
+    "s_1c9d086ab67253": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1f5628ec-50ac-4d8d-a2cc-cee5b0112903",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
