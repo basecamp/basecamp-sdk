@@ -1,0 +1,23 @@
+.github/workflows/release-github.yml
+  s_1c9d086ab67253::t_98a082f17945ff 167-168
+MIGRATING.md
+  s_1c9d086ab67253::t_79e20f41858fee 80-154,370-442,506-509,578,3787-3794
+Makefile
+  s_1c9d086ab67253::t_188a373c56520c 251-253,258-259,268-269
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "c79f9ef96fc10ff51d6503e06a145e0147dd8593",
+  "prompts": {},
+  "sessions": {
+    "s_1c9d086ab67253": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1f5628ec-50ac-4d8d-a2cc-cee5b0112903",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
