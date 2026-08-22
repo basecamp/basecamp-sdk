@@ -2118,9 +2118,10 @@ Two remedies that look sufficient are not, and the reasons are worth keeping:
 - **Scheme alone is not the control.** `https` is satisfied by any private host.
 
 The control is the same one as requirement 5: **dial-time address enforcement
-on every device-authorization and token endpoint request**, judging the literal
-address at the moment each socket opens, so there is no check-to-use gap for a
-rebind to exploit and no assumption about what the AS chose to publish.
+on every device-authorization and token endpoint request the device flow and
+the token exchanger make**, judging the literal address at the moment each
+socket opens, so there is no check-to-use gap for a rebind to exploit and no
+assumption about what the AS chose to publish.
 
 The device and exchange functions cannot tell a discovered endpoint from a
 hand-configured one — `performDeviceLogin` takes a `Config`, `exchangeCode` and
@@ -2135,6 +2136,19 @@ over a plain client counts). A refusal is coded `api_error`, is NOT retryable,
 and in the poll loop terminates the flow on the first attempt rather than
 backing off — surfguard's `unresolvable` (retry later) and `blocked` (stop)
 are distinct verdicts and must stay distinct here.
+
+The boundary stops at those functions, and one SDK path sits outside it by
+construction: a refresh driven by **stored credentials** — Go's `AuthManager`
+posting to `Credentials.TokenEndpoint` on the client its constructor was
+handed — is caller-configured territory even when the stored endpoint was
+originally discovered. The documented device-login bridge copies
+`result.Config.TokenEndpoint` into the credential store, and that round trip
+through storage is exactly the provenance loss described above: the endpoint
+re-enters the SDK as caller configuration, on a caller-owned client, and the
+enforcement is that client's. Consumers persisting discovered endpoints MUST
+NOT infer that later automatic refreshes receive this requirement's default
+policy; they compose the policy into the client they hand `AuthManager`, the
+same as any caller-supplied client here. See Appendix F.
 
 **Go is the only implementation today** (`oauth.DefaultIssuerPolicy` on the
 device flow's and `Exchanger`'s default client; `WithDevicePolicy`,
@@ -4148,15 +4162,23 @@ specified rather than rediscovered:
 | Kotlin | Scheme gate, bounded timeout, `followRedirects = false`, bounded body. No classification tables; the JVM seam is OkHttp's `Dns` interface (OkHttp connects to exactly the addresses it returns, so filtering there is connect-time judgement), with no multiplatform equivalent |
 | Swift | Not applicable — ships no OAuth device flow or discovery |
 
-Three things hold in every SDK, policy or not, and are not what this
-divergence is about: the scheme gate, the bounded timeout, and the bounded
-body. Redirect suppression is NOT uniform on the exchange path: Go's
-`Exchanger` and Kotlin's `exchangeCode`/`refreshToken` follow redirects (TS's
-exchange passes no `redirect:` option, so it follows too), where the device
-flow suppresses them in all four — a 307 re-POSTs the credentials to the
-`Location`. Under Go's policy client each redirect hop's dial is judged, so the
-address policy holds across a redirect; the public-host re-POST does not need
-the policy to be exploitable and is the same cross-SDK shape as #805.
+Two things hold in every SDK, policy or not, and are not what this divergence
+is about: the scheme gate and the bounded body. Two more are NOT uniform on
+the exchange path, and listing them as universal is how a reader infers a
+guarantee nobody implemented. The bounded timeout holds on the device flow in
+all four, but Go's `doTokenRequest` bounds nothing itself — the caller's
+context is the only deadline, and the shared policy client deliberately
+carries no client timeout — and Kotlin's `postTokenRequest` builds its default
+client without `HttpTimeout`; TS (30 s), Python (`_TOKEN_TIMEOUT`), and Ruby
+(Faraday timeouts) do bound theirs. Redirect suppression: Go's `Exchanger` and
+Kotlin's `exchangeCode`/`refreshToken` follow redirects (TS's exchange passes
+no `redirect:` option, so it follows too), where the device flow suppresses
+them in all four — a 307 re-POSTs the credentials to the `Location`. Under
+Go's policy client each redirect hop's dial is judged, so the address policy
+holds across a redirect; the public-host re-POST does not need the policy to
+be exploitable. This is the same cross-SDK shape #805 had on the download's
+signed hop before #809 closed it there — the exchange path is now the
+remaining redirect-following exception.
 
 The behavioral tightening is the same as the issuer hop's, and it reaches one
 more consumer shape: a Go caller that hand-configures a loopback or RFC 1918
@@ -4168,6 +4190,16 @@ already passes its own client — `basecamp-cli` passes its general-purpose
 client to all three entry points — sees no change, and is also not protected
 by this: the policy lives in the transport, and that consumer owns its
 transport.
+
+The same boundary holds one function further out, and is worth recording so
+nobody infers otherwise: Go's `AuthManager.refreshLocked` posts a stored
+refresh token to `Credentials.TokenEndpoint` on the client `NewAuthManager`
+was handed, and the documented device-login bridge stores
+`result.Config.TokenEndpoint` — a discovered endpoint — into those
+credentials. Later automatic refreshes therefore do NOT receive the new
+default policy; the endpoint re-enters the SDK as caller configuration on a
+caller-owned client, and the enforcement is that client's to compose (§16
+requirement 6).
 
 ### Retry Strategy (§7)
 
