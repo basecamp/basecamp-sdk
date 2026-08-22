@@ -477,8 +477,95 @@ func TestScenarioDriverRejectsUnmatchedActions(t *testing.T) {
 	})
 }
 
-// underShortWatchdog runs a scenario that is EXPECTED to fail under a short
-// rendezvous window. A hostile scenario often fails by never satisfying a
+// TestScenarioDriverRejectsSchedulingDependentAdvance pins the advance guard.
+// A driver that quietly took the scheduling-dependent path would produce a
+// result that differs between languages for the same fixture, which is worse
+// than a failure because nothing reports it.
+//
+// The rule is about what an advance would FIRE, not about what it arms, and
+// the third case below is where those differ: a firing that replaces nothing
+// is still rejected. That is stricter than the arming rule this replaced, and
+// deliberately so — the arming rule could only be enforced by sampling, and a
+// sampled MUST is not one.
+//
+// The control matters as much as the mutants: an advance over a window with
+// nothing due is ordinary and must still pass, or the guard would be rejecting
+// every advance and the suite's one real advance (fixture 05) would be failing
+// for the wrong reason.
+func TestScenarioDriverRejectsSchedulingDependentAdvance(t *testing.T) {
+	t.Run("an advance during which the connector arms a timer", func(t *testing.T) {
+		// Advancing past the handshake deadline fires it, and the teardown it
+		// causes arms `backoff` inside the same window — the reentrant clause
+		// the algorithm cannot resolve identically across languages when the
+		// recipient is another goroutine. The guard never has to observe that
+		// arming: the firing alone is enough to reject the script.
+		script := `{"name":"x","description":"d","steps":[
+			{"expectMint":{"respond":{"status":200,"body":{"ticket":"{{TICKET:1}}","expires_in":120,"url":"{{CABLE_URL:1}}"}}}},
+			{"expectConnect":{"url":"{{CABLE_URL:1}}"}},
+			{"advance":{"ms":30000}}],
+			"finally":{"state":"backoff"}}`
+		err := underShortWatchdog(func() error { return runScenarioBytes([]byte(script), "x.json") })
+		if err == nil {
+			t.Fatal("an advance that changes the outstanding timer set must fail the scenario")
+		}
+		if !strings.Contains(err.Error(), "would fire") {
+			t.Fatalf("failed for the wrong reason: %v", err)
+		}
+		if !strings.Contains(err.Error(), "fireTimer") {
+			t.Errorf("the rejection must name the deterministic alternative: %v", err)
+		}
+	})
+
+	t.Run("an advance over a quiet window is ordinary", func(t *testing.T) {
+		// No connection yet, so nothing is armed and nothing is due: the
+		// guard must not reject an advance merely for existing.
+		script := `{"name":"x","description":"d","steps":[
+			{"advance":{"ms":1000}},
+			{"expectMint":{"respond":{"status":200,"body":{"ticket":"{{TICKET:1}}","expires_in":120,"url":"{{CABLE_URL:1}}"}}}},
+			{"expectConnect":{"url":"{{CABLE_URL:1}}"}}],
+			"finally":{"state":"awaiting_welcome"}}`
+		if err := underShortWatchdog(func() error { return runScenarioBytes([]byte(script), "x.json") }); err != nil {
+			t.Fatalf("an advance over a window that arms nothing must pass: %v", err)
+		}
+	})
+
+	// A firing that replaces nothing is STILL rejected, and this is the case
+	// that shows the rule changed rather than merely being reimplemented.
+	// Here the backoff deadline expires and the connector's next act is a mint,
+	// which parks inside the seam until the driver releases it, so nothing is
+	// armed anywhere in the window. Under the arming rule this was legal. It is
+	// not any more, because "did anything get armed?" can only be answered by
+	// waiting and hoping, while "is anything due?" is one atomic read — and the
+	// script that wanted this has `fireTimer`, which says which timer it means.
+	t.Run("an advance in which a due timer fires without replacement is still rejected", func(t *testing.T) {
+		script := `{"name":"x","description":"d","steps":[
+			{"expectMint":{"respond":{"status":200,"body":{"ticket":"{{TICKET:1}}","expires_in":120,"url":"{{CABLE_URL:1}}"}}}},
+			{"expectConnect":{"url":"{{CABLE_URL:1}}"}},
+			{"serve":{"frame":"welcome"}},
+			{"expectSubscribe":{"channel":"EventsChannel"}},
+			{"fireTimer":{"kind":"confirmation-deadline"}},
+			{"expectClientClose":{}},
+			{"expectTimers":{"exact":{"backoff":1}}},
+			{"advance":{"ms":1000}},
+			{"expectMint":{"respond":{"status":200,"body":{"ticket":"{{TICKET:2}}","expires_in":120,"url":"{{CABLE_URL:2}}"}}}},
+			{"expectConnect":{"url":"{{CABLE_URL:2}}"}}],
+			"finally":{"state":"awaiting_welcome"}}`
+		err := underShortWatchdog(func() error { return runScenarioBytes([]byte(script), "x.json") })
+		if err == nil {
+			t.Fatal("an advance whose window fires a timer must fail, even when it replaces nothing")
+		}
+		if !strings.Contains(err.Error(), "would fire") {
+			t.Fatalf("failed for the wrong reason: %v", err)
+		}
+		if !strings.Contains(err.Error(), "fireTimer") {
+			t.Errorf("the rejection must name the deterministic alternative: %v", err)
+		}
+	})
+}
+
+// underShortWatchdog runs a scenario under a short rendezvous window. Its
+// usual use is a scenario EXPECTED to fail, but it serves any case whose waits
+// are all short by construction. A hostile scenario often fails by never satisfying a
 // rendezvous, and waiting the full window for each would cost more than the
 // whole conformance suite; every caller still pins the failure's reason, so a
 // mutant rejected for the wrong reason cannot pass as the pin firing.

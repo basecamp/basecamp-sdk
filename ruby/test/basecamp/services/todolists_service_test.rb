@@ -159,7 +159,8 @@ class TodolistsServiceTest < Minitest::Test
   # straight through. This endpoint is full-replace, so either outcome is
   # written back over the real value — the composite erases or corrupts the
   # field it exists to preserve, on a call that never mentioned it. The shipped
-  # Todos analogue is tracked in #576.
+  # Todos analogue takes the same refusal from the MergeSafe guards #576
+  # closed with.
   [ false, 0, [], {}, 42, true, [ "x" ], { "a" => 1 } ].each do |malformed|
     define_method("test_update_refuses_a_malformed_description_#{malformed.inspect}") do
       stub_todolist_get_and_put(todolist: full_todolist.merge("description" => malformed))

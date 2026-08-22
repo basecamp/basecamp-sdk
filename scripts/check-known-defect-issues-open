@@ -9,6 +9,23 @@
 #   bc3_routes_not_modeled[].tracking_issue
 #                                        "an OPEN issue owns absorbing it"
 #
+# spec/tracking-issues.yml discharges the same kind of claim made in PROSE —
+# "Tracked in #N" in a README or a code comment. Same failure, same remedy: a
+# closed issue tracks nothing, and a sentence saying otherwise is a lie nobody
+# is told about. It is a registry rather than a scan of the prose because
+# "#\d+" cannot tell a tracking promise from an as-of citation ("shipped in
+# #12380"), and sorting those needs the author, not a matcher.
+#
+# The registry is the judgment surface, and one DETECTOR backs it: the checker
+# sweeps tracked text files for the canonical grammar "tracked [separately] in
+# #N" (tolerating a comment-prefixed line wrap mid-phrase) and fails when a
+# mention's [file, issue] pair is not registered — so the canonical form can
+# never be written without being registered. Non-canonical phrasings ("structural
+# safety ... is #N") are OUT OF THE DETECTOR'S REACH BY DESIGN: an open
+# vocabulary cannot be enumerated, and a regex that tried would sweep up the
+# as-of citations that must never be flagged. Those still go through the
+# registry by hand. PROSE_SWEEP_ROOT overrides the swept tree (self-test).
+#
 # check-bc3-route-parity already requires those to be numeric. A number is not a
 # tracker: #588 auto-closed while nine live 404s still pointed at it, and that
 # gate stayed green the whole time because "is an Integer" was the entire test.
@@ -56,6 +73,20 @@ unless File.exist?(allow_path)
 end
 allow = YAML.safe_load(File.read(allow_path)) || {}
 
+# REQUIRED, not optional. Treating an absent registry as an empty one is a
+# fail-OPEN path in a gate whose entire purpose is failing closed: delete the
+# file (or typo the override) and the checker reports "nothing to verify" and
+# exits 0, with every prose claim in the repository unverified. That is the
+# #588 failure with an extra step, which is what this script exists to end.
+tracking_path = ENV['TRACKING_ISSUES'] || File.join(ROOT, 'spec', 'tracking-issues.yml')
+unless File.exist?(tracking_path)
+  warn "ERROR: tracking registry not found at #{tracking_path}"
+  warn '  This check fails closed by design: a missing registry is indistinguishable'
+  warn '  from one whose claims are all unverified. Restore it, or empty its list.'
+  exit 1
+end
+tracking = YAML.safe_load(File.read(tracking_path)) || {}
+
 # (issue number, human-readable site) pairs, so a failure names the entry that
 # has to change rather than just the number.
 refs = []
@@ -68,8 +99,123 @@ end
   refs << [e['tracking_issue'], "bc3_routes_not_modeled #{e['method']} #{e['path']}"]
 end
 
+# Every row is VALIDATED rather than skipped. `next unless Integer` is how the
+# allowlist entries are read, and there it is tolerable because an entry with no
+# issue number is making no claim. Here the row IS the claim: a malformed one is
+# a promise the author wrote and the gate silently dropped, which is worse than
+# either a failure or an absent row.
+# The KEY is required, not just the file. A registry whose key is misspelled
+# or dropped in an edit reads as nil and used to pass as empty — the same
+# fail-open path as a deleted file, one typo later. Only the explicit empty
+# list says "no promises" on purpose.
+unless tracking.key?('prose_tracking_issues')
+  warn "ERROR: #{tracking_path} must define prose_tracking_issues (use [] when there are none)."
+  exit 1
+end
+rows = tracking['prose_tracking_issues']
+unless rows.is_a?(Array)
+  warn "ERROR: prose_tracking_issues in #{tracking_path} must be a list, got #{rows.class}"
+  exit 1
+end
+rows.each_with_index do |e, i|
+  unless e.is_a?(Hash)
+    warn "ERROR: prose_tracking_issues[#{i}] in #{tracking_path} must be a mapping, got #{e.class}"
+    exit 1
+  end
+  unless e['issue'].is_a?(Integer) && e['issue'].positive?
+    warn "ERROR: prose_tracking_issues[#{i}] in #{tracking_path} needs a positive integer `issue`, got #{e['issue'].inspect}"
+    exit 1
+  end
+  if e['site'].to_s.strip.empty?
+    warn "ERROR: prose_tracking_issues[#{i}] (##{e['issue']}) in #{tracking_path} needs a `site` naming " \
+         'the sentence that leans on it — a bare number tells the next reader nothing to go fix.'
+    exit 1
+  end
+  if e['file'].to_s.strip.empty?
+    warn "ERROR: prose_tracking_issues[#{i}] (##{e['issue']}) in #{tracking_path} needs a `file` naming " \
+         'the path the sentence lives in — the discovery sweep keys coverage on [file, issue].'
+    exit 1
+  end
+  refs << [e['issue'], e['site']]
+end
+
+# --- Discovery sweep --------------------------------------------------------------
+#
+# Hand-enumeration cannot prove the registry covers the tree, so the one
+# canonical grammar is swept for: "tracked [separately] in #N". A mention whose
+# [file, issue] pair is not registered fails the gate. The GAP between the
+# phrase's words tolerates a newline plus a comment leader, because the phrase
+# wraps in real prose and a line-based match would read a wrapped promise as
+# absence. Excluded: the registry itself and this gate's self-test (both quote
+# the grammar as data — the header's example, the test's corpus literals) and
+# spec/api-gaps/ (historical as-of citations, never promises).
+#
+# Files come from `git ls-files` — tracked text only, .gitignore respected —
+# with a plain directory walk as the fallback for a sweep root that is not a
+# repository (the self-test corpus). Binary files are skipped by NUL sniff.
+
+# The comment leader is matched by CLASS, not by count: Swift/Kotlin doc
+# comments are `///`, box comments stack `*`, and a leader that consumed an
+# exact number of marks would leave the surplus mark in front of the next word
+# and read a wrapped promise as absence. `#+` refuses a following digit so an
+# issue reference is never eaten as a leader.
+SWEEP_GAP = /(?:[ \t]|\r?\n[ \t]*(?:#+(?!\d)|\/{2,}|\*+|-{2,})?[ \t]*)+/
+SWEEP_MENTION = /\btracked(?:#{SWEEP_GAP}separately)?#{SWEEP_GAP}in#{SWEEP_GAP}#(\d+)/i
+
+def sweep_files(root)
+  listing = begin
+    out = IO.popen([ 'git', '-C', root, 'ls-files', '-z' ], err: File::NULL, &:read)
+    $?.success? ? out.split("\0") : nil
+  rescue Errno::ENOENT
+    nil
+  end
+  return listing unless listing.nil? || listing.empty?
+
+  require 'find'
+  files = []
+  Find.find(root) do |p|
+    if File.directory?(p)
+      Find.prune if File.basename(p) == '.git'
+      next
+    end
+    files << p.delete_prefix("#{root}#{File::SEPARATOR}")
+  end
+  files
+end
+
+sweep_root = ENV['PROSE_SWEEP_ROOT'] || ROOT
+registered_pairs = rows.map { |e| [ e['file'], e['issue'] ] }
+violations = []
+sweep_files(sweep_root).each do |rel|
+  next if rel == 'spec/tracking-issues.yml' ||
+          rel == 'scripts/test-check-known-defect-issues-open' ||
+          rel.start_with?('spec/api-gaps/')
+
+  path = File.join(sweep_root, rel)
+  next unless File.file?(path)
+
+  content = File.binread(path)
+  next if content.index("\0".b)
+
+  content = content.force_encoding(Encoding::UTF_8).scrub
+  content.to_enum(:scan, SWEEP_MENTION).each do
+    m = Regexp.last_match
+    next if registered_pairs.include?([ rel, m[1].to_i ])
+
+    line = content[0...m.begin(0)].count("\n") + 1
+    violations << "#{rel}:#{line} — a canonical \"tracked in ##{m[1]}\" claim, and [#{rel}, ##{m[1]}] is not registered"
+  end
+end
+unless violations.empty?
+  warn 'ERROR: canonical tracking claims exist outside the registry:'
+  violations.each { |v| warn "  - #{v}" }
+  warn '  Register each in spec/tracking-issues.yml (issue, file, site) — or, if the'
+  warn '  promise is already discharged, rewrite the sentence as an as-of fact.'
+  exit 1
+end
+
 if refs.empty?
-  puts '  ✓ bc3 route allowlist references no tracking issues — nothing to verify'
+  puts '  ✓ no tracking issues referenced — nothing to verify'
   exit 0
 end
 
@@ -98,8 +244,8 @@ refs.each do |number, site|
   next if state.nil? || state == 'open'
   failures << "#{site} points at ##{number}, which is #{state.upcase}. " \
               'A closed issue tracks nothing: reopen it, repoint the entry at the ' \
-              'issue that now owns the defect, or remove the entry because the ' \
-              'route is fixed.'
+              'issue that now owns the defect, or remove the entry because what it ' \
+              'tracked is fixed — and delete the claim that leaned on it.'
 end
 
 unless failures.empty?

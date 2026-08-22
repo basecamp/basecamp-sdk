@@ -47,6 +47,7 @@
 
 require "yaml"
 require "tmpdir"
+require "fileutils"
 require "open3"
 require "rbconfig"
 
@@ -89,7 +90,16 @@ failures = []
 # all, when gh is meant to be absent), so the real gh can never answer. The
 # interpreter is invoked by absolute path for the same reason. Returns
 # [combined_output, status, gh_log_lines].
-def run_checker(allowlist:, states: nil, gh_fail: false, repo: nil, github_repository: nil)
+# tracking defaults to the explicit empty registry — the one sanctioned no-op —
+# because a file WITHOUT the key is an error (case N+7): most cases here are
+# about the allowlist and just need the registry to say "no promises" on purpose.
+#
+# sweep is the discovery corpus: filename => content, written under a tmp dir
+# that PROSE_SWEEP_ROOT points the checker's canonical-grammar sweep at. Every
+# case gets a corpus — empty by default — so the sweep can never read the REAL
+# repository against a synthetic registry, which would fail every case here on
+# facts about the tree rather than about the checker.
+def run_checker(allowlist:, tracking: { "prose_tracking_issues" => [] }, sweep: {}, states: nil, gh_fail: false, repo: nil, github_repository: nil)
   Dir.mktmpdir("known-defect-selftest") do |dir|
     path_dir = File.join(dir, "bin")
     Dir.mkdir(path_dir)
@@ -104,9 +114,28 @@ def run_checker(allowlist:, states: nil, gh_fail: false, repo: nil, github_repos
     allow_path = File.join(dir, "bc3-route-allowlist.yml")
     File.write(allow_path, YAML.dump(allowlist))
 
+    # Pointed at a temp file even when the case supplies nothing, so the
+    # checker can never read the repository's REAL registry mid-self-test —
+    # which would make these cases depend on live issue state and on the
+    # network, the two things the stub exists to remove.
+    tracking_path = File.join(dir, "tracking-issues.yml")
+    # nil means "do not create the file", which is how the missing-registry
+    # case is expressed without deleting the repository's real one.
+    File.write(tracking_path, YAML.dump(tracking)) unless tracking.nil?
+
+    sweep_root = File.join(dir, "corpus")
+    Dir.mkdir(sweep_root)
+    sweep.each do |rel, content|
+      full = File.join(sweep_root, rel)
+      FileUtils.mkdir_p(File.dirname(full))
+      File.write(full, content)
+    end
+
     env = {
       "PATH" => path_dir,
       "BC3_ROUTE_ALLOWLIST" => allow_path,
+      "TRACKING_ISSUES" => tracking_path,
+      "PROSE_SWEEP_ROOT" => sweep_root,
       "GH_STUB_LOG" => gh_log,
       "GH_STUB_STATES" => states,
       "GH_STUB_FAIL" => (gh_fail ? "1" : nil),
@@ -120,7 +149,13 @@ def run_checker(allowlist:, states: nil, gh_fail: false, repo: nil, github_repos
   end
 end
 
+# CASES counts what actually ran. The summary used to restate the number by
+# hand, and it was wrong the moment a case was added — the same stale-constant
+# failure the gates in this directory exist to catch, in the gate's own tests.
+CASES = [ 0 ]
+
 def expect_pass(failures, label, out, status, fragment = nil)
+  CASES[0] += 1
   if !status.success?
     puts "  FAIL  #{label}"
     failures << "#{label}: expected PASS but checker exited #{status.exitstatus}:\n#{out}"
@@ -133,6 +168,7 @@ def expect_pass(failures, label, out, status, fragment = nil)
 end
 
 def expect_fail(failures, label, out, status, fragment)
+  CASES[0] += 1
   if status.success?
     puts "  FAIL  #{label}"
     failures << "#{label}: expected FAILURE but checker passed:\n#{out}"
@@ -161,7 +197,7 @@ puts "==> known-defect tracking-issue self-test (checker: #{CHECKER.sub("#{ROOT}
 
 out, status, calls = run_checker(allowlist: { "sdk_routes_known_defective" => [], "bc3_routes_not_modeled" => [] })
 expect_pass(failures, "1. empty allowlist is a no-op", out, status,
-            "references no tracking issues")
+            "no tracking issues referenced")
 unless calls.empty?
   puts "  FAIL  1a. empty allowlist makes no API calls"
   failures << "1a: expected no gh calls, got #{calls.inspect}"
@@ -281,8 +317,194 @@ expect_fail(failures, "9. missing gh fails closed", out, status,
 
 # --- Report ------------------------------------------------------------------------
 
+# --- N. Prose tracking claims are collected from the registry --------------------
+#
+# "Tracked in #N" in a README is the same claim the allowlist makes in
+# structured form, and it fails the same way: the issue closes, the sentence
+# keeps promising someone owns the gap, and nothing says otherwise. The registry
+# exists because prose cannot be scanned for this — "#\d+" cannot separate a
+# tracking promise from an as-of citation — so the author registers the promise
+# and the gate verifies it alongside the allowlist's.
+
+out, status, calls = run_checker(
+  allowlist: { "sdk_routes_known_defective" => [], "bc3_routes_not_modeled" => [] },
+  tracking: { "prose_tracking_issues" => [ { "issue" => 303, "file" => "README.md", "site" => "README.md — a gap" } ] },
+  states: "303=open"
+)
+expect_pass(failures, "N. prose registry entries are collected", out, status,
+            "README.md — a gap")
+unless calls.any? { |c| c.end_with?("/issues/303") }
+  puts "  FAIL  Na. prose entry is looked up"
+  failures << "Na: expected a lookup of #303, got #{calls.inspect}"
+end
+
+# --- N+1. A closed prose tracking issue fails the gate --------------------------
+#
+# The whole point. A registry that reported a closed issue as fine would be the
+# #588 failure with extra steps.
+
+out, status, _ = run_checker(
+  allowlist: { "sdk_routes_known_defective" => [], "bc3_routes_not_modeled" => [] },
+  tracking: { "prose_tracking_issues" => [ { "issue" => 404, "file" => "SPEC.md", "site" => "SPEC.md — a bound" } ] },
+  states: "404=closed"
+)
+expect_fail(failures, "N+1. a CLOSED prose tracking issue fails", out, status,
+            "SPEC.md — a bound points at #404, which is CLOSED")
+
+# --- N+2. Allowlist and registry are collected together -------------------------
+#
+# Neither source may mask the other: a green allowlist must not make an unread
+# registry look verified, which is what a single-source read would do.
+
+out, status, _ = run_checker(
+  allowlist: { "sdk_routes_known_defective" => [ defective(101) ], "bc3_routes_not_modeled" => [] },
+  tracking: { "prose_tracking_issues" => [ { "issue" => 303, "file" => "README.md", "site" => "README.md — a gap" } ] },
+  states: "101=open,303=closed"
+)
+expect_fail(failures, "N+2. a closed registry entry fails even with a green allowlist", out, status,
+            "README.md — a gap points at #303, which is CLOSED")
+
+# --- N+3. A MISSING registry fails closed ---------------------------------------
+#
+# The fail-open path this gate cannot have. Treating an absent file as an empty
+# one means deleting it (or typoing the override) reports "nothing to verify"
+# and exits 0, with every prose claim unverified — the #588 failure with an
+# extra step, in the script written to end it.
+
+out, status, _ = run_checker(
+  allowlist: { "sdk_routes_known_defective" => [], "bc3_routes_not_modeled" => [] },
+  tracking: nil
+)
+expect_fail(failures, "N+3. a missing registry fails closed", out, status,
+            "tracking registry not found")
+
+# --- N+4. Malformed rows fail rather than being skipped --------------------------
+#
+# The allowlist skips entries without an issue number, and there that is right:
+# such an entry makes no claim. Here the row IS the claim, so a malformed one is
+# a promise the author wrote and the gate silently dropped.
+
+out, status, _ = run_checker(
+  allowlist: { "sdk_routes_known_defective" => [], "bc3_routes_not_modeled" => [] },
+  tracking: { "prose_tracking_issues" => [ { "issue" => 303 } ] }
+)
+expect_fail(failures, "N+4. a row with no site fails", out, status, "needs a `site`")
+
+out, status, _ = run_checker(
+  allowlist: { "sdk_routes_known_defective" => [], "bc3_routes_not_modeled" => [] },
+  tracking: { "prose_tracking_issues" => [ { "site" => "README.md — a gap" } ] }
+)
+expect_fail(failures, "N+5. a row with no issue number fails", out, status,
+            "needs a positive integer `issue`")
+
+out, status, _ = run_checker(
+  allowlist: { "sdk_routes_known_defective" => [], "bc3_routes_not_modeled" => [] },
+  tracking: { "prose_tracking_issues" => "not a list" }
+)
+expect_fail(failures, "N+6. a non-list registry fails", out, status, "must be a list")
+
+# --- N+7. A registry file without the key fails -----------------------------------
+#
+# The missing-FILE case (N+3) fails closed; a file whose key is misspelled or
+# dropped in an edit is the same accident one typo later, and it used to pass
+# as an empty registry. Only the explicit empty list says "no promises" on
+# purpose — a keyless file is indistinguishable from one the gate never read.
+
+out, status, _ = run_checker(
+  allowlist: { "sdk_routes_known_defective" => [], "bc3_routes_not_modeled" => [] },
+  tracking: {}
+)
+expect_fail(failures, "N+7. a registry without the prose_tracking_issues key fails", out, status,
+            "must define prose_tracking_issues")
+
+# --- N+8. An unregistered canonical mention fails the sweep ----------------------
+#
+# The instrument case. Hand-enumeration cannot prove coverage, so the checker
+# sweeps tracked text for the one canonical grammar — "tracked [separately] in
+# #N" — and an occurrence whose [file, issue] pair is absent from the registry
+# fails the gate. The canonical form can never again be written without being
+# registered.
+
+out, status, _ = run_checker(
+  allowlist: { "sdk_routes_known_defective" => [], "bc3_routes_not_modeled" => [] },
+  sweep: { "README.md" => "This gap is tracked in #909 until the decoder lands.\n" }
+)
+expect_fail(failures, "N+8. an unregistered canonical mention fails the sweep", out, status,
+            "not registered")
+
+# --- N+9. A registered canonical mention passes ----------------------------------
+#
+# Coverage is keyed on [file, issue]: the same issue registered for a DIFFERENT
+# file must not cover this one, so the entry names the corpus file exactly.
+
+out, status, calls = run_checker(
+  allowlist: { "sdk_routes_known_defective" => [], "bc3_routes_not_modeled" => [] },
+  tracking: { "prose_tracking_issues" => [
+    { "issue" => 303, "file" => "docs/note.md", "site" => "docs/note.md — a gap" }
+  ] },
+  sweep: { "docs/note.md" => "The gap is tracked in #303.\n" },
+  states: "303=open"
+)
+expect_pass(failures, "N+9. a registered canonical mention passes the sweep", out, status)
+unless calls.any? { |c| c.end_with?("/issues/303") }
+  puts "  FAIL  N+9a. the registered mention is still looked up"
+  failures << "N+9a: expected a lookup of #303, got #{calls.inspect}"
+end
+
+# --- N+10. A non-canonical phrasing does not trip the sweep ----------------------
+#
+# By design, not by gap: "structural safety ... is #N" is an open vocabulary no
+# regex can enumerate without also sweeping up as-of citations. The registry
+# stays the judgment surface for those; the sweep guarantees only the canonical
+# form.
+
+out, status, _ = run_checker(
+  allowlist: { "sdk_routes_known_defective" => [], "bc3_routes_not_modeled" => [] },
+  sweep: { "README.md" => "Structural safety for this SDK is #909.\n" }
+)
+expect_pass(failures, "N+10. a non-canonical phrasing does not trip the sweep", out, status,
+            "no tracking issues referenced")
+
+# --- N+11. The canonical grammar is caught across a comment line wrap ------------
+#
+# The phrase wraps in real prose — MIGRATING.md's own mention is "tracked\n
+# separately in #775" — and a line-based grep reads that as absence. The sweep
+# must see through a newline plus a comment leader mid-phrase.
+
+out, status, _ = run_checker(
+  allowlist: { "sdk_routes_known_defective" => [], "bc3_routes_not_modeled" => [] },
+  sweep: { "lib/service.rb" => "# the six SDKs disagree and this is tracked\n# separately in #909.\n" }
+)
+expect_fail(failures, "N+11. a line-wrapped canonical mention is still caught", out, status,
+            "not registered")
+
+# --- N+11a. The wrap is caught behind a Swift doc-comment leader too -------------
+#
+# `///` is three slashes; a leader that consumes exactly two leaves the third
+# in front of "separately" and reads the promise as absence. The leader must
+# take comment marks by class, not by count.
+
+out, status, _ = run_checker(
+  allowlist: { "sdk_routes_known_defective" => [], "bc3_routes_not_modeled" => [] },
+  sweep: { "Sources/Feed.swift" => "/// the six SDKs disagree and this is tracked\n/// separately in #909.\n" }
+)
+expect_fail(failures, "N+11a. a Swift doc-comment (///) wrapped mention is still caught", out, status,
+            "not registered")
+
+# --- N+12. A row with no file fails ----------------------------------------------
+#
+# The sweep keys coverage on [file, issue], so an entry without a file could
+# never cover the mention it registers — it would pass validation and leave the
+# sweep red with no way to say which entry is wrong.
+
+out, status, _ = run_checker(
+  allowlist: { "sdk_routes_known_defective" => [], "bc3_routes_not_modeled" => [] },
+  tracking: { "prose_tracking_issues" => [ { "issue" => 303, "site" => "README.md — a gap" } ] }
+)
+expect_fail(failures, "N+12. a row with no file fails", out, status, "needs a `file`")
+
 if failures.empty?
-  puts "==> known-defect tracking-issue self-test passed — 9 cases"
+  puts "==> known-defect tracking-issue self-test passed — #{CASES[0]} cases"
   exit 0
 else
   warn "known-defect tracking-issue self-test FAILED:"

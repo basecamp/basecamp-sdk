@@ -299,14 +299,7 @@ func (d *driver) runStep(step scenarioStep) error {
 	case *expectClientCloseStep:
 		return d.expectClientClose()
 	case *advanceStep:
-		// Plain Advance: no fixture scripts a firing that arms a follow-on
-		// timer due inside the same window — 05, the suite's only advance,
-		// deliberately configures staleness and repair-poll out of it, so the
-		// window fires nothing. A script that did want a chained firing would
-		// pass feedtest.Clock.AdvanceSettling the rendezvous for the arming,
-		// since the connector arms on its own goroutine.
-		d.h.clock.Advance(millis(payload.Ms))
-		return nil
+		return d.advance(payload)
 	case *fireTimerStep:
 		return d.fireTimer(payload)
 	case *exactIDs:
@@ -582,6 +575,54 @@ func (d *driver) nextClientFrame(what string) (clientFrame, error) {
 }
 
 // --- time ----------------------------------------------------------------
+
+// advance runs an `advance` directive under the family's virtual-advance
+// algorithm, and REJECTS the one shape of script the algorithm cannot resolve
+// identically in every language.
+//
+// The algorithm says timers armed during a window whose deadlines land inside
+// it also fire. In a single-threaded test clock that is exact. In Go the
+// connector arms on its own goroutine, so whether such a timer lands before
+// the re-selection that would fire it is a scheduling outcome — the same
+// script means two things, and a fixture cannot pin which.
+//
+// # Rejecting the shape, rather than detecting the divergence
+//
+// This used to detect: sample the clock's arm count, advance, wait out the
+// family's wall-clock watchdog for the count to move, and fail if it did. That
+// is a heuristic wearing a MUST, and it reads "no arm within five seconds" as
+// "no arm" — an arm landing later is simply missed. No wait makes it sound,
+// because there is no instant at which "nothing further will be armed" becomes
+// knowable from outside.
+//
+// So the question changes from "did the advance cause an arm?", which is racy,
+// to "can this advance fire anything at all?", which is decidable. feedtest's
+// clock selects due timers under its own lock and unlocks ONLY across a
+// firing's aftermath — deliberately, so a woken recipient can arm inside the
+// window. An advance with nothing due therefore never unlocks, never wakes
+// anything, and cannot be the cause of any arm. AdvanceIfQuiet decides the
+// due set and moves time under one hold of the clock's locks — a check and a
+// movement in two acquisitions would leave a gap where a concurrently armed
+// timer turns an accepted advance into a firing one.
+//
+// A script that wants a firing writes `fireTimer`, which fires one named timer
+// without advancing the clock and so involves no re-selection at all. The
+// suite's only `advance` (fixture 05) sits in Streaming with staleness and
+// repair-poll configured to ~11 days against a 121-second window: it exists to
+// age a ticket past its TTL, not to fire anything, and it qualifies.
+//
+// AdvanceSettling remains for a caller that genuinely wants a chained firing
+// with an explicit rendezvous. It is deliberately not reachable from a fixture.
+func (d *driver) advance(step *advanceStep) error {
+	if due, ok := d.h.clock.AdvanceIfQuiet(millis(step.Ms)); !ok {
+		return fmt.Errorf(
+			"advance of %dms would fire %v: whether a timer armed by one of those firings lands inside the "+
+				"same window depends on goroutine scheduling, so this script cannot mean the same thing in "+
+				"every language — use fireTimer, which fires one named timer without re-selecting",
+			step.Ms, due)
+	}
+	return nil
+}
 
 func (d *driver) fireTimer(step *fireTimerStep) error {
 	if err := d.awaitTimerArmed(step.Kind); err != nil {

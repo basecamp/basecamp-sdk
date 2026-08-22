@@ -903,7 +903,7 @@
             "status",
             "headers"
           ],
-          "description": "Redirect on a continuation (fixture 30): the seam suppresses automatic following; a cross-origin/downgraded Location is Terminal(invalid_continuation) with zero egress. Harness obligation: the fixture's foreign origin is bound to a sentinel listener — any request reaching it fails the scenario.",
+          "description": "Redirect on a continuation (fixture 30): the seam suppresses automatic following; a cross-origin/downgraded Location is Terminal(invalid_continuation). At tier 2 the poll lane is a SEAM, so the driver forms the redirect-refused verdict and the connector never sees a Location header: this pins the fault class above the seam (mishandling the verdict — retrying it or misclassifying it), not redirect-following itself, which lives below the seam, is unreachable at tier 2, and is ASSIGNED to the Layer-1 adapter's 302 test — a recorded obligation, not an existing proof: those adapters are still pending (tracked for G1b). Redaction is not pinned here: the driver reduces the Location to its origin before the connector runs, so no path or query text reaches it. No sentinel-listener obligation is imposed on the harness: the foreign origin is unreachable by construction of the harness, so a silent sentinel would be a statement about the driver rather than about the connector. See the row-15 note in README.md.",
           "properties": {
             "status": {
               "const": 302
@@ -1205,7 +1205,7 @@
       "required": [
         "ms"
       ],
-      "description": "Advance virtual now by ms, firing due timers in deadline order per the normative virtual-advance algorithm (README): re-evaluate after each fire; timers scheduled during the advance whose deadlines land inside the window also fire; ties break by creation order.",
+      "description": "Advance virtual now by ms. The normative virtual-advance algorithm (README) fires due timers in deadline order, re-evaluating after each fire, with timers scheduled during the advance whose deadlines land inside the window also firing and ties breaking by creation order. That reentrant clause is UNSCRIPTABLE wherever the connector runs concurrently with the driver, so no fixture may rely on it: every driver MUST REJECT an advance whose window would fire ANY timer, naming fireTimer as the deterministic alternative. The test is what would FIRE, decided from the clock's state before time moves — not what gets armed, which happens on the connector's schedule and can only be sampled. An advance that fires nothing never wakes anything, so it cannot cause an arm; that is what makes the check complete rather than probabilistic. A firing that replaces nothing is rejected too.",
       "properties": {
         "ms": {
           "type": "integer",

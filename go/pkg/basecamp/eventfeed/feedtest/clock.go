@@ -66,6 +66,66 @@ func (c *Clock) NewTimer(d time.Duration, name string) eventfeed.Timer {
 	return t
 }
 
+// DueWithin returns the names of live timers due within d of the current
+// virtual time — exactly the set an Advance(d) would fire — in creation order.
+//
+// Read under the same lock advance selects under and NewTimer arms under, so
+// the answer is atomic with respect to both. That is what lets a caller turn a
+// racy question into a decidable one: an EMPTY result means the advance fires
+// nothing, and advance never unlocks unless it fires something, so no
+// recipient can be woken by it and no timer it could arm can land inside its
+// window. A non-empty result means the script is asking for a firing whose
+// aftermath races the re-selection, which is the thing no cross-language
+// fixture can mean the same way twice.
+func (c *Clock) DueWithin(d time.Duration) []string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.dueWithinLocked(c.now.Add(d))
+}
+
+// dueWithinLocked returns the names of live timers due at or before target,
+// in creation order. The caller holds c.mu.
+func (c *Clock) dueWithinLocked(target time.Time) []string {
+	var names []string
+	for _, t := range c.live {
+		if !t.deadline.After(target) {
+			names = append(names, t.name)
+		}
+	}
+	return names
+}
+
+// AdvanceIfQuiet advances virtual time by d only if the window would fire
+// nothing; otherwise it reports the due set and leaves the clock untouched.
+// It is DueWithin and Advance as ONE critical section, for the driver MUST
+// in SPEC §23: an advance whose window would fire any timer is rejected.
+// Deciding that with two separate lock acquisitions leaves a gap — a timer
+// armed (or stopped) between the check and the movement changes what the
+// accepted directive does, so an advance the guard accepted could fire.
+// Under one hold of the clock's locks, an accepted advance provably fires
+// nothing.
+//
+// What stays undecidable, stated honestly: whether a CONCURRENT arm lands
+// before or after this critical section is still the arming goroutine's
+// schedule — no clock operation can order another goroutine's lock
+// acquisition. The invariant restored here is the decidable one: whichever
+// side the arm lands, an ACCEPTED advance fired nothing, and an arm that
+// lost the race is due at its own deadline, unfired and unharmed.
+func (c *Clock) AdvanceIfQuiet(d time.Duration) ([]string, bool) {
+	c.advancing.Lock()
+	defer c.advancing.Unlock()
+	c.mu.Lock()
+	target := c.now.Add(d)
+	if due := c.dueWithinLocked(target); len(due) > 0 {
+		c.mu.Unlock()
+		return due, false
+	}
+	c.now = target
+	c.mu.Unlock()
+	c.cond.Broadcast()
+	return nil, true
+}
+
 // Outstanding returns the names of live (unfired, unstopped) timers, in
 // creation order.
 func (c *Clock) Outstanding() []string {

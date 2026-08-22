@@ -3361,13 +3361,50 @@ Two dispatch clarifications, pinned:
   (implementation-chosen; the Go reference uses 256). At capacity the pump **blocks** —
   back-pressure propagates to the socket and TCP — rather than dropping: the
   state-machine-owned live buffer is the only place a frame can ever be dropped, and its
-  overflow signal is the only drop signal. Worst-case connector memory is therefore
-  bounded multiplicatively — every queued or buffered item is itself bounded by
-  `EVENT_FEED_MAX_FRAME_BYTES`, so the ceiling is
-  (pump depth + `EVENT_FEED_LIVE_BUFFER_CAPACITY`) × `EVENT_FEED_MAX_FRAME_BYTES`
+  overflow signal is the only drop signal. Worst-case cable-lane retention is therefore
+  bounded multiplicatively — every retained item is itself bounded by
+  `EVENT_FEED_MAX_FRAME_BYTES`, and retention is an enumeration by HOLDER, which is what
+  closes the count: a frame lives in the hand-off queue (≤ pump depth), in the live
+  buffer (≤ `EVENT_FEED_LIVE_BUFFER_CAPACITY`), in the single deferral slot (≤ 1), or in
+  the hands of one of the exactly two goroutines that touch frames — one in-hand frame
+  each. The ceiling is
+  (pump depth + 3 + `EVENT_FEED_LIVE_BUFFER_CAPACITY`) × `EVENT_FEED_MAX_FRAME_BYTES`
   (≈ 10 GiB at the defaults' extreme, reached only if every slot holds a maximum-size
-  frame) — even under a slow consumer. Implementations MAY additionally impose a total
-  byte cap on the live buffer; if they do, eviction routes through the same overflow
+  frame) — even under a slow consumer. The **+ 3** is three raw frames the queue's depth
+  does not count — the deferral slot plus one in-hand frame per frame-touching party —
+  and they are retained by different parties at the same time:
+  - the **pump's own in-flight frame** — the pump is a single reader, so it may hold exactly
+    one frame it has already READ and not yet handed off. One rather than an unbounded
+    number for that reason: one reader holds at most one frame outside the queue.
+  - the **state machine's in-hand frame** — the protocol-fatal scan's dequeue is the very
+    receive that lets a blocked pump refill the queue, so while the scan still holds that
+    frame — examining, admitting, or parking it — the queue is full again and the pump may
+    already hold its next read. A single consumer, so one frame, for the pump's own reason.
+  - the **deferred socket outcome** — the single slot the in-flight-poll servicing and the
+    drain's scan park one receive in. It is retained while the queue behind it refills, so it
+    is concurrent with a full queue and with both in-hand frames, not an alternative to
+    any of them.
+
+  The enumeration cannot grow by a further party being noticed: every frame is in one of
+  the three counted structures or in the hands of the pump or the state machine, and each
+  of those holders is already counted.
+
+  The formula is the cable lane's retention, and only that — every counted item is a
+  raw socket frame or a buffered live event. The poll lane sits outside it on purpose:
+  `PollSource.Poll` returns one page decoded whole, and the walk retains that page
+  until its rows are delivered. What bounds it is shape, not size: pages are fetched
+  sequentially, so a walk holds at most one live page (a superseded attempt's in-flight
+  poll may briefly hold another before its result is discarded), but the page's SIZE is
+  the server's pagination decision — `EVENT_FEED_MAX_FRAME_BYTES` governs socket
+  frames and says nothing about an HTTP body the generated layer decodes. A
+  total-connector memory bound would need a poll-page cap this contract deliberately
+  does not impose.
+
+  The drain's protocol-fatal scan is budgeted at `pump depth + 1` and not at this figure,
+  which is not an inconsistency: the budget counts what the scan may DEQUEUE — the queue plus
+  the pump's held frame — while the ceiling counts what may be RETAINED, and the deferral slot
+  is retained without being dequeued by that scan. Implementations MAY additionally impose a
+  total byte cap on the live buffer; if they do, eviction routes through the same overflow
   signal, never a silent drop.
 - The transport negotiates subprotocol `actioncable-v1-json`, sends no `Origin` header
   (non-browser clients), and passes the mint URL through untouched, query string included.
@@ -3726,9 +3763,21 @@ logged (Security Invariants below).
 
 Required tier-2 coverage: a hostile cross-origin `next` mid-walk, a hostile 410
 `resume` URL, and a validated same-origin `next` answering 302 with a cross-origin
-`Location` each terminate with `invalid_continuation` and zero requests to the foreign
-origin; store-failure coverage proves Failed(load) terminates with zero wire attempts and
-Failed(save) continues with the observer signal and a subsequent save attempt.
+`Location` each terminate with `invalid_continuation`, are not retried, and issue no
+further poll; store-failure coverage proves Failed(load) terminates with zero wire
+attempts and Failed(save) continues with the observer signal and a subsequent save
+attempt.
+
+**Zero egress to the foreign origin is a Layer-1 obligation, not tier-2 coverage**, and
+this paragraph used to require it here. Tier 2 cannot deliver it: the poll lane IS the
+seam, so the driver reduces the `Location` to its origin and hands the connector a
+refusal verdict. The connector never sees a `Location` and never decides whether to
+follow one, which makes the foreign origin unreachable by construction of the harness —
+a harness that asserted no request reached it would be asserting something about itself.
+The obligation belongs to the Layer-1 seam adapter's own 302 test, where a real
+generated `PollEvents` call meets a real redirect against an adapter with automatic
+redirect-following disabled. `conformance/event-feed/README.md`'s row-15 note records it
+as a pending obligation rather than a proof the repository contains.
 
 ### Clock, Timers, and Virtual Time `[conformance]`
 
@@ -3783,8 +3832,27 @@ the advance whose deadlines land inside the window also fire; ties break by crea
 order.* A harness may additionally fire a named timer without advancing the clock,
 asserting its scheduled delay against a `{min, max}` envelope — that is how jitter is
 asserted without a cross-language RNG seam. Each language's test clock passes a shared
-semantics checklist (deadline order, reentrant scheduling within an advance, creation-order
-tie-break) before its tier-2 results count.
+semantics checklist (deadline order, creation-order tie-break) before its tier-2 results
+count.
+
+**The reentrant clause is normative for the algorithm and forbidden as a fixture
+dependency.** It stays in the algorithm because a clock that ignored it would fire the
+wrong set. But it is UNSCRIPTABLE wherever the connector runs concurrently with the
+driver: whether a timer armed during the window lands inside it depends on when the
+connector's goroutine, thread, or task got scheduled, which no fixture can pin. So **no
+fixture may rely on it, and every driver MUST REJECT an `advance` whose window would fire
+any timer**, naming `fireTimer` as the deterministic alternative.
+
+The test is what would FIRE, decided from the clock's state before time moves — not what
+gets ARMED. Arming happens on the connector's schedule, so a driver can only look for it
+by waiting and then assuming nothing further is coming, which is a heuristic wearing a
+MUST and passes a late arm in silence. Firing is one atomic read under the same lock the
+advance selects under. The inversion is sound because a test clock releases that lock only
+across a firing's aftermath — so an advance that fires nothing never wakes anything and
+cannot cause an arm, leaving nothing to detect. It is stricter than an arming rule (a
+firing that replaces nothing is rejected too) and that is the trade: a script wanting that
+firing writes `fireTimer` and names the timer. `conformance/event-feed/schema.json`'s
+`$defs.advance` states it, and the driver obligation is enforced there.
 
 Teardown discipline: disposing a connection attempt — deadline lapse, staleness, socket
 death, terminal — cancels the frame pump, **cancels any in-flight seam call belonging to
