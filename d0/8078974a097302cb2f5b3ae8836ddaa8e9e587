@@ -1,0 +1,25 @@
+SPEC.md
+  s_1c9d086ab67253::t_81380bb296c79d 3771-3785
+go/pkg/basecamp/eventfeed/feedtest/clock.go
+  s_1c9d086ab67253::t_b3b61aa2e24c42 70-76,105-108
+scripts/check-known-defect-issues-open
+  s_1c9d086ab67253::t_a7071b038007a5 129-134,137-139
+scripts/test-check-known-defect-issues-open
+  s_1c9d086ab67253::t_1f7795d89def19 406-426
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "d08078974a097302cb2f5b3ae8836ddaa8e9e587",
+  "prompts": {},
+  "sessions": {
+    "s_1c9d086ab67253": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1f5628ec-50ac-4d8d-a2cc-cee5b0112903",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
