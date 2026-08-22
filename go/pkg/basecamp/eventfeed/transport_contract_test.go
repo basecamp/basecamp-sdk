@@ -274,6 +274,24 @@ func runTransportContract(t *testing.T, newHarness func(t *testing.T) contractHa
 		}
 	})
 
+	t.Run("a non-positive max frame bytes is refused as usage", func(t *testing.T) {
+		// The seam has no unlimited mode: the parameter exists to bind the
+		// read cap inside the transport, so an invalid value must fail
+		// closed — a refusal — never open into unbounded materialization.
+		h := newHarness(t)
+		for _, limit := range []int64{0, -1} {
+			conn, _, err := h.Dial(context.Background(), "/cable?ticket=t-1", limit)
+			if err == nil {
+				conn.Close(1000, "")
+				t.Fatalf("Dial with maxFrameBytes %d succeeded, want a usage refusal", limit)
+			}
+			var terr *eventfeed.TerminalError
+			if !errors.As(err, &terr) || terr.Reason != eventfeed.ReasonUsage {
+				t.Errorf("Dial with maxFrameBytes %d = %v, want a usage-coded *TerminalError", limit, err)
+			}
+		}
+	})
+
 	t.Run("a done context fails dial promptly", func(t *testing.T) {
 		h := newHarness(t)
 		ctx, cancel := context.WithCancel(context.Background())
