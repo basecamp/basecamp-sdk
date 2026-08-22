@@ -12,7 +12,9 @@ import (
 
 // fetchSignedDownload fetches content from a signed download URL (e.g., S3).
 // Uses the bare transport (no loggingTransport, no auth headers) and no
-// client-level timeout so the caller owns the streaming lifecycle.
+// client-level timeout so the caller owns the streaming lifecycle. It follows
+// no redirect: the signed URL is the one destination the API host named, and
+// a redirect from it is surfaced, not dialled (SPEC §14 "Hop-2 Redirect Policy").
 func (c *Client) fetchSignedDownload(ctx context.Context, downloadURL string) (*http.Response, error) {
 	req, err := http.NewRequestWithContext(ctx, "GET", downloadURL, nil)
 	if err != nil {
@@ -26,11 +28,23 @@ func (c *Client) fetchSignedDownload(ctx context.Context, downloadURL string) (*
 	httpClient := &http.Client{
 		Transport: transport,
 		Timeout:   0, // no client-level timeout — streaming owned by caller
+		// Same policy as the authenticated hop and every other response-
+		// steerable hop in the SDK. Without this, net/http's default follows
+		// up to ten redirects wherever the storage host points, and the caller
+		// receives the final body as if it were the requested file (#805).
+		CheckRedirect: func(*http.Request, []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
 	}
 
 	resp, err := httpClient.Do(req) // #nosec G704 -- SDK HTTP client: URL is caller-configured
 	if err != nil {
 		return nil, fmt.Errorf("failed to download file: %w", err)
+	}
+
+	if isRedirectStatus(resp.StatusCode) {
+		_ = resp.Body.Close()
+		return nil, ErrAPI(resp.StatusCode, fmt.Sprintf("redirect %d on the signed download hop is not followed", resp.StatusCode))
 	}
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
@@ -47,7 +61,9 @@ func (c *Client) fetchSignedDownload(ctx context.Context, downloadURL string) (*
 // authenticated first hop (which typically 302s to a signed download URL),
 // and unauthenticated second hop to fetch the actual file content. Common
 // inputs include storage blob URLs from <bc-attachment> elements and any
-// other signed-download URL that routes through the API.
+// other signed-download URL that routes through the API. Neither hop follows
+// a redirect on its own: hop 1's is the dispatch to hop 2, and a redirect on
+// hop 2 is an error (SPEC §14 "Hop-2 Redirect Policy").
 //
 // The caller is responsible for closing the returned Body.
 func (ac *AccountClient) DownloadURL(ctx context.Context, rawURL string) (result *DownloadResult, err error) {
@@ -229,8 +245,7 @@ func (c *Client) fetchAPIDownload(ctx context.Context, rawURL string) (*Download
 	}
 
 	switch {
-	case resp.StatusCode == 301 || resp.StatusCode == 302 || resp.StatusCode == 303 ||
-		resp.StatusCode == 307 || resp.StatusCode == 308:
+	case isRedirectStatus(resp.StatusCode):
 		location := resp.Header.Get("Location")
 		// Drain the redirect body up to MaxErrorBodyBytes before close so the
 		// underlying connection can return to the keep-alive pool for hop 2.
@@ -275,6 +290,17 @@ func (c *Client) fetchAPIDownload(ctx context.Context, rawURL string) (*Download
 		}
 		return nil, checkResponse(resp, body)
 	}
+}
+
+// isRedirectStatus reports whether status is one of the redirects the
+// download flow dispatches on (SPEC §14 step 3d) — and, on hop 2, refuses.
+func isRedirectStatus(status int) bool {
+	switch status {
+	case http.StatusMovedPermanently, http.StatusFound, http.StatusSeeOther,
+		http.StatusTemporaryRedirect, http.StatusPermanentRedirect:
+		return true
+	}
+	return false
 }
 
 // filenameFromURL extracts a filename from the last path segment of a URL.

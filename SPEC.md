@@ -1705,7 +1705,10 @@ Where:
 
 ### Redirect Handling
 
-`follow_redirects = false` for download flow (§14). Redirect responses are handled explicitly.
+`follow_redirects = false` on **both** hops of the download flow (§14). Hop 1's redirect is the
+flow's own dispatch — the SDK reads `Location` itself and decides what to do with it — and a
+redirect on hop 2 is refused outright (§14 "Hop-2 Redirect Policy"). Redirect responses are
+handled explicitly, never by the HTTP stack's default policy.
 
 For cross-origin redirects, strip the `Authorization` header to prevent credential leakage.
 
@@ -1735,9 +1738,10 @@ FUNCTION downloadURL(raw_url: String) → DownloadResult
      f. If response is any other error → ⊥ BasecampError from response, without retry.
 
   4. Hop 2 — Unauthenticated fetch (signed URL):
-     a. Fetch Location URL with NO auth headers. Hop 2 is NEVER retried and NEVER authenticated — the signed URL is single-purpose and credentials must not leak to the storage host.
-     b. If not 2xx → ⊥ BasecampError.
-     c. → DownloadResult from response body.
+     a. Fetch Location URL with NO auth headers and redirect: manual. Hop 2 is NEVER retried, NEVER authenticated and NEVER redirected — the signed URL is single-purpose, credentials must not leak to the storage host, and the storage host does not get to choose a further destination (Hop-2 Redirect Policy below).
+     b. If response is a redirect (301, 302, 303, 307, 308) → ⊥ BasecampError api_error carrying that status; its Location is never dialled.
+     c. If not 2xx → ⊥ BasecampError.
+     d. → DownloadResult from response body.
 END
 ```
 
@@ -1763,6 +1767,43 @@ Attempt budget per SDK — disabling retry (each SDK's spelling of `enable_retry
 | Swift | Fixed three-attempt policy when `enableRetry` is true; one attempt when false. No public numeric knob. |
 
 Python and Ruby carve downloads out of their ungoverned GET taxonomy (which retries 500): the download hop uses the declared `{429, 502, 503, 504}` set, in both directions — the taxonomy neither widens nor vetoes it. `DownloadURL` is deliberately absent from `behavior-model.json`; SDKs pass this policy to their retry primitive directly rather than looking it up by operation.
+
+### Hop-2 Redirect Policy `[conformance]`
+
+The signed hop follows no redirect. A redirect (301, 302, 303, 307 or 308) from the storage host surfaces as `api_error` carrying
+that status, with a message saying the redirect is **not followed** — the substring the conformance
+case asserts — and the `Location` it carries is never dialled. The refusal is a property of hop 2's
+own HTTP client, not of the dispatch around it: `CheckRedirect: ErrUseLastResponse` (Go),
+`redirect: "manual"` (TS), `follow_redirects=False` (httpx), `dataNoRedirect` (Swift's
+`Transport`), `followRedirects = false` (Ktor), `Net::HTTP#request` (Ruby, which never follows).
+Every other hop in the SDK that a response could steer already refuses redirects or validates
+each target — hop 1 here, §16's discovery fetches, §23's polls — and until #805 this hop was the
+exception in four SDKs, by four different stack defaults, none of them argued.
+
+**Why refuse rather than cap or validate.** Hop 2's target is the one URL the API host named, and
+that host is operator-configured; what a followed redirect adds is a destination chosen by whoever
+answers *that* URL. A hop cap bounds loops and resource use, not destination — one redirect to an
+internal address is under every cap. Per-hop validation has nothing to validate against: a signed
+URL is legitimately cross-origin to the API, and the SDK holds no roster of storage hosts, so the
+only policy it can state is "the host the API named, and nothing that host names in turn". Refusal
+states exactly that.
+
+**Why it is safe to refuse.** Upstream, hop 2 is a presigned GET against a single-endpoint
+S3-compatible object store (bc3 `config/storage.yml`; the redirect is minted by
+`Downloading#respond_with_download_redirect` from the blob's service URL, with no
+`direct_download_endpoint` configured). A presigned GET on a path-style single endpoint is answered
+by that endpoint — the region and virtual-host redirects that make "S3 redirects" a real phenomenon
+are artefacts of AWS's multi-region addressing, which this store does not have — and nothing
+redirecting sits in front of it. Local and test environments never reach hop 2 at all:
+`respond_with_download_on_disk` sends the body on hop 1. The strongest evidence is empirical,
+though: Kotlin (by design, reusing hop 1's `followRedirects = false` client) and Ruby (by
+`Net::HTTP`'s default) have refused hop-2 redirects since #178 introduced the download path, with
+no download reported broken.
+
+**What happens if that changes.** Should the storage tier ever start redirecting — a CDN in front of
+it, a region move — every SDK fails loudly with the redirect's status and the "not followed" message rather than
+quietly following somewhere. That is deliberate: the remedy is then a spec change argued from the new
+evidence, with a destination policy attached, not a default that happened to work.
 
 ### DownloadResult RECORD
 
@@ -2001,6 +2042,124 @@ every `fetchJSON` above MUST:
 
 Non-2xx on either hop → `api_error` (not `network`).
 
+##### 5. Judge the advertised issuer's ADDRESS, not only its spelling `[Go-first]`
+
+Requirements 1–4 apply to both hops, and hop 1 needs nothing further: its origin
+is the resource identifier the *caller* supplied. Hop 2 is different in kind.
+`discoverFromResource` lifts `authorization_servers[]` out of a parsed response
+body, and with no `expectedIssuer` the "single non-Launchpad entry wins"
+heuristic makes a remote peer's string the socket destination. `requireOriginRoot`
+is a syntax gate with no notion of what a host *resolves to*, and issuer binding
+runs only after the response comes back — so a refusal there is already too late
+to stop the connection from reporting whether an internal host and port are live.
+The exposure is bounded — fixed path, GET, no credentials, near-blind — but it is
+a working internal host/port oracle, and the discovery fetch is not where the
+selected issuer stops being used. The `Config` it returns carries
+`token_endpoint` (required) and `device_authorization_endpoint`, and those become
+the destinations of the grant itself: `performDeviceLogin` takes exactly this
+already-selected config and posts the `client_id` to one and the `device_code` to
+the other, and the token exchange and refresh post the authorization code,
+`client_secret`, or refresh token to `token_endpoint`. Those are form-body
+credentials, not an `Authorization: Bearer` header — no Bearer header is sent to
+a discovered issuer.
+
+Hop 2 therefore SHOULD refuse an advertised issuer whose **address** is in
+private, loopback, link-local, CGNAT, or IANA special-purpose space, judged at
+the moment of connection rather than by parsing the URL — which is also what
+catches a legacy-numeric spelling (`https://2130706433/` is `127.0.0.1`) and a
+name that resolves into that space. The refusal is the existing hard
+`invalid_issuer_origin`, not `as_fetch_failed`: it is a permanent verdict on the
+origin, and must not be marked retryable. It applies on **both** selection paths,
+`expectedIssuer` included — an SDK-level exemption for a caller-named issuer is
+silently wrong when the consumer computed that value from untrusted input.
+
+Because an SDK is a shared dependency, an implementation MUST expose an override
+for the policy, for the client that carries the hop, and to disable it — an
+internal deployment must be able to admit its own range without abandoning the
+rest of the deny tables.
+
+**Go is the only implementation today**, via
+`github.com/basecamp/surfguard/go`'s dial-time enforcement
+(`oauth.DefaultIssuerPolicy`, `WithIssuerPolicy` / `WithIssuerHTTPClient` /
+`WithoutIssuerPolicy`). It is written `SHOULD` and marked `[Go-first]` rather
+than folded into the `[conformance]` list above because the corpus cannot express
+it: the assertion is "no connection was attempted", which is not an observable
+of the mock-HTTP runner, and the remaining four SDKs have no equivalent
+enforcement layer to point at yet. See Appendix F.
+
+##### 6. Judge the ADDRESS of the endpoints the selected metadata names `[Go-first]`
+
+Requirement 5 closes the metadata GET and leaves an indirect route open
+(#806). An attacker-controlled issuer on *public* space passes the policy, is
+selected, and returns correctly issuer-bound metadata whose `token_endpoint`
+and `device_authorization_endpoint` point wherever it likes — the metadata
+parser checks only that `token_endpoint` is non-empty and copies it verbatim.
+`requireSecureEndpoint` then admits any `https` host, private space included.
+So the cost of reaching private space is one public host, and what arrives
+there is the `client_id`, the `device_code`, the authorization code, the
+`client_secret`, or the refresh token — real credentials, where requirement 5's
+exposure was a blind GET. That is strictly worse than the one it closes.
+
+Two remedies that look sufficient are not, and the reasons are worth keeping:
+
+- **Same-origin is not the control.** RFC 8414 §2 requires the endpoint fields
+  to be URLs and says nothing about their origin, and RFC 8705 §5's
+  `mtls_endpoint_aliases` exists precisely so a server can publish endpoints
+  *off* the issuer origin. A same-origin rule is a departure from the standard,
+  not a tightening of it. It also does not survive DNS rebinding: the rule
+  compares hostname strings, and the hostname is resolved twice — once during
+  discovery, once at the later credential POST — so a name that resolves
+  publicly at discovery can resolve privately when the credentials go out.
+  Same-origin MAY be added as BC5 profile policy once fleet compatibility is
+  confirmed — BC5's metadata controller mints every endpoint from its own
+  route helpers next to `issuer: canonical_issuer_url`, but whether those share
+  an origin in every deployment is the check to run first — and even then it is
+  defence in depth, not the closure.
+- **Scheme alone is not the control.** `https` is satisfied by any private host.
+
+The control is the same one as requirement 5: **dial-time address enforcement
+on every device-authorization and token endpoint request the device flow and
+the token exchanger make**, judging the literal address at the moment each
+socket opens, so there is no check-to-use gap for a rebind to exploit and no
+assumption about what the AS chose to publish.
+
+The device and exchange functions cannot tell a discovered endpoint from a
+hand-configured one — `performDeviceLogin` takes a `Config`, `exchangeCode` and
+`refreshToken` take a string — so the policy applies to every request those
+functions make on their default client. That is the same uniformity decision as
+requirement 5's `expectedIssuer` rule, for the same reason: a provenance flag on
+the config is a marker that a consumer round-tripping the config through
+storage silently drops. The overrides are therefore the consumer's, and an
+implementation MUST expose the same three as requirement 5 — a replacement
+policy, a replacement client for the request, and a way to disable it (handing
+over a plain client counts). A refusal is coded `api_error`, is NOT retryable,
+and in the poll loop terminates the flow on the first attempt rather than
+backing off — surfguard's `unresolvable` (retry later) and `blocked` (stop)
+are distinct verdicts and must stay distinct here.
+
+The boundary stops at those functions, and one SDK path sits outside it by
+construction: a refresh driven by **stored credentials** — Go's `AuthManager`
+posting to `Credentials.TokenEndpoint` on the client its constructor was
+handed — is caller-configured territory even when the stored endpoint was
+originally discovered. The documented device-login bridge copies
+`result.Config.TokenEndpoint` into the credential store, and that round trip
+through storage is exactly the provenance loss described above: the endpoint
+re-enters the SDK as caller configuration, on a caller-owned client, and the
+enforcement is that client's. Consumers persisting discovered endpoints MUST
+NOT infer that later automatic refreshes receive this requirement's default
+policy; they compose the policy into the client they hand `AuthManager`, the
+same as any caller-supplied client here. See Appendix F.
+
+**Go is the only implementation today** (`oauth.DefaultIssuerPolicy` on the
+device flow's and `Exchanger`'s default client; `WithDevicePolicy`,
+`WithExchangerPolicy`, `WithDeviceHTTPClient`, a non-nil `NewExchanger`
+client). Written `SHOULD` and `[Go-first]` for requirement 5's reasons. A
+caller-supplied client is the caller's, enforcement included: the policy is not
+layered on top of it, because the enforcement seam is the client's own dialer.
+That contract is what makes a consumer that passes its general-purpose client
+into these functions (as `basecamp-cli` does) responsible for composing the
+policy into that client's transport. See Appendix F.
+
 #### Injected-client fidelity tier `[static]`
 
 SDKs that accept a caller-supplied HTTP client (Ruby `http_client:`, and any
@@ -2085,7 +2244,10 @@ dark-launched (`issuance_enabled` off), the device authorization endpoint
 answers **503** — surfaced as `api_error` with that status, meaning "not yet
 enabled here", not a protocol failure.*
 
-Three functions per SDK. All device-auth + token requests are TLS-guarded (§9).
+Three functions per SDK. All device-auth + token requests are TLS-guarded (§9),
+and — Go only, today — address-policed at dial time on the default client (§16
+SSRF hardening, requirement 6), since the endpoints they POST credentials to may
+be the ones a discovered issuer's metadata named.
 
 ```
 FUNCTION requestDeviceAuthorization(deviceAuthEndpoint, clientId, scope?) → DeviceAuthorization
@@ -3887,6 +4049,7 @@ what `make doc-constants-check` asserts — not a case-by-case index.
 | `downloads.json` | DownloadURL does not retry hop 1 on 500 | §14, §7 |
 | `downloads.json` | DownloadURL honors Retry-After on 429 at the auth'd first hop | §14, §7 |
 | `downloads.json` | DownloadURL surfaces redirect with no Location | §14 |
+| `downloads.json` | DownloadURL refuses a redirect on the signed second hop | §14 |
 | `network-retry.json` | Network error on a non-idempotent POST is not retried | §7 (Gate 2) |
 | `network-retry.json` | Network error on an idempotent POST is retried then succeeds | §7 (Gate 2) |
 | `uploads_download.json` | UploadsDownload delegates through DownloadURL primitive | §14, §18 |
@@ -3958,6 +4121,85 @@ Every operation has a `retry` block, including non-idempotent POSTs. For non-ide
 ---
 
 ## Appendix F: Known Cross-SDK Divergences
+
+### Advertised-Issuer Address Policy (§16)
+
+§16's SSRF requirement 5 — judging the *address* an advertised
+`authorization_servers[]` entry resolves to, at connection time — is implemented
+in Go only. This is a deliberate Go-first move, not an oversight in the other
+five: the enforcement seam it needs (a dial-time `Control` hook, plus a shared
+classification table) exists cheaply in Go and does not in the others.
+
+| SDK | Advertised-issuer hop |
+|-----|----------------------|
+| Go | `oauth.DefaultIssuerPolicy()` — `surfguard.Policy{}.IANASpecialUse().AllowAllPorts()` — installed on a separate client that carries only that hop. Refused as hard `invalid_issuer_origin`, non-retryable, on both selection paths. Overrides: `WithIssuerPolicy`, `WithIssuerHTTPClient`, `WithoutIssuerPolicy` |
+| TypeScript, Ruby, Python, Kotlin | Requirements 1–4 only: origin-root syntax gate, HTTPS, bounded timeout, suppressed redirects, bounded body. An advertised issuer naming a private address is still dialed |
+| Swift | Not applicable — ships no OAuth discovery implementation |
+
+Two consequences are worth stating rather than discovering. First, this is a
+behavioral tightening, not a pure addition: a Go consumer whose BC5 issuer is
+advertised on loopback or in RFC 1918 space, and which worked before, now needs
+`WithIssuerPolicy`. Second, `Allow(prefix)` does **not** re-admit RFC 1918 under
+`IANASpecialUse()` — those tables outrank `Allow`, and `AllowLoopback()` is the
+only derivation that pierces them — so an on-premises policy is built as
+`surfguard.Policy{}.AllowAllPorts().Allow(...)` instead.
+
+### Device and Token Endpoint Address Policy (§16)
+
+§16's SSRF requirement 6 — judging the address of the `token_endpoint` and
+`device_authorization_endpoint` the selected metadata names, at connection
+time, on every credential-bearing POST — is likewise implemented in Go only,
+with the same policy and the same override shape as the issuer hop. The
+per-SDK state, and the seam each SDK would need, so the follow-ups are
+specified rather than rediscovered:
+
+| SDK | Device-authorization and token endpoint POSTs |
+|-----|-----------------------------------------------|
+| Go | `oauth.DefaultIssuerPolicy()` on the device flow's and `Exchanger`'s default client, shared with the issuer hop. Refused as `api_error`, non-retryable; the poll loop terminates on the first attempt. Overrides: `WithDevicePolicy` / `WithDeviceHTTPClient`; `WithExchangerPolicy` / a non-nil `NewExchanger` client. A caller-supplied client is the caller's, enforcement included |
+| Ruby | Scheme gate, bounded timeout, suppressed redirects, bounded body. The `surfguard` gem (the shared classification tables, resolve-only by design) exists; enforcement would mean pinning a resolved address into `Net::HTTP#ipaddr=` under the default `Fetcher` transport, which the injected-Faraday lane cannot do |
+| TypeScript | Scheme gate, bounded timeout, `redirect: "manual"`, bounded body. No classification tables in the ecosystem; the seam is an undici `Agent` with a `connect.lookup` hook, which the SDK's global-`fetch` contract does not reach |
+| Python | Scheme gate, bounded timeout, `follow_redirects=False` (httpx default), bounded body. No classification tables; the seam is a custom `httpx` transport over a resolving `httpcore` backend |
+| Kotlin | Scheme gate, bounded timeout, `followRedirects = false`, bounded body. No classification tables; the JVM seam is OkHttp's `Dns` interface (OkHttp connects to exactly the addresses it returns, so filtering there is connect-time judgement), with no multiplatform equivalent |
+| Swift | Not applicable — ships no OAuth device flow or discovery |
+
+Two things hold in every SDK, policy or not, and are not what this divergence
+is about: the scheme gate and the bounded body. Two more are NOT uniform on
+the exchange path, and listing them as universal is how a reader infers a
+guarantee nobody implemented. The bounded timeout holds on the device flow in
+all four, but Go's `doTokenRequest` bounds nothing itself — the caller's
+context is the only deadline, and the shared policy client deliberately
+carries no client timeout — and Kotlin's `postTokenRequest` builds its default
+client without `HttpTimeout`; TS (30 s), Python (`_TOKEN_TIMEOUT`), and Ruby
+(Faraday timeouts) do bound theirs. Redirect suppression: Go's `Exchanger` and
+Kotlin's `exchangeCode`/`refreshToken` follow redirects (TS's exchange passes
+no `redirect:` option, so it follows too), where the device flow suppresses
+them in all four — a 307 re-POSTs the credentials to the `Location`. Under
+Go's policy client each redirect hop's dial is judged, so the address policy
+holds across a redirect; the public-host re-POST does not need the policy to
+be exploitable. This is the same cross-SDK shape #805 had on the download's
+signed hop before #809 closed it there — the exchange path is now the
+remaining redirect-following exception.
+
+The behavioral tightening is the same as the issuer hop's, and it reaches one
+more consumer shape: a Go caller that hand-configures a loopback or RFC 1918
+authorization server and relied on `NewExchanger(nil)` or a device-flow call
+with no `WithDeviceHTTPClient` now needs `WithExchangerPolicy` /
+`WithDevicePolicy` (with `AllowLoopback()` for local development), or passes
+`http.DefaultClient` to restore the old behavior outright. A caller that
+already passes its own client — `basecamp-cli` passes its general-purpose
+client to all three entry points — sees no change, and is also not protected
+by this: the policy lives in the transport, and that consumer owns its
+transport.
+
+The same boundary holds one function further out, and is worth recording so
+nobody infers otherwise: Go's `AuthManager.refreshLocked` posts a stored
+refresh token to `Credentials.TokenEndpoint` on the client `NewAuthManager`
+was handed, and the documented device-login bridge stores
+`result.Config.TokenEndpoint` — a discovered endpoint — into those
+credentials. Later automatic refreshes therefore do NOT receive the new
+default policy; the endpoint re-enters the SDK as caller configuration on a
+caller-owned client, and the enforcement is that client's to compose (§16
+requirement 6).
 
 ### Retry Strategy (§7)
 

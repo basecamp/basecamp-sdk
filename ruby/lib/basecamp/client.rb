@@ -240,7 +240,9 @@ module Basecamp
     #
     # Handles the full download flow: URL rewriting to the configured API host,
     # authenticated first hop (which typically 302s to a signed download URL),
-    # and unauthenticated second hop to fetch the actual file content.
+    # and unauthenticated second hop to fetch the actual file content. Neither
+    # hop follows a redirect on its own: hop 1's is the dispatch to hop 2, and
+    # a redirect on hop 2 is an error (SPEC §14 "Hop-2 Redirect Policy").
     #
     # @param raw_url [String] absolute download URL (e.g., from bc-attachment elements)
     # @return [DownloadResult] the download result with body, content_type, content_length, filename
@@ -644,9 +646,20 @@ module Basecamp
       request = Net::HTTP::Get.new(uri)
 
       begin
+        # Net::HTTP#request never follows a redirect, which is the policy:
+        # the signed URL is the one destination the API host named, and a
+        # redirect from it is refused below, not dialled (SPEC §14 "Hop-2
+        # Redirect Policy"). Stated here so a move to a following client
+        # (Faraday, Net::HTTP.get_response's callers) has to argue with it.
         response = http_client.request(request)
       rescue StandardError => e
         raise NetworkError.new("Download failed: #{e.message}", cause: e)
+      end
+
+      # The exact set hop 1 dispatches on, not Net::HTTPRedirection — that
+      # class also covers 304, which is a cache answer, not a redirect.
+      if [ 301, 302, 303, 307, 308 ].include?(response.code.to_i)
+        raise ApiError.new("redirect #{response.code} on the signed download hop is not followed", http_status: response.code.to_i)
       end
 
       unless response.is_a?(Net::HTTPSuccess)

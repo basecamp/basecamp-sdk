@@ -44,6 +44,22 @@
           "locations": [{"physicalLocation": {"artifactLocation": {"uri": "ruby/lib/basecamp/generated/types.rb"}}}]
         },
         {
+          "ruleId": "drop-python-generated-service",
+          "locations": [{"physicalLocation": {"artifactLocation": {"uri": "python/src/basecamp/generated/services/lineup.py"}}}]
+        },
+        {
+          "ruleId": "drop-python-generated-model",
+          "locations": [{"physicalLocation": {"artifactLocation": {"uri": "python/src/basecamp/generated/models.py"}}}]
+        },
+        {
+          "ruleId": "keep-python-base",
+          "locations": [{"physicalLocation": {"artifactLocation": {"uri": "python/src/basecamp/generated/services/_base.py"}}}]
+        },
+        {
+          "ruleId": "keep-python-async-base",
+          "locations": [{"physicalLocation": {"artifactLocation": {"uri": "python/src/basecamp/generated/services/_async_base.py"}}}]
+        },
+        {
           "ruleId": "keep-no-locations",
           "locations": []
         },
