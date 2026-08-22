@@ -793,6 +793,24 @@ func (l *loop) runCycle(delay time.Duration) cycleOutcome {
 	at := &attempt{}
 	at.ctx, at.cancel = context.WithCancel(l.runCtx)
 	defer at.cancel()
+	// Host code — observers, the signal handler, the checkpoint store, and
+	// the consumer's own range body — runs on this goroutine, and any of it
+	// can panic. An outer recovery that keeps the process alive must not
+	// inherit a stranded attempt: a compliant CableConn is only required to
+	// unblock reads when CLOSED, so an undisposed socket leaves its pump
+	// parked forever, and a later Connector.Close cannot reach it (cancelRun
+	// is cleared on unwind). Disposal is idempotent, so a panic past a path
+	// that already disposed re-disposes harmlessly; the panic itself
+	// propagates untouched. Phase timers held as locals are deliberately not
+	// chased: unfired, they fire into nothing.
+	defer func() {
+		if r := recover(); r != nil {
+			if at.lc != nil {
+				l.disposeAttempt(at, nil)
+			}
+			panic(r)
+		}
+	}()
 
 	// Transitions 1/2 → Minting. No timers are armed here (per-state
 	// invariant: Minting's set is {}); mint cancellation rides the attempt
@@ -1002,7 +1020,11 @@ func (l *loop) classifyMintFailure(err error) cycleOutcome {
 				Err:    err,
 			}}
 		}
-		return cycleOutcome{kind: outcomeFailed, retryAfter: me.RetryAfter}
+		// No retryAfter: SPEC pins `unauthorized` as "a kind carrying no
+		// retry_after" (row 4: "the backoff draw alone governs"), so a
+		// seam-supplied value is a contract violation and must not floor
+		// the reconnect delay.
+		return cycleOutcome{kind: outcomeFailed}
 	case MintUnrecoverable:
 		return cycleOutcome{kind: outcomeTerminal, term: &TerminalError{Reason: ReasonMintFailed, Err: err}}
 	default:
@@ -1057,6 +1079,16 @@ func (l *loop) awaitConfirmation(at *attempt, deadline Timer) cycleOutcome {
 				l.disposeAttempt(at, deadline)
 				l.observeDisconnected("", errors.New("event feed frame pump exited"))
 				return cycleOutcome{kind: outcomeFailed}
+			}
+			// Close outranks a ready item: cancellation makes the conforming
+			// ReadFrame return its cancellation error, the pump hands it
+			// off, and both this case and runCtx.Done() are then ready —
+			// dispatching the item would report the consumer's own Close to
+			// Observer.Disconnected as a socket failure, after Close
+			// returned. The universal edge wins the both-ready race.
+			if l.runCtx.Err() != nil {
+				l.disposeAttempt(at, deadline)
+				return cycleOutcome{kind: outcomeClosed}
 			}
 			// A latched expiry outranks a ready frame, exactly as on the
 			// Streaming frame arm (catchup.go): a frame received after the

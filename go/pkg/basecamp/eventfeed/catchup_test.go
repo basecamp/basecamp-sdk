@@ -3104,3 +3104,145 @@ func TestLatchedStalenessOutranksAReadyConfirmation(t *testing.T) {
 		t.Errorf("%d/%d rounds confirmed a subscription past a latched staleness expiry; the frame arm must re-evaluate the verdict first (transition 15 before 11)", violations, rounds)
 	}
 }
+
+// TestCloseRacingAPumpHandoffTakesTheClosedEdge: Close cancels the run
+// context, the conforming ReadFrame returns its cancellation error promptly,
+// and the pump hands that error off — so runCtx.Done() and the frame case
+// can BOTH be ready at the next select. The frame arm winning must not
+// dispatch the cancellation as a socket failure: §23's close() is the
+// universal edge, and Observer.Disconnected firing after Close returned
+// reports a teardown the consumer already ordered. Rounds-driven off a
+// collector parked mid-delivery.
+func TestCloseRacingAPumpHandoffTakesTheClosedEdge(t *testing.T) {
+	const rounds = 40
+	violations := 0
+	for i := range rounds {
+		func() {
+			disconnected := make(chan error, 4)
+			handedOffErr := make(chan struct{}, 4)
+			h := newHarness(t, eventfeed.WithObserver(eventfeed.Observer{
+				Disconnected: func(_ string, err error) {
+					select {
+					case disconnected <- err:
+					default:
+					}
+				},
+			}))
+			h.conn.OnPumpHandedOff(func(isErr bool) {
+				if isErr {
+					select {
+					case handedOffErr <- struct{}{}:
+					default:
+					}
+				}
+			})
+			h.pauseAfter = 1
+			h.minter.ScriptTicket(ticket(1))
+			h.polls.ScriptPage(eventfeed.PollPage{Position: "pos-1"})
+			h.start()
+
+			conn := h.driveToSubscribed()
+			conn.Serve(frameConfirm(noFilterIdentifier))
+			h.awaitStreaming()
+			conn.Serve(frameMessage(noFilterIdentifier, 101))
+			h.waitUntil("the collector to park mid-delivery", func() bool {
+				return len(h.deliveredIDs()) == 1
+			})
+			h.conn.Close() //nolint:errcheck // asserted via the observer
+			select {
+			case <-handedOffErr:
+			case <-time.After(watchdog):
+				t.Fatal("the pump never handed off the cancellation error")
+			}
+			h.resume()
+			h.join()
+			select {
+			case err := <-disconnected:
+				violations++
+				t.Logf("round %d: Disconnected(%v) fired after Close returned", i, err)
+			default:
+			}
+		}()
+	}
+	if violations != 0 {
+		t.Errorf("%d/%d rounds dispatched a post-Close pump item as a socket failure; the Closed edge must win the both-ready select", violations, rounds)
+	}
+}
+
+// TestExpiredStalenessOutranksTheRepairPoll: the repair-poll sibling of the
+// poll-retry and live-frame guards. With both `repair-poll` and `staleness`
+// fired, taking the repair arm starts a walk whose first Poll makes the
+// already-expired window look in-flight — granted a grace phase, and a page
+// may even be accepted first — instead of Streaming's transition 25 firing
+// directly (SPEC: every socket-open state's failure edge fires directly,
+// staleness among its triggers). Rounds-driven off a parked delivery.
+func TestExpiredStalenessOutranksTheRepairPoll(t *testing.T) {
+	const rounds = 40
+	violations := 0
+	for i := range rounds {
+		func() {
+			disconnected := make(chan struct{}, 4)
+			h := newHarness(t, eventfeed.WithObserver(eventfeed.Observer{
+				Disconnected: func(string, error) {
+					select {
+					case disconnected <- struct{}{}:
+					default:
+					}
+				},
+			}))
+			h.pauseAfter = 1
+			h.minter.ScriptTicket(ticket(1))
+			h.polls.ScriptPage(eventfeed.PollPage{Position: "pos-1"})
+			h.start()
+
+			conn := h.driveToSubscribed()
+			conn.Serve(frameConfirm(noFilterIdentifier))
+			h.awaitStreaming()
+			conn.Serve(frameMessage(noFilterIdentifier, 101))
+			h.waitUntil("the collector to park mid-delivery", func() bool {
+				return len(h.deliveredIDs()) == 1
+			})
+			h.fireTimer(timerStaleness)
+			h.fireTimer(timerRepairPoll)
+			h.resume()
+
+			deadline := time.Now().Add(watchdog)
+			for {
+				if h.polls.CallCount() >= 2 {
+					violations++
+					t.Logf("round %d: a repair poll was issued on an already-expired socket", i)
+					return
+				}
+				select {
+				case <-disconnected:
+					return
+				default:
+				}
+				if time.Now().After(deadline) {
+					t.Fatal("round undecided: neither a repair poll nor a teardown")
+				}
+				time.Sleep(time.Millisecond)
+			}
+		}()
+	}
+	if violations != 0 {
+		t.Errorf("%d/%d rounds began a repair walk past an expired staleness window; the repair arm must re-evaluate the verdict first (transition 25 before 24)", violations, rounds)
+	}
+}
+
+// TestUnauthorizedPollCarriesNoRetryAfterFloor: SPEC pins `unauthorized` as
+// "a kind carrying no retry_after; authorization recovery bounded by the
+// shared counter" — the backoff draw alone governs. A custom PollSource
+// populating the field anyway must not floor the reconnect delay.
+func TestUnauthorizedPollCarriesNoRetryAfterFloor(t *testing.T) {
+	h := newHarness(t)
+	h.minter.ScriptTicket(ticket(1))
+	h.polls.ScriptError(&eventfeed.PollError{Kind: eventfeed.PollUnauthorized, RetryAfter: 5 * time.Minute})
+	h.start()
+
+	conn := h.driveToSubscribed()
+	conn.Serve(frameConfirm(noFilterIdentifier))
+	if d := h.fireTimer(timerBackoff); d >= 5*time.Minute {
+		t.Fatalf("backoff armed for %s: an unauthorized poll's seam-supplied RetryAfter floored the reconnect delay; unauthorized carries no retry_after and the local draw alone governs", d)
+	}
+}

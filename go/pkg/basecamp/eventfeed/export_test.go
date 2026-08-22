@@ -160,3 +160,10 @@ func (c *Connector) OnSubscribeWritten(f func()) { c.hooks.subscribeWritten = f 
 // context, and any proxy for it (a nil cancel func, a closed latch) is exactly
 // the state a broken Close sets too early.
 func (c *Connector) OnRunContext(f func(context.Context)) { c.hooks.runContext = f }
+
+// ExportCheckContinuation exposes the per-hop continuation/redirect predicate
+// to the tier-2 driver, which models the Layer-1 adapter and must run the
+// SHIPPED rule rather than re-implement the decision.
+func ExportCheckContinuation(baseOrigin, pageURL string) *TerminalError {
+	return checkContinuation(baseOrigin, pageURL)
+}
