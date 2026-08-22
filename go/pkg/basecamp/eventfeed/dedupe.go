@@ -14,7 +14,8 @@ const DefaultDedupeCapacity = 10_000
 // position is still delivered — it was never served by poll.
 type dedupe struct {
 	capacity int
-	// order holds ids most-recently-seen first.
+	// order holds ids most-recently-DELIVERED first: a Seen hit is a
+	// suppression, not a delivery, and never refreshes recency (see Seen).
 	order *list.List
 	index map[int64]*list.Element
 }
