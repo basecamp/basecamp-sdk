@@ -922,6 +922,14 @@ func (l *loop) runCycle(delay time.Duration) cycleOutcome {
 	// so nothing is observed out of order — Connected is observability, not a
 	// gate.
 	at.lc = newLiveConn(at.ctx, conn, l.cfg.clock, l.cfg.staleAfter, l.hooks)
+	// The state is announced BEFORE Observer.Connected, for the same reason
+	// the arming is: transition 6 is "dial ok; frame pump started", and both
+	// are true the moment newLiveConn returns. Announced after, the callback
+	// runs with staleness armed — AwaitingWelcome's exact timer set — while
+	// the last announced state is still Connecting, whose set is
+	// {handshake-deadline} alone, and host telemetry sampling both sees a
+	// pair §23's per-state invariants say cannot exist.
+	l.setState(stateAwaitingWelcome)
 	if l.cfg.observer.Connected != nil {
 		l.cfg.observer.Connected()
 	}
@@ -969,10 +977,11 @@ func (l *loop) classifyMintFailure(err error) cycleOutcome {
 
 // awaitConfirmation drives AwaitingWelcome and AwaitingConfirmation
 // (transitions 8–15 plus the state-generic protocol-fatal and invalid-frame
-// dispatch). deadline is the running handshake-deadline on entry; `welcome`
-// re-arms it as the confirmation-deadline (transition 8).
+// dispatch). The caller has already taken transition 6 — the state is
+// AwaitingWelcome on entry, announced before Observer.Connected fired.
+// deadline is the running handshake-deadline on entry; `welcome` re-arms it
+// as the confirmation-deadline (transition 8).
 func (l *loop) awaitConfirmation(at *attempt, deadline Timer) cycleOutcome {
-	l.setState(stateAwaitingWelcome)
 	for {
 		staleTimer, staleGen := at.lc.stale.current()
 		select {
