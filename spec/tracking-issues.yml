@@ -17,16 +17,38 @@
 # need an ever-growing exclusion list to tell the two apart. The registry makes
 # the author say which kind they meant, once, where the reason is visible.
 #
+# Every entry names the `file` its sentence lives in, because one detector
+# backs this registry: the checker sweeps tracked text for the canonical
+# grammar "tracked [separately] in #N" and fails on any mention whose
+# [file, issue] pair is not registered here — the canonical form cannot be
+# written without being registered. Non-canonical phrasings are out of the
+# detector's reach by design (an open vocabulary cannot be enumerated); they
+# still go through this registry by hand, on the honor the header describes.
+#
 # Add an entry when you write a sentence promising an issue owns something.
 # Remove it when the sentence goes, and the gate stops asking.
 prose_tracking_issues:
   - issue: 589
+    file: "Makefile"
     site: "Makefile — the vendored bc3-route table's freshness gate needs BC3_REPO_PATH, so it is not in CI"
   - issue: 775
+    file: "SPEC.md"
     site: "SPEC.md §6 Retry-After — which statuses honour the header is divergent across the six SDKs"
   - issue: 775
+    file: "typescript/tests/retry-after.test.ts"
     site: "typescript/tests/retry-after.test.ts — pins TypeScript's side of the Retry-After status divergence"
+  - issue: 775
+    file: "MIGRATING.md"
+    site: "MIGRATING.md — the Retry-After migration note repeats the status-divergence promise"
   - issue: 578
+    file: "ruby/lib/basecamp/services/todolists_extensions.rb"
     site: "ruby/lib/basecamp/services/todolists_extensions.rb — the generated validating layer that would retire writable_string"
   - issue: 578
+    file: "python/src/basecamp/services/todolists.py"
     site: "python/src/basecamp/services/todolists.py — making the flat todolist read structurally safe"
+  - issue: 578
+    file: "typescript/src/services/todolists-extensions.ts"
+    site: "typescript/src/services/todolists-extensions.ts — structural safety for this SDK"
+  - issue: 578
+    file: "python/tests/services/test_todolist_groups_service.py"
+    site: "python/tests/services/test_todolist_groups_service.py — giving Python a structural decoder"
