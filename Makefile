@@ -255,7 +255,7 @@ endif
 		{ echo "ERROR: Go version does not match $(VERSION). Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
 	@test "$$(jq -r '.version' typescript/package.json)" = "$(VERSION)" || \
 		{ echo "ERROR: TypeScript version does not match $(VERSION). Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
-	@grep -qF 'export const VERSION = "$(VERSION)"' typescript/src/client.ts || \
+	@grep -qxF 'export const VERSION = "$(VERSION)";' typescript/src/client.ts || \
 		{ echo "ERROR: TypeScript client VERSION constant does not match $(VERSION). Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
 	@grep -qF 'VERSION = "$(VERSION)"' ruby/lib/basecamp/version.rb || \
 		{ echo "ERROR: Ruby version does not match $(VERSION). Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
@@ -269,6 +269,10 @@ endif
 		{ echo "ERROR: Python pyproject.toml [project].version does not match $(VERSION). Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
 	@grep -qF 'VERSION = "$(VERSION)"' python/src/basecamp/_version.py || \
 		{ echo "ERROR: Python version does not match $(VERSION). Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
+	@grep -qxF '# v$(VERSION)' MIGRATING.md || \
+		{ echo "ERROR: MIGRATING.md has no '# v$(VERSION)' heading. Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
+	@! grep -qxF '# Unreleased' MIGRATING.md || \
+		{ echo "ERROR: MIGRATING.md still has an '# Unreleased' section — its notes would miss the release. Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
 	@# Verify lockfiles are frozen against their manifests
 	@test "$$(jq -r '.version' typescript/package-lock.json)" = "$(VERSION)" -a "$$(jq -r '.packages[""].version' typescript/package-lock.json)" = "$(VERSION)" || \
 		{ echo "ERROR: typescript/package-lock.json records a stale SDK version. Run 'make bump VERSION=$(VERSION)' first."; exit 1; }

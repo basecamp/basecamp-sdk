@@ -85,10 +85,14 @@ an authorization server on `localhost` or private space fails where it used to
 succeed — and, quieter, your custom TLS roots, instrumented transport, or
 proxy no longer carry that one hop (the policy client sets `Proxy: nil` by
 construction), so a proxied consumer's discovery hop 2 egresses direct unless
-redirected back. Remedies, in order of how much policy they keep:
-`WithIssuerPolicy(oauth.DefaultIssuerPolicy().AllowLoopback())` — the only
-derivation that pierces the IANA special-use tables; then
-`WithIssuerHTTPClient(hc)` to supply your own client; then
+redirected back. Remedies, in order of how much policy they keep — split by
+address class, because they do not reach the same space:
+`WithIssuerPolicy(oauth.DefaultIssuerPolicy().AllowLoopback())` re-admits
+loopback and nothing else; for RFC 1918 or other special-use space, `Allow`
+does not pierce the IANA tables — build the policy without them and admit
+exactly what you mean,
+`WithIssuerPolicy(surfguard.Policy{}.AllowAllPorts().Allow(netip.MustParsePrefix("10.4.0.0/16")))`;
+then `WithIssuerHTTPClient(hc)` to supply your own client; then
 `WithoutIssuerPolicy()` to opt out entirely.
 
 ### All SDKs: the signed download hop no longer follows redirects (#805)
@@ -218,8 +222,10 @@ memberwise initializer is `internal`, and the model emitter wrote an explicit
 `public init` only for structs with at least one required member. An
 all-optional model got none, so no code outside the module could construct
 one — which made two operations unusable, in different ways.
-`updateGaugeNeedle`'s outer request was constructible (it has a required
-member), but its all-optional `GaugeNeedleUpdatePayload` was not, so the only
+`updateGaugeNeedle`'s outer request was constructible — request models get
+their `public init` from a second emitter that always wrote one; `gaugeNeedle`
+itself is optional and nil-defaulted — but its all-optional
+`GaugeNeedleUpdatePayload` was not, so the only
 callable shape was `UpdateGaugeNeedleRequest(gaugeNeedle: nil)` — sending the
 empty `{}` bc3 rejects with a 400. `updateMyPreferences` could not be called
 from outside the module at all: its outer request *requires* a
