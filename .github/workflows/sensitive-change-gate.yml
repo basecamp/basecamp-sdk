@@ -12,6 +12,7 @@ jobs:
     with:
       extra-patterns: |
         scripts/bump-version.sh
+        scripts/promote-migrating.sh
         scripts/sync-api-version.sh
     permissions:
       contents: read
