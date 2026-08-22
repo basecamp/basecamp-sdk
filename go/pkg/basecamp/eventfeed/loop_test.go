@@ -1087,6 +1087,49 @@ func TestNullFrameTearsDownToBackoff(t *testing.T) {
 	}
 }
 
+// TestOversizeFrameKeepsItsInvalidFrameIndication: an inbound frame over the
+// dial's max-frame-bytes cap is one of §23's three invalid-frame shapes, and
+// the class's contract is "Observer.disconnected carrying an invalid-frame
+// indication; never an untyped decoder error escaping" — with the size check
+// binding inside the transport, which rejects the frame during the read and
+// surfaces ErrFrameOversize (CableConn.ReadFrame). The classification must
+// survive the observer sanitizer as the bare package sentinel — not the
+// seam's wrapper (whose text is where a cable URL would ride), and not the
+// generic errSocketFailed the closed vocabulary degrades strangers to. The
+// disposition stays the socket-failure edge: Backoff, never terminal.
+func TestOversizeFrameKeepsItsInvalidFrameIndication(t *testing.T) {
+	var mu sync.Mutex
+	var disconnects []error
+	h := newHarness(t, eventfeed.WithObserver(eventfeed.Observer{
+		Disconnected: func(_ string, err error) {
+			mu.Lock()
+			disconnects = append(disconnects, err)
+			mu.Unlock()
+		},
+	}))
+	h.minter.ScriptTicket(ticket(1))
+	h.start()
+
+	conn := h.driveToSubscribed()
+	readCap := h.tr.Dials()[0].MaxFrameBytes
+	conn.Serve(make([]byte, readCap+1))
+	h.awaitTimer(timerBackoff)
+
+	mu.Lock()
+	defer mu.Unlock()
+	if len(disconnects) != 1 {
+		t.Fatalf("Disconnected fired %d times, want 1", len(disconnects))
+	}
+	got := disconnects[0]
+	if !errors.Is(got, eventfeed.ErrFrameOversize) {
+		t.Fatalf("Disconnected err = %v, want the ErrFrameOversize indication", got)
+	}
+	if got.Error() != eventfeed.ErrFrameOversize.Error() {
+		t.Fatalf("Disconnected err renders %q, want the bare sentinel %q (a wrapper's text is where a cable URL rides)",
+			got.Error(), eventfeed.ErrFrameOversize.Error())
+	}
+}
+
 // TestFrameDerivedObserverTextIsBounded: both frame-derived strings
 // Disconnected can carry — a raw disconnect frame's reason, and the
 // invalid-frame rendering of a decoder error that quotes frame bytes — are
