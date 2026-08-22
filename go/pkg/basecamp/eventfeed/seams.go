@@ -327,7 +327,11 @@ type DialError struct {
 }
 
 // Error implements the error interface. The rendering never carries the
-// dialed URL's query string (the ticket rides in it).
+// dialed URL's query string (the ticket rides in it), and the composed result
+// is bounded by §9's MAX_ERROR_MESSAGE_LENGTH like every other URL-derived
+// rendering here (CloseError is the precedent): Reason can embed a mint-URL
+// component — a scheme or an explicit port — whose length url.Parse does not
+// bound.
 func (e *DialError) Error() string {
 	msg := "cable dial failed (" + e.Kind.String() + ")"
 	if e.Reason != "" {
@@ -336,7 +340,7 @@ func (e *DialError) Error() string {
 	if e.Err != nil {
 		msg += ": " + e.Err.Error()
 	}
-	return msg
+	return truncateErrorText(msg)
 }
 
 // Unwrap exposes the underlying cause for errors.Is / errors.As traversal.
