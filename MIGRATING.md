@@ -167,8 +167,10 @@ later; a hostless `http:foo` redirect `Location` crashed with a raw
 `ArgumentError` ("no host component for URI") from `Net::HTTP::Get`. All
 three now raise the SDK's `ApiError` with a legible refusal message,
 matching the refusals Go and TypeScript already surfaced on their dial
-paths. No request is made in any of these cases — each error fires before
-anything is sent, so this was illegibility, not exposure.
+paths. No request is ever made *to the rejected target* — each error fires
+before that follow-up is sent, so this was illegibility, not exposure. The
+request that returned the offending header has of course already happened,
+and still counts in hooks and request tallies.
 
 **Wrong behaviour you get if you ignore it:** none, but a `rescue` for the
 raw classes (`URI::InvalidComponentError`, `ArgumentError`) around
