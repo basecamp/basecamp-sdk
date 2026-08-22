@@ -57,7 +57,7 @@ When artifacts conflict, this precedence governs:
 | **BaseService** | Abstract base for generated services. Provides request execution, error mapping, pagination following, hooks integration. |
 | **HTTP Transport** | Executes HTTP requests. Applies auth headers, User-Agent, Content-Type. Implements retry, caching. |
 | **Errors** | Structured error hierarchy. Maps HTTP statuses to typed error codes with exit codes. |
-| **Security** | HTTPS enforcement, body size limits, message truncation, header redaction, same-origin validation. |
+| **Security** | HTTPS enforcement, body size limits, message truncation, closed-vocabulary rendering of peer-derived error text, header redaction, same-origin validation. |
 
 ### Two-Tier Topology
 
@@ -580,7 +580,7 @@ The mapping above is keyed on an HTTP status, because it maps *failed* responses
 
 That error is `api_error` with **no `http_status`** and **`retryable: false`**. Statusless because no status describes it (the request succeeded), and non-retryable because re-requesting cannot repair a malformed body. It is deliberately *not* `usage`/`validation`: the value came off the wire, so nothing the caller passed is at fault. The mirror case — the *caller* supplying the offending value — stays a usage error. **Classification is by origin, not by value:** the same empty string is a caller error when the caller passed it and a malformed response when the server did, so each provenance is checked where it is unambiguous (the read step owns the response, the write step owns the caller).
 
-Message is truncated to `MAX_ERROR_MESSAGE_LENGTH` like any other (§9) — the malformed value is embedded in it, so the cap is load-bearing rather than cosmetic.
+Message is truncated to `MAX_ERROR_MESSAGE_LENGTH` like any other (§9) — the malformed value is embedded in it, so the cap is load-bearing rather than cosmetic. That embedding is a contract: the offending value is the entire diagnostic, and without it the error says only that *something* on the wire was wrong. §9's closed-vocabulary rule for peer-derived text is scoped around exactly this case and makes no demand of it; the cap is the whole control here.
 
 The composites are where this shape is *required*, not where it is *bounded*. Kotlin and Swift decode into typed models, so their decoder refuses a malformed body, and each **request primitive** maps that failure to this same shape rather than leaking `SerializationException`/`DecodingError` (#604). The mapping is scoped to the decode expression alone: an auth-phase throw, a transport failure and a *request-body* encoding failure are not malformed responses and keep their own classification — in Kotlin the request body is serialized inside the same `try` and raises the identical exception type, so the distinction is positional, not type-based.
 
@@ -1418,6 +1418,113 @@ MAX_ERROR_MESSAGE_LENGTH = 500
 Error messages extracted from response bodies are truncated to 500 units. If the string exceeds the limit, the last 3 units are replaced with `"..."`, so the result is at most 500 units long.
 
 **Unit semantics:** The unit is language-defined: Go (`len()`), Ruby (`bytesize`), and Python (`len(s.encode())`) use bytes; TypeScript (`s.length`), Swift (`s.count`), and Kotlin (`s.length`) use character/code-unit length. For ASCII text (which conformance test fixtures use today), these coincide. Unicode truncation semantics are a per-language divergence documented in Appendix F. Note: byte-level truncation (Go/Ruby) can produce invalid UTF-8 mid-codepoint; this is accepted behavior. Python slices bytes too but decodes with `errors="ignore"`, so it drops the partial codepoint instead of emitting it.
+
+**Scope, and what this cap is not.** It governs §6's Error Body Parsing Algorithm `message` and the field-keyed composition built on it — modelled fields of the API's own error body, surfaced because reading them *is* the caller's contract — and it governs the other two renderings this document contractually requires: §6's statusless `api_error` for a malformed 2xx body, which embeds the offending wire value because that value is the whole diagnostic, and §23's origin-only projection of a refused redirect or rejected continuation URL. There it is a resource bound sitting under `MAX_ERROR_BODY_BYTES`, and it answers *how much* text reaches the caller. It never answers *whether* text the peer chose reaches the caller at all. Where that second question is the one being asked, the next section governs and this cap does not stand in for it.
+
+That is the whole boundary between the two sections, and it is not "which peer": this cap applies where a contract requires the text to reach the caller, and the next section applies where nothing does — a decoder's rendering of bad bytes, a transport library's rendering of a URL, a close reason no caller asked to see.
+
+### Peer-Derived Text in Observer-Facing Errors `[manual]`
+
+**Where no contract requires the text to reach the caller, peer-derived text in an observer-facing error is rendered from a closed vocabulary keyed on the error's type. It is never composed from peer input and then bounded by length.**
+
+The leading clause is the scope, not a hedge: it is the boundary the previous section just drew, carried into the sentence that binds so the sentence cannot override it. Three contracts already sit on the other side and are untouched — §6's Error Body Parsing Algorithm `message` and the field-keyed composition over it; §6's statusless `api_error` for a malformed 2xx body, whose entire diagnostic *is* the malformed wire value it embeds; and §23's origin-only rendering of a refused redirect `Location` or a rejected continuation URL. Each requires specific text to reach the caller, so each is governed by the truncation cap above and this section makes no demand of it. What is left is the class four rounds on #788 were actually about — a decoder's rendering of bad bytes, a transport library's rendering of a URL it failed on, a close reason nobody asked to see — and there no contract stands behind the text, so this section governs.
+
+"A contract requires it" means one this document already states, naming the text and saying why the caller needs it. It is not established by a call site pointing at this sentence; a rendering with no such contract behind it is in scope, whatever it would prefer to be.
+
+Truncation is not redaction. A length bound limits how much of a credential escapes, not whether any does, and the two are different controls answering different questions. This section is the answer to the second one.
+
+Two definitions, stated because leaving them to each call site is what made this cost four review rounds (#788):
+
+- **Peer-derived** — text whose content the remote party chooses. Directly: a response or frame body, a header value, a WebSocket close reason, a URL the peer supplied or redirected to. Indirectly, and this is the half that gets missed: **anything a decoder, a transport, or a client library renders from those bytes**. `encoding/json`'s own errors carry offsets and type names, but a type's `UnmarshalJSON` may quote the offending input — Go's `time.Time` does — and a standard-library `*url.Error` renders the URL it failed on. The SDK did not compose that text, and it is peer-derived all the same, because the peer chose what the composer saw.
+- **Observer-facing** — any rendering that leaves the SDK as text: an error's `Error()` / `message` / `localizedDescription`, an argument to an observer or hook callback, anything an SDK log line emits or a host's log aggregator captures. A typed field retained on the error is **not** observer-facing; see rule 4.
+
+The rule has four parts:
+
+1. **Classify on types, never on text.** Every arm of the vocabulary matches an error type or a sentinel value, so no arm can be widened by something the peer wrote. Diagnostics structurally incapable of carrying text may still be rendered: an HTTP status code, an integer close code, a standard library's own fixed verb set.
+2. **Degrade, never leak.** An unrecognized cause renders the vocabulary's generic phrase. The failure direction is "less diagnostic", never "leaks".
+3. **Do not leave the peer-bearing cause in the chain — project it out first.** Wrapping the original so callers can unwrap it hands the unbounded original straight back and undoes the rendering. But severing the chain outright breaks classification that legitimately reads *through* it, so the order is load-bearing: **before the peer-bearing wrapper is discarded, a cause the constructor recognizes is projected onto a freshly constructed, peer-free value of the same identity, and that is what gets chained.** Recognition is by type or sentinel (rule 1); the projection is a re-construction, never the received instance; and an unrecognized cause is chained as nothing at all (rule 2). What survives is an identity the SDK chose the entire content of.
+
+   **The recognized set is whatever the SDK's own classifiers test — all of it, not a representative example.** A constructor that projects one sentinel and drops a second its classifier also tests has not degraded gracefully; it has silently reclassified. Enumerate against the predicates, not against the illustration below.
+
+   This is not hypothetical tidiness — two live classifiers walk that chain today, and a literal reading of the old wording broke both. Go's `shouldTripCircuit` (`go/pkg/basecamp/resilience.go:75`) tests **two** sentinels in one condition — `errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded)` — and reaches either only through `(*Error).Unwrap` returning `Cause`, which `ErrNetwork` populates; sever the chain, or project only the first, and a **cancelled *or timed-out* request falls through to the `Code == CodeNetwork` arm and trips the circuit breaker**. Both are safe to project and both must survive: they are package-level sentinel values of an unexported empty type, rendering the standard library's own fixed `"context canceled"` and `"context deadline exceeded"`, structurally incapable of carrying a byte the peer chose. Swift's `isCancellation` (`swift/Sources/Basecamp/HTTP/HTTPClient.swift`) walks `BasecampError.network(_, cause:)` looking for `CancellationError` or a `URLError` with code `.cancelled`, and its result is what makes cancellation terminal; sever the chain and a **cancelled request is retried** instead.
+
+   Projection preserves both, and the mechanism is the point. Go chains the bare `context.Canceled` or `context.DeadlineExceeded` sentinel — whichever matched — in place of the `*url.Error` it recognized it inside: `errors.Is` still returns true because it compares against that same sentinel value, and the rendering becomes the fixed stdlib string where the discarded `*url.Error` rendered the URL it failed on. Swift chains a `CancellationError()` the SDK constructs, or a `URLError(.cancelled)` it constructs — not the instance `URLSession` returned, whose `userInfo` carries the failing URL — and `isCancellation` matches on the same walk because it tests type and code, not identity. In every case the classifier's own predicate is unchanged; only the value it finds is one with nothing peer-chosen left in it.
+
+   Typed classification on the *outer* error is unaffected either way — it lives on that error's type, which is what `errors.As` and its equivalents match.
+4. **Retention is a separate question from rendering, and retention is allowed.** The peer's value may stay on the error as a typed field — `CloseError.Reason`, a `DialError.Kind` — so a caller who wants it reaches for it deliberately. What is forbidden is putting it in the default rendering, where nobody chose to receive it.
+
+   This is what rule 3 does *not* forbid, and the line between them is the slot rather than the value. A **named, purpose-built field** is reached for by name: nothing generic traverses it, so nothing renders it by accident. The **generic unwrap slot** — Go's `Unwrap`, a `cause` an `Error` subclass exposes, an enum case's associated cause a classifier walks — is traversed by machinery that never saw the constructor's intent, and that is the slot rule 3 governs. Retain freely by name; project before chaining.
+
+**The rule binds at construction.** The property "is this text peer-derived?" belongs to the constructor that composed the message, not to the type. An allowlist of error types permitted to cross an observability boundary structurally cannot answer it, which is why widening one never closed the class: three consecutive rounds found three different spellings that slipped a redactor's model in turn — a value below a length threshold, a percent-encoded form, a query carrying the credential with no `=` in it at all — and a fourth found peer text riding a wrapper that `errors.Is` matched but did not strip. That is one control having to anticipate its own input, with the peer choosing the input. To strip a credential out of arbitrary text you must model it, and where the credential is contractually **opaque** (§23's stream ticket), modelling it is precisely what the contract forbids. A closed vocabulary has nothing to model.
+
+**Projection is permitted; redaction is not.** Extracting a structurally defined component of a *successfully parsed* value and discarding the rest is an allowlist, and stays lawful: §23 carries a refused redirect `Location` and a rejected continuation URL as their **origin only**, which cannot hold a query-string credential because the parse already dropped the query. Searching arbitrary text for a credential and removing what matched is a blocklist, and is the thing this section forbids.
+
+**A projection needs a successful parse to project from, and one rejection path has none.** §8's Same-Origin Validation Algorithm returns false at step 2 when *either* URL fails to parse, so the input most in need of rejecting — `http://[::1`, a bare fragment, anything a peer cared to send — is exactly the input with no origin to render. §23 nonetheless requires `invalid_continuation` and `redirect_refused` to carry the rejected URL's origin, so an implementer meeting both sentences literally would have to either omit contract-required text or fall back to the raw value, which is peer bytes. Neither is the answer. **Where the parse fails, the origin component is the fixed token `unparsable`** — one more arm of the closed vocabulary, selected by the parse *outcome* and never composed from the input, and the same token serves a value that parses but yields no host. It is a rendering, not a wire value: §23's conformance surface asserts the typed terminal `reason`, so nothing here adds an assertion.
+
+**The vocabulary's wording is per-SDK; its shape is not.** Nothing here fixes the English. What every SDK owes is that an observer-facing rendering of this class is drawn from a fixed set chosen by error type and carries no peer bytes. §23's conformance surface asserts the typed terminal `reason` and the invalid-frame indication as a flag (`conformance/event-feed/schema.json`), never a rendered message, so the six SDKs owe the classification rather than a string.
+
+**The scope is the repository, and the primary transports are inside it.** #788 is written against the event-feed connector because that is where the four rounds happened, but nothing in the sentence that binds is connector-specific.
+
+**The obligation is stated at the sink, not as a list of call sites, and that is a correction.** Three consecutive review rounds each produced another transport path this paragraph had not named — first Go, Kotlin and Python's main loops; then Swift's chained cause and TypeScript's download; then generated Go, Ruby's two, and Python's signed-download and token-refresh sites. A sweep of every construction of each SDK's network-error type finds roughly thirty across the six, most of them interpolating a transport's own rendering. Each round's addition was individually correct and the list was still wrong after every one of them, which is the signal to reassess the instrument rather than add a seventh row: **a prose inventory that has to anticipate its own call sites is the same shape of control this section already rejected for redaction.**
+
+`[CONFLICT: the boundary below is NOT settled, and the closure claim in it is known false. Three
+formulations have been tried and each failed: a list of call sites (a sweep found ~30); "every
+construction of the network-error type" (hook dispatch and generated Go's non-idempotent branch never
+construct one); and the egress set below, which a sweep defeated with three members fitting none of
+its five — `BasecampError.toJSON()` serialising `message` and `hint`, `typescript/src/hooks/otel.ts`
+and `go/pkg/basecamp/otel/otel.go` writing `err.Error()` into span status/attributes, and Kotlin's
+`BasecampHooks` `println`. The common defect is that all three enumerate destinations, which is an
+open set: it grows with every integration anyone writes. The current best candidate is to sanitize at
+**ingress** — the point where the transport hands the SDK a failure — so no raw value ever circulates
+and no sink needs enumerating; its premise that ingress is small and bounded is UNVERIFIED and a spot
+check already found ~5-7 ingress points in TypeScript rather than one, since `oauth/*` and
+`download.ts` are hand-written outside the generated transport by design. Everything above this note
+is settled and unaffected. Tracked in #788.]`
+
+**The boundary is egress, not construction — and this is the second time it has moved.** The first correction replaced a list of call sites with "every construction of the network-error type". That was still too narrow, because it assumes the peer-bearing value is always wrapped before it goes anywhere, and three paths do not wrap it at all:
+
+- **A hook receives the raw exception before any wrapping happens.** `typescript/src/services/base.ts` puts the caught `fetchErr` straight into `RequestResult.error` and *also* `throw`s it, constructing no `BasecampError` on that path; `kotlin/.../http/BasecampHttpClient.kt` calls `safeOnRequestEnd` with the raw `e` and only afterwards builds `BasecampException.Network`. §7 steps 3c–3d route that result to `on_request_end`, and this section already classifies a hook argument as observer-facing — so every constructor could be perfect and a logging hook would still ship the peer's URL. Nothing in §12 requires the raw error there: `RequestResult.error` is typed `Error?`, "error if the request failed", with no claim about identity.
+- **A generated method returns the transport error directly.** In `go/templates/client.tmpl`, only the `$isIdempotent` branch calls `doWithRetry`; the else-branch ends `return c.Client.Do(req)`, so every **non-idempotent** generated operation hands the caller a raw `*url.Error` that no constructor ever sees.
+- **A log line takes it without an error object at all** — generated Go's `c.Logger.Debug("request failed", …, "error", err)`.
+
+So the contract is stated over what the SDK *does with the value*, which is a closed set, rather than over where the value was made, which is not: **a peer-bearing transport error must be projected before it egresses, and there are exactly five egresses** — returned or thrown to the caller, passed to a hook or observer callback, written to a log, left in the generic unwrap chain (rule 3), or attached by the runtime as exception context (Python; below). A path that does none of those five may hold the raw value freely.
+
+**Routing every construction through one sanctioned constructor is the recommended mechanism, not the contract.** It covers the common path cheaply and remains the right first move in each SDK; it simply does not discharge the obligation on its own, and an SDK is not converged when its constructors are clean. The test is whether a peer-bearing value can reach any of the five, not whether the type has one construction site.
+
+**Python owes a second boundary, because in Python the constructor cannot discharge this alone.** What follows is an obligation on **Python only** — it falls out of a CPython runtime behaviour with no equivalent in the other five, which inherit nothing from it and owe nothing extra on its account.
+
+When an exception is raised while another is being handled, CPython assigns the active exception to the new one's `__context__` **at raise time — after the constructor has returned**. A sanctioned constructor can compose a message from the closed vocabulary and project the cause it was handed, and the runtime will still staple the raw `httpx` error onto the object afterwards. Deleting `raise ... from e` does not prevent this: implicit chaining is what `__context__` *is*, and `from` only controls the separate `__cause__` slot. Default rendering then prints it — `traceback.format_exception` and `logger.exception` both emit the peer's URL under "During handling of the above exception, another exception occurred", which is squarely observer-facing under this section's definition.
+
+The two remedies are **not** equivalent, and the difference is exactly the rule 3 / rule 4 boundary:
+
+| Spelling | Traceback and `logging` | `__context__` itself |
+|---|---|---|
+| `raise NetworkError()` inside `except` | **leaks** | populated with the peer exception |
+| `raise NetworkError() from None` | clean — sets `__suppress_context__` | **still populated**; anything walking `__context__` reads peer text |
+| raise where no exception is active | clean | `None` |
+| clear `__context__` at a catching boundary *after* the raise | clean | `None` |
+
+`from None` sets a *rendering* flag, so it discharges the observer-facing half and leaves the generic slot intact — acceptable only if nothing walks it, which is not a property a library can assert about its callers. **The trap worth stating outright: clearing `__context__` on the instance before raising it does not work.** The assignment happens at raise, so the runtime overwrites the cleared value and the leak returns silently — a fix that tests green in a unit test asserting on the constructed object and fails in production traceback output.
+
+So Python's obligation is a **raising boundary distinct from the constructing one**: the error is raised where no peer exception is active — construct inside the handler, raise after it has exited — or `__context__` is cleared at a boundary that runs after the raise. Routing every construction through one constructor is necessary and **not sufficient** here, and Python's convergence must not be marked done on the constructor change alone.
+
+The table is therefore **representative, not exhaustive** — it is the shape to look for, and the two rows whose fix site is non-obvious:
+
+| Constructor | Renders | Chains |
+|---|---|---|
+| `ErrNetwork`, `go/pkg/basecamp/errors.go` | `Hint: cause.Error()`, which `Error()` appends to `Message` — a `*url.Error` renders the URL it failed on | `Cause: cause`, returned by `Unwrap` |
+| **`go/templates/client.tmpl`** → `go/pkg/generated/client.gen.go` — **both** branches | idempotent: `doWithRetry` logs `"error", err` raw *and* `return nil, err`. Non-idempotent: never reaches `doWithRetry` at all — `return c.Client.Do(req)` hands back the `*url.Error` directly. Fixing only the first leaves every non-idempotent operation leaking | returns it as-is; nothing projects or replaces it |
+| `BasecampException.Network`, `kotlin/.../http/BasecampHttpClient.kt` (+ `Download.kt`, `oauth/Discovery.kt`) | `"Network error: ${outcome.cause.message}"` | `cause = outcome.cause` |
+| `NetworkError`, `python/src/basecamp/` — `_http.py`, `_async_http.py`, `download.py` (×2), `auth.py`, `async_auth.py` | every one interpolates the httpx error: `f"Connection failed: {e}"`, `f"Download failed: {e}"`, `f"Token refresh network error: {e}"` | `raise … from e` |
+| `NetworkError`, `ruby/lib/basecamp/network_error.rb` | `hint: cause&.message` — the transport's rendering, in the slot the class documents for display — on **every** Ruby site, since all four pass `cause:`; `client.rb`'s download path additionally interpolates it into the message | `cause: cause` |
+| `Errors.network` / `new BasecampError("network", …)`, `typescript/src/download.ts` (×2), `oauth/{identity,exchange,discovery}.ts` | interpolates `err.message` | `cause` option |
+| `BasecampError.network`, `swift/Sources/Basecamp/HTTP/HTTPClient.swift` | messages are fixed strings — the rendering is already conformant | chains the raw cause into the slot `isCancellation` walks; owes rule 3's projection only |
+
+Two fix sites are not where the row points. Generated Go is fixed in `go/templates/client.tmpl`, never in the emitted `client.gen.go`, per the repository's generated-file rule — and it is the widest row here, since every generated service returns that error unwrapped, so it is not a debug-logging footnote. Ruby's is `network_error.rb`'s own constructor rather than its call sites: because `hint: cause&.message` sits in the constructor, fixing the one interpolated message in `client.rb` would leave all four sites leaking. `hint` counts despite rule 4's retention carve-out — that carve-out is for a field a caller reaches for deliberately, and `hint` is documented and displayed as guidance, which makes it a default rendering in everything but name. Swift is the opposite shape: nothing to reword, only the chain to project.
+
+Go's hand-written row is the one rule 3 turns on — its `Cause` is simultaneously the peer-bearing chain to project out and the chain `shouldTripCircuit` reads through — so those are one change, not two. All of it is tracked in #788 alongside the connector renderings.
+
+**§23 interaction — the reason-string dispatch is not an exception.** §23's Disconnect Dispatch matches the `reason` of the Action Cable `disconnect` **text frame** against a closed, server-owned set (`unauthorized`, `remote`, `invalid_event_stream_command`). That is inbound routing on parsed wire data, not error rendering, and this section leaves it untouched. What this section governs on that path is the error *text* the connector produces — the dial failure, the invalid-frame violation, and the peer close — all three of which reach `Observer.disconnected`.
 
 ### Sensitive Header Redaction `[static]`
 
@@ -3515,8 +3622,11 @@ downgrade (HTTPS → HTTP) — the same rule, for the same reason, as §8's pagi
 rejection: a cross-origin or downgraded URL in a response body must never redirect an
 authenticated request (SSRF and token leakage). A URL that fails validation is
 Terminal(`invalid_continuation`) — no request is issued to the failing URL, and the
-rejected URL is carried redacted (origin only) in the error. There is no retry and no
-handler for this condition: a hostile continuation is not an operable feed state.
+rejected URL is carried redacted (origin only) in the error. Validation fails at step 2 of
+that algorithm for a URL that does not parse at all, and such a URL has no origin to
+carry: the origin component is then the fixed token `unparsable`, per §9 "Peer-Derived
+Text in Observer-Facing Errors". There is no retry and no handler for this condition: a
+hostile continuation is not an operable feed state.
 
 **Prevalidation does not cover redirects, so the poll seam must.** The underlying HTTP
 stacks auto-follow redirects (Go strips `Authorization` on a cross-origin hop but still
@@ -3713,10 +3823,20 @@ resume_url)`, `position_rejected(kind)`, `stale_connection(since_last_frame)`,
 ### Security Invariants `[static]`
 
 - **Never log the ticket or the mint URL's query string** — the ticket rides in it.
-  Observer callbacks and error renderings carry redacted URLs.
-- **Bound the inbound frame size** (`EVENT_FEED_MAX_FRAME_BYTES`, 1 MiB default) and
-  bound/truncate any error rendering of frame contents (§9's `MAX_ERROR_MESSAGE_LENGTH`
-  applies).
+  Observer callbacks and error renderings carry a URL's **origin only**, projected out of
+  a successful parse, never a URL a redactor searched for a credential. This bullet is a
+  contract requiring that text to reach the caller, so it sits outside the closed
+  vocabulary rather than inside it — the scope clause of §9 "Peer-Derived Text in
+  Observer-Facing Errors" names it, and that section's projection-versus-redaction rule is
+  why an origin is safe to require: the parse has already dropped the query the ticket
+  rides in, so there is nothing left to search for. A URL that does not parse has no origin
+  to project, and renders the fixed token `unparsable` rather than the raw value.
+- **Bound the inbound frame size** (`EVENT_FEED_MAX_FRAME_BYTES`, 1 MiB default) — and
+  render no frame contents in an error at all. The dial failure, the invalid-frame
+  violation and the peer close (`CloseError`) all reach `Observer.disconnected`, so each
+  is rendered from §9's closed vocabulary keyed on error type. §9's
+  `MAX_ERROR_MESSAGE_LENGTH` does not stand in for that: bounding a rendering limits how
+  much of a credential escapes, not whether any does.
 - **Require `wss://`** for the cable URL, with the §9 localhost/loopback carve-out.
 - **Refuse mint-URL redirects** — a redirect on dial is a hard error, never followed.
 - **Validate every continuation and resume URL** before following it — §8's same-origin
