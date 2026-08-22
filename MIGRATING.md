@@ -77,6 +77,81 @@ non-retryable `api_error` Ruby and Python already raised there, with the
 `SyntaxError` around a paginated call stops matching; a `catch` on
 `BasecampError` starts.
 
+### TypeScript: four paginated methods now declare the `ListResult` they already returned (#737)
+
+```typescript
+// before
+async listGauges(options?: ListGaugesGaugeOptions): Promise<components["schemas"]["ListGaugesResponseContent"]>
+// after
+async listGauges(options?: ListGaugesGaugeOptions): Promise<ListResult<components["schemas"]["Gauge"]>>
+```
+
+`search.search`, `gauges.listGauges`, `gauges.listGaugeNeedles` and
+`checkins.reminders` are paginated, and at runtime every one has always
+returned the `ListResult` the pagination loop builds — their own JSDoc already
+promised `.meta.totalCount`. But the generator resolved element type names
+only through the hand-maintained `TYPE_ALIASES` map, and these four entities
+(`SearchResult`, `Gauge`, `GaugeNeedle`, `QuestionReminder`) were not in it,
+so the declared type fell back to the bare `*ResponseContent` array and
+dropped the wrapper. `result.meta.totalCount` was a type error on exactly
+these four methods while every sibling allowed it. The fix is the fallback
+becoming pagination-aware rather than the map growing four entries, so the
+next unaliased paginated entity cannot repeat this.
+
+**Wrong behaviour you get if you ignore it:** none at runtime — the returned
+object did not change, only the type telling the truth about it. What can stop
+compiling: a test double or wrapper typed to the old declared signature no
+longer satisfies the service's, since a bare array is not a `ListResult`.
+Reading code only gains: `.meta` is reachable without the `instanceof`
+laundering the old signature forced, and `ListResult<T>` extends `Array<T>`,
+so existing array-typed reads keep compiling.
+
+### Swift: every generated model now has a `public init` (#735)
+
+**Not a break — 35 models stop being unconstructible.** Swift's implicit
+memberwise initializer is `internal`, and the model emitter wrote an explicit
+`public init` only for structs with at least one required member. An
+all-optional model got none, so no code outside the module could construct
+one — which made two operations uncallable in practice: `updateGaugeNeedle`
+and `updateMyPreferences` take all-optional request payloads, and the only
+body a consumer could pass was the `nil` that sends the empty `{}` bc3
+rejects with a 400.
+
+Every generated model now carries the same-shaped `public init` the
+required-member models always had — required parameters take no default,
+optional ones default to `nil` — and no existing initializer changed its
+signature, so there is nothing to migrate. This entry exists because the fix
+is consumer-visible where the SDK's own test suite could not see it: every
+test file uses `@testable import`, which raises `internal` to visible, so
+constructing these models passed in tests against a surface no consumer had.
+A plain-`import` consumer target now builds in CI to keep it that way.
+
+### TypeScript and Ruby: the validated `maxPages` cap can no longer be replaced after construction (`1919e77f7`)
+
+Four SDKs already stored the validated pagination cap where nothing can
+replace it after construction — Go's unexported options copy, Kotlin's `val`,
+Swift's `let`, Python's frozen dataclass. The other two only looked capped:
+
+- **TypeScript**: `maxPages` was `protected readonly`, which is compile-time
+  only, so `(svc as any).maxPages = Infinity` replaced the validated cap and
+  made the pagination bound unreachable. The cap now lives in a native
+  `#private` field read directly by both pagination loops, with a `protected`
+  getter preserving the supported subclass read. The escape hatch stops
+  working: in strict-mode code the assignment throws a `TypeError` (the
+  property is a getter with no setter), and in sloppy mode it lands on an own
+  property the loops never read.
+- **Ruby**: `Config#max_pages` was a bare `attr_accessor`, and the HTTP layer
+  reads the config live at every page boundary, so `config.max_pages = -1`
+  took effect on the next page fetch. The writer now validates with the same
+  predicate `validate!` uses, so an invalid assignment raises `ArgumentError`
+  immediately. Assigning a *valid* cap still works — the config deliberately
+  stays mutable for the builder-style `from_file` → `load_from_env` flow.
+
+**Wrong behaviour you get if you ignore it:** none, unless you were mutating
+the cap through one of those two holes to defeat the bound — pass the value
+at construction (`maxPages` in the service options, `max_pages` on the config
+before use) instead.
+
 ### TypeScript: `Retry-After` parsing is strict, and values it used to honour now back off instead (#564)
 
 **Nothing to change, but a throttled client may now wait differently** — usually
@@ -292,6 +367,79 @@ if errors.As(err, &apiErr) && apiErr.RetryAfter > 0 {
 }
 ```
 
+### Go: a body that never arrived is no longer stamped as permanently malformed (#773)
+
+**Nothing to change, but two error classifications move** on the merge-safe
+Documents composites (`Update`, `Edit`) and the carve-out-aware ScheduleEntry
+composites (`UpdateEntry`, `EditEntry`) — the paths that read a response body
+by hand.
+
+Go streams response bodies, so the `io.ReadAll` inside the generated parser is
+where a truncated body, a reset connection or an expired deadline actually
+surfaces — and these paths rendered every parser failure as the SPEC §6
+malformed-body shape: a statusless `*basecamp.Error` with `CodeAPI` and
+`Retryable: false`. A transient network failure read as a permanently
+malformed body. The body read is now marked at the transport layer, and a
+failure there returns the transport's own error verbatim — the way every
+other transport failure on these paths already did.
+
+**Wrong behaviour you get if you ignore it:** none, but two things you may
+have matched on move. `errors.As(err, &apiErr)` no longer matches a mid-body
+network failure on these paths — reach for `net.Error`,
+`context.DeadlineExceeded` or `io.ErrUnexpectedEOF`, whichever you actually
+mean — and a retry policy keyed on the SDK error's `Retryable` field no
+longer sees a hard `false` for a failure that was never the body's fault. A
+genuinely malformed body is unchanged: still the statusless `api_error`, with
+the JSON error reachable through `Cause`.
+
+### Go: an absent expiry reads as absent, not as an instant (#662)
+
+Two silent behavior changes on `AuthorizationInfo.ExpiresAt` (`FlexTime`), and
+neither gives you a compile error:
+
+- **A wire `expires_at: 0` now decodes to the zero time.** Previously it
+  decoded to `time.Unix(0, 0)` — a *valid* 1970 date with `IsZero() == false`,
+  so "no expiry" read as "expired 56 years ago". No production issuer has ever
+  sent `0` (BC3 tokens validate presence; legacy Signal tokens self-default an
+  expiry), so this is hardening against the RFC 7591 collision — `0` means
+  "never expires" in bc3's own `client_secret_expires_at` — not a live-bug fix.
+  Code that deliberately round-tripped `0` through `FlexTime` gets the zero
+  time back instead.
+- **A zero `FlexTime` marshals as `null`.** Previously it marshaled as the
+  fabricated instant `"0001-01-01T00:00:00Z"`, indistinguishable from data the
+  server sent. If you re-serialize `AuthorizationInfo` and consume `expires_at`
+  downstream, expect `null` where that sentinel used to be.
+
+New, not breaking: `info.Expiry() (time.Time, bool)` is the documented front
+door — `ok` is false when the document stated no expiry (absent field, explicit
+`null`, or a wire `0` alike; all defensive, per the above — no production
+issuer emits any of them). Prefer it over reading `ExpiresAt` directly.
+
+### Go: `TimelineEventData.StartsAt`/`EndsAt` became `*types.FlexibleTime`
+
+The same class as v0.13.0's [four Go pointer entries](#go): the generated
+counterpart is `*types.FlexibleTime` (the bounds are required-and-nullable —
+`schedule_entry_*` events always carry them, but the value may be `null`), and
+the hand-written struct flattened them to value types, fabricating
+`0001-01-01T00:00:00Z` for a null bound on re-marshal.
+
+**This compiles unchanged and panics at runtime on the wrong payload.** Go
+promotes value-receiver methods through the pointer, so
+`ev.Data.StartsAt.IsZero()` still builds — and nil-panics when the API sent
+`null`. Nil-check first:
+
+```go
+// Before
+if !ev.Data.StartsAt.IsZero() { start := ev.Data.StartsAt.Time; ... }
+
+// After
+if ev.Data.StartsAt != nil { start := ev.Data.StartsAt.Time; ... }
+```
+
+A nil bound re-marshals as `null` (the key stays, matching the wire contract);
+a null bound previously decoded to the zero time, so `IsZero()`-based absence
+checks translate to nil checks.
+
 ### Kotlin: `search.search` returns `ListResult<SearchResult>`, not `ListResult<JsonElement>` (#717)
 
 ```kotlin
@@ -355,8 +503,10 @@ git show v0.14.0:openapi.json | jq '.components.schemas.Tool | {required, props:
 jq '.components.schemas.Tool | {required, props: (.properties|keys|length)}' openapi.json
 ```
 
-Three of the seven are conditional on the wire, and the conditions are not
-guesses — they are the partial's own `if`s:
+Three of the emitted keys are conditional on the wire — two of the seven new
+ones (`subscription_url`, `parent`) plus `position`, which the spec modeled
+before this change — and the conditions are not guesses: they are the
+partial's own `if`s:
 
 - **`subscription_url`** — only when the recordable is subscribable.
   `Chat::Transcript`, `Todoset` and `Kanban::Board` override
@@ -425,7 +575,7 @@ hand.
 
 | SDK | was | now |
 |---|---|---|
-| Kotlin | `kotlinx.serialization.SerializationException` (incl. `MissingFieldException`) | `BasecampException.Api` with `httpStatus == null`, `retryable == false`, and the `SerializationException` as `cause` |
+| Kotlin | `kotlinx.serialization.SerializationException` (incl. `MissingFieldException`) | `BasecampException.Api` with `httpStatus == null`, `retryable == false`, and the `SerializationException` in `decodeFailure` — the discriminator (#750); mirrored in `cause`, which is explicitly not one |
 | Swift | `DecodingError` — and, on the wrapped-list path, a raw `NSError` from `JSONSerialization` for a body that is not JSON at all | `BasecampError.api(message:httpStatus:hint:requestId:decodeFailure:)` with `httpStatus == nil` (so `isRetryable == false`), the underlying error's description interpolated into `message` and the error itself in `decodeFailure` (see above) |
 | Go, TypeScript, Ruby, Python | unchanged | unchanged |
 
@@ -708,54 +858,6 @@ default goes.
 Add a `limit_exceeded` branch that surfaces the limit to the user and does not
 retry. This SDK's own Kotlin test suite hit the compile error, which is what the
 exhaustive `when` in `ErrorTest` exists to produce.
-
-### Go: an absent expiry reads as absent, not as an instant (#662)
-
-Two silent behavior changes on `AuthorizationInfo.ExpiresAt` (`FlexTime`), and
-neither gives you a compile error:
-
-- **A wire `expires_at: 0` now decodes to the zero time.** Previously it
-  decoded to `time.Unix(0, 0)` — a *valid* 1970 date with `IsZero() == false`,
-  so "no expiry" read as "expired 56 years ago". No production issuer has ever
-  sent `0` (BC3 tokens validate presence; legacy Signal tokens self-default an
-  expiry), so this is hardening against the RFC 7591 collision — `0` means
-  "never expires" in bc3's own `client_secret_expires_at` — not a live-bug fix.
-  Code that deliberately round-tripped `0` through `FlexTime` gets the zero
-  time back instead.
-- **A zero `FlexTime` marshals as `null`.** Previously it marshaled as the
-  fabricated instant `"0001-01-01T00:00:00Z"`, indistinguishable from data the
-  server sent. If you re-serialize `AuthorizationInfo` and consume `expires_at`
-  downstream, expect `null` where that sentinel used to be.
-
-New, not breaking: `info.Expiry() (time.Time, bool)` is the documented front
-door — `ok` is false when the document stated no expiry (absent field, explicit
-`null`, or a wire `0` alike; all defensive, per the above — no production
-issuer emits any of them). Prefer it over reading `ExpiresAt` directly.
-
-### Go: `TimelineEventData.StartsAt`/`EndsAt` became `*types.FlexibleTime`
-
-The same class as v0.13.0's [four Go pointer entries](#go): the generated
-counterpart is `*types.FlexibleTime` (the bounds are required-and-nullable —
-`schedule_entry_*` events always carry them, but the value may be `null`), and
-the hand-written struct flattened them to value types, fabricating
-`0001-01-01T00:00:00Z` for a null bound on re-marshal.
-
-**This compiles unchanged and panics at runtime on the wrong payload.** Go
-promotes value-receiver methods through the pointer, so
-`ev.Data.StartsAt.IsZero()` still builds — and nil-panics when the API sent
-`null`. Nil-check first:
-
-```go
-// Before
-if !ev.Data.StartsAt.IsZero() { start := ev.Data.StartsAt.Time; ... }
-
-// After
-if ev.Data.StartsAt != nil { start := ev.Data.StartsAt.Time; ... }
-```
-
-A nil bound re-marshals as `null` (the key stays, matching the wire contract);
-a null bound previously decoded to the zero time, so `IsZero()`-based absence
-checks translate to nil checks.
 
 ---
 
@@ -3682,10 +3784,14 @@ oversight, and it should be stated rather than assumed.
 
 # Not in this release
 
-**Nothing is in flight.** Every change this guide describes is merged at
-`9a819e44d`, and every count above is a measurement at that commit rather than a
-projection. Earlier drafts carried an "if it lands" list; all of it landed, and
-the counts were re-derived rather than incremented.
+Every change this guide describes was merged by `8fcb39ab9`, and every count
+above is a measurement at that commit rather than a projection. In flight at
+that commit, and therefore **not** in this release: the event-feed connector
+stack (#777, #705, #778 — SPEC §23's Go reference implementation and its
+conformance driver), the OAuth issuer address policy (#804), a CodeQL alert
+triage (#807), and two long-running drafts (#802, SPEC §9's peer-derived-text
+boundary; #238, the API-disabled 404 `Reason` header). The record below dates
+from this guide's v0.13.0 drafts and remains true as written.
 
 For the record, since the earlier drafts named them and reviewers may be looking
 for them:

@@ -248,11 +248,15 @@ ifndef VERSION
 	$(error VERSION is required. Usage: make release VERSION=x.y.z)
 endif
 	@echo "Releasing v$(VERSION)..."
-	@# Verify version constants match
+	@# Verify version constants match — every file scripts/bump-version.sh writes
+	@grep -qF '"version": "$(VERSION)"' package.json || \
+		{ echo "ERROR: Root package.json version does not match $(VERSION). Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
 	@grep -qF 'Version = "$(VERSION)"' go/pkg/basecamp/version.go || \
 		{ echo "ERROR: Go version does not match $(VERSION). Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
 	@grep -qF '"version": "$(VERSION)"' typescript/package.json || \
 		{ echo "ERROR: TypeScript version does not match $(VERSION). Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
+	@grep -qF 'export const VERSION = "$(VERSION)"' typescript/src/client.ts || \
+		{ echo "ERROR: TypeScript client VERSION constant does not match $(VERSION). Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
 	@grep -qF 'VERSION = "$(VERSION)"' ruby/lib/basecamp/version.rb || \
 		{ echo "ERROR: Ruby version does not match $(VERSION). Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
 	@grep -qF 'const val VERSION = "$(VERSION)"' kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/BasecampConfig.kt || \
@@ -261,6 +265,8 @@ endif
 		{ echo "ERROR: Kotlin Gradle project version does not match $(VERSION). Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
 	@grep -qF 'public static let version = "$(VERSION)"' swift/Sources/Basecamp/BasecampConfig.swift || \
 		{ echo "ERROR: Swift version does not match $(VERSION). Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
+	@grep -q '^version = "$(VERSION)"' python/pyproject.toml || \
+		{ echo "ERROR: Python pyproject.toml version does not match $(VERSION). Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
 	@grep -qF 'VERSION = "$(VERSION)"' python/src/basecamp/_version.py || \
 		{ echo "ERROR: Python version does not match $(VERSION). Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
 	@# Verify lockfiles are frozen against their manifests
