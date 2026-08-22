@@ -100,6 +100,16 @@ func (l *loop) walkThenDrain(at *attempt, cursor Cursor, presentClass bool) (cyc
 	if l.cfg.observer.CaughtUp != nil {
 		l.cfg.observer.CaughtUp()
 	}
+	// And Close outranks what FOLLOWS the announcement too: CaughtUp is
+	// supported as a Close site like every callback, and past this point the
+	// path re-arms the repair cadence through the product clock's NewTimer
+	// and announces Streaming — reconnect-era acts a consumer who closed
+	// inside the callback must not observe (and a host clock that blocks in
+	// NewTimer would keep the iteration and Wait from reaching Closed).
+	if l.runCtx.Err() != nil {
+		l.disposeAttempt(at, nil)
+		return cycleOutcome{kind: outcomeClosed}, true
+	}
 	// The walk's last dispatch point, and by construction a SOCKET outcome
 	// only: nothing else is ever deferred — an overflowing admission is
 	// dispatched where it is observed, and the drain's scan already took the
@@ -630,6 +640,18 @@ func (l *loop) awaitSupersededPoll(at *attempt, done <-chan pollResult, deadline
 			l.hooks.supersededWake()
 		}
 		if !l.cfg.clock.Now().Before(deadline) {
+			// Abandoned AT the deadline, in time and not merely in control
+			// flow: the teardown that dispatches the deferred outcome closes
+			// the socket gracefully FIRST (liveConn.dispose, deliberately),
+			// and a peer that never acknowledges holds that close for the
+			// transport's full grace budget — during which the abandoned
+			// seam call, carrying the caller's bearer, would still be live
+			// and the reconnect stalled past §23's published
+			// detection-plus-grace bound. The attempt context is the call's
+			// cancellation (Seam-Call Semantics), so it is cancelled here;
+			// the disposal that follows finds the pump already unblocked and
+			// its own cancel a no-op.
+			at.cancel()
 			return pollAttempt{superseded: true}
 		}
 	}
