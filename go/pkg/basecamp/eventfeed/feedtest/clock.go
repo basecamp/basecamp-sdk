@@ -80,7 +80,12 @@ func (c *Clock) NewTimer(d time.Duration, name string) eventfeed.Timer {
 func (c *Clock) DueWithin(d time.Duration) []string {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	target := c.now.Add(d)
+	return c.dueWithinLocked(c.now.Add(d))
+}
+
+// dueWithinLocked returns the names of live timers due at or before target,
+// in creation order. The caller holds c.mu.
+func (c *Clock) dueWithinLocked(target time.Time) []string {
 	var names []string
 	for _, t := range c.live {
 		if !t.deadline.After(target) {
@@ -88,6 +93,37 @@ func (c *Clock) DueWithin(d time.Duration) []string {
 		}
 	}
 	return names
+}
+
+// AdvanceIfQuiet advances virtual time by d only if the window would fire
+// nothing; otherwise it reports the due set and leaves the clock untouched.
+// It is DueWithin and Advance as ONE critical section, for the driver MUST
+// in SPEC §23: an advance whose window would fire any timer is rejected.
+// Deciding that with two separate lock acquisitions leaves a gap — a timer
+// armed (or stopped) between the check and the movement changes what the
+// accepted directive does, so an advance the guard accepted could fire.
+// Under one hold of the clock's locks, an accepted advance provably fires
+// nothing.
+//
+// What stays undecidable, stated honestly: whether a CONCURRENT arm lands
+// before or after this critical section is still the arming goroutine's
+// schedule — no clock operation can order another goroutine's lock
+// acquisition. The invariant restored here is the decidable one: whichever
+// side the arm lands, an ACCEPTED advance fired nothing, and an arm that
+// lost the race is due at its own deadline, unfired and unharmed.
+func (c *Clock) AdvanceIfQuiet(d time.Duration) ([]string, bool) {
+	c.advancing.Lock()
+	defer c.advancing.Unlock()
+	c.mu.Lock()
+	target := c.now.Add(d)
+	if due := c.dueWithinLocked(target); len(due) > 0 {
+		c.mu.Unlock()
+		return due, false
+	}
+	c.now = target
+	c.mu.Unlock()
+	c.cond.Broadcast()
+	return nil, true
 }
 
 // Outstanding returns the names of live (unfired, unstopped) timers, in

@@ -94,12 +94,20 @@ end
 # issue number is making no claim. Here the row IS the claim: a malformed one is
 # a promise the author wrote and the gate silently dropped, which is worse than
 # either a failure or an absent row.
+# The KEY is required, not just the file. A registry whose key is misspelled
+# or dropped in an edit reads as nil and used to pass as empty — the same
+# fail-open path as a deleted file, one typo later. Only the explicit empty
+# list says "no promises" on purpose.
+unless tracking.key?('prose_tracking_issues')
+  warn "ERROR: #{tracking_path} must define prose_tracking_issues (use [] when there are none)."
+  exit 1
+end
 rows = tracking['prose_tracking_issues']
-unless rows.nil? || rows.is_a?(Array)
+unless rows.is_a?(Array)
   warn "ERROR: prose_tracking_issues in #{tracking_path} must be a list, got #{rows.class}"
   exit 1
 end
-(rows || []).each_with_index do |e, i|
+rows.each_with_index do |e, i|
   unless e.is_a?(Hash)
     warn "ERROR: prose_tracking_issues[#{i}] in #{tracking_path} must be a mapping, got #{e.class}"
     exit 1
