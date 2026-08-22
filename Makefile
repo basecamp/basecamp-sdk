@@ -303,6 +303,7 @@ endif
 	@echo "Pushed v$(VERSION) — all SDK release workflows will trigger."
 
 # Self-test for the MIGRATING.md heading promotion used by bump and release
+.PHONY: test-promote-migrating
 test-promote-migrating:
 	@./scripts/test-promote-migrating.sh
 

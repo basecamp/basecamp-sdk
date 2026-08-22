@@ -18,10 +18,31 @@ FILE="${2:-MIGRATING.md}"
 
 FIRST=$(grep -m1 -E '^# (Unreleased|v[0-9]+\.[0-9]+\.[0-9]+)$' "$FILE" || true)
 
+# The guide's headings are not the authority on the released order: a
+# no-notes release advances the SDK version without adding a heading, so the
+# newest heading can legitimately lag. The version constant is the authority,
+# read from a bump-written source; at bump time (step 0) it still holds the
+# PRE-bump version, so a target older than it is a rollback however the
+# headings read. At release time the version guards have already pinned the
+# constants to the target, so the comparison is trivially equal — harmless.
+# PROMOTE_MIGRATING_CURRENT overrides the source for the self-test only.
+if [ -n "${PROMOTE_MIGRATING_CURRENT:-}" ]; then
+  CURRENT="$PROMOTE_MIGRATING_CURRENT"
+else
+  VERSION_GO="$(dirname "$0")/../go/pkg/basecamp/version.go"
+  CURRENT=$(sed -n 's/^const Version = "\(.*\)"$/\1/p' "$VERSION_GO" 2>/dev/null || true)
+fi
+
 if [ -z "$FIRST" ]; then
   echo "ERROR: $FILE has no release heading ('# Unreleased' or '# vX.Y.Z')." >&2
   exit 1
 fi
+
+# current_blocks TARGET: refuse a target strictly older than the SDK's own
+# current version constant.
+current_blocks() {
+  [ -n "$CURRENT" ] && newer "$CURRENT" "$1"
+}
 
 # newer A B: true when A is strictly newer than B, compared component-wise.
 # Pure arithmetic on the three semver components — no reliance on sort -V,
@@ -36,8 +57,17 @@ newer() {
   [ "$a3" -gt "$b3" ]
 }
 
+if current_blocks "$VERSION"; then
+  echo "ERROR: $VERSION is older than the SDK's current version ($CURRENT in go/pkg/basecamp/version.go) — refusing the rollback." >&2
+  exit 1
+fi
+
 case "$FIRST" in
   "# Unreleased")
+    if [ "$(grep -cxF "# Unreleased" "$FILE")" -gt 1 ]; then
+      echo "ERROR: $FILE has more than one '# Unreleased' heading — promotion would rename only the first and leave the rest to fail the release late." >&2
+      exit 1
+    fi
     if grep -qxF "# v$VERSION" "$FILE"; then
       echo "ERROR: $FILE already has a '# v$VERSION' section below '# Unreleased' — releasing $VERSION again would be a version rollback." >&2
       exit 1

@@ -5,6 +5,9 @@
 # anywhere, so a historical heading waved a rolled-back bump through.
 set -u
 SCRIPT="$(dirname "$0")/promote-migrating.sh"
+# Pin the current-version authority so the repo's real constant cannot leak
+# into scratch-file cases; individual cases override it to probe the gate.
+export PROMOTE_MIGRATING_CURRENT=0.1.0
 DIR=$(mktemp -d)
 trap 'rm -rf "$DIR"' EXIT
 FAILS=0
@@ -84,6 +87,25 @@ grep -qxF "# v0.10.0" "$DIR/i.md"; check "0.10.0 promoted" 0 $?
 fresh j.md "# v0.16.0" "# Unreleased" "# v0.15.0"
 bash "$SCRIPT" 0.16.0 "$DIR/j.md" >/dev/null 2>&1; check "idempotent branch refuses misplaced Unreleased" 1 $?
 bash "$SCRIPT" --check 0.16.1 "$DIR/j.md" >/dev/null 2>&1; check "no-notes branch refuses misplaced Unreleased" 1 $?
+
+# 15. the version constant, not the headings, is the rollback authority:
+#     after a no-notes release the newest heading lags the SDK version, and a
+#     bump between them must still refuse (the round-two P1)
+fresh k.md "# v0.15.0" "# v0.14.0"
+PROMOTE_MIGRATING_CURRENT=0.16.0 bash "$SCRIPT" 0.15.5 "$DIR/k.md" >/dev/null 2>&1
+check "no-notes bump below current SDK version refused" 1 $?
+fresh l.md "# Unreleased" "# v0.15.0"
+PROMOTE_MIGRATING_CURRENT=0.16.0 bash "$SCRIPT" 0.15.5 "$DIR/l.md" >/dev/null 2>&1
+check "promote below current SDK version refused" 1 $?
+PROMOTE_MIGRATING_CURRENT=0.16.0 bash "$SCRIPT" --check 0.16.0 "$DIR/k.md" >/dev/null 2>&1
+check "--check at the current version still accepted" 0 $?
+
+# 16. more than one "# Unreleased" heading is refused before any mutation
+fresh m.md "# Unreleased" "# v0.15.0"
+printf '# Unreleased\n\nstray\n' >> "$DIR/m.md"
+cp "$DIR/m.md" "$DIR/m.before"
+bash "$SCRIPT" 0.16.0 "$DIR/m.md" >/dev/null 2>&1; check "duplicate Unreleased refused" 1 $?
+diff -q "$DIR/m.md" "$DIR/m.before" >/dev/null; check "duplicate refusal leaves file untouched" 0 $?
 
 if [ "$FAILS" -gt 0 ]; then
   echo "test-promote-migrating: $FAILS of $CASES assertions failed" >&2
