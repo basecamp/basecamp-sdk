@@ -747,7 +747,21 @@ func (l *loop) emitTerminal(term *TerminalError) {
 	// even then the behaviour it replaces is racy rather than reliably wrong.
 	// It is kept because deciding against the authoritative latch is simply
 	// the correct shape, not because a red proof forced it.
-	if !l.cfg.claimTerminal() {
+	//
+	// Caller cancellation is the same universal edge — §23 draws it as
+	// "close() / cancellation / consumer break", and Events promises all
+	// three end iteration with no error element — but no mutex serializes
+	// it: the caller's cancel is not Close and holds no connector lock, so
+	// there is no latch to consult. The run-context read below is the
+	// achievable ordering — best-effort, at the same one exit the claim
+	// guards. A cancel observed here takes the Closed edge even though the
+	// terminal outcome was already selected (the teardown between selection
+	// and publication can span a socket close, so the cancel may precede
+	// this point by an arbitrarily long, fully observable interval); one
+	// landing after the read publishes the already-claimed terminal, the
+	// same tolerance the claim's comment grants a Close that cancels a
+	// moment after losing the claim.
+	if l.runCtx.Err() != nil || !l.cfg.claimTerminal() {
 		l.setState(stateClosed)
 		return
 	}

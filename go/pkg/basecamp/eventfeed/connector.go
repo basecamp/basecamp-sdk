@@ -320,14 +320,22 @@ func validateConfig(cfg *config) error {
 	if cfg.origin == "" {
 		return usageError("an API base origin is required")
 	}
+	// Validated RAW, before canonicalization: CanonicalOrigin lowercases
+	// through strings.ToLower, which rewrites every invalid byte to U+FFFD,
+	// so a post-canonical check would pass two origins differing only in
+	// invalid bytes AFTER they had collapsed to one canonical form — one
+	// checkpoint lineage for two configured origins, the exact many-to-one
+	// identity checkIdentityText exists to refuse. Canonicalization of valid
+	// UTF-8 cannot produce invalid UTF-8, so the canonical form needs no
+	// second check.
+	if err := checkIdentityText("the API base origin", cfg.origin); err != nil {
+		return err
+	}
 	canonical, err := CanonicalOrigin(cfg.origin)
 	if err != nil {
 		return usageError(err.Error())
 	}
 	if err := checkOriginScheme(canonical); err != nil {
-		return err
-	}
-	if err := checkIdentityText("the API base origin", canonical); err != nil {
 		return err
 	}
 	cfg.origin = canonical
