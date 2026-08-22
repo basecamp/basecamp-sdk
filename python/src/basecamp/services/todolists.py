@@ -140,9 +140,9 @@ def _writable_string(body: dict[str, Any], key: str, *, non_empty: bool = False)
     makes the check explicit work here rather than something the layer below
     already did, and #544 did not change it: flattening the declared shape
     changes what the API returns, not what Python validates — ``get`` still
-    hands back the parsed JSON as ``dict[str, Any]``. The same shape is live in
-    the shipped Todos and Cards composites; that is tracked separately in #576,
-    and giving Python a decoder at all in #578.
+    hands back the parsed JSON as ``dict[str, Any]``. The same shape in the
+    shipped Todos and Cards composites is guarded by the ``_merge_safe`` checks
+    #576 closed with; giving Python a decoder at all is tracked in #578.
     """
     if key not in body:
         raise ApiError(

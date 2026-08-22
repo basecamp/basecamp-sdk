@@ -89,7 +89,10 @@ failures = []
 # all, when gh is meant to be absent), so the real gh can never answer. The
 # interpreter is invoked by absolute path for the same reason. Returns
 # [combined_output, status, gh_log_lines].
-def run_checker(allowlist:, tracking: {}, states: nil, gh_fail: false, repo: nil, github_repository: nil)
+# tracking defaults to the explicit empty registry — the one sanctioned no-op —
+# because a file WITHOUT the key is an error (case N+7): most cases here are
+# about the allowlist and just need the registry to say "no promises" on purpose.
+def run_checker(allowlist:, tracking: { "prose_tracking_issues" => [] }, states: nil, gh_fail: false, repo: nil, github_repository: nil)
   Dir.mktmpdir("known-defect-selftest") do |dir|
     path_dir = File.join(dir, "bin")
     Dir.mkdir(path_dir)
@@ -383,6 +386,20 @@ out, status, _ = run_checker(
   tracking: { "prose_tracking_issues" => "not a list" }
 )
 expect_fail(failures, "N+6. a non-list registry fails", out, status, "must be a list")
+
+# --- N+7. A registry file without the key fails -----------------------------------
+#
+# The missing-FILE case (N+3) fails closed; a file whose key is misspelled or
+# dropped in an edit is the same accident one typo later, and it used to pass
+# as an empty registry. Only the explicit empty list says "no promises" on
+# purpose — a keyless file is indistinguishable from one the gate never read.
+
+out, status, _ = run_checker(
+  allowlist: { "sdk_routes_known_defective" => [], "bc3_routes_not_modeled" => [] },
+  tracking: {}
+)
+expect_fail(failures, "N+7. a registry without the prose_tracking_issues key fails", out, status,
+            "must define prose_tracking_issues")
 
 if failures.empty?
   puts "==> known-defect tracking-issue self-test passed — #{CASES[0]} cases"

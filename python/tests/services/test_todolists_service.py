@@ -278,7 +278,8 @@ class TestMalformedWritableFields:
     is full-replace, that value is then written back over the real one — the
     composite erases the field it exists to preserve, on a call that never
     mentioned it. Truthy non-strings are just as wrong: they reach the wire
-    verbatim. The shipped Todos/Cards analogue is tracked in #576.
+    verbatim. The shipped Todos/Cards analogue takes the same refusal from
+    the ``_merge_safe`` guards #576 closed with.
     """
 
     @pytest.mark.parametrize("malformed", [False, 0, [], {}, 42, True, ["x"], {"a": 1}])

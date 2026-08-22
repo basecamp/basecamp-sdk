@@ -19,4 +19,14 @@
 #
 # Add an entry when you write a sentence promising an issue owns something.
 # Remove it when the sentence goes, and the gate stops asking.
-prose_tracking_issues: []
+prose_tracking_issues:
+  - issue: 589
+    site: "Makefile — the vendored bc3-route table's freshness gate needs BC3_REPO_PATH, so it is not in CI"
+  - issue: 775
+    site: "SPEC.md §6 Retry-After — which statuses honour the header is divergent across the six SDKs"
+  - issue: 775
+    site: "typescript/tests/retry-after.test.ts — pins TypeScript's side of the Retry-After status divergence"
+  - issue: 578
+    site: "ruby/lib/basecamp/services/todolists_extensions.rb — the generated validating layer that would retire writable_string"
+  - issue: 578
+    site: "python/src/basecamp/services/todolists.py — making the flat todolist read structurally safe"
