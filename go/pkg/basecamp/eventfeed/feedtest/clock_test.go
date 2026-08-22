@@ -121,6 +121,64 @@ func TestClock_AdvanceFiresATimerArmedByAFiringsRecipient(t *testing.T) {
 	}
 }
 
+// The reject half of the one-critical-section contract: a window that would
+// fire is refused with the due set named, and the clock is untouched — time
+// has not moved and the refused timer is still outstanding and firable.
+func TestClock_AdvanceIfQuietRejectsAFiringWindowUntouched(t *testing.T) {
+	c := NewClock()
+	base := c.Now()
+	tm := c.NewTimer(5*time.Millisecond, "backoff")
+	c.NewTimer(30*time.Millisecond, "repair-poll")
+
+	due, ok := c.AdvanceIfQuiet(10 * time.Millisecond)
+
+	if ok {
+		t.Fatal("AdvanceIfQuiet accepted a window that would fire backoff")
+	}
+	if len(due) != 1 || due[0] != "backoff" {
+		t.Errorf("due = %v, want [backoff]", due)
+	}
+	if got := c.Now(); !got.Equal(base) {
+		t.Errorf("Now() = %v, want unmoved %v", got, base)
+	}
+	select {
+	case at := <-tm.C():
+		t.Errorf("rejected advance fired the timer at %v", at)
+	default:
+	}
+	if got := c.Outstanding(); len(got) != 2 {
+		t.Errorf("Outstanding() = %v, want both timers still live", got)
+	}
+	// The refused timer is unharmed: it still fires on its own terms.
+	if delay, found := c.FireTimer("backoff"); !found || delay != 5*time.Millisecond {
+		t.Errorf("FireTimer(backoff) = (%v, %v), want (5ms, true)", delay, found)
+	}
+}
+
+// The accept half: a genuinely quiet window moves time by exactly d and
+// leaves undue timers outstanding. A deadline landing exactly ON the window
+// edge counts as due — the same !After(target) boundary Advance fires at.
+func TestClock_AdvanceIfQuietMovesTimeOnAQuietWindow(t *testing.T) {
+	c := NewClock()
+	base := c.Now()
+	c.NewTimer(30*time.Millisecond, "repair-poll")
+
+	if due, ok := c.AdvanceIfQuiet(10 * time.Millisecond); !ok {
+		t.Fatalf("quiet window rejected: due = %v", due)
+	}
+	if got := c.Now(); !got.Equal(base.Add(10 * time.Millisecond)) {
+		t.Errorf("Now() = %v, want %v", got, base.Add(10*time.Millisecond))
+	}
+	if got := c.Outstanding(); len(got) != 1 || got[0] != "repair-poll" {
+		t.Errorf("Outstanding() = %v, want [repair-poll]", got)
+	}
+
+	// Exactly-on-the-edge is a firing window, not a quiet one.
+	if due, ok := c.AdvanceIfQuiet(20 * time.Millisecond); ok || len(due) != 1 || due[0] != "repair-poll" {
+		t.Errorf("edge deadline: AdvanceIfQuiet = (%v, %v), want ([repair-poll], false)", due, ok)
+	}
+}
+
 func TestClock_StopRemovesTimerAndSuppressesFiring(t *testing.T) {
 	c := NewClock()
 	timer := c.NewTimer(5*time.Millisecond, "staleness")

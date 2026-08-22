@@ -2848,19 +2848,32 @@ Two dispatch clarifications, pinned:
   back-pressure propagates to the socket and TCP — rather than dropping: the
   state-machine-owned live buffer is the only place a frame can ever be dropped, and its
   overflow signal is the only drop signal. Worst-case connector memory is therefore
-  bounded multiplicatively — every queued or buffered item is itself bounded by
-  `EVENT_FEED_MAX_FRAME_BYTES`, so the ceiling is
-  (pump depth + 2 + `EVENT_FEED_LIVE_BUFFER_CAPACITY`) × `EVENT_FEED_MAX_FRAME_BYTES`
+  bounded multiplicatively — every retained item is itself bounded by
+  `EVENT_FEED_MAX_FRAME_BYTES`, and retention is an enumeration by HOLDER, which is what
+  closes the count: a frame lives in the hand-off queue (≤ pump depth), in the live
+  buffer (≤ `EVENT_FEED_LIVE_BUFFER_CAPACITY`), in the single deferral slot (≤ 1), or in
+  the hands of one of the exactly two goroutines that touch frames — one in-hand frame
+  each. The ceiling is
+  (pump depth + 3 + `EVENT_FEED_LIVE_BUFFER_CAPACITY`) × `EVENT_FEED_MAX_FRAME_BYTES`
   (≈ 10 GiB at the defaults' extreme, reached only if every slot holds a maximum-size
-  frame) — even under a slow consumer. The **+ 2** is two raw frames the queue's depth does
-  not count, and they are retained by different parties at the same time:
+  frame) — even under a slow consumer. The **+ 3** is three raw frames the queue's depth
+  does not count — the deferral slot plus one in-hand frame per frame-touching party —
+  and they are retained by different parties at the same time:
   - the **pump's own in-flight frame** — the pump is a single reader, so it may hold exactly
     one frame it has already READ and not yet handed off. One rather than an unbounded
     number for that reason: one reader holds at most one frame outside the queue.
+  - the **state machine's in-hand frame** — the protocol-fatal scan's dequeue is the very
+    receive that lets a blocked pump refill the queue, so while the scan still holds that
+    frame — examining, admitting, or parking it — the queue is full again and the pump may
+    already hold its next read. A single consumer, so one frame, for the pump's own reason.
   - the **deferred socket outcome** — the single slot the in-flight-poll servicing and the
     drain's scan park one receive in. It is retained while the queue behind it refills, so it
-    is concurrent with a full queue and with the pump's held frame, not an alternative to
-    either.
+    is concurrent with a full queue and with both in-hand frames, not an alternative to
+    any of them.
+
+  The enumeration cannot grow by a further party being noticed: every frame is in one of
+  the three counted structures or in the hands of the pump or the state machine, and each
+  of those holders is already counted.
 
   The drain's protocol-fatal scan is budgeted at `pump depth + 1` and not at this figure,
   which is not an inconsistency: the budget counts what the scan may DEQUEUE — the queue plus

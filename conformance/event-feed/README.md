@@ -141,8 +141,10 @@ asserting its scheduled delay against a `{min, max}` envelope — that is how ji
 is asserted without a cross-language RNG seam (Go additionally pins the full-jitter
 formula exactly in tier 3; a degenerate always-0 RNG is caught only there — a
 documented divergence). Each language's test clock passes the shared semantics
-checklist (deadline order, reentrant scheduling within an advance, creation-order
-tie-break) before its tier-2 results count.
+checklist (deadline order, creation-order tie-break) before its tier-2 results
+count; the reentrant clause stays normative for the algorithm — a clock that
+ignored it would fire the wrong set — but no tier-2 fixture can reach it (next
+paragraph), so it is not part of that gate.
 
 **The reentrant clause is unscriptable where the connector runs concurrently,
 so no fixture may rely on it.** In a single-threaded test clock, "a timer armed

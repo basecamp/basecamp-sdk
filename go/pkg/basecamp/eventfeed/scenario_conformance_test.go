@@ -596,8 +596,10 @@ func (d *driver) nextClientFrame(what string) (clientFrame, error) {
 // clock selects due timers under its own lock and unlocks ONLY across a
 // firing's aftermath — deliberately, so a woken recipient can arm inside the
 // window. An advance with nothing due therefore never unlocks, never wakes
-// anything, and cannot be the cause of any arm. One atomic read of the clock
-// settles it before time moves.
+// anything, and cannot be the cause of any arm. AdvanceIfQuiet decides the
+// due set and moves time under one hold of the clock's locks — a check and a
+// movement in two acquisitions would leave a gap where a concurrently armed
+// timer turns an accepted advance into a firing one.
 //
 // A script that wants a firing writes `fireTimer`, which fires one named timer
 // without advancing the clock and so involves no re-selection at all. The
@@ -608,14 +610,13 @@ func (d *driver) nextClientFrame(what string) (clientFrame, error) {
 // AdvanceSettling remains for a caller that genuinely wants a chained firing
 // with an explicit rendezvous. It is deliberately not reachable from a fixture.
 func (d *driver) advance(step *advanceStep) error {
-	if due := d.h.clock.DueWithin(millis(step.Ms)); len(due) > 0 {
+	if due, ok := d.h.clock.AdvanceIfQuiet(millis(step.Ms)); !ok {
 		return fmt.Errorf(
 			"advance of %dms would fire %v: whether a timer armed by one of those firings lands inside the "+
 				"same window depends on goroutine scheduling, so this script cannot mean the same thing in "+
 				"every language — use fireTimer, which fires one named timer without re-selecting",
 			step.Ms, due)
 	}
-	d.h.clock.Advance(millis(step.Ms))
 	return nil
 }
 

@@ -180,9 +180,10 @@ module Basecamp
       # Ruby has no typed decoder between the GET and this read, unlike the Go,
       # Swift and Kotlin composites where a wrong-typed field fails at decode,
       # and flattening the shape did not add one: the generated method still
-      # returns <tt>http_get(...).json</tt> verbatim. The same shape is live in
-      # the shipped Todos composite; tracked in #576, with the generated
-      # validating layer that would retire this guard tracked in #578.
+      # returns <tt>http_get(...).json</tt> verbatim. The same shape in the
+      # shipped Todos composite is guarded by the MergeSafe checks #576 closed
+      # with; the generated validating layer that would retire this guard is
+      # tracked in #578.
       def writable_string(body, key, non_empty: false)
         raise_missing_field(key) unless body.key?(key)
 
