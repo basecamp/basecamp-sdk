@@ -1,0 +1,51 @@
+MIGRATING.md
+  s_1c9d086ab67253::t_31a8199ef2adb3 14
+conformance/runner/python/uv.lock
+  s_1c9d086ab67253::t_82b94e780cbc98 43
+conformance/runner/ruby/Gemfile.lock
+  s_1c9d086ab67253::t_f73c780832fbf7 4,56
+conformance/runner/typescript/package-lock.json
+  s_1c9d086ab67253::t_78abddb651abcd 23
+go/pkg/basecamp/version.go
+  s_1c9d086ab67253::t_6583fa68d8abc5 4
+kotlin/sdk/build.gradle.kts
+  s_1c9d086ab67253::t_0abf7be5bb4d01 8
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/BasecampConfig.kt
+  s_1c9d086ab67253::t_f93847028cb1e3 44
+package.json
+  s_1c9d086ab67253::t_23d0a8c39b5dd3 3
+python/pyproject.toml
+  s_1c9d086ab67253::t_0f9ae8d154e48c 7
+python/src/basecamp/_version.py
+  s_1c9d086ab67253::t_564b8f505a3b50 1
+python/uv.lock
+  s_1c9d086ab67253::t_161abaab5879c3 20
+ruby/Gemfile.lock
+  s_1c9d086ab67253::t_d82a015d8e0b1b 4,156
+ruby/lib/basecamp/version.rb
+  s_1c9d086ab67253::t_f154eaaf7653fd 4
+swift/Sources/Basecamp/BasecampConfig.swift
+  s_1c9d086ab67253::t_2be808be2b620f 27
+typescript/package-lock.json
+  s_1c9d086ab67253::t_c0c820d25ad79c 3,9
+typescript/package.json
+  s_1c9d086ab67253::t_939493737b8542 3
+typescript/src/client.ts
+  s_1c9d086ab67253::t_fdd8a5e2b66cc9 269
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "1dd547b3fd85bcdbd491ac85a66566c87f295549",
+  "prompts": {},
+  "sessions": {
+    "s_1c9d086ab67253": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1f5628ec-50ac-4d8d-a2cc-cee5b0112903",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
