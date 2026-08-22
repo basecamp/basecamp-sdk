@@ -6,6 +6,7 @@ package eventfeed_test
 import (
 	"context"
 	"errors"
+	"runtime"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -1587,4 +1588,41 @@ func TestAcceptedPositionSavesAgainstAContextHonoringStore(t *testing.T) {
 		t.Errorf("context values seen by the store = %v, want [probe-value] — the save's context must keep "+
 			"the run's values and drop only its cancellation", got)
 	}
+}
+
+// TestPanicInHostCodeDisposesTheLiveAttempt: observers, signal handlers,
+// checkpoint stores, and the consumer's own range body all run on the run
+// goroutine, and any of them can panic. When an outer recovery keeps the
+// process alive, the unwound iteration must not strand the live attempt: the
+// socket must be closed (a compliant CableConn is only required to unblock
+// reads on Close), the pump joined, and the staleness window stopped — while
+// the panic itself still propagates to the consumer's recovery.
+func TestPanicInHostCodeDisposesTheLiveAttempt(t *testing.T) {
+	h := newHarness(t, eventfeed.WithObserver(eventfeed.Observer{
+		Confirmed: func() { panic("host code panicked") },
+	}))
+	h.minter.ScriptTicket(ticket(1))
+	base := runtime.NumGoroutine()
+	recovered := make(chan any, 1)
+	go func() {
+		defer func() { recovered <- recover() }()
+		for range h.conn.Events(context.Background()) {
+		}
+	}()
+
+	conn := h.driveToSubscribed()
+	conn.Serve(frameConfirm(noFilterIdentifier))
+	select {
+	case r := <-recovered:
+		if r == nil {
+			t.Fatal("the panic did not propagate out of the iteration")
+		}
+	case <-time.After(watchdog):
+		t.Fatal("the iteration neither panicked nor returned")
+	}
+	if !conn.Closed() {
+		t.Fatal("the live socket was not disposed during panic unwinding")
+	}
+	assertTimers(t, h.clock, map[string]int{})
+	assertGoroutinesSettle(t, base)
 }

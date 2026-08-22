@@ -771,3 +771,42 @@ func TestDriverRetryAfterParseIsTheSpecAlgorithm(t *testing.T) {
 		}
 	}
 }
+
+// TestDriverRedirectRefusalUsesTheRealPredicate: the driver models the
+// Layer-1 poll adapter, whose per-hop redirect rule IS checkContinuation —
+// "a redirect Location failing per-hop validation inside a poll seam call
+// (Continuation and Resume URL Validation)". Classifying by an ad-hoc origin
+// comparison instead re-implements the predicate, and diverges at its edges:
+// a Location that cannot be reduced to an origin at all ("https://", a
+// relative path) is a REFUSAL under the real rule — the seam refuses the
+// hop, zero requests to the failing URL — where the ad-hoc parse turned it
+// into a scenario error, as if the fixture were malformed rather than the
+// peer hostile.
+func TestDriverRedirectRefusalUsesTheRealPredicate(t *testing.T) {
+	d := &driver{h: newScenarioHarness()}
+	defer d.h.close()
+
+	for name, location := range map[string]string{
+		"unreducible location": "https://",
+		"relative location":    "/events.json",
+	} {
+		po, err := d.redirectRefusalFrom(map[string]string{"Location": location})
+		if err != nil {
+			t.Fatalf("%s: a hostile Location must classify as a refusal, not fail the scenario: %v", name, err)
+		}
+		var pe *eventfeed.PollError
+		if !errors.As(po.err, &pe) || pe.Kind != eventfeed.PollRedirectRefused {
+			t.Fatalf("%s = %+v, want PollRedirectRefused", name, po.err)
+		}
+	}
+	// And the refusal decision agrees with the predicate on the ordinary
+	// cross-origin case.
+	po, err := d.redirectRefusalFrom(map[string]string{"Location": "https://attacker.example.com/events.json"})
+	if err != nil {
+		t.Fatalf("cross-origin Location: %v", err)
+	}
+	var pe *eventfeed.PollError
+	if !errors.As(po.err, &pe) || pe.Kind != eventfeed.PollRedirectRefused {
+		t.Fatalf("cross-origin Location = %+v, want PollRedirectRefused", po.err)
+	}
+}
