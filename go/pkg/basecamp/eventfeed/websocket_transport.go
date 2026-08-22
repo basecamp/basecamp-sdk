@@ -121,6 +121,15 @@ var cableHTTPClient = &http.Client{
 
 // Dial implements CableTransport: policy pre-check, handshake, read limit.
 func (t *WebSocketTransport) Dial(ctx context.Context, wsURL string, maxFrameBytes int64) (CableConn, error) {
+	// Checked before anything else, ctx included: a configuration bug should
+	// surface as itself, not be masked by whichever transient condition also
+	// held. There is no unlimited mode to fall into — the parameter exists to
+	// bind the cap inside the WebSocket stack (SPEC.md §23), and passing the
+	// library's "no limit" sentinel instead would fail open on exactly the
+	// property the parameter enforces.
+	if maxFrameBytes <= 0 {
+		return nil, usageError("cable dial max frame bytes must be positive")
+	}
 	if derr := checkCableURL(wsURL); derr != nil {
 		return nil, derr
 	}
@@ -175,11 +184,7 @@ func (t *WebSocketTransport) Dial(ctx context.Context, wsURL string, maxFrameByt
 		// operator can see a terminal, but not an endless backoff cycle.
 		return nil, &DialError{Kind: DialPolicy, Reason: "cable server did not negotiate the " + cableSubprotocol + " subprotocol"}
 	}
-	if maxFrameBytes > 0 {
-		conn.SetReadLimit(maxFrameBytes)
-	} else {
-		conn.SetReadLimit(-1)
-	}
+	conn.SetReadLimit(maxFrameBytes)
 	lifetime, endLifetime := context.WithCancel(context.Background())
 	return &wsConn{conn: conn, lifetime: lifetime, endLifetime: endLifetime}, nil
 }
