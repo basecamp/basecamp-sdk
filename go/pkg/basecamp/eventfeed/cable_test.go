@@ -586,8 +586,11 @@ func TestUnsubscribeCommand(t *testing.T) {
 }
 
 func TestInvalidFrameError_RenderingCarriesNoFrameContent(t *testing.T) {
-	// §23 Security Invariants: error renderings of frame contents are
-	// bounded. The codec goes further — it never embeds frame bytes at all.
+	// §23 Security Invariants: an invalid-frame error renders no frame
+	// contents AT ALL — the rendering names the shape and nothing else.
+	// That absence is the required rule, not a courtesy past a cap:
+	// bounding is not redacting, and the cap governs only the package's
+	// other renderings.
 	secret := `{"type":"disconnect","token":"SECRET-DO-NOT-RENDER`
 	_, err := parseFrame([]byte(secret))
 	if err == nil {
