@@ -2,6 +2,7 @@ package eventfeed
 
 import (
 	"errors"
+	"strings"
 	"testing"
 )
 
@@ -135,5 +136,24 @@ func TestCloseError_Message(t *testing.T) {
 	bare := &CloseError{Code: 1006}
 	if got := bare.Error(); got != "cable connection closed by peer: code 1006" {
 		t.Errorf("Error() = %q", got)
+	}
+}
+
+// TestDialError_MessageIsBounded pins §9's MAX_ERROR_MESSAGE_LENGTH on
+// DialError renderings, CloseError-style. The reason can embed a mint-URL
+// component whose length url.Parse does not bound — an arbitrarily long
+// scheme parses — so the composed rendering must truncate rather than grow
+// with server-controlled text.
+func TestDialError_MessageIsBounded(t *testing.T) {
+	derr := checkCableURL(strings.Repeat("a", 2*maxErrorMessageBytes) + "://28.cable.basecamp.com/cable")
+	if derr == nil {
+		t.Fatal("checkCableURL accepted a non-ws(s) scheme")
+	}
+	msg := derr.Error()
+	if len(msg) > maxErrorMessageBytes {
+		t.Errorf("Error() is %d bytes, want at most %d", len(msg), maxErrorMessageBytes)
+	}
+	if !strings.HasSuffix(msg, "...") {
+		t.Errorf("Error() ends %q, want §9's truncation marker", msg[max(0, len(msg)-16):])
 	}
 }
