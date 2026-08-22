@@ -2,6 +2,7 @@ package eventfeed
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 )
@@ -86,13 +87,15 @@ type MintError struct {
 }
 
 // Error implements the error interface. The rendering never carries the
-// ticket or a mint URL's query string.
+// ticket or a mint URL's query string, and is bounded by §9's
+// MAX_ERROR_MESSAGE_LENGTH: Err is server-influenced text a TicketMinter
+// composed.
 func (e *MintError) Error() string {
 	msg := "event feed mint failed (" + e.Kind.String() + ")"
 	if e.Err != nil {
 		msg += ": " + e.Err.Error()
 	}
-	return msg
+	return truncateErrorText(msg)
 }
 
 // Unwrap exposes the underlying cause for errors.Is / errors.As traversal.
@@ -218,7 +221,8 @@ type PollError struct {
 	Err error
 }
 
-// Error implements the error interface.
+// Error implements the error interface. The composed result is bounded by
+// §9's MAX_ERROR_MESSAGE_LENGTH: Msg carries the server's message verbatim.
 func (e *PollError) Error() string {
 	msg := "event feed poll failed (" + e.Kind.String() + ")"
 	if e.Msg != "" {
@@ -227,7 +231,7 @@ func (e *PollError) Error() string {
 	if e.Err != nil {
 		msg += ": " + e.Err.Error()
 	}
-	return msg
+	return truncateErrorText(msg)
 }
 
 // Unwrap exposes the underlying cause for errors.Is / errors.As traversal.
@@ -275,9 +279,10 @@ type CableConn interface {
 	// {"type":"disconnect",...} frames. That verbatim-ness is the whole point
 	// of the seam: stock Action Cable discards the disconnect reason, and the
 	// terminal/non-terminal distinction lives only in this raw frame. A peer
-	// close surfaces as *CloseError. Like Dial's, the returned error must not
-	// render the cable URL or its query string: it reaches
-	// Observer.Disconnected.
+	// close surfaces as *CloseError; a message over the dial's maxFrameBytes
+	// surfaces as an error matching ErrFrameOversize. Like Dial's, the
+	// returned error must not render the cable URL or its query string: it
+	// reaches Observer.Disconnected.
 	ReadFrame(ctx context.Context) ([]byte, error)
 	// WriteFrame sends one raw text frame. Close and ctx cancellation must
 	// unblock an in-progress write; a write failure takes the current
@@ -288,6 +293,16 @@ type CableConn interface {
 	// and WriteFrame.
 	Close(code int, reason string) error
 }
+
+// ErrFrameOversize reports an inbound message that exceeded the dial's
+// maxFrameBytes. The default transport maps its WebSocket stack's read-limit
+// rejection to this sentinel, and a custom CableTransport must surface its
+// own the same way (matching via errors.Is): the size violation is one of
+// §23's three invalid-frame shapes, and Observer.Disconnected must carry that
+// invalid-frame indication — a classification a stack-specific untyped error
+// cannot carry across the seam. The rendering is fixed prose: the over-limit
+// frame is never materialized, so there is nothing to quote.
+var ErrFrameOversize = errors.New("eventfeed: inbound cable frame exceeds the dial's maximum frame size")
 
 // CloseError is returned by CableConn.ReadFrame when the peer closed the
 // socket, carrying the WebSocket close status.
@@ -366,7 +381,11 @@ type DialError struct {
 }
 
 // Error implements the error interface. The rendering never carries the
-// dialed URL's query string (the ticket rides in it).
+// dialed URL's query string (the ticket rides in it), and the composed result
+// is bounded by §9's MAX_ERROR_MESSAGE_LENGTH like every other URL-derived
+// rendering here (CloseError is the precedent): Reason can embed a mint-URL
+// component — a scheme or an explicit port — whose length url.Parse does not
+// bound.
 func (e *DialError) Error() string {
 	msg := "cable dial failed (" + e.Kind.String() + ")"
 	if e.Reason != "" {
@@ -375,7 +394,7 @@ func (e *DialError) Error() string {
 	if e.Err != nil {
 		msg += ": " + e.Err.Error()
 	}
-	return msg
+	return truncateErrorText(msg)
 }
 
 // Unwrap exposes the underlying cause for errors.Is / errors.As traversal.
