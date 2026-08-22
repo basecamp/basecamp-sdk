@@ -103,6 +103,14 @@ func TestNewValidation(t *testing.T) {
 		{"invalid utf-8 filter type", testOrigin, "1", minter, polls,
 			[]eventfeed.Option{eventfeed.WithFilters(eventfeed.Filters{Types: []string{"message.\xff"}})},
 			"UTF-8"},
+		// The origin must be validated RAW, before canonicalization:
+		// CanonicalOrigin lowercases through strings.ToLower, which rewrites
+		// every invalid byte to U+FFFD, so a post-canonical check passes a
+		// collapsed identity — these two rows would otherwise canonicalize to
+		// ONE origin and share one checkpoint lineage, the exact collapse
+		// checkIdentityText exists to refuse (checkpoint.go).
+		{"invalid utf-8 origin host (0xff)", "https://\xff.example.com", "1", minter, polls, nil, "UTF-8"},
+		{"invalid utf-8 origin host (0xfe)", "https://\xfe.example.com", "1", minter, polls, nil, "UTF-8"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -1411,6 +1419,77 @@ func TestCloseFromConnectedOutranksAQueuedFatalFrame(t *testing.T) {
 		t.Errorf("%d/%d rounds emitted a terminal element after Close returned; the Closed edge must win",
 			terminals, rounds)
 	}
+}
+
+// parkingCloseTransport wraps the harness transport so the FIRST socket
+// close parks until the test releases it — a deterministic hold inside a
+// teardown's disposal, after the terminal outcome is selected and before
+// emitTerminal publishes it.
+type parkingCloseTransport struct {
+	inner   *feedtest.Transport
+	parked  chan struct{}
+	release chan struct{}
+	once    sync.Once
+}
+
+func (p *parkingCloseTransport) Dial(ctx context.Context, wsURL string, maxFrameBytes int64) (eventfeed.CableConn, error) {
+	conn, err := p.inner.Dial(ctx, wsURL, maxFrameBytes)
+	if err != nil {
+		return nil, err
+	}
+	return &parkingCloseConn{CableConn: conn, tr: p}, nil
+}
+
+type parkingCloseConn struct {
+	eventfeed.CableConn
+	tr *parkingCloseTransport
+}
+
+func (c *parkingCloseConn) Close(code int, reason string) error {
+	c.tr.once.Do(func() { close(c.tr.parked) })
+	<-c.tr.release
+	return c.CableConn.Close(code, reason)
+}
+
+// TestCallerCancellationOutranksATerminalMidTeardown is the caller-cancel
+// sibling of TestCloseFromConnectedOutranksAQueuedFatalFrame. §23's universal
+// edge reads "close() / cancellation / consumer break", and Events promises
+// all three end iteration with NO error element — but the terminal claim
+// serializes publication against Close alone, so a caller cancelling ctx
+// while a subscription-rejection teardown was still closing the socket was
+// handed the subscription_rejected element anyway. The parked Close makes
+// the interleaving deterministic rather than a repeated-rounds race: the
+// terminal outcome is already selected, the teardown is mid-close, and the
+// caller cancels strictly before publication.
+func TestCallerCancellationOutranksATerminalMidTeardown(t *testing.T) {
+	pt := &parkingCloseTransport{parked: make(chan struct{}), release: make(chan struct{})}
+	h := newHarness(t, eventfeed.WithTransport(pt))
+	pt.inner = h.tr
+	var releaseOnce sync.Once
+	release := func() { releaseOnce.Do(func() { close(pt.release) }) }
+	// A parked teardown must never outlive the test, however it ended.
+	t.Cleanup(release)
+	h.minter.ScriptTicket(ticket(1))
+	h.start()
+
+	h.driveToSubscribed().Serve(frameReject(noFilterIdentifier))
+	select {
+	case <-pt.parked:
+	case <-time.After(watchdog):
+		t.Fatal("the reject teardown never reached the socket close")
+	}
+	h.cancel()
+	release()
+	h.join()
+
+	if _, terminal, elements := h.snapshot(); terminal != nil || elements != 0 {
+		t.Fatalf("cancellation must end iteration with no error element; got %d elements, terminal %v",
+			elements, terminal)
+	}
+	if sock := h.tr.LastConn(); sock == nil || !sock.Closed() {
+		t.Fatal("the rejected socket must still be closed")
+	}
+	assertTimers(t, h.clock, map[string]int{})
 }
 
 // ctxAwareStore is a CheckpointStore that HONORS its context, which the
