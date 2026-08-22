@@ -256,8 +256,10 @@ type CableTransport interface {
 	// redirects (§23 Security Invariants). ctx is the cancellation channel —
 	// the connector cancels it on handshake-deadline expiry and on close,
 	// and a cancelled dial must return promptly. maxFrameBytes must be
-	// enforced while reading (e.g. a read-limit on the socket), rejecting an
-	// over-limit message without materializing it.
+	// positive and enforced while reading (e.g. a read-limit on the socket),
+	// rejecting an over-limit message without materializing it; a
+	// non-positive value is refused as a usage error before any I/O — there
+	// is no unlimited mode.
 	//
 	// The returned error MUST NOT render wsURL or any part of its query
 	// string. The ticket rides in that query, and an error is opaque text, so
