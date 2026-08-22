@@ -308,3 +308,26 @@ func TestCableHTTPClient_IsWiredShut(t *testing.T) {
 		t.Error("cableHTTPClient.Transport.Proxy is not cableProxy; cleartext dials would proxy the ticket")
 	}
 }
+
+// TestCheckCableURL_NeverEchoesServerText pins the closed reason vocabulary.
+// §23's "never log the ticket" binds on the VALUE, and the ticket is opaque,
+// so any server-controlled URL component can be the ticket itself — a scheme
+// spelled as the ticket, or an all-digit ticket in the port position. Neither
+// may reach the rendering.
+func TestCheckCableURL_NeverEchoesServerText(t *testing.T) {
+	for _, tc := range []struct{ name, url, secret string }{
+		{"ticket as scheme", "t-sekrit-99://28.cable.basecamp.com/cable?ticket=t-sekrit-99", "sekrit"},
+		{"numeric ticket as port", "wss://28.cable.basecamp.com:987654321/cable?ticket=987654321", "987654321"},
+	} {
+		derr := checkCableURL(tc.url)
+		if derr == nil {
+			t.Fatalf("%s: checkCableURL(%q) = nil, want policy refusal", tc.name, tc.url)
+		}
+		if derr.Kind != DialPolicy {
+			t.Errorf("%s: Kind = %v, want DialPolicy", tc.name, derr.Kind)
+		}
+		if strings.Contains(derr.Error(), tc.secret) {
+			t.Errorf("%s: rendering %q echoes %q", tc.name, derr.Error(), tc.secret)
+		}
+	}
+}

@@ -18,8 +18,10 @@ import (
 // for localhost/loopback (the §9 carve-out). It returns nil when the URL may
 // be dialed, else a policy-kind *DialError → Terminal(invalid_cable_url),
 // never Backoff: the violation recurs by construction, because a fresh mint
-// returns the same unusable URL. The returned error never carries the URL or
-// its query string — the ticket rides in it.
+// returns the same unusable URL. The returned error never carries the URL,
+// its query string, or any raw component of it: reasons are a closed
+// vocabulary, and the one diagnostic kept — the http(s)-class mis-mint — is
+// named from a fixed allowlist, never echoed.
 func checkCableURL(wsURL string) *DialError {
 	u, err := url.Parse(wsURL)
 	if err != nil {
@@ -49,9 +51,19 @@ func checkCableURL(wsURL string) *DialError {
 			return &DialError{Kind: DialPolicy, Reason: "cable URL must use wss:// outside localhost"}
 		}
 	default:
-		// The scheme is structural, never secret — safe to name in the
-		// reason.
-		return &DialError{Kind: DialPolicy, Reason: "cable URL scheme " + `"` + scheme + `"` + " is not ws(s)"}
+		// The scheme is never echoed. It is server-controlled text, and the
+		// ticket is opaque, so no position in the URL is guaranteed not to
+		// BE the ticket: a mint returning "t-abc://host/cable?ticket=t-abc"
+		// makes the scheme literally the credential §23's Security
+		// Invariants say is never logged — an invariant on the value, which
+		// "the scheme is structural" cannot discharge. The one realistic
+		// mis-mint — an http(s) URL where ws(s) belonged — keeps its
+		// diagnostic, named from this fixed allowlist; everything else is
+		// named by class alone.
+		if scheme == "http" || scheme == "https" {
+			return &DialError{Kind: DialPolicy, Reason: "mint returned an http(s) URL where ws(s) was required"}
+		}
+		return &DialError{Kind: DialPolicy, Reason: "cable URL scheme is not ws(s)"}
 	}
 	// Hostname(), not Host: the authority can be nonempty while naming no host
 	// at all — "wss://:443/feed" parses with Host ":443" and "wss://user@/feed"
@@ -76,9 +88,11 @@ func checkCableURL(wsURL string) *DialError {
 	if port := u.Port(); port != "" {
 		n, perr := strconv.Atoi(port)
 		if perr != nil || n < 1 || n > 65535 {
-			// The port is structural, never secret — safe to name, like the
-			// scheme above.
-			return &DialError{Kind: DialPolicy, Reason: "cable URL port " + `"` + port + `"` + " is not a usable TCP port"}
+			// Value-free, like the scheme above: every port reaching this
+			// branch is out of range or overlong, so the class is the whole
+			// diagnostic — and an opaque all-digit ticket could otherwise be
+			// echoed ("wss://host:99999/cable?ticket=99999").
+			return &DialError{Kind: DialPolicy, Reason: "cable URL explicit port is not a usable TCP port"}
 		}
 	}
 	return nil
