@@ -1,0 +1,39 @@
+go/pkg/basecamp/eventfeed/loop.go
+  s_1c9d086ab67253::t_ae544930f2c08b 925-932
+  s_1c9d086ab67253::t_8e88b69eea2d6b 980-983
+go/pkg/basecamp/eventfeed/connector.go
+  s_1c9d086ab67253::t_77dbe9d350b592 435-444,451-460,464-467,477-478
+  s_1c9d086ab67253::t_57c2a9ddc59752 186-187
+  s_1c9d086ab67253::t_9ac086c4b16298 196-201
+go/pkg/basecamp/eventfeed/continuation.go
+  s_1c9d086ab67253::t_d736fdccb512a9 3-6
+  s_1c9d086ab67253::t_c42d650932c65a 29-42
+go/pkg/basecamp/eventfeed/loop_test.go
+  s_1c9d086ab67253::t_bac65711d26d2a 1247-1285
+go/pkg/basecamp/eventfeed/catchup.go
+  s_1c9d086ab67253::t_f8ba5cc35cea1c 1328-1351
+  s_1c9d086ab67253::t_f20dba9277b9a5 552-561
+  s_1c9d086ab67253::t_c4b6643cccf97b 612-623
+AGENTS.md
+  s_1c9d086ab67253::t_2dc2d7ae8be4e7 35
+go/pkg/basecamp/eventfeed/catchup_test.go
+  s_1c9d086ab67253::t_79a728435e292a 2588-2740
+go/pkg/basecamp/eventfeed/continuation_test.go
+  s_1c9d086ab67253::t_061341d936c94f 127-153
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "612040b0c090b0c2f9aee7f085bdbbd0a2660d7c",
+  "prompts": {},
+  "sessions": {
+    "s_1c9d086ab67253": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1f5628ec-50ac-4d8d-a2cc-cee5b0112903",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
