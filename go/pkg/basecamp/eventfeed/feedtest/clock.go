@@ -67,7 +67,13 @@ func (c *Clock) NewTimer(d time.Duration, name string) eventfeed.Timer {
 }
 
 // DueWithin returns the names of live timers due within d of the current
-// virtual time — exactly the set an Advance(d) would fire — in creation order.
+// virtual time — the INITIAL set an Advance(d) would fire, read from the
+// clock's present state — in creation order. It is not a complete firing
+// prediction: Advance re-evaluates after each fire, so a timer armed
+// reentrantly by a firing's recipient can fire inside the same window without
+// ever appearing here (TestClock_AdvanceFiresATimerArmedByAFiringsRecipient
+// shows one). The asymmetry is what makes the empty answer exact and the
+// non-empty answer a floor.
 //
 // Read under the same lock advance selects under and NewTimer arms under, so
 // the answer is atomic with respect to both. That is what lets a caller turn a
@@ -96,7 +102,10 @@ func (c *Clock) dueWithinLocked(target time.Time) []string {
 }
 
 // AdvanceIfQuiet advances virtual time by d only if the window would fire
-// nothing; otherwise it reports the due set and leaves the clock untouched.
+// nothing; otherwise it reports the INITIALLY due set — the same floor
+// DueWithin reads, sufficient here because rejection needs only "non-empty",
+// and an empty initial set means nothing fires at all — and leaves the clock
+// untouched.
 // It is DueWithin and Advance as ONE critical section, for the driver MUST
 // in SPEC §23: an advance whose window would fire any timer is rejected.
 // Deciding that with two separate lock acquisitions leaves a gap — a timer

@@ -403,6 +403,27 @@ out, status, _ = run_checker(
 )
 expect_fail(failures, "N+6. a non-list registry fails", out, status, "must be a list")
 
+# --- N+6a/b. site and file must be Strings, not merely stringifiable -------------
+#
+# `to_s` coerces [] and {} and 123 into non-empty text, so a malformed row
+# reached the issue check with no human-readable location. The row IS the
+# claim: a value the sweep's [file, issue] pair can never match is a promise
+# registered into a shape nothing reads.
+
+out, status, _ = run_checker(
+  allowlist: { "sdk_routes_known_defective" => [], "bc3_routes_not_modeled" => [] },
+  tracking: { "prose_tracking_issues" => [ { "issue" => 303, "site" => 123, "file" => "README.md" } ] },
+  states: "303=open"
+)
+expect_fail(failures, "N+6a. a non-string site fails", out, status, "needs a `site`")
+
+out, status, _ = run_checker(
+  allowlist: { "sdk_routes_known_defective" => [], "bc3_routes_not_modeled" => [] },
+  tracking: { "prose_tracking_issues" => [ { "issue" => 303, "site" => "README.md — a gap", "file" => [ "README.md" ] } ] },
+  states: "303=open"
+)
+expect_fail(failures, "N+6b. a non-string file fails", out, status, "needs a `file`")
+
 # --- N+7. A registry file without the key fails -----------------------------------
 #
 # The missing-FILE case (N+3) fails closed; a file whose key is misspelled or

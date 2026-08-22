@@ -3768,16 +3768,21 @@ further poll; store-failure coverage proves Failed(load) terminates with zero wi
 attempts and Failed(save) continues with the observer signal and a subsequent save
 attempt.
 
-**Zero egress to the foreign origin is a Layer-1 obligation, not tier-2 coverage**, and
-this paragraph used to require it here. Tier 2 cannot deliver it: the poll lane IS the
-seam, so the driver reduces the `Location` to its origin and hands the connector a
-refusal verdict. The connector never sees a `Location` and never decides whether to
-follow one, which makes the foreign origin unreachable by construction of the harness —
-a harness that asserted no request reached it would be asserting something about itself.
-The obligation belongs to the Layer-1 seam adapter's own 302 test, where a real
-generated `PollEvents` call meets a real redirect against an adapter with automatic
-redirect-following disabled. `conformance/event-feed/README.md`'s row-15 note records it
-as a pending obligation rather than a proof the repository contains.
+**Zero egress to the foreign origin splits at the seam.** For the hostile `next` and
+`resume` cases the target is connector-visible and tier 2 owns the coverage: a
+connector that follows one hands the URL to the poll seam, which the driver observes
+and fails — fixtures 26/27 assert zero requests to those hosts, structurally (no step
+ever serves them, and the harness's servers own only their own origins). For the
+redirect the obligation is Layer-1's, and this paragraph used to require it at tier 2:
+the poll lane IS the seam, so the driver reduces the `Location` to its origin and
+hands the connector a refusal verdict. The connector never sees a `Location` and never
+decides whether to follow one, which makes the foreign origin unreachable by
+construction of the harness — a harness that asserted no request reached it would be
+asserting something about itself. That obligation belongs to the Layer-1 seam
+adapter's own 302 test, where a real generated `PollEvents` call meets a real redirect
+against an adapter with automatic redirect-following disabled.
+`conformance/event-feed/README.md`'s row-15 note records it as a pending obligation
+rather than a proof the repository contains.
 
 ### Clock, Timers, and Virtual Time `[conformance]`
 
