@@ -1,0 +1,31 @@
+.github/workflows/test.yml
+  s_1c9d086ab67253::t_83434e302a25c2 123-125
+Makefile
+  s_1c9d086ab67253::t_35ad8fda319fb3 159-162
+SPEC.md
+  s_1c9d086ab67253::t_03eb83863e12de 3369-3374,3376-3379,3386-3389,3395-3397
+go/pkg/basecamp/eventfeed/buffer_test.go
+  s_1c9d086ab67253::t_fa3e62c5b2ee4c 7
+go/pkg/basecamp/eventfeed/catchup.go
+  s_1c9d086ab67253::t_0466bbf1452e79 1060,1062-1068
+go/pkg/basecamp/eventfeed/catchup_test.go
+  s_1c9d086ab67253::t_5d757452df07f6 1391
+scripts/check-known-defect-issues-open
+  s_1c9d086ab67253::t_bdd5afa046acf4 46-50
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "5c4afd131b28bf9821f3aeb6396359370c7b81fe",
+  "prompts": {},
+  "sessions": {
+    "s_1c9d086ab67253": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1f5628ec-50ac-4d8d-a2cc-cee5b0112903",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
