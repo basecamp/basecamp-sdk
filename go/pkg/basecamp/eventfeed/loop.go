@@ -699,6 +699,18 @@ func (l *loop) run(yield func(Event, error) bool) {
 			l.emitTerminal(out.term)
 			return
 		case outcomeFailed:
+			// Close outranks the announcement here as everywhere: the failed
+			// cycle's own observer callbacks (Disconnected, StaleConnection)
+			// are supported Close sites, and runCtx is then already
+			// cancelled when this outcome arrives — announcing Backoff and
+			// asking the product clock for a reconnect timer would be
+			// reconnect acts performed after Close returned, and a host
+			// clock that blocks in NewTimer would keep the iteration and
+			// Wait from reaching Closed at all.
+			if l.runCtx.Err() != nil {
+				l.setState(stateClosed)
+				return
+			}
 			// The failed attempt is fully disposed, so the exact
 			// outstanding-timer set on entry to Backoff is {backoff}.
 			l.failedCycles++
@@ -1045,6 +1057,26 @@ func (l *loop) awaitConfirmation(at *attempt, deadline Timer) cycleOutcome {
 				l.disposeAttempt(at, deadline)
 				l.observeDisconnected("", errors.New("event feed frame pump exited"))
 				return cycleOutcome{kind: outcomeFailed}
+			}
+			// A latched expiry outranks a ready frame, exactly as on the
+			// Streaming frame arm (catchup.go): a frame received after the
+			// window fired did not reset it, and handling it first admits a
+			// correlated message to the loop-wide buffer — which survives
+			// the teardown and resurfaces after reconnect — or hands a
+			// confirmation a live catch-up on a socket whose staleness
+			// verdict is already in. evaluate arbitrates: a frame the pump
+			// received first moved the generation and is handled as ever.
+			select {
+			case <-staleTimer.C():
+				if age, authoritative := at.lc.stale.evaluate(staleGen); authoritative {
+					l.disposeAttempt(at, deadline)
+					if l.cfg.observer.StaleConnection != nil {
+						l.cfg.observer.StaleConnection(age)
+					}
+					l.observeDisconnected("", errStaleConnection)
+					return cycleOutcome{kind: outcomeFailed}
+				}
+			default:
 			}
 			if out, done := l.handleFrame(at, &deadline, item); done {
 				return out
