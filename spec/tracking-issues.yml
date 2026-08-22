@@ -73,3 +73,24 @@ prose_tracking_issues:
   - issue: 775
     file: "typescript/src/errors.ts"
     site: "typescript/src/errors.ts — the strictness gate is recorded against the #775 divergence"
+  - issue: 799
+    file: "SPEC.md"
+    site: "SPEC.md §6 — Python and Ruby still truncate the delay; #799 tracks the rounding convergence"
+  - issue: 799
+    file: "MIGRATING.md"
+    site: "MIGRATING.md — #799 tracks the cross-SDK convergence on Retry-After rounding"
+  - issue: 775
+    file: "go/pkg/basecamp/client.go"
+    site: "go/pkg/basecamp/client.go — widening the set of statuses that carry a parsed Retry-After is #775's"
+  - issue: 799
+    file: "go/pkg/basecamp/client.go"
+    site: "go/pkg/basecamp/client.go — the rounding and over-range halves of the divergence are #799's"
+  - issue: 799
+    file: "go/pkg/basecamp/client_retry_after_test.go"
+    site: "go/pkg/basecamp/client_retry_after_test.go — pins Go's side pending #799's convergence"
+  - issue: 798
+    file: "SPEC.md"
+    site: "SPEC.md §6 — the generated Go parser stays Atoi until #798 lands the template change"
+  - issue: 798
+    file: "MIGRATING.md"
+    site: "MIGRATING.md — the generated copy of the parse is untouched pending #798"
