@@ -116,6 +116,70 @@ func TestFileCheckpointStore_RoundTrip(t *testing.T) {
 	}
 }
 
+// A symlinked store path is written THROUGH, not replaced. read follows the
+// link (an operator pointing the store through a symlink is documented as
+// ordinary), so Save must land the bytes at the link's target and leave the
+// link standing — a rename onto the link's own entry would silently turn it
+// into a regular file and leave every target-addressed consumer reading the
+// stale checkpoint forever.
+func TestFileCheckpointStore_SaveWritesThroughASymlinkedPath(t *testing.T) {
+	ctx := context.Background()
+	key := storeKey("openclaw")
+	dir := t.TempDir()
+	target := filepath.Join(dir, "real-checkpoints.json")
+	link := filepath.Join(dir, "checkpoints.json")
+
+	// Seed the target through its own path, then link to it.
+	if err := NewFileCheckpointStore(target).Save(ctx, key, "pos-old"); err != nil {
+		t.Fatalf("seeding the target: %v", err)
+	}
+	if err := os.Symlink(target, link); err != nil {
+		t.Fatalf("symlink: %v", err)
+	}
+
+	if err := NewFileCheckpointStore(link).Save(ctx, key, "pos-new"); err != nil {
+		t.Fatalf("Save() through the link = %v, want nil", err)
+	}
+
+	if fi, err := os.Lstat(link); err != nil || fi.Mode()&os.ModeSymlink == 0 {
+		t.Errorf("after Save, Lstat(link) = %v, %v — the link was replaced, want it left standing", fi.Mode(), err)
+	}
+	// The target holds the new position: link- and target-addressed
+	// consumers stay one store.
+	position, ok, err := NewFileCheckpointStore(target).Load(ctx, key)
+	if err != nil || !ok || position != "pos-new" {
+		t.Errorf("Load() via target = (%q, %v, %v), want (%q, true, nil)", position, ok, err, "pos-new")
+	}
+	position, ok, err = NewFileCheckpointStore(link).Load(ctx, key)
+	if err != nil || !ok || position != "pos-new" {
+		t.Errorf("Load() via link = (%q, %v, %v), want (%q, true, nil)", position, ok, err, "pos-new")
+	}
+}
+
+// A DANGLING symlink behaves like an open through it would: the first save
+// creates the file at the target, and the link keeps naming it.
+func TestFileCheckpointStore_SaveCreatesADanglingSymlinkTarget(t *testing.T) {
+	ctx := context.Background()
+	key := storeKey("openclaw")
+	dir := t.TempDir()
+	target := filepath.Join(dir, "not-yet.json")
+	link := filepath.Join(dir, "checkpoints.json")
+	if err := os.Symlink(target, link); err != nil {
+		t.Fatalf("symlink: %v", err)
+	}
+
+	if err := NewFileCheckpointStore(link).Save(ctx, key, "pos-1"); err != nil {
+		t.Fatalf("Save() through the dangling link = %v, want nil", err)
+	}
+	if fi, err := os.Lstat(link); err != nil || fi.Mode()&os.ModeSymlink == 0 {
+		t.Errorf("after Save, Lstat(link) = %v, %v — want the link left standing", fi.Mode(), err)
+	}
+	position, ok, err := NewFileCheckpointStore(target).Load(ctx, key)
+	if err != nil || !ok || position != "pos-1" {
+		t.Errorf("Load() via target = (%q, %v, %v), want (%q, true, nil)", position, ok, err, "pos-1")
+	}
+}
+
 // A position survives a fresh store instance over the same path: the point of
 // the store is durability across runs, not within one.
 func TestFileCheckpointStore_RoundTripAcrossInstances(t *testing.T) {

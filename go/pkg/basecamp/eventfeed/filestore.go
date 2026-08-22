@@ -390,13 +390,28 @@ func (s *FileCheckpointStore) read() (map[string]string, bool, error) {
 // store over this path is serialized — cannot corrupt this one's staging file,
 // and it is removed on every failure path so a failed save leaves no debris
 // beside the store.
+//
+// A symlinked store path is written THROUGH, not replaced. read follows the
+// link (Stat, deliberately — an operator pointing the store through a symlink
+// is ordinary), so the rename must land the bytes at the target the link
+// names: renaming onto the link's own directory entry would leave the target
+// untouched and silently turn the configured symlink into a regular file
+// after the first save, splitting consumers that address the link from those
+// that address the target. Resolving also keeps the rename same-filesystem
+// when the link crosses one — the staging temp lives beside the TARGET. Lock
+// identity is unaffected: it stays the configured spelling by design
+// (canonicalStorePath).
 func (s *FileCheckpointStore) writeAtomic(data []byte) error {
-	dir := filepath.Dir(s.path)
+	target, err := resolveStorePath(s.path)
+	if err != nil {
+		return fmt.Errorf("eventfeed: resolving checkpoint store path %s: %w", s.path, err)
+	}
+	dir := filepath.Dir(target)
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return fmt.Errorf("eventfeed: creating checkpoint store directory %s: %w", dir, err)
 	}
 
-	tmp, err := os.CreateTemp(dir, filepath.Base(s.path)+".tmp-*")
+	tmp, err := os.CreateTemp(dir, filepath.Base(target)+".tmp-*")
 	if err != nil {
 		return fmt.Errorf("eventfeed: staging a checkpoint store write in %s: %w", dir, err)
 	}
@@ -417,8 +432,38 @@ func (s *FileCheckpointStore) writeAtomic(data []byte) error {
 	if err := os.Chmod(tmpPath, 0o600); err != nil { // #nosec G703 -- store path is caller-configured
 		return fmt.Errorf("eventfeed: setting mode on the staged checkpoint store for %s: %w", s.path, err)
 	}
-	if err := os.Rename(tmpPath, s.path); err != nil { // #nosec G703 -- store path is caller-configured
+	if err := os.Rename(tmpPath, target); err != nil { // #nosec G703 -- store path is caller-configured
 		return fmt.Errorf("eventfeed: replacing checkpoint store %s: %w", s.path, err)
 	}
 	return nil
+}
+
+// resolveStorePath follows a symlinked FINAL component to the path a write
+// must replace, so writeAtomic and read agree on where the store lives. Only
+// the last element is walked — parent directories are followed by the
+// filesystem itself on every open — and a dangling link resolves to its
+// nonexistent target, where the first save then creates the file, exactly as
+// an open through the link would. The chain bound matches the kernels'
+// ELOOP-class limit; filepath.EvalSymlinks is not usable here because it
+// requires the full path to exist, and this store's file is created on the
+// first save.
+func resolveStorePath(path string) (string, error) {
+	for range 40 {
+		fi, err := os.Lstat(path)
+		if err != nil || fi.Mode()&os.ModeSymlink == 0 {
+			// Absent (first save) or a real file: this is the entry to
+			// replace. A stat error other than absence surfaces on the
+			// open/rename that follows, with its own context.
+			return path, nil
+		}
+		dest, err := os.Readlink(path)
+		if err != nil {
+			return "", err
+		}
+		if !filepath.IsAbs(dest) {
+			dest = filepath.Join(filepath.Dir(path), dest)
+		}
+		path = dest
+	}
+	return "", errors.New("too many levels of symbolic links")
 }
