@@ -1,0 +1,19 @@
+go/pkg/basecamp/eventfeed/filters_test.go
+  s_1c9d086ab67253::t_2ded101eba8133 105-108
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "4ef60d046cbb895b802379511102d0431428dfae",
+  "prompts": {},
+  "sessions": {
+    "s_1c9d086ab67253": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1f5628ec-50ac-4d8d-a2cc-cee5b0112903",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
