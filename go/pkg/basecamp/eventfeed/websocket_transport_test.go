@@ -271,10 +271,12 @@ func TestWebSocketTransport_HandshakeHeaders(t *testing.T) {
 }
 
 // TestWebSocketTransport_OversizedFrameAbortsRead drives a frame past the
-// dial's maxFrameBytes and asserts the in-read cap: the read errors without
-// delivering the frame, the error is neither a peer-close *CloseError nor a
-// cancellation, it never carries the ticket-bearing query, and the
-// connection is unusable afterward.
+// dial's maxFrameBytes and asserts the in-read cap: the read fails as
+// ErrFrameOversize — the seam's stable size-violation classification, which
+// is what lets the run loop dispatch it as an invalid frame rather than a
+// generic socket failure — without delivering the frame, the error is
+// neither a peer-close *CloseError nor a cancellation, it never carries the
+// ticket-bearing query, and the connection is unusable afterward.
 func TestWebSocketTransport_OversizedFrameAbortsRead(t *testing.T) {
 	h := newWSHarness(t)
 	const frameCap = 64
@@ -287,6 +289,9 @@ func TestWebSocketTransport_OversizedFrameAbortsRead(t *testing.T) {
 	_, err = readFrameWithin(context.Background(), t, conn)
 	if err == nil {
 		t.Fatal("oversized frame was delivered, want read error")
+	}
+	if !errors.Is(err, eventfeed.ErrFrameOversize) {
+		t.Errorf("oversized-frame rejection = %v, want ErrFrameOversize", err)
 	}
 	var ce *eventfeed.CloseError
 	if errors.As(err, &ce) {
