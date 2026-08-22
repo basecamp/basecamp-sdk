@@ -3922,7 +3922,8 @@ oversight, and it should be stated rather than assumed.
 
 # Not in this release
 
-Every change the `# Unreleased` section describes was merged by `fa15fc126`,
+Every change the newest release section above describes was merged by
+`fa15fc126`,
 and the in-flight set below was surveyed at that commit; the historical
 sections' counts keep the baselines they themselves state (v0.13.0's totals
 were measured at `9a819e44d`, as that section says). In flight at

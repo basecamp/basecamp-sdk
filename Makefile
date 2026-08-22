@@ -269,10 +269,7 @@ endif
 		{ echo "ERROR: Python pyproject.toml [project].version does not match $(VERSION). Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
 	@grep -qF 'VERSION = "$(VERSION)"' python/src/basecamp/_version.py || \
 		{ echo "ERROR: Python version does not match $(VERSION). Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
-	@grep -qxF '# v$(VERSION)' MIGRATING.md || \
-		{ echo "ERROR: MIGRATING.md has no '# v$(VERSION)' heading. Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
-	@! grep -qxF '# Unreleased' MIGRATING.md || \
-		{ echo "ERROR: MIGRATING.md still has an '# Unreleased' section — its notes would miss the release. Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
+	@./scripts/promote-migrating.sh --check $(VERSION)
 	@# Verify lockfiles are frozen against their manifests
 	@test "$$(jq -r '.version' typescript/package-lock.json)" = "$(VERSION)" -a "$$(jq -r '.packages[""].version' typescript/package-lock.json)" = "$(VERSION)" || \
 		{ echo "ERROR: typescript/package-lock.json records a stale SDK version. Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
@@ -304,6 +301,10 @@ endif
 	git tag "v$(VERSION)"
 	git push origin "v$(VERSION)"
 	@echo "Pushed v$(VERSION) — all SDK release workflows will trigger."
+
+# Self-test for the MIGRATING.md heading promotion used by bump and release
+test-promote-migrating:
+	@./scripts/test-promote-migrating.sh
 
 # Sync Smithy service version from spec/api-provenance.json
 sync-spec-version:
@@ -1598,7 +1599,7 @@ check:
 	 if [ $$rc -ne 0 ]; then exit $$rc; fi; \
 	 echo "==> All checks passed"
 
-check-targets: check-gradle-serialization test-check-gradle-serialization lint-actions sync-spec-version-check smithy-check smithy-mapper-test behavior-model-check provenance-check sync-api-version-check doc-constants-check url-routes-check bc3-route-parity test-bc3-route-parity go-check-drift go-check-wrapper-drift go-check-generated-drift check-grouped-client-coverage test-check-grouped-client-coverage auth-routable-check check-service-inventory-parity test-check-service-inventory-parity check-operation-assignment-parity test-check-operation-assignment-parity kt-check-drift swift-check-drift go-check ts-check rb-check kt-check swift-check py-check check-bucket-flat-parity validate-api-gaps check-deprecation-parity check-fixture-coverage kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-idempotency-parity check-write-semantics-parity check-retry-metadata-parity check-runner-test-reachability conformance check-fixture-execution check-replay-decoder-parity check-readme-env-vars test-check-readme-env-vars lint-npm-lockfile-writes test-lint-npm-lockfile-writes test-assert-sdk-built test-assert-lockfiles-unchanged check-projected-examples
+check-targets: check-gradle-serialization test-check-gradle-serialization test-promote-migrating lint-actions sync-spec-version-check smithy-check smithy-mapper-test behavior-model-check provenance-check sync-api-version-check doc-constants-check url-routes-check bc3-route-parity test-bc3-route-parity go-check-drift go-check-wrapper-drift go-check-generated-drift check-grouped-client-coverage test-check-grouped-client-coverage auth-routable-check check-service-inventory-parity test-check-service-inventory-parity check-operation-assignment-parity test-check-operation-assignment-parity kt-check-drift swift-check-drift go-check ts-check rb-check kt-check swift-check py-check check-bucket-flat-parity validate-api-gaps check-deprecation-parity check-fixture-coverage kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-idempotency-parity check-write-semantics-parity check-retry-metadata-parity check-runner-test-reachability conformance check-fixture-execution check-replay-decoder-parity check-readme-env-vars test-check-readme-env-vars lint-npm-lockfile-writes test-lint-npm-lockfile-writes test-assert-sdk-built test-assert-lockfiles-unchanged check-projected-examples
 	@:
 
 # Clean all build artifacts
