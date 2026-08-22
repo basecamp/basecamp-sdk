@@ -71,6 +71,20 @@ bash "$SCRIPT" --check 0.15.0 "$DIR/f.md" >/dev/null 2>&1; check "--check refuse
 { echo "# Migrating"; echo; echo "# v0.16.0"; echo; echo '```'; echo "# v0.12.0"; echo '```'; } > "$DIR/g.md"
 bash "$SCRIPT" --check 0.16.0 "$DIR/g.md" >/dev/null 2>&1; check "quoted old heading below top ignored" 0 $?
 
+# 12. promote refuses a target older than the newest released section
+fresh h.md "# Unreleased" "# v0.15.0"
+bash "$SCRIPT" 0.9.0 "$DIR/h.md" >/dev/null 2>&1; check "promote refuses backward target" 1 $?
+
+# 13. a two-digit component beats a one-digit one (component-wise, not lexicographic)
+fresh i.md "# Unreleased" "# v0.9.0"
+bash "$SCRIPT" 0.10.0 "$DIR/i.md" >/dev/null 2>&1; check "0.10.0 is newer than 0.9.0" 0 $?
+grep -qxF "# v0.10.0" "$DIR/i.md"; check "0.10.0 promoted" 0 $?
+
+# 14. a misplaced "# Unreleased" below the promoted top is refused, both branches
+fresh j.md "# v0.16.0" "# Unreleased" "# v0.15.0"
+bash "$SCRIPT" 0.16.0 "$DIR/j.md" >/dev/null 2>&1; check "idempotent branch refuses misplaced Unreleased" 1 $?
+bash "$SCRIPT" --check 0.16.1 "$DIR/j.md" >/dev/null 2>&1; check "no-notes branch refuses misplaced Unreleased" 1 $?
+
 if [ "$FAILS" -gt 0 ]; then
   echo "test-promote-migrating: $FAILS of $CASES assertions failed" >&2
   exit 1

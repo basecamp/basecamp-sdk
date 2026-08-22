@@ -23,9 +23,17 @@ if [ -z "$FIRST" ]; then
   exit 1
 fi
 
-# newer A B: true when A sorts strictly after B by version order
+# newer A B: true when A is strictly newer than B, compared component-wise.
+# Pure arithmetic on the three semver components — no reliance on sort -V,
+# whose availability varies across BSD userlands (Apple's current sort has
+# it; the portable spelling retires the question).
 newer() {
-  [ "$1" != "$2" ] && [ "$(printf '%s\n%s\n' "$1" "$2" | sort -V | tail -1)" = "$1" ]
+  local a1 a2 a3 b1 b2 b3
+  IFS=. read -r a1 a2 a3 <<< "$1"
+  IFS=. read -r b1 b2 b3 <<< "$2"
+  [ "$a1" -ne "$b1" ] && { [ "$a1" -gt "$b1" ]; return; }
+  [ "$a2" -ne "$b2" ] && { [ "$a2" -gt "$b2" ]; return; }
+  [ "$a3" -gt "$b3" ]
 }
 
 case "$FIRST" in
@@ -33,6 +41,17 @@ case "$FIRST" in
     if grep -qxF "# v$VERSION" "$FILE"; then
       echo "ERROR: $FILE already has a '# v$VERSION' section below '# Unreleased' — releasing $VERSION again would be a version rollback." >&2
       exit 1
+    fi
+    # The target must also be newer than the newest RELEASED section, or the
+    # promotion itself would file today's notes behind history (bump 0.9.0
+    # with 0.15.0 released would otherwise happily mint "# v0.9.0").
+    NEWEST_RELEASED=$(grep -m1 -E '^# v[0-9]+\.[0-9]+\.[0-9]+$' "$FILE" || true)
+    if [ -n "$NEWEST_RELEASED" ]; then
+      REL="${NEWEST_RELEASED#\# v}"
+      if ! newer "$VERSION" "$REL"; then
+        echo "ERROR: $VERSION is not newer than the newest released section in $FILE ('# v$REL') — refusing to promote backward." >&2
+        exit 1
+      fi
     fi
     if [ "$MODE" = check ]; then
       echo "ERROR: $FILE still has an '# Unreleased' section — its notes would miss the release. Run 'make bump VERSION=$VERSION' first." >&2
@@ -44,10 +63,18 @@ case "$FIRST" in
     echo "Promoted '# Unreleased' -> '# v$VERSION' in $FILE"
     ;;
   "# v$VERSION")
+    if grep -qxF "# Unreleased" "$FILE"; then
+      echo "ERROR: $FILE has a misplaced '# Unreleased' section below '# v$VERSION' — its notes would silently miss the release." >&2
+      exit 1
+    fi
     echo "$FILE: '# v$VERSION' is the newest section — promoted."
     ;;
   *)
     TOP="${FIRST#\# v}"
+    if grep -qxF "# Unreleased" "$FILE"; then
+      echo "ERROR: $FILE has a misplaced '# Unreleased' section below '$FIRST' — its notes would silently miss the release." >&2
+      exit 1
+    fi
     if newer "$VERSION" "$TOP"; then
       # Legitimate: a release with nothing migration-worthy has no section,
       # per the guide's one-section-per-release-that-breaks-something rule.
