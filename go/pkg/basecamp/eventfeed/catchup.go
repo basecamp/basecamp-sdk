@@ -1057,13 +1057,15 @@ func (l *loop) probeFatal(at *attempt) (cycleOutcome, bool) {
 //
 // This is why the scan needs no queue and no share of pumpDepth: it retains
 // exactly what the single slot always retained. The published cable-lane
-// retention bound — (pump depth + 3 + liveBufferCapacity) × MAX_FRAME_BYTES — is
+// retention bound — (pump depth + 4 + liveBufferCapacity) × MAX_FRAME_BYTES — is
 // untouched, and so is the depth at which the pump blocks. The slot IS one of
-// that formula's three raw-frame terms beyond the queue; the others are the
-// frame the pump has read and not yet handed off, and the frame the scan
-// itself has dequeued and not yet disposed of — the very receive that lets a
-// blocked pump refill the queue behind it. All three are retained WHILE the
-// queue is full, which is why they are addends and not alternatives.
+// that formula's frame-sized terms beyond the queue; the others are the frame
+// the pump has read and not yet handed off, and the frame the scan itself has
+// dequeued and not yet disposed of — the very receive that lets a blocked
+// pump refill the queue behind it, counted at TWO, its decode-time weight,
+// because parseFrame's json.RawMessage payload copy briefly coexists with the
+// original bytes. All are retained WHILE the queue is full, which is why they
+// are addends and not alternatives.
 func (l *loop) deferForDrain(d *deferredFrame) {
 	if l.deferred == nil {
 		l.deferred = d
