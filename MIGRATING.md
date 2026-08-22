@@ -13,6 +13,54 @@ what wrong behaviour you get if you ignore one. This file is that half.
 
 # Unreleased
 
+### Go: device-flow and token-exchange requests are address-policed by default (#806)
+
+**The compile error, if you get one:** none for direct calls. `NewExchanger`
+gained a variadic `...ExchangerOption`, which is source-compatible everywhere
+except a function value — `var f func(*http.Client) *oauth.Exchanger =
+oauth.NewExchanger` no longer compiles. `apidiff` reports it as incompatible
+for that reason.
+
+**The behaviour change:** `PerformDeviceLogin`, `RequestDeviceAuthorization`,
+`PollDeviceToken`, and an `Exchanger` built with a nil client used to post on
+`http.DefaultClient`. They now post on a client that judges the endpoint's
+literal address at dial time against `oauth.DefaultIssuerPolicy()` — the same
+policy #804 put on the advertised-issuer metadata fetch — because the
+`token_endpoint` and `device_authorization_endpoint` those requests target may
+be the ones a discovered issuer's metadata named, and nothing constrains those
+to the issuer's origin. An endpoint in loopback, RFC 1918, link-local, CGNAT,
+or IANA special-purpose space is refused before any connection opens, with a
+non-retryable `*basecamp.Error` (`api_error`) that also matches
+`errors.Is(err, surfguard.ErrBlocked)`. In the poll loop the refusal ends the
+flow on the first attempt; it is not a timeout and is never backed off.
+
+**Wrong behaviour you get if you ignore it:** a login or exchange against a
+hand-configured authorization server on `localhost` or a private address fails
+where it used to succeed, and the error names the address policy. Three
+remedies, in order of preference:
+
+```go
+// Re-admit exactly the space you need. AllowLoopback is the only derivation
+// that pierces the IANASpecialUse tables; for RFC 1918 build without them.
+oauth.PerformDeviceLogin(ctx, cfg, clientID, display,
+    oauth.WithDevicePolicy(oauth.DefaultIssuerPolicy().AllowLoopback()))
+oauth.NewExchanger(nil, oauth.WithExchangerPolicy(
+    surfguard.Policy{}.AllowAllPorts().Allow(netip.MustParsePrefix("10.4.0.0/16"))))
+
+// Carry the requests on your own client — yours, enforcement included.
+oauth.PerformDeviceLogin(ctx, cfg, clientID, display, oauth.WithDeviceHTTPClient(hc))
+oauth.NewExchanger(hc)
+
+// Restore the old behaviour outright.
+oauth.NewExchanger(http.DefaultClient)
+```
+
+**If you already pass your own client, nothing changed for you — including
+the protection.** A client handed to `WithDeviceHTTPClient` or `NewExchanger`
+is used as given; the policy is not layered on top, because it lives in the
+transport's dialer. Compose it in yourself where you can:
+`&http.Client{Transport: oauth.DefaultIssuerPolicy().RoundTripper()}`.
+
 ### All SDKs: the signed download hop no longer follows redirects (#805)
 
 `DownloadURL` (`downloadURL`, `download_url`, `UploadsService.Download` and its

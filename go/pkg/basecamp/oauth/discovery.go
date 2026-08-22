@@ -60,8 +60,22 @@ type Discoverer struct {
 	issuerClient *http.Client
 }
 
-// DefaultIssuerPolicy is the surfguard policy DiscoverFromResource applies to
-// the advertised-issuer hop.
+// DefaultIssuerPolicy is the surfguard policy applied, by default, to every
+// request whose destination an authorization server's metadata may have chosen:
+// DiscoverFromResource's advertised-issuer hop, and the device-authorization and
+// token endpoint POSTs made by the device flow and the [Exchanger].
+//
+// The endpoints are policed for the same reason as the issuer. A public issuer
+// that passes the policy returns issuer-bound metadata whose token_endpoint
+// and device_authorization_endpoint it chose freely — nothing in RFC 8414
+// constrains them to the issuer's origin — and those are where the
+// client_id, device_code, authorization code, client secret, and refresh
+// token are posted. Policing the metadata GET alone would leave that indirect
+// route open at the cost of one public host (#806). A same-origin rule is not
+// the control either: RFC 8705 publishes endpoints off the issuer origin by
+// design, and an origin comparison judges a hostname string, which can resolve
+// publicly during discovery and privately at the later POST. Dial-time
+// enforcement judges the literal address at the moment each socket opens.
 //
 // IANASpecialUse is the documented policy for advertised or discovered
 // infrastructure values — data a remote peer chose — and blocks the IANA
@@ -74,6 +88,39 @@ func DefaultIssuerPolicy() surfguard.Policy {
 	return surfguard.Policy{}.IANASpecialUse().AllowAllPorts()
 }
 
+// newPolicyClient builds a client whose transport enforces p on every connect.
+//
+// RoundTripper, not Client: the discovery fetch and the device flow each own
+// their timeout (a context deadline) and their redirect suppression, and
+// surfguard's Client would layer a second, coarser 30s bound and a redirect
+// follower those paths never want. Each call owns a transport, and therefore a
+// connection pool; callers that build one per request leak a pool per request,
+// which is why the default is shared (sharedPolicyClient) and the option
+// constructors build theirs once.
+func newPolicyClient(p surfguard.Policy) *http.Client {
+	return &http.Client{Transport: p.RoundTripper()}
+}
+
+// blockedEndpointError is the verdict on a device or token endpoint the
+// address policy refused. It is coded api_error and NOT retryable: surfguard's
+// contract is that blocked means stop talking to the target, and
+// ErrUnresolvable — the retry-later case — deliberately does not match
+// ErrBlocked. The original error stays in the chain, so errors.Is still reaches
+// surfguard.ErrBlocked and errors.As the *surfguard.Violation.
+//
+// api_error rather than usage, because the control exists for the endpoint a
+// remote peer chose: the SDK cannot tell a discovered endpoint from a
+// hand-configured one at this point, and the discovered case is the one the
+// refusal is for. It mirrors the advertised-issuer refusal, which is the hard
+// invalid_issuer_origin, also coded api_error.
+func blockedEndpointError(label, endpoint string, err error) *basecamp.Error {
+	return &basecamp.Error{
+		Code:    basecamp.CodeAPI,
+		Message: fmt.Sprintf("%s %q resolves to an address refused by the address policy (see oauth.DefaultIssuerPolicy)", label, endpoint),
+		Cause:   err,
+	}
+}
+
 // DiscovererOption configures a Discoverer at construction.
 type DiscovererOption func(*discovererConfig)
 
@@ -84,20 +131,22 @@ type discovererConfig struct {
 	issuerClient *http.Client
 }
 
-// sharedIssuerClient is the DefaultIssuerPolicy client, built once and shared by
-// every Discoverer that did not ask for something else.
+// sharedPolicyClient is the DefaultIssuerPolicy client, built once and shared by
+// every Discoverer, device-flow call, and Exchanger that did not ask for
+// something else.
 //
 // It owns an *http.Transport, and therefore a connection pool that nothing can
-// close: a Discoverer exposes no Close, so a per-Discoverer transport would leak
-// a pool per construction. Sharing is safe precisely because nothing mutates it
-// — fetchDiscoveryDocument calls noRedirectClient, which copies the client
-// before setting CheckRedirect, so the shared instance is only ever read.
+// close: a Discoverer exposes no Close, and a device-flow call has no handle at
+// all, so a per-construction transport would leak a pool per construction.
+// Sharing is safe precisely because nothing mutates it — fetchDiscoveryDocument
+// calls noRedirectClient and newDeviceConfig calls suppressRedirects, both of
+// which copy the client before setting CheckRedirect, so the shared instance is
+// only ever read.
 //
 // Only the DEFAULT is shared. A caller-supplied policy gets its own transport,
-// or one caller's Allow would silently widen every other Discoverer in the
-// process.
-var sharedIssuerClient = sync.OnceValue(func() *http.Client {
-	return &http.Client{Transport: DefaultIssuerPolicy().RoundTripper()}
+// or one caller's Allow would silently widen every other caller in the process.
+var sharedPolicyClient = sync.OnceValue(func() *http.Client {
+	return newPolicyClient(DefaultIssuerPolicy())
 })
 
 // WithIssuerPolicy replaces [DefaultIssuerPolicy] for the advertised-issuer
@@ -193,13 +242,10 @@ func NewDiscoverer(httpClient *http.Client, opts ...DiscovererOption) *Discovere
 		// A caller's own policy gets a transport of its own. Reusing the shared
 		// one would apply the default policy instead; sharing a NEW one keyed
 		// off nothing would leak this caller's Allow into every other
-		// Discoverer. RoundTripper, not Client: the discovery fetch owns its
-		// own timeout (a context deadline) and its own redirect suppression,
-		// and surfguard's Client would layer a second, coarser 30s bound and a
-		// redirect follower this code path never wants.
-		issuerClient = &http.Client{Transport: cfg.policy.RoundTripper()}
+		// Discoverer.
+		issuerClient = newPolicyClient(cfg.policy)
 	default:
-		issuerClient = sharedIssuerClient()
+		issuerClient = sharedPolicyClient()
 	}
 	return &Discoverer{httpClient: httpClient, issuerClient: issuerClient}
 }

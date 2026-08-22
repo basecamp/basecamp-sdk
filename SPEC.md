@@ -2087,6 +2087,65 @@ it: the assertion is "no connection was attempted", which is not an observable
 of the mock-HTTP runner, and the remaining four SDKs have no equivalent
 enforcement layer to point at yet. See Appendix F.
 
+##### 6. Judge the ADDRESS of the endpoints the selected metadata names `[Go-first]`
+
+Requirement 5 closes the metadata GET and leaves an indirect route open
+(#806). An attacker-controlled issuer on *public* space passes the policy, is
+selected, and returns correctly issuer-bound metadata whose `token_endpoint`
+and `device_authorization_endpoint` point wherever it likes — the metadata
+parser checks only that `token_endpoint` is non-empty and copies it verbatim.
+`requireSecureEndpoint` then admits any `https` host, private space included.
+So the cost of reaching private space is one public host, and what arrives
+there is the `client_id`, the `device_code`, the authorization code, the
+`client_secret`, or the refresh token — real credentials, where requirement 5's
+exposure was a blind GET. That is strictly worse than the one it closes.
+
+Two remedies that look sufficient are not, and the reasons are worth keeping:
+
+- **Same-origin is not the control.** RFC 8414 §2 requires the endpoint fields
+  to be URLs and says nothing about their origin, and RFC 8705 §5's
+  `mtls_endpoint_aliases` exists precisely so a server can publish endpoints
+  *off* the issuer origin. A same-origin rule is a departure from the standard,
+  not a tightening of it. It also does not survive DNS rebinding: the rule
+  compares hostname strings, and the hostname is resolved twice — once during
+  discovery, once at the later credential POST — so a name that resolves
+  publicly at discovery can resolve privately when the credentials go out.
+  Same-origin MAY be added as BC5 profile policy once fleet compatibility is
+  confirmed — BC5's metadata controller mints every endpoint from its own
+  route helpers next to `issuer: canonical_issuer_url`, but whether those share
+  an origin in every deployment is the check to run first — and even then it is
+  defence in depth, not the closure.
+- **Scheme alone is not the control.** `https` is satisfied by any private host.
+
+The control is the same one as requirement 5: **dial-time address enforcement
+on every device-authorization and token endpoint request**, judging the literal
+address at the moment each socket opens, so there is no check-to-use gap for a
+rebind to exploit and no assumption about what the AS chose to publish.
+
+The device and exchange functions cannot tell a discovered endpoint from a
+hand-configured one — `performDeviceLogin` takes a `Config`, `exchangeCode` and
+`refreshToken` take a string — so the policy applies to every request those
+functions make on their default client. That is the same uniformity decision as
+requirement 5's `expectedIssuer` rule, for the same reason: a provenance flag on
+the config is a marker that a consumer round-tripping the config through
+storage silently drops. The overrides are therefore the consumer's, and an
+implementation MUST expose the same three as requirement 5 — a replacement
+policy, a replacement client for the request, and a way to disable it (handing
+over a plain client counts). A refusal is coded `api_error`, is NOT retryable,
+and in the poll loop terminates the flow on the first attempt rather than
+backing off — surfguard's `unresolvable` (retry later) and `blocked` (stop)
+are distinct verdicts and must stay distinct here.
+
+**Go is the only implementation today** (`oauth.DefaultIssuerPolicy` on the
+device flow's and `Exchanger`'s default client; `WithDevicePolicy`,
+`WithExchangerPolicy`, `WithDeviceHTTPClient`, a non-nil `NewExchanger`
+client). Written `SHOULD` and `[Go-first]` for requirement 5's reasons. A
+caller-supplied client is the caller's, enforcement included: the policy is not
+layered on top of it, because the enforcement seam is the client's own dialer.
+That contract is what makes a consumer that passes its general-purpose client
+into these functions (as `basecamp-cli` does) responsible for composing the
+policy into that client's transport. See Appendix F.
+
 #### Injected-client fidelity tier `[static]`
 
 SDKs that accept a caller-supplied HTTP client (Ruby `http_client:`, and any
@@ -2171,7 +2230,10 @@ dark-launched (`issuance_enabled` off), the device authorization endpoint
 answers **503** — surfaced as `api_error` with that status, meaning "not yet
 enabled here", not a protocol failure.*
 
-Three functions per SDK. All device-auth + token requests are TLS-guarded (§9).
+Three functions per SDK. All device-auth + token requests are TLS-guarded (§9),
+and — Go only, today — address-policed at dial time on the default client (§16
+SSRF hardening, requirement 6), since the endpoints they POST credentials to may
+be the ones a discovered issuer's metadata named.
 
 ```
 FUNCTION requestDeviceAuthorization(deviceAuthEndpoint, clientId, scope?) → DeviceAuthorization
@@ -4067,6 +4129,45 @@ advertised on loopback or in RFC 1918 space, and which worked before, now needs
 `IANASpecialUse()` — those tables outrank `Allow`, and `AllowLoopback()` is the
 only derivation that pierces them — so an on-premises policy is built as
 `surfguard.Policy{}.AllowAllPorts().Allow(...)` instead.
+
+### Device and Token Endpoint Address Policy (§16)
+
+§16's SSRF requirement 6 — judging the address of the `token_endpoint` and
+`device_authorization_endpoint` the selected metadata names, at connection
+time, on every credential-bearing POST — is likewise implemented in Go only,
+with the same policy and the same override shape as the issuer hop. The
+per-SDK state, and the seam each SDK would need, so the follow-ups are
+specified rather than rediscovered:
+
+| SDK | Device-authorization and token endpoint POSTs |
+|-----|-----------------------------------------------|
+| Go | `oauth.DefaultIssuerPolicy()` on the device flow's and `Exchanger`'s default client, shared with the issuer hop. Refused as `api_error`, non-retryable; the poll loop terminates on the first attempt. Overrides: `WithDevicePolicy` / `WithDeviceHTTPClient`; `WithExchangerPolicy` / a non-nil `NewExchanger` client. A caller-supplied client is the caller's, enforcement included |
+| Ruby | Scheme gate, bounded timeout, suppressed redirects, bounded body. The `surfguard` gem (the shared classification tables, resolve-only by design) exists; enforcement would mean pinning a resolved address into `Net::HTTP#ipaddr=` under the default `Fetcher` transport, which the injected-Faraday lane cannot do |
+| TypeScript | Scheme gate, bounded timeout, `redirect: "manual"`, bounded body. No classification tables in the ecosystem; the seam is an undici `Agent` with a `connect.lookup` hook, which the SDK's global-`fetch` contract does not reach |
+| Python | Scheme gate, bounded timeout, `follow_redirects=False` (httpx default), bounded body. No classification tables; the seam is a custom `httpx` transport over a resolving `httpcore` backend |
+| Kotlin | Scheme gate, bounded timeout, `followRedirects = false`, bounded body. No classification tables; the JVM seam is OkHttp's `Dns` interface (OkHttp connects to exactly the addresses it returns, so filtering there is connect-time judgement), with no multiplatform equivalent |
+| Swift | Not applicable — ships no OAuth device flow or discovery |
+
+Three things hold in every SDK, policy or not, and are not what this
+divergence is about: the scheme gate, the bounded timeout, and the bounded
+body. Redirect suppression is NOT uniform on the exchange path: Go's
+`Exchanger` and Kotlin's `exchangeCode`/`refreshToken` follow redirects (TS's
+exchange passes no `redirect:` option, so it follows too), where the device
+flow suppresses them in all four — a 307 re-POSTs the credentials to the
+`Location`. Under Go's policy client each redirect hop's dial is judged, so the
+address policy holds across a redirect; the public-host re-POST does not need
+the policy to be exploitable and is the same cross-SDK shape as #805.
+
+The behavioral tightening is the same as the issuer hop's, and it reaches one
+more consumer shape: a Go caller that hand-configures a loopback or RFC 1918
+authorization server and relied on `NewExchanger(nil)` or a device-flow call
+with no `WithDeviceHTTPClient` now needs `WithExchangerPolicy` /
+`WithDevicePolicy` (with `AllowLoopback()` for local development), or passes
+`http.DefaultClient` to restore the old behavior outright. A caller that
+already passes its own client — `basecamp-cli` passes its general-purpose
+client to all three entry points — sees no change, and is also not protected
+by this: the policy lives in the transport, and that consumer owns its
+transport.
 
 ### Retry Strategy (§7)
 
