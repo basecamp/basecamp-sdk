@@ -59,6 +59,10 @@ sedi "s/^version = \".*\"/version = \"$VERSION\"/" python/pyproject.toml
 # 10. Python _version.py
 sedi "s/^VERSION = \".*\"/VERSION = \"$VERSION\"/" python/src/basecamp/_version.py
 
+# 11. MIGRATING.md — promote "# Unreleased" to "# v$VERSION" (make release
+# guards the promoted heading, so skipping this cannot reach a tag)
+"$(dirname "$0")/promote-migrating.sh" "$VERSION"
+
 # Sync TypeScript lockfile
 echo "Syncing TypeScript lockfile..."
 (cd typescript && npm install --package-lock-only --ignore-scripts)
