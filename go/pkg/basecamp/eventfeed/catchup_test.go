@@ -9,6 +9,7 @@
 package eventfeed_test
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"runtime"
@@ -2874,4 +2875,232 @@ func TestGracePhaseEndsAtItsDeadlineNotAWindowAfterItsLastWake(t *testing.T) {
 		t.Fatal("the grace deadline passed with the poll still awaited: the wake was re-armed a FULL window out (deadline + ~7.5s), not at the deadline")
 	}
 	h.awaitTimer(timerBackoff)
+}
+
+// pollAbandonProbeTransport wraps the harness transport twice over: it
+// captures the context the pump reads with (a live handle on the attempt
+// context, which is also the poll seam call's cancellation), and it parks
+// the FIRST socket close until released — the deterministic stand-in for a
+// peer that never acknowledges a graceful close and holds wsConn.Close for
+// its full grace budget.
+type pollAbandonProbeTransport struct {
+	inner   *feedtest.Transport
+	parked  chan struct{}
+	release chan struct{}
+	once    sync.Once
+
+	mu      sync.Mutex
+	readCtx context.Context
+}
+
+func (p *pollAbandonProbeTransport) Dial(ctx context.Context, wsURL string, maxFrameBytes int64) (eventfeed.CableConn, error) {
+	conn, err := p.inner.Dial(ctx, wsURL, maxFrameBytes)
+	if err != nil {
+		return nil, err
+	}
+	return &pollAbandonProbeConn{CableConn: conn, tr: p}, nil
+}
+
+type pollAbandonProbeConn struct {
+	eventfeed.CableConn
+	tr *pollAbandonProbeTransport
+}
+
+func (c *pollAbandonProbeConn) ReadFrame(ctx context.Context) ([]byte, error) {
+	c.tr.mu.Lock()
+	if c.tr.readCtx == nil {
+		c.tr.readCtx = ctx
+	}
+	c.tr.mu.Unlock()
+	return c.CableConn.ReadFrame(ctx)
+}
+
+func (c *pollAbandonProbeConn) Close(code int, reason string) error {
+	c.tr.once.Do(func() { close(c.tr.parked) })
+	<-c.tr.release
+	return c.CableConn.Close(code, reason)
+}
+
+// TestSupersededPollIsCancelledAtTheGraceDeadline: §23 abandons a superseded
+// seam call at the grace deadline, and "abandoned to the deferred outcome's
+// teardown (the teardown cancels it)" must mean cancelled AT the deadline —
+// not after the teardown's graceful socket close, which a peer that never
+// acknowledges holds for the transport's full close-grace budget. Until the
+// cancel lands, the abandoned poll (carrying the caller's bearer) is still
+// live and reconnection is stalled past the published
+// detection-window-plus-grace bound.
+func TestSupersededPollIsCancelledAtTheGraceDeadline(t *testing.T) {
+	pt := &pollAbandonProbeTransport{parked: make(chan struct{}), release: make(chan struct{})}
+	h := newHarness(t, eventfeed.WithTransport(pt))
+	pt.inner = h.tr
+	var relOnce sync.Once
+	rel := func() { relOnce.Do(func() { close(pt.release) }) }
+	t.Cleanup(rel)
+	wakes := make(chan struct{}, 64)
+	deferred := make(chan struct{}, 1)
+	h.conn.OnSupersededWake(func() {
+		select {
+		case wakes <- struct{}{}:
+		default:
+		}
+	})
+	h.conn.OnFrameDeferred(func() {
+		select {
+		case deferred <- struct{}{}:
+		default:
+		}
+	})
+	h.minter.ScriptTicket(ticket(1))
+	h.polls.StallNext()
+	h.start()
+
+	conn := h.driveToSubscribed()
+	conn.Serve(frameConfirm(noFilterIdentifier))
+	h.waitUntil("entry poll in flight", func() bool { return h.polls.CallCount() == 1 })
+	conn.FailReads(errors.New("read failed mid-poll"))
+	select {
+	case <-deferred:
+	case <-time.After(watchdog):
+		t.Fatal("the read failure was not deferred")
+	}
+	h.fireTimer(timerStaleness)
+	select {
+	case <-wakes:
+	case <-time.After(watchdog):
+		t.Fatal("no wake followed the staleness firing")
+	}
+	// Reaching the deadline abandons the call; the teardown's socket close
+	// then parks in the wrapper, exactly where a slow peer would hold it.
+	h.clock.Advance(7500 * time.Millisecond)
+	select {
+	case <-pt.parked:
+	case <-time.After(watchdog):
+		t.Fatal("the teardown never reached the socket close")
+	}
+	pt.mu.Lock()
+	readCtx := pt.readCtx
+	pt.mu.Unlock()
+	if readCtx == nil {
+		t.Fatal("no attempt context was captured")
+	}
+	if readCtx.Err() == nil {
+		t.Fatal("the superseded poll's context is still live while disposal waits in the socket close: the abandoned call outlives the grace deadline by up to the close-grace budget")
+	}
+	rel()
+	h.awaitTimer(timerBackoff)
+}
+
+// TestCloseFromCaughtUpDoesNotEnterStreaming: Close is supported from every
+// observer callback, and CaughtUp is the last one before Streaming — a Close
+// taken inside it must take the universal Closed edge, not announce
+// Streaming and ask the product clock for a repair timer after Close has
+// returned (a host clock that blocks in NewTimer would then keep the
+// iteration and Wait from ever reaching Closed).
+func TestCloseFromCaughtUpDoesNotEnterStreaming(t *testing.T) {
+	var mu sync.Mutex
+	var states []string
+	var h *harness
+	h = newHarness(t, eventfeed.WithObserver(eventfeed.Observer{
+		CaughtUp: func() { h.conn.Close() }, //nolint:errcheck // asserted via states
+	}))
+	h.conn.OnStateChanged(func(s string) { mu.Lock(); states = append(states, s); mu.Unlock() })
+	h.minter.ScriptTicket(ticket(1))
+	h.polls.ScriptPage(eventfeed.PollPage{Position: "pos-1"})
+	h.start()
+
+	conn := h.driveToSubscribed()
+	conn.Serve(frameConfirm(noFilterIdentifier))
+	h.join()
+
+	mu.Lock()
+	defer mu.Unlock()
+	if slices.Contains(states, "streaming") {
+		t.Fatalf("states %v: Streaming was entered (and the repair timer armed through the product clock) after Close returned from CaughtUp", states)
+	}
+}
+
+// TestLatchedStalenessOutranksAReadyConfirmation is the AwaitingConfirmation
+// sibling of the Streaming frame-arm fix: a frame received after the window
+// fired does not reset it (the expiry latches), and both the fired timer and
+// that frame can be ready at the select. Handling the frame first hands a
+// confirmation a live catch-up — Confirmed announced, the entry poll issued —
+// on a socket whose staleness verdict is already in. Rounds-driven: the run
+// goroutine parks in an overflow handler while the window fires and the
+// confirmation arrives behind it; any round announcing Confirmed is a
+// violation.
+func TestLatchedStalenessOutranksAReadyConfirmation(t *testing.T) {
+	const rounds = 40
+	violations := 0
+	for i := range rounds {
+		func() {
+			parked := make(chan struct{}, 1)
+			release := make(chan struct{})
+			var once sync.Once
+			rel := func() { once.Do(func() { close(release) }) }
+			t.Cleanup(rel)
+			confirmed := make(chan struct{}, 1)
+			disconnected := make(chan struct{}, 8)
+			h := newHarness(t,
+				eventfeed.WithLiveBufferCapacity(1),
+				eventfeed.WithSignalHandler(func(eventfeed.Signal) eventfeed.Disposition {
+					select {
+					case parked <- struct{}{}:
+					default:
+					}
+					<-release
+					return eventfeed.Accept
+				}),
+				eventfeed.WithObserver(eventfeed.Observer{
+					Confirmed: func() {
+						select {
+						case confirmed <- struct{}{}:
+						default:
+						}
+					},
+					Disconnected: func(string, error) {
+						select {
+						case disconnected <- struct{}{}:
+						default:
+						}
+					},
+				}))
+			h.minter.ScriptTicket(ticket(1))
+			h.start()
+
+			conn := h.driveToSubscribed()
+			conn.Serve(frameMessage(noFilterIdentifier, 101))
+			conn.Serve(frameMessage(noFilterIdentifier, 102))
+			select {
+			case <-parked:
+			case <-time.After(watchdog):
+				t.Fatal("the overflow handler never parked the run goroutine")
+			}
+			h.fireTimer(timerStaleness)
+			conn.Serve(frameConfirm(noFilterIdentifier))
+			h.waitUntil("the confirmation to reach the hand-off", func() bool {
+				return conn.Pending() == 0
+			})
+			rel()
+
+			deadline := time.Now().Add(watchdog)
+			for {
+				select {
+				case <-confirmed:
+					violations++
+					t.Logf("round %d: Confirmed announced past a latched staleness expiry", i)
+					return
+				case <-disconnected:
+					return
+				default:
+				}
+				if time.Now().After(deadline) {
+					t.Fatal("round undecided: neither Confirmed nor a teardown")
+				}
+				time.Sleep(time.Millisecond)
+			}
+		}()
+	}
+	if violations != 0 {
+		t.Errorf("%d/%d rounds confirmed a subscription past a latched staleness expiry; the frame arm must re-evaluate the verdict first (transition 15 before 11)", violations, rounds)
+	}
 }

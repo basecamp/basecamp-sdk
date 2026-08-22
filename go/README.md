@@ -764,6 +764,14 @@ attempts.
 breaking out of the loop all end iteration with **no** error element — a clean stop, and
 the feed is resumable by design.
 
+`Close` only cancels: it can return while the run's final acts are still in flight —
+including a checkpoint save, which deliberately outlives cancellation (an accepted
+page's events were already delivered, and dropping the write would silently re-deliver
+them). `Wait` is the quiescence point: it returns only once the run goroutine has
+exited, so no save can still be in flight. Await the iterator's end — or `Wait` —
+before opening a second connector over the same checkpoint store; a replacement opened
+straight after `Close` can race the prior run's last save.
+
 ### Checkpointing
 
 `FileCheckpointStore` is the built-in `CheckpointStore`: one JSON file holding every
@@ -800,17 +808,22 @@ the disposition lives exclusively in the handler.
 
 ### Terminal versus continuable
 
-Continuable failures — a dropped socket, a staleness expiry, a throttled or transient
-mint or poll, a rejected position (400-position or 409) — never reach the consumer as
-errors. They ride the reconnect cycle (full-jitter backoff) or the poll-retry timer, and
-you see them through `Observer` callbacks if you register any.
+Continuable failures never reach the consumer as errors; you see them through
+`Observer` callbacks if you register any. How each continues differs: a dropped socket,
+a staleness expiry, and a throttled or transient mint ride the reconnect cycle
+(full-jitter backoff, fresh ticket); a throttled or transient poll waits the poll-retry
+timer on the same socket; a rejected position (400-position or 409) re-enters the walk
+**immediately** — a replacement cursor re-polled on the same socket, with no timer and
+no reconnect between.
 
 A terminal condition ends the iteration with exactly one final `*eventfeed.TerminalError`
 element carrying a `TerminalReason`: `subscription_rejected`, `protocol_fatal`,
 `filter_invalid`, `authorization_failed`, `checkpoint_load`, `usage`, `buffer_overflow`,
 `feed_gap`, `invalid_continuation`, `poll_failed`, `mint_failed`, or `invalid_cable_url`.
-Switch on `te.Reason` rather than on message text; `errors.Unwrap` reaches the generated
-error behind `mint_failed` and `poll_failed`.
+Switch on `te.Reason` rather than on message text. `errors.Unwrap` reaches the
+generated error behind `mint_failed`, and behind `poll_failed` when one exists — the
+connector's own poll verdicts carry none (a 200 whose page has no position is
+`poll_failed` with no generated cause), so check the unwrapped error for nil.
 
 ## Pagination
 
