@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"math"
 	"math/rand"
 	"net/http"
 	"net/url"
@@ -691,20 +692,22 @@ func (c *Client) doRequestURL(ctx context.Context, method, url string, body any)
 
 		// Check for retryable error with server-specified delay
 		var delay time.Duration
-		if re, ok := err.(*retryableError); ok {
-			lastErr = re.err
-			if re.retryAfter > 0 {
-				// Use server-specified Retry-After delay
-				delay = re.retryAfter
-			} else {
-				delay = c.backoffDelay(attempt)
-			}
-		} else if apiErr, ok := err.(*Error); ok {
+		if apiErr, ok := err.(*Error); ok {
 			if !apiErr.Retryable {
 				return nil, err
 			}
 			lastErr = err
-			delay = c.backoffDelay(attempt)
+			// A server-specified Retry-After replaces the backoff curve
+			// outright — no jitter, no policy ceiling (only the
+			// representability clamp parseRetryAfter already applied), same
+			// idiom as downloadURL. Only the 429 arm of singleRequest sets it
+			// today; widening the set of statuses that carry one is #775's
+			// call, not this loop's.
+			if apiErr.RetryAfter > 0 {
+				delay = time.Duration(apiErr.RetryAfter) * time.Second
+			} else {
+				delay = c.backoffDelay(attempt)
+			}
 		} else {
 			return nil, err
 		}
@@ -722,6 +725,21 @@ func (c *Client) doRequestURL(ctx context.Context, method, url string, body any)
 		info := RequestInfo{Method: method, URL: url, Attempt: attempt}
 		c.hooks.OnRetry(ctx, info, attempt+1, lastErr)
 
+		// Cancellation must win over the wait. A server-specified Retry-After
+		// has no policy ceiling by design — only the ~68-year representability
+		// clamp — so an uninterruptible sleep would let a server pin a request
+		// the caller already abandoned open for as long as it liked.
+		//
+		// The select alone cannot promise that. When both cases are ready Go
+		// picks one pseudo-randomly, and OnRetry has just run: a hook that
+		// cancels there, with a delay that has already elapsed, would see the
+		// timer win and one more request go out on a dead context — failing
+		// fast, but as the transport's wrapping of context.Canceled rather
+		// than ctx.Err(). So the context is checked first, where nothing
+		// competes with it.
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()
@@ -1069,22 +1087,139 @@ func parseNextLink(linkHeader string) string {
 	return ""
 }
 
+// maxRetryAfterSeconds is the largest delta-seconds value this SDK honours:
+// 2147483647, ~68 years. It is a REPRESENTABILITY bound taken at the portable
+// limit, not a policy ceiling — SPEC §7's "Retry-After is exempt" note already
+// carves out exactly this ("implementations may still bound it against host
+// limits"), and Swift clamps its own seconds→nanoseconds conversion for the
+// same class of reason. Deciding a *policy* cap on server-directed waits is
+// #793's, and this is not one: at ~68 years, nothing a server could sensibly
+// ask for is affected. (Kotlin uses this same number, but only in its
+// HTTP-date branch — its integer branch rejects instead, so it is not the
+// precedent an earlier draft of this comment cited it as.)
+//
+// Two host limits sit above it and this is at or below both, which is why the
+// answer does not depend on the word size: `seconds × time.Second` wraps past
+// math.MaxInt64 above ~292 years, and RetryAfter is an `int`, which is 32 bits
+// on a 32-bit target. Taking the smaller keeps one documented number for every
+// platform — the same 2147483647 SPEC §16 already names as a shared cross-SDK
+// ceiling — instead of an answer a reader has to compute from GOARCH.
+const maxRetryAfterSeconds = math.MaxInt32
+
+// clampRetryAfterSeconds normalizes a delta-seconds value to the range Error's
+// RetryAfter field promises: non-negative, and small enough that the retry
+// loops' `time.Duration(n) * time.Second` stays positive on every target.
+//
+// The failure this closes is not hypothetical arithmetic. `Retry-After:
+// 9223372036854775807` parses cleanly on a 64-bit build, and the product wraps
+// to -1s; `time.After` on a non-positive duration fires immediately, so a
+// server-directed wait becomes a tight retry loop — the opposite of what the
+// header asked for.
+//
+// Over-range clamps rather than falling back to "absent" because clamping is
+// what honours the server: falling back would compute the millisecond backoff
+// curve instead and hammer a peer that just asked for a long wait, which is the
+// same tight loop by another route. The wait is a select on ctx.Done(), so an
+// absurd clamped delay is abandonable rather than a hang.
+//
+// It takes an int64 because both callers have one — the date branch derives
+// seconds from a time.Duration, and the delta-seconds branch parses into 64
+// bits so the answer cannot depend on the word size. A single comparison
+// against a bound below every target's int range is also what makes the
+// narrowing legible to CodeQL's go/incorrect-integer-conversion, which reads
+// the guard rather than the arithmetic and flagged the previous spelling.
+func clampRetryAfterSeconds(seconds int64) int {
+	if seconds <= 0 {
+		return 0
+	}
+	if seconds > maxRetryAfterSeconds {
+		return maxRetryAfterSeconds
+	}
+	return int(seconds)
+}
+
+// isDelaySeconds reports whether the value is RFC 9110's `1*DIGIT` and nothing
+// else: no sign, no space, no separator, no decimal point.
+func isDelaySeconds(value string) bool {
+	if value == "" {
+		return false
+	}
+	for _, r := range value {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
+}
+
 // parseRetryAfter parses the Retry-After header value.
 // It handles both seconds (integer) and HTTP-date formats.
-// Returns 0 if the header is empty or cannot be parsed.
+// Returns 0 if the header is empty or cannot be parsed, and clamps a parsed
+// value to maxRetryAfterSeconds, the portable ceiling — every caller
+// multiplies the result by time.Second, and the product must stay positive on
+// every target.
 func parseRetryAfter(header string) int {
 	if header == "" {
 		return 0
 	}
-	// Try parsing as seconds (integer)
-	if seconds, err := strconv.Atoi(header); err == nil && seconds > 0 {
-		return seconds
+	// Try parsing as seconds (integer). Parsed as an int64 rather than through
+	// Atoi, whose range is int's: `Retry-After: 2147483648` would otherwise be
+	// ErrRange, hence malformed, hence the millisecond backoff on a 32-bit
+	// build while the same header is honoured on a 64-bit one. Deciding the
+	// ceiling is the clamp's job, not the parse's.
+	//
+	// A value too large for that int64 is treated as MALFORMED and falls
+	// through to step 3's backoff rather than saturating. So is any other
+	// unparseable input: ParseInt returns 0 with ErrSyntax, and a negative
+	// range error clamps to math.MinInt64, both caught by the `> 0` guard
+	// alongside the err check. Saturation is reserved for a value the parser
+	// holds but the host cannot schedule, and that is clampRetryAfterSeconds'
+	// job below.
+	//
+	// That split is Go's, not something §6's parsing algorithm mandates on
+	// its own — the algorithm says only "parse a positive integer". It is the
+	// two-tier rule #793 states in SPEC §6 "Retry-After Honouring"
+	// (unrepresentable in the parser's own type → malformed; representable but
+	// unschedulable → saturate); the cross-SDK convergence on over-range
+	// values, which the SDKs still answer differently, is #799's. The rule is
+	// deliberately not restated here; #793 is where it is argued.
+	//
+	// The digits are checked rather than left to ParseInt, which accepts a
+	// leading `+` or `-`. RFC 9110 spells delay-seconds as `1*DIGIT` — no sign
+	// — so `+5` is not a delay at all, and ParseInt would otherwise honour it
+	// as 5. Same digits-only test SPEC §16's device parser makes, and the same
+	// reading conformance's "partly numeric rejected (`1*DIGIT`)" case asserts.
+	if isDelaySeconds(header) {
+		if seconds, err := strconv.ParseInt(header, 10, 64); err == nil && seconds > 0 {
+			return clampRetryAfterSeconds(seconds)
+		}
 	}
 	// Try parsing as HTTP-date (e.g., "Wed, 21 Oct 2015 07:28:00 GMT")
 	if t, err := http.ParseTime(header); err == nil {
-		seconds := int(time.Until(t).Seconds())
-		if seconds > 0 {
-			return seconds
+		// Whole seconds by integer division of the Duration, NOT via
+		// `int(d.Seconds())`. That spelling narrows a float64 to an int, and
+		// Go leaves an out-of-range float→int conversion implementation-
+		// defined: where int is 32 bits, a date more than ~68 years out (and
+		// time.Until saturates at ~292 for anything further, including the
+		// year-9999 dates a server can legally send) produced a garbage value
+		// that read as non-positive, so the header was discarded and the loop
+		// fell back to its millisecond backoff — the one outcome this clamp
+		// exists to avoid. Integer division cannot leave the Duration's range,
+		// and clampRetryAfterSeconds bounds the result by int's.
+		//
+		// Rounded UP, matching Kotlin's `(remainingMs + 999) / 1000`, Swift's
+		// `.rounded(.up)` and TypeScript's `Math.ceil`, whose shared reason is
+		// that truncating a sub-second remainder toward zero turns the
+		// shortest honoured delay into "retry immediately": a date 400ms out
+		// became 0, was read as "no delay", and fell onto the backoff curve.
+		// Rounding up also never retries before the moment the server named.
+		// Python and Ruby still truncate; that half of the divergence is #799.
+		if remaining := time.Until(t); remaining > 0 {
+			seconds := int64(remaining / time.Second)
+			if remaining%time.Second != 0 {
+				seconds++
+			}
+			return clampRetryAfterSeconds(seconds)
 		}
 	}
 	return 0

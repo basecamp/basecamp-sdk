@@ -170,8 +170,11 @@ jobs:
       # --- Filter generated-code alerts ---
       # paths-ignore in codeql-config.yml only governs source extraction
       # (effective for JS/Ruby). For compiled languages the extractor traces
-      # the build, so generated code enters the database. Strip those results
-      # from SARIF before upload.
+      # the build, so generated code enters the database — and generated
+      # Python stays extracted on purpose (see codeql-config.yml). Strip those
+      # results from SARIF before upload. The filter lives in
+      # .github/codeql/sarif-filter.jq so test-sarif-filter.sh exercises the
+      # exact program this workflow runs.
 
       - name: Filter generated-code alerts from SARIF
         if: always() && matrix.language != 'actions'
@@ -179,14 +182,7 @@ jobs:
           for sarif in sarif-results/*.sarif; do
             [ -f "$sarif" ] || continue
             before=$(jq '[.runs[].results // [] | length] | add // 0' "$sarif")
-            jq '
-              .runs |= map(.results |= (. // [] | map(
-                select(
-                  (.locations // [])[0].physicalLocation.artifactLocation.uri // "" |
-                  test("(^|/)(go/pkg/generated/|typescript/(src/generated|dist)/|ruby/lib/basecamp/generated/|swift/Sources/Basecamp/Generated/|kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/)") | not
-                )
-              )))
-            ' "$sarif" > "${sarif}.tmp" && mv "${sarif}.tmp" "$sarif"
+            jq -f .github/codeql/sarif-filter.jq "$sarif" > "${sarif}.tmp" && mv "${sarif}.tmp" "$sarif"
             after=$(jq '[.runs[].results | length] | add // 0' "$sarif")
             filtered=$((before - after))
             echo "$(basename "$sarif"): $before findings, filtered $filtered generated-code alerts, $after remaining"
@@ -244,14 +240,7 @@ jobs:
           for sarif in sarif-results/*.sarif; do
             [ -f "$sarif" ] || continue
             before=$(jq '[.runs[].results // [] | length] | add // 0' "$sarif")
-            jq '
-              .runs |= map(.results |= (. // [] | map(
-                select(
-                  (.locations // [])[0].physicalLocation.artifactLocation.uri // "" |
-                  test("(^|/)(go/pkg/generated/|typescript/(src/generated|dist)/|ruby/lib/basecamp/generated/|swift/Sources/Basecamp/Generated/|kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/)") | not
-                )
-              )))
-            ' "$sarif" > "${sarif}.tmp" && mv "${sarif}.tmp" "$sarif"
+            jq -f .github/codeql/sarif-filter.jq "$sarif" > "${sarif}.tmp" && mv "${sarif}.tmp" "$sarif"
             after=$(jq '[.runs[].results | length] | add // 0' "$sarif")
             filtered=$((before - after))
             echo "$(basename "$sarif"): $before findings, filtered $filtered generated-code alerts, $after remaining"

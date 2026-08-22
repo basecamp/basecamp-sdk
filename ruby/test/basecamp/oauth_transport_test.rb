@@ -815,13 +815,30 @@ class OAuthTransportTest < Minitest::Test
     # credentials or authenticated proxies reject the request.
     proxy = TCPServer.new("127.0.0.1", 0)
     @servers << proxy
-    captured = +""
+    # The preamble is HANDED ACROSS a Queue rather than shared as a mutable
+    # String (#739). The old form appended to a `captured = +""` that the main
+    # thread read the instant assert_raises returned, with no join, queue or
+    # condvar between them — it was ordered only in practice, by the socket
+    # close, and the client's own `timeout: 1` can fire while the proxy is
+    # still mid-gets on a loaded runner. That failure reads as absent
+    # credentials, which points at percent-decoding, which is not the bug.
+    #
+    # Queue rather than Thread#join: join also establishes the happens-before
+    # edge, but a join(timeout) that returns nil leaves you reading the shared
+    # String with no edge at all — the race re-enters through the hang guard.
+    # Here the VALUE's existence is the evidence: it can only be popped if the
+    # producer finished reading the preamble, so a wedged producer is a
+    # distinguishable, explicitly-reported failure instead of an empty match.
+    # Same idiom as this file's other header-capture tests.
+    captured = Queue.new
     @server_threads << Thread.new do
       conn = proxy.accept
       @conns << conn
+      lines = []
       while (line = conn.gets) && line != "\r\n"
-        captured << line
+        lines << line
       end
+      captured << lines.join
       conn.close
     rescue IOError, SystemCallError
       nil
@@ -833,8 +850,15 @@ class OAuthTransportTest < Minitest::Test
       assert_raises(Faraday::Error) do
         Basecamp::Oauth::Fetcher.stream_http(:get, "https://proxy-auth.test/token", timeout: 1)
       end
+      # A WAIT bound, not a timing assertion: this test is about content, so a
+      # generous wait costs nothing (unlike the sub-second bounds #734 kept on
+      # the siblings, where the margin between correct and broken IS the
+      # deadline).
+      preamble = captured.pop(timeout: 15)
+      assert preamble, \
+        "the proxy never finished reading the CONNECT preamble — nothing was handed over to assert against"
       expected = [ "user:p@s+s" ].pack("m0")
-      assert_includes captured, "Proxy-Authorization: Basic #{expected}"
+      assert_includes preamble, "Proxy-Authorization: Basic #{expected}"
     end
   end
 

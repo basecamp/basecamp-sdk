@@ -1,23 +1,15 @@
 #!/usr/bin/env bash
 # Regression test for the SARIF generated-code filter used in codeql.yml.
-# Runs the same jq expression against a fixture and asserts the output.
+# Runs the workflow's actual filter program (sarif-filter.jq) against a
+# fixture and asserts the output.
 set -euo pipefail
-
-FILTER='
-  .runs |= map(.results |= (. // [] | map(
-    select(
-      (.locations // [])[0].physicalLocation.artifactLocation.uri // "" |
-      test("(^|/)(go/pkg/generated/|typescript/(src/generated|dist)/|ruby/lib/basecamp/generated/|swift/Sources/Basecamp/Generated/|kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/)") | not
-    )
-  )))
-'
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
 FIXTURE="$DIR/testdata/sarif-filter-fixture.json"
 
-actual=$(jq "$FILTER" "$FIXTURE")
+actual=$(jq -f "$DIR/sarif-filter.jq" "$FIXTURE")
 kept=$(echo "$actual" | jq -c '[.runs[].results[].ruleId] | sort')
-expected='["keep-kotlin-generator","keep-no-locations","keep-null-locations","keep-real-go","keep-swift-generator"]'
+expected='["keep-kotlin-generator","keep-no-locations","keep-null-locations","keep-python-async-base","keep-python-base","keep-real-go","keep-swift-generator"]'
 
 if [ "$kept" = "$expected" ]; then
   echo "PASS: SARIF filter kept correct results"

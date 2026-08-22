@@ -137,7 +137,9 @@ def count_non_live_cases(tests_dir: str | Path) -> int:
     cases = 0
     for file in files:
         try:
-            parsed = json.loads(file.read_text())
+            # UTF-8 regardless of process locale (LC_ALL=C would otherwise read
+            # as US-ASCII whenever UTF-8 mode is off)
+            parsed = json.loads(file.read_text(encoding="utf-8"))
         except (json.JSONDecodeError, OSError) as e:
             raise RuntimeError(f"{file}: {e}") from e
         if not isinstance(parsed, list):
@@ -194,6 +196,13 @@ def write_execution_manifest(runner: str, total: int, executed: int,
         "executed": executed,
         "excluded": [{"file": f, "name": n, "reason": r} for f, n, r in sorted(excluded)],
     }
+    # `ensure_ascii=True` is json.dumps' default and it is load-bearing here, not
+    # incidental: `excluded` carries case names straight from the fixtures, and
+    # write_text() with no encoding= encodes in the locale's. The conformance
+    # step runs under LC_ALL=C PYTHONUTF8=0, so the moment someone passes
+    # ensure_ascii=False for prettier manifests this line raises
+    # UnicodeEncodeError on the first case name with an em dash. Pass an
+    # encoding= here if that day comes; do not just flip the flag.
     (path / f"{runner}.json").write_text(json.dumps(body, indent=2) + "\n")
 
 
@@ -1532,7 +1541,9 @@ class ConformanceRunner:
         excluded: list[tuple[str, str, str]] = []
 
         for file in files:
-            tests = json.loads(file.read_text())
+            # UTF-8 regardless of process locale (LC_ALL=C would otherwise read
+            # as US-ASCII whenever UTF-8 mode is off)
+            tests = json.loads(file.read_text(encoding="utf-8"))
             # Live tests are TS-only (canonical wire-capturer); filter them out
             # before mock dispatch so unresolved ${PROJECT_ID} fixtures and
             # live-only operations don't surface here.

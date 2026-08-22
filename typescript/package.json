@@ -29,7 +29,9 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.test.json --noEmit",
-    "lint": "oxlint src --ignore-pattern 'src/generated/**'"
+    "lint": "oxlint src --ignore-pattern 'src/generated/**'",
+    "lint:test-timers": "oxlint -c lint-rules/oxlintrc.json tests",
+    "test:lint-rules": "node lint-rules/test-no-timer-scheduled-abort.mjs"
   },
   "keywords": [
     "basecamp",
