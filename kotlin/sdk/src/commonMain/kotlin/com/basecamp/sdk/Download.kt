@@ -23,6 +23,9 @@ import kotlinx.coroutines.delay
  */
 private val DOWNLOAD_RETRY_ON = setOf(429, 502, 503, 504)
 
+/** The redirects hop 1 dispatches on (SPEC §14 step 3d) and hop 2 refuses. */
+private val REDIRECT_STATUSES = setOf(301, 302, 303, 307, 308)
+
 /**
  * Result of downloading file content from a URL.
  *
@@ -83,7 +86,9 @@ fun filenameFromURL(rawURL: String): String {
  *
  * Handles the full download flow: URL rewriting to the configured API host,
  * authenticated first hop (which typically 302s to a signed download URL),
- * and unauthenticated second hop to fetch the actual file content.
+ * and unauthenticated second hop to fetch the actual file content. Neither
+ * hop follows a redirect on its own: hop 1's is the dispatch to hop 2, and a
+ * redirect on hop 2 is an error (SPEC §14 "Hop-2 Redirect Policy").
  *
  * The first hop retries under the SPEC §14 policy — network errors plus
  * {429, 502, 503, 504}, never 500 — with exponential backoff (Retry-After
@@ -127,7 +132,9 @@ suspend fun AccountClient.downloadURL(rawURL: String): DownloadResult {
         val rewrittenURL = rewriteOrigin(rawURL, parent.config.baseUrl)
 
         // Create one-shot client with no redirect following, sharing the engine
-        // and applying the SDK's timeout settings
+        // and applying the SDK's timeout settings. Both hops run on it: hop 1
+        // so the SDK reads the redirect itself, hop 2 so the signed host cannot
+        // choose a further destination (SPEC §14 "Hop-2 Redirect Policy").
         val timeoutMs = parent.config.timeout.inWholeMilliseconds
         val noRedirectClient = HttpClient(httpClient.httpClient.engine) {
             followRedirects = false
@@ -152,7 +159,7 @@ suspend fun AccountClient.downloadURL(rawURL: String): DownloadResult {
             val status = response.status.value
 
             when {
-                status in setOf(301, 302, 303, 307, 308) -> {
+                status in REDIRECT_STATUSES -> {
                     // Redirect — extract Location, proceed to hop 2
                     val location = response.headers[HttpHeaders.Location]
                     if (location.isNullOrEmpty()) {
@@ -177,6 +184,16 @@ suspend fun AccountClient.downloadURL(rawURL: String): DownloadResult {
                         throw BasecampException.Network(
                             message = "Download failed: ${e.message}",
                             cause = e,
+                        )
+                    }
+
+                    // The client above does not follow, so a redirect lands here: the
+                    // signed URL is the one destination the API host named, and
+                    // its Location is never dialled (#805).
+                    if (signedResponse.status.value in REDIRECT_STATUSES) {
+                        throw BasecampException.Api(
+                            "redirect ${signedResponse.status.value} on the signed download hop is not followed",
+                            signedResponse.status.value,
                         )
                     }
 

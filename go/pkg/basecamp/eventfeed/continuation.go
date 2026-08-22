@@ -1,6 +1,9 @@
 package eventfeed
 
-import "strings"
+import (
+	"strings"
+	"unicode/utf8"
+)
 
 // Continuation and resume URL validation (SPEC.md §23 "Continuation and
 // Resume URL Validation"). The two absolute URLs the poll lane follows — the
@@ -23,6 +26,20 @@ import "strings"
 // pure function of the two URLs: nothing here needs a run, and keeping it
 // free-standing is what lets this file be reviewed and tested on its own.
 func checkContinuation(baseOrigin, pageURL string) *TerminalError {
+	// Validated RAW, before canonicalization, mirroring validateConfig's
+	// raw-origin check: CanonicalOrigin lowercases through strings.ToLower,
+	// which rewrites every invalid byte to U+FFFD, so a continuation host
+	// carrying a raw invalid byte would collapse to the same canonical form
+	// as a configured origin that legitimately contains the replacement
+	// character — and same-origin validation must never equate distinct byte
+	// strings. A conformant server's URLs are valid UTF-8, so refusing the
+	// bytes outright is fail-closed.
+	if !utf8.ValidString(pageURL) {
+		return &TerminalError{
+			Reason: ReasonInvalidContinuation,
+			Msg:    "the continuation URL is not valid UTF-8",
+		}
+	}
 	origin, err := CanonicalOrigin(pageURL)
 	if err != nil {
 		return &TerminalError{

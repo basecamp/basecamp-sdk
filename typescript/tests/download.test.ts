@@ -9,6 +9,8 @@ import { BasecampError } from "../src/errors.js";
 const BASE_URL = "https://3.basecampapi.com/12345";
 const API_ORIGIN = "https://3.basecampapi.com";
 const S3_URL = "https://s3.amazonaws.com/bucket/signed-file.png";
+/** Where a redirecting signed host would send hop 2 — and where hop 2 must never go. */
+const THIRD_URL = "https://elsewhere.example.com/final/file.png";
 
 function makeClient(hooks?: BasecampHooks, enableRetry?: boolean) {
   return createBasecampClient({
@@ -312,6 +314,37 @@ describe("downloadURL", () => {
       await expect(
         client.downloadURL("https://storage.3.basecamp.com/999/blobs/abc/download/file.png"),
       ).rejects.toThrow(BasecampError);
+    });
+
+    it("refuses a redirect on the signed second hop", async () => {
+      // SPEC §14 "Hop-2 Redirect Policy": the signed URL is the one destination
+      // the API host named. A redirect from it surfaces with its status, and the
+      // Location it names is never dialled (#805). Before hop 2 passed
+      // `redirect: "manual"`, fetch followed this chain and the caller
+      // received "SECRET" as the file.
+      let thirdHits = 0;
+      server.use(
+        http.get(`${API_ORIGIN}/*`, () => {
+          return new HttpResponse(null, { status: 302, headers: { Location: S3_URL } });
+        }),
+        http.get(S3_URL, () => {
+          return new HttpResponse(null, { status: 302, headers: { Location: THIRD_URL } });
+        }),
+        http.get(THIRD_URL, () => {
+          thirdHits += 1;
+          return HttpResponse.text("SECRET");
+        }),
+      );
+
+      const client = makeClient();
+      await expect(
+        client.downloadURL("https://storage.3.basecamp.com/999/blobs/abc/download/file.png"),
+      ).rejects.toMatchObject({
+        code: "api_error",
+        httpStatus: 302,
+        message: expect.stringContaining("not followed"),
+      });
+      expect(thirdHits).toBe(0);
     });
 
     it("handles signed-download network failure after successful redirect", async () => {

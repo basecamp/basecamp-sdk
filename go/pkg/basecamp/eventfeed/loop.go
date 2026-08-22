@@ -747,7 +747,21 @@ func (l *loop) emitTerminal(term *TerminalError) {
 	// even then the behaviour it replaces is racy rather than reliably wrong.
 	// It is kept because deciding against the authoritative latch is simply
 	// the correct shape, not because a red proof forced it.
-	if !l.cfg.claimTerminal() {
+	//
+	// Caller cancellation is the same universal edge — §23 draws it as
+	// "close() / cancellation / consumer break", and Events promises all
+	// three end iteration with no error element — but no mutex serializes
+	// it: the caller's cancel is not Close and holds no connector lock, so
+	// there is no latch to consult. The run-context read below is the
+	// achievable ordering — best-effort, at the same one exit the claim
+	// guards. A cancel observed here takes the Closed edge even though the
+	// terminal outcome was already selected (the teardown between selection
+	// and publication can span a socket close, so the cancel may precede
+	// this point by an arbitrarily long, fully observable interval); one
+	// landing after the read publishes the already-claimed terminal, the
+	// same tolerance the claim's comment grants a Close that cancels a
+	// moment after losing the claim.
+	if l.runCtx.Err() != nil || !l.cfg.claimTerminal() {
 		l.setState(stateClosed)
 		return
 	}
@@ -889,6 +903,23 @@ func (l *loop) runCycle(delay time.Duration) cycleOutcome {
 		return cycleOutcome{kind: outcomeClosed}
 	}
 
+	// The dial's result can race the deadline: both ready, the select above
+	// is random, and accepting the dial then installed the pump and announced
+	// Connected for an attempt whose handshake window had already closed —
+	// transition 7 bypassed by a coin flip. The deadline is authoritative,
+	// the same expired-timer ordering the welcome and confirm branches read
+	// Stop for — expressed here as a drain, because a deadline that has NOT
+	// fired must keep running to `welcome` (it spans dial-to-welcome), so
+	// Stop cannot be the probe.
+	select {
+	case <-hs.C():
+		// Transition 7, exactly as if the deadline's own case had won.
+		at.cancel()
+		_ = conn.Close(closeCodeNormal, "")
+		return cycleOutcome{kind: outcomeFailed}
+	default:
+	}
+
 	// Transition 6 → AwaitingWelcome: staleness arms at socket open, the
 	// pump starts, and the handshake deadline keeps running to `welcome`.
 	//
@@ -908,6 +939,14 @@ func (l *loop) runCycle(delay time.Duration) cycleOutcome {
 	// so nothing is observed out of order — Connected is observability, not a
 	// gate.
 	at.lc = newLiveConn(at.ctx, conn, l.cfg.clock, l.cfg.staleAfter, l.hooks)
+	// The state is announced BEFORE Observer.Connected, for the same reason
+	// the arming is: transition 6 is "dial ok; frame pump started", and both
+	// are true the moment newLiveConn returns. Announced after, the callback
+	// runs with staleness armed — AwaitingWelcome's exact timer set — while
+	// the last announced state is still Connecting, whose set is
+	// {handshake-deadline} alone, and host telemetry sampling both sees a
+	// pair §23's per-state invariants say cannot exist.
+	l.setState(stateAwaitingWelcome)
 	if l.cfg.observer.Connected != nil {
 		l.cfg.observer.Connected()
 	}
@@ -955,10 +994,11 @@ func (l *loop) classifyMintFailure(err error) cycleOutcome {
 
 // awaitConfirmation drives AwaitingWelcome and AwaitingConfirmation
 // (transitions 8–15 plus the state-generic protocol-fatal and invalid-frame
-// dispatch). deadline is the running handshake-deadline on entry; `welcome`
-// re-arms it as the confirmation-deadline (transition 8).
+// dispatch). The caller has already taken transition 6 — the state is
+// AwaitingWelcome on entry, announced before Observer.Connected fired.
+// deadline is the running handshake-deadline on entry; `welcome` re-arms it
+// as the confirmation-deadline (transition 8).
 func (l *loop) awaitConfirmation(at *attempt, deadline Timer) cycleOutcome {
-	l.setState(stateAwaitingWelcome)
 	for {
 		staleTimer, staleGen := at.lc.stale.current()
 		select {
@@ -1022,34 +1062,59 @@ func (l *loop) awaitConfirmation(at *attempt, deadline Timer) cycleOutcome {
 // it restores the bound: a lapse takes transition 9/14 exactly as it would
 // have had the write never blocked, and disposal's cancel is what returns the
 // abandoned write (the seam contract requires a cancelled write to return
-// promptly, and Close is documented to unblock it too). Staleness is
-// deliberately not in this select — the phase deadline is the tighter bound
-// on a handshake that is going nowhere, and adding a second timer here would
-// duplicate the generation dance for no additional guarantee.
+// promptly, and Close is documented to unblock it too).
+//
+// Staleness is in this select too. An earlier revision left it out on the
+// stated premise that the phase deadline is always the tighter bound, and the
+// premise is false twice over: the 7.5s staleness window undercuts even the
+// default 10s handshake deadline on an immediate first welcome, and a
+// duplicate welcome resends the subscribe under the confirmation deadline,
+// which is configurable to anything — a dead socket then sat blocked in the
+// write arbitrarily past the expiry that rows 9/15 say tears it down. So this
+// wait carries the case like every other socket-open wait, generation dance
+// and all.
 func (l *loop) writeSubscribe(at *attempt, deadline *Timer) (cycleOutcome, bool) {
 	written := make(chan error, 1)
 	go func() { written <- at.lc.conn.WriteFrame(at.ctx, l.subscribeFrame) }()
-	select {
-	case werr := <-written:
-		if werr != nil {
+	for {
+		staleTimer, staleGen := at.lc.stale.current()
+		select {
+		case werr := <-written:
+			if werr != nil {
+				l.disposeAttempt(at, *deadline)
+				l.observeDisconnected("", werr)
+				return cycleOutcome{kind: outcomeFailed}, true
+			}
+			if l.hooks.subscribeWritten != nil {
+				l.hooks.subscribeWritten()
+			}
+			return cycleOutcome{}, false
+		case <-l.runCtx.Done():
 			l.disposeAttempt(at, *deadline)
-			l.observeDisconnected("", werr)
+			return cycleOutcome{kind: outcomeClosed}, true
+		case <-(*deadline).C():
+			// The deadline is spent, so disposal is handed nil: the attempt's
+			// timer set is empty from here, as on every other lapse.
+			lapsed := errDeadlineLapsed(l.state)
+			l.disposeAttempt(at, nil)
+			l.observeDisconnected("", lapsed)
+			return cycleOutcome{kind: outcomeFailed}, true
+		case <-at.lc.stale.rearmed():
+		case <-staleTimer.C():
+			age, ok := at.lc.stale.evaluate(staleGen)
+			if !ok {
+				continue
+			}
+			// Rows 9/15's staleness trigger, observed mid-write: full
+			// teardown, and disposal's cancel is what returns the abandoned
+			// write.
+			l.disposeAttempt(at, *deadline)
+			if l.cfg.observer.StaleConnection != nil {
+				l.cfg.observer.StaleConnection(age)
+			}
+			l.observeDisconnected("", errStaleConnection)
 			return cycleOutcome{kind: outcomeFailed}, true
 		}
-		if l.hooks.subscribeWritten != nil {
-			l.hooks.subscribeWritten()
-		}
-		return cycleOutcome{}, false
-	case <-l.runCtx.Done():
-		l.disposeAttempt(at, *deadline)
-		return cycleOutcome{kind: outcomeClosed}, true
-	case <-(*deadline).C():
-		// The deadline is spent, so disposal is handed nil: the attempt's
-		// timer set is empty from here, as on every other lapse.
-		lapsed := errDeadlineLapsed(l.state)
-		l.disposeAttempt(at, nil)
-		l.observeDisconnected("", lapsed)
-		return cycleOutcome{kind: outcomeFailed}, true
 	}
 }
 
@@ -1386,8 +1451,11 @@ var errSocketFailed = errors.New("event feed socket failed")
 //
 // So neither passes through any more. The three that remain are safe by
 // construction rather than by convention: the sentinels are package-level
-// values whose text is fixed in this file, *CloseError renders an integer code
-// and nothing else, and *invalidFrameError renders one of two shape constants.
+// values whose text is fixed in this package (ErrFrameOversize is exported so
+// the transport seam can RETURN it, but a var can only be referenced — unlike
+// an exported struct type, it cannot be rebuilt around peer text), *CloseError
+// renders an integer code and nothing else, and *invalidFrameError renders one
+// of two shape constants.
 //
 // Nothing is lost on the live path. Dial failures do not reach this function
 // at all — they are dispatched before any teardown is observed — and a
@@ -1419,6 +1487,16 @@ func observableSocketError(err error) error {
 		return errStaleConnection
 	case errors.Is(err, errCableConnClosed):
 		return errCableConnClosed
+	case errors.Is(err, ErrFrameOversize):
+		// §23's invalid-frame class, size shape. The size check binds inside
+		// the transport — the frame is rejected during the read, never
+		// materialized — so the sentinel the seam returned IS the
+		// classification, and this is what carries the invalid-frame
+		// indication to Observer.Disconnected instead of degrading the one
+		// transport-decided shape to errSocketFailed. Reduced to the bare
+		// package value like every other sentinel arm: the seam's wrapper
+		// text is where a cable URL rides.
+		return ErrFrameOversize
 	case errors.Is(err, context.Canceled):
 		return context.Canceled
 	case errors.Is(err, context.DeadlineExceeded):

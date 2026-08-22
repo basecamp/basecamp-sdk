@@ -300,6 +300,46 @@ final class DownloadTests: XCTestCase {
         }
     }
 
+    // SPEC §14 "Hop-2 Redirect Policy": the signed URL is the one destination
+    // the API host named. A redirect from it surfaces with its status, and the
+    // Location it names is never dialled (#805). The mock cannot follow a
+    // redirect itself, so the last assertion pins the seam that guarantees
+    // that in production: both hops go through the transport's no-redirect
+    // entry point, where `data(for:)` would have followed the chain.
+    func testDownloadURL_hop2RedirectIsRefusedNotFollowed() async throws {
+        let counter = Counter()
+        let transport = MockTransport { request in
+            let count = counter.increment()
+            let location = count == 1
+                ? "https://s3.amazonaws.com/bucket/file"
+                : "https://elsewhere.example.com/final/file"
+            return (
+                Data(),
+                makeHTTPResponse(
+                    url: request.url!.absoluteString,
+                    statusCode: 302,
+                    headers: ["Location": location]
+                )
+            )
+        }
+        let account = makeTestAccountClient(transport: transport)
+
+        do {
+            _ = try await account.downloadURL("https://3.basecampapi.com/999999999/attachments/abc/download/file.txt")
+            XCTFail("Expected the signed hop's redirect to be refused")
+        } catch let error as BasecampError {
+            guard case .api(let message, let httpStatus, _, _, _) = error else {
+                XCTFail("Expected api error, got \(error)")
+                return
+            }
+            XCTAssertEqual(httpStatus, 302)
+            XCTAssertTrue(message.contains("not followed"), "expected the message to name the refusal, got \(message)")
+        }
+
+        XCTAssertEqual(transport.requests.count, 2, "the redirect target must never be dialled")
+        XCTAssertEqual(transport.requests.map(\.followsRedirects), [false, false])
+    }
+
     // MARK: - Auth Header Tests
 
     func testDownloadURL_authOnApiNotOnS3() async throws {

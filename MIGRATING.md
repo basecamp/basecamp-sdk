@@ -13,6 +13,81 @@ what wrong behaviour you get if you ignore one. This file is that half.
 
 # Unreleased
 
+### Go: device-flow and token-exchange requests are address-policed by default (#806)
+
+**The compile error, if you get one:** none for direct calls. `NewExchanger`
+gained a variadic `...ExchangerOption`, which is source-compatible everywhere
+except a function value — `var f func(*http.Client) *oauth.Exchanger =
+oauth.NewExchanger` no longer compiles. `apidiff` reports it as incompatible
+for that reason.
+
+**The behaviour change:** `PerformDeviceLogin`, `RequestDeviceAuthorization`,
+`PollDeviceToken`, and an `Exchanger` built with a nil client used to post on
+`http.DefaultClient`. They now post on a client that judges the endpoint's
+literal address at dial time against `oauth.DefaultIssuerPolicy()` — the same
+policy #804 put on the advertised-issuer metadata fetch — because the
+`token_endpoint` and `device_authorization_endpoint` those requests target may
+be the ones a discovered issuer's metadata named, and nothing constrains those
+to the issuer's origin. An endpoint in loopback, RFC 1918, link-local, CGNAT,
+or IANA special-purpose space is refused before any connection opens, with a
+non-retryable `*basecamp.Error` (`api_error`) that also matches
+`errors.Is(err, surfguard.ErrBlocked)`. In the poll loop the refusal ends the
+flow on the first attempt; it is not a timeout and is never backed off.
+
+**Wrong behaviour you get if you ignore it:** a login or exchange against a
+hand-configured authorization server on `localhost` or a private address fails
+where it used to succeed, and the error names the address policy. Three
+remedies, in order of preference:
+
+```go
+// Re-admit exactly the space you need. AllowLoopback is the only derivation
+// that pierces the IANASpecialUse tables; for RFC 1918 build without them.
+oauth.PerformDeviceLogin(ctx, cfg, clientID, display,
+    oauth.WithDevicePolicy(oauth.DefaultIssuerPolicy().AllowLoopback()))
+oauth.NewExchanger(nil, oauth.WithExchangerPolicy(
+    surfguard.Policy{}.AllowAllPorts().Allow(netip.MustParsePrefix("10.4.0.0/16"))))
+
+// Carry the requests on your own client — yours, enforcement included.
+oauth.PerformDeviceLogin(ctx, cfg, clientID, display, oauth.WithDeviceHTTPClient(hc))
+oauth.NewExchanger(hc)
+
+// Restore the old behaviour outright.
+oauth.NewExchanger(http.DefaultClient)
+```
+
+**If you already pass your own client, nothing changed for you — including
+the protection.** A client handed to `WithDeviceHTTPClient` or `NewExchanger`
+is used as given; the policy is not layered on top, because it lives in the
+transport's dialer. Compose it in yourself where you can:
+`&http.Client{Transport: oauth.DefaultIssuerPolicy().RoundTripper()}`.
+
+### All SDKs: the signed download hop no longer follows redirects (#805)
+
+`DownloadURL` (`downloadURL`, `download_url`, `UploadsService.Download` and its
+siblings) is two hops: an authenticated GET to the API host, which answers with
+a 302 to a presigned storage URL, then an unauthenticated GET of that URL. The
+first hop never followed redirects — the SDK reads `Location` itself. The
+second hop did, in Go (net/http's default, ten hops), TypeScript (`fetch`'s
+default, twenty), Python (`follow_redirects=True`, written out) and Swift (the
+redirect-following `Transport` entry point). Kotlin and Ruby never did.
+
+All six now refuse. A redirect — 301, 302, 303, 307 or 308; any other 3xx
+is the generic non-2xx failure — from the storage host surfaces as the SDK's API
+error carrying that status — `*basecamp.Error` with `HTTPStatus: 302`,
+`BasecampError` with `code: "api_error"` and `httpStatus: 302`, `ApiError`
+with `http_status=302`, and so on — with a message saying the redirect is
+**not followed**, and the `Location` it named is never dialled. SPEC §14
+"Hop-2 Redirect Policy" states the rule and the evidence behind it: Basecamp's
+storage tier answers presigned GETs from a single endpoint, and two SDKs have
+shipped a non-following second hop since the download path existed.
+
+**Wrong behaviour you get if you ignore it:** none against Basecamp. Against
+another API host whose storage does redirect — a CDN in front of an object
+store, a multi-region bucket answering with a region redirect — downloads that
+used to succeed now fail with the redirect's status. There is no knob to re-enable
+following; the fix is for that host to return the storage URL it actually
+serves from.
+
 ### `BasecampError.api` gained a fifth associated value (#750)
 
 **Swift only, and it is a compile error** — the one shape of break you cannot
@@ -229,6 +304,68 @@ is always made. Only a negative cap now panics, with a new message:
 `"basecamp: max retries must not be negative"`. Code matching on the old string
 (a `recover` that inspects the message, as the conformance runner did) needs
 updating; code that simply never passed `0` is unaffected.
+
+### Go: `Error` gained `RetryAfter` mid-struct, and raw GETs now sleep it (#795)
+
+**The compile error, if you get one:** an unkeyed composite literal
+`basecamp.Error{code, msg, hint, fieldErrors, status, retryable, reqID, cause}`
+no longer compiles — the field is inserted between `Retryable` and `RequestID`,
+so the eight-value form is now too short. Same break `FieldErrors` caused in
+#541 (below, under Go → Behavioural); the remedy is the same, and permanent:
+use keyed fields.
+
+```go
+// before
+err := &basecamp.Error{basecamp.CodeRateLimit, "Rate limited", "", nil, 429, true, "", nil}
+// after — and it will not break again
+err := &basecamp.Error{Code: basecamp.CodeRateLimit, Message: "Rate limited", HTTPStatus: 429, Retryable: true}
+```
+
+`apidiff` reports this as compatible, and it is right about what it measures:
+the field is additive to the *exported API surface*. Unkeyed literals are a
+source-compatibility hazard the tool does not model, which is why this note
+exists rather than the gate catching it.
+
+**The behaviour change:** `Client.Get`/`GetAll` and the raw escape hatch used to
+back off on their own local curve after a 429 even when the server named a
+delay, because the loop read that delay off a type nothing in the package ever
+constructed. They now sleep the server's `Retry-After` — both wire forms,
+delta-seconds and HTTP-date — in place of the backoff, with no jitter and no
+ceiling beyond what the host can represent: a value the parser holds but the
+host cannot schedule saturates at 2147483647 seconds (~68 years) rather than
+wrapping negative, and that figure does not vary by architecture. A value too
+large for the parser's own `int64` is treated as malformed instead and falls
+through to the backoff curve, as it always did. That split is Go's: SPEC §6's
+parsing algorithm says only to parse a positive integer, #793 states the
+two-tier rule (unrepresentable → malformed, unschedulable → saturate) in §6
+"Retry-After Honouring", and #799 tracks the cross-SDK convergence on
+over-range values, which the six SDKs still answer differently.
+
+**Two behaviours changed for `DownloadURL` and the rate-limiter hook as well**,
+because all three paths share `parseRetryAfter`: an HTTP-date's sub-second
+remainder now rounds up instead of truncating, so a date less than a second
+away yields a one-second wait where it used to yield "no value" and fall onto
+the backoff curve; and a delta-seconds above the schedulable ceiling saturates
+instead of wrapping. The wire operations those paths perform are unchanged, and they
+already honoured the header on 429 — it is what the header parses to that
+moved. Typed service methods run the generated retry loop, which has its own
+copy of the parse and is untouched (#798).
+
+**Wrong behaviour you get if you ignore it:** none, but the wait between
+attempts on a throttled account can now be seconds or minutes where it used to
+be milliseconds, so a caller that sized a `context` timeout against the old
+backoff may now hit it. The wait observes cancellation — the loop selects on
+`ctx.Done()` — so cancelling is the escape. If you would rather reschedule the
+work yourself, the `*Error` carries `RetryAfter` — but the loop wraps it with
+`fmt.Errorf` on exhaustion, even at a cap of one attempt, so a type assertion
+on the returned error fails. Extract it with `errors.As`:
+
+```go
+var apiErr *basecamp.Error
+if errors.As(err, &apiErr) && apiErr.RetryAfter > 0 {
+    // reschedule after apiErr.RetryAfter seconds
+}
+```
 
 ### Kotlin: `search.search` returns `ListResult<SearchResult>`, not `ListResult<JsonElement>` (#717)
 

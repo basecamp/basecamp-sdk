@@ -159,3 +159,48 @@ func TestCloseError_MessageWithholdsThePeerReason(t *testing.T) {
 		t.Error("Reason must remain readable on the struct")
 	}
 }
+
+// TestDialError_MessageIsBounded pins §9's MAX_ERROR_MESSAGE_LENGTH on
+// DialError renderings, CloseError-style. checkCableURL's own reasons are a
+// closed vocabulary now, so the cap binds on what the TYPE can carry — a
+// custom CableTransport composes its own DialError, and nothing bounds the
+// Reason or cause it chooses.
+func TestDialError_MessageIsBounded(t *testing.T) {
+	derr := &DialError{Kind: DialPolicy, Reason: strings.Repeat("a", 2*maxErrorMessageBytes)}
+	msg := derr.Error()
+	if len(msg) > maxErrorMessageBytes {
+		t.Errorf("Error() is %d bytes, want at most %d", len(msg), maxErrorMessageBytes)
+	}
+	if !strings.HasSuffix(msg, "...") {
+		t.Errorf("Error() ends %q, want §9's truncation marker", msg[max(0, len(msg)-16):])
+	}
+}
+
+// TestSeamErrors_RenderingsAreBounded closes the class the DialError case
+// above opened: every seam error that composes server-derived text —
+// TerminalError (a filter-invalid message, a continuation's scheme or
+// origin), MintError (a TicketMinter's cause), PollError (the server's
+// message verbatim) — renders under §9's cap. The TerminalError case goes in
+// through checkContinuation so the unbounded input is the real one: a `next`
+// URL whose scheme url.Parse does not bound.
+func TestSeamErrors_RenderingsAreBounded(t *testing.T) {
+	long := strings.Repeat("a", 2*maxErrorMessageBytes)
+	fromContinuation := checkContinuation("https://3.basecampapi.com", long+"://host/next")
+	if fromContinuation == nil {
+		t.Fatal("checkContinuation accepted a non-http(s) scheme")
+	}
+	for _, err := range []error{
+		fromContinuation,
+		&TerminalError{Reason: ReasonFilterInvalid, Msg: long},
+		&MintError{Kind: MintUnrecoverable, Err: errors.New(long)},
+		&PollError{Kind: PollFilterInvalid, Msg: long},
+	} {
+		msg := err.Error()
+		if len(msg) > maxErrorMessageBytes {
+			t.Errorf("%T renders %d bytes, want at most %d", err, len(msg), maxErrorMessageBytes)
+		}
+		if !strings.HasSuffix(msg, "...") {
+			t.Errorf("%T rendering ends %q, want §9's truncation marker", err, msg[max(0, len(msg)-16):])
+		}
+	}
+}

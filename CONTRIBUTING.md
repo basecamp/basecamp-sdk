@@ -118,6 +118,79 @@ A Basecamp account is optional (for integration testing only).
 - Mock HTTP responses using `httptest`
 - Test both success and error paths
 
+#### Never schedule a cancellation on a wall clock
+
+A test that arms `setTimeout(… abort …, N)` and races it against a mocked
+response is asserting machine load, not behavior. Abort from a seam that proves
+the request is already in flight: from inside the MSW handler
+(`typescript/tests/client.test.ts`), or from the retry hook the loop fires
+immediately before it sleeps (`typescript/tests/retry-after.test.ts`,
+`typescript/tests/middleware-lifecycle.test.ts`). Then replace any accompanying
+`Date.now() - startedAt < N` bound. Usually there is nothing to put in its
+place: the error's identity (`AbortError` vs `TimeoutError`, or
+`err === reason`) and the attempt ledger already discriminate, and the ceiling
+was contributing only load sensitivity.
+
+**But check what the ceiling was carrying before you delete it.** If the named
+behavior is *promptness* — "rejects as soon as the abort lands" rather than
+"rejects with the right reason, eventually" — identity and the ledger do not
+cover it: a sleep that notices the abort and then waits out its timer anyway
+satisfies both, late. Assert promptness by freezing the clock instead of
+bounding it. Fake `setTimeout`/`clearTimeout` (`vi.useFakeTimers({ toFake: […] })`),
+never advance it, and assert the request settled after a barrier counted in
+event-loop turns (`setImmediate`), not milliseconds — a delay that only the test
+can release cannot have been waited out. `middleware-lifecycle.test.ts`'s
+"rejects promptly when the caller aborts during a retry backoff" is the worked
+example; the mutant it kills is precisely the sleep described above.
+
+Restore real timers from the suite's `afterEach`, not from the test's own
+`finally`: a timed-out test is never resumed, so its `finally` does not run —
+and a hung test is exactly the failure a broken abort produces — which would
+leak a frozen clock into every test after it.
+
+The same rule reads sideways in Ruby: a value written by a server thread is
+read by the test only across an explicit happens-before edge — a `Queue`, or a
+`join` — never "in practice, via the socket close" (#739).
+
+**This half is enforced, so you should not need to remember it.**
+`typescript/lint-rules/no-timer-scheduled-abort.js` is an oxlint rule that fails
+the build on a timer-scheduled `abort()` anywhere under `typescript/tests/`:
+
+```sh
+cd typescript && npm run test:lint-rules && npm run lint:test-timers
+```
+
+Both run in `make ts-check` and as their own steps in the TypeScript CI job. Run
+the self-test first and always — oxlint's JS plugin API is alpha, so a version
+bump could disarm the rule silently, and the self-test is what turns that into a
+build failure instead of a green gate enforcing nothing.
+
+A test whose *subject* is a caller's own timer-driven abort is a legitimate
+exception; suppress it at the site with the reason, never by widening the rule:
+
+```ts
+// oxlint-disable-next-line basecamp-tests/no-timer-scheduled-abort -- why
+```
+
+#655 tried to scope this class with an `rg` typed into an issue body that
+required a **no-argument** `abort()`. Both survivors passed a reason, so they
+shipped and one later went red in CI (#783) — which is why the rule reads syntax
+rather than text: it can tell a timer that *schedules* an abort from one the
+abort is merely racing, and a proximity selector cannot.
+
+**What the rule does not cover** is stated in its own header rather than
+restated here: a renamed timer, a callback passed by reference, a computed
+`.abort` access whose key is not a literal. The honest population bound is
+`rg -n "abort\s*\(|\[[\"']abort[\"']\]\s*\(" typescript/tests` — every spelling
+the rule treats as an abort, not dot-member access alone, so a later sweep
+cannot come back clean while a bare `abort()`, a `controller["abort"]()` or a
+`controller['abort']()` is live (the rule reads the literal's value, so either
+quote style is an abort to it).
+Classify each site by *what makes the abort land*, not by the shape it is
+written in. The rest of this rule, above,
+is judgment the linter cannot hold: which assertion is the discriminating one,
+and when a wall-clock ceiling is redundant with it.
+
 ## Commit Conventions
 
 We follow [Conventional Commits](https://www.conventionalcommits.org/) for clear, structured commit history.

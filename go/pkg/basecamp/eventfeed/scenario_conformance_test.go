@@ -255,7 +255,11 @@ func (d *driver) stepSatisfiedLocked(step scenarioStep) bool {
 	case *expectGapStep:
 		return h.gapsTaken < len(h.gaps)
 	case *expectBufferedStep:
-		return h.occupancy == payload.Count || slices.Contains(h.occupancyHistory, payload.Count)
+		// History is scoped to the current era — the boundary captured when
+		// the step pointer last moved — so occupancy reached and left before
+		// this era cannot satisfy a pending expectBuffered and let the scan
+		// read through to an arrival-strict step behind it.
+		return h.occupancy == payload.Count || slices.Contains(h.occupancyHistory[h.occupancyEra:], payload.Count)
 	case *expectSignalStep:
 		return h.signalsTaken < len(h.signals)
 	case *exactInvocations:
@@ -767,8 +771,12 @@ func (d *driver) expectGap(epochAfterID int64) error {
 // change is recorded, so a value reached and left again while the driver was
 // scheduled out still satisfies the rendezvous.
 func (d *driver) expectBuffered(count int) error {
+	// The scan boundary is the step pointer's era, not this function's start:
+	// occupancy reached and left between the pointer entering this step and
+	// the driver getting here is this step's to see (excluding it flaked),
+	// while anything earlier belongs to a previous era and must not satisfy.
 	d.h.mu.Lock()
-	from := len(d.h.occupancyHistory)
+	from := d.h.occupancyEra
 	d.h.mu.Unlock()
 	return d.h.await(fmt.Sprintf("live buffer occupancy %d", count), func() (bool, string) {
 		if d.h.occupancy == count {

@@ -3,6 +3,7 @@ package oauth
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -10,19 +11,69 @@ import (
 	"strings"
 	"time"
 
+	surfguard "github.com/basecamp/surfguard/go"
+
 	"github.com/basecamp/basecamp-sdk/go/pkg/basecamp"
 )
 
 // Exchanger handles OAuth 2.0 token exchange and refresh operations.
+//
+// Both post credentials — the authorization code and client secret, or the
+// refresh token — to a token endpoint the caller names in the request, which
+// may be one that DiscoverFromResource's metadata chose. By default the
+// Exchanger therefore carries those POSTs on a client that judges the
+// endpoint's literal address at dial time against [DefaultIssuerPolicy]; see
+// [NewExchanger] for the overrides.
 type Exchanger struct {
 	httpClient *http.Client
 }
 
-// NewExchanger creates an Exchanger with the given HTTP client.
-// If httpClient is nil, http.DefaultClient is used.
-func NewExchanger(httpClient *http.Client) *Exchanger {
-	if httpClient == nil {
-		httpClient = http.DefaultClient
+// ExchangerOption configures an Exchanger at construction.
+type ExchangerOption func(*exchangerConfig)
+
+type exchangerConfig struct {
+	policy    surfguard.Policy
+	policySet bool
+}
+
+// WithExchangerPolicy replaces [DefaultIssuerPolicy] for the token endpoint
+// POSTs, so a deployment whose authorization server is not on the public
+// internet re-admits exactly the space it needs rather than switching the
+// policy off. The derivations and the precedence trap are the ones documented
+// on [WithIssuerPolicy]: AllowLoopback for a local server,
+// surfguard.Policy{}.AllowAllPorts().Allow(...) for private space.
+//
+// It has no effect when NewExchanger is given a non-nil client, which supplies
+// the transport the policy would otherwise be installed in.
+func WithExchangerPolicy(p surfguard.Policy) ExchangerOption {
+	return func(c *exchangerConfig) { c.policy, c.policySet = p, true }
+}
+
+// NewExchanger creates an Exchanger.
+//
+// A nil httpClient selects the policy-enforced default: the shared
+// [DefaultIssuerPolicy] client, or a client built from [WithExchangerPolicy]
+// when that option is given. A non-nil httpClient is the caller's, enforcement
+// included — no address policy is applied on top of it, and
+// WithExchangerPolicy is ignored. A consumer that must egress through a proxy
+// has no other way to keep both, since surfguard's transport sets Proxy: nil
+// by construction; compose the client's transport from
+// DefaultIssuerPolicy().RoundTripper() where that is possible. Passing
+// http.DefaultClient restores the pre-policy behavior outright.
+//
+// An Exchanger given WithExchangerPolicy owns a transport, and has no Close, so
+// build it once and reuse it rather than constructing one per exchange.
+func NewExchanger(httpClient *http.Client, opts ...ExchangerOption) *Exchanger {
+	cfg := exchangerConfig{}
+	for _, o := range opts {
+		o(&cfg)
+	}
+	switch {
+	case httpClient != nil:
+	case cfg.policySet:
+		httpClient = newPolicyClient(cfg.policy)
+	default:
+		httpClient = sharedPolicyClient()
 	}
 	return &Exchanger{httpClient: httpClient}
 }
@@ -114,8 +165,20 @@ func (e *Exchanger) doTokenRequest(ctx context.Context, tokenEndpoint string, da
 	httpReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	httpReq.Header.Set("Accept", "application/json")
 
-	resp, err := e.httpClient.Do(httpReq) // #nosec G704 -- SDK HTTP client: URL is caller-configured
+	// The suppression is about gosec's taint rule, not a claim that this URL is
+	// trusted. TokenEndpoint may be caller-configured, but it may equally come
+	// from DiscoverFromResource's metadata, in which case a remote peer chose it
+	// — so by default the client judges the address it resolves to at dial
+	// time (DefaultIssuerPolicy, #806). This request carries the authorization
+	// code, the client secret, or a refresh token, so it is the highest-value
+	// of the three such call sites.
+	resp, err := e.httpClient.Do(httpReq) // #nosec G704 -- see the note above: address-policed by default
 	if err != nil {
+		// A policy refusal is a typed, permanent verdict on the endpoint; every
+		// other failure keeps the untyped wrap callers already match on.
+		if errors.Is(err, surfguard.ErrBlocked) {
+			return nil, blockedEndpointError("token endpoint", tokenEndpoint, err)
+		}
 		return nil, fmt.Errorf("token request failed: %w", err)
 	}
 	defer func() { _ = resp.Body.Close() }()

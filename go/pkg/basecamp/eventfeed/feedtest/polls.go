@@ -76,11 +76,16 @@ func (p *Polls) StallNext() {
 	p.stalls++
 }
 
-// Calls returns every recorded poll seam call, in order.
+// Calls returns every recorded poll seam call, in order. Each entry's
+// Filters is a fresh copy, so editing a snapshot cannot rewrite the ledger.
 func (p *Polls) Calls() []PollCall {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	return slices.Clone(p.calls)
+	calls := slices.Clone(p.calls)
+	for i := range calls {
+		calls[i].Filters = cloneFilters(calls[i].Filters)
+	}
+	return calls
 }
 
 // CallCount returns the number of poll seam calls made so far.
@@ -95,7 +100,7 @@ func (p *Polls) CallCount() int {
 // ctx returns ctx.Err(); an unscripted call returns an error.
 func (p *Polls) Poll(ctx context.Context, cursor eventfeed.Cursor, filters eventfeed.Filters) (eventfeed.PollPage, error) {
 	p.mu.Lock()
-	call := PollCall{Cursor: cursor, Filters: filters}
+	call := PollCall{Cursor: cursor, Filters: cloneFilters(filters)}
 	p.calls = append(p.calls, call)
 	stalled := p.stalls > 0
 	if stalled {
@@ -104,7 +109,9 @@ func (p *Polls) Poll(ctx context.Context, cursor eventfeed.Cursor, filters event
 	onCall := p.onCall
 	p.mu.Unlock()
 	if onCall != nil {
-		onCall(call)
+		// Its own copy, not the ledger's: a callback that mutates or retains
+		// its argument must not rewrite history either.
+		onCall(PollCall{Cursor: call.Cursor, Filters: cloneFilters(call.Filters)})
 	}
 	if stalled {
 		<-ctx.Done()
@@ -121,4 +128,15 @@ func (p *Polls) Poll(ctx context.Context, cursor eventfeed.Cursor, filters event
 	r := p.script[0]
 	p.script = p.script[1:]
 	return r.page, r.err
+}
+
+// cloneFilters returns a Filters sharing no backing arrays with f. The ledger
+// owns its bytes: a caller mutating its slices after Poll, or a test editing a
+// Calls snapshot, must not change what the log says was passed at call time.
+func cloneFilters(f eventfeed.Filters) eventfeed.Filters {
+	return eventfeed.Filters{
+		Types:    slices.Clone(f.Types),
+		Buckets:  slices.Clone(f.Buckets),
+		Creators: slices.Clone(f.Creators),
+	}
 }

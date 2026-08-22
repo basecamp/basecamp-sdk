@@ -74,9 +74,20 @@ func reconnectDelay(retryAfter time.Duration, n int, r func() float64) time.Dura
 // reconnect-cycle count, reset by any successful poll page and by socket
 // teardown. A server-directed Retry-After is waited exactly and is exempt
 // from local caps; otherwise the wait is a full-jitter draw over k.
-func pollRetryDelay(retryAfter time.Duration, k int, r func() float64) time.Duration {
-	if retryAfter > 0 {
-		return retryAfter
+// The selection is kind-keyed, per SPEC §6's fixed adapter mapping: "a
+// retryable outcome exhausted inside the seam whose last response carried a
+// parsed Retry-After maps to throttled(retry_after) whatever its status, and
+// one without maps to transient". PollThrottled therefore ALWAYS carries a
+// server-directed wait, zero included — Retry-After: 0, or an HTTP-date
+// already reached — and §23 waits it exactly, cap-exempt. Gating on
+// retryAfter > 0 alone read a parsed zero as absence and replaced an
+// immediate-retry directive with up to 60 seconds of local jitter. A
+// transient carrying a positive RetryAfter is still honored defensively; a
+// negative value (an adapter bug) clamps to zero rather than arming a
+// negative timer.
+func pollRetryDelay(kind PollErrorKind, retryAfter time.Duration, k int, r func() float64) time.Duration {
+	if kind == PollThrottled || retryAfter > 0 {
+		return max(retryAfter, 0)
 	}
 	return fullJitterDelay(k, r)
 }

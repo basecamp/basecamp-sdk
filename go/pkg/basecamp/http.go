@@ -112,21 +112,6 @@ func WithTransport(t http.RoundTripper) ClientOption {
 	}
 }
 
-// retryableError wraps an error with retry metadata.
-// This allows respecting Retry-After headers from 429 responses.
-type retryableError struct {
-	err        error
-	retryAfter time.Duration
-}
-
-func (r *retryableError) Error() string {
-	return r.err.Error()
-}
-
-func (r *retryableError) Unwrap() error {
-	return r.err
-}
-
 // newDefaultTransport creates an HTTP transport with sensible defaults.
 // It clones http.DefaultTransport to preserve proxy settings, HTTP/2, TLS config.
 func newDefaultTransport() http.RoundTripper {

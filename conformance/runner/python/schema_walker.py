@@ -39,7 +39,10 @@ _MAX_DEPTH = 12
 
 class SchemaWalker:
     def __init__(self, openapi_path: Path) -> None:
-        self._doc: dict = json.loads(openapi_path.read_text())
+        # Read as UTF-8 regardless of process locale (LC_ALL=C would otherwise
+        # read as US-ASCII, whenever UTF-8 mode is off, and choke on the spec's
+        # UTF-8 bytes).
+        self._doc: dict = json.loads(openapi_path.read_text(encoding="utf-8"))
 
     def find_response_schema(self, operation_id: str) -> dict | None:
         for path_item in self._doc.get("paths", {}).values():
