@@ -102,8 +102,10 @@ func TestFiltersCloneDoesNotAliasCallerSlices(t *testing.T) {
 	}
 }
 
-// A nil slice must clone to a nil slice, not an empty one: the srv1 digest and
-// the subscription identifier both distinguish "no filter" from "empty filter".
+// A nil slice must clone to a nil slice, not an empty one: clone preserves
+// the value verbatim instead of normalizing it. Nothing downstream tells the
+// two apart — canonicalJSON and subscribeIdentifier both branch on len, so
+// the filter key is identical either way, as the second assertion shows.
 func TestFiltersCloneKeepsNilDistinctFromEmpty(t *testing.T) {
 	got := Filters{}.clone()
 	if got.Types != nil || got.Buckets != nil || got.Creators != nil {
