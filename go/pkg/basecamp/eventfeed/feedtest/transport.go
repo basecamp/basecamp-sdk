@@ -43,8 +43,9 @@ func NewTransport() *Transport {
 // Dial implements eventfeed.CableTransport. Every call is recorded first —
 // including cancelled and scripted-failure dials, so seam-call counts stay
 // honest. A stalled dial blocks until ctx is done; a done ctx returns
-// ctx.Err(); a scripted failure pops in FIFO order; otherwise a fresh Conn
-// carrying maxFrameBytes is returned.
+// ctx.Err(); a non-positive maxFrameBytes is refused as a usage error (the
+// seam has no unlimited mode); a scripted failure pops in FIFO order;
+// otherwise a fresh Conn carrying maxFrameBytes is returned.
 func (tr *Transport) Dial(ctx context.Context, wsURL string, maxFrameBytes int64) (eventfeed.CableConn, error) {
 	tr.mu.Lock()
 	tr.dials = append(tr.dials, Dial{URL: wsURL, MaxFrameBytes: maxFrameBytes})
@@ -59,6 +60,15 @@ func (tr *Transport) Dial(ctx context.Context, wsURL string, maxFrameBytes int64
 	}
 	if err := ctx.Err(); err != nil {
 		return nil, err
+	}
+	// The seam contract has no unlimited mode (CableTransport.Dial): a fake
+	// that accepted a non-positive limit would let a run-loop test pass
+	// against a value the real transport refuses.
+	if maxFrameBytes <= 0 {
+		return nil, &eventfeed.TerminalError{
+			Reason: eventfeed.ReasonUsage,
+			Msg:    "cable dial max frame bytes must be positive",
+		}
 	}
 	tr.mu.Lock()
 	defer tr.mu.Unlock()
