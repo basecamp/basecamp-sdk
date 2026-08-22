@@ -2400,3 +2400,33 @@ func TestStalledSubscribeWriteObservesStaleness(t *testing.T) {
 	}
 	h.awaitTimer(timerBackoff)
 }
+
+// TestCloseFromDisconnectedDoesNotAnnounceBackoff: Observer.Disconnected and
+// StaleConnection run inside the failed cycle, and Close is supported from
+// both — runCtx is then already cancelled when outcomeFailed reaches the run
+// loop, and announcing Backoff plus asking the product clock for a reconnect
+// timer is a reconnect act performed after Close returned (a host clock that
+// blocks in NewTimer would keep the iteration and Wait from reaching Closed
+// at all). Close outranks the announcement, exactly as it does for
+// Connecting.
+func TestCloseFromDisconnectedDoesNotAnnounceBackoff(t *testing.T) {
+	var mu sync.Mutex
+	var states []string
+	var h *harness
+	h = newHarness(t, eventfeed.WithObserver(eventfeed.Observer{
+		Disconnected: func(string, error) { h.conn.Close() }, //nolint:errcheck // asserted via states
+	}))
+	h.conn.OnStateChanged(func(s string) { mu.Lock(); states = append(states, s); mu.Unlock() })
+	h.minter.ScriptTicket(ticket(1))
+	h.start()
+
+	conn := h.liveConn()
+	conn.FailReads(errors.New("socket died"))
+	h.join()
+
+	mu.Lock()
+	defer mu.Unlock()
+	if slices.Contains(states, "backoff") {
+		t.Fatalf("states %v announced Backoff after Close returned from Disconnected; the Closed edge must win", states)
+	}
+}
