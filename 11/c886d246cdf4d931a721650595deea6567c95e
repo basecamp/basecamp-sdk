@@ -1,0 +1,23 @@
+Makefile
+  s_1c9d086ab67253::t_ab018a3c11b11a 306
+scripts/promote-migrating.sh
+  s_1c9d086ab67253::t_f105891f251fb0 21-35,41-46,60-64,67-70
+scripts/test-promote-migrating.sh
+  s_1c9d086ab67253::t_4011a714f253fc 8-10,91-109
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "11c886d246cdf4d931a721650595deea6567c95e",
+  "prompts": {},
+  "sessions": {
+    "s_1c9d086ab67253": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1f5628ec-50ac-4d8d-a2cc-cee5b0112903",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
