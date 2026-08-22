@@ -1,0 +1,25 @@
+MIGRATING.md
+  s_1c9d086ab67253::t_425ed4da0c0507 88-95,225-228
+Makefile
+  s_1c9d086ab67253::t_16105389a18dbb 258,272-275
+scripts/bump-version.sh
+  s_1c9d086ab67253::t_2a4bedcd2b9deb 62-65
+scripts/promote-migrating.sh
+  s_1c9d086ab67253::t_e7ff40766e9b8c 1-27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "70623b3f5745f4ea53273a3713015fc9fa1c19a2",
+  "prompts": {},
+  "sessions": {
+    "s_1c9d086ab67253": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1f5628ec-50ac-4d8d-a2cc-cee5b0112903",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
