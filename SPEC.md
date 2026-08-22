@@ -2847,7 +2847,7 @@ Two dispatch clarifications, pinned:
   (implementation-chosen; the Go reference uses 256). At capacity the pump **blocks** —
   back-pressure propagates to the socket and TCP — rather than dropping: the
   state-machine-owned live buffer is the only place a frame can ever be dropped, and its
-  overflow signal is the only drop signal. Worst-case connector memory is therefore
+  overflow signal is the only drop signal. Worst-case cable-lane retention is therefore
   bounded multiplicatively — every retained item is itself bounded by
   `EVENT_FEED_MAX_FRAME_BYTES`, and retention is an enumeration by HOLDER, which is what
   closes the count: a frame lives in the hand-off queue (≤ pump depth), in the live
@@ -2874,6 +2874,17 @@ Two dispatch clarifications, pinned:
   The enumeration cannot grow by a further party being noticed: every frame is in one of
   the three counted structures or in the hands of the pump or the state machine, and each
   of those holders is already counted.
+
+  The formula is the cable lane's retention, and only that — every counted item is a
+  raw socket frame or a buffered live event. The poll lane sits outside it on purpose:
+  `PollSource.Poll` returns one page decoded whole, and the walk retains that page
+  until its rows are delivered. What bounds it is shape, not size: pages are fetched
+  sequentially, so a walk holds at most one live page (a superseded attempt's in-flight
+  poll may briefly hold another before its result is discarded), but the page's SIZE is
+  the server's pagination decision — `EVENT_FEED_MAX_FRAME_BYTES` governs socket
+  frames and says nothing about an HTTP body the generated layer decodes. A
+  total-connector memory bound would need a poll-page cap this contract deliberately
+  does not impose.
 
   The drain's protocol-fatal scan is budgeted at `pump depth + 1` and not at this figure,
   which is not an inconsistency: the budget counts what the scan may DEQUEUE — the queue plus

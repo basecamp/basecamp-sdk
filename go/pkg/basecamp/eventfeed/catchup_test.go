@@ -1386,7 +1386,7 @@ func TestDrainScanAdmissionIsNotStranded(t *testing.T) {
 }
 
 // TestDrainHoldsNoMoreThanTheLiveBufferCapacity: the live buffer's capacity
-// is a bound on events HELD AT ONCE — SPEC §23 sizes the connector's whole
+// is a bound on events HELD AT ONCE — SPEC §23 sizes the cable lane's whole
 // memory ceiling off it, "(pump depth + 3 + EVENT_FEED_LIVE_BUFFER_CAPACITY) ×
 // EVENT_FEED_MAX_FRAME_BYTES" — so a drain must not be able to hold a batch
 // outside the buffer while the buffer refills to capacity behind it.

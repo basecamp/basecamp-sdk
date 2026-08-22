@@ -824,7 +824,7 @@ func (l *loop) drain(at *attempt) (cycleOutcome, bool) {
 	// one. Both halves matter. Scanning first is what keeps the
 	// protocol-fatal carve-out ahead of every delivery; dequeuing singly is
 	// what keeps the drain inside the live buffer's capacity, which is a
-	// bound on events held AT ONCE (SPEC.md §23 sizes the connector's whole
+	// bound on events held AT ONCE (SPEC.md §23 sizes the cable lane's whole
 	// memory ceiling off it). Taking the buffer's whole contents into a batch
 	// instead let the buffer read as empty while `capacity` events were still
 	// pending in that batch, so the scan could admit another full capacity
@@ -1016,8 +1016,8 @@ func (l *loop) probeFatal(at *attempt) (cycleOutcome, bool) {
 // is actually reported.
 //
 // This is why the scan needs no queue and no share of pumpDepth: it retains
-// exactly what the single slot always retained. The connector's published
-// memory bound — (pump depth + 3 + liveBufferCapacity) × MAX_FRAME_BYTES — is
+// exactly what the single slot always retained. The published cable-lane
+// retention bound — (pump depth + 3 + liveBufferCapacity) × MAX_FRAME_BYTES — is
 // untouched, and so is the depth at which the pump blocks. The slot IS one of
 // that formula's three raw-frame terms beyond the queue; the others are the
 // frame the pump has read and not yet handed off, and the frame the scan

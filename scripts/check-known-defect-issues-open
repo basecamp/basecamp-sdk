@@ -154,7 +154,12 @@ end
 # with a plain directory walk as the fallback for a sweep root that is not a
 # repository (the self-test corpus). Binary files are skipped by NUL sniff.
 
-SWEEP_GAP = /(?:[ \t]|\r?\n[ \t]*(?:#(?!\d)|\/\/|\*+|--)?[ \t]*)+/
+# The comment leader is matched by CLASS, not by count: Swift/Kotlin doc
+# comments are `///`, box comments stack `*`, and a leader that consumed an
+# exact number of marks would leave the surplus mark in front of the next word
+# and read a wrapped promise as absence. `#+` refuses a following digit so an
+# issue reference is never eaten as a leader.
+SWEEP_GAP = /(?:[ \t]|\r?\n[ \t]*(?:#+(?!\d)|\/{2,}|\*+|-{2,})?[ \t]*)+/
 SWEEP_MENTION = /\btracked(?:#{SWEEP_GAP}separately)?#{SWEEP_GAP}in#{SWEEP_GAP}#(\d+)/i
 
 def sweep_files(root)

@@ -3,7 +3,7 @@ package eventfeed
 import "testing"
 
 // TestLiveBufferAddClearsEvictedSlots pins the eviction half of the live
-// buffer's memory ceiling. SPEC.md §23 publishes the connector's worst case
+// buffer's memory ceiling. SPEC.md §23 publishes the cable lane's worst case
 // as (pump depth + 3 + EVENT_FEED_LIVE_BUFFER_CAPACITY) × EVENT_FEED_MAX_FRAME_BYTES;
 // a reslice alone removes the evicted event LOGICALLY while the slice that
 // results still points into the same backing array, whose prefix keeps that
