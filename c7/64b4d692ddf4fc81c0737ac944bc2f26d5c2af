@@ -1,0 +1,47 @@
+SPEC.md
+  s_1c9d086ab67253::t_da40a4ecd8ab4a 2851-2857,2859-2861,2865-2868,2871-2876
+conformance/event-feed/README.md
+  s_1c9d086ab67253::t_4c46e5f8e30cf3 144-147
+go/pkg/basecamp/eventfeed/buffer_test.go
+  s_1c9d086ab67253::t_4dca499d2b9300 7
+go/pkg/basecamp/eventfeed/catchup.go
+  s_1c9d086ab67253::t_184cb886042483 1020,1022-1026
+go/pkg/basecamp/eventfeed/catchup_test.go
+  s_1c9d086ab67253::t_4b0fa81923d348 1390
+go/pkg/basecamp/eventfeed/feedtest/clock.go
+  s_1c9d086ab67253::t_0a62a929bc1923 83-88,98-128
+go/pkg/basecamp/eventfeed/feedtest/clock_test.go
+  s_1c9d086ab67253::t_38b61326bfda7c 124-181
+go/pkg/basecamp/eventfeed/scenario_conformance_test.go
+  s_1c9d086ab67253::t_cb2c81b1131e9a 599-602,613
+python/src/basecamp/services/todolists.py
+  s_1c9d086ab67253::t_e84a365a01616b 143-145
+python/tests/services/test_todolists_service.py
+  s_1c9d086ab67253::t_89861e48b9f487 281-282
+ruby/lib/basecamp/services/todolists_extensions.rb
+  s_1c9d086ab67253::t_fd20afe18b0b44 183-186
+ruby/test/basecamp/services/todolists_service_test.rb
+  s_1c9d086ab67253::t_b7930a7ad8cdfc 162-163
+scripts/check-known-defect-issues-open
+  s_1c9d086ab67253::t_e6eed9749411ac 97-104,106,110
+scripts/test-check-known-defect-issues-open
+  s_1c9d086ab67253::t_15e9ee9d4cdbf2 92-95,390-403
+spec/tracking-issues.yml
+  s_1c9d086ab67253::t_8bc987d480ff6c 22-32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "c764b4d692ddf4fc81c0737ac944bc2f26d5c2af",
+  "prompts": {},
+  "sessions": {
+    "s_1c9d086ab67253": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1f5628ec-50ac-4d8d-a2cc-cee5b0112903",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
