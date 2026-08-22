@@ -198,7 +198,7 @@ if err != nil {
     switch {
     case errors.Is(err, oauth.ErrAmbiguousIssuers):          // ≥2 non-Launchpad issuers, no expected issuer
     case errors.Is(err, oauth.ErrExpectedIssuerUnavailable): // expected issuer not advertised
-    case errors.Is(err, oauth.ErrInvalidIssuerOrigin):       // advertised issuer is not a valid origin root
+    case errors.Is(err, oauth.ErrInvalidIssuerOrigin):       // advertised issuer refused: bad origin root, or blocked address
     case errors.Is(err, oauth.ErrASFetchFailed):             // committed issuer's AS metadata unavailable
     case errors.Is(err, oauth.ErrIssuerMismatch):            // committed issuer's metadata fails issuer binding
     }
@@ -226,6 +226,55 @@ Notes:
   socket opens, HTTPS is required (localhost exempt), redirects are suppressed,
   timeouts are bounded, and bodies are read under a bounded cap. Non-2xx on
   either hop surfaces as an `api_error`.
+- **The advertised-issuer hop additionally enforces an address policy.** That
+  hop is the one whose destination comes from a parsed response body, so URL
+  syntax is not enough: `net/url` has no notion of what a host resolves to.
+  `DiscoverFromResource` judges the literal address at connection time via
+  `oauth.DefaultIssuerPolicy()`, so a syntactically valid issuer pointing at
+  private, loopback, link-local, or other special-use space is refused before a
+  socket opens — including legacy spellings like `https://2130706433/`, and
+  including a name that resolves to blocked space only at dial time. (The
+  `https` here is load-bearing: on the `http` spelling of that same host the
+  origin-root profile refuses first, so it would demonstrate the pre-existing
+  scheme gate rather than the address policy.) The
+  refusal surfaces as `ErrInvalidIssuerOrigin`; it also matches
+  `errors.Is(err, surfguard.ErrBlocked)` and wraps a `*surfguard.Violation` if
+  you need to tell the two causes apart. Hop 1 and `Discover` are unaffected —
+  their destinations are operator-configured.
+
+  A deployment whose issuer legitimately sits off the public internet re-admits
+  exactly the space it needs rather than switching the policy off. Mind
+  surfguard's precedence when you do: `Allow` re-admits space the default deny
+  tables refuse but **not** space the `IANASpecialUse` tables refuse, and those
+  cover all of RFC 1918.
+
+  ```go
+  // On-premises issuer in private space — build without IANASpecialUse.
+  oauth.NewDiscoverer(c, oauth.WithIssuerPolicy(
+      surfguard.Policy{}.AllowAllPorts().Allow(netip.MustParsePrefix("10.4.0.0/16"))))
+
+  // Local development — AllowLoopback does pierce those tables.
+  oauth.NewDiscoverer(c, oauth.WithIssuerPolicy(
+      oauth.DefaultIssuerPolicy().AllowLoopback()))
+  ```
+
+  `oauth.WithIssuerHTTPClient` carries the hop on your own client, which a
+  consumer egressing through a proxy needs since surfguard's transport sets
+  `Proxy: nil` by construction. `oauth.WithoutIssuerPolicy` restores the
+  pre-policy behavior outright.
+
+- **The same policy governs where the credentials go next.** The selected
+  `Config` carries the `token_endpoint` and `device_authorization_endpoint`
+  the issuer's metadata named, and nothing constrains those to the issuer's
+  origin — so a public issuer that passes the policy could still steer the
+  `client_id`, `device_code`, authorization code, client secret, or refresh
+  token into private space. `PerformDeviceLogin`, `RequestDeviceAuthorization`,
+  `PollDeviceToken`, and an `Exchanger` therefore judge the endpoint's address
+  at dial time by default, on the same shared `oauth.DefaultIssuerPolicy()`
+  client. A refusal is a non-retryable `*basecamp.Error` (`api_error`) that
+  matches `errors.Is(err, surfguard.ErrBlocked)`; in the poll loop it ends the
+  flow on the first attempt rather than backing off. See the device-flow
+  section below for the overrides.
 
 ### OAuth device authorization grant (RFC 8628)
 
@@ -309,6 +358,34 @@ cancellation. The clock (`oauth.WithDeviceClock`) and inter-poll wait
 (`oauth.WithDeviceSleep`) are injectable for deterministic tests; scope is
 omitted from the authorization request unless set with `oauth.WithDeviceScope`,
 so the server applies its default (`read`) — prefer pinning it explicitly.
+
+**Both endpoints are address-policed by default**, and so is the token endpoint
+an `oauth.Exchanger` posts to: the flow cannot tell a discovered endpoint from
+a hand-configured one, so every request on the default client is judged by
+`oauth.DefaultIssuerPolicy()` at dial time. The precedence is the same on every
+surface of the package — a client you hand in is yours, enforcement included;
+otherwise your policy; otherwise the default:
+
+```go
+// Local development against an AS on loopback — AllowLoopback pierces the
+// IANASpecialUse tables; plain Allow does not (see the discovery notes above).
+devPolicy := oauth.WithDevicePolicy(oauth.DefaultIssuerPolicy().AllowLoopback())
+token, err := oauth.PerformDeviceLogin(ctx, cfg, "basecamp-cli", display, devPolicy)
+ex := oauth.NewExchanger(nil, oauth.WithExchangerPolicy(oauth.DefaultIssuerPolicy().AllowLoopback()))
+
+// Your own client carries the requests instead, policy and all. To keep the
+// policy on a custom transport, build the transport from it:
+hc := &http.Client{Transport: oauth.DefaultIssuerPolicy().RoundTripper()}
+oauth.PerformDeviceLogin(ctx, cfg, "basecamp-cli", display, oauth.WithDeviceHTTPClient(hc))
+oauth.NewExchanger(hc)
+
+// http.DefaultClient restores the pre-policy behavior outright.
+oauth.NewExchanger(http.DefaultClient)
+```
+
+`WithDevicePolicy` builds its transport once, when the option is constructed,
+so build it once and reuse it; an `Exchanger` given `WithExchangerPolicy` owns
+its transport the same way. Neither has a `Close`.
 
 ### Persisting device-login credentials (RFC 8707 resource echo)
 

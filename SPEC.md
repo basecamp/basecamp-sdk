@@ -530,7 +530,7 @@ RECORD BasecampError extends Error
 END
 ```
 
-**Go divergence:** Go's `Error` struct omits `retry_after`; retry delay is tracked on `RequestResult` instead. Go also exposes a `Cause` field (the underlying error) not present in this canonical RECORD — a language-specific extension.
+**Go divergence:** Go exposes a `Cause` field (the underlying error) not present in this canonical RECORD — a language-specific extension. `retry_after` is no longer a divergence: Go's `Error` carries it, populated at both 429 construction sites, and the raw GET retry loop sleeps it in place of the backoff curve. `RequestResult.retry_after` is unchanged and remains the hook-facing copy rather than the only one.
 
 ### Error Code Table
 
@@ -630,14 +630,309 @@ Swift carries the slot as a fifth associated value on `.validation` plus a `fiel
 Given header value `value`:
 
 1. Attempt parse as integer. If valid and > 0 → return as seconds.
-2. Attempt parse as HTTP-date (RFC 7231, e.g., `Wed, 09 Jun 2021 10:18:14 GMT`). If valid → compute `max(0, date - now())` in seconds; if > 0 → return.
+2. Attempt parse as HTTP-date (RFC 7231, e.g., `Wed, 09 Jun 2021 10:18:14 GMT`). If valid → compute `max(0, date - now())` in seconds, **rounding a sub-second remainder up**; if > 0 → return.
 3. → `undefined` (fall through to backoff formula).
 
-This algorithm defines **parsing** only — how a header value becomes a number of seconds. It does not
-say which response statuses a parsed value is honoured at, and the SDKs do not agree: Python honours
-it on any status, Go on 429 and 503, and Ruby, Kotlin, Swift and TypeScript on 429 alone. That
-divergence is real (a 503 carrying `Retry-After` is obeyed by two SDKs and ignored by four) and is
-tracked in #775; do not read a status set into the steps above.
+Step 2's rounding is up, not truncating, for two reasons: a positive remainder must never round to
+zero, because zero is read as "no usable value" and drops the request onto the local backoff curve —
+the opposite of what the header said; and rounding down retries up to a second *before* the moment
+the server named, which is the one thing a date is unambiguous about. TypeScript, Kotlin, Swift and
+Go round up. Python and Ruby still truncate, tracked in #799.
+
+This algorithm defines **parsing** only — how a header value becomes a number of seconds. Which
+statuses honour the result, and what bounds the sleep it buys, is the next section; do not read a
+status set into the steps above.
+
+### Retry-After Honouring `[CONFLICT]`
+
+**A parsed `Retry-After` is honoured at any status a retry is already going to happen at.** There is
+no status gate of its own, and this is a property of retrying rather than of one loop: §7's three
+gates decide whether *this* response is retried on the generated-operation path, and §14's hop-1
+policy decides it for `DownloadURL`. Wherever the deciding rule says yes, the parsed value governs the
+wait — at 429, at 503, and at every status a declared retry set carries today or grows to carry later.
+Where it says no, the value may still be parsed and surfaced on the error for the caller to read, but
+nothing sleeps on it.
+
+That is a rule about **which statuses**, and it is the only thing this section decides for every loop
+at once. *How* the value composes with whatever delay the loop would otherwise have computed is a
+separate question with a separate answer per loop, settled under "Composition is per-loop" below.
+
+#### What "retry" means here
+
+The rule above turns entirely on that word, and leaving it to intuition cost three review rounds — each
+one finding another repeating loop the rule appeared to reach and the code deliberately did not. The
+answer is not a longer list of loops. It is that **a loop which repeats a request is not thereby
+retrying one.**
+
+> **A retry is the re-issue of a request whose previous attempt produced no answer** — the transport
+> failed, or the origin declined to serve it with a status the loop **declares retryable**. Re-issuing
+> a request because the answer was *"not yet"* is a **poll**, and this section does not reach it.
+
+Both halves carry weight, and the second is not decoration. §4's 401 refresh-and-retry re-issues after
+the origin declined to serve — but 401 is on §7's explicit never-retry list, so no loop declares it
+retryable, and §4 is outside. §23's below-threshold authorization recovery is the same shape one level
+up, and is outside on the same clause: an unauthorized mint, disconnect or poll rides the reconnect
+cycle to a fresh mint, but the seam classifies 401/403 as `unauthorized` — a kind that carries no
+`retry_after` by construction, distinct from the `transient`/`throttled` kinds the `backoff` row
+declares — and the cycle is bounded by the shared authorization counter, not a retry budget. Nothing
+for the header to reach, and no declared retryable status. §7's `retry_on`, §14's hop-1
+`{429, 502, 503, 504}`, §23's transient/throttled error kinds and §16's `429`-plus-`too_many_requests`
+pair are all declared sets, so all four are inside.
+
+For §23 the *kind* is what carries the header across the seam, so the adapter's mapping is fixed
+here rather than left to each implementation: a retryable outcome exhausted inside the seam whose
+last response carried a parsed `Retry-After` maps to `throttled(retry_after)` **whatever its
+status**, and one without maps to `transient`. A mapping keyed on status instead — 429 to
+`throttled`, 503 to `transient` — would honour the header at one retryable status and drop it at
+another, which is exactly the gate this section removes.
+
+There is a second, independent reason the boundary falls here, and it is worth stating because it
+shows the definition is not merely stipulated. This section governs the relationship between a
+server-directed delay and a **locally computed backoff** — what may replace it, floor it, cap it. A
+completion poll has no backoff to relate to. It waits a cadence the *same server* already prescribed
+(§16's `interval`, raised by each `slow_down`), so there is nothing for `Retry-After` to displace and
+no question for this section to answer. Where the rule has no subject, it does not apply.
+
+**The definition replaces the enumeration, so a loop is in or out by the criterion** rather than by
+someone noticing it. Every delay-bearing branch in this document, walked back through it:
+
+| Loop / branch | Repeat is driven by | Verdict |
+|---|---|---|
+| §7 generated-operation retry | declared `retry_on` `{429, 503}`, or a network error | **in** |
+| §14 `DownloadURL` hop 1 | declared `{429, 502, 503, 504}`, or a network error | **in** |
+| §16 poll — `authorization_pending`, `slow_down` | a 4xx protocol answer meaning "not yet" | **out** |
+| §16 poll — `429` + `too_many_requests` | the one pair §16 declares retryable; the origin refused to serve | **in** |
+| §16 poll — connection timeout | a network error | **in** |
+| §16 poll — `429` alone, or `too_many_requests` off 429 | nothing; terminal `api_error` | **out** |
+| §23 reconnect `backoff` | mint/connect outcomes classified transient or throttled | **in** |
+| §23 `poll-retry` | poll outcomes classified transient or throttled | **in** |
+| §23 `backoff` after an unauthorized mint, disconnect or poll (below threshold) | 401/403, classified `unauthorized` — a kind carrying no `retry_after`; authorization recovery bounded by the shared counter | **out** |
+| §23 `repair-poll` | a schedule — 60s ± 20% per cycle, no failure involved | **out** |
+| §23 `staleness`, `handshake-deadline`, `confirmation-deadline` | elapsed time; deadlines, not repeats | **out** |
+| §4 401 refresh-and-retry | a status no loop declares retryable, gated on a token refresh | **out** |
+
+Those verdicts are the contract — what the criterion decides, independent of what any SDK does today.
+Nothing above is a carve-out: `repair-poll` and the §16 pending branch are outside for the same reason
+as each other — they repeat without a failed attempt — and §4 and §23's authorization recovery are
+outside for the second clause alone, which is what shows that clause is load-bearing rather than
+restating the first.
+
+*(As-of check, not a contract: the §7, §14, §16 and §4 rows were verified against shipped code —
+`wt/lane-spec` @ `fc5645dfe`, §16 read in four SDKs — and every one agreed with its verdict. The §23
+rows could only be checked against §23's written text, because no event-feed connector ships in any
+SDK yet; they are the weaker evidence and should be re-checked, not assumed, once it does.)*
+
+§8's auto-pagination is the case that makes the distinction obvious, which is why it is worth naming
+even though it takes no delay and so has no row: it issues request after request, and not one of them
+is a retry — each asks for a *different* page and each previous one answered. It is also the cleanest
+illustration of how the two layers nest, because an individual request inside that loop **is** under
+§7, and is retried, and honours `Retry-After` accordingly. "Repeats requests" and "retries a request"
+are properties of different things, and conflating them is the specific mistake this definition exists
+to prevent.
+
+Verified across four SDKs rather than read off the spec: Go, Kotlin, TypeScript and Python all
+structure §16's poll the same way, and Go's own field comment states the boundary outright — the raw
+header is *"consumed by the loop's 429 `too_many_requests` handling only"*.
+
+RFC 9110 §10.2.3 defines `Retry-After` as a general response header field restricted to no status
+set, and attaches explicit semantics to two cases: **503**, where the value is how long the service
+expects to be unavailable, and **3xx**, where it is the minimum wait before issuing the redirected
+request. Of the statuses this SDK's retry sets carry, 503 is therefore the only one the RFC speaks to
+directly — a redirect is followed or refused (§8, §14 hop 1) and never retried, so the 3xx case never
+reaches this rule. RFC 6585 §4 says a **429** *MAY* carry it. So among retried statuses 429 is the
+permitted use and 503 the canonical one, which makes a 429-only rule narrowest exactly where the RFCs
+are most specific. Deriving the answer from retry eligibility rather than from a status list is also
+the only position that needs no amendment when a retry set grows: a status worth retrying is a status
+whose `Retry-After` was worth reading.
+
+It is also what §7's Retry Algorithm has always spelled. Step 3h reads "if `last_response` exists and
+has a valid `Retry-After` header" with no status test of its own, and it is reachable only for a
+response that already passed step 3f's `status IN retry_config.retry_on`. The status gates the five
+SDKs grew are narrower than the algorithm they implement; what was missing was this section saying so.
+
+**The value is honoured as given.** It is exempt from §7's backoff ceiling (§7 "Backoff Ceiling",
+requirement 4): the ceiling governs the locally computed formula, and a client that silently caps a
+server's instruction retries sooner than the origin asked for. **Nothing is added to it either** — a
+jitter term is part of the locally computed formula, where it exists to decorrelate clients choosing
+the same delay independently; a delay the origin named is already the origin's choice, so adding to
+it makes the client wait longer than it was told for no benefit. An implementation MAY have a **host
+limit** — a timer that cannot schedule the value, a conversion that would trap or wrap — and where a
+parsed value meets one it MUST bound the value there: saturate, per the second representability tier
+below, never let the conversion trap or wrap, and never fall back to the local backoff. A bound of
+that kind belongs at the sleep, so wherever the error carries `retry_after` the caller reads what the
+server said, never the clamped copy. TypeScript's `Math.min(seconds × 1000,
+MAX_TIMEOUT_MS)`, applied in both of its retry loops as the delay is computed, is the worked example:
+the parser's result stays the public `retryAfter`, and only what reaches the timer is clamped.
+
+That is a guarantee about the field's *integrity*, not its *presence*. The Status Mapping Algorithm
+above populates `retry_after` in its 429 arm only, so today an exhausted 503 that was slept on for
+the value the origin named surfaces no `retry_after` to the caller, and neither does the error §7 step
+3i hands to `on_retry`. Whether the mapping grows the field at every status a declared retry set
+carries is part of the status convergence in #775, not decided here — for the SDKs whose delay loop
+reads the value off the constructed error, it is the same change as the status gate, because one
+parse feeds both.
+
+Read that paragraph narrowly: it says what may not be done *to* the value — not capped, not summed
+with a jitter term. It does not say what the value is combined *with*, which is the next paragraph's
+subject and is not the same question. `max(interval, retryAfter)` neither caps the value nor adds to
+it.
+
+**Composition is per-loop, and every loop states its own.** Honouring settles that the parsed value
+governs the wait. Whether it *replaces* the delay the loop would otherwise have computed, *floors*
+it, or is combined with it some other way is not one answer, because the delay loops in this document
+are not one mechanism: two schedule a retry of the same request, one paces a poll the server is
+throttling against a fixed code lifetime, and one selects a gap between whole reconnect cycles. A
+single composition asserted here would have silently overridden three of the five rows below.
+
+So the obligation runs the other way. **Each loop the definition above puts *inside* — one whose wait a
+`Retry-After` can reach — states its own composition in its own section, and such a loop added to this
+document later MUST state its own rather than inherit one from here.** There is deliberately no
+default to fall back on: an in-scope loop that says nothing is under-specified, not governed by §7's
+answer. A loop the definition puts outside — `repair-poll`, the §16 pending branch, the deadline
+timers — has no composition to state, because no header reaches it, and is not made under-specified
+by this rule. The rows that exist today:
+
+| Loop | Composition with the locally computed delay | Stated in |
+|---|---|---|
+| §7 generated-operation retry | **replaces** it — step 3h computes `parsed × 1000` *instead of* the backoff formula, never a sum | §7 "Retry Algorithm" step 3h, "Backoff Formula" |
+| §14 `DownloadURL` hop 1 | **replaces** it, at every status in that hop's own `{429, 502, 503, 504}` set | §14 "Hop-1 Retry" |
+| §16 device-flow poll | **`max` with the current `interval`** — a one-shot `nextWaitOverride = max(interval, retryAfter)`, still clamped to the remaining code lifetime by the wait rule, then decayed. Reads the **delta-seconds form only** — a declared exception to the Parsing Algorithm, reasoned below | §16 "RFC 8628 Device Authorization Grant" |
+| §23 reconnect `backoff` timer | **floors** the full-jitter draw, and wins outright when it exceeds the cap | §23 "Clock, Timers, and Virtual Time" |
+| §23 `poll-retry` timer | **replaces** the full-jitter draw — waited exactly | §23, same table |
+
+One row also departs from the Parsing Algorithm, and says so rather than leaving two prescriptions for
+one response. **§16's branch accepts delta-seconds and nothing else; an HTTP-date there is malformed
+and falls back to the current `interval`.** That is an exception, declared here, for a reason that is a
+property of that loop rather than of the header: the poll measures every wait on an injectable
+**monotonic** clock against a deadline fixed at code issuance (§16 `pollDeviceToken` step 2), and an
+HTTP-date is resolvable only against wall-clock `now()`, which that loop deliberately never reads — a
+wall-clock comparison is the one thing a monotonic deadline exists to exclude. The cost of the
+exception is bounded by the loop's own shape: the fallback is the cadence the same authorization
+server prescribed, not a locally computed backoff, and the wait rule clamps everything to the
+remaining code lifetime regardless. §16's block already pins the shape — digits-only, a shared
+significant-digit bound, clamped to the device ceiling; this paragraph is what makes it an exception
+instead of a contradiction.
+
+§23 is two rows because its two timers genuinely differ, and that is the sharpest evidence that one
+rule would not have fitted. A 1-second header against a 50-second selected reconnect delay waits 50
+seconds: that timer's job is to space whole cycles apart after repeated failure, and a server naming
+one second has said nothing about whether the condition that failed the last four cycles has cleared.
+The same header on a `poll-retry` waits exactly one second, because there the server is pacing
+precisely the request that is about to be re-sent. Both are `Retry-After` honoured at a status that
+was going to be retried anyway; only the composition differs, which is the whole point.
+
+The five rows do not conflict with each other — they are five loops, not five answers to one
+question — and this paragraph converges nothing: each section keeps the behaviour it already has, and
+what changes is that it now states it on purpose rather than by omission. One *implementation*
+divergence sits on this axis and is already recorded below: the generated Go client sleeps
+`retryDelay + rand(0, 100ms)` on the §7 row, which is the added jitter the paragraph above forbids,
+and it is tracked with the rest in #775.
+
+**Representability is not a policy cap, and it is exempt from the "never in the parser" rule.** A
+policy cap answers "how long *should* a caller wait"; representability answers "can this host express
+the value at all", and where the answer is no there is nothing to preserve. Two tiers, in the shape
+§16's device-flow parser already settled — its second tier bounds against a domain ceiling (the
+remaining device-code lifetime) rather than a host one, but the fall-back-versus-clamp split is the
+same and is adopted here:
+
+- **Unrepresentable in the parser's own numeric type → malformed.** It falls out at step 3 of the
+  Parsing Algorithm to the local backoff, exactly like a fractional or non-positive value. Nothing is
+  surfaced on the error, because nothing was parsed.
+- **Representable by the parser but beyond what the host can schedule → saturate**, never fall back.
+  Falling back would replace a server's request for a long wait with the millisecond backoff curve
+  and hammer a peer that just asked to be left alone — the same tight loop by another route. Where
+  the overflowing conversion is the one *feeding* the parser's own output type, the saturation may
+  sit in the parser, and the caller then reads the saturated value; that is accepted, and it is the
+  one carve-out from the paragraph above.
+
+The host whose limit binds is the one the build runs on, and an SDK that ships to more than one
+build target MAY pin the second-tier ceiling at the smallest value every supported target can
+represent and schedule, so the delay honoured does not vary by build. That is still a
+representability bound, not a policy cap: it is derived from a host limit — the narrowest one the
+SDK ships to — and answers "can every host express this value" rather than "how long should a caller
+wait". It clamps nothing the narrowest build could have honoured, and what it costs the wider builds
+is only the waits the narrowest one could never have scheduled.
+
+The width itself is deliberately not fixed here, because it is a property of the host. *(As-of
+observation, verified against `wt/lane-spec` @ `fc5645dfe` — kept because the decision not to fix a
+width is unreadable without it, not as a live claim: TypeScript rejects above
+`Number.MAX_SAFE_INTEGER`, Kotlin above `Int.MAX_VALUE` on the delta-seconds form — its date form
+computes in `Long` and saturates to `Int.MAX_VALUE` instead, which is the parser-output carve-out
+above rather than a rejection — Swift above its 64-bit `Int`, and Go above native `int`: both its
+hand-written and its generated parser are `strconv.Atoi` at that revision, so the width is 32 bits on
+the 32-bit targets this repository keeps viable and 64 elsewhere. #796 has since moved the
+hand-written parser to `ParseInt` into `int64`; the generated one stays `Atoi` until #798.)*
+Four hosts reject cleanly at thresholds differing by nine orders of magnitude without any of them
+misbehaving, which is the evidence that the width does not need fixing — a `Retry-After` naming a wait
+longer than the host can count is not a delay any caller is worse off for missing.
+
+`[CONFLICT: Ruby and Python have no such width, and that is a defect rather than a third position —
+but it is the **second** tier they owe, not the first. `Integer` and `int` are arbitrary-precision, so
+the parse cannot fail on magnitude and the first tier has nothing to fire on; the failure is one layer
+down, at the scheduler, where the sleep raises rather than saturating. Reading it as the first tier
+would oblige an implementer to invent a parser limit this section otherwise forbids. Both owe
+saturation at whatever their own sleep can schedule, applied at the sleep — which for Python is two
+different ceilings for the sync and async clients, since the binding host limit differs. Exact
+ceilings, exception types and call sites in #775.]`
+
+Go is the worked example of the two tiers meeting in one parser, and the two numbers govern different
+questions: a digit string too large for the parser's own `int64` is **malformed** and falls through to
+the backoff (first tier), while a value it holds but the host cannot schedule **saturates** (second
+tier) at the pinned portable ceiling the tier permits — `math.MaxInt32` seconds, the smallest value
+every supported `GOARCH` can represent, and the same 2,147,483,647 §16 already names as a shared
+cross-SDK ceiling. Pinning matters because two host limits sit above a Go `Retry-After` — native
+`int`, which the public `Error.RetryAfter` field is and which is 32 bits wide on the 32-bit targets
+this repository keeps viable, and `time.Duration` — and a ceiling derived from only the larger would
+change with `GOARCH`. That is what #796 ships: `ParseInt` into `int64`, over-range malformed, and a
+clamp at `math.MaxInt32` inside the shared hand-written `parseRetryAfter` that the raw retry loop,
+the download path and the hook result all read.
+
+The identical unclamped conversion in `go/pkg/generated/client.gen.go`, and an `Atoi` there whose
+range error is discarded into a rate-limit hint, are **not yet fixed anywhere**. Their fix *belongs*
+in `go/templates/client.tmpl` — the generated file is emitted from it and must never be edited
+directly — and #798 is where the work is tracked, not where it has landed.
+
+**The exemption is conditioned on the escape, not on a number.** There is deliberately no policy cap;
+in its place, **an honoured `Retry-After` delay MUST be awaited through the platform's cancellation
+primitive, with the caller's cancellation handle threaded into the sleep.** A cancellation primitive
+is the better control precisely because it is not a cap: it bounds the caller's *total* wait,
+including the network time no ceiling on a header value can reach, and it lets the caller choose that
+bound instead of the SDK guessing one on their behalf. Where such a primitive is threaded through, a
+policy cap is redundant. Where none is, the caller holds nothing, and a server-directed sleep that is
+merely long becomes a sleep that cannot be abandoned.
+
+**What the requirement rules out, so a remedy is not chosen wrongly.** An interruptible incremental
+sleep polling a cancellation flag satisfies it. A bound against a caller-supplied **total-time budget
+does not** — a numeric deadline fixed before the call cannot be acted on during it, so a caller who
+changes their mind still waits it out, and bounding the worst case that way is a policy cap under
+another name. Which satisfying shape each language picks carries a caller-facing API dimension and is
+not settled here.
+
+`[CONFLICT: the cost of this position is not uniform — four of the SDK sleep paths give the caller no
+handle at all today, and all four already carry the exposure independently of this decision: each
+honours Retry-After on its 429 path now, so the un-abandonable server-directed sleep predates the
+status rule, and widening the status set widens it rather than introducing it. Per-path inventory
+and remedies in #775.]`
+
+Strictly, none of those four is *uninterruptible*: a signal on the main thread, or `Thread#raise`
+from another, will break any of them. What they lack is a cancellation handle the caller can **hold**,
+and the requirement above is about the handle, not about whether the platform can ever intervene.
+
+`[CONFLICT: five of the six SDKs gate honouring on a narrower status set than this section
+prescribes, in three different shapes, and two of this section's other clauses are also divergent —
+one policy cap and one added jitter term. Converging is a behaviour change across five SDKs. The
+per-SDK inventory is deliberately NOT restated here: it states current behaviour, the convergence
+work below changes the very rows it would state, and no gate can catch it going stale. It lives in
+#775, verified as of that issue's dated comment.]`
+
+Which **date forms** step 2 accepts diverges on a second axis, and the inventory is over *parsers*
+rather than one per SDK — Go has two and they do not agree, the generated one
+accepting no date form at all, so **every** HTTP-date falls through to local backoff on **every**
+generated Go wire operation. That matters to the contract in one way only, and it is the reason this
+sentence stays: convergence scoped by SDK name would fix the hand-written parser and leave the
+generated surface untouched, so the fix site is `go/templates/client.tmpl`, never a file under
+`go/pkg/generated/`. `[CONFLICT: per-parser inventory in #775; the template change rides with #798,
+which owns the other two `Retry-After` defects at those same two lines.]`
 
 ---
 
@@ -774,7 +1069,14 @@ Where `retry_index` is the 0-indexed retry count (first retry = 0, second retry 
 - `max_jitter` = 100ms (from Config; not part of `retry_config` — sourced from the client's Config RECORD)
 - `MAX_BACKOFF_DELAY_MS` = 30,000 (30s) — the ceiling on the backoff term, below
 
-Retry-After header value takes precedence when present and valid.
+Retry-After header value takes precedence when present and valid, at every status this loop reaches
+(§6 "Retry-After Honouring").
+
+**Composition (§6 "Composition is per-loop"): a valid `Retry-After` REPLACES this formula.** Step 3h
+computes one branch or the other and never a sum, so neither the `2^(retry_index)` term nor the
+`random(0, max_jitter)` term is present in a server-directed delay. This loop's answer is stated here
+because §6 deliberately supplies no default: a delay loop that does not state its composition is
+under-specified rather than governed by this one.
 
 ### Backoff Ceiling `[CONFLICT]`
 
@@ -830,10 +1132,20 @@ Requirements:
    `behavior-model.json` tops out at `base_delay_ms: 2000`, and the default three
    attempts never compute past `2000 × 2 = 4000ms`, so the ceiling is unreachable on
    default paths and changes no shipped behavior.
-4. **`Retry-After` is exempt.** It is server-directed and takes precedence per step 3h;
-   the ceiling governs the locally-computed formula only. Implementations may still
-   bound it against host limits — Swift clamps its seconds→nanoseconds conversion to
-   86,400s because `UInt64(_:)` on an out-of-range `Double` is a trap.
+4. **`Retry-After` is exempt.** It is server-directed and takes precedence per step 3h,
+   at every status that step reaches (§6 "Retry-After Honouring"); the ceiling governs
+   the locally-computed formula only, and step 2's jitter is part of that formula rather
+   than an addend on a server-directed delay. Implementations may still bound it against
+   **host limits** — a timer that cannot schedule the value, such as TypeScript's clamp to
+   the 2,147,483,647ms `setTimeout` accepts, or a conversion that would trap or wrap, such
+   as the seconds→`time.Duration` saturation Go takes (#796) — and may reject outright a
+   value the parser's own numeric type cannot hold. §6 "Retry-After Honouring" governs
+   which of those belongs at the sleep and which may sit in the parser. A **policy** cap is a
+   different thing and is not permitted: Swift's 86,400s clamp is one (the `UInt64`
+   nanosecond trap it cites sits five orders of magnitude higher), and §6 records it as a
+   conflict alongside the status divergence. The exemption is not unconditional: §6
+   requires the honoured delay to be awaited through the caller's cancellation primitive,
+   and that requirement — not a number — is what stands in for a policy cap here.
 
 **Reachability.** Every SDK exposes a path to a high attempt count: Kotlin's builder
 validates `maxRetries >= 0` with no upper bound, Go's `WithMaxRetries` only rejects
@@ -1393,7 +1705,10 @@ Where:
 
 ### Redirect Handling
 
-`follow_redirects = false` for download flow (§14). Redirect responses are handled explicitly.
+`follow_redirects = false` on **both** hops of the download flow (§14). Hop 1's redirect is the
+flow's own dispatch — the SDK reads `Location` itself and decides what to do with it — and a
+redirect on hop 2 is refused outright (§14 "Hop-2 Redirect Policy"). Redirect responses are
+handled explicitly, never by the HTTP stack's default policy.
 
 For cross-origin redirects, strip the `Authorization` header to prevent credential leakage.
 
@@ -1412,7 +1727,7 @@ FUNCTION downloadURL(raw_url: String) → DownloadResult
   3. Hop 1 — Authenticated API GET, wrapped in the hop-1 retry loop (below):
      a. Set Authorization and User-Agent headers only (no Accept or Content-Type — this is a binary download, not a JSON API call). Every attempt is authenticated — re-run the auth strategy on retry so a rotated token is picked up.
      b. Fetch with redirect: manual (do not follow redirects automatically).
-     c. If the attempt fails with a network error, or the response status is in DOWNLOAD_RETRY_ON = {429, 502, 503, 504}: retry with exponential backoff while attempts remain (honor Retry-After on 429), else surface the failure. 500 is DELIBERATELY outside the set — it is never retried.
+     c. If the attempt fails with a network error, or the response status is in DOWNLOAD_RETRY_ON = {429, 502, 503, 504}: retry with exponential backoff while attempts remain (honor Retry-After at every status in the set, per §6), else surface the failure. 500 is DELIBERATELY outside the set — it is never retried.
      d. If response is redirect (301, 302, 303, 307, 308):
         - Extract Location header. ⊥ if absent.
         - Resolve Location against rewritten URL (handle relative redirects).
@@ -1423,15 +1738,20 @@ FUNCTION downloadURL(raw_url: String) → DownloadResult
      f. If response is any other error → ⊥ BasecampError from response, without retry.
 
   4. Hop 2 — Unauthenticated fetch (signed URL):
-     a. Fetch Location URL with NO auth headers. Hop 2 is NEVER retried and NEVER authenticated — the signed URL is single-purpose and credentials must not leak to the storage host.
-     b. If not 2xx → ⊥ BasecampError.
-     c. → DownloadResult from response body.
+     a. Fetch Location URL with NO auth headers and redirect: manual. Hop 2 is NEVER retried, NEVER authenticated and NEVER redirected — the signed URL is single-purpose, credentials must not leak to the storage host, and the storage host does not get to choose a further destination (Hop-2 Redirect Policy below).
+     b. If response is a redirect (301, 302, 303, 307, 308) → ⊥ BasecampError api_error carrying that status; its Location is never dialled.
+     c. If not 2xx → ⊥ BasecampError.
+     d. → DownloadResult from response body.
 END
 ```
 
 ### Hop-1 Retry `[conformance]`
 
-The authenticated first hop retries on **network errors plus {429, 502, 503, 504}** — never 500. The set is declared here rather than inherited from anywhere else, and it matches neither of the two sets an SDK already has to hand: it is broader than the per-operation `retry_on` in `behavior-model.json` (`{429, 503}` for all `250` operations, which never governs `DownloadURL` because it has no entry there), and narrower than the error taxonomy's "all 5xx retryable" flag, which would sweep in the 500 this policy deliberately excludes. It is the gateway-error set Go's hand-written `singleRequest` already uses for GETs. <!-- @operation-count --> Backoff is exponential from a 1-second base with jitter; `Retry-After` is honored on 429. The second hop is exempt: no retry, no auth.
+The authenticated first hop retries on **network errors plus {429, 502, 503, 504}** — never 500. The set is declared here rather than inherited from anywhere else, and it matches neither of the two sets an SDK already has to hand: it is broader than the per-operation `retry_on` in `behavior-model.json` (`{429, 503}` for all `250` operations, which never governs `DownloadURL` because it has no entry there), and narrower than the error taxonomy's "all 5xx retryable" flag, which would sweep in the 500 this policy deliberately excludes. It is the gateway-error set Go's hand-written `singleRequest` already uses for GETs. <!-- @operation-count --> Backoff is exponential from a 1-second base with jitter; `Retry-After` is honoured at **every status in that set**, not at 429 alone. The second hop is exempt: no retry, no auth.
+
+That last clause changed with §6's "Retry-After Honouring", and the reason it changed is the reason this set is declared here at all: honouring is derived from retry eligibility, so a loop that declares its own eligibility set inherits the honouring rule over that set rather than over §7's. A 502, 503 or 504 on hop 1 carrying `Retry-After` therefore waits what the origin named, exactly as a 429 does. `[CONFLICT: most download loops honour it on 429 alone today and owe convergence; one SDK already conforms. Per-SDK state and call sites in #775 — not restated here, because this is exactly the row that convergence changes. For conformance: the existing downloads.json case covering the 429 path stays valid; the other three statuses need cases of their own.]` The honoured value is subject to §6's other two clauses on this path as well: nothing is added to it, and it must be awaited through a cancellation handle the caller holds, which not every download path yet gives them (#775).
+
+**Composition (§6 "Composition is per-loop"): a valid `Retry-After` REPLACES this hop's exponential-plus-jitter delay**, the same answer §7's loop gives and for the same reason — the wait is pacing a retry of exactly the request the origin just answered. It is stated here rather than inherited: §6 supplies no default, so a loop that declares its own retry set (as this one does) declares its own composition too.
 
 "Network error" means a transport failure, with one carve-out that SDKs inherit from their main GET loop rather than restate: an attempt that exhausted the caller's entire per-attempt time budget (a request timeout) is not retried. The timeout is per attempt, so a retry spends another full budget on the same slowness rather than riding out a blip. Kotlin implements this explicitly; SDKs whose transports surface timeouts indistinguishably from other connection failures retry them.
 
@@ -1447,6 +1767,43 @@ Attempt budget per SDK — disabling retry (each SDK's spelling of `enable_retry
 | Swift | Fixed three-attempt policy when `enableRetry` is true; one attempt when false. No public numeric knob. |
 
 Python and Ruby carve downloads out of their ungoverned GET taxonomy (which retries 500): the download hop uses the declared `{429, 502, 503, 504}` set, in both directions — the taxonomy neither widens nor vetoes it. `DownloadURL` is deliberately absent from `behavior-model.json`; SDKs pass this policy to their retry primitive directly rather than looking it up by operation.
+
+### Hop-2 Redirect Policy `[conformance]`
+
+The signed hop follows no redirect. A redirect (301, 302, 303, 307 or 308) from the storage host surfaces as `api_error` carrying
+that status, with a message saying the redirect is **not followed** — the substring the conformance
+case asserts — and the `Location` it carries is never dialled. The refusal is a property of hop 2's
+own HTTP client, not of the dispatch around it: `CheckRedirect: ErrUseLastResponse` (Go),
+`redirect: "manual"` (TS), `follow_redirects=False` (httpx), `dataNoRedirect` (Swift's
+`Transport`), `followRedirects = false` (Ktor), `Net::HTTP#request` (Ruby, which never follows).
+Every other hop in the SDK that a response could steer already refuses redirects or validates
+each target — hop 1 here, §16's discovery fetches, §23's polls — and until #805 this hop was the
+exception in four SDKs, by four different stack defaults, none of them argued.
+
+**Why refuse rather than cap or validate.** Hop 2's target is the one URL the API host named, and
+that host is operator-configured; what a followed redirect adds is a destination chosen by whoever
+answers *that* URL. A hop cap bounds loops and resource use, not destination — one redirect to an
+internal address is under every cap. Per-hop validation has nothing to validate against: a signed
+URL is legitimately cross-origin to the API, and the SDK holds no roster of storage hosts, so the
+only policy it can state is "the host the API named, and nothing that host names in turn". Refusal
+states exactly that.
+
+**Why it is safe to refuse.** Upstream, hop 2 is a presigned GET against a single-endpoint
+S3-compatible object store (bc3 `config/storage.yml`; the redirect is minted by
+`Downloading#respond_with_download_redirect` from the blob's service URL, with no
+`direct_download_endpoint` configured). A presigned GET on a path-style single endpoint is answered
+by that endpoint — the region and virtual-host redirects that make "S3 redirects" a real phenomenon
+are artefacts of AWS's multi-region addressing, which this store does not have — and nothing
+redirecting sits in front of it. Local and test environments never reach hop 2 at all:
+`respond_with_download_on_disk` sends the body on hop 1. The strongest evidence is empirical,
+though: Kotlin (by design, reusing hop 1's `followRedirects = false` client) and Ruby (by
+`Net::HTTP`'s default) have refused hop-2 redirects since #178 introduced the download path, with
+no download reported broken.
+
+**What happens if that changes.** Should the storage tier ever start redirecting — a CDN in front of
+it, a region move — every SDK fails loudly with the redirect's status and the "not followed" message rather than
+quietly following somewhere. That is deliberate: the remedy is then a spec change argued from the new
+evidence, with a destination policy attached, not a default that happened to work.
 
 ### DownloadResult RECORD
 
@@ -1685,6 +2042,124 @@ every `fetchJSON` above MUST:
 
 Non-2xx on either hop → `api_error` (not `network`).
 
+##### 5. Judge the advertised issuer's ADDRESS, not only its spelling `[Go-first]`
+
+Requirements 1–4 apply to both hops, and hop 1 needs nothing further: its origin
+is the resource identifier the *caller* supplied. Hop 2 is different in kind.
+`discoverFromResource` lifts `authorization_servers[]` out of a parsed response
+body, and with no `expectedIssuer` the "single non-Launchpad entry wins"
+heuristic makes a remote peer's string the socket destination. `requireOriginRoot`
+is a syntax gate with no notion of what a host *resolves to*, and issuer binding
+runs only after the response comes back — so a refusal there is already too late
+to stop the connection from reporting whether an internal host and port are live.
+The exposure is bounded — fixed path, GET, no credentials, near-blind — but it is
+a working internal host/port oracle, and the discovery fetch is not where the
+selected issuer stops being used. The `Config` it returns carries
+`token_endpoint` (required) and `device_authorization_endpoint`, and those become
+the destinations of the grant itself: `performDeviceLogin` takes exactly this
+already-selected config and posts the `client_id` to one and the `device_code` to
+the other, and the token exchange and refresh post the authorization code,
+`client_secret`, or refresh token to `token_endpoint`. Those are form-body
+credentials, not an `Authorization: Bearer` header — no Bearer header is sent to
+a discovered issuer.
+
+Hop 2 therefore SHOULD refuse an advertised issuer whose **address** is in
+private, loopback, link-local, CGNAT, or IANA special-purpose space, judged at
+the moment of connection rather than by parsing the URL — which is also what
+catches a legacy-numeric spelling (`https://2130706433/` is `127.0.0.1`) and a
+name that resolves into that space. The refusal is the existing hard
+`invalid_issuer_origin`, not `as_fetch_failed`: it is a permanent verdict on the
+origin, and must not be marked retryable. It applies on **both** selection paths,
+`expectedIssuer` included — an SDK-level exemption for a caller-named issuer is
+silently wrong when the consumer computed that value from untrusted input.
+
+Because an SDK is a shared dependency, an implementation MUST expose an override
+for the policy, for the client that carries the hop, and to disable it — an
+internal deployment must be able to admit its own range without abandoning the
+rest of the deny tables.
+
+**Go is the only implementation today**, via
+`github.com/basecamp/surfguard/go`'s dial-time enforcement
+(`oauth.DefaultIssuerPolicy`, `WithIssuerPolicy` / `WithIssuerHTTPClient` /
+`WithoutIssuerPolicy`). It is written `SHOULD` and marked `[Go-first]` rather
+than folded into the `[conformance]` list above because the corpus cannot express
+it: the assertion is "no connection was attempted", which is not an observable
+of the mock-HTTP runner, and the remaining four SDKs have no equivalent
+enforcement layer to point at yet. See Appendix F.
+
+##### 6. Judge the ADDRESS of the endpoints the selected metadata names `[Go-first]`
+
+Requirement 5 closes the metadata GET and leaves an indirect route open
+(#806). An attacker-controlled issuer on *public* space passes the policy, is
+selected, and returns correctly issuer-bound metadata whose `token_endpoint`
+and `device_authorization_endpoint` point wherever it likes — the metadata
+parser checks only that `token_endpoint` is non-empty and copies it verbatim.
+`requireSecureEndpoint` then admits any `https` host, private space included.
+So the cost of reaching private space is one public host, and what arrives
+there is the `client_id`, the `device_code`, the authorization code, the
+`client_secret`, or the refresh token — real credentials, where requirement 5's
+exposure was a blind GET. That is strictly worse than the one it closes.
+
+Two remedies that look sufficient are not, and the reasons are worth keeping:
+
+- **Same-origin is not the control.** RFC 8414 §2 requires the endpoint fields
+  to be URLs and says nothing about their origin, and RFC 8705 §5's
+  `mtls_endpoint_aliases` exists precisely so a server can publish endpoints
+  *off* the issuer origin. A same-origin rule is a departure from the standard,
+  not a tightening of it. It also does not survive DNS rebinding: the rule
+  compares hostname strings, and the hostname is resolved twice — once during
+  discovery, once at the later credential POST — so a name that resolves
+  publicly at discovery can resolve privately when the credentials go out.
+  Same-origin MAY be added as BC5 profile policy once fleet compatibility is
+  confirmed — BC5's metadata controller mints every endpoint from its own
+  route helpers next to `issuer: canonical_issuer_url`, but whether those share
+  an origin in every deployment is the check to run first — and even then it is
+  defence in depth, not the closure.
+- **Scheme alone is not the control.** `https` is satisfied by any private host.
+
+The control is the same one as requirement 5: **dial-time address enforcement
+on every device-authorization and token endpoint request the device flow and
+the token exchanger make**, judging the literal address at the moment each
+socket opens, so there is no check-to-use gap for a rebind to exploit and no
+assumption about what the AS chose to publish.
+
+The device and exchange functions cannot tell a discovered endpoint from a
+hand-configured one — `performDeviceLogin` takes a `Config`, `exchangeCode` and
+`refreshToken` take a string — so the policy applies to every request those
+functions make on their default client. That is the same uniformity decision as
+requirement 5's `expectedIssuer` rule, for the same reason: a provenance flag on
+the config is a marker that a consumer round-tripping the config through
+storage silently drops. The overrides are therefore the consumer's, and an
+implementation MUST expose the same three as requirement 5 — a replacement
+policy, a replacement client for the request, and a way to disable it (handing
+over a plain client counts). A refusal is coded `api_error`, is NOT retryable,
+and in the poll loop terminates the flow on the first attempt rather than
+backing off — surfguard's `unresolvable` (retry later) and `blocked` (stop)
+are distinct verdicts and must stay distinct here.
+
+The boundary stops at those functions, and one SDK path sits outside it by
+construction: a refresh driven by **stored credentials** — Go's `AuthManager`
+posting to `Credentials.TokenEndpoint` on the client its constructor was
+handed — is caller-configured territory even when the stored endpoint was
+originally discovered. The documented device-login bridge copies
+`result.Config.TokenEndpoint` into the credential store, and that round trip
+through storage is exactly the provenance loss described above: the endpoint
+re-enters the SDK as caller configuration, on a caller-owned client, and the
+enforcement is that client's. Consumers persisting discovered endpoints MUST
+NOT infer that later automatic refreshes receive this requirement's default
+policy; they compose the policy into the client they hand `AuthManager`, the
+same as any caller-supplied client here. See Appendix F.
+
+**Go is the only implementation today** (`oauth.DefaultIssuerPolicy` on the
+device flow's and `Exchanger`'s default client; `WithDevicePolicy`,
+`WithExchangerPolicy`, `WithDeviceHTTPClient`, a non-nil `NewExchanger`
+client). Written `SHOULD` and `[Go-first]` for requirement 5's reasons. A
+caller-supplied client is the caller's, enforcement included: the policy is not
+layered on top of it, because the enforcement seam is the client's own dialer.
+That contract is what makes a consumer that passes its general-purpose client
+into these functions (as `basecamp-cli` does) responsible for composing the
+policy into that client's transport. See Appendix F.
+
 #### Injected-client fidelity tier `[static]`
 
 SDKs that accept a caller-supplied HTTP client (Ruby `http_client:`, and any
@@ -1769,7 +2244,10 @@ dark-launched (`issuance_enabled` off), the device authorization endpoint
 answers **503** — surfaced as `api_error` with that status, meaning "not yet
 enabled here", not a protocol failure.*
 
-Three functions per SDK. All device-auth + token requests are TLS-guarded (§9).
+Three functions per SDK. All device-auth + token requests are TLS-guarded (§9),
+and — Go only, today — address-policed at dial time on the default client (§16
+SSRF hardening, requirement 6), since the endpoints they POST credentials to may
+be the ones a discovered issuer's metadata named.
 
 ```
 FUNCTION requestDeviceAuthorization(deviceAuthEndpoint, clientId, scope?) → DeviceAuthorization
@@ -1892,6 +2370,39 @@ FUNCTION pollDeviceToken(tokenEndpoint, clientId, deviceCode, interval, expiresI
        # wait and gone.
 END
 ```
+
+**Scope first (§6 "What 'retry' means here"): of the branches that received a response, only the
+`429` + `too_many_requests` branch is a retry.** The connection-timeout branch is the loop's other
+in-scope path — a transport failure re-issued with backoff, §6's first clause, and §6's table already
+lists it — but no response means no header, so it has nothing to honour and nothing to compose.
+`authorization_pending` and `slow_down` are 4xx protocol *answers* — the completion poll
+asked whether the user had finished and was told "not yet" — so re-issuing the POST is polling, not
+re-attempting a failed request, and §6's honouring rule does not reach it. That is why this loop reads
+the header on one branch and not the others, and it is a boundary rather than an omission: there is
+also nothing for a `Retry-After` to displace on the pending branch, which waits the `interval` this
+same authorization server prescribed and then raised with each `slow_down`, not a locally computed
+backoff. A `429` without `too_many_requests`, or `too_many_requests` off any other status, is terminal
+and never repeats, so it is outside for the plainer reason that no wait follows it.
+
+**Composition (§6 "Composition is per-loop"): on the branch that *is* a retry, this loop takes
+`max(interval, retryAfter)`, not the value alone.** §6 settles that a `Retry-After` on a status about to be retried is honoured, and
+forbids capping it or adding jitter to it; `max` does neither — it selects between two waits rather
+than shortening or padding either. The `max` is what makes this loop's answer differ from §7's, and
+it is deliberate: `interval` here is not a backoff term the server is better informed about, it is
+the polling cadence the authorization server itself handed out in the device-code response and then
+raised with each `slow_down`. A 429 naming a *shorter* wait than the cadence the same server just
+prescribed is not permission to poll faster than that cadence, so the larger of the two wins. Two
+further bounds, already stated in the block above, are properties of this flow rather than of
+`Retry-After`: the override applies to the next wait only and then decays, and the wait rule still
+clamps it to the remaining code lifetime — a *domain* ceiling on how long polling can usefully
+continue, not the locally computed backoff ceiling §6 exempts the value from.
+
+**Parsing (§6 "Composition is per-loop", the paragraph under its table): this branch reads the
+delta-seconds form only, and that is a declared exception to §6's Parsing Algorithm, not a fourth
+parser.** An HTTP-date here is malformed and falls back to the current `interval`. The reason is
+this loop's clock: every wait is measured on the injectable monotonic `clock` against a deadline
+fixed at issuance, and a date can only be resolved against wall-clock `now()`, which this loop never
+reads. §6 records the exception and its cost; the block above is the contract.
 
 ```
 FUNCTION performDeviceLogin(config: OAuthConfig, clientId, scope?, display, clock?) → Token
@@ -2556,7 +3067,7 @@ typed error element is emitted), `Closed` (absorbing; no error element).
 | 1 | Idle | Minting | first iteration (initial connect is immediate; no backoff) |
 | 2 | Backoff | Minting | `backoff` timer fired (a fresh ticket is ALWAYS minted next) |
 | 3 | Minting | Connecting | ticket minted; dial the mint's `url` verbatim |
-| 4 | Minting | Backoff | mint transient/throttled, or an unauthorized mint (401/403) below the shared-counter threshold (Retry-After honored as the floor of the next delay) |
+| 4 | Minting | Backoff | mint transient/throttled (Retry-After honored as the floor of the next delay), or an unauthorized mint (401/403) below the shared-counter threshold (`unauthorized` carries no `retry_after`, so the `backoff` draw alone governs — §6 "What 'retry' means here") |
 | 5 | Minting | Terminal(`authorization_failed`) | 3rd consecutive connection-level authorization failure (shared counter across unauthorized mints, `unauthorized` disconnects, and unauthorized polls; resets only on a successful poll page) |
 | 6 | Connecting | AwaitingWelcome | dial ok; frame pump started (`handshake-deadline` was armed on entry to Connecting, before `dial` — a stalled dial expires it) |
 | 7 | Connecting | Backoff | dial failed, or `handshake-deadline` expired mid-dial (the pending dial is cancelled). A dial refused by cable-URL policy is NOT this edge — it is Terminal(`invalid_cable_url`), below the table |
@@ -2611,6 +3122,9 @@ Interpretation, pinned:
   leaves a rejected socket open; an unhandled one stays registered server-side, receiving
   heartbeats forever while delivering nothing).
 - **Connection-level authorization failures retry, then surface — on ONE shared counter.**
+  ("Retry" in the connector's sense of re-entering the reconnect cycle; under §6's definition this
+  is authorization recovery, not a retry — the `unauthorized` kind carries no `retry_after`, so no
+  `Retry-After` reaches the `backoff` draw on this path.)
   Unauthorized mints (401/403), `unauthorized`-reason disconnects at connect
   (pre-welcome — rows 9/10; Disconnect Dispatch pins the arrival point), and
   `unauthorized`-kind poll errors (401/403 after the seam's own refresh/retry budget)
@@ -2983,9 +3497,11 @@ RECORD StreamTicket
 END
 -- Mint errors carry a kind: transient | throttled(retry_after) | unauthorized |
 -- unrecoverable(error). The adapter maps every §6/§7 outcome onto exactly one kind:
--- retryable outcomes exhausted inside the seam → transient/throttled; 401/403 →
--- unauthorized (shared counter); anything else non-retryable (404, 422, a malformed
--- success) → unrecoverable → Terminal(mint_failed), generated error attached.
+-- retryable outcomes exhausted inside the seam → throttled(retry_after) when the last
+-- response carried a parsed Retry-After, at ANY status, else transient (§6 "What
+-- 'retry' means here"); 401/403 → unauthorized (shared counter); anything else
+-- non-retryable (404, 422, a malformed success) → unrecoverable → Terminal(mint_failed),
+-- generated error attached.
 
 INTERFACE PollSource
   poll(cursor: Cursor, filters: Filters, cancellation) → PollPage
@@ -3014,7 +3530,8 @@ END
 -- filter_invalid(server message) | filter_changed | gone(epoch_after_id, resume_url) |
 -- unauthorized | redirect_refused(location_origin) | unrecoverable(error).
 -- The adapter maps every §6/§7 outcome of the generated call onto exactly one kind:
--- 429/503 and §7-retryable outcomes exhausted inside the seam → transient/throttled;
+-- 429/503 and §7-retryable outcomes exhausted inside the seam → throttled(retry_after)
+-- when the last response carried a parsed Retry-After, at ANY status, else transient;
 -- the feed's 400/409/410 matrix → its four kinds; 401/403 (after the seam's own token
 -- refresh and retry budget) → unauthorized; a 3xx whose Location fails the per-hop
 -- same-origin/no-downgrade validation (auto-follow is disabled — Continuation and
@@ -3164,6 +3681,20 @@ term at `MAX_BACKOFF_DELAY_MS` = 30s and adds jitter on top; this one draws unif
 governs attempts inside a seam call; this governs cycles between them. The same 60s cap
 bounds `poll-retry`'s locally computed jitter draw; a server-directed `Retry-After` is
 exempt from both caps, per §7.
+
+**Composition (§6 "Composition is per-loop"): these two timers answer differently, and both
+answers are in the table above.** `backoff` takes `Retry-After` as a **floor** —
+`max(draw, retryAfter)` — so it wins only where it is the longer wait, and wins outright
+above the 60s cap. `poll-retry` takes it as an **exact** wait, replacing the draw. Nothing
+here is new behaviour; §6 supplies no default composition, so the connector states its own,
+and it needs two rows because the two timers are not doing the same job. `backoff` spaces
+whole reconnect cycles apart after repeated failure: a 1s header against a 50s draw waits
+50s, because a server naming one second has said nothing about whether the condition that
+failed the last several cycles has cleared, and the connector has no cheaper way to find
+out than to keep the gap it selected. `poll-retry` paces the re-send of one throttled poll
+against the same origin that just answered it, which is the §7 situation exactly, so it
+gets the §7 answer. Both are still `Retry-After` honoured at a status that was going to be
+retried anyway — only the composition differs.
 
 **Saturate before exponentiating** — §7's overflow rule applies to both formulas: an
 implementation MUST compare the failure index (n or k) against the cap-crossing exponent
@@ -3523,6 +4054,7 @@ what `make doc-constants-check` asserts — not a case-by-case index.
 | `downloads.json` | DownloadURL does not retry hop 1 on 500 | §14, §7 |
 | `downloads.json` | DownloadURL honors Retry-After on 429 at the auth'd first hop | §14, §7 |
 | `downloads.json` | DownloadURL surfaces redirect with no Location | §14 |
+| `downloads.json` | DownloadURL refuses a redirect on the signed second hop | §14 |
 | `network-retry.json` | Network error on a non-idempotent POST is not retried | §7 (Gate 2) |
 | `network-retry.json` | Network error on an idempotent POST is retried then succeeds | §7 (Gate 2) |
 | `uploads_download.json` | UploadsDownload delegates through DownloadURL primitive | §14, §18 |
@@ -3594,6 +4126,85 @@ Every operation has a `retry` block, including non-idempotent POSTs. For non-ide
 ---
 
 ## Appendix F: Known Cross-SDK Divergences
+
+### Advertised-Issuer Address Policy (§16)
+
+§16's SSRF requirement 5 — judging the *address* an advertised
+`authorization_servers[]` entry resolves to, at connection time — is implemented
+in Go only. This is a deliberate Go-first move, not an oversight in the other
+five: the enforcement seam it needs (a dial-time `Control` hook, plus a shared
+classification table) exists cheaply in Go and does not in the others.
+
+| SDK | Advertised-issuer hop |
+|-----|----------------------|
+| Go | `oauth.DefaultIssuerPolicy()` — `surfguard.Policy{}.IANASpecialUse().AllowAllPorts()` — installed on a separate client that carries only that hop. Refused as hard `invalid_issuer_origin`, non-retryable, on both selection paths. Overrides: `WithIssuerPolicy`, `WithIssuerHTTPClient`, `WithoutIssuerPolicy` |
+| TypeScript, Ruby, Python, Kotlin | Requirements 1–4 only: origin-root syntax gate, HTTPS, bounded timeout, suppressed redirects, bounded body. An advertised issuer naming a private address is still dialed |
+| Swift | Not applicable — ships no OAuth discovery implementation |
+
+Two consequences are worth stating rather than discovering. First, this is a
+behavioral tightening, not a pure addition: a Go consumer whose BC5 issuer is
+advertised on loopback or in RFC 1918 space, and which worked before, now needs
+`WithIssuerPolicy`. Second, `Allow(prefix)` does **not** re-admit RFC 1918 under
+`IANASpecialUse()` — those tables outrank `Allow`, and `AllowLoopback()` is the
+only derivation that pierces them — so an on-premises policy is built as
+`surfguard.Policy{}.AllowAllPorts().Allow(...)` instead.
+
+### Device and Token Endpoint Address Policy (§16)
+
+§16's SSRF requirement 6 — judging the address of the `token_endpoint` and
+`device_authorization_endpoint` the selected metadata names, at connection
+time, on every credential-bearing POST — is likewise implemented in Go only,
+with the same policy and the same override shape as the issuer hop. The
+per-SDK state, and the seam each SDK would need, so the follow-ups are
+specified rather than rediscovered:
+
+| SDK | Device-authorization and token endpoint POSTs |
+|-----|-----------------------------------------------|
+| Go | `oauth.DefaultIssuerPolicy()` on the device flow's and `Exchanger`'s default client, shared with the issuer hop. Refused as `api_error`, non-retryable; the poll loop terminates on the first attempt. Overrides: `WithDevicePolicy` / `WithDeviceHTTPClient`; `WithExchangerPolicy` / a non-nil `NewExchanger` client. A caller-supplied client is the caller's, enforcement included |
+| Ruby | Scheme gate, bounded timeout, suppressed redirects, bounded body. The `surfguard` gem (the shared classification tables, resolve-only by design) exists; enforcement would mean pinning a resolved address into `Net::HTTP#ipaddr=` under the default `Fetcher` transport, which the injected-Faraday lane cannot do |
+| TypeScript | Scheme gate, bounded timeout, `redirect: "manual"`, bounded body. No classification tables in the ecosystem; the seam is an undici `Agent` with a `connect.lookup` hook, which the SDK's global-`fetch` contract does not reach |
+| Python | Scheme gate, bounded timeout, `follow_redirects=False` (httpx default), bounded body. No classification tables; the seam is a custom `httpx` transport over a resolving `httpcore` backend |
+| Kotlin | Scheme gate, bounded timeout, `followRedirects = false`, bounded body. No classification tables; the JVM seam is OkHttp's `Dns` interface (OkHttp connects to exactly the addresses it returns, so filtering there is connect-time judgement), with no multiplatform equivalent |
+| Swift | Not applicable — ships no OAuth device flow or discovery |
+
+Two things hold in every SDK, policy or not, and are not what this divergence
+is about: the scheme gate and the bounded body. Two more are NOT uniform on
+the exchange path, and listing them as universal is how a reader infers a
+guarantee nobody implemented. The bounded timeout holds on the device flow in
+all four, but Go's `doTokenRequest` bounds nothing itself — the caller's
+context is the only deadline, and the shared policy client deliberately
+carries no client timeout — and Kotlin's `postTokenRequest` builds its default
+client without `HttpTimeout`; TS (30 s), Python (`_TOKEN_TIMEOUT`), and Ruby
+(Faraday timeouts) do bound theirs. Redirect suppression: Go's `Exchanger` and
+Kotlin's `exchangeCode`/`refreshToken` follow redirects (TS's exchange passes
+no `redirect:` option, so it follows too), where the device flow suppresses
+them in all four — a 307 re-POSTs the credentials to the `Location`. Under
+Go's policy client each redirect hop's dial is judged, so the address policy
+holds across a redirect; the public-host re-POST does not need the policy to
+be exploitable. This is the same cross-SDK shape #805 had on the download's
+signed hop before #809 closed it there — the exchange path is now the
+remaining redirect-following exception.
+
+The behavioral tightening is the same as the issuer hop's, and it reaches one
+more consumer shape: a Go caller that hand-configures a loopback or RFC 1918
+authorization server and relied on `NewExchanger(nil)` or a device-flow call
+with no `WithDeviceHTTPClient` now needs `WithExchangerPolicy` /
+`WithDevicePolicy` (with `AllowLoopback()` for local development), or passes
+`http.DefaultClient` to restore the old behavior outright. A caller that
+already passes its own client — `basecamp-cli` passes its general-purpose
+client to all three entry points — sees no change, and is also not protected
+by this: the policy lives in the transport, and that consumer owns its
+transport.
+
+The same boundary holds one function further out, and is worth recording so
+nobody infers otherwise: Go's `AuthManager.refreshLocked` posts a stored
+refresh token to `Credentials.TokenEndpoint` on the client `NewAuthManager`
+was handed, and the documented device-login bridge stores
+`result.Config.TokenEndpoint` — a discovered endpoint — into those
+credentials. Later automatic refreshes therefore do NOT receive the new
+default policy; the endpoint re-enters the SDK as caller configuration on a
+caller-owned client, and the enforcement is that client's to compose (§16
+requirement 6).
 
 ### Retry Strategy (§7)
 

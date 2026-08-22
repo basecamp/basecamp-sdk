@@ -6,6 +6,7 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	gotypes "go/types"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -316,26 +317,43 @@ type timestampField struct {
 	file    string
 }
 
+// fatalReporter is the slice of *testing.T the AST walk below uses: enough to
+// report an embed it cannot resolve, and narrow enough that
+// TestCollectTimestampFieldsReportsUnresolvableEmbed can hand it a recorder in
+// place of a real T and observe the report instead of dying of it. Without the
+// seam the #722 branch is untestable from inside the suite it aborts, and an
+// untested fatal is one a later `continue` can delete in silence.
+type fatalReporter interface {
+	Helper()
+	Fatalf(format string, args ...any)
+}
+
 // collectTimestampFields keys every timestamp-typed struct field by
 // (struct name, json key) — time.Time and the named time wrappers (FlexTime,
 // types.FlexibleTime, types.Date), in both value and pointer form. The json
 // key is the pairing axis rather than the Go field name: the wrapper renames
 // fields (Id → ID) but the wire key is the thing both sides must agree about.
-func collectTimestampFields(t *testing.T, files map[string]*ast.File, wrappers map[string]bool) map[[2]string]timestampField {
+//
+// An anonymous embedded field promotes its own JSON keys into the enclosing
+// struct, which moves them out from under this pairing. This walk does not
+// judge whether a given embed does that; it asks whether a human has cleared
+// that exact embed, and fails otherwise (assertEmbedIsAllowed, #722).
+func collectTimestampFields(t fatalReporter, files map[string]*ast.File, wrappers map[string]bool) map[[2]string]timestampField {
 	t.Helper()
 	out := map[[2]string]timestampField{}
 	for path, file := range files {
-		ast.Inspect(file, func(n ast.Node) bool {
-			ts, ok := n.(*ast.TypeSpec)
-			if !ok {
-				return true
-			}
+		for _, ts := range packageTypeSpecs(file) {
 			st, ok := ts.Type.(*ast.StructType)
 			if !ok {
-				return true
+				continue
 			}
 			for _, f := range st.Fields.List {
-				if f.Tag == nil || len(f.Names) == 0 {
+				if len(f.Names) == 0 {
+					assertEmbedIsAllowed(t, path, ts.Name.Name, f)
+					continue
+				}
+				key := jsonKey(f)
+				if key == "" || key == "-" {
 					continue
 				}
 				value := isTimeLike(f.Type, wrappers)
@@ -344,28 +362,446 @@ func collectTimestampFields(t *testing.T, files map[string]*ast.File, wrappers m
 				if !value && !pointer {
 					continue
 				}
-				raw, err := strconv.Unquote(f.Tag.Value)
-				if err != nil {
-					continue
-				}
-				jsonTag, ok := reflect.StructTag(raw).Lookup("json")
-				if !ok {
-					continue
-				}
-				key := strings.Split(jsonTag, ",")[0]
-				if key == "" || key == "-" {
-					continue
-				}
 				out[[2]string{ts.Name.Name, key}] = timestampField{
 					pointer: pointer,
 					field:   f.Names[0].Name,
 					file:    filepath.Base(path),
 				}
 			}
-			return true
-		})
+		}
 	}
 	return out
+}
+
+// packageTypeSpecs returns a file's PACKAGE-LEVEL type declarations, and only
+// those. A type declared inside a function body is reachable by ast.Inspect
+// but is never what a struct field resolves to, and this walk keys everything
+// — the (struct, json key) pairing and the embed lookup below — by bare type
+// name. A function-local `type Todo struct{…}` walked as if it were the
+// package's would overwrite the real Todo's entries with a declaration Go
+// never consults. There are none in the walked sources today; this keeps it
+// that way by construction rather than by luck.
+func packageTypeSpecs(file *ast.File) []*ast.TypeSpec {
+	var out []*ast.TypeSpec
+	for _, decl := range file.Decls {
+		gen, ok := decl.(*ast.GenDecl)
+		if !ok || gen.Tok != token.TYPE {
+			continue
+		}
+		for _, spec := range gen.Specs {
+			if ts, ok := spec.(*ast.TypeSpec); ok {
+				out = append(out, ts)
+			}
+		}
+	}
+	return out
+}
+
+// jsonKey returns the json name written on a NAMED field's tag, or "" when
+// there is no usable one. It is the pairing axis for the two sides, and
+// nothing more: it decides no question about promotion, embedding or wire
+// semantics, all of which now belong to allowedEmbeds. A key this cannot read
+// means the field is not paired — the same blind spot an untagged field has
+// always had, and it cannot hide a promoted timestamp, because nothing
+// anonymous reaches here.
+func jsonKey(f *ast.Field) string {
+	if f.Tag == nil {
+		return ""
+	}
+	raw, err := strconv.Unquote(f.Tag.Value)
+	if err != nil {
+		return ""
+	}
+	tag, ok := reflect.StructTag(raw).Lookup("json")
+	if !ok {
+		return ""
+	}
+	return strings.Split(tag, ",")[0]
+}
+
+// allowedEmbeds is the ENTIRE exemption surface of the embed guard: the
+// anonymous embeds in the walked sources that a human has read and cleared.
+// Every other anonymous field fails the test, whatever it is embedding and
+// whatever tag it carries.
+//
+// # Why an allowlist and not an analysis
+//
+// The four rounds of review before this one each found a real hole in a
+// classifier that tried to decide, from the AST, whether a given embed could
+// promote a timestamp. The holes were not careless — they were encoding/json
+// semantics: only the exact tag `"-"` skips a field, so `json:"-,omitempty"`
+// is an ordinary field named `-`; a tagged embed still PROMOTES the embedded
+// type's MarshalJSON, so a struct embedding FlexTime under a json:"created_at"
+// tag marshals as a bare scalar and has no created_at key at all; a selector's
+// final name says nothing about which package it came from, so an unrelated
+// audit.Date read as the local Date wrapper. Each fix was correct and the next
+// round found the next one, which is the signal to reassess the instrument
+// rather than write another rule.
+//
+// So the modelling is gone. This guard now knows NOTHING about encoding/json —
+// not tag syntax, not the `-` sentinel, not promotion, not method sets, not
+// shadowing. It compares four strings. Everything it cannot match, it
+// reports, and a human decides once and records the decision here.
+//
+// # What the matcher compares
+//
+// The key is (file base name, enclosing struct name, embedded type, raw
+// struct tag) — filepath.Base of the parsed path, the TypeSpec's name, the
+// embedded type expression rendered by go/types.ExprString (star, package
+// qualifier and any type arguments included, so `Base[int]` and `Base[string]`
+// are different keys), and the tag literal exactly as it appears in the
+// source, "" when there is none. That is the COMPLETE syntax of an anonymous
+// field; nothing outside the field's own line enters the key, and nothing on
+// it is left out. All four are syntax, deliberately: an entry records that
+// somebody read THAT line in THAT struct in THAT file, not that a type
+// resolves some way. Renaming the struct, moving it to another file, changing
+// time.Time to *time.Time, or adding or removing a tag all invalidate the
+// entry and re-open the question, which is the intended sensitivity. The tag
+// is in the key for the same reason the star is: the reading that cleared an
+// embed may have depended on it, and the guard has no way to know whether it
+// did without modelling the semantics it refuses to model — so it re-asks.
+//
+// What the key does NOT carry, and will not: anything about the embedded
+// type's own declaration. An allowlisted type that later grows a timestamp
+// field keeps its key, and the clearance stands until someone re-reads it.
+// That is the residual every allowlist has, and it is accepted here on
+// purpose: re-verifying the declaration IS the analysis this guard replaced,
+// and the reader that did it was retired after four rounds of holes. Today
+// neither entry embeds a struct this package declares — one is time.Time, the
+// other an interface — so no walked declaration can grow a field under it.
+//
+// # Adding an entry
+//
+// A new embed is EXPECTED to fail this suite until someone reads it. Before
+// adding it here, establish that it promotes no JSON key that belongs in the
+// (struct, json key) pairing — and if it does promote one, do not add it:
+// teach the pairing about it, or drop the embed. TestAllowedEmbedsMatchesCorpus
+// keeps this list and the corpus in exact correspondence in both directions,
+// so a stale entry fails just as loudly as an unreviewed embed.
+var allowedEmbeds = map[[4]string]string{
+	{"authorization.go", "FlexTime", "time.Time", ""}: "time.Time's own fields are unexported and it " +
+		"marshals through its own MarshalJSON, so this embed contributes no JSON key to FlexTime",
+	{"client.gen.go", "ClientWithResponses", "ClientInterface", ""}: "an interface has no fields to " +
+		"promote, and ClientWithResponses is an HTTP client that is never marshaled",
+}
+
+// assertEmbedIsAllowed fails unless this exact anonymous embed is on
+// allowedEmbeds. It resolves nothing and infers nothing; see that variable for
+// why the guard is shaped this way.
+func assertEmbedIsAllowed(t fatalReporter, path, owner string, f *ast.Field) {
+	t.Helper()
+	key := embedKey(path, owner, f)
+	if _, ok := allowedEmbeds[key]; ok {
+		return
+	}
+	t.Fatalf("%s: %s embeds %s, which nobody has cleared. encoding/json promotes an "+
+		"embedded type's JSON-tagged fields into %s, so a timestamp among them would sit "+
+		"outside the (struct, json key) pairing below and its value/pointer parity would go "+
+		"unchecked — silently, which is why this is fatal rather than skipped (#722). This "+
+		"guard deliberately models no encoding/json semantics: read the embed, and if it "+
+		"promotes no key this pairing needs, add {%q, %q, %q, %q} to allowedEmbeds with the "+
+		"reason",
+		path, owner, key[2], owner,
+		key[0], key[1], key[2], key[3])
+}
+
+// embedKey builds the allowlist key for one anonymous field: the complete
+// syntax of that field, rendered, and nothing resolved. See allowedEmbeds.
+func embedKey(path, owner string, f *ast.Field) [4]string {
+	tag := ""
+	if f.Tag != nil {
+		tag = f.Tag.Value
+	}
+	return [4]string{filepath.Base(path), owner, gotypes.ExprString(f.Type), tag}
+}
+
+// TestEmbedKeyIsTheCompleteFieldSyntax pins the identity contract of the key:
+// two anonymous fields that differ anywhere on their own line get different
+// keys. An earlier renderer collapsed every generic embed to one shared
+// fallback string and read no tag at all, so clearing one `Base[int]` embed
+// cleared every `Base[T]` beside it and a tag could come or go without the
+// entry noticing. No case here is about what any of these shapes MEANS to
+// encoding/json — only that the key tells them apart.
+func TestEmbedKeyIsTheCompleteFieldSyntax(t *testing.T) {
+	src := "package p\n\ntype W struct {\n" +
+		"\tBase[int]\n\tBase[string]\n\tpkg.Base[A, B]\n\t*Base[int]\n" +
+		"\tAudit\n\tAudit `json:\"audit\"`\n\tAudit `json:\"-\"`\n}\n"
+	file, err := parser.ParseFile(token.NewFileSet(), "w.go", src, 0)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	st := file.Decls[0].(*ast.GenDecl).Specs[0].(*ast.TypeSpec).Type.(*ast.StructType)
+
+	seen := map[[4]string]int{}
+	for _, f := range st.Fields.List {
+		seen[embedKey("w.go", "W", f)]++
+	}
+	if len(seen) != len(st.Fields.List) {
+		for key, n := range seen {
+			if n > 1 {
+				t.Errorf("%d distinct embeds share the key %q — clearing one would clear them all", n, key)
+			}
+		}
+	}
+	if _, ok := seen[[4]string{"w.go", "W", "pkg.Base[A, B]", ""}]; !ok {
+		t.Errorf("a qualified generic embed was not rendered as written; keys: %v", seen)
+	}
+	if _, ok := seen[[4]string{"w.go", "W", "Audit", "`json:\"audit\"`"}]; !ok {
+		t.Errorf("the raw tag literal is not part of the key; keys: %v", seen)
+	}
+}
+
+// embedRecorder stands in for *testing.T so the meta-tests below can watch
+// collectTimestampFields report rather than be killed by the report. Fatalf
+// must not return — the walk it interrupts is written on the assumption that
+// it doesn't — so it panics with a sentinel the runner recovers, standing in
+// for testing's own runtime.Goexit.
+type embedRecorder struct {
+	fatal   bool
+	message string
+}
+
+type recordedFatal struct{}
+
+func (r *embedRecorder) Helper() {}
+
+func (r *embedRecorder) Fatalf(format string, args ...any) {
+	r.fatal = true
+	r.message = fmt.Sprintf(format, args...)
+	panic(recordedFatal{})
+}
+
+// collectFromSource runs collectTimestampFields over one synthetic file and
+// returns both what it reported and what it collected. The collected map is
+// nil when a report fired, since the walk is aborted exactly as a real
+// t.Fatalf aborts it.
+func collectFromSource(t *testing.T, src string, wrappers map[string]bool) (*embedRecorder, map[[2]string]timestampField) {
+	t.Helper()
+	file, err := parser.ParseFile(token.NewFileSet(), "synthetic.go", src, 0)
+	if err != nil {
+		t.Fatalf("parse synthetic source: %v", err)
+	}
+	rec := &embedRecorder{}
+	var collected map[[2]string]timestampField
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				if _, ok := r.(recordedFatal); !ok {
+					panic(r)
+				}
+			}
+		}()
+		collected = collectTimestampFields(rec, map[string]*ast.File{"synthetic.go": file}, wrappers)
+	}()
+	return rec, collected
+}
+
+// TestCollectTimestampFieldsReportsUnallowedEmbed is the committed proof of the
+// #722 branch. The corpus reaches only the ACCEPTING side of the guard — every
+// embed it contains is on allowedEmbeds — so the reporting side, the half that
+// closes the under-report, would otherwise ship with nothing holding it and a
+// revert to `continue` would leave the suite green. That is the vacuity the
+// guards at the ends of TestNoValueTypedOptionalTimestamps and
+// TestNoWrapperTimestampNarrowerThanGenerated refuse, one level up: those
+// assert the walk saw something, this asserts it still objects to something.
+//
+// The cases are the shapes four rounds of review found holes in. They are here
+// as a record that the answer no longer depends on telling them apart: none is
+// on the allowlist, so each one fatals for the same reason, and no reading of
+// encoding/json is involved in getting them right.
+func TestCollectTimestampFieldsReportsUnallowedEmbed(t *testing.T) {
+	cases := []struct {
+		name string
+		src  string
+	}{
+		{
+			// The plain #722 shape: an untagged embed whose type carries a
+			// timestamp, promoted onto Wrapper and therefore invisible to a
+			// pairing keyed by (struct, json key).
+			name: "untagged embed",
+			src: "package p\n\nimport \"time\"\n\n" +
+				"type Audit struct {\n\tCreatedAt *time.Time `json:\"created_at\"`\n}\n\n" +
+				"type Wrapper struct {\n\tAudit\n\tID string `json:\"id\"`\n}\n",
+		},
+		{
+			// A json name that looks ordinary. The old classifier called this a
+			// non-promoting field and collected it; whether that reading was
+			// right no longer matters, because a tag buys no exemption.
+			name: "embed under an ordinary json name",
+			src: "package p\n\nimport \"time\"\n\n" +
+				"type Audit struct {\n\tCreatedAt *time.Time `json:\"created_at\"`\n}\n\n" +
+				"type Wrapper struct {\n\tAudit `json:\"audit\"`\n}\n",
+		},
+		{
+			// `json:"-,omitempty"` is NOT the skip sentinel — only the exact tag
+			// `"-"` is — so the old key-only check dropped a field encoding/json
+			// keeps. The guard no longer reads the tag at all.
+			name: "embed tagged with the near-miss sentinel",
+			src: "package p\n\nimport \"time\"\n\n" +
+				"type Audit struct {\n\tCreatedAt *time.Time `json:\"created_at\"`\n}\n\n" +
+				"type Wrapper struct {\n\tAudit `json:\"-,omitempty\"`\n}\n",
+		},
+		{
+			// Even the exact sentinel. encoding/json does drop this field, so
+			// the old skip was defensible — but it was a semantic judgement,
+			// and those are what this guard no longer makes.
+			name: "embed tagged with the exact sentinel",
+			src: "package p\n\nimport \"time\"\n\n" +
+				"type Audit struct {\n\tCreatedAt *time.Time `json:\"created_at\"`\n}\n\n" +
+				"type Wrapper struct {\n\tAudit `json:\"-\"`\n}\n",
+		},
+		{
+			// A name the library refuses resets to empty and promotes. Also no
+			// longer a question this guard asks.
+			name: "embed tagged with a name encoding/json rejects",
+			src: "package p\n\nimport \"time\"\n\n" +
+				"type Audit struct {\n\tCreatedAt *time.Time `json:\"created_at\"`\n}\n\n" +
+				"type Wrapper struct {\n\tAudit `json:\"bad\\\\name\"`\n}\n",
+		},
+		{
+			// A TIME WRAPPER embed under a tag. Embedding promotes the type's
+			// MarshalJSON to Wrapper, so this marshals as a scalar and has no
+			// created_at key — the shape the old isTimeLike arm waved through.
+			name: "tagged embed of a time wrapper",
+			src: "package p\n\n" +
+				"type Wrapper struct {\n\tFlexTime `json:\"created_at\"`\n}\n",
+		},
+		{
+			// An unqualified time wrapper, untagged: exempted before by name
+			// alone, whatever package it came from.
+			name: "untagged embed of a time wrapper",
+			src:  "package p\n\ntype Wrapper struct {\n\tFlexTime\n}\n",
+		},
+		{
+			// A qualified type whose final name collides with a wrapper. The
+			// old exemption matched the selector's last segment, so an
+			// unrelated external Date passed as the local one.
+			name: "embed of an external type whose final name matches a wrapper",
+			src:  "package p\n\ntype Wrapper struct {\n\taudit.Date\n}\n",
+		},
+		{
+			// An interface embed, exempted before because a non-struct promotes
+			// no fields. True, and still not this guard's call to make.
+			name: "embed of a locally declared interface",
+			src: "package p\n\ntype Reader interface{ Read() }\n\n" +
+				"type Wrapper struct {\n\tReader\n}\n",
+		},
+		{
+			// The type Go resolves in Wrapper is the PACKAGE-LEVEL Audit; a
+			// function-local declaration of the same name used to vouch for it.
+			name: "function-local type shadowing the embedded name",
+			src: "package p\n\nimport \"time\"\n\n" +
+				"type Audit struct {\n\tCreatedAt *time.Time `json:\"created_at\"`\n}\n\n" +
+				"type Wrapper struct {\n\tAudit\n}\n\n" +
+				"func shadow() {\n\ttype Audit interface{ Foo() }\n\tvar _ Audit\n}\n",
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			// The wrapper set is deliberately populated: it is what the old
+			// classifier consulted to exempt an embed, and it must now buy
+			// nothing.
+			rec, collected := collectFromSource(t, c.src, map[string]bool{"FlexTime": true, "Date": true})
+			if !rec.fatal {
+				t.Fatalf("an embed outside allowedEmbeds was walked without a report, collecting "+
+					"%d field(s) instead. Whatever this one promotes, nobody has said so in "+
+					"allowedEmbeds, and a silent skip is the #722 under-report: a promoted "+
+					"timestamp leaves the (struct, json key) pairing and its value/pointer "+
+					"parity is never asserted", len(collected))
+			}
+			if !strings.Contains(rec.message, "Wrapper") {
+				t.Errorf("report does not name the embedding struct, so it cannot be acted on: %s", rec.message)
+			}
+			if !strings.Contains(rec.message, "allowedEmbeds") {
+				t.Errorf("report does not say where the decision is recorded: %s", rec.message)
+			}
+		})
+	}
+}
+
+// TestCollectTimestampFieldsIgnoresFunctionLocalTypes pins the other half of
+// the package-level rule. The lookup that vouches for an embed is not the only
+// place a bare type name is resolved — the pairing map is keyed by one too, so
+// a function-local declaration walked as if it were the package's overwrites
+// the real entry and the parity assertion then judges a type no field has.
+func TestCollectTimestampFieldsIgnoresFunctionLocalTypes(t *testing.T) {
+	src := "package p\n\nimport \"time\"\n\n" +
+		"type Todo struct {\n\tCreatedAt *time.Time `json:\"created_at\"`\n}\n\n" +
+		"func helper() {\n\ttype Todo struct {\n\t\tCreatedAt time.Time `json:\"created_at\"`\n\t}\n\tvar _ Todo\n}\n"
+
+	rec, collected := collectFromSource(t, src, map[string]bool{})
+	if rec.fatal {
+		t.Fatalf("unexpected report: %s", rec.message)
+	}
+	got, ok := collected[[2]string{"Todo", "created_at"}]
+	if !ok {
+		t.Fatal("package-level Todo.created_at was not collected at all")
+	}
+	if !got.pointer {
+		t.Error("the function-local Todo overwrote the package-level one, which is the " +
+			"declaration Go actually resolves — its value-typed CreatedAt would be " +
+			"compared against the generated schema in place of the real field")
+	}
+}
+
+// TestAllowedEmbedsMatchesCorpus holds the allowlist and the walked sources in
+// exact correspondence, in BOTH directions, over the same files the guard
+// walks.
+//
+// Forward: an anonymous embed nobody has cleared fails here as well as in the
+// guard, with a message that says what to read.
+//
+// Backward, and this is the half an allowlist usually lacks: an entry no
+// corpus embed matches fails too. Without it a stale exemption survives the
+// embed it was written for — the struct is renamed, the file split, the type
+// changed to a pointer — and sits there ready to excuse a future embed that
+// happens to land on the same four strings. It also makes every entry
+// self-evidently non-vacuous: each one is matched by a real line today, or
+// this test is red.
+func TestAllowedEmbedsMatchesCorpus(t *testing.T) {
+	files := parseGoFiles(t, packageGoFiles(t, "."))
+	for path, file := range parseGoFiles(t, []string{filepath.Join("..", "generated", "client.gen.go")}) {
+		files[path] = file
+	}
+
+	found := map[[4]string]string{}
+	for path, file := range files {
+		for _, ts := range packageTypeSpecs(file) {
+			st, ok := ts.Type.(*ast.StructType)
+			if !ok {
+				continue
+			}
+			for _, f := range st.Fields.List {
+				if len(f.Names) == 0 {
+					found[embedKey(path, ts.Name.Name, f)] = path
+				}
+			}
+		}
+	}
+
+	// A corpus with no embeds at all would make the allowlist trivially
+	// satisfiable and this test vacuous in the direction that matters.
+	if len(found) == 0 {
+		t.Fatal("found zero anonymous embeds in the walked sources — the enumeration is " +
+			"broken, not the corpus (FlexTime and ClientWithResponses both embed)")
+	}
+
+	for key, path := range found {
+		if _, ok := allowedEmbeds[key]; !ok {
+			t.Errorf("%s: %s embeds %s and is not on allowedEmbeds. Read it: if it promotes no "+
+				"JSON key the (struct, json key) pairing needs, add {%q, %q, %q, %q} with the reason; "+
+				"if it does promote one, the pairing has to learn about it instead",
+				path, key[1], key[2], key[0], key[1], key[2], key[3])
+		}
+	}
+	for key, why := range allowedEmbeds {
+		if _, ok := found[key]; !ok {
+			t.Errorf("allowedEmbeds carries {%q, %q, %q, %q} (%q) but no embed in the walked sources "+
+				"matches it. A stale exemption excuses whatever next lands on those four strings — "+
+				"delete it, or correct it to the embed it was meant for", key[0], key[1], key[2], key[3], why)
+		}
+	}
 }
 
 func parseGoFiles(t *testing.T, paths []string) map[string]*ast.File {
@@ -568,14 +1004,15 @@ func timeWrapperNames(t *testing.T, fileSets ...map[string]*ast.File) map[string
 	discovered := 0
 	for _, files := range fileSets {
 		for _, file := range files {
-			ast.Inspect(file, func(n ast.Node) bool {
-				ts, ok := n.(*ast.TypeSpec)
-				if !ok {
-					return true
-				}
+			// Package-level declarations only. A function-local
+			// `type Audit struct { time.Time }` would otherwise put Audit in
+			// this set, and every field typed by the PACKAGE-level Audit would
+			// then read as a timestamp — the same shadowing hole the embed
+			// lookup had, in the one place that still resolves a bare name.
+			for _, ts := range packageTypeSpecs(file) {
 				st, ok := ts.Type.(*ast.StructType)
 				if !ok {
-					return true
+					continue
 				}
 				for _, f := range st.Fields.List {
 					if len(f.Names) == 0 && isValueTime(f.Type) {
@@ -583,8 +1020,7 @@ func timeWrapperNames(t *testing.T, fileSets ...map[string]*ast.File) map[string
 						discovered++
 					}
 				}
-				return true
-			})
+			}
 		}
 	}
 	// A discovery that finds nothing reports an empty wrapper set forever.

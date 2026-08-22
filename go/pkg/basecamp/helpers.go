@@ -68,7 +68,7 @@ func checkResponse(resp *http.Response, body []byte) error {
 	case http.StatusNotFound:
 		return &Error{Code: CodeNotFound, Message: msgOrDefault(serverMsg, "resource not found"), Hint: serverHint, HTTPStatus: 404, RequestID: requestID}
 	case http.StatusTooManyRequests:
-		return &Error{Code: CodeRateLimit, Message: msgOrDefault(serverMsg, "rate limited - try again later"), Hint: serverHint, HTTPStatus: 429, Retryable: true, RequestID: requestID}
+		return &Error{Code: CodeRateLimit, Message: msgOrDefault(serverMsg, "rate limited - try again later"), Hint: serverHint, HTTPStatus: 429, Retryable: true, RetryAfter: parseRetryAfter(resp.Header.Get("Retry-After")), RequestID: requestID}
 	case http.StatusInsufficientStorage:
 		// A 5xx status carrying a client fact: the account is out of storage, or
 		// at its webhook ceiling. Retrying cannot satisfy it, so this must be

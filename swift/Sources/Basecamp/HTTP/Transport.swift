@@ -13,7 +13,9 @@ public protocol Transport: Sendable {
 
     /// Loads data for the given request without following redirects.
     ///
-    /// Used by `downloadURL` for the first hop where redirect capture is needed.
+    /// Used by `downloadURL` for both hops: the first, where the SDK reads the
+    /// redirect itself, and the signed second, where a redirect is refused
+    /// (SPEC §14 "Hop-2 Redirect Policy").
     func dataNoRedirect(for request: URLRequest) async throws -> (Data, URLResponse)
 }
 
@@ -36,18 +38,14 @@ public struct URLSessionTransport: Transport, Sendable {
     }
 
     public func dataNoRedirect(for request: URLRequest) async throws -> (Data, URLResponse) {
-        // Create a one-shot session that inherits the caller's configuration (timeouts,
-        // TLS, proxy) but blocks redirects via a delegate. Custom delegate behavior
-        // (auth challenges, metrics) from the caller's session is not preserved —
-        // only configuration is carried over.
-        let delegate = RedirectBlockingDelegate()
-        let noRedirectSession = URLSession(
-            configuration: session.configuration,
-            delegate: delegate,
-            delegateQueue: nil
-        )
-        defer { noRedirectSession.finishTasksAndInvalidate() }
-        return try await noRedirectSession.data(for: request)
+        // A task-level delegate on the caller's own session, exactly as
+        // `data(for:)` sanitizes credentials above: it shadows only the redirect
+        // callback, so the session delegate's auth challenges, certificate
+        // pinning and metrics still apply. This used to build a one-shot session
+        // that inherited the caller's configuration but not its delegate, which
+        // silently dropped a pinning or mTLS policy on hop 1 — and would have on
+        // hop 2 once it moved onto this entry point (#809).
+        try await session.data(for: request, delegate: RedirectBlockingDelegate())
     }
 }
 

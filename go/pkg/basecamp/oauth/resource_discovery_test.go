@@ -17,6 +17,8 @@ import (
 	"testing"
 	"time"
 
+	surfguard "github.com/basecamp/surfguard/go"
+
 	"github.com/basecamp/basecamp-sdk/go/pkg/basecamp"
 )
 
@@ -134,6 +136,27 @@ func (t *countingTransport) RoundTrip(req *http.Request) (*http.Response, error)
 		}, nil
 	}
 	return t.base.RoundTrip(req)
+}
+
+// testIssuerPolicy is DefaultIssuerPolicy with loopback re-admitted, so httptest
+// servers — which bind random 127.0.0.1 ports — can stand in for a BC5 issuer
+// while every other address class stays exactly as strict as production.
+func testIssuerPolicy() surfguard.Policy {
+	return DefaultIssuerPolicy().AllowLoopback()
+}
+
+// issuerClientFor builds the advertised-issuer (hop-2) client the harness hands
+// to NewDiscoverer, counting Launchpad traffic on the SAME counter as hop 1.
+//
+// It has to be built here rather than left to the default. NewDiscoverer's
+// default hop-2 client is constructed inside the constructor, so a
+// countingTransport installed only on the client passed as hop 1's would no
+// longer be on hop 2's path — and every launchpadContacted:false fixture would
+// keep passing while no longer watching the hop that could break it. The
+// surfguard round tripper is kept underneath so the policy is still live on
+// this lane; only loopback is re-admitted.
+func issuerClientFor(count *int) *http.Client {
+	return &http.Client{Transport: &countingTransport{base: testIssuerPolicy().RoundTripper(), count: count}}
 }
 
 func sentinelFor(name string) error {
@@ -254,7 +277,7 @@ func runFixture(t *testing.T, path string) {
 
 	launchpadHits := 0
 	client := &http.Client{Transport: &countingTransport{base: http.DefaultTransport, count: &launchpadHits}}
-	d := NewDiscoverer(client)
+	d := NewDiscoverer(client, WithIssuerHTTPClient(issuerClientFor(&launchpadHits)))
 
 	opts := []DiscoverOption{}
 	if fx.ExpectedIssuer != "" {
@@ -544,7 +567,8 @@ func TestDiscoverFromResource_ASFetchFailurePreservesStatus(t *testing.T) {
 	defer resource.Close()
 	resourceOrigin = resource.URL
 
-	_, err := NewDiscoverer(resource.Client()).DiscoverFromResource(context.Background(), resourceOrigin)
+	_, err := NewDiscoverer(resource.Client(), WithIssuerPolicy(testIssuerPolicy())).
+		DiscoverFromResource(context.Background(), resourceOrigin)
 	if err == nil {
 		t.Fatal("expected an error")
 	}
@@ -586,7 +610,8 @@ func TestDiscoverFromResource_CallerCancellationPropagates(t *testing.T) {
 	launchpadHits := 0
 	client := &http.Client{Transport: &countingTransport{base: resource.Client().Transport, count: &launchpadHits}}
 
-	result, err := NewDiscoverer(client).DiscoverFromResource(ctx, resource.URL)
+	result, err := NewDiscoverer(client, WithIssuerHTTPClient(issuerClientFor(&launchpadHits))).
+		DiscoverFromResource(ctx, resource.URL)
 	if err == nil {
 		t.Fatalf("expected cancellation error, got soft fallback result: %+v", result)
 	}
@@ -651,7 +676,8 @@ func TestDiscoverFromResource_ASStageCancellationPropagates(t *testing.T) {
 		cancel()
 	}()
 
-	result, err := NewDiscoverer(resource.Client()).DiscoverFromResource(ctx, resourceOrigin)
+	result, err := NewDiscoverer(resource.Client(), WithIssuerPolicy(testIssuerPolicy())).
+		DiscoverFromResource(ctx, resourceOrigin)
 	if err == nil {
 		t.Fatalf("expected cancellation error, got result: %+v", result)
 	}

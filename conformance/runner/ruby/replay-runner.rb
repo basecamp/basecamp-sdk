@@ -114,6 +114,9 @@ class ReplayRunner
         else
           decode_snapshot(snapshot)
         end
+      # Unpinned on purpose, like the manifest write in runner.rb — File.write
+      # emits the string's bytes and only transcodes when handed an explicit
+      # encoding:. See that comment for the read/write asymmetry.
       File.write(File.join(out_dir, "#{safe_name(test["name"])}.json"), JSON.pretty_generate(result))
       failures += 1 if result[:pages].any? { |p| !p[:decoded] || p[:missing_required].any? }
     end

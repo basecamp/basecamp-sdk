@@ -104,8 +104,30 @@ var (
 	// provided but is not advertised by the resource.
 	ErrExpectedIssuerUnavailable = errors.New("expected issuer not advertised")
 	// ErrInvalidIssuerOrigin is returned when a selected advertised issuer is
-	// not a valid origin root.
-	ErrInvalidIssuerOrigin = errors.New("advertised issuer is not a valid origin root")
+	// refused as a destination. It covers two distinct checks, both permanent
+	// verdicts on the origin — neither is worth retrying, and the consumer's
+	// remedy is the same for both: stop treating this issuer as usable.
+	//
+	//  1. The issuer is not a valid origin root — the syntactic profile
+	//     (https, or http on localhost; a host; no path, query, fragment, or
+	//     userinfo; a port in range).
+	//  2. The issuer's ADDRESS is refused by the discoverer's issuer policy
+	//     (see [DefaultIssuerPolicy]) — it resolves into private, loopback,
+	//     link-local, or IANA special-purpose space. This check exists because
+	//     an advertised issuer is chosen by a remote peer, and a well-formed
+	//     origin root can still name an internal host. In this case the error
+	//     also matches errors.Is(err, surfguard.ErrBlocked), and wraps a
+	//     *surfguard.Violation carrying the reason; discriminate on that if the
+	//     two need telling apart.
+	//
+	// Case 2 is newer than case 1. Code written against the earlier meaning
+	// still matches — an issuer refused on address grounds is one this SDK will
+	// not talk to, which is what the sentinel has always signalled — but a
+	// consumer that logs "malformed issuer URL" on this sentinel should widen
+	// that wording, and one that reached an internal issuer before will now see
+	// this error instead. [WithIssuerPolicy] and [WithoutIssuerPolicy] adjust
+	// or remove the second check.
+	ErrInvalidIssuerOrigin = errors.New("advertised issuer is refused as a destination")
 	// ErrASFetchFailed is returned when the authorization-server metadata fetch
 	// fails (5xx / network) for a committed BC5 issuer.
 	ErrASFetchFailed = errors.New("authorization server metadata fetch failed")

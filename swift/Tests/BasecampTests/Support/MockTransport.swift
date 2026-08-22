@@ -18,6 +18,11 @@ import Foundation
 final class MockTransport: Transport, @unchecked Sendable {
     struct RecordedRequest: Sendable {
         let request: URLRequest
+        /// Which `Transport` entry point carried it: false for
+        /// `dataNoRedirect(for:)`, the one both download hops must use. The
+        /// mock cannot follow a redirect itself, so this is how a test pins
+        /// that production will not either.
+        let followsRedirects: Bool
     }
 
     private let handler: @Sendable (URLRequest) async throws -> (Data, URLResponse)
@@ -56,14 +61,18 @@ final class MockTransport: Transport, @unchecked Sendable {
     }
 
     func data(for request: URLRequest) async throws -> (Data, URLResponse) {
-        lock.withLock {
-            _requests.append(RecordedRequest(request: request))
-        }
-        return try await handler(request)
+        try await serve(request, followsRedirects: true)
     }
 
     func dataNoRedirect(for request: URLRequest) async throws -> (Data, URLResponse) {
-        try await data(for: request)
+        try await serve(request, followsRedirects: false)
+    }
+
+    private func serve(_ request: URLRequest, followsRedirects: Bool) async throws -> (Data, URLResponse) {
+        lock.withLock {
+            _requests.append(RecordedRequest(request: request, followsRedirects: followsRedirects))
+        }
+        return try await handler(request)
     }
 
     /// Resets the recorded requests.
