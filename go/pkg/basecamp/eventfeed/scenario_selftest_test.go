@@ -650,3 +650,31 @@ func TestScenarioDriverEnforcesTheFinalErrorElement(t *testing.T) {
 		}
 	})
 }
+
+// TestScenarioDriverScanScopesOccupancyHistoryToTheCurrentEra: the
+// arrival-strict lookahead treats a pending expectBuffered(N) as satisfied
+// when occupancy EVER reached N — including in an era the pointer has long
+// left. The scan then reads through to a following expectCheckpoint and
+// judges an arriving save against it, accepting an out-of-order checkpoint
+// the fixture ordered after a buffer state that never recurred. History must
+// be scoped to a boundary captured when the step pointer moves.
+func TestScenarioDriverScanScopesOccupancyHistoryToTheCurrentEra(t *testing.T) {
+	h := &scenarioHarness{}
+	d := &driver{h: h, sc: &scenario{Steps: []scenarioStep{
+		{Kind: "expectState", Payload: &expectStateStep{Is: "streaming"}},
+		{Kind: "expectBuffered", Payload: &expectBufferedStep{Count: 1}},
+		{Kind: "expectCheckpoint", Payload: &expectCheckpointStep{}},
+	}}}
+	// Occupancy reached 1 and left it while the pointer was on step 1; the
+	// pointer then moves on to step 2 (expectBuffered) with occupancy 0.
+	h.occupancy = 0
+	h.occupancyHistory = []int{1, 0}
+	d.beginStep(1, d.sc.Steps[1])
+
+	h.mu.Lock()
+	kind, where := d.currentStepLocked()
+	h.mu.Unlock()
+	if kind != "expectBuffered" {
+		t.Fatalf("the scan read through expectBuffered(1) on occupancy from a previous era: an arriving save would be judged against %s and accepted out of order", where)
+	}
+}

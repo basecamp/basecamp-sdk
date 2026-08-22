@@ -102,23 +102,23 @@ func TestReconnectDelay_RetryAfterWinsOutrightOverTheCap(t *testing.T) {
 
 func TestPollRetryDelay_RetryAfterIsExactAndCapExempt(t *testing.T) {
 	// A server-directed Retry-After is waited exactly — even beyond the cap.
-	if got := pollRetryDelay(5*time.Minute, 1, fixedRand(0.5)); got != 5*time.Minute {
+	if got := pollRetryDelay(PollThrottled, 5*time.Minute, 1, fixedRand(0.5)); got != 5*time.Minute {
 		t.Errorf("pollRetryDelay(5m Retry-After) = %v, want 5m", got)
 	}
 	// It is exact, not a floor: a Retry-After below the would-be draw wins.
-	if got := pollRetryDelay(time.Second, 7, fixedRand(0.99)); got != time.Second {
+	if got := pollRetryDelay(PollThrottled, time.Second, 7, fixedRand(0.99)); got != time.Second {
 		t.Errorf("pollRetryDelay(1s Retry-After) = %v, want exactly 1s", got)
 	}
 }
 
 func TestPollRetryDelay_FullJitterOverTheFailureIndex(t *testing.T) {
 	// Without Retry-After the wait is a full-jitter draw over k.
-	if got := pollRetryDelay(0, 2, fixedRand(0.5)); got != time.Second {
+	if got := pollRetryDelay(PollTransient, 0, 2, fixedRand(0.5)); got != time.Second {
 		t.Errorf("pollRetryDelay(k=2, r=0.5) = %v, want 1s", got)
 	}
 	rng := rand.New(rand.NewSource(2))
 	for i := 0; i < 1000; i++ {
-		d := pollRetryDelay(0, 9, rng.Float64)
+		d := pollRetryDelay(PollTransient, 0, 9, rng.Float64)
 		if d < 0 || d >= backoffCap {
 			t.Fatalf("pollRetryDelay(k=9) = %v, want in [0, %v)", d, backoffCap)
 		}
