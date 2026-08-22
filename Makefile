@@ -265,8 +265,8 @@ endif
 		{ echo "ERROR: Kotlin Gradle project version does not match $(VERSION). Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
 	@grep -qF 'public static let version = "$(VERSION)"' swift/Sources/Basecamp/BasecampConfig.swift || \
 		{ echo "ERROR: Swift version does not match $(VERSION). Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
-	@grep -qxF 'version = "$(VERSION)"' python/pyproject.toml || \
-		{ echo "ERROR: Python pyproject.toml version does not match $(VERSION). Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
+	@awk -v want='version = "$(VERSION)"' '/^\[/ { inproj = ($$0 == "[project]") } inproj && $$0 == want { found = 1 } END { exit !found }' python/pyproject.toml || \
+		{ echo "ERROR: Python pyproject.toml [project].version does not match $(VERSION). Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
 	@grep -qF 'VERSION = "$(VERSION)"' python/src/basecamp/_version.py || \
 		{ echo "ERROR: Python version does not match $(VERSION). Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
 	@# Verify lockfiles are frozen against their manifests

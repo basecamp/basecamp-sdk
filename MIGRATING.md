@@ -61,6 +61,36 @@ is used as given; the policy is not layered on top, because it lives in the
 transport's dialer. Compose it in yourself where you can:
 `&http.Client{Transport: oauth.DefaultIssuerPolicy().RoundTripper()}`.
 
+### Go: resource-first discovery judges the advertised issuer's address (#804)
+
+**The compile error, if you get one:** none for direct calls. `NewDiscoverer`
+gained a variadic `...DiscovererOption` — a stored function value
+(`var f func(*http.Client) *oauth.Discoverer = oauth.NewDiscoverer`) no longer
+compiles, the same shape as #806's `NewExchanger` above.
+
+**The behaviour change:** `DiscoverFromResource`'s second hop — the metadata
+fetch of the issuer a protected-resource document *advertised* — used to ride
+the client you gave `NewDiscoverer`. It now rides a shared client built from
+`oauth.DefaultIssuerPolicy()` that judges the endpoint's literal address at
+dial time: an advertised issuer in loopback, RFC 1918, link-local, CGNAT, or
+any IANA special-purpose space is refused before a connection opens, with a
+**non-retryable** `ErrInvalidIssuerOrigin` that also matches
+`errors.Is(err, surfguard.ErrBlocked)`. The policy applies on both selection
+paths, `WithExpectedIssuer` included — deliberately no exemption. Hop 1,
+`Discover`, and `DiscoverLaunchpad` are unchanged: your client, loopback
+included.
+
+**Wrong behaviour you get if you ignore it:** resource-first discovery against
+an authorization server on `localhost` or private space fails where it used to
+succeed — and, quieter, your custom TLS roots, instrumented transport, or
+proxy no longer carry that one hop (the policy client sets `Proxy: nil` by
+construction), so a proxied consumer's discovery hop 2 egresses direct unless
+redirected back. Remedies, in order of how much policy they keep:
+`WithIssuerPolicy(oauth.DefaultIssuerPolicy().AllowLoopback())` — the only
+derivation that pierces the IANA special-use tables; then
+`WithIssuerHTTPClient(hc)` to supply your own client; then
+`WithoutIssuerPolicy()` to opt out entirely.
+
 ### All SDKs: the signed download hop no longer follows redirects (#805)
 
 `DownloadURL` (`downloadURL`, `download_url`, `UploadsService.Download` and its
@@ -3886,16 +3916,16 @@ oversight, and it should be stated rather than assumed.
 
 # Not in this release
 
-Every change the `# Unreleased` section describes was merged by `8fcb39ab9`,
+Every change the `# Unreleased` section describes was merged by `fa15fc126`,
 and the in-flight set below was surveyed at that commit; the historical
 sections' counts keep the baselines they themselves state (v0.13.0's totals
 were measured at `9a819e44d`, as that section says). In flight at
 that commit, and therefore **not** in this release: the event-feed connector
 stack (#777, #705, #778 — SPEC §23's Go reference implementation and its
-conformance driver), the OAuth issuer address policy (#804), a CodeQL alert
-triage (#807), and two long-running drafts (#802, SPEC §9's peer-derived-text
-boundary; #238, the API-disabled 404 `Reason` header). The record below dates
-from this guide's v0.13.0 drafts and remains true as written.
+conformance driver) and two long-running drafts (#802, SPEC §9's
+peer-derived-text boundary; #238, the API-disabled 404 `Reason` header). The
+record below dates from this guide's v0.13.0 drafts and remains true as
+written.
 
 For the record, since the earlier drafts named them and reviewers may be looking
 for them:
