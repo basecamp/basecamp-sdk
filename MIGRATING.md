@@ -13,6 +13,33 @@ what wrong behaviour you get if you ignore one. This file is that half.
 
 # Unreleased
 
+### All SDKs: the signed download hop no longer follows redirects (#805)
+
+`DownloadURL` (`downloadURL`, `download_url`, `UploadsService.Download` and its
+siblings) is two hops: an authenticated GET to the API host, which answers with
+a 302 to a presigned storage URL, then an unauthenticated GET of that URL. The
+first hop never followed redirects — the SDK reads `Location` itself. The
+second hop did, in Go (net/http's default, ten hops), TypeScript (`fetch`'s
+default, twenty), Python (`follow_redirects=True`, written out) and Swift (the
+redirect-following `Transport` entry point). Kotlin and Ruby never did.
+
+All six now refuse. A redirect — 301, 302, 303, 307 or 308; any other 3xx
+is the generic non-2xx failure — from the storage host surfaces as the SDK's API
+error carrying that status — `*basecamp.Error` with `HTTPStatus: 302`,
+`BasecampError` with `code: "api_error"` and `httpStatus: 302`, `ApiError`
+with `http_status=302`, and so on — with a message saying the redirect is
+**not followed**, and the `Location` it named is never dialled. SPEC §14
+"Hop-2 Redirect Policy" states the rule and the evidence behind it: Basecamp's
+storage tier answers presigned GETs from a single endpoint, and two SDKs have
+shipped a non-following second hop since the download path existed.
+
+**Wrong behaviour you get if you ignore it:** none against Basecamp. Against
+another API host whose storage does redirect — a CDN in front of an object
+store, a multi-region bucket answering with a region redirect — downloads that
+used to succeed now fail with the redirect's status. There is no knob to re-enable
+following; the fix is for that host to return the storage URL it actually
+serves from.
+
 ### `BasecampError.api` gained a fifth associated value (#750)
 
 **Swift only, and it is a compile error** — the one shape of break you cannot

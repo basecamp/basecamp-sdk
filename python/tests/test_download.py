@@ -110,6 +110,65 @@ class TestRedirectHandling:
         assert result.content_type == "application/pdf"
         assert result.filename == "doc.pdf"
 
+    # SPEC §14 "Hop-2 Redirect Policy": the signed URL is the one destination the
+    # API host named. A redirect from it surfaces with its status, and the Location it
+    # names is never dialled (#805). Before hop 2 passed follow_redirects=False,
+    # httpx followed this chain and the caller received b"SECRET" as the file.
+    @respx.mock
+    def test_hop2_redirect_is_refused_not_followed(self):
+        respx.get("https://3.basecampapi.com/files/doc.pdf").mock(
+            return_value=httpx.Response(302, headers={"Location": "https://signed.storage.com/doc.pdf?sig=xyz"})
+        )
+        respx.get("https://signed.storage.com/doc.pdf?sig=xyz").mock(
+            return_value=httpx.Response(302, headers={"Location": "https://elsewhere.example.com/final/doc.pdf"})
+        )
+        third = respx.get("https://elsewhere.example.com/final/doc.pdf").mock(
+            return_value=httpx.Response(200, content=b"SECRET")
+        )
+
+        with pytest.raises(ApiError, match="not followed") as excinfo:
+            download_sync("https://original.com/files/doc.pdf", http_client=make_http(), config=make_config())
+
+        assert excinfo.value.http_status == 302
+        assert not third.called
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_hop2_redirect_is_refused_not_followed_async(self):
+        respx.get("https://3.basecampapi.com/files/doc.pdf").mock(
+            return_value=httpx.Response(302, headers={"Location": "https://signed.storage.com/doc.pdf?sig=xyz"})
+        )
+        respx.get("https://signed.storage.com/doc.pdf?sig=xyz").mock(
+            return_value=httpx.Response(302, headers={"Location": "https://elsewhere.example.com/final/doc.pdf"})
+        )
+        third = respx.get("https://elsewhere.example.com/final/doc.pdf").mock(
+            return_value=httpx.Response(200, content=b"SECRET")
+        )
+        config = make_config()
+        http = AsyncHttpClient(config, AsyncBearerAuth(AsyncStaticTokenProvider("test-token")))
+
+        with pytest.raises(ApiError, match="not followed") as excinfo:
+            await download_async("https://original.com/files/doc.pdf", http_client=http, config=config)
+
+        assert excinfo.value.http_status == 302
+        assert not third.called
+
+    # Hop 2 used to accept anything below 400, so a 3xx the client no longer
+    # follows — or a 304, which is outside the redirect set — would have
+    # returned as a success with an empty body. Any non-2xx is the download
+    # failing.
+    @respx.mock
+    def test_hop2_non_2xx_below_400_is_a_failure(self):
+        respx.get("https://3.basecampapi.com/files/doc.pdf").mock(
+            return_value=httpx.Response(302, headers={"Location": "https://signed.storage.com/doc.pdf?sig=xyz"})
+        )
+        respx.get("https://signed.storage.com/doc.pdf?sig=xyz").mock(return_value=httpx.Response(304))
+
+        with pytest.raises(ApiError, match="download failed with status 304") as excinfo:
+            download_sync("https://original.com/files/doc.pdf", http_client=make_http(), config=make_config())
+
+        assert excinfo.value.http_status == 304
+
 
 class TestDirectDownload:
     @respx.mock

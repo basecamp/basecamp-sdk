@@ -313,6 +313,45 @@ class DownloadTest {
         client.close()
     }
 
+    // SPEC §14 "Hop-2 Redirect Policy": the signed URL is the one destination
+    // the API host named. A redirect from it surfaces with its status, and the
+    // Location it names is never dialled (#805). Kotlin has always run hop 2 on
+    // hop 1's followRedirects = false client; this pins the explicit refusal.
+    @Test
+    fun downloadURL_hop2RedirectIsRefusedNotFollowed() = runTest {
+        var requestCount = 0
+        var thirdHits = 0
+        val client = mockClient({ request ->
+            requestCount++
+            when (request.url.encodedPath) {
+                "/elsewhere/file" -> {
+                    thirdHits++
+                    respond(content = ByteReadChannel("SECRET"), status = HttpStatusCode.OK)
+                }
+                "/signed/file" -> respond(
+                    content = ByteReadChannel(""),
+                    status = HttpStatusCode.Found,
+                    headers = headersOf(HttpHeaders.Location to listOf("http://localhost:3000/elsewhere/file"))
+                )
+                else -> respond(
+                    content = ByteReadChannel(""),
+                    status = HttpStatusCode.Found,
+                    headers = headersOf(HttpHeaders.Location to listOf("http://localhost:3000/signed/file"))
+                )
+            }
+        })
+        val account = client.forAccount("12345")
+
+        val e = assertFailsWith<BasecampException.Api> {
+            account.downloadURL("http://localhost:3000/12345/attachments/abc/download/file.txt")
+        }
+        assertEquals(302, e.httpStatus)
+        assertTrue(e.message!!.contains("not followed"), "expected the message to name the refusal, got ${e.message}")
+        assertEquals(2, requestCount, "the redirect target must never be dialled")
+        assertEquals(0, thirdHits)
+        client.close()
+    }
+
     // -- Auth header tests --
 
     @Test
