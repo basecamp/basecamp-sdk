@@ -1,7 +1,7 @@
 PATH
   remote: ../../../ruby
   specs:
-    basecamp-sdk (0.14.0)
+    basecamp-sdk (0.15.0)
       faraday (~> 2.0)
       zeitwerk (~> 2.6)
 
@@ -53,7 +53,7 @@ DEPENDENCIES
 
 CHECKSUMS
   addressable (2.9.0) sha256=7fdf6ac3660f7f4e867a0838be3f6cf722ace541dd97767fa42bc6cfa980c7af
-  basecamp-sdk (0.14.0)
+  basecamp-sdk (0.15.0)
   bigdecimal (4.1.2) sha256=53d217666027eab4280346fba98e7d5b66baaae1b9c3c1c0ffe89d48188a3fbd
   bundler (4.0.17) sha256=214e21431b5665dd2f99df8a5511c6b151d7a72e8015c8b38f8b775b61cbb6c1
   crack (1.0.1) sha256=ff4a10390cd31d66440b7524eb1841874db86201d5b70032028553130b6d4c7e

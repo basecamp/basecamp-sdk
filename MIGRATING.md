@@ -11,7 +11,7 @@ what wrong behaviour you get if you ignore one. This file is that half.
 
 ---
 
-# Unreleased
+# v0.15.0
 
 ### Go: device-flow and token-exchange requests are address-policed by default (#806)
 
