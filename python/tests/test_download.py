@@ -111,7 +111,7 @@ class TestRedirectHandling:
         assert result.filename == "doc.pdf"
 
     # SPEC §14 "Hop-2 Redirect Policy": the signed URL is the one destination the
-    # API host named. A 3xx from it surfaces with its status, and the Location it
+    # API host named. A redirect from it surfaces with its status, and the Location it
     # names is never dialled (#805). Before hop 2 passed follow_redirects=False,
     # httpx followed this chain and the caller received b"SECRET" as the file.
     @respx.mock

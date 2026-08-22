@@ -1770,7 +1770,7 @@ Python and Ruby carve downloads out of their ungoverned GET taxonomy (which retr
 
 ### Hop-2 Redirect Policy `[conformance]`
 
-The signed hop follows no redirect. A 3xx from the storage host surfaces as `api_error` carrying
+The signed hop follows no redirect. A redirect (301, 302, 303, 307 or 308) from the storage host surfaces as `api_error` carrying
 that status, with a message saying the redirect is **not followed** — the substring the conformance
 case asserts — and the `Location` it carries is never dialled. The refusal is a property of hop 2's
 own HTTP client, not of the dispatch around it: `CheckRedirect: ErrUseLastResponse` (Go),
@@ -1801,7 +1801,7 @@ though: Kotlin (by design, reusing hop 1's `followRedirects = false` client) and
 no download reported broken.
 
 **What happens if that changes.** Should the storage tier ever start redirecting — a CDN in front of
-it, a region move — every SDK fails loudly with the 3xx and the "not followed" message rather than
+it, a region move — every SDK fails loudly with the redirect's status and the "not followed" message rather than
 quietly following somewhere. That is deliberate: the remedy is then a spec change argued from the new
 evidence, with a destination policy attached, not a default that happened to work.
 

@@ -23,7 +23,8 @@ second hop did, in Go (net/http's default, ten hops), TypeScript (`fetch`'s
 default, twenty), Python (`follow_redirects=True`, written out) and Swift (the
 redirect-following `Transport` entry point). Kotlin and Ruby never did.
 
-All six now refuse. A 3xx from the storage host surfaces as the SDK's API
+All six now refuse. A redirect — 301, 302, 303, 307 or 308; any other 3xx
+is the generic non-2xx failure — from the storage host surfaces as the SDK's API
 error carrying that status — `*basecamp.Error` with `HTTPStatus: 302`,
 `BasecampError` with `code: "api_error"` and `httpStatus: 302`, `ApiError`
 with `http_status=302`, and so on — with a message saying the redirect is
@@ -35,7 +36,7 @@ shipped a non-following second hop since the download path existed.
 **Wrong behaviour you get if you ignore it:** none against Basecamp. Against
 another API host whose storage does redirect — a CDN in front of an object
 store, a multi-region bucket answering with a region redirect — downloads that
-used to succeed now fail with the 3xx. There is no knob to re-enable
+used to succeed now fail with the redirect's status. There is no knob to re-enable
 following; the fix is for that host to return the storage URL it actually
 serves from.
 

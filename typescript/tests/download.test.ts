@@ -318,7 +318,7 @@ describe("downloadURL", () => {
 
     it("refuses a redirect on the signed second hop", async () => {
       // SPEC §14 "Hop-2 Redirect Policy": the signed URL is the one destination
-      // the API host named. A 3xx from it surfaces with its status, and the
+      // the API host named. A redirect from it surfaces with its status, and the
       // Location it names is never dialled (#805). Before hop 2 passed
       // `redirect: "manual"`, fetch followed this chain and the caller
       // received "SECRET" as the file.

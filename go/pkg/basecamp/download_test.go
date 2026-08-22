@@ -690,7 +690,7 @@ func TestDownload_SecondLegNoTimeout(t *testing.T) {
 }
 
 // The signed hop follows no redirect (SPEC §14 "Hop-2 Redirect Policy"). A
-// storage host that answers the presigned GET with a 3xx is surfaced with that
+// storage host that answers the presigned GET with a redirect is surfaced with that
 // status, and the Location it names is never dialled — the body a third server
 // would have returned must not reach the caller as if it were the file (#805).
 // Before CheckRedirect was set on the bare client, net/http followed this

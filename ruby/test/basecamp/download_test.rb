@@ -252,7 +252,7 @@ class DownloadTest < Minitest::Test
   end
 
   # SPEC §14 "Hop-2 Redirect Policy": the signed URL is the one destination the
-  # API host named. A 3xx from it surfaces with its status, and the Location it
+  # API host named. A redirect from it surfaces with its status, and the Location it
   # names is never dialled (#805). Net::HTTP#request never follows, so this pins
   # the explicit refusal rather than an accident of the client.
   def test_download_url_hop2_redirect_is_refused_not_followed

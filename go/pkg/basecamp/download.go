@@ -14,7 +14,7 @@ import (
 // Uses the bare transport (no loggingTransport, no auth headers) and no
 // client-level timeout so the caller owns the streaming lifecycle. It follows
 // no redirect: the signed URL is the one destination the API host named, and
-// a 3xx from it is surfaced, not dialled (SPEC §14 "Hop-2 Redirect Policy").
+// a redirect from it is surfaced, not dialled (SPEC §14 "Hop-2 Redirect Policy").
 func (c *Client) fetchSignedDownload(ctx context.Context, downloadURL string) (*http.Response, error) {
 	req, err := http.NewRequestWithContext(ctx, "GET", downloadURL, nil)
 	if err != nil {

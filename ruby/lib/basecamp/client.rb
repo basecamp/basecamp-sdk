@@ -648,7 +648,7 @@ module Basecamp
       begin
         # Net::HTTP#request never follows a redirect, which is the policy:
         # the signed URL is the one destination the API host named, and a
-        # 3xx from it is refused below, not dialled (SPEC §14 "Hop-2
+        # redirect from it is refused below, not dialled (SPEC §14 "Hop-2
         # Redirect Policy"). Stated here so a move to a following client
         # (Faraday, Net::HTTP.get_response's callers) has to argue with it.
         response = http_client.request(request)

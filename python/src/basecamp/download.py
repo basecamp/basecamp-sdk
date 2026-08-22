@@ -122,7 +122,7 @@ def _validate_url(raw_url: str) -> None:
 def _check_signed(response: httpx.Response) -> httpx.Response:
     """Hop-2 dispatch: a redirect is refused, any other non-2xx is the download failing.
 
-    The signed URL is the one destination the API host named; a 3xx from it is
+    The signed URL is the one destination the API host named; a redirect from it is
     surfaced with its status, never dialled (SPEC §14 "Hop-2 Redirect Policy").
     Checked as "not 2xx" rather than ">= 400" so the 3xx the client no longer
     follows cannot pass as a success with an empty body.

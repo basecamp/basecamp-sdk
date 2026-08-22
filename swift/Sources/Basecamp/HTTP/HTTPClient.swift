@@ -497,7 +497,7 @@ package final class HTTPClient: Sendable {
 
     /// Unauthenticated GET via bare transport. No hooks, and no redirect
     /// following: the signed URL is the one destination the API host named,
-    /// and a 3xx from it is handed back for `downloadURL` to refuse (SPEC §14
+    /// and a redirect from it is handed back for `downloadURL` to refuse (SPEC §14
     /// "Hop-2 Redirect Policy"). Used by downloadURL for the signed-URL hop.
     package func fetchSignedDownload(url: String) async throws -> (Data, HTTPURLResponse) {
         guard let requestURL = URL(string: url) else {

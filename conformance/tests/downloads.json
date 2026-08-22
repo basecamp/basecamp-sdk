@@ -135,7 +135,7 @@
   },
   {
     "name": "DownloadURL refuses a redirect on the signed second hop",
-    "description": "Hop 2 is a presigned GET against the one host hop 1 named, and follows no redirect (SPEC 14 Hop-2 Redirect Policy): a 3xx from the signed host surfaces as an API error carrying that status, and its Location is never dialled. Exactly two requests — the third scripted response must stay unconsumed, which is what distinguishes refusing the redirect from following it.",
+    "description": "Hop 2 is a presigned GET against the one host hop 1 named, and follows no redirect (SPEC 14 Hop-2 Redirect Policy): a redirect (301, 302, 303, 307 or 308) from the signed host surfaces as an API error carrying that status, and its Location is never dialled. Exactly two requests — the third scripted response must stay unconsumed, which is what distinguishes refusing the redirect from following it.",
     "operation": "DownloadURL",
     "method": "GET",
     "path": "/999999999/blobs/abcd1234/download/logo.png",

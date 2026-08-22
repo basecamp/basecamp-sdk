@@ -113,7 +113,7 @@ extension AccountClient {
                 // Hop 2: fetch from signed URL (no auth, no hooks)
                 let (signedData, signedResponse) = try await httpClient.fetchSignedDownload(url: resolvedLocation)
 
-                // The transport's no-redirect entry point hands a 3xx back: the
+                // The transport's no-redirect entry point hands a redirect back: the
                 // signed URL is the one destination the API host named, and its
                 // Location is never dialled (#805).
                 if [301, 302, 303, 307, 308].contains(signedResponse.statusCode) {

@@ -243,9 +243,9 @@ export function createDownloadURL(deps: DownloadDeps): (rawURL: string) => Promi
 
         // Hop 2: fetch from signed URL (no auth, no timeout, no request hooks).
         // `redirect: "manual"`, as on hop 1: the signed URL is the one
-        // destination the API host named, and a 3xx from it is refused below
+        // destination the API host named, and a redirect from it is refused below
         // rather than followed wherever the storage host points (#805). Node's
-        // fetch hands the 3xx back with its status; a browser's yields an
+        // fetch hands the redirect back with its status; a browser's yields an
         // opaqueredirect (status 0), which the !ok branch refuses the same way.
         let signedResponse: Response;
         try {

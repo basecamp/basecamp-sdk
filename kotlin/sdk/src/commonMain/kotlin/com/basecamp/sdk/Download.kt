@@ -187,7 +187,7 @@ suspend fun AccountClient.downloadURL(rawURL: String): DownloadResult {
                         )
                     }
 
-                    // The client above does not follow, so a 3xx lands here: the
+                    // The client above does not follow, so a redirect lands here: the
                     // signed URL is the one destination the API host named, and
                     // its Location is never dialled (#805).
                     if (signedResponse.status.value in REDIRECT_STATUSES) {

@@ -301,7 +301,7 @@ final class DownloadTests: XCTestCase {
     }
 
     // SPEC §14 "Hop-2 Redirect Policy": the signed URL is the one destination
-    // the API host named. A 3xx from it surfaces with its status, and the
+    // the API host named. A redirect from it surfaces with its status, and the
     // Location it names is never dialled (#805). The mock cannot follow a
     // redirect itself, so the last assertion pins the seam that guarantees
     // that in production: both hops go through the transport's no-redirect

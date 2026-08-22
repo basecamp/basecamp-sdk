@@ -314,7 +314,7 @@ class DownloadTest {
     }
 
     // SPEC §14 "Hop-2 Redirect Policy": the signed URL is the one destination
-    // the API host named. A 3xx from it surfaces with its status, and the
+    // the API host named. A redirect from it surfaces with its status, and the
     // Location it names is never dialled (#805). Kotlin has always run hop 2 on
     // hop 1's followRedirects = false client; this pins the explicit refusal.
     @Test
