@@ -49,8 +49,10 @@ const (
 	// MintTransient — a retryable outcome exhausted inside the seam; rides
 	// the reconnect cycle (Backoff).
 	MintTransient MintErrorKind = iota + 1
-	// MintThrottled — 429/503; RetryAfter honored as the floor of the next
-	// reconnect delay.
+	// MintThrottled — a retryable outcome whose last response carried a
+	// §6-parsed Retry-After, whatever its status (the same presence-keyed
+	// adapter mapping as PollThrottled; the parsed value is always > 0).
+	// RetryAfter is honored as the floor of the next reconnect delay.
 	MintThrottled
 	// MintUnauthorized — 401/403; increments the shared connection-level
 	// authorization counter (terminal authorization_failed at threshold 3).
@@ -148,7 +150,12 @@ const (
 	// PollTransient — a retryable outcome exhausted inside the seam; retries
 	// on the poll-retry timer, never terminal.
 	PollTransient PollErrorKind = iota + 1
-	// PollThrottled — 429/503; RetryAfter waited exactly, cap-exempt.
+	// PollThrottled — a retryable outcome whose last response carried a
+	// §6-parsed Retry-After, whatever its status (SPEC §6 fixes the adapter
+	// mapping by presence of the parsed value, not by status — a status
+	// key would honour the header at one retryable status and drop it at
+	// another). The parsing algorithm yields only positive values, so
+	// RetryAfter is always > 0; it is waited exactly, cap-exempt.
 	PollThrottled
 	// PollPositionInvalid — 400-position: re-enter since=<last poll-served
 	// id> (or a present-class entry with none).
@@ -251,6 +258,25 @@ type CableTransport interface {
 	// and a cancelled dial must return promptly. maxFrameBytes must be
 	// enforced while reading (e.g. a read-limit on the socket), rejecting an
 	// over-limit message without materializing it.
+	//
+	// The returned error MUST NOT render wsURL or any part of its query
+	// string. The ticket rides in that query, and an error is opaque text, so
+	// nothing downstream can redact it — see WebSocketTransport's dialFailure
+	// on why stripping a credential out of arbitrary text requires modelling
+	// the credential, which §23's "opaque bearer" contract forbids. Report
+	// the classification and a cause of your own choosing, never the peer's
+	// or a library's rendering of the URL.
+	//
+	// Where it is exposed, stated exactly, because the obvious guess is wrong:
+	// a dial failure does NOT reach Observer.Disconnected. There is no socket
+	// yet, so there is no teardown to report. A DialPolicy failure becomes
+	// Terminal(invalid_cable_url) and is yielded as the iteration's terminal
+	// error — the consumer's own error value, which is a stronger exposure
+	// than a callback, not a weaker one. Every other kind takes transition 7
+	// to backoff, where the connector reports the classification and drops the
+	// cause entirely. So the obligation above is not softened by the callback
+	// never firing; it is what keeps a credential out of the error a caller
+	// receives from Events.
 	Dial(ctx context.Context, wsURL string, maxFrameBytes int64) (CableConn, error)
 }
 
@@ -261,11 +287,14 @@ type CableConn interface {
 	// of the seam: stock Action Cable discards the disconnect reason, and the
 	// terminal/non-terminal distinction lives only in this raw frame. A peer
 	// close surfaces as *CloseError; a message over the dial's maxFrameBytes
-	// surfaces as an error matching ErrFrameOversize.
+	// surfaces as an error matching ErrFrameOversize. Like Dial's, the
+	// returned error must not render the cable URL or its query string: it
+	// reaches Observer.Disconnected.
 	ReadFrame(ctx context.Context) ([]byte, error)
 	// WriteFrame sends one raw text frame. Close and ctx cancellation must
 	// unblock an in-progress write; a write failure takes the current
-	// state's socket-failure path.
+	// state's socket-failure path, and must not render the cable URL or its
+	// query string: it reaches Observer.Disconnected.
 	WriteFrame(ctx context.Context, data []byte) error
 	// Close is idempotent, safe from any goroutine, and unblocks ReadFrame
 	// and WriteFrame.
@@ -291,16 +320,28 @@ type CloseError struct {
 	Reason string
 }
 
-// Error implements the error interface. Reason is peer-supplied, so the
-// rendering is bounded by §9's MAX_ERROR_MESSAGE_LENGTH like every other
-// rendering of peer-derived text in this package, and the type is flat — it
-// retains no cause a chain walk could recover the unbounded original from.
-// RFC 6455 already caps a close reason at 123 bytes and the default transport
-// enforces it, so the truncation binds only on a transport that does not.
+// Error implements the error interface, and deliberately does NOT render
+// Reason.
+//
+// Reason is peer-supplied, and this error reaches Observer.Disconnected, which
+// hosts log. The cable server is precisely the party that knows the ticket — it
+// was dialed with it — so a server that echoes the URL it was dialed with, by
+// malice or by putting its own request line in a close reason, would put the
+// ticket in the host's logs. §23 declares the ticket an "opaque bearer
+// credential; never logged".
+//
+// This used to be bounded by §9's cap rather than withheld. Bounding is not
+// redaction: it limits how much of a credential escapes, not whether any does.
+// It is the same trap WebSocketTransport's dialFailure documents three review
+// rounds of, and the answer is the same — to strip a credential out of
+// arbitrary text you must MODEL it, and "opaque" forbids that.
+//
+// The code survives, and is the useful half: an integer is structurally
+// incapable of carrying a credential, and RFC 6455 close codes are what an
+// operator classifies on. Reason remains a FIELD, so a host that has decided
+// its cable server is trustworthy can read it deliberately — what changes is
+// that the connector no longer puts it in front of every logger by default.
 func (e *CloseError) Error() string {
-	if e.Reason != "" {
-		return truncateErrorText(fmt.Sprintf("cable connection closed by peer: code %d: %s", e.Code, e.Reason))
-	}
 	return fmt.Sprintf("cable connection closed by peer: code %d", e.Code)
 }
 
@@ -337,7 +378,12 @@ type DialError struct {
 	// Reason names the policy violation (policy only). Never the URL's query
 	// string.
 	Reason string
-	// Err is the underlying cause.
+	// Err is the underlying cause. It is supplied by the CableTransport and
+	// concatenated into Error(), so this struct's own no-query-string
+	// guarantee extends to it only as far as the implementation honors the
+	// obligation stated on CableTransport.Dial. The built-in
+	// WebSocketTransport draws its causes from a closed vocabulary keyed on
+	// error types for exactly this reason.
 	Err error
 }
 
@@ -425,7 +471,51 @@ type Observer struct {
 	Connected func()
 	// Confirmed fires on confirm_subscription.
 	Confirmed func()
-	// Disconnected fires when a socket is torn down.
+	// Disconnected fires when a socket is torn down. reason describes why; err
+	// is the failure that ended the socket. NEITHER is peer text: both are
+	// mapped onto closed vocabularies before they reach here.
+	//
+	// reason goes through observableDisconnectReason: the two reasons dispatch
+	// actually acts on are named exactly, an absent reason stays empty, and
+	// every other peer-supplied string — however short — becomes "other". err
+	// goes through observableSocketError, whose vocabulary is CLOSED and
+	// short: the staleness, conn-closed, and frame-oversize sentinels (the
+	// last being ErrFrameOversize, the invalid-frame class's one
+	// transport-decided shape), the two context sentinels, *CloseError (which
+	// renders its integer code alone), and
+	// *invalidFrameError (which renders one of two shape constants). ANY other
+	// error — including a *DialError or *TerminalError, both of which a seam
+	// can construct and both of which render free text — becomes
+	// errSocketFailed.
+	//
+	// "Preserved" means reduced to the connector's OWN value, not passed
+	// along. A seam error that merely WRAPS a recognized sentinel —
+	// fmt.Errorf("read %s: %w", cableURL, context.Canceled) — reduces to the
+	// bare sentinel, because the wrapper's text is exactly where a cable URL
+	// would ride. errors.Is still matches for a consumer that checks.
+	//
+	// This is a LOGGING surface, and its vocabulary is chosen accordingly. A
+	// terminated feed's reason and detail reach you through the iteration's
+	// terminal *TerminalError, which is the semantic channel and is not
+	// reduced.
+	//
+	// The normalization is deliberate, and it is the connector's own defense
+	// rather than a restatement of the seam's. §23 declares the ticket an
+	// opaque bearer credential that is never logged; this callback is a
+	// logging surface; and stripping a credential out of arbitrary text would
+	// require MODELLING the credential, which "opaque" is precisely the
+	// assumption that forbids. A closed vocabulary is the only answer that
+	// does not depend on the peer, or on a custom transport, behaving.
+	//
+	// Dial, ReadFrame and WriteFrame still carry the obligation not to render
+	// the cable URL, and that obligation is what keeps a PRESERVED typed error
+	// safe. What changed is the consequence of breaking it: a transport that
+	// renders the URL into an unrecognized error no longer leaks through this
+	// callback, because that error does not survive the mapping.
+	//
+	// The corollary for custom transports: diagnostics you attach to an error
+	// the connector does not recognize do NOT reach this callback. Report them
+	// through your own logging, not through this seam.
 	Disconnected func(reason string, err error)
 	// CatchUpStarted fires when a poll walk begins.
 	CatchUpStarted func(cursor Cursor)

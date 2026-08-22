@@ -300,6 +300,12 @@ All SDKs are generated from a single Smithy specification. When adding support f
    - **Kotlin:** `make kt-generate-services`
    - **Python:** `make py-generate`
 
+   `go/pkg/basecamp/eventfeed/` is outside that drift check by design: it is
+   hand-written §23 infrastructure rather than a wrapper over generated
+   operations, so nothing about it is derivable from the spec. It is verified
+   instead by the tier-2 conformance driver in the package, which replays every
+   fixture under `conformance/event-feed/fixtures/`.
+
 4. **Add tests** for each SDK
 
 5. **Add conformance tests** (`conformance/tests/`) covering the new operations
