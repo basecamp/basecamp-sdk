@@ -112,10 +112,13 @@ so existing array-typed reads keep compiling.
 memberwise initializer is `internal`, and the model emitter wrote an explicit
 `public init` only for structs with at least one required member. An
 all-optional model got none, so no code outside the module could construct
-one — which made two operations uncallable in practice: `updateGaugeNeedle`
-and `updateMyPreferences` take all-optional request payloads, and the only
-body a consumer could pass was the `nil` that sends the empty `{}` bc3
-rejects with a 400.
+one — which made two operations unusable, in different ways.
+`updateGaugeNeedle`'s outer request was constructible (it has a required
+member), but its all-optional `GaugeNeedleUpdatePayload` was not, so the only
+callable shape was `UpdateGaugeNeedleRequest(gaugeNeedle: nil)` — sending the
+empty `{}` bc3 rejects with a 400. `updateMyPreferences` could not be called
+from outside the module at all: its outer request *requires* a
+`PreferencesPayload`, and that payload was unconstructible.
 
 Every generated model now carries the same-shaped `public init` the
 required-member models always had — required parameters take no default,
@@ -138,8 +141,9 @@ Swift's `let`, Python's frozen dataclass. The other two only looked capped:
   `#private` field read directly by both pagination loops, with a `protected`
   getter preserving the supported subclass read. The escape hatch stops
   working: in strict-mode code the assignment throws a `TypeError` (the
-  property is a getter with no setter), and in sloppy mode it lands on an own
-  property the loops never read.
+  property is a getter with no setter), and in sloppy mode it is silently
+  ignored — `[[Set]]` on an inherited getter-only accessor creates no own
+  property.
 - **Ruby**: `Config#max_pages` was a bare `attr_accessor`, and the HTTP layer
   reads the config live at every page boundary, so `config.max_pages = -1`
   took effect on the next page fetch. The writer now validates with the same
@@ -151,6 +155,25 @@ Swift's `let`, Python's frozen dataclass. The other two only looked capped:
 the cap through one of those two holes to defeat the bound — pass the value
 at construction (`maxPages` in the service options, `max_pages` on the config
 before use) instead.
+
+### Ruby: three crash classes on server-supplied URLs became `ApiError` refusals (`2f21c9de7`, `328153020`, `478514642`)
+
+Three bare commits, one class: a malformed or non-dialable server-supplied
+URL used to escape as a raw exception from inside `URI`/`Net::HTTP` instead
+of being refused. Pagination's `<mailto:>; rel="next"` Link header and a
+`Location: mailto:` redirect raised `URI::InvalidComponentError`; a signed
+download whose hop-2 target was `mailto:` raised the same thing one frame
+later; a hostless `http:foo` redirect `Location` crashed with a raw
+`ArgumentError` ("no host component for URI") from `Net::HTTP::Get`. All
+three now raise the SDK's `ApiError` with a legible refusal message,
+matching the refusals Go and TypeScript already surfaced on their dial
+paths. No request is made in any of these cases — each error fires before
+anything is sent, so this was illegibility, not exposure.
+
+**Wrong behaviour you get if you ignore it:** none, but a `rescue` for the
+raw classes (`URI::InvalidComponentError`, `ArgumentError`) around
+pagination or downloads stops seeing them raised from those paths — rescue
+`Basecamp::ApiError` instead.
 
 ### TypeScript: `Retry-After` parsing is strict, and values it used to honour now back off instead (#564)
 
@@ -3784,8 +3807,10 @@ oversight, and it should be stated rather than assumed.
 
 # Not in this release
 
-Every change this guide describes was merged by `8fcb39ab9`, and every count
-above is a measurement at that commit rather than a projection. In flight at
+Every change the `# Unreleased` section describes was merged by `8fcb39ab9`,
+and the in-flight set below was surveyed at that commit; the historical
+sections' counts keep the baselines they themselves state (v0.13.0's totals
+were measured at `9a819e44d`, as that section says). In flight at
 that commit, and therefore **not** in this release: the event-feed connector
 stack (#777, #705, #778 — SPEC §23's Go reference implementation and its
 conformance driver), the OAuth issuer address policy (#804), a CodeQL alert

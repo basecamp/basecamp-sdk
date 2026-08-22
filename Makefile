@@ -265,11 +265,15 @@ endif
 		{ echo "ERROR: Kotlin Gradle project version does not match $(VERSION). Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
 	@grep -qF 'public static let version = "$(VERSION)"' swift/Sources/Basecamp/BasecampConfig.swift || \
 		{ echo "ERROR: Swift version does not match $(VERSION). Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
-	@grep -q '^version = "$(VERSION)"' python/pyproject.toml || \
+	@grep -qxF 'version = "$(VERSION)"' python/pyproject.toml || \
 		{ echo "ERROR: Python pyproject.toml version does not match $(VERSION). Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
 	@grep -qF 'VERSION = "$(VERSION)"' python/src/basecamp/_version.py || \
 		{ echo "ERROR: Python version does not match $(VERSION). Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
 	@# Verify lockfiles are frozen against their manifests
+	@test "$$(jq -r '.version' typescript/package-lock.json)" = "$(VERSION)" -a "$$(jq -r '.packages[""].version' typescript/package-lock.json)" = "$(VERSION)" || \
+		{ echo "ERROR: typescript/package-lock.json records a stale SDK version. Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
+	@grep -qF 'basecamp-sdk ($(VERSION))' ruby/Gemfile.lock || \
+		{ echo "ERROR: ruby/Gemfile.lock records a stale SDK version. Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
 	@cd python && uv lock --check || \
 		{ echo "ERROR: python/uv.lock is stale. Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
 	@test "$$(jq -r '.packages["../../../typescript"].version' conformance/runner/typescript/package-lock.json)" = "$(VERSION)" || \
