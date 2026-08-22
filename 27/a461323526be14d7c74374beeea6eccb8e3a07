@@ -1,0 +1,23 @@
+go/pkg/basecamp/eventfeed/errors_test.go
+  s_1c9d086ab67253::t_2c20a524e99092 143-146,148
+go/pkg/basecamp/eventfeed/transport.go
+  s_1c9d086ab67253::t_724fec3f08249f 21-24,54-66,91-95
+go/pkg/basecamp/eventfeed/transport_test.go
+  s_1c9d086ab67253::t_c12d17a087a9b6 311-333
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "27a461323526be14d7c74374beeea6eccb8e3a07",
+  "prompts": {},
+  "sessions": {
+    "s_1c9d086ab67253": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1f5628ec-50ac-4d8d-a2cc-cee5b0112903",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
