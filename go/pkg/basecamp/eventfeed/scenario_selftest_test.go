@@ -11,7 +11,9 @@ package eventfeed_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -763,5 +765,96 @@ func TestScenarioDriverScanScopesOccupancyHistoryToTheCurrentEra(t *testing.T) {
 	h.mu.Unlock()
 	if kind != "expectBuffered" {
 		t.Fatalf("the scan read through expectBuffered(1) on occupancy from a previous era: an arriving save would be judged against %s and accepted out of order", where)
+	}
+}
+
+// intp is a scripted-status literal.
+func intp(s int) *int { return &s }
+
+// TestDriverSeamClassificationIsPresenceKeyed: SPEC §6 fixes the adapter
+// mapping the driver models — "a retryable outcome exhausted inside the seam
+// whose last response carried a parsed Retry-After maps to
+// throttled(retry_after) whatever its status, and one without maps to
+// transient. A mapping keyed on status instead ... would honour the header at
+// one retryable status and drop it at another, which is exactly the gate
+// this section removes." And §6's parsing algorithm never yields zero
+// ("zero is read as 'no usable value'"), so an unusable header is absence,
+// not a throttled zero.
+func TestDriverSeamClassificationIsPresenceKeyed(t *testing.T) {
+	d := &driver{h: newScenarioHarness()}
+	defer d.h.close()
+
+	// A retryable non-429/503 status WITH a parsed Retry-After is throttled,
+	// carrying the value.
+	out := d.mintOutcomeFrom(mintRespond{Status: intp(502), Headers: map[string]string{"Retry-After": "3"}})
+	var me *eventfeed.MintError
+	if !errors.As(out.err, &me) || me.Kind != eventfeed.MintThrottled || me.RetryAfter != 3*time.Second {
+		t.Fatalf("502 with Retry-After: 3 = %+v, want MintThrottled carrying 3s (presence-keyed, not status-keyed)", out.err)
+	}
+	// A 429 with NO usable header is transient: undefined falls to backoff.
+	out = d.mintOutcomeFrom(mintRespond{Status: intp(429)})
+	if !errors.As(out.err, &me) || me.Kind != eventfeed.MintTransient {
+		t.Fatalf("bare 429 = %+v, want MintTransient (no parsed Retry-After)", out.err)
+	}
+	// Retry-After: 0 is undefined per the parsing algorithm (step 1 requires
+	// > 0) — transient, never a throttled zero.
+	out = d.mintOutcomeFrom(mintRespond{Status: intp(503), Headers: map[string]string{"Retry-After": "0"}})
+	if !errors.As(out.err, &me) || me.Kind != eventfeed.MintTransient {
+		t.Fatalf("503 with Retry-After: 0 = %+v, want MintTransient (zero is 'no usable value')", out.err)
+	}
+
+	// The poll lane, same mapping.
+	po, err := d.pollOutcomeFrom(pollRespond{Status: intp(502), Headers: map[string]string{"Retry-After": "2"}})
+	if err != nil {
+		t.Fatalf("poll 502 with Retry-After: 2: %v", err)
+	}
+	var pe *eventfeed.PollError
+	if !errors.As(po.err, &pe) || pe.Kind != eventfeed.PollThrottled || pe.RetryAfter != 2*time.Second {
+		t.Fatalf("poll 502 with Retry-After: 2 = %+v, want PollThrottled carrying 2s", po.err)
+	}
+	po, err = d.pollOutcomeFrom(pollRespond{Status: intp(429)})
+	if err != nil {
+		t.Fatalf("bare poll 429: %v", err)
+	}
+	if !errors.As(po.err, &pe) || pe.Kind != eventfeed.PollTransient {
+		t.Fatalf("bare poll 429 = %+v, want PollTransient", po.err)
+	}
+}
+
+// TestDriverRetryAfterParseIsTheSpecAlgorithm: SPEC §6's parsing algorithm,
+// which the driver claims to emulate — integer valid and > 0; else HTTP-date
+// with max(0, date − now) rounded UP on a sub-second remainder, > 0; else
+// undefined. Dates are judged against the harness's virtual clock.
+func TestDriverRetryAfterParseIsTheSpecAlgorithm(t *testing.T) {
+	d := &driver{h: newScenarioHarness()}
+	defer d.h.close()
+
+	// An HTTP-date carries whole seconds only, so the sub-second remainder
+	// must live in NOW: park the virtual clock exactly 90.3s before a
+	// whole-second instant, deterministically whatever the epoch's own
+	// fraction.
+	now0 := d.h.clock.Now()
+	dateInstant := now0.Truncate(time.Second).Add(93 * time.Second)
+	d.h.clock.Advance(dateInstant.Add(-90*time.Second - 300*time.Millisecond).Sub(now0))
+	now := d.h.clock.Now()
+
+	// A valid RFC 7231 HTTP-date 90.3s out parses, rounded UP to 91s.
+	date := dateInstant.UTC().Format(http.TimeFormat)
+	out := d.mintOutcomeFrom(mintRespond{Status: intp(429), Headers: map[string]string{"Retry-After": date}})
+	var me *eventfeed.MintError
+	if !errors.As(out.err, &me) || me.Kind != eventfeed.MintThrottled || me.RetryAfter != 91*time.Second {
+		t.Fatalf("HTTP-date 90.3s out = %+v, want MintThrottled carrying 91s (sub-second remainder rounds UP)", out.err)
+	}
+	// A date already passed is undefined — max(0, ·) is not > 0.
+	past := now.Add(-time.Minute).UTC().Format(http.TimeFormat)
+	for name, header := range map[string]string{
+		"past date": past,
+		"negative":  "-5",
+		"malformed": "soon",
+	} {
+		out = d.mintOutcomeFrom(mintRespond{Status: intp(429), Headers: map[string]string{"Retry-After": header}})
+		if !errors.As(out.err, &me) || me.Kind != eventfeed.MintTransient || me.RetryAfter != 0 {
+			t.Fatalf("%s Retry-After = %+v, want MintTransient with no value (undefined)", name, out.err)
+		}
 	}
 }

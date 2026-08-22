@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"net/http"
 	"os"
 	"path/filepath"
 	"slices"
@@ -346,11 +347,7 @@ func (d *driver) expectMint(step *expectMintStep) error {
 	if err != nil {
 		return err
 	}
-	outcome, err := mintOutcomeFrom(step.Respond)
-	if err != nil {
-		return err
-	}
-	call.release <- outcome
+	call.release <- d.mintOutcomeFrom(step.Respond)
 	return nil
 }
 
@@ -1055,30 +1052,34 @@ func (h *scenarioHarness) violation() error {
 
 // mintOutcomeFrom maps a scripted mint response onto the seam's outcome: a
 // ticket, or the classified *MintError the Layer-1 adapter would produce.
-func mintOutcomeFrom(respond mintRespond) (mintOutcome, error) {
+// Throttled-vs-transient is keyed on the PRESENCE of a §6-parsed Retry-After
+// (SPEC's fixed adapter mapping — "whatever its status"), never on the
+// status: a status key would honour the header at one retryable status and
+// drop it at another. Unauthorized keeps a parsed value too — row 4 floors
+// the below-threshold reconnect delay on it.
+func (d *driver) mintOutcomeFrom(respond mintRespond) mintOutcome {
 	if respond.Body != nil {
 		return mintOutcome{ticket: eventfeed.StreamTicket{
 			Ticket:    respond.Body.Ticket,
 			ExpiresIn: respond.Body.ExpiresIn,
 			URL:       respond.Body.URL,
-		}}, nil
+		}}
 	}
-	retryAfter, err := retryAfterFrom(respond.Headers)
-	if err != nil {
-		return mintOutcome{}, err
-	}
+	retryAfter, present := d.retryAfterFrom(respond.Headers)
 	mintErr := &eventfeed.MintError{RetryAfter: retryAfter, Err: fmt.Errorf("mint responded %d", *respond.Status)}
 	switch *respond.Status {
 	case 401, 403:
 		mintErr.Kind = eventfeed.MintUnauthorized
 	case 404, 422:
 		mintErr.Kind = eventfeed.MintUnrecoverable
-	case 429, 503:
-		mintErr.Kind = eventfeed.MintThrottled
 	default:
-		mintErr.Kind = eventfeed.MintTransient
+		if present {
+			mintErr.Kind = eventfeed.MintThrottled
+		} else {
+			mintErr.Kind = eventfeed.MintTransient
+		}
 	}
-	return mintOutcome{err: mintErr}, nil
+	return mintOutcome{err: mintErr}
 }
 
 // pollOutcomeFrom maps a scripted poll response onto the seam's outcome: a
@@ -1108,12 +1109,12 @@ func (d *driver) pollOutcomeFrom(respond pollRespond) (pollOutcome, error) {
 			Err:  errors.New("poll responded 401/403"),
 		}}, nil
 	default:
-		retryAfter, err := retryAfterFrom(respond.Headers)
-		if err != nil {
-			return pollOutcome{}, err
-		}
+		// Presence-keyed, exactly as the mint lane: a retryable outcome with
+		// a §6-parsed Retry-After is throttled whatever its status, one
+		// without is transient.
+		retryAfter, present := d.retryAfterFrom(respond.Headers)
 		kind := eventfeed.PollTransient
-		if status == 429 || status == 503 {
+		if present {
 			kind = eventfeed.PollThrottled
 		}
 		return pollOutcome{err: &eventfeed.PollError{
@@ -1190,16 +1191,39 @@ func (d *driver) redirectRefusalFrom(headers map[string]string) (pollOutcome, er
 	}}, nil
 }
 
-func retryAfterFrom(headers map[string]string) (time.Duration, error) {
-	value, ok := headers["Retry-After"]
+// retryAfterFrom is SPEC §6's Retry-After parsing algorithm, judged against
+// the harness's virtual clock: an integer valid and > 0 is seconds; else a
+// valid HTTP-date yields max(0, date − now) with a sub-second remainder
+// rounded UP, returned only when > 0; everything else — zero, negatives,
+// already-passed dates, malformed values — is undefined. present is whether
+// the algorithm returned at all, and it is what keys the seam mapping
+// (throttled with a value, transient without); the value is always positive
+// when present, because the algorithm cannot yield zero ("zero is read as
+// 'no usable value'").
+func (d *driver) retryAfterFrom(headers map[string]string) (value time.Duration, present bool) {
+	raw, ok := headers["Retry-After"]
 	if !ok {
-		return 0, nil
+		return 0, false
 	}
-	seconds, err := strconv.Atoi(value)
+	if seconds, err := strconv.Atoi(raw); err == nil {
+		if seconds > 0 {
+			return time.Duration(seconds) * time.Second, true
+		}
+		return 0, false
+	}
+	date, err := http.ParseTime(raw)
 	if err != nil {
-		return 0, fmt.Errorf("Retry-After %q is not a delta-seconds value: %w", value, err)
+		return 0, false
 	}
-	return time.Duration(seconds) * time.Second, nil
+	remainder := date.Sub(d.h.clock.Now())
+	if remainder <= 0 {
+		return 0, false
+	}
+	seconds := int64(remainder / time.Second)
+	if remainder%time.Second != 0 {
+		seconds++
+	}
+	return time.Duration(seconds) * time.Second, true
 }
 
 // --- server frames -------------------------------------------------------

@@ -44,7 +44,7 @@ func (l *loop) runCatchUp(h catchUpHandoff) cycleOutcome {
 		// server put in it. Position and Since are server-issued opaque ids
 		// rather than URLs and pass through — an operator correlating a trace
 		// needs them. The walk itself uses the unredacted cursor.
-		l.cfg.observer.CatchUpStarted(redactCursor(h.entry))
+		l.cfg.observer.CatchUpStarted(redactCursor(l.cfg.origin, h.entry))
 	}
 	// The consecutive-poll-failure index is per walk: a socket teardown ends
 	// the previous walk, and from there the reconnect cycle's own counter
@@ -515,8 +515,9 @@ func (l *loop) pollPage(at *attempt, cursor Cursor) pollAttempt {
 			// nothing left to wake the grace phase at all, and the bounded wait
 			// becomes unbounded again. Armed BEFORE the hook, so a test that
 			// rendezvouses on the deferral cannot advance past a wake that is
-			// not yet armed.
-			at.lc.stale.graceWake()
+			// not yet armed. The distance is the remainder to the deadline —
+			// here, at the deferral itself, the full window.
+			at.lc.stale.graceWake(l.cfg.staleAfter)
 		}
 		if l.hooks.frameDeferred != nil {
 			l.hooks.frameDeferred()
@@ -604,10 +605,10 @@ func (l *loop) awaitSupersededPoll(at *attempt, done <-chan pollResult, deadline
 			if stale {
 				// The verdict is already rendered and parked; this firing is a
 				// wake and nothing else, so nothing re-evaluates it. Re-arming
-				// keeps a wake in hand for the next turn, which is what makes
-				// the phase's end depend on the deadline rather than on a
-				// timer landing exactly on it.
-				at.lc.stale.graceWake()
+				// keeps a wake in hand for the next turn — for the REMAINDER
+				// to the deadline, so the last wake lands at the deadline
+				// itself rather than a window past it.
+				at.lc.stale.graceWake(deadline.Sub(l.cfg.clock.Now()))
 			} else if _, ok := at.lc.stale.evaluate(staleGen); ok {
 				// An authoritative expiry during another outcome's grace
 				// phase is ALSO only a wake. The deferral slot already holds
@@ -619,8 +620,10 @@ func (l *loop) awaitSupersededPoll(at *attempt, done <-chan pollResult, deadline
 				// instead of the phase §23 measures from the deferral. The
 				// expiry adds nothing the deferred outcome's teardown will
 				// not do; graceWake latches it and keeps the next wake in
-				// hand, and the deadline below is what decides.
-				at.lc.stale.graceWake()
+				// hand — armed for the remainder to the deadline, which is
+				// what decides. A firing that lands late in the phase must
+				// not push the only remaining wake a full window past it.
+				at.lc.stale.graceWake(deadline.Sub(l.cfg.clock.Now()))
 			}
 		}
 		if l.hooks.supersededWake != nil {
@@ -1280,7 +1283,7 @@ func (l *loop) recoverPoll(at *attempt, cursor Cursor, err error) (walkStep, cyc
 		// The self-loop inside CatchingUp: a wait, not a state change. The
 		// same cursor is re-polled.
 		l.pollFailures++
-		out, done := l.waitPollRetry(at, pollRetryDelay(pe.Kind, pe.RetryAfter, l.pollFailures, l.cfg.rand))
+		out, done := l.waitPollRetry(at, pollRetryDelay(pe.RetryAfter, l.pollFailures, l.cfg.rand))
 		return walkStep{cursor: cursor}, out, done
 	case PollUnauthorized:
 		// Recovery rides the reconnect cycle — the fresh mint/token pass —
