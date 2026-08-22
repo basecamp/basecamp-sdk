@@ -51,7 +51,7 @@ func (l *loop) repairWalk(at *attempt) (cycleOutcome, bool) {
 		return cycleOutcome{kind: outcomeClosed}, true
 	}
 	if l.cfg.observer.CatchUpStarted != nil {
-		l.cfg.observer.CatchUpStarted(redactCursor(cursor))
+		l.cfg.observer.CatchUpStarted(redactCursor(l.cfg.origin, cursor))
 	}
 	return l.walkThenDrain(at, cursor, presentClass)
 }
@@ -115,7 +115,7 @@ func (l *loop) recoverGone(at *attempt, pe *PollError) (walkStep, cycleOutcome, 
 		// disposition is about which URL to follow, so redacting there would
 		// break the contract rather than protect it — and the resume poll
 		// follows the full URL after §8 validation.
-		l.cfg.observer.Gap(pe.EpochAfterID, redactURL(pe.ResumeURL))
+		l.cfg.observer.Gap(pe.EpochAfterID, redactURL(l.cfg.origin, pe.ResumeURL))
 	}
 	if l.cfg.handler != nil && l.cfg.handler(signal) == Accept {
 		if pe.ResumeURL == "" {

@@ -44,7 +44,7 @@ func (l *loop) runCatchUp(h catchUpHandoff) cycleOutcome {
 		// server put in it. Position and Since are server-issued opaque ids
 		// rather than URLs and pass through — an operator correlating a trace
 		// needs them. The walk itself uses the unredacted cursor.
-		l.cfg.observer.CatchUpStarted(redactCursor(h.entry))
+		l.cfg.observer.CatchUpStarted(redactCursor(l.cfg.origin, h.entry))
 	}
 	// The consecutive-poll-failure index is per walk: a socket teardown ends
 	// the previous walk, and from there the reconnect cycle's own counter
