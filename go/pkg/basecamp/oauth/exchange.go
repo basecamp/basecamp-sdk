@@ -114,7 +114,13 @@ func (e *Exchanger) doTokenRequest(ctx context.Context, tokenEndpoint string, da
 	httpReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	httpReq.Header.Set("Accept", "application/json")
 
-	resp, err := e.httpClient.Do(httpReq) // #nosec G704 -- SDK HTTP client: URL is caller-configured
+	// The suppression is about gosec's taint rule, not a claim that this URL is
+	// trusted. TokenEndpoint may be caller-configured, but it may equally come
+	// from DiscoverFromResource's metadata, in which case a remote peer chose it
+	// and NOTHING here judges the address it resolves to — see issue #806. This
+	// request carries the authorization code, the client secret, or a refresh
+	// token, so it is the highest-value of the three such call sites.
+	resp, err := e.httpClient.Do(httpReq) // #nosec G704 -- see the note above: not address-policed (#806)
 	if err != nil {
 		return nil, fmt.Errorf("token request failed: %w", err)
 	}

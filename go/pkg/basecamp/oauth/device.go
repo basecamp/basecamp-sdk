@@ -251,7 +251,12 @@ func RequestDeviceAuthorization(ctx context.Context, deviceAuthEndpoint, clientI
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Accept", "application/json")
 
-	resp, err := cfg.httpClient.Do(req) // #nosec G704 -- SDK HTTP client: caller-supplied discovery endpoint
+	// The suppression is about gosec's taint rule, not a claim that this URL is
+	// trusted. DeviceAuthorizationEndpoint may be caller-configured, but it may
+	// equally come from DiscoverFromResource's metadata, in which case a remote
+	// peer chose it and NOTHING here judges the address it resolves to — see
+	// issue #806. This request carries client_id.
+	resp, err := cfg.httpClient.Do(req) // #nosec G704 -- see the note above: not address-policed (#806)
 	if err != nil {
 		// A caller cancelling (or its deadline expiring) during the POST must
 		// surface as DeviceFlowCancelled, not a retryable transport failure. The
@@ -609,7 +614,10 @@ func postDeviceToken(ctx context.Context, cfg deviceConfig, tokenEndpoint string
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Accept", "application/json")
 
-	resp, err := cfg.httpClient.Do(req) // #nosec G704 -- SDK HTTP client: caller-supplied token endpoint
+	// As above: TokenEndpoint may come from discovered metadata rather than from
+	// the caller, and its address is not policed (#806). This request carries
+	// the device_code.
+	resp, err := cfg.httpClient.Do(req) // #nosec G704 -- see the note above: not address-policed (#806)
 	if err != nil {
 		// Parent cancellation ends the flow; a per-request timeout backs off.
 		if ctx.Err() != nil {
