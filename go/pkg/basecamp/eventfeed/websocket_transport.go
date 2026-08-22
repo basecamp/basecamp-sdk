@@ -300,10 +300,10 @@ func (c *wsConn) underLifetime(ctx context.Context) (context.Context, func()) {
 // ReadFrame implements CableConn: the next text frame verbatim.
 // coder/websocket answers WS-level ping/pong internally during reads; Action
 // Cable pings are TEXT frames and flow through like everything else. Error
-// precedence: cancellation, local close, peer close (*CloseError), then the
-// raw read failure (which covers the read-limit abort — coder/websocket
-// rejects an over-limit message during the read, without materializing it,
-// and the connection is dead from then on).
+// precedence: cancellation, local close, peer close (*CloseError), the
+// read-limit abort (ErrFrameOversize — coder/websocket rejects an over-limit
+// message during the read, without materializing it, and the connection is
+// dead from then on), then the raw read failure.
 func (c *wsConn) ReadFrame(ctx context.Context) ([]byte, error) {
 	// The precedence holds on entry too, not only on the way out. Checking the
 	// local close first reversed it whenever both were already true — the
@@ -331,6 +331,12 @@ func (c *wsConn) ReadFrame(ctx context.Context) ([]byte, error) {
 		var ce websocket.CloseError
 		if errors.As(err, &ce) {
 			return nil, &CloseError{Code: int(ce.Code), Reason: ce.Reason}
+		}
+		if errors.Is(err, websocket.ErrMessageTooBig) {
+			// Returned flat: the sentinel is the whole classification, and
+			// the frame was never materialized, so the library's rendering
+			// adds nothing a caller may act on.
+			return nil, ErrFrameOversize
 		}
 		return nil, err
 	}

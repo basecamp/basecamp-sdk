@@ -109,7 +109,9 @@ func (p *Polls) Poll(ctx context.Context, cursor eventfeed.Cursor, filters event
 	onCall := p.onCall
 	p.mu.Unlock()
 	if onCall != nil {
-		onCall(call)
+		// Its own copy, not the ledger's: a callback that mutates or retains
+		// its argument must not rewrite history either.
+		onCall(PollCall{Cursor: call.Cursor, Filters: cloneFilters(call.Filters)})
 	}
 	if stalled {
 		<-ctx.Done()
