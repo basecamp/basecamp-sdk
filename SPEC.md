@@ -4174,6 +4174,8 @@ Every operation has a `retry` block, including non-idempotent POSTs. For non-ide
 in Go only. This is a deliberate Go-first move, not an oversight in the other
 five: the enforcement seam it needs (a dial-time `Control` hook, plus a shared
 classification table) exists cheaply in Go and does not in the others.
+Extending enforcement to the remaining SDKs is tracked in #818 (umbrella;
+per-SDK #814/#815/#816/#817, upstream `surfguard` #24/#25).
 
 | SDK | Advertised-issuer hop |
 |-----|----------------------|
@@ -4196,7 +4198,8 @@ only derivation that pierces them — so an on-premises policy is built as
 time, on every credential-bearing POST — is likewise implemented in Go only,
 with the same policy and the same override shape as the issuer hop. The
 per-SDK state, and the seam each SDK would need, so the follow-ups are
-specified rather than rediscovered:
+specified rather than rediscovered (tracked in #818; per-SDK
+#814/#815/#816/#817):
 
 | SDK | Device-authorization and token endpoint POSTs |
 |-----|-----------------------------------------------|
