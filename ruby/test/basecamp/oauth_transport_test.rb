@@ -168,6 +168,34 @@ class OAuthTransportTest < Minitest::Test
     assert_operator seconds, :<, TIMEOUT
   end
 
+  def test_exchange_302_with_stalled_body_is_immediate_api_error
+    # The token exchange rides the same headers-first transport: a redirect
+    # whose body never arrives classifies at HEADER time as the typed refusal
+    # (SPEC §16 "Token-Endpoint Transport Policy"), never as a body timeout,
+    # and the credential POST is issued exactly once.
+    endpoint, accepts = start_server do |conn|
+      conn.write("HTTP/1.1 302 Found\r\nLocation: https://attacker.example/\r\nContent-Length: 1000\r\n\r\n")
+      sleep 30
+    end
+
+    error = nil
+    seconds = elapsed do
+      error = assert_raises(Basecamp::Oauth::OauthError) do
+        Basecamp::Oauth.exchange_code(
+          token_endpoint: "#{endpoint}/token", code: "c",
+          redirect_uri: "https://myapp.com/callback", client_id: "id",
+          timeout: TIMEOUT
+        )
+      end
+    end
+
+    assert_equal "api_error", error.type
+    assert_equal 302, error.http_status
+    assert_match(/not followed/, error.message)
+    assert_equal 1, accepts.length, "a header-classified redirect must never be retried or followed"
+    assert_operator seconds, :<, TIMEOUT, "status must classify at header time, not after a body timeout"
+  end
+
   def test_skipped_response_closes_the_connection_undrained
     # Releasing the connection matters as much as classifying it: the server
     # must observe the socket close (EPIPE/RST) instead of feeding a body to a

@@ -598,7 +598,10 @@ class SecurityOAuthTest < Minitest::Test
     stub_request(:post, "https://launchpad.37signals.com/authorization/token")
       .to_return(status: 200, body: huge_body, headers: { "Content-Type" => "application/json" })
 
-    assert_raises(Basecamp::ApiError) do
+    # The exchange path now reads under the shared streaming cap and maps the
+    # violation to the OAuth taxonomy (api_error), matching discovery and the
+    # device flow — the old path leaked a raw Basecamp::ApiError instead.
+    error = assert_raises(Basecamp::Oauth::OauthError) do
       Basecamp::Oauth.exchange_code(
         token_endpoint: "https://launchpad.37signals.com/authorization/token",
         code: "auth-code",
@@ -606,6 +609,7 @@ class SecurityOAuthTest < Minitest::Test
         client_id: "client-id"
       )
     end
+    assert_equal "api_error", error.type
   end
 end
 

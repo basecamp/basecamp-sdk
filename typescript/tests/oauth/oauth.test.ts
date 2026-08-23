@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { http, HttpResponse } from "msw";
+import { http, HttpResponse, delay } from "msw";
 import { server } from "../setup.js";
 import {
   discover,
@@ -616,6 +616,104 @@ describe("Token Exchange", () => {
           refreshToken({ tokenEndpoint, refreshToken: "my_refresh_token" })
         ).rejects.toThrow("resource must be a non-empty string");
       }
+    });
+  });
+});
+
+describe("Token-Endpoint Transport Policy", () => {
+  const tokenEndpoint = "https://launchpad.37signals.com/authorization/token";
+  const attackerUrl = "https://attacker.example.com/steal";
+
+  const callExchange = () =>
+    exchangeCode({
+      tokenEndpoint,
+      code: "auth_code_123",
+      redirectUri: "https://myapp.com/callback",
+      clientId: "my_client_id",
+    });
+  const callRefresh = () =>
+    refreshToken({
+      tokenEndpoint,
+      refreshToken: "my_refresh_token",
+    });
+
+  describe.each([
+    ["exchangeCode", callExchange],
+    ["refreshToken", callRefresh],
+  ] as const)("%s", (_name, call) => {
+    it.each([301, 302, 303, 307, 308])(
+      "refuses a %d as api_error and never dials its Location",
+      async (status) => {
+        // SPEC §16 "Token-Endpoint Transport Policy": a redirect from the
+        // token endpoint surfaces with its status, and the Location it names
+        // is never dialled — a followed 307/308 would re-POST the credentials
+        // wherever it points. A usable token behind the Location proves the
+        // refusal is what stopped the chain, not a broken attacker handler.
+        let attackerHits = 0;
+        server.use(
+          http.post(tokenEndpoint, () =>
+            new HttpResponse(null, { status, headers: { Location: attackerUrl } })
+          ),
+          http.all(attackerUrl, () => {
+            attackerHits += 1;
+            return HttpResponse.json({ access_token: "stolen_token" });
+          })
+        );
+
+        await expect(call()).rejects.toMatchObject({
+          code: "api_error",
+          httpStatus: status,
+          message: expect.stringContaining("not followed"),
+        });
+        expect(attackerHits).toBe(0);
+      }
+    );
+  });
+
+  it("keeps 304 on the generic non-ok path, not the redirect refusal", async () => {
+    // 304 is a cache validator, not a redirect-with-Location.
+    server.use(http.post(tokenEndpoint, () => new HttpResponse(null, { status: 304 })));
+
+    const err = await callRefresh().catch((e) => e);
+    expect(err).toBeInstanceOf(BasecampError);
+    expect(err.code).toBe("api_error");
+    expect(err.httpStatus).toBe(304);
+    expect(err.message).not.toContain("not followed");
+  });
+
+  it.each([Number.NaN, Infinity, -5, 0])(
+    "normalizes invalid timeoutMs %p to the default instead of instant-aborting",
+    async (badTimeout) => {
+      // An unclamped NaN/Infinity became setTimeout's ~1 ms delay — an
+      // immediate abort masquerading as "Token request timed out".
+      server.use(
+        http.post(tokenEndpoint, async () => {
+          await delay(50);
+          return HttpResponse.json({ access_token: "tok", token_type: "Bearer" });
+        })
+      );
+
+      const token = await refreshToken(
+        { tokenEndpoint, refreshToken: "my_refresh_token" },
+        { timeoutMs: badTimeout }
+      );
+      expect(token.accessToken).toBe("tok");
+    }
+  );
+
+  it("bounds the exchange even when a custom fetch ignores its AbortSignal", async () => {
+    // A never-settling fetch that ignores its signal must not hold the call
+    // open past the timeout — the raceAbort wrapper rejects on the timer.
+    const neverSettles: typeof globalThis.fetch = () => new Promise<Response>(() => {});
+
+    await expect(
+      refreshToken(
+        { tokenEndpoint, refreshToken: "my_refresh_token" },
+        { fetch: neverSettles, timeoutMs: 20 }
+      )
+    ).rejects.toMatchObject({
+      code: "network",
+      message: expect.stringContaining("timed out"),
     });
   });
 });

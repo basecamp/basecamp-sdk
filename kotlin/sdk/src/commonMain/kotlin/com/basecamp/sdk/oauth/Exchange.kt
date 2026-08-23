@@ -1,6 +1,7 @@
 package com.basecamp.sdk.oauth
 
 import io.ktor.client.*
+import io.ktor.client.plugins.*
 import io.ktor.client.request.*
 import io.ktor.client.request.forms.*
 import io.ktor.client.statement.*
@@ -50,6 +51,47 @@ internal data class OAuthErrorResponse(
 
 private val tokenJson = Json { ignoreUnknownKeys = true }
 private const val MAX_RESPONSE_SIZE = 1_048_576L // 1 MB
+
+/** Bounded per-request timeout for every token-endpoint POST — the 30 s credential-POST default shared across the SDKs (SPEC §16). */
+private const val TOKEN_REQUEST_TIMEOUT_MS = 30_000L
+
+/**
+ * The redirects the token endpoint refuses outright (SPEC §16 "Token-Endpoint
+ * Transport Policy") — the same set the signed download hop refuses (#809).
+ * 304 is deliberately absent: it is a cache validator with no `Location`, and
+ * falls through to the generic non-success branch below.
+ */
+private val REDIRECT_STATUSES = setOf(301, 302, 303, 307, 308)
+
+/**
+ * Builds a hardened HTTP client for token-endpoint POSTs: redirects suppressed
+ * ([HttpClient.followRedirects] = false, so a 3xx is classified below rather
+ * than any engine chasing an attacker-influenced `Location` with the
+ * credentials re-POSTed) and a bounded per-request timeout ([HttpTimeout]) so
+ * a stalled token request cannot hang an exchange or refresh unbounded.
+ *
+ * When [baseClient] is supplied its engine is reused but wrapped so the
+ * hardening applies regardless — redirect suppression is a security
+ * invariant, not a default (the device flow does the same). The returned
+ * wrapper is always closed by the caller and, because Ktor only closes
+ * engines it created, the borrowed engine survives.
+ */
+private fun hardenedTokenClient(baseClient: HttpClient?): HttpClient {
+    val engine = baseClient?.engine
+    return if (engine != null) {
+        HttpClient(engine) {
+            followRedirects = false
+            expectSuccess = false
+            install(HttpTimeout) { requestTimeoutMillis = TOKEN_REQUEST_TIMEOUT_MS }
+        }
+    } else {
+        HttpClient {
+            followRedirects = false
+            expectSuccess = false
+            install(HttpTimeout) { requestTimeoutMillis = TOKEN_REQUEST_TIMEOUT_MS }
+        }
+    }
+}
 
 /**
  * Exchanges an authorization code for tokens.
@@ -162,12 +204,25 @@ private suspend fun postTokenRequest(
     // Never POST credentials over cleartext (localhost exempt for dev/test).
     requireSecureEndpoint(endpoint, "token endpoint")
 
-    val httpClient = client ?: HttpClient()
-    val shouldClose = client == null
+    val httpClient = hardenedTokenClient(client)
 
     try {
         val response = httpClient.submitForm(endpoint, params) {
             accept(ContentType.Application.Json)
+        }
+
+        val status = response.status.value
+
+        // Status-first: a refused redirect is classified BEFORE any body read,
+        // so a 3xx that drip-feeds its body cannot degrade into a timeout. The
+        // hardened client never follows, and the `Location` is never dialled —
+        // the endpoint the caller (or discovered metadata) named is the one
+        // destination these credentials go to (SPEC §16).
+        if (status in REDIRECT_STATUSES) {
+            throw BasecampException.Api(
+                "redirect $status on the token endpoint is not followed",
+                httpStatus = status,
+            )
         }
 
         val body = response.bodyAsText()
@@ -175,7 +230,7 @@ private suspend fun postTokenRequest(
         if (body.length > MAX_RESPONSE_SIZE) {
             throw BasecampException.Api(
                 "OAuth token response exceeds size limit",
-                httpStatus = response.status.value,
+                httpStatus = status,
             )
         }
 
@@ -183,7 +238,7 @@ private suspend fun postTokenRequest(
             val errorResp = runCatching { tokenJson.decodeFromString<OAuthErrorResponse>(body) }.getOrNull()
             val message = errorResp?.errorDescription
                 ?: errorResp?.error
-                ?: "Token request failed: HTTP ${response.status.value}"
+                ?: "Token request failed: HTTP $status"
             throw BasecampException.Auth(
                 message = BasecampException.truncateMessage(message),
             )
@@ -194,7 +249,7 @@ private suspend fun postTokenRequest(
         // messages — map to a status-only fault (no cause: cause messages
         // surface in stack traces) instead of propagating it.
         val raw = runCatching { tokenJson.decodeFromString<RawTokenResponse>(body) }.getOrElse {
-            throw BasecampException.Api("Failed to parse token response", httpStatus = response.status.value)
+            throw BasecampException.Api("Failed to parse token response", httpStatus = status)
         }
         // resource: absent and JSON null decode to null (unset); when present
         // it must be non-empty (SPEC §16) — an empty binding is not a binding.
@@ -202,7 +257,7 @@ private suspend fun postTokenRequest(
         if (raw.resource != null && raw.resource.isEmpty()) {
             throw BasecampException.Api(
                 "Token response resource must be a non-empty string when present",
-                httpStatus = response.status.value,
+                httpStatus = status,
             )
         }
         // A 2xx with an EMPTY access_token is malformed, not a success —
@@ -210,7 +265,7 @@ private suspend fun postTokenRequest(
         if (raw.accessToken.isEmpty()) {
             throw BasecampException.Api(
                 "Token response missing access_token",
-                httpStatus = response.status.value,
+                httpStatus = status,
             )
         }
 
@@ -223,7 +278,7 @@ private suspend fun postTokenRequest(
             if (it.isEmpty()) {
                 throw BasecampException.Api(
                     "Token response token_type must be a non-empty string when present",
-                    httpStatus = response.status.value,
+                    httpStatus = status,
                 )
             }
         } ?: "Bearer"
@@ -237,7 +292,15 @@ private suspend fun postTokenRequest(
             scope = raw.scope,
             resource = raw.resource,
         )
+    } catch (e: HttpRequestTimeoutException) {
+        // The wrapper's HttpTimeout fired. Mapped explicitly — it subclasses
+        // CancellationException, so left alone it would masquerade as a
+        // cooperative cancellation — to the retryable network fault the other
+        // SDKs raise here ("Token request timed out", TS/Python/Ruby).
+        throw BasecampException.Network("Token request timed out", cause = e)
     } finally {
-        if (shouldClose) httpClient.close()
+        // Always ours: hardenedTokenClient built it, an injected client only
+        // lent its engine (which close() leaves running).
+        httpClient.close()
     }
 }

@@ -5,9 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -676,5 +678,191 @@ func TestExchanger_TokenResponseResource(t *testing.T) {
 				t.Errorf("token.Resource = %q, want %q", token.Resource, tt.wantResource)
 			}
 		})
+	}
+}
+
+// tokenRedirectServers starts a token endpoint answering every POST with the
+// given redirect status and a Location naming a second server, and returns the
+// endpoint URL plus the Location target's hit counter. As in
+// endpoint_policy_test.go, the counter is the load-bearing assertion — and the
+// target serves a USABLE token, so suppression that silently broke would
+// surface as a successful exchange against the wrong host, not a
+// differently-worded failure.
+func tokenRedirectServers(t *testing.T, status int) (string, *atomic.Int64) {
+	t.Helper()
+	var hits atomic.Int64
+	target := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		hits.Add(1)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"access_token":"tok","token_type":"Bearer","expires_in":3600}`))
+	}))
+	t.Cleanup(target.Close)
+	endpoint := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Location", target.URL)
+		w.WriteHeader(status)
+	}))
+	t.Cleanup(endpoint.Close)
+	return endpoint.URL, &hits
+}
+
+// assertTokenRedirectRefused checks the refusal's shape: typed api_error
+// carrying the real status, the "not followed" message contract (SPEC §16
+// "Token-Endpoint Transport Policy"), and a Location host that was never
+// dialed.
+func assertTokenRedirectRefused(t *testing.T, err error, status int, hits *atomic.Int64) {
+	t.Helper()
+	var be *basecamp.Error
+	if !errors.As(err, &be) {
+		t.Fatalf("error = %v, want *basecamp.Error", err)
+	}
+	if be.Code != basecamp.CodeAPI {
+		t.Errorf("Code = %q, want %q", be.Code, basecamp.CodeAPI)
+	}
+	if be.HTTPStatus != status {
+		t.Errorf("HTTPStatus = %d, want %d", be.HTTPStatus, status)
+	}
+	if !strings.Contains(be.Message, "not followed") {
+		t.Errorf("Message = %q, want it to contain %q", be.Message, "not followed")
+	}
+	if got := hits.Load(); got != 0 {
+		t.Errorf("Location target hits = %d, want 0", got)
+	}
+}
+
+// TestExchanger_RefusesTokenEndpointRedirects pins the full refused set on
+// both operations and both client lanes: the SDK-built policy client and an
+// injected client (a plain *http.Client would otherwise follow — 301/302/303
+// as a GET, 307/308 re-POSTing the credentials).
+func TestExchanger_RefusesTokenEndpointRedirects(t *testing.T) {
+	for _, status := range []int{301, 302, 303, 307, 308} {
+		t.Run(fmt.Sprintf("policy client %d", status), func(t *testing.T) {
+			endpoint, hits := tokenRedirectServers(t, status)
+			e := NewExchanger(nil, WithExchangerPolicy(DefaultIssuerPolicy().AllowLoopback()))
+
+			_, err := e.Exchange(context.Background(), ExchangeRequest{
+				TokenEndpoint: endpoint, Code: "code", RedirectURI: "http://localhost/cb", ClientID: "id",
+			})
+			assertTokenRedirectRefused(t, err, status, hits)
+
+			_, err = e.Refresh(context.Background(), RefreshRequest{TokenEndpoint: endpoint, RefreshToken: "refresh"})
+			assertTokenRedirectRefused(t, err, status, hits)
+		})
+		t.Run(fmt.Sprintf("injected client %d", status), func(t *testing.T) {
+			endpoint, hits := tokenRedirectServers(t, status)
+			e := NewExchanger(&http.Client{})
+
+			_, err := e.Exchange(context.Background(), ExchangeRequest{
+				TokenEndpoint: endpoint, Code: "code", RedirectURI: "http://localhost/cb", ClientID: "id",
+			})
+			assertTokenRedirectRefused(t, err, status, hits)
+
+			_, err = e.Refresh(context.Background(), RefreshRequest{TokenEndpoint: endpoint, RefreshToken: "refresh"})
+			assertTokenRedirectRefused(t, err, status, hits)
+		})
+	}
+}
+
+// TestExchanger_304StaysGenericNon200 pins the boundary of the refused set: a
+// 304 is a cache validator, not a followable redirect, and keeps the untyped
+// non-200 wrap.
+func TestExchanger_304StaysGenericNon200(t *testing.T) {
+	endpoint := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNotModified)
+	}))
+	t.Cleanup(endpoint.Close)
+
+	_, err := NewExchanger(&http.Client{}).Refresh(context.Background(),
+		RefreshRequest{TokenEndpoint: endpoint.URL, RefreshToken: "refresh"})
+	if err == nil {
+		t.Fatal("Refresh() error = nil, want the generic non-200 failure")
+	}
+	if strings.Contains(err.Error(), "not followed") {
+		t.Errorf("error = %v; 304 must not classify as a refused redirect", err)
+	}
+	if !strings.Contains(err.Error(), "status 304") {
+		t.Errorf("error = %v, want the generic status-304 wrap", err)
+	}
+}
+
+// TestExchanger_StalledRedirectBodyClassifiedBeforeRead proves the refusal is
+// status-first: a 302 whose body never completes classifies immediately
+// instead of timing out mid-read.
+func TestExchanger_StalledRedirectBodyClassifiedBeforeRead(t *testing.T) {
+	var hits atomic.Int64
+	target := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {
+		hits.Add(1)
+	}))
+	defer target.Close()
+
+	release := make(chan struct{})
+	endpoint := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Location", target.URL)
+		w.WriteHeader(http.StatusFound)
+		w.(http.Flusher).Flush()
+		<-release // the body never completes
+	}))
+	defer endpoint.Close()
+	defer close(release) // unblock the handler before Close waits on it
+
+	start := time.Now()
+	_, err := NewExchanger(&http.Client{}).Refresh(context.Background(),
+		RefreshRequest{TokenEndpoint: endpoint.URL, RefreshToken: "refresh"})
+	assertTokenRedirectRefused(t, err, http.StatusFound, &hits)
+	if elapsed := time.Since(start); elapsed > 5*time.Second {
+		t.Errorf("classification took %v, want status-first (before any body read)", elapsed)
+	}
+}
+
+// TestNewExchanger_TimeoutClamp pins the normalize-at-entry rule shared with
+// the device flow: non-positive and beyond-ceiling values fall back to the
+// 30 s default; the ceiling itself and ordinary values are honored.
+func TestNewExchanger_TimeoutClamp(t *testing.T) {
+	tests := []struct {
+		name string
+		opts []ExchangerOption
+		want time.Duration
+	}{
+		{"default when unset", nil, defaultTokenRequestTimeout},
+		{"zero clamps to default", []ExchangerOption{WithExchangerTimeout(0)}, defaultTokenRequestTimeout},
+		{"negative clamps to default", []ExchangerOption{WithExchangerTimeout(-time.Second)}, defaultTokenRequestTimeout},
+		{"beyond ceiling clamps to default", []ExchangerOption{WithExchangerTimeout(maxDeviceRequestTimeout + time.Second)}, defaultTokenRequestTimeout},
+		{"MaxInt64 clamps to default", []ExchangerOption{WithExchangerTimeout(time.Duration(math.MaxInt64))}, defaultTokenRequestTimeout},
+		{"ceiling accepted", []ExchangerOption{WithExchangerTimeout(maxDeviceRequestTimeout)}, maxDeviceRequestTimeout},
+		{"ordinary value accepted", []ExchangerOption{WithExchangerTimeout(5 * time.Second)}, 5 * time.Second},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := NewExchanger(&http.Client{}, tt.opts...).timeout; got != tt.want {
+				t.Errorf("timeout = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+// TestExchanger_RequestTimeout proves the bound is live on an injected client
+// with a context carrying no deadline of its own — the lane that was
+// previously unbounded.
+func TestExchanger_RequestTimeout(t *testing.T) {
+	release := make(chan struct{})
+	endpoint := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+		select {
+		case <-r.Context().Done():
+		case <-release: // the response never arrives
+		}
+	}))
+	defer endpoint.Close()
+	defer close(release) // unblock the handler before Close waits on it
+
+	e := NewExchanger(&http.Client{}, WithExchangerTimeout(100*time.Millisecond))
+	start := time.Now()
+	_, err := e.Refresh(context.Background(), RefreshRequest{TokenEndpoint: endpoint.URL, RefreshToken: "refresh"})
+	if err == nil {
+		t.Fatal("Refresh() error = nil, want the timeout failure")
+	}
+	if !strings.Contains(err.Error(), "token request failed") {
+		t.Errorf("error = %v, want the untyped transport wrap", err)
+	}
+	if elapsed := time.Since(start); elapsed > 3*time.Second {
+		t.Errorf("request ran %v, want it bounded near the 100ms deadline", elapsed)
 	}
 }

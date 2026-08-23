@@ -398,6 +398,23 @@ class OAuthTest < Minitest::Test
     end
   end
 
+  def test_exchange_timeout_normalization
+    # An invalid or beyond-ceiling timeout must fall back to the default
+    # rather than disable the socket timeouts and the wall-clock deadline —
+    # the same normalize-at-entry discipline as discovery and the device flow.
+    default = Basecamp::Oauth::Exchange::DEFAULT_TIMEOUT
+    [ nil, 0, -1, Float::INFINITY, Float::NAN, "30", 1e100 ].each do |bad|
+      exchange = Basecamp::Oauth::Exchange.new(timeout: bad)
+      assert_equal default, exchange.instance_variable_get(:@timeout),
+        "expected #{bad.inspect} to normalize to the default"
+    end
+    # Valid values are preserved, up to and including the shared ceiling.
+    assert_equal 5, Basecamp::Oauth::Exchange.new(timeout: 5).instance_variable_get(:@timeout)
+    assert_equal Basecamp::Oauth::Fetcher::MAX_REQUEST_TIMEOUT,
+      Basecamp::Oauth::Exchange.new(timeout: Basecamp::Oauth::Fetcher::MAX_REQUEST_TIMEOUT) \
+        .instance_variable_get(:@timeout)
+  end
+
   def test_token_expired
     token = Basecamp::Oauth::Token.new(
       access_token: "test",

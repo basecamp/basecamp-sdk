@@ -5,7 +5,7 @@
  * Supports both standard OAuth 2.0 and Basecamp's Launchpad legacy format.
  */
 
-import { MAX_TOKEN_LIFETIME_SECONDS } from "./limits.js";
+import { MAX_TOKEN_LIFETIME_SECONDS, raceAbort, resolveRequestTimeoutMs } from "./limits.js";
 import { BasecampError } from "../errors.js";
 import { isLocalhost } from "../security.js";
 import type {
@@ -15,6 +15,17 @@ import type {
   RawTokenResponse,
   OAuthErrorResponse,
 } from "./types.js";
+
+/** Default per-request timeout (ms) for a token exchange/refresh round trip. */
+const DEFAULT_TOKEN_TIMEOUT_MS = 30_000;
+
+/**
+ * The redirects the token endpoint is refused (SPEC §16 "Token-Endpoint
+ * Transport Policy") — the same set the signed download hop refuses (§14).
+ * 304 is not in the set: it is a cache validator, not a redirect-with-
+ * Location, and falls through to the generic non-ok handling below.
+ */
+const REDIRECT_STATUSES = [301, 302, 303, 307, 308];
 
 /**
  * Options for token exchange/refresh operations.
@@ -282,32 +293,62 @@ async function doTokenRequest(
 ): Promise<OAuthToken> {
   requireHTTPS(tokenEndpoint, "token endpoint");
 
-  const { fetch: customFetch = globalThis.fetch, timeoutMs = 30000 } = options;
+  const { fetch: customFetch = globalThis.fetch, timeoutMs = DEFAULT_TOKEN_TIMEOUT_MS } = options;
 
-  // Create abort controller for timeout
+  // Create abort controller for timeout. The clamp closes the unbounded
+  // hole an unvalidated timeoutMs left open: NaN/Infinity made setTimeout
+  // fire at ~1 ms (an instant abort masquerading as a network failure), and
+  // an oversized finite value could hold a stalled request open for weeks.
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  const timeoutId = setTimeout(
+    () => controller.abort(),
+    resolveRequestTimeoutMs(timeoutMs, DEFAULT_TOKEN_TIMEOUT_MS)
+  );
 
   try {
-    const response = await customFetch(tokenEndpoint, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-        Accept: "application/json",
-      },
-      body: body.toString(),
-      signal: controller.signal,
+    // The whole round trip runs INSIDE a race against the controller's
+    // signal, like the device flow's POSTs: a cooperative fetch rejects on
+    // abort anyway, but a custom fetch that ignores its AbortSignal must not
+    // hold the exchange past its timeout — the race rejects the moment the
+    // timeout fires, and a late settlement is discarded.
+    const { response, responseText } = await raceAbort(controller.signal, async () => {
+      const raced = await customFetch(tokenEndpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          Accept: "application/json",
+        },
+        body: body.toString(),
+        signal: controller.signal,
+        // Never chase an attacker-influenced Location: the token endpoint may
+        // come from discovered metadata, and a followed 307/308 would re-POST
+        // the credentials wherever it points (SPEC §16).
+        redirect: "manual",
+      });
+
+      // A suppressed redirect is refused by status BEFORE any body read, so a
+      // 3xx whose body stalls forever cannot degrade into a timeout. Release
+      // the unread stream (non-blocking) so refusals don't retain sockets.
+      if (REDIRECT_STATUSES.includes(raced.status)) {
+        void raced.body?.cancel().catch(() => {});
+        throw new BasecampError(
+          "api_error",
+          `redirect ${raced.status} on the token endpoint is not followed`,
+          { httpStatus: raced.status }
+        );
+      }
+
+      const MAX_TOKEN_RESPONSE_BYTES = 1 * 1024 * 1024; // 1 MB
+
+      // Use streaming reader with true byte-level limit enforcement.
+      // This handles cases where Content-Length is absent or inaccurate.
+      const racedText = await readResponseWithByteLimit(
+        raced,
+        MAX_TOKEN_RESPONSE_BYTES,
+        raced.status
+      );
+      return { response: raced, responseText: racedText };
     });
-
-    const MAX_TOKEN_RESPONSE_BYTES = 1 * 1024 * 1024; // 1 MB
-
-    // Use streaming reader with true byte-level limit enforcement.
-    // This handles cases where Content-Length is absent or inaccurate.
-    const responseText = await readResponseWithByteLimit(
-      response,
-      MAX_TOKEN_RESPONSE_BYTES,
-      response.status
-    );
 
     let data: RawTokenResponse | OAuthErrorResponse;
 

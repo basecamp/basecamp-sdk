@@ -2173,6 +2173,51 @@ status still outranks a deadline race; a response completing past the
 deadline without one is refused as a transport timeout. Callers needing exact
 headers-time classification use the default transport.
 
+#### Token-Endpoint Transport Policy `[static]`
+
+Every token-exchange and refresh POST — `exchangeCode`/`refreshToken` and
+their per-SDK spellings, Ruby's legacy `OauthTokenProvider`, and Go's
+`AuthManager` refresh — carries the transport contract the device flow and
+the signed download hop (§14 "Hop-2 Redirect Policy") already hold. The
+device flow's own POSTs already refuse and classify redirects status-first
+under their own messages; the message contract below binds the
+exchange/refresh paths it names:
+
+- **No redirect is followed.** A 301, 302, 303, 307 or 308 from the token
+  endpoint surfaces as the SDK's typed API error (`api_error`) carrying that
+  status, with a message saying the redirect is **not followed** — the same
+  substring contract as §14 — and the `Location` it names is never dialled.
+  A followed 307/308 would re-POST the form — the authorization code, the
+  client secret, or the refresh token — to a destination the response chose.
+  Any other 3xx (304 above all) is the generic non-2xx failure, not this
+  refusal.
+- **Classification precedes the body read on the default transport.** The
+  refusal is read off the status line, so a redirect whose body stalls
+  forever is the typed refusal above, never a timeout. The one permitted
+  exception is an injected buffered client (Ruby's `http_client:` Faraday
+  lane), which has no headers-time seam: it keeps the injected-client
+  fidelity tier's coarser contract stated above — status-first
+  classification on the completed response, wall-clock deadline otherwise.
+- **The request is timeout-bounded**: 30 s default, the shared 3600 s
+  ceiling, and an invalid caller value normalizes to the default — the
+  numbers every other credential POST already converged on. One exclusion:
+  Go's `AuthManager` refresh runs on the operator-configured API client and
+  adds no SDK timeout of its own; it still refuses redirects, because a
+  response-steered hop is response-steered whichever client carries it.
+- **Suppression applies to injected clients too** (the device-flow
+  precedent). Handing these functions your own client keeps your transport,
+  dialer, and address policy — requirement 6's enforcement is deliberately
+  NOT layered on top — but never re-enables redirect following. The
+  distinction: redirect refusal is a property of the token-request
+  functions themselves; the address policy is a property of the default
+  client they post on.
+
+Marked `[static]` (per-SDK unit tests), not `[conformance]`: the oauth-token
+corpus schema is scoped to resource semantics — a response is a status and a
+body — and expressing even one redirect case would mean adding headers,
+redirect, and never-dialled vocabulary to that schema, stretching the
+instrument past what it observes.
+
 ### Launchpad Legacy Format
 
 The Basecamp Launchpad OAuth endpoints use a mix of standard and legacy parameters:
@@ -4162,23 +4207,27 @@ specified rather than rediscovered:
 | Kotlin | Scheme gate, bounded timeout, `followRedirects = false`, bounded body. No classification tables; the JVM seam is OkHttp's `Dns` interface (OkHttp connects to exactly the addresses it returns, so filtering there is connect-time judgement), with no multiplatform equivalent |
 | Swift | Not applicable — ships no OAuth device flow or discovery |
 
-Two things hold in every SDK, policy or not, and are not what this divergence
-is about: the scheme gate and the bounded body. Two more are NOT uniform on
-the exchange path, and listing them as universal is how a reader infers a
-guarantee nobody implemented. The bounded timeout holds on the device flow in
-all four, but Go's `doTokenRequest` bounds nothing itself — the caller's
-context is the only deadline, and the shared policy client deliberately
-carries no client timeout — and Kotlin's `postTokenRequest` builds its default
-client without `HttpTimeout`; TS (30 s), Python (`_TOKEN_TIMEOUT`), and Ruby
-(Faraday timeouts) do bound theirs. Redirect suppression: Go's `Exchanger` and
-Kotlin's `exchangeCode`/`refreshToken` follow redirects (TS's exchange passes
-no `redirect:` option, so it follows too), where the device flow suppresses
-them in all four — a 307 re-POSTs the credentials to the `Location`. Under
-Go's policy client each redirect hop's dial is judged, so the address policy
-holds across a redirect; the public-host re-POST does not need the policy to
-be exploitable. This is the same cross-SDK shape #805 had on the download's
-signed hop before #809 closed it there — the exchange path is now the
-remaining redirect-following exception.
+Four things now hold in every SDK with an exchange path, policy or not, and
+are not what this divergence is about: the scheme gate, the bounded body, the
+bounded timeout, and redirect suppression. The last two were the exchange
+path's own divergence — the same cross-SDK shape #805 had on the download's
+signed hop before #809 closed it there — until §16 "Token-Endpoint Transport
+Policy" closed it here: every token-exchange/refresh POST refuses the five
+redirect statuses with a typed `api_error` carrying the real status, and
+every default lane runs under the shared 30 s default / 3600 s ceiling
+(Go's `AuthManager` refresh keeps its operator-configured client's timeout
+and refuses redirects like every other credential POST).
+
+One earlier claim in this section deserves a retraction rather than a silent
+edit: previous revisions said Kotlin's `exchangeCode`/`refreshToken` followed
+redirects, reasoned from the absence of `followRedirects = false` in the
+source. They never followed — Ktor's `HttpRedirect` plugin defaults
+`checkHttpMethod = true` (only GET/HEAD follow) and the CIO engine does not
+follow at engine level. Kotlin's real defects were adjacent: a 3xx was thrown
+through the generic error branch as `BasecampException.Auth` with the real
+status lost, the default exchange client carried no `HttpTimeout`, and an
+injected client was used verbatim, leaving redirect behavior to the engine
+the caller happened to pick. All three are closed by the same policy above.
 
 The behavioral tightening is the same as the issuer hop's, and it reaches one
 more consumer shape: a Go caller that hand-configures a loopback or RFC 1918

@@ -9,6 +9,12 @@ from basecamp.oauth.token import OAuthToken
 
 _TOKEN_TIMEOUT = 30.0
 
+# The redirects a token endpoint is refused (SPEC §16 "Token-Endpoint
+# Transport Policy") — same set as the signed download hop (SPEC §14). 304 is
+# not in the set: it is a cache validator, not a redirect-with-Location, and
+# falls through to the generic non-2xx handling.
+_REDIRECT_STATUSES = frozenset({301, 302, 303, 307, 308})
+
 
 def exchange_code(
     token_endpoint: str,
@@ -107,7 +113,16 @@ def _token_request(token_endpoint: str, params: dict[str, str]) -> OAuthToken:
         require_https(token_endpoint, "token endpoint")
 
     try:
-        response = httpx.post(
+        # httpx.stream, not httpx.post: the status is classified from the
+        # headers BEFORE the body is consumed, so a refused redirect whose
+        # body stalls forever fails as the typed api_error below instead of
+        # degrading into a timeout. follow_redirects=False is httpx's
+        # default, but it is a load-bearing SSRF control here (SPEC §16
+        # "Token-Endpoint Transport Policy"), not library happenstance —
+        # state it. The body read stays inside the try so a mid-read
+        # timeout or transport fault maps through the same handlers.
+        with httpx.stream(
+            "POST",
             token_endpoint,
             data=params,
             headers={
@@ -115,7 +130,17 @@ def _token_request(token_endpoint: str, params: dict[str, str]) -> OAuthToken:
                 "Accept": "application/json",
             },
             timeout=_TOKEN_TIMEOUT,
-        )
+            follow_redirects=False,
+        ) as response:
+            # A redirect is never a valid token-endpoint outcome and its
+            # Location is never dialled — refuse it with the body unread.
+            if response.status_code in _REDIRECT_STATUSES:
+                raise OAuthError(
+                    "api_error",
+                    f"redirect {response.status_code} on the token endpoint is not followed",
+                    http_status=response.status_code,
+                )
+            response.read()
     except httpx.TimeoutException as exc:
         raise OAuthError("network", "Token request timed out", retryable=True) from exc
     except httpx.HTTPError as exc:

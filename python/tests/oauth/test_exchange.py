@@ -232,3 +232,81 @@ class TestResourceIndicator:
 
         assert exc_info.value.code == "api_error"
         assert "resource" in str(exc_info.value)
+
+
+REDIRECT_STATUSES = (301, 302, 303, 307, 308)
+
+ATTACKER_LOCATION = "https://attacker.example/steal"
+
+
+def _exchange():
+    return exchange_code(
+        TOKEN_ENDPOINT,
+        code="auth-code-123",
+        redirect_uri="https://myapp.com/callback",
+        client_id="client-id",
+    )
+
+
+def _refresh():
+    return refresh_token(TOKEN_ENDPOINT, refresh_tok="refresh-tok-123")
+
+
+class TestRedirectRefusal:
+    """SPEC §16 "Token-Endpoint Transport Policy": a redirect is refused by
+    status with its body unread, and its Location is never dialled."""
+
+    @respx.mock
+    @pytest.mark.parametrize("call", [_exchange, _refresh], ids=["exchange", "refresh"])
+    @pytest.mark.parametrize("status", REDIRECT_STATUSES)
+    def test_redirects_are_refused_and_never_followed(self, status, call):
+        route = respx.post(TOKEN_ENDPOINT).mock(
+            return_value=httpx.Response(status, headers={"Location": ATTACKER_LOCATION})
+        )
+        # A usable token waits at the Location — following it would "succeed",
+        # which is exactly the mutation this test exists to catch.
+        attacker = respx.route(host="attacker.example").mock(return_value=httpx.Response(200, json=TOKEN_RESPONSE))
+
+        with pytest.raises(OAuthError) as exc_info:
+            call()
+
+        assert exc_info.value.oauth_type == "api_error"
+        assert exc_info.value.http_status == status
+        assert "not followed" in str(exc_info.value)
+        assert route.call_count == 1
+        assert attacker.call_count == 0
+
+    @respx.mock
+    def test_304_is_generic_not_a_refused_redirect(self):
+        # 304 is a cache validator, not a redirect-with-Location — it keeps
+        # the generic malformed-response classification.
+        respx.post(TOKEN_ENDPOINT).mock(return_value=httpx.Response(304))
+
+        with pytest.raises(OAuthError) as exc_info:
+            _exchange()
+
+        assert exc_info.value.oauth_type == "api_error"
+        assert exc_info.value.http_status == 304
+        assert "not followed" not in str(exc_info.value)
+
+    @respx.mock
+    def test_redirect_classified_from_headers_before_any_body_read(self):
+        # A refused redirect whose body never completes must classify from
+        # the headers, not time out mid-read: the stream raises if iterated.
+        class ExplodingStream(httpx.SyncByteStream):
+            def __iter__(self):
+                raise AssertionError("a refused redirect's body must never be read")
+
+        respx.post(TOKEN_ENDPOINT).mock(
+            return_value=httpx.Response(
+                302,
+                headers={"Location": ATTACKER_LOCATION},
+                stream=ExplodingStream(),
+            )
+        )
+
+        with pytest.raises(OAuthError) as exc_info:
+            _exchange()
+
+        assert exc_info.value.http_status == 302
+        assert "not followed" in str(exc_info.value)
