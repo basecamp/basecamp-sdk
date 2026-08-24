@@ -285,7 +285,7 @@ revoked-mint threshold).
 | 27 | `27-hostile-resume-cross-origin.json` | accepted 410 with a cross-origin `resume` → Terminal(`invalid_continuation`), zero foreign requests |
 | 28 | `28-checkpoint-load-failure.json` | store load Failed → Terminal(`checkpoint_load`) with ZERO wire attempts; distinct from Missing (which proceeds to a present entry) |
 | 29 | `29-checkpoint-save-failure-continues.json` | save Failed → feed continues and a SUBSEQUENT save is attempted (exact store-call script: no save circuit breaker) |
-| 30 | `30-continuation-redirect-cross-origin.json` | validated same-origin `next` answering 302 + cross-origin Location → Terminal(`invalid_continuation`); zero foreign egress holds by construction of the seam here, and proving it against a real redirect is ASSIGNED to Layer 1, whose adapters are still pending (G1b) — see the row-15 note |
+| 30 | `30-continuation-redirect-cross-origin.json` | validated same-origin `next` answering 302 + cross-origin Location → Terminal(`invalid_continuation`); zero foreign egress holds by construction of the seam here, and proving it against a real redirect is ASSIGNED to Layer 1, whose adapters are still pending, tracked in #819 — see the row-15 note |
 | 31 | `31-post-snapshot-straggler-below-served-id.json` | post-snapshot straggler with an id BELOW the entry page's served id delivered live; the re-push of that served id still suppressed |
 
 **Hostile-URL coverage note (stated author's choice, per the PR-1 review):** the
@@ -398,7 +398,7 @@ exactly the class of claim this family exists to check.
 | 12 | `bypass-configured-handler` (handler registered but skipped; default-terminal applied) | 24, 25 (via `handlerInvocations` exact-set) |
 | 13 | `follow-cross-origin-continuation` (skips §8 validation, polls the hostile URL) | 26, 27 |
 | 14 | `collapse-load-error-to-missing` | 28 |
-| 15 | `follow-cross-origin-redirect` (follows a 302 to a foreign Location) | **not killed at tier 2** — below the poll seam; assigned to Layer 1, whose adapters are still pending (G1b). Fixture 30 pins a different fault class above the seam. See the note under this table. |
+| 15 | `follow-cross-origin-redirect` (follows a 302 to a foreign Location) | **not killed at tier 2** — below the poll seam; assigned to Layer 1, whose adapters are still pending, tracked in #819. Fixture 30 pins a different fault class above the seam. See the note under this table. |
 | 16 | `discard-live-id-at-or-below-served-id` (streaming lane orders live ids against the highest poll-served id) | 31 — and 31 alone: verified to pass all of 01–30, because every other straggler either arrives with nothing yet served (20) or is buffered pre-cut (01, 12, 19) |
 
 **Row 15 is not killed at tier 2, and the reason is structural.** In tier 2 the
@@ -436,7 +436,7 @@ target is a Layer-1 property, and proving it is ASSIGNED to the Layer-1 seam
 adapter's own 302 test, where a real generated `PollEvents` call will meet a
 real redirect. Those adapters have not landed — `go/pkg/basecamp/eventfeed/doc.go`
 lists them among the pieces still to come — so this is a recorded obligation,
-not a proof the repository contains today. Tracked for G1b.
+not a proof the repository contains today. Tracked in #819.
 
 Auto-continue-past-unhandled-gap needs no separate mutation — fixture 23's
 exact-set `finally` is its direct test. Fixture 29's exact store-call script is the

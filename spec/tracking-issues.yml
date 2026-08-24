@@ -94,3 +94,12 @@ prose_tracking_issues:
   - issue: 798
     file: "MIGRATING.md"
     site: "MIGRATING.md — the generated copy of the parse is untouched pending #798"
+  - issue: 819
+    file: "conformance/event-feed/README.md"
+    site: "conformance/event-feed/README.md — Layer-1 seam-adapter conformance (rows 15/30 and the row-15 note) is pending #819"
+  - issue: 819
+    file: "conformance/event-feed/fixtures/30-continuation-redirect-cross-origin.json"
+    site: "fixture 30's description — the below-seam zero-request proof is pending #819's Layer-1 adapters"
+  - issue: 819
+    file: "conformance/event-feed/schema.json"
+    site: "schema.json fixture-30 respond variant — the Layer-1 302 test is pending #819"
