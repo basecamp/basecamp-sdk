@@ -8,6 +8,9 @@ SCRIPT="$(dirname "$0")/promote-migrating.sh"
 # Pin the current-version authority so the repo's real constant cannot leak
 # into scratch-file cases; individual cases override it to probe the gate.
 export PROMOTE_MIGRATING_CURRENT=0.1.0
+# Pin the released-versions authority too: the suite must not depend on the
+# checkout's real tag state (CI checkouts are shallow and tagless).
+export PROMOTE_MIGRATING_RELEASED="0.14.0 0.15.0 0.16.0"
 DIR=$(mktemp -d)
 trap 'rm -rf "$DIR"' EXIT
 FAILS=0
@@ -133,6 +136,24 @@ check "pending heading renamed" 0 $?
 fresh q.md "# v0.99.0" "# v0.15.0"
 PROMOTE_MIGRATING_CURRENT=0.99.0 bash "$SCRIPT" --check 0.99.1 "$DIR/q.md" >/dev/null 2>&1
 check "--check refuses a pending unreleased heading" 1 $?
+
+# 20. a malformed current version is fatal WITH the authority diagnostic —
+#     the pre-fix script also exited 1 here, but only because the arithmetic
+#     error happened to land in the blocking direction; the contract is the
+#     explicit refusal, not a lucky error path
+fresh r.md "# Unreleased" "# v0.15.0"
+ERR=$(PROMOTE_MIGRATING_CURRENT=dev bash "$SCRIPT" 0.16.0 "$DIR/r.md" 2>&1 >/dev/null)
+check "malformed current version is fatal" 1 $?
+printf '%s' "$ERR" | grep -q "is not X.Y.Z"; check "refusal names the malformed authority" 0 $?
+
+# 21. a checkout that knows no release tags fails closed when release status
+#     matters, instead of renaming real history as "pending"
+fresh s.md "# v0.15.0" "# v0.14.0"
+PROMOTE_MIGRATING_CURRENT=0.15.0 PROMOTE_MIGRATING_RELEASED= bash "$SCRIPT" 0.15.1 "$DIR/s.md" >/dev/null 2>&1
+check "tagless checkout fails closed on the pending question" 1 $?
+cp "$DIR/s.md" "$DIR/s.before" 2>/dev/null
+PROMOTE_MIGRATING_CURRENT=0.15.0 PROMOTE_MIGRATING_RELEASED= bash "$SCRIPT" 0.15.1 "$DIR/s.md" >/dev/null 2>&1 || true
+diff -q "$DIR/s.md" "$DIR/s.before" >/dev/null; check "tagless refusal leaves the file untouched" 0 $?
 
 if [ "$FAILS" -gt 0 ]; then
   echo "test-promote-migrating: $FAILS of $CASES assertions failed" >&2

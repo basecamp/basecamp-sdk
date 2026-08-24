@@ -32,10 +32,16 @@ else
   VERSION_GO="$(dirname "$0")/../go/pkg/basecamp/version.go"
   CURRENT=$(sed -n 's/^const Version = "\(.*\)"$/\1/p' "$VERSION_GO" 2>/dev/null || true)
 fi
-if [ -z "$CURRENT" ]; then
-  # Fail closed: with no rollback authority, current_blocks would accept
-  # every target — including the rollback it exists to refuse.
-  echo "ERROR: cannot read the current SDK version from go/pkg/basecamp/version.go — refusing to run without the rollback authority." >&2
+# Fail closed on an absent OR malformed authority: an empty CURRENT would
+# make current_blocks vacuously permissive, and a non-numeric one (say
+# "dev") errors every arithmetic test in `newer`, which an `if` reads as
+# false — the rollback authority bypassed either way.
+if ! printf '%s' "$CURRENT" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+  echo "ERROR: current SDK version '$CURRENT' (from go/pkg/basecamp/version.go) is not X.Y.Z — refusing to run without a usable rollback authority." >&2
+  exit 1
+fi
+if ! printf '%s' "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+  echo "ERROR: target version '$VERSION' is not X.Y.Z." >&2
   exit 1
 fi
 
@@ -50,10 +56,32 @@ current_blocks() {
   newer "$CURRENT" "$1"
 }
 
-# released W: true when the release tag vW exists — the offline authority on
-# whether a version actually shipped. A heading newer than every tag is a
-# PROMOTION THAT NEVER RELEASED (a bump corrected before commit), not history.
+# released W: true when the release tag vW exists — the authority on whether
+# a version actually shipped. A local tag's ABSENCE proves nothing on its
+# own: a shallow or --no-tags clone has no historical tags at all, and
+# treating that as "never released" would rename real history. So absence
+# counts only when the checkout demonstrably knows release tags; a checkout
+# that knows none fails closed. PROMOTE_MIGRATING_RELEASED (a space-separated
+# version list; may be set empty to model a tagless checkout) overrides for
+# the self-test.
 released() {
+  if [ -n "${PROMOTE_MIGRATING_RELEASED+x}" ]; then
+    local r
+    for r in $PROMOTE_MIGRATING_RELEASED; do
+      [ "$r" = "$1" ] && return 0
+    done
+    if [ -z "$PROMOTE_MIGRATING_RELEASED" ]; then
+      echo "ERROR: no release tags visible in this checkout, so whether '# v$1' ever shipped cannot be established. Run 'git fetch --tags' and retry." >&2
+      exit 1
+    fi
+    return 1
+  fi
+  local any
+  any=$(git -C "$(dirname "$0")/.." tag -l 'v[0-9]*' 2>/dev/null | head -1)
+  if [ -z "$any" ]; then
+    echo "ERROR: no release tags visible in this checkout, so whether '# v$1' ever shipped cannot be established (shallow or --no-tags clone?). Run 'git fetch --tags' and retry." >&2
+    exit 1
+  fi
   git -C "$(dirname "$0")/.." tag -l "v$1" 2>/dev/null | grep -qx "v$1"
 }
 
