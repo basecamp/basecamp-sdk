@@ -32,6 +32,12 @@ else
   VERSION_GO="$(dirname "$0")/../go/pkg/basecamp/version.go"
   CURRENT=$(sed -n 's/^const Version = "\(.*\)"$/\1/p' "$VERSION_GO" 2>/dev/null || true)
 fi
+if [ -z "$CURRENT" ]; then
+  # Fail closed: with no rollback authority, current_blocks would accept
+  # every target — including the rollback it exists to refuse.
+  echo "ERROR: cannot read the current SDK version from go/pkg/basecamp/version.go — refusing to run without the rollback authority." >&2
+  exit 1
+fi
 
 if [ -z "$FIRST" ]; then
   echo "ERROR: $FILE has no release heading ('# Unreleased' or '# vX.Y.Z')." >&2
@@ -41,7 +47,14 @@ fi
 # current_blocks TARGET: refuse a target strictly older than the SDK's own
 # current version constant.
 current_blocks() {
-  [ -n "$CURRENT" ] && newer "$CURRENT" "$1"
+  newer "$CURRENT" "$1"
+}
+
+# released W: true when the release tag vW exists — the offline authority on
+# whether a version actually shipped. A heading newer than every tag is a
+# PROMOTION THAT NEVER RELEASED (a bump corrected before commit), not history.
+released() {
+  git -C "$(dirname "$0")/.." tag -l "v$1" 2>/dev/null | grep -qx "v$1"
 }
 
 # newer A B: true when A is strictly newer than B, compared component-wise.
@@ -87,6 +100,15 @@ case "$FIRST" in
       echo "ERROR: $FILE still has an '# Unreleased' section — its notes would miss the release. Run 'make bump VERSION=$VERSION' first." >&2
       exit 1
     fi
+    # New notes belong to a release NEWER than what already shipped: with the
+    # SDK at 0.16.0 (released without notes), promoting fresh notes to
+    # "# v0.16.0" would file them under a tag that already exists, and the
+    # release would push main before failing on that tag. Equality is legal
+    # only for the no-mutation paths.
+    if ! newer "$VERSION" "$CURRENT"; then
+      echo "ERROR: $VERSION is not newer than the SDK's current version ($CURRENT) — these notes belong to a later release." >&2
+      exit 1
+    fi
     awk -v v="# v$VERSION" 'BEGIN { done = 0 }
       !done && $0 == "# Unreleased" { print v; done = 1; next }
       { print }' "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
@@ -106,6 +128,20 @@ case "$FIRST" in
       exit 1
     fi
     if newer "$VERSION" "$TOP"; then
+      if ! released "$TOP"; then
+        # "# v$TOP" was promoted but never released — a bump corrected to a
+        # higher version before committing. Its notes belong to THIS release,
+        # not to a version no tag will ever name.
+        if [ "$MODE" = check ]; then
+          echo "ERROR: $FILE's newest section '# v$TOP' is promoted but unreleased — run 'make bump VERSION=$VERSION' to carry its notes forward." >&2
+          exit 1
+        fi
+        awk -v old="# v$TOP" -v v="# v$VERSION" 'BEGIN { done = 0 }
+          !done && $0 == old { print v; done = 1; next }
+          { print }' "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
+        echo "Re-promoted pending '# v$TOP' -> '# v$VERSION' in $FILE (v$TOP was never released)."
+        exit 0
+      fi
       # Legitimate: a release with nothing migration-worthy has no section,
       # per the guide's one-section-per-release-that-breaks-something rule.
       echo "$FILE: no '# Unreleased' section — v$VERSION ships without migration notes (newest documented: v$TOP)."
