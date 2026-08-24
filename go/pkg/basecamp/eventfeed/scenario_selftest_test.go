@@ -13,6 +13,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -895,5 +896,38 @@ func TestDriverRedirectRefusalUsesTheRealPredicate(t *testing.T) {
 	var pe *eventfeed.PollError
 	if !errors.As(po.err, &pe) || pe.Kind != eventfeed.PollRedirectRefused {
 		t.Fatalf("cross-origin Location = %+v, want PollRedirectRefused", po.err)
+	}
+}
+
+// TestDriverRetryAfterParseMatchesTheSDKParser: the SDK's parseRetryAfter
+// (go/pkg/basecamp/client.go) pins the delta-seconds form to RFC 9110's
+// 1*DIGIT — no sign — parses through int64 so the verdict cannot vary with
+// the platform's int width, and clamps a representable-but-unschedulable
+// value to the portable MaxInt32-seconds ceiling. The driver models the same
+// §6 algorithm and must match: a signed "+5" is not a delay at all, digits
+// too large for int64 are malformed, and a huge representable value
+// saturates instead of overflowing the duration multiply into garbage.
+func TestDriverRetryAfterParseMatchesTheSDKParser(t *testing.T) {
+	d := &driver{h: newScenarioHarness()}
+	defer d.h.close()
+	var me *eventfeed.MintError
+
+	// Signed values are not 1*DIGIT: undefined, never throttled.
+	for _, header := range []string{"+5", "-5", " 5", "5 "} {
+		out := d.mintOutcomeFrom(mintRespond{Status: intp(429), Headers: map[string]string{"Retry-After": header}})
+		if !errors.As(out.err, &me) || me.Kind != eventfeed.MintTransient || me.RetryAfter != 0 {
+			t.Fatalf("Retry-After %q = %+v, want MintTransient with no value (not 1*DIGIT)", header, out.err)
+		}
+	}
+	// Digits too large for int64 are malformed — undefined on every platform.
+	out := d.mintOutcomeFrom(mintRespond{Status: intp(429), Headers: map[string]string{"Retry-After": "18446744073709551616"}})
+	if !errors.As(out.err, &me) || me.Kind != eventfeed.MintTransient || me.RetryAfter != 0 {
+		t.Fatalf("over-int64 digits = %+v, want MintTransient (malformed)", out.err)
+	}
+	// Representable but unschedulable saturates at the SDK's portable
+	// ceiling; the naive duration multiply would overflow into garbage.
+	out = d.mintOutcomeFrom(mintRespond{Status: intp(429), Headers: map[string]string{"Retry-After": "99999999999"}})
+	if !errors.As(out.err, &me) || me.Kind != eventfeed.MintThrottled || me.RetryAfter != time.Duration(math.MaxInt32)*time.Second {
+		t.Fatalf("huge representable value = %+v (retryAfter %v), want MintThrottled clamped to MaxInt32 seconds", out.err, me.RetryAfter)
 	}
 }

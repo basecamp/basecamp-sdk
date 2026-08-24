@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"math"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -1222,8 +1223,19 @@ func (d *driver) retryAfterFrom(headers map[string]string) (value time.Duration,
 	if !ok {
 		return 0, false
 	}
-	if seconds, err := strconv.Atoi(raw); err == nil {
-		if seconds > 0 {
+	// The delta-seconds form is RFC 9110's 1*DIGIT — no sign, no space — so
+	// the digits are checked before ParseInt, which would honour a leading
+	// "+" or "-". Parsed through int64 so the verdict cannot vary with the
+	// platform's int width (Atoi's range is int's), with digits beyond int64
+	// malformed, and a representable value clamped to the same portable
+	// MaxInt32-seconds ceiling the SDK's parseRetryAfter uses — the naive
+	// duration multiply would overflow into garbage for anything past
+	// ~292 years.
+	if isDigits(raw) {
+		if seconds, err := strconv.ParseInt(raw, 10, 64); err == nil && seconds > 0 {
+			if seconds > math.MaxInt32 {
+				seconds = math.MaxInt32
+			}
 			return time.Duration(seconds) * time.Second, true
 		}
 		return 0, false
@@ -1244,6 +1256,20 @@ func (d *driver) retryAfterFrom(headers map[string]string) (value time.Duration,
 }
 
 // --- server frames -------------------------------------------------------
+
+// isDigits reports RFC 9110's 1*DIGIT and nothing else, mirroring the SDK
+// parser's isDelaySeconds (go/pkg/basecamp/client.go).
+func isDigits(value string) bool {
+	if value == "" {
+		return false
+	}
+	for _, r := range value {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
+}
 
 // serveFrameBytes renders one scripted server frame. confirm/reject/message
 // auto-echo the captured subscribe identifier unless the fixture overrides it.

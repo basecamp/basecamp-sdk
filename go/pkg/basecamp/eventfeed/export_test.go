@@ -3,7 +3,6 @@ package eventfeed
 import (
 	"context"
 	"errors"
-	"slices"
 	"time"
 )
 
@@ -30,7 +29,7 @@ func (c *Connector) OnCatchUpEntered(f func(CatchUpBoundary)) {
 		f(CatchUpBoundary{
 			Entry:        h.entry,
 			PresentClass: h.presentClass,
-			Buffered:     slices.Clone(h.buffer.events),
+			Buffered:     h.buffer.snapshot(),
 		})
 	}
 }
