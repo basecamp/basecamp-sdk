@@ -1,0 +1,25 @@
+conformance/event-feed/README.md
+  s_0e4885cc7255e8::t_65f96fb8cba0df 288,401,439
+conformance/event-feed/fixtures/30-continuation-redirect-cross-origin.json
+  s_0e4885cc7255e8::t_8cc75ba3c2c9d9 3
+conformance/event-feed/schema.json
+  s_0e4885cc7255e8::t_02e9590c710424 906
+spec/tracking-issues.yml
+  s_0e4885cc7255e8::t_76435452a75474 97-105
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "a7bd85ae4e1dc56dd800c9a8c85b7e7a08f5430b",
+  "prompts": {},
+  "sessions": {
+    "s_0e4885cc7255e8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "17306851-e799-4734-aa65-a2d363523795",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
