@@ -1,0 +1,21 @@
+go/pkg/basecamp/eventfeed/catchup.go
+  s_1c9d086ab67253::t_00a0642504213b 500,521-534,538,608,610,618-625
+go/pkg/basecamp/eventfeed/catchup_test.go
+  s_1c9d086ab67253::t_8ee1acc0c7573a 3249-3327
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "eb489f9741e3650c529bd7b7dfd0676b798c1727",
+  "prompts": {},
+  "sessions": {
+    "s_1c9d086ab67253": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1f5628ec-50ac-4d8d-a2cc-cee5b0112903",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
