@@ -3246,3 +3246,82 @@ func TestUnauthorizedPollCarriesNoRetryAfterFloor(t *testing.T) {
 		t.Fatalf("backoff armed for %s: an unauthorized poll's seam-supplied RetryAfter floored the reconnect delay; unauthorized carries no retry_after and the local draw alone governs", d)
 	}
 }
+
+// TestFrameDeferralGracePhaseIsImmuneToFrameResets is the frame-deferral
+// sibling of TestGracePhaseIsImmuneToFrameResets, which covers only the
+// stale deferral — there, graceWake's latch is armed at the deferral and
+// refuses every later reset. A deferred DISCONNECT (or invalid frame) had no
+// latch: its wakes rode the ordinary staleness window, and a peer whose last
+// frame lands just short of the deadline re-armed that window a full
+// staleAfter out — the rearm's wake ran the deadline check a hair early,
+// and the next wake did not exist until frameTime + staleAfter, so the
+// abandoned poll outlived the one-window grace phase by almost another
+// window. SPEC's immunity is unconditional: "a frame arriving inside the
+// phase re-arms staleness in the ordinary way and MUST NOT move the
+// deadline" — and a deadline nothing wakes is moved in effect. The deferred
+// outcome itself must stay the dispatched verdict: the teardown reports the
+// parked disconnect, not staleness.
+func TestFrameDeferralGracePhaseIsImmuneToFrameResets(t *testing.T) {
+	deferred := make(chan struct{}, 1)
+	wakes := make(chan struct{}, 8)
+	disconnected := make(chan string, 4)
+	h := newHarness(t, eventfeed.WithObserver(eventfeed.Observer{
+		Disconnected: func(reason string, _ error) {
+			select {
+			case disconnected <- reason:
+			default:
+			}
+		},
+	}))
+	h.conn.OnFrameDeferred(func() {
+		select {
+		case deferred <- struct{}{}:
+		default:
+		}
+	})
+	h.conn.OnSupersededWake(func() {
+		select {
+		case wakes <- struct{}{}:
+		default:
+		}
+	})
+	h.minter.ScriptTicket(ticket(1))
+	h.polls.StallNext()
+	h.start()
+
+	conn := h.driveToSubscribed()
+	conn.Serve(frameConfirm(noFilterIdentifier))
+	h.waitUntil("entry poll in flight", func() bool { return h.polls.CallCount() == 1 })
+	// A raw disconnect lands mid-poll and is deferred: the grace deadline is
+	// Now + staleAfter, and the socket stays open with the pump reading.
+	conn.Serve(frameDisconnect("remote", true))
+	select {
+	case <-deferred:
+	case <-time.After(watchdog):
+		t.Fatal("the disconnect frame was not deferred")
+	}
+
+	// The peer's LAST frame lands 1ms short of the deadline.
+	h.clock.Advance(7499 * time.Millisecond)
+	conn.Serve(framePing())
+	h.waitUntil("the ping to reach the pump", func() bool { return conn.Pending() == 0 })
+
+	// One more millisecond reaches the deadline exactly; the wait must end
+	// there and dispatch the PARKED disconnect — not sit until the re-armed
+	// window fires a full staleAfter after the ping.
+	h.clock.Advance(time.Millisecond)
+	select {
+	case reason := <-disconnected:
+		// The parked disconnect is the dispatched verdict. Its reason rides
+		// the closed observer vocabulary — "remote" is not one of the two
+		// acted-on reasons named exactly, so it renders as "other" — while a
+		// substituted staleness teardown would report an EMPTY reason (with
+		// errStaleConnection as the cause).
+		if reason != "other" {
+			t.Fatalf("teardown reported reason %q, want %q — the parked disconnect's redacted spelling, not a substituted staleness verdict", reason, "other")
+		}
+	case <-time.After(watchdog):
+		t.Fatal("the frame-deferral grace phase was extended past its deadline by an ordinary staleness reset: the only remaining wake sits at frameTime + staleAfter, almost a full window past the deadline")
+	}
+	h.awaitTimer(timerBackoff)
+}
