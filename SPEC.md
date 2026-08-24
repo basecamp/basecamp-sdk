@@ -3798,7 +3798,7 @@ asserting something about itself. That obligation belongs to the Layer-1 seam
 adapter's own 302 test, where a real generated `PollEvents` call meets a real redirect
 against an adapter with automatic redirect-following disabled.
 `conformance/event-feed/README.md`'s row-15 note records it as a pending obligation
-rather than a proof the repository contains.
+rather than a proof the repository contains; the adapters are tracked in #819.
 
 ### Clock, Timers, and Virtual Time `[conformance]`
 
