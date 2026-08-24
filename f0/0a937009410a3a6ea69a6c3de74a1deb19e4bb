@@ -1,0 +1,29 @@
+scripts/check-known-defect-issues-open
+  s_0e4885cc7255e8::t_0149b46bc242b2 78-87,105-110
+scripts/test-check-known-defect-issues-open
+  s_1c9d086ab67253::t_4595c0b102d55e 102,115-117,126-131,452-465
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "f00a937009410a3a6ea69a6c3de74a1deb19e4bb",
+  "prompts": {},
+  "sessions": {
+    "s_0e4885cc7255e8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "17306851-e799-4734-aa65-a2d363523795",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_1c9d086ab67253": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1f5628ec-50ac-4d8d-a2cc-cee5b0112903",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
