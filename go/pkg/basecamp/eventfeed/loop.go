@@ -480,7 +480,20 @@ func (h *staleHolder) stop() {
 // denominated in events and every dropped entry has an id.
 type liveBuffer struct {
 	capacity int
-	events   []Event
+	// events is the physical store, a head-indexed ring once it has grown to
+	// capacity. It grows by append while filling (an idle consumer's buffer
+	// stays small) and is never reallocated after that: the reslice-and-
+	// append shape this replaced burned one slot of slice capacity per
+	// overflow admit, so sustained overflow periodically reallocated and
+	// copied the whole backing — an O(capacity) copy spike, and a transient
+	// SECOND buffer's worth of retained payload at each growth step, the
+	// exact retention class add's zeroing exists to prevent. Entries live at
+	// [head, head+size) modulo len(events); a wrap can exist only once the
+	// store has reached capacity, because drops happen only at capacity and
+	// pre-capacity inserts always land at or before len(events).
+	events []Event
+	head   int
+	size   int
 	// onChange reports the buffer's occupancy after every change. Test-only
 	// (testHooks.bufferOccupancy); nil in production.
 	onChange func(int)
@@ -491,22 +504,30 @@ func newLiveBuffer(capacity int, onChange func(int)) *liveBuffer {
 }
 
 // add admits ev, returning the ids of any events dropped to make room —
-// oldest first.
+// oldest first. Vacated and evicted slots are zeroed for shift's reason: a
+// slot that no longer counts toward occupancy must not keep its event's
+// strings reachable — under sustained overflow that is a second buffer's
+// worth of payload held beyond the ceiling §23 publishes.
 func (b *liveBuffer) add(ev Event) []int64 {
 	var dropped []int64
-	for len(b.events) >= b.capacity {
-		dropped = append(dropped, b.events[0].ID)
-		// Zeroed before the reslice, for shift's reason: the reslice removes
-		// the evicted event logically, but the slice that results still
-		// points into the same backing array, whose prefix keeps that
-		// event's strings reachable until a later reallocation. Under
-		// sustained overflow that is a second buffer's worth of payload held
-		// beyond the ceiling §23 publishes — retained by events that no
-		// longer count toward occupancy.
-		b.events[0] = Event{}
-		b.events = b.events[1:]
+	for b.size >= b.capacity {
+		dropped = append(dropped, b.events[b.head].ID)
+		b.events[b.head] = Event{}
+		b.head = (b.head + 1) % len(b.events)
+		b.size--
 	}
-	b.events = append(b.events, ev)
+	switch pos := b.head + b.size; {
+	case pos < len(b.events):
+		b.events[pos] = ev
+	case pos-len(b.events) < b.head:
+		// Wrapped: the store is at capacity and the tail circles back below
+		// the head.
+		b.events[pos-len(b.events)] = ev
+	default:
+		// Still filling: pos == len(events) < capacity, so the store grows.
+		b.events = append(b.events, ev)
+	}
+	b.size++
 	b.changed()
 	return dropped
 }
@@ -526,21 +547,32 @@ func (b *liveBuffer) add(ev Event) []int64 {
 // during a drain are precisely the taken ones), which is this method with a
 // second container in front of it.
 func (b *liveBuffer) shift() (Event, bool) {
-	if len(b.events) == 0 {
+	if b.size == 0 {
 		return Event{}, false
 	}
-	ev := b.events[0]
-	// Re-slicing alone would pin the whole backing array through the
-	// drain; zeroing the vacated slot lets it go.
-	b.events[0] = Event{}
-	b.events = b.events[1:]
+	ev := b.events[b.head]
+	// Zeroing the vacated slot is what lets the payload go while the ring
+	// retains its backing.
+	b.events[b.head] = Event{}
+	b.head = (b.head + 1) % len(b.events)
+	b.size--
 	b.changed()
 	return ev, true
 }
 
+// snapshot returns the buffered events in logical, oldest-first order —
+// the ring's physical layout is an implementation detail no reader may see.
+func (b *liveBuffer) snapshot() []Event {
+	out := make([]Event, 0, b.size)
+	for i := range b.size {
+		out = append(out, b.events[(b.head+i)%len(b.events)])
+	}
+	return out
+}
+
 func (b *liveBuffer) changed() {
 	if b.onChange != nil {
-		b.onChange(len(b.events))
+		b.onChange(b.size)
 	}
 }
 
@@ -1152,6 +1184,18 @@ func (l *loop) writeSubscribe(at *attempt, deadline *Timer) (cycleOutcome, bool)
 		staleTimer, staleGen := at.lc.stale.current()
 		select {
 		case werr := <-written:
+			// Close outranks the write's result: cancellation surfaces
+			// through a conforming WriteFrame as its own error, so `written`
+			// and runCtx.Done() can be ready together — and dispatching the
+			// result reported the consumer's own Close to
+			// Observer.Disconnected as a socket failure, after Close
+			// returned. The Closed edge wins the both-ready race, for a
+			// clean completion exactly as for an error: either is post-Close
+			// work.
+			if l.runCtx.Err() != nil {
+				l.disposeAttempt(at, *deadline)
+				return cycleOutcome{kind: outcomeClosed}, true
+			}
 			if werr != nil {
 				l.disposeAttempt(at, *deadline)
 				l.observeDisconnected("", werr)
