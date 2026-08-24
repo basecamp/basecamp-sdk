@@ -57,13 +57,15 @@ current_blocks() {
 }
 
 # released W: true when the release tag vW exists — the authority on whether
-# a version actually shipped. A local tag's ABSENCE proves nothing on its
-# own: a shallow or --no-tags clone has no historical tags at all, and
-# treating that as "never released" would rename real history. So absence
-# counts only when the checkout demonstrably knows release tags; a checkout
-# that knows none fails closed. PROMOTE_MIGRATING_RELEASED (a space-separated
-# version list; may be set empty to model a tagless checkout) overrides for
-# the self-test.
+# a version actually shipped. A PRESENT local tag is proof positive. A local
+# tag's ABSENCE proves nothing at all: shallow and filtered clones carry
+# partial tag inventories, and one unrelated v-tag's presence is no evidence
+# the missing one never shipped. So absence is confirmed against the remote
+# (git ls-remote --tags origin), and when the remote cannot answer — offline,
+# no origin — the question fails closed rather than renaming what might be
+# history. PROMOTE_MIGRATING_RELEASED (a space-separated version list — the
+# complete authority; may be set empty to model "cannot establish") overrides
+# for the self-test.
 released() {
   if [ -n "${PROMOTE_MIGRATING_RELEASED+x}" ]; then
     local r
@@ -71,18 +73,21 @@ released() {
       [ "$r" = "$1" ] && return 0
     done
     if [ -z "$PROMOTE_MIGRATING_RELEASED" ]; then
-      echo "ERROR: no release tags visible in this checkout, so whether '# v$1' ever shipped cannot be established. Run 'git fetch --tags' and retry." >&2
+      echo "ERROR: whether '# v$1' ever shipped cannot be established. Run 'git fetch --tags' and retry." >&2
       exit 1
     fi
     return 1
   fi
-  local any
-  any=$(git -C "$(dirname "$0")/.." tag -l 'v[0-9]*' 2>/dev/null | head -1)
-  if [ -z "$any" ]; then
-    echo "ERROR: no release tags visible in this checkout, so whether '# v$1' ever shipped cannot be established (shallow or --no-tags clone?). Run 'git fetch --tags' and retry." >&2
+  if git -C "$(dirname "$0")/.." tag -l "v$1" 2>/dev/null | grep -qx "v$1"; then
+    return 0
+  fi
+  local remote
+  if ! remote=$(git -C "$(dirname "$0")/.." ls-remote --tags origin "refs/tags/v$1" 2>/dev/null); then
+    echo "ERROR: tag v$1 is not in this checkout and the remote cannot be reached to confirm its absence, so whether '# v$1' ever shipped cannot be established. Run 'git fetch --tags' and retry." >&2
     exit 1
   fi
-  git -C "$(dirname "$0")/.." tag -l "v$1" 2>/dev/null | grep -qx "v$1"
+  [ -z "$remote" ] || return 0
+  return 1
 }
 
 # newer A B: true when A is strictly newer than B, compared component-wise.
