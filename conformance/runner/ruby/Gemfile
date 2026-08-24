@@ -3,6 +3,6 @@
 source "https://rubygems.org"
 
 gem "basecamp-sdk", path: "../../../ruby"
-gem "webmock", "~> 3.0"
+gem "webmock", "~> 3.26"
 gem "json"
 gem "minitest"
