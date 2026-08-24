@@ -164,6 +164,8 @@ jobs:
               echo ""
               echo "Read [MIGRATING.md](https://github.com/basecamp/basecamp-sdk/blob/${VERSION}/MIGRATING.md) before you bump the version — it lists the breaks a clean build will not catch: the silent ones that change behaviour with no error at all, and the ones that compile and then raise or fail to decode on one particular shape of response."
               echo ""
+              echo "The notes below are generated from merged pull requests, so a change that merged without one cannot appear in them — MIGRATING.md records consumer-visible changes regardless of how they merged."
+              echo ""
             fi
             echo "## Installation"
             echo ""
