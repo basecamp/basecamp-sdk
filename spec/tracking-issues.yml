@@ -95,6 +95,9 @@ prose_tracking_issues:
     file: "MIGRATING.md"
     site: "MIGRATING.md — the generated copy of the parse is untouched pending #798"
   - issue: 819
+    file: "SPEC.md"
+    site: "SPEC.md §23 zero-egress paragraph — the Layer-1 302 test's adapters are pending #819"
+  - issue: 819
     file: "conformance/event-feed/README.md"
     site: "conformance/event-feed/README.md — Layer-1 seam-adapter conformance (rows 15/30 and the row-15 note) is pending #819"
   - issue: 819

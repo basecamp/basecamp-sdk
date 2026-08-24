@@ -551,6 +551,19 @@ out, status, _ = run_checker(
 expect_fail(failures, "N+11a. a Swift doc-comment (///) wrapped mention is still caught", out, status,
             "not registered")
 
+# --- N+11b. The wrap is caught behind a Markdown blockquote too ------------------
+#
+# `> ` opens a blockquote continuation line, and rendered prose is exactly
+# where a tracking promise reads most like a promise. A leader class that
+# knows comments but not quotes reads the wrapped claim as absence.
+
+out, status, _ = run_checker(
+  allowlist: { "sdk_routes_known_defective" => [], "bc3_routes_not_modeled" => [] },
+  sweep: { "docs/note.md" => "> the six SDKs disagree and this is tracked\n> separately in #909.\n" }
+)
+expect_fail(failures, "N+11b. a blockquote-wrapped mention is still caught", out, status,
+            "not registered")
+
 # --- N+12. A row with no file fails ----------------------------------------------
 #
 # The sweep keys coverage on [file, issue], so an entry without a file could
