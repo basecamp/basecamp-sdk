@@ -248,11 +248,15 @@ ifndef VERSION
 	$(error VERSION is required. Usage: make release VERSION=x.y.z)
 endif
 	@echo "Releasing v$(VERSION)..."
-	@# Verify version constants match
+	@# Verify version constants match — every file scripts/bump-version.sh writes
+	@test "$$(jq -r '.version' package.json)" = "$(VERSION)" || \
+		{ echo "ERROR: Root package.json version does not match $(VERSION). Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
 	@grep -qF 'Version = "$(VERSION)"' go/pkg/basecamp/version.go || \
 		{ echo "ERROR: Go version does not match $(VERSION). Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
-	@grep -qF '"version": "$(VERSION)"' typescript/package.json || \
+	@test "$$(jq -r '.version' typescript/package.json)" = "$(VERSION)" || \
 		{ echo "ERROR: TypeScript version does not match $(VERSION). Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
+	@grep -qxF 'export const VERSION = "$(VERSION)";' typescript/src/client.ts || \
+		{ echo "ERROR: TypeScript client VERSION constant does not match $(VERSION). Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
 	@grep -qF 'VERSION = "$(VERSION)"' ruby/lib/basecamp/version.rb || \
 		{ echo "ERROR: Ruby version does not match $(VERSION). Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
 	@grep -qF 'const val VERSION = "$(VERSION)"' kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/BasecampConfig.kt || \
@@ -261,17 +265,31 @@ endif
 		{ echo "ERROR: Kotlin Gradle project version does not match $(VERSION). Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
 	@grep -qF 'public static let version = "$(VERSION)"' swift/Sources/Basecamp/BasecampConfig.swift || \
 		{ echo "ERROR: Swift version does not match $(VERSION). Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
+	@awk -v want='version = "$(VERSION)"' '/^\[/ { inproj = ($$0 == "[project]") } inproj && $$0 == want { found = 1 } END { exit !found }' python/pyproject.toml || \
+		{ echo "ERROR: Python pyproject.toml [project].version does not match $(VERSION). Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
 	@grep -qF 'VERSION = "$(VERSION)"' python/src/basecamp/_version.py || \
 		{ echo "ERROR: Python version does not match $(VERSION). Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
+	@grep -qxF '# v$(VERSION)' MIGRATING.md || \
+		{ echo "ERROR: MIGRATING.md has no '# v$(VERSION)' heading. Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
+	@! grep -qxF '# Unreleased' MIGRATING.md || \
+		{ echo "ERROR: MIGRATING.md still has an '# Unreleased' section — its notes would miss the release. Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
 	@# Verify lockfiles are frozen against their manifests
+	@test "$$(jq -r '.version' typescript/package-lock.json)" = "$(VERSION)" -a "$$(jq -r '.packages[""].version' typescript/package-lock.json)" = "$(VERSION)" || \
+		{ echo "ERROR: typescript/package-lock.json records a stale SDK version. Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
+	@grep -qxF '    basecamp-sdk ($(VERSION))' ruby/Gemfile.lock || \
+		{ echo "ERROR: ruby/Gemfile.lock's PATH spec records a stale SDK version. Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
+	@grep -qxF '  basecamp-sdk ($(VERSION))' ruby/Gemfile.lock || \
+		{ echo "ERROR: ruby/Gemfile.lock's CHECKSUMS entry records a stale SDK version. Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
 	@cd python && uv lock --check || \
 		{ echo "ERROR: python/uv.lock is stale. Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
 	@test "$$(jq -r '.packages["../../../typescript"].version' conformance/runner/typescript/package-lock.json)" = "$(VERSION)" || \
 		{ echo "ERROR: conformance/runner/typescript/package-lock.json records a stale SDK version. Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
 	@# The conformance Ruby/Python runner lockfiles are tracked (#670), so they
 	@# are always present; a stale one breaks the frozen conformance installs (#671).
-	@grep -qF 'basecamp-sdk ($(VERSION))' conformance/runner/ruby/Gemfile.lock || \
+	@grep -qxF '    basecamp-sdk ($(VERSION))' conformance/runner/ruby/Gemfile.lock || \
 		{ echo "ERROR: conformance/runner/ruby/Gemfile.lock records a stale SDK version. Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
+	@grep -qxF '  basecamp-sdk ($(VERSION))' conformance/runner/ruby/Gemfile.lock || \
+		{ echo "ERROR: conformance/runner/ruby/Gemfile.lock's CHECKSUMS entry records a stale SDK version. Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
 	@(cd conformance/runner/python && uv lock --check) || \
 		{ echo "ERROR: conformance/runner/python/uv.lock is stale. Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
 	@git diff --quiet && git diff --cached --quiet || \
