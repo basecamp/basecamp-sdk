@@ -1,0 +1,71 @@
+.github/workflows/release-github.yml
+  s_1c9d086ab67253::t_b8f83b9278d01a 167-168
+.github/workflows/sensitive-change-gate.yml
+  s_1c9d086ab67253::t_51410668f115ba 15
+MIGRATING.md
+  s_1c9d086ab67253::t_dbf831c2c75131 14,64-97,189-291,507-580,644-647,716,3925-3934
+Makefile
+  s_1c9d086ab67253::t_f05d15d9b33898 251-253,256,258-259,268-269,272-275,277-282,289,291-292
+conformance/runner/python/uv.lock
+  s_1c9d086ab67253::t_3d7a6dd94b29ed 43
+conformance/runner/ruby/Gemfile
+  s_1c9d086ab67253::t_37e1e835b6b29b 6
+conformance/runner/ruby/Gemfile.lock
+  s_1c9d086ab67253::t_74bc156d9fea49 4,36,52,56,72
+conformance/runner/typescript/package-lock.json
+  s_1c9d086ab67253::t_3543bbbc45ae00 23
+go/go.mod
+  s_1c9d086ab67253::t_170759d846c258 8
+go/go.sum
+  s_1c9d086ab67253::t_89d3362c3fcfab 88-89
+go/pkg/basecamp/version.go
+  s_1c9d086ab67253::t_3e6254034f37f3 4
+kotlin/gradle/wrapper/gradle-wrapper.properties
+  s_1c9d086ab67253::t_b6baa0ff21be88 3
+kotlin/sdk/build.gradle.kts
+  s_1c9d086ab67253::t_27b1f176742611 8
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/BasecampConfig.kt
+  s_1c9d086ab67253::t_6478fadc85b34c 44
+package.json
+  s_1c9d086ab67253::t_4d2968a27254af 3
+python/pyproject.toml
+  s_1c9d086ab67253::t_a02ebbbd916f14 7
+python/src/basecamp/_version.py
+  s_1c9d086ab67253::t_491f166e8d5ca4 1
+python/uv.lock
+  s_1c9d086ab67253::t_7a189fc3963614 20
+ruby/Gemfile.lock
+  s_1c9d086ab67253::t_f88b2075845103 4,28,129,156-157,205
+ruby/lib/basecamp/version.rb
+  s_1c9d086ab67253::t_09e05940bc1da5 4
+scripts/bump-version.sh
+  s_1c9d086ab67253::t_a077530f37138b 62-65
+scripts/promote-migrating.sh
+  s_1c9d086ab67253::t_f7f5b1689ef795 1-27
+spec/smithy-bare-arrays/gradle/wrapper/gradle-wrapper.properties
+  s_1c9d086ab67253::t_fd667cf97a84ae 3
+swift/Sources/Basecamp/BasecampConfig.swift
+  s_1c9d086ab67253::t_7ae5a0df10087a 27
+typescript/package-lock.json
+  s_1c9d086ab67253::t_c4bb6458d8a319 3,9,714-716,724-726,741-743,758-760,775-777,792-794,809-811,826-828,843-845,863-865,883-885,903-905,923-925,943-945,963-965,983-985,1003-1005,1020-1022,1037-1039,1054-1056,1133-1149,1151-1153,1168-1170,1185-1187,1202-1204,1219-1221,1236-1238,1243-1245,1256-1258,1263-1265,1276-1278,1283-1285,1296-1298,1303-1305,1316-1318,1323-1325,1336-1338,1343-1345,1356-1358,1373-1375,1390-1392,1473-1475,1480,1494-1495,1504-1506,1512-1513,1522-1524,1528,1549-1551,1562-1564,1568,1576-1578,1582-1583,1592-1594,1602-1604,1608,2202-2204,2218-2228,2232-2234,2253-2255,2274-2276,2295-2297,2316-2318,2337-2339,2344-2346,2361-2363,2368-2370,2385-2387,2392-2394,2409-2411,2416-2418,2433-2435,2454-2456,2664-2666,2679-2697,2788-2790,2808,2844-2846,2850,2860-2874,3156-3158,3162,3164-3165,3182,3234-3236,3240-3246,3274-3279
+typescript/package.json
+  s_1c9d086ab67253::t_b0b44425e9b6a2 3
+typescript/src/client.ts
+  s_1c9d086ab67253::t_ab3dfbe1731c18 269
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "9fe04a0e6b7415588576b44075856acf32231fe4",
+  "prompts": {},
+  "sessions": {
+    "s_1c9d086ab67253": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1f5628ec-50ac-4d8d-a2cc-cee5b0112903",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
