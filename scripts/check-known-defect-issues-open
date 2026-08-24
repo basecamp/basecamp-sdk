@@ -75,7 +75,16 @@ unless File.exist?(allow_path)
   warn "ERROR: allowlist not found at #{allow_path}"
   exit 1
 end
-allow = YAML.safe_load(File.read(allow_path)) || {}
+# Psych's exception family — syntax errors, forbidden tags, aliases (which
+# safe_load refuses) — is the same fail-closed verdict as a malformed shape,
+# and gets the same treatment: the gate's own words, naming the file to fix,
+# never a psych.rb backtrace.
+begin
+  allow = YAML.safe_load(File.read(allow_path)) || {}
+rescue Psych::Exception => e
+  warn "ERROR: #{allow_path} cannot be parsed as YAML: #{e.message}"
+  exit 1
+end
 unless allow.is_a?(Hash)
   warn "ERROR: #{allow_path} must be a YAML mapping of route lists, got #{allow.class}"
   exit 1
@@ -93,7 +102,12 @@ unless File.exist?(tracking_path)
   warn '  from one whose claims are all unverified. Restore it, or empty its list.'
   exit 1
 end
-tracking = YAML.safe_load(File.read(tracking_path)) || {}
+begin
+  tracking = YAML.safe_load(File.read(tracking_path)) || {}
+rescue Psych::Exception => e
+  warn "ERROR: #{tracking_path} cannot be parsed as YAML: #{e.message}"
+  exit 1
+end
 # A non-mapping top level ([] or a bare string) would crash on .key? below —
 # nonzero, but a backtrace is not a diagnosis. Same fail-closed, better words.
 unless tracking.is_a?(Hash)

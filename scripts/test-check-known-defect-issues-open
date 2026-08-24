@@ -99,7 +99,7 @@ failures = []
 # case gets a corpus — empty by default — so the sweep can never read the REAL
 # repository against a synthetic registry, which would fail every case here on
 # facts about the tree rather than about the checker.
-def run_checker(allowlist:, tracking: { "prose_tracking_issues" => [] }, sweep: {}, states: nil, gh_fail: false, repo: nil, github_repository: nil)
+def run_checker(allowlist: { "sdk_routes_known_defective" => [], "bc3_routes_not_modeled" => [] }, allowlist_raw: nil, tracking: { "prose_tracking_issues" => [] }, tracking_raw: nil, sweep: {}, states: nil, gh_fail: false, repo: nil, github_repository: nil)
   Dir.mktmpdir("known-defect-selftest") do |dir|
     path_dir = File.join(dir, "bin")
     Dir.mkdir(path_dir)
@@ -112,7 +112,9 @@ def run_checker(allowlist:, tracking: { "prose_tracking_issues" => [] }, sweep: 
     end
 
     allow_path = File.join(dir, "bc3-route-allowlist.yml")
-    File.write(allow_path, YAML.dump(allowlist))
+    # allowlist_raw writes bytes verbatim — the malformed-SYNTAX cases need a
+    # file YAML.dump could never produce.
+    File.write(allow_path, allowlist_raw || YAML.dump(allowlist))
 
     # Pointed at a temp file even when the case supplies nothing, so the
     # checker can never read the repository's REAL registry mid-self-test —
@@ -121,7 +123,12 @@ def run_checker(allowlist:, tracking: { "prose_tracking_issues" => [] }, sweep: 
     tracking_path = File.join(dir, "tracking-issues.yml")
     # nil means "do not create the file", which is how the missing-registry
     # case is expressed without deleting the repository's real one.
-    File.write(tracking_path, YAML.dump(tracking)) unless tracking.nil?
+    # tracking_raw writes bytes verbatim, for the malformed-syntax case.
+    if tracking_raw
+      File.write(tracking_path, tracking_raw)
+    elsif !tracking.nil?
+      File.write(tracking_path, YAML.dump(tracking))
+    end
 
     sweep_root = File.join(dir, "corpus")
     Dir.mkdir(sweep_root)
@@ -441,6 +448,20 @@ expect_fail(failures, "N+6c. a non-mapping registry file fails with a diagnosis"
 out, status, _ = run_checker(allowlist: [ "not", "a", "mapping" ])
 expect_fail(failures, "N+6d. a non-mapping allowlist fails with a diagnosis", out, status,
             "must be a YAML mapping")
+
+# --- N+6e/f. YAML that does not PARSE fails with the gate's words too ------------
+#
+# Psych::SyntaxError (and safe_load's tag/alias refusals) exited through a
+# backtrace: nonzero, fail-closed, and useless — naming a psych.rb line rather
+# than the file to fix. Same verdict, the gate's own diagnosis.
+
+out, status, _ = run_checker(tracking_raw: "prose_tracking_issues: [unclosed\n")
+expect_fail(failures, "N+6e. unparseable registry YAML fails with a diagnosis", out, status,
+            "cannot be parsed as YAML")
+
+out, status, _ = run_checker(allowlist_raw: "sdk_routes_known_defective: [unclosed\n")
+expect_fail(failures, "N+6f. unparseable allowlist YAML fails with a diagnosis", out, status,
+            "cannot be parsed as YAML")
 
 # --- N+7. A registry file without the key fails -----------------------------------
 #
