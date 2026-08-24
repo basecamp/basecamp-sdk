@@ -481,7 +481,6 @@ func (l *loop) pollPage(at *attempt, cursor Cursor) pollAttempt {
 	}()
 	for {
 		staleTimer, staleGen := at.lc.stale.current()
-		stale := false
 		select {
 		case r := <-done:
 			return pollAttempt{page: r.page, err: r.err}
@@ -498,7 +497,7 @@ func (l *loop) pollPage(at *attempt, cursor Cursor) pollAttempt {
 				// window evaluate just re-armed.
 				continue
 			}
-			l.deferred, stale = &deferredFrame{stale: true, age: age}, true
+			l.deferred = &deferredFrame{stale: true, age: age}
 		case item, ok := <-at.lc.frames:
 			if !ok {
 				l.deferred = &deferredFrame{closed: true}
@@ -519,20 +518,24 @@ func (l *loop) pollPage(at *attempt, cursor Cursor) pollAttempt {
 		// read before the hook fires so nothing observing the deferral can
 		// race the deadline into existence behind it.
 		deadline := l.cfg.clock.Now().Add(l.cfg.staleAfter)
-		if stale {
-			// The firing this branch consumed was the wait's own wake source,
-			// and an authoritative expiry latches — so without this there is
-			// nothing left to wake the grace phase at all, and the bounded wait
-			// becomes unbounded again. Armed BEFORE the hook, so a test that
-			// rendezvouses on the deferral cannot advance past a wake that is
-			// not yet armed. The distance is the remainder to the deadline —
-			// here, at the deferral itself, the full window.
-			at.lc.stale.graceWake(l.cfg.staleAfter)
-		}
+		// The grace wake is armed HERE, at the deferral, for EVERY deferred
+		// kind — not only the stale one. graceWake's latch is what buys both
+		// of the phase's immunities: it refuses every later pump reset, so a
+		// peer whose last frame lands just short of the deadline cannot push
+		// the only remaining wake to frameTime + staleAfter (a deferred
+		// disconnect used to ride the ordinary window and outlive the phase
+		// by almost another full one), and a latched window cannot be
+		// suspended. The deferred outcome is untouched — the walk still
+		// dispatches the PARKED item, never a substituted staleness verdict.
+		// Armed BEFORE the hook, so a test that rendezvouses on the deferral
+		// cannot advance past a wake that is not yet armed; the distance is
+		// the remainder to the deadline — here, at the deferral itself, the
+		// full window.
+		at.lc.stale.graceWake(l.cfg.staleAfter)
 		if l.hooks.frameDeferred != nil {
 			l.hooks.frameDeferred()
 		}
-		return l.awaitSupersededPoll(at, done, deadline, stale)
+		return l.awaitSupersededPoll(at, done, deadline)
 	}
 }
 
@@ -602,9 +605,9 @@ func (l *loop) pollPage(at *attempt, cursor Cursor) pollAttempt {
 // window that a peer CAN push, but the post-select check runs on every wake,
 // and a re-armed window under a blocked pump still delivers one within a window
 // — so a peer that keeps sending can move a wake, never the verdict.
-func (l *loop) awaitSupersededPoll(at *attempt, done <-chan pollResult, deadline time.Time, stale bool) pollAttempt {
+func (l *loop) awaitSupersededPoll(at *attempt, done <-chan pollResult, deadline time.Time) pollAttempt {
 	for {
-		staleTimer, staleGen := at.lc.stale.current()
+		staleTimer, _ := at.lc.stale.current()
 		select {
 		case r := <-done:
 			return pollAttempt{page: r.page, err: r.err}
@@ -612,29 +615,14 @@ func (l *loop) awaitSupersededPoll(at *attempt, done <-chan pollResult, deadline
 			return pollAttempt{superseded: true}
 		case <-at.lc.stale.rearmed():
 		case <-staleTimer.C():
-			if stale {
-				// The verdict is already rendered and parked; this firing is a
-				// wake and nothing else, so nothing re-evaluates it. Re-arming
-				// keeps a wake in hand for the next turn — for the REMAINDER
-				// to the deadline, so the last wake lands at the deadline
-				// itself rather than a window past it.
-				at.lc.stale.graceWake(deadline.Sub(l.cfg.clock.Now()))
-			} else if _, ok := at.lc.stale.evaluate(staleGen); ok {
-				// An authoritative expiry during another outcome's grace
-				// phase is ALSO only a wake. The deferral slot already holds
-				// the socket's verdict — a read error or a disconnect frame,
-				// which does not reset staleness — so the pre-existing
-				// window, mostly spent by the time that outcome landed, can
-				// fire here almost immediately, and abandoning the call on it
-				// granted the poll whatever sliver of the old window remained
-				// instead of the phase §23 measures from the deferral. The
-				// expiry adds nothing the deferred outcome's teardown will
-				// not do; graceWake latches it and keeps the next wake in
-				// hand — armed for the remainder to the deadline, which is
-				// what decides. A firing that lands late in the phase must
-				// not push the only remaining wake a full window past it.
-				at.lc.stale.graceWake(deadline.Sub(l.cfg.clock.Now()))
-			}
+			// The wait's own latched wake, armed at the deferral for every
+			// deferred kind — or, in a narrow race, the old window's final
+			// firing before the latch replaced it. Either way the verdict is
+			// already parked in the deferral slot, so a firing here is a
+			// wake and nothing else; re-arming for the REMAINDER keeps the
+			// next wake in hand and lands the last one at the deadline
+			// itself, never a window past it. The deadline below decides.
+			at.lc.stale.graceWake(deadline.Sub(l.cfg.clock.Now()))
 		}
 		if l.hooks.supersededWake != nil {
 			l.hooks.supersededWake()
