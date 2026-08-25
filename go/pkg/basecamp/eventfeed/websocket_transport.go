@@ -96,8 +96,14 @@ func cableProxy(req *http.Request) (*url.URL, error) {
 //
 // Field by field: Proxy is cableProxy, not http.ProxyFromEnvironment. No Jar,
 // so no cookie is ever attached. No TLSClientConfig, so verification uses the
-// system roots and no client certificate is presented. The timeouts mirror
-// http.DefaultTransport's, which they exist to replace rather than to tune.
+// system roots and no client certificate is presented. The timeouts and idle
+// bounds mirror http.DefaultTransport's, which they exist to replace rather
+// than to tune — and the idle bounds must be spelled out, because the zero
+// values are UNBOUNDED, not defaults: the cable origin is server-selected
+// per dial, so a rotating or hostile mint topology hands every reconnect a
+// fresh host, each failed (non-101) handshake parks reusable idle
+// connections, and with no cap and no timeout nothing ever closes them —
+// file-descriptor exhaustion on a long-running feed.
 var cableHTTPClient = &http.Client{
 	Transport: &http.Transport{
 		Proxy: cableProxy,
@@ -105,6 +111,8 @@ var cableHTTPClient = &http.Client{
 			Timeout:   30 * time.Second,
 			KeepAlive: 30 * time.Second,
 		}).DialContext,
+		MaxIdleConns:          100,
+		IdleConnTimeout:       90 * time.Second,
 		TLSHandshakeTimeout:   10 * time.Second,
 		ExpectContinueTimeout: 1 * time.Second,
 		// The handshake must be HTTP/1.1: the upgrade depends on hijacking

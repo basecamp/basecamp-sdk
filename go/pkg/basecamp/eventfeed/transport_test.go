@@ -310,6 +310,17 @@ func TestCableHTTPClient_IsWiredShut(t *testing.T) {
 	if got, want := reflect.ValueOf(tr.Proxy).Pointer(), reflect.ValueOf(cableProxy).Pointer(); got != want {
 		t.Error("cableHTTPClient.Transport.Proxy is not cableProxy; cleartext dials would proxy the ticket")
 	}
+	// The zero values here are UNBOUNDED, not defaults: a rotating or
+	// hostile mint topology hands the reconnect cycle a new cable host per
+	// dial, each failed (non-101) handshake parks reusable idle
+	// connections, and nothing ever closes them — file-descriptor
+	// exhaustion on a long-running feed.
+	if tr.MaxIdleConns <= 0 {
+		t.Error("cableHTTPClient has no idle-connection cap; failed handshakes across rotating hosts accumulate sockets without bound")
+	}
+	if tr.IdleConnTimeout <= 0 {
+		t.Error("cableHTTPClient never times idle connections out; a parked handshake socket lives forever")
+	}
 }
 
 // TestCheckCableURL_NeverEchoesServerText pins the closed reason vocabulary.
