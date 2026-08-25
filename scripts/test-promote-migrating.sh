@@ -7,8 +7,7 @@ set -u
 SCRIPT="$(dirname "$0")/promote-migrating.sh"
 # Pin the current-version authority so the repo's real constant cannot leak
 # into scratch-file cases; individual cases override it to probe the gate.
-export PROMOTE_MIGRATING_CURRENT=0.1.0
-# Pin the released-versions authority too: the suite must not depend on the
+# Pin the shipped-releases authority: the suite must not depend on the
 # checkout's real tag state (CI checkouts are shallow and tagless).
 export PROMOTE_MIGRATING_RELEASED="0.14.0 0.15.0"
 DIR=$(mktemp -d)
@@ -85,7 +84,7 @@ bash "$SCRIPT" 0.9.0 "$DIR/h.md" >/dev/null 2>&1; check "promote refuses backwar
 
 # 13. a two-digit component beats a one-digit one (component-wise, not lexicographic)
 fresh i.md "# Unreleased" "# v0.9.0"
-bash "$SCRIPT" 0.10.0 "$DIR/i.md" >/dev/null 2>&1; check "0.10.0 is newer than 0.9.0" 0 $?
+PROMOTE_MIGRATING_RELEASED="0.9.0" bash "$SCRIPT" 0.10.0 "$DIR/i.md" >/dev/null 2>&1; check "0.10.0 is newer than 0.9.0" 0 $?
 grep -qxF "# v0.10.0" "$DIR/i.md"; check "0.10.0 promoted" 0 $?
 
 # 14. a misplaced "# Unreleased" below the promoted top is refused, both branches
@@ -93,17 +92,19 @@ fresh j.md "# v0.16.0" "# Unreleased" "# v0.15.0"
 bash "$SCRIPT" 0.16.0 "$DIR/j.md" >/dev/null 2>&1; check "idempotent branch refuses misplaced Unreleased" 1 $?
 bash "$SCRIPT" --check 0.16.1 "$DIR/j.md" >/dev/null 2>&1; check "no-notes branch refuses misplaced Unreleased" 1 $?
 
-# 15. the version constant, not the headings, is the rollback authority:
-#     after a no-notes release the newest heading lags the SDK version, and a
-#     bump between them must still refuse (the round-two P1)
+# 15. the shipped tags, not the headings or the constants, are the rollback
+#     authority: after a no-notes 0.16.0 release the newest heading lags, and
+#     a bump or a hand-edited --check between them must still refuse
 fresh k.md "# v0.15.0" "# v0.14.0"
-PROMOTE_MIGRATING_CURRENT=0.16.0 bash "$SCRIPT" 0.15.5 "$DIR/k.md" >/dev/null 2>&1
-check "no-notes bump below current SDK version refused" 1 $?
+PROMOTE_MIGRATING_RELEASED="0.15.0 0.16.0" bash "$SCRIPT" 0.15.5 "$DIR/k.md" >/dev/null 2>&1
+check "no-notes bump below the newest shipped release refused" 1 $?
 fresh l.md "# Unreleased" "# v0.15.0"
-PROMOTE_MIGRATING_CURRENT=0.16.0 bash "$SCRIPT" 0.15.5 "$DIR/l.md" >/dev/null 2>&1
-check "promote below current SDK version refused" 1 $?
-PROMOTE_MIGRATING_CURRENT=0.16.0 bash "$SCRIPT" --check 0.16.0 "$DIR/k.md" >/dev/null 2>&1
-check "--check at the current version still accepted" 0 $?
+PROMOTE_MIGRATING_RELEASED="0.15.0 0.16.0" bash "$SCRIPT" 0.15.5 "$DIR/l.md" >/dev/null 2>&1
+check "promote below the newest shipped release refused" 1 $?
+PROMOTE_MIGRATING_RELEASED="0.15.0 0.16.0" bash "$SCRIPT" --check 0.15.5 "$DIR/k.md" >/dev/null 2>&1
+check "hand-edited constants cannot sneak an unshipped rollback past --check" 1 $?
+PROMOTE_MIGRATING_RELEASED="0.15.0 0.16.0" bash "$SCRIPT" --check 0.16.5 "$DIR/k.md" >/dev/null 2>&1
+check "--check past the newest shipped release accepted" 0 $?
 
 # 16. more than one "# Unreleased" heading is refused before any mutation
 fresh m.md "# Unreleased" "# v0.15.0"
@@ -112,47 +113,49 @@ cp "$DIR/m.md" "$DIR/m.before"
 bash "$SCRIPT" 0.16.0 "$DIR/m.md" >/dev/null 2>&1; check "duplicate Unreleased refused" 1 $?
 diff -q "$DIR/m.md" "$DIR/m.before" >/dev/null; check "duplicate refusal leaves file untouched" 0 $?
 
-# 17. an unresolvable current version is fatal, not fail-open: a copy of the
-#     script outside the repo cannot find version.go
+# 17. an unobtainable shipped list is fatal, not fail-open: a copy of the
+#     script outside the repo has no origin to ask
 cp "$SCRIPT" "$DIR/stray-promote.sh"
 fresh n.md "# Unreleased" "# v0.15.0"
-env -u PROMOTE_MIGRATING_CURRENT bash "$DIR/stray-promote.sh" 0.16.0 "$DIR/n.md" >/dev/null 2>&1
-check "unreadable current version is fatal" 1 $?
+env -u PROMOTE_MIGRATING_RELEASED bash "$DIR/stray-promote.sh" 0.16.0 "$DIR/n.md" >/dev/null 2>&1
+check "unobtainable shipped list is fatal" 1 $?
 
 # 18. promoting NEW notes to the version already shipped is refused: after a
 #     no-notes 0.16.0 release, a fresh Unreleased belongs to a later release
 fresh o.md "# Unreleased" "# v0.15.0"
-PROMOTE_MIGRATING_CURRENT=0.16.0 bash "$SCRIPT" 0.16.0 "$DIR/o.md" >/dev/null 2>&1
+PROMOTE_MIGRATING_RELEASED="0.15.0 0.16.0" bash "$SCRIPT" 0.16.0 "$DIR/o.md" >/dev/null 2>&1
 check "equal-version promotion of new notes refused" 1 $?
 
 # 19. correcting a bump before commit re-promotes the pending heading (no tag
-#     names v0.99.0) instead of stranding its notes; --check refuses the same
-#     state instead of calling it no-notes
+#     names v0.99.0) instead of stranding its notes — in EITHER direction —
+#     and --check refuses the state instead of calling it no-notes
 fresh p.md "# v0.99.0" "# v0.15.0"
-PROMOTE_MIGRATING_CURRENT=0.99.0 bash "$SCRIPT" 0.99.1 "$DIR/p.md" >/dev/null 2>&1
+bash "$SCRIPT" 0.99.1 "$DIR/p.md" >/dev/null 2>&1
 check "pending heading re-promoted on corrected bump" 0 $?
 grep -qxF "# v0.99.1" "$DIR/p.md" && ! grep -qxF "# v0.99.0" "$DIR/p.md"
 check "pending heading renamed" 0 $?
+fresh p2.md "# v0.99.0" "# v0.15.0"
+bash "$SCRIPT" 0.17.0 "$DIR/p2.md" >/dev/null 2>&1
+check "pending heading re-promoted DOWNWARD to a still-forward target" 0 $?
+grep -qxF "# v0.17.0" "$DIR/p2.md" && ! grep -qxF "# v0.99.0" "$DIR/p2.md"
+check "downward correction renamed the heading" 0 $?
 fresh q.md "# v0.99.0" "# v0.15.0"
-PROMOTE_MIGRATING_CURRENT=0.99.0 bash "$SCRIPT" --check 0.99.1 "$DIR/q.md" >/dev/null 2>&1
+bash "$SCRIPT" --check 0.99.1 "$DIR/q.md" >/dev/null 2>&1
 check "--check refuses a pending unreleased heading" 1 $?
 
-# 20. a malformed current version is fatal WITH the authority diagnostic —
-#     the pre-fix script also exited 1 here, but only because the arithmetic
-#     error happened to land in the blocking direction; the contract is the
-#     explicit refusal, not a lucky error path
+# 20. a malformed target is refused with the format diagnostic
 fresh r.md "# Unreleased" "# v0.15.0"
-ERR=$(PROMOTE_MIGRATING_CURRENT=dev bash "$SCRIPT" 0.16.0 "$DIR/r.md" 2>&1 >/dev/null)
-check "malformed current version is fatal" 1 $?
-printf '%s' "$ERR" | grep -q "is not X.Y.Z"; check "refusal names the malformed authority" 0 $?
+ERR=$(bash "$SCRIPT" dev "$DIR/r.md" 2>&1 >/dev/null)
+check "malformed target version is fatal" 1 $?
+printf '%s' "$ERR" | grep -q "is not X.Y.Z"; check "refusal names the malformed target" 0 $?
 
 # 21. a checkout that knows no release tags fails closed when release status
 #     matters, instead of renaming real history as "pending"
 fresh s.md "# v0.15.0" "# v0.14.0"
-PROMOTE_MIGRATING_CURRENT=0.15.0 PROMOTE_MIGRATING_RELEASED= bash "$SCRIPT" 0.15.1 "$DIR/s.md" >/dev/null 2>&1
+PROMOTE_MIGRATING_RELEASED= bash "$SCRIPT" 0.15.1 "$DIR/s.md" >/dev/null 2>&1
 check "tagless checkout fails closed on the pending question" 1 $?
 cp "$DIR/s.md" "$DIR/s.before" 2>/dev/null
-PROMOTE_MIGRATING_CURRENT=0.15.0 PROMOTE_MIGRATING_RELEASED= bash "$SCRIPT" 0.15.1 "$DIR/s.md" >/dev/null 2>&1 || true
+PROMOTE_MIGRATING_RELEASED= bash "$SCRIPT" 0.15.1 "$DIR/s.md" >/dev/null 2>&1 || true
 diff -q "$DIR/s.md" "$DIR/s.before" >/dev/null; check "tagless refusal leaves the file untouched" 0 $?
 
 # 22. an already-tagged target cannot pass --check, whatever the headings say
@@ -176,21 +179,21 @@ git -C "$FIX" tag v0.6.0   # local only: never pushed
 FSCRIPT="$FIX/scripts/promote-migrating.sh"
 
 fresh t1.md "# v0.5.0" "# v0.4.0"
-env -u PROMOTE_MIGRATING_CURRENT -u PROMOTE_MIGRATING_RELEASED bash "$FSCRIPT" 0.6.1 "$DIR/t1.md" >/dev/null 2>&1
+env -u PROMOTE_MIGRATING_RELEASED bash "$FSCRIPT" 0.6.1 "$DIR/t1.md" >/dev/null 2>&1
 check "remote-present tag reads as released (real ls-remote)" 0 $?
 
 fresh t2.md "# v0.6.0" "# v0.5.0"
-env -u PROMOTE_MIGRATING_CURRENT -u PROMOTE_MIGRATING_RELEASED bash "$FSCRIPT" 0.6.1 "$DIR/t2.md" >/dev/null 2>&1
+env -u PROMOTE_MIGRATING_RELEASED bash "$FSCRIPT" 0.6.1 "$DIR/t2.md" >/dev/null 2>&1
 check "local-only tag reads as pending (re-promoted)" 0 $?
 grep -qxF "# v0.6.1" "$DIR/t2.md"; check "failed-push residue heading carried forward" 0 $?
 
 fresh t3.md "# v0.5.0" "# v0.4.0"
-env -u PROMOTE_MIGRATING_CURRENT -u PROMOTE_MIGRATING_RELEASED bash "$FSCRIPT" --check 0.5.0 "$DIR/t3.md" >/dev/null 2>&1
+env -u PROMOTE_MIGRATING_RELEASED bash "$FSCRIPT" --check 0.5.0 "$DIR/t3.md" >/dev/null 2>&1
 check "real remote refuses an already-tagged --check target" 1 $?
 
 git -C "$FIX" remote set-url origin "$DIR/no-such-origin.git"
 fresh t4.md "# v0.5.0" "# v0.4.0"
-env -u PROMOTE_MIGRATING_CURRENT -u PROMOTE_MIGRATING_RELEASED bash "$FSCRIPT" 0.6.1 "$DIR/t4.md" >/dev/null 2>&1
+env -u PROMOTE_MIGRATING_RELEASED bash "$FSCRIPT" 0.6.1 "$DIR/t4.md" >/dev/null 2>&1
 check "unreachable remote fails closed" 1 $?
 
 # 24. fenced examples are prose to a reader and NOTHING to the heading
