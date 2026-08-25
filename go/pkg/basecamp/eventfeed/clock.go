@@ -104,8 +104,13 @@ func (st *systemTimer) C() <-chan time.Time {
 
 func (st *systemTimer) Stop() bool {
 	stopped := st.timer.Stop()
-	if stopped {
-		st.clock.remove(st)
-	}
+	// Removed on BOTH verdicts. time.Timer.Stop reports false the moment the
+	// firing callback is started, but that callback may still be parked on
+	// the registry lock ahead of its own remove — and a caller that just
+	// tore an attempt down asserts exact outstanding-timer sets immediately.
+	// Whoever loses the race still removes: remove is idempotent, so the
+	// entry goes exactly once, and after Stop returns the timer is no longer
+	// outstanding on either verdict.
+	st.clock.remove(st)
 	return stopped
 }
