@@ -1,6 +1,7 @@
 package eventfeed
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -382,10 +383,41 @@ func (s *FileCheckpointStore) read() (map[string]string, bool, error) {
 		return nil, false, fmt.Errorf(
 			"eventfeed: checkpoint store %s is not valid UTF-8; refusing to load mutated positions", s.path)
 	}
+	// The escape door into the same mutation: "\ud800" is pure ASCII, so
+	// the byte gate above passes it, and the decoder would U+FFFD it just
+	// the same. The gate claims corruption detection, so this door closes
+	// with the other one (hasLoneSurrogateEscape).
+	if hasLoneSurrogateEscape(data) {
+		return nil, false, fmt.Errorf(
+			"eventfeed: checkpoint store %s carries a lone-surrogate escape; refusing to load mutated positions", s.path)
+	}
 	var entries map[string]string
 	if err := json.Unmarshal(data, &entries); err != nil {
 		return nil, false, fmt.Errorf(
 			"eventfeed: checkpoint store %s is not a JSON object of positions: %w", s.path, err)
+	}
+	// encoding/json keeps the LAST value for a duplicated key without error,
+	// so a store naming one decoded FlatKey twice loaded whichever position
+	// happened to be written later — ambiguity resumed as if it were data.
+	// The decoder's own token stream counts the keys it decoded, so two
+	// SPELLINGS that collide only after escape resolution are seen too; a
+	// store the unmarshal above accepted is exactly {string: string, ...},
+	// so the token count is 2 pairs per entry and any surplus is a
+	// collision.
+	dec := json.NewDecoder(bytes.NewReader(data))
+	strTokens := 0
+	for {
+		tok, terr := dec.Token()
+		if terr != nil {
+			break
+		}
+		if _, isString := tok.(string); isString {
+			strTokens++
+		}
+	}
+	if strTokens != 2*len(entries) {
+		return nil, false, fmt.Errorf(
+			"eventfeed: checkpoint store %s repeats a key; refusing to choose between its positions", s.path)
 	}
 	if entries == nil {
 		// JSON `null` unmarshals into a nil map without error. A store that
