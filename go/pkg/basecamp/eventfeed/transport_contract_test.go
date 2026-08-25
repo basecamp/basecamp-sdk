@@ -9,6 +9,7 @@
 package eventfeed_test
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"strings"
@@ -35,6 +36,11 @@ type contractPeerConn interface {
 	// Received reports the text frames the peer has received from the
 	// client, verbatim, in order.
 	Received() [][]byte
+	// StallWrites makes the peer stop consuming the client's writes, so a
+	// client WriteFrame eventually blocks: the fake stalls its next write
+	// outright; the real peer stops reading, letting the socket buffers
+	// fill.
+	StallWrites()
 }
 
 // contractHarness wires the suite to one CableTransport implementation and
@@ -274,6 +280,60 @@ func runTransportContract(t *testing.T, newHarness func(t *testing.T) contractHa
 		}
 	})
 
+	t.Run("close unblocks a pending write", func(t *testing.T) {
+		// The already-running direction of the Close contract, which the
+		// write-after-close assertion above cannot see: a WriteFrame parked
+		// mid-call must be released. The close lands only once the writer
+		// has made no progress for a beat — proof a write is IN FLIGHT, not
+		// merely queued behind the close.
+		h := newHarness(t)
+		conn, peer, err := h.Dial(context.Background(), "/cable", 1<<20)
+		if err != nil {
+			t.Fatalf("dial: %v", err)
+		}
+		peer.StallWrites()
+		wrote, progress := startBlockedWriter(context.Background(), conn)
+		waitUntilWriteStalled(t, progress, wrote)
+		// Over a jammed socket the graceful handshake may time out on its
+		// budget; the close's own verdict is not what is under test.
+		_ = conn.Close(1000, "teardown")
+		select {
+		case err := <-wrote:
+			if err == nil {
+				t.Fatal("blocked write returned nil after local close, want error")
+			}
+			var ce *eventfeed.CloseError
+			if errors.As(err, &ce) {
+				t.Errorf("local close write error = *CloseError %v; CloseError is reserved for a peer close", ce)
+			}
+		case <-time.After(contractWatchdog):
+			t.Fatal("close did not unblock the pending write")
+		}
+	})
+
+	t.Run("context cancellation unblocks a pending write", func(t *testing.T) {
+		h := newHarness(t)
+		conn, peer, err := h.Dial(context.Background(), "/cable", 1<<20)
+		if err != nil {
+			t.Fatalf("dial: %v", err)
+		}
+		defer conn.Close(1000, "")
+		peer.StallWrites()
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		wrote, progress := startBlockedWriter(ctx, conn)
+		waitUntilWriteStalled(t, progress, wrote)
+		cancel()
+		select {
+		case err := <-wrote:
+			if !errors.Is(err, context.Canceled) {
+				t.Errorf("cancelled write error = %v, want context.Canceled", err)
+			}
+		case <-time.After(contractWatchdog):
+			t.Fatal("cancellation did not unblock the pending write")
+		}
+	})
+
 	t.Run("a non-positive max frame bytes is refused as usage", func(t *testing.T) {
 		// The seam has no unlimited mode: the parameter exists to bind the
 		// read cap inside the transport, so an invalid value must fail
@@ -347,6 +407,46 @@ func readFrameWithin(ctx context.Context, t *testing.T, conn eventfeed.CableConn
 	}
 }
 
+// startBlockedWriter writes 128 KiB frames in a loop until one fails,
+// reporting each success on progress and the final error on wrote. Against a
+// stalled peer the fake parks the first call; the real transport parks once
+// the kernel buffers fill — either way the loop ends up inside WriteFrame.
+func startBlockedWriter(ctx context.Context, conn eventfeed.CableConn) (wrote chan error, progress chan struct{}) {
+	wrote = make(chan error, 1)
+	// Capacity is the leash: the buffers jam megabytes before this fills.
+	progress = make(chan struct{}, 1024)
+	payload := bytes.Repeat([]byte("x"), 128<<10)
+	go func() {
+		for {
+			if err := conn.WriteFrame(ctx, payload); err != nil {
+				wrote <- err
+				return
+			}
+			progress <- struct{}{}
+		}
+	}()
+	return wrote, progress
+}
+
+// waitUntilWriteStalled returns once the writer has made no progress for a
+// beat — it is parked inside WriteFrame — and fails if it errors first or
+// never stalls at all.
+func waitUntilWriteStalled(t *testing.T, progress <-chan struct{}, wrote <-chan error) {
+	t.Helper()
+	deadline := time.After(contractWatchdog)
+	for {
+		select {
+		case <-progress:
+		case err := <-wrote:
+			t.Fatalf("writer failed before anything unblocked it: %v", err)
+		case <-time.After(150 * time.Millisecond):
+			return
+		case <-deadline:
+			t.Fatal("writes never stalled against a stalled peer")
+		}
+	}
+}
+
 // waitDone waits for wg under the watchdog.
 func waitDone(t *testing.T, wg *sync.WaitGroup, what string) {
 	t.Helper()
@@ -395,6 +495,11 @@ func (h *fakeHarness) DialedTargets() []string {
 // fakePeerConn is the far end of one feedtest.Conn.
 type fakePeerConn struct {
 	c *feedtest.Conn
+}
+
+// StallWrites implements contractPeerConn via the fake conn's own stall.
+func (p *fakePeerConn) StallWrites() {
+	p.c.StallWrites()
 }
 
 func (p *fakePeerConn) Serve(frame []byte) {
