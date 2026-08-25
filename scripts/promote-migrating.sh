@@ -23,7 +23,28 @@ FILE="${2:-MIGRATING.md}"
 # `grep -q` under pipefail turns a successful early match into a failure —
 # grep closes the pipe, awk dies on SIGPIPE writing the rest of a large
 # guide, and the pipeline reports the producer's 141.
-PROSE=$(awk '/^ {0,3}(```|~~~)/ { fenced = !fenced; next } !fenced' "$FILE")
+# CommonMark closes a fence only with the SAME delimiter character, at least
+# the opening run's length, and nothing but spaces after -- a ``` line inside
+# a ```` block, or a tilde fence inside a backtick fence, is content, and a
+# backtick opener may carry an info string but never backticks. The one fence
+# automaton is interpolated into every awk pass so the judgments and the
+# rewrites cannot disagree about what is prose. fenceline() returns truth for
+# any line the automaton consumed as fence delimiter or fenced content.
+FENCE_FN='function fenceline(   run, ch, len, rest) {
+  if (match($0, /^ {0,3}(```+|~~~+)/)) {
+    run = substr($0, RSTART, RLENGTH); gsub(/ /, "", run)
+    ch = substr(run, 1, 1); len = length(run)
+    rest = substr($0, RSTART + RLENGTH)
+    if (!fenced) {
+      if (ch != "`" || rest !~ /`/) { fenced = 1; fch = ch; flen = len }
+      return 1
+    }
+    if (ch == fch && len >= flen && rest ~ /^[ \t]*$/) fenced = 0
+    return 1
+  }
+  return fenced
+}'
+PROSE=$(awk "$FENCE_FN"'{ if (fenceline()) next } { print }' "$FILE")
 
 FIRST=$(grep -m1 -E '^# (Unreleased|v[0-9]+\.[0-9]+\.[0-9]+)$' <<< "$PROSE" || true)
 
@@ -72,6 +93,26 @@ released() {
   return 1
 }
 
+# refuse_abandoned SKIP: any UNSHIPPED version heading in the prose, other
+# than one heading equal to SKIP (the branch's own subject, skipped once), is
+# an abandoned promotion whose notes would be orphaned forever the moment a
+# release moves past it -- refuse until it is folded or re-titled. Every
+# branch calls this, so an orphan cannot hide below a promoted target either.
+refuse_abandoned() {
+  local skip="$1" h hv seen_skip=0
+  while IFS= read -r h; do
+    hv="${h#\# v}"
+    if [ -n "$skip" ] && [ "$hv" = "$skip" ] && [ "$seen_skip" = 0 ]; then
+      seen_skip=1
+      continue
+    fi
+    if ! released "$hv"; then
+      echo "ERROR: $FILE carries an unshipped section '# v$hv' -- an abandoned promotion; fold or re-title it before releasing past it." >&2
+      exit 1
+    fi
+  done < <(grep -E '^# v[0-9]+\.[0-9]+\.[0-9]+$' <<< "$PROSE" || true)
+}
+
 newest_shipped() {
   local max="" r
   for r in $SHIPPED; do
@@ -116,24 +157,15 @@ case "$FIRST" in
       echo "ERROR: $FILE already has a '# v$VERSION' section below '# Unreleased' — releasing $VERSION again would be a version rollback." >&2
       exit 1
     fi
-    # Any UNSHIPPED version heading below is an abandoned promotion whose
-    # notes would be orphaned forever the moment a fresh Unreleased promotes
-    # past it — resolve it (fold or re-title) before promoting.
-    while IFS= read -r h; do
-      hv="${h#\# v}"
-      if ! released "$hv"; then
-        echo "ERROR: $FILE carries an unshipped section '# v$hv' below '# Unreleased' — an abandoned promotion; fold or re-title it before promoting new notes past it." >&2
-        exit 1
-      fi
-    done < <(grep -E '^# v[0-9]+\.[0-9]+\.[0-9]+$' <<< "$PROSE" || true)
+    refuse_abandoned ""
     if [ "$MODE" = check ]; then
       echo "ERROR: $FILE still has an '# Unreleased' section — its notes would miss the release. Run 'make bump VERSION=$VERSION' first." >&2
       exit 1
     fi
-    awk -v v="# v$VERSION" 'BEGIN { done = 0 }
-      /^ {0,3}(```|~~~)/ { fenced = !fenced }
-      !fenced && !done && $0 == "# Unreleased" { print v; done = 1; next }
-      { print }' "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
+    awk "$FENCE_FN"'BEGIN { done = 0 }
+      { if (fenceline()) { print; next } }
+      !done && $0 == "# Unreleased" { print v; done = 1; next }
+      { print }' v="# v$VERSION" "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
     echo "Promoted '# Unreleased' -> '# v$VERSION' in $FILE"
     ;;
   "# v$VERSION")
@@ -141,6 +173,7 @@ case "$FIRST" in
       echo "ERROR: $FILE has a misplaced '# Unreleased' section below '# v$VERSION' — its notes would silently miss the release." >&2
       exit 1
     fi
+    refuse_abandoned "$VERSION"
     echo "$FILE: '# v$VERSION' is the newest section — promoted."
     ;;
   *)
@@ -149,6 +182,7 @@ case "$FIRST" in
       echo "ERROR: $FILE has a misplaced '# Unreleased' section below '$FIRST' — its notes would silently miss the release." >&2
       exit 1
     fi
+    refuse_abandoned "$TOP"
     if released "$TOP"; then
       # Legitimate: a release with nothing migration-worthy has no section,
       # per the guide's one-section-per-release-that-breaks-something rule.
@@ -164,10 +198,10 @@ case "$FIRST" in
         echo "ERROR: $FILE's newest section '# v$TOP' is promoted but unreleased — run 'make bump VERSION=$VERSION' to carry its notes forward." >&2
         exit 1
       fi
-      awk -v old="# v$TOP" -v v="# v$VERSION" 'BEGIN { done = 0 }
-        /^ {0,3}(```|~~~)/ { fenced = !fenced }
-        !fenced && !done && $0 == old { print v; done = 1; next }
-        { print }' "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
+      awk "$FENCE_FN"'BEGIN { done = 0 }
+        { if (fenceline()) { print; next } }
+        !done && $0 == old { print v; done = 1; next }
+        { print }' old="# v$TOP" v="# v$VERSION" "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
       echo "Re-promoted pending '# v$TOP' -> '# v$VERSION' in $FILE (v$TOP was never released)."
       exit 0
     fi

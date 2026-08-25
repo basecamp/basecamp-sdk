@@ -96,14 +96,14 @@ bash "$SCRIPT" --check 0.16.1 "$DIR/j.md" >/dev/null 2>&1; check "no-notes branc
 #     authority: after a no-notes 0.16.0 release the newest heading lags, and
 #     a bump or a hand-edited --check between them must still refuse
 fresh k.md "# v0.15.0" "# v0.14.0"
-PROMOTE_MIGRATING_RELEASED="0.15.0 0.16.0" bash "$SCRIPT" 0.15.5 "$DIR/k.md" >/dev/null 2>&1
+PROMOTE_MIGRATING_RELEASED="0.14.0 0.15.0 0.16.0" bash "$SCRIPT" 0.15.5 "$DIR/k.md" >/dev/null 2>&1
 check "no-notes bump below the newest shipped release refused" 1 $?
 fresh l.md "# Unreleased" "# v0.15.0"
-PROMOTE_MIGRATING_RELEASED="0.15.0 0.16.0" bash "$SCRIPT" 0.15.5 "$DIR/l.md" >/dev/null 2>&1
+PROMOTE_MIGRATING_RELEASED="0.14.0 0.15.0 0.16.0" bash "$SCRIPT" 0.15.5 "$DIR/l.md" >/dev/null 2>&1
 check "promote below the newest shipped release refused" 1 $?
-PROMOTE_MIGRATING_RELEASED="0.15.0 0.16.0" bash "$SCRIPT" --check 0.15.5 "$DIR/k.md" >/dev/null 2>&1
+PROMOTE_MIGRATING_RELEASED="0.14.0 0.15.0 0.16.0" bash "$SCRIPT" --check 0.15.5 "$DIR/k.md" >/dev/null 2>&1
 check "hand-edited constants cannot sneak an unshipped rollback past --check" 1 $?
-PROMOTE_MIGRATING_RELEASED="0.15.0 0.16.0" bash "$SCRIPT" --check 0.16.5 "$DIR/k.md" >/dev/null 2>&1
+PROMOTE_MIGRATING_RELEASED="0.14.0 0.15.0 0.16.0" bash "$SCRIPT" --check 0.16.5 "$DIR/k.md" >/dev/null 2>&1
 check "--check past the newest shipped release accepted" 0 $?
 
 # 16. more than one "# Unreleased" heading is refused before any mutation
@@ -123,7 +123,7 @@ check "unobtainable shipped list is fatal" 1 $?
 # 18. promoting NEW notes to the version already shipped is refused: after a
 #     no-notes 0.16.0 release, a fresh Unreleased belongs to a later release
 fresh o.md "# Unreleased" "# v0.15.0"
-PROMOTE_MIGRATING_RELEASED="0.15.0 0.16.0" bash "$SCRIPT" 0.16.0 "$DIR/o.md" >/dev/null 2>&1
+PROMOTE_MIGRATING_RELEASED="0.14.0 0.15.0 0.16.0" bash "$SCRIPT" 0.16.0 "$DIR/o.md" >/dev/null 2>&1
 check "equal-version promotion of new notes refused" 1 $?
 
 # 19. correcting a bump before commit re-promotes the pending heading (no tag
@@ -174,7 +174,7 @@ mkdir -p "$FIX/scripts" "$FIX/go/pkg/basecamp"
 cp "$SCRIPT" "$FIX/scripts/promote-migrating.sh"
 printf 'package basecamp\n\nconst Version = "0.6.0"\n' > "$FIX/go/pkg/basecamp/version.go"
 git -C "$FIX" -c user.email=t@t -c user.name=t commit -q --allow-empty -m fixture
-git -C "$FIX" tag v0.5.0 && git -C "$FIX" push -q origin v0.5.0
+git -C "$FIX" tag v0.4.0 && git -C "$FIX" tag v0.5.0 && git -C "$FIX" push -q origin v0.4.0 v0.5.0
 git -C "$FIX" tag v0.6.0   # local only: never pushed
 FSCRIPT="$FIX/scripts/promote-migrating.sh"
 
@@ -233,6 +233,36 @@ grep -qxF "# v0.16.0" "$DIR/x.md"; check "real heading became the version" 0 $?
 bash "$SCRIPT" 0.16.0 "$DIR/y.md" >/dev/null 2>&1
 check "tilde and indented fences are invisible to the judgments" 0 $?
 grep -qxF "# v0.16.0" "$DIR/y.md"; check "promotion landed past exotic fences" 0 $?
+
+# 29. CommonMark closes a fence only with the SAME delimiter at >= the
+#     opening length and no info string: a ``` line inside a ```` block is
+#     content, so a heading between them must stay hidden and the block must
+#     not "close early" and expose it to the judgments or the rewrites
+{ echo "# Migrating"; echo; echo '````'; echo '```'; echo "# Unreleased"; echo '```'; echo '````'; echo; echo "# Unreleased"; echo; echo "# v0.15.0"; } > "$DIR/z1.md"
+bash "$SCRIPT" 0.16.0 "$DIR/z1.md" >/dev/null 2>&1
+check "inner shorter fence does not close the outer block" 0 $?
+INNER_KEPT=$(awk '/^````/{f=!f; next} f && $0 == "# Unreleased"' "$DIR/z1.md" | wc -l | tr -d ' ')
+[ "$INNER_KEPT" = "1" ]; check "the quadruple-fenced example survived promotion" 0 $?
+grep -qxF "# v0.16.0" "$DIR/z1.md"; check "the real heading promoted past the nested block" 0 $?
+
+# 30. a tilde fence is closed by tildes, never backticks — and an opening
+#     fence may carry an info string
+{ echo "# Migrating"; echo; echo '~~~markdown'; echo '```'; echo "# v0.16.0"; echo '```'; echo '~~~'; echo; echo "# Unreleased"; echo; echo "# v0.15.0"; } > "$DIR/z2.md"
+bash "$SCRIPT" 0.16.0 "$DIR/z2.md" >/dev/null 2>&1
+check "backticks inside a tilde fence stay content" 0 $?
+grep -qxF "# v0.16.0" "$DIR/z2.md"; check "promotion landed past the info-string fence" 0 $?
+
+# 31. an abandoned unshipped section cannot hide below a promoted target:
+#     the idempotent branch and the pending branch refuse it too
+fresh z3.md "# v0.17.0" "# v0.16.0" "# v0.15.0"
+PROMOTE_MIGRATING_RELEASED="0.15.0" bash "$SCRIPT" 0.17.0 "$DIR/z3.md" >/dev/null 2>&1
+check "abandoned section below the promoted target refused" 1 $?
+fresh z4.md "# v0.17.0" "# v0.16.0" "# v0.15.0"
+cp "$DIR/z4.md" "$DIR/z4.before"
+PROMOTE_MIGRATING_RELEASED="0.15.0" bash "$SCRIPT" 0.18.0 "$DIR/z4.md" >/dev/null 2>&1
+check "abandoned section below a pending re-promotion refused" 1 $?
+diff -q "$DIR/z4.md" "$DIR/z4.before" >/dev/null
+check "the pending refusal left the file untouched" 0 $?
 
 if [ "$FAILS" -gt 0 ]; then
   echo "test-promote-migrating: $FAILS of $CASES assertions failed" >&2
