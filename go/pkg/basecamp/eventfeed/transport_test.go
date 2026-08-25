@@ -303,9 +303,13 @@ func TestCableHTTPClient_IsWiredShut(t *testing.T) {
 	if cableHTTPClient.CheckRedirect == nil {
 		t.Error("cableHTTPClient does not refuse redirects; a redirect can carry the ticket to an unvetted origin")
 	}
-	tr, ok := cableHTTPClient.Transport.(*http.Transport)
+	ri, ok := cableHTTPClient.Transport.(redirectInterceptor)
 	if !ok {
-		t.Fatalf("cableHTTPClient.Transport = %T, want *http.Transport", cableHTTPClient.Transport)
+		t.Fatalf("cableHTTPClient.Transport = %T, want redirectInterceptor — without it a redirect's Location reaches net/http's parser", cableHTTPClient.Transport)
+	}
+	tr, ok := ri.inner.(*http.Transport)
+	if !ok {
+		t.Fatalf("redirectInterceptor.inner = %T, want *http.Transport", ri.inner)
 	}
 	if tr.TLSClientConfig != nil {
 		t.Error("cableHTTPClient carries a TLSClientConfig; it must present no client certificate and use the system roots")
@@ -379,6 +383,35 @@ func TestDialFailure_RendersOnlyStandardStatuses(t *testing.T) {
 	}
 	if got := dialFailure(base, nil).Error(); strings.Contains(got, "answered") {
 		t.Errorf("no response, but the rendering claims one: %q", got)
+	}
+}
+
+// TestWebSocketTransport_RedirectWithMalformedLocationIsPolicy closes the
+// shape round 14 left transient: net/http parses a redirect's Location
+// BEFORE consulting CheckRedirect (client.go: the parse error returns with
+// no response retained), so neither the sentinel nor a status-code check
+// could see this case. The redirect class is intercepted at the
+// RoundTripper now, before the client's redirect machinery — and so before
+// the server-controlled Location is parsed at all — making every 3xx one
+// policy refusal.
+func TestWebSocketTransport_RedirectWithMalformedLocationIsPolicy(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Location", "%zz") // an invalid URL escape: url.Parse refuses it
+		w.WriteHeader(http.StatusFound)
+	}))
+	defer srv.Close()
+	_, err := (&WebSocketTransport{}).Dial(context.Background(), "ws"+strings.TrimPrefix(srv.URL, "http")+"/cable?ticket=sekrit-ticket-value", 1<<20)
+	if err == nil {
+		t.Fatal("dial succeeded against a redirect, want a policy refusal")
+	}
+	var derr *DialError
+	if !errors.As(err, &derr) || derr.Kind != DialPolicy {
+		t.Fatalf("dial error = %v, want DialPolicy — a redirect is permanent whatever its Location", err)
+	}
+	for _, leaked := range []string{"sekrit", "%zz"} {
+		if strings.Contains(err.Error(), leaked) {
+			t.Errorf("dial error %q carries %q", err, leaked)
+		}
 	}
 }
 

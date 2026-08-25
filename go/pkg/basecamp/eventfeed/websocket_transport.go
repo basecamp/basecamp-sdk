@@ -105,26 +105,57 @@ func cableProxy(req *http.Request) (*url.URL, error) {
 // connections, and with no cap and no timeout nothing ever closes them —
 // file-descriptor exhaustion on a long-running feed.
 var cableHTTPClient = &http.Client{
-	Transport: &http.Transport{
-		Proxy: cableProxy,
-		DialContext: (&net.Dialer{
-			Timeout:   30 * time.Second,
-			KeepAlive: 30 * time.Second,
-		}).DialContext,
-		MaxIdleConns:          100,
-		IdleConnTimeout:       90 * time.Second,
-		TLSHandshakeTimeout:   10 * time.Second,
-		ExpectContinueTimeout: 1 * time.Second,
-		// The handshake must be HTTP/1.1: the upgrade depends on hijacking
-		// the connection, which HTTP/2 does not offer.
-		ForceAttemptHTTP2: false,
-	},
-	// Every redirect is refused (a fresh mint returns the same redirecting
-	// URL, so retrying cannot help), and refusing them is also what stops a
-	// redirect from carrying the ticket to a second, unvetted origin.
+	Transport: redirectInterceptor{inner: cableTransport},
+	// The interceptor above makes this unreachable — a redirect-class
+	// response never enters the client's redirect machinery — but the
+	// backstop costs one line and catches the accident class: a future
+	// change swapping the Transport without carrying the wrapper.
 	CheckRedirect: func(*http.Request, []*http.Request) error {
 		return errRedirectRefused
 	},
+}
+
+// cableTransport is the cable handshake's inner HTTP transport; the client
+// reaches it only through redirectInterceptor.
+var cableTransport = &http.Transport{
+	Proxy: cableProxy,
+	DialContext: (&net.Dialer{
+		Timeout:   30 * time.Second,
+		KeepAlive: 30 * time.Second,
+	}).DialContext,
+	MaxIdleConns:          100,
+	IdleConnTimeout:       90 * time.Second,
+	TLSHandshakeTimeout:   10 * time.Second,
+	ExpectContinueTimeout: 1 * time.Second,
+	// The handshake must be HTTP/1.1: the upgrade depends on hijacking
+	// the connection, which HTTP/2 does not offer.
+	ForceAttemptHTTP2: false,
+}
+
+// redirectInterceptor refuses every redirect-class response at the
+// RoundTripper, BEFORE http.Client's redirect machinery can touch it. The
+// ordering is the point: the client parses a redirect's server-controlled
+// Location header before it consults CheckRedirect (net/http client.go), so
+// a malformed Location failed the dial with an untyped error and no
+// response — unclassifiable without the message-text matching the closed
+// vocabulary forbids, and therefore transient, re-minting forever against
+// an endpoint §23 says is a permanent policy refusal. Intercepted here,
+// every 3xx — valid Location, absent, malformed — is one sentinel, and the
+// Location is never parsed at all.
+type redirectInterceptor struct {
+	inner http.RoundTripper
+}
+
+func (ri redirectInterceptor) RoundTrip(req *http.Request) (*http.Response, error) {
+	resp, err := ri.inner.RoundTrip(req)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode >= 300 && resp.StatusCode < 400 {
+		_ = resp.Body.Close()
+		return nil, errRedirectRefused
+	}
+	return resp, nil
 }
 
 // Dial implements CableTransport: policy pre-check, handshake, read limit.
@@ -160,21 +191,11 @@ func (t *WebSocketTransport) Dial(ctx context.Context, wsURL string, maxFrameByt
 			return nil, cerr
 		}
 		if errors.Is(err, errRedirectRefused) {
-			// Never attach the underlying chain: its *url.Error renders the
-			// redirect target, which can carry the ticket too.
-			return nil, &DialError{Kind: DialPolicy, Reason: "cable URL redirected; redirects are refused"}
-		}
-		if resp != nil && resp.StatusCode >= 300 && resp.StatusCode < 400 {
-			// A 3xx with NO Location never invokes CheckRedirect — net/http
-			// hands it back as a normal answer — so the sentinel above
-			// cannot see it. It is still the redirect class, and permanence
-			// is what decides the kind: a fresh mint returns the same
-			// redirecting endpoint, so transient would re-mint forever. (A
-			// 3xx whose Location fails to PARSE errors inside net/http
-			// before CheckRedirect, untyped and with no response retained;
-			// classifying it would take message-text matching, which the
-			// closed vocabulary forbids — that one shape stays transient,
-			// bounded by the reconnect cycle.)
+			// The interceptor refused a redirect-class response — any 3xx,
+			// with a valid, absent, or malformed Location alike; the header
+			// is never parsed. Never attach the underlying chain: the
+			// client's *url.Error wrapper renders the ticket-bearing
+			// request URL.
 			return nil, &DialError{Kind: DialPolicy, Reason: "cable URL redirected; redirects are refused"}
 		}
 		return nil, &DialError{Kind: DialTransient, Err: dialFailure(err, resp)}
@@ -490,13 +511,20 @@ func (c *wsConn) Close(code int, reason string) error {
 	// goroutines — the opposite of a prompt teardown.
 	done := make(chan error, 1)
 	go func() { done <- c.conn.Close(websocket.StatusCode(code), reason) }()
+	// A stoppable timer, not time.After: a peer that acknowledges fast left
+	// the budget's native timer armed for the remainder of the second, one
+	// per clean close. (This is a native timer deliberately outside the
+	// injected Clock — Close must work after the loop's clock is gone — so
+	// hygiene here is Stop, not registry accounting.)
+	budget := time.NewTimer(closeGraceBudget)
+	defer budget.Stop()
 	select {
 	case err := <-done:
 		// The library closed the socket itself; cancelling now only releases
 		// the lifetime context.
 		c.endLifetime()
 		return err
-	case <-time.After(closeGraceBudget):
+	case <-budget.C:
 		c.endLifetime()
 		return errCloseNotAcknowledged
 	}
