@@ -350,6 +350,65 @@ func TestFileCheckpointStore_LoadRefusesInvalidUTF8Keys(t *testing.T) {
 	}
 }
 
+// Codex's cancellation arithmetic against the duplicate-key walk: a null
+// position contributes a KEY string token but no VALUE token, so one
+// duplicated key (surplus +2 string tokens) plus two null-valued entries
+// (deficit -2) balanced the old strTokens == 2*len(entries) equality — six
+// tokens, three entries — and the duplicated lineage loaded last-wins.
+// Duplicate detection must count MEMBERS, independent of value types.
+func TestFileCheckpointStore_DuplicateKeysAmongNullPositionsAreFailed(t *testing.T) {
+	key := storeKey("openclaw")
+	dup := strconv.Quote(key.FlatKey())
+	otherA := strconv.Quote(storeKey("other-a").FlatKey())
+	otherB := strconv.Quote(storeKey("other-b").FlatKey())
+	path := storePath(t)
+	writeStoreFile(t, path, "{"+dup+`:"pos-1",`+dup+`:"pos-2",`+otherA+":null,"+otherB+":null}")
+	position, ok, err := NewFileCheckpointStore(path).Load(context.Background(), key)
+	if err == nil {
+		t.Fatalf("Load() = (%q, %v, nil), want Failed — the null deficits canceled the duplicate surplus", position, ok)
+	}
+}
+
+// ſ (U+017F) case-folds together with S and s — one file on APFS or NTFS —
+// but strings.ToLower maps S and s to "s" while leaving ſ alone: two
+// spellings of one physical file, two mutexes, and the unserialized
+// read-modify-write the lock registry exists to prevent. The lock key must
+// use case FOLDING, not lowercasing.
+func TestStoreLockKey_FoldsCaseEquivalentSpellings(t *testing.T) {
+	base := storeLockKey("/tmp/store.json")
+	for _, spelling := range []string{"/tmp/Store.json", "/tmp/STORE.json", "/tmp/\u017Ftore.json"} {
+		if got := storeLockKey(spelling); got != base {
+			t.Errorf("storeLockKey(%q) = %q, want the same key as %q — these name one file on a case-insensitive volume", spelling, got, base)
+		}
+	}
+}
+
+// A store whose relative path cannot be resolved at construction must fail
+// on use, not fall back to the relative spelling: a lock key that changes
+// with the working directory is the identity-split class — after a chdir
+// the store operates on a DIFFERENT file while holding the old spelling's
+// lock, unserialized against a store constructed for the new file.
+func TestFileCheckpointStore_UnresolvablePathFailsOnUse(t *testing.T) {
+	sub := filepath.Join(t.TempDir(), "gone")
+	if err := os.Mkdir(sub, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	t.Chdir(sub)
+	if err := os.Remove(sub); err != nil {
+		t.Skipf("cannot remove the working directory on this platform: %v", err)
+	}
+	if _, err := os.Getwd(); err == nil {
+		t.Skip("platform still resolves a removed working directory")
+	}
+	store := NewFileCheckpointStore("relative-checkpoints.json")
+	if _, _, err := store.Load(context.Background(), storeKey("openclaw")); err == nil {
+		t.Error("Load over an unresolvable store path = nil error, want Failed — the path drifts with the next chdir")
+	}
+	if err := store.Save(context.Background(), storeKey("openclaw"), "pos-1"); err == nil {
+		t.Error("Save over an unresolvable store path = nil, want Failed")
+	}
+}
+
 // A position survives a fresh store instance over the same path: the point of
 // the store is durability across runs, not within one.
 func TestFileCheckpointStore_RoundTripAcrossInstances(t *testing.T) {
