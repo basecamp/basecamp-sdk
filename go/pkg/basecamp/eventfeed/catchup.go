@@ -1062,18 +1062,17 @@ func (l *loop) probeFatal(at *attempt) (cycleOutcome, bool) {
 // is actually reported.
 //
 // This is why the scan needs no queue and no share of pumpDepth: it retains
-// exactly what the single slot always retained. The published cable-lane
-// retention bound — (pump depth + 6 + liveBufferCapacity) × MAX_FRAME_BYTES — is
-// untouched, and so is the depth at which the pump blocks. The slot IS one of
-// that formula's frame-sized terms beyond the queue; the others are the frame
-// the pump has read and not yet handed off, and the frame the scan itself has
+// exactly what the single slot always retained. The published RETAINED bound
+// — (pump depth + 3 + liveBufferCapacity) × MAX_FRAME_BYTES — is untouched,
+// and so is the depth at which the pump blocks. The slot IS one of that
+// formula's frame-sized terms beyond the queue; the others are the frame the
+// pump has read and not yet handed off, and the frame the scan itself has
 // dequeued and not yet disposed of — the very receive that lets a blocked
-// pump refill the queue behind it, counted at FOUR, the decode chain's
-// representation count: wire bytes, parseFrame's envelope json.RawMessage
-// copy, decodeMessageEvent's per-field RawMessage map, and the decoded
-// Event's strings, each step's output allocated while its inputs are still
-// in hand. All are retained WHILE the queue is full, which is why they are
-// addends and not alternatives.
+// pump refill the queue behind it. All are retained WHILE the queue is full,
+// which is why they are addends and not alternatives. Decode-time TRANSIENTS
+// (the representation chain plus map/key overhead) ride per frame on top and
+// are deliberately not in the formula — SPEC §23 splits the accounting:
+// peak = retained + one frame's transient.
 func (l *loop) deferForDrain(d *deferredFrame) {
 	if l.deferred == nil {
 		l.deferred = d

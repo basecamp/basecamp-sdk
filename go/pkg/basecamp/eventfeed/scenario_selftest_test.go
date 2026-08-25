@@ -486,6 +486,27 @@ func TestScenarioDriverRejectsUnmodelledScripts(t *testing.T) {
 			wants:  "not modeled",
 		},
 		{
+			// The envelope has the same three states the config durations do:
+			// a pointer read "assertDelayMs": null as omission, skipping the
+			// assertion the script wrote.
+			name:   "fireTimer assertDelayMs explicit null",
+			script: `{"name":"x","description":"d","steps":[{"fireTimer":{"kind":"backoff","assertDelayMs":null}}],"finally":{"state":"closed"}}`,
+			wants:  "supplied as JSON null",
+		},
+		{
+			// min and max are schema-required: an absent member decoded to
+			// int64(0), inside the allowed range, silently converting the
+			// authored envelope into a different one.
+			name:   "fireTimer assertDelayMs missing min",
+			script: `{"name":"x","description":"d","steps":[{"fireTimer":{"kind":"backoff","assertDelayMs":{"max":10}}}],"finally":{"state":"closed"}}`,
+			wants:  "needs both min and max",
+		},
+		{
+			name:   "fireTimer assertDelayMs null member",
+			script: `{"name":"x","description":"d","steps":[{"fireTimer":{"kind":"backoff","assertDelayMs":{"min":null,"max":10}}}],"finally":{"state":"closed"}}`,
+			wants:  "supplied as JSON null",
+		},
+		{
 			// An advance is deterministic only from a scripted rendezvous:
 			// an action's completion can precede the timer arms its
 			// transition causes (expectConnect returns when the dial is

@@ -219,13 +219,39 @@ type advanceStep struct {
 }
 
 type fireTimerStep struct {
-	Kind          string         `json:"kind"`
-	AssertDelayMs *delayEnvelope `json:"assertDelayMs"`
+	Kind          string           `json:"kind"`
+	AssertDelayMs optionalEnvelope `json:"assertDelayMs"`
 }
 
+// delayEnvelope's members are three-state for the same reason the config
+// durations are: min and max are schema-REQUIRED integers, and a plain int64
+// read an absent or null member as 0 — inside the allowed range, silently
+// converting the authored envelope into a different one.
 type delayEnvelope struct {
-	Min int64 `json:"min"`
-	Max int64 `json:"max"`
+	Min optionalMs `json:"min"`
+	Max optionalMs `json:"max"`
+}
+
+// optionalEnvelope is assertDelayMs in the three JSON states: absent (no
+// assertion — the zero value), null (set, null — refused, the schema's type
+// is object), and a value (set, decoded strictly: the outer decoder's
+// DisallowUnknownFields does not reach inside a custom unmarshaler, so the
+// strictness is re-established here).
+type optionalEnvelope struct {
+	set  bool
+	null bool
+	env  delayEnvelope
+}
+
+func (o *optionalEnvelope) UnmarshalJSON(data []byte) error {
+	o.set = true
+	if string(data) == "null" {
+		o.null = true
+		return nil
+	}
+	dec := json.NewDecoder(bytes.NewReader(data))
+	dec.DisallowUnknownFields()
+	return dec.Decode(&o.env)
 }
 
 type expectCheckpointStep struct {
@@ -461,15 +487,27 @@ func decodeDirective(kind string, body json.RawMessage) (any, error) {
 		if err := decodeStrict(body, step); err != nil {
 			return nil, err
 		}
-		if step.AssertDelayMs != nil {
-			if step.AssertDelayMs.Min > step.AssertDelayMs.Max {
-				return nil, fmt.Errorf("assertDelayMs min %d exceeds max %d", step.AssertDelayMs.Min, step.AssertDelayMs.Max)
+		if step.AssertDelayMs.set {
+			if step.AssertDelayMs.null {
+				return nil, fmt.Errorf("assertDelayMs supplied as JSON null: the schema's type is object and null is not one — omit the key to fire without a delay assertion")
 			}
-			if err := checkScenarioMs("assertDelayMs min", step.AssertDelayMs.Min, 0); err != nil {
-				return nil, err
+			env := step.AssertDelayMs.env
+			for _, m := range []struct {
+				name string
+				o    optionalMs
+			}{{"min", env.Min}, {"max", env.Max}} {
+				if !m.o.set {
+					return nil, fmt.Errorf("assertDelayMs needs both min and max — the schema requires them, and an absent %s is a different envelope than the one authored", m.name)
+				}
+				if m.o.null {
+					return nil, fmt.Errorf("assertDelayMs %s supplied as JSON null: the schema's type is integer and null is not one", m.name)
+				}
+				if err := checkScenarioMs("assertDelayMs "+m.name, m.o.v, 0); err != nil {
+					return nil, err
+				}
 			}
-			if err := checkScenarioMs("assertDelayMs max", step.AssertDelayMs.Max, 0); err != nil {
-				return nil, err
+			if env.Min.v > env.Max.v {
+				return nil, fmt.Errorf("assertDelayMs min %d exceeds max %d", env.Min.v, env.Max.v)
 			}
 		}
 		return step, validateTimerKind(step.Kind)
