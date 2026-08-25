@@ -203,6 +203,11 @@ func TestParseFrame_InvalidFrames(t *testing.T) {
 		{"escaped lone surrogate in the type", `{"type":"p\ud800ing"}`},
 		{"escaped lone surrogate, uppercase hex", `{"type":"p\uD800ing"}`},
 		{"escaped lone low surrogate", `{"identifier":"x\udc00","message":{}}`},
+		// encoding/json keeps the LAST duplicated member silently, letting
+		// member order pick the control behavior: this frame dispatched as a
+		// protocol-fatal disconnect. Ambiguity is the parse shape.
+		{"duplicate type member", `{"type":"ping","type":"disconnect","reason":"invalid_event_stream_command"}`},
+		{"duplicate identifier member", `{"identifier":"a","identifier":"b","message":{}}`},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -519,6 +524,11 @@ func TestDecodeMessageEvent_Failures(t *testing.T) {
 	})
 	t.Run("malformed created_at", func(t *testing.T) {
 		assertEventDecodeFails(t, []byte(`{"id":105,"kind":"message","event_type":"message.created","action":"created","created_at":"yesterday","bucket_id":2,"creator_id":3,"recording_id":900,"visible_to_clients":false}`))
+	})
+	t.Run("duplicate member", func(t *testing.T) {
+		// Last-wins would silently let the second id decide which event this
+		// is; ambiguity about identity is the decode shape.
+		assertEventDecodeFails(t, []byte(`{"id":105,"kind":"message","event_type":"message.created","action":"created","created_at":"2026-08-01T12:00:00Z","bucket_id":2,"creator_id":3,"recording_id":900,"visible_to_clients":false,"id":106}`))
 	})
 	t.Run("wrong-case keys are absent keys", func(t *testing.T) {
 		// encoding/json binds struct fields case-insensitively, so the nine
