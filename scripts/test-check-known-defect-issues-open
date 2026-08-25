@@ -497,6 +497,24 @@ out, status, _ = run_checker(allowlist_raw: "")
 expect_pass(failures, "N+6j. an empty allowlist file is an empty allowlist", out, status,
             "no tracking issues referenced")
 
+# --- N+6k/l. A multi-document file fails instead of dropping documents -----------
+#
+# Psych.parse and safe_load read only the FIRST YAML document: everything
+# after a `---` separator — rows, entries, whole lists — silently vanishes
+# from the live check. A registry cannot mean "the first document of".
+
+out, status, _ = run_checker(
+  tracking_raw: "prose_tracking_issues: []\n---\nprose_tracking_issues:\n  - issue: 999\n    file: \"a.md\"\n    site: \"a hidden promise\"\n    mentions: 0\n"
+)
+expect_fail(failures, "N+6k. a multi-document registry fails instead of dropping rows", out, status,
+            "YAML documents")
+
+out, status, _ = run_checker(
+  allowlist_raw: "sdk_routes_known_defective: []\n---\nsdk_routes_known_defective:\n  - method: GET\n    path: /x\n    issue: 101\n"
+)
+expect_fail(failures, "N+6l. a multi-document allowlist fails instead of dropping entries", out, status,
+            "YAML documents")
+
 # --- N+7. A registry file without the key fails -----------------------------------
 #
 # The missing-FILE case (N+3) fails closed; a file whose key is misspelled or

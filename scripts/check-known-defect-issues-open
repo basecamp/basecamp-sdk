@@ -83,12 +83,22 @@ end
 # not just the root: a duplicated key inside one entry silently drops a field
 # the same way.
 def reject_duplicate_keys!(path, text)
-  doc = Psych.parse(text)
-  # Psych.parse("") returns false, not nil: every falsy result is an empty
-  # document with no keys to duplicate — the shape validation below speaks.
-  return unless doc
+  # The STREAM is parsed, not the first document: Psych.parse and safe_load
+  # read only the first, so everything after a `---` separator — rows,
+  # entries, whole lists — would silently vanish from the check. A registry
+  # cannot mean "the first document of".
+  stream = Psych.parse_stream(text)
+  docs = stream ? stream.children : []
+  if docs.length > 1
+    warn "ERROR: #{path} holds #{docs.length} YAML documents — only the first is ever read, so everything " \
+         'after the `---` separator would silently vanish from the check'
+    exit 1
+  end
+  # An empty file parses to no documents at all — nothing to walk; the shape
+  # validation below speaks.
+  return if docs.empty?
 
-  stack = [ doc.root ]
+  stack = [ docs.first ]
   until stack.empty?
     node = stack.pop
     if node.is_a?(Psych::Nodes::Mapping)
