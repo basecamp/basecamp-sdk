@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 )
 
 // The Action Cable protocol layer (SPEC.md §23 "Cable Protocol Details",
@@ -182,6 +183,16 @@ func (e *invalidFrameError) Error() string {
 // `reconnect`, and a typeless frame reads both correlation fields, so each is
 // still validated against the kind that consumes it.
 func parseFrame(data []byte) (frame, error) {
+	// Gated BEFORE any unmarshal: encoding/json does not refuse invalid
+	// UTF-8, it silently swaps each invalid sequence for U+FFFD. Ungated, a
+	// frame whose "type" carried a mangled byte decoded as an UNKNOWN type
+	// and was ignored as liveness, and a correlated payload's fields could
+	// mutate in place — the filestore refuses the same silent-mutation class
+	// on load. Mutated bytes are not a dialect; the frame stream has stopped
+	// meaning anything, which is the parse shape.
+	if !utf8.Valid(data) {
+		return frame{}, newInvalidFrameError(invalidFrameParse)
+	}
 	if !isJSONObject(data) {
 		// Non-object JSON is the parse shape by the same reasoning as
 		// unparseable bytes — the frame stream has stopped meaning anything —
@@ -309,6 +320,12 @@ func isJSONObject(data []byte) bool {
 // they arrive through the PollSource seam as Events — and the plain
 // encoding/json decoding of an Event keeps its 8-key tolerance.
 func decodeMessageEvent(raw json.RawMessage) (Event, error) {
+	// parseFrame's gate already covers a payload sliced from a gated frame;
+	// this one binds for any other caller, so the function is total on its
+	// own contract: no decoder-mutated routing field ever leaves it.
+	if !utf8.Valid(raw) {
+		return Event{}, newInvalidFrameError(invalidFrameEventDecode)
+	}
 	var p struct {
 		ID               *int64     `json:"id"`
 		Kind             *string    `json:"kind"`
