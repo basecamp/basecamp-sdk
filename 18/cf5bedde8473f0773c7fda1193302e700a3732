@@ -1,0 +1,19 @@
+go/pkg/basecamp/eventfeed/errors.go
+  s_964922bad4d340::t_21e2c7a0515f37 82-84
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "18cf5bedde8473f0773c7fda1193302e700a3732",
+  "prompts": {},
+  "sessions": {
+    "s_964922bad4d340": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b315b378-55b7-45e0-911e-b964de3ac103",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
