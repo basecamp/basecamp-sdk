@@ -398,6 +398,18 @@ func (c *wsConn) ReadFrame(ctx context.Context) ([]byte, error) {
 			// adds nothing a caller may act on.
 			return nil, ErrFrameOversize
 		}
+		// The raw fallthrough is deliberately NOT flattened, and the
+		// asymmetry with dialFailure is the point. A dial error can wrap a
+		// *url.Error rendering the full ticket-bearing URL; a post-handshake
+		// read error cannot render any dialed-URL component by construction:
+		// this conn retains no URL (see wsConn), a TCP error's address is
+		// the RESOLVED IP plus the connected port — a number in 1-65535,
+		// which an opaque ticket cannot be — and every peer-chosen text
+		// channel is mapped above (close reasons, the read limit).
+		// Flattening would spend the one genuinely diagnostic cause — reset
+		// vs timeout vs EOF — to remove text that cannot carry a credential;
+		// the run loop's observer vocabulary reduces it for logging surfaces
+		// regardless.
 		return nil, err
 	}
 	if typ != websocket.MessageText {
