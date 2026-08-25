@@ -336,6 +336,7 @@ expect_fail(failures, "9. missing gh fails closed", out, status,
 out, status, calls = run_checker(
   allowlist: { "sdk_routes_known_defective" => [], "bc3_routes_not_modeled" => [] },
   tracking: { "prose_tracking_issues" => [ { "issue" => 303, "file" => "README.md", "site" => "README.md — a gap", "mentions" => 0 } ] },
+  sweep: { "README.md" => "a gap, promised outside the canonical grammar\n" },
   states: "303=open"
 )
 expect_pass(failures, "N. prose registry entries are collected", out, status,
@@ -353,6 +354,7 @@ end
 out, status, _ = run_checker(
   allowlist: { "sdk_routes_known_defective" => [], "bc3_routes_not_modeled" => [] },
   tracking: { "prose_tracking_issues" => [ { "issue" => 404, "file" => "SPEC.md", "site" => "SPEC.md — a bound", "mentions" => 0 } ] },
+  sweep: { "SPEC.md" => "a bound, promised outside the canonical grammar\n" },
   states: "404=closed"
 )
 expect_fail(failures, "N+1. a CLOSED prose tracking issue fails", out, status,
@@ -366,6 +368,7 @@ expect_fail(failures, "N+1. a CLOSED prose tracking issue fails", out, status,
 out, status, _ = run_checker(
   allowlist: { "sdk_routes_known_defective" => [ defective(101) ], "bc3_routes_not_modeled" => [] },
   tracking: { "prose_tracking_issues" => [ { "issue" => 303, "file" => "README.md", "site" => "README.md — a gap", "mentions" => 0 } ] },
+  sweep: { "README.md" => "a gap, promised outside the canonical grammar\n" },
   states: "101=open,303=closed"
 )
 expect_fail(failures, "N+2. a closed registry entry fails even with a green allowlist", out, status,
@@ -515,6 +518,24 @@ out, status, _ = run_checker(
 expect_fail(failures, "N+6l. a multi-document allowlist fails instead of dropping entries", out, status,
             "YAML documents")
 
+# --- N+18. A row whose file the sweep cannot see fails ---------------------------
+#
+# A mentions: 0 row guards a non-canonical promise by NAME alone, so when its
+# file is renamed, deleted, or mistyped, swept.fetch returns empty, 0 == 0,
+# and the row silently stops guarding anything — green until the issue closes
+# and CI blocks on a phantom promise. Every registered path must be in the
+# sweep's view.
+
+out, status, _ = run_checker(
+  allowlist: { "sdk_routes_known_defective" => [], "bc3_routes_not_modeled" => [] },
+  tracking: { "prose_tracking_issues" => [
+    { "issue" => 303, "file" => "ghost.md", "site" => "ghost.md — a promise whose file went away", "mentions" => 0 }
+  ] },
+  states: "303=open"
+)
+expect_fail(failures, "N+18. a row for a file the sweep cannot see fails", out, status,
+            "cannot see")
+
 # --- N+7. A registry file without the key fails -----------------------------------
 #
 # The missing-FILE case (N+3) fails closed; a file whose key is misspelled or
@@ -653,6 +674,7 @@ out, status, _ = run_checker(
   tracking: { "prose_tracking_issues" => [
     { "issue" => 303, "file" => "docs/note.md", "site" => "docs/note.md — a gap", "mentions" => 1 }
   ] },
+  sweep: { "docs/note.md" => "the sentence went away in an edit\n" },
   states: "303=open"
 )
 expect_fail(failures, "N+15. a deleted mention fails until the count moves", out, status,

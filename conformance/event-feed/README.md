@@ -201,8 +201,14 @@ the announcement is exactly what the following exact-set match waits for. Both
 steps block under the scenario watchdog, so a wrongly authored state or set
 fails loudly instead of diverging silently. What stays outside this
 rendezvous is a transition that announces no state change, or only rearms a
-timer of the same kind and count — invisible to both barriers; a script that
-would advance behind one writes `fireTimer` instead.
+timer of the same kind and count — invisible to both barriers. The concrete
+case is a live frame served in a socket-open state: its receipt rearms
+`staleness` pump-side with no announcement, so an advance behind it would race
+the rearm's deadline shift. A script that must advance across served frames
+takes the schema's own `stalenessMs` guidance — override it large, so both the
+old and the new deadline sit outside any window the script advances (fixture
+05 does exactly this, at ~11.5 virtual days against a 121-second window) — and
+a script that wants the staleness firing itself writes `fireTimer`.
 
 ## Contract notes the fixtures encode (SDK-owned, final)
 

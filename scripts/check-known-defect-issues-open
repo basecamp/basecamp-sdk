@@ -56,6 +56,7 @@
 # Exercised offline by scripts/test-check-known-defect-issues-open.
 
 require 'json'
+require 'set'
 require 'yaml'
 
 ROOT = File.expand_path('..', __dir__)
@@ -279,6 +280,7 @@ end
 sweep_root = ENV['PROSE_SWEEP_ROOT'] || ROOT
 registered_mentions = rows.to_h { |e| [ [ e['file'], e['issue'] ], e['mentions'] ] }
 swept = Hash.new { |h, k| h[k] = [] }
+scanned = Set.new
 sweep_files(sweep_root).each do |rel|
   next if rel == 'spec/tracking-issues.yml' ||
           rel == 'scripts/test-check-known-defect-issues-open' ||
@@ -290,6 +292,7 @@ sweep_files(sweep_root).each do |rel|
   content = File.binread(path)
   next if content.index("\0".b)
 
+  scanned << rel
   content = content.force_encoding(Encoding::UTF_8).scrub
   content.to_enum(:scan, SWEEP_MENTION).each do
     m = Regexp.last_match
@@ -302,6 +305,17 @@ swept.each do |(rel, issue), lines|
   unless registered_mentions.key?([ rel, issue ])
     lines.each { |line| violations << "#{rel}:#{line} — a canonical \"tracked in ##{issue}\" claim, and [#{rel}, ##{issue}] is not registered" }
   end
+end
+# A mentions: 0 row guards a non-canonical promise by NAME alone, so a rename,
+# delete, or typo makes swept.fetch empty, 0 == 0 passes, and the row silently
+# guards nothing — green until the issue closes and CI blocks on a phantom.
+# Every registered path must be in the sweep's view (present, text, and not
+# excluded from the scan).
+registered_mentions.each_key do |(rel, _issue)|
+  next if scanned.include?(rel)
+
+  violations << "#{rel} is registered but the sweep cannot see it (missing, renamed, binary, or excluded) — " \
+                'a row for a file the sweep cannot read guards nothing; fix the path or remove the row'
 end
 # Both directions, so a new mention cannot ride an existing row and a deleted
 # sentence cannot leave its count claiming more than the file holds.
