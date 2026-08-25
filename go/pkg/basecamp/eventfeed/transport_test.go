@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"strconv"
 	"strings"
 	"testing"
@@ -179,15 +178,6 @@ func TestCheckCableURL_RejectsUserinfo(t *testing.T) {
 			}
 		}
 	}
-}
-
-func mustParseURL(t *testing.T, raw string) *url.URL {
-	t.Helper()
-	u, err := url.Parse(raw)
-	if err != nil {
-		t.Fatalf("url.Parse(%q) = %v", raw, err)
-	}
-	return u
 }
 
 // TestCableHTTPClient_IsWiredShut holds the shape of the wiring, which is
