@@ -141,8 +141,11 @@ func TestFileCheckpointStore_SaveWritesThroughASymlinkedPath(t *testing.T) {
 		t.Fatalf("Save() through the link = %v, want nil", err)
 	}
 
-	if fi, err := os.Lstat(link); err != nil || fi.Mode()&os.ModeSymlink == 0 {
-		t.Errorf("after Save, Lstat(link) = %v, %v — the link was replaced, want it left standing", fi.Mode(), err)
+	switch fi, err := os.Lstat(link); {
+	case err != nil:
+		t.Errorf("after Save, Lstat(link) failed: %v — want the link left standing", err)
+	case fi.Mode()&os.ModeSymlink == 0:
+		t.Errorf("after Save, link mode = %v — the link was replaced, want it left standing", fi.Mode())
 	}
 	// The target holds the new position: link- and target-addressed
 	// consumers stay one store.
@@ -171,8 +174,11 @@ func TestFileCheckpointStore_SaveCreatesADanglingSymlinkTarget(t *testing.T) {
 	if err := NewFileCheckpointStore(link).Save(ctx, key, "pos-1"); err != nil {
 		t.Fatalf("Save() through the dangling link = %v, want nil", err)
 	}
-	if fi, err := os.Lstat(link); err != nil || fi.Mode()&os.ModeSymlink == 0 {
-		t.Errorf("after Save, Lstat(link) = %v, %v — want the link left standing", fi.Mode(), err)
+	switch fi, err := os.Lstat(link); {
+	case err != nil:
+		t.Errorf("after Save, Lstat(link) failed: %v — want the link left standing", err)
+	case fi.Mode()&os.ModeSymlink == 0:
+		t.Errorf("after Save, link mode = %v — want the link left standing", fi.Mode())
 	}
 	position, ok, err := NewFileCheckpointStore(target).Load(ctx, key)
 	if err != nil || !ok || position != "pos-1" {
