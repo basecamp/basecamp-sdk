@@ -43,11 +43,11 @@ type scenarioConfig struct {
 	Buckets                []int64           `json:"buckets"`
 	Creators               []int64           `json:"creators"`
 	Position               string            `json:"position"`
-	ConfirmationDeadlineMs int               `json:"confirmationDeadlineMs"`
-	RepairPollBaseMs       int               `json:"repairPollBaseMs"`
-	BackoffBaseMs          int               `json:"backoffBaseMs"`
-	BackoffCapMs           int               `json:"backoffCapMs"`
-	StalenessMs            int               `json:"stalenessMs"`
+	ConfirmationDeadlineMs int64             `json:"confirmationDeadlineMs"`
+	RepairPollBaseMs       int64             `json:"repairPollBaseMs"`
+	BackoffBaseMs          int64             `json:"backoffBaseMs"`
+	BackoffCapMs           int64             `json:"backoffCapMs"`
+	StalenessMs            int64             `json:"stalenessMs"`
 	LiveBufferCapacity     int               `json:"liveBufferCapacity"`
 	DedupeCapacity         int               `json:"dedupeCapacity"`
 	SignalDisposition      map[string]string `json:"signalDisposition"`
@@ -190,7 +190,7 @@ type goneBody struct {
 }
 
 type advanceStep struct {
-	Ms int `json:"ms"`
+	Ms int64 `json:"ms"`
 }
 
 type fireTimerStep struct {
@@ -199,8 +199,8 @@ type fireTimerStep struct {
 }
 
 type delayEnvelope struct {
-	Min int `json:"min"`
-	Max int `json:"max"`
+	Min int64 `json:"min"`
+	Max int64 `json:"max"`
 }
 
 type expectCheckpointStep struct {
@@ -243,12 +243,15 @@ type expectPositionRejectedStep struct {
 // fixture error rather than a representation accident: one past the int64
 // line, time.Duration(ms)*time.Millisecond goes negative and an accepted
 // advance would silently REWIND virtual time.
-const maxScenarioMs = 315_576_000_000
+const maxScenarioMs int64 = 315_576_000_000
 
 // checkScenarioMs enforces the schema's [floor, maxScenarioMs] range on one
 // ms field at load, so every driver rejects the same values for the same
-// stated reason.
-func checkScenarioMs(what string, v, floor int) error {
+// stated reason. ms values are int64 END TO END (fixture structs, this check,
+// millis): the maximum exceeds MaxInt32, so a platform-width int fails to
+// compile on 32-bit (an int64-typed constant alone would instead make
+// schema-valid values above MaxInt32 fail decode into int structs).
+func checkScenarioMs(what string, v, floor int64) error {
 	if v < floor || v > maxScenarioMs {
 		return fmt.Errorf("%s must be in [%d, %d] (10 virtual years): got %d", what, floor, maxScenarioMs, v)
 	}
@@ -496,7 +499,7 @@ func validateConfig(cfg scenarioConfig) error {
 	// Absent decodes as 0 and means "default", so only set values are ranged.
 	for _, f := range []struct {
 		name string
-		v    int
+		v    int64
 	}{
 		{"confirmationDeadlineMs", cfg.ConfirmationDeadlineMs},
 		{"repairPollBaseMs", cfg.RepairPollBaseMs},

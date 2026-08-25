@@ -750,4 +750,4 @@ func (h *scenarioHarness) signalHandler(dispositions map[string]string) eventfee
 	}
 }
 
-func millis(ms int) time.Duration { return time.Duration(ms) * time.Millisecond }
+func millis(ms int64) time.Duration { return time.Duration(ms) * time.Millisecond }
