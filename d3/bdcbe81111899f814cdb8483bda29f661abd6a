@@ -1,0 +1,29 @@
+go/pkg/basecamp/eventfeed/checkpoint.go
+  s_1c9d086ab67253::t_0d224cc0ff390f 7,94-109
+go/pkg/basecamp/eventfeed/clock.go
+  s_1c9d086ab67253::t_a81dc1fb8dba91 107-114
+go/pkg/basecamp/eventfeed/clock_test.go
+  s_1c9d086ab67253::t_24b555861b20bd 42-89
+go/pkg/basecamp/eventfeed/continuation_test.go
+  s_1c9d086ab67253::t_ecb8d01e13b866 25-28,158-188
+go/pkg/basecamp/eventfeed/filestore.go
+  s_1c9d086ab67253::t_d84e1c26d118c9 14,374-384
+go/pkg/basecamp/eventfeed/filestore_test.go
+  s_1c9d086ab67253::t_b31e41a36ecd2d 23,190-211
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "d3bdcbe81111899f814cdb8483bda29f661abd6a",
+  "prompts": {},
+  "sessions": {
+    "s_1c9d086ab67253": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1f5628ec-50ac-4d8d-a2cc-cee5b0112903",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
