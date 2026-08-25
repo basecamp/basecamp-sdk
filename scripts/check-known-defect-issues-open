@@ -167,7 +167,25 @@ rows.each_with_index do |e, i|
          'string naming the path the sentence lives in (the sweep keys coverage on [file, issue]) — got ' + e['file'].inspect
     exit 1
   end
+  # The count is committed, exactly as doc-constants commits its marker
+  # counts: a bare [file, issue] pair would silently cover every FUTURE
+  # canonical mention in the file, so each row records how many it stands for
+  # (0 for a promise phrased outside the canonical grammar) and the sweep
+  # verifies the number in both directions.
+  unless e['mentions'].is_a?(Integer) && e['mentions'] >= 0
+    warn "ERROR: prose_tracking_issues[#{i}] (##{e['issue']}) in #{tracking_path} needs a `mentions` count — " \
+         'the number of canonical "tracked in #N" mentions of this issue in `file` — got ' + e['mentions'].inspect
+    exit 1
+  end
   refs << [e['issue'], e['site']]
+end
+
+# One row per [file, issue]: a duplicate would make the committed count
+# ambiguous (which row does the sweep charge a mention to?).
+dup = rows.map { |e| [ e['file'], e['issue'] ] }.tally.select { |_, n| n > 1 }.keys
+unless dup.empty?
+  dup.each { |f, n| warn "ERROR: duplicate prose_tracking_issues rows for [#{f}, ##{n}] in #{tracking_path} — merge them and sum `mentions`" }
+  exit 1
 end
 
 # --- Discovery sweep --------------------------------------------------------------
@@ -215,8 +233,8 @@ def sweep_files(root)
 end
 
 sweep_root = ENV['PROSE_SWEEP_ROOT'] || ROOT
-registered_pairs = rows.map { |e| [ e['file'], e['issue'] ] }
-violations = []
+registered_mentions = rows.to_h { |e| [ [ e['file'], e['issue'] ], e['mentions'] ] }
+swept = Hash.new { |h, k| h[k] = [] }
 sweep_files(sweep_root).each do |rel|
   next if rel == 'spec/tracking-issues.yml' ||
           rel == 'scripts/test-check-known-defect-issues-open' ||
@@ -231,11 +249,24 @@ sweep_files(sweep_root).each do |rel|
   content = content.force_encoding(Encoding::UTF_8).scrub
   content.to_enum(:scan, SWEEP_MENTION).each do
     m = Regexp.last_match
-    next if registered_pairs.include?([ rel, m[1].to_i ])
-
-    line = content[0...m.begin(0)].count("\n") + 1
-    violations << "#{rel}:#{line} — a canonical \"tracked in ##{m[1]}\" claim, and [#{rel}, ##{m[1]}] is not registered"
+    swept[[ rel, m[1].to_i ]] << content[0...m.begin(0)].count("\n") + 1
   end
+end
+
+violations = []
+swept.each do |(rel, issue), lines|
+  unless registered_mentions.key?([ rel, issue ])
+    lines.each { |line| violations << "#{rel}:#{line} — a canonical \"tracked in ##{issue}\" claim, and [#{rel}, ##{issue}] is not registered" }
+  end
+end
+# Both directions, so a new mention cannot ride an existing row and a deleted
+# sentence cannot leave its count claiming more than the file holds.
+registered_mentions.each do |(rel, issue), expected|
+  found = swept.fetch([ rel, issue ], [])
+  next if found.length == expected
+
+  violations << "#{rel} ##{issue}: the registry records #{expected} canonical mention(s), the sweep found " \
+                "#{found.length}#{found.empty? ? '' : " (line #{found.join(', ')})"} — update `mentions:` alongside the prose"
 end
 unless violations.empty?
   warn 'ERROR: canonical tracking claims exist outside the registry:'
