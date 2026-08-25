@@ -3361,8 +3361,18 @@ Two dispatch clarifications, pinned:
   (implementation-chosen; the Go reference uses 256). At capacity the pump **blocks** —
   back-pressure propagates to the socket and TCP — rather than dropping: the
   state-machine-owned live buffer is the only place a frame can ever be dropped, and its
-  overflow signal is the only drop signal. Worst-case cable-lane retention is therefore
-  bounded multiplicatively — every retained item is itself bounded by
+  overflow signal is the only drop signal. **The retention ceiling below is the GO
+  REFERENCE IMPLEMENTATION'S**, stated in its own terms — two goroutines, a
+  `json.RawMessage` copy, a copying decoder — **and it presumes a transport with
+  bounded reads**. Every SDK's cable lane inherits the shape (bounded queue, blocking
+  hand-off, single deferral slot, the buffer as the only drop point) but re-derives its
+  own weights, and one recorded divergence already breaks the per-item premise
+  elsewhere: TypeScript's default global-`WebSocket` lane cannot pre-bound a read, so a
+  single oversized message is allocated whole at receipt, before the
+  `EVENT_FEED_MAX_FRAME_BYTES` check drops it — the scenario-lane table in Appendix F
+  records that as an accepted divergence, and no universal cross-SDK byte ceiling is
+  published here. In the Go reference, worst-case cable-lane retention is bounded
+  multiplicatively — every retained item is itself bounded by
   `EVENT_FEED_MAX_FRAME_BYTES`, and retention is an enumeration by HOLDER, which is what
   closes the count: a frame lives in the hand-off queue (≤ pump depth), in the live
   buffer (≤ `EVENT_FEED_LIVE_BUFFER_CAPACITY`), in the single deferral slot (≤ 1), or in
