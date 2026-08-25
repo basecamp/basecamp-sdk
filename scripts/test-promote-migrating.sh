@@ -193,6 +193,13 @@ fresh t4.md "# v0.5.0" "# v0.4.0"
 env -u PROMOTE_MIGRATING_CURRENT -u PROMOTE_MIGRATING_RELEASED bash "$FSCRIPT" 0.6.1 "$DIR/t4.md" >/dev/null 2>&1
 check "unreachable remote fails closed" 1 $?
 
+# 24. fenced examples are prose to a reader and NOTHING to the heading
+#     judgments: a code block quoting "# Unreleased" is not a duplicate, and
+#     one quoting the target heading is not a rollback
+{ echo "# Migrating"; echo; echo "# Unreleased"; echo; echo '```'; echo "# Unreleased"; echo "# v0.16.0"; echo '```'; echo; echo "# v0.15.0"; } > "$DIR/u.md"
+bash "$SCRIPT" 0.16.0 "$DIR/u.md" >/dev/null 2>&1; check "fenced headings are invisible to promotion" 0 $?
+grep -qxF "# v0.16.0" "$DIR/u.md"; check "promotion landed despite fenced examples" 0 $?
+
 if [ "$FAILS" -gt 0 ]; then
   echo "test-promote-migrating: $FAILS of $CASES assertions failed" >&2
   exit 1
