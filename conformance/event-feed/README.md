@@ -199,7 +199,12 @@ precede a tail arm: Backoff announces before its timer is armed. Together they
 settle — the announcement bounds the surgery, and any timer still unarmed at
 the announcement is exactly what the following exact-set match waits for. Both
 steps block under the scenario watchdog, so a wrongly authored state or set
-fails loudly instead of diverging silently. What stays outside this
+fails loudly on every schedule where the pair no longer holds. The precise
+guarantee: a pair naming the PRE-action state can pass on the schedule where
+the action has not yet been processed, so wrong authorship is at worst FLAKY —
+red whenever the transition lands first — never stably green; the settled
+guarantee belongs to correctly authored pairs, the ones the per-state tables
+define. What stays outside this
 rendezvous is a transition that announces no state change, or only rearms a
 timer of the same kind and count — invisible to both barriers. The concrete
 case is a live frame served in a socket-open state: its receipt rearms
