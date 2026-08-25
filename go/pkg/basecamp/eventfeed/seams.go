@@ -373,28 +373,39 @@ func (k DialErrorKind) String() string {
 	}
 }
 
-// DialError is a failed dial, classified.
+// DialError is a failed dial, classified. Its fields are exported because a
+// custom CableTransport must be able to construct one, and that is exactly
+// why the type itself cannot enforce ticket secrecy: the transport holds the
+// full ticket-bearing URL, and Error renders whatever the constructor
+// stored. The guarantee is therefore split. The AUTHOR owes the discipline
+// below — this package's own compositions keep every Reason and cause on a
+// closed vocabulary — and the connector does not depend on a custom
+// transport honoring it: it treats every seam-returned DialError as
+// untrusted, reading only its Kind and never copying its text or retaining
+// its cause onto an observer or terminal surface.
 type DialError struct {
-	// Kind classifies the failure.
+	// Kind classifies the failure. It is the one field the connector reads
+	// from a seam-returned DialError.
 	Kind DialErrorKind
 	// Reason names the policy violation (policy only). Never the URL's query
 	// string.
 	Reason string
-	// Err is the underlying cause. It is supplied by the CableTransport and
-	// concatenated into Error(), so this struct's own no-query-string
-	// guarantee extends to it only as far as the implementation honors the
-	// obligation stated on CableTransport.Dial. The built-in
-	// WebSocketTransport draws its causes from a closed vocabulary keyed on
-	// error types for exactly this reason.
+	// Err is the underlying cause. Never the dialed URL or an error that
+	// renders it — the ticket rides in its query string, and url.Error
+	// renders the full URL. The built-in transport stores only causes
+	// flattened to a closed vocabulary (dialFailure); the connector treats
+	// every seam-returned value as untrusted regardless (it reads Kind and
+	// nothing else).
 	Err error
 }
 
 // Error implements the error interface. The rendering never carries the
-// dialed URL's query string (the ticket rides in it), and the composed result
-// is bounded by §9's MAX_ERROR_MESSAGE_LENGTH like every other URL-derived
-// rendering here (CloseError is the precedent): Reason can embed a mint-URL
-// component — a scheme or an explicit port — whose length url.Parse does not
-// bound.
+// dialed URL's query string when the DialError is this package's own — the
+// built-in transport composes reasons and causes from closed vocabularies —
+// and the composed result is bounded by §9's MAX_ERROR_MESSAGE_LENGTH like
+// every other URL-derived rendering here (CloseError is the precedent):
+// Reason can embed a mint-URL component — a scheme or an explicit port —
+// whose length url.Parse does not bound.
 func (e *DialError) Error() string {
 	msg := "cable dial failed (" + e.Kind.String() + ")"
 	if e.Reason != "" {
