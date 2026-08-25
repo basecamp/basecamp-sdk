@@ -488,11 +488,15 @@ func TestDecodeMessageEvent_Failures(t *testing.T) {
 			assertEventDecodeFails(t, raw)
 		})
 	}
+	// Both malformed-VALUE cases carry all nine required keys, the flagged
+	// value included: with any key missing, the presence check fails the
+	// decode on its own and the case passes even when the validation it
+	// names has regressed.
 	t.Run("wrong-typed id", func(t *testing.T) {
-		assertEventDecodeFails(t, []byte(`{"id":"911","kind":"message","event_type":"message.created","action":"created","created_at":"2026-08-01T12:00:00Z","bucket_id":2,"creator_id":3,"recording_id":900}`))
+		assertEventDecodeFails(t, []byte(`{"id":"911","kind":"message","event_type":"message.created","action":"created","created_at":"2026-08-01T12:00:00Z","bucket_id":2,"creator_id":3,"recording_id":900,"visible_to_clients":false}`))
 	})
 	t.Run("malformed created_at", func(t *testing.T) {
-		assertEventDecodeFails(t, []byte(`{"id":105,"kind":"message","event_type":"message.created","action":"created","created_at":"yesterday","bucket_id":2,"creator_id":3,"recording_id":900}`))
+		assertEventDecodeFails(t, []byte(`{"id":105,"kind":"message","event_type":"message.created","action":"created","created_at":"yesterday","bucket_id":2,"creator_id":3,"recording_id":900,"visible_to_clients":false}`))
 	})
 	t.Run("null payload", func(t *testing.T) {
 		assertEventDecodeFails(t, []byte(`null`))
