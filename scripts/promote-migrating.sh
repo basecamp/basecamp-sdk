@@ -12,8 +12,21 @@
 set -euo pipefail
 
 MODE=promote
-if [ "${1:-}" = "--check" ]; then MODE=check; shift; fi
-VERSION="${1:?usage: $0 [--check] <version> [file]}"
+RELEASED_OVERRIDE=
+RELEASED_SET=
+while :; do
+  case "${1:-}" in
+    --check) MODE=check; shift ;;
+    # The self-test's seam, an explicit argument by design: an ENVIRONMENT
+    # override would ride along into any `make release` that inherited a
+    # stale list from the caller's shell and silently displace the remote as
+    # the ordering authority. Nothing in the production entry points passes
+    # this flag.
+    --released) RELEASED_OVERRIDE="${2?--released needs a value}"; RELEASED_SET=1; shift 2 ;;
+    *) break ;;
+  esac
+done
+VERSION="${1:?usage: $0 [--check] [--released "<versions>"] <version> [file]}"
 FILE="${2:-MIGRATING.md}"
 
 # Heading judgments read the guide's PROSE only: the guide legitimately
@@ -56,10 +69,10 @@ fi
 # The ordering authority is the REMOTE TAG LIST, fetched once — neither the
 # guide's headings (a no-notes release advances without a heading) nor the
 # version constants (an unshipped bump moves them, and a hand edit can move
-# them backward) can answer what actually shipped. The override serves the
-# self-test; empty models "cannot establish", which fails closed.
-if [ -n "${PROMOTE_MIGRATING_RELEASED+x}" ]; then
-  SHIPPED="$PROMOTE_MIGRATING_RELEASED"
+# them backward) can answer what actually shipped. The --released flag serves
+# the self-test; empty models "cannot establish", which fails closed.
+if [ -n "$RELEASED_SET" ]; then
+  SHIPPED="$RELEASED_OVERRIDE"
   if [ -z "$SHIPPED" ]; then
     echo "ERROR: the shipped releases cannot be established. Check the remote connection and retry." >&2
     exit 1
