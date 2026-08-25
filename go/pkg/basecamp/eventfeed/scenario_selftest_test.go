@@ -445,6 +445,17 @@ func TestScenarioDriverRejectsUnmodelledScripts(t *testing.T) {
 			wants:  "must be the scenario's first step or immediately follow expectTimers",
 		},
 		{
+			// An EMPTY rendezvous set can never contain an arm of the
+			// preceding transition, so its match orders nothing: after a
+			// released failed mint, {"exact":{}} matches before backoff is
+			// armed, and the advance races the arm exactly as if the
+			// rendezvous were absent. A scenario with nothing yet armed
+			// advances as its first step instead.
+			name:   "an advance behind an empty expectTimers rendezvous",
+			script: `{"name":"x","description":"d","steps":[{"expectTimers":{"exact":{}}},{"advance":{"ms":1}}],"finally":{"state":"closed"}}`,
+			wants:  "an empty rendezvous orders nothing",
+		},
+		{
 			name:   "droppedCount disagreeing with droppedIds",
 			script: `{"name":"x","description":"d","steps":[{"expectSignal":{"kind":"bufferOverflow","droppedIds":[1],"droppedCount":2}}],"finally":{"state":"closed"}}`,
 			wants:  "disagrees with",

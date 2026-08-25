@@ -3895,7 +3895,10 @@ firing writes `fireTimer` and names the timer. The due-set read also needs a set
 to read — an action's completion can precede the timer arms its transition causes — so
 every `advance` must be the scenario's first step or immediately follow `expectTimers`,
 whose exact-set match is the authored settle; drivers enforce the adjacency at fixture
-load. `conformance/event-feed/schema.json`'s
+load, and reject an empty rendezvous set with it (no arm of the preceding transition can
+be in it, so its match orders nothing). The authored set must include an arm of the
+preceding transition — a same-kind, same-count rearm is invisible to set matching, and a
+script that would advance behind one uses `fireTimer`. `conformance/event-feed/schema.json`'s
 `$defs.advance` states both, and the driver obligation is enforced there.
 
 Teardown discipline: disposing a connection attempt — deadline lapse, staleness, socket

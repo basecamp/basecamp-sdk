@@ -316,6 +316,18 @@ func parseScenario(raw []byte, file string) (*scenario, error) {
 				"unrendezvoused advance cannot mean the same thing on every schedule; expectTimers' exact-set "+
 				"match is the settle", i+1)
 		}
+		// The match must be able to MEAN settled: an empty set can never
+		// contain an arm of the preceding transition, so it matches before
+		// that transition is processed (a released failed mint has not armed
+		// backoff yet) exactly as if the rendezvous were absent. The limit
+		// this cannot close is stated in the contract: the authored set must
+		// include an arm of the preceding transition, and a same-kind rearm
+		// is invisible to set matching — such scripts use fireTimer.
+		if rv, ok := sc.Steps[i-1].Payload.(*timerSet); ok && len(rv.Exact) == 0 {
+			return nil, fmt.Errorf("step %d: an empty rendezvous orders nothing — an expectTimers set with no "+
+				"timers cannot contain an arm of the preceding transition, so its match cannot prove the "+
+				"transition settled; a scenario with nothing yet armed advances as its first step", i+1)
+		}
 	}
 	finRaw, ok := top["finally"]
 	if !ok {
