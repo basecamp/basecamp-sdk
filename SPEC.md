@@ -3909,7 +3909,10 @@ set match can coincide with a transient mid-surgery set (timer surgery spans clo
 acquisitions), and an announcement can precede a tail arm. Together they do — the
 announcement bounds the surgery, and any timer still unarmed at the announcement is
 exactly what the exact-set match then waits for, both blocking under the watchdog so
-wrong authorship fails loudly. A transition that announces no state change, or only
+wrong authorship fails loudly on every schedule where the stale pair no longer holds —
+a pre-action pair can pass on the schedule where the action is not yet processed, so a
+wrong script is at worst flaky, never stably green; the settled guarantee is for
+correctly authored pairs. A transition that announces no state change, or only
 rearms a timer of the same kind and count, is invisible to this rendezvous — a served
 live frame's pump-side `staleness` rearm is the concrete case. Such a script overrides
 `stalenessMs` large so no deadline, old or new, sits inside a window it advances (the
