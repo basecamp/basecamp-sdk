@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"strings"
 	"sync"
 	"time"
 
@@ -188,6 +189,19 @@ func (t *WebSocketTransport) Dial(ctx context.Context, wsURL string, maxFrameByt
 	if err != nil {
 		if cerr := ctx.Err(); cerr != nil {
 			return nil, cerr
+		}
+		if resp != nil && resp.StatusCode == http.StatusSwitchingProtocols {
+			if selected := resp.Header.Get("Sec-WebSocket-Protocol"); selected != "" && !strings.EqualFold(selected, cableSubprotocol) {
+				// coder/websocket refuses a 101 whose selected subprotocol
+				// was never offered BEFORE any conn exists, so this shape
+				// arrived here as a transient — re-minting forever against a
+				// server that selects its bogus protocol deterministically.
+				// The library returns the response on that path, so the
+				// classification is structural: the SELECTED protocol
+				// mismatching the one offer. The header value is
+				// peer-controlled text and is never rendered.
+				return nil, &DialError{Kind: DialPolicy, Reason: "cable server selected a subprotocol the dial never offered"}
+			}
 		}
 		if errors.Is(err, errRedirectRefused) {
 			// The interceptor refused a redirect-class response — any 3xx,

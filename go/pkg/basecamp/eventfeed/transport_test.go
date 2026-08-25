@@ -2,6 +2,8 @@ package eventfeed
 
 import (
 	"context"
+	"crypto/sha1"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"net/http"
@@ -435,5 +437,50 @@ func TestWebSocketTransport_RedirectWithoutLocationIsPolicy(t *testing.T) {
 	}
 	if strings.Contains(err.Error(), "sekrit") {
 		t.Errorf("dial error %q carries the ticket", err)
+	}
+}
+
+// TestWebSocketTransport_UnofferedSubprotocolIsPolicy: a 101 whose
+// Sec-WebSocket-Protocol names something the dial never offered is refused
+// by coder/websocket during verification, BEFORE any conn exists — so it
+// took the transient fallback, re-minting forever against a server that
+// deterministically selects a bogus protocol. The library hands back the
+// response on that path, so the classification is structural: status 101
+// plus a selected protocol that is not the offer. The peer-controlled
+// header value itself is never rendered.
+func TestWebSocketTransport_UnofferedSubprotocolIsPolicy(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// A hand-rolled upgrade: a correct Sec-WebSocket-Accept (so the
+		// verification reaches the subprotocol check) selecting a protocol
+		// the client never offered.
+		sum := sha1.Sum([]byte(r.Header.Get("Sec-WebSocket-Key") + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"))
+		hj, ok := w.(http.Hijacker)
+		if !ok {
+			t.Error("test server cannot hijack")
+			return
+		}
+		conn, buf, err := hj.Hijack()
+		if err != nil {
+			t.Errorf("hijack: %v", err)
+			return
+		}
+		defer conn.Close()
+		fmt.Fprintf(buf, "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: %s\r\nSec-WebSocket-Protocol: bogus-protocol-sekrit\r\n\r\n",
+			base64.StdEncoding.EncodeToString(sum[:]))
+		_ = buf.Flush()
+	}))
+	defer srv.Close()
+	_, err := (&WebSocketTransport{}).Dial(context.Background(), "ws"+strings.TrimPrefix(srv.URL, "http")+"/cable?ticket=sekrit-ticket-value", 1<<20)
+	if err == nil {
+		t.Fatal("dial succeeded against an unoffered subprotocol, want a policy refusal")
+	}
+	var derr *DialError
+	if !errors.As(err, &derr) || derr.Kind != DialPolicy {
+		t.Fatalf("dial error = %v, want DialPolicy — a server selecting a bogus protocol does so deterministically", err)
+	}
+	for _, leaked := range []string{"sekrit", "bogus-protocol"} {
+		if strings.Contains(err.Error(), leaked) {
+			t.Errorf("dial error %q carries %q", err, leaked)
+		}
 	}
 }
