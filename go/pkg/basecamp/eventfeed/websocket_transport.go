@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -48,33 +47,17 @@ var errRedirectRefused = errors.New("eventfeed: cable dial redirect refused")
 // close.
 var errCableConnClosed = errors.New("eventfeed: cable connection closed")
 
-// proxyFromEnvironment is net/http's environment proxy resolution, indirected
-// only so cableProxy's rule can be tested deterministically:
-// http.ProxyFromEnvironment reads HTTP_PROXY and friends behind a package-wide
-// sync.Once, so a test that sets them is silently vacuous whenever anything
-// earlier in the binary already resolved a proxy.
-var proxyFromEnvironment = http.ProxyFromEnvironment
-
-// cableProxy resolves the handshake's proxy, and refuses to use one for a
-// cleartext dial.
-//
-// A wss:// handshake reaches a proxy as CONNECT host:port — the proxy learns
-// which host is being reached and nothing more, so the ticket stays inside the
-// tunnel. A ws:// handshake is forwarded in absolute form, which puts
-// "/cable?ticket=…" in the proxy's request line, its access log, and every hop
-// in between, in the clear.
-//
-// That combination is reachable rather than theoretical. SPEC.md §9's carve-out
-// admits ws:// for *.localhost, and net/http's proxy rules exempt the literal
-// "localhost" and loopback IPs but NOT *.localhost subdomains — so
-// "ws://app.localhost:3000/cable?ticket=…" with HTTP_PROXY set in the
-// environment is proxied, cleartext, ticket included.
-func cableProxy(req *http.Request) (*url.URL, error) {
-	if req.URL.Scheme != "https" {
-		return nil, nil
-	}
-	return proxyFromEnvironment(req)
-}
+// No proxy, by construction. An earlier design consulted the environment's
+// proxy for wss:// handshakes on the theory that a CONNECT tunnel shows the
+// proxy only the host — but the host is a server-selected URL component, and
+// the package's value invariant is that ANY server-controlled component can
+// BE the opaque ticket. "wss://<ticket>.cable.example/cable?ticket=…" would
+// put the credential in the proxy's plaintext CONNECT target and its access
+// log. So the cable transport never consults a proxy at all (Proxy nil on
+// cableTransport below), the same by-construction stance the OAuth
+// discovery client takes. A deployment that can only egress through a proxy
+// implements CableTransport — the documented extension point — and owns
+// that trade knowingly.
 
 // cableHTTPClient performs every cable handshake. It is package-owned and
 // takes nothing from the caller, which is the point.
@@ -94,9 +77,9 @@ func cableProxy(req *http.Request) (*url.URL, error) {
 // and rejected at runtime. Owning the client outright is the only form this
 // boundary can take.
 //
-// Field by field: Proxy is cableProxy, not http.ProxyFromEnvironment. No Jar,
-// so no cookie is ever attached. No TLSClientConfig, so verification uses the
-// system roots and no client certificate is presented. The timeouts and idle
+// Field by field: Proxy is nil — no environment proxy is ever consulted
+// (see above). No Jar, so no cookie is ever attached. No TLSClientConfig, so
+// verification uses the system roots and no client certificate is presented. The timeouts and idle
 // bounds mirror http.DefaultTransport's, which they exist to replace rather
 // than to tune — and the idle bounds must be spelled out, because the zero
 // values are UNBOUNDED, not defaults: the cable origin is server-selected
@@ -118,7 +101,7 @@ var cableHTTPClient = &http.Client{
 // cableTransport is the cable handshake's inner HTTP transport; the client
 // reaches it only through redirectInterceptor.
 var cableTransport = &http.Transport{
-	Proxy: cableProxy,
+	Proxy: nil, // never the environment's: a CONNECT target is a server-selected host
 	DialContext: (&net.Dialer{
 		Timeout:   30 * time.Second,
 		KeepAlive: 30 * time.Second,
