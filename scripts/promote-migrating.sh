@@ -19,11 +19,13 @@ FILE="${2:-MIGRATING.md}"
 # Heading judgments read the guide's PROSE only: the guide legitimately
 # quotes old headings inside fenced code blocks (its own derivation recipes
 # do), and a fence containing "# Unreleased" is an example, not a section.
-guide_prose() {
-  awk '/^```/ { fenced = !fenced; next } !fenced' "$FILE"
-}
+# Captured ONCE and searched with herestrings: piping the prose pass into
+# `grep -q` under pipefail turns a successful early match into a failure —
+# grep closes the pipe, awk dies on SIGPIPE writing the rest of a large
+# guide, and the pipeline reports the producer's 141.
+PROSE=$(awk '/^```/ { fenced = !fenced; next } !fenced' "$FILE")
 
-FIRST=$(guide_prose | grep -m1 -E '^# (Unreleased|v[0-9]+\.[0-9]+\.[0-9]+)$' || true)
+FIRST=$(grep -m1 -E '^# (Unreleased|v[0-9]+\.[0-9]+\.[0-9]+)$' <<< "$PROSE" || true)
 
 # The guide's headings are not the authority on the released order: a
 # no-notes release advances the SDK version without adding a heading, so the
@@ -121,18 +123,18 @@ fi
 
 case "$FIRST" in
   "# Unreleased")
-    if [ "$(guide_prose | grep -cxF "# Unreleased")" -gt 1 ]; then
+    if [ "$(grep -cxF "# Unreleased" <<< "$PROSE" || true)" -gt 1 ]; then
       echo "ERROR: $FILE has more than one '# Unreleased' heading — promotion would rename only the first and leave the rest to fail the release late." >&2
       exit 1
     fi
-    if guide_prose | grep -qxF "# v$VERSION"; then
+    if grep -qxF "# v$VERSION" <<< "$PROSE"; then
       echo "ERROR: $FILE already has a '# v$VERSION' section below '# Unreleased' — releasing $VERSION again would be a version rollback." >&2
       exit 1
     fi
     # The target must also be newer than the newest RELEASED section, or the
     # promotion itself would file today's notes behind history (bump 0.9.0
     # with 0.15.0 released would otherwise happily mint "# v0.9.0").
-    NEWEST_RELEASED=$(guide_prose | grep -m1 -E '^# v[0-9]+\.[0-9]+\.[0-9]+$' || true)
+    NEWEST_RELEASED=$(grep -m1 -E '^# v[0-9]+\.[0-9]+\.[0-9]+$' <<< "$PROSE" || true)
     if [ -n "$NEWEST_RELEASED" ]; then
       REL="${NEWEST_RELEASED#\# v}"
       if ! newer "$VERSION" "$REL"; then
@@ -159,7 +161,7 @@ case "$FIRST" in
     echo "Promoted '# Unreleased' -> '# v$VERSION' in $FILE"
     ;;
   "# v$VERSION")
-    if guide_prose | grep -qxF "# Unreleased"; then
+    if grep -qxF "# Unreleased" <<< "$PROSE"; then
       echo "ERROR: $FILE has a misplaced '# Unreleased' section below '# v$VERSION' — its notes would silently miss the release." >&2
       exit 1
     fi
@@ -167,7 +169,7 @@ case "$FIRST" in
     ;;
   *)
     TOP="${FIRST#\# v}"
-    if guide_prose | grep -qxF "# Unreleased"; then
+    if grep -qxF "# Unreleased" <<< "$PROSE"; then
       echo "ERROR: $FILE has a misplaced '# Unreleased' section below '$FIRST' — its notes would silently miss the release." >&2
       exit 1
     fi

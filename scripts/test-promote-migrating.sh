@@ -200,6 +200,13 @@ check "unreachable remote fails closed" 1 $?
 bash "$SCRIPT" 0.16.0 "$DIR/u.md" >/dev/null 2>&1; check "fenced headings are invisible to promotion" 0 $?
 grep -qxF "# v0.16.0" "$DIR/u.md"; check "promotion landed despite fenced examples" 0 $?
 
+# 25. a guide large enough that grep's early exit outruns the prose pass:
+#     under pipefail a piped judgment would report the producer's SIGPIPE as
+#     no-match and wave a rollback through; the captured-prose form must not
+{ echo "# Migrating"; echo; echo "# Unreleased"; echo; echo "# v0.14.0"; echo; for i in $(seq 1 8000); do echo "filler prose line $i to outlast the pipe buffer after the early match"; done; } > "$DIR/v.md"
+PROMOTE_MIGRATING_CURRENT=0.1.0 bash "$SCRIPT" 0.14.0 "$DIR/v.md" >/dev/null 2>&1
+check "duplicate target still refused on a large guide" 1 $?
+
 if [ "$FAILS" -gt 0 ]; then
   echo "test-promote-migrating: $FAILS of $CASES assertions failed" >&2
   exit 1
