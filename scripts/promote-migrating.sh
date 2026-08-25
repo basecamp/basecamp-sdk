@@ -116,12 +116,23 @@ case "$FIRST" in
       echo "ERROR: $FILE already has a '# v$VERSION' section below '# Unreleased' — releasing $VERSION again would be a version rollback." >&2
       exit 1
     fi
+    # Any UNSHIPPED version heading below is an abandoned promotion whose
+    # notes would be orphaned forever the moment a fresh Unreleased promotes
+    # past it — resolve it (fold or re-title) before promoting.
+    while IFS= read -r h; do
+      hv="${h#\# v}"
+      if ! released "$hv"; then
+        echo "ERROR: $FILE carries an unshipped section '# v$hv' below '# Unreleased' — an abandoned promotion; fold or re-title it before promoting new notes past it." >&2
+        exit 1
+      fi
+    done < <(grep -E '^# v[0-9]+\.[0-9]+\.[0-9]+$' <<< "$PROSE" || true)
     if [ "$MODE" = check ]; then
       echo "ERROR: $FILE still has an '# Unreleased' section — its notes would miss the release. Run 'make bump VERSION=$VERSION' first." >&2
       exit 1
     fi
     awk -v v="# v$VERSION" 'BEGIN { done = 0 }
-      !done && $0 == "# Unreleased" { print v; done = 1; next }
+      /^```/ { fenced = !fenced }
+      !fenced && !done && $0 == "# Unreleased" { print v; done = 1; next }
       { print }' "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
     echo "Promoted '# Unreleased' -> '# v$VERSION' in $FILE"
     ;;
@@ -154,7 +165,8 @@ case "$FIRST" in
         exit 1
       fi
       awk -v old="# v$TOP" -v v="# v$VERSION" 'BEGIN { done = 0 }
-        !done && $0 == old { print v; done = 1; next }
+        /^```/ { fenced = !fenced }
+        !fenced && !done && $0 == old { print v; done = 1; next }
         { print }' "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
       echo "Re-promoted pending '# v$TOP' -> '# v$VERSION' in $FILE (v$TOP was never released)."
       exit 0

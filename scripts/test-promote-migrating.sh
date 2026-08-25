@@ -206,9 +206,24 @@ grep -qxF "# v0.16.0" "$DIR/u.md"; check "promotion landed despite fenced exampl
 # 25. a guide large enough that grep's early exit outruns the prose pass:
 #     under pipefail a piped judgment would report the producer's SIGPIPE as
 #     no-match and wave a rollback through; the captured-prose form must not
-{ echo "# Migrating"; echo; echo "# Unreleased"; echo; echo "# v0.14.0"; echo; for i in $(seq 1 8000); do echo "filler prose line $i to outlast the pipe buffer after the early match"; done; } > "$DIR/v.md"
-PROMOTE_MIGRATING_CURRENT=0.1.0 bash "$SCRIPT" 0.14.0 "$DIR/v.md" >/dev/null 2>&1
+{ echo "# Migrating"; echo; echo "# Unreleased"; echo; echo "# v0.16.0"; echo; for i in $(seq 1 8000); do echo "filler prose line $i to outlast the pipe buffer after the early match"; done; } > "$DIR/v.md"
+PROMOTE_MIGRATING_RELEASED="0.15.0 0.16.0" bash "$SCRIPT" 0.16.0 "$DIR/v.md" >/dev/null 2>&1
 check "duplicate target still refused on a large guide" 1 $?
+
+# 26. an abandoned unshipped section below a fresh Unreleased is refused
+#     before promotion can orphan its notes forever
+fresh w.md "# Unreleased" "# v0.16.0" "# v0.15.0"
+PROMOTE_MIGRATING_RELEASED="0.15.0" bash "$SCRIPT" 0.17.0 "$DIR/w.md" >/dev/null 2>&1
+check "abandoned unshipped section refused" 1 $?
+
+# 27. the rewrite passes skip fences too: a fenced "# Unreleased" BEFORE the
+#     real section must survive promotion untouched
+{ echo "# Migrating"; echo; echo '```'; echo "# Unreleased"; echo '```'; echo; echo "# Unreleased"; echo; echo "# v0.15.0"; } > "$DIR/x.md"
+bash "$SCRIPT" 0.16.0 "$DIR/x.md" >/dev/null 2>&1
+check "promotion with a leading fenced example succeeds" 0 $?
+FENCED_KEPT=$(awk '/^```/{f=!f; next} f && $0 == "# Unreleased"' "$DIR/x.md" | wc -l | tr -d ' ')
+[ "$FENCED_KEPT" = "1" ]; check "the fenced example survived; the real heading promoted" 0 $?
+grep -qxF "# v0.16.0" "$DIR/x.md"; check "real heading became the version" 0 $?
 
 if [ "$FAILS" -gt 0 ]; then
   echo "test-promote-migrating: $FAILS of $CASES assertions failed" >&2
