@@ -212,12 +212,22 @@ func (t *WebSocketTransport) Dial(ctx context.Context, wsURL string, maxFrameByt
 // failure direction is "less diagnostic", never "leaks".
 //
 // resp is the handshake response when there was one. Its status code is the
-// one genuinely useful diagnostic that is structurally incapable of carrying a
-// credential: an integer, not a text channel.
+// one genuinely useful diagnostic drawn from a FINITE, semantically defined
+// set — which is what the closed-vocabulary policy asks of a rendering — and
+// the range guard is what closes the set by construction: net/http accepts
+// any three-character Atoi-parseable status line, so a hostile server can
+// answer 999 or a zero-padded 007, and only 100-599 is rendered; anything
+// else collapses to a fixed digit-free marker. A three-digit coincidence
+// with an opaque ticket reconstructs nothing — the ticket is a long opaque
+// string, and the server answering already holds it — while which status
+// refused the handshake (401 vs 429 vs 503) is real operational triage.
 func dialFailure(err error, resp *http.Response) error {
 	cause := dialFailureCause(err)
 	if resp != nil && resp.StatusCode != 0 {
-		return fmt.Errorf("eventfeed: cable dial failed: %s (server answered HTTP %d)", cause, resp.StatusCode)
+		if resp.StatusCode >= 100 && resp.StatusCode <= 599 {
+			return fmt.Errorf("eventfeed: cable dial failed: %s (server answered HTTP %d)", cause, resp.StatusCode)
+		}
+		return fmt.Errorf("eventfeed: cable dial failed: %s (server answered an HTTP status outside the standard range)", cause)
 	}
 	return fmt.Errorf("eventfeed: cable dial failed: %s", cause)
 }
