@@ -451,11 +451,13 @@ func TestHostileContinuationIsTerminal(t *testing.T) {
 	if terminal == nil || terminal.Reason != eventfeed.ReasonInvalidContinuation {
 		t.Fatalf("terminal = %v, want reason %q", terminal, eventfeed.ReasonInvalidContinuation)
 	}
-	if !strings.Contains(terminal.Msg, "https://attacker.example.com") {
-		t.Fatalf("terminal message %q should name the rejected origin", terminal.Msg)
-	}
-	if strings.Contains(terminal.Msg, "token=secret") || strings.Contains(terminal.Msg, "/999/") {
-		t.Fatalf("terminal message %q must be redacted to the origin", terminal.Msg)
+	// The rejection is value-free: a rejected URL's every component is hostile
+	// text a bearer-holding server can reflect, so nothing server-authored may
+	// render (the checkContinuation pin owns the exact phrase; this asserts
+	// the absence end-to-end).
+	if strings.Contains(terminal.Msg, "attacker.example.com") ||
+		strings.Contains(terminal.Msg, "token=secret") || strings.Contains(terminal.Msg, "/999/") {
+		t.Fatalf("terminal message %q echoes the rejected URL", terminal.Msg)
 	}
 	if got := h.polls.CallCount(); got != 1 {
 		t.Fatalf("poll seam calls = %d, want 1 (zero requests to the foreign origin)", got)

@@ -18,9 +18,14 @@ import (
 // checkContinuation validates a continuation or resume URL against baseOrigin,
 // which must already be in CanonicalOrigin form. It returns nil when the URL
 // may be followed, else a Terminal(invalid_continuation) error — no request is
-// issued to the failing URL, there is no retry and no handler, and the
-// rejected URL is carried redacted to its origin (a hostile continuation's
-// path and query are exactly what must not be echoed).
+// issued to the failing URL, there is no retry and no handler, and the error
+// names only the violation class — no component of the rejected URL is
+// rendered. A hostile continuation is precisely the case where every
+// component is hostile text: the server holds the caller's bearer and can
+// reflect it into a scheme or a host label as easily as into the path and
+// query, and the value invariant binds on the value, not the position
+// (redactURL's closed output set is the same reasoning at the observer
+// surface).
 //
 // It takes the origin rather than the run loop because the validation is a
 // pure function of the two URLs: nothing here needs a run, and keeping it
@@ -50,7 +55,7 @@ func checkContinuation(baseOrigin, pageURL string) *TerminalError {
 	if scheme, _, _ := strings.Cut(origin, "://"); scheme != "http" && scheme != "https" {
 		return &TerminalError{
 			Reason: ReasonInvalidContinuation,
-			Msg:    "the continuation URL scheme " + `"` + scheme + `"` + " is not http(s)",
+			Msg:    "the continuation URL scheme is not http(s)",
 		}
 	}
 	// Canonical-origin equality IS §8's algorithm — scheme plus normalized
@@ -59,7 +64,7 @@ func checkContinuation(baseOrigin, pageURL string) *TerminalError {
 	if origin != baseOrigin {
 		return &TerminalError{
 			Reason: ReasonInvalidContinuation,
-			Msg:    "the continuation URL origin " + origin + " is not the configured base origin",
+			Msg:    "the continuation URL is not the configured base origin",
 		}
 	}
 	return nil
