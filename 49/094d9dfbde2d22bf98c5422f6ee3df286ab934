@@ -1,0 +1,21 @@
+go/pkg/basecamp/eventfeed/clock.go
+  s_1c9d086ab67253::t_9808e024041af8 107-114
+go/pkg/basecamp/eventfeed/clock_test.go
+  s_1c9d086ab67253::t_c856d1c5b82739 42-89
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "49094d9dfbde2d22bf98c5422f6ee3df286ab934",
+  "prompts": {},
+  "sessions": {
+    "s_1c9d086ab67253": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1f5628ec-50ac-4d8d-a2cc-cee5b0112903",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
