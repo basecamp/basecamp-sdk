@@ -1,0 +1,33 @@
+SPEC.md
+  s_1c9d086ab67253::t_7ce434007b2972 3374-3380,3891-3896
+conformance/event-feed/README.md
+  s_1c9d086ab67253::t_cdf56f4eac363d 186-195,384-387
+conformance/event-feed/fixtures/05-fresh-ticket-reconnect-after-ttl.json
+  s_1c9d086ab67253::t_39f8a6b183cbb1 66-73
+conformance/event-feed/schema.json
+  s_1c9d086ab67253::t_0ae8ad9b76f9d8 1213
+go/pkg/basecamp/eventfeed/scenario_fixture_test.go
+  s_1c9d086ab67253::t_6c9c1519d02fc8 298-319
+go/pkg/basecamp/eventfeed/scenario_selftest_test.go
+  s_1c9d086ab67253::t_d1257ebdf29162 84,434-446,541
+scripts/check-known-defect-issues-open
+  s_1c9d086ab67253::t_6e0d4cbc915c48 87-89
+scripts/test-check-known-defect-issues-open
+  s_1c9d086ab67253::t_faa597c48c3275 485-499
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "a823f77fce9d53d07b5a4063ca98b9758017cd14",
+  "prompts": {},
+  "sessions": {
+    "s_1c9d086ab67253": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1f5628ec-50ac-4d8d-a2cc-cee5b0112903",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
