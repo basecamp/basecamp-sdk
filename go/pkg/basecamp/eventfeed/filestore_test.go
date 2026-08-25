@@ -299,6 +299,34 @@ func TestFileCheckpointStore_MalformedKeysAreFailedNotMissing(t *testing.T) {
 	})
 }
 
+// Save is the write-side sibling of the load gates: json.Marshal does not
+// refuse invalid UTF-8, it silently swaps each invalid sequence for U+FFFD
+// on the way OUT — so a custom PollSource's opaque position would mutate
+// before it ever reached disk, where the load gates can no longer tell. A
+// caller-supplied invalid value is the caller's bug: the usage verdict, as
+// checkIdentityText gives the same inputs at construction.
+func TestFileCheckpointStore_SaveRefusesInvalidUTF8(t *testing.T) {
+	path := storePath(t)
+	key := storeKey("openclaw")
+	err := NewFileCheckpointStore(path).Save(context.Background(), key, "pos-\xff-1")
+	if err == nil {
+		data, _ := os.ReadFile(path)
+		t.Fatalf("Save(invalid UTF-8 position) = nil; the store now holds %q", data)
+	}
+	var terr *TerminalError
+	if !errors.As(err, &terr) || terr.Reason != ReasonUsage {
+		t.Fatalf("Save(invalid UTF-8 position) = %v, want a usage refusal", err)
+	}
+	if _, statErr := os.Stat(path); !errors.Is(statErr, fs.ErrNotExist) {
+		t.Fatal("the refused save left a file behind")
+	}
+	bad := key
+	bad.ConsumerNamespace = "open\xffclaw"
+	if err := NewFileCheckpointStore(path).Save(context.Background(), bad, "pos-1"); err == nil {
+		t.Fatal("Save(invalid UTF-8 key component) = nil, want a usage refusal")
+	}
+}
+
 // A position survives a fresh store instance over the same path: the point of
 // the store is durability across runs, not within one.
 func TestFileCheckpointStore_RoundTripAcrossInstances(t *testing.T) {
