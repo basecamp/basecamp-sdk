@@ -3906,8 +3906,11 @@ acquisitions), and an announcement can precede a tail arm. Together they do — 
 announcement bounds the surgery, and any timer still unarmed at the announcement is
 exactly what the exact-set match then waits for, both blocking under the watchdog so
 wrong authorship fails loudly. A transition that announces no state change, or only
-rearms a timer of the same kind and count, is invisible to this rendezvous — a script
-that would advance behind one uses `fireTimer`. `conformance/event-feed/schema.json`'s
+rearms a timer of the same kind and count, is invisible to this rendezvous — a served
+live frame's pump-side `staleness` rearm is the concrete case. Such a script overrides
+`stalenessMs` large so no deadline, old or new, sits inside a window it advances (the
+schema's own guidance, and what the suite's one advance does), or uses `fireTimer` for
+the firing it actually wants. `conformance/event-feed/schema.json`'s
 `$defs.advance` states both, and the driver obligation is enforced there.
 
 Teardown discipline: disposing a connection attempt — deadline lapse, staleness, socket
