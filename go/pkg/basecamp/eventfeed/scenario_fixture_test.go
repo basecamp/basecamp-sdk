@@ -121,22 +121,10 @@ func parseIntegralMs(data []byte) (int64, error) {
 	if len(lit) > 100000 {
 		return 0, fmt.Errorf("a %d-character number is beyond any modeled ms value (literals are capped at 100000 characters)", len(lit))
 	}
-	mant, exp := lit, 0
+	mant, expText := lit, ""
 	if i := strings.IndexAny(lit, "eE"); i >= 0 {
 		mant = lit[:i]
-		e, err := strconv.Atoi(strings.TrimPrefix(lit[i+1:], "+"))
-		if err != nil {
-			return 0, fmt.Errorf("%s is not a number this driver can read", lit)
-		}
-		// Bound the exponent before any place arithmetic: at the platform's
-		// integer extremes, intLen - firstNZ + exp wraps and the magnitude
-		// judgments below judge garbage. The literal cap above bounds the
-		// significand at 100000 digits, so no in-range value needs an
-		// exponent beyond ±200000 to spell.
-		if e > 200000 || e < -200000 {
-			return 0, fmt.Errorf("%s is beyond any modeled ms value", lit)
-		}
-		exp = e
+		expText = strings.TrimPrefix(lit[i+1:], "+")
 	}
 	digits := strings.TrimPrefix(mant, "-")
 	point := strings.IndexByte(digits, '.')
@@ -155,10 +143,27 @@ func parseIntegralMs(data []byte) (int64, error) {
 		}
 	}
 	if firstNZ < 0 {
-		// Zero, however spelled (0, 0.000, 0e200000): integral, in range
-		// judgment's hands, and returned without ever expanding an exponent
-		// into a rational.
+		// Zero, however spelled (0, 0.000, 0e200001): integral, the range
+		// judgment's to refuse, and decided before the exponent is even
+		// parsed — an exponent multiplies a significand, and this one is
+		// zero.
 		return 0, nil
+	}
+	exp := 0
+	if expText != "" {
+		e, err := strconv.Atoi(expText)
+		if err != nil {
+			return 0, fmt.Errorf("%s is not a number this driver can read", lit)
+		}
+		// Bound the exponent before any place arithmetic: at the platform's
+		// integer extremes, intLen - firstNZ + exp wraps and the magnitude
+		// judgments below judge garbage. The literal cap above bounds the
+		// significand at 100000 digits, so no in-range value needs an
+		// exponent beyond ±200000 to spell.
+		if e > 200000 || e < -200000 {
+			return 0, fmt.Errorf("%s is beyond any modeled ms value", lit)
+		}
+		exp = e
 	}
 	{
 		// Digit i occupies decimal place intLen - i + exp (units = 1).

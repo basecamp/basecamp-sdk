@@ -672,6 +672,7 @@ func TestScenarioMsAcceptsIntegralNumberSpellings(t *testing.T) {
 		// Zero short-circuits before any exponent expansion; a zero
 		// stalenessMs is then the RANGE check's refusal, not a parse error.
 		{"zero with a large exponent", "0e199999", "1000", "must be in [1,", 0},
+		{"zero beyond the exponent cap", "0e200001", "1000", "must be in [1,", 0},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
