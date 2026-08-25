@@ -265,6 +265,40 @@ func TestFileCheckpointStore_DuplicateKeysAreFailed(t *testing.T) {
 	}
 }
 
+// Every key in the store must be a canonical FlatKey — the compact JSON
+// array of exactly four strings the package itself writes. Corruption that
+// turns a lineage's key into some other valid JSON string used to decode
+// cleanly and surface as MISSING, silently entering at the present and
+// skipping history; a malformed key is corruption, and corruption is Failed.
+func TestFileCheckpointStore_MalformedKeysAreFailedNotMissing(t *testing.T) {
+	key := storeKey("openclaw")
+	for _, tc := range []struct{ name, storedKey string }{
+		{"not an array", `"garbage"`},
+		{"three elements", `"[\"a\",\"b\",\"c\"]"`},
+		{"five elements", `"[\"a\",\"b\",\"c\",\"d\",\"e\"]"`},
+		{"non-string element", `"[\"a\",\"b\",\"c\",4]"`},
+		{"non-compact spelling", `"[ \"a\",\"b\",\"c\",\"d\"]"`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			path := storePath(t)
+			writeStoreFile(t, path, "{"+tc.storedKey+`:"pos-1"}`)
+			position, ok, err := NewFileCheckpointStore(path).Load(context.Background(), key)
+			if err == nil {
+				t.Fatalf("Load() = (%q, %v, nil), want Failed — a malformed key is corruption, not absence", position, ok)
+			}
+		})
+	}
+	t.Run("another lineage's valid key is still Missing", func(t *testing.T) {
+		path := storePath(t)
+		other := storeKey("other-namespace")
+		writeStoreFile(t, path, "{"+strconv.Quote(other.FlatKey())+`:"pos-9"}`)
+		position, ok, err := NewFileCheckpointStore(path).Load(context.Background(), key)
+		if err != nil || ok || position != "" {
+			t.Errorf("Load() = (%q, %v, %v), want Missing — a well-formed foreign key is not corruption", position, ok, err)
+		}
+	})
+}
+
 // A position survives a fresh store instance over the same path: the point of
 // the store is durability across runs, not within one.
 func TestFileCheckpointStore_RoundTripAcrossInstances(t *testing.T) {
