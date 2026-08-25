@@ -79,8 +79,9 @@ type TerminalError struct {
 // Error implements the error interface. The composed result is bounded by
 // §9's MAX_ERROR_MESSAGE_LENGTH like every other rendering here that can
 // carry server-derived text: Msg holds the server's filter-invalid message
-// verbatim, or a rejected continuation's scheme or origin, and nothing
-// upstream bounds their length.
+// verbatim (§23 preserves it), and nothing upstream bounds its length. A
+// rejected continuation contributes only a fixed violation-class phrase —
+// no component of the rejected URL is ever rendered.
 func (e *TerminalError) Error() string {
 	msg := "event feed terminal: " + string(e.Reason)
 	if e.Msg != "" {
