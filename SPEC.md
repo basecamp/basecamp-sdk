@@ -3893,12 +3893,16 @@ cannot cause an arm, leaving nothing to detect. It is stricter than an arming ru
 firing that replaces nothing is rejected too) and that is the trade: a script wanting that
 firing writes `fireTimer` and names the timer. The due-set read also needs a settled set
 to read — an action's completion can precede the timer arms its transition causes — so
-every `advance` must be the scenario's first step or immediately follow `expectTimers`,
-whose exact-set match is the authored settle; drivers enforce the adjacency at fixture
-load, and reject an empty rendezvous set with it (no arm of the preceding transition can
-be in it, so its match orders nothing). The authored set must include an arm of the
-preceding transition — a same-kind, same-count rearm is invisible to set matching, and a
-script that would advance behind one uses `fireTimer`. `conformance/event-feed/schema.json`'s
+every `advance` must be the scenario's first step or immediately follow the two-step
+rendezvous `expectState` then `expectTimers`, enforced at fixture load (an empty
+rendezvous set is rejected with it — it orders nothing). Neither step alone settles: a
+set match can coincide with a transient mid-surgery set (timer surgery spans clock
+acquisitions), and an announcement can precede a tail arm. Together they do — the
+announcement bounds the surgery, and any timer still unarmed at the announcement is
+exactly what the exact-set match then waits for, both blocking under the watchdog so
+wrong authorship fails loudly. A transition that announces no state change, or only
+rearms a timer of the same kind and count, is invisible to this rendezvous — a script
+that would advance behind one uses `fireTimer`. `conformance/event-feed/schema.json`'s
 `$defs.advance` states both, and the driver obligation is enforced there.
 
 Teardown discipline: disposing a connection attempt — deadline lapse, staleness, socket

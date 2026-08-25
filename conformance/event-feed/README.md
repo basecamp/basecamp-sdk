@@ -188,17 +188,21 @@ can precede the timer arms its transition causes — a connect is observable
 before the handshake deadline is armed on the connector's own thread — so an
 advance placed right behind an action races those arms: rejected on one
 schedule, accepted with time moved past a deadline about to arm on another.
-The rendezvous is authored, not guessed: every `advance` must be the
-scenario's first step or immediately follow `expectTimers`, whose exact-set
-match is the settle (the per-state exact-set invariants are what make a match
-mean settled), and drivers enforce the adjacency at fixture load — rejecting an
-empty rendezvous set with it, since a set with no timers cannot contain an arm
-of the preceding transition and so matches before that transition is processed.
-The limit the load rule cannot close is authored judgment: the scripted set
-must include at least one timer the preceding transition ARMS, and a
-transition that only rearms a timer of the same kind and count is invisible to
-set matching — a script that would advance behind one writes `fireTimer`
-instead.
+The rendezvous is authored, not guessed, and it is TWO steps: every `advance`
+must be the scenario's first step or immediately follow `expectState` then
+`expectTimers`, enforced at fixture load (an empty `expectTimers` set is
+rejected with it — it orders nothing). Neither step alone settles. A set match
+can coincide with a transient mid-surgery set: the welcome transition stops
+`handshake-deadline` and arms `confirmation-deadline` in separate clock
+acquisitions, so an authored set can exist in the gap. An announcement can
+precede a tail arm: Backoff announces before its timer is armed. Together they
+settle — the announcement bounds the surgery, and any timer still unarmed at
+the announcement is exactly what the following exact-set match waits for. Both
+steps block under the scenario watchdog, so a wrongly authored state or set
+fails loudly instead of diverging silently. What stays outside this
+rendezvous is a transition that announces no state change, or only rearms a
+timer of the same kind and count — invisible to both barriers; a script that
+would advance behind one writes `fireTimer` instead.
 
 ## Contract notes the fixtures encode (SDK-owned, final)
 

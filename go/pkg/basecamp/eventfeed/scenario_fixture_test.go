@@ -37,15 +37,19 @@ type scenarioStep struct {
 // scenarioConfig is the schema's `config` object — the connector construction
 // options a scenario selects.
 type scenarioConfig struct {
-	Types                  []string          `json:"types"`
-	Buckets                []int64           `json:"buckets"`
-	Creators               []int64           `json:"creators"`
-	Position               string            `json:"position"`
-	ConfirmationDeadlineMs int64             `json:"confirmationDeadlineMs"`
-	RepairPollBaseMs       int64             `json:"repairPollBaseMs"`
-	BackoffBaseMs          int64             `json:"backoffBaseMs"`
-	BackoffCapMs           int64             `json:"backoffCapMs"`
-	StalenessMs            int64             `json:"stalenessMs"`
+	Types    []string `json:"types"`
+	Buckets  []int64  `json:"buckets"`
+	Creators []int64  `json:"creators"`
+	Position string   `json:"position"`
+	// The five durations are POINTERS because presence is meaning: the
+	// schema says minimum 1, and a plain int64 read an explicit zero as
+	// "absent, use the default" — accepting a value the schema rejects and
+	// silently substituting another.
+	ConfirmationDeadlineMs *int64            `json:"confirmationDeadlineMs"`
+	RepairPollBaseMs       *int64            `json:"repairPollBaseMs"`
+	BackoffBaseMs          *int64            `json:"backoffBaseMs"`
+	BackoffCapMs           *int64            `json:"backoffCapMs"`
+	StalenessMs            *int64            `json:"stalenessMs"`
 	LiveBufferCapacity     int               `json:"liveBufferCapacity"`
 	DedupeCapacity         int               `json:"dedupeCapacity"`
 	SignalDisposition      map[string]string `json:"signalDisposition"`
@@ -296,25 +300,29 @@ func parseScenario(raw []byte, file string) (*scenario, error) {
 		sc.Steps = append(sc.Steps, step)
 	}
 
-	// An advance is deterministic only from a scripted rendezvous point. An
+	// An advance is deterministic only from a scripted rendezvous point, and
+	// the rendezvous is TWO steps: expectState, then expectTimers. An
 	// action's completion can precede the timer arms its transition causes —
 	// expectConnect returns when the dial is recorded, while the handshake
-	// deadline arms on the connector's goroutine after — so an advance right
-	// behind an action races those arms: the same script is rejected on one
-	// schedule ("would fire") and accepted on another, with time moved past a
-	// deadline about to arm. The rendezvous is AUTHORED, not guessed:
-	// expectTimers polls until the outstanding set exactly matches a settled
-	// state's set (§23's per-state exact-set invariants are what make the
-	// match a settle), and this load rule makes its absence unscriptable.
+	// deadline arms on the connector's goroutine after — and a set match
+	// ALONE can coincide with a transient mid-surgery set (the welcome
+	// transition stops handshake-deadline and arms confirmation-deadline in
+	// separate clock acquisitions, so an authored set can exist in between).
+	// The state announcement bounds the surgery: expectState blocks until
+	// the transition announces, and in every announced state any timer still
+	// unarmed at the announcement is exactly what the following exact-set
+	// match waits for — so the pair settles where either alone races. Both
+	// blocks fail loudly on the watchdog when the authored state or set is
+	// wrong; nothing diverges silently.
 	for i, step := range sc.Steps {
 		if step.Kind != "advance" || i == 0 {
 			continue
 		}
-		if sc.Steps[i-1].Kind != "expectTimers" {
+		if i < 2 || sc.Steps[i-1].Kind != "expectTimers" || sc.Steps[i-2].Kind != "expectState" {
 			return nil, fmt.Errorf("step %d: an advance must be the scenario's first step or immediately follow "+
-				"expectTimers — an action's completion can precede the timer arms its transition causes, so an "+
-				"unrendezvoused advance cannot mean the same thing on every schedule; expectTimers' exact-set "+
-				"match is the settle", i+1)
+				"an expectState + expectTimers rendezvous — an action's completion can precede the timer arms "+
+				"its transition causes, and a set match alone can coincide with a transient mid-surgery set; "+
+				"the state announcement bounds the surgery and the exact-set match settles what follows it", i+1)
 		}
 		// The match must be able to MEAN settled: an empty set can never
 		// contain an arm of the preceding transition, so it matches before
@@ -525,22 +533,23 @@ type (
 // --- validation ----------------------------------------------------------
 
 func validateConfig(cfg scenarioConfig) error {
-	// Absent decodes as 0 and means "default", so only set values are ranged.
+	// A nil pointer is absence and means "default"; every SUPPLIED value is
+	// ranged, explicit zero included.
 	for _, f := range []struct {
 		name string
-		v    int64
+		v    *int64
 	}{
 		{"confirmationDeadlineMs", cfg.ConfirmationDeadlineMs},
 		{"repairPollBaseMs", cfg.RepairPollBaseMs},
 		{"stalenessMs", cfg.StalenessMs},
 	} {
-		if f.v != 0 {
-			if err := checkScenarioMs(f.name, f.v, 1); err != nil {
+		if f.v != nil {
+			if err := checkScenarioMs(f.name, *f.v, 1); err != nil {
 				return err
 			}
 		}
 	}
-	if cfg.BackoffBaseMs != 0 || cfg.BackoffCapMs != 0 {
+	if cfg.BackoffBaseMs != nil || cfg.BackoffCapMs != nil {
 		return fmt.Errorf("backoffBaseMs/backoffCapMs are not modeled: SPEC §23 pins the Go connector's full-jitter base and cap as constants, with no construction option to override")
 	}
 	for kind, disposition := range cfg.SignalDisposition {

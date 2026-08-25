@@ -432,6 +432,32 @@ func TestScenarioDriverRejectsUnmodelledScripts(t *testing.T) {
 			wants:  "10 virtual years",
 		},
 		{
+			// Explicit zero is not omission: the schema says minimum 1, and a
+			// plain int64 decode read {"stalenessMs":0} as "absent, use the
+			// default" — accepting a value the schema rejects and silently
+			// substituting another. Presence is preserved with pointers.
+			name:   "config stalenessMs explicit zero",
+			script: `{"name":"x","description":"d","config":{"stalenessMs":0},"steps":[{"advance":{"ms":1}}],"finally":{"state":"closed"}}`,
+			wants:  "must be in [1,",
+		},
+		{
+			name:   "config confirmationDeadlineMs explicit zero",
+			script: `{"name":"x","description":"d","config":{"confirmationDeadlineMs":0},"steps":[{"advance":{"ms":1}}],"finally":{"state":"closed"}}`,
+			wants:  "must be in [1,",
+		},
+		{
+			name:   "config repairPollBaseMs explicit zero",
+			script: `{"name":"x","description":"d","config":{"repairPollBaseMs":0},"steps":[{"advance":{"ms":1}}],"finally":{"state":"closed"}}`,
+			wants:  "must be in [1,",
+		},
+		{
+			// The unmodeled pair is unmodeled at ANY supplied value: explicit
+			// zero used to slip past the != 0 check into silence.
+			name:   "config backoffBaseMs explicit zero",
+			script: `{"name":"x","description":"d","config":{"backoffBaseMs":0},"steps":[{"advance":{"ms":1}}],"finally":{"state":"closed"}}`,
+			wants:  "not modeled",
+		},
+		{
 			// An advance is deterministic only from a scripted rendezvous:
 			// an action's completion can precede the timer arms its
 			// transition causes (expectConnect returns when the dial is
@@ -442,7 +468,7 @@ func TestScenarioDriverRejectsUnmodelledScripts(t *testing.T) {
 			// settle, and the load rule makes its absence unscriptable.
 			name:   "an advance not preceded by an expectTimers rendezvous",
 			script: `{"name":"x","description":"d","steps":[{"expectMint":{"respond":{"status":200,"body":{"ticket":"{{TICKET:1}}","expires_in":120,"url":"{{CABLE_URL:1}}"}}}},{"expectConnect":{"url":"{{CABLE_URL:1}}"}},{"advance":{"ms":30000}}],"finally":{"state":"closed"}}`,
-			wants:  "must be the scenario's first step or immediately follow expectTimers",
+			wants:  "expectState + expectTimers rendezvous",
 		},
 		{
 			// An EMPTY rendezvous set can never contain an arm of the
@@ -452,8 +478,20 @@ func TestScenarioDriverRejectsUnmodelledScripts(t *testing.T) {
 			// rendezvous were absent. A scenario with nothing yet armed
 			// advances as its first step instead.
 			name:   "an advance behind an empty expectTimers rendezvous",
-			script: `{"name":"x","description":"d","steps":[{"expectTimers":{"exact":{}}},{"advance":{"ms":1}}],"finally":{"state":"closed"}}`,
+			script: `{"name":"x","description":"d","steps":[{"expectState":{"is":"backoff"}},{"expectTimers":{"exact":{}}},{"advance":{"ms":1}}],"finally":{"state":"closed"}}`,
 			wants:  "an empty rendezvous orders nothing",
+		},
+		{
+			// The set match alone can coincide with a TRANSIENT mid-surgery
+			// set (the welcome transition stops handshake-deadline and arms
+			// confirmation-deadline in separate clock acquisitions, so
+			// {staleness:1} exists in between). The state announcement bounds
+			// the surgery: expectState blocks until the transition announces,
+			// and every timer still unarmed at an announcement is exactly
+			// what the set match then waits for.
+			name:   "an advance whose rendezvous lacks the state barrier",
+			script: `{"name":"x","description":"d","steps":[{"expectMint":{"respond":{"status":200,"body":{"ticket":"{{TICKET:1}}","expires_in":120,"url":"{{CABLE_URL:1}}"}}}},{"expectConnect":{"url":"{{CABLE_URL:1}}"}},{"expectTimers":{"exact":{"handshake-deadline":1}}},{"advance":{"ms":30000}}],"finally":{"state":"closed"}}`,
+			wants:  "expectState + expectTimers rendezvous",
 		},
 		{
 			name:   "droppedCount disagreeing with droppedIds",
@@ -549,7 +587,8 @@ func TestScenarioDriverRejectsSchedulingDependentAdvance(t *testing.T) {
 		script := `{"name":"x","description":"d","steps":[
 			{"expectMint":{"respond":{"status":200,"body":{"ticket":"{{TICKET:1}}","expires_in":120,"url":"{{CABLE_URL:1}}"}}}},
 			{"expectConnect":{"url":"{{CABLE_URL:1}}"}},
-			{"expectTimers":{"exact":{"handshake-deadline":1}}},
+			{"expectState":{"is":"awaiting_welcome"}},
+			{"expectTimers":{"exact":{"handshake-deadline":1,"staleness":1}}},
 			{"advance":{"ms":30000}}],
 			"finally":{"state":"backoff"}}`
 		err := underShortWatchdog(func() error { return runScenarioBytes([]byte(script), "x.json") })
@@ -593,6 +632,7 @@ func TestScenarioDriverRejectsSchedulingDependentAdvance(t *testing.T) {
 			{"expectSubscribe":{"channel":"EventsChannel"}},
 			{"fireTimer":{"kind":"confirmation-deadline"}},
 			{"expectClientClose":{}},
+			{"expectState":{"is":"backoff"}},
 			{"expectTimers":{"exact":{"backoff":1}}},
 			{"advance":{"ms":1000}},
 			{"expectMint":{"respond":{"status":200,"body":{"ticket":"{{TICKET:2}}","expires_in":120,"url":"{{CABLE_URL:2}}"}}}},
