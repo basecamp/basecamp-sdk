@@ -14,7 +14,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"math"
+	"math/big"
 	"regexp"
 	"strconv"
 	"strings"
@@ -86,29 +86,42 @@ func (o *optionalMs) UnmarshalJSON(data []byte) error {
 // judges it: by MATHEMATICAL value, not spelling — 1000.0 and 1e3 are integer
 // instances a schema-valid fixture may carry, and only this driver was
 // refusing them (the float-spelled-int class FlexInt absorbs on the
-// rich-text lane). Integrality is decidable without precision loss here:
-// every in-range value sits far below float64's 2^53 exact-integer ceiling
-// (maxScenarioMs ≈ 3.16e11), so a spelling that only parses as a float still
-// carries its value exactly.
+// rich-text lane). Integrality is a fact about the TEXT, which json.Number
+// preserves: a float64 detour rounds 1000.00000000000001 to exactly 1000 —
+// and 315575999999.99999 to exactly the maximum — before any check can look,
+// so the literal is judged exactly, with big.Rat. Two gates come first: a
+// quoted "1000" is a STRING instance the schema refuses, though json.Number's
+// own Unmarshal would take it; and an exponent is read as a NUMBER'S text
+// before anything is materialized, so an exponent bomb (1e999999999) is
+// refused for its magnitude, never expanded.
 func parseIntegralMs(data []byte) (int64, error) {
+	trimmed := strings.TrimLeft(string(data), " \t\r\n")
+	if strings.HasPrefix(trimmed, `"`) {
+		return 0, fmt.Errorf("%s is a string: the schema's type is integer — quote-wrapping a number makes it a different instance", trimmed)
+	}
 	var n json.Number
 	if err := json.Unmarshal(data, &n); err != nil {
 		return 0, err
 	}
-	if v, err := n.Int64(); err == nil {
-		return v, nil
+	lit := n.String()
+	if i := strings.IndexAny(lit, "eE"); i >= 0 {
+		exp, err := strconv.Atoi(strings.TrimPrefix(lit[i+1:], "+"))
+		if err != nil || exp > 40 || exp < -40 {
+			return 0, fmt.Errorf("%s is beyond any modeled ms value: its exponent alone puts it outside [0, %d]", lit, maxScenarioMs)
+		}
 	}
-	f, err := n.Float64()
-	if err != nil {
-		return 0, err
+	r, ok := new(big.Rat).SetString(lit)
+	if !ok {
+		return 0, fmt.Errorf("%s is not a number this driver can read", lit)
 	}
-	if f != math.Trunc(f) {
-		return 0, fmt.Errorf("%s is not an integer: the schema's type is integer — a number whose mathematical value is integral", n)
+	if !r.IsInt() {
+		return 0, fmt.Errorf("%s is not an integer: the schema's type is integer — a number whose mathematical value is integral", lit)
 	}
-	if math.Abs(f) > 1<<53 {
-		return 0, fmt.Errorf("%s is beyond float64's exact-integer range — and beyond any modeled ms value", n)
+	num := r.Num()
+	if !num.IsInt64() {
+		return 0, fmt.Errorf("%s is beyond any modeled ms value", lit)
 	}
-	return int64(f), nil
+	return num.Int64(), nil
 }
 
 // scenarioMs is a required ms value under the same number model.

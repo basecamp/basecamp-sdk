@@ -646,6 +646,18 @@ func TestScenarioMsAcceptsIntegralNumberSpellings(t *testing.T) {
 		{"exponent spelling", "1e3", "1e3", ""},
 		{"non-integral", "1000.5", "1000", "is not an integer"},
 		{"non-integral ms", "1000", "1000.5", "is not an integer"},
+		// Integrality is a fact about the TEXT: float64 rounds these to
+		// exactly 1000 and exactly the maximum before any Trunc can look.
+		{"rounding-boundary fraction", "1000.00000000000001", "1000", "is not an integer"},
+		{"near-maximum fraction", "315575999999.99999", "1000", "is not an integer"},
+		{"exact maximum float spelling", "315576000000.0", "1000", ""},
+		// A quoted "1000" is a STRING instance — schema type integer refuses
+		// it, and json.Number's Unmarshal would happily have taken it.
+		{"quoted number", `"1000"`, "1000", "is a string"},
+		{"quoted ms", "1000", `"1000"`, "is a string"},
+		// An exponent bomb must be refused by reading the exponent, never by
+		// materializing the number.
+		{"exponent bomb", "1e999999999", "1000", "beyond any modeled ms value"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -655,8 +667,8 @@ func TestScenarioMsAcceptsIntegralNumberSpellings(t *testing.T) {
 				if err != nil {
 					t.Fatalf("an integral spelling must load: %v", err)
 				}
-				if got := int64(sc.Config.StalenessMs.v); got != 1000 {
-					t.Errorf("stalenessMs decoded to %d, want 1000", got)
+				if got := sc.Config.StalenessMs.v; got != 1000 && got != 315576000000 {
+					t.Errorf("stalenessMs decoded to %d, want the literal's integral value", got)
 				}
 				return
 			}
