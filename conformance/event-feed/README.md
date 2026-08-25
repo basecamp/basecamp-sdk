@@ -455,7 +455,7 @@ was. The driver performs the redaction itself, before the connector runs: no
 path or query text from the `Location` ever reaches the connector, so a
 connector that echoed its entire input verbatim would pass fixture 30
 unchanged. Claiming it here would have been a kill that cannot fail. That proof
-belongs to `TestRedirectRefusalExposesOnlyTheLocationOrigin`, which feeds a
+belongs to `TestRedirectRefusalRendersNoServerValue`, which feeds a
 secret-bearing cause and asserts the terminal's whole rendering and cause chain
 never carry it — a test that exists today — and, for the real-adapter path, to
 Layer 1 once its adapters land.
