@@ -335,7 +335,7 @@ expect_fail(failures, "9. missing gh fails closed", out, status,
 
 out, status, calls = run_checker(
   allowlist: { "sdk_routes_known_defective" => [], "bc3_routes_not_modeled" => [] },
-  tracking: { "prose_tracking_issues" => [ { "issue" => 303, "file" => "README.md", "site" => "README.md — a gap" } ] },
+  tracking: { "prose_tracking_issues" => [ { "issue" => 303, "file" => "README.md", "site" => "README.md — a gap", "mentions" => 0 } ] },
   states: "303=open"
 )
 expect_pass(failures, "N. prose registry entries are collected", out, status,
@@ -352,7 +352,7 @@ end
 
 out, status, _ = run_checker(
   allowlist: { "sdk_routes_known_defective" => [], "bc3_routes_not_modeled" => [] },
-  tracking: { "prose_tracking_issues" => [ { "issue" => 404, "file" => "SPEC.md", "site" => "SPEC.md — a bound" } ] },
+  tracking: { "prose_tracking_issues" => [ { "issue" => 404, "file" => "SPEC.md", "site" => "SPEC.md — a bound", "mentions" => 0 } ] },
   states: "404=closed"
 )
 expect_fail(failures, "N+1. a CLOSED prose tracking issue fails", out, status,
@@ -365,7 +365,7 @@ expect_fail(failures, "N+1. a CLOSED prose tracking issue fails", out, status,
 
 out, status, _ = run_checker(
   allowlist: { "sdk_routes_known_defective" => [ defective(101) ], "bc3_routes_not_modeled" => [] },
-  tracking: { "prose_tracking_issues" => [ { "issue" => 303, "file" => "README.md", "site" => "README.md — a gap" } ] },
+  tracking: { "prose_tracking_issues" => [ { "issue" => 303, "file" => "README.md", "site" => "README.md — a gap", "mentions" => 0 } ] },
   states: "101=open,303=closed"
 )
 expect_fail(failures, "N+2. a closed registry entry fails even with a green allowlist", out, status,
@@ -500,7 +500,7 @@ expect_fail(failures, "N+8. an unregistered canonical mention fails the sweep", 
 out, status, calls = run_checker(
   allowlist: { "sdk_routes_known_defective" => [], "bc3_routes_not_modeled" => [] },
   tracking: { "prose_tracking_issues" => [
-    { "issue" => 303, "file" => "docs/note.md", "site" => "docs/note.md — a gap" }
+    { "issue" => 303, "file" => "docs/note.md", "site" => "docs/note.md — a gap", "mentions" => 1 }
   ] },
   sweep: { "docs/note.md" => "The gap is tracked in #303.\n" },
   states: "303=open"
@@ -563,6 +563,69 @@ out, status, _ = run_checker(
 )
 expect_fail(failures, "N+11b. a blockquote-wrapped mention is still caught", out, status,
             "not registered")
+
+# --- N+13..16. Counts are committed, like doc-constants' marker counts -----------
+#
+# [file, issue] pair coverage silently absorbed every FUTURE matching promise
+# in a covered file: a second "tracked in #N" could appear and ride the
+# existing row unregistered. The repo's instrument for exactly this is the
+# committed COUNT — a row records how many canonical mentions it stands for,
+# the sweep verifies the number in both directions, and a new mention (or a
+# deleted one) fails until someone updates the row.
+
+two = "one gap is tracked in #303 here.\nThe other is also tracked in #303.\n"
+
+out, status, _ = run_checker(
+  allowlist: { "sdk_routes_known_defective" => [], "bc3_routes_not_modeled" => [] },
+  tracking: { "prose_tracking_issues" => [
+    { "issue" => 303, "file" => "docs/note.md", "site" => "docs/note.md — a gap", "mentions" => 1 }
+  ] },
+  sweep: { "docs/note.md" => two },
+  states: "303=open"
+)
+expect_fail(failures, "N+13. a second canonical mention fails until the count moves", out, status,
+            "records 1 canonical mention(s), the sweep found 2")
+
+out, status, _ = run_checker(
+  allowlist: { "sdk_routes_known_defective" => [], "bc3_routes_not_modeled" => [] },
+  tracking: { "prose_tracking_issues" => [
+    { "issue" => 303, "file" => "docs/note.md", "site" => "docs/note.md — two gaps", "mentions" => 2 }
+  ] },
+  sweep: { "docs/note.md" => two },
+  states: "303=open"
+)
+expect_pass(failures, "N+14. a matching count passes", out, status)
+
+out, status, _ = run_checker(
+  allowlist: { "sdk_routes_known_defective" => [], "bc3_routes_not_modeled" => [] },
+  tracking: { "prose_tracking_issues" => [
+    { "issue" => 303, "file" => "docs/note.md", "site" => "docs/note.md — a gap", "mentions" => 1 }
+  ] },
+  states: "303=open"
+)
+expect_fail(failures, "N+15. a deleted mention fails until the count moves", out, status,
+            "records 1 canonical mention(s), the sweep found 0")
+
+out, status, _ = run_checker(
+  allowlist: { "sdk_routes_known_defective" => [], "bc3_routes_not_modeled" => [] },
+  tracking: { "prose_tracking_issues" => [
+    { "issue" => 303, "file" => "README.md", "site" => "README.md — a gap" }
+  ] },
+  states: "303=open"
+)
+expect_fail(failures, "N+16. a row without a mentions count fails", out, status,
+            "needs a `mentions`")
+
+out, status, _ = run_checker(
+  allowlist: { "sdk_routes_known_defective" => [], "bc3_routes_not_modeled" => [] },
+  tracking: { "prose_tracking_issues" => [
+    { "issue" => 303, "file" => "README.md", "site" => "README.md — a gap", "mentions" => 0 },
+    { "issue" => 303, "file" => "README.md", "site" => "README.md — the same gap again", "mentions" => 0 }
+  ] },
+  states: "303=open"
+)
+expect_fail(failures, "N+17. duplicate [file, issue] rows fail", out, status,
+            "duplicate")
 
 # --- N+12. A row with no file fails ----------------------------------------------
 #
