@@ -680,11 +680,11 @@ func (h *scenarioHarness) newConnector(cfg scenarioConfig) (*eventfeed.Connector
 			},
 		}),
 	}
-	if cfg.ConfirmationDeadlineMs > 0 {
-		opts = append(opts, eventfeed.WithConfirmationDeadline(millis(cfg.ConfirmationDeadlineMs)))
+	if cfg.ConfirmationDeadlineMs != nil {
+		opts = append(opts, eventfeed.WithConfirmationDeadline(millis(*cfg.ConfirmationDeadlineMs)))
 	}
-	if cfg.RepairPollBaseMs > 0 {
-		opts = append(opts, eventfeed.WithRepairInterval(millis(cfg.RepairPollBaseMs)))
+	if cfg.RepairPollBaseMs != nil {
+		opts = append(opts, eventfeed.WithRepairInterval(millis(*cfg.RepairPollBaseMs)))
 	}
 	if cfg.LiveBufferCapacity > 0 {
 		opts = append(opts, eventfeed.WithLiveBufferCapacity(cfg.LiveBufferCapacity))
@@ -700,8 +700,8 @@ func (h *scenarioHarness) newConnector(cfg scenarioConfig) (*eventfeed.Connector
 	if err != nil {
 		return nil, err
 	}
-	if cfg.StalenessMs > 0 {
-		conn.SetStaleAfter(millis(cfg.StalenessMs))
+	if cfg.StalenessMs != nil {
+		conn.SetStaleAfter(millis(*cfg.StalenessMs))
 	}
 	conn.OnStateChanged(h.recordState)
 	conn.OnBufferOccupancy(h.recordOccupancy)
