@@ -181,6 +181,9 @@ func TestParseFrame_InvalidFrames(t *testing.T) {
 		{"wrong-typed type", `{"type":123}`},
 		{"wrong-typed identifier", `{"identifier":42,"type":"confirm_subscription"}`},
 		{"wrong-typed reconnect", `{"type":"disconnect","reason":"remote","reconnect":"yes"}`},
+		// encoding/json would silently U+FFFD the mangled byte and read an
+		// UNKNOWN type — a liveness no-op — where the peer sent corruption.
+		{"raw invalid UTF-8 in the type", "{\"type\":\"p\xffing\"}"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -497,6 +500,12 @@ func TestDecodeMessageEvent_Failures(t *testing.T) {
 	})
 	t.Run("malformed created_at", func(t *testing.T) {
 		assertEventDecodeFails(t, []byte(`{"id":105,"kind":"message","event_type":"message.created","action":"created","created_at":"yesterday","bucket_id":2,"creator_id":3,"recording_id":900,"visible_to_clients":false}`))
+	})
+	t.Run("raw invalid UTF-8 in a string", func(t *testing.T) {
+		// Ungated, the decoder swaps the byte for U+FFFD and returns a VALID
+		// event whose routing field was silently mutated — the same class
+		// the checkpoint store refuses on load.
+		assertEventDecodeFails(t, []byte("{\"id\":105,\"kind\":\"message\",\"event_type\":\"message.\xffcreated\",\"action\":\"created\",\"created_at\":\"2026-08-01T12:00:00Z\",\"bucket_id\":2,\"creator_id\":3,\"recording_id\":900,\"visible_to_clients\":false}"))
 	})
 	t.Run("null payload", func(t *testing.T) {
 		assertEventDecodeFails(t, []byte(`null`))
