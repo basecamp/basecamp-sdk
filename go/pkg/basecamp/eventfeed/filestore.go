@@ -1,7 +1,6 @@
 package eventfeed
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -13,6 +12,7 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"unicode"
 	"unicode/utf8"
 )
 
@@ -86,6 +86,9 @@ type FileCheckpointStore struct {
 	// It is the lock for the canonical path, shared with every other store
 	// instance over the same file, not a lock of this instance's own.
 	mu *sync.RWMutex
+	// pathErr, when set, is the construction-time path resolution failure;
+	// every Load and Save reports it instead of touching the filesystem.
+	pathErr error
 }
 
 // FileCheckpointStore fills the CheckpointStore seam.
@@ -117,7 +120,13 @@ const maxCheckpointStoreBytes = 8 << 20
 // the per-path lock exists to prevent. Errors therefore name the resolved
 // path rather than the spelling the caller passed.
 func NewFileCheckpointStore(path string) *FileCheckpointStore {
-	canonical := canonicalStorePath(path)
+	canonical, err := canonicalStorePath(path)
+	if err != nil {
+		// Fail on use, not silently on a drifting spelling: see
+		// canonicalStorePath. The mutex is private — this store never
+		// touches the file, so it shares serialization with nothing.
+		return &FileCheckpointStore{path: filepath.Clean(path), pathErr: err, mu: new(sync.RWMutex)}
+	}
 	return &FileCheckpointStore{path: canonical, mu: pathLock(canonical)}
 }
 
@@ -172,19 +181,45 @@ func pathLock(path string) *sync.RWMutex {
 // is already serialized against itself, and under-serializing silently drops a
 // lineage's cursor.
 //
-// Case folding only. Unicode normalization is a real second axis on APFS, but
-// it is not what #761 reports and a half-applied normalization would read as a
-// guarantee this does not make.
+// Case folding only, and SIMPLE folding at that. strings.ToLower was the
+// first cut and missed the orbits lowercasing cannot see — ſ (U+017F)
+// case-folds together with S and s on APFS/NTFS while ToLower leaves it
+// alone, so two spellings of one physical file took two mutexes. Each rune
+// now maps to the minimum of its unicode.SimpleFold orbit, which covers
+// every one-rune fold. The honest edges that remain: full-fold multi-rune
+// expansions (ß against ss) and Unicode normalization are real further axes
+// of APFS equivalence that this deliberately does not chase — byte-identity
+// of the configured spelling is the documented guarantee, and an alias this
+// folding cannot see degrades to the documented cross-process case: last
+// writer wins for the lineages it holds.
 func storeLockKey(path string) string {
-	return strings.ToLower(canonicalStorePath(path))
+	canonical, err := canonicalStorePath(path)
+	if err != nil {
+		canonical = filepath.Clean(path)
+	}
+	return strings.Map(minSimpleFold, canonical)
+}
+
+// minSimpleFold maps r to the smallest rune in its unicode.SimpleFold orbit —
+// one representative per simple case-fold equivalence class.
+func minSimpleFold(r rune) rune {
+	least := r
+	for f := unicode.SimpleFold(r); f != r; f = unicode.SimpleFold(f) {
+		if f < least {
+			least = f
+		}
+	}
+	return least
 }
 
 // canonicalStorePath is a store file's lock identity: the cleaned absolute
 // path, so "state/checkpoints.json", "./state/checkpoints.json" and
 // "<cwd>/state/../state/checkpoints.json" all name one lock. When the working
-// directory cannot be read — the only way filepath.Abs fails — the cleaned
-// spelling stands in: two stores spelled alike still serialize, which is what
-// a caller passing one configured path gets either way.
+// directory cannot be read — the only way filepath.Abs fails — the error is
+// the answer: a relative spelling retained here would name a DIFFERENT file
+// after every later chdir while keeping the old spelling's lock, unserialized
+// against a store constructed for the new file — the identity-split class.
+// The store constructed over such a path fails on use instead.
 //
 // Symlinks are deliberately not resolved. Resolving them requires the file to
 // exist, and this store's file is created on the first Save, so a resolved key
@@ -193,12 +228,12 @@ func storeLockKey(path string) string {
 // spelling. Two spellings that alias one file only through a symlinked
 // ancestor therefore behave like the documented cross-process case: last
 // writer wins for the lineages it holds.
-func canonicalStorePath(path string) string {
+func canonicalStorePath(path string) (string, error) {
 	absolute, err := filepath.Abs(path)
 	if err != nil {
-		return filepath.Clean(path)
+		return "", fmt.Errorf("eventfeed: resolving checkpoint store path %q: %w", path, err)
 	}
-	return absolute
+	return absolute, nil
 }
 
 // Load returns the stored position for key. The tri-state contract maps onto
@@ -227,6 +262,9 @@ func (s *FileCheckpointStore) Load(_ context.Context, key CheckpointKey) (string
 	// legitimately saved under the replacement rune — another consumer's
 	// cursor returned for a key that was never valid. Usage, before any
 	// lookup.
+	if s.pathErr != nil {
+		return "", false, s.pathErr
+	}
 	for _, in := range []struct{ field, value string }{
 		{"checkpoint origin", key.Origin},
 		{"checkpoint account id", key.AccountID},
@@ -274,6 +312,9 @@ func (s *FileCheckpointStore) Load(_ context.Context, key CheckpointKey) (string
 // that a position already accepted by the connector is not dropped because the
 // run's context was canceled between acceptance and write-through.
 func (s *FileCheckpointStore) Save(_ context.Context, key CheckpointKey, position string) error {
+	if s.pathErr != nil {
+		return s.pathErr
+	}
 	if position == "" {
 		return fmt.Errorf(
 			"eventfeed: refusing to save an empty checkpoint position for %s; "+
@@ -438,23 +479,15 @@ func (s *FileCheckpointStore) read() (map[string]string, bool, error) {
 	// encoding/json keeps the LAST value for a duplicated key without error,
 	// so a store naming one decoded FlatKey twice loaded whichever position
 	// happened to be written later — ambiguity resumed as if it were data.
-	// The decoder's own token stream counts the keys it decoded, so two
-	// SPELLINGS that collide only after escape resolution are seen too; a
-	// store the unmarshal above accepted is exactly {string: string, ...},
-	// so the token count is 2 pairs per entry and any surplus is a
-	// collision.
-	dec := json.NewDecoder(bytes.NewReader(data))
-	strTokens := 0
-	for {
-		tok, terr := dec.Token()
-		if terr != nil {
-			break
-		}
-		if _, isString := tok.(string); isString {
-			strTokens++
-		}
-	}
-	if strTokens != 2*len(entries) {
+	// The detector counts MEMBERS with the decoder's own tokenizer
+	// (escape-resolved, exactly as the decoder resolves keys), never value
+	// tokens: an earlier string-token count let null-valued entries cancel a
+	// duplicate's surplus — one duplicated key plus two null positions was
+	// six string tokens against three decoded entries, and the equality
+	// held. A null position itself is tolerated here: it decodes to "", and
+	// the empty-position rule already fails the lineage that carries it at
+	// lookup.
+	if n, cerr := topLevelMemberCount(data); cerr != nil || n != len(entries) {
 		return nil, false, fmt.Errorf(
 			"eventfeed: checkpoint store %s repeats a key; refusing to choose between its positions", s.path)
 	}
