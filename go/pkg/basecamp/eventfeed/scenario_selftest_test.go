@@ -641,23 +641,30 @@ func TestScenarioMsAcceptsIntegralNumberSpellings(t *testing.T) {
 	base := `{"name":"x","description":"d","config":{"stalenessMs":%s},"steps":[{"advance":{"ms":%s}}],"finally":{"state":"closed"}}`
 	cases := []struct {
 		name, staleness, ms, wantErr string
+		want                         int64
 	}{
-		{"float spelling", "1000.0", "1000.0", ""},
-		{"exponent spelling", "1e3", "1e3", ""},
-		{"non-integral", "1000.5", "1000", "is not an integer"},
-		{"non-integral ms", "1000", "1000.5", "is not an integer"},
+		{"float spelling", "1000.0", "1000.0", "", 1000},
+		{"exponent spelling", "1e3", "1e3", "", 1000},
+		{"non-integral", "1000.5", "1000", "is not an integer", 0},
+		{"non-integral ms", "1000", "1000.5", "is not an integer", 0},
 		// Integrality is a fact about the TEXT: float64 rounds these to
 		// exactly 1000 and exactly the maximum before any Trunc can look.
-		{"rounding-boundary fraction", "1000.00000000000001", "1000", "is not an integer"},
-		{"near-maximum fraction", "315575999999.99999", "1000", "is not an integer"},
-		{"exact maximum float spelling", "315576000000.0", "1000", ""},
+		{"rounding-boundary fraction", "1000.00000000000001", "1000", "is not an integer", 0},
+		{"near-maximum fraction", "315575999999.99999", "1000", "is not an integer", 0},
+		{"exact maximum float spelling", "315576000000.0", "1000", "", 315576000000},
 		// A quoted "1000" is a STRING instance — schema type integer refuses
 		// it, and json.Number's Unmarshal would happily have taken it.
-		{"quoted number", `"1000"`, "1000", "is a string"},
-		{"quoted ms", "1000", `"1000"`, "is a string"},
-		// An exponent bomb must be refused by reading the exponent, never by
-		// materializing the number.
-		{"exponent bomb", "1e999999999", "1000", "beyond any modeled ms value"},
+		{"quoted number", `"1000"`, "1000", "is a string", 0},
+		{"quoted ms", "1000", `"1000"`, "is a string", 0},
+		// A bomb is refused by its EFFECTIVE magnitude — significand length
+		// plus exponent — never by materializing the number, and never by
+		// the exponent's spelling alone: a significand can offset it.
+		{"exponent bomb", "1e999999999", "1000", "beyond any modeled ms value", 0},
+		{"significand offsets a negative exponent", "100000000000000000000000000000000000000000000e-41", "1000", "", 1000},
+		{"significand offsets to one hundred", "1000000000000000000000000000000000000000000e-40", "1000", "", 100},
+		{"fraction-led spelling of one", "0.00000000000000000000000000000000000000001e41", "1000", "", 1},
+		{"negative exponent bomb", "1e-999999999", "1000", "is not an integer", 0},
+		{"parse-bomb literal", strings.Repeat("9", 100001), "1000", "characters", 0},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -667,8 +674,8 @@ func TestScenarioMsAcceptsIntegralNumberSpellings(t *testing.T) {
 				if err != nil {
 					t.Fatalf("an integral spelling must load: %v", err)
 				}
-				if got := sc.Config.StalenessMs.v; got != 1000 && got != 315576000000 {
-					t.Errorf("stalenessMs decoded to %d, want the literal's integral value", got)
+				if got := sc.Config.StalenessMs.v; got != tc.want {
+					t.Errorf("stalenessMs decoded to %d, want %d", got, tc.want)
 				}
 				return
 			}

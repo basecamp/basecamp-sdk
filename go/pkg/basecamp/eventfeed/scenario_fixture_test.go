@@ -104,10 +104,53 @@ func parseIntegralMs(data []byte) (int64, error) {
 		return 0, err
 	}
 	lit := n.String()
+	// A bomb is refused before anything is materialized, and by the value's
+	// EFFECTIVE magnitude, never the exponent's spelling alone — draft
+	// 2020-12 constrains the mathematical value, and a significand can
+	// offset any exponent (1e44-digits × e-41 is exactly 1000). Two string
+	// judgments suffice, both exact:
+	//   - the most significant nonzero digit's decimal place caps the
+	//     value: above place 13 nothing fits [0, maxScenarioMs] (12 digits);
+	//   - a least significant nonzero digit below the units place makes the
+	//     value non-integral outright (decimal digits do not carry), which
+	//     refuses 1e-999999999 without a 10^999999999 denominator.
+	// A length cap comes first so no multi-megabyte literal is ever walked
+	// into a rational.
+	if len(lit) > 100000 {
+		return 0, fmt.Errorf("a %d-character number is beyond any modeled ms value (literals are capped at 100000 characters)", len(lit))
+	}
+	mant, exp := lit, 0
 	if i := strings.IndexAny(lit, "eE"); i >= 0 {
-		exp, err := strconv.Atoi(strings.TrimPrefix(lit[i+1:], "+"))
-		if err != nil || exp > 40 || exp < -40 {
-			return 0, fmt.Errorf("%s is beyond any modeled ms value: its exponent alone puts it outside [0, %d]", lit, maxScenarioMs)
+		mant = lit[:i]
+		e, err := strconv.Atoi(strings.TrimPrefix(lit[i+1:], "+"))
+		if err != nil {
+			return 0, fmt.Errorf("%s is not a number this driver can read", lit)
+		}
+		exp = e
+	}
+	digits := strings.TrimPrefix(mant, "-")
+	point := strings.IndexByte(digits, '.')
+	intLen := len(digits)
+	if point >= 0 {
+		intLen = point
+		digits = digits[:point] + digits[point+1:]
+	}
+	firstNZ, lastNZ := -1, -1
+	for i := 0; i < len(digits); i++ {
+		if digits[i] >= '1' && digits[i] <= '9' {
+			if firstNZ < 0 {
+				firstNZ = i
+			}
+			lastNZ = i
+		}
+	}
+	if firstNZ >= 0 { // zero needs no magnitude judgment
+		// Digit i occupies decimal place intLen - i + exp (units = 1).
+		if msd := intLen - firstNZ + exp; msd > 13 {
+			return 0, fmt.Errorf("%s is beyond any modeled ms value", lit)
+		}
+		if lsd := intLen - lastNZ + exp; lsd < 1 {
+			return 0, fmt.Errorf("%s is not an integer: the schema's type is integer — a number whose mathematical value is integral", lit)
 		}
 	}
 	r, ok := new(big.Rat).SetString(lit)
