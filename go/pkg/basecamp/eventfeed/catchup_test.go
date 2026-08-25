@@ -612,10 +612,14 @@ func TestPollFailureClassification(t *testing.T) {
 			"unknown poll error kind 0",
 		},
 		{
+			// The terminal renders a fixed violation-class phrase; the
+			// refused origin is data on the retained cause, never a
+			// rendering (TestRedirectRefusalRendersNoServerValue pins the
+			// negative).
 			"redirect refused is invalid_continuation",
 			&eventfeed.PollError{Kind: eventfeed.PollRedirectRefused, LocationOrigin: "https://attacker.example.com"},
 			eventfeed.ReasonInvalidContinuation,
-			"https://attacker.example.com",
+			"the poll refused a cross-origin redirect",
 		},
 	}
 	for _, tc := range cases {
@@ -1460,20 +1464,23 @@ func TestDrainHoldsNoMoreThanTheLiveBufferCapacity(t *testing.T) {
 	assertIDs(t, dropped, 11, 12, 13, 14, 21, 22, 23, 24)
 }
 
-// TestRedirectRefusalExposesOnlyTheLocationOrigin: the refused-redirect edge
-// promises the rejected Location redacted to its ORIGIN — a hostile
-// continuation's path and query are exactly what must not be echoed — so the
-// terminal cannot retain the seam error as its cause. PollError.Error and
-// PollError.Unwrap both reach the underlying generated error, whose text
-// routinely carries the request URL in full.
-func TestRedirectRefusalExposesOnlyTheLocationOrigin(t *testing.T) {
+// TestRedirectRefusalRendersNoServerValue: the refused-redirect terminal
+// renders a FIXED violation-class phrase and nothing of the server's — the
+// continuation rejections' own contract, applied to the redirect edge.
+// LocationOrigin is DATA, never a rendering: a hostile redirect can reflect
+// the caller's bearer into a host label (the CloseError.Reason precedent),
+// so the canary below stands in for exactly that, and it must appear in no
+// rendering and nowhere in the unwrap chain — the retained PollError carries
+// the field for a caller that reads it, and PollError.Error omits it.
+func TestRedirectRefusalRendersNoServerValue(t *testing.T) {
+	const canary = "bearer-canary-abc123"
 	const secret = "/steal?ticket=abc123&next=%2Fadmin"
 	h := newHarness(t)
 	h.minter.ScriptTicket(ticket(1))
 	h.polls.ScriptError(&eventfeed.PollError{
 		Kind:           eventfeed.PollRedirectRefused,
-		LocationOrigin: "https://attacker.example.com",
-		Err:            errors.New("302 Location: https://attacker.example.com" + secret),
+		LocationOrigin: "https://" + canary + ".invalid",
+		Err:            errors.New("302 Location: https://" + canary + ".invalid" + secret),
 	})
 	h.start()
 
@@ -1485,8 +1492,13 @@ func TestRedirectRefusalExposesOnlyTheLocationOrigin(t *testing.T) {
 	if terminal == nil || terminal.Reason != eventfeed.ReasonInvalidContinuation {
 		t.Fatalf("terminal = %v, want reason %q", terminal, eventfeed.ReasonInvalidContinuation)
 	}
-	if !strings.Contains(terminal.Msg, "https://attacker.example.com") {
-		t.Fatalf("terminal message %q should name the refused origin", terminal.Msg)
+	if strings.Contains(terminal.Error(), canary) {
+		t.Fatalf("terminal rendering %q carries the refused Location's origin; the terminal renders a fixed phrase, never a server value", terminal.Error())
+	}
+	for err := error(terminal); err != nil; err = errors.Unwrap(err) {
+		if strings.Contains(err.Error(), canary) {
+			t.Fatalf("the terminal's cause chain renders the refused origin: %v", err)
+		}
 	}
 	// The whole rendering, not just Msg: Error walks the cause chain.
 	if rendered := terminal.Error(); strings.Contains(rendered, secret) {
