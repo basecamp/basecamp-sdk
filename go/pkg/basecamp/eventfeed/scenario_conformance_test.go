@@ -630,10 +630,10 @@ func (d *driver) fireTimer(step *fireTimerStep) error {
 	if !ok {
 		return fmt.Errorf("no %s timer is outstanding: outstanding %v", step.Kind, d.h.clock.Outstanding())
 	}
-	if step.AssertDelayMs == nil {
+	if !step.AssertDelayMs.set {
 		return nil
 	}
-	low, high := millis(step.AssertDelayMs.Min), millis(step.AssertDelayMs.Max)
+	low, high := millis(step.AssertDelayMs.env.Min.v), millis(step.AssertDelayMs.env.Max.v)
 	if delay < low || delay > high {
 		return fmt.Errorf("the %s timer was armed for %s, want [%s, %s]", step.Kind, delay, low, high)
 	}
