@@ -179,8 +179,11 @@ git -C "$FIX" tag v0.6.0   # local only: never pushed
 FSCRIPT="$FIX/scripts/promote-migrating.sh"
 
 fresh t1.md "# v0.5.0" "# v0.4.0"
+cp "$DIR/t1.md" "$DIR/t1.before"
 env -u PROMOTE_MIGRATING_RELEASED bash "$FSCRIPT" 0.6.1 "$DIR/t1.md" >/dev/null 2>&1
 check "remote-present tag reads as released (real ls-remote)" 0 $?
+diff -q "$DIR/t1.md" "$DIR/t1.before" >/dev/null
+check "released heading took the no-notes path without mutation" 0 $?
 
 fresh t2.md "# v0.6.0" "# v0.5.0"
 env -u PROMOTE_MIGRATING_RELEASED bash "$FSCRIPT" 0.6.1 "$DIR/t2.md" >/dev/null 2>&1
@@ -207,7 +210,7 @@ grep -qxF "# v0.16.0" "$DIR/u.md"; check "promotion landed despite fenced exampl
 #     under pipefail a piped judgment would report the producer's SIGPIPE as
 #     no-match and wave a rollback through; the captured-prose form must not
 { echo "# Migrating"; echo; echo "# Unreleased"; echo; echo "# v0.16.0"; echo; for i in $(seq 1 8000); do echo "filler prose line $i to outlast the pipe buffer after the early match"; done; } > "$DIR/v.md"
-PROMOTE_MIGRATING_RELEASED="0.15.0 0.16.0" bash "$SCRIPT" 0.16.0 "$DIR/v.md" >/dev/null 2>&1
+PROMOTE_MIGRATING_RELEASED="0.15.0" bash "$SCRIPT" 0.16.0 "$DIR/v.md" >/dev/null 2>&1
 check "duplicate target still refused on a large guide" 1 $?
 
 # 26. an abandoned unshipped section below a fresh Unreleased is refused
@@ -224,6 +227,12 @@ check "promotion with a leading fenced example succeeds" 0 $?
 FENCED_KEPT=$(awk '/^```/{f=!f; next} f && $0 == "# Unreleased"' "$DIR/x.md" | wc -l | tr -d ' ')
 [ "$FENCED_KEPT" = "1" ]; check "the fenced example survived; the real heading promoted" 0 $?
 grep -qxF "# v0.16.0" "$DIR/x.md"; check "real heading became the version" 0 $?
+
+# 28. tilde and indented fences are fences too
+{ echo "# Migrating"; echo; echo "~~~"; echo "# Unreleased"; echo "~~~"; echo; echo "   \`\`\`"; echo "# v0.16.0"; echo "   \`\`\`"; echo; echo "# Unreleased"; echo; echo "# v0.15.0"; } > "$DIR/y.md"
+bash "$SCRIPT" 0.16.0 "$DIR/y.md" >/dev/null 2>&1
+check "tilde and indented fences are invisible to the judgments" 0 $?
+grep -qxF "# v0.16.0" "$DIR/y.md"; check "promotion landed past exotic fences" 0 $?
 
 if [ "$FAILS" -gt 0 ]; then
   echo "test-promote-migrating: $FAILS of $CASES assertions failed" >&2

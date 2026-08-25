@@ -23,7 +23,7 @@ FILE="${2:-MIGRATING.md}"
 # `grep -q` under pipefail turns a successful early match into a failure —
 # grep closes the pipe, awk dies on SIGPIPE writing the rest of a large
 # guide, and the pipeline reports the producer's 141.
-PROSE=$(awk '/^```/ { fenced = !fenced; next } !fenced' "$FILE")
+PROSE=$(awk '/^ {0,3}(```|~~~)/ { fenced = !fenced; next } !fenced' "$FILE")
 
 FIRST=$(grep -m1 -E '^# (Unreleased|v[0-9]+\.[0-9]+\.[0-9]+)$' <<< "$PROSE" || true)
 
@@ -131,7 +131,7 @@ case "$FIRST" in
       exit 1
     fi
     awk -v v="# v$VERSION" 'BEGIN { done = 0 }
-      /^```/ { fenced = !fenced }
+      /^ {0,3}(```|~~~)/ { fenced = !fenced }
       !fenced && !done && $0 == "# Unreleased" { print v; done = 1; next }
       { print }' "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
     echo "Promoted '# Unreleased' -> '# v$VERSION' in $FILE"
@@ -165,7 +165,7 @@ case "$FIRST" in
         exit 1
       fi
       awk -v old="# v$TOP" -v v="# v$VERSION" 'BEGIN { done = 0 }
-        /^```/ { fenced = !fenced }
+        /^ {0,3}(```|~~~)/ { fenced = !fenced }
         !fenced && !done && $0 == old { print v; done = 1; next }
         { print }' "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
       echo "Re-promoted pending '# v$TOP' -> '# v$VERSION' in $FILE (v$TOP was never released)."
