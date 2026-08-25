@@ -1374,17 +1374,19 @@ func (l *loop) recoverPoll(at *attempt, cursor Cursor, err error) (walkStep, cyc
 		}}, true
 	case PollRedirectRefused:
 		// A 3xx whose Location failed the seam's per-hop validation: the
-		// continuation edge, NEVER poll_failed. This edge exposes the rejected
-		// Location redacted to its ORIGIN — a hostile continuation's path and
-		// query are exactly what must not be echoed — so the seam error is not
-		// retained as the cause: PollError.Error renders its underlying Err and
-		// Unwrap hands it out, and the generated error's text routinely carries
-		// the request URL in full. The classification survives on a sanitized
-		// cause carrying the same redaction the terminal promises.
+		// continuation edge, NEVER poll_failed — and the terminal renders a
+		// FIXED violation-class phrase, the continuation rejections' own
+		// contract. The refused origin is DATA, not a rendering: a hostile
+		// redirect can reflect the caller's bearer into a host label (the
+		// CloseError.Reason precedent), so no rendering may carry
+		// LocationOrigin. It survives as a field on the sanitized cause for a
+		// caller that reads it — PollError.Error deliberately omits it — and
+		// the generated error is not retained at all, its text routinely
+		// carrying the request URL in full.
 		l.disposeAttempt(at, nil)
 		return walkStep{}, cycleOutcome{kind: outcomeTerminal, term: &TerminalError{
 			Reason: ReasonInvalidContinuation,
-			Msg:    "the poll refused a redirect to " + pe.LocationOrigin,
+			Msg:    "the poll refused a cross-origin redirect",
 			Err:    &PollError{Kind: PollRedirectRefused, LocationOrigin: pe.LocationOrigin},
 		}}, true
 	case PollUnrecoverable:
