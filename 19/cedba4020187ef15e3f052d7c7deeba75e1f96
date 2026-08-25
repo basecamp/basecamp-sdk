@@ -1,0 +1,21 @@
+scripts/promote-migrating.sh
+  s_1c9d086ab67253::t_6120b69d8bce42 15-29,72-75
+scripts/test-promote-migrating.sh
+  s_1c9d086ab67253::t_f30634d5a40339 8-14,35,41,46,49,53,58,62,66,70,75-76,81,85,89,94-95,101,104,106,108,115,122,128,135,140,145,150,157,160,165,185,191,196,201,208,215,221,227,235,239-247,253,262,269,273
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "19cedba4020187ef15e3f052d7c7deeba75e1f96",
+  "prompts": {},
+  "sessions": {
+    "s_1c9d086ab67253": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1f5628ec-50ac-4d8d-a2cc-cee5b0112903",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
