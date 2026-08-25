@@ -419,6 +419,18 @@ func (s *FileCheckpointStore) read() (map[string]string, bool, error) {
 		return nil, false, fmt.Errorf(
 			"eventfeed: checkpoint store %s repeats a key; refusing to choose between its positions", s.path)
 	}
+	// Every key must be a canonical FlatKey. Corruption that rewrites a
+	// lineage's key into some other valid JSON string would otherwise decode
+	// cleanly and surface as MISSING — the connector entering at the present
+	// and skipping history over damage the tri-state contract says must be
+	// Failed. A well-formed key belonging to another lineage is not
+	// corruption; a key outside the grammar is.
+	for k := range entries {
+		if !isCanonicalFlatKey(k) {
+			return nil, false, fmt.Errorf(
+				"eventfeed: checkpoint store %s carries a malformed key; refusing to report corruption as a missing checkpoint", s.path)
+		}
+	}
 	if entries == nil {
 		// JSON `null` unmarshals into a nil map without error. A store that
 		// holds `null` is corrupt, not empty — `{}` is empty.
@@ -426,6 +438,26 @@ func (s *FileCheckpointStore) read() (map[string]string, bool, error) {
 			"eventfeed: checkpoint store %s holds JSON null, not an object of positions", s.path)
 	}
 	return entries, true, nil
+}
+
+// isCanonicalFlatKey reports whether k is exactly the form FlatKey writes:
+// the compact JSON array of four strings, in the package's own encoding. The
+// round-trip is the whole check — parse, re-encode with the same writer,
+// compare — so any spelling Save could not have produced (extra whitespace,
+// a different escape of the same text, the wrong arity or types) is
+// malformed by construction.
+func isCanonicalFlatKey(k string) bool {
+	var parts []string
+	if err := json.Unmarshal([]byte(k), &parts); err != nil || len(parts) != 4 {
+		return false
+	}
+	rebuilt := CheckpointKey{
+		Origin:            parts[0],
+		AccountID:         parts[1],
+		ConsumerNamespace: parts[2],
+		FilterKey:         parts[3],
+	}
+	return rebuilt.FlatKey() == k
 }
 
 // writeAtomic replaces the store file with data via a temp file in the same

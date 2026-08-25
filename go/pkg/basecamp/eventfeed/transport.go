@@ -44,6 +44,16 @@ func checkCableURL(wsURL string) *DialError {
 	if u.User != nil {
 		return &DialError{Kind: DialPolicy, Reason: "cable URL carries userinfo"}
 	}
+	// A fragment is never part of a request target — the WebSocket handshake
+	// strips it — so a mint that put ticket or routing data there composed a
+	// URL the dial cannot honor, and dialing the stripped remainder would
+	// silently connect to something other than what the mint named.
+	// Permanent, like every policy case: a fresh mint returns the same URL.
+	// The reason is value-free; a fragment is server text and can carry the
+	// ticket.
+	if u.Fragment != "" {
+		return &DialError{Kind: DialPolicy, Reason: "cable URL carries a fragment"}
+	}
 	switch scheme := strings.ToLower(u.Scheme); scheme {
 	case "wss":
 	case "ws":

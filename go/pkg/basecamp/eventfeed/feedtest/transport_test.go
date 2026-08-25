@@ -178,3 +178,29 @@ func TestConn_CloseRecordsFirstCallOnly(t *testing.T) {
 			c.Closed(), c.CloseCalls(), c.CloseCode(), c.CloseReason())
 	}
 }
+
+// A scripted stall must not park a dial the contract refuses outright: the
+// usage check precedes the stall, as it precedes everything in the real
+// transport, or StallNextDial plus a zero limit blocks forever.
+func TestTransport_UsageRefusalOutranksAScriptedStall(t *testing.T) {
+	tr := NewTransport()
+	tr.StallNextDial()
+	done := make(chan error, 1)
+	go func() {
+		_, err := tr.Dial(context.Background(), "wss://cable.example.test/cable", 0)
+		done <- err
+	}()
+	select {
+	case err := <-done:
+		var terr *eventfeed.TerminalError
+		if !errors.As(err, &terr) || terr.Reason != eventfeed.ReasonUsage {
+			t.Errorf("Dial = %v, want the usage refusal", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("a zero-limit dial parked on the scripted stall instead of being refused")
+	}
+	// The stall stays armed for the next VALID dial.
+	if got := len(tr.Dials()); got != 1 {
+		t.Fatalf("Dials() = %d, want the refused dial recorded", got)
+	}
+}

@@ -221,8 +221,14 @@ type PollError struct {
 	// Msg carries the server's message for filter_invalid, naming the
 	// offending list, verbatim.
 	Msg string
-	// LocationOrigin is the refused redirect Location, redacted to its
-	// origin (redirect_refused only).
+	// LocationOrigin is the refused redirect Location reduced to its origin
+	// (redirect_refused only). DATA, never a rendering — the CloseError.Reason
+	// precedent: a hostile redirect can reflect the caller's bearer into a
+	// host label, so no rendering may carry this value. PollError.Error
+	// deliberately omits it, and a terminal built from a refused redirect
+	// renders a fixed violation-class phrase (the round the continuation
+	// rejections went through). A caller that wants the origin reads the
+	// field.
 	LocationOrigin string
 	// Err is the underlying (generated) error.
 	Err error
