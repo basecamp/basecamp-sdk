@@ -145,6 +145,12 @@ func TestParseFrame_MessageFrame(t *testing.T) {
 	}
 }
 
+// Field names bind to EXACT wire keys. encoding/json matches struct tags
+// case-insensitively, so {"TYPE":"disconnect"} dispatched as a
+// protocol-fatal disconnect even though the wire key `type` is absent —
+// where every exact-dictionary SDK reads an unknown frame. The wrong-case
+// cases below belong to the unknown class, alongside the paired-surrogate
+// control that must keep parsing.
 func TestParseFrame_UnknownTypesUpdateLivenessOnly(t *testing.T) {
 	// Parseable JSON objects the connector doesn't recognize are frameUnknown:
 	// liveness updates, otherwise ignored — never the invalid-frame class.
@@ -153,6 +159,13 @@ func TestParseFrame_UnknownTypesUpdateLivenessOnly(t *testing.T) {
 		`{}`,
 		`{"type":null}`,
 		`{"identifier":"{\"channel\":\"EventsChannel\"}"}`, // no message key: not a broadcast
+		// Wrong-case keys are ABSENT keys: the wire key `type` is not here.
+		`{"TYPE":"disconnect","REASON":"invalid_event_stream_command","RECONNECT":false}`,
+		`{"TYPE":"ping"}`,
+		`{"Type":"welcome"}`,
+		// A properly PAIRED surrogate escape is legal JSON and stays in the
+		// unknown class rather than tripping the lone-surrogate gate.
+		`{"type":"p\ud83d\ude00ing"}`,
 	} {
 		f, err := parseFrame([]byte(raw))
 		if err != nil {
@@ -184,6 +197,12 @@ func TestParseFrame_InvalidFrames(t *testing.T) {
 		// encoding/json would silently U+FFFD the mangled byte and read an
 		// UNKNOWN type — a liveness no-op — where the peer sent corruption.
 		{"raw invalid UTF-8 in the type", "{\"type\":\"p\xffing\"}"},
+		// The escape-sequence door into the same mutation: an ASCII-only
+		// frame carrying a lone surrogate escape passes utf8.Valid, and the
+		// decoder would U+FFFD it.
+		{"escaped lone surrogate in the type", `{"type":"p\ud800ing"}`},
+		{"escaped lone surrogate, uppercase hex", `{"type":"p\uD800ing"}`},
+		{"escaped lone low surrogate", `{"identifier":"x\udc00","message":{}}`},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -500,6 +519,17 @@ func TestDecodeMessageEvent_Failures(t *testing.T) {
 	})
 	t.Run("malformed created_at", func(t *testing.T) {
 		assertEventDecodeFails(t, []byte(`{"id":105,"kind":"message","event_type":"message.created","action":"created","created_at":"yesterday","bucket_id":2,"creator_id":3,"recording_id":900,"visible_to_clients":false}`))
+	})
+	t.Run("wrong-case keys are absent keys", func(t *testing.T) {
+		// encoding/json binds struct fields case-insensitively, so the nine
+		// required-key checks passed on a payload spelling every key in
+		// uppercase — a payload no exact-dictionary SDK would accept.
+		assertEventDecodeFails(t, []byte(`{"ID":105,"KIND":"message","EVENT_TYPE":"message.created","ACTION":"created","CREATED_AT":"2026-08-01T12:00:00Z","BUCKET_ID":2,"CREATOR_ID":3,"RECORDING_ID":900,"VISIBLE_TO_CLIENTS":false}`))
+	})
+	t.Run("escaped lone surrogate in a string", func(t *testing.T) {
+		// The escape door into the same U+FFFD mutation as the raw-byte case
+		// below: ASCII bytes, utf8.Valid passes, decoder mutates.
+		assertEventDecodeFails(t, []byte(`{"id":105,"kind":"message","event_type":"message.\ud800created","action":"created","created_at":"2026-08-01T12:00:00Z","bucket_id":2,"creator_id":3,"recording_id":900,"visible_to_clients":false}`))
 	})
 	t.Run("raw invalid UTF-8 in a string", func(t *testing.T) {
 		// Ungated, the decoder swaps the byte for U+FFFD and returns a VALID
