@@ -1,6 +1,7 @@
 package eventfeed
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"strconv"
@@ -299,6 +300,14 @@ func parseFrame(data []byte) (frame, error) {
 	if err := json.Unmarshal(data, &env); err != nil {
 		return frame{}, newInvalidFrameError(invalidFrameParse)
 	}
+	// A duplicated member is ambiguity, not data: the map silently kept the
+	// LAST value, so {"type":"ping","type":"disconnect"} dispatched on
+	// whichever member came later — member order selecting control behavior.
+	// The decoder's own token count over the members it decoded is the
+	// detector, exactly as the checkpoint store counts its keys.
+	if n, err := topLevelMemberCount(data); err != nil || n != len(env) {
+		return frame{}, newInvalidFrameError(invalidFrameParse)
+	}
 	if typRaw, hasType := env["type"]; hasType {
 		// A wrong-typed value (a number, an array) fails this unmarshal and
 		// is the parse shape, as it always was; `null` decodes to a nil
@@ -359,6 +368,53 @@ func parseFrame(data []byte) (frame, error) {
 		return frame{kind: frameMessage, identifier: identifier, message: message}, nil
 	}
 	return frame{kind: frameUnknown}, nil
+}
+
+// topLevelMemberCount walks data — already known to be a JSON object — with
+// the decoder's own tokenizer and counts its top-level members, nested
+// values skipped. A count exceeding the decoded map's size is a duplicated
+// member (escape-resolved, exactly as the decoder itself resolves keys).
+func topLevelMemberCount(data []byte) (int, error) {
+	dec := json.NewDecoder(bytes.NewReader(data))
+	if _, err := dec.Token(); err != nil { // the opening '{'
+		return 0, err
+	}
+	n := 0
+	for dec.More() {
+		if _, err := dec.Token(); err != nil { // the member's key
+			return 0, err
+		}
+		n++
+		if err := skipJSONValue(dec); err != nil {
+			return 0, err
+		}
+	}
+	return n, nil
+}
+
+// skipJSONValue consumes exactly one JSON value from dec, descending through
+// nested objects and arrays.
+func skipJSONValue(dec *json.Decoder) error {
+	tok, err := dec.Token()
+	if err != nil {
+		return err
+	}
+	d, ok := tok.(json.Delim)
+	if !ok || (d != '{' && d != '[') {
+		return nil // a scalar: fully consumed
+	}
+	for dec.More() {
+		if d == '{' {
+			if _, err := dec.Token(); err != nil { // the nested key
+				return err
+			}
+		}
+		if err := skipJSONValue(dec); err != nil {
+			return err
+		}
+	}
+	_, err = dec.Token() // the closing delimiter
+	return err
 }
 
 // exactStringField reads env[key] as a string. Absent — which includes any
@@ -425,6 +481,11 @@ func decodeMessageEvent(raw json.RawMessage) (Event, error) {
 	}
 	var payload map[string]json.RawMessage
 	if err := json.Unmarshal(raw, &payload); err != nil {
+		return Event{}, newInvalidFrameError(invalidFrameEventDecode)
+	}
+	// Same duplicate-member rule as the envelope: last-wins would let a
+	// second `id` silently decide which event this is.
+	if n, err := topLevelMemberCount(raw); err != nil || n != len(payload) {
 		return Event{}, newInvalidFrameError(invalidFrameEventDecode)
 	}
 	var (
