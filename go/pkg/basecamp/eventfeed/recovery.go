@@ -117,6 +117,14 @@ func (l *loop) recoverGone(at *attempt, pe *PollError) (walkStep, cycleOutcome, 
 		// follows the full URL after §8 validation.
 		l.cfg.observer.Gap(pe.EpochAfterID, redactURL(l.cfg.origin, pe.ResumeURL))
 	}
+	// Close outranks the semantic dispatch, exactly as at the overflow site:
+	// Observer.Gap is a supported Close site, and the handler is host code
+	// that may block — run after Close returned, it keeps the iteration and
+	// Wait from terminating.
+	if l.runCtx.Err() != nil {
+		l.disposeAttempt(at, nil)
+		return walkStep{}, cycleOutcome{kind: outcomeClosed}, true
+	}
 	if l.cfg.handler != nil && l.cfg.handler(signal) == Accept {
 		if pe.ResumeURL == "" {
 			// Accepting a 410 that carried no resume URL cannot be honored:

@@ -97,6 +97,7 @@ func (h *wsHarness) killPeers() {
 	peers := slices.Clone(h.peers)
 	h.mu.Unlock()
 	for _, p := range peers {
+		p.releaseStall()
 		_ = p.conn.CloseNow()
 	}
 }
@@ -151,9 +152,14 @@ type wsPeer struct {
 
 	mu       sync.Mutex
 	received [][]byte
+	stall    chan struct{}
 }
 
 func newWSPeer(c *websocket.Conn) *wsPeer {
+	// The PEER reads without a limit: the read cap under test is the
+	// client's, and the contract's stalled-write cases jam the client with
+	// frames past coder/websocket's 32 KiB server-side default.
+	c.SetReadLimit(-1)
 	return &wsPeer{conn: c, cmds: make(chan wsPeerCmd, 64), dead: make(chan struct{})}
 }
 
@@ -180,6 +186,13 @@ func (p *wsPeer) run() {
 		}
 	}()
 	for {
+		if gate := p.stallGate(); gate != nil {
+			// A stalled peer stops consuming: parked here, the client's
+			// writes back up until its WriteFrame genuinely blocks.
+			// releaseStall (test cleanup) reopens the gate so the loop can
+			// observe the killed connection and tear down leak-free.
+			<-gate
+		}
 		_, data, err := p.conn.Read(ctx)
 		if err != nil {
 			break
@@ -190,6 +203,37 @@ func (p *wsPeer) run() {
 	}
 	close(p.dead)
 	_ = p.conn.CloseNow()
+}
+
+// StallWrites implements contractPeerConn: the read loop parks before its
+// next Read. The one frame a currently-blocked Read may still consume is
+// harmless — the contract's writer loops until it jams.
+func (p *wsPeer) StallWrites() {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.stall == nil {
+		p.stall = make(chan struct{})
+	}
+}
+
+func (p *wsPeer) stallGate() chan struct{} {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.stall
+}
+
+// releaseStall reopens a stalled peer's gate (idempotent): a closed channel
+// lets the read loop run again and die normally with the connection.
+func (p *wsPeer) releaseStall() {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.stall != nil {
+		select {
+		case <-p.stall:
+		default:
+			close(p.stall)
+		}
+	}
 }
 
 // Serve implements contractPeerConn.

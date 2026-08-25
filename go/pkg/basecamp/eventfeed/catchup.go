@@ -483,6 +483,24 @@ func (l *loop) pollPage(at *attempt, cursor Cursor) pollAttempt {
 		staleTimer, staleGen := at.lc.stale.current()
 		select {
 		case r := <-done:
+			// The socket's verdict outranks the poll's: both can be ready,
+			// and returning a FAILED result unchecked lets recoverPoll's
+			// disposal discard the fired expiry — an unauthorized verdict
+			// incrementing the shared counter, a 410 raising FeedGap, where
+			// transition 21 should have torn the dead socket down. An
+			// authoritative expiry is parked in the deferral slot (empty by
+			// construction here — an occupied slot means this select was
+			// left for the superseded wait); the walk's existing precedence
+			// dispatches it ahead of any failed poll, and a SUCCEEDED page
+			// keeps transition 21's finish-the-page ordering exactly as if
+			// the expiry had been observed mid-flight.
+			select {
+			case <-staleTimer.C():
+				if age, ok := at.lc.stale.evaluate(staleGen); ok {
+					l.deferred = &deferredFrame{stale: true, age: age}
+				}
+			default:
+			}
 			return pollAttempt{page: r.page, err: r.err}
 		case <-at.lc.stale.rearmed():
 			// The pump swapped the window out; a parked select holds one timer,
@@ -1092,6 +1110,7 @@ func protocolFatalFrame(item pumpItem) (frame, bool) {
 // from the first instant an observer can see the state.
 func (l *loop) stream(at *attempt) cycleOutcome {
 	repair := l.cfg.clock.NewTimer(repairJitter(l.cfg.repairInterval, l.cfg.rand), timerRepairPoll)
+	at.phase = repair
 	l.setState(stateStreaming)
 	for {
 		staleTimer, staleGen := at.lc.stale.current()
@@ -1128,6 +1147,7 @@ func (l *loop) stream(at *attempt) cycleOutcome {
 				return out
 			}
 			repair = l.cfg.clock.NewTimer(repairJitter(l.cfg.repairInterval, l.cfg.rand), timerRepairPoll)
+			at.phase = repair
 			l.setState(stateStreaming)
 		case <-at.lc.stale.rearmed():
 			continue
@@ -1331,10 +1351,17 @@ func (l *loop) recoverPoll(at *attempt, cursor Cursor, err error) (walkStep, cyc
 		l.disposeAttempt(at, nil)
 		l.observeDisconnected("", err)
 		if l.authFailures >= authFailureThreshold {
+			// The cause is rebuilt WITHOUT the generated error: §23's
+			// terminal table mandates the attachment for poll_failed and
+			// mint_failed only, and a generated error routinely renders the
+			// full request URL — on this lane the server-controlled
+			// continuation, path and query included (the redirect arm's
+			// reasoning, applied to the reason whose contract is its counter
+			// message alone).
 			return walkStep{}, cycleOutcome{kind: outcomeTerminal, term: &TerminalError{
 				Reason: ReasonAuthorizationFailed,
 				Msg:    fmt.Sprintf("%d consecutive connection-level authorization failures", l.authFailures),
-				Err:    err,
+				Err:    &PollError{Kind: PollUnauthorized},
 			}}, true
 		}
 		// No retryAfter: `unauthorized` is specified to carry none (the
@@ -1346,8 +1373,12 @@ func (l *loop) recoverPoll(at *attempt, cursor Cursor, err error) (walkStep, cyc
 		// Transition 20: a configuration error a position reset won't help;
 		// the server's message naming the offending list is preserved.
 		l.disposeAttempt(at, nil)
+		// Same sanitized-cause rule as the unauthorized threshold above:
+		// filter_invalid's contract is the server's verbatim message naming
+		// the offending list — carried in Msg — never the generated error's
+		// URL-bearing rendering.
 		return walkStep{}, cycleOutcome{kind: outcomeTerminal, term: &TerminalError{
-			Reason: ReasonFilterInvalid, Msg: pe.Msg, Err: err,
+			Reason: ReasonFilterInvalid, Msg: pe.Msg, Err: &PollError{Kind: PollFilterInvalid, Msg: pe.Msg},
 		}}, true
 	case PollRedirectRefused:
 		// A 3xx whose Location failed the seam's per-hop validation: the
@@ -1393,6 +1424,7 @@ func (l *loop) recoverPoll(at *attempt, cursor Cursor, err error) (walkStep, cyc
 // close still ends the cycle promptly.
 func (l *loop) waitPollRetry(at *attempt, d time.Duration) (cycleOutcome, bool) {
 	t := l.cfg.clock.NewTimer(d, timerPollRetry)
+	at.phase = t
 	for {
 		staleTimer, staleGen := at.lc.stale.current()
 		select {
