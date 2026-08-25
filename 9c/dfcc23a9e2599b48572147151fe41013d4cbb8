@@ -1,0 +1,29 @@
+go/pkg/basecamp/eventfeed/errors_test.go
+  s_1c9d086ab67253::t_03476325bafa74 204-214
+go/pkg/basecamp/eventfeed/seams.go
+  s_0e4885cc7255e8::t_c5b7a3ed342e27 217-224
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "9cdfcc23a9e2599b48572147151fe41013d4cbb8",
+  "prompts": {},
+  "sessions": {
+    "s_0e4885cc7255e8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "17306851-e799-4734-aa65-a2d363523795",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_1c9d086ab67253": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1f5628ec-50ac-4d8d-a2cc-cee5b0112903",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
