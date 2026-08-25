@@ -117,6 +117,14 @@ type attempt struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 	lc     *liveConn
+	// phase is the attempt's currently armed phase timer — handshake or
+	// confirmation deadline, repair cadence, or poll-retry — retained so
+	// panic unwinding can stop it. Ordinary teardown paths stop these
+	// through disposal's own parameter; this field exists for the one
+	// unwinding that cannot name them: a host-code panic, where a timer
+	// left registered contaminates a product clock indefinitely. Stop is
+	// idempotent, so double-stopping a normally disposed timer is free.
+	phase Timer
 }
 
 // pumpDepth is the frame pump's bounded hand-off queue depth (SPEC.md §23
@@ -838,7 +846,9 @@ func (l *loop) runCycle(delay time.Duration) cycleOutcome {
 	defer func() {
 		if r := recover(); r != nil {
 			if at.lc != nil {
-				l.disposeAttempt(at, nil)
+				l.disposeAttempt(at, at.phase)
+			} else if at.phase != nil {
+				at.phase.Stop()
 			}
 			panic(r)
 		}
@@ -888,6 +898,7 @@ func (l *loop) runCycle(delay time.Duration) cycleOutcome {
 	// The handshake deadline arms on entry to Connecting, BEFORE dial — it
 	// spans dial-to-welcome, so a stalled dial expires it (transition 7).
 	hs := l.cfg.clock.NewTimer(handshakeDeadline, timerHandshakeDeadline)
+	at.phase = hs
 	type dialResult struct {
 		conn CableConn
 		err  error
@@ -1289,6 +1300,7 @@ func (l *loop) handleFrame(at *attempt, deadline *Timer, item pumpItem) (cycleOu
 				return cycleOutcome{kind: outcomeFailed}, true
 			}
 			*deadline = l.cfg.clock.NewTimer(l.cfg.confirmationDeadline, timerConfirmationDeadline)
+			at.phase = *deadline
 			l.setState(stateAwaitingConfirmation)
 		}
 		return cycleOutcome{}, false
@@ -1427,6 +1439,15 @@ func (l *loop) admitLive(at *attempt, deadline Timer, ev Event) (cycleOutcome, b
 	}
 	if l.cfg.observer.BufferOverflow != nil {
 		l.cfg.observer.BufferOverflow(len(dropped))
+	}
+	// Close outranks the semantic dispatch: the observer above is a
+	// supported Close site, and the handler is host code that may block —
+	// run after Close returned, it keeps the iteration and Wait from
+	// terminating, and its disposition would govern a feed the consumer
+	// already ended.
+	if l.runCtx.Err() != nil {
+		l.disposeAttempt(at, deadline)
+		return cycleOutcome{kind: outcomeClosed}, true
 	}
 	if l.cfg.handler != nil && l.cfg.handler(signal) == Accept {
 		// Accept: the consumer owns the acknowledged incompleteness; the
