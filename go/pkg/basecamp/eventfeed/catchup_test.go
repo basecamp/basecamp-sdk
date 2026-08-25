@@ -3344,3 +3344,162 @@ func TestFrameDeferralGracePhaseIsImmuneToFrameResets(t *testing.T) {
 	}
 	h.awaitTimer(timerBackoff)
 }
+
+// TestFiredStalenessOutranksAReadyPollVerdict: the family at the poll-result
+// acceptance site. With the in-flight select's done and staleness cases both
+// ready, accepting a FAILED poll dispatches its verdict — unauthorized
+// incrementing the shared counter, gone raising FeedGap — while the socket's
+// own already-fired expiry is discarded by recoverPoll's disposal, though
+// the walk explicitly gives a deferred socket outcome precedence over any
+// failed poll. The done arm must park an authoritative expiry first; the
+// walk's existing precedence then dispatches it. Rounds-driven off a parked
+// overflow handler.
+func TestFiredStalenessOutranksAReadyPollVerdict(t *testing.T) {
+	const rounds = 40
+	violations := 0
+	for i := range rounds {
+		func() {
+			parked := make(chan struct{}, 1)
+			release := make(chan struct{})
+			var once sync.Once
+			rel := func() { once.Do(func() { close(release) }) }
+			t.Cleanup(rel)
+			stale := make(chan time.Duration, 4)
+			backoffSeen := make(chan struct{}, 4)
+			h := newHarness(t,
+				eventfeed.WithLiveBufferCapacity(1),
+				eventfeed.WithSignalHandler(func(eventfeed.Signal) eventfeed.Disposition {
+					select {
+					case parked <- struct{}{}:
+					default:
+					}
+					<-release
+					return eventfeed.Accept
+				}),
+				eventfeed.WithObserver(eventfeed.Observer{
+					StaleConnection: func(age time.Duration) {
+						select {
+						case stale <- age:
+						default:
+						}
+					},
+				}))
+			h.conn.OnStateChanged(func(s string) {
+				if s == "backoff" {
+					select {
+					case backoffSeen <- struct{}{}:
+					default:
+					}
+				}
+			})
+			h.minter.ScriptTicket(ticket(1))
+			h.polls.ScriptError(&eventfeed.PollError{Kind: eventfeed.PollUnauthorized})
+			var conn *feedtest.Conn
+			var armOnce sync.Once
+			h.polls.OnCall(func(feedtest.PollCall) {
+				armOnce.Do(func() {
+					// Two events against capacity 1: the drop's handler parks
+					// the run goroutine inside the in-flight servicing.
+					conn.Serve(frameMessage(noFilterIdentifier, 101))
+					conn.Serve(frameMessage(noFilterIdentifier, 102))
+					select {
+					case <-parked:
+					case <-time.After(watchdog):
+						t.Error("the overflow handler never parked the run goroutine")
+						return
+					}
+					// The window fires while the machine is parked; the
+					// release and this callback's return then land together —
+					// the handler's Accept resumes the machine as the poll
+					// verdict reaches done, and the next select sees both
+					// ready.
+					h.fireTimer(timerStaleness)
+					rel()
+				})
+			})
+			h.start()
+			conn = h.driveToSubscribed()
+			conn.Serve(frameConfirm(noFilterIdentifier))
+			select {
+			case <-backoffSeen:
+			case <-time.After(watchdog):
+				t.Fatal("the round never settled in Backoff")
+			}
+			select {
+			case <-stale:
+			default:
+				violations++
+				t.Logf("round %d: the poll's unauthorized verdict was dispatched over the socket's fired staleness window", i)
+			}
+		}()
+	}
+	if violations != 0 {
+		t.Errorf("%d/%d rounds accepted a poll verdict past an authoritative staleness expiry; the done arm must park the socket's verdict first (transition 21 precedence)", violations, rounds)
+	}
+}
+
+// TestAuthAndFilterTerminalsCarryNoContinuationURL: §23's terminal table
+// mandates the generated-error attachment for poll_failed and mint_failed
+// ONLY; authorization_failed's contract is its reason and counter message,
+// filter_invalid's is the server's message naming the offending list — and a
+// generated error routinely renders the full request URL, which on the poll
+// lane is the server-controlled continuation, path and query included. Both
+// terminals must rebuild their causes without it.
+func TestAuthAndFilterTerminalsCarryNoContinuationURL(t *testing.T) {
+	const secret = "page_token=SECRET-CURSOR"
+	genErr := func() error {
+		return fmt.Errorf("GET %s/999/events.json?%s: request failed", testOrigin, secret)
+	}
+	assertClean := func(t *testing.T, terminal *eventfeed.TerminalError) {
+		t.Helper()
+		if terminal == nil {
+			t.Fatal("no terminal element")
+		}
+		if strings.Contains(terminal.Error(), secret) {
+			t.Fatalf("the terminal's rendering carries the continuation URL: %v", terminal)
+		}
+		for err := error(terminal); err != nil; err = errors.Unwrap(err) {
+			if strings.Contains(err.Error(), secret) {
+				t.Fatalf("the terminal's unwrap chain carries the continuation URL: %v", err)
+			}
+		}
+	}
+	t.Run("filter_invalid", func(t *testing.T) {
+		h := newHarness(t)
+		h.minter.ScriptTicket(ticket(1))
+		h.polls.ScriptError(&eventfeed.PollError{Kind: eventfeed.PollFilterInvalid, Msg: "types contains an unknown kind", Err: genErr()})
+		h.start()
+		conn := h.driveToSubscribed()
+		conn.Serve(frameConfirm(noFilterIdentifier))
+		h.join()
+		_, terminal, _ := h.snapshot()
+		if terminal == nil || terminal.Reason != eventfeed.ReasonFilterInvalid {
+			t.Fatalf("terminal = %v, want filter_invalid", terminal)
+		}
+		if !strings.Contains(terminal.Msg, "unknown kind") {
+			t.Fatalf("the server's verbatim filter message must survive: %q", terminal.Msg)
+		}
+		assertClean(t, terminal)
+	})
+	t.Run("authorization_failed", func(t *testing.T) {
+		h := newHarness(t)
+		for range 3 {
+			h.minter.ScriptTicket(ticket(1))
+			h.polls.ScriptError(&eventfeed.PollError{Kind: eventfeed.PollUnauthorized, Err: genErr()})
+		}
+		h.start()
+		for cycle := range 3 {
+			if cycle > 0 {
+				h.fireTimer(timerBackoff)
+			}
+			conn := h.driveToSubscribed()
+			conn.Serve(frameConfirm(noFilterIdentifier))
+		}
+		h.join()
+		_, terminal, _ := h.snapshot()
+		if terminal == nil || terminal.Reason != eventfeed.ReasonAuthorizationFailed {
+			t.Fatalf("terminal = %v, want authorization_failed", terminal)
+		}
+		assertClean(t, terminal)
+	})
+}
