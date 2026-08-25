@@ -1,0 +1,25 @@
+SPEC.md
+  s_1c9d086ab67253::t_26a2c5121eaff0 3909-3913
+conformance/event-feed/README.md
+  s_1c9d086ab67253::t_6a691a1c465f5f 204-211
+scripts/check-known-defect-issues-open
+  s_1c9d086ab67253::t_849bbc07cec2a8 59,283,295,309-319
+scripts/test-check-known-defect-issues-open
+  s_1c9d086ab67253::t_bf6798823b0894 339,357,371,521-538,677
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "db4335a9df8ffef36e2d471018e45aba7d886f27",
+  "prompts": {},
+  "sessions": {
+    "s_1c9d086ab67253": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1f5628ec-50ac-4d8d-a2cc-cee5b0112903",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
