@@ -1,0 +1,21 @@
+conformance/event-feed/README.md
+  s_1c9d086ab67253::t_92276c24cdd4cb 458
+conformance/event-feed/fixtures/30-continuation-redirect-cross-origin.json
+  s_1c9d086ab67253::t_297c7c1df63cf2 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "38c28cc54a694c5a51f969aca679861c357d6899",
+  "prompts": {},
+  "sessions": {
+    "s_1c9d086ab67253": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1f5628ec-50ac-4d8d-a2cc-cee5b0112903",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
