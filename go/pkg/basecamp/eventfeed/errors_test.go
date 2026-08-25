@@ -130,12 +130,34 @@ func TestSeamErrors_UnwrapReachesTheCause(t *testing.T) {
 
 func TestCloseError_Message(t *testing.T) {
 	withReason := &CloseError{Code: 1008, Reason: "policy violation"}
-	if got := withReason.Error(); got != "cable connection closed by peer: code 1008: policy violation" {
+	if got := withReason.Error(); got != "cable connection closed by peer: code 1008 (peer reason withheld)" {
 		t.Errorf("Error() = %q", got)
 	}
 	bare := &CloseError{Code: 1006}
 	if got := bare.Error(); got != "cable connection closed by peer: code 1006" {
 		t.Errorf("Error() = %q", got)
+	}
+}
+
+// TestCloseError_RenderingWithholdsPeerReason pins the last rendering in the
+// value-invariant class: the peer chooses its close reason and can reflect
+// the mint ticket into it, and RFC 6455's 123-byte reason cap fits a ticket
+// well inside §9's 500-byte truncation — bounding is not redacting. The
+// canary is deliberately SHORT for the same reason frameCanary is: a marker
+// that survives truncation is what proves the absence of concatenation
+// rather than the presence of the cap. The type must also stay flat, or a
+// chain walk recovers what the rendering withheld.
+func TestCloseError_RenderingWithholdsPeerReason(t *testing.T) {
+	const canary = "sekrit-ticket"
+	e := &CloseError{Code: 1008, Reason: "refused ?ticket=" + canary}
+	if strings.Contains(e.Error(), canary) {
+		t.Errorf("Error() = %q echoes the peer's reason", e.Error())
+	}
+	if !strings.Contains(e.Error(), "1008") {
+		t.Errorf("Error() = %q lost the structural close code", e.Error())
+	}
+	if errors.Unwrap(e) != nil {
+		t.Errorf("CloseError unwraps to %v; the type must stay flat", errors.Unwrap(e))
 	}
 }
 

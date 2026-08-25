@@ -99,12 +99,12 @@ func (e *TerminalError) Unwrap() error {
 
 // maxErrorMessageBytes bounds every error rendering that can carry
 // server- or peer-derived text (SPEC.md §9 "Error Message Truncation",
-// MAX_ERROR_MESSAGE_LENGTH = 500): a close frame's reason, a terminal
-// message, a mint or poll cause, a dial reason. Frame CONTENTS are the
-// exception in the other direction — §23's Security Invariants forbid them
-// in renderings outright (invalidFrameError names its shape and nothing
-// else), because bounding is not redacting. Go's unit is bytes, matching the
-// main client's MaxErrorMessageBytes.
+// MAX_ERROR_MESSAGE_LENGTH = 500): a terminal message, a mint or poll
+// cause, a dial reason. Frame contents and peer close reasons are the
+// exception in the other direction — withheld from renderings outright
+// (invalidFrameError names its shape and nothing else; CloseError renders
+// its code behind a fixed marker), because bounding is not redacting. Go's
+// unit is bytes, matching the main client's MaxErrorMessageBytes.
 const maxErrorMessageBytes = 500
 
 // truncateErrorText bounds s to maxErrorMessageBytes with §9's truncation

@@ -289,19 +289,23 @@ var ErrFrameOversize = errors.New("eventfeed: inbound cable frame exceeds the di
 type CloseError struct {
 	// Code is the WebSocket close code.
 	Code int
-	// Reason is the close reason, if any.
+	// Reason is the peer's close reason, if any — peer-chosen text that can
+	// reflect anything the peer saw, the mint ticket included, so Error
+	// never renders it. It is data for a caller that reads it deliberately.
 	Reason string
 }
 
-// Error implements the error interface. Reason is peer-supplied, so the
-// rendering is bounded by §9's MAX_ERROR_MESSAGE_LENGTH like every other
-// rendering of peer-derived text in this package, and the type is flat — it
-// retains no cause a chain walk could recover the unbounded original from.
-// RFC 6455 already caps a close reason at 123 bytes and the default transport
-// enforces it, so the truncation binds only on a transport that does not.
+// Error implements the error interface. The code is structural — the integer
+// §23's Security Invariants name as what a close renders — while the reason
+// is peer text under the never-log-the-ticket invariant: a peer can reflect
+// the ticket into its close reason, RFC 6455's 123-byte reason cap fits one
+// comfortably, and §9's 500-byte cap bounds without redacting. So the
+// rendering withholds it behind a fixed marker, and with no unbounded input
+// left there is nothing to truncate. The type stays flat: no cause, nothing
+// a chain walk recovers.
 func (e *CloseError) Error() string {
 	if e.Reason != "" {
-		return truncateErrorText(fmt.Sprintf("cable connection closed by peer: code %d: %s", e.Code, e.Reason))
+		return fmt.Sprintf("cable connection closed by peer: code %d (peer reason withheld)", e.Code)
 	}
 	return fmt.Sprintf("cable connection closed by peer: code %d", e.Code)
 }
@@ -360,9 +364,9 @@ type DialError struct {
 // dialed URL's query string when the DialError is this package's own — the
 // built-in transport composes reasons and causes from closed vocabularies —
 // and the composed result is bounded by §9's MAX_ERROR_MESSAGE_LENGTH like
-// every other URL-derived rendering here (CloseError is the precedent):
-// Reason can embed a mint-URL component — a scheme or an explicit port —
-// whose length url.Parse does not bound.
+// every other rendering here that composes unbounded text: a custom
+// transport's Reason or cause is host-authored, and nothing upstream bounds
+// its length.
 func (e *DialError) Error() string {
 	msg := "cable dial failed (" + e.Kind.String() + ")"
 	if e.Reason != "" {
