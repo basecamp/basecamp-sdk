@@ -81,7 +81,7 @@ func TestScenarioDriverRejectsMutatedFixtures(t *testing.T) {
 		{
 			name:    "reconnect dials the previous mint's url",
 			fixture: "05-fresh-ticket-reconnect-after-ttl.json",
-			path:    "steps.13.expectConnect.url",
+			path:    "steps.14.expectConnect.url",
 			value:   "{{CABLE_URL:1}}",
 			wants:   "a cable dial",
 		},
@@ -412,6 +412,145 @@ func TestScenarioDriverRejectsUnmodelledScripts(t *testing.T) {
 			wants:  "exceeds max",
 		},
 		{
+			// The schema's shared ms maximum, driver-enforced: one past Go's
+			// int64-nanosecond line, time.Duration(ms)*time.Millisecond goes
+			// NEGATIVE and an accepted advance would REWIND virtual time. The
+			// bound is checked at load so the overflow is a fixture error in
+			// every driver, not a representation accident in one.
+			name:   "advance ms beyond the 10-virtual-year maximum",
+			script: `{"name":"x","description":"d","steps":[{"advance":{"ms":9223372036855}}],"finally":{"state":"closed"}}`,
+			wants:  "10 virtual years",
+		},
+		{
+			name:   "fireTimer envelope beyond the 10-virtual-year maximum",
+			script: `{"name":"x","description":"d","steps":[{"fireTimer":{"kind":"backoff","assertDelayMs":{"min":0,"max":9223372036855}}}],"finally":{"state":"closed"}}`,
+			wants:  "10 virtual years",
+		},
+		{
+			name:   "config stalenessMs beyond the 10-virtual-year maximum",
+			script: `{"name":"x","description":"d","config":{"stalenessMs":9223372036855},"steps":[{"advance":{"ms":1}}],"finally":{"state":"closed"}}`,
+			wants:  "10 virtual years",
+		},
+		{
+			// Explicit zero is not omission: the schema says minimum 1, and a
+			// plain int64 decode read {"stalenessMs":0} as "absent, use the
+			// default" — accepting a value the schema rejects and silently
+			// substituting another. Presence is preserved with pointers.
+			name:   "config stalenessMs explicit zero",
+			script: `{"name":"x","description":"d","config":{"stalenessMs":0},"steps":[{"advance":{"ms":1}}],"finally":{"state":"closed"}}`,
+			wants:  "must be in [1,",
+		},
+		{
+			name:   "config confirmationDeadlineMs explicit zero",
+			script: `{"name":"x","description":"d","config":{"confirmationDeadlineMs":0},"steps":[{"advance":{"ms":1}}],"finally":{"state":"closed"}}`,
+			wants:  "must be in [1,",
+		},
+		{
+			name:   "config repairPollBaseMs explicit zero",
+			script: `{"name":"x","description":"d","config":{"repairPollBaseMs":0},"steps":[{"advance":{"ms":1}}],"finally":{"state":"closed"}}`,
+			wants:  "must be in [1,",
+		},
+		{
+			// The unmodeled pair is unmodeled at ANY supplied value: explicit
+			// zero used to slip past the != 0 check into silence.
+			name:   "config backoffBaseMs explicit zero",
+			script: `{"name":"x","description":"d","config":{"backoffBaseMs":0},"steps":[{"advance":{"ms":1}}],"finally":{"state":"closed"}}`,
+			wants:  "not modeled",
+		},
+		{
+			// Explicit null is the presence saga's second act: *int64 read
+			// {"stalenessMs":null} and omission both as nil, silently
+			// defaulting a value the schema's "type": "integer" rejects.
+			name:   "config stalenessMs explicit null",
+			script: `{"name":"x","description":"d","config":{"stalenessMs":null},"steps":[{"advance":{"ms":1}}],"finally":{"state":"closed"}}`,
+			wants:  "supplied as JSON null",
+		},
+		{
+			name:   "config confirmationDeadlineMs explicit null",
+			script: `{"name":"x","description":"d","config":{"confirmationDeadlineMs":null},"steps":[{"advance":{"ms":1}}],"finally":{"state":"closed"}}`,
+			wants:  "supplied as JSON null",
+		},
+		{
+			name:   "config repairPollBaseMs explicit null",
+			script: `{"name":"x","description":"d","config":{"repairPollBaseMs":null},"steps":[{"advance":{"ms":1}}],"finally":{"state":"closed"}}`,
+			wants:  "supplied as JSON null",
+		},
+		{
+			name:   "config backoffBaseMs explicit null",
+			script: `{"name":"x","description":"d","config":{"backoffBaseMs":null},"steps":[{"advance":{"ms":1}}],"finally":{"state":"closed"}}`,
+			wants:  "not modeled",
+		},
+		{
+			name:   "config backoffCapMs explicit null",
+			script: `{"name":"x","description":"d","config":{"backoffCapMs":null},"steps":[{"advance":{"ms":1}}],"finally":{"state":"closed"}}`,
+			wants:  "not modeled",
+		},
+		{
+			// The envelope has the same three states the config durations do:
+			// a pointer read "assertDelayMs": null as omission, skipping the
+			// assertion the script wrote.
+			name:   "fireTimer assertDelayMs explicit null",
+			script: `{"name":"x","description":"d","steps":[{"fireTimer":{"kind":"backoff","assertDelayMs":null}}],"finally":{"state":"closed"}}`,
+			wants:  "supplied as JSON null",
+		},
+		{
+			// min and max are schema-required: an absent member decoded to
+			// int64(0), inside the allowed range, silently converting the
+			// authored envelope into a different one.
+			name:   "fireTimer assertDelayMs missing min",
+			script: `{"name":"x","description":"d","steps":[{"fireTimer":{"kind":"backoff","assertDelayMs":{"max":10}}}],"finally":{"state":"closed"}}`,
+			wants:  "needs both min and max",
+		},
+		{
+			name:   "fireTimer assertDelayMs null member",
+			script: `{"name":"x","description":"d","steps":[{"fireTimer":{"kind":"backoff","assertDelayMs":{"min":null,"max":10}}}],"finally":{"state":"closed"}}`,
+			wants:  "supplied as JSON null",
+		},
+		{
+			// draft 2020-12 judges the VALUE, not the spelling: 1000.5 is not
+			// an integer instance, and the refusal should say so in the
+			// schema's terms rather than in encoding/json's.
+			name:   "advance ms non-integral number",
+			script: `{"name":"x","description":"d","steps":[{"advance":{"ms":1000.5}}],"finally":{"state":"closed"}}`,
+			wants:  "is not an integer",
+		},
+		{
+			// An advance is deterministic only from a scripted rendezvous:
+			// an action's completion can precede the timer arms its
+			// transition causes (expectConnect returns when the dial is
+			// recorded; the handshake deadline arms on the connector's
+			// goroutine after), so an unrendezvoused advance races the arm —
+			// accepted on one schedule, rejected on another. The rendezvous
+			// is authored, not guessed: expectTimers' exact-set match is the
+			// settle, and the load rule makes its absence unscriptable.
+			name:   "an advance not preceded by an expectTimers rendezvous",
+			script: `{"name":"x","description":"d","steps":[{"expectMint":{"respond":{"status":200,"body":{"ticket":"{{TICKET:1}}","expires_in":120,"url":"{{CABLE_URL:1}}"}}}},{"expectConnect":{"url":"{{CABLE_URL:1}}"}},{"advance":{"ms":30000}}],"finally":{"state":"closed"}}`,
+			wants:  "expectState + expectTimers rendezvous",
+		},
+		{
+			// An EMPTY rendezvous set can never contain an arm of the
+			// preceding transition, so its match orders nothing: after a
+			// released failed mint, {"exact":{}} matches before backoff is
+			// armed, and the advance races the arm exactly as if the
+			// rendezvous were absent. A scenario with nothing yet armed
+			// advances as its first step instead.
+			name:   "an advance behind an empty expectTimers rendezvous",
+			script: `{"name":"x","description":"d","steps":[{"expectState":{"is":"backoff"}},{"expectTimers":{"exact":{}}},{"advance":{"ms":1}}],"finally":{"state":"closed"}}`,
+			wants:  "an empty rendezvous orders nothing",
+		},
+		{
+			// The set match alone can coincide with a TRANSIENT mid-surgery
+			// set (the welcome transition stops handshake-deadline and arms
+			// confirmation-deadline in separate clock acquisitions, so
+			// {staleness:1} exists in between). The state announcement bounds
+			// the surgery: expectState blocks until the transition announces,
+			// and every timer still unarmed at an announcement is exactly
+			// what the set match then waits for.
+			name:   "an advance whose rendezvous lacks the state barrier",
+			script: `{"name":"x","description":"d","steps":[{"expectMint":{"respond":{"status":200,"body":{"ticket":"{{TICKET:1}}","expires_in":120,"url":"{{CABLE_URL:1}}"}}}},{"expectConnect":{"url":"{{CABLE_URL:1}}"}},{"expectTimers":{"exact":{"handshake-deadline":1}}},{"advance":{"ms":30000}}],"finally":{"state":"closed"}}`,
+			wants:  "expectState + expectTimers rendezvous",
+		},
+		{
 			name:   "droppedCount disagreeing with droppedIds",
 			script: `{"name":"x","description":"d","steps":[{"expectSignal":{"kind":"bufferOverflow","droppedIds":[1],"droppedCount":2}}],"finally":{"state":"closed"}}`,
 			wants:  "disagrees with",
@@ -480,8 +619,167 @@ func TestScenarioDriverRejectsUnmatchedActions(t *testing.T) {
 	})
 }
 
-// underShortWatchdog runs a scenario that is EXPECTED to fail under a short
-// rendezvous window. A hostile scenario often fails by never satisfying a
+// TestScenarioDriverRejectsSchedulingDependentAdvance pins the advance guard.
+// A driver that quietly took the scheduling-dependent path would produce a
+// result that differs between languages for the same fixture, which is worse
+// than a failure because nothing reports it.
+//
+// The rule is about what an advance would FIRE, not about what it arms, and
+// the third case below is where those differ: a firing that replaces nothing
+// is still rejected. That is stricter than the arming rule this replaced, and
+// deliberately so — the arming rule could only be enforced by sampling, and a
+// sampled MUST is not one.
+//
+// TestScenarioMsAcceptsIntegralNumberSpellings pins the schema's number
+// model onto the loader: draft 2020-12's "integer" is any number whose
+// MATHEMATICAL value is integral, so 1000.0 and 1e3 are integer instances a
+// schema-valid fixture may carry, and only the Go driver was refusing them —
+// the same float-spelled-int class FlexInt absorbs on the rich-text lane.
+// Integrality is decidable without precision loss: everything in range sits
+// far below float64's 2^53 exact-integer ceiling.
+func TestScenarioMsAcceptsIntegralNumberSpellings(t *testing.T) {
+	base := `{"name":"x","description":"d","config":{"stalenessMs":%s},"steps":[{"advance":{"ms":%s}}],"finally":{"state":"closed"}}`
+	cases := []struct {
+		name, staleness, ms, wantErr string
+		want                         int64
+	}{
+		{"float spelling", "1000.0", "1000.0", "", 1000},
+		{"exponent spelling", "1e3", "1e3", "", 1000},
+		{"non-integral", "1000.5", "1000", "is not an integer", 0},
+		{"non-integral ms", "1000", "1000.5", "is not an integer", 0},
+		// Integrality is a fact about the TEXT: float64 rounds these to
+		// exactly 1000 and exactly the maximum before any Trunc can look.
+		{"rounding-boundary fraction", "1000.00000000000001", "1000", "is not an integer", 0},
+		{"near-maximum fraction", "315575999999.99999", "1000", "is not an integer", 0},
+		{"exact maximum float spelling", "315576000000.0", "1000", "", 315576000000},
+		// A quoted "1000" is a STRING instance — schema type integer refuses
+		// it, and json.Number's Unmarshal would happily have taken it.
+		{"quoted number", `"1000"`, "1000", "is a string", 0},
+		{"quoted ms", "1000", `"1000"`, "is a string", 0},
+		// A bomb is refused by its EFFECTIVE magnitude — significand length
+		// plus exponent — never by materializing the number, and never by
+		// the exponent's spelling alone: a significand can offset it.
+		{"exponent bomb", "1e999999999", "1000", "beyond any modeled ms value", 0},
+		{"significand offsets a negative exponent", "100000000000000000000000000000000000000000000e-41", "1000", "", 1000},
+		{"significand offsets to one hundred", "1000000000000000000000000000000000000000000e-40", "1000", "", 100},
+		{"fraction-led spelling of one", "0.00000000000000000000000000000000000000001e41", "1000", "", 1},
+		{"negative exponent bomb", "1e-999999999", "1000", "beyond any modeled ms value", 0},
+		{"parse-bomb literal", strings.Repeat("9", 100001), "1000", "characters", 0},
+		// The platform's max integer as an exponent must not wrap the place
+		// arithmetic into acceptance.
+		{"max-int exponent", "1e9223372036854775807", "1000", "beyond any modeled ms value", 0},
+		{"min-int exponent", "1e-9223372036854775808", "1000", "beyond any modeled ms value", 0},
+		// Exponents past int64 overflow the fixed-width parse itself; the
+		// range error takes the bound's own verdict, so the diagnostic is
+		// the same on every platform width.
+		{"beyond-int64 exponent", "1e9223372036854775808", "1000", "beyond any modeled ms value", 0},
+		{"beyond-int64 negative exponent", "1e-9223372036854775809", "1000", "beyond any modeled ms value", 0},
+		// Zero short-circuits before any exponent expansion; a zero
+		// stalenessMs is then the RANGE check's refusal, not a parse error.
+		{"zero with a large exponent", "0e199999", "1000", "must be in [1,", 0},
+		{"zero beyond the exponent cap", "0e200001", "1000", "must be in [1,", 0},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			raw := fmt.Sprintf(base, tc.staleness, tc.ms)
+			sc, err := parseScenario([]byte(raw), "x.json")
+			if tc.wantErr == "" {
+				if err != nil {
+					t.Fatalf("an integral spelling must load: %v", err)
+				}
+				if got := sc.Config.StalenessMs.v; got != tc.want {
+					t.Errorf("stalenessMs decoded to %d, want %d", got, tc.want)
+				}
+				return
+			}
+			if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
+				t.Fatalf("err = %v, want one naming %q", err, tc.wantErr)
+			}
+		})
+	}
+}
+
+// The control matters as much as the mutants: an advance over a window with
+// nothing due is ordinary and must still pass, or the guard would be rejecting
+// every advance and the suite's one real advance (fixture 05) would be failing
+// for the wrong reason.
+func TestScenarioDriverRejectsSchedulingDependentAdvance(t *testing.T) {
+	t.Run("an advance during which the connector arms a timer", func(t *testing.T) {
+		// Advancing past the handshake deadline fires it, and the teardown it
+		// causes arms `backoff` inside the same window — the reentrant clause
+		// the algorithm cannot resolve identically across languages when the
+		// recipient is another goroutine. The guard never has to observe that
+		// arming: the firing alone is enough to reject the script.
+		script := `{"name":"x","description":"d","steps":[
+			{"expectMint":{"respond":{"status":200,"body":{"ticket":"{{TICKET:1}}","expires_in":120,"url":"{{CABLE_URL:1}}"}}}},
+			{"expectConnect":{"url":"{{CABLE_URL:1}}"}},
+			{"expectState":{"is":"awaiting_welcome"}},
+			{"expectTimers":{"exact":{"handshake-deadline":1,"staleness":1}}},
+			{"advance":{"ms":30000}}],
+			"finally":{"state":"backoff"}}`
+		err := underShortWatchdog(func() error { return runScenarioBytes([]byte(script), "x.json") })
+		if err == nil {
+			t.Fatal("an advance that changes the outstanding timer set must fail the scenario")
+		}
+		if !strings.Contains(err.Error(), "would fire") {
+			t.Fatalf("failed for the wrong reason: %v", err)
+		}
+		if !strings.Contains(err.Error(), "fireTimer") {
+			t.Errorf("the rejection must name the deterministic alternative: %v", err)
+		}
+	})
+
+	t.Run("an advance over a quiet window is ordinary", func(t *testing.T) {
+		// No connection yet, so nothing is armed and nothing is due: the
+		// guard must not reject an advance merely for existing.
+		script := `{"name":"x","description":"d","steps":[
+			{"advance":{"ms":1000}},
+			{"expectMint":{"respond":{"status":200,"body":{"ticket":"{{TICKET:1}}","expires_in":120,"url":"{{CABLE_URL:1}}"}}}},
+			{"expectConnect":{"url":"{{CABLE_URL:1}}"}}],
+			"finally":{"state":"awaiting_welcome"}}`
+		if err := underShortWatchdog(func() error { return runScenarioBytes([]byte(script), "x.json") }); err != nil {
+			t.Fatalf("an advance over a window that arms nothing must pass: %v", err)
+		}
+	})
+
+	// A firing that replaces nothing is STILL rejected, and this is the case
+	// that shows the rule changed rather than merely being reimplemented.
+	// Here the backoff deadline expires and the connector's next act is a mint,
+	// which parks inside the seam until the driver releases it, so nothing is
+	// armed anywhere in the window. Under the arming rule this was legal. It is
+	// not any more, because "did anything get armed?" can only be answered by
+	// waiting and hoping, while "is anything due?" is one atomic read — and the
+	// script that wanted this has `fireTimer`, which says which timer it means.
+	t.Run("an advance in which a due timer fires without replacement is still rejected", func(t *testing.T) {
+		script := `{"name":"x","description":"d","steps":[
+			{"expectMint":{"respond":{"status":200,"body":{"ticket":"{{TICKET:1}}","expires_in":120,"url":"{{CABLE_URL:1}}"}}}},
+			{"expectConnect":{"url":"{{CABLE_URL:1}}"}},
+			{"serve":{"frame":"welcome"}},
+			{"expectSubscribe":{"channel":"EventsChannel"}},
+			{"fireTimer":{"kind":"confirmation-deadline"}},
+			{"expectClientClose":{}},
+			{"expectState":{"is":"backoff"}},
+			{"expectTimers":{"exact":{"backoff":1}}},
+			{"advance":{"ms":1000}},
+			{"expectMint":{"respond":{"status":200,"body":{"ticket":"{{TICKET:2}}","expires_in":120,"url":"{{CABLE_URL:2}}"}}}},
+			{"expectConnect":{"url":"{{CABLE_URL:2}}"}}],
+			"finally":{"state":"awaiting_welcome"}}`
+		err := underShortWatchdog(func() error { return runScenarioBytes([]byte(script), "x.json") })
+		if err == nil {
+			t.Fatal("an advance whose window fires a timer must fail, even when it replaces nothing")
+		}
+		if !strings.Contains(err.Error(), "would fire") {
+			t.Fatalf("failed for the wrong reason: %v", err)
+		}
+		if !strings.Contains(err.Error(), "fireTimer") {
+			t.Errorf("the rejection must name the deterministic alternative: %v", err)
+		}
+	})
+}
+
+// underShortWatchdog runs a scenario under a short rendezvous window. Its
+// usual use is a scenario EXPECTED to fail, but it serves any case whose waits
+// are all short by construction. A hostile scenario often fails by never satisfying a
 // rendezvous, and waiting the full window for each would cost more than the
 // whole conformance suite; every caller still pins the failure's reason, so a
 // mutant rejected for the wrong reason cannot pass as the pin firing.

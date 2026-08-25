@@ -13,7 +13,9 @@ package eventfeed_test
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"math/big"
 	"regexp"
 	"strconv"
 	"strings"
@@ -37,19 +39,172 @@ type scenarioStep struct {
 // scenarioConfig is the schema's `config` object — the connector construction
 // options a scenario selects.
 type scenarioConfig struct {
-	Types                  []string          `json:"types"`
-	Buckets                []int64           `json:"buckets"`
-	Creators               []int64           `json:"creators"`
-	Position               string            `json:"position"`
-	ConfirmationDeadlineMs int               `json:"confirmationDeadlineMs"`
-	RepairPollBaseMs       int               `json:"repairPollBaseMs"`
-	BackoffBaseMs          int               `json:"backoffBaseMs"`
-	BackoffCapMs           int               `json:"backoffCapMs"`
-	StalenessMs            int               `json:"stalenessMs"`
+	Types    []string `json:"types"`
+	Buckets  []int64  `json:"buckets"`
+	Creators []int64  `json:"creators"`
+	Position string   `json:"position"`
+	// The five durations are THREE-STATE because presence is meaning twice
+	// over: a plain int64 read an explicit zero as "absent, use the
+	// default", and a pointer read an explicit JSON null the same way —
+	// each accepting a value the schema rejects ("minimum": 1 for zero,
+	// "type": "integer" for null) and silently substituting another. The
+	// driver enforces the schema's judgments portably, so all three states
+	// the wire distinguishes are preserved: absent, null, and value.
+	ConfirmationDeadlineMs optionalMs        `json:"confirmationDeadlineMs"`
+	RepairPollBaseMs       optionalMs        `json:"repairPollBaseMs"`
+	BackoffBaseMs          optionalMs        `json:"backoffBaseMs"`
+	BackoffCapMs           optionalMs        `json:"backoffCapMs"`
+	StalenessMs            optionalMs        `json:"stalenessMs"`
 	LiveBufferCapacity     int               `json:"liveBufferCapacity"`
 	DedupeCapacity         int               `json:"dedupeCapacity"`
 	SignalDisposition      map[string]string `json:"signalDisposition"`
 	CheckpointStore        *storeScript      `json:"checkpointStore"`
+}
+
+// optionalMs is one config duration in the three JSON states the schema
+// distinguishes: absent (the zero optionalMs — use the default), JSON null
+// (set, null — rejected, "type": "integer" refuses it), and a value (set,
+// ranged). encoding/json calls a value type's UnmarshalJSON for null where it
+// short-circuits a pointer's, which is exactly why this is not a *int64.
+type optionalMs struct {
+	set  bool
+	null bool
+	v    int64
+}
+
+func (o *optionalMs) UnmarshalJSON(data []byte) error {
+	o.set = true
+	if string(data) == "null" {
+		o.null = true
+		return nil
+	}
+	v, err := parseIntegralMs(data)
+	o.v = v
+	return err
+}
+
+// parseIntegralMs parses one JSON number the way draft 2020-12's "integer"
+// judges it: by MATHEMATICAL value, not spelling — 1000.0 and 1e3 are integer
+// instances a schema-valid fixture may carry, and only this driver was
+// refusing them (the float-spelled-int class FlexInt absorbs on the
+// rich-text lane). Integrality is a fact about the TEXT, which json.Number
+// preserves: a float64 detour rounds 1000.00000000000001 to exactly 1000 —
+// and 315575999999.99999 to exactly the maximum — before any check can look,
+// so the literal is judged exactly, with big.Rat. Two gates come first: a
+// quoted "1000" is a STRING instance the schema refuses, though json.Number's
+// own Unmarshal would take it; and an exponent is read as a NUMBER'S text
+// before anything is materialized, so an exponent bomb (1e999999999) is
+// refused for its magnitude, never expanded.
+func parseIntegralMs(data []byte) (int64, error) {
+	trimmed := strings.TrimLeft(string(data), " \t\r\n")
+	if strings.HasPrefix(trimmed, `"`) {
+		return 0, fmt.Errorf("%s is a string: the schema's type is integer — quote-wrapping a number makes it a different instance", trimmed)
+	}
+	var n json.Number
+	if err := json.Unmarshal(data, &n); err != nil {
+		return 0, err
+	}
+	lit := n.String()
+	// A bomb is refused before anything is materialized, and by the value's
+	// EFFECTIVE magnitude, never the exponent's spelling alone — draft
+	// 2020-12 constrains the mathematical value, and a significand can
+	// offset any exponent (1e44-digits × e-41 is exactly 1000). Two string
+	// judgments suffice, both exact:
+	//   - the most significant nonzero digit's decimal place caps the
+	//     value: above place 13 nothing fits [0, maxScenarioMs] (12 digits);
+	//   - a least significant nonzero digit below the units place makes the
+	//     value non-integral outright (decimal digits do not carry), which
+	//     refuses 1e-999999999 without a 10^999999999 denominator.
+	// A length cap comes first so no multi-megabyte literal is ever walked
+	// into a rational — the schema's top-level description sanctions exactly
+	// this bound (a resource limit on spellings, not a value constraint), so
+	// refusing "1" + 100k zeros + e-100000 (mathematically 1) is conformant.
+	if len(lit) > 100000 {
+		return 0, fmt.Errorf("a %d-character number is beyond any modeled ms value (literals are capped at 100000 characters)", len(lit))
+	}
+	mant, expText := lit, ""
+	if i := strings.IndexAny(lit, "eE"); i >= 0 {
+		mant = lit[:i]
+		expText = strings.TrimPrefix(lit[i+1:], "+")
+	}
+	digits := strings.TrimPrefix(mant, "-")
+	point := strings.IndexByte(digits, '.')
+	intLen := len(digits)
+	if point >= 0 {
+		intLen = point
+		digits = digits[:point] + digits[point+1:]
+	}
+	firstNZ, lastNZ := -1, -1
+	for i := 0; i < len(digits); i++ {
+		if digits[i] >= '1' && digits[i] <= '9' {
+			if firstNZ < 0 {
+				firstNZ = i
+			}
+			lastNZ = i
+		}
+	}
+	if firstNZ < 0 {
+		// Zero, however spelled (0, 0.000, 0e200001): integral, the range
+		// judgment's to refuse, and decided before the exponent is even
+		// parsed — an exponent multiplies a significand, and this one is
+		// zero.
+		return 0, nil
+	}
+	exp := 0
+	if expText != "" {
+		// ParseInt at a FIXED width, not Atoi: int is 32 bits on some
+		// targets, where an exponent like 1e9223372036854775807 would fail
+		// as unreadable before reaching the magnitude judgment and change
+		// the diagnostic by platform. A 64-bit overflow can only mean the
+		// exponent is beyond the ±200000 bound below, so range errors take
+		// the bound's own verdict.
+		e, err := strconv.ParseInt(expText, 10, 64)
+		if err != nil {
+			if errors.Is(err, strconv.ErrRange) {
+				return 0, fmt.Errorf("%s is beyond any modeled ms value", lit)
+			}
+			return 0, fmt.Errorf("%s is not a number this driver can read", lit)
+		}
+		// Bound the exponent before any place arithmetic: at the platform's
+		// integer extremes, intLen - firstNZ + exp wraps and the magnitude
+		// judgments below judge garbage. The literal cap above bounds the
+		// significand at 100000 digits, so no in-range value needs an
+		// exponent beyond ±200000 to spell.
+		if e > 200000 || e < -200000 {
+			return 0, fmt.Errorf("%s is beyond any modeled ms value", lit)
+		}
+		exp = int(e)
+	}
+	{
+		// Digit i occupies decimal place intLen - i + exp (units = 1).
+		if msd := intLen - firstNZ + exp; msd > 13 {
+			return 0, fmt.Errorf("%s is beyond any modeled ms value", lit)
+		}
+		if lsd := intLen - lastNZ + exp; lsd < 1 {
+			return 0, fmt.Errorf("%s is not an integer: the schema's type is integer — a number whose mathematical value is integral", lit)
+		}
+	}
+	r, ok := new(big.Rat).SetString(lit)
+	if !ok {
+		return 0, fmt.Errorf("%s is not a number this driver can read", lit)
+	}
+	if !r.IsInt() {
+		return 0, fmt.Errorf("%s is not an integer: the schema's type is integer — a number whose mathematical value is integral", lit)
+	}
+	num := r.Num()
+	if !num.IsInt64() {
+		return 0, fmt.Errorf("%s is beyond any modeled ms value", lit)
+	}
+	return num.Int64(), nil
+}
+
+// scenarioMs is a required ms value under the same number model.
+type scenarioMs int64
+
+func (m *scenarioMs) UnmarshalJSON(data []byte) error {
+	v, err := parseIntegralMs(data)
+	*m = scenarioMs(v)
+	return err
 }
 
 // storeScript is the schema's scripted CheckpointStore.
@@ -188,17 +343,43 @@ type goneBody struct {
 }
 
 type advanceStep struct {
-	Ms int `json:"ms"`
+	Ms scenarioMs `json:"ms"`
 }
 
 type fireTimerStep struct {
-	Kind          string         `json:"kind"`
-	AssertDelayMs *delayEnvelope `json:"assertDelayMs"`
+	Kind          string           `json:"kind"`
+	AssertDelayMs optionalEnvelope `json:"assertDelayMs"`
 }
 
+// delayEnvelope's members are three-state for the same reason the config
+// durations are: min and max are schema-REQUIRED integers, and a plain int64
+// read an absent or null member as 0 — inside the allowed range, silently
+// converting the authored envelope into a different one.
 type delayEnvelope struct {
-	Min int `json:"min"`
-	Max int `json:"max"`
+	Min optionalMs `json:"min"`
+	Max optionalMs `json:"max"`
+}
+
+// optionalEnvelope is assertDelayMs in the three JSON states: absent (no
+// assertion — the zero value), null (set, null — refused, the schema's type
+// is object), and a value (set, decoded strictly: the outer decoder's
+// DisallowUnknownFields does not reach inside a custom unmarshaler, so the
+// strictness is re-established here).
+type optionalEnvelope struct {
+	set  bool
+	null bool
+	env  delayEnvelope
+}
+
+func (o *optionalEnvelope) UnmarshalJSON(data []byte) error {
+	o.set = true
+	if string(data) == "null" {
+		o.null = true
+		return nil
+	}
+	dec := json.NewDecoder(bytes.NewReader(data))
+	dec.DisallowUnknownFields()
+	return dec.Decode(&o.env)
 }
 
 type expectCheckpointStep struct {
@@ -229,6 +410,32 @@ type expectPositionRejectedStep struct {
 }
 
 // --- loading -------------------------------------------------------------
+
+// maxScenarioMs is the schema's shared `maximum` for every ms field: 10
+// virtual years. It is a DOMAIN bound — scripts age tickets by minutes to
+// days, so the largest value today (~11 days) has 300× headroom — chosen over
+// the representation-derived 9,223,372,036,854 (the largest ms count whose
+// int64-nanosecond product does not overflow) because the schema should say
+// what a script can MEAN, not restate one language's integer layout. It sits
+// ~29× under that overflow line, so no conforming driver's duration
+// representation can overflow — the failure this bound exists to make a
+// fixture error rather than a representation accident: one past the int64
+// line, time.Duration(ms)*time.Millisecond goes negative and an accepted
+// advance would silently REWIND virtual time.
+const maxScenarioMs int64 = 315_576_000_000
+
+// checkScenarioMs enforces the schema's [floor, maxScenarioMs] range on one
+// ms field at load, so every driver rejects the same values for the same
+// stated reason. ms values are int64 END TO END (fixture structs, this check,
+// millis): the maximum exceeds MaxInt32, so a platform-width int fails to
+// compile on 32-bit (an int64-typed constant alone would instead make
+// schema-valid values above MaxInt32 fail decode into int structs).
+func checkScenarioMs(what string, v, floor int64) error {
+	if v < floor || v > maxScenarioMs {
+		return fmt.Errorf("%s must be in [%d, %d] (10 virtual years): got %d", what, floor, maxScenarioMs, v)
+	}
+	return nil
+}
 
 // parseScenario decodes one substituted fixture, failing on anything the
 // driver does not model.
@@ -268,6 +475,47 @@ func parseScenario(raw []byte, file string) (*scenario, error) {
 			return nil, fmt.Errorf("step %d: %w", i+1, err)
 		}
 		sc.Steps = append(sc.Steps, step)
+	}
+
+	// An advance is deterministic only from a scripted rendezvous point, and
+	// the rendezvous is TWO steps: expectState, then expectTimers. An
+	// action's completion can precede the timer arms its transition causes —
+	// expectConnect returns when the dial is recorded, while the handshake
+	// deadline arms on the connector's goroutine after — and a set match
+	// ALONE can coincide with a transient mid-surgery set (the welcome
+	// transition stops handshake-deadline and arms confirmation-deadline in
+	// separate clock acquisitions, so an authored set can exist in between).
+	// The state announcement bounds the surgery: expectState blocks until
+	// the transition announces, and in every announced state any timer still
+	// unarmed at the announcement is exactly what the following exact-set
+	// match waits for — so the pair settles where either alone races. Both
+	// blocks fail on the watchdog on every schedule where the stale pair no
+	// longer holds; a pair naming the PRE-action state can still pass on the
+	// schedule where the action is not yet processed, so wrong authorship is
+	// at worst flaky — never stably green (README "settle semantics"; the
+	// settled guarantee belongs to correctly authored pairs).
+	for i, step := range sc.Steps {
+		if step.Kind != "advance" || i == 0 {
+			continue
+		}
+		if i < 2 || sc.Steps[i-1].Kind != "expectTimers" || sc.Steps[i-2].Kind != "expectState" {
+			return nil, fmt.Errorf("step %d: an advance must be the scenario's first step or immediately follow "+
+				"an expectState + expectTimers rendezvous — an action's completion can precede the timer arms "+
+				"its transition causes, and a set match alone can coincide with a transient mid-surgery set; "+
+				"the state announcement bounds the surgery and the exact-set match settles what follows it", i+1)
+		}
+		// The match must be able to MEAN settled: an empty set can never
+		// contain an arm of the preceding transition, so it matches before
+		// that transition is processed (a released failed mint has not armed
+		// backoff yet) exactly as if the rendezvous were absent. The limit
+		// this cannot close is stated in the contract: the authored set must
+		// include an arm of the preceding transition, and a same-kind rearm
+		// is invisible to set matching — such scripts use fireTimer.
+		if rv, ok := sc.Steps[i-1].Payload.(*timerSet); ok && len(rv.Exact) == 0 {
+			return nil, fmt.Errorf("step %d: an empty rendezvous orders nothing — an expectTimers set with no "+
+				"timers cannot contain an arm of the preceding transition, so its match cannot prove the "+
+				"transition settled; a scenario with nothing yet armed advances as its first step", i+1)
+		}
 	}
 	finRaw, ok := top["finally"]
 	if !ok {
@@ -361,14 +609,37 @@ func decodeDirective(kind string, body json.RawMessage) (any, error) {
 		return &expectClientCloseStep{}, decodeStrict(body, &empty)
 	case "advance":
 		step := &advanceStep{}
-		return step, decodeStrict(body, step)
+		if err := decodeStrict(body, step); err != nil {
+			return nil, err
+		}
+		return step, checkScenarioMs("advance ms", int64(step.Ms), 1)
 	case "fireTimer":
 		step := &fireTimerStep{}
 		if err := decodeStrict(body, step); err != nil {
 			return nil, err
 		}
-		if step.AssertDelayMs != nil && step.AssertDelayMs.Min > step.AssertDelayMs.Max {
-			return nil, fmt.Errorf("assertDelayMs min %d exceeds max %d", step.AssertDelayMs.Min, step.AssertDelayMs.Max)
+		if step.AssertDelayMs.set {
+			if step.AssertDelayMs.null {
+				return nil, fmt.Errorf("assertDelayMs supplied as JSON null: the schema's type is object and null is not one — omit the key to fire without a delay assertion")
+			}
+			env := step.AssertDelayMs.env
+			for _, m := range []struct {
+				name string
+				o    optionalMs
+			}{{"min", env.Min}, {"max", env.Max}} {
+				if !m.o.set {
+					return nil, fmt.Errorf("assertDelayMs needs both min and max — the schema requires them, and an absent %s is a different envelope than the one authored", m.name)
+				}
+				if m.o.null {
+					return nil, fmt.Errorf("assertDelayMs %s supplied as JSON null: the schema's type is integer and null is not one", m.name)
+				}
+				if err := checkScenarioMs("assertDelayMs "+m.name, m.o.v, 0); err != nil {
+					return nil, err
+				}
+			}
+			if env.Min.v > env.Max.v {
+				return nil, fmt.Errorf("assertDelayMs min %d exceeds max %d", env.Min.v, env.Max.v)
+			}
 		}
 		return step, validateTimerKind(step.Kind)
 	case "expectDelivered":
@@ -454,7 +725,27 @@ type (
 // --- validation ----------------------------------------------------------
 
 func validateConfig(cfg scenarioConfig) error {
-	if cfg.BackoffBaseMs != 0 || cfg.BackoffCapMs != 0 {
+	// Absence means "default"; everything SUPPLIED is judged — a value is
+	// ranged (explicit zero included) and null is refused outright.
+	for _, f := range []struct {
+		name string
+		o    optionalMs
+	}{
+		{"confirmationDeadlineMs", cfg.ConfirmationDeadlineMs},
+		{"repairPollBaseMs", cfg.RepairPollBaseMs},
+		{"stalenessMs", cfg.StalenessMs},
+	} {
+		switch {
+		case !f.o.set:
+		case f.o.null:
+			return fmt.Errorf("%s supplied as JSON null: the schema's type is integer and null is not one — omit the key for the default", f.name)
+		default:
+			if err := checkScenarioMs(f.name, f.o.v, 1); err != nil {
+				return err
+			}
+		}
+	}
+	if cfg.BackoffBaseMs.set || cfg.BackoffCapMs.set {
 		return fmt.Errorf("backoffBaseMs/backoffCapMs are not modeled: SPEC §23 pins the Go connector's full-jitter base and cap as constants, with no construction option to override")
 	}
 	for kind, disposition := range cfg.SignalDisposition {

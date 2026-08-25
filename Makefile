@@ -156,9 +156,10 @@ check-known-defect-issues-open:
 	@echo "==> Checking known-defect tracking issues are open..."
 	@./scripts/check-known-defect-issues-open
 
-# Drive that gate from outside. Its live run is a no-op today — the allowlist
-# references no issues — so without this NOTHING exercises the closed-issue
-# rejection, the fail-closed path, or the second reference shape. Offline: PATH
+# Drive that gate from outside. Its live run verifies whatever the allowlist
+# and registry currently reference, and a green run proves only that those
+# issues are open — so without this NOTHING exercises the closed-issue
+# rejection, the fail-closed paths, or the second reference shape. Offline: PATH
 # is stripped to a stub `gh` answering from a canned table, because a self-test
 # that asked GitHub would assert against whatever is true this morning.
 #

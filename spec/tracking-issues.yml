@@ -1,0 +1,141 @@
+# Prose claims that discharge an obligation by pointing at an issue number.
+#
+# A sentence like "Tracked in #792" is a promise that someone owns the gap it
+# describes. If that issue closes without the gap closing, the sentence becomes
+# a documentation lie and nothing notices — which is exactly what happened to
+# the bc3 route allowlist when #588 auto-closed with nine live 404s pointing at
+# it (see scripts/check-known-defect-issues-open).
+#
+# The route allowlist gets that check because its entries are structured data.
+# Prose is not, so the claims are registered here instead — one entry per
+# [file, issue] pair, committing in `mentions` how many canonical sentences it
+# stands for — verified OPEN by the same gate, failing closed the same way.
+# (Duplicate [file, issue] rows are rejected: they would make the committed
+# count ambiguous. Several sentences in one file leaning on one issue share
+# the row and sum in its count.)
+#
+# This is deliberately a REGISTRY and not a scanner. A regex over prose for
+# "#\d+" would sweep up every historical citation — "shipped in #12380", "the
+# fix in #760" — which are as-of facts that must never be reopened, and would
+# need an ever-growing exclusion list to tell the two apart. The registry makes
+# the author say which kind they meant, once, where the reason is visible.
+#
+# Every entry names the `file` its sentence lives in and commits a `mentions`
+# count, because one detector backs this registry: the checker sweeps tracked
+# text for the canonical grammar "tracked [separately] in #N" and fails on any
+# mention whose [file, issue] pair is not registered here — and on any pair
+# whose swept count differs from the committed one, in either direction, so a
+# NEW mention cannot ride an existing row and a deleted sentence cannot leave
+# its row claiming more than the file holds (`mentions: 0` marks a promise
+# phrased outside the canonical grammar, registered by hand). Non-canonical phrasings are out of the
+# detector's reach by design (an open vocabulary cannot be enumerated); they
+# still go through this registry by hand, on the honor the header describes.
+#
+# Add an entry — or bump an existing row's `mentions` — when you write a
+# sentence promising an issue owns something. Decrement or remove when the
+# sentence goes, and the gate stops asking.
+prose_tracking_issues:
+  - issue: 589
+    file: "Makefile"
+    site: "Makefile — the vendored bc3-route table's freshness gate needs BC3_REPO_PATH, so it is not in CI"
+    mentions: 1
+  - issue: 775
+    file: "SPEC.md"
+    site: "SPEC.md §6 Retry-After — which statuses honour the header is divergent across the six SDKs"
+    mentions: 0
+  - issue: 775
+    file: "typescript/tests/retry-after.test.ts"
+    site: "typescript/tests/retry-after.test.ts — pins TypeScript's side of the Retry-After status divergence"
+    mentions: 1
+  - issue: 775
+    file: "MIGRATING.md"
+    site: "MIGRATING.md — the Retry-After migration note repeats the status-divergence promise"
+    mentions: 1
+  - issue: 578
+    file: "ruby/lib/basecamp/services/todolists_extensions.rb"
+    site: "ruby/lib/basecamp/services/todolists_extensions.rb — the generated validating layer that would retire writable_string"
+    mentions: 1
+  - issue: 578
+    file: "python/src/basecamp/services/todolists.py"
+    site: "python/src/basecamp/services/todolists.py — making the flat todolist read structurally safe"
+    mentions: 2
+  - issue: 578
+    file: "typescript/src/services/todolists-extensions.ts"
+    site: "typescript/src/services/todolists-extensions.ts — structural safety for this SDK"
+    mentions: 0
+  - issue: 578
+    file: "python/tests/services/test_todolist_groups_service.py"
+    site: "python/tests/services/test_todolist_groups_service.py — giving Python a structural decoder"
+    mentions: 0
+  - issue: 578
+    file: "typescript/tests/services/todolists.test.ts"
+    site: "typescript/tests/services/todolists.test.ts — structural safety for this SDK"
+    mentions: 0
+  - issue: 578
+    file: "ruby/lib/basecamp/services/merge_safe.rb"
+    site: "ruby/lib/basecamp/services/merge_safe.rb — the generated validating layer as the guards' intended end state"
+    mentions: 0
+  - issue: 578
+    file: "python/src/basecamp/services/_merge_safe.py"
+    site: "python/src/basecamp/services/_merge_safe.py — the generated validating layer as the guards' intended end state"
+    mentions: 0
+  - issue: 578
+    file: "typescript/src/services/merge-safe.ts"
+    site: "typescript/src/services/merge-safe.ts — the generated validating layer as the guards' intended end state"
+    mentions: 0
+  - issue: 775
+    file: "kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/Pagination.kt"
+    site: "kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/Pagination.kt — #775 carries the six-SDK Retry-After table"
+    mentions: 0
+  - issue: 775
+    file: "kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/PaginationTest.kt"
+    site: "kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/PaginationTest.kt — #775 carries the six-SDK Retry-After table"
+    mentions: 0
+  - issue: 775
+    file: "typescript/src/errors.ts"
+    site: "typescript/src/errors.ts — the strictness gate is recorded against the #775 divergence"
+    mentions: 0
+  - issue: 799
+    file: "SPEC.md"
+    site: "SPEC.md §6 — Python and Ruby still truncate the delay; #799 tracks the rounding convergence"
+    mentions: 1
+  - issue: 799
+    file: "MIGRATING.md"
+    site: "MIGRATING.md — #799 tracks the cross-SDK convergence on Retry-After rounding"
+    mentions: 0
+  - issue: 775
+    file: "go/pkg/basecamp/client.go"
+    site: "go/pkg/basecamp/client.go — widening the set of statuses that carry a parsed Retry-After is #775's"
+    mentions: 0
+  - issue: 799
+    file: "go/pkg/basecamp/client.go"
+    site: "go/pkg/basecamp/client.go — the rounding and over-range halves of the divergence are #799's"
+    mentions: 0
+  - issue: 799
+    file: "go/pkg/basecamp/client_retry_after_test.go"
+    site: "go/pkg/basecamp/client_retry_after_test.go — pins Go's side pending #799's convergence"
+    mentions: 0
+  - issue: 798
+    file: "SPEC.md"
+    site: "SPEC.md §6 — the generated Go parser stays Atoi until #798 lands the template change"
+    mentions: 0
+  - issue: 798
+    file: "MIGRATING.md"
+    site: "MIGRATING.md — the generated copy of the parse is untouched pending #798"
+    mentions: 0
+  - issue: 819
+    file: "SPEC.md"
+    site: "SPEC.md §23 zero-egress paragraph — the Layer-1 302 test's adapters are pending #819"
+    mentions: 1
+  - issue: 819
+    file: "conformance/event-feed/README.md"
+    site: "conformance/event-feed/README.md — Layer-1 seam-adapter conformance (rows 15/30 and the row-15 note) is pending #819"
+    mentions: 3
+  - issue: 819
+    file: "conformance/event-feed/fixtures/30-continuation-redirect-cross-origin.json"
+    site: "fixture 30's description — the below-seam zero-request proof is pending #819's Layer-1 adapters"
+    mentions: 1
+  - issue: 819
+    file: "conformance/event-feed/schema.json"
+    site: "schema.json fixture-30 respond variant — the Layer-1 302 test is pending #819"
+    mentions: 1

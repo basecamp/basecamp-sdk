@@ -3361,13 +3361,91 @@ Two dispatch clarifications, pinned:
   (implementation-chosen; the Go reference uses 256). At capacity the pump **blocks** —
   back-pressure propagates to the socket and TCP — rather than dropping: the
   state-machine-owned live buffer is the only place a frame can ever be dropped, and its
-  overflow signal is the only drop signal. Worst-case connector memory is therefore
-  bounded multiplicatively — every queued or buffered item is itself bounded by
-  `EVENT_FEED_MAX_FRAME_BYTES`, so the ceiling is
-  (pump depth + `EVENT_FEED_LIVE_BUFFER_CAPACITY`) × `EVENT_FEED_MAX_FRAME_BYTES`
+  overflow signal is the only drop signal. **The retention ceiling below is the GO
+  REFERENCE IMPLEMENTATION'S**, stated in its own terms — two goroutines, a
+  `json.RawMessage` copy, a copying decoder — **and it presumes a transport with
+  bounded reads**. Every SDK's cable lane inherits the shape (bounded queue, blocking
+  hand-off, single deferral slot, the buffer as the only drop point) but re-derives its
+  own weights, and one recorded divergence already breaks the per-item premise
+  elsewhere: TypeScript's default global-`WebSocket` lane cannot pre-bound a read, so a
+  single oversized message is allocated whole at receipt, before the
+  `EVENT_FEED_MAX_FRAME_BYTES` check drops it — the scenario-lane table in Appendix F
+  records that as an accepted divergence, and no universal cross-SDK byte ceiling is
+  published here. The ceiling also counts FRAMES, not errors: exactly one non-frame item
+  can ride the queue or the deferral slot — the read error that ends the pump, at most
+  one per attempt because the pump exits by sending it — and its SIZE is
+  transport-authored, unbounded by the seam contract. The built-in transport's errors
+  are bounded by construction (fixed shapes whose renderings are configured text or
+  placeholders, never server bytes); a custom transport's error is its author's to
+  bound. In the Go reference the accounting SPLITS, because two kinds of memory answer
+  different questions.
+
+  **RETAINED storage is what a consumer sizes against** — raw frames and buffered
+  events held across blocking points, an enumeration by HOLDER, which is what closes
+  the count: the hand-off queue (≤ pump depth), the live buffer
+  (≤ `EVENT_FEED_LIVE_BUFFER_CAPACITY`), the single deferral slot (≤ 1), and one
+  in-hand frame for each of the exactly two goroutines that touch frames. The retained
+  worst case is
+  (pump depth + 3 + `EVENT_FEED_LIVE_BUFFER_CAPACITY`) × `EVENT_FEED_MAX_FRAME_BYTES`
   (≈ 10 GiB at the defaults' extreme, reached only if every slot holds a maximum-size
-  frame) — even under a slow consumer. Implementations MAY additionally impose a total
-  byte cap on the live buffer; if they do, eviction routes through the same overflow
+  frame) — even under a slow consumer. The **+ 3** is three frame-sized retentions the
+  queue's depth does not count, held by different parties at the same time:
+  - the **pump's own in-flight frame** — the pump is a single reader, so it may hold exactly
+    one frame it has already READ and not yet handed off. One rather than an unbounded
+    number for that reason: one reader holds at most one frame outside the queue.
+  - the **state machine's in-hand frame** — the protocol-fatal scan's dequeue is the very
+    receive that lets a blocked pump refill the queue, so while the scan still holds that
+    frame — examining, admitting, or parking it — the queue is full again and the pump may
+    already hold its next read. A single consumer, so one frame in hand, for the pump's
+    own reason.
+  - the **deferred socket outcome** — the single slot the in-flight-poll servicing and the
+    drain's scan park one receive in. It is retained while the queue behind it refills, so it
+    is concurrent with a full queue and with both in-hand frames, not an alternative to
+    any of them.
+
+  **TRANSIENT decode-time allocation rides on top, per frame, in the state machine's
+  hands alone** (the pump never parses), bounded by a small implementation-topology
+  multiple of the frame being decoded rather than by a published constant. The multiple
+  covers the decode chain's representations — the wire bytes, `parseFrame`'s envelope
+  `json.RawMessage` copy, `decodeMessageEvent`'s per-field
+  `map[string]json.RawMessage`, the decoded `Event`'s strings — plus decoder overhead
+  proportional to member count: map bucket storage and copied keys, which a frame of
+  many tiny members inflates past any per-representation count. That is exactly why
+  the multiplier is NOT published: it is implementation topology, not contract — it
+  moved when the exact-spelling per-field decode was coded in, and pinning a number
+  would turn every decoder refactor into a spec change. What IS contract: transients
+  exist only between a frame's dequeue and its decode returning, one frame at a time,
+  so **peak frame-payload retention is the retained formula plus ONE frame's
+  transient allocation** — never a per-slot or per-queue multiplier. Payload, not
+  process memory: the equality deliberately excludes the two things it cannot
+  bound — the single transport-authored error item, whose size is its author's
+  (stated above), and runtime metadata (channel and `pumpItem` storage, slice and
+  map headers), which scales with the configured capacities, not with frame
+  bytes.
+
+  The retained enumeration cannot grow by a further party being noticed: every
+  retained frame is in one of the three counted structures or in the hands of the pump
+  or the state machine. The live buffer's weight is one per slot: a buffered `Event`
+  retains only the chain's LAST representation — its strings are copies, since Go's
+  decoder never aliases its input buffer, and `Event` carries no raw-bytes field — so
+  no transient survives admission.
+
+  The formula is the cable lane's retention, and only that — every counted item is a
+  raw socket frame or a buffered live event. The poll lane sits outside it on purpose:
+  `PollSource.Poll` returns one page decoded whole, and the walk retains that page
+  until its rows are delivered. What bounds it is shape, not size: pages are fetched
+  sequentially, so a walk holds at most one live page (a superseded attempt's in-flight
+  poll may briefly hold another before its result is discarded), but the page's SIZE is
+  the server's pagination decision — `EVENT_FEED_MAX_FRAME_BYTES` governs socket
+  frames and says nothing about an HTTP body the generated layer decodes. A
+  total-connector memory bound would need a poll-page cap this contract deliberately
+  does not impose.
+
+  The drain's protocol-fatal scan is budgeted at `pump depth + 1` and not at this figure,
+  which is not an inconsistency: the budget counts what the scan may DEQUEUE — the queue plus
+  the pump's held frame — while the ceiling counts what may be RETAINED, and the deferral slot
+  is retained without being dequeued by that scan. Implementations MAY additionally impose a
+  total byte cap on the live buffer; if they do, eviction routes through the same overflow
   signal, never a silent drop.
 - The transport negotiates subprotocol `actioncable-v1-json`, sends no `Origin` header
   (non-browser clients), and passes the mint URL through untouched, query string included.
@@ -3729,9 +3807,26 @@ logged (Security Invariants below).
 
 Required tier-2 coverage: a hostile cross-origin `next` mid-walk, a hostile 410
 `resume` URL, and a validated same-origin `next` answering 302 with a cross-origin
-`Location` each terminate with `invalid_continuation` and zero requests to the foreign
-origin; store-failure coverage proves Failed(load) terminates with zero wire attempts and
-Failed(save) continues with the observer signal and a subsequent save attempt.
+`Location` each terminate with `invalid_continuation`, are not retried, and issue no
+further poll; store-failure coverage proves Failed(load) terminates with zero wire
+attempts and Failed(save) continues with the observer signal and a subsequent save
+attempt.
+
+**Zero egress to the foreign origin splits at the seam.** For the hostile `next` and
+`resume` cases the target is connector-visible and tier 2 owns the coverage: a
+connector that follows one hands the URL to the poll seam, which the driver observes
+and fails — fixtures 26/27 assert zero requests to those hosts, structurally (no step
+ever serves them, and the harness's servers own only their own origins). For the
+redirect the obligation is Layer-1's, and this paragraph used to require it at tier 2:
+the poll lane IS the seam, so the driver reduces the `Location` to its origin and
+hands the connector a refusal verdict. The connector never sees a `Location` and never
+decides whether to follow one, which makes the foreign origin unreachable by
+construction of the harness — a harness that asserted no request reached it would be
+asserting something about itself. That obligation belongs to the Layer-1 seam
+adapter's own 302 test, where a real generated `PollEvents` call meets a real redirect
+against an adapter with automatic redirect-following disabled.
+`conformance/event-feed/README.md`'s row-15 note records it as a pending obligation
+rather than a proof the repository contains; the adapters are tracked in #819.
 
 ### Clock, Timers, and Virtual Time `[conformance]`
 
@@ -3786,8 +3881,44 @@ the advance whose deadlines land inside the window also fire; ties break by crea
 order.* A harness may additionally fire a named timer without advancing the clock,
 asserting its scheduled delay against a `{min, max}` envelope — that is how jitter is
 asserted without a cross-language RNG seam. Each language's test clock passes a shared
-semantics checklist (deadline order, reentrant scheduling within an advance, creation-order
-tie-break) before its tier-2 results count.
+semantics checklist (deadline order, creation-order tie-break) before its tier-2 results
+count.
+
+**The reentrant clause is normative for the algorithm and forbidden as a fixture
+dependency.** It stays in the algorithm because a clock that ignored it would fire the
+wrong set. But it is UNSCRIPTABLE wherever the connector runs concurrently with the
+driver: whether a timer armed during the window lands inside it depends on when the
+connector's goroutine, thread, or task got scheduled, which no fixture can pin. So **no
+fixture may rely on it, and every driver MUST REJECT an `advance` whose window would fire
+any timer**, naming `fireTimer` as the deterministic alternative.
+
+The test is what would FIRE, decided from the clock's state before time moves — not what
+gets ARMED. Arming happens on the connector's schedule, so a driver can only look for it
+by waiting and then assuming nothing further is coming, which is a heuristic wearing a
+MUST and passes a late arm in silence. Firing is one atomic read under the same lock the
+advance selects under. The inversion is sound because a test clock releases that lock only
+across a firing's aftermath — so an advance that fires nothing never wakes anything and
+cannot cause an arm, leaving nothing to detect. It is stricter than an arming rule (a
+firing that replaces nothing is rejected too) and that is the trade: a script wanting that
+firing writes `fireTimer` and names the timer. The due-set read also needs a settled set
+to read — an action's completion can precede the timer arms its transition causes — so
+every `advance` must be the scenario's first step or immediately follow the two-step
+rendezvous `expectState` then `expectTimers`, enforced at fixture load (an empty
+rendezvous set is rejected with it — it orders nothing). Neither step alone settles: a
+set match can coincide with a transient mid-surgery set (timer surgery spans clock
+acquisitions), and an announcement can precede a tail arm. Together they do — the
+announcement bounds the surgery, and any timer still unarmed at the announcement is
+exactly what the exact-set match then waits for, both blocking under the watchdog so
+wrong authorship fails loudly on every schedule where the stale pair no longer holds —
+a pre-action pair can pass on the schedule where the action is not yet processed, so a
+wrong script is at worst flaky, never stably green; the settled guarantee is for
+correctly authored pairs. A transition that announces no state change, or only
+rearms a timer of the same kind and count, is invisible to this rendezvous — a served
+live frame's pump-side `staleness` rearm is the concrete case. Such a script overrides
+`stalenessMs` large so no deadline, old or new, sits inside a window it advances (the
+schema's own guidance, and what the suite's one advance does), or uses `fireTimer` for
+the firing it actually wants. `conformance/event-feed/schema.json`'s
+`$defs.advance` states both, and the driver obligation is enforced there.
 
 Teardown discipline: disposing a connection attempt — deadline lapse, staleness, socket
 death, terminal — cancels the frame pump, **cancels any in-flight seam call belonging to

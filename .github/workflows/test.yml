@@ -120,8 +120,9 @@ jobs:
         with:
           ruby-version: "3.3"
 
-      # Offline and first: the gate below is a no-op whenever the allowlist
-      # references no issues, so this is what proves it rejects anything.
+      # Offline and first: a green run of the live gate below proves only that
+      # today's referenced issues are open, so this is what proves it REJECTS
+      # anything — closed issues, malformed rows, the fail-closed paths.
       - name: Self-test the known-defect gate
         run: make test-check-known-defect-issues-open
 
