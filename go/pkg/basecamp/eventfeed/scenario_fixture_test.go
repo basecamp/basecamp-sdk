@@ -154,7 +154,13 @@ func parseIntegralMs(data []byte) (int64, error) {
 			lastNZ = i
 		}
 	}
-	if firstNZ >= 0 { // zero needs no magnitude judgment
+	if firstNZ < 0 {
+		// Zero, however spelled (0, 0.000, 0e200000): integral, in range
+		// judgment's hands, and returned without ever expanding an exponent
+		// into a rational.
+		return 0, nil
+	}
+	{
 		// Digit i occupies decimal place intLen - i + exp (units = 1).
 		if msd := intLen - firstNZ + exp; msd > 13 {
 			return 0, fmt.Errorf("%s is beyond any modeled ms value", lit)

@@ -669,6 +669,9 @@ func TestScenarioMsAcceptsIntegralNumberSpellings(t *testing.T) {
 		// arithmetic into acceptance.
 		{"max-int exponent", "1e9223372036854775807", "1000", "beyond any modeled ms value", 0},
 		{"min-int exponent", "1e-9223372036854775808", "1000", "beyond any modeled ms value", 0},
+		// Zero short-circuits before any exponent expansion; a zero
+		// stalenessMs is then the RANGE check's refusal, not a parse error.
+		{"zero with a large exponent", "0e199999", "1000", "must be in [1,", 0},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
