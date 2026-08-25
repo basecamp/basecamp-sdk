@@ -209,6 +209,62 @@ func TestFileCheckpointStore_InvalidUTF8IsFailedNotMutated(t *testing.T) {
 	}
 }
 
+// An ESCAPED unpaired surrogate is the second door into the U+FFFD mutation
+// the raw-byte gate closed: "\ud800" is pure ASCII, passes utf8.Valid, and
+// encoding/json silently decodes it as U+FFFD. The gate claims corruption
+// detection, so corruption through this door must fail the load too — while
+// a properly PAIRED escape is legal JSON and must keep loading.
+func TestFileCheckpointStore_EscapedSurrogateIsFailedNotMutated(t *testing.T) {
+	key := storeKey("openclaw")
+	for _, tc := range []struct{ name, escape string }{
+		{"lone high surrogate", `pos-\ud800-1`},
+		{"lone low surrogate", `pos-\udc00-1`},
+		{"uppercase hex", `pos-\uD800-1`},
+		{"high half paired with a non-escape", `pos-\ud800Z-1`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			path := storePath(t)
+			writeStoreFile(t, path, "{"+strconv.Quote(key.FlatKey())+`:"`+tc.escape+`"}`)
+			position, ok, err := NewFileCheckpointStore(path).Load(context.Background(), key)
+			if err == nil {
+				t.Fatalf("Load() = (%q, %v, nil), want Failed — the decoder mutated the escape", position, ok)
+			}
+		})
+	}
+	t.Run("paired surrogate stays loadable", func(t *testing.T) {
+		path := storePath(t)
+		writeStoreFile(t, path, "{"+strconv.Quote(key.FlatKey())+`:"pos-\ud83d\ude00"}`)
+		position, ok, err := NewFileCheckpointStore(path).Load(context.Background(), key)
+		if err != nil || !ok || position != "pos-\U0001F600" {
+			t.Errorf("Load() = (%q, %v, %v), want the paired escape decoded intact", position, ok, err)
+		}
+	})
+}
+
+// encoding/json keeps the LAST value for a duplicated key without error, so
+// a store carrying one decoded FlatKey twice loaded an ambiguous position
+// instead of taking the corrupt-file verdict — including when the two raw
+// spellings differ and only their DECODED forms collide.
+func TestFileCheckpointStore_DuplicateKeysAreFailed(t *testing.T) {
+	key := storeKey("openclaw")
+	quoted := strconv.Quote(key.FlatKey())
+	// An escaped spelling of the same key: replace the leading [ with \u005b.
+	escaped := `"\u005b` + quoted[2:]
+	for _, tc := range []struct{ name, content string }{
+		{"same spelling twice", "{" + quoted + `:"pos-1",` + quoted + `:"pos-2"}`},
+		{"decoded collision across spellings", "{" + quoted + `:"pos-1",` + escaped + `:"pos-2"}`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			path := storePath(t)
+			writeStoreFile(t, path, tc.content)
+			position, ok, err := NewFileCheckpointStore(path).Load(context.Background(), key)
+			if err == nil {
+				t.Fatalf("Load() = (%q, %v, nil), want Failed — a duplicated key is ambiguity, not a position", position, ok)
+			}
+		})
+	}
+}
+
 // A position survives a fresh store instance over the same path: the point of
 // the store is durability across runs, not within one.
 func TestFileCheckpointStore_RoundTripAcrossInstances(t *testing.T) {
