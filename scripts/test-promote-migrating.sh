@@ -10,7 +10,7 @@ SCRIPT="$(dirname "$0")/promote-migrating.sh"
 export PROMOTE_MIGRATING_CURRENT=0.1.0
 # Pin the released-versions authority too: the suite must not depend on the
 # checkout's real tag state (CI checkouts are shallow and tagless).
-export PROMOTE_MIGRATING_RELEASED="0.14.0 0.15.0 0.16.0"
+export PROMOTE_MIGRATING_RELEASED="0.14.0 0.15.0"
 DIR=$(mktemp -d)
 trap 'rm -rf "$DIR"' EXIT
 FAILS=0
@@ -154,6 +154,44 @@ check "tagless checkout fails closed on the pending question" 1 $?
 cp "$DIR/s.md" "$DIR/s.before" 2>/dev/null
 PROMOTE_MIGRATING_CURRENT=0.15.0 PROMOTE_MIGRATING_RELEASED= bash "$SCRIPT" 0.15.1 "$DIR/s.md" >/dev/null 2>&1 || true
 diff -q "$DIR/s.md" "$DIR/s.before" >/dev/null; check "tagless refusal leaves the file untouched" 0 $?
+
+# 22. an already-tagged target cannot pass --check, whatever the headings say
+fresh t0.md "# v0.15.0" "# v0.14.0"
+bash "$SCRIPT" --check 0.15.0 "$DIR/t0.md" >/dev/null 2>&1
+check "--check refuses an already-tagged target" 1 $?
+
+# 23. the real remote-authority paths, exercised against a file:// origin —
+#     no overrides, so the script's own git ls-remote runs. A tag pushed to
+#     the origin is released; a LOCAL-ONLY tag (the residue of a release
+#     whose tag push failed) is not; an unreachable origin fails closed.
+FIX="$DIR/fixture-repo"; ORIGIN="$DIR/origin.git"
+git init -q --bare "$ORIGIN"
+git init -q "$FIX" && git -C "$FIX" remote add origin "$ORIGIN"
+mkdir -p "$FIX/scripts" "$FIX/go/pkg/basecamp"
+cp "$SCRIPT" "$FIX/scripts/promote-migrating.sh"
+printf 'package basecamp\n\nconst Version = "0.6.0"\n' > "$FIX/go/pkg/basecamp/version.go"
+git -C "$FIX" -c user.email=t@t -c user.name=t commit -q --allow-empty -m fixture
+git -C "$FIX" tag v0.5.0 && git -C "$FIX" push -q origin v0.5.0
+git -C "$FIX" tag v0.6.0   # local only: never pushed
+FSCRIPT="$FIX/scripts/promote-migrating.sh"
+
+fresh t1.md "# v0.5.0" "# v0.4.0"
+env -u PROMOTE_MIGRATING_CURRENT -u PROMOTE_MIGRATING_RELEASED bash "$FSCRIPT" 0.6.1 "$DIR/t1.md" >/dev/null 2>&1
+check "remote-present tag reads as released (real ls-remote)" 0 $?
+
+fresh t2.md "# v0.6.0" "# v0.5.0"
+env -u PROMOTE_MIGRATING_CURRENT -u PROMOTE_MIGRATING_RELEASED bash "$FSCRIPT" 0.6.1 "$DIR/t2.md" >/dev/null 2>&1
+check "local-only tag reads as pending (re-promoted)" 0 $?
+grep -qxF "# v0.6.1" "$DIR/t2.md"; check "failed-push residue heading carried forward" 0 $?
+
+fresh t3.md "# v0.5.0" "# v0.4.0"
+env -u PROMOTE_MIGRATING_CURRENT -u PROMOTE_MIGRATING_RELEASED bash "$FSCRIPT" --check 0.5.0 "$DIR/t3.md" >/dev/null 2>&1
+check "real remote refuses an already-tagged --check target" 1 $?
+
+git -C "$FIX" remote set-url origin "$DIR/no-such-origin.git"
+fresh t4.md "# v0.5.0" "# v0.4.0"
+env -u PROMOTE_MIGRATING_CURRENT -u PROMOTE_MIGRATING_RELEASED bash "$FSCRIPT" 0.6.1 "$DIR/t4.md" >/dev/null 2>&1
+check "unreachable remote fails closed" 1 $?
 
 if [ "$FAILS" -gt 0 ]; then
   echo "test-promote-migrating: $FAILS of $CASES assertions failed" >&2

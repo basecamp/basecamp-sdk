@@ -56,16 +56,17 @@ current_blocks() {
   newer "$CURRENT" "$1"
 }
 
-# released W: true when the release tag vW exists — the authority on whether
-# a version actually shipped. A PRESENT local tag is proof positive. A local
-# tag's ABSENCE proves nothing at all: shallow and filtered clones carry
-# partial tag inventories, and one unrelated v-tag's presence is no evidence
-# the missing one never shipped. So absence is confirmed against the remote
-# (git ls-remote --tags origin), and when the remote cannot answer — offline,
-# no origin — the question fails closed rather than renaming what might be
-# history. PROMOTE_MIGRATING_RELEASED (a space-separated version list — the
-# complete authority; may be set empty to model "cannot establish") overrides
-# for the self-test.
+# released W: true when the release tag vW exists ON THE REMOTE — the only
+# authority on whether a version actually shipped. Local tags are consulted
+# for nothing: their absence proves nothing (shallow and filtered clones
+# carry partial inventories), and their presence proves nothing either — a
+# release whose tag push failed leaves the local tag behind with nothing
+# published. When the remote cannot answer — offline, no origin — the
+# question fails closed rather than guessing at history.
+# PROMOTE_MIGRATING_RELEASED (a space-separated version list — the complete
+# authority; may be set empty to model "cannot establish") overrides for the
+# self-test's scratch-file cases; its git-fixture cases run this path for
+# real against a file:// remote.
 released() {
   if [ -n "${PROMOTE_MIGRATING_RELEASED+x}" ]; then
     local r
@@ -73,21 +74,17 @@ released() {
       [ "$r" = "$1" ] && return 0
     done
     if [ -z "$PROMOTE_MIGRATING_RELEASED" ]; then
-      echo "ERROR: whether '# v$1' ever shipped cannot be established. Run 'git fetch --tags' and retry." >&2
+      echo "ERROR: whether '# v$1' ever shipped cannot be established. Check the remote connection and retry." >&2
       exit 1
     fi
     return 1
   fi
-  if git -C "$(dirname "$0")/.." tag -l "v$1" 2>/dev/null | grep -qx "v$1"; then
-    return 0
-  fi
   local remote
   if ! remote=$(git -C "$(dirname "$0")/.." ls-remote --tags origin "refs/tags/v$1" 2>/dev/null); then
-    echo "ERROR: tag v$1 is not in this checkout and the remote cannot be reached to confirm its absence, so whether '# v$1' ever shipped cannot be established. Run 'git fetch --tags' and retry." >&2
+    echo "ERROR: the remote cannot be reached to establish whether v$1 ever shipped. Check the connection and retry." >&2
     exit 1
   fi
-  [ -z "$remote" ] || return 0
-  return 1
+  [ -n "$remote" ]
 }
 
 # newer A B: true when A is strictly newer than B, compared component-wise.
@@ -105,6 +102,13 @@ newer() {
 
 if current_blocks "$VERSION"; then
   echo "ERROR: $VERSION is older than the SDK's current version ($CURRENT in go/pkg/basecamp/version.go) — refusing the rollback." >&2
+  exit 1
+fi
+
+# A release target that is already tagged cannot be released again; catching
+# it here keeps `make release` from pushing main before dying on the tag.
+if [ "$MODE" = check ] && released "$VERSION"; then
+  echo "ERROR: v$VERSION is already tagged — it cannot be released again." >&2
   exit 1
 fi
 
