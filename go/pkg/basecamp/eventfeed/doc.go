@@ -4,24 +4,25 @@
 //
 // # Experimental
 //
-// This package is experimental and incomplete, and today it is FOUNDATIONS
-// ONLY: there is no consumer entry point yet — no Connector, no constructor,
-// no run loop — so nothing here can be pointed at the live API. What has
-// landed is the material a run loop is assembled from: the event and filter
-// models, the seam interfaces and their error taxonomies, the Action Cable
-// frame codecs, deduplication, the backoff and repair-jitter envelopes, the
-// checkpoint store, the cable-URL policy and its WebSocket transport, and the
-// deterministic fakes the conformance harness drives.
+// This package is experimental and incomplete, and its exported surface may
+// still change. The run loop has landed: Connector, Events, Close and Wait
+// play the protocol described below — the first mint through the catch-up
+// walk, the entry boundary, the drain, streaming delivery, the repair poll,
+// and the recovery matrix a poll's 410, 400-position, or 409 re-enters
+// through — alongside the event and filter models, the seam interfaces and
+// their error taxonomies, the Action Cable frame codecs, deduplication, the
+// backoff and repair-jitter envelopes, the checkpoint store, the cable-URL
+// policy and its WebSocket transport, and the deterministic fakes the
+// conformance harness drives.
 //
-// Two pieces are still to land, and the package is not usable until both do:
-// the run loop that plays the protocol described below — the first mint
-// through the catch-up walk, the entry boundary, the drain, streaming
-// delivery, the repair poll, and the recovery matrix a poll's 410,
-// 400-position, or 409 re-enters through — and the Layer-1 adapters over the
-// generated CreateStreamTicket and PollEvents operations that back the mint
-// and poll seams. Everything below this section documents the architecture
-// those pieces implement, not behavior this package performs today, and the
-// exported surface may still change as they land.
+// ONE piece is still to land, and it is what keeps the package unusable
+// against the live API: the Layer-1 adapters over the generated
+// CreateStreamTicket and PollEvents operations that back the TicketMinter and
+// PollSource seams. Until they exist, the seams have no production
+// implementation and a host must supply its own. Two obligations ride on
+// those adapters rather than on anything here — zero egress to a foreign
+// redirect target (conformance/event-feed/README.md's row-15 note), and the
+// no-automatic-redirect-following rule §23 places on PollEvents.
 //
 // # Seams-first architecture
 //

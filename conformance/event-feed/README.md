@@ -45,6 +45,26 @@ The strict-match rule splits by action class; every driver implements exactly th
   unmatched when the script ends fails the scenario, and the seam-call counts in
   `finally` count it either way.
 
+A driver's step pointer moves in two ways, and both are needed for the atomic
+handoff to hold. It advances inside the critical section that satisfies a
+rendezvous, which covers a driver blocked ON one; and where the pointer has not
+yet reached a step the recorded history has already satisfied, the arrival rule
+reads THROUGH that step to the one after it — a poll's page is delivered and
+then checkpointed by one causal chain in the connector, and the driver need not
+have reached its `expectDelivered` step by the time the save lands. A step the
+DRIVER performs rather than waits for (`serve`, `advance`, `fireTimer`,
+`sever`, `serverClose`) is not read through: the connector cannot react before
+the driver acts, so the pointer is handed to the next step before such a step
+acts, and an action arriving under one the driver has not performed is early.
+
+What a driver can hold an action to is when it OBSERVED it. A save is observed
+where the connector makes it, but a driver running a real socket observes an
+outbound frame only when it reads one, which lags the write by a hop — so a
+frame written a step early can still be read after the driver has stepped on.
+The rule is not weaker for it; the observation is. A driver that wants the
+write's own instant pinned needs a witness at the write, not a stricter reading
+of this rule.
+
 ## Validation
 
 `schema.json` is the contract. `make event-feed-fixtures-check` validates the schema

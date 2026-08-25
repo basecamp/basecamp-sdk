@@ -182,6 +182,20 @@ func TestRepairJitterSaturates(t *testing.T) {
 	}
 }
 
+func TestPollRetryDelay_UnusableValuesDrawTheJitterCurve(t *testing.T) {
+	// §6's parsing algorithm never yields zero ("zero is read as 'no usable
+	// value'"), so a conformant throttled always carries a positive value —
+	// and an unusable zero or negative, whatever kind a nonconforming
+	// adapter claims, draws local jitter rather than arming a zero-delay
+	// tight loop.
+	if got := pollRetryDelay(0, 2, fixedRand(0.5)); got != time.Second {
+		t.Errorf("pollRetryDelay(0, k=2, r=0.5) = %v, want the 1s jitter draw", got)
+	}
+	if got := pollRetryDelay(-time.Second, 2, fixedRand(0.5)); got != time.Second {
+		t.Errorf("pollRetryDelay(-1s, k=2, r=0.5) = %v, want the 1s jitter draw", got)
+	}
+}
+
 // A positive interval must stay positive after jitter: at 1ns, any downward
 // draw lands the float product in (0,1) and the Duration conversion floors
 // it to zero — a timer that fires immediately, every cycle, tight-looping

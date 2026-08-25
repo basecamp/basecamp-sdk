@@ -676,6 +676,155 @@ webhooks, err := account.Webhooks().List(ctx, bucketID, nil)
 err = account.Webhooks().Delete(ctx, webhookID)
 ```
 
+## Event Feed (experimental)
+
+The `eventfeed` package is the account-wide event feed connector: an Action Cable
+subscription for live push, plus a poll lane that catches up on entry, repairs on a
+timer, and resumes after a disconnect. You consume it as one serial, deduplicated
+stream of events; the connector owns reconnection, backoff, staleness detection, and
+the durable position.
+
+**Experimental: the Layer-1 seam adapters have not landed yet.** The connector performs
+no HTTP API I/O of its own: every HTTP exchange reaches the wire through a seam backed by
+a generated operation. Its one direct wire act is the Action Cable dial above — the
+connector connects verbatim to the URL a generated `CreateStreamTicket` call returned,
+which is the sanctioned non-HTTP wire act. The adapters that build those seams over the
+generated `CreateStreamTicket` and `PollEvents` operations are still to come. Until they
+do, a consumer must supply the `TicketMinter` and `PollSource` implementations itself, and
+the exported surface may still change as they land.
+
+```go
+import (
+    "context"
+    "errors"
+    "fmt"
+    "log"
+
+    "github.com/basecamp/basecamp-sdk/go/pkg/basecamp/eventfeed"
+)
+
+// The two seams the host supplies until the Layer-1 adapters land. Each call is
+// exactly one generated operation:
+//
+//	MintStreamTicket(ctx) (eventfeed.StreamTicket, error)   // CreateStreamTicket
+//	Poll(ctx, cursor, filters) (eventfeed.PollPage, error)  // PollEvents
+var minter eventfeed.TicketMinter
+var polls eventfeed.PollSource
+
+ctx := context.Background()
+
+feed, err := eventfeed.New("https://3.basecampapi.com", "5951425", minter, polls,
+    eventfeed.WithFilters(eventfeed.Filters{Types: []string{"message.created"}}),
+    eventfeed.WithCheckpointStore(eventfeed.NewFileCheckpointStore("/var/lib/myapp/feed.json")),
+    eventfeed.WithConsumerNamespace("myapp"),
+    eventfeed.WithSignalHandler(func(sig eventfeed.Signal) eventfeed.Disposition {
+        switch s := sig.(type) {
+        case eventfeed.FeedGap:
+            // History before this id is gone. Accept resumes at the server's
+            // resume URL, having acknowledged what it skips.
+            log.Printf("feed gap: history before %d is gone", s.EpochAfterID)
+            return eventfeed.Accept
+        case eventfeed.BufferOverflow:
+            log.Printf("live buffer dropped %d events: %v", s.DroppedCount, s.DroppedIDs)
+            return eventfeed.Terminate
+        }
+        return eventfeed.Terminate
+    }),
+)
+if err != nil {
+    return err // *eventfeed.TerminalError: a usage-coded construction error, zero wire attempts
+}
+defer feed.Close()
+
+for ev, err := range feed.Events(ctx) {
+    if err != nil {
+        var te *eventfeed.TerminalError
+        if errors.As(err, &te) {
+            return fmt.Errorf("event feed terminated (%s): %w", te.Reason, te)
+        }
+        return err
+    }
+    // A feed row is a wake-up signal — enough to route, not enough to act on.
+    // Refetch the recording through the canonical resource API before acting.
+    handle(ev.BucketID, ev.RecordingID, ev.EventType)
+}
+```
+
+Construction validates and does no I/O. The base origin must be `https://` — cleartext
+`http://` is accepted only for localhost/loopback, the same carve-out the client's base
+URL and the connector's cable URL make — because that origin is the trust anchor every
+continuation and resume URL is validated against before an authenticated poll follows
+it. The checkpoint identity's text inputs (origin, account id, consumer namespace,
+filter types) must be valid UTF-8, since the identity encoding is one-to-one only over
+valid UTF-8. Either violation is a `ReasonUsage` construction error with zero wire
+attempts.
+
+`Events` is single-shot: consuming it twice yields one `ReasonUsage` error element.
+`Close` stops the feed without draining, and cancelling the context, calling `Close`, or
+breaking out of the loop all end iteration with **no** error element — a clean stop, and
+the feed is resumable by design.
+
+`Close` only cancels: it can return while the run's final acts are still in flight —
+including a checkpoint save, which deliberately outlives cancellation (an accepted
+page's events were already delivered, and dropping the write would silently re-deliver
+them). `Wait` is the quiescence point: it returns only once the run goroutine has
+exited, so no save can still be in flight. Await the iterator's end — or `Wait` —
+before opening a second connector over the same checkpoint store; a replacement opened
+straight after `Close` can race the prior run's last save.
+
+### Checkpointing
+
+`FileCheckpointStore` is the built-in `CheckpointStore`: one JSON file holding every
+lineage's position, keyed by the four-part checkpoint identity (origin, account,
+consumer namespace, filter key). It writes temp-file-plus-rename at 0600, and it is safe
+for concurrent use within one process but deliberately not across processes. A store
+requires `WithConsumerNamespace` — two independent consumers in one account must not
+share a lineage — and changing filters starts a new lineage, because positions are
+filter-bound.
+
+Only poll pages ever advance the durable position; live event ids never do. What the
+connector publishes is SPEC.md §23's conjunctive save-ordering invariant, and nothing
+stronger: a position is saved only after the retained events it covers have been
+delivered **and** every loss condition in that window has been explicitly accepted.
+Terminate — or no handler — means no save. A load failure is terminal
+(`ReasonCheckpointLoad`, before any wire attempt: silently starting at the present would
+skip history), while a save failure is reported through `Observer.CheckpointSaveFailed`
+and the feed continues.
+
+### Semantic signals
+
+A semantic signal is a condition that changes what the feed can promise, and there are
+exactly two: `BufferOverflow` (the live buffer dropped events, naming the exact ids) and
+`FeedGap` (a 410 — history before `EpochAfterID` is gone). The handler registered with
+`WithSignalHandler` is invoked exactly once per signal, synchronously, on your own
+execution context, and returns `Accept` or `Terminate`.
+
+**With no handler registered, every semantic signal is terminal** — `ReasonBufferOverflow`
+or `ReasonFeedGap` — so an unhandled signal cannot disappear, and a 410 never silently
+auto-continues. `Accept` on a `FeedGap` resumes via the server's resume URL; `Accept` on a
+`BufferOverflow` means you own the acknowledged incompleteness. The `Observer.Gap` and
+`Observer.BufferOverflow` callbacks see the same conditions but are observability only:
+the disposition lives exclusively in the handler.
+
+### Terminal versus continuable
+
+Continuable failures never reach the consumer as errors; you see them through
+`Observer` callbacks if you register any. How each continues differs: a dropped socket,
+a staleness expiry, and a throttled or transient mint ride the reconnect cycle
+(full-jitter backoff, fresh ticket); a throttled or transient poll waits the poll-retry
+timer on the same socket; a rejected position (400-position or 409) re-enters the walk
+**immediately** — a replacement cursor re-polled on the same socket, with no timer and
+no reconnect between.
+
+A terminal condition ends the iteration with exactly one final `*eventfeed.TerminalError`
+element carrying a `TerminalReason`: `subscription_rejected`, `protocol_fatal`,
+`filter_invalid`, `authorization_failed`, `checkpoint_load`, `usage`, `buffer_overflow`,
+`feed_gap`, `invalid_continuation`, `poll_failed`, `mint_failed`, or `invalid_cable_url`.
+Switch on `te.Reason` rather than on message text. `errors.Unwrap` reaches the
+generated error behind `mint_failed`, and behind `poll_failed` when one exists — the
+connector's own poll verdicts carry none (a 200 whose page has no position is
+`poll_failed` with no generated cause), so check the unwrapped error for nil.
+
 ## Pagination
 
 List methods auto-paginate: they follow the API's `Link: rel="next"` headers and

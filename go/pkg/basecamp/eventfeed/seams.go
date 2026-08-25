@@ -49,8 +49,10 @@ const (
 	// MintTransient — a retryable outcome exhausted inside the seam; rides
 	// the reconnect cycle (Backoff).
 	MintTransient MintErrorKind = iota + 1
-	// MintThrottled — 429/503; RetryAfter honored as the floor of the next
-	// reconnect delay.
+	// MintThrottled — a retryable outcome whose last response carried a
+	// §6-parsed Retry-After, whatever its status (the same presence-keyed
+	// adapter mapping as PollThrottled; the parsed value is always > 0).
+	// RetryAfter is honored as the floor of the next reconnect delay.
 	MintThrottled
 	// MintUnauthorized — 401/403; increments the shared connection-level
 	// authorization counter (terminal authorization_failed at threshold 3).
@@ -148,7 +150,12 @@ const (
 	// PollTransient — a retryable outcome exhausted inside the seam; retries
 	// on the poll-retry timer, never terminal.
 	PollTransient PollErrorKind = iota + 1
-	// PollThrottled — 429/503; RetryAfter waited exactly, cap-exempt.
+	// PollThrottled — a retryable outcome whose last response carried a
+	// §6-parsed Retry-After, whatever its status (SPEC §6 fixes the adapter
+	// mapping by presence of the parsed value, not by status — a status
+	// key would honour the header at one retryable status and drop it at
+	// another). The parsing algorithm yields only positive values, so
+	// RetryAfter is always > 0; it is waited exactly, cap-exempt.
 	PollThrottled
 	// PollPositionInvalid — 400-position: re-enter since=<last poll-served
 	// id> (or a present-class entry with none).
@@ -259,6 +266,25 @@ type CableTransport interface {
 	// rejecting an over-limit message without materializing it; a
 	// non-positive value is refused as a usage error before any I/O — there
 	// is no unlimited mode.
+	//
+	// The returned error MUST NOT render wsURL or any part of its query
+	// string. The ticket rides in that query, and an error is opaque text, so
+	// nothing downstream can redact it — see WebSocketTransport's dialFailure
+	// on why stripping a credential out of arbitrary text requires modelling
+	// the credential, which §23's "opaque bearer" contract forbids. Report
+	// the classification and a cause of your own choosing, never the peer's
+	// or a library's rendering of the URL.
+	//
+	// Where it is exposed, stated exactly, because the obvious guess is wrong:
+	// a dial failure does NOT reach Observer.Disconnected. There is no socket
+	// yet, so there is no teardown to report. A DialPolicy failure becomes
+	// Terminal(invalid_cable_url) and is yielded as the iteration's terminal
+	// error — the consumer's own error value, which is a stronger exposure
+	// than a callback, not a weaker one. Every other kind takes transition 7
+	// to backoff, where the connector reports the classification and drops the
+	// cause entirely. So the obligation above is not softened by the callback
+	// never firing; it is what keeps a credential out of the error a caller
+	// receives from Events.
 	Dial(ctx context.Context, wsURL string, maxFrameBytes int64) (CableConn, error)
 }
 
@@ -269,11 +295,14 @@ type CableConn interface {
 	// of the seam: stock Action Cable discards the disconnect reason, and the
 	// terminal/non-terminal distinction lives only in this raw frame. A peer
 	// close surfaces as *CloseError; a message over the dial's maxFrameBytes
-	// surfaces as an error matching ErrFrameOversize.
+	// surfaces as an error matching ErrFrameOversize. Like Dial's, the
+	// returned error must not render the cable URL or its query string: it
+	// reaches Observer.Disconnected.
 	ReadFrame(ctx context.Context) ([]byte, error)
 	// WriteFrame sends one raw text frame. Close and ctx cancellation must
 	// unblock an in-progress write; a write failure takes the current
-	// state's socket-failure path.
+	// state's socket-failure path, and must not render the cable URL or its
+	// query string: it reaches Observer.Disconnected.
 	WriteFrame(ctx context.Context, data []byte) error
 	// Close is idempotent, safe from any goroutine, and unblocks ReadFrame
 	// and WriteFrame.
@@ -308,7 +337,9 @@ type CloseError struct {
 // comfortably, and §9's 500-byte cap bounds without redacting. So the
 // rendering withholds it behind a fixed marker, and with no unbounded input
 // left there is nothing to truncate. The type stays flat: no cause, nothing
-// a chain walk recovers.
+// a chain walk recovers. Reason remains a FIELD, so a host that has decided
+// its cable server is trustworthy can read it deliberately — what changes is
+// that the connector no longer puts it in front of every logger by default.
 func (e *CloseError) Error() string {
 	if e.Reason != "" {
 		return fmt.Sprintf("cable connection closed by peer: code %d (peer reason withheld)", e.Code)
@@ -362,7 +393,9 @@ type DialError struct {
 	// Err is the underlying cause. Never the dialed URL or an error that
 	// renders it — the ticket rides in its query string, and url.Error
 	// renders the full URL. The built-in transport stores only causes
-	// flattened to a closed vocabulary (dialFailure).
+	// flattened to a closed vocabulary (dialFailure); the connector treats
+	// every seam-returned value as untrusted regardless (it reads Kind and
+	// nothing else).
 	Err error
 }
 
@@ -451,7 +484,51 @@ type Observer struct {
 	Connected func()
 	// Confirmed fires on confirm_subscription.
 	Confirmed func()
-	// Disconnected fires when a socket is torn down.
+	// Disconnected fires when a socket is torn down. reason describes why; err
+	// is the failure that ended the socket. NEITHER is peer text: both are
+	// mapped onto closed vocabularies before they reach here.
+	//
+	// reason goes through observableDisconnectReason: the two reasons dispatch
+	// actually acts on are named exactly, an absent reason stays empty, and
+	// every other peer-supplied string — however short — becomes "other". err
+	// goes through observableSocketError, whose vocabulary is CLOSED and
+	// short: the staleness, conn-closed, and frame-oversize sentinels (the
+	// last being ErrFrameOversize, the invalid-frame class's one
+	// transport-decided shape), the two context sentinels, *CloseError (which
+	// renders its integer code alone), and
+	// *invalidFrameError (which renders one of two shape constants). ANY other
+	// error — including a *DialError or *TerminalError, both of which a seam
+	// can construct and both of which render free text — becomes
+	// errSocketFailed.
+	//
+	// "Preserved" means reduced to the connector's OWN value, not passed
+	// along. A seam error that merely WRAPS a recognized sentinel —
+	// fmt.Errorf("read %s: %w", cableURL, context.Canceled) — reduces to the
+	// bare sentinel, because the wrapper's text is exactly where a cable URL
+	// would ride. errors.Is still matches for a consumer that checks.
+	//
+	// This is a LOGGING surface, and its vocabulary is chosen accordingly. A
+	// terminated feed's reason and detail reach you through the iteration's
+	// terminal *TerminalError, which is the semantic channel and is not
+	// reduced.
+	//
+	// The normalization is deliberate, and it is the connector's own defense
+	// rather than a restatement of the seam's. §23 declares the ticket an
+	// opaque bearer credential that is never logged; this callback is a
+	// logging surface; and stripping a credential out of arbitrary text would
+	// require MODELLING the credential, which "opaque" is precisely the
+	// assumption that forbids. A closed vocabulary is the only answer that
+	// does not depend on the peer, or on a custom transport, behaving.
+	//
+	// Dial, ReadFrame and WriteFrame still carry the obligation not to render
+	// the cable URL, and that obligation is what keeps a PRESERVED typed error
+	// safe. What changed is the consequence of breaking it: a transport that
+	// renders the URL into an unrecognized error no longer leaks through this
+	// callback, because that error does not survive the mapping.
+	//
+	// The corollary for custom transports: diagnostics you attach to an error
+	// the connector does not recognize do NOT reach this callback. Report them
+	// through your own logging, not through this seam.
 	Disconnected func(reason string, err error)
 	// CatchUpStarted fires when a poll walk begins.
 	CatchUpStarted func(cursor Cursor)
