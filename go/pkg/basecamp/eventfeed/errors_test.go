@@ -141,8 +141,8 @@ func TestCloseError_MessageWithholdsThePeerReason(t *testing.T) {
 	const canary = "sekrit-ticket-value"
 	withReason := &CloseError{Code: 1008, Reason: "closing wss://x/cable?ticket=" + canary}
 	got := withReason.Error()
-	if got != "cable connection closed by peer: code 1008" {
-		t.Errorf("Error() = %q, want the code alone", got)
+	if got != "cable connection closed by peer: code 1008 (peer reason withheld)" {
+		t.Errorf("Error() = %q, want the fixed withheld marker", got)
 	}
 	if strings.Contains(got, canary) || strings.Contains(got, "ticket=") {
 		t.Errorf("Error() echoed peer text: %q", got)
@@ -157,6 +157,28 @@ func TestCloseError_MessageWithholdsThePeerReason(t *testing.T) {
 	// trustworthy can read it deliberately.
 	if withReason.Reason == "" {
 		t.Error("Reason must remain readable on the struct")
+	}
+}
+
+// TestCloseError_RenderingWithholdsPeerReason pins the last rendering in the
+// value-invariant class: the peer chooses its close reason and can reflect
+// the mint ticket into it, and RFC 6455's 123-byte reason cap fits a ticket
+// well inside §9's 500-byte truncation — bounding is not redacting. The
+// canary is deliberately SHORT for the same reason frameCanary is: a marker
+// that survives truncation is what proves the absence of concatenation
+// rather than the presence of the cap. The type must also stay flat, or a
+// chain walk recovers what the rendering withheld.
+func TestCloseError_RenderingWithholdsPeerReason(t *testing.T) {
+	const canary = "sekrit-ticket"
+	e := &CloseError{Code: 1008, Reason: "refused ?ticket=" + canary}
+	if strings.Contains(e.Error(), canary) {
+		t.Errorf("Error() = %q echoes the peer's reason", e.Error())
+	}
+	if !strings.Contains(e.Error(), "1008") {
+		t.Errorf("Error() = %q lost the structural close code", e.Error())
+	}
+	if errors.Unwrap(e) != nil {
+		t.Errorf("CloseError unwraps to %v; the type must stay flat", errors.Unwrap(e))
 	}
 }
 

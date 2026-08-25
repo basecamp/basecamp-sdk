@@ -318,32 +318,26 @@ var ErrFrameOversize = errors.New("eventfeed: inbound cable frame exceeds the di
 type CloseError struct {
 	// Code is the WebSocket close code.
 	Code int
-	// Reason is the close reason, if any.
+	// Reason is the peer's close reason, if any — peer-chosen text that can
+	// reflect anything the peer saw, the mint ticket included, so Error
+	// never renders it. It is data for a caller that reads it deliberately.
 	Reason string
 }
 
-// Error implements the error interface, and deliberately does NOT render
-// Reason.
-//
-// Reason is peer-supplied, and this error reaches Observer.Disconnected, which
-// hosts log. The cable server is precisely the party that knows the ticket — it
-// was dialed with it — so a server that echoes the URL it was dialed with, by
-// malice or by putting its own request line in a close reason, would put the
-// ticket in the host's logs. §23 declares the ticket an "opaque bearer
-// credential; never logged".
-//
-// This used to be bounded by §9's cap rather than withheld. Bounding is not
-// redaction: it limits how much of a credential escapes, not whether any does.
-// It is the same trap WebSocketTransport's dialFailure documents three review
-// rounds of, and the answer is the same — to strip a credential out of
-// arbitrary text you must MODEL it, and "opaque" forbids that.
-//
-// The code survives, and is the useful half: an integer is structurally
-// incapable of carrying a credential, and RFC 6455 close codes are what an
-// operator classifies on. Reason remains a FIELD, so a host that has decided
+// Error implements the error interface. The code is structural — the integer
+// §23's Security Invariants name as what a close renders — while the reason
+// is peer text under the never-log-the-ticket invariant: a peer can reflect
+// the ticket into its close reason, RFC 6455's 123-byte reason cap fits one
+// comfortably, and §9's 500-byte cap bounds without redacting. So the
+// rendering withholds it behind a fixed marker, and with no unbounded input
+// left there is nothing to truncate. The type stays flat: no cause, nothing
+// a chain walk recovers. Reason remains a FIELD, so a host that has decided
 // its cable server is trustworthy can read it deliberately — what changes is
 // that the connector no longer puts it in front of every logger by default.
 func (e *CloseError) Error() string {
+	if e.Reason != "" {
+		return fmt.Sprintf("cable connection closed by peer: code %d (peer reason withheld)", e.Code)
+	}
 	return fmt.Sprintf("cable connection closed by peer: code %d", e.Code)
 }
 
@@ -403,9 +397,9 @@ type DialError struct {
 // dialed URL's query string when the DialError is this package's own — the
 // built-in transport composes reasons and causes from closed vocabularies —
 // and the composed result is bounded by §9's MAX_ERROR_MESSAGE_LENGTH like
-// every other URL-derived rendering here (CloseError is the precedent):
-// Reason can embed a mint-URL component — a scheme or an explicit port —
-// whose length url.Parse does not bound.
+// every other rendering here that composes unbounded text: a custom
+// transport's Reason or cause is host-authored, and nothing upstream bounds
+// its length.
 func (e *DialError) Error() string {
 	msg := "cable dial failed (" + e.Kind.String() + ")"
 	if e.Reason != "" {
