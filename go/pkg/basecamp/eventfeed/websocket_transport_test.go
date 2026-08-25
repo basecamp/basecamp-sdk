@@ -979,3 +979,45 @@ func TestWebSocketTransport_WriteAfterPeerCloseCarriesNoPeerReason(t *testing.T)
 		}
 	}
 }
+
+// TestWebSocketTransport_ReadFailureRendersNoDialedURLComponent pins the
+// raw-read-failure channel the same way the write path is pinned: as a
+// tripwire. The claimed leak — a ticket-bearing dialed host or port
+// rendered through a TCP read error — is structurally inexpressible today:
+// wsConn retains no URL, an OpError's address is the resolved IP plus the
+// CONNECTED port (1-65535, which an opaque ticket cannot be), and the
+// hostname does not survive resolution into the error. The dial here goes
+// through a NAME so that resolution is exercised, the peer is killed
+// abruptly mid-read, and the error chain is walked for every dialed-URL
+// component. A future change that starts retaining or rendering the URL
+// goes red here.
+func TestWebSocketTransport_ReadFailureRendersNoDialedURLComponent(t *testing.T) {
+	const canary = "sekrit-ticket-value"
+	h := newWSHarness(t)
+	wsURL := "ws" + strings.TrimPrefix(h.srv.URL, "http") + "/cable?ticket=" + canary
+	wsURL = strings.Replace(wsURL, "127.0.0.1", "localhost", 1)
+	conn, err := (&eventfeed.WebSocketTransport{}).Dial(context.Background(), wsURL, 1<<20)
+	if err != nil {
+		t.Fatalf("dial via hostname: %v", err)
+	}
+	defer conn.Close(1000, "")
+	var peer *wsPeer
+	select {
+	case peer = <-h.accepted:
+	case <-time.After(5 * time.Second):
+		t.Fatal("the server never accepted the dial")
+	}
+	_ = peer.conn.CloseNow() // abrupt TCP teardown, no close frame
+	_, rerr := readFrameWithin(context.Background(), t, conn)
+	if rerr == nil {
+		t.Fatal("read on a killed socket succeeded, want error")
+	}
+	for e := rerr; e != nil; e = errors.Unwrap(e) {
+		for _, leaked := range []string{canary, "ticket=", "localhost"} {
+			if strings.Contains(e.Error(), leaked) {
+				t.Errorf("read failure renders the dialed URL's %q: %q", leaked, e.Error())
+			}
+		}
+	}
+	t.Logf("read-failure rendering: %v", rerr)
+}
