@@ -128,6 +128,14 @@ func parseIntegralMs(data []byte) (int64, error) {
 		if err != nil {
 			return 0, fmt.Errorf("%s is not a number this driver can read", lit)
 		}
+		// Bound the exponent before any place arithmetic: at the platform's
+		// integer extremes, intLen - firstNZ + exp wraps and the magnitude
+		// judgments below judge garbage. The literal cap above bounds the
+		// significand at 100000 digits, so no in-range value needs an
+		// exponent beyond ±200000 to spell.
+		if e > 200000 || e < -200000 {
+			return 0, fmt.Errorf("%s is beyond any modeled ms value", lit)
+		}
 		exp = e
 	}
 	digits := strings.TrimPrefix(mant, "-")

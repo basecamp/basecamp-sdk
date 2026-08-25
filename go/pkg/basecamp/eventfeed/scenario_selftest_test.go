@@ -663,8 +663,12 @@ func TestScenarioMsAcceptsIntegralNumberSpellings(t *testing.T) {
 		{"significand offsets a negative exponent", "100000000000000000000000000000000000000000000e-41", "1000", "", 1000},
 		{"significand offsets to one hundred", "1000000000000000000000000000000000000000000e-40", "1000", "", 100},
 		{"fraction-led spelling of one", "0.00000000000000000000000000000000000000001e41", "1000", "", 1},
-		{"negative exponent bomb", "1e-999999999", "1000", "is not an integer", 0},
+		{"negative exponent bomb", "1e-999999999", "1000", "beyond any modeled ms value", 0},
 		{"parse-bomb literal", strings.Repeat("9", 100001), "1000", "characters", 0},
+		// The platform's max integer as an exponent must not wrap the place
+		// arithmetic into acceptance.
+		{"max-int exponent", "1e9223372036854775807", "1000", "beyond any modeled ms value", 0},
+		{"min-int exponent", "1e-9223372036854775808", "1000", "beyond any modeled ms value", 0},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
