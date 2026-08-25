@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"unicode/utf8"
 )
 
 // FileCheckpointStore is the one built-in CheckpointStore: a single JSON file
@@ -370,6 +371,17 @@ func (s *FileCheckpointStore) read() (map[string]string, bool, error) {
 			s.path, maxCheckpointStoreBytes)
 	}
 
+	// Checked BEFORE unmarshaling, because encoding/json does not refuse
+	// invalid UTF-8 — it silently replaces each invalid sequence with
+	// U+FFFD. A corrupt or hand-edited store would therefore load a MUTATED
+	// opaque position as if it were valid, polling with a checkpoint that
+	// was never saved, and malformed keys could collapse onto valid
+	// replacement-character keys. Corruption takes the documented Failed
+	// path; it never silently changes checkpoint data.
+	if !utf8.Valid(data) {
+		return nil, false, fmt.Errorf(
+			"eventfeed: checkpoint store %s is not valid UTF-8; refusing to load mutated positions", s.path)
+	}
 	var entries map[string]string
 	if err := json.Unmarshal(data, &entries); err != nil {
 		return nil, false, fmt.Errorf(

@@ -20,6 +20,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -183,6 +184,28 @@ func TestFileCheckpointStore_SaveCreatesADanglingSymlinkTarget(t *testing.T) {
 	position, ok, err := NewFileCheckpointStore(target).Load(ctx, key)
 	if err != nil || !ok || position != "pos-1" {
 		t.Errorf("Load() via target = (%q, %v, %v), want (%q, true, nil)", position, ok, err, "pos-1")
+	}
+}
+
+// encoding/json does not refuse invalid UTF-8 — it silently swaps each
+// invalid sequence for U+FFFD — so without the raw-bytes check Load would
+// resolve the real key and hand back a position that was never saved: silent
+// checkpoint identity drift dressed as a successful load. Corruption must
+// take the documented Failed path (Terminal(checkpoint_load)), never mutate.
+func TestFileCheckpointStore_InvalidUTF8IsFailedNotMutated(t *testing.T) {
+	path := storePath(t)
+	key := storeKey("openclaw")
+	// The store's real flat key mapped to a position holding one raw 0xFF
+	// byte — the shape a truncated write or hand edit leaves behind.
+	corrupt := "{" + strconv.Quote(key.FlatKey()) + ":\"pos-\xff-1\"}"
+	writeStoreFile(t, path, corrupt)
+
+	position, ok, err := NewFileCheckpointStore(path).Load(context.Background(), key)
+	if err == nil {
+		t.Fatalf("Load() = (%q, %v, nil), want Failed — the decoder handed back a mutated position", position, ok)
+	}
+	if position != "" || ok {
+		t.Errorf("Load() = (%q, %v) alongside the failure, want zero values", position, ok)
 	}
 }
 
