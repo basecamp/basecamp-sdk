@@ -1,6 +1,7 @@
 package eventfeed
 
 import (
+	"errors"
 	"strings"
 	"testing"
 )
@@ -87,22 +88,24 @@ func TestCheckContinuation_RejectsDowngradeAndCrossOrigin(t *testing.T) {
 	}
 }
 
-// The rejected URL is carried redacted to its origin. A hostile continuation's
-// path and query are exactly what must not reach an observer's log, so the
-// message must quote neither.
-func TestCheckContinuation_RejectionMessageOmitsPathAndQuery(t *testing.T) {
+// The rejection message renders NOTHING of the rejected URL — not even its
+// origin. An earlier contract carried the origin as the sanctioned redaction;
+// it fell to the value invariant: the server holds the caller's bearer and a
+// hostile host label can BE it, so every component is out and the message is
+// a fixed violation-class phrase.
+func TestCheckContinuation_RejectionMessageOmitsTheURL(t *testing.T) {
 	const hostile = "https://evil.example/steal?ticket=s3cr3t-ticket-value#frag"
 	terr := checkContinuation(testBase, hostile)
 	if terr == nil {
 		t.Fatal("checkContinuation(hostile) = nil, want Terminal(invalid_continuation)")
 	}
-	for _, leaked := range []string{"s3cr3t-ticket-value", "ticket=", "/steal", "frag"} {
+	for _, leaked := range []string{"s3cr3t-ticket-value", "ticket=", "/steal", "frag", "evil.example"} {
 		if strings.Contains(terr.Msg, leaked) {
 			t.Errorf("rejection message %q leaks %q", terr.Msg, leaked)
 		}
 	}
-	if !strings.Contains(terr.Msg, "https://evil.example") {
-		t.Errorf("rejection message %q does not name the offending origin", terr.Msg)
+	if terr.Msg != "the continuation URL is not the configured base origin" {
+		t.Errorf("rejection message %q, want the fixed violation-class phrase", terr.Msg)
 	}
 }
 
@@ -183,6 +186,31 @@ func TestCanonicalOrigin_PortSpellingsCollapse(t *testing.T) {
 	} {
 		if got, err := CanonicalOrigin(raw); err == nil {
 			t.Errorf("CanonicalOrigin(%q) = %q, want a refusal — an unusable port is not an identity", raw, got)
+		}
+	}
+}
+
+// TestCheckContinuation_RejectionsNeverEchoTheURL pins the closed rejection
+// vocabulary. The server holds the caller's bearer, so a hostile next/resume
+// URL can reflect it into any component — a host label, a scheme — and a
+// rejection that rendered the component would hand it to whatever logs the
+// terminal error. Every rejection names only its violation class.
+func TestCheckContinuation_RejectionsNeverEchoTheURL(t *testing.T) {
+	const canary = "sekrit-bearer-token"
+	for _, pageURL := range []string{
+		"https://" + canary + ".invalid/events.json",
+		canary + "://3.basecampapi.com/events.json",
+		"https://3.basecampapi.com:99999/" + canary,
+		"https://user:" + canary + "@evil.example/events.json",
+	} {
+		terr := checkContinuation(testBase, pageURL)
+		if terr == nil {
+			t.Fatalf("checkContinuation(%q) = nil, want a rejection", pageURL)
+		}
+		for err := error(terr); err != nil; err = errors.Unwrap(err) {
+			if strings.Contains(err.Error(), canary) {
+				t.Errorf("rejection of %q echoes the reflected bearer: %q", pageURL, err.Error())
+			}
 		}
 	}
 }

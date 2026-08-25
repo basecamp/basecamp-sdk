@@ -68,8 +68,8 @@ type TerminalError struct {
 	// Reason identifies the termination class.
 	Reason TerminalReason
 	// Msg carries condition detail (e.g. the server's filter-invalid message,
-	// or a rejected URL redacted to its origin). Never a ticket or a mint
-	// URL's query string.
+	// or a fixed violation-class phrase for a rejected continuation). Never a
+	// ticket, a mint URL's query string, or a rejected URL's components.
 	Msg string
 	// Err is the underlying cause, if any (e.g. the generated error behind
 	// mint_failed/poll_failed, or the store error behind checkpoint_load).
