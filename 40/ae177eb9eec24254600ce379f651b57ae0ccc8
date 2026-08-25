@@ -1,0 +1,25 @@
+go/pkg/basecamp/eventfeed/cable_test.go
+  s_1c9d086ab67253::t_b333ebb0cc82a5 491-494,496,499
+go/pkg/basecamp/eventfeed/errors.go
+  s_1c9d086ab67253::t_93431dd8516161 102-107
+go/pkg/basecamp/eventfeed/errors_test.go
+  s_1c9d086ab67253::t_20165efe536479 144-145,163-184
+go/pkg/basecamp/eventfeed/seams.go
+  s_1c9d086ab67253::t_8726d7fbc226e4 321-323,327-334,338-340,400-402
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "40ae177eb9eec24254600ce379f651b57ae0ccc8",
+  "prompts": {},
+  "sessions": {
+    "s_1c9d086ab67253": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1f5628ec-50ac-4d8d-a2cc-cee5b0112903",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
