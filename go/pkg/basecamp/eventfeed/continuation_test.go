@@ -22,6 +22,10 @@ func TestCheckContinuation_AcceptsSameOrigin(t *testing.T) {
 		"https://3.basecampapi.com:443/5951425/events.json",
 		// Host case is normalized.
 		"https://3.BasecampAPI.com/5951425/events.json",
+		// A zero-padded default port is still the default port: Port()
+		// returns the raw spelling, so the comparison must be numeric or a
+		// normal continuation gets rejected over its spelling.
+		"https://3.basecampapi.com:000443/5951425/events.json",
 	} {
 		if terr := checkContinuation(testBase, pageURL); terr != nil {
 			t.Errorf("checkContinuation(%q) = %v, want nil", pageURL, terr)
@@ -122,5 +126,36 @@ func TestCheckContinuation_VerdictFollowsTheConfiguredBase(t *testing.T) {
 	const defaultPage = "https://3.basecampapi.com/5951425/events.json"
 	if terr := checkContinuation(selfHosted, defaultPage); terr == nil {
 		t.Errorf("checkContinuation(%q, %q) = nil, want Terminal(invalid_continuation)", selfHosted, defaultPage)
+	}
+}
+
+// TestCanonicalOrigin_PortSpellingsCollapse pins that the canonical form is
+// a function of the ORIGIN, not the port's spelling — the identity-split
+// class checkIdentityText exists to refuse: two spellings of one origin
+// yielding two checkpoint keys silently forks the lineage. Out-of-range
+// ports are refused outright, matching the cable-URL policy's stance on a
+// port no client can connect to.
+func TestCanonicalOrigin_PortSpellingsCollapse(t *testing.T) {
+	for _, tc := range []struct{ raw, want string }{
+		{"https://3.basecampapi.com:000443/events.json", "https://3.basecampapi.com"},
+		{"https://3.basecampapi.com:443/events.json", "https://3.basecampapi.com"},
+		{"http://3.basecampapi.com:080/events.json", "http://3.basecampapi.com"},
+		{"https://bc.internal.example:08443/events.json", "https://bc.internal.example:8443"},
+		{"https://bc.internal.example:8443/events.json", "https://bc.internal.example:8443"},
+	} {
+		got, err := CanonicalOrigin(tc.raw)
+		if err != nil || got != tc.want {
+			t.Errorf("CanonicalOrigin(%q) = (%q, %v), want (%q, nil)", tc.raw, got, err, tc.want)
+		}
+	}
+	for _, raw := range []string{
+		"https://3.basecampapi.com:0/events.json",
+		"https://3.basecampapi.com:000/events.json",
+		"https://3.basecampapi.com:99999/events.json",
+		"https://3.basecampapi.com:99999999999999999999/events.json",
+	} {
+		if got, err := CanonicalOrigin(raw); err == nil {
+			t.Errorf("CanonicalOrigin(%q) = %q, want a refusal — an unusable port is not an identity", raw, got)
+		}
 	}
 }
