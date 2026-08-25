@@ -1,0 +1,23 @@
+conformance/event-feed/schema.json
+  s_1c9d086ab67253::t_cd7224dbd072ec 1213
+go/pkg/basecamp/eventfeed/scenario_fixture_test.go
+  s_1c9d086ab67253::t_e89c9e886b478b 16,155-161,163-165,176,492-496
+go/pkg/basecamp/eventfeed/scenario_selftest_test.go
+  s_1c9d086ab67253::t_ccdc661e0c3370 672-676
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "e7b115f12f19791cae2a95605cef90e5873dd066",
+  "prompts": {},
+  "sessions": {
+    "s_1c9d086ab67253": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1f5628ec-50ac-4d8d-a2cc-cee5b0112903",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
