@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"strings"
 	"sync"
 	"time"
 
@@ -174,7 +173,12 @@ func (t *WebSocketTransport) Dial(ctx context.Context, wsURL string, maxFrameByt
 			return nil, cerr
 		}
 		if resp != nil && resp.StatusCode == http.StatusSwitchingProtocols {
-			if selected := resp.Header.Get("Sec-WebSocket-Protocol"); selected != "" && !strings.EqualFold(selected, cableSubprotocol) {
+			// Exact comparison, like the accepted-connection check: RFC 6455
+			// tokens are case-sensitive, so a wrong-case selection is a
+			// protocol this dial never offered — the library refuses it
+			// before any conn exists, and folding here would misread that
+			// refusal as transient and re-mint forever.
+			if selected := resp.Header.Get("Sec-WebSocket-Protocol"); selected != "" && selected != cableSubprotocol {
 				// coder/websocket refuses a 101 whose selected subprotocol
 				// was never offered BEFORE any conn exists, so this shape
 				// arrived here as a transient — re-minting forever against a
