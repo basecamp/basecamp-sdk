@@ -1,0 +1,35 @@
+SPEC.md
+  s_1c9d086ab67253::t_364bc1003a84de 3635-3638
+go/pkg/basecamp/eventfeed/continuation.go
+  s_964922bad4d340::t_ffd84304957208 18-25,41,50
+go/pkg/basecamp/eventfeed/continuation_test.go
+  s_1c9d086ab67253::t_926bc71ea3f278 4,91-96,102,107-108,165-189
+go/pkg/basecamp/eventfeed/errors.go
+  s_1c9d086ab67253::t_1914a65b42c073 71-72
+go/pkg/basecamp/eventfeed/errors_test.go
+  s_1c9d086ab67253::t_cfb1e7c27661c3 182-187
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "7937b8cd4af883851e69d1c428b2f657a92ff330",
+  "prompts": {},
+  "sessions": {
+    "s_1c9d086ab67253": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1f5628ec-50ac-4d8d-a2cc-cee5b0112903",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_964922bad4d340": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b315b378-55b7-45e0-911e-b964de3ac103",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
