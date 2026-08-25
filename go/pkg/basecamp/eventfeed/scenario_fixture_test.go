@@ -115,7 +115,9 @@ func parseIntegralMs(data []byte) (int64, error) {
 	//     value non-integral outright (decimal digits do not carry), which
 	//     refuses 1e-999999999 without a 10^999999999 denominator.
 	// A length cap comes first so no multi-megabyte literal is ever walked
-	// into a rational.
+	// into a rational — the schema's top-level description sanctions exactly
+	// this bound (a resource limit on spellings, not a value constraint), so
+	// refusing "1" + 100k zeros + e-100000 (mathematically 1) is conformant.
 	if len(lit) > 100000 {
 		return 0, fmt.Errorf("a %d-character number is beyond any modeled ms value (literals are capped at 100000 characters)", len(lit))
 	}

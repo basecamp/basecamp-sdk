@@ -3415,8 +3415,13 @@ Two dispatch clarifications, pinned:
   moved when the exact-spelling per-field decode was coded in, and pinning a number
   would turn every decoder refactor into a spec change. What IS contract: transients
   exist only between a frame's dequeue and its decode returning, one frame at a time,
-  so **peak memory is the retained formula plus ONE frame's transient allocation** —
-  never a per-slot or per-queue multiplier.
+  so **peak frame-payload retention is the retained formula plus ONE frame's
+  transient allocation** — never a per-slot or per-queue multiplier. Payload, not
+  process memory: the equality deliberately excludes the two things it cannot
+  bound — the single transport-authored error item, whose size is its author's
+  (stated above), and runtime metadata (channel and `pumpItem` storage, slice and
+  map headers), which scales with the configured capacities, not with frame
+  bytes.
 
   The retained enumeration cannot grow by a further party being noticed: every
   retained frame is in one of the three counted structures or in the hands of the pump
