@@ -160,6 +160,81 @@ func (e *invalidFrameError) Error() string {
 	return "event feed invalid inbound frame (" + e.shape + ")"
 }
 
+// hasLoneSurrogateEscape reports whether data contains a JSON \uXXXX escape
+// naming a UTF-16 surrogate half that does not combine into a valid pair —
+// "\ud800" bare, or a high half not followed immediately by an escaped low
+// half. encoding/json's answer to such an escape is the same silent U+FFFD
+// mutation utf8.Valid catches for raw bytes, and the escape spelling is pure
+// ASCII, so the byte-level gate cannot see it. This is deliberately the ONE
+// sliver of escape scanning implemented outside the decoder: the decoder
+// owns escape processing, but its lone-surrogate behavior is mutation, which
+// the gates exist to refuse. The scan runs over the whole document — in any
+// document the decoder accepts, a backslash occurs only inside a string, so
+// every \u sequence seen here is a real string escape; a stray backslash
+// elsewhere fails the unmarshal on its own.
+func hasLoneSurrogateEscape(data []byte) bool {
+	i := 0
+	for i+1 < len(data) {
+		if data[i] != '\\' {
+			i++
+			continue
+		}
+		if data[i+1] != 'u' {
+			// An escaped character (\\, \", \n, ...): both bytes are
+			// spoken for, which is what keeps "\\ud800" — an escaped
+			// backslash followed by literal text — out of this scan.
+			i += 2
+			continue
+		}
+		hi, ok := hexQuad(data, i+2)
+		if !ok {
+			// Malformed \u escape: the decoder refuses the document itself.
+			i += 2
+			continue
+		}
+		switch {
+		case hi >= 0xD800 && hi <= 0xDBFF:
+			if len(data) >= i+8 && data[i+6] == '\\' && data[i+7] == 'u' {
+				if lo, ok := hexQuad(data, i+8); ok && lo >= 0xDC00 && lo <= 0xDFFF {
+					i += 12
+					continue
+				}
+			}
+			return true
+		case hi >= 0xDC00 && hi <= 0xDFFF:
+			// A low half with no high half before it: a preceded one was
+			// consumed by the pair above.
+			return true
+		default:
+			i += 6
+		}
+	}
+	return false
+}
+
+// hexQuad parses four case-insensitive hex digits at data[at:], reporting
+// failure on short input or a non-hex byte.
+func hexQuad(data []byte, at int) (uint32, bool) {
+	if at+4 > len(data) {
+		return 0, false
+	}
+	var v uint32
+	for _, b := range data[at : at+4] {
+		v <<= 4
+		switch {
+		case b >= '0' && b <= '9':
+			v |= uint32(b - '0')
+		case b >= 'a' && b <= 'f':
+			v |= uint32(b-'a') + 10
+		case b >= 'A' && b <= 'F':
+			v |= uint32(b-'A') + 10
+		default:
+			return 0, false
+		}
+	}
+	return v, true
+}
+
 // parseFrame parses and classifies one raw inbound text frame. Dispatch is on
 // the "type" key; a type the connector doesn't recognize — including a present
 // but null one, which names no type to recognize — is frameUnknown (liveness
@@ -193,6 +268,11 @@ func parseFrame(data []byte) (frame, error) {
 	if !utf8.Valid(data) {
 		return frame{}, newInvalidFrameError(invalidFrameParse)
 	}
+	// The escape door into the same mutation: "\ud800" is pure ASCII, so
+	// utf8.Valid passes it, and the decoder would U+FFFD it just the same.
+	if hasLoneSurrogateEscape(data) {
+		return frame{}, newInvalidFrameError(invalidFrameParse)
+	}
 	if !isJSONObject(data) {
 		// Non-object JSON is the parse shape by the same reasoning as
 		// unparseable bytes — the frame stream has stopped meaning anything —
@@ -204,29 +284,30 @@ func parseFrame(data []byte) (frame, error) {
 		// delivering no protocol traffic at all.
 		return frame{}, newInvalidFrameError(invalidFrameParse)
 	}
-	// The type key's PRESENCE is decoded separately from its value: a `*string`
-	// gives the same nil for an absent key and for a JSON `null`, which put one
-	// wire value in two classes depending on its siblings — `{"type":null}`
-	// alone fell through to frameUnknown, while
-	// `{"type":null,"identifier":…,"message":…}` fell through to the
-	// correlated-broadcast shape below and was DELIVERED as an event. A raw
-	// message distinguishes them, so presence is decided here and the value
-	// below.
-	var envType struct {
-		Type json.RawMessage `json:"type"`
-	}
-	if err := json.Unmarshal(data, &envType); err != nil {
+	// The envelope is read through a MAP, for two properties a tagged struct
+	// cannot give. Keys bind EXACTLY: encoding/json matches struct tags
+	// case-insensitively, so {"TYPE":…} satisfied a `json:"type"` field even
+	// though the wire key `type` is absent — a wrong-case key must be an
+	// absent key, as it is for every exact-dictionary SDK. And presence is
+	// membership: a `*string` field gives the same nil for an absent key and
+	// for a JSON `null`, which put one wire value in two classes depending
+	// on its siblings — `{"type":null}` alone fell through to frameUnknown,
+	// while `{"type":null,"identifier":…,"message":…}` fell through to the
+	// correlated-broadcast shape and was DELIVERED as an event. Membership
+	// decides presence here; the value is decoded below it.
+	var env map[string]json.RawMessage
+	if err := json.Unmarshal(data, &env); err != nil {
 		return frame{}, newInvalidFrameError(invalidFrameParse)
 	}
-	if len(envType.Type) > 0 {
-		// The key is present. A wrong-typed value (a number, an array) fails
-		// this unmarshal and is the parse shape, as it always was; `null`
-		// decodes to a nil pointer WITHOUT error and is the unrecognized-type
-		// case — a type key carrying no type to recognize is liveness-only, not
-		// invalid, so a frame §23 says to ignore never tears the socket down.
-		// What it is NOT is a broadcast: that shape is "no type key at all".
+	if typRaw, hasType := env["type"]; hasType {
+		// A wrong-typed value (a number, an array) fails this unmarshal and
+		// is the parse shape, as it always was; `null` decodes to a nil
+		// pointer WITHOUT error and is the unrecognized-type case — a type
+		// key carrying no type to recognize is liveness-only, not invalid,
+		// so a frame §23 says to ignore never tears the socket down. What it
+		// is NOT is a broadcast: that shape is "no type key at all".
 		var typ *string
-		if err := json.Unmarshal(envType.Type, &typ); err != nil {
+		if err := json.Unmarshal(typRaw, &typ); err != nil {
 			return frame{}, newInvalidFrameError(invalidFrameParse)
 		}
 		if typ == nil {
@@ -241,26 +322,27 @@ func parseFrame(data []byte) (frame, error) {
 			// accepted), so it is never validated either.
 			return frame{kind: framePing}, nil
 		case frameTypeConfirm, frameTypeReject:
-			var env struct {
-				Identifier string `json:"identifier"`
-			}
-			if err := json.Unmarshal(data, &env); err != nil {
+			identifier, err := exactStringField(env, "identifier")
+			if err != nil {
 				return frame{}, newInvalidFrameError(invalidFrameParse)
 			}
 			kind := frameConfirm
 			if *typ == frameTypeReject {
 				kind = frameReject
 			}
-			return frame{kind: kind, identifier: env.Identifier}, nil
+			return frame{kind: kind, identifier: identifier}, nil
 		case frameTypeDisconnect:
-			var env struct {
-				Reason    string `json:"reason"`
-				Reconnect *bool  `json:"reconnect"`
-			}
-			if err := json.Unmarshal(data, &env); err != nil {
+			reason, err := exactStringField(env, "reason")
+			if err != nil {
 				return frame{}, newInvalidFrameError(invalidFrameParse)
 			}
-			return frame{kind: frameDisconnect, reason: env.Reason, reconnect: env.Reconnect}, nil
+			var reconnect *bool
+			if rawField, ok := env["reconnect"]; ok {
+				if err := json.Unmarshal(rawField, &reconnect); err != nil {
+					return frame{}, newInvalidFrameError(invalidFrameParse)
+				}
+			}
+			return frame{kind: frameDisconnect, reason: reason, reconnect: reconnect}, nil
 		default:
 			return frame{kind: frameUnknown}, nil
 		}
@@ -269,17 +351,29 @@ func parseFrame(data []byte) (frame, error) {
 	// BOTH fields, so both are validated. It is not §23's unrecognized-type
 	// case — there is no type to be unrecognized — and a wrong-typed
 	// correlation field here still stops the frame stream meaning anything.
-	var env struct {
-		Identifier string          `json:"identifier"`
-		Message    json.RawMessage `json:"message"`
-	}
-	if err := json.Unmarshal(data, &env); err != nil {
+	identifier, err := exactStringField(env, "identifier")
+	if err != nil {
 		return frame{}, newInvalidFrameError(invalidFrameParse)
 	}
-	if env.Identifier != "" && len(env.Message) > 0 {
-		return frame{kind: frameMessage, identifier: env.Identifier, message: env.Message}, nil
+	if message := env["message"]; identifier != "" && len(message) > 0 {
+		return frame{kind: frameMessage, identifier: identifier, message: message}, nil
 	}
 	return frame{kind: frameUnknown}, nil
+}
+
+// exactStringField reads env[key] as a string. Absent — which includes any
+// wrong-case spelling, since a map never case-folds — and JSON null both
+// yield ""; a wrong-typed value is the error.
+func exactStringField(env map[string]json.RawMessage, key string) (string, error) {
+	rawField, ok := env[key]
+	if !ok {
+		return "", nil
+	}
+	var s string
+	if err := json.Unmarshal(rawField, &s); err != nil {
+		return "", err
+	}
+	return s, nil
 }
 
 // isJSONObject reports whether data's first non-whitespace byte opens a JSON
@@ -326,50 +420,63 @@ func decodeMessageEvent(raw json.RawMessage) (Event, error) {
 	if !utf8.Valid(raw) {
 		return Event{}, newInvalidFrameError(invalidFrameEventDecode)
 	}
-	var p struct {
-		ID               *int64     `json:"id"`
-		Kind             *string    `json:"kind"`
-		EventType        *string    `json:"event_type"`
-		Action           *string    `json:"action"`
-		CreatedAt        *time.Time `json:"created_at"`
-		BucketID         *int64     `json:"bucket_id"`
-		CreatorID        *int64     `json:"creator_id"`
-		RecordingID      *int64     `json:"recording_id"`
-		VisibleToClients *bool      `json:"visible_to_clients"`
-	}
-	if err := json.Unmarshal(raw, &p); err != nil {
+	if hasLoneSurrogateEscape(raw) {
 		return Event{}, newInvalidFrameError(invalidFrameEventDecode)
 	}
-	// The nine required keys, in conformance/event-feed/schema.json's pushEvent
-	// order. The key names ride as comments rather than as data because the
-	// error deliberately cannot name the offender (see invalidFrameError): a
-	// string field carried here would be a value with no reader, which is
-	// exactly how a rendering regrows one.
-	for _, present := range []bool{
-		p.ID != nil,               // id
-		p.Kind != nil,             // kind
-		p.EventType != nil,        // event_type
-		p.Action != nil,           // action
-		p.CreatedAt != nil,        // created_at
-		p.BucketID != nil,         // bucket_id
-		p.CreatorID != nil,        // creator_id
-		p.RecordingID != nil,      // recording_id
-		p.VisibleToClients != nil, // visible_to_clients
+	var payload map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &payload); err != nil {
+		return Event{}, newInvalidFrameError(invalidFrameEventDecode)
+	}
+	var (
+		id, bucketID, creatorID, recordingID *int64
+		kind, eventType, action              *string
+		createdAt                            *time.Time
+		visibleToClients                     *bool
+	)
+	// The nine required keys, fetched by EXACT spelling — the map, unlike a
+	// tagged struct, never case-folds, so "ID" is an absent key, not a
+	// misspelt present one — in conformance/event-feed/schema.json's
+	// pushEvent order. An absent key and a JSON null both leave the pointer
+	// nil, and a wrong-typed value fails its unmarshal; each is the decode
+	// shape, and none of them names the offender in the error (see
+	// invalidFrameError).
+	for _, f := range []struct {
+		key string
+		dst any
+	}{
+		{"id", &id},
+		{"kind", &kind},
+		{"event_type", &eventType},
+		{"action", &action},
+		{"created_at", &createdAt},
+		{"bucket_id", &bucketID},
+		{"creator_id", &creatorID},
+		{"recording_id", &recordingID},
+		{"visible_to_clients", &visibleToClients},
 	} {
-		if !present {
+		fieldRaw, ok := payload[f.key]
+		if !ok {
+			return Event{}, newInvalidFrameError(invalidFrameEventDecode)
+		}
+		if err := json.Unmarshal(fieldRaw, f.dst); err != nil {
 			return Event{}, newInvalidFrameError(invalidFrameEventDecode)
 		}
 	}
+	if id == nil || kind == nil || eventType == nil || action == nil || createdAt == nil ||
+		bucketID == nil || creatorID == nil || recordingID == nil || visibleToClients == nil {
+		// JSON null carries no value: the same decode shape as an absent key.
+		return Event{}, newInvalidFrameError(invalidFrameEventDecode)
+	}
 	return Event{
-		ID:               *p.ID,
-		Kind:             *p.Kind,
-		EventType:        *p.EventType,
-		Action:           *p.Action,
-		CreatedAt:        *p.CreatedAt,
-		BucketID:         *p.BucketID,
-		CreatorID:        *p.CreatorID,
-		RecordingID:      *p.RecordingID,
-		VisibleToClients: p.VisibleToClients,
+		ID:               *id,
+		Kind:             *kind,
+		EventType:        *eventType,
+		Action:           *action,
+		CreatedAt:        *createdAt,
+		BucketID:         *bucketID,
+		CreatorID:        *creatorID,
+		RecordingID:      *recordingID,
+		VisibleToClients: visibleToClients,
 	}, nil
 }
 
