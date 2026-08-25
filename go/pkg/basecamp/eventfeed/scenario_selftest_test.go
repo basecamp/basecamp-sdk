@@ -507,6 +507,14 @@ func TestScenarioDriverRejectsUnmodelledScripts(t *testing.T) {
 			wants:  "supplied as JSON null",
 		},
 		{
+			// draft 2020-12 judges the VALUE, not the spelling: 1000.5 is not
+			// an integer instance, and the refusal should say so in the
+			// schema's terms rather than in encoding/json's.
+			name:   "advance ms non-integral number",
+			script: `{"name":"x","description":"d","steps":[{"advance":{"ms":1000.5}}],"finally":{"state":"closed"}}`,
+			wants:  "is not an integer",
+		},
+		{
 			// An advance is deterministic only from a scripted rendezvous:
 			// an action's completion can precede the timer arms its
 			// transition causes (expectConnect returns when the dial is
@@ -622,6 +630,43 @@ func TestScenarioDriverRejectsUnmatchedActions(t *testing.T) {
 // deliberately so — the arming rule could only be enforced by sampling, and a
 // sampled MUST is not one.
 //
+// TestScenarioMsAcceptsIntegralNumberSpellings pins the schema's number
+// model onto the loader: draft 2020-12's "integer" is any number whose
+// MATHEMATICAL value is integral, so 1000.0 and 1e3 are integer instances a
+// schema-valid fixture may carry, and only the Go driver was refusing them —
+// the same float-spelled-int class FlexInt absorbs on the rich-text lane.
+// Integrality is decidable without precision loss: everything in range sits
+// far below float64's 2^53 exact-integer ceiling.
+func TestScenarioMsAcceptsIntegralNumberSpellings(t *testing.T) {
+	base := `{"name":"x","description":"d","config":{"stalenessMs":%s},"steps":[{"advance":{"ms":%s}}],"finally":{"state":"closed"}}`
+	cases := []struct {
+		name, staleness, ms, wantErr string
+	}{
+		{"float spelling", "1000.0", "1000.0", ""},
+		{"exponent spelling", "1e3", "1e3", ""},
+		{"non-integral", "1000.5", "1000", "is not an integer"},
+		{"non-integral ms", "1000", "1000.5", "is not an integer"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			raw := fmt.Sprintf(base, tc.staleness, tc.ms)
+			sc, err := parseScenario([]byte(raw), "x.json")
+			if tc.wantErr == "" {
+				if err != nil {
+					t.Fatalf("an integral spelling must load: %v", err)
+				}
+				if got := int64(sc.Config.StalenessMs.v); got != 1000 {
+					t.Errorf("stalenessMs decoded to %d, want 1000", got)
+				}
+				return
+			}
+			if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
+				t.Fatalf("err = %v, want one naming %q", err, tc.wantErr)
+			}
+		})
+	}
+}
+
 // The control matters as much as the mutants: an advance over a window with
 // nothing due is ordinary and must still pass, or the guard would be rejecting
 // every advance and the suite's one real advance (fixture 05) would be failing

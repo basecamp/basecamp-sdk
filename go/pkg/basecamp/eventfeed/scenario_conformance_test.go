@@ -612,7 +612,7 @@ func (d *driver) nextClientFrame(what string) (clientFrame, error) {
 // AdvanceSettling remains for a caller that genuinely wants a chained firing
 // with an explicit rendezvous. It is deliberately not reachable from a fixture.
 func (d *driver) advance(step *advanceStep) error {
-	if due, ok := d.h.clock.AdvanceIfQuiet(millis(step.Ms)); !ok {
+	if due, ok := d.h.clock.AdvanceIfQuiet(millis(int64(step.Ms))); !ok {
 		return fmt.Errorf(
 			"advance of %dms would fire %v: whether a timer armed by one of those firings lands inside the "+
 				"same window depends on goroutine scheduling, so this script cannot mean the same thing in "+

@@ -14,6 +14,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"math"
 	"regexp"
 	"strconv"
 	"strings"
@@ -76,7 +77,47 @@ func (o *optionalMs) UnmarshalJSON(data []byte) error {
 		o.null = true
 		return nil
 	}
-	return json.Unmarshal(data, &o.v)
+	v, err := parseIntegralMs(data)
+	o.v = v
+	return err
+}
+
+// parseIntegralMs parses one JSON number the way draft 2020-12's "integer"
+// judges it: by MATHEMATICAL value, not spelling — 1000.0 and 1e3 are integer
+// instances a schema-valid fixture may carry, and only this driver was
+// refusing them (the float-spelled-int class FlexInt absorbs on the
+// rich-text lane). Integrality is decidable without precision loss here:
+// every in-range value sits far below float64's 2^53 exact-integer ceiling
+// (maxScenarioMs ≈ 3.16e11), so a spelling that only parses as a float still
+// carries its value exactly.
+func parseIntegralMs(data []byte) (int64, error) {
+	var n json.Number
+	if err := json.Unmarshal(data, &n); err != nil {
+		return 0, err
+	}
+	if v, err := n.Int64(); err == nil {
+		return v, nil
+	}
+	f, err := n.Float64()
+	if err != nil {
+		return 0, err
+	}
+	if f != math.Trunc(f) {
+		return 0, fmt.Errorf("%s is not an integer: the schema's type is integer — a number whose mathematical value is integral", n)
+	}
+	if math.Abs(f) > 1<<53 {
+		return 0, fmt.Errorf("%s is beyond float64's exact-integer range — and beyond any modeled ms value", n)
+	}
+	return int64(f), nil
+}
+
+// scenarioMs is a required ms value under the same number model.
+type scenarioMs int64
+
+func (m *scenarioMs) UnmarshalJSON(data []byte) error {
+	v, err := parseIntegralMs(data)
+	*m = scenarioMs(v)
+	return err
 }
 
 // storeScript is the schema's scripted CheckpointStore.
@@ -215,7 +256,7 @@ type goneBody struct {
 }
 
 type advanceStep struct {
-	Ms int64 `json:"ms"`
+	Ms scenarioMs `json:"ms"`
 }
 
 type fireTimerStep struct {
@@ -481,7 +522,7 @@ func decodeDirective(kind string, body json.RawMessage) (any, error) {
 		if err := decodeStrict(body, step); err != nil {
 			return nil, err
 		}
-		return step, checkScenarioMs("advance ms", step.Ms, 1)
+		return step, checkScenarioMs("advance ms", int64(step.Ms), 1)
 	case "fireTimer":
 		step := &fireTimerStep{}
 		if err := decodeStrict(body, step); err != nil {
