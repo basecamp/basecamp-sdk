@@ -1745,18 +1745,37 @@ func TestProtocolFatalBehindADeferredRecoverableOutranksIt(t *testing.T) {
 						t.Error("the recoverable disconnect was never deferred")
 						return
 					}
+					// The baseline is drained BEFORE anything else is served:
+					// every earlier frame's hand-off signal has landed (the
+					// deferral rendezvous above proves the recoverable was
+					// consumed, which is downstream of its hand-off), so from
+					// here each serve owes exactly one signal.
+					drain(queued)
+					frames := 0
 					if tc.wedge != nil {
 						tc.wedge(conn)
+						frames++
 					}
-					// Fatal LAST, and only once the pump has handed it off:
-					// the guarantee is about a frame the pump has READ, so a
-					// test that raced the read would prove nothing.
-					drain(queued)
+					// Fatal LAST, and only once the pump has handed EVERY
+					// served frame off — the wedge's included: the guarantee
+					// is about a frame the pump has handed over, and a single
+					// awaited signal could be the WEDGE's, leaving the fatal
+					// still between the pump's read and its hand-off, where
+					// SPEC's normative boundary says no scan need find it.
+					// That aliasing is exactly the interleaving a loaded CI
+					// runner produced: the entry cut then spent its budget on
+					// the wedge, the probe scanned a queue the fatal had not
+					// reached, and the deferred recoverable's teardown
+					// reconnected into the terminally scripted second mint.
 					conn.Serve(frameDisconnect("invalid_event_stream_command", false))
-					select {
-					case <-queued:
-					case <-time.After(watchdog):
-						t.Error("the fatal frame never reached the hand-off queue")
+					frames++
+					for range frames {
+						select {
+						case <-queued:
+						case <-time.After(watchdog):
+							t.Error("a served frame never reached the hand-off queue")
+							return
+						}
 					}
 					if tc.stalled {
 						// Lapse the superseded-poll bound so the walk
