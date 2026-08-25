@@ -259,6 +259,24 @@ func (s *FileCheckpointStore) Save(_ context.Context, key CheckpointKey, positio
 				"Load would have to report it as a store failure",
 			s.path)
 	}
+	// The write-side sibling of the load gates: json.Marshal does not refuse
+	// invalid UTF-8, it silently swaps each invalid sequence for U+FFFD on
+	// the way OUT — a caller's opaque position would mutate before it ever
+	// reached disk, where the load gates can no longer tell mutation from
+	// data. A caller-supplied invalid value is the caller's bug, so the
+	// verdict is usage, exactly as checkIdentityText rules the same inputs
+	// at construction; the labels below are the rendering, never the values.
+	for _, in := range []struct{ field, value string }{
+		{"checkpoint origin", key.Origin},
+		{"checkpoint account id", key.AccountID},
+		{"checkpoint consumer namespace", key.ConsumerNamespace},
+		{"checkpoint filter key", key.FilterKey},
+		{"checkpoint position", position},
+	} {
+		if err := checkIdentityText(in.field, in.value); err != nil {
+			return err
+		}
+	}
 
 	s.mu.Lock()
 	defer s.mu.Unlock()

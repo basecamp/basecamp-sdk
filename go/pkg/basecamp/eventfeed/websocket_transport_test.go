@@ -934,3 +934,48 @@ func TestWebSocketTransport_RejectsUserinfoBeforeAnyNetworkIO(t *testing.T) {
 		})
 	}
 }
+
+// TestWebSocketTransport_WriteAfterPeerCloseCarriesNoPeerReason is the write
+// path's half of the peer-close rule, pinned as a TRIPWIRE. The claimed leak
+// does not exist in coder/websocket v1.8.15 — the write path returns
+// net.ErrClosed sentinels for every closed-connection shape and consults
+// closeReceivedErr only on reads, so the peer's reason structurally cannot
+// surface from Write — but that is the library's internals, not its
+// contract. This test drives the exact interleaving (a read observes the
+// peer's close, then a write fails) and walks the write error's chain for
+// the planted reason, so a dependency bump that starts surfacing the
+// recorded close from Write goes red here and forces the read path's
+// sanitizing treatment onto the write path then.
+func TestWebSocketTransport_WriteAfterPeerCloseCarriesNoPeerReason(t *testing.T) {
+	const canary = "sekrit-ticket-value"
+	h := newWSHarness(t)
+	conn, peer, err := h.Dial(context.Background(), "/cable?ticket="+canary, 1<<20)
+	if err != nil {
+		t.Fatalf("dial: %v", err)
+	}
+	defer conn.Close(1000, "")
+	read := make(chan error, 1)
+	go func() {
+		_, rerr := conn.ReadFrame(context.Background())
+		read <- rerr
+	}()
+	peer.Close(1008, "refused ?ticket="+canary)
+	select {
+	case rerr := <-read:
+		var ce *eventfeed.CloseError
+		if !errors.As(rerr, &ce) {
+			t.Fatalf("read after peer close = %v (%T), want *CloseError", rerr, rerr)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("the peer close never reached the read")
+	}
+	werr := conn.WriteFrame(context.Background(), []byte(`{"command":"subscribe"}`))
+	if werr == nil {
+		t.Fatal("write after peer close succeeded, want error")
+	}
+	for e := werr; e != nil; e = errors.Unwrap(e) {
+		if strings.Contains(e.Error(), canary) {
+			t.Errorf("write error echoes the peer's close reason: %q", e.Error())
+		}
+	}
+}
