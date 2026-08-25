@@ -1,0 +1,29 @@
+scripts/promote-migrating.sh
+  s_964922bad4d340::t_cabcc35fcd2bfa 22-26,28,126,130,137,164,172
+scripts/test-promote-migrating.sh
+  s_1c9d086ab67253::t_4c31a024936e0b 203-209
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "83ca19686a952c8826fe990f884613cbdabad4b2",
+  "prompts": {},
+  "sessions": {
+    "s_1c9d086ab67253": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1f5628ec-50ac-4d8d-a2cc-cee5b0112903",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_964922bad4d340": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b315b378-55b7-45e0-911e-b964de3ac103",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
