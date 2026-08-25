@@ -13,6 +13,7 @@ package eventfeed_test
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
 	"regexp"
@@ -151,8 +152,17 @@ func parseIntegralMs(data []byte) (int64, error) {
 	}
 	exp := 0
 	if expText != "" {
-		e, err := strconv.Atoi(expText)
+		// ParseInt at a FIXED width, not Atoi: int is 32 bits on some
+		// targets, where an exponent like 1e9223372036854775807 would fail
+		// as unreadable before reaching the magnitude judgment and change
+		// the diagnostic by platform. A 64-bit overflow can only mean the
+		// exponent is beyond the ±200000 bound below, so range errors take
+		// the bound's own verdict.
+		e, err := strconv.ParseInt(expText, 10, 64)
 		if err != nil {
+			if errors.Is(err, strconv.ErrRange) {
+				return 0, fmt.Errorf("%s is beyond any modeled ms value", lit)
+			}
 			return 0, fmt.Errorf("%s is not a number this driver can read", lit)
 		}
 		// Bound the exponent before any place arithmetic: at the platform's
@@ -163,7 +173,7 @@ func parseIntegralMs(data []byte) (int64, error) {
 		if e > 200000 || e < -200000 {
 			return 0, fmt.Errorf("%s is beyond any modeled ms value", lit)
 		}
-		exp = e
+		exp = int(e)
 	}
 	{
 		// Digit i occupies decimal place intLen - i + exp (units = 1).
@@ -479,8 +489,11 @@ func parseScenario(raw []byte, file string) (*scenario, error) {
 	// the transition announces, and in every announced state any timer still
 	// unarmed at the announcement is exactly what the following exact-set
 	// match waits for — so the pair settles where either alone races. Both
-	// blocks fail loudly on the watchdog when the authored state or set is
-	// wrong; nothing diverges silently.
+	// blocks fail on the watchdog on every schedule where the stale pair no
+	// longer holds; a pair naming the PRE-action state can still pass on the
+	// schedule where the action is not yet processed, so wrong authorship is
+	// at worst flaky — never stably green (README "settle semantics"; the
+	// settled guarantee belongs to correctly authored pairs).
 	for i, step := range sc.Steps {
 		if step.Kind != "advance" || i == 0 {
 			continue
