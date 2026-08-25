@@ -1,0 +1,21 @@
+SPEC.md
+  s_1c9d086ab67253::t_a5b09fd6c57af0 3418-3424
+conformance/event-feed/schema.json
+  s_1c9d086ab67253::t_3731150a9de64f 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "fc718e15ca6000bca2e1de32e34ffeb2f06c055e",
+  "prompts": {},
+  "sessions": {
+    "s_1c9d086ab67253": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1f5628ec-50ac-4d8d-a2cc-cee5b0112903",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
