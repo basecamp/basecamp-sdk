@@ -295,6 +295,28 @@ func parseScenario(raw []byte, file string) (*scenario, error) {
 		}
 		sc.Steps = append(sc.Steps, step)
 	}
+
+	// An advance is deterministic only from a scripted rendezvous point. An
+	// action's completion can precede the timer arms its transition causes —
+	// expectConnect returns when the dial is recorded, while the handshake
+	// deadline arms on the connector's goroutine after — so an advance right
+	// behind an action races those arms: the same script is rejected on one
+	// schedule ("would fire") and accepted on another, with time moved past a
+	// deadline about to arm. The rendezvous is AUTHORED, not guessed:
+	// expectTimers polls until the outstanding set exactly matches a settled
+	// state's set (§23's per-state exact-set invariants are what make the
+	// match a settle), and this load rule makes its absence unscriptable.
+	for i, step := range sc.Steps {
+		if step.Kind != "advance" || i == 0 {
+			continue
+		}
+		if sc.Steps[i-1].Kind != "expectTimers" {
+			return nil, fmt.Errorf("step %d: an advance must be the scenario's first step or immediately follow "+
+				"expectTimers — an action's completion can precede the timer arms its transition causes, so an "+
+				"unrendezvoused advance cannot mean the same thing on every schedule; expectTimers' exact-set "+
+				"match is the settle", i+1)
+		}
+	}
 	finRaw, ok := top["finally"]
 	if !ok {
 		return nil, fmt.Errorf("fixture is missing its `finally` block")

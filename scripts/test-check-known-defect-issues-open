@@ -482,6 +482,21 @@ out, status, _ = run_checker(
 expect_fail(failures, "N+6h. a duplicate registry key fails instead of last-winning", out, status,
             "repeats mapping key")
 
+# --- N+6i/j. An EMPTY file is an empty document, not a crash ---------------------
+#
+# Psych.parse("") returns false, not nil, so an empty file reached the parse
+# tree walk and crashed on false.root — nonzero, but a NoMethodError is not
+# the gate's diagnosis. Falsy parse results are empty documents; the shape
+# validation below then speaks in its own words.
+
+out, status, _ = run_checker(tracking_raw: "")
+expect_fail(failures, "N+6i. an empty registry file fails with the key diagnosis", out, status,
+            "must define prose_tracking_issues")
+
+out, status, _ = run_checker(allowlist_raw: "")
+expect_pass(failures, "N+6j. an empty allowlist file is an empty allowlist", out, status,
+            "no tracking issues referenced")
+
 # --- N+7. A registry file without the key fails -----------------------------------
 #
 # The missing-FILE case (N+3) fails closed; a file whose key is misspelled or

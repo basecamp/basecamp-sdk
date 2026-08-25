@@ -3371,7 +3371,13 @@ Two dispatch clarifications, pinned:
   single oversized message is allocated whole at receipt, before the
   `EVENT_FEED_MAX_FRAME_BYTES` check drops it — the scenario-lane table in Appendix F
   records that as an accepted divergence, and no universal cross-SDK byte ceiling is
-  published here. In the Go reference, worst-case cable-lane retention is bounded
+  published here. The ceiling also counts FRAMES, not errors: exactly one non-frame item
+  can ride the queue or the deferral slot — the read error that ends the pump, at most
+  one per attempt because the pump exits by sending it — and its SIZE is
+  transport-authored, unbounded by the seam contract. The built-in transport's errors
+  are bounded by construction (fixed shapes whose renderings are configured text or
+  placeholders, never server bytes); a custom transport's error is its author's to
+  bound. In the Go reference, worst-case cable-lane retention is bounded
   multiplicatively — every retained item is itself bounded by
   `EVENT_FEED_MAX_FRAME_BYTES`, and retention is an enumeration by HOLDER, which is what
   closes the count: a frame lives in the hand-off queue (≤ pump depth), in the live
@@ -3882,8 +3888,12 @@ advance selects under. The inversion is sound because a test clock releases that
 across a firing's aftermath — so an advance that fires nothing never wakes anything and
 cannot cause an arm, leaving nothing to detect. It is stricter than an arming rule (a
 firing that replaces nothing is rejected too) and that is the trade: a script wanting that
-firing writes `fireTimer` and names the timer. `conformance/event-feed/schema.json`'s
-`$defs.advance` states it, and the driver obligation is enforced there.
+firing writes `fireTimer` and names the timer. The due-set read also needs a settled set
+to read — an action's completion can precede the timer arms its transition causes — so
+every `advance` must be the scenario's first step or immediately follow `expectTimers`,
+whose exact-set match is the authored settle; drivers enforce the adjacency at fixture
+load. `conformance/event-feed/schema.json`'s
+`$defs.advance` states both, and the driver obligation is enforced there.
 
 Teardown discipline: disposing a connection attempt — deadline lapse, staleness, socket
 death, terminal — cancels the frame pump, **cancels any in-flight seam call belonging to

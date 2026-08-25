@@ -81,7 +81,7 @@ func TestScenarioDriverRejectsMutatedFixtures(t *testing.T) {
 		{
 			name:    "reconnect dials the previous mint's url",
 			fixture: "05-fresh-ticket-reconnect-after-ttl.json",
-			path:    "steps.13.expectConnect.url",
+			path:    "steps.14.expectConnect.url",
 			value:   "{{CABLE_URL:1}}",
 			wants:   "a cable dial",
 		},
@@ -432,6 +432,19 @@ func TestScenarioDriverRejectsUnmodelledScripts(t *testing.T) {
 			wants:  "10 virtual years",
 		},
 		{
+			// An advance is deterministic only from a scripted rendezvous:
+			// an action's completion can precede the timer arms its
+			// transition causes (expectConnect returns when the dial is
+			// recorded; the handshake deadline arms on the connector's
+			// goroutine after), so an unrendezvoused advance races the arm —
+			// accepted on one schedule, rejected on another. The rendezvous
+			// is authored, not guessed: expectTimers' exact-set match is the
+			// settle, and the load rule makes its absence unscriptable.
+			name:   "an advance not preceded by an expectTimers rendezvous",
+			script: `{"name":"x","description":"d","steps":[{"expectMint":{"respond":{"status":200,"body":{"ticket":"{{TICKET:1}}","expires_in":120,"url":"{{CABLE_URL:1}}"}}}},{"expectConnect":{"url":"{{CABLE_URL:1}}"}},{"advance":{"ms":30000}}],"finally":{"state":"closed"}}`,
+			wants:  "must be the scenario's first step or immediately follow expectTimers",
+		},
+		{
 			name:   "droppedCount disagreeing with droppedIds",
 			script: `{"name":"x","description":"d","steps":[{"expectSignal":{"kind":"bufferOverflow","droppedIds":[1],"droppedCount":2}}],"finally":{"state":"closed"}}`,
 			wants:  "disagrees with",
@@ -525,6 +538,7 @@ func TestScenarioDriverRejectsSchedulingDependentAdvance(t *testing.T) {
 		script := `{"name":"x","description":"d","steps":[
 			{"expectMint":{"respond":{"status":200,"body":{"ticket":"{{TICKET:1}}","expires_in":120,"url":"{{CABLE_URL:1}}"}}}},
 			{"expectConnect":{"url":"{{CABLE_URL:1}}"}},
+			{"expectTimers":{"exact":{"handshake-deadline":1}}},
 			{"advance":{"ms":30000}}],
 			"finally":{"state":"backoff"}}`
 		err := underShortWatchdog(func() error { return runScenarioBytes([]byte(script), "x.json") })
