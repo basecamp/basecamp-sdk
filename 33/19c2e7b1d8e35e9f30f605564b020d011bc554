@@ -1,0 +1,21 @@
+go/pkg/basecamp/eventfeed/websocket_transport.go
+  s_1c9d086ab67253::t_1bc17d91dcf959 202-205
+go/pkg/basecamp/eventfeed/websocket_transport_test.go
+  s_1c9d086ab67253::t_3d930c906ae27d 17,450-490
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "3319c2e7b1d8e35e9f30f605564b020d011bc554",
+  "prompts": {},
+  "sessions": {
+    "s_1c9d086ab67253": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1f5628ec-50ac-4d8d-a2cc-cee5b0112903",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
