@@ -84,7 +84,9 @@ end
 # the same way.
 def reject_duplicate_keys!(path, text)
   doc = Psych.parse(text)
-  return if doc.nil?
+  # Psych.parse("") returns false, not nil: every falsy result is an empty
+  # document with no keys to duplicate — the shape validation below speaks.
+  return unless doc
 
   stack = [ doc.root ]
   until stack.empty?

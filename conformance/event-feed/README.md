@@ -183,6 +183,16 @@ says which timer it means, which is more legible anyway. The Go driver
 self-tests three arms — the rejection, an ordinary quiet-window advance still
 passing, and a firing that arms nothing being rejected all the same.
 
+**And the due-set read needs a settled set to read.** An action's completion
+can precede the timer arms its transition causes — a connect is observable
+before the handshake deadline is armed on the connector's own thread — so an
+advance placed right behind an action races those arms: rejected on one
+schedule, accepted with time moved past a deadline about to arm on another.
+The rendezvous is authored, not guessed: every `advance` must be the
+scenario's first step or immediately follow `expectTimers`, whose exact-set
+match is the settle (the per-state exact-set invariants are what make a match
+mean settled), and drivers enforce the adjacency at fixture load.
+
 ## Contract notes the fixtures encode (SDK-owned, final)
 
 - **Connect-to-mint-URL-verbatim.** The connector never assembles cable topology
@@ -371,8 +381,10 @@ when every line is done:
 
 ## Mutation kill matrix (sixteen)
 
-Each mutation is shown red against at least one fixture in the reference
-implementation PR's body before it counts.
+Fifteen of the sixteen mutations are shown red against at least one fixture in
+the reference implementation PR's body before they count. Row 15 is the
+recorded exception — not killed at tier 2, pending the Layer-1 adapters #819
+tracks — and the note below is its account.
 
 **One row is an exception, and it is the reason this heading is worth reading
 twice.** Row 15's mutation is **not killed at tier 2 at all** — it lives below
