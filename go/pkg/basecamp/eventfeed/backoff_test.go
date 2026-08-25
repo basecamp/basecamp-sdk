@@ -195,3 +195,15 @@ func TestPollRetryDelay_UnusableValuesDrawTheJitterCurve(t *testing.T) {
 		t.Errorf("pollRetryDelay(-1s, k=2, r=0.5) = %v, want the 1s jitter draw", got)
 	}
 }
+
+// A positive interval must stay positive after jitter: at 1ns, any downward
+// draw lands the float product in (0,1) and the Duration conversion floors
+// it to zero — a timer that fires immediately, every cycle, tight-looping
+// poll walks against a caller who asked for a positive interval.
+func TestRepairJitter_KeepsPositiveIntervalsPositive(t *testing.T) {
+	for _, draw := range []float64{0, 0.1, 0.25} {
+		if got := repairJitter(time.Nanosecond, fixedRand(draw)); got < time.Nanosecond {
+			t.Errorf("repairJitter(1ns, draw %v) = %v, want at least 1ns", draw, got)
+		}
+	}
+}

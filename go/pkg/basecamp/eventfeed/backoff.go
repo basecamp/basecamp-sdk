@@ -116,5 +116,12 @@ func repairJitter(interval time.Duration, r func() float64) time.Duration {
 	if jittered >= float64(math.MaxInt64) {
 		return time.Duration(math.MaxInt64)
 	}
+	if jittered < 1 {
+		// The mirror of the overflow clamp: a positive interval below the
+		// nanosecond, jittered downward, floors to zero on conversion — a
+		// timer that fires immediately, every cycle. A positive request
+		// stays positive.
+		return time.Nanosecond
+	}
 	return time.Duration(jittered)
 }
