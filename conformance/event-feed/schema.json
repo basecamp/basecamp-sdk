@@ -283,26 +283,31 @@
         "confirmationDeadlineMs": {
           "type": "integer",
           "minimum": 1,
+          "maximum": 315576000000,
           "description": "Default 10000."
         },
         "repairPollBaseMs": {
           "type": "integer",
           "minimum": 1,
+          "maximum": 315576000000,
           "description": "Repair interval base. Default 60000, ±20% jitter per cycle. Override large to keep repair-poll out of an advance window."
         },
         "backoffBaseMs": {
           "type": "integer",
           "minimum": 1,
+          "maximum": 315576000000,
           "description": "Reconnect/poll-retry full-jitter base. Default 1000."
         },
         "backoffCapMs": {
           "type": "integer",
           "minimum": 1,
+          "maximum": 315576000000,
           "description": "Local jitter-draw cap. Default 60000. Server-directed Retry-After is exempt per §7."
         },
         "stalenessMs": {
           "type": "integer",
           "minimum": 1,
+          "maximum": 315576000000,
           "description": "Default 7500. Override large when a scenario advances virtual time without scripting frames."
         },
         "liveBufferCapacity": {
@@ -1209,7 +1214,9 @@
       "properties": {
         "ms": {
           "type": "integer",
-          "minimum": 1
+          "minimum": 1,
+          "maximum": 315576000000,
+          "description": "Every ms field in this schema shares this maximum: 10 virtual years, a DOMAIN bound (scripts age tickets by minutes to days) chosen over the representation-derived 9223372036854 because the schema states what a script can mean, not one language's integer layout. It sits ~29× under the int64-nanosecond overflow line, so no conforming driver's duration representation can overflow — one past that line, a naive ms-to-duration multiply goes negative and an accepted advance would silently REWIND virtual time. Drivers enforce the range at load."
         }
       }
     },
@@ -1235,11 +1242,13 @@
           "properties": {
             "min": {
               "type": "integer",
-              "minimum": 0
+              "minimum": 0,
+              "maximum": 315576000000
             },
             "max": {
               "type": "integer",
-              "minimum": 0
+              "minimum": 0,
+              "maximum": 315576000000
             }
           }
         }
