@@ -49,6 +49,12 @@ func TestCheckCableURL_RefusesAsPolicy(t *testing.T) {
 		{"control character", "wss://h\x00st/cable"},
 		{"empty host", "wss:///cable"},
 		{"empty", ""},
+		// A fragment is never part of a request target, so a mint that put
+		// routing or ticket data there composed a URL the dial cannot honor
+		// — permanently, like every policy case: a fresh mint returns the
+		// same URL.
+		{"fragment", "wss://28.cable.basecamp.com/cable#ticket=t-1"},
+		{"bare fragment on ws localhost", "ws://localhost:28080/cable#x"},
 		// A port-only or userinfo-only authority parses with a NONEMPTY
 		// url.Host (":443", "user@") and an EMPTY hostname. The dial can only
 		// fail, and it fails as an ordinary transient — so the connector would
@@ -332,6 +338,7 @@ func TestCheckCableURL_NeverEchoesServerText(t *testing.T) {
 	for _, tc := range []struct{ name, url, secret string }{
 		{"ticket as scheme", "t-sekrit-99://28.cable.basecamp.com/cable?ticket=t-sekrit-99", "sekrit"},
 		{"numeric ticket as port", "wss://28.cable.basecamp.com:987654321/cable?ticket=987654321", "987654321"},
+		{"ticket in the fragment", "wss://28.cable.basecamp.com/cable#ticket=sekrit-fragment", "sekrit-fragment"},
 	} {
 		derr := checkCableURL(tc.url)
 		if derr == nil {
@@ -372,5 +379,28 @@ func TestDialFailure_RendersOnlyStandardStatuses(t *testing.T) {
 	}
 	if got := dialFailure(base, nil).Error(); strings.Contains(got, "answered") {
 		t.Errorf("no response, but the rendering claims one: %q", got)
+	}
+}
+
+// TestWebSocketTransport_RedirectWithoutLocationIsPolicy: a 3xx with no
+// Location never invokes CheckRedirect — net/http returns the response as a
+// normal answer — so the sentinel path cannot see it, and the fallback
+// classified it DialTransient: an endless re-mint cycle against an endpoint
+// that will redirect forever. The status itself names the class.
+func TestWebSocketTransport_RedirectWithoutLocationIsPolicy(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusFound) // 302, deliberately no Location
+	}))
+	defer srv.Close()
+	_, err := (&WebSocketTransport{}).Dial(context.Background(), "ws"+strings.TrimPrefix(srv.URL, "http")+"/cable?ticket=sekrit-ticket-value", 1<<20)
+	if err == nil {
+		t.Fatal("dial succeeded against a bare 302, want a policy refusal")
+	}
+	var derr *DialError
+	if !errors.As(err, &derr) || derr.Kind != DialPolicy {
+		t.Fatalf("dial error = %v (kind %v), want DialPolicy — a redirect is permanent, with or without a Location", err, derr.Kind)
+	}
+	if strings.Contains(err.Error(), "sekrit") {
+		t.Errorf("dial error %q carries the ticket", err)
 	}
 }
