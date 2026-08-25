@@ -352,6 +352,21 @@ func runTransportContract(t *testing.T, newHarness func(t *testing.T) contractHa
 		}
 	})
 
+	t.Run("the usage refusal outranks a done context", func(t *testing.T) {
+		// The real transport checks the limit before anything else, ctx
+		// included, so a configuration bug surfaces as itself. A harness
+		// that orders ctx first would report context.Canceled for a dial
+		// the transport would never have attempted.
+		h := newHarness(t)
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+		_, _, err := h.Dial(ctx, "/cable?ticket=t-1", 0)
+		var terr *eventfeed.TerminalError
+		if !errors.As(err, &terr) || terr.Reason != eventfeed.ReasonUsage {
+			t.Errorf("Dial(done ctx, limit 0) = %v, want the usage refusal, not the cancellation", err)
+		}
+	})
+
 	t.Run("a done context fails dial promptly", func(t *testing.T) {
 		h := newHarness(t)
 		ctx, cancel := context.WithCancel(context.Background())

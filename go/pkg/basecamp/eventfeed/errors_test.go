@@ -222,3 +222,14 @@ func TestSeamErrors_RenderingsAreBounded(t *testing.T) {
 		}
 	}
 }
+
+// TestPollError_RenderingOmitsLocationOrigin pins the data-not-rendering
+// line on the redirect field: a hostile redirect can reflect the caller's
+// bearer into a host label, so the origin is readable data on the error and
+// never part of any rendering.
+func TestPollError_RenderingOmitsLocationOrigin(t *testing.T) {
+	e := &PollError{Kind: PollRedirectRefused, LocationOrigin: "https://sekrit-bearer.invalid"}
+	if strings.Contains(e.Error(), "sekrit-bearer") {
+		t.Errorf("Error() = %q renders LocationOrigin", e.Error())
+	}
+}
