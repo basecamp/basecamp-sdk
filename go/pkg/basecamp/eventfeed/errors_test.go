@@ -179,19 +179,15 @@ func TestDialError_MessageIsBounded(t *testing.T) {
 
 // TestSeamErrors_RenderingsAreBounded closes the class the DialError case
 // above opened: every seam error that composes server-derived text —
-// TerminalError (a filter-invalid message, a continuation's scheme or
-// origin), MintError (a TicketMinter's cause), PollError (the server's
-// message verbatim) — renders under §9's cap. The TerminalError case goes in
-// through checkContinuation so the unbounded input is the real one: a `next`
-// URL whose scheme url.Parse does not bound.
+// TerminalError (the poll lane's filter-invalid message is preserved
+// verbatim per §23), MintError (a TicketMinter's cause), PollError (the
+// server's message verbatim) — renders under §9's cap.
+// checkContinuation's rejections no longer appear here because they no
+// longer carry an unbounded input at all: the messages are a closed
+// vocabulary, pinned by TestCheckContinuation_RejectionsNeverEchoTheURL.
 func TestSeamErrors_RenderingsAreBounded(t *testing.T) {
 	long := strings.Repeat("a", 2*maxErrorMessageBytes)
-	fromContinuation := checkContinuation("https://3.basecampapi.com", long+"://host/next")
-	if fromContinuation == nil {
-		t.Fatal("checkContinuation accepted a non-http(s) scheme")
-	}
 	for _, err := range []error{
-		fromContinuation,
 		&TerminalError{Reason: ReasonFilterInvalid, Msg: long},
 		&MintError{Kind: MintUnrecoverable, Err: errors.New(long)},
 		&PollError{Kind: PollFilterInvalid, Msg: long},

@@ -3632,7 +3632,10 @@ downgrade (HTTPS → HTTP) — the same rule, for the same reason, as §8's pagi
 rejection: a cross-origin or downgraded URL in a response body must never redirect an
 authenticated request (SSRF and token leakage). A URL that fails validation is
 Terminal(`invalid_continuation`) — no request is issued to the failing URL, and the
-rejected URL is carried redacted (origin only) in the error. There is no retry and no
+error names only the violation class: no component of the rejected URL is rendered,
+because a hostile server can reflect the caller's bearer into any of them (a host
+label, a scheme), and observer copies of URLs already render only the configured
+origin or a fixed placeholder. There is no retry and no
 handler for this condition: a hostile continuation is not an operable feed state.
 
 **Prevalidation does not cover redirects, so the poll seam must.** The underlying HTTP
