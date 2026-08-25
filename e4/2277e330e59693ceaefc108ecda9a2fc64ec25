@@ -1,0 +1,21 @@
+go/pkg/basecamp/eventfeed/scenario_fixture_test.go
+  s_1c9d086ab67253::t_e4b372fb655cfe 44-48,191,200-201,244,248-252,497
+go/pkg/basecamp/eventfeed/scenario_harness_test.go
+  s_1c9d086ab67253::t_a76feb768c9992 753
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "e42277e330e59693ceaefc108ecda9a2fc64ec25",
+  "prompts": {},
+  "sessions": {
+    "s_1c9d086ab67253": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1f5628ec-50ac-4d8d-a2cc-cee5b0112903",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
