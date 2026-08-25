@@ -1626,3 +1626,99 @@ func TestPanicInHostCodeDisposesTheLiveAttempt(t *testing.T) {
 	assertTimers(t, h.clock, map[string]int{})
 	assertGoroutinesSettle(t, base)
 }
+
+// TestPanicMidHandshakeStopsThePhaseTimer: the panic-disposal fix closed the
+// socket, joined the pump, and stopped staleness — but handed disposal a nil
+// deadline, so a phase timer active at the panic (here the handshake
+// deadline, armed through Observer.Connected) stayed registered. With the
+// product clock seam that is an outstanding timer contaminating the host's
+// clock indefinitely; the attempt must retain its active phase timer so
+// panic unwinding can stop it.
+func TestPanicMidHandshakeStopsThePhaseTimer(t *testing.T) {
+	h := newHarness(t, eventfeed.WithObserver(eventfeed.Observer{
+		Connected: func() { panic("host code panicked mid-handshake") },
+	}))
+	h.minter.ScriptTicket(ticket(1))
+	base := runtime.NumGoroutine()
+	recovered := make(chan any, 1)
+	go func() {
+		defer func() { recovered <- recover() }()
+		for range h.conn.Events(context.Background()) {
+		}
+	}()
+
+	select {
+	case r := <-recovered:
+		if r == nil {
+			t.Fatal("the panic did not propagate out of the iteration")
+		}
+	case <-time.After(watchdog):
+		t.Fatal("the iteration neither panicked nor returned")
+	}
+	if sock := h.tr.LastConn(); sock == nil || !sock.Closed() {
+		t.Fatal("the live socket was not disposed during panic unwinding")
+	}
+	assertTimers(t, h.clock, map[string]int{})
+	assertGoroutinesSettle(t, base)
+}
+
+// TestCloseFromSignalObserverSkipsTheHandler: BufferOverflow and Gap each
+// fire an observability callback before their semantic handler, and Close is
+// supported from every observer callback — runCtx is then already cancelled
+// when the callback returns, and dispatching the handler anyway runs host
+// code (which may block indefinitely) after Close returned, keeping the
+// iteration and Wait from terminating. The Closed edge wins between the
+// callback and the dispatch.
+func TestCloseFromSignalObserverSkipsTheHandler(t *testing.T) {
+	t.Run("buffer overflow", func(t *testing.T) {
+		var invoked atomic.Bool
+		var h *harness
+		h = newHarness(t,
+			eventfeed.WithLiveBufferCapacity(1),
+			eventfeed.WithObserver(eventfeed.Observer{
+				BufferOverflow: func(int) { h.conn.Close() }, //nolint:errcheck // asserted below
+			}),
+			eventfeed.WithSignalHandler(func(eventfeed.Signal) eventfeed.Disposition {
+				invoked.Store(true)
+				return eventfeed.Accept
+			}))
+		h.minter.ScriptTicket(ticket(1))
+		h.start()
+
+		conn := h.driveToSubscribed()
+		conn.Serve(frameMessage(noFilterIdentifier, 101))
+		conn.Serve(frameMessage(noFilterIdentifier, 102))
+		h.join()
+		if invoked.Load() {
+			t.Fatal("the signal handler ran after Close returned from Observer.BufferOverflow")
+		}
+		if _, terminal, elements := h.snapshot(); terminal != nil || elements != 0 {
+			t.Fatalf("clean close: got %d elements, terminal %v", elements, terminal)
+		}
+	})
+	t.Run("feed gap", func(t *testing.T) {
+		var invoked atomic.Bool
+		var h *harness
+		h = newHarness(t,
+			eventfeed.WithObserver(eventfeed.Observer{
+				Gap: func(int64, string) { h.conn.Close() }, //nolint:errcheck // asserted below
+			}),
+			eventfeed.WithSignalHandler(func(eventfeed.Signal) eventfeed.Disposition {
+				invoked.Store(true)
+				return eventfeed.Terminate
+			}))
+		h.minter.ScriptTicket(ticket(1))
+		h.polls.ScriptError(&eventfeed.PollError{Kind: eventfeed.PollGone, EpochAfterID: 50, ResumeURL: testOrigin + "/999/events.json?since=now"})
+		h.start()
+
+		conn := h.driveToSubscribed()
+		conn.Serve(frameConfirm(noFilterIdentifier))
+		h.join()
+		if invoked.Load() {
+			t.Fatal("the signal handler ran after Close returned from Observer.Gap")
+		}
+		if _, terminal, elements := h.snapshot(); terminal != nil || elements != 0 {
+			t.Fatalf("clean close: got %d elements, terminal %v", elements, terminal)
+		}
+	})
+}
