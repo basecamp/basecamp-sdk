@@ -164,6 +164,19 @@ func (t *WebSocketTransport) Dial(ctx context.Context, wsURL string, maxFrameByt
 			// redirect target, which can carry the ticket too.
 			return nil, &DialError{Kind: DialPolicy, Reason: "cable URL redirected; redirects are refused"}
 		}
+		if resp != nil && resp.StatusCode >= 300 && resp.StatusCode < 400 {
+			// A 3xx with NO Location never invokes CheckRedirect — net/http
+			// hands it back as a normal answer — so the sentinel above
+			// cannot see it. It is still the redirect class, and permanence
+			// is what decides the kind: a fresh mint returns the same
+			// redirecting endpoint, so transient would re-mint forever. (A
+			// 3xx whose Location fails to PARSE errors inside net/http
+			// before CheckRedirect, untyped and with no response retained;
+			// classifying it would take message-text matching, which the
+			// closed vocabulary forbids — that one shape stays transient,
+			// bounded by the reconnect cycle.)
+			return nil, &DialError{Kind: DialPolicy, Reason: "cable URL redirected; redirects are refused"}
+		}
 		return nil, &DialError{Kind: DialTransient, Err: dialFailure(err, resp)}
 	}
 	if negotiated := conn.Subprotocol(); !strings.EqualFold(negotiated, cableSubprotocol) {
