@@ -1,0 +1,21 @@
+go/pkg/basecamp/eventfeed/checkpoint.go
+  s_1c9d086ab67253::t_a8001e78b5900c 7,94-109
+go/pkg/basecamp/eventfeed/continuation_test.go
+  s_1c9d086ab67253::t_581f56f40f781c 25-28,131-161
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "f3921a4e590bae36087be6dcd748e1c38855b4ab",
+  "prompts": {},
+  "sessions": {
+    "s_1c9d086ab67253": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1f5628ec-50ac-4d8d-a2cc-cee5b0112903",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
