@@ -14,6 +14,7 @@ import (
 	"crypto/sha1"
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"net"
 	"net/http"
 	"net/http/cookiejar"
@@ -444,6 +445,47 @@ func TestWebSocketTransport_RejectsUnnegotiatedSubprotocol(t *testing.T) {
 	if err := awaitPeerRead(t, peer); err == nil {
 		t.Error("the refused connection was left open, want it torn down")
 	}
+}
+
+// TestWebSocketTransport_RejectsWrongCaseSubprotocol pins that negotiation is
+// case-SENSITIVE: RFC 6455 subprotocol tokens are exact, so a server
+// selecting "ActionCable-V1-Json" selected a protocol this client never
+// offered. A case-folded compare would expose the connection anyway. The
+// server side is a raw upgrade handler, since a conforming library will not
+// select an unoffered spelling.
+func TestWebSocketTransport_RejectsWrongCaseSubprotocol(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		key := r.Header.Get("Sec-WebSocket-Key")
+		h := sha1.Sum([]byte(key + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"))
+		hj, ok := w.(http.Hijacker)
+		if !ok {
+			t.Error("test server cannot hijack")
+			return
+		}
+		conn, buf, err := hj.Hijack()
+		if err != nil {
+			t.Errorf("hijack: %v", err)
+			return
+		}
+		defer conn.Close()
+		fmt.Fprintf(buf, "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: %s\r\nSec-WebSocket-Protocol: ActionCable-V1-Json\r\n\r\n", base64.StdEncoding.EncodeToString(h[:]))
+		_ = buf.Flush()
+		// Park until the client tears down.
+		_, _ = buf.Read(make([]byte, 1))
+	}))
+	defer srv.Close()
+
+	tr := &eventfeed.WebSocketTransport{}
+	wsURL := "ws" + strings.TrimPrefix(srv.URL, "http") + "/cable?ticket=sekrit-ticket-value"
+	conn, err := tr.Dial(context.Background(), wsURL, 1<<20)
+	if conn != nil {
+		_ = conn.Close(1000, "")
+		t.Fatal("dial returned a connection although the server selected an unoffered spelling")
+	}
+	if err == nil {
+		t.Fatal("dial succeeded, want a refusal")
+	}
+	assertNoTicket(t, err)
 }
 
 // TestWebSocketTransport_UppercaseSchemeDials pins the pairing between the

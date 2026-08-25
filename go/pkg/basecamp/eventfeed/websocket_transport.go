@@ -8,7 +8,6 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"strings"
 	"sync"
 	"time"
 
@@ -200,7 +199,10 @@ func (t *WebSocketTransport) Dial(ctx context.Context, wsURL string, maxFrameByt
 		}
 		return nil, &DialError{Kind: DialTransient, Err: dialFailure(err, resp)}
 	}
-	if negotiated := conn.Subprotocol(); !strings.EqualFold(negotiated, cableSubprotocol) {
+	// Exact equality: RFC 6455 subprotocol tokens are case-sensitive, and a
+	// case-folded match would treat a protocol this client never offered
+	// (say "ActionCable-V1-Json") as successfully negotiated.
+	if negotiated := conn.Subprotocol(); negotiated != cableSubprotocol {
 		// coder/websocket verifies the server's selection only when it made
 		// one: verifySubprotocol (dial.go) returns nil for an ABSENT
 		// Sec-WebSocket-Protocol, so a 101 that selected nothing arrives here
