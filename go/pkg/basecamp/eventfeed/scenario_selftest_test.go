@@ -412,6 +412,26 @@ func TestScenarioDriverRejectsUnmodelledScripts(t *testing.T) {
 			wants:  "exceeds max",
 		},
 		{
+			// The schema's shared ms maximum, driver-enforced: one past Go's
+			// int64-nanosecond line, time.Duration(ms)*time.Millisecond goes
+			// NEGATIVE and an accepted advance would REWIND virtual time. The
+			// bound is checked at load so the overflow is a fixture error in
+			// every driver, not a representation accident in one.
+			name:   "advance ms beyond the 10-virtual-year maximum",
+			script: `{"name":"x","description":"d","steps":[{"advance":{"ms":9223372036855}}],"finally":{"state":"closed"}}`,
+			wants:  "10 virtual years",
+		},
+		{
+			name:   "fireTimer envelope beyond the 10-virtual-year maximum",
+			script: `{"name":"x","description":"d","steps":[{"fireTimer":{"kind":"backoff","assertDelayMs":{"min":0,"max":9223372036855}}}],"finally":{"state":"closed"}}`,
+			wants:  "10 virtual years",
+		},
+		{
+			name:   "config stalenessMs beyond the 10-virtual-year maximum",
+			script: `{"name":"x","description":"d","config":{"stalenessMs":9223372036855},"steps":[{"advance":{"ms":1}}],"finally":{"state":"closed"}}`,
+			wants:  "10 virtual years",
+		},
+		{
 			name:   "droppedCount disagreeing with droppedIds",
 			script: `{"name":"x","description":"d","steps":[{"expectSignal":{"kind":"bufferOverflow","droppedIds":[1],"droppedCount":2}}],"finally":{"state":"closed"}}`,
 			wants:  "disagrees with",

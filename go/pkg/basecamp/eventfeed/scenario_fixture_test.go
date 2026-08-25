@@ -230,6 +230,29 @@ type expectPositionRejectedStep struct {
 
 // --- loading -------------------------------------------------------------
 
+// maxScenarioMs is the schema's shared `maximum` for every ms field: 10
+// virtual years. It is a DOMAIN bound — scripts age tickets by minutes to
+// days, so the largest value today (~11 days) has 300× headroom — chosen over
+// the representation-derived 9,223,372,036,854 (the largest ms count whose
+// int64-nanosecond product does not overflow) because the schema should say
+// what a script can MEAN, not restate one language's integer layout. It sits
+// ~29× under that overflow line, so no conforming driver's duration
+// representation can overflow — the failure this bound exists to make a
+// fixture error rather than a representation accident: one past the int64
+// line, time.Duration(ms)*time.Millisecond goes negative and an accepted
+// advance would silently REWIND virtual time.
+const maxScenarioMs = 315_576_000_000
+
+// checkScenarioMs enforces the schema's [floor, maxScenarioMs] range on one
+// ms field at load, so every driver rejects the same values for the same
+// stated reason.
+func checkScenarioMs(what string, v, floor int) error {
+	if v < floor || v > maxScenarioMs {
+		return fmt.Errorf("%s must be in [%d, %d] (10 virtual years): got %d", what, floor, maxScenarioMs, v)
+	}
+	return nil
+}
+
 // parseScenario decodes one substituted fixture, failing on anything the
 // driver does not model.
 func parseScenario(raw []byte, file string) (*scenario, error) {
@@ -361,14 +384,25 @@ func decodeDirective(kind string, body json.RawMessage) (any, error) {
 		return &expectClientCloseStep{}, decodeStrict(body, &empty)
 	case "advance":
 		step := &advanceStep{}
-		return step, decodeStrict(body, step)
+		if err := decodeStrict(body, step); err != nil {
+			return nil, err
+		}
+		return step, checkScenarioMs("advance ms", step.Ms, 1)
 	case "fireTimer":
 		step := &fireTimerStep{}
 		if err := decodeStrict(body, step); err != nil {
 			return nil, err
 		}
-		if step.AssertDelayMs != nil && step.AssertDelayMs.Min > step.AssertDelayMs.Max {
-			return nil, fmt.Errorf("assertDelayMs min %d exceeds max %d", step.AssertDelayMs.Min, step.AssertDelayMs.Max)
+		if step.AssertDelayMs != nil {
+			if step.AssertDelayMs.Min > step.AssertDelayMs.Max {
+				return nil, fmt.Errorf("assertDelayMs min %d exceeds max %d", step.AssertDelayMs.Min, step.AssertDelayMs.Max)
+			}
+			if err := checkScenarioMs("assertDelayMs min", step.AssertDelayMs.Min, 0); err != nil {
+				return nil, err
+			}
+			if err := checkScenarioMs("assertDelayMs max", step.AssertDelayMs.Max, 0); err != nil {
+				return nil, err
+			}
 		}
 		return step, validateTimerKind(step.Kind)
 	case "expectDelivered":
@@ -454,6 +488,21 @@ type (
 // --- validation ----------------------------------------------------------
 
 func validateConfig(cfg scenarioConfig) error {
+	// Absent decodes as 0 and means "default", so only set values are ranged.
+	for _, f := range []struct {
+		name string
+		v    int
+	}{
+		{"confirmationDeadlineMs", cfg.ConfirmationDeadlineMs},
+		{"repairPollBaseMs", cfg.RepairPollBaseMs},
+		{"stalenessMs", cfg.StalenessMs},
+	} {
+		if f.v != 0 {
+			if err := checkScenarioMs(f.name, f.v, 1); err != nil {
+				return err
+			}
+		}
+	}
 	if cfg.BackoffBaseMs != 0 || cfg.BackoffCapMs != 0 {
 		return fmt.Errorf("backoffBaseMs/backoffCapMs are not modeled: SPEC §23 pins the Go connector's full-jitter base and cap as constants, with no construction option to override")
 	}
