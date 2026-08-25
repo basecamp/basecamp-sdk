@@ -10,6 +10,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"unicode/utf8"
@@ -560,6 +561,14 @@ func (s *FileCheckpointStore) writeAtomic(data []byte) error {
 	// replacement durable rather than merely atomic. A failure here reports
 	// Failed — the data file is already renamed, and a retried save rewrites
 	// the same content, so the caller loses nothing but the certainty.
+	//
+	// Not on Windows: FlushFileBuffers rejects directory handles, so the
+	// sync would turn EVERY successful replacement into a reported failure.
+	// NTFS's rename metadata is journaled without an explicit directory
+	// flush; the file-content Sync above still ran everywhere.
+	if runtime.GOOS == "windows" {
+		return nil
+	}
 	dirf, err := os.Open(dir) // #nosec G703 -- store path is caller-configured
 	if err != nil {
 		return fmt.Errorf("eventfeed: opening checkpoint store directory %s to sync it: %w", dir, err)
