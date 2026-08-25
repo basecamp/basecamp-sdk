@@ -3377,7 +3377,7 @@ Two dispatch clarifications, pinned:
   closes the count: a frame lives in the hand-off queue (≤ pump depth), in the live
   buffer (≤ `EVENT_FEED_LIVE_BUFFER_CAPACITY`), in the single deferral slot (≤ 1), or in
   the hands of one of the exactly two goroutines that touch frames. The pump's hand
-  holds one frame. The state machine's holds up to THREE frame-sized allocations at
+  holds one frame. The state machine holds up to THREE frame-sized allocations at
   once, and three is not a discovered constant but the decode chain's REPRESENTATION
   COUNT: a message frame exists as the wire bytes, as `parseFrame`'s `json.RawMessage`
   payload copy, and as the decoded `Event`'s strings — each step's output allocated
