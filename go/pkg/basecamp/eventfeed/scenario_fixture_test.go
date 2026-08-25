@@ -41,19 +41,42 @@ type scenarioConfig struct {
 	Buckets  []int64  `json:"buckets"`
 	Creators []int64  `json:"creators"`
 	Position string   `json:"position"`
-	// The five durations are POINTERS because presence is meaning: the
-	// schema says minimum 1, and a plain int64 read an explicit zero as
-	// "absent, use the default" — accepting a value the schema rejects and
-	// silently substituting another.
-	ConfirmationDeadlineMs *int64            `json:"confirmationDeadlineMs"`
-	RepairPollBaseMs       *int64            `json:"repairPollBaseMs"`
-	BackoffBaseMs          *int64            `json:"backoffBaseMs"`
-	BackoffCapMs           *int64            `json:"backoffCapMs"`
-	StalenessMs            *int64            `json:"stalenessMs"`
+	// The five durations are THREE-STATE because presence is meaning twice
+	// over: a plain int64 read an explicit zero as "absent, use the
+	// default", and a pointer read an explicit JSON null the same way —
+	// each accepting a value the schema rejects ("minimum": 1 for zero,
+	// "type": "integer" for null) and silently substituting another. The
+	// driver enforces the schema's judgments portably, so all three states
+	// the wire distinguishes are preserved: absent, null, and value.
+	ConfirmationDeadlineMs optionalMs        `json:"confirmationDeadlineMs"`
+	RepairPollBaseMs       optionalMs        `json:"repairPollBaseMs"`
+	BackoffBaseMs          optionalMs        `json:"backoffBaseMs"`
+	BackoffCapMs           optionalMs        `json:"backoffCapMs"`
+	StalenessMs            optionalMs        `json:"stalenessMs"`
 	LiveBufferCapacity     int               `json:"liveBufferCapacity"`
 	DedupeCapacity         int               `json:"dedupeCapacity"`
 	SignalDisposition      map[string]string `json:"signalDisposition"`
 	CheckpointStore        *storeScript      `json:"checkpointStore"`
+}
+
+// optionalMs is one config duration in the three JSON states the schema
+// distinguishes: absent (the zero optionalMs — use the default), JSON null
+// (set, null — rejected, "type": "integer" refuses it), and a value (set,
+// ranged). encoding/json calls a value type's UnmarshalJSON for null where it
+// short-circuits a pointer's, which is exactly why this is not a *int64.
+type optionalMs struct {
+	set  bool
+	null bool
+	v    int64
+}
+
+func (o *optionalMs) UnmarshalJSON(data []byte) error {
+	o.set = true
+	if string(data) == "null" {
+		o.null = true
+		return nil
+	}
+	return json.Unmarshal(data, &o.v)
 }
 
 // storeScript is the schema's scripted CheckpointStore.
@@ -533,23 +556,27 @@ type (
 // --- validation ----------------------------------------------------------
 
 func validateConfig(cfg scenarioConfig) error {
-	// A nil pointer is absence and means "default"; every SUPPLIED value is
-	// ranged, explicit zero included.
+	// Absence means "default"; everything SUPPLIED is judged — a value is
+	// ranged (explicit zero included) and null is refused outright.
 	for _, f := range []struct {
 		name string
-		v    *int64
+		o    optionalMs
 	}{
 		{"confirmationDeadlineMs", cfg.ConfirmationDeadlineMs},
 		{"repairPollBaseMs", cfg.RepairPollBaseMs},
 		{"stalenessMs", cfg.StalenessMs},
 	} {
-		if f.v != nil {
-			if err := checkScenarioMs(f.name, *f.v, 1); err != nil {
+		switch {
+		case !f.o.set:
+		case f.o.null:
+			return fmt.Errorf("%s supplied as JSON null: the schema's type is integer and null is not one — omit the key for the default", f.name)
+		default:
+			if err := checkScenarioMs(f.name, f.o.v, 1); err != nil {
 				return err
 			}
 		}
 	}
-	if cfg.BackoffBaseMs != nil || cfg.BackoffCapMs != nil {
+	if cfg.BackoffBaseMs.set || cfg.BackoffCapMs.set {
 		return fmt.Errorf("backoffBaseMs/backoffCapMs are not modeled: SPEC §23 pins the Go connector's full-jitter base and cap as constants, with no construction option to override")
 	}
 	for kind, disposition := range cfg.SignalDisposition {

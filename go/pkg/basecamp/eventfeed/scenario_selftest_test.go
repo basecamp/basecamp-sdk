@@ -458,6 +458,34 @@ func TestScenarioDriverRejectsUnmodelledScripts(t *testing.T) {
 			wants:  "not modeled",
 		},
 		{
+			// Explicit null is the presence saga's second act: *int64 read
+			// {"stalenessMs":null} and omission both as nil, silently
+			// defaulting a value the schema's "type": "integer" rejects.
+			name:   "config stalenessMs explicit null",
+			script: `{"name":"x","description":"d","config":{"stalenessMs":null},"steps":[{"advance":{"ms":1}}],"finally":{"state":"closed"}}`,
+			wants:  "supplied as JSON null",
+		},
+		{
+			name:   "config confirmationDeadlineMs explicit null",
+			script: `{"name":"x","description":"d","config":{"confirmationDeadlineMs":null},"steps":[{"advance":{"ms":1}}],"finally":{"state":"closed"}}`,
+			wants:  "supplied as JSON null",
+		},
+		{
+			name:   "config repairPollBaseMs explicit null",
+			script: `{"name":"x","description":"d","config":{"repairPollBaseMs":null},"steps":[{"advance":{"ms":1}}],"finally":{"state":"closed"}}`,
+			wants:  "supplied as JSON null",
+		},
+		{
+			name:   "config backoffBaseMs explicit null",
+			script: `{"name":"x","description":"d","config":{"backoffBaseMs":null},"steps":[{"advance":{"ms":1}}],"finally":{"state":"closed"}}`,
+			wants:  "not modeled",
+		},
+		{
+			name:   "config backoffCapMs explicit null",
+			script: `{"name":"x","description":"d","config":{"backoffCapMs":null},"steps":[{"advance":{"ms":1}}],"finally":{"state":"closed"}}`,
+			wants:  "not modeled",
+		},
+		{
 			// An advance is deterministic only from a scripted rendezvous:
 			// an action's completion can precede the timer arms its
 			// transition causes (expectConnect returns when the dial is
