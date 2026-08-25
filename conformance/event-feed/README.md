@@ -191,7 +191,14 @@ schedule, accepted with time moved past a deadline about to arm on another.
 The rendezvous is authored, not guessed: every `advance` must be the
 scenario's first step or immediately follow `expectTimers`, whose exact-set
 match is the settle (the per-state exact-set invariants are what make a match
-mean settled), and drivers enforce the adjacency at fixture load.
+mean settled), and drivers enforce the adjacency at fixture load — rejecting an
+empty rendezvous set with it, since a set with no timers cannot contain an arm
+of the preceding transition and so matches before that transition is processed.
+The limit the load rule cannot close is authored judgment: the scripted set
+must include at least one timer the preceding transition ARMS, and a
+transition that only rearms a timer of the same kind and count is invisible to
+set matching — a script that would advance behind one writes `fireTimer`
+instead.
 
 ## Contract notes the fixtures encode (SDK-owned, final)
 
