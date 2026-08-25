@@ -1,0 +1,19 @@
+go/pkg/basecamp/eventfeed/seams.go
+  s_1c9d086ab67253::t_9c320379562750 376-385,387-388,393-398,403-408
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "ba39a3e29c2a62922b1898b11b1bad2e47f0a85a",
+  "prompts": {},
+  "sessions": {
+    "s_1c9d086ab67253": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1f5628ec-50ac-4d8d-a2cc-cee5b0112903",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
