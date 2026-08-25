@@ -327,6 +327,29 @@ func TestFileCheckpointStore_SaveRefusesInvalidUTF8(t *testing.T) {
 	}
 }
 
+// Load is the read-side sibling of Save's input gate: FlatKey encodes an
+// invalid key component to U+FFFD silently, and "open\xffclaw" then MATCHES
+// a lineage legitimately saved under "open\uFFFDclaw" — another consumer's
+// cursor returned for a key that was never valid. The caller's invalid
+// input is the caller's bug: the usage verdict, before any lookup.
+func TestFileCheckpointStore_LoadRefusesInvalidUTF8Keys(t *testing.T) {
+	path := storePath(t)
+	// A legitimate lineage whose namespace really contains U+FFFD.
+	legit := storeKey("open\uFFFDclaw")
+	if err := NewFileCheckpointStore(path).Save(context.Background(), legit, "pos-other-consumer"); err != nil {
+		t.Fatalf("seeding the U+FFFD lineage: %v", err)
+	}
+	bad := storeKey("open\xffclaw")
+	position, ok, err := NewFileCheckpointStore(path).Load(context.Background(), bad)
+	if err == nil {
+		t.Fatalf("Load(invalid UTF-8 key) = (%q, %v, nil), want a usage refusal — that position belongs to another lineage", position, ok)
+	}
+	var terr *TerminalError
+	if !errors.As(err, &terr) || terr.Reason != ReasonUsage {
+		t.Fatalf("Load(invalid UTF-8 key) = %v, want a usage refusal", err)
+	}
+}
+
 // A position survives a fresh store instance over the same path: the point of
 // the store is durability across runs, not within one.
 func TestFileCheckpointStore_RoundTripAcrossInstances(t *testing.T) {

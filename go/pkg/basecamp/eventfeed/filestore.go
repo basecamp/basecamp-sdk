@@ -38,11 +38,16 @@ import (
 //
 // Writes are temp-file-plus-rename within the store's own directory, so a
 // concurrent reader sees either the complete previous file or the complete new
-// one, never a torn write, and a crash mid-write leaves the previous file
-// intact. There is no fsync: a checkpoint is advisory — the connector's
-// in-memory position is authoritative within a run and the store is
-// write-through durability only — so a position lost to an OS-level crash
-// costs a re-entry at the present or at an older position, never correctness.
+// one, never a torn write — and the staged file is fsynced before the rename,
+// the directory after it, because without that pair the claim above is false
+// on real filesystems: a crash can persist the rename's metadata before the
+// staged data blocks, leaving a zero-length or garbage file where BOTH
+// versions used to be. That outcome is not the priced one. A position lost to
+// a crash costs a re-entry at an older position or the present — the store is
+// write-through and advisory, the in-memory position authoritative within a
+// run — but a TORN file fails the next Load, which is Terminal(checkpoint_load)
+// with zero wire attempts: a feed that will not start, over a file whose whole
+// job was surviving the crash. The cost is two fsyncs per accepted poll page.
 // The file is written 0600 in a directory created 0700 on demand; a checkpoint
 // is not a secret, but this file commonly sits beside token caches and there is
 // no reason for it to be wider than they are.
@@ -216,6 +221,21 @@ func canonicalStorePath(path string) string {
 // read is a single local file open, and failing it on an already-canceled
 // context would turn a shutdown race into Terminal(checkpoint_load).
 func (s *FileCheckpointStore) Load(_ context.Context, key CheckpointKey) (string, bool, error) {
+	// The read-side sibling of Save's input gate: FlatKey encodes an invalid
+	// component to U+FFFD silently, so an invalid key would MATCH a lineage
+	// legitimately saved under the replacement rune — another consumer's
+	// cursor returned for a key that was never valid. Usage, before any
+	// lookup.
+	for _, in := range []struct{ field, value string }{
+		{"checkpoint origin", key.Origin},
+		{"checkpoint account id", key.AccountID},
+		{"checkpoint consumer namespace", key.ConsumerNamespace},
+		{"checkpoint filter key", key.FilterKey},
+	} {
+		if err := checkIdentityText(in.field, in.value); err != nil {
+			return "", false, err
+		}
+	}
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -518,6 +538,13 @@ func (s *FileCheckpointStore) writeAtomic(data []byte) error {
 		_ = tmp.Close()
 		return fmt.Errorf("eventfeed: writing the staged checkpoint store for %s: %w", s.path, err)
 	}
+	// Sync before rename, directory after: see the Durability section. A
+	// rename whose staged blocks never reached stable storage can outlive a
+	// crash as a zero-length file that bricks every later Load.
+	if err := tmp.Sync(); err != nil {
+		_ = tmp.Close()
+		return fmt.Errorf("eventfeed: syncing the staged checkpoint store for %s: %w", s.path, err)
+	}
 	if err := tmp.Close(); err != nil {
 		return fmt.Errorf("eventfeed: closing the staged checkpoint store for %s: %w", s.path, err)
 	}
@@ -528,6 +555,19 @@ func (s *FileCheckpointStore) writeAtomic(data []byte) error {
 	}
 	if err := os.Rename(tmpPath, target); err != nil { // #nosec G703 -- store path is caller-configured
 		return fmt.Errorf("eventfeed: replacing checkpoint store %s: %w", s.path, err)
+	}
+	// The rename itself lives in the directory; syncing it is what makes the
+	// replacement durable rather than merely atomic. A failure here reports
+	// Failed — the data file is already renamed, and a retried save rewrites
+	// the same content, so the caller loses nothing but the certainty.
+	dirf, err := os.Open(dir) // #nosec G703 -- store path is caller-configured
+	if err != nil {
+		return fmt.Errorf("eventfeed: opening checkpoint store directory %s to sync it: %w", dir, err)
+	}
+	syncErr := dirf.Sync()
+	_ = dirf.Close()
+	if syncErr != nil {
+		return fmt.Errorf("eventfeed: syncing checkpoint store directory %s: %w", dir, syncErr)
 	}
 	return nil
 }
