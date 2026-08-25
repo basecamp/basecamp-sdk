@@ -2,11 +2,14 @@ package eventfeed
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"reflect"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -329,5 +332,34 @@ func TestCheckCableURL_NeverEchoesServerText(t *testing.T) {
 		if strings.Contains(derr.Error(), tc.secret) {
 			t.Errorf("%s: rendering %q echoes %q", tc.name, derr.Error(), tc.secret)
 		}
+	}
+}
+
+// TestDialFailure_RendersOnlyStandardStatuses pins the closed set behind the
+// dial rendering's one interpolation. net/http parses any three-character
+// Atoi-parseable status line (response.go: len==3, >=0), so a hostile server
+// can answer 999 or a zero-padded 007 — integers with no HTTP meaning. Only
+// the semantically defined 100-599 renders; everything else collapses to the
+// fixed digit-free marker, so the rendering cannot carry a number the server
+// chose freely.
+func TestDialFailure_RendersOnlyStandardStatuses(t *testing.T) {
+	base := errors.New("boom")
+	for _, code := range []int{100, 403, 599} {
+		got := dialFailure(base, &http.Response{StatusCode: code}).Error()
+		if !strings.Contains(got, fmt.Sprintf("HTTP %d", code)) {
+			t.Errorf("in-range status %d not rendered: %q", code, got)
+		}
+	}
+	for _, code := range []int{7, 42, 600, 999} {
+		got := dialFailure(base, &http.Response{StatusCode: code}).Error()
+		if strings.Contains(got, strconv.Itoa(code)) {
+			t.Errorf("out-of-range status %d rendered: %q", code, got)
+		}
+		if !strings.Contains(got, "outside the standard range") {
+			t.Errorf("out-of-range status %d: %q, want the fixed marker", code, got)
+		}
+	}
+	if got := dialFailure(base, nil).Error(); strings.Contains(got, "answered") {
+		t.Errorf("no response, but the rendering claims one: %q", got)
 	}
 }
