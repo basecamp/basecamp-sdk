@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"strconv"
 	"strings"
 	"unicode/utf8"
 )
@@ -90,6 +91,22 @@ func CanonicalOrigin(origin string) (string, error) {
 		host = "[" + host + "]"
 	}
 	port := u.Port()
+	if port != "" {
+		// url.Parse guarantees digits but neither range nor spelling:
+		// ":000443" and ":99999" both parse, and Port() returns the raw
+		// text. The identity must be a function of the ORIGIN, not its
+		// spelling — a zero-padded default port must strip, and ":08443"
+		// must equal ":8443" — so the port is normalized numerically before
+		// the default-port comparison. An out-of-range port is refused
+		// outright, matching the cable-URL policy's stance: a URL naming a
+		// port no client can connect to is permanently unusable, not a
+		// distinct identity.
+		n, perr := strconv.Atoi(port)
+		if perr != nil || n < 1 || n > 65535 {
+			return "", fmt.Errorf("eventfeed: origin %q carries an unusable port", origin)
+		}
+		port = strconv.Itoa(n)
+	}
 	if (scheme == "https" && port == "443") || (scheme == "http" && port == "80") {
 		port = ""
 	}
