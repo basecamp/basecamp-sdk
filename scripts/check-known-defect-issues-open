@@ -75,12 +75,42 @@ unless File.exist?(allow_path)
   warn "ERROR: allowlist not found at #{allow_path}"
   exit 1
 end
+# YAML keeps only the LAST of duplicate mapping keys, so a second
+# `sdk_routes_known_defective:` key would REPLACE the first list — every issue
+# reference in it gone, with nothing malformed left for the shape validation
+# below to see. Psych's parse tree still holds both, so duplicates are
+# detected there, before safe_load flattens them. All mappings are walked,
+# not just the root: a duplicated key inside one entry silently drops a field
+# the same way.
+def reject_duplicate_keys!(path, text)
+  doc = Psych.parse(text)
+  return if doc.nil?
+
+  stack = [ doc.root ]
+  until stack.empty?
+    node = stack.pop
+    if node.is_a?(Psych::Nodes::Mapping)
+      dup = node.children.each_slice(2)
+                .map { |k, _| k.value if k.respond_to?(:value) }
+                .compact.tally.select { |_, n| n > 1 }.keys
+      unless dup.empty?
+        warn "ERROR: #{path} repeats mapping key(s): #{dup.join(', ')} — YAML keeps only the last, " \
+             'silently discarding the first'
+        exit 1
+      end
+    end
+    stack.concat(node.children) if node.children
+  end
+end
+
 # Psych's exception family — syntax errors, forbidden tags, aliases (which
 # safe_load refuses) — is the same fail-closed verdict as a malformed shape,
 # and gets the same treatment: the gate's own words, naming the file to fix,
 # never a psych.rb backtrace.
+allow_text = File.read(allow_path)
 begin
-  allow = YAML.safe_load(File.read(allow_path)) || {}
+  reject_duplicate_keys!(allow_path, allow_text)
+  allow = YAML.safe_load(allow_text) || {}
 rescue Psych::Exception => e
   warn "ERROR: #{allow_path} cannot be parsed as YAML: #{e.message}"
   exit 1
@@ -102,8 +132,10 @@ unless File.exist?(tracking_path)
   warn '  from one whose claims are all unverified. Restore it, or empty its list.'
   exit 1
 end
+tracking_text = File.read(tracking_path)
 begin
-  tracking = YAML.safe_load(File.read(tracking_path)) || {}
+  reject_duplicate_keys!(tracking_path, tracking_text)
+  tracking = YAML.safe_load(tracking_text) || {}
 rescue Psych::Exception => e
   warn "ERROR: #{tracking_path} cannot be parsed as YAML: #{e.message}"
   exit 1

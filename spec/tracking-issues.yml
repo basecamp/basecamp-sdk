@@ -7,9 +7,12 @@
 # it (see scripts/check-known-defect-issues-open).
 #
 # The route allowlist gets that check because its entries are structured data.
-# Prose is not, so the claims are registered here instead: one entry per
-# sentence that leans on an issue, verified OPEN by the same gate, failing
-# closed the same way.
+# Prose is not, so the claims are registered here instead — one entry per
+# [file, issue] pair, committing in `mentions` how many canonical sentences it
+# stands for — verified OPEN by the same gate, failing closed the same way.
+# (Duplicate [file, issue] rows are rejected: they would make the committed
+# count ambiguous. Several sentences in one file leaning on one issue share
+# the row and sum in its count.)
 #
 # This is deliberately a REGISTRY and not a scanner. A regex over prose for
 # "#\d+" would sweep up every historical citation — "shipped in #12380", "the
@@ -28,8 +31,9 @@
 # detector's reach by design (an open vocabulary cannot be enumerated); they
 # still go through this registry by hand, on the honor the header describes.
 #
-# Add an entry when you write a sentence promising an issue owns something.
-# Remove it when the sentence goes, and the gate stops asking.
+# Add an entry — or bump an existing row's `mentions` — when you write a
+# sentence promising an issue owns something. Decrement or remove when the
+# sentence goes, and the gate stops asking.
 prose_tracking_issues:
   - issue: 589
     file: "Makefile"

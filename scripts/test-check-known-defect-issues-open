@@ -463,6 +463,25 @@ out, status, _ = run_checker(allowlist_raw: "sdk_routes_known_defective: [unclos
 expect_fail(failures, "N+6f. unparseable allowlist YAML fails with a diagnosis", out, status,
             "cannot be parsed as YAML")
 
+# --- N+6g/h. Duplicate mapping keys fail instead of silently last-winning --------
+#
+# YAML keeps only the LAST of duplicate keys, so a second
+# `sdk_routes_known_defective:` REPLACES the first list — every issue
+# reference in it gone, with nothing malformed left for shape validation to
+# see. Psych's parse tree still holds both, so the gate looks there first.
+
+out, status, _ = run_checker(
+  allowlist_raw: "sdk_routes_known_defective:\n  - method: GET\n    path: /x\n    issue: 101\nsdk_routes_known_defective: []\n"
+)
+expect_fail(failures, "N+6g. a duplicate allowlist key fails instead of last-winning", out, status,
+            "repeats mapping key")
+
+out, status, _ = run_checker(
+  tracking_raw: "prose_tracking_issues:\n  - issue: 303\n    file: \"a.md\"\n    site: \"a gap\"\n    mentions: 0\nprose_tracking_issues: []\n"
+)
+expect_fail(failures, "N+6h. a duplicate registry key fails instead of last-winning", out, status,
+            "repeats mapping key")
+
 # --- N+7. A registry file without the key fails -----------------------------------
 #
 # The missing-FILE case (N+3) fails closed; a file whose key is misspelled or
