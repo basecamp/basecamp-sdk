@@ -897,6 +897,17 @@ type CreateScheduleEntryRequestContent struct {
 // CreateScheduleEntryResponseContent defines model for CreateScheduleEntryResponseContent.
 type CreateScheduleEntryResponseContent = ScheduleEntry
 
+// CreateTemplateLibraryCopyRequestContent defines model for CreateTemplateLibraryCopyRequestContent.
+type CreateTemplateLibraryCopyRequestContent struct {
+	// AddingPeopleConfirmed Confirm granting destination-project access to people referenced by the template.
+	AddingPeopleConfirmed *bool `json:"adding_people_confirmed,omitempty"`
+	DestinationParentId   int64 `json:"destination_parent_id"`
+	TemplateRecordingId   int64 `json:"template_recording_id"`
+}
+
+// CreateTemplateLibraryCopyResponseContent defines model for CreateTemplateLibraryCopyResponseContent.
+type CreateTemplateLibraryCopyResponseContent = TemplateLibraryCopy
+
 // CreateTemplateRequestContent defines model for CreateTemplateRequestContent.
 type CreateTemplateRequestContent struct {
 	Description *string `json:"description,omitempty"`
@@ -1746,6 +1757,12 @@ type GetSearchMetadataResponseContent = SearchMetadata
 // GetSubscriptionResponseContent defines model for GetSubscriptionResponseContent.
 type GetSubscriptionResponseContent = Subscription
 
+// GetTemplateLibraryCopyResponseContent defines model for GetTemplateLibraryCopyResponseContent.
+type GetTemplateLibraryCopyResponseContent = TemplateLibraryCopy
+
+// GetTemplateLibraryResponseContent defines model for GetTemplateLibraryResponseContent.
+type GetTemplateLibraryResponseContent = TemplateLibrary
+
 // GetTemplateResponseContent defines model for GetTemplateResponseContent.
 type GetTemplateResponseContent = Template
 
@@ -2269,6 +2286,13 @@ type OutOfOfficePerson struct {
 // PauseQuestionResponseContent defines model for PauseQuestionResponseContent.
 type PauseQuestionResponseContent struct {
 	Paused *bool `json:"paused,omitempty"`
+}
+
+// PeopleConfirmationRequiredErrorResponseContent The copy requires confirmation before granting destination-project access
+// to people referenced by the template.
+type PeopleConfirmationRequiredErrorResponseContent struct {
+	Error  string                              `json:"error"`
+	People []TemplateLibraryConfirmationPerson `json:"people"`
 }
 
 // Person defines model for Person.
@@ -3236,6 +3260,53 @@ type Template struct {
 	Status      *string    `json:"status,omitempty"`
 	UpdatedAt   time.Time  `json:"updated_at"`
 	Url         *string    `json:"url,omitempty"`
+}
+
+// TemplateLibrary defines model for TemplateLibrary.
+type TemplateLibrary struct {
+	Bucket    RecordingBucket `json:"bucket"`
+	Todolists []Todolist      `json:"todolists"`
+	Todoset   RecordingParent `json:"todoset"`
+}
+
+// TemplateLibraryConfirmationPerson defines model for TemplateLibraryConfirmationPerson.
+type TemplateLibraryConfirmationPerson struct {
+	AvatarUrl string `json:"avatar_url"`
+	Id        int64  `json:"id"`
+	Name      string `json:"name"`
+}
+
+// TemplateLibraryCopy defines model for TemplateLibraryCopy.
+type TemplateLibraryCopy struct {
+	DestinationParentId int64 `json:"destination_parent_id"`
+
+	// DestinationTodolist A to-do list, or a group inside one. There is only this shape.
+	//
+	// BC3 has no group model: a "group" is a `Todolist` whose parent is another
+	// `Todolist` (`Todolist.group?`), there is no `Todolist::Group` class, and
+	// `todolists/groups/index.json.jbuilder` and `show.json.jbuilder` both render
+	// `todolists/_todolist.json.jbuilder` — the same partial the list routes use.
+	// So a group reports `"type": "Todolist"` (the shared recording partial emits
+	// `recordable_type`) and carries `description`/`description_attachments` like
+	// any other list. Every operation that returns a list or a group returns this
+	// structure: the polymorphic GET/PUT, the todoset-scoped list, and the
+	// group list, group create and group get.
+	//
+	// Discriminate STRUCTURALLY, never on `type` — which reads `"Todolist"` for
+	// both variants. `_todolist.json.jbuilder` branches on `recording.parent.todoset?`
+	// and emits exactly one of:
+	//
+	// - `groups_url` — a to-do list; its `parent` is a Todoset.
+	// - `group_position_url` — a group; its `parent` is a Todolist.
+	//
+	// The two are mutually exclusive and exactly one is always present.
+	DestinationTodolist *Todolist `json:"destination_todolist,omitempty"`
+	Id                  int64     `json:"id"`
+	SourceRecordingId   int64     `json:"source_recording_id"`
+
+	// Status pending|processing|completed|failed
+	Status string `json:"status"`
+	Url    string `json:"url"`
 }
 
 // TimelineAttachment A single timeline-event attachment. This is an optional-field superset over
@@ -5321,6 +5392,9 @@ type CreateFolderJSONRequestBody = CreateFolderRequestContent
 // UpdateFolderJSONRequestBody defines body for UpdateFolder for application/json ContentType.
 type UpdateFolderJSONRequestBody = UpdateFolderRequestContent
 
+// CreateTemplateLibraryCopyJSONRequestBody defines body for CreateTemplateLibraryCopy for application/json ContentType.
+type CreateTemplateLibraryCopyJSONRequestBody = CreateTemplateLibraryCopyRequestContent
+
 // CreateTemplateJSONRequestBody defines body for CreateTemplate for application/json ContentType.
 type CreateTemplateJSONRequestBody = CreateTemplateRequestContent
 
@@ -6614,6 +6688,17 @@ type ClientInterface interface {
 	UpdateFolderWithBody(ctx context.Context, accountId string, folderId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	UpdateFolder(ctx context.Context, accountId string, folderId int64, body UpdateFolderJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetTemplateLibrary request
+	GetTemplateLibrary(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateTemplateLibraryCopyWithBody request with any body
+	CreateTemplateLibraryCopyWithBody(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	CreateTemplateLibraryCopy(ctx context.Context, accountId string, body CreateTemplateLibraryCopyJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetTemplateLibraryCopy request
+	GetTemplateLibraryCopy(ctx context.Context, accountId string, copyId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListTemplates request
 	ListTemplates(ctx context.Context, accountId string, params *ListTemplatesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -9777,6 +9862,56 @@ func (c *Client) UpdateFolder(ctx context.Context, accountId string, folderId in
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateFolderRequest(c.Server, accountId, folderId, body)
 	}, true, "UpdateFolder", reqEditors...)
+
+}
+
+// GetTemplateLibrary is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) GetTemplateLibrary(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetTemplateLibraryRequest(c.Server, accountId)
+	}, true, "GetTemplateLibrary", reqEditors...)
+
+}
+
+// CreateTemplateLibraryCopyWithBody executes the CreateTemplateLibraryCopy operation.
+
+func (c *Client) CreateTemplateLibraryCopyWithBody(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	req, err := NewCreateTemplateLibraryCopyRequestWithBody(c.Server, accountId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+
+}
+
+func (c *Client) CreateTemplateLibraryCopy(ctx context.Context, accountId string, body CreateTemplateLibraryCopyJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	req, err := NewCreateTemplateLibraryCopyRequest(c.Server, accountId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+
+}
+
+// GetTemplateLibraryCopy is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) GetTemplateLibraryCopy(ctx context.Context, accountId string, copyId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetTemplateLibraryCopyRequest(c.Server, accountId, copyId)
+	}, true, "GetTemplateLibraryCopy", reqEditors...)
 
 }
 
@@ -21757,6 +21892,128 @@ func NewUpdateFolderRequestWithBody(server string, accountId string, folderId in
 	return req, nil
 }
 
+// NewGetTemplateLibraryRequest generates requests for GetTemplateLibrary
+func NewGetTemplateLibraryRequest(server string, accountId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/template_library.json", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCreateTemplateLibraryCopyRequest calls the generic CreateTemplateLibraryCopy builder with application/json body
+func NewCreateTemplateLibraryCopyRequest(server string, accountId string, body CreateTemplateLibraryCopyJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateTemplateLibraryCopyRequestWithBody(server, accountId, "application/json", bodyReader)
+}
+
+// NewCreateTemplateLibraryCopyRequestWithBody generates requests for CreateTemplateLibraryCopy with any type of body
+func NewCreateTemplateLibraryCopyRequestWithBody(server string, accountId string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/template_library/copies.json", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetTemplateLibraryCopyRequest generates requests for GetTemplateLibraryCopy
+func NewGetTemplateLibraryCopyRequest(server string, accountId string, copyId int64) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "copyId", runtime.ParamLocationPath, copyId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/template_library/copies/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewListTemplatesRequest generates requests for ListTemplates
 func NewListTemplatesRequest(server string, accountId string, params *ListTemplatesParams) (*http.Request, error) {
 	var err error
@@ -24649,6 +24906,9 @@ var operationMetadata = map[string]OperationMetadata{
 	"DeleteFolder":                       {Idempotent: true, HasSensitiveParams: false},
 	"GetFolder":                          {Idempotent: true, HasSensitiveParams: false},
 	"UpdateFolder":                       {Idempotent: true, HasSensitiveParams: false},
+	"GetTemplateLibrary":                 {Idempotent: true, HasSensitiveParams: false},
+	"CreateTemplateLibraryCopy":          {Idempotent: false, HasSensitiveParams: false},
+	"GetTemplateLibraryCopy":             {Idempotent: true, HasSensitiveParams: false},
 	"ListTemplates":                      {Idempotent: true, HasSensitiveParams: false},
 	"CreateTemplate":                     {Idempotent: false, HasSensitiveParams: false},
 	"DeleteTemplate":                     {Idempotent: true, HasSensitiveParams: false},
@@ -24914,6 +25174,9 @@ var operationRetryMax = map[string]int{
 	"DeleteFolder":                       3,
 	"GetFolder":                          3,
 	"UpdateFolder":                       3,
+	"GetTemplateLibrary":                 3,
+	"CreateTemplateLibraryCopy":          2,
+	"GetTemplateLibraryCopy":             3,
 	"ListTemplates":                      3,
 	"CreateTemplate":                     2,
 	"DeleteTemplate":                     3,
@@ -25177,6 +25440,9 @@ var operationRetryOn = map[string][]int{
 	"DeleteFolder":                       {429, 503},
 	"GetFolder":                          {429, 503},
 	"UpdateFolder":                       {429, 503},
+	"GetTemplateLibrary":                 {429, 503},
+	"CreateTemplateLibraryCopy":          {429, 503},
+	"GetTemplateLibraryCopy":             {429, 503},
 	"ListTemplates":                      {429, 503},
 	"CreateTemplate":                     {429, 503},
 	"DeleteTemplate":                     {429, 503},
@@ -26034,6 +26300,22 @@ func (s *SchedulesService) CreateEntryWithBody(ctx context.Context, accountId st
 
 func (s *SchedulesService) CreateEntry(ctx context.Context, accountId string, scheduleId int64, body CreateScheduleEntryJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	return s.client.CreateScheduleEntry(ctx, accountId, scheduleId, body, reqEditors...)
+}
+
+func (s *TemplatesService) GetLibrary(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.GetTemplateLibrary(ctx, accountId, reqEditors...)
+}
+
+func (s *TemplatesService) CreateLibraryCopyWithBody(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.CreateTemplateLibraryCopyWithBody(ctx, accountId, contentType, body, reqEditors...)
+}
+
+func (s *TemplatesService) CreateLibraryCopy(ctx context.Context, accountId string, body CreateTemplateLibraryCopyJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.CreateTemplateLibraryCopy(ctx, accountId, body, reqEditors...)
+}
+
+func (s *TemplatesService) GetLibraryCopy(ctx context.Context, accountId string, copyId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.GetTemplateLibraryCopy(ctx, accountId, copyId, reqEditors...)
 }
 
 func (s *TemplatesService) List(ctx context.Context, accountId string, params *ListTemplatesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -26956,6 +27238,17 @@ type ClientWithResponsesInterface interface {
 	UpdateFolderWithBodyWithResponse(ctx context.Context, accountId string, folderId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateFolderResponse, error)
 
 	UpdateFolderWithResponse(ctx context.Context, accountId string, folderId int64, body UpdateFolderJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateFolderResponse, error)
+
+	// GetTemplateLibraryWithResponse request
+	GetTemplateLibraryWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*GetTemplateLibraryResponse, error)
+
+	// CreateTemplateLibraryCopyWithBodyWithResponse request with any body
+	CreateTemplateLibraryCopyWithBodyWithResponse(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTemplateLibraryCopyResponse, error)
+
+	CreateTemplateLibraryCopyWithResponse(ctx context.Context, accountId string, body CreateTemplateLibraryCopyJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTemplateLibraryCopyResponse, error)
+
+	// GetTemplateLibraryCopyWithResponse request
+	GetTemplateLibraryCopyWithResponse(ctx context.Context, accountId string, copyId int64, reqEditors ...RequestEditorFn) (*GetTemplateLibraryCopyResponse, error)
 
 	// ListTemplatesWithResponse request
 	ListTemplatesWithResponse(ctx context.Context, accountId string, params *ListTemplatesParams, reqEditors ...RequestEditorFn) (*ListTemplatesResponse, error)
@@ -34273,6 +34566,111 @@ func (r UpdateFolderResponse) ContentType() string {
 	return ""
 }
 
+type GetTemplateLibraryResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *GetTemplateLibraryResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r GetTemplateLibraryResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetTemplateLibraryResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetTemplateLibraryResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateTemplateLibraryCopyResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON201      *CreateTemplateLibraryCopyResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON422      *PeopleConfirmationRequiredErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateTemplateLibraryCopyResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateTemplateLibraryCopyResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateTemplateLibraryCopyResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetTemplateLibraryCopyResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *GetTemplateLibraryCopyResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r GetTemplateLibraryCopyResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetTemplateLibraryCopyResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetTemplateLibraryCopyResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ListTemplatesResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -38321,6 +38719,41 @@ func (c *ClientWithResponses) UpdateFolderWithResponse(ctx context.Context, acco
 		return nil, err
 	}
 	return ParseUpdateFolderResponse(rsp)
+}
+
+// GetTemplateLibraryWithResponse request returning *GetTemplateLibraryResponse
+func (c *ClientWithResponses) GetTemplateLibraryWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*GetTemplateLibraryResponse, error) {
+	rsp, err := c.GetTemplateLibrary(ctx, accountId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetTemplateLibraryResponse(rsp)
+}
+
+// CreateTemplateLibraryCopyWithBodyWithResponse request with arbitrary body returning *CreateTemplateLibraryCopyResponse
+func (c *ClientWithResponses) CreateTemplateLibraryCopyWithBodyWithResponse(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTemplateLibraryCopyResponse, error) {
+	rsp, err := c.CreateTemplateLibraryCopyWithBody(ctx, accountId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateTemplateLibraryCopyResponse(rsp)
+}
+
+func (c *ClientWithResponses) CreateTemplateLibraryCopyWithResponse(ctx context.Context, accountId string, body CreateTemplateLibraryCopyJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTemplateLibraryCopyResponse, error) {
+	rsp, err := c.CreateTemplateLibraryCopy(ctx, accountId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateTemplateLibraryCopyResponse(rsp)
+}
+
+// GetTemplateLibraryCopyWithResponse request returning *GetTemplateLibraryCopyResponse
+func (c *ClientWithResponses) GetTemplateLibraryCopyWithResponse(ctx context.Context, accountId string, copyId int64, reqEditors ...RequestEditorFn) (*GetTemplateLibraryCopyResponse, error) {
+	rsp, err := c.GetTemplateLibraryCopy(ctx, accountId, copyId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetTemplateLibraryCopyResponse(rsp)
 }
 
 // ListTemplatesWithResponse request returning *ListTemplatesResponse
@@ -49747,6 +50180,174 @@ func ParseUpdateFolderResponse(rsp *http.Response) (*UpdateFolderResponse, error
 		var dest FieldValidationErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
 			response.JSON422 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON500 = &dest
+		}
+
+	}
+
+	return response, nil
+}
+
+// ParseGetTemplateLibraryResponse parses an HTTP response from a GetTemplateLibraryWithResponse call
+func ParseGetTemplateLibraryResponse(rsp *http.Response) (*GetTemplateLibraryResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetTemplateLibraryResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GetTemplateLibraryResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON401 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON403 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON429 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON500 = &dest
+		}
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateTemplateLibraryCopyResponse parses an HTTP response from a CreateTemplateLibraryCopyWithResponse call
+func ParseCreateTemplateLibraryCopyResponse(rsp *http.Response) (*CreateTemplateLibraryCopyResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateTemplateLibraryCopyResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest CreateTemplateLibraryCopyResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON401 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON403 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON404 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest PeopleConfirmationRequiredErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON422 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON429 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON500 = &dest
+		}
+
+	}
+
+	return response, nil
+}
+
+// ParseGetTemplateLibraryCopyResponse parses an HTTP response from a GetTemplateLibraryCopyWithResponse call
+func ParseGetTemplateLibraryCopyResponse(rsp *http.Response) (*GetTemplateLibraryCopyResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetTemplateLibraryCopyResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GetTemplateLibraryCopyResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON401 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON403 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON404 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON429 = &dest
 		}
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:

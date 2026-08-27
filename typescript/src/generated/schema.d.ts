@@ -2937,6 +2937,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/template_library.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Get the account's to-do list template library */
+        get: operations["GetTemplateLibrary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/template_library/copies.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Start copying a to-do list template into a project */
+        post: operations["CreateTemplateLibraryCopy"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/template_library/copies/{copyId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Get the current status of a to-do list template copy */
+        get: operations["GetTemplateLibraryCopy"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/templates.json": {
         parameters: {
             query?: never;
@@ -4280,6 +4331,15 @@ export interface components {
             visible_to_clients?: boolean;
         };
         CreateScheduleEntryResponseContent: components["schemas"]["ScheduleEntry"];
+        CreateTemplateLibraryCopyRequestContent: {
+            /** Format: int64 */
+            template_recording_id: number;
+            /** Format: int64 */
+            destination_parent_id: number;
+            /** @description Confirm granting destination-project access to people referenced by the template. */
+            adding_people_confirmed?: boolean;
+        };
+        CreateTemplateLibraryCopyResponseContent: components["schemas"]["TemplateLibraryCopy"];
         CreateTemplateRequestContent: {
             name: string;
             description?: string;
@@ -4906,6 +4966,8 @@ export interface components {
         GetScheduleResponseContent: components["schemas"]["Schedule"];
         GetSearchMetadataResponseContent: components["schemas"]["SearchMetadata"];
         GetSubscriptionResponseContent: components["schemas"]["Subscription"];
+        GetTemplateLibraryCopyResponseContent: components["schemas"]["TemplateLibraryCopy"];
+        GetTemplateLibraryResponseContent: components["schemas"]["TemplateLibrary"];
         GetTemplateResponseContent: components["schemas"]["Template"];
         GetTimesheetEntryResponseContent: components["schemas"]["TimesheetEntry"];
         GetTimesheetReportResponseContent: components["schemas"]["TimesheetEntry"][];
@@ -5309,6 +5371,14 @@ export interface components {
         };
         PauseQuestionResponseContent: {
             paused?: boolean;
+        };
+        /**
+         * @description The copy requires confirmation before granting destination-project access
+         *     to people referenced by the template.
+         */
+        PeopleConfirmationRequiredErrorResponseContent: {
+            error: string;
+            people: components["schemas"]["TemplateLibraryConfirmationPerson"][];
         };
         Person: {
             /** Format: int64 */
@@ -6287,6 +6357,31 @@ export interface components {
             url?: string;
             app_url?: string;
             dock?: components["schemas"]["DockItem"][];
+        };
+        TemplateLibrary: {
+            bucket: components["schemas"]["RecordingBucket"];
+            todoset: components["schemas"]["RecordingParent"];
+            todolists: components["schemas"]["Todolist"][];
+        };
+        TemplateLibraryConfirmationPerson: {
+            /** Format: int64 */
+            id: number;
+            /** Format: password */
+            name: string;
+            /** Format: password */
+            avatar_url: string;
+        };
+        TemplateLibraryCopy: {
+            /** Format: int64 */
+            id: number;
+            /** @description pending|processing|completed|failed */
+            status: string;
+            /** Format: int64 */
+            source_recording_id: number;
+            /** Format: int64 */
+            destination_parent_id: number;
+            url: string;
+            destination_todolist?: components["schemas"]["Todolist"];
         };
         /**
          * @description A single timeline-event attachment. This is an optional-field superset over
@@ -20803,6 +20898,207 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    GetTemplateLibrary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description GetTemplateLibrary 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetTemplateLibraryResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    CreateTemplateLibraryCopy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateTemplateLibraryCopyRequestContent"];
+            };
+        };
+        responses: {
+            /** @description CreateTemplateLibraryCopy 201 response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreateTemplateLibraryCopyResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description PeopleConfirmationRequiredError 422 response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PeopleConfirmationRequiredErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    GetTemplateLibraryCopy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                copyId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description GetTemplateLibraryCopy 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetTemplateLibraryCopyResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
                 };
             };
             /** @description InternalServerError 500 response */

@@ -241,6 +241,83 @@ func TestTemplatesService_CreateProjectEnvelope(t *testing.T) {
 	}
 }
 
+func TestTemplatesService_GetLibrary(t *testing.T) {
+	var receivedMethod, receivedPath string
+	svc := testTemplatesServer(t, func(w http.ResponseWriter, r *http.Request) {
+		receivedMethod = r.Method
+		receivedPath = r.URL.Path
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{
+			"bucket":{"id":1,"name":"To-do List Templates","type":"TemplateLibrary"},
+			"todoset":{"id":2,"title":"To-do List Templates","type":"Todoset","url":"https://example.test/todoset.json","app_url":"https://example.test/todoset"},
+			"todolists":[{"id":3,"status":"active","visible_to_clients":false,"created_at":"2026-08-27T12:00:00Z","updated_at":"2026-08-27T12:00:00Z","title":"Project kickoff","inherits_status":true,"type":"Todolist","url":"https://example.test/list.json","app_url":"https://example.test/list","bubble_up_url":"https://example.test/bubble.json","parent":{"id":2,"title":"To-do List Templates","type":"Todoset","url":"https://example.test/todoset.json","app_url":"https://example.test/todoset"},"bucket":{"id":1,"name":"To-do List Templates","type":"TemplateLibrary"},"creator":{"id":4,"name":"Victor"},"description":"","description_attachments":[],"name":"Project kickoff","color":null,"comments_app_url":"https://example.test/comments"}]
+		}`))
+	})
+
+	library, err := svc.GetLibrary(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if receivedMethod != http.MethodGet || receivedPath != "/99999/template_library.json" {
+		t.Fatalf("request = %s %s", receivedMethod, receivedPath)
+	}
+	if library.Bucket.Type != "TemplateLibrary" || library.Todoset.ID != 2 {
+		t.Fatalf("unexpected library parents: %+v", library)
+	}
+	if len(library.Todolists) != 1 || library.Todolists[0].Name != "Project kickoff" {
+		t.Fatalf("unexpected library todolists: %+v", library.Todolists)
+	}
+}
+
+func TestTemplatesService_CreateLibraryCopy(t *testing.T) {
+	var receivedBody map[string]any
+	svc := testTemplatesServer(t, func(w http.ResponseWriter, r *http.Request) {
+		receivedBody = decodeRequestBody(t, r)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		w.Write([]byte(`{"id":5,"status":"pending","source_recording_id":3,"destination_parent_id":9,"url":"https://example.test/copies/5.json"}`))
+	})
+
+	templateCopy, err := svc.CreateLibraryCopy(context.Background(), &CreateTemplateLibraryCopyRequest{
+		TemplateRecordingID:   3,
+		DestinationParentID:   9,
+		AddingPeopleConfirmed: true,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if receivedBody["template_recording_id"] != json.Number("3") || receivedBody["destination_parent_id"] != json.Number("9") {
+		t.Fatalf("unexpected request body: %v", receivedBody)
+	}
+	if receivedBody["adding_people_confirmed"] != true {
+		t.Fatalf("confirmation missing from request body: %v", receivedBody)
+	}
+	if templateCopy.ID != 5 || templateCopy.Status != "pending" || templateCopy.DestinationTodolist != nil {
+		t.Fatalf("unexpected copy: %+v", templateCopy)
+	}
+}
+
+func TestTemplatesService_GetCompletedLibraryCopy(t *testing.T) {
+	svc := testTemplatesServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/99999/template_library/copies/5" {
+			t.Fatalf("unexpected path: %s", r.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{
+			"id":5,"status":"completed","source_recording_id":3,"destination_parent_id":9,"url":"https://example.test/copies/5.json",
+			"destination_todolist":{"id":10,"status":"active","visible_to_clients":false,"created_at":"2026-08-27T12:00:00Z","updated_at":"2026-08-27T12:00:00Z","title":"Project kickoff","inherits_status":true,"type":"Todolist","url":"https://example.test/list.json","app_url":"https://example.test/list","bubble_up_url":"https://example.test/bubble.json","parent":{"id":9,"title":"To-dos","type":"Todoset","url":"https://example.test/todoset.json","app_url":"https://example.test/todoset"},"bucket":{"id":8,"name":"Project","type":"Project"},"creator":{"id":4,"name":"Victor"},"description":"","description_attachments":[],"name":"Project kickoff","color":null,"comments_app_url":"https://example.test/comments"}
+		}`))
+	})
+
+	templateCopy, err := svc.GetLibraryCopy(context.Background(), 5)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if templateCopy.Status != "completed" || templateCopy.DestinationTodolist == nil || templateCopy.DestinationTodolist.ID != 10 {
+		t.Fatalf("unexpected completed copy: %+v", templateCopy)
+	}
+}
+
 func TestTemplate_TimestampParsing(t *testing.T) {
 	data := loadTemplatesFixture(t, "get.json")
 

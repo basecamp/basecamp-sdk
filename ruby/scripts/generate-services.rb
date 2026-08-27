@@ -81,6 +81,7 @@ class ServiceGenerator
       'Templates' => %w[
         ListTemplates CreateTemplate GetTemplate UpdateTemplate
         DeleteTemplate CreateProjectFromTemplate GetProjectConstruction
+        GetTemplateLibrary CreateTemplateLibraryCopy GetTemplateLibraryCopy
       ],
       'Checkins' => %w[
         GetQuestionnaire ListQuestions CreateQuestion GetQuestion
@@ -177,6 +178,9 @@ class ServiceGenerator
     'Search' => 'search',
     'CreateProjectFromTemplate' => 'create_project',
     'GetProjectConstruction' => 'get_construction',
+    'GetTemplateLibrary' => 'get_library',
+    'CreateTemplateLibraryCopy' => 'create_library_copy',
+    'GetTemplateLibraryCopy' => 'get_library_copy',
     'GetRecordingTimesheet' => 'for_recording',
     'GetProjectTimesheet' => 'for_project',
     'GetTimesheetReport' => 'report',

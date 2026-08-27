@@ -13,6 +13,69 @@ import kotlinx.serialization.json.JsonElement
 class TemplatesService(client: AccountClient) : BaseService(client) {
 
     /**
+     * Get the account's to-do list template library
+     */
+    suspend fun getLibrary(): JsonElement {
+        val info = OperationInfo(
+            service = "Templates",
+            operation = "GetTemplateLibrary",
+            resourceType = "template_library",
+            isMutation = false,
+            projectId = null,
+            resourceId = null,
+        )
+        return request(info, {
+            httpGet("/template_library.json", operationName = info.operation)
+        }) { body ->
+            json.decodeFromString<JsonElement>(body)
+        }
+    }
+
+    /**
+     * Start copying a to-do list template into a project
+     * @param body Request body
+     */
+    suspend fun createLibraryCopy(body: CreateTemplateLibraryCopyBody): JsonElement {
+        val info = OperationInfo(
+            service = "Templates",
+            operation = "CreateTemplateLibraryCopy",
+            resourceType = "template_library_copy",
+            isMutation = true,
+            projectId = null,
+            resourceId = null,
+        )
+        return request(info, {
+            httpPost("/template_library/copies.json", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
+                put("template_recording_id", kotlinx.serialization.json.JsonPrimitive(body.templateRecordingId))
+                put("destination_parent_id", kotlinx.serialization.json.JsonPrimitive(body.destinationParentId))
+                body.addingPeopleConfirmed?.let { put("adding_people_confirmed", kotlinx.serialization.json.JsonPrimitive(it)) }
+            }), operationName = info.operation)
+        }) { body ->
+            json.decodeFromString<JsonElement>(body)
+        }
+    }
+
+    /**
+     * Get the current status of a to-do list template copy
+     * @param copyId The copy ID
+     */
+    suspend fun getLibraryCopy(copyId: Long): JsonElement {
+        val info = OperationInfo(
+            service = "Templates",
+            operation = "GetTemplateLibraryCopy",
+            resourceType = "template_library_copy",
+            isMutation = false,
+            projectId = null,
+            resourceId = copyId,
+        )
+        return request(info, {
+            httpGet("/template_library/copies/${copyId}", operationName = info.operation)
+        }) { body ->
+            json.decodeFromString<JsonElement>(body)
+        }
+    }
+
+    /**
      * List all templates visible to the current user
      * @param options Optional query parameters and pagination control
      */
