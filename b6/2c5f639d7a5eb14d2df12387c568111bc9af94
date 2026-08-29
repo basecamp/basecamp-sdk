@@ -1,0 +1,39 @@
+MIGRATING.md
+  s_03b2972d326a27::t_8308f6d33c3975 22,50-53
+SPEC.md
+  s_03b2972d326a27::t_f8e2ff7c0c3e95 2213-2221
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/oauth/Exchange.kt
+  s_03b2972d326a27::t_f48c5bb2c6c1a5 78-87
+python/src/basecamp/oauth/exchange.py
+  s_964922bad4d340::t_9663b58de9e730 3-4,7-8,118-130,137,139-142,148-155,157,160,162,174,181,184-185,195,205,219
+python/tests/oauth/test_exchange.py
+  s_03b2972d326a27::t_3d8f8de24ecf9b 296-297,299,314-326
+typescript/src/oauth/exchange.ts
+  s_964922bad4d340::t_c4eda060a548f7 329-340
+typescript/tests/oauth/oauth.test.ts
+  s_03b2972d326a27::t_7811bcbc31236e 684-707
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "b62c5f639d7a5eb14d2df12387c568111bc9af94",
+  "prompts": {},
+  "sessions": {
+    "s_03b2972d326a27": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ae420ffe-6ca0-46f3-9f73-340f61430867",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_964922bad4d340": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b315b378-55b7-45e0-911e-b964de3ac103",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
