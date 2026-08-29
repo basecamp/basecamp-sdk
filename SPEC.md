@@ -2210,7 +2210,15 @@ exchange/refresh paths it names:
   NOT layered on top — but never re-enables redirect following. The
   distinction: redirect refusal is a property of the token-request
   functions themselves; the address policy is a property of the default
-  client they post on.
+  client they post on. Suppression is applied at the SDK's own layer, and
+  an injected transport must not undo it beneath that layer: Kotlin's
+  engine re-wrap sets `followRedirects = false` on the Ktor client and
+  cannot reach an engine that follows redirects on its own before Ktor sees
+  the response. No Ktor engine does so by default (OkHttp and Java pin it
+  off even over a preconfigured client; Apache, Android, Darwin, WinHTTP,
+  curl, and JS default it off), so engine-level following is an explicit
+  operator opt-in inside the engine's own config — and, like Ruby's
+  adapter-only Faraday requirement, an injected engine must not carry it.
 
 Marked `[static]` (per-SDK unit tests), not `[conformance]`: the oauth-token
 corpus schema is scoped to resource semantics — a response is a status and a

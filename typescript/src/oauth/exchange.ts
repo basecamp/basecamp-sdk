@@ -326,6 +326,18 @@ async function doTokenRequest(
         redirect: "manual",
       });
 
+      // A browser fetch answers redirect: "manual" with an opaqueredirect —
+      // type "opaqueredirect", status 0, no headers — rather than the 3xx
+      // Node hands back, so the status table below cannot see it. Refuse it
+      // by type; the real status is hidden, so the error carries none.
+      if (raced.type === "opaqueredirect") {
+        void raced.body?.cancel().catch(() => {});
+        throw new BasecampError(
+          "api_error",
+          "redirect on the token endpoint is not followed (status hidden by the browser's opaque redirect)"
+        );
+      }
+
       // A suppressed redirect is refused by status BEFORE any body read, so a
       // 3xx whose body stalls forever cannot degrade into a timeout. Release
       // the unread stream (non-blocking) so refusals don't retain sockets.

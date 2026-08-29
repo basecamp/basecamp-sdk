@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import json
+
 import httpx
 
-from basecamp._security import MAX_ERROR_BODY_BYTES, check_body_size, is_localhost, require_https, truncate
-from basecamp.errors import ApiError
+from basecamp._security import MAX_ERROR_BODY_BYTES, is_localhost, require_https, truncate
+from basecamp.oauth._transport import request_bounded
 from basecamp.oauth.errors import OAuthError
 from basecamp.oauth.token import OAuthToken
 
@@ -113,50 +115,51 @@ def _token_request(token_endpoint: str, params: dict[str, str]) -> OAuthToken:
         require_https(token_endpoint, "token endpoint")
 
     try:
-        # httpx.stream, not httpx.post: the status is classified from the
-        # headers BEFORE the body is consumed, so a refused redirect whose
-        # body stalls forever fails as the typed api_error below instead of
-        # degrading into a timeout. follow_redirects=False is httpx's
-        # default, but it is a load-bearing SSRF control here (SPEC §16
-        # "Token-Endpoint Transport Policy"), not library happenstance —
-        # state it. The body read stays inside the try so a mid-read
-        # timeout or transport fault maps through the same handlers.
-        with httpx.stream(
+        # request_bounded, not a bare httpx call: httpx's timeout is per
+        # I/O phase (it resets on every received chunk), so a peer dripping
+        # bytes just under the window could hold a plain httpx.stream open
+        # indefinitely, and response.read() would buffer the whole body
+        # before any size check. The shared OAuth transport bounds the WHOLE
+        # round trip by wall clock, suppresses redirects (a load-bearing
+        # SSRF control here — SPEC §16 "Token-Endpoint Transport Policy" —
+        # not library happenstance), and reads the body under a streaming
+        # cap that aborts once exceeded, never post hoc. read_body skips
+        # the refused redirect statuses so they classify from the headers
+        # with the body unread: a 302 whose body stalls forever is the typed
+        # refusal below, never a timeout.
+        status, body = request_bounded(
             "POST",
             token_endpoint,
-            data=params,
             headers={
                 "Content-Type": "application/x-www-form-urlencoded",
                 "Accept": "application/json",
             },
+            params=params,
             timeout=_TOKEN_TIMEOUT,
-            follow_redirects=False,
-        ) as response:
-            # A redirect is never a valid token-endpoint outcome and its
-            # Location is never dialled — refuse it with the body unread.
-            if response.status_code in _REDIRECT_STATUSES:
-                raise OAuthError(
-                    "api_error",
-                    f"redirect {response.status_code} on the token endpoint is not followed",
-                    http_status=response.status_code,
-                )
-            response.read()
+            max_body_bytes=MAX_ERROR_BODY_BYTES,
+            read_body=lambda status: status not in _REDIRECT_STATUSES,
+            context="Token",
+        )
     except httpx.TimeoutException as exc:
         raise OAuthError("network", "Token request timed out", retryable=True) from exc
     except httpx.HTTPError as exc:
         raise OAuthError("network", f"Token request failed: {exc}", retryable=True) from exc
 
-    return _parse_token_response(response)
+    # A redirect is never a valid token-endpoint outcome and its Location is
+    # never dialled — refuse it with the body unread.
+    if status in _REDIRECT_STATUSES:
+        raise OAuthError(
+            "api_error",
+            f"redirect {status} on the token endpoint is not followed",
+            http_status=status,
+        )
+
+    return _parse_token_response(status, body)
 
 
-def _parse_token_response(response: httpx.Response) -> OAuthToken:
+def _parse_token_response(status: int, body: bytes) -> OAuthToken:
     try:
-        check_body_size(response.content, MAX_ERROR_BODY_BYTES, "Token")
-    except ApiError as exc:
-        raise OAuthError("api_error", str(exc), http_status=response.status_code) from exc
-
-    try:
-        data = response.json()
+        data = json.loads(body)
     except ValueError:
         # A token response that fails to parse may still contain credential
         # material (a syntactically-broken body carrying an access_token) —
@@ -168,18 +171,18 @@ def _parse_token_response(response: httpx.Response) -> OAuthToken:
         raise OAuthError(
             "api_error",
             "Failed to parse token response",
-            http_status=response.status_code,
+            http_status=status,
         ) from None
 
     if not isinstance(data, dict):
         raise OAuthError(
             "api_error",
             f"Expected JSON object in token response, got {type(data).__name__}",
-            http_status=response.status_code,
+            http_status=status,
         )
 
-    if not response.is_success:
-        _handle_error(response.status_code, data)
+    if not 200 <= status < 300:
+        _handle_error(status, data)
 
     access_token = data.get("access_token")
     if not isinstance(access_token, str) or not access_token:
@@ -189,7 +192,7 @@ def _parse_token_response(response: httpx.Response) -> OAuthToken:
         raise OAuthError(
             "api_error",
             "Token response missing or non-string access_token",
-            http_status=response.status_code,
+            http_status=status,
         )
 
     # resource: absent and JSON null are unset; when present it must be a
@@ -199,7 +202,7 @@ def _parse_token_response(response: httpx.Response) -> OAuthToken:
         raise OAuthError(
             "api_error",
             "Token response resource must be a non-empty string when present",
-            http_status=response.status_code,
+            http_status=status,
         )
 
     # token_type: absent or JSON null defaults to Bearer (dict.get's default
@@ -213,7 +216,7 @@ def _parse_token_response(response: httpx.Response) -> OAuthToken:
         raise OAuthError(
             "api_error",
             "Token response token_type must be a non-empty string when present",
-            http_status=response.status_code,
+            http_status=status,
         )
 
     return OAuthToken(

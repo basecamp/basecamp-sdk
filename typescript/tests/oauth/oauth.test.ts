@@ -681,6 +681,30 @@ describe("Token-Endpoint Transport Policy", () => {
     expect(err.message).not.toContain("not followed");
   });
 
+  it("refuses a browser opaqueredirect (status 0) as a not-followed redirect", async () => {
+    // Browser fetch answers redirect: "manual" with an opaqueredirect — type
+    // "opaqueredirect", status 0, no headers — instead of the 3xx Node hands
+    // back. Without the type check it falls into the body reader and surfaces
+    // as a generic missing-length/parse api_error.
+    const opaque = {
+      type: "opaqueredirect",
+      status: 0,
+      ok: false,
+      headers: new Headers(),
+      body: null,
+    } as unknown as Response;
+    const browserFetch: typeof globalThis.fetch = async () => opaque;
+
+    const err = await refreshToken(
+      { tokenEndpoint, refreshToken: "my_refresh_token" },
+      { fetch: browserFetch }
+    ).catch((e) => e);
+    expect(err).toBeInstanceOf(BasecampError);
+    expect(err.code).toBe("api_error");
+    expect(err.message).toContain("not followed");
+    expect(err.httpStatus).toBeUndefined();
+  });
+
   it.each([Number.NaN, Infinity, -5, 0])(
     "normalizes invalid timeoutMs %p to the default instead of instant-aborting",
     async (badTimeout) => {

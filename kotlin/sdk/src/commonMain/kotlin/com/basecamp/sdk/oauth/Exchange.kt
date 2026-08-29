@@ -75,6 +75,16 @@ private val REDIRECT_STATUSES = setOf(301, 302, 303, 307, 308)
  * invariant, not a default (the device flow does the same). The returned
  * wrapper is always closed by the caller and, because Ktor only closes
  * engines it created, the borrowed engine survives.
+ *
+ * The wrap governs Ktor's client-level redirect plugin; it cannot see an
+ * engine that follows redirects on its own before Ktor hands a response
+ * back. No Ktor engine does so by default — OkHttp and Java pin it off
+ * (`followRedirects(false)` / `Redirect.NEVER`, OkHttp even over a
+ * `preconfigured` client), Apache defaults `followRedirects = false`, and
+ * Android, Darwin, WinHTTP, curl, and JS disable the engine's own following —
+ * so engine-level following is an operator opt-in inside the engine's own
+ * config, out of this function's sight. An injected engine must not opt in
+ * (SPEC §16), the Kotlin counterpart of Ruby's adapter-only Faraday rule.
  */
 private fun hardenedTokenClient(baseClient: HttpClient?): HttpClient {
     val engine = baseClient?.engine

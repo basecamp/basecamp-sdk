@@ -293,9 +293,10 @@ class TestRedirectRefusal:
     def test_redirect_classified_from_headers_before_any_body_read(self):
         # A refused redirect whose body never completes must classify from
         # the headers, not time out mid-read: the stream raises if iterated.
-        class ExplodingStream(httpx.SyncByteStream):
-            def __iter__(self):
+        class ExplodingStream(httpx.AsyncByteStream):
+            async def __aiter__(self):
                 raise AssertionError("a refused redirect's body must never be read")
+                yield b""  # pragma: no cover — marks this as an async generator
 
         respx.post(TOKEN_ENDPOINT).mock(
             return_value=httpx.Response(
@@ -310,3 +311,16 @@ class TestRedirectRefusal:
 
         assert exc_info.value.http_status == 302
         assert "not followed" in str(exc_info.value)
+
+    @respx.mock
+    def test_oversized_body_trips_the_streaming_cap(self):
+        # The body is read under request_bounded's streaming cap, never
+        # buffered whole and size-checked after the fact: a 2 MiB 200 fails
+        # as the cap's api_error.
+        respx.post(TOKEN_ENDPOINT).mock(return_value=httpx.Response(200, content=b"x" * (2 * 1024 * 1024)))
+
+        with pytest.raises(OAuthError) as exc_info:
+            _exchange()
+
+        assert exc_info.value.oauth_type == "api_error"
+        assert "exceeds size cap" in str(exc_info.value)

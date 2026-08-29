@@ -19,7 +19,7 @@ The token-exchange/refresh POST carries the highest-value credentials the SDK
 ever sends — the authorization code, the client secret, or the refresh token —
 and it was the last response-steerable hop that still followed redirects
 anywhere (SPEC §16 "Token-Endpoint Transport Policy"; §14 established the
-rule on the download's signed hop in #805). Go's `Exchanger` followed up to
+rule on the download's signed hop in #809). Go's `Exchanger` followed up to
 ten hops (a 307/308 re-POSTs the form), TypeScript's `exchangeCode`/
 `refreshToken` up to twenty, and Go's `AuthManager.Refresh` followed on
 whatever client it was handed. Kotlin never actually followed — Ktor only
@@ -47,7 +47,10 @@ default, 3600 s ceiling, invalid values normalize to the default:
 - **Kotlin**: the exchange's default client carried no `HttpTimeout`; it now
   bounds each token request at 30 s, on injected clients too (engine re-wrap,
   the device-flow pattern). A 3xx is `Api` with the real status where it was
-  `Auth` — update any `catch` that relied on the old taxonomy.
+  `Auth` — update any `catch` that relied on the old taxonomy. The re-wrap
+  governs Ktor's client-level redirect plugin, not the engine: an injected
+  engine must not have opted into engine-level following (no Ktor engine
+  does by default) — the Kotlin counterpart of Ruby's adapter-only rule.
 - **TypeScript**: `timeoutMs` was passed to `setTimeout` unclamped, so `NaN`
   or `Infinity` disabled or instant-fired the abort; it now normalizes to
   30 s, and a custom `fetch` that ignores its `AbortSignal` can no longer
