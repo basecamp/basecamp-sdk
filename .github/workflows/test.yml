@@ -165,6 +165,15 @@ jobs:
         env:
           LC_ALL: C
 
+      # The MIGRATING.md heading promotion decides what a tag ships as its
+      # release notes; the self-test asserts the script refuses a backward
+      # bump, a rollback, and a headingless file, and accepts the idempotent
+      # and no-notes states. Its first shipped version accepted a historical
+      # heading as "already promoted", which is the regression the backward
+      # cases pin.
+      - name: MIGRATING heading promotion self-test
+        run: make test-promote-migrating
+
       - name: Bucket-scoped vs flat operation parity
         run: make check-bucket-flat-parity
 

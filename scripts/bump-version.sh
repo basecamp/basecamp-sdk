@@ -27,6 +27,11 @@ sedi() {
 
 echo "Bumping version to: $VERSION"
 
+# 0. MIGRATING.md — promote "# Unreleased" to "# v$VERSION" (or verify the
+# no-notes/idempotent states). Runs FIRST so its refusals — a backward bump,
+# a rollback — abort before any version file has been rewritten.
+"$(dirname "$0")/promote-migrating.sh" "$VERSION"
+
 # 1. Root package.json
 sedi "s/\"version\": \".*\"/\"version\": \"$VERSION\"/" package.json
 
@@ -58,10 +63,6 @@ sedi "s/^version = \".*\"/version = \"$VERSION\"/" python/pyproject.toml
 
 # 10. Python _version.py
 sedi "s/^VERSION = \".*\"/VERSION = \"$VERSION\"/" python/src/basecamp/_version.py
-
-# 11. MIGRATING.md — promote "# Unreleased" to "# v$VERSION" (make release
-# guards the promoted heading, so skipping this cannot reach a tag)
-"$(dirname "$0")/promote-migrating.sh" "$VERSION"
 
 # Sync TypeScript lockfile
 echo "Syncing TypeScript lockfile..."
