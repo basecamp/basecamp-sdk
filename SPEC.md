@@ -3632,7 +3632,10 @@ downgrade (HTTPS → HTTP) — the same rule, for the same reason, as §8's pagi
 rejection: a cross-origin or downgraded URL in a response body must never redirect an
 authenticated request (SSRF and token leakage). A URL that fails validation is
 Terminal(`invalid_continuation`) — no request is issued to the failing URL, and the
-rejected URL is carried redacted (origin only) in the error. There is no retry and no
+error names only the violation class: no component of the rejected URL is rendered,
+because a hostile server can reflect the caller's bearer into any of them (a host
+label, a scheme), and observer copies of URLs already render only the configured
+origin or a fixed placeholder. There is no retry and no
 handler for this condition: a hostile continuation is not an operable feed state.
 
 **Prevalidation does not cover redirects, so the poll seam must.** The underlying HTTP
@@ -3831,9 +3834,14 @@ resume_url)`, `position_rejected(kind)`, `stale_connection(since_last_frame)`,
 
 - **Never log the ticket or the mint URL's query string** — the ticket rides in it.
   Observer callbacks and error renderings carry redacted URLs.
-- **Bound the inbound frame size** (`EVENT_FEED_MAX_FRAME_BYTES`, 1 MiB default) and
-  bound/truncate any error rendering of frame contents (§9's `MAX_ERROR_MESSAGE_LENGTH`
-  applies).
+- **Bound the inbound frame size** (`EVENT_FEED_MAX_FRAME_BYTES`, 1 MiB default), and
+  **never render frame contents into an invalid-frame error at all**. The error names its
+  shape (`frame_parse` / `event_decode`) and nothing else. Bounding is not redacting: a
+  decoder's error can quote its input verbatim — `time.Time`'s does — so truncating to
+  §9's `MAX_ERROR_MESSAGE_LENGTH` still forwards ~430 bytes of peer-chosen text to
+  whatever `disconnected` is wired to. The cause must be dropped from the rendering *and*
+  from any error chain the host can walk; §9's cap continues to apply to every other
+  rendering here (a close frame's code, a redacted URL).
 - **Require `wss://`** for the cable URL, with the §9 localhost/loopback carve-out.
 - **Refuse mint-URL redirects** — a redirect on dial is a hard error, never followed.
 - **Validate every continuation and resume URL** before following it — §8's same-origin
