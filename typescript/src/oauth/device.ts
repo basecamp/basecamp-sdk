@@ -10,7 +10,7 @@ import { BasecampError, truncateErrorMessage } from "../errors.js";
 import { requireSecureEndpoint } from "../security.js";
 import { readBodyBounded } from "./discovery.js";
 import { DeviceFlowError } from "./device-errors.js";
-import { MAX_TOKEN_LIFETIME_SECONDS } from "./limits.js";
+import { MAX_TOKEN_LIFETIME_SECONDS, abortError, raceAbort, resolveRequestTimeoutMs } from "./limits.js";
 
 // Re-exported for existing importers; the declaration lives in limits.ts so
 // non-device consumers need not pull this module.
@@ -37,31 +37,14 @@ const MAX_DEVICE_SECONDS = 2_147_483;
 const DEFAULT_DEVICE_TIMEOUT_MS = 30_000;
 
 /**
- * Ceiling (ms) for a caller-supplied per-request timeout: the shared 3600 s
- * bound (Go's maxDeviceRequestTimeout, Python's _MAX_DEVICE_REQUEST_TIMEOUT,
- * Ruby's Fetcher::MAX_REQUEST_TIMEOUT). A large finite value — up to the
- * ~24.8-day MAX_DEVICE_SECONDS timer bound this previously allowed — would
- * hold a stalled request open for weeks, defeating the bounded-request
- * guarantee.
- */
-const MAX_DEVICE_REQUEST_TIMEOUT_MS = 3600 * 1000;
-
-/**
- * Coerce a caller-supplied request timeout (ms) to a finite, positive, timer-safe
- * value no greater than the shared ceiling. `setTimeout` silently coerces a
- * non-finite delay (NaN/Infinity) or one beyond its 32-bit range to ~1 ms — an
- * immediate abort that would masquerade as a `DeviceFlowError("transport")`
- * (and, in the poll loop, as repeated timeout backoffs). Fall back to the
- * default instead, mirroring how the other SDKs normalize an invalid device
- * timeout.
+ * Coerce a caller-supplied request timeout to the shared clamp
+ * (`resolveRequestTimeoutMs`, limits.ts), falling back to the device flow's
+ * own 30 s default — an invalid value would otherwise become an immediate
+ * abort masquerading as a `DeviceFlowError("transport")` (and, in the poll
+ * loop, as repeated timeout backoffs).
  */
 function resolveDeviceTimeoutMs(timeoutMs: number): number {
-  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0 || timeoutMs > MAX_DEVICE_REQUEST_TIMEOUT_MS) {
-    return DEFAULT_DEVICE_TIMEOUT_MS;
-  }
-  // Whole milliseconds, at least 1: timers truncate fractional delays toward
-  // 0, so 0.5 would become an immediate abort.
-  return Math.max(1, Math.floor(timeoutMs));
+  return resolveRequestTimeoutMs(timeoutMs, DEFAULT_DEVICE_TIMEOUT_MS);
 }
 
 
@@ -810,57 +793,8 @@ async function postDeviceToken(
   }
 }
 
-// A plain Error tagged "AbortError" rather than `new DOMException(...)`:
-// DOMException is not guaranteed in every JS runtime that can run this SDK
-// (referencing it there throws ReferenceError). isAbort() matches on
-// `name === "AbortError"`, so cancellation stays runtime-agnostic.
-function abortError(): Error {
-  const err = new Error("Aborted");
-  err.name = "AbortError";
-  return err;
-}
-
-/**
- * Races `run` against `signal`: rejects with AbortError the moment the signal
- * fires, even if the underlying promise NEVER settles. A cooperative fetch
- * already rejects on abort — this enforces the same contract on a custom fetch
- * that ignores its AbortSignal, so a late 200 cannot hand back a result and a
- * never-settling fetch cannot hold the public call past its timeout. An
- * already-aborted signal rejects without invoking `run`. A late settlement is
- * discarded (settling an already-settled promise is a no-op), and its
- * rejection path stays handled — no unhandled rejection escapes.
- */
-function raceAbort<T>(signal: AbortSignal, run: () => Promise<T>): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
-    const onAbort = () => reject(abortError());
-    if (signal.aborted) {
-      onAbort();
-      return;
-    }
-    signal.addEventListener("abort", onAbort, { once: true });
-    // Microtask wrapper: a user-provided seam (custom fetch/sleepFn) can
-    // throw SYNCHRONOUSLY despite the TS type — without this, that throw
-    // would escape before the handlers attach and strand the listener.
-    Promise.resolve()
-      .then(() => {
-        // The abort can win between entry and this microtask (the outer
-        // promise has already rejected) — never invoke the seam post-abort;
-        // an AbortSignal-ignoring fetch would still send the POST.
-        if (signal.aborted) throw abortError();
-        return run();
-      })
-      .then(
-        (value) => {
-          signal.removeEventListener("abort", onAbort);
-          resolve(value);
-        },
-        (err) => {
-          signal.removeEventListener("abort", onAbort);
-          reject(err);
-        }
-      );
-  });
-}
+// abortError and raceAbort live in limits.ts (shared with the token-exchange
+// path); the poll loop and sleep below use them unchanged.
 
 function sleep(ms: number, signal?: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {

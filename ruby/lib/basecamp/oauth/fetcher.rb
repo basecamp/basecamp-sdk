@@ -239,7 +239,7 @@ module Basecamp
 
         raise OauthError.new(
           "validation",
-          "Injected OAuth discovery client must carry only an adapter (no middleware); " \
+          "Injected OAuth client must carry only an adapter (no middleware); " \
           "found #{offending.klass.name}. Redirects are suppressed for SSRF safety, so a " \
           "connection whose middleware stack cannot be verified redirect-free is refused"
         )

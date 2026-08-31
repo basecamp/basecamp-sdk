@@ -324,6 +324,127 @@ class OAuthSsrfTest < Minitest::Test
       Basecamp::Oauth::Fetcher.normalize_timeout(Basecamp::Oauth::Fetcher::MAX_REQUEST_TIMEOUT)
   end
 
+  def test_exchange_and_refresh_refuse_every_redirect_status_and_never_follow
+    endpoint = "https://issuer.redirect-test.example/oauth/token"
+    attacker = "https://attacker.example.com"
+
+    entry_points = {
+      exchange: -> do
+        Basecamp::Oauth.exchange_code(
+          token_endpoint: endpoint, code: "c",
+          redirect_uri: "https://myapp.com/callback", client_id: "id"
+        )
+      end,
+      refresh: -> do
+        Basecamp::Oauth.refresh_token(
+          token_endpoint: endpoint, refresh_token: "r", client_id: "id"
+        )
+      end
+    }
+
+    # The full refused set (SPEC §16 "Token-Endpoint Transport Policy"), on
+    # BOTH credential-POST entry points: typed api_error carrying the real
+    # status, the contractual "not followed" message, and the Location host
+    # never dialed — a usable token behind the redirect must stay unreachable.
+    Basecamp::Oauth::Exchange::REDIRECT_STATUSES.each do |status|
+      entry_points.each do |name, run|
+        stub_request(:post, endpoint)
+          .to_return(status: status, headers: { "Location" => "#{attacker}/token" })
+        attacker_stub = stub_request(:post, "#{attacker}/token")
+          .to_return(status: 200, body: { access_token: "stolen" }.to_json,
+            headers: { "Content-Type" => "application/json" })
+
+        error = assert_raises(Basecamp::Oauth::OauthError, "#{name} #{status}") { run.call }
+        assert_equal "api_error", error.type, "#{name} #{status}"
+        assert_equal status, error.http_status, "#{name} #{status}"
+        assert_match(/not followed/, error.message, "#{name} #{status}")
+        assert_not_requested(attacker_stub)
+        WebMock.reset!
+      end
+    end
+  end
+
+  def test_exchange_304_stays_on_the_generic_non_success_path
+    # 304 is a cache validator, not a redirect-with-Location — it must classify
+    # through the generic non-success handling, not the redirect refusal.
+    endpoint = "https://issuer.redirect-test.example/oauth/token"
+    stub_request(:post, endpoint).to_return(status: 304, body: "")
+
+    error = assert_raises(Basecamp::Oauth::OauthError) do
+      Basecamp::Oauth.exchange_code(
+        token_endpoint: endpoint, code: "c",
+        redirect_uri: "https://myapp.com/callback", client_id: "id"
+      )
+    end
+    assert_equal "api_error", error.type
+    assert_equal 304, error.http_status
+    assert_no_match(/not followed/, error.message)
+  end
+
+  def test_exchange_injected_client_carrying_redirect_middleware_is_rejected
+    connection = Faraday.new do |conn|
+      conn.use RedirectFollowingMiddleware
+      conn.adapter Faraday.default_adapter
+    end
+
+    # The exchange applies the same redirect-suppression guard as discovery and
+    # the device flow: an injected client whose stack cannot be verified
+    # redirect-free is refused at construction, before any credential POST.
+    error = assert_raises(Basecamp::Oauth::OauthError) do
+      Basecamp::Oauth::Exchange.new(http_client: connection)
+    end
+    assert_equal "validation", error.type
+  end
+
+  def test_exchange_injected_adapter_only_client_redirect_refused_by_backstop
+    # An adapter-only injected client passes the construction guard, and its
+    # (buffered) response classifies through the status-first backstop: the
+    # redirect surfaces as the typed refusal and Location is never dialed —
+    # the injected-client fidelity tier's coarser timing, same invariants.
+    endpoint = "https://issuer.redirect-test.example/oauth/token"
+    attacker = "https://attacker.example.com"
+    stub_request(:post, endpoint)
+      .to_return(status: 302, headers: { "Location" => "#{attacker}/token" }, body: "ignored")
+    attacker_stub = stub_request(:post, "#{attacker}/token")
+      .to_return(status: 200, body: { access_token: "stolen" }.to_json,
+        headers: { "Content-Type" => "application/json" })
+
+    connection = Faraday.new { |conn| conn.adapter Faraday.default_adapter }
+    exchange = Basecamp::Oauth::Exchange.new(http_client: connection)
+    error = assert_raises(Basecamp::Oauth::OauthError) do
+      exchange.exchange(Basecamp::Oauth::ExchangeRequest.new(
+        token_endpoint: endpoint, code: "c",
+        redirect_uri: "https://myapp.com/callback", client_id: "id"
+      ))
+    end
+    assert_equal "api_error", error.type
+    assert_equal 302, error.http_status
+    assert_match(/not followed/, error.message)
+    assert_not_requested(attacker_stub)
+  end
+
+  def test_exchange_injected_slow_drip_aborts_on_wall_clock_deadline
+    # The injected lane's narrowed contract: buffered classification, but the
+    # SAME whole-request wall clock as the default transport — a slow-drip
+    # token body cannot hold the credential POST open past the timeout.
+    body = { "access_token" => "a", "pad" => "x" * 200 }.to_json
+    meter = { delivered: 0 }
+    connection = Faraday.new do |conn|
+      conn.adapter SlowDripAdapter, body: body, chunk_size: 1, pause: 0.02, meter: meter
+    end
+
+    exchange = Basecamp::Oauth::Exchange.new(http_client: connection, timeout: 0.1)
+    error = assert_raises(Basecamp::Oauth::OauthError) do
+      exchange.exchange(Basecamp::Oauth::ExchangeRequest.new(
+        token_endpoint: "https://issuer.redirect-test.example/oauth/token", code: "c",
+        redirect_uri: "https://myapp.com/callback", client_id: "id"
+      ))
+    end
+    assert_equal "network", error.type
+    assert error.retryable, "wall-clock timeout must be retryable"
+    assert_operator meter[:delivered], :<, body.bytesize
+  end
+
   def test_redirect_is_not_followed
     issuer = "https://issuer.redirect-test.example"
     attacker = "https://attacker.example.com"

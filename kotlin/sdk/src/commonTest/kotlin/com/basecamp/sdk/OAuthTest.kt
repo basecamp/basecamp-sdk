@@ -3,6 +3,7 @@ package com.basecamp.sdk
 import com.basecamp.sdk.oauth.*
 import io.ktor.client.*
 import io.ktor.client.engine.mock.*
+import io.ktor.client.plugins.HttpRequestTimeoutException
 import io.ktor.http.*
 import kotlinx.coroutines.test.runTest
 import java.security.MessageDigest
@@ -521,5 +522,135 @@ class OAuthTest {
         assertEquals("legacy-access", token.accessToken)
 
         httpClient.close()
+    }
+
+    // =========================================================================
+    // Token-endpoint transport policy (SPEC §16): redirects refused, timeouts
+    // mapped. Every test here injects its client, so the engine re-wrap path
+    // (hardening applies to caller-supplied clients too) is what is exercised.
+    // =========================================================================
+
+    private val redirectStatuses = listOf(
+        HttpStatusCode.MovedPermanently, // 301
+        HttpStatusCode.Found, // 302
+        HttpStatusCode.SeeOther, // 303
+        HttpStatusCode.TemporaryRedirect, // 307
+        HttpStatusCode.PermanentRedirect, // 308
+    )
+
+    @Test
+    fun exchangeRefusesEveryRedirectStatus() = runTest {
+        for (redirect in redirectStatuses) {
+            val engine = MockEngine {
+                respond(
+                    content = """{"access_token": "planted-by-attacker"}""",
+                    status = redirect,
+                    headers = headersOf(HttpHeaders.Location, "https://attacker.example/token"),
+                )
+            }
+            val httpClient = HttpClient(engine)
+            try {
+                val e = assertFailsWith<BasecampException.Api> {
+                    exchangeCode(
+                        tokenEndpoint = "https://launchpad.37signals.com/authorization/token",
+                        code = "c",
+                        redirectUri = "https://myapp.com/callback",
+                        clientId = "id",
+                        clientSecret = "s",
+                        client = httpClient,
+                    )
+                }
+                assertEquals(redirect.value, e.httpStatus, "the real status must survive classification")
+                assertTrue(e.message!!.contains("not followed"), "message contract, got: ${e.message}")
+                // Exactly one request: the Location target is never dialled.
+                assertEquals(1, engine.requestHistory.size)
+            } finally {
+                httpClient.close()
+            }
+        }
+    }
+
+    @Test
+    fun refreshRefusesEveryRedirectStatus() = runTest {
+        for (redirect in redirectStatuses) {
+            val engine = MockEngine {
+                respond(
+                    content = """{"access_token": "planted-by-attacker"}""",
+                    status = redirect,
+                    headers = headersOf(HttpHeaders.Location, "https://attacker.example/token"),
+                )
+            }
+            val httpClient = HttpClient(engine)
+            try {
+                val e = assertFailsWith<BasecampException.Api> {
+                    refreshToken(
+                        tokenEndpoint = "https://launchpad.37signals.com/authorization/token",
+                        refreshToken = "refresh-456",
+                        clientId = "basecamp-cli",
+                        client = httpClient,
+                    )
+                }
+                assertEquals(redirect.value, e.httpStatus, "the real status must survive classification")
+                assertTrue(e.message!!.contains("not followed"), "message contract, got: ${e.message}")
+                assertEquals(1, engine.requestHistory.size)
+            } finally {
+                httpClient.close()
+            }
+        }
+    }
+
+    @Test
+    fun exchange304StaysOnTheGenericBranch() = runTest {
+        // 304 is a cache validator, not a Location redirect: it takes the
+        // generic non-success classification, never the refused-redirect one.
+        val engine = MockEngine {
+            respond(content = "", status = HttpStatusCode.NotModified)
+        }
+        val httpClient = HttpClient(engine)
+        try {
+            val e = assertFailsWith<BasecampException.Auth> {
+                exchangeCode(
+                    tokenEndpoint = "https://launchpad.37signals.com/authorization/token",
+                    code = "c",
+                    redirectUri = "https://myapp.com/callback",
+                    clientId = "id",
+                    clientSecret = "s",
+                    client = httpClient,
+                )
+            }
+            assertTrue(e.message!!.contains("HTTP 304"))
+            assertFalse(e.message!!.contains("not followed"))
+        } finally {
+            httpClient.close()
+        }
+    }
+
+    @Test
+    fun exchangeMapsRequestTimeoutToRetryableNetwork() = runTest {
+        // HttpRequestTimeoutException subclasses CancellationException, so an
+        // unmapped one would masquerade as a cooperative cancellation. Raised
+        // from the handler because the wrapper's HttpTimeout timer runs on a
+        // real dispatcher runTest's virtual clock cannot advance.
+        val engine = MockEngine {
+            throw HttpRequestTimeoutException(
+                "https://launchpad.37signals.com/authorization/token",
+                30_000L,
+            )
+        }
+        val httpClient = HttpClient(engine)
+        try {
+            val e = assertFailsWith<BasecampException.Network> {
+                refreshToken(
+                    tokenEndpoint = "https://launchpad.37signals.com/authorization/token",
+                    refreshToken = "refresh-456",
+                    clientId = "basecamp-cli",
+                    client = httpClient,
+                )
+            }
+            assertTrue(e.message!!.contains("timed out"))
+            assertTrue(e.retryable)
+        } finally {
+            httpClient.close()
+        }
     }
 }

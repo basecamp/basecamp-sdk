@@ -16,6 +16,22 @@ module Basecamp
     # Token endpoint for Basecamp OAuth
     TOKEN_URL = "https://launchpad.37signals.com/authorization/token"
 
+    # The redirect statuses a token endpoint response is refused for
+    # (SPEC §16 "Token-Endpoint Transport Policy") — the refresh POST carries
+    # the refresh token and client secret, and a redirect must surface as a
+    # typed fault rather than re-issue those credentials toward Location.
+    # 304 stays on the generic non-success path (a cache validator, not a
+    # redirect-with-Location).
+    REDIRECT_STATUSES = [ 301, 302, 303, 307, 308 ].freeze
+
+    # Whole-request bound in seconds for the refresh POST — the shared
+    # credential-POST default (SPEC §16). Enforced as socket timeouts AND a
+    # monotonic wall-clock deadline by the transport below.
+    REFRESH_TIMEOUT = 30
+
+    # Cap on a refresh response body (1 MiB), matching the exchange path.
+    MAX_RESPONSE_BYTES = 1 * 1024 * 1024
+
     # @return [String, nil] the current refresh token
     attr_reader :refresh_token
 
@@ -77,30 +93,51 @@ module Basecamp
         perform_refresh if expired? && refreshable?
       end
 
+      # The refresh POST runs on the headers-first {Oauth::Fetcher.stream_http}
+      # primitive — the same transport as the exchange and device paths — so it
+      # gets the full SPEC §16 discipline rather than a bare Faraday.post:
+      # redirects structurally never followed and classified at header time,
+      # socket timeouts plus a monotonic whole-request watchdog (a slow-drip
+      # peer cannot hold the refresh open past REFRESH_TIMEOUT), and a bounded
+      # streaming body read.
       def perform_refresh
         require "faraday"
         require "json"
-        require "uri"
 
-        response = Faraday.post(TOKEN_URL) do |req|
-          req.headers["Content-Type"] = "application/x-www-form-urlencoded"
-          req.body = URI.encode_www_form(
-            type: "refresh",
-            refresh_token: @refresh_token,
-            client_id: @client_id,
-            client_secret: @client_secret
-          )
+        status, body = Oauth::Fetcher.stream_http(
+          :post, TOKEN_URL,
+          headers: { "Content-Type" => "application/x-www-form-urlencoded" },
+          form: {
+            "type" => "refresh",
+            "refresh_token" => @refresh_token,
+            "client_id" => @client_id,
+            "client_secret" => @client_secret
+          },
+          timeout: REFRESH_TIMEOUT,
+          max_body_bytes: MAX_RESPONSE_BYTES,
+          skip_status: ->(s) { REDIRECT_STATUSES.include?(s) }
+        )
+
+        # A refused redirect is a typed api fault carrying the real status —
+        # not the generic AuthError below, which would imply the credentials
+        # were judged and rejected when no such judgement happened.
+        if REDIRECT_STATUSES.include?(status)
+          raise ApiError.new("redirect #{status} on the token endpoint is not followed", http_status: status)
         end
+        raise AuthError.new("Token refresh failed: #{status}") unless (200..299).cover?(status)
 
-        raise AuthError.new("Token refresh failed: #{response.status}") unless response.success?
-
-        data = JSON.parse(response.body)
+        data = JSON.parse(body)
         @access_token = data["access_token"]
         @expires_at = Time.now + data["expires_in"].to_i if data["expires_in"]
 
         @on_refresh&.call(@access_token, @refresh_token, @expires_at)
 
         true
+      rescue Oauth::Fetcher::BodyTooLarge
+        raise ApiError.new("Token refresh response exceeds size cap")
+      rescue Oauth::Fetcher::ReadDeadlineExceeded => e
+        # A slow-drip read past the deadline is a transport timeout.
+        raise NetworkError.new("Token refresh network error", cause: e)
       rescue Faraday::Error => e
         raise NetworkError.new("Token refresh network error", cause: e)
       end

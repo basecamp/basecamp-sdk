@@ -11,6 +11,72 @@ what wrong behaviour you get if you ignore one. This file is that half.
 
 ---
 
+# Unreleased
+
+### All SDKs: token exchange and refresh no longer follow redirects, and every default lane is timeout-bounded (#813)
+
+The token-exchange/refresh POST carries the highest-value credentials the SDK
+ever sends — the authorization code, the client secret, or the refresh token —
+and it was the last response-steerable hop that still followed redirects
+anywhere (SPEC §16 "Token-Endpoint Transport Policy"; §14 established the
+rule on the download's signed hop in #809). Go's `Exchanger` followed up to
+ten hops (a 307/308 re-POSTs the form), TypeScript's `exchangeCode`/
+`refreshToken` up to twenty, and Go's `AuthManager.Refresh` followed on
+whatever client it was handed. Kotlin never actually followed — Ktor only
+follows GET/HEAD by default — but threw a 3xx as `BasecampException.Auth`
+with the real status lost. Python and Ruby's default lanes never followed.
+
+All five SDKs with an exchange path now refuse uniformly. A 301, 302, 303,
+307 or 308 — any other 3xx stays the generic non-2xx failure — surfaces as
+the SDK's typed API error carrying that status (`*basecamp.Error` with
+`HTTPStatus: 302`, `BasecampException.Api(httpStatus = 302)`, `BasecampError`
+with `httpStatus: 302`, `OAuthError`/`OauthError` with `http_status=302`)
+with a message saying the redirect is **not followed**, and the `Location` is
+never dialled. This applies on injected clients too: your client keeps its
+transport and address policy, but never re-enables following. There is no
+knob.
+
+Timeouts converged on the same numbers as every other credential POST — 30 s
+default, 3600 s ceiling, invalid values normalize to the default:
+
+- **Go**: `doTokenRequest` was unbounded unless the caller's context carried a
+  deadline. `Exchange`/`Refresh` now run under a 30 s per-request timeout by
+  default; `WithExchangerTimeout` adjusts it. `AuthManager.Refresh` gains no
+  timeout (it runs on the operator-configured API client) but now refuses
+  redirects like every other credential POST.
+- **Kotlin**: the exchange's default client carried no `HttpTimeout`; it now
+  bounds each token request at 30 s, on injected clients too (engine re-wrap,
+  the device-flow pattern). A 3xx is `Api` with the real status where it was
+  `Auth` — update any `catch` that relied on the old taxonomy. The re-wrap
+  governs Ktor's client-level redirect plugin, not the engine: an injected
+  engine must not have opted into engine-level following (no Ktor engine
+  does by default) — the Kotlin counterpart of Ruby's adapter-only rule.
+- **TypeScript**: `timeoutMs` was passed to `setTimeout` unclamped, so `NaN`
+  or `Infinity` disabled or instant-fired the abort; it now normalizes to
+  30 s, and a custom `fetch` that ignores its `AbortSignal` can no longer
+  hold the exchange past the deadline. In a browser, where `redirect:
+  "manual"` yields an `opaqueredirect` whose status the browser hides, the
+  refusal is the same `api_error` with the "not followed" message but **no**
+  `httpStatus` — match on the message substring, not the status, if your
+  code must run in both runtimes.
+- **Ruby**: the `Exchange` constructor's `timeout:` is normalized (ceiling
+  3600 s), the default lane moved to the headers-first `Fetcher.stream_http`
+  transport, and an injected Faraday client is now vetted for redirect
+  middleware and bounded by a wall-clock deadline — a slow-drip body can no
+  longer hold the request open. The legacy `OauthTokenProvider` refresh,
+  previously unbounded, gets the full 30 s contract and redirect refusal.
+  One taxonomy break rides along: an oversized token response from
+  `Exchange`, size-checked post hoc before, now trips the streaming cap as
+  `Basecamp::Oauth::OauthError` (`api_error`) — a
+  `rescue Basecamp::ApiError` that caught it must rescue the OAuth error
+  class instead, matching discovery and the device flow.
+
+**Wrong behaviour you get if you ignore it:** a token endpoint behind a
+redirecting front — a CDN, an http→https rewrite, a host consolidation — now
+fails with the redirect's status instead of silently re-POSTing credentials
+to wherever it pointed. The fix is to configure the endpoint URL that
+actually answers.
+
 # v0.15.0
 
 ### Go: device-flow and token-exchange requests are address-policed by default (#806)

@@ -359,11 +359,26 @@ func (m *AuthManager) refreshLocked(ctx context.Context, origin string, creds *C
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
-	resp, err := m.httpClient.Do(req) // #nosec G704 -- SDK HTTP client: URL is caller-configured
+	// The stored endpoint's response steers where a followed redirect would
+	// re-POST the refresh token, so this hop never follows one (SPEC §16
+	// "Token-Endpoint Transport Policy") — same as the signed download hop and
+	// the oauth package's exchange. A shallow copy: the operator-configured
+	// client is never mutated, and keeps every other property it was built with.
+	client := *m.httpClient
+	client.CheckRedirect = func(*http.Request, []*http.Request) error {
+		return http.ErrUseLastResponse
+	}
+	resp, err := client.Do(req) // #nosec G704 -- SDK HTTP client: URL is caller-configured
 	if err != nil {
 		return ErrNetwork(err)
 	}
 	defer func() { _ = resp.Body.Close() }()
+
+	// Classified by status BEFORE the body read, so a redirect with a stalled
+	// body fails here rather than hanging in limitedReadAll.
+	if isRedirectStatus(resp.StatusCode) {
+		return ErrAPI(resp.StatusCode, fmt.Sprintf("redirect %d on the token endpoint is not followed", resp.StatusCode))
+	}
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := limitedReadAll(resp.Body, MaxErrorBodyBytes)

@@ -23,9 +23,14 @@ import (
 // may be one that DiscoverFromResource's metadata chose. By default the
 // Exchanger therefore carries those POSTs on a client that judges the
 // endpoint's literal address at dial time against [DefaultIssuerPolicy]; see
-// [NewExchanger] for the overrides.
+// [NewExchanger] for the overrides. It never follows a redirect from the
+// token endpoint — a 301, 302, 303, 307 or 308 surfaces as a typed
+// api_error carrying that status, and any other 3xx as the generic non-200
+// failure — and bounds each request at [WithExchangerTimeout]'s deadline
+// (30 s by default).
 type Exchanger struct {
 	httpClient *http.Client
+	timeout    time.Duration
 }
 
 // ExchangerOption configures an Exchanger at construction.
@@ -34,6 +39,7 @@ type ExchangerOption func(*exchangerConfig)
 type exchangerConfig struct {
 	policy    surfguard.Policy
 	policySet bool
+	timeout   time.Duration
 }
 
 // WithExchangerPolicy replaces [DefaultIssuerPolicy] for the token endpoint
@@ -49,6 +55,17 @@ func WithExchangerPolicy(p surfguard.Policy) ExchangerOption {
 	return func(c *exchangerConfig) { c.policy, c.policySet = p, true }
 }
 
+// WithExchangerTimeout bounds each token-endpoint request at d instead of the
+// 30-second default — the same per-request budget as the device flow's
+// WithDeviceTimeout, with the same shared 3600 s ceiling and the same
+// normalize-at-entry rule: a non-positive or beyond-ceiling value falls back
+// to the default. The bound is a child context deadline, not a client
+// mutation, so it holds on an injected client's requests too; a caller
+// context with a sooner deadline still wins.
+func WithExchangerTimeout(d time.Duration) ExchangerOption {
+	return func(c *exchangerConfig) { c.timeout = d }
+}
+
 // NewExchanger creates an Exchanger.
 //
 // A nil httpClient selects the policy-enforced default: the shared
@@ -59,14 +76,25 @@ func WithExchangerPolicy(p surfguard.Policy) ExchangerOption {
 // has no other way to keep both, since surfguard's transport sets Proxy: nil
 // by construction; compose the client's transport from
 // DefaultIssuerPolicy().RoundTripper() where that is possible. Passing
-// http.DefaultClient restores the pre-policy behavior outright.
+// http.DefaultClient switches off the address policy outright — but not the
+// redirect refusal or the request timeout, which no client choice disables.
+//
+// Redirect suppression is not the address policy and rides every lane: the
+// token endpoint's redirects are refused on an injected client too, via a
+// per-request shallow copy that never mutates the caller's client — the same
+// contract as the device flow's POSTs.
 //
 // An Exchanger given WithExchangerPolicy owns a transport, and has no Close, so
 // build it once and reuse it rather than constructing one per exchange.
 func NewExchanger(httpClient *http.Client, opts ...ExchangerOption) *Exchanger {
-	cfg := exchangerConfig{}
+	cfg := exchangerConfig{timeout: defaultTokenRequestTimeout}
 	for _, o := range opts {
 		o(&cfg)
+	}
+	// Non-positive AND oversized values both fall back to the default: the
+	// same normalize-at-entry discipline as newDeviceConfig.
+	if cfg.timeout <= 0 || cfg.timeout > maxDeviceRequestTimeout {
+		cfg.timeout = defaultTokenRequestTimeout
 	}
 	switch {
 	case httpClient != nil:
@@ -75,7 +103,7 @@ func NewExchanger(httpClient *http.Client, opts ...ExchangerOption) *Exchanger {
 	default:
 		httpClient = sharedPolicyClient()
 	}
-	return &Exchanger{httpClient: httpClient}
+	return &Exchanger{httpClient: httpClient, timeout: cfg.timeout}
 }
 
 // Exchange exchanges an authorization code for access and refresh tokens.
@@ -151,6 +179,26 @@ const maxTokenResponseBytes int64 = 1 * 1024 * 1024
 // maxErrorMessageLen is the maximum length for error messages included in errors.
 const maxErrorMessageLen = 500
 
+// defaultTokenRequestTimeout bounds each token exchange/refresh round-trip —
+// the 30 s every other credential POST already converged on (the device flow
+// here, TS/Python/Ruby's exchange). The ceiling is the device flow's shared
+// maxDeviceRequestTimeout.
+const defaultTokenRequestTimeout = 30 * time.Second
+
+// isRedirectStatus reports whether status is one of the redirects the token
+// endpoint refuses to follow (SPEC §16 "Token-Endpoint Transport Policy" —
+// the same set as SPEC §14's download hop). 304 is not among them and stays
+// on the generic non-200 path. The basecamp package keeps its own unexported
+// copy for the download flow.
+func isRedirectStatus(status int) bool {
+	switch status {
+	case http.StatusMovedPermanently, http.StatusFound, http.StatusSeeOther,
+		http.StatusTemporaryRedirect, http.StatusPermanentRedirect:
+		return true
+	}
+	return false
+}
+
 func (e *Exchanger) doTokenRequest(ctx context.Context, tokenEndpoint string, data url.Values) (*Token, error) {
 	// Validate HTTPS to prevent sending tokens/credentials over plaintext
 	// Allow localhost for testing against local mock OAuth servers
@@ -158,7 +206,12 @@ func (e *Exchanger) doTokenRequest(ctx context.Context, tokenEndpoint string, da
 		return nil, fmt.Errorf("token endpoint validation failed for %q: %w", tokenEndpoint, err)
 	}
 
-	httpReq, err := http.NewRequestWithContext(ctx, "POST", tokenEndpoint, strings.NewReader(data.Encode()))
+	// A child deadline, not a client mutation, so it bounds the request on the
+	// injected-client lane too; a caller context with a sooner deadline wins.
+	reqCtx, cancel := context.WithTimeout(ctx, e.timeout)
+	defer cancel()
+
+	httpReq, err := http.NewRequestWithContext(reqCtx, "POST", tokenEndpoint, strings.NewReader(data.Encode()))
 	if err != nil {
 		return nil, fmt.Errorf("creating token request: %w", err)
 	}
@@ -172,7 +225,13 @@ func (e *Exchanger) doTokenRequest(ctx context.Context, tokenEndpoint string, da
 	// time (DefaultIssuerPolicy, #806). This request carries the authorization
 	// code, the client secret, or a refresh token, so it is the highest-value
 	// of the three such call sites.
-	resp, err := e.httpClient.Do(httpReq) // #nosec G704 -- see the note above: address-policed by default
+	//
+	// noRedirectClient rides every lane, injected clients included: redirect
+	// suppression is a transport invariant (SPEC §16 "Token-Endpoint Transport
+	// Policy"), not part of the address policy a caller's client opts out of.
+	// The shallow copy keeps the caller's (and the shared policy) client
+	// unmutated.
+	resp, err := noRedirectClient(e.httpClient).Do(httpReq) // #nosec G704 -- see the note above: address-policed by default
 	if err != nil {
 		// A policy refusal is a typed, permanent verdict on the endpoint; every
 		// other failure keeps the untyped wrap callers already match on.
@@ -182,6 +241,14 @@ func (e *Exchanger) doTokenRequest(ctx context.Context, tokenEndpoint string, da
 		return nil, fmt.Errorf("token request failed: %w", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
+
+	// A refused redirect is a typed api fault classified by status BEFORE the
+	// body read: a 3xx that streams its body slowly (or never) must surface as
+	// this error now, not as a mid-read timeout. Every other non-200 keeps the
+	// body-informed handling below.
+	if isRedirectStatus(resp.StatusCode) {
+		return nil, basecamp.ErrAPI(resp.StatusCode, fmt.Sprintf("redirect %d on the token endpoint is not followed", resp.StatusCode))
+	}
 
 	// Bounded read to prevent OOM from malicious/corrupted responses
 	lr := io.LimitReader(resp.Body, maxTokenResponseBytes+1)

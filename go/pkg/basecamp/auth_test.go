@@ -4,9 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -669,5 +671,67 @@ func TestAuthManager_Refresh_ExplicitNonPositiveExpiresInIsAPIError(t *testing.T
 			t.Errorf("expires_in=%d: AccessToken = %q, want untouched", expiresIn, creds.AccessToken)
 		}
 		ts.Close()
+	}
+}
+
+// TestAuthManager_Refresh_RefusesTokenEndpointRedirects pins the stored-
+// endpoint refresh to the same transport policy as the exchange path (SPEC
+// §16 "Token-Endpoint Transport Policy"): every refused redirect is a typed
+// api_error carrying its status, the Location host is never dialed — the
+// operator's client would otherwise follow, 307/308 re-POSTing the refresh
+// token — and the stored credentials survive untouched.
+func TestAuthManager_Refresh_RefusesTokenEndpointRedirects(t *testing.T) {
+	for _, status := range []int{301, 302, 303, 307, 308} {
+		t.Run(fmt.Sprintf("%d", status), func(t *testing.T) {
+			t.Setenv("BASECAMP_TOKEN", "")
+			t.Setenv("BASECAMP_NO_KEYRING", "1")
+
+			var hits atomic.Int64
+			target := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				hits.Add(1)
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(`{"access_token":"stolen","expires_in":3600}`))
+			}))
+			defer target.Close()
+
+			ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.Header().Set("Location", target.URL)
+				w.WriteHeader(status)
+			}))
+			defer ts.Close()
+
+			store := &CredentialStore{useKeyring: false, fallbackDir: t.TempDir()}
+			origin := NormalizeBaseURL(ts.URL)
+			_ = store.Save(origin, &Credentials{
+				AccessToken:   "old-access",
+				RefreshToken:  "old-refresh",
+				ExpiresAt:     1,
+				TokenEndpoint: ts.URL + "/token",
+			})
+
+			m := NewAuthManagerWithStore(&Config{BaseURL: ts.URL}, ts.Client(), store)
+
+			err := m.Refresh(context.Background())
+			var be *Error
+			if !errors.As(err, &be) {
+				t.Fatalf("Refresh() error = %v, want *Error", err)
+			}
+			if be.Code != CodeAPI {
+				t.Errorf("Code = %q, want %q", be.Code, CodeAPI)
+			}
+			if be.HTTPStatus != status {
+				t.Errorf("HTTPStatus = %d, want %d", be.HTTPStatus, status)
+			}
+			if !strings.Contains(be.Message, "not followed") {
+				t.Errorf("Message = %q, want it to contain %q", be.Message, "not followed")
+			}
+			if got := hits.Load(); got != 0 {
+				t.Errorf("Location target hits = %d, want 0", got)
+			}
+			creds, _ := store.Load(origin)
+			if creds.AccessToken != "old-access" {
+				t.Errorf("AccessToken = %q, want the stored credentials untouched", creds.AccessToken)
+			}
+		})
 	}
 }
