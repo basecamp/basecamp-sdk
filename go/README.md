@@ -154,10 +154,8 @@ func main() {
     // Create an account-scoped client
     account := client.ForAccount(fmt.Sprint(info.Accounts[0].ID))
 
-    // List active projects
-    result, err := account.Projects().List(context.Background(), &basecamp.ProjectListOptions{
-        Status: basecamp.ProjectStatusActive,
-    })
+    // List projects (active by default; filter with ProjectStatusArchived/Trashed)
+    result, err := account.Projects().List(context.Background(), nil)
     if err != nil {
         log.Fatal(err)
     }

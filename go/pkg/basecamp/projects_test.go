@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"testing"
@@ -272,6 +273,49 @@ func testProjectsServer(t *testing.T, handler http.HandlerFunc) *ProjectsService
 	client := NewClient(cfg, token)
 	account := client.ForAccount("99999")
 	return account.Projects()
+}
+
+// TestProjectsService_ListStatusFilter pins the ListProjects status semantics:
+// any explicit Status — active included, an alias of the default the server
+// accepts — is forwarded, and an empty Status sends no status param at all.
+func TestProjectsService_ListStatusFilter(t *testing.T) {
+	fixture := loadFixture(t, "list.json")
+
+	cases := []struct {
+		name string
+		opts *ProjectListOptions
+		want string // expected status query value; "" means the param must be absent
+	}{
+		{name: "nil options omit the param", opts: nil, want: ""},
+		{name: "empty status omits the param", opts: &ProjectListOptions{}, want: ""},
+		{name: "active is forwarded", opts: &ProjectListOptions{Status: ProjectStatusActive}, want: "active"},
+		{name: "archived is forwarded", opts: &ProjectListOptions{Status: ProjectStatusArchived}, want: "archived"},
+		{name: "trashed is forwarded", opts: &ProjectListOptions{Status: ProjectStatusTrashed}, want: "trashed"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var query url.Values
+			svc := testProjectsServer(t, func(w http.ResponseWriter, r *http.Request) {
+				query = r.URL.Query()
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(200)
+				w.Write(fixture)
+			})
+
+			if _, err := svc.List(context.Background(), tc.opts); err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			if tc.want == "" {
+				if query.Has("status") {
+					t.Errorf("expected status to be absent, got %q", query.Get("status"))
+				}
+			} else if got := query.Get("status"); got != tc.want {
+				t.Errorf("expected status=%q, got %q", tc.want, got)
+			}
+		})
+	}
 }
 
 func TestProjectsService_UpdatePartial(t *testing.T) {

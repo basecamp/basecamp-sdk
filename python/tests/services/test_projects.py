@@ -71,6 +71,42 @@ class TestProjects:
         assert projects[0]["start_date"] == "2024-01-01"
         assert projects[0]["end_date"] == "2024-03-31"
 
+    @respx.mock
+    def test_list_projects_forwards_archived_status_filter(self):
+        route = respx.get(f"{BASE}/projects.json", params={"status": "archived"}).mock(
+            return_value=httpx.Response(200, json=[])
+        )
+
+        client, account = make_account()
+        account.projects.list(status="archived")
+        client.close()
+
+        assert route.call_count == 1
+
+    @respx.mock
+    def test_list_projects_forwards_explicit_active_status(self):
+        # active is a server-accepted alias of the unfiltered default.
+        route = respx.get(f"{BASE}/projects.json", params={"status": "active"}).mock(
+            return_value=httpx.Response(200, json=[])
+        )
+
+        client, account = make_account()
+        account.projects.list(status="active")
+        client.close()
+
+        assert route.call_count == 1
+
+    @respx.mock
+    def test_list_projects_default_sends_no_status_param(self):
+        route = respx.get(f"{BASE}/projects.json").mock(return_value=httpx.Response(200, json=[]))
+
+        client, account = make_account()
+        account.projects.list()
+        client.close()
+
+        assert route.call_count == 1
+        assert "status" not in route.calls.last.request.url.params
+
 
 PROJECT_LIMIT_BODY = {"error": "The project limit for this account has been reached."}
 
