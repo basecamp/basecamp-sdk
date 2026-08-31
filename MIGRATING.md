@@ -54,7 +54,11 @@ default, 3600 s ceiling, invalid values normalize to the default:
 - **TypeScript**: `timeoutMs` was passed to `setTimeout` unclamped, so `NaN`
   or `Infinity` disabled or instant-fired the abort; it now normalizes to
   30 s, and a custom `fetch` that ignores its `AbortSignal` can no longer
-  hold the exchange past the deadline.
+  hold the exchange past the deadline. In a browser, where `redirect:
+  "manual"` yields an `opaqueredirect` whose status the browser hides, the
+  refusal is the same `api_error` with the "not followed" message but **no**
+  `httpStatus` — match on the message substring, not the status, if your
+  code must run in both runtimes.
 - **Ruby**: the `Exchange` constructor's `timeout:` is normalized (ceiling
   3600 s), the default lane moved to the headers-first `Fetcher.stream_http`
   transport, and an injected Faraday client is now vetted for redirect

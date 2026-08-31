@@ -2190,7 +2190,13 @@ exchange/refresh paths it names:
   A followed 307/308 would re-POST the form — the authorization code, the
   client secret, or the refresh token — to a destination the response chose.
   Any other 3xx (304 above all) is the generic non-2xx failure, not this
-  refusal.
+  refusal. One carrier cannot deliver the status: a browser Fetch answers
+  `redirect: "manual"` with an `opaqueredirect` (type set, status 0, headers
+  hidden), so TypeScript running in a browser refuses it by type — same
+  typed `api_error`, same **not followed** substring, but no `httpStatus`,
+  because the browser withholds the real one. Browser consumers MUST NOT
+  key redirect handling on the status field; the substring is the portable
+  contract.
 - **Classification precedes the body read on the default transport.** The
   refusal is read off the status line, so a redirect whose body stalls
   forever is the typed refusal above, never a timeout. The one permitted
