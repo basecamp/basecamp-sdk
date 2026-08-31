@@ -57,7 +57,7 @@ val SERVICE_SPLITS: Map<String, Map<String, List<String>>> = mapOf(
     ),
     "Automation" to mapOf(
         "Tools" to listOf("GetTool", "UpdateTool", "DeleteTool", "CreateTool", "EnableTool", "DisableTool", "RepositionTool"),
-        "Recordings" to listOf("ArchiveRecording", "UnarchiveRecording", "TrashRecording", "ListRecordings"),
+        "Recordings" to listOf("ArchiveRecording", "UnarchiveRecording", "TrashRecording", "ListRecordings", "SpotlightRecording", "UnspotlightRecording"),
         "Webhooks" to listOf("ListWebhooks", "CreateWebhook", "GetWebhook", "UpdateWebhook", "DeleteWebhook"),
         "Events" to listOf("ListEvents"),
         "Lineup" to listOf("CreateLineupMarker", "UpdateLineupMarker", "DeleteLineupMarker"),
@@ -170,6 +170,8 @@ val VERB_PATTERNS = listOf(
  * Method name overrides for specific operationIds.
  */
 val METHOD_NAME_OVERRIDES = mapOf(
+    "SpotlightRecording" to "spotlight",
+    "UnspotlightRecording" to "unspotlight",
     "GetMyProfile" to "me",
     // "bookmark(id)" reads as the action; keep the getter explicit.
     "GetBookmark" to "getBookmark",
@@ -296,6 +298,8 @@ val METHOD_NAME_OVERRIDES = mapOf(
 )
 
 val RESOURCE_TYPE_OVERRIDES = mapOf(
+    "SpotlightRecording" to "recording",
+    "UnspotlightRecording" to "recording",
     "UpdateHillChartSettings" to "hill_chart",
     // The whole family reports "bookmark"; the inferred "my_bookmark" would
     // split the list operation into its own telemetry category.

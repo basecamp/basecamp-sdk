@@ -52,6 +52,43 @@ class RecordingsServiceTest < Minitest::Test
     assert_equal 1, result.length
   end
 
+  def test_spotlight
+    recording = sample_recording(id: 456)
+    stub_post("/12345/recordings/456/spotlight.json", response_body: recording)
+
+    result = @account.recordings.spotlight(recording_id: 456)
+
+    assert_equal 456, result["id"]
+    assert_equal "Message", result["type"]
+  end
+
+  def test_spotlight_rejects_ineligible_recording
+    stub_post("/12345/recordings/456/spotlight.json",
+              response_body: { "errors" => [ "Recording cannot be spotlighted" ] }, status: 422)
+
+    error = assert_raises(Basecamp::ValidationError) do
+      @account.recordings.spotlight(recording_id: 456)
+    end
+    assert_equal 422, error.http_status
+  end
+
+  def test_unspotlight
+    stub_delete("/12345/recordings/456/spotlight.json")
+
+    result = @account.recordings.unspotlight(recording_id: 456)
+
+    assert_nil result
+  end
+
+  def test_unspotlight_surfaces_permission_error
+    stub_delete("/12345/recordings/456/spotlight.json", status: 403)
+
+    error = assert_raises(Basecamp::ForbiddenError) do
+      @account.recordings.unspotlight(recording_id: 456)
+    end
+    assert_equal 403, error.http_status
+  end
+
   def test_archive
     stub_put("/12345/recordings/456/status/archived.json", response_body: {})
 

@@ -23,6 +23,25 @@ module Basecamp
         end
       end
 
+      # Put a recording's card in the spotlight area on its project or template home page.
+      # @param recording_id [Integer] recording id ID
+      # @return [Hash] response data
+      def spotlight(recording_id:)
+        with_operation(service: "recordings", operation: "spotlight", is_mutation: true, resource_id: recording_id) do
+          http_post("/recordings/#{recording_id}/spotlight.json").json
+        end
+      end
+
+      # Remove a recording from the spotlight area.
+      # @param recording_id [Integer] recording id ID
+      # @return [void]
+      def unspotlight(recording_id:)
+        with_operation(service: "recordings", operation: "unspotlight", is_mutation: true, resource_id: recording_id) do
+          http_delete("/recordings/#{recording_id}/spotlight.json")
+          nil
+        end
+      end
+
       # Unarchive a recording (restore to active status)
       # @param recording_id [Integer] recording id ID
       # @return [void]

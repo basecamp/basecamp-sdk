@@ -2358,5 +2358,84 @@
       "path",
       "client-replies"
     ]
+  },
+  {
+    "name": "SpotlightRecording constructs the canonical flat recording path",
+    "description": "Verifies SpotlightRecording POSTs the canonical /recordings/{recordingId}/spotlight.json route and decodes the ordinary Recording returned with 201 (BC3 #12860).",
+    "operation": "SpotlightRecording",
+    "method": "POST",
+    "path": "/recordings/{recordingId}/spotlight.json",
+    "pathParams": {
+      "recordingId": 901
+    },
+    "mockResponses": [
+      {
+        "status": 201,
+        "body": {
+          "id": 901,
+          "status": "active",
+          "visible_to_clients": false,
+          "created_at": "2026-08-24T20:00:00Z",
+          "updated_at": "2026-08-24T20:00:00Z",
+          "title": "Launch notes",
+          "inherits_status": true,
+          "type": "Message",
+          "url": "https://3.basecampapi.com/999/buckets/2/messages/901.json",
+          "app_url": "https://3.basecamp.com/999/buckets/2/messages/901",
+          "bucket": {
+            "id": 2,
+            "name": "The Leto Laptop",
+            "type": "Project"
+          },
+          "creator": {
+            "id": 1,
+            "name": "Victor Cooper"
+          }
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestPath",
+        "expected": "/999/recordings/901/spotlight.json"
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "path",
+      "recordings",
+      "spotlights"
+    ]
+  },
+  {
+    "name": "UnspotlightRecording constructs the canonical flat recording path",
+    "description": "Verifies UnspotlightRecording DELETEs the canonical /recordings/{recordingId}/spotlight.json route and accepts 204 (BC3 #12860).",
+    "operation": "UnspotlightRecording",
+    "method": "DELETE",
+    "path": "/recordings/{recordingId}/spotlight.json",
+    "pathParams": {
+      "recordingId": 901
+    },
+    "mockResponses": [
+      {
+        "status": 204
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestPath",
+        "expected": "/999/recordings/901/spotlight.json"
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "path",
+      "recordings",
+      "spotlights"
+    ]
   }
 ]

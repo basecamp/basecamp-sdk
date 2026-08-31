@@ -42,6 +42,44 @@ class RecordingsService(client: AccountClient) : BaseService(client) {
     }
 
     /**
+     * Put a recording's card in the spotlight area on its project or template home page.
+     * @param recordingId The recording ID
+     */
+    suspend fun spotlight(recordingId: Long): Recording {
+        val info = OperationInfo(
+            service = "Recordings",
+            operation = "SpotlightRecording",
+            resourceType = "recording",
+            isMutation = true,
+            projectId = null,
+            resourceId = recordingId,
+        )
+        return request(info, {
+            httpPost("/recordings/${recordingId}/spotlight.json", operationName = info.operation)
+        }) { body ->
+            json.decodeFromString<Recording>(body)
+        }
+    }
+
+    /**
+     * Remove a recording from the spotlight area.
+     * @param recordingId The recording ID
+     */
+    suspend fun unspotlight(recordingId: Long): Unit {
+        val info = OperationInfo(
+            service = "Recordings",
+            operation = "UnspotlightRecording",
+            resourceType = "recording",
+            isMutation = true,
+            projectId = null,
+            resourceId = recordingId,
+        )
+        request(info, {
+            httpDelete("/recordings/${recordingId}/spotlight.json", operationName = info.operation)
+        }) { Unit }
+    }
+
+    /**
      * Unarchive a recording (restore to active status)
      * @param recordingId The recording ID
      */

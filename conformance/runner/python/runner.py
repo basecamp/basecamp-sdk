@@ -707,6 +707,10 @@ class OperationMapper:
                 return self._account.bookmarks.create_bookmark(recording_id=path_params["recordingId"])
             case "DeleteBookmark":
                 return self._account.bookmarks.delete_bookmark(recording_id=path_params["recordingId"])
+            case "SpotlightRecording":
+                return self._account.recordings.spotlight(recording_id=path_params["recordingId"])
+            case "UnspotlightRecording":
+                return self._account.recordings.unspotlight(recording_id=path_params["recordingId"])
             case "ListFolders":
                 return self._account.folders.list_folders()
             case "GetFolder":

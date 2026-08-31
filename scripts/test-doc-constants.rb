@@ -364,7 +364,7 @@ expect_fail(failures, "operation-count span states no backticked integer", out, 
 
 # Backticks are what tell the writer WHICH integer is the claim, so a span with
 # two of them is ambiguous rather than merely redundant — it would silently
-# rewrite both. SECURITY.md's real sentence names 125 GETs and 83 mutations
+# rewrite both. SECURITY.md's real sentence names 125 GETs and 85 mutations
 # beside the total, so this is the shape that would break it.
 out, status = gate lambda { |f|
   f["SPEC.md"] = f["SPEC.md"].sub("across 2 paths", "across `2` paths")

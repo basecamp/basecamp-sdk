@@ -1386,6 +1386,16 @@ private suspend fun dispatchOperation(tc: TestCase, account: AccountClient): Dis
             DispatchResult()
         }
 
+        "SpotlightRecording" -> {
+            account.recordings.spotlight(tc.pathParams.longParam("recordingId"))
+            DispatchResult()
+        }
+
+        "UnspotlightRecording" -> {
+            account.recordings.unspotlight(tc.pathParams.longParam("recordingId"))
+            DispatchResult()
+        }
+
         "ListFolders" -> {
             account.folders.listFolders()
             DispatchResult()

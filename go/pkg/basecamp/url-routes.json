@@ -1944,6 +1944,24 @@
       }
     },
     {
+      "pattern": "/{accountId}/recordings/{recordingId}/spotlight",
+      "resource": "Automation",
+      "operations": {
+        "DELETE": "UnspotlightRecording",
+        "POST": "SpotlightRecording"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "recordingId": {
+          "role": "parent",
+          "type": "int64"
+        }
+      }
+    },
+    {
       "pattern": "/{accountId}/recordings/{recordingId}/status/active",
       "resource": "Automation",
       "operations": {

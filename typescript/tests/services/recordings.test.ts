@@ -123,6 +123,51 @@ describe("RecordingsService", () => {
     });
   });
 
+  describe("spotlight", () => {
+    it("should spotlight a recording on the canonical flat route", async () => {
+      const recording = { id: 3001, type: "Message", title: "Launch", status: "active" };
+      server.use(
+        http.post(`${BASE_URL}/recordings/3001/spotlight.json`, () => {
+          return HttpResponse.json(recording, { status: 201 });
+        }),
+      );
+
+      await expect(service.spotlight(3001)).resolves.toEqual(recording);
+    });
+
+    it("should surface ineligible-recording errors", async () => {
+      server.use(
+        http.post(`${BASE_URL}/recordings/3001/spotlight.json`, () => {
+          return HttpResponse.json({ errors: ["Recording cannot be spotlighted"] }, { status: 422 });
+        }),
+      );
+
+      await expect(service.spotlight(3001)).rejects.toThrow(BasecampError);
+    });
+  });
+
+  describe("unspotlight", () => {
+    it("should remove a spotlight on the canonical flat route", async () => {
+      server.use(
+        http.delete(`${BASE_URL}/recordings/3001/spotlight.json`, () => {
+          return new HttpResponse(null, { status: 204 });
+        }),
+      );
+
+      await expect(service.unspotlight(3001)).resolves.toBeUndefined();
+    });
+
+    it("should surface permission errors", async () => {
+      server.use(
+        http.delete(`${BASE_URL}/recordings/3001/spotlight.json`, () => {
+          return new HttpResponse(null, { status: 403 });
+        }),
+      );
+
+      await expect(service.unspotlight(3001)).rejects.toThrow(BasecampError);
+    });
+  });
+
   describe("trash", () => {
     it("should move a recording to trash", async () => {
       server.use(

@@ -45,6 +45,34 @@ class RecordingsService(BaseService):
             operation="ListRecordings",
         )
 
+    def spotlight(self, *, recording_id: int) -> dict[str, Any]:
+        """Put a recording's card in the spotlight area on its project or template home page.
+        Idempotent: spotlighting an already-spotlighted recording still returns 201.
+
+        Args:
+            recording_id: The recording id.
+        """
+        return self._request(
+            OperationInfo(service="recordings", operation="spotlight", is_mutation=True, resource_id=recording_id),
+            "POST",
+            f"/recordings/{recording_id}/spotlight.json",
+            operation="SpotlightRecording",
+        )
+
+    def unspotlight(self, *, recording_id: int) -> None:
+        """Remove a recording from the spotlight area.
+        Idempotent: removing an absent spotlight also returns 204.
+
+        Args:
+            recording_id: The recording id.
+        """
+        self._request_void(
+            OperationInfo(service="recordings", operation="unspotlight", is_mutation=True, resource_id=recording_id),
+            "DELETE",
+            f"/recordings/{recording_id}/spotlight.json",
+            operation="UnspotlightRecording",
+        )
+
     def unarchive(self, *, recording_id: int) -> None:
         """Unarchive a recording (restore to active status).
 
@@ -118,6 +146,34 @@ class AsyncRecordingsService(AsyncBaseService):
             params=self._compact(type=type, bucket=bucket, status=status, sort=sort, direction=direction, page=page),
             max_items=max_items,
             operation="ListRecordings",
+        )
+
+    async def spotlight(self, *, recording_id: int) -> dict[str, Any]:
+        """Put a recording's card in the spotlight area on its project or template home page.
+        Idempotent: spotlighting an already-spotlighted recording still returns 201.
+
+        Args:
+            recording_id: The recording id.
+        """
+        return await self._request(
+            OperationInfo(service="recordings", operation="spotlight", is_mutation=True, resource_id=recording_id),
+            "POST",
+            f"/recordings/{recording_id}/spotlight.json",
+            operation="SpotlightRecording",
+        )
+
+    async def unspotlight(self, *, recording_id: int) -> None:
+        """Remove a recording from the spotlight area.
+        Idempotent: removing an absent spotlight also returns 204.
+
+        Args:
+            recording_id: The recording id.
+        """
+        await self._request_void(
+            OperationInfo(service="recordings", operation="unspotlight", is_mutation=True, resource_id=recording_id),
+            "DELETE",
+            f"/recordings/{recording_id}/spotlight.json",
+            operation="UnspotlightRecording",
         )
 
     async def unarchive(self, *, recording_id: int) -> None:

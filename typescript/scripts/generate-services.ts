@@ -216,7 +216,7 @@ const SERVICE_SPLITS: Record<string, Record<string, string[]>> = {
   },
   Automation: {
     Tools: ["GetTool", "UpdateTool", "DeleteTool", "CreateTool", "EnableTool", "DisableTool", "RepositionTool"],
-    Recordings: ["ArchiveRecording", "UnarchiveRecording", "TrashRecording", "ListRecordings"],
+    Recordings: ["ArchiveRecording", "UnarchiveRecording", "TrashRecording", "ListRecordings", "SpotlightRecording", "UnspotlightRecording"],
     Webhooks: ["ListWebhooks", "CreateWebhook", "GetWebhook", "UpdateWebhook", "DeleteWebhook"],
     Events: ["ListEvents"],
     Lineup: ["CreateLineupMarker", "UpdateLineupMarker", "DeleteLineupMarker"],
@@ -307,6 +307,8 @@ const VERB_PATTERNS = [
  * Method name overrides for specific operationIds.
  */
 const RESOURCE_TYPE_OVERRIDES: Record<string, string> = {
+  SpotlightRecording: "recording",
+  UnspotlightRecording: "recording",
   UpdateHillChartSettings: "hill_chart",
   // The whole family reports "bookmark"; the inferred "my_bookmark" would
   // split the list operation into its own telemetry category.
@@ -321,6 +323,8 @@ const RESOURCE_TYPE_OVERRIDES: Record<string, string> = {
 };
 
 const METHOD_NAME_OVERRIDES: Record<string, string> = {
+  SpotlightRecording: "spotlight",
+  UnspotlightRecording: "unspotlight",
   GetMyProfile: "me",
   // "bookmark(id)" reads as the action; keep the getter explicit.
   GetBookmark: "getBookmark",

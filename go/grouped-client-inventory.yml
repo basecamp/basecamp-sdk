@@ -101,10 +101,14 @@ grouped:
       methods: ["Archive"]
     - operation: ListRecordings
       methods: ["List"]
+    - operation: SpotlightRecording
+      methods: ["Spotlight"]
     - operation: TrashRecording
       methods: ["Trash"]
     - operation: UnarchiveRecording
       methods: ["Unarchive"]
+    - operation: UnspotlightRecording
+      methods: ["Unspotlight"]
   SchedulesService:
     - operation: CreateScheduleEntry
       methods: ["CreateEntryWithBody", "CreateEntry"]

@@ -872,6 +872,16 @@ func executeOperation(ctx context.Context, account *basecamp.AccountClient, tc T
 		err := account.Bookmarks().Delete(ctx, recordingID)
 		return operationResult{err: err}
 
+	case "SpotlightRecording":
+		recordingID := getInt64Param(tc.PathParams, "recordingId")
+		_, err := account.Recordings().Spotlight(ctx, recordingID)
+		return operationResult{err: err}
+
+	case "UnspotlightRecording":
+		recordingID := getInt64Param(tc.PathParams, "recordingId")
+		err := account.Recordings().Unspotlight(ctx, recordingID)
+		return operationResult{err: err}
+
 	case "ListFolders":
 		_, err := account.Folders().List(ctx)
 		return operationResult{err: err}

@@ -678,6 +678,14 @@ func dispatchOperation(_ tc: TestCase, _ account: AccountClient) async throws ->
         try await account.bookmarks.deleteBookmark(recordingId: pathParams.longParam("recordingId"))
         return DispatchResult()
 
+    case "SpotlightRecording":
+        _ = try await account.recordings.spotlight(recordingId: pathParams.longParam("recordingId"))
+        return DispatchResult()
+
+    case "UnspotlightRecording":
+        try await account.recordings.unspotlight(recordingId: pathParams.longParam("recordingId"))
+        return DispatchResult()
+
     case "ListFolders":
         _ = try await account.folders.listFolders()
         return DispatchResult()

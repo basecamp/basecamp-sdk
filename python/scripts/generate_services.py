@@ -76,7 +76,7 @@ SERVICE_SPLITS: dict[str, dict[str, list[str]]] = {
     },
     "Automation": {
         "Tools": ["GetTool", "UpdateTool", "DeleteTool", "CreateTool", "EnableTool", "DisableTool", "RepositionTool"],
-        "Recordings": ["ArchiveRecording", "UnarchiveRecording", "TrashRecording", "ListRecordings"],
+        "Recordings": ["ArchiveRecording", "UnarchiveRecording", "TrashRecording", "ListRecordings", "SpotlightRecording", "UnspotlightRecording"],
         "Webhooks": ["ListWebhooks", "CreateWebhook", "GetWebhook", "UpdateWebhook", "DeleteWebhook"],
         "Events": ["ListEvents"],
         "Lineup": ["CreateLineupMarker", "UpdateLineupMarker", "DeleteLineupMarker"],
@@ -146,6 +146,8 @@ SERVICE_SPLITS: dict[str, dict[str, list[str]]] = {
 
 # Method name overrides
 METHOD_NAME_OVERRIDES = {
+    "SpotlightRecording": "spotlight",
+    "UnspotlightRecording": "unspotlight",
     "GetMyProfile": "my_profile",
     "GetTodolistOrGroup": "get",
     # The plain `update` name belongs to the merge-safe composite; the raw

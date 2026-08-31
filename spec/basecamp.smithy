@@ -51,7 +51,7 @@ use basecamp.traits#basecampAuthRoutableUrl
 /// Basecamp API
 @restJson1
 service Basecamp {
-  version: "2026-08-11"
+  version: "2026-08-31"
   rename: {
     "smithy.api#Document": "JsonDocument"
   }
@@ -216,6 +216,8 @@ service Basecamp {
     DeleteWebhook,
     ListEvents,
     ListRecordings,
+    SpotlightRecording,
+    UnspotlightRecording,
     TrashRecording,
     ArchiveRecording,
     UnarchiveRecording,
@@ -7051,6 +7053,55 @@ structure ListRecordingsOutput {
 
   recordings: RecordingList
 }
+
+/// Put a recording's card in the spotlight area on its project or template home page.
+/// Idempotent: spotlighting an already-spotlighted recording still returns 201.
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
+@http(method: "POST", uri: "/{accountId}/recordings/{recordingId}/spotlight.json", code: 201)
+operation SpotlightRecording {
+  input: SpotlightRecordingInput
+  output: SpotlightRecordingOutput
+  errors: [NotFoundError, ValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure SpotlightRecordingInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  recordingId: RecordingId
+}
+
+structure SpotlightRecordingOutput {
+  recording: Recording
+}
+
+/// Remove a recording from the spotlight area.
+/// Idempotent: removing an absent spotlight also returns 204.
+@idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
+@http(method: "DELETE", uri: "/{accountId}/recordings/{recordingId}/spotlight.json", code: 204)
+operation UnspotlightRecording {
+  input: UnspotlightRecordingInput
+  output: UnspotlightRecordingOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure UnspotlightRecordingInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  recordingId: RecordingId
+}
+
+structure UnspotlightRecordingOutput {}
 
 /// Trash a recording
 @idempotent

@@ -75,6 +75,65 @@ export class RecordingsService extends BaseService {
   }
 
   /**
+   * Put a recording's card in the spotlight area on its project or template home page.
+   * @param recordingId - The recording ID
+   * @returns The Recording
+   * @throws {BasecampError} If the request fails
+   *
+   * @example
+   * ```ts
+   * const result = await client.recordings.spotlight(123);
+   * ```
+   */
+  async spotlight(recordingId: number): Promise<Recording> {
+    const response = await this.request(
+      {
+        service: "Recordings",
+        operation: "SpotlightRecording",
+        resourceType: "recording",
+        isMutation: true,
+        resourceId: recordingId,
+      },
+      () =>
+        this.client.POST("/recordings/{recordingId}/spotlight.json", {
+          params: {
+            path: { recordingId },
+          },
+        })
+    );
+    return response;
+  }
+
+  /**
+   * Remove a recording from the spotlight area.
+   * @param recordingId - The recording ID
+   * @returns void
+   * @throws {BasecampError} If the request fails
+   *
+   * @example
+   * ```ts
+   * await client.recordings.unspotlight(123);
+   * ```
+   */
+  async unspotlight(recordingId: number): Promise<void> {
+    await this.request(
+      {
+        service: "Recordings",
+        operation: "UnspotlightRecording",
+        resourceType: "recording",
+        isMutation: true,
+        resourceId: recordingId,
+      },
+      () =>
+        this.client.DELETE("/recordings/{recordingId}/spotlight.json", {
+          params: {
+            path: { recordingId },
+          },
+        })
+    );
+  }
+
+  /**
    * Unarchive a recording (restore to active status)
    * @param recordingId - The recording ID
    * @returns void

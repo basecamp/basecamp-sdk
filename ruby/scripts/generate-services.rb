@@ -73,7 +73,7 @@ class ServiceGenerator
     },
     'Automation' => {
       'Tools' => %w[GetTool UpdateTool DeleteTool CreateTool EnableTool DisableTool RepositionTool],
-      'Recordings' => %w[ArchiveRecording UnarchiveRecording TrashRecording ListRecordings],
+      'Recordings' => %w[ArchiveRecording UnarchiveRecording TrashRecording ListRecordings SpotlightRecording UnspotlightRecording],
       'Webhooks' => %w[ListWebhooks CreateWebhook GetWebhook UpdateWebhook DeleteWebhook],
       'Events' => %w[ListEvents],
       'Lineup' => %w[CreateLineupMarker UpdateLineupMarker DeleteLineupMarker],
@@ -139,6 +139,8 @@ class ServiceGenerator
 
   # Method name overrides
   METHOD_NAME_OVERRIDES = {
+    'SpotlightRecording' => 'spotlight',
+    'UnspotlightRecording' => 'unspotlight',
     'GetMyProfile' => 'my_profile',
     'GetTodolistOrGroup' => 'get',
     # The plain `update` name belongs to the merge-safe composite; the raw

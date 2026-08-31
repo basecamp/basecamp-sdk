@@ -455,6 +455,10 @@ class OperationMapper
       @account.bookmarks.create_bookmark(recording_id: path_params["recordingId"])
     when "DeleteBookmark"
       @account.bookmarks.delete_bookmark(recording_id: path_params["recordingId"])
+    when "SpotlightRecording"
+      @account.recordings.spotlight(recording_id: path_params["recordingId"])
+    when "UnspotlightRecording"
+      @account.recordings.unspotlight(recording_id: path_params["recordingId"])
     when "ListFolders"
       @account.folders.list_folders
     when "GetFolder"
@@ -1042,6 +1046,8 @@ RUBY_SKIPS = Set.new([
   "Subscribe POST retries when marked idempotent",
   "CreateBookmark POST retries when marked idempotent",
   "DeleteBookmark DELETE retries when marked idempotent",
+  "SpotlightRecording POST retries when marked idempotent",
+  "UnspotlightRecording DELETE retries when marked idempotent",
   "UpdateMyNote PUT retries when marked idempotent",
   "UpdateCalendar PUT retries when marked idempotent",
   "PrioritizeAssignment POST retries when marked idempotent",
@@ -1056,6 +1062,8 @@ RUBY_SKIP_REASONS = {
   "Subscribe POST retries when marked idempotent" => "Ruby SDK only retries GET",
   "CreateBookmark POST retries when marked idempotent" => "Ruby SDK only retries GET",
   "DeleteBookmark DELETE retries when marked idempotent" => "Ruby SDK only retries GET",
+  "SpotlightRecording POST retries when marked idempotent" => "Ruby SDK only retries GET",
+  "UnspotlightRecording DELETE retries when marked idempotent" => "Ruby SDK only retries GET",
   "UpdateMyNote PUT retries when marked idempotent" => "Ruby SDK only retries GET",
   "UpdateCalendar PUT retries when marked idempotent" => "Ruby SDK only retries GET",
   "PrioritizeAssignment POST retries when marked idempotent" => "Ruby SDK only retries GET",
