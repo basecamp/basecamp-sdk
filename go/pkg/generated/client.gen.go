@@ -3179,6 +3179,9 @@ type SetClientVisibilityRequestContent struct {
 // SetClientVisibilityResponseContent defines model for SetClientVisibilityResponseContent.
 type SetClientVisibilityResponseContent = Recording
 
+// SpotlightRecordingResponseContent defines model for SpotlightRecordingResponseContent.
+type SpotlightRecordingResponseContent = Recording
+
 // StorageLimitErrorResponseContent The account has reached its file storage limit.
 //
 // Raised by ResourceLimits#ensure_account_can_upload_files ahead of any operation
@@ -6449,6 +6452,12 @@ type ClientInterface interface {
 
 	CreateEventBoost(ctx context.Context, accountId string, recordingId int64, eventId int64, body CreateEventBoostJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// UnspotlightRecording request
+	UnspotlightRecording(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SpotlightRecording request
+	SpotlightRecording(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// UnarchiveRecording request
 	UnarchiveRecording(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -9215,6 +9224,26 @@ func (c *Client) CreateEventBoost(ctx context.Context, accountId string, recordi
 		return nil, err
 	}
 	return c.Client.Do(req)
+
+}
+
+// UnspotlightRecording is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) UnspotlightRecording(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewUnspotlightRecordingRequest(c.Server, accountId, recordingId)
+	}, true, "UnspotlightRecording", reqEditors...)
+
+}
+
+// SpotlightRecording is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) SpotlightRecording(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewSpotlightRecordingRequest(c.Server, accountId, recordingId)
+	}, true, "SpotlightRecording", reqEditors...)
 
 }
 
@@ -19464,6 +19493,88 @@ func NewCreateEventBoostRequestWithBody(server string, accountId string, recordi
 	return req, nil
 }
 
+// NewUnspotlightRecordingRequest generates requests for UnspotlightRecording
+func NewUnspotlightRecordingRequest(server string, accountId string, recordingId int64) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "recordingId", runtime.ParamLocationPath, recordingId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/recordings/%s/spotlight.json", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewSpotlightRecordingRequest generates requests for SpotlightRecording
+func NewSpotlightRecordingRequest(server string, accountId string, recordingId int64) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "recordingId", runtime.ParamLocationPath, recordingId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/recordings/%s/spotlight.json", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewUnarchiveRecordingRequest generates requests for UnarchiveRecording
 func NewUnarchiveRecordingRequest(server string, accountId string, recordingId int64) (*http.Request, error) {
 	var err error
@@ -24241,6 +24352,8 @@ var operationMetadata = map[string]OperationMetadata{
 	"ListEvents":                         {Idempotent: true, HasSensitiveParams: false},
 	"ListEventBoosts":                    {Idempotent: true, HasSensitiveParams: false},
 	"CreateEventBoost":                   {Idempotent: false, HasSensitiveParams: false},
+	"UnspotlightRecording":               {Idempotent: true, HasSensitiveParams: false},
+	"SpotlightRecording":                 {Idempotent: true, HasSensitiveParams: false},
 	"UnarchiveRecording":                 {Idempotent: true, HasSensitiveParams: false},
 	"ArchiveRecording":                   {Idempotent: true, HasSensitiveParams: false},
 	"TrashRecording":                     {Idempotent: true, HasSensitiveParams: false},
@@ -24500,6 +24613,8 @@ var operationRetryMax = map[string]int{
 	"ListEvents":                         3,
 	"ListEventBoosts":                    3,
 	"CreateEventBoost":                   2,
+	"UnspotlightRecording":               3,
+	"SpotlightRecording":                 3,
 	"UnarchiveRecording":                 3,
 	"ArchiveRecording":                   3,
 	"TrashRecording":                     3,
@@ -24757,6 +24872,8 @@ var operationRetryOn = map[string][]int{
 	"ListEvents":                         {429, 503},
 	"ListEventBoosts":                    {429, 503},
 	"CreateEventBoost":                   {429, 503},
+	"UnspotlightRecording":               {429, 503},
+	"SpotlightRecording":                 {429, 503},
 	"UnarchiveRecording":                 {429, 503},
 	"ArchiveRecording":                   {429, 503},
 	"TrashRecording":                     {429, 503},
@@ -25594,6 +25711,14 @@ func (s *EventsService) List(ctx context.Context, accountId string, recordingId 
 	return s.client.ListEvents(ctx, accountId, recordingId, params, reqEditors...)
 }
 
+func (s *RecordingsService) Unspotlight(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.UnspotlightRecording(ctx, accountId, recordingId, reqEditors...)
+}
+
+func (s *RecordingsService) Spotlight(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.SpotlightRecording(ctx, accountId, recordingId, reqEditors...)
+}
+
 func (s *RecordingsService) Unarchive(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	return s.client.UnarchiveRecording(ctx, accountId, recordingId, reqEditors...)
 }
@@ -26416,6 +26541,12 @@ type ClientWithResponsesInterface interface {
 	CreateEventBoostWithBodyWithResponse(ctx context.Context, accountId string, recordingId int64, eventId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateEventBoostResponse, error)
 
 	CreateEventBoostWithResponse(ctx context.Context, accountId string, recordingId int64, eventId int64, body CreateEventBoostJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateEventBoostResponse, error)
+
+	// UnspotlightRecordingWithResponse request
+	UnspotlightRecordingWithResponse(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*UnspotlightRecordingResponse, error)
+
+	// SpotlightRecordingWithResponse request
+	SpotlightRecordingWithResponse(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*SpotlightRecordingResponse, error)
 
 	// UnarchiveRecordingWithResponse request
 	UnarchiveRecordingWithResponse(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*UnarchiveRecordingResponse, error)
@@ -32479,6 +32610,76 @@ func (r CreateEventBoostResponse) ContentType() string {
 	return ""
 }
 
+type UnspotlightRecordingResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r UnspotlightRecordingResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UnspotlightRecordingResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UnspotlightRecordingResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type SpotlightRecordingResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON201      *SpotlightRecordingResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON422      *ValidationErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r SpotlightRecordingResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SpotlightRecordingResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SpotlightRecordingResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type UnarchiveRecordingResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -37261,6 +37462,24 @@ func (c *ClientWithResponses) CreateEventBoostWithResponse(ctx context.Context, 
 		return nil, err
 	}
 	return ParseCreateEventBoostResponse(rsp)
+}
+
+// UnspotlightRecordingWithResponse request returning *UnspotlightRecordingResponse
+func (c *ClientWithResponses) UnspotlightRecordingWithResponse(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*UnspotlightRecordingResponse, error) {
+	rsp, err := c.UnspotlightRecording(ctx, accountId, recordingId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUnspotlightRecordingResponse(rsp)
+}
+
+// SpotlightRecordingWithResponse request returning *SpotlightRecordingResponse
+func (c *ClientWithResponses) SpotlightRecordingWithResponse(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*SpotlightRecordingResponse, error) {
+	rsp, err := c.SpotlightRecording(ctx, accountId, recordingId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSpotlightRecordingResponse(rsp)
 }
 
 // UnarchiveRecordingWithResponse request returning *UnarchiveRecordingResponse
@@ -46949,6 +47168,120 @@ func ParseCreateEventBoostResponse(rsp *http.Response) (*CreateEventBoostRespons
 		var dest ForbiddenErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
 			response.JSON403 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON422 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON429 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON500 = &dest
+		}
+
+	}
+
+	return response, nil
+}
+
+// ParseUnspotlightRecordingResponse parses an HTTP response from a UnspotlightRecordingWithResponse call
+func ParseUnspotlightRecordingResponse(rsp *http.Response) (*UnspotlightRecordingResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UnspotlightRecordingResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON401 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON403 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON404 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON429 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON500 = &dest
+		}
+
+	}
+
+	return response, nil
+}
+
+// ParseSpotlightRecordingResponse parses an HTTP response from a SpotlightRecordingWithResponse call
+func ParseSpotlightRecordingResponse(rsp *http.Response) (*SpotlightRecordingResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SpotlightRecordingResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest SpotlightRecordingResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON401 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON403 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON404 = &dest
 		}
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:

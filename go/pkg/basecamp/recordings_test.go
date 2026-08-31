@@ -276,6 +276,83 @@ func TestSetClientVisibilityRequest_Marshal(t *testing.T) {
 	}
 }
 
+func TestRecordingsServiceSpotlight(t *testing.T) {
+	fixture := loadRecordingsFixture(t, "get.json")
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			t.Errorf("expected POST, got %s", r.Method)
+		}
+		if r.URL.Path != "/99999/recordings/456/spotlight.json" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		_, _ = w.Write(fixture)
+	}))
+	t.Cleanup(server.Close)
+
+	cfg := DefaultConfig()
+	cfg.BaseURL = server.URL
+	client := NewClient(cfg, &StaticTokenProvider{Token: "test-token"})
+	recording, err := client.ForAccount("99999").Recordings().Spotlight(context.Background(), 456)
+	if err != nil {
+		t.Fatalf("Spotlight failed: %v", err)
+	}
+	if recording.ID != 1069479351 || recording.Type != "Message" {
+		t.Fatalf("unexpected recording: %+v", recording)
+	}
+}
+
+func TestRecordingsServiceSpotlightValidationError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		_, _ = w.Write([]byte(`{"errors":["Recording cannot be spotlighted"]}`))
+	}))
+	t.Cleanup(server.Close)
+
+	cfg := DefaultConfig()
+	cfg.BaseURL = server.URL
+	client := NewClient(cfg, &StaticTokenProvider{Token: "test-token"})
+	if _, err := client.ForAccount("99999").Recordings().Spotlight(context.Background(), 456); err == nil {
+		t.Fatal("expected spotlight validation error")
+	}
+}
+
+func TestRecordingsServiceUnspotlight(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodDelete {
+			t.Errorf("expected DELETE, got %s", r.Method)
+		}
+		if r.URL.Path != "/99999/recordings/456/spotlight.json" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	t.Cleanup(server.Close)
+
+	cfg := DefaultConfig()
+	cfg.BaseURL = server.URL
+	client := NewClient(cfg, &StaticTokenProvider{Token: "test-token"})
+	if err := client.ForAccount("99999").Recordings().Unspotlight(context.Background(), 456); err != nil {
+		t.Fatalf("Unspotlight failed: %v", err)
+	}
+}
+
+func TestRecordingsServiceUnspotlightForbidden(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusForbidden)
+	}))
+	t.Cleanup(server.Close)
+
+	cfg := DefaultConfig()
+	cfg.BaseURL = server.URL
+	client := NewClient(cfg, &StaticTokenProvider{Token: "test-token"})
+	if err := client.ForAccount("99999").Recordings().Unspotlight(context.Background(), 456); err == nil {
+		t.Fatal("expected unspotlight permission error")
+	}
+}
+
 func TestRecordingType_Constants(t *testing.T) {
 	// Verify recording type constants are correct
 	tests := []struct {

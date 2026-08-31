@@ -562,6 +562,14 @@ async function executeOperation(
         await client.bookmarks.deleteBookmark(Number(params.recordingId));
         break;
 
+      case "SpotlightRecording":
+        await client.recordings.spotlight(Number(params.recordingId));
+        break;
+
+      case "UnspotlightRecording":
+        await client.recordings.unspotlight(Number(params.recordingId));
+        break;
+
       case "ListFolders":
         await client.folders.listFolders();
         break;

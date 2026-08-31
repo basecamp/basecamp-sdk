@@ -68,6 +68,15 @@ public final class RecordingsService: BaseService, @unchecked Sendable {
         )
     }
 
+    public func spotlight(recordingId: Int) async throws -> Recording {
+        return try await request(
+            OperationInfo(service: "Recordings", operation: "SpotlightRecording", resourceType: "recording", isMutation: true, resourceId: recordingId),
+            method: "POST",
+            path: "/recordings/\(recordingId)/spotlight.json",
+            retryConfig: Metadata.retryConfig(for: "SpotlightRecording")
+        )
+    }
+
     public func trash(recordingId: Int) async throws {
         try await requestVoid(
             OperationInfo(service: "Recordings", operation: "TrashRecording", resourceType: "recording", isMutation: true, resourceId: recordingId),
@@ -83,6 +92,15 @@ public final class RecordingsService: BaseService, @unchecked Sendable {
             method: "PUT",
             path: "/recordings/\(recordingId)/status/active.json",
             retryConfig: Metadata.retryConfig(for: "UnarchiveRecording")
+        )
+    }
+
+    public func unspotlight(recordingId: Int) async throws {
+        try await requestVoid(
+            OperationInfo(service: "Recordings", operation: "UnspotlightRecording", resourceType: "recording", isMutation: true, resourceId: recordingId),
+            method: "DELETE",
+            path: "/recordings/\(recordingId)/spotlight.json",
+            retryConfig: Metadata.retryConfig(for: "UnspotlightRecording")
         )
     }
 }

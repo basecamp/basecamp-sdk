@@ -2670,6 +2670,18 @@
         ]
       }
     },
+    "SpotlightRecording": {
+      "idempotent": true,
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
     "Subscribe": {
       "idempotent": true,
       "retry": {
@@ -2767,6 +2779,18 @@
       }
     },
     "UnpinMessage": {
+      "idempotent": true,
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
+    "UnspotlightRecording": {
       "idempotent": true,
       "retry": {
         "max": 3,

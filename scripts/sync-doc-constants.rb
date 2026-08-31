@@ -707,7 +707,7 @@ end
 
 # A code span whose ENTIRE content is digits. Bare prose integers are not
 # candidates, because the marked lines are full of them — SECURITY.md's states
-# 125 GETs and 83 mutations in the same sentence as the total — and a checker
+# 125 GETs and 85 mutations in the same sentence as the total — and a checker
 # that read those as the claim would fail on numbers it has no source for.
 # Backticks are how the prose says "this one is the derived constant", the same
 # device @bc3-pin uses for the SHA.
@@ -744,7 +744,7 @@ def check_ticked_count(span, count, source_says)
 
   # A line that needs a second backticked integer cannot carry this marker. The
   # writer refuses such a span rather than rewriting every integer on it: the
-  # sentence in SECURITY.md states 125 GETs and 83 mutations beside the total,
+  # sentence in SECURITY.md states 125 GETs and 85 mutations beside the total,
   # and a blanket gsub would turn both into the operation count.
   if ints.length > 1
     return ["#{span.location}: @#{span.kind} span has #{ints.length} backticked integers " \

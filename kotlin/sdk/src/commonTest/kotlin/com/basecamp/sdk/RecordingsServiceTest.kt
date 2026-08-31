@@ -6,6 +6,7 @@ import io.ktor.http.*
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 
@@ -102,6 +103,64 @@ class RecordingsServiceTest {
         assertEquals(768, attachments[0].height)
         // The matching-type recording carries only its own array; the other stays null.
         assertNull(recording.descriptionAttachments)
+        client.close()
+    }
+
+    @Test
+    fun spotlightUsesCanonicalFlatRouteAndReturnsRecording() = runTest {
+        val client = mockClient { request ->
+            assertEquals(HttpMethod.Post, request.method)
+            assertEquals("/12345/recordings/456/spotlight.json", request.url.encodedPath)
+            respond(
+                content = recordingJson(456, ""),
+                status = HttpStatusCode.Created,
+                headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+            )
+        }
+
+        val recording = client.forAccount("12345").recordings.spotlight(456)
+        assertEquals(456L, recording.id)
+        assertEquals("Message", recording.type)
+        client.close()
+    }
+
+    @Test
+    fun spotlightSurfacesIneligibleRecording() = runTest {
+        val client = mockClient {
+            respond(
+                content = """{"errors":["Recording cannot be spotlighted"]}""",
+                status = HttpStatusCode.UnprocessableEntity,
+                headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+            )
+        }
+
+        val error = assertFailsWith<BasecampException.Validation> {
+            client.forAccount("12345").recordings.spotlight(456)
+        }
+        assertEquals(422, error.httpStatus)
+        client.close()
+    }
+
+    @Test
+    fun unspotlightUsesCanonicalFlatRoute() = runTest {
+        val client = mockClient { request ->
+            assertEquals(HttpMethod.Delete, request.method)
+            assertEquals("/12345/recordings/456/spotlight.json", request.url.encodedPath)
+            respond(content = "", status = HttpStatusCode.NoContent)
+        }
+
+        client.forAccount("12345").recordings.unspotlight(456)
+        client.close()
+    }
+
+    @Test
+    fun unspotlightSurfacesPermissionError() = runTest {
+        val client = mockClient { respond(content = "", status = HttpStatusCode.Forbidden) }
+
+        val error = assertFailsWith<BasecampException.Forbidden> {
+            client.forAccount("12345").recordings.unspotlight(456)
+        }
+        assertEquals(403, error.httpStatus)
         client.close()
     }
 }

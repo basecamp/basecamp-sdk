@@ -184,13 +184,14 @@ print(f"Headers: {safe}")
 ## Retry Behavior
 
 Retry eligibility is decided per *operation*, not per HTTP method. `behavior-model.json` classifies
-all `250` operations: the 125 GETs are retryable by method, and 83 mutations are flagged <!-- @operation-count -->
-`idempotent: true` — all 52 PUTs, all 24 DELETEs, and 7 POSTs (`CompleteTodo`, `PauseQuestion`,
-`SubscribeToCardColumn`, `Subscribe`, `EnableCardColumnOnHold`, `CreateBookmark`, `PrioritizeAssignment`). The other 42 POSTs are attempted exactly once. SPEC.md §7 specifies the
+all `252` operations: the 125 GETs are retryable by method, and 85 mutations are flagged <!-- @operation-count -->
+`idempotent: true` — all 52 PUTs, all 25 DELETEs, and 8 POSTs (`CompleteTodo`, `PauseQuestion`,
+`SubscribeToCardColumn`, `Subscribe`, `EnableCardColumnOnHold`, `CreateBookmark`, `PrioritizeAssignment`,
+`SpotlightRecording`). The other 42 POSTs are attempted exactly once. SPEC.md §7 specifies the
 three-gate algorithm and the per-SDK divergences.
 
 - **Reads (GET)**: retried with exponential backoff on 429/503 in every SDK. (HEAD is idempotent by method too, but Ruby's transport gates on `method == :get` specifically, so a HEAD would not retry there. The API surface has no HEAD operations today, so this is theoretical.)
-- **Naturally-idempotent mutations (PUT/DELETE) and the 7 flagged POSTs**: *are* retried on 429/503
+- **Naturally-idempotent mutations (PUT/DELETE) and the 8 flagged POSTs**: *are* retried on 429/503
   by Go (generated operation path), Python, TypeScript, Kotlin, and Swift. Retrying these cannot
   duplicate a resource, which is why the gate is idempotency rather than "is it a mutation".
   **Ruby is the sole exception** — its transport retries GET only.

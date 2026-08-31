@@ -124,6 +124,64 @@ final class GeneratedServiceTests: XCTestCase {
         XCTAssertTrue(req.url!.absoluteString.hasSuffix("/projects/7/status/active.json"))
     }
 
+    func testSpotlightRecordingSendsPostAndDecodesRecording() async throws {
+        let json: [String: Any] = [
+            "id": 456, "status": "active", "visible_to_clients": false,
+            "created_at": "2026-01-01T00:00:00Z", "updated_at": "2026-01-01T00:00:00Z",
+            "title": "Launch", "inherits_status": true, "type": "Message",
+            "url": "https://3.basecampapi.com/1/buckets/1/messages/456.json",
+            "app_url": "https://3.basecamp.com/1/buckets/1/messages/456",
+            "bucket": ["id": 1, "name": "Project", "type": "Project"] as [String: Any],
+            "creator": ["id": 1, "name": "Test User"] as [String: Any],
+        ]
+        let data = try JSONSerialization.data(withJSONObject: json)
+        let transport = MockTransport(statusCode: 201, data: data)
+        let account = makeTestAccountClient(transport: transport)
+
+        let recording = try await account.recordings.spotlight(recordingId: 456)
+        XCTAssertEqual(recording.id, 456)
+        XCTAssertEqual(recording.type, "Message")
+
+        let request = transport.lastRequest!.request
+        XCTAssertEqual(request.httpMethod, "POST")
+        XCTAssertTrue(request.url!.absoluteString.hasSuffix("/recordings/456/spotlight.json"))
+    }
+
+    func testSpotlightRecordingSurfacesValidationError() async throws {
+        let transport = MockTransport(statusCode: 422, data: Data(#"{"errors":["Recording cannot be spotlighted"]}"#.utf8))
+        let account = makeTestAccountClient(transport: transport)
+
+        do {
+            _ = try await account.recordings.spotlight(recordingId: 456)
+            XCTFail("Expected validation error")
+        } catch let error as BasecampError {
+            XCTAssertEqual(error.httpStatusCode, 422)
+        }
+    }
+
+    func testUnspotlightRecordingSendsDelete() async throws {
+        let transport = MockTransport(statusCode: 204, data: Data())
+        let account = makeTestAccountClient(transport: transport)
+
+        try await account.recordings.unspotlight(recordingId: 456)
+
+        let request = transport.lastRequest!.request
+        XCTAssertEqual(request.httpMethod, "DELETE")
+        XCTAssertTrue(request.url!.absoluteString.hasSuffix("/recordings/456/spotlight.json"))
+    }
+
+    func testUnspotlightRecordingSurfacesForbiddenError() async throws {
+        let transport = MockTransport(statusCode: 403, data: Data())
+        let account = makeTestAccountClient(transport: transport)
+
+        do {
+            try await account.recordings.unspotlight(recordingId: 456)
+            XCTFail("Expected forbidden error")
+        } catch let error as BasecampError {
+            XCTAssertEqual(error.httpStatusCode, 403)
+        }
+    }
+
     // MARK: - requestPaginated path
 
     func testListProjectsReturnsPaginatedResult() async throws {

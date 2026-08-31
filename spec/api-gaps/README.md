@@ -73,6 +73,7 @@ making the absorption journey publicly auditable.
 | [folders-api](folders-api.md) | absorbed-in-sdk | master | medium |
 | [event-feed](event-feed.md) | no-json-contract | n/a | high |
 | [project-archive-unarchive](project-archive-unarchive.md) | absorbed-in-sdk | master | medium |
+| [recording-spotlights](recording-spotlights.md) | absorbed-in-sdk | master | medium |
 | [notifications-sort-pings-first](notifications-sort-pings-first.md) | partial-coverage | master | low |
 | [bc5-authorization-document-shape](bc5-authorization-document-shape.md) | covered-outside-spec | master | medium |
 | [subtasks-canonical-rename](subtasks-canonical-rename.md) | partial-coverage | master | low |
@@ -103,14 +104,50 @@ making the absorption journey publicly auditable.
 > tracked in #12463) and the SDK's matching removal of `GetEverythingBoosts`;
 > its `no-json-contract` is literal — the feed has no JSON API today.
 >
-> The provenance pin is `71b43f3d9fa` (2026-08-11). <!-- @bc3-pin -->
+> The provenance pin is `824013d672d` (2026-08-31). <!-- @bc3-pin -->
 > That line is checked by `make doc-constants-check` and deliberately *not*
 > rewritten by `make sync-api-version`: this file is in
 > `spec/doc-constants.json` `.writerExcludes`, because the pin sentence heads
 > the range triage below and cannot advance without that triage advancing too.
 > The ranges themselves are settled history and stay unmarked.
 >
-> The `b5d8c9df8d..71b43f3d9fa` range is **213 commits** (29 merges, 184
+> The `71b43f3d9fa..824013d672d` range is **1,109 commits** (156 merges, 953
+> non-merge). It adds exactly one documented API family: BC3 #12860
+> (`06edca6f0b`), the two recording Spotlight state transitions absorbed in
+> [`recording-spotlights.md`](recording-spotlights.md). `POST`
+> `/recordings/{id}/spotlight.json` returns the ordinary recording projection
+> with 201 and is naturally idempotent; `DELETE` on the same path returns 204
+> and is also naturally idempotent. The bucket-scoped spellings remain legacy
+> aliases, and the undocumented position route remains web-only.
+>
+> The rest of the final `doc/api` delta is wire-neutral. `questions.md` now
+> states that a client may update only a question they created and otherwise
+> receives 403; `UpdateQuestion` already includes `ForbiddenError`.
+> `schedule_entries.md` now states that a failed create returns 422 with an
+> `errors` payload; `CreateScheduleEntry` already includes `ValidationError`.
+> `doc/api/README.md` only links the new Spotlights page.
+>
+> The final `app/views/api` delta was also inspected rather than inferred from
+> the docs alone. Authorization accounts switch their implementation from the
+> Queenbee identifier to the account's public identifier and construct `href`
+> from the API origin, without changing either field's JSON type or meaning.
+> Three new attachment render partials prevent missing-template failures while
+> emitting HTML inside already-modelled rich-text/search strings. The internal
+> Help Scout bridge is cookie-only and undocumented. Project dock JSON now
+> excludes unreleased recordable types (including the abandoned separate
+> Spotlight-record design), preserving the documented dock contract; the
+> recording partial emits boost links only for actually boostable recordings,
+> whose polymorphic members were already optional. None requires another
+> Smithy member or operation.
+>
+> Controller and route drift was checked through the pinned route-table
+> regeneration and bidirectional route parity, not treated as API merely
+> because a Rails controller changed. The table moves from 373 routes across
+> 64 sections to 377 across 65: exactly the Spotlight canonical pair and their
+> documented compatibility aliases. The `bc3-four` compatibility pin does not move: this sync
+> re-verifies only `master`.
+>
+> The previous `b5d8c9df8d..71b43f3d9fa` range was **213 commits** (29 merges, 184
 > non-merge), and this repin absorbs no operations: openapi.json's operation
 > set is untouched, and the only Smithy diff is member documentation (item 3).
 > Two UI programs dominate the bulk — the unified sidebar (BC3 #12279, 79

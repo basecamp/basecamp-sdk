@@ -296,6 +296,63 @@ func (s *RecordingsService) List(ctx context.Context, recordingType RecordingTyp
 	return &RecordingListResult{Recordings: recordings, Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 }
 
+// Spotlight puts a recording's card on its project or template home page.
+// Spotlighting an already-spotlighted recording is idempotent and returns the recording.
+func (s *RecordingsService) Spotlight(ctx context.Context, recordingID int64) (result *Recording, err error) {
+	op := OperationInfo{
+		Service: "Recordings", Operation: "Spotlight",
+		ResourceType: "recording", IsMutation: true,
+		ResourceID: recordingID,
+	}
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
+	start := time.Now()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	resp, err := s.client.parent.gen.SpotlightRecordingWithResponse(ctx, s.client.accountID, recordingID)
+	if err != nil {
+		return nil, err
+	}
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
+		return nil, err
+	}
+	if resp.JSON201 == nil {
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
+	}
+
+	recording := recordingFromGenerated(*resp.JSON201)
+	return &recording, nil
+}
+
+// Unspotlight removes a recording's card from its project or template home page.
+// Removing an absent spotlight is idempotent.
+func (s *RecordingsService) Unspotlight(ctx context.Context, recordingID int64) (err error) {
+	op := OperationInfo{
+		Service: "Recordings", Operation: "Unspotlight",
+		ResourceType: "recording", IsMutation: true,
+		ResourceID: recordingID,
+	}
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
+	start := time.Now()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	resp, err := s.client.parent.gen.UnspotlightRecordingWithResponse(ctx, s.client.accountID, recordingID)
+	if err != nil {
+		return err
+	}
+	return checkResponse(resp.HTTPResponse, resp.Body)
+}
+
 // Trash moves a recording to the trash.
 // Trashed recordings can be recovered from the trash.
 func (s *RecordingsService) Trash(ctx context.Context, recordingID int64) (err error) {

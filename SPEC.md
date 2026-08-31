@@ -998,7 +998,7 @@ Kotlin, and Ruby.
 - **TypeScript** implements the three-gate algorithm with the retry loop beneath the openapi-fetch middleware chain (the client's custom `fetch`), so attempts run to each operation's declared `retry.max` and network errors retry under the same idempotency gate; caller aborts and request timeouts are terminal. **Kotlin** implements the three-gate algorithm for both HTTP status and network-error retries (POST retries only when `idempotent: true`, full exponential backoff): one eligibility gate covers both failure shapes, with the whole-request timeout (Ktor's `HttpRequestTimeoutException`) deliberately not retried and auth headers re-attached per attempt.
 - **Go** implements the three-gate on its generated operation path: it retries operations classified idempotent at generation time — GET/HEAD by method, plus any operation carrying `x-basecamp-idempotent` (the naturally-idempotent PUT/DELETE mutations like `UpdateProject`/`TrashProject`, and the flagged-idempotent POSTs like `CompleteTodo`) — with exponential backoff; non-idempotent operations (e.g. `CreateTodo`) are single-attempt. The separate hand-written `doRequestURL` helper remains GET-only for ordinary retries, with a mutation-specific single re-attempt after successful 401 token refresh.
 - **Ruby** is stricter: only GET retries; all non-GET methods do not retry. Governed GETs (those carrying their canonical operation ID) are bounded by the per-op ceiling and status-gated on the declared `retryOn`; ungoverned GETs (`get_absolute`, OAuth discovery) keep the taxonomy-driven pre-metadata status contract, under the same floored caller cap. Ruby is acceptably conservative.
-- **Swift** implements the three-gate algorithm: the transport retries only when the method is naturally idempotent (GET/HEAD/PUT/DELETE) **or** the operation is marked `idempotent: true`, so non-idempotent POSTs like `CreateProject` are attempted exactly once while the seven idempotent POSTs (`CompleteTodo`, `CreateBookmark`, `EnableCardColumnOnHold`, `PauseQuestion`, `PrioritizeAssignment`, `Subscribe`, `SubscribeToCardColumn`) keep retrying. The gate covers both retry paths — HTTP status (`429`/`503`) and network errors — so Swift retries network errors but only for retry-eligible operations. A network error is classified by *meaning*, not by type: a `Transport` that reports connectivity failure as the SDK's own `BasecampError.network` reaches the retry branch exactly as a raw `URLError` does (#567). `Transport` is `public`, so that normalization is the natural implementation and must not be the one that disables retry. Any other `BasecampError` out of the transport (`.auth`, `.usage`, `.api`, …) stays terminal on sight, and the non-HTTP-response guard raises a distinct internal error so a deterministic programming fault is never mistaken for a transport blip. `BaseService` threads the per-operation flag from generated `Metadata` into the transport; the naturally-idempotent method set is allowlisted so PATCH/OPTIONS and future methods stay fail-closed.
+- **Swift** implements the three-gate algorithm: the transport retries only when the method is naturally idempotent (GET/HEAD/PUT/DELETE) **or** the operation is marked `idempotent: true`, so non-idempotent POSTs like `CreateProject` are attempted exactly once while the eight idempotent POSTs (`CompleteTodo`, `CreateBookmark`, `EnableCardColumnOnHold`, `PauseQuestion`, `PrioritizeAssignment`, `SpotlightRecording`, `Subscribe`, `SubscribeToCardColumn`) keep retrying. The gate covers both retry paths — HTTP status (`429`/`503`) and network errors — so Swift retries network errors but only for retry-eligible operations. A network error is classified by *meaning*, not by type: a `Transport` that reports connectivity failure as the SDK's own `BasecampError.network` reaches the retry branch exactly as a raw `URLError` does (#567). `Transport` is `public`, so that normalization is the natural implementation and must not be the one that disables retry. Any other `BasecampError` out of the transport (`.auth`, `.usage`, `.api`, …) stays terminal on sight, and the non-HTTP-response guard raises a distinct internal error so a deterministic programming fault is never mistaken for a transport blip. `BaseService` threads the per-operation flag from generated `Metadata` into the transport; the naturally-idempotent method set is allowlisted so PATCH/OPTIONS and future methods stay fail-closed.
 - The spec prescribes the three-gate algorithm.
 
 ### Retry Algorithm
@@ -1176,7 +1176,7 @@ END
 
 ### behavior-model.json Retry Patterns
 
-All `250` operations in `behavior-model.json` use `retry_on: [429, 503]`. <!-- @operation-count --> Three `(max, base_delay_ms)` patterns exist:
+All `252` operations in `behavior-model.json` use `retry_on: [429, 503]`. <!-- @operation-count --> Three `(max, base_delay_ms)` patterns exist:
 - `(2, 1000)` — most create operations
 - `(3, 1000)` — most read/update/delete operations
 - `(3, 2000)` — `CreateAttachment`, `CreateCampfireUpload` (file uploads)
@@ -1701,7 +1701,7 @@ Every JSON API request must include all four headers below. Download requests (�
 Where:
 - `{lang}` is the language identifier: `go`, `ts`, `ruby`, `kotlin`, `swift`
 - `{VERSION}` is the SDK version (e.g., `0.6.0`)
-- `{API_VERSION}` is the API version from `openapi.json` `info.version` (currently `2026-08-11`), derived from the shared date in `spec/api-provenance.json` <!-- @api-version -->
+- `{API_VERSION}` is the API version from `openapi.json` `info.version` (currently `2026-08-31`), derived from the shared date in `spec/api-provenance.json` <!-- @api-version -->
 
 ### Redirect Handling
 
@@ -1747,7 +1747,7 @@ END
 
 ### Hop-1 Retry `[conformance]`
 
-The authenticated first hop retries on **network errors plus {429, 502, 503, 504}** — never 500. The set is declared here rather than inherited from anywhere else, and it matches neither of the two sets an SDK already has to hand: it is broader than the per-operation `retry_on` in `behavior-model.json` (`{429, 503}` for all `250` operations, which never governs `DownloadURL` because it has no entry there), and narrower than the error taxonomy's "all 5xx retryable" flag, which would sweep in the 500 this policy deliberately excludes. It is the gateway-error set Go's hand-written `singleRequest` already uses for GETs. <!-- @operation-count --> Backoff is exponential from a 1-second base with jitter; `Retry-After` is honoured at **every status in that set**, not at 429 alone. The second hop is exempt: no retry, no auth.
+The authenticated first hop retries on **network errors plus {429, 502, 503, 504}** — never 500. The set is declared here rather than inherited from anywhere else, and it matches neither of the two sets an SDK already has to hand: it is broader than the per-operation `retry_on` in `behavior-model.json` (`{429, 503}` for all `252` operations, which never governs `DownloadURL` because it has no entry there), and narrower than the error taxonomy's "all 5xx retryable" flag, which would sweep in the 500 this policy deliberately excludes. It is the gateway-error set Go's hand-written `singleRequest` already uses for GETs. <!-- @operation-count --> Backoff is exponential from a 1-second base with jitter; `Retry-After` is honoured at **every status in that set**, not at 429 alone. The second hop is exempt: no retry, no auth.
 
 That last clause changed with §6's "Retry-After Honouring", and the reason it changed is the reason this set is declared here at all: honouring is derived from retry eligibility, so a loop that declares its own eligibility set inherits the honouring rule over that set rather than over §7's. A 502, 503 or 504 on hop 1 carrying `Retry-After` therefore waits what the origin named, exactly as a 429 does. `[CONFLICT: most download loops honour it on 429 alone today and owe convergence; one SDK already conforms. Per-SDK state and call sites in #775 — not restated here, because this is exactly the row that convergence changes. For conformance: the existing downloads.json case covering the 429 path stays valid; the other three statuses need cases of their own.]` The honoured value is subject to §6's other two clauses on this path as well: nothing is added to it, and it must be awaited through a cancellation handle the caller holds, which not every download path yet gives them (#775).
 
@@ -2839,6 +2839,8 @@ manifests rather than being checked on its own.
 - "Subscribe POST retries when marked idempotent" — GET-only retry (waiver 2B.3).
 - "CreateBookmark POST retries when marked idempotent" — GET-only retry (waiver 2B.3).
 - "DeleteBookmark DELETE retries when marked idempotent" — GET-only retry (waiver 2B.3).
+- "SpotlightRecording POST retries when marked idempotent" — GET-only retry (waiver 2B.3).
+- "UnspotlightRecording DELETE retries when marked idempotent" — GET-only retry (waiver 2B.3).
 - "UpdateMyNote PUT retries when marked idempotent" — GET-only retry (waiver 2B.3).
 - "UpdateCalendar PUT retries when marked idempotent" — GET-only retry (waiver 2B.3).
 - "PrioritizeAssignment POST retries when marked idempotent" — GET-only retry (waiver 2B.3).
@@ -3961,7 +3963,7 @@ Only `API_VERSION` is gated (`<!-- @api-version -->`, checked by `make doc-const
 | `DEFAULT_MAX_PAGES` | 10,000 | — | All six SDKs |
 | `MAX_CACHE_ENTRIES` | 1000 | entries | `typescript/src/client.ts` |
 | `MAX_TOKEN_HASH_ENTRIES` | 100 | entries | `typescript/src/client.ts` |
-| `API_VERSION` | `2026-08-11` | — | `openapi.json` `info.version` <!-- @api-version --> |
+| `API_VERSION` | `2026-08-31` | — | `openapi.json` `info.version` <!-- @api-version --> |
 | `TOKEN_REFRESH_BUFFER` | 300 | seconds | Go OAuth token refresh threshold (5-minute buffer); Ruby refreshes only on expiry (no buffer); TS/Kotlin/Swift delegate expiry to caller |
 | `EVENT_FEED_HANDSHAKE_DEADLINE` | 10 | seconds | §23 timers — dial-to-`welcome` deadline |
 | `EVENT_FEED_CONFIRMATION_DEADLINE` | 10 | seconds | §23 (configurable; default) |
@@ -4172,8 +4174,8 @@ Every operation has a `retry` block, including non-idempotent POSTs. For non-ide
 
 ### Operation Counts
 
-- Total operations: `250` <!-- @operation-count -->
-- Idempotent: 83 (flagged with `idempotent: true`)
+- Total operations: `252` <!-- @operation-count -->
+- Idempotent: 85 (flagged with `idempotent: true`)
 - Non-idempotent: 167 (no `idempotent` field, or not present)
 - All operations use `retry_on: [429, 503]`
 
