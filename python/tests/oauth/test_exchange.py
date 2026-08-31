@@ -324,3 +324,6 @@ class TestRedirectRefusal:
 
         assert exc_info.value.oauth_type == "api_error"
         assert "exceeds size cap" in str(exc_info.value)
+        # The cap error carries the response's real status, as the buffered
+        # path it replaced did — an oversized 200 must stay diagnosable.
+        assert exc_info.value.http_status == 200

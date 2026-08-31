@@ -87,7 +87,8 @@ def request_bounded(
 
     Transport failures propagate as :class:`httpx.HTTPError` (incl.
     :class:`httpx.TimeoutException`) so callers classify them; an oversized body
-    raises :class:`OAuthError` (``api_error``). ``context`` labels both messages.
+    raises :class:`OAuthError` (``api_error``) carrying the response's status.
+    ``context`` labels both messages.
     """
 
     # Fail fast on unknown verbs (a typo like "POTS" would otherwise go to
@@ -221,7 +222,15 @@ def request_bounded(
                 # cleanup can cross the deadline and be cancelled by
                 # wait_for, which would otherwise soften this documented
                 # size-cap error into a retryable timeout.
-                exc = OAuthError("api_error", f"{context} response exceeds size cap")
+                # The status is known here — the cap only trips while reading
+                # a body read_body admitted by status — so carry it, as the
+                # buffered pre-transport path did (callers diagnose an
+                # oversized 200 differently from an oversized 502).
+                exc = OAuthError(
+                    "api_error",
+                    f"{context} response exceeds size cap",
+                    http_status=response.status_code,
+                )
                 error_outcome.append(exc)
                 raise exc
             chunks.append(chunk)

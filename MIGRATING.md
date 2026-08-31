@@ -61,6 +61,11 @@ default, 3600 s ceiling, invalid values normalize to the default:
   middleware and bounded by a wall-clock deadline — a slow-drip body can no
   longer hold the request open. The legacy `OauthTokenProvider` refresh,
   previously unbounded, gets the full 30 s contract and redirect refusal.
+  One taxonomy break rides along: an oversized token response from
+  `Exchange`, size-checked post hoc before, now trips the streaming cap as
+  `Basecamp::Oauth::OauthError` (`api_error`) — a
+  `rescue Basecamp::ApiError` that caught it must rescue the OAuth error
+  class instead, matching discovery and the device flow.
 
 **Wrong behaviour you get if you ignore it:** a token endpoint behind a
 redirecting front — a CDN, an http→https rewrite, a host consolidation — now

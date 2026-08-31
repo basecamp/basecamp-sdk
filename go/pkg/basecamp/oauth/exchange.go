@@ -24,8 +24,10 @@ import (
 // Exchanger therefore carries those POSTs on a client that judges the
 // endpoint's literal address at dial time against [DefaultIssuerPolicy]; see
 // [NewExchanger] for the overrides. It never follows a redirect from the
-// token endpoint — a 3xx surfaces as a typed api_error — and bounds each
-// request at [WithExchangerTimeout]'s deadline (30 s by default).
+// token endpoint — a 301, 302, 303, 307 or 308 surfaces as a typed
+// api_error carrying that status, and any other 3xx as the generic non-200
+// failure — and bounds each request at [WithExchangerTimeout]'s deadline
+// (30 s by default).
 type Exchanger struct {
 	httpClient *http.Client
 	timeout    time.Duration
@@ -74,7 +76,8 @@ func WithExchangerTimeout(d time.Duration) ExchangerOption {
 // has no other way to keep both, since surfguard's transport sets Proxy: nil
 // by construction; compose the client's transport from
 // DefaultIssuerPolicy().RoundTripper() where that is possible. Passing
-// http.DefaultClient restores the pre-policy behavior outright.
+// http.DefaultClient switches off the address policy outright — but not the
+// redirect refusal or the request timeout, which no client choice disables.
 //
 // Redirect suppression is not the address policy and rides every lane: the
 // token endpoint's redirects are refused on an injected client too, via a
