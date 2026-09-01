@@ -47,6 +47,45 @@ describe("ProjectsService", () => {
       expect(projects[1]!.id).toBe(2);
     });
 
+    it("should send no status param by default", async () => {
+      server.use(
+        http.get(`${BASE_URL}/projects.json`, ({ request }) => {
+          const url = new URL(request.url);
+          expect(url.searchParams.has("status")).toBe(false);
+          return HttpResponse.json([sampleProject(1)]);
+        })
+      );
+
+      const projects = await client.projects.list();
+      expect(projects).toHaveLength(1);
+    });
+
+    it("should forward an explicit active status — a server-accepted alias of the default", async () => {
+      server.use(
+        http.get(`${BASE_URL}/projects.json`, ({ request }) => {
+          const url = new URL(request.url);
+          expect(url.searchParams.get("status")).toBe("active");
+          return HttpResponse.json([sampleProject(1)]);
+        })
+      );
+
+      const projects = await client.projects.list({ status: "active" });
+      expect(projects).toHaveLength(1);
+    });
+
+    it("should forward the archived status filter", async () => {
+      server.use(
+        http.get(`${BASE_URL}/projects.json`, ({ request }) => {
+          const url = new URL(request.url);
+          expect(url.searchParams.get("status")).toBe("archived");
+          return HttpResponse.json([sampleProject(1)]);
+        })
+      );
+
+      const projects = await client.projects.list({ status: "archived" });
+      expect(projects).toHaveLength(1);
+    });
+
     it("should return empty array when no projects exist", async () => {
       server.use(
         http.get(`${BASE_URL}/projects.json`, () => {

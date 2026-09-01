@@ -46,6 +46,17 @@ class ProjectsServiceTest < Minitest::Test
     assert_equal 1, projects.length
   end
 
+  def test_list_projects_forwards_explicit_active_status
+    # active is a server-accepted alias of the unfiltered default.
+    stub_request(:get, "https://3.basecampapi.com/12345/projects.json")
+      .with(query: { status: "active" })
+      .to_return(status: 200, body: [ sample_project ].to_json)
+
+    projects = @account.projects.list(status: "active").to_a
+
+    assert_equal 1, projects.length
+  end
+
   def test_get_project
     # Generated service: /projects/{id} without .json
     stub_get("/12345/projects/123", response_body: sample_project)
