@@ -19,7 +19,7 @@ class ProjectsService(client: AccountClient) : BaseService(client) {
         val info = OperationInfo(
             service = "Projects",
             operation = "ListRecentProjects",
-            resourceType = "recent_project",
+            resourceType = "project",
             isMutation = false,
             projectId = null,
             resourceId = null,
@@ -150,7 +150,7 @@ class ProjectsService(client: AccountClient) : BaseService(client) {
         val info = OperationInfo(
             service = "Projects",
             operation = "RecordProjectVisit",
-            resourceType = "resource",
+            resourceType = "project",
             isMutation = true,
             projectId = projectId,
             resourceId = null,

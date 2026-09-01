@@ -75,7 +75,7 @@ export class ProjectsService extends BaseService {
       {
         service: "Projects",
         operation: "ListRecentProjects",
-        resourceType: "recent_project",
+        resourceType: "project",
         isMutation: false,
       },
       () =>
@@ -264,7 +264,7 @@ export class ProjectsService extends BaseService {
       {
         service: "Projects",
         operation: "RecordProjectVisit",
-        resourceType: "resource",
+        resourceType: "project",
         isMutation: true,
         projectId,
       },
