@@ -108,9 +108,7 @@ class TestProjects:
 
     @respx.mock
     def test_list_recent_projects_forbidden(self):
-        respx.get(f"{BASE}/my/recent_projects.json").mock(
-            return_value=httpx.Response(403, json={"error": "Forbidden"})
-        )
+        respx.get(f"{BASE}/my/recent_projects.json").mock(return_value=httpx.Response(403, json={"error": "Forbidden"}))
 
         client, account = make_account()
         with pytest.raises(ForbiddenError) as excinfo:

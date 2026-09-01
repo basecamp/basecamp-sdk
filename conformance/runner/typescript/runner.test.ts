@@ -455,9 +455,10 @@ async function executeOperation(
         return { result: project };
       }
 
-      case "ListRecentProjects":
-        await client.projects.listRecentProjects();
-        break;
+      case "ListRecentProjects": {
+        const recentProjects = await client.projects.listRecentProjects();
+        return { result: summarizeProjects(recentProjects) };
+      }
 
       case "RecordProjectVisit":
         await client.projects.recordProjectVisit(Number(params.projectId));

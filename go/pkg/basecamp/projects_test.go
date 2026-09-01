@@ -594,6 +594,13 @@ func TestProjectsService_ListRecent(t *testing.T) {
 	if projects[0].ID != 2085958500 {
 		t.Errorf("first project ID = %d, want the most recently visited 2085958500", projects[0].ID)
 	}
+	if projects[0].Bookmarked || !projects[1].Bookmarked {
+		t.Errorf("bookmarked = [%v, %v], want [false, true] carried through the wrapper conversion",
+			projects[0].Bookmarked, projects[1].Bookmarked)
+	}
+	if projects[0].Starred || projects[1].Starred {
+		t.Error("starred should stay false when the wire omits it")
+	}
 }
 
 func TestProjectsService_RecordVisit(t *testing.T) {

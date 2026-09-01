@@ -990,8 +990,8 @@ private suspend fun dispatchOperation(tc: TestCase, account: AccountClient): Dis
         }
 
         "ListRecentProjects" -> {
-            account.projects.listRecentProjects()
-            DispatchResult()
+            val recentProjects = account.projects.listRecentProjects()
+            DispatchResult(resultJson = summarizeProjects(recentProjects))
         }
 
         "RecordProjectVisit" -> {
