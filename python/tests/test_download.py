@@ -786,7 +786,7 @@ class TestSpec9CredentialRendering:
         assert len(hooks.errors) == 1
         for err in (exc_info.value, hooks.errors[0]):
             assert isinstance(err, NetworkError)
-            assert str(err) == "Connection failed"
+            assert str(err) == "Network error"
             assert err.__cause__ is None
             assert err.__context__ is None
 
@@ -800,7 +800,7 @@ class TestSpec9CredentialRendering:
         with pytest.raises(NetworkError) as exc_info:
             await download_async(self.RAW_SIGNED, http_client=http, config=config)
 
-        assert str(exc_info.value) == "Connection failed"
+        assert str(exc_info.value) == "Network error"
         assert exc_info.value.__cause__ is None
         assert exc_info.value.__context__ is None
 
@@ -824,3 +824,53 @@ class TestDisplayUrl:
         assert display_url("https://user:pw@host.example:8443/a/b?sig=SECRET#frag") == "https://host.example:8443/a/b"
         assert display_url("https://host.example/a") == "https://host.example/a"
         assert display_url("http://[::1]:3000/x?y=1") == "http://[::1]:3000/x"
+
+    def test_unparsable_input_renders_fixed_token(self):
+        from basecamp._security import display_url
+
+        assert display_url("http://[::1:3000/x") == "unparsable"
+        assert display_url("not a url") == "unparsable"
+
+
+class TestUndialableSignedLocation:
+    HOP1 = "https://3.basecampapi.com/files/doc.pdf"
+    RAW = "https://original.com/files/doc.pdf"
+    BAD = "https://signed.example:SECRET/file?sig=SECRET"
+
+    @respx.mock
+    def test_malformed_location_is_projected_at_hop_1(self):
+        # httpx builds the redirect request even with follow_redirects=False,
+        # so a malformed Location fails hop 1 itself — inside the download
+        # boundary, which renders the fixed message and chains nothing.
+        respx.get(self.HOP1).mock(return_value=httpx.Response(302, headers={"Location": self.BAD}))
+
+        with pytest.raises(NetworkError) as exc_info:
+            download_sync(self.RAW, http_client=make_http(), config=make_config())
+
+        err = exc_info.value
+        assert str(err) == "Network error"
+        assert err.__cause__ is None
+        assert err.__context__ is None
+
+    def test_hop2_invalid_url_renders_fixed_token(self):
+        # The hop-2 boundary itself: httpx.InvalidURL sits outside HTTPError
+        # and renders the offending component ("Invalid port: 'SECRET'").
+        from basecamp.download import _fetch_signed
+
+        with pytest.raises(ApiError) as exc_info:
+            _fetch_signed(self.BAD, timeout=1.0)
+
+        err = exc_info.value
+        assert str(err) == "redirect to undialable download URL: unparsable"
+        assert err.__cause__ is None
+        assert err.__context__ is None
+
+    @pytest.mark.asyncio
+    async def test_hop2_invalid_url_renders_fixed_token_async(self):
+        from basecamp.download import _fetch_signed_async
+
+        with pytest.raises(ApiError) as exc_info:
+            await _fetch_signed_async(self.BAD, timeout=1.0)
+
+        assert str(exc_info.value) == "redirect to undialable download URL: unparsable"
+        assert exc_info.value.__context__ is None

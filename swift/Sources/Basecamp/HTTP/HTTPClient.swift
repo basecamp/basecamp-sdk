@@ -159,21 +159,16 @@ package final class HTTPClient: Sendable {
     /// Renders a download URL for hooks: origin and path only — no userinfo
     /// (a configured base URL can carry one), no query (where a signed
     /// credential rides), no fragment (SPEC §9). Rebuilt from a parse; a URL
-    /// that does not parse falls back to a textual strip of the same parts.
+    /// with no complete origin renders as the fixed token, never as any of
+    /// its own text.
     private static func stripQueryAndFragment(_ url: String) -> String {
-        if let components = URLComponents(string: url),
-           let scheme = components.scheme,
-           let host = components.host, !host.isEmpty {
-            let renderedHost = host.contains(":") ? "[\(host)]" : host
-            let port = components.port.map { ":\($0)" } ?? ""
-            return "\(scheme)://\(renderedHost)\(port)\(components.percentEncodedPath)"
-        }
-        let stripped = String(url.prefix(while: { $0 != "?" && $0 != "#" }))
-        guard let schemeEnd = stripped.range(of: "://") else { return stripped }
-        let authorityStart = schemeEnd.upperBound
-        let authorityEnd = stripped[authorityStart...].firstIndex(of: "/") ?? stripped.endIndex
-        guard let at = stripped[authorityStart..<authorityEnd].lastIndex(of: "@") else { return stripped }
-        return String(stripped[..<authorityStart]) + String(stripped[stripped.index(after: at)...])
+        guard let components = URLComponents(string: url),
+              let scheme = components.scheme,
+              let host = components.host, !host.isEmpty
+        else { return "unparsable" }
+        let renderedHost = host.contains(":") && !host.hasPrefix("[") ? "[\(host)]" : host
+        let port = components.port.map { ":\($0)" } ?? ""
+        return "\(scheme)://\(renderedHost)\(port)\(components.percentEncodedPath)"
     }
 
     /// Converts a backoff interval to nanoseconds without trapping.
@@ -520,13 +515,15 @@ package final class HTTPClient: Sendable {
                     $0.onRequestEnd(info, result: RequestResult(statusCode: 0, durationMs: durationMs))
                 }
 
-                if Self.isCancellation(error) {
+                if let sentinel = Self.projectedDownloadCause(error) {
                     // Cooperative cancellation is terminal, not a transport
                     // blip: retrying would announce and start an attempt the
-                    // caller has already abandoned. It propagates raw rather
-                    // than wrapped, and the attempt is finalized above so
-                    // start/end stay paired.
-                    directive = .fail(error)
+                    // caller has already abandoned. It propagates unwrapped —
+                    // as a FRESH instance of its own shape, since a
+                    // URLError(.cancelled) from URLSession carries the failing
+                    // URL in its userInfo (SPEC §9) — and the attempt is
+                    // finalized above so start/end stay paired.
+                    directive = .fail(sentinel)
                 } else if attempt < maxAttempts {
                     let delaySeconds = calculateDelay(
                         attempt: attempt,
@@ -542,8 +539,7 @@ package final class HTTPClient: Sendable {
                         error: Self.projectedDownloadError(error, message: "Network error"),
                         delaySeconds: delaySeconds)
                 } else {
-                    // Same projection for the caller. Cancellation failed raw
-                    // above, so the projected cause is nil here in practice.
+                    // Same projection for the caller.
                     directive = .fail(Self.projectedDownloadError(error, message: "Network error"))
                 }
             }

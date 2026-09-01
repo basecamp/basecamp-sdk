@@ -59,6 +59,18 @@ export function filenameFromURL(rawURL: string): string {
   }
 }
 
+/**
+ * A fresh abort-shaped cause for a projected download error (SPEC §9): the
+ * same DOMException name as the transport's rejection, fixed text, no URL —
+ * or undefined when the rejection was not an abort.
+ */
+function abortSentinel(err: unknown): Error | undefined {
+  if (err instanceof DOMException && (err.name === "AbortError" || err.name === "TimeoutError")) {
+    return new DOMException("The operation was aborted", err.name);
+  }
+  return undefined;
+}
+
 /** Parse Content-Length header defensively, returning -1 for missing/invalid values. */
 function parseContentLength(headers: Headers): number {
   const raw = headers.get("Content-Length");
@@ -240,9 +252,11 @@ export function createDownloadURL(deps: DownloadDeps): (rawURL: string) => Promi
           throw reason;
         }
         // SPEC §9: the transport's rendering carries the hop-1 URL (and any
-        // signed query smuggled into it) — the fixed network error, with no
-        // cause chained, is what the hook and the caller both get.
-        const projected = projectedNetworkError();
+        // signed query smuggled into it) — the fixed network error is what the
+        // hook and the caller both get. An abort keeps its meaning as a FRESH
+        // abort-shaped cause (fixed text, no URL), so a caller can still tell
+        // a timeout or cancellation from a connection failure.
+        const projected = Errors.network("Network error", abortSentinel(err));
         endAttempt(0, projected);
         throw projected;
       }
@@ -268,8 +282,17 @@ export function createDownloadURL(deps: DownloadDeps): (rawURL: string) => Promi
         // the failure is rendered as the fixed token, never the value.
         let resolvedLocation: string;
         try {
-          resolvedLocation = new URL(location, rewrittenURL).href;
-        } catch {
+          const resolved = new URL(location, rewrittenURL);
+          if (resolved.protocol !== "http:" && resolved.protocol !== "https:") {
+            // Parses, but is not dialable: rendered as its origin, as Ruby does.
+            throw new BasecampError(
+              "api_error",
+              `redirect to undialable download URL: ${resolved.protocol}//${resolved.host}`,
+            );
+          }
+          resolvedLocation = resolved.href;
+        } catch (err) {
+          if (err instanceof BasecampError) throw err;
           throw new BasecampError("api_error", "redirect to undialable download URL: unparsable");
         }
 

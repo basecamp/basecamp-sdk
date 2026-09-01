@@ -1265,16 +1265,17 @@ func TestDownloadURL_TransportCancellationStillClassifies(t *testing.T) {
 // error is the fixed message with nothing beneath it: the signed URL is a
 // credential, and the transport's error renders it (SPEC §9).
 func TestDownload_SecondLegTransportErrorRendersNoURL(t *testing.T) {
-	// A dead port: the signed hop's dial fails after hop 1 succeeds.
-	deadServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
-	deadURL := deadServer.URL
-	deadServer.Close()
-
+	// A dead port: the signed hop's dial fails after hop 1 succeeds. The API
+	// server is started first so it cannot be handed the freed port.
+	var deadURL atomic.Value
 	apiServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Location", deadURL+"/bucket/file.png?X-Amz-Signature=SECRET")
+		w.Header().Set("Location", deadURL.Load().(string)+"/bucket/file.png?X-Amz-Signature=SECRET")
 		w.WriteHeader(http.StatusFound)
 	}))
 	defer apiServer.Close()
+	deadServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	deadURL.Store(deadServer.URL)
+	deadServer.Close()
 
 	cfg := DefaultConfig()
 	cfg.BaseURL = apiServer.URL

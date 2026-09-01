@@ -488,7 +488,7 @@ class DownloadTest < Minitest::Test
     end
 
     [ error, hook_errors.fetch(0) ].each do |e|
-      assert_equal "Connection failed", e.message
+      assert_equal "Network error", e.message
       assert_no_match(/SECRET/, "#{e.message} #{e.hint}")
       assert_nil e.cause
     end
@@ -554,6 +554,8 @@ class DownloadTest < Minitest::Test
     assert_equal "https://host.example:8443/a/b",
                  Basecamp::Security.display_url("https://user:pw@host.example:8443/a/b?sig=SECRET#frag")
     assert_equal "https://host.example/a", Basecamp::Security.display_url("https://host.example/a")
+    assert_equal "unparsable", Basecamp::Security.display_url("http://[::1:3000/x")
+    assert_equal "unparsable", Basecamp::Security.display_url("not a url")
   end
 
   def test_download_url_retry_hook_url_omits_query

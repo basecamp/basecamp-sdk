@@ -576,8 +576,7 @@ module Basecamp
         # failed on, so it is neither the cause nor the hint, and it is raised
         # below — outside this rescue, with cause: nil — so MRI's implicit
         # cause is severed too. Every other request keeps its diagnostic.
-        error = download ? Basecamp::NetworkError.new("Connection failed") : \
-          Basecamp::NetworkError.new("Connection failed", cause: e)
+        error = download ? Basecamp::NetworkError.new : Basecamp::NetworkError.new("Connection failed", cause: e)
         @hooks.on_request_end(info, RequestResult.new(duration: duration, error: error))
         raise error unless download
 

@@ -588,7 +588,7 @@ class DownloadTest {
             hooks = hooks,
         )
         val account = client.forAccount("12345")
-        account.downloadURL("http://localhost:3000/12345/attachments/abc/download/file.txt?verifier=SECRET")
+        account.downloadURL("http://localhost:3000/12345/attachments/abc/download/file.txt?verifier=SECRET#frag")
 
         // The wire request keeps the query; only the hook rendering is projected.
         assertEquals("verifier=SECRET", wireQuery)

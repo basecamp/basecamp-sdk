@@ -380,8 +380,8 @@ private suspend fun AccountClient.downloadHop1(
 /**
  * Renders a download URL for hooks: origin and path only — no userinfo (a
  * configured base URL can carry one), no query (where a signed credential
- * rides), no fragment (SPEC §9). Rebuilt from a parse; a URL that does not
- * parse falls back to a textual strip of the same parts.
+ * rides), no fragment (SPEC §9). Rebuilt from a parse; a URL with no complete
+ * origin renders as the fixed token, never as any of its own text.
  */
 private fun hookDisplayUrl(url: String): String {
     val parsed = try {
@@ -389,17 +389,14 @@ private fun hookDisplayUrl(url: String): String {
     } catch (_: Exception) {
         null
     }
-    return if (parsed != null) {
-        val host = if (parsed.host.contains(':')) "[${parsed.host}]" else parsed.host
-        val port = if (parsed.specifiedPort != 0 && parsed.specifiedPort != parsed.protocol.defaultPort) {
-            ":${parsed.specifiedPort}"
-        } else {
-            ""
-        }
-        "${parsed.protocol.name}://$host$port${parsed.encodedPath}"
+    if (parsed == null || parsed.host.isEmpty()) return "unparsable"
+    val host = if (parsed.host.contains(':') && !parsed.host.startsWith("[")) "[${parsed.host}]" else parsed.host
+    val port = if (parsed.specifiedPort != 0 && parsed.specifiedPort != parsed.protocol.defaultPort) {
+        ":${parsed.specifiedPort}"
     } else {
-        url.substringBefore('?').substringBefore('#').replace(Regex("^([a-zA-Z][a-zA-Z0-9+.-]*://)[^/@]*@"), "$1")
+        ""
     }
+    return "${parsed.protocol.name}://$host$port${parsed.encodedPath}"
 }
 
 /**

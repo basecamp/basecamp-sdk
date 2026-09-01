@@ -474,6 +474,46 @@ describe("downloadURL", () => {
       expect(retryErrors[0]!.message).toContain("HTTP 503");
     });
 
+    it("a per-attempt timeout keeps its abort identity as a fresh cause", async () => {
+      server.use(
+        http.get(`${API_ORIGIN}/*`, async () => {
+          await new Promise((resolve) => setTimeout(resolve, 200));
+          return new HttpResponse("late", { headers: { "Content-Type": "text/plain" } });
+        }),
+      );
+
+      const downloadURL = makeDownloadURL({ enableRetry: false, requestTimeoutMs: 20 });
+      let caught: unknown;
+      try {
+        await downloadURL(SIGNED_RAW_URL);
+      } catch (err) {
+        caught = err;
+      }
+      const error = caught as BasecampError;
+      expect(error).toBeInstanceOf(BasecampError);
+      expect(error.message).toBe("Network error");
+      expect(error.cause?.name).toBe("AbortError");
+      expect(String(error.cause)).not.toContain("SECRET");
+    });
+
+    it("a signed Location with a non-HTTP scheme renders its origin only", async () => {
+      server.use(
+        http.get(`${API_ORIGIN}/*`, () =>
+          new HttpResponse(null, {
+            status: 302,
+            headers: { Location: "ftp://storage.example/bucket/file?X-Amz-Signature=SECRET" },
+          })),
+      );
+
+      const client = makeClient();
+      await expect(
+        client.downloadURL("https://storage.3.basecamp.com/999/blobs/abc/download/file.png"),
+      ).rejects.toMatchObject({
+        code: "api_error",
+        message: "redirect to undialable download URL: ftp://storage.example",
+      });
+    });
+
     it("a signed Location that fails URL construction renders the fixed token", async () => {
       server.use(
         http.get(`${API_ORIGIN}/*`, () =>

@@ -352,7 +352,7 @@ class HttpClient:
             # error is fixed, unchained, and raised below — outside this
             # handler, so __context__ retains nothing either. Every other
             # request keeps its diagnostic.
-            error = NetworkError("Connection failed") if download else NetworkError(f"Connection failed: {e}")
+            error = NetworkError("Network error") if download else NetworkError(f"Connection failed: {e}")
             safe_hook(self._hooks.on_request_end, info, RequestResult(duration=duration, error=error))
             if not download:
                 raise error from e

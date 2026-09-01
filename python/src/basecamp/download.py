@@ -6,7 +6,7 @@ from urllib.parse import unquote, urlparse, urlunparse
 import httpx
 
 from basecamp import _security
-from basecamp.errors import ApiError, NetworkError, UsageError
+from basecamp.errors import ApiError, BasecampError, NetworkError, UsageError
 
 # The redirects hop 1 dispatches on (SPEC §14 step 3d) and hop 2 refuses.
 _REDIRECT_STATUSES = frozenset({301, 302, 303, 307, 308})
@@ -137,10 +137,15 @@ def _check_signed(response: httpx.Response) -> httpx.Response:
 
 def _fetch_signed(url: str, *, timeout: float) -> httpx.Response:
     """Unauthenticated GET for signed download URL. Follows no redirect (#805)."""
-    error: NetworkError | None = None
+    error: BasecampError | None = None
     try:
         with httpx.Client(timeout=timeout, follow_redirects=False) as client:
             response = client.get(url)
+    except httpx.InvalidURL:
+        # A signed Location that fails URL construction is the same credential
+        # the dial would carry (SPEC §9), and httpx's InvalidURL — outside the
+        # HTTPError hierarchy — renders the offending component.
+        error = ApiError("redirect to undialable download URL: unparsable")
     except httpx.HTTPError:
         # SPEC §9: the transport error renders the signed URL. Fixed message,
         # constructed here and raised outside the handler so neither __cause__
@@ -154,10 +159,12 @@ def _fetch_signed(url: str, *, timeout: float) -> httpx.Response:
 
 async def _fetch_signed_async(url: str, *, timeout: float) -> httpx.Response:
     """Async unauthenticated GET for signed download URL. Follows no redirect (#805)."""
-    error: NetworkError | None = None
+    error: BasecampError | None = None
     try:
         async with httpx.AsyncClient(timeout=timeout, follow_redirects=False) as client:
             response = await client.get(url)
+    except httpx.InvalidURL:
+        error = ApiError("redirect to undialable download URL: unparsable")
     except httpx.HTTPError:
         # SPEC §9: same raising boundary as the sync twin above.
         error = NetworkError("Download failed")

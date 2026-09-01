@@ -352,7 +352,7 @@ class AsyncHttpClient:
             # SPEC section 9: same raising boundary as the sync client — on a
             # download hop 1 the httpx error is fixed, unchained, and raised
             # below, outside this handler.
-            error = NetworkError("Connection failed") if download else NetworkError(f"Connection failed: {e}")
+            error = NetworkError("Network error") if download else NetworkError(f"Connection failed: {e}")
             safe_hook(self._hooks.on_request_end, info, RequestResult(duration=duration, error=error))
             if not download:
                 raise error from e

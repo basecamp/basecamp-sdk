@@ -34,18 +34,22 @@ module Basecamp
 
     # Renders a URL for hooks as origin+path only (SPEC section 9): no
     # userinfo, query or fragment. The download flow's hop-1 URL can carry a
-    # signed credential in its query; the wire request keeps the whole URL.
+    # signed credential in its query; the wire request keeps the whole URL. A
+    # URL with no complete origin renders as the fixed token, never as any of
+    # its own text.
     # @param url [String]
     # @return [String]
     def self.display_url(url)
       uri = URI.parse(url)
+      return "unparsable" if uri.scheme.nil? || uri.host.nil? || uri.host.empty?
+
       uri.password = nil
       uri.user = nil
       uri.query = nil
       uri.fragment = nil
       uri.to_s
     rescue URI::Error
-      url.sub(/[?#].*/m, "").sub(%r{\A([a-z][a-z0-9+.-]*://)[^/@]*@}i, '\1')
+      "unparsable"
     end
 
     def self.same_origin?(a, b)

@@ -36,14 +36,17 @@ def display_url(url: str) -> str:
     render origin and path only — no userinfo, query or fragment. The wire
     request keeps the full URL.
     """
-    parsed = urlparse(url)
-    host = parsed.hostname or ""
-    if ":" in host:
-        host = f"[{host}]"
     try:
+        parsed = urlparse(url)
         port = parsed.port
     except ValueError:
-        port = None
+        # No complete origin to project: the fixed token, never the input.
+        return "unparsable"
+    host = parsed.hostname or ""
+    if not parsed.scheme or not host:
+        return "unparsable"
+    if ":" in host:
+        host = f"[{host}]"
     netloc = f"{host}:{port}" if port is not None else host
     return urlunparse((parsed.scheme, netloc, parsed.path, "", "", ""))
 

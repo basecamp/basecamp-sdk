@@ -623,7 +623,7 @@ All exceptions inherit from `BasecampError`:
 | `ForbiddenError` | `forbidden` | 403 | No |
 | `RateLimitError` | `rate_limit` | 429 | Yes |
 | `NetworkError` | `network` | - | Yes |
-| `ApiError` | `api_error` | 5xx, other | Yes for 500/502/503/504; No otherwise |
+| `ApiError` | `api_error` | 5xx, other | Yes for any 5xx (507 is `LimitExceededError`); No otherwise |
 | `AmbiguousError` | `ambiguous` | - | No |
 | `ValidationError` | `validation` | 400, 422 | No |
 | `LimitExceededError` | `limit_exceeded` | 507 | No |

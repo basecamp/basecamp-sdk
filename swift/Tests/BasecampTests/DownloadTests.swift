@@ -1097,9 +1097,9 @@ final class DownloadTests: XCTestCase {
     func testDownloadURL_urlErrorCancelledIsTerminal() async throws {
         let spy = RetryHookSpy()
         let counter = Counter()
-        let transport = MockTransport { _ in
+        let transport = MockTransport { request in
             counter.increment()
-            throw URLError(.cancelled)
+            throw URLError(.cancelled, userInfo: [NSURLErrorFailingURLStringErrorKey: request.url!.absoluteString])
         }
         let account = makeTestAccountClient(transport: transport, enableRetry: true, hooks: spy)
 
@@ -1107,9 +1107,12 @@ final class DownloadTests: XCTestCase {
             _ = try await account.downloadURL(Self.hop1URL)
             XCTFail("Expected the cancellation to surface")
         } catch let error as URLError {
-            // Terminal errors propagate raw, so the cancellation shape itself
-            // must arrive — not a BasecampError.network wrapping it.
+            // Terminal errors propagate unwrapped, so the cancellation shape
+            // itself must arrive — not a BasecampError.network wrapping it —
+            // as a fresh instance: URLSession's carries the failing URL in
+            // its userInfo, which SPEC §9 keeps out of the download path.
             XCTAssertEqual(error.code, .cancelled)
+            XCTAssertNil(error.userInfo[NSURLErrorFailingURLStringErrorKey])
         } catch {
             XCTFail("Expected URLError(.cancelled) raw, got \(error)")
         }
