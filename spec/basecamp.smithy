@@ -766,12 +766,18 @@ structure Project {
   end_date: ISO8601Date
   clients_enabled: Boolean
   bookmark_url: String
+  /// Bucket stars collection for this project (`/buckets/{id}/stars.json`).
+  star_url: String
   @required
   url: String
   @required
   app_url: String
   dock: DockItemList
+  /// True when the project is pinned on the current user's home page at all,
+  /// whether starred or filed into a stack.
   bookmarked: Boolean
+  /// True only when the project carries a star on the current user's home page.
+  starred: Boolean
   client_company: ClientCompany
   @deprecated(message: "Use Client Visibility feature instead", since: "2024-01")
   clientside: ClientSide

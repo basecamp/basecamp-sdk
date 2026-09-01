@@ -22,10 +22,12 @@ type Project struct {
 	EndDate        string         `json:"end_date,omitempty"`
 	ClientsEnabled bool           `json:"clients_enabled"`
 	BookmarkURL    string         `json:"bookmark_url"`
+	StarURL        string         `json:"star_url"`
 	URL            string         `json:"url"`
 	AppURL         string         `json:"app_url"`
 	Dock           []DockItem     `json:"dock,omitempty"`
 	Bookmarked     bool           `json:"bookmarked"`
+	Starred        bool           `json:"starred"`
 	ClientCompany  *ClientCompany `json:"client_company,omitempty"`
 	Clientside     *Clientside    `json:"clientside,omitempty"`
 }
@@ -438,9 +440,11 @@ func projectFromGenerated(gp generated.Project) Project {
 		EndDate:        deref(gp.EndDate),
 		ClientsEnabled: deref(gp.ClientsEnabled),
 		BookmarkURL:    deref(gp.BookmarkUrl),
+		StarURL:        deref(gp.StarUrl),
 		URL:            gp.Url,
 		AppURL:         gp.AppUrl,
 		Bookmarked:     deref(gp.Bookmarked),
+		Starred:        deref(gp.Starred),
 		CreatedAt:      gp.CreatedAt,
 		UpdatedAt:      gp.UpdatedAt,
 	}

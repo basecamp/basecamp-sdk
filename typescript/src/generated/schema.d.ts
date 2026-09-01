@@ -5317,10 +5317,18 @@ export interface components {
             end_date?: string;
             clients_enabled?: boolean;
             bookmark_url?: string;
+            /** @description Bucket stars collection for this project (`/buckets/{id}/stars.json`). */
+            star_url?: string;
             url: string;
             app_url: string;
             dock?: components["schemas"]["DockItem"][];
+            /**
+             * @description True when the project is pinned on the current user's home page at all,
+             *     whether starred or filed into a stack.
+             */
             bookmarked?: boolean;
+            /** @description True only when the project carries a star on the current user's home page. */
+            starred?: boolean;
             client_company?: components["schemas"]["ClientCompany"];
             /** @deprecated */
             clientside?: components["schemas"]["ClientSide"];

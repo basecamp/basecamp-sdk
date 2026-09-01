@@ -116,11 +116,34 @@ func TestProject_UnmarshalGet(t *testing.T) {
 	if project.EndDate != "2022-04-01" {
 		t.Errorf("expected end_date '2022-04-01', got %q", project.EndDate)
 	}
+	if project.StarURL != "https://3.basecampapi.com/195539477/buckets/2085958499/stars.json" {
+		t.Errorf("unexpected star_url %q", project.StarURL)
+	}
+	if !project.Bookmarked || !project.Starred {
+		t.Errorf("expected bookmarked=true starred=true, got bookmarked=%v starred=%v", project.Bookmarked, project.Starred)
+	}
 	if project.CreatedAt.IsZero() {
 		t.Error("expected non-zero CreatedAt")
 	}
 	if project.UpdatedAt.IsZero() {
 		t.Error("expected non-zero UpdatedAt")
+	}
+}
+
+func TestProjectFromGenerated_StarFields(t *testing.T) {
+	bookmarked, starred := true, false
+	starURL := "https://3.basecampapi.com/195539477/buckets/2085958500/stars.json"
+	p := projectFromGenerated(generated.Project{
+		Id: 2085958500, Status: "active", Name: "The Leto Laptop",
+		StarUrl: &starURL, Bookmarked: &bookmarked, Starred: &starred,
+	})
+
+	if p.StarURL != starURL {
+		t.Errorf("unexpected StarURL %q", p.StarURL)
+	}
+	// Bookmarked-but-unstarred is the case that tells the two flags apart.
+	if !p.Bookmarked || p.Starred {
+		t.Errorf("expected bookmarked=true starred=false, got bookmarked=%v starred=%v", p.Bookmarked, p.Starred)
 	}
 }
 

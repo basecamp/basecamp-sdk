@@ -2340,8 +2340,11 @@ type PrioritizeAssignmentRequestContent struct {
 
 // Project defines model for Project.
 type Project struct {
-	AppUrl         string         `json:"app_url"`
-	BookmarkUrl    *string        `json:"bookmark_url,omitempty"`
+	AppUrl      string  `json:"app_url"`
+	BookmarkUrl *string `json:"bookmark_url,omitempty"`
+
+	// Bookmarked True when the project is pinned on the current user's home page at all,
+	// whether starred or filed into a stack.
 	Bookmarked     *bool          `json:"bookmarked,omitempty"`
 	ClientCompany  *ClientCompany `json:"client_company,omitempty"`
 	ClientsEnabled *bool          `json:"clients_enabled,omitempty"`
@@ -2357,7 +2360,13 @@ type Project struct {
 	Id          int64       `json:"id"`
 	Name        string      `json:"name"`
 	Purpose     *string     `json:"purpose,omitempty"`
-	StartDate   *string     `json:"start_date,omitempty"`
+
+	// StarUrl Bucket stars collection for this project (`/buckets/{id}/stars.json`).
+	StarUrl *string `json:"star_url,omitempty"`
+
+	// Starred True only when the project carries a star on the current user's home page.
+	Starred   *bool   `json:"starred,omitempty"`
+	StartDate *string `json:"start_date,omitempty"`
 
 	// Status active|archived|trashed
 	Status    string    `json:"status"`

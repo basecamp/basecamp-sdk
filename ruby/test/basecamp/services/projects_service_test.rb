@@ -15,25 +15,31 @@ class ProjectsServiceTest < Minitest::Test
     @account = create_account_client(account_id: "12345")
   end
 
-  def sample_project(id: 123, name: "Test Project")
+  def sample_project(id: 123, name: "Test Project", starred: false)
     {
       "id" => id,
       "name" => name,
       "description" => "A test project",
       "status" => "active",
       "start_date" => "2024-01-01",
-      "end_date" => "2024-03-31"
+      "end_date" => "2024-03-31",
+      "star_url" => "https://3.basecampapi.com/12345/buckets/#{id}/stars.json",
+      "bookmarked" => true,
+      "starred" => starred
     }
   end
 
   def test_list_projects
-    stub_get("/12345/projects.json", response_body: [ sample_project, sample_project(id: 456, name: "Other") ])
+    stub_get("/12345/projects.json", response_body: [ sample_project(starred: true), sample_project(id: 456, name: "Other") ])
 
     projects = @account.projects.list.to_a
 
     assert_equal 2, projects.length
     assert_equal "Test Project", projects[0]["name"]
     assert_equal "Other", projects[1]["name"]
+    # starred implies bookmarked, never the reverse: the second project is pinned but unstarred.
+    assert_equal [ true, true ], projects.map { |p| p["bookmarked"] }
+    assert_equal [ true, false ], projects.map { |p| p["starred"] }
   end
 
   def test_list_projects_with_status_filter
@@ -67,6 +73,9 @@ class ProjectsServiceTest < Minitest::Test
     assert_equal "Test Project", project["name"]
     assert_equal "2024-01-01", project["start_date"]
     assert_equal "2024-03-31", project["end_date"]
+    assert_equal "https://3.basecampapi.com/12345/buckets/123/stars.json", project["star_url"]
+    assert_equal true, project["bookmarked"]
+    assert_equal false, project["starred"]
   end
 
   def test_create_project

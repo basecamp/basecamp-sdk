@@ -32581,6 +32581,10 @@
           "bookmark_url": {
             "type": "string"
           },
+          "star_url": {
+            "type": "string",
+            "description": "Bucket stars collection for this project (`/buckets/{id}/stars.json`)."
+          },
           "url": {
             "type": "string"
           },
@@ -32595,7 +32599,12 @@
             "x-go-type-skip-optional-pointer": true
           },
           "bookmarked": {
-            "type": "boolean"
+            "type": "boolean",
+            "description": "True when the project is pinned on the current user's home page at all,\nwhether starred or filed into a stack."
+          },
+          "starred": {
+            "type": "boolean",
+            "description": "True only when the project carries a star on the current user's home page."
           },
           "client_company": {
             "$ref": "#/components/schemas/ClientCompany"

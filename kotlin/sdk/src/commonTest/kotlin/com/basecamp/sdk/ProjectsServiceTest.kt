@@ -26,12 +26,14 @@ class ProjectsServiceTest {
         }
     }
 
-    private fun projectJson(id: Long, name: String, description: String? = null) = """{
+    private fun projectJson(id: Long, name: String, description: String? = null, starred: Boolean = false) = """{
         "id": $id, "status": "active", "name": "$name",
         "created_at": "2025-01-01T00:00:00Z", "updated_at": "2025-01-01T00:00:00Z",
         "start_date": "2024-01-01", "end_date": "2024-03-31",
         "url": "https://3.basecampapi.com/12345/projects/$id.json",
         "app_url": "https://3.basecamp.com/12345/projects/$id",
+        "star_url": "https://3.basecampapi.com/12345/buckets/$id/stars.json",
+        "bookmarked": true, "starred": $starred,
         "dock": []
         ${if (description != null) """, "description": "$description"""" else ""}
     }"""
@@ -44,7 +46,7 @@ class ProjectsServiceTest {
 
             respond(
                 content = """[
-                    ${projectJson(1, "Project Alpha")},
+                    ${projectJson(1, "Project Alpha", starred = true)},
                     ${projectJson(2, "Project Beta")}
                 ]""",
                 status = HttpStatusCode.OK,
@@ -63,6 +65,10 @@ class ProjectsServiceTest {
         assertEquals("Project Alpha", projects[0].name)
         assertEquals(2L, projects[1].id)
         assertEquals("Project Beta", projects[1].name)
+        // starred implies bookmarked, never the reverse: Beta is pinned but unstarred.
+        assertEquals(listOf(true, true), projects.map { it.bookmarked })
+        assertEquals(listOf(true, false), projects.map { it.starred })
+        assertEquals("https://3.basecampapi.com/12345/buckets/2/stars.json", projects[1].starUrl)
         assertEquals(2L, projects.meta.totalCount)
 
         client.close()
