@@ -57,7 +57,7 @@ When artifacts conflict, this precedence governs:
 | **BaseService** | Abstract base for generated services. Provides request execution, error mapping, pagination following, hooks integration. |
 | **HTTP Transport** | Executes HTTP requests. Applies auth headers, User-Agent, Content-Type. Implements retry, caching. |
 | **Errors** | Structured error hierarchy. Maps HTTP statuses to typed error codes with exit codes. |
-| **Security** | HTTPS enforcement, body size limits, message truncation, header redaction, same-origin validation. |
+| **Security** | HTTPS enforcement, body size limits, message truncation, header redaction, same-origin validation, credential-bearing values never rendered. |
 
 ### Two-Tier Topology
 
@@ -592,10 +592,12 @@ A **wrapped-pagination** response is decoded in two halves — the items array o
 2. If JSON and has `"error"` key (string value) → use as `message`.
 3. If JSON and has `"error_description"` key (string value) → use as `hint`.
 4. Else if JSON and has `"message"` key (string value) and `message` not yet set → use as `message`.
-5. If parsing fails or body is empty → use HTTP status text as `message`.
-6. Truncate `message` to `MAX_ERROR_MESSAGE_LENGTH` (see §9).
+5. If parsing fails or body is empty → `message` is the fixed phrase carrying the status code: `Request failed (HTTP 500)`.
+6. Truncate `message` and `hint` to `MAX_ERROR_MESSAGE_LENGTH` (see §9) — `hint` is default-rendered too.
 
 Note: `"error"` takes precedence over `"message"` — step 4 is a fallback for APIs that use `"message"` instead of `"error"`.
+
+Step 5 used to say "HTTP status text", which is not one thing: the wire reason phrase is whatever the server sent under HTTP/1.1 and does not exist under HTTP/2, and a platform's status-code table is empty for an unregistered code (Go's `http.StatusText(599)` is `""`) and localized on Apple platforms. The fixed phrase is the only portable spelling. Ruby, Python and Go's raw client path already render it; TypeScript (`response.statusText`), Kotlin (`status.description`), Go's `checkResponse` (`resp.Status`) and Swift (`localizedString(forStatusCode:)`) do not yet.
 
 ### Field-Keyed Validation Bodies (400/422) `[conformance]`
 
@@ -1419,6 +1421,35 @@ Error messages extracted from response bodies are truncated to 500 units. If the
 
 **Unit semantics:** The unit is language-defined: Go (`len()`), Ruby (`bytesize`), and Python (`len(s.encode())`) use bytes; TypeScript (`s.length`), Swift (`s.count`), and Kotlin (`s.length`) use character/code-unit length. For ASCII text (which conformance test fixtures use today), these coincide. Unicode truncation semantics are a per-language divergence documented in Appendix F. Note: byte-level truncation (Go/Ruby) can produce invalid UTF-8 mid-codepoint; this is accepted behavior. Python slices bytes too but decodes with `errors="ignore"`, so it drops the partial codepoint instead of emitting it.
 
+The cap is a resource bound and a hygiene measure — it limits how much server text lands in a message. It is not a secrecy control, and it is not asked to be one: the next section says which values must never be rendered at all, and none of them is bounded by a cap.
+
+### Credential-Bearing Values Are Never Rendered `[manual]`
+
+**A value that carries a credential the SDK holds or requested is never rendered — not in an error message, a cause chain, a hook argument, or a log line. A credential-bearing URL is rendered as its origin only, projected from a parse before any library can render the whole; a credential-bearing body is not rendered at all.**
+
+**The trust model, stated once.** The SDK talks to Basecamp and to nothing else: §8 and §23 refuse any cross-origin or downgraded URL before a request is issued, so the peer whose text can reach an error is Basecamp. Server-chosen text — an error body, a close reason, a reason phrase, a decoder's quotation of a malformed body — reaching a Basecamp customer's log is not a leak, and this document does not treat it as one; the truncation cap above bounds it and that is enough. What must not echo is the SDK's *own* secrets: the material it was issued, or asked for, in order to make requests. That is the whole class, and it is the class #788 was actually about — the §23 stream ticket rides in the mint URL's query string, and Go's `*url.Error` renders the URL it failed on, so a failed dial put a live credential in the logs.
+
+**The secrets are a closed set, and enumerating them is sound.** Four rounds on #788 established that enumerating *destinations* — every log, hook, return path, chain and serializer a value can reach — is an open set that grows with every integration anyone writes. Enumerating *secrets* is the opposite: the SDK creates or requests every one, so the list is complete by construction and grows only when this document adds a credential.
+
+| Secret | Where it travels | What renders it if unguarded |
+|---|---|---|
+| Bearer token (§4) | `Authorization` header | header logging — already covered by Sensitive Header Redaction below |
+| Stream ticket (§23) | query string of the mint URL the cable dials | a transport's rendering of the dial URL: Go's `*url.Error`, a WebSocket library's connect error |
+| Signed download URL (§14 hop 2) | the URL itself | a transport's rendering of the hop-2 URL: `httpx`, `URLError`, Ktor, Faraday |
+| OAuth token response (§4, §16) | response body — `access_token`, `refresh_token` | a JSON parser quoting the body it could not parse |
+
+No other value the SDK handles carries a credential. Request URLs carry none — the token is in the header — which is why §12's `RequestInfo.url` and the pagination hooks may carry the full URL, and why hop 2 fires no request hooks (§14): the one URL that is a credential never reaches a hook.
+
+**The rule binds at the sites where those four values can enter an error, and only there.** Each is a construction site the SDK owns: the cable dial failure (§23), the hop-2 failure (§14), and the OAuth exchange and refresh paths (network failure or unparseable token response). At each, the error is constructed from a *projection* of the value before any library rendering can occur — the parsed URL's origin, or nothing — and the transport's own error is not chained where a caller or a runtime would render it:
+
+- **Projection, not redaction.** Take the origin out of a successful parse and discard the rest; the query the credential rides in is gone before anything can be searched for. Searching the rendered text for the credential is the thing that failed three times in a row on #788 (a value below a length threshold, a percent-encoded form, a query with no `=`), and it cannot work in principle for the ticket, which the contract makes opaque. Where the URL yields no complete origin — it does not parse, or parses without a scheme or a host — the origin component is the fixed token `unparsable`.
+- **The cause chain is an egress too.** Chaining the raw transport error so callers can unwrap it hands the URL straight back. Two runtimes attach it without being asked: CPython sets `__context__` at raise time, after the constructor returns, so construct inside the `except` and raise after it, or raise `from None` — which suppresses the rendering and is what `oauth/exchange.py` relies on; clearing `__context__` at a boundary after the raise also empties the slot itself; MRI sets the built-in cause at raise time past any `cause:` keyword the class stores, so pass `cause: nil` at the raise site — `ruby/lib/basecamp/oauth/exchange.rb` already does, for exactly this reason. Where a classifier legitimately reads through the chain (Go's `shouldTripCircuit` looks for `context.Canceled` and `context.DeadlineExceeded`; Swift's `isCancellation` looks for `CancellationError` or `URLError(.cancelled)`), chain the peer-free sentinel or a fresh instance of that type in place of the transport error, so classification survives and the URL does not.
+- **Retention is fine.** Keeping the origin, or a typed failure kind, on the error is encouraged. Keeping the credential-bearing value itself on the error is not, in any field, because any field can be serialized.
+
+**What this deliberately does not do.** It does not prescribe how a close reason, a decoder's message, a reason phrase, or a rejected pagination `Link` is rendered — those are Basecamp's own text, bounded by the cap, and free to be as diagnostic as an SDK likes. It does not restrict what hooks receive. It does not ask for a closed vocabulary or a type allowlist. Every one of those was tried on #788 as a way to make a general theory of "peer-derived text" hold across six languages, and each failed because text flow through six languages is an open set. This rule holds because its subject is four values the SDK can name.
+
+**Current state, for #788.** The hop-2 sites in Python (`download.py`), TypeScript (`download.ts`), Ruby (`client.rb`) and Kotlin (`Download.kt`) construct their network error from the transport's rendering (`f"Download failed: {e}"`, `err.message`, `e.message`, `cause.message`) and chain the raw cause; Go's `ErrNetwork` appends `cause.Error()` as `Hint` and returns it from `Unwrap`. Those are the rows today. Swift's messages are fixed strings and owe only the chain. The §23 dial-failure site is owed by each connector as it is written — none exists yet. Ruby's and Python's OAuth exchange paths (`cause: nil`, `from None`, each with a comment saying why) are already conformant and are the pattern to copy.
+
 ### Sensitive Header Redaction `[static]`
 
 The following headers must be redacted (replaced with `"[REDACTED]"`) before logging:
@@ -1613,7 +1644,7 @@ INTERFACE BasecampHooks
   on_retry(info: RequestInfo, attempt: Integer, error: Error, delay?: Number) → void
     -- delay is optional; Go's OnRetry omits it entirely
     -- delay unit is a language adaptation: ms in TS/Kotlin (delayMs), seconds in Ruby/Swift (delay/delaySeconds)
-  on_paginate(url: String, page: Integer) → void       -- Ruby only; not in Go/TS/Kotlin/Swift
+  on_paginate(url: String, page: Integer) → void       -- Ruby and Python only; not in Go/TS/Kotlin/Swift
 END
 ```
 
@@ -1738,7 +1769,7 @@ FUNCTION downloadURL(raw_url: String) → DownloadResult
      f. If response is any other error → ⊥ BasecampError from response, without retry.
 
   4. Hop 2 — Unauthenticated fetch (signed URL):
-     a. Fetch Location URL with NO auth headers and redirect: manual. Hop 2 is NEVER retried, NEVER authenticated and NEVER redirected — the signed URL is single-purpose, credentials must not leak to the storage host, and the storage host does not get to choose a further destination (Hop-2 Redirect Policy below).
+     a. Fetch Location URL with NO auth headers and redirect: manual. Hop 2 is NEVER retried, NEVER authenticated and NEVER redirected — the signed URL is single-purpose, credentials must not leak to the storage host, and the storage host does not get to choose a further destination (Hop-2 Redirect Policy below). It fires NO request hooks, and a hop-2 failure renders the signed URL as origin only: the URL is itself a credential (§9 "Credential-Bearing Values Are Never Rendered").
      b. If response is a redirect (301, 302, 303, 307, 308) → ⊥ BasecampError api_error carrying that status; its Location is never dialled.
      c. If not 2xx → ⊥ BasecampError.
      d. → DownloadResult from response body.
@@ -3693,8 +3724,10 @@ downgrade (HTTPS → HTTP) — the same rule, for the same reason, as §8's pagi
 rejection: a cross-origin or downgraded URL in a response body must never redirect an
 authenticated request (SSRF and token leakage). A URL that fails validation is
 Terminal(`invalid_continuation`) — no request is issued to the failing URL, and the
-rejected URL is carried redacted (origin only) in the error. There is no retry and no
-handler for this condition: a hostile continuation is not an operable feed state.
+rejected URL is carried redacted (origin only) in the error; a URL that yields no complete
+origin renders the fixed token `unparsable` (§9 "Credential-Bearing Values Are Never
+Rendered"). There is no retry and no handler for this condition: a hostile continuation is
+not an operable feed state.
 
 **Prevalidation does not cover redirects, so the poll seam must.** The underlying HTTP
 stacks auto-follow redirects (Go strips `Authorization` on a cross-origin hop but still
@@ -3890,8 +3923,13 @@ resume_url)`, `position_rejected(kind)`, `stale_connection(since_last_frame)`,
 
 ### Security Invariants `[static]`
 
-- **Never log the ticket or the mint URL's query string** — the ticket rides in it.
-  Observer callbacks and error renderings carry redacted URLs.
+- **Never log the ticket or the mint URL's query string** — the ticket rides in it, which
+  makes the mint URL one of the four credential-bearing values §9 "Credential-Bearing
+  Values Are Never Rendered" names. A dial failure renders that URL as its origin only,
+  projected from a parse (`unparsable` where there is none), and never chains the
+  transport's own error where a caller or runtime would render it. Poll and resume URLs
+  are not credentials — polls authenticate with the bearer header — so `gap(resume_url)`
+  and `catch_up_started(cursor)` carry them whole.
 - **Bound the inbound frame size** (`EVENT_FEED_MAX_FRAME_BYTES`, 1 MiB default) and
   bound/truncate any error rendering of frame contents (§9's `MAX_ERROR_MESSAGE_LENGTH`
   applies).
