@@ -598,6 +598,34 @@ class DownloadTest {
     }
 
     @Test
+    fun downloadURL_hookUrlOmitsBaseUrlUserinfo() = runTest {
+        // A configured base URL can carry userinfo, which rewriteOrigin
+        // preserves onto the wire URL; the hook rendering drops it.
+        val hookUrls = mutableListOf<String>()
+        val hooks = object : BasecampHooks {
+            override fun onRequestStart(info: RequestInfo) { hookUrls.add(info.url) }
+        }
+        val mockEngine = MockEngine { _ ->
+            respond(
+                content = ByteReadChannel("data"),
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType to listOf("text/plain")),
+            )
+        }
+        val client = testBasecampClient {
+            accessToken("test-token")
+            baseUrl = "http://user:password@localhost:3000"
+            engine = mockEngine
+            enableRetry = false
+            this.hooks = hooks
+        }
+        client.forAccount("12345").downloadURL("http://localhost:3000/12345/attachments/abc/download/file.txt?v=1")
+
+        assertEquals(listOf("http://localhost:3000/12345/attachments/abc/download/file.txt"), hookUrls)
+        client.close()
+    }
+
+    @Test
     fun downloadURL_retryHookUrlOmitsQuery() = runTest {
         val retryUrls = mutableListOf<String>()
         val hooks = object : BasecampHooks {

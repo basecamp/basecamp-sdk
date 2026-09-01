@@ -495,6 +495,18 @@ class DownloadTest < Minitest::Test
     assert_nil Exception.instance_method(:cause).bind(error).call
   end
 
+  # A hop-1 status error on a download is raised outside Faraday's rescue too,
+  # so the request-retaining Faraday exception is not MRI's implicit cause.
+  def test_download_url_hop1_status_error_has_no_implicit_cause
+    stub_request(:get, "#{base_url}/12345/download?verifier=SECRET")
+      .to_return(status: 403, body: '{"error": "denied"}', headers: { "Content-Type" => "application/json" })
+
+    error = assert_raises(Basecamp::ForbiddenError) do
+      @account.download_url("https://3.basecampapi.com/12345/download?verifier=SECRET")
+    end
+    assert_nil Exception.instance_method(:cause).bind(error).call
+  end
+
   # Ordinary API requests keep their transport diagnostic: the projection is
   # gated on the download flow.
   def test_api_network_failure_still_carries_its_cause

@@ -564,7 +564,12 @@ module Basecamp
             allow_cross_origin: allow_cross_origin, accept: accept, refresh_replay: refresh_replay, download: download)
         end
 
-        raise error
+        # On a download, a status error is raised below the rescue too: the
+        # Faraday exception retains the request (SPEC §9), and raising here
+        # would make it MRI's implicit cause.
+        raise error unless download
+
+        severed = error
       rescue Faraday::Error => e
         duration = Process.clock_gettime(Process::CLOCK_MONOTONIC) - start_time
         # SPEC §9: on a download hop 1 the Faraday error can render the URL it

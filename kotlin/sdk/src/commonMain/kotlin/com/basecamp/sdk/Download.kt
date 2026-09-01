@@ -288,7 +288,7 @@ private suspend fun AccountClient.downloadHop1(
     // Hooks render this flow's URL as origin+path only (SPEC §9): the
     // caller's URL can smuggle a signed query through the rewrite into hop 1.
     // The wire request keeps the query; only the rendering is projected.
-    val hookUrl = url.substringBefore('?').substringBefore('#')
+    val hookUrl = hookDisplayUrl(url)
     var attempt = 1
     while (true) {
         val requestInfo = RequestInfo(method = "GET", url = hookUrl, attempt = attempt)
@@ -374,6 +374,31 @@ private suspend fun AccountClient.downloadHop1(
         parent.hooks.safeOnRetry(requestInfo, attempt + 1, BasecampException.Api("HTTP $status", status), delayMs)
         delay(delayMs)
         attempt += 1
+    }
+}
+
+/**
+ * Renders a download URL for hooks: origin and path only — no userinfo (a
+ * configured base URL can carry one), no query (where a signed credential
+ * rides), no fragment (SPEC §9). Rebuilt from a parse; a URL that does not
+ * parse falls back to a textual strip of the same parts.
+ */
+private fun hookDisplayUrl(url: String): String {
+    val parsed = try {
+        Url(url)
+    } catch (_: Exception) {
+        null
+    }
+    return if (parsed != null) {
+        val host = if (parsed.host.contains(':')) "[${parsed.host}]" else parsed.host
+        val port = if (parsed.specifiedPort != 0 && parsed.specifiedPort != parsed.protocol.defaultPort) {
+            ":${parsed.specifiedPort}"
+        } else {
+            ""
+        }
+        "${parsed.protocol.name}://$host$port${parsed.encodedPath}"
+    } else {
+        url.substringBefore('?').substringBefore('#').replace(Regex("^([a-zA-Z][a-zA-Z0-9+.-]*://)[^/@]*@"), "$1")
     }
 }
 

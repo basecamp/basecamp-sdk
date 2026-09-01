@@ -570,6 +570,31 @@ final class DownloadTests: XCTestCase {
         XCTAssertNil(cause)
     }
 
+    /// A transport that speaks `.network` itself is projected like a raw
+    /// failure on the download hops: its message can render the URL, so the
+    /// #567 message passthrough does not apply here.
+    func testDownloadURL_transportNetworkErrorMessageIsProjected() async throws {
+        let transport = MockTransport { request in
+            throw BasecampError.network(
+                message: "dial \(request.url!.absoluteString) refused",
+                cause: URLLeakingError(url: request.url!.absoluteString))
+        }
+        let account = makeTestAccountClient(transport: transport)
+
+        do {
+            _ = try await account.downloadURL(
+                "https://3.basecampapi.com/999999999/attachments/abc/download/file.txt?verifier=SECRET")
+            XCTFail("Expected network error")
+        } catch let error as BasecampError {
+            guard case .network(let message, let cause) = error else {
+                XCTFail("Expected .network, got \(error)")
+                return
+            }
+            XCTAssertEqual(message, "Network error")
+            XCTAssertNil(cause)
+        }
+    }
+
     /// The hop-2 wrap severs the cause the same way: the signed URL is a
     /// credential, and the transport error renders it.
     func testDownloadURL_hop2NetworkErrorSeversCause() async throws {

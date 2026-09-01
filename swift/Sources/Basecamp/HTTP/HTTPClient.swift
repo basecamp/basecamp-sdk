@@ -128,14 +128,13 @@ package final class HTTPClient: Sendable {
     }
 
     /// The error a download transport failure becomes for hooks and the
-    /// caller alike (SPEC §9): the fixed `.network` with a projected cause. A
-    /// transport that already speaks `.network` keeps its own message (#567)
-    /// but not its cause, which can be the URL-bearing original.
-    private static func projectedDownloadError(_ error: any Error) -> BasecampError {
-        if let basecampError = error as? BasecampError, case .network(let message, _) = basecampError {
-            return .network(message: message, cause: projectedDownloadCause(error))
-        }
-        return .network(message: "Network error", cause: projectedDownloadCause(error))
+    /// caller alike (SPEC §9): the fixed `.network` message with a projected
+    /// cause. A transport that already speaks `.network` is projected the
+    /// same way — its own message may render the URL it failed on, which on
+    /// this flow is the credential — so the #567 message passthrough does not
+    /// apply to download hops.
+    private static func projectedDownloadError(_ error: any Error, message: String) -> BasecampError {
+        .network(message: message, cause: projectedDownloadCause(error))
     }
 
     /// SPEC §9 projection of a credential-bearing URL for rendering: the origin
@@ -157,10 +156,24 @@ package final class HTTPClient: Sendable {
         return "\(scheme)://\(renderedHost)\(port)"
     }
 
-    /// Renders a download URL for hooks: origin and path only — the query is
-    /// where a signed credential rides (SPEC §9).
+    /// Renders a download URL for hooks: origin and path only — no userinfo
+    /// (a configured base URL can carry one), no query (where a signed
+    /// credential rides), no fragment (SPEC §9). Rebuilt from a parse; a URL
+    /// that does not parse falls back to a textual strip of the same parts.
     private static func stripQueryAndFragment(_ url: String) -> String {
-        String(url.prefix(while: { $0 != "?" && $0 != "#" }))
+        if let components = URLComponents(string: url),
+           let scheme = components.scheme,
+           let host = components.host, !host.isEmpty {
+            let renderedHost = host.contains(":") ? "[\(host)]" : host
+            let port = components.port.map { ":\($0)" } ?? ""
+            return "\(scheme)://\(renderedHost)\(port)\(components.percentEncodedPath)"
+        }
+        let stripped = String(url.prefix(while: { $0 != "?" && $0 != "#" }))
+        guard let schemeEnd = stripped.range(of: "://") else { return stripped }
+        let authorityStart = schemeEnd.upperBound
+        let authorityEnd = stripped[authorityStart...].firstIndex(of: "/") ?? stripped.endIndex
+        guard let at = stripped[authorityStart..<authorityEnd].lastIndex(of: "@") else { return stripped }
+        return String(stripped[..<authorityStart]) + String(stripped[stripped.index(after: at)...])
     }
 
     /// Converts a backoff interval to nanoseconds without trapping.
@@ -525,11 +538,13 @@ package final class HTTPClient: Sendable {
                     // SPEC §9: the transport error renders the hop-1 URL (and
                     // any signed query smuggled into it), so onRetry receives
                     // the projection, not the raw error.
-                    directive = .retry(error: Self.projectedDownloadError(error), delaySeconds: delaySeconds)
+                    directive = .retry(
+                        error: Self.projectedDownloadError(error, message: "Network error"),
+                        delaySeconds: delaySeconds)
                 } else {
                     // Same projection for the caller. Cancellation failed raw
                     // above, so the projected cause is nil here in practice.
-                    directive = .fail(Self.projectedDownloadError(error))
+                    directive = .fail(Self.projectedDownloadError(error, message: "Network error"))
                 }
             }
 
@@ -585,17 +600,16 @@ package final class HTTPClient: Sendable {
 
             return (data, httpResponse)
         } catch let error as BasecampError {
-            // A transport speaking .network keeps its message but not its
-            // cause, which can be the URL-bearing original (SPEC §9); any
-            // other BasecampError is the transport's own verdict, rethrown.
-            if case .network = error { throw Self.projectedDownloadError(error) }
+            // A transport speaking .network is projected like a raw failure —
+            // its message and cause can both carry the signed URL (SPEC §9);
+            // any other BasecampError is the transport's own verdict, rethrown.
+            if case .network = error { throw Self.projectedDownloadError(error, message: "Download failed") }
             throw error
         } catch {
             // SPEC §9: the transport error renders the signed URL, so it is
             // not chained raw — only its cancellation meaning is projected,
             // as a fresh, URL-free instance `isCancellation` still matches.
-            throw BasecampError.network(
-                message: "Download failed", cause: Self.projectedDownloadCause(error))
+            throw Self.projectedDownloadError(error, message: "Download failed")
         }
     }
 
