@@ -137,19 +137,30 @@ def _check_signed(response: httpx.Response) -> httpx.Response:
 
 def _fetch_signed(url: str, *, timeout: float) -> httpx.Response:
     """Unauthenticated GET for signed download URL. Follows no redirect (#805)."""
+    error: NetworkError | None = None
     try:
         with httpx.Client(timeout=timeout, follow_redirects=False) as client:
             response = client.get(url)
-    except httpx.HTTPError as e:
-        raise NetworkError(f"Download failed: {e}") from e
+    except httpx.HTTPError:
+        # SPEC §9: the transport error renders the signed URL. Fixed message,
+        # constructed here and raised outside the handler so neither __cause__
+        # nor __context__ retains the URL-bearing exception (`from None` would
+        # still leave it in __context__).
+        error = NetworkError("Download failed")
+    if error is not None:
+        raise error
     return _check_signed(response)
 
 
 async def _fetch_signed_async(url: str, *, timeout: float) -> httpx.Response:
     """Async unauthenticated GET for signed download URL. Follows no redirect (#805)."""
+    error: NetworkError | None = None
     try:
         async with httpx.AsyncClient(timeout=timeout, follow_redirects=False) as client:
             response = await client.get(url)
-    except httpx.HTTPError as e:
-        raise NetworkError(f"Download failed: {e}") from e
+    except httpx.HTTPError:
+        # SPEC §9: same raising boundary as the sync twin above.
+        error = NetworkError("Download failed")
+    if error is not None:
+        raise error
     return _check_signed(response)

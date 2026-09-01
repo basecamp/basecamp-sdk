@@ -115,6 +115,30 @@ final class ErrorTests: XCTestCase {
         }
     }
 
+    // SPEC §6 step 5: an empty or unparsable body falls back to the fixed
+    // code-bearing phrase — never localizedString(forStatusCode:), which is
+    // localized and empty of meaning for an unregistered code like 599.
+    func testFromHTTPResponseEmptyBodyRendersFixedPhrase() {
+        let error = BasecampError.fromHTTPResponse(status: 599, data: nil, headers: [:], requestId: nil)
+        if case .api(let message, let status, _, _, _) = error {
+            XCTAssertEqual(message, "Request failed (HTTP 599)")
+            XCTAssertEqual(status, 599)
+        } else {
+            XCTFail("Expected .api, got \(error)")
+        }
+    }
+
+    func testFromHTTPResponseUnparsableBodyRendersFixedPhrase() {
+        let error = BasecampError.fromHTTPResponse(
+            status: 418, data: Data("not json".utf8), headers: [:], requestId: nil
+        )
+        if case .api(let message, _, _, _, _) = error {
+            XCTAssertEqual(message, "Request failed (HTTP 418)")
+        } else {
+            XCTFail("Expected .api, got \(error)")
+        }
+    }
+
     func testFromHTTPResponse422() {
         let body = try! JSONSerialization.data(withJSONObject: ["error": "Name is required"])
         let error = BasecampError.fromHTTPResponse(status: 422, data: body, headers: [:], requestId: nil)

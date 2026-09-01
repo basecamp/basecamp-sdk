@@ -1,5 +1,6 @@
 package com.basecamp.sdk
 
+import kotlinx.serialization.json.Json
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -157,6 +158,26 @@ class ErrorTest {
         val e = BasecampException.fromHttpStatus(500, "Internal Server Error")
         assertIs<BasecampException.Api>(e)
         assertTrue(e.retryable)
+    }
+
+    // SPEC §6 step 5: an empty or unparsable body falls back to the fixed
+    // code-bearing phrase — never the wire reason phrase, which does not exist
+    // under HTTP/2 and is blank for an unregistered code like 599.
+    @Test
+    fun errorBodyFallbackIsFixedCodeBearingPhrase() {
+        val e = exceptionFromErrorBody(
+            status = 599, bodyText = null, requestId = null, retryAfter = null, json = Json,
+        )
+        assertIs<BasecampException.Api>(e)
+        assertEquals("Request failed (HTTP 599)", e.message)
+    }
+
+    @Test
+    fun errorBodyUnparsableFallsBackToFixedPhrase() {
+        val e = exceptionFromErrorBody(
+            status = 418, bodyText = "not json", requestId = null, retryAfter = null, json = Json,
+        )
+        assertEquals("Request failed (HTTP 418)", e.message)
     }
 
     @Test

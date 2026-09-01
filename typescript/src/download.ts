@@ -145,9 +145,14 @@ export function createDownloadURL(deps: DownloadDeps): (rawURL: string) => Promi
         retryOn: DOWNLOAD_RETRY_ON,
       };
 
+      // Hooks render this flow's URL as origin+path only (SPEC §9): the
+      // caller's URL can smuggle a signed query through the rewrite into
+      // hop 1. The wire request keeps the query; only the rendering is
+      // projected.
+      const hookURL = `${base.origin}${parsed.pathname}`;
       const requestInfoFor = (attempt: number): RequestInfo => ({
         method: "GET",
-        url: rewrittenURL,
+        url: hookURL,
         attempt,
       });
 
@@ -220,7 +225,9 @@ export function createDownloadURL(deps: DownloadDeps): (rawURL: string) => Promi
         }
         const error = err instanceof Error ? err : new Error(String(err));
         emit.finalize({ statusCode: 0, error });
-        throw Errors.network(error.message, error);
+        // SPEC §9: the transport's rendering carries the hop-1 URL (and any
+        // signed query smuggled into it) — fixed message, no cause chained.
+        throw Errors.network("Network error");
       }
 
       // Terminal attempt's end — the loop deliberately leaves it to us.
@@ -250,9 +257,10 @@ export function createDownloadURL(deps: DownloadDeps): (rawURL: string) => Promi
         let signedResponse: Response;
         try {
           signedResponse = await fetch(resolvedLocation, { redirect: "manual" });
-        } catch (err) {
-          const error = err instanceof Error ? err : new Error(String(err));
-          throw Errors.network(error.message, error);
+        } catch {
+          // SPEC §9: the transport error renders the signed URL — fixed
+          // message, no cause chained.
+          throw Errors.network("Download failed");
         }
 
         if (REDIRECT_STATUSES.includes(signedResponse.status)) {

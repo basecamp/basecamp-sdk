@@ -233,7 +233,10 @@ public enum BasecampError: Error, Sendable, LocalizedError {
         // "error" wins; "message" is the SPEC §6 step-4 fallback.
         let serverMessage = ((body?["error"] as? String) ?? (body?["message"] as? String))
             .map { truncate($0) }
-        let message = serverMessage ?? truncate(HTTPURLResponse.localizedString(forStatusCode: status))
+        // SPEC §6 step 5: the fixed code-bearing phrase, never
+        // localizedString(forStatusCode:) — the platform table is localized
+        // and empty of meaning for an unregistered code.
+        let message = serverMessage ?? "Request failed (HTTP \(status))"
         let hint = truncate(body?["error_description"] as? String)
 
         switch status {

@@ -158,6 +158,7 @@ def _token_request(token_endpoint: str, params: dict[str, str]) -> OAuthToken:
 
 
 def _parse_token_response(status: int, body: bytes) -> OAuthToken:
+    parse_error: OAuthError | None = None
     try:
         data = json.loads(body)
     except ValueError:
@@ -165,14 +166,18 @@ def _parse_token_response(status: int, body: bytes) -> OAuthToken:
         # material (a syntactically-broken body carrying an access_token) —
         # never echo ANY of it into an error message, where it would reach
         # logs and exception telemetry. The status is diagnosis enough.
-        # from None — json.JSONDecodeError retains the whole document as its
-        # .doc attribute, so chaining it would keep the body alive in
-        # exception telemetry.
-        raise OAuthError(
+        # Constructed here and raised outside the handler (SPEC §9):
+        # json.JSONDecodeError retains the whole document as its .doc
+        # attribute, and `from None` suppresses only the rendering — the
+        # body-retaining exception would still sit in __context__.
+        data = None
+        parse_error = OAuthError(
             "api_error",
             "Failed to parse token response",
             http_status=status,
-        ) from None
+        )
+    if parse_error is not None:
+        raise parse_error
 
     if not isinstance(data, dict):
         raise OAuthError(

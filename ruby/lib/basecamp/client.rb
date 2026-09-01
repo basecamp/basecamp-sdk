@@ -635,7 +635,15 @@ module Basecamp
         nil
       end
       unless uri.is_a?(URI::HTTP) && uri.host && !uri.host.empty?
-        raise ApiError.new("redirect to undialable download URL: #{Security.truncate(url)}")
+        # SPEC §9: the signed URL is a credential — render its origin alone,
+        # projected from the parse, or the fixed token when no complete origin
+        # exists. Truncating the whole URL kept a short query intact.
+        origin = if uri&.scheme && uri&.host && !uri.host.empty?
+          "#{uri.scheme}://#{uri.host}"
+        else
+          "unparsable"
+        end
+        raise ApiError.new("redirect to undialable download URL: #{origin}")
       end
 
       http_client = Net::HTTP.new(uri.host, uri.port)
@@ -652,8 +660,12 @@ module Basecamp
         # Redirect Policy"). Stated here so a move to a following client
         # (Faraday, Net::HTTP.get_response's callers) has to argue with it.
         response = http_client.request(request)
-      rescue StandardError => e
-        raise NetworkError.new("Download failed: #{e.message}", cause: e)
+      rescue StandardError
+        # SPEC §9: the transport error renders the signed URL, so neither its
+        # message nor the exception itself survives. cause: nil at the raise
+        # site — MRI sets the built-in cause at raise time past the class's
+        # stored cause: keyword (same pattern as oauth/exchange.rb).
+        raise NetworkError.new("Download failed"), cause: nil
       end
 
       # The exact set hop 1 dispatches on, not Net::HTTPRedirection — that

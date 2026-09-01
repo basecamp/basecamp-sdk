@@ -76,7 +76,10 @@ func checkResponse(resp *http.Response, body []byte) error {
 		return &Error{Code: CodeLimitExceeded, Message: msgOrDefault(serverMsg, "account limit reached"), Hint: serverHint, HTTPStatus: 507, Retryable: false, RequestID: requestID}
 	default:
 		retryable := resp.StatusCode >= 500 && resp.StatusCode < 600
-		return &Error{Code: CodeAPI, Message: msgOrDefault(serverMsg, fmt.Sprintf("API error: %s", resp.Status)), Hint: serverHint, HTTPStatus: resp.StatusCode, Retryable: retryable, RequestID: requestID}
+		// SPEC §6 step 5: the fixed code-bearing phrase, never resp.Status —
+		// the wire reason phrase does not exist under HTTP/2 and a platform's
+		// table is empty for an unregistered code.
+		return &Error{Code: CodeAPI, Message: msgOrDefault(serverMsg, fmt.Sprintf("Request failed (HTTP %d)", resp.StatusCode)), Hint: serverHint, HTTPStatus: resp.StatusCode, Retryable: retryable, RequestID: requestID}
 	}
 }
 

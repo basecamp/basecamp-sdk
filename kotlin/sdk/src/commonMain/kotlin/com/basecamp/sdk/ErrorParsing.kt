@@ -13,17 +13,18 @@ import kotlinx.serialization.json.JsonPrimitive
  *
  * [bodyText] is the response body as read by the caller (already normalized
  * where the caller normalizes); `null`, blank, or non-JSON bodies fall back to
- * [statusDescription].
+ * the fixed code-bearing phrase (SPEC §6 step 5) — never the wire reason
+ * phrase, which does not exist under HTTP/2 and is empty for an unregistered
+ * code.
  */
 internal fun exceptionFromErrorBody(
     status: Int,
-    statusDescription: String,
     bodyText: String?,
     requestId: String?,
     retryAfter: Int?,
     json: Json,
 ): BasecampException {
-    var message: String = statusDescription.ifEmpty { "Request failed" }
+    var message = "Request failed (HTTP $status)"
     var serverMessage: String? = null
     var hint: String? = null
     var fieldErrors: Map<String, List<String>>? = null

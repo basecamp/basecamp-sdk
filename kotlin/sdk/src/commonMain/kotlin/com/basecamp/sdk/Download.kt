@@ -181,9 +181,12 @@ suspend fun AccountClient.downloadURL(rawURL: String): DownloadResult {
                     } catch (e: CancellationException) {
                         throw e
                     } catch (e: Exception) {
+                        // SPEC §9: the transport error renders the signed URL —
+                        // fixed message, no cause chained. Cancellation was
+                        // rethrown raw above, so nothing here needs the chain.
                         throw BasecampException.Network(
-                            message = "Download failed: ${e.message}",
-                            cause = e,
+                            message = "Download failed",
+                            cause = null,
                         )
                     }
 
@@ -235,7 +238,6 @@ suspend fun AccountClient.downloadURL(rawURL: String): DownloadResult {
                     }
                     throw exceptionFromErrorBody(
                         status = status,
-                        statusDescription = response.status.description,
                         bodyText = bodyText,
                         requestId = response.headers["X-Request-Id"],
                         retryAfter = parseRetryAfter(response.headers["Retry-After"]),
@@ -283,9 +285,13 @@ private suspend fun AccountClient.downloadHop1(
     maxAttempts: Int,
     baseDelayMs: Long,
 ): HttpResponse {
+    // Hooks render this flow's URL as origin+path only (SPEC §9): the
+    // caller's URL can smuggle a signed query through the rewrite into hop 1.
+    // The wire request keeps the query; only the rendering is projected.
+    val hookUrl = url.substringBefore('?').substringBefore('#')
     var attempt = 1
     while (true) {
-        val requestInfo = RequestInfo(method = "GET", url = url, attempt = attempt)
+        val requestInfo = RequestInfo(method = "GET", url = hookUrl, attempt = attempt)
         parent.hooks.safeOnRequestStart(requestInfo)
         val reqStart = currentTimeMillis()
 
@@ -324,9 +330,13 @@ private suspend fun AccountClient.downloadHop1(
                 duration = duration.millisToDuration(),
                 error = failure,
             ))
+            // SPEC §9: the transport error renders the hop-1 URL (and any
+            // signed query smuggled into it) — fixed message, no cause
+            // chained. Cancellation was rethrown raw above, so nothing here
+            // needs the chain.
             val wrapped = BasecampException.Network(
-                message = "Network error: ${failure.message}",
-                cause = failure,
+                message = "Network error",
+                cause = null,
             )
             // Same total-budget carve-out as the client loop: an attempt that
             // consumed its entire per-attempt time budget is a slowness shape

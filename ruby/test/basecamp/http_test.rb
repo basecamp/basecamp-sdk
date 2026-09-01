@@ -353,6 +353,40 @@ class HTTPTest < Minitest::Test
     )
   end
 
+  # SPEC §6 step 3: a body's error_description becomes the hint on the runtime
+  # error path.
+  def test_error_description_becomes_hint
+    stub_request(:get, "https://3.basecampapi.com/test.json")
+      .to_return(
+        status: 403,
+        body: '{"error": "denied", "error_description": "You need the admin scope"}',
+        headers: { "Content-Type" => "application/json" }
+      )
+
+    error = assert_raises(Basecamp::ForbiddenError) { @http.get("/test.json") }
+    assert_equal "You need the admin scope", error.hint
+  end
+
+  # A class-constant hint fills in only when the body carries no
+  # error_description.
+  def test_class_default_hint_survives_body_without_description
+    stub_request(:get, "https://3.basecampapi.com/test.json")
+      .to_return(status: 401, body: '{"error": "nope"}', headers: { "Content-Type" => "application/json" })
+
+    error = assert_raises(Basecamp::AuthError) { @http.get("/test.json") }
+    assert_equal "Check your access token or refresh it if expired", error.hint
+  end
+
+  # SPEC §6 step 5: an empty body on an unmapped status renders the fixed
+  # code-bearing phrase — 599 has no registered reason phrase at all.
+  def test_unregistered_status_with_empty_body_renders_fixed_phrase
+    stub_request(:get, "https://3.basecampapi.com/test.json")
+      .to_return(status: 599, body: "")
+
+    error = assert_raises(Basecamp::ApiError) { @http.get("/test.json") }
+    assert_equal "Request failed (HTTP 599)", error.message
+  end
+
   def test_404_raises_not_found_error
     stub_request(:get, "https://3.basecampapi.com/test.json")
       .to_return(status: 404, body: '{"error": "Not found"}')

@@ -368,6 +368,110 @@ describe("downloadURL", () => {
 
   });
 
+  describe("credential-bearing values are never rendered (SPEC §9)", () => {
+    // A caller-supplied download URL can smuggle a signed query through the
+    // origin rewrite into hop 1, and the signed hop-2 URL is a credential
+    // outright — so download transport errors carry fixed messages with no
+    // cause, and hop-1 hooks see origin+path only.
+    const SIGNED_RAW_URL =
+      "https://storage.3.basecamp.com/999/blobs/abc/download/file.png?verifier=SECRET#frag";
+    const SIGNED_S3_URL = `${S3_URL}?X-Amz-Signature=SECRET`;
+    const PROJECTED_URL = `${API_ORIGIN}/999/blobs/abc/download/file.png`;
+
+    it("hop-1 network error carries a fixed message and no cause", async () => {
+      server.use(
+        http.get(`${API_ORIGIN}/*`, () => HttpResponse.error()),
+      );
+
+      const downloadURL = makeDownloadURL({ enableRetry: false });
+      let caught: unknown;
+      try {
+        await downloadURL(SIGNED_RAW_URL);
+      } catch (err) {
+        caught = err;
+      }
+      const error = caught as BasecampError;
+      expect(error).toBeInstanceOf(BasecampError);
+      expect(error.code).toBe("network");
+      expect(error.message).toBe("Network error");
+      expect(error.cause).toBeUndefined();
+    });
+
+    it("hop-2 network error carries a fixed message and no cause", async () => {
+      server.use(
+        http.get(`${API_ORIGIN}/*`, () =>
+          new HttpResponse(null, { status: 302, headers: { Location: SIGNED_S3_URL } })),
+        http.get(S3_URL, () => HttpResponse.error()),
+      );
+
+      const client = makeClient();
+      let caught: unknown;
+      try {
+        await client.downloadURL("https://storage.3.basecamp.com/999/blobs/abc/download/file.png");
+      } catch (err) {
+        caught = err;
+      }
+      const error = caught as BasecampError;
+      expect(error).toBeInstanceOf(BasecampError);
+      expect(error.code).toBe("network");
+      expect(error.message).toBe("Download failed");
+      expect(error.cause).toBeUndefined();
+    });
+
+    it("hop-1 hook URLs carry no query or fragment while the wire keeps the query", async () => {
+      let wireQuery: string | null = null;
+      const urls: string[] = [];
+      server.use(
+        http.get(`${API_ORIGIN}/*`, ({ request }) => {
+          wireQuery = new URL(request.url).search;
+          return new HttpResponse("content", { headers: { "Content-Type": "text/plain" } });
+        }),
+      );
+
+      const hooks: BasecampHooks = {
+        onRequestStart: (info) => {
+          urls.push(info.url);
+        },
+        onRequestEnd: (info) => {
+          urls.push(info.url);
+        },
+      };
+
+      const downloadURL = makeDownloadURL({ hooks });
+      const result = await downloadURL(SIGNED_RAW_URL);
+      result.body.cancel();
+
+      expect(wireQuery).toBe("?verifier=SECRET");
+      expect(urls).toEqual([PROJECTED_URL, PROJECTED_URL]);
+    });
+
+    it("onRetry sees the projected URL too", async () => {
+      let attempts = 0;
+      const retryURLs: string[] = [];
+      server.use(
+        http.get(`${API_ORIGIN}/*`, () => {
+          attempts++;
+          if (attempts === 1) {
+            return new HttpResponse(null, { status: 503 });
+          }
+          return new HttpResponse("content", { headers: { "Content-Type": "text/plain" } });
+        }),
+      );
+
+      const hooks: BasecampHooks = {
+        onRetry: (info) => {
+          retryURLs.push(info.url);
+        },
+      };
+
+      const downloadURL = makeDownloadURL({ hooks });
+      const result = await downloadURL(SIGNED_RAW_URL);
+      result.body.cancel();
+
+      expect(retryURLs).toEqual([PROJECTED_URL]);
+    });
+  });
+
   describe("hop-1 retry policy (SPEC §14)", () => {
     const RAW_URL = "https://storage.3.basecamp.com/999/blobs/abc/download/file.png";
 

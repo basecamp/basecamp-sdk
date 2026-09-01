@@ -419,6 +419,93 @@ class DownloadTest < Minitest::Test
     assert_equal "network", error.code
   end
 
+  # -- SPEC §9: credential-bearing values are never rendered --
+
+  # The transport error renders the signed URL, so the hop-2 network error is
+  # the fixed message with nothing beneath it: neither the class's stored
+  # cause nor the built-in cause MRI sets at raise time (which the class's
+  # attr_reader :cause shadows — hence the unbound-method read).
+  def test_download_url_hop2_network_failure_renders_fixed_message_and_severs_cause
+    stub_request(:get, "#{base_url}/12345/attachments/abc/download/file.txt")
+      .with(headers: { "Authorization" => "Bearer #{access_token}" })
+      .to_return(
+        status: 302,
+        headers: { "Location" => "https://s3.amazonaws.com/bucket/file?X-Amz-Signature=SECRET" }
+      )
+
+    stub_request(:get, "https://s3.amazonaws.com/bucket/file?X-Amz-Signature=SECRET")
+      .to_timeout
+
+    error = assert_raises(Basecamp::NetworkError) do
+      @account.download_url("https://3.basecampapi.com/12345/attachments/abc/download/file.txt")
+    end
+
+    assert_equal "Download failed", error.message
+    assert_no_match(/SECRET/, "#{error.message} #{error.hint}")
+    assert_nil error.cause
+    assert_nil Exception.instance_method(:cause).bind(error).call
+  end
+
+  def test_download_url_undialable_location_renders_origin_only
+    stub_request(:get, "#{base_url}/12345/attachments/abc/download/file.txt")
+      .with(headers: { "Authorization" => "Bearer #{access_token}" })
+      .to_return(status: 302, headers: { "Location" => "ftp://storage.example/file?sig=SECRET" })
+
+    error = assert_raises(Basecamp::ApiError) do
+      @account.download_url("https://3.basecampapi.com/12345/attachments/abc/download/file.txt")
+    end
+    assert_equal "redirect to undialable download URL: ftp://storage.example", error.message
+  end
+
+  def test_download_url_hostless_location_renders_unparsable_token
+    stub_request(:get, "#{base_url}/12345/attachments/abc/download/file.txt")
+      .with(headers: { "Authorization" => "Bearer #{access_token}" })
+      .to_return(status: 302, headers: { "Location" => "http:foo" })
+
+    error = assert_raises(Basecamp::ApiError) do
+      @account.download_url("https://3.basecampapi.com/12345/attachments/abc/download/file.txt")
+    end
+    assert_equal "redirect to undialable download URL: unparsable", error.message
+  end
+
+  # Hop-1 hooks see origin+path only — the caller's URL can smuggle a signed
+  # query through the origin rewrite — while the wire request keeps the query.
+  def test_download_url_hook_urls_omit_query_and_fragment
+    hook_urls = []
+    hooks_impl = Class.new do
+      include Basecamp::Hooks
+      define_method(:on_request_start) { |info| hook_urls << info.url }
+      define_method(:on_request_end) { |info, _result| hook_urls << info.url }
+    end.new
+
+    account = create_account_client(hooks: hooks_impl)
+
+    wire = stub_request(:get, "#{base_url}/12345/download?verifier=SECRET")
+      .to_return(status: 200, body: "data", headers: { "Content-Type" => "text/plain" })
+
+    account.download_url("https://3.basecampapi.com/12345/download?verifier=SECRET")
+
+    assert_requested(wire)
+    assert_equal [ "#{base_url}/12345/download", "#{base_url}/12345/download" ], hook_urls
+  end
+
+  def test_download_url_retry_hook_url_omits_query
+    retry_urls = []
+    hooks_impl = Class.new do
+      include Basecamp::Hooks
+      define_method(:on_retry) { |info, _next_attempt, _error, _delay| retry_urls << info.url }
+    end.new
+
+    stub_request(:get, "#{base_url}/12345/download?verifier=SECRET")
+      .to_return(status: 503, body: "{}", headers: { "Content-Type" => "application/json" })
+      .then.to_return(status: 200, body: "data", headers: { "Content-Type" => "text/plain" })
+
+    account = create_account_client(config: fast_download_config, hooks: hooks_impl)
+    account.download_url("https://3.basecampapi.com/12345/download?verifier=SECRET")
+
+    assert_equal [ "#{base_url}/12345/download" ], retry_urls
+  end
+
   # -- Hop-1 retry policy (SPEC §14) --
 
   HOP1_URL = "https://3.basecampapi.com/12345/attachments/abc/download/file.txt"

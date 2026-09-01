@@ -114,10 +114,17 @@ class OAuthTokenProvider:
         if response.status_code >= 400:
             raise AuthError(f"Token refresh failed: {response.status_code}")
 
+        parse_error: AuthError | None = None
         try:
             data = response.json()
-        except (ValueError, KeyError) as e:
-            raise AuthError(f"Token refresh returned invalid response: {e}") from e
+        except (ValueError, KeyError):
+            # SPEC §9: JSONDecodeError retains the whole token-response body in
+            # .doc, so the exception must survive in neither __cause__ nor
+            # __context__ — construct here, raise after the handler exits.
+            data = None
+            parse_error = AuthError("Token refresh returned invalid response")
+        if parse_error is not None:
+            raise parse_error
         if not isinstance(data, dict) or "access_token" not in data:
             raise AuthError("Token refresh response missing access_token")
         self._access_token = data["access_token"]

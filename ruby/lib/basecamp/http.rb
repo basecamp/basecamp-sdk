@@ -176,7 +176,11 @@ module Basecamp
     # @param url [String] absolute URL
     # @return [Response]
     def get_download(url)
-      request_with_retry(:get, url, retry_on: DOWNLOAD_RETRY_ON, accept: nil)
+      # Hooks render this flow's URL as origin+path only (SPEC §9): the
+      # caller's URL can smuggle a signed query through the rewrite into
+      # hop 1. The wire request keeps the query; only the rendering is
+      # projected.
+      request_with_retry(:get, url, retry_on: DOWNLOAD_RETRY_ON, accept: nil, hook_url: url.sub(/[?#].*/m, ""))
     end
 
     # Fetches all pages of a paginated resource.
@@ -396,7 +400,7 @@ module Basecamp
     end
 
     def request_with_retry(method, url, params: {}, allow_cross_origin: false, operation: nil, retry_on: nil,
-      accept: "application/json")
+      accept: "application/json", hook_url: nil)
       op_retry = operation && Http.operation_retry(operation)
       # The cap is floored at one attempt on every path: whether a request
       # reaches the wire at all must not depend on whether the operation
@@ -422,7 +426,7 @@ module Basecamp
 
         begin
           return single_request(method, url, params: params, body: nil, attempt: attempt,
-            allow_cross_origin: allow_cross_origin, accept: accept, refresh_replay: false)
+            allow_cross_origin: allow_cross_origin, accept: accept, refresh_replay: false, hook_url: hook_url)
         rescue Basecamp::AuthError => e
           # SPEC §4: the refresh replay is a request on the wire, so it spends
           # an attempt from THIS budget rather than an uncounted one inside
@@ -474,8 +478,8 @@ module Basecamp
 
           delay = calculate_delay(attempt, error.retry_after)
 
-          @hooks.on_retry(RequestInfo.new(method: method.to_s.upcase, url: url, attempt: attempt), attempt + 1, error,
-                          delay)
+          @hooks.on_retry(RequestInfo.new(method: method.to_s.upcase, url: hook_url || url, attempt: attempt),
+                          attempt + 1, error, delay)
           sleep(delay)
         end
       end
@@ -511,9 +515,11 @@ module Basecamp
     end
 
     def single_request(method, url, params:, body:, attempt:, retry_count: 0, allow_cross_origin: false,
-      accept: "application/json", refresh_replay: true)
+      accept: "application/json", refresh_replay: true, hook_url: nil)
       assert_credential_origin!(url, allow_cross_origin)
-      info = RequestInfo.new(method: method.to_s.upcase, url: url, attempt: attempt)
+      # hook_url, when given, is the SPEC §9 projection of a URL whose query
+      # can carry a credential (download hop 1); the wire request keeps url.
+      info = RequestInfo.new(method: method.to_s.upcase, url: hook_url || url, attempt: attempt)
       @hooks.on_request_start(info)
 
       start_time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
@@ -551,7 +557,7 @@ module Basecamp
             && @token_refreshed
           @token_refreshed = false
           return single_request(method, url, params: params, body: body, attempt: attempt, retry_count: retry_count + 1,
-            allow_cross_origin: allow_cross_origin, accept: accept, refresh_replay: refresh_replay)
+            allow_cross_origin: allow_cross_origin, accept: accept, refresh_replay: refresh_replay, hook_url: hook_url)
         end
 
         raise error
@@ -624,38 +630,41 @@ module Basecamp
 
       retry_after = parse_retry_after(headers["Retry-After"] || headers["retry-after"])
       request_id = headers["X-Request-Id"] || headers["x-request-id"]
+      # SPEC §6 step 3: a body's error_description becomes the hint. Class
+      # defaults (AuthError, ForbiddenError) still apply when the body has none.
+      hint = Basecamp.parse_error_hint(body)
 
       err = case status
       when 401
         # Try token refresh; flag for caller to retry
         @token_refreshed = refresh_on_401 && @token_provider&.refreshable? && @token_provider.refresh
-        Basecamp::AuthError.new("Authentication failed")
+        Basecamp::AuthError.new("Authentication failed", hint: hint)
       when 403
-        Basecamp::ForbiddenError.new("Access denied")
+        Basecamp::ForbiddenError.new("Access denied", hint: hint)
       when 404
         message = Security.truncate(Basecamp.parse_error_message(body) || "Not found")
-        Basecamp::NotFoundError.new(message: message)
+        Basecamp::NotFoundError.new(message: message, hint: hint)
       when 429
-        Basecamp::RateLimitError.new(retry_after: retry_after)
+        Basecamp::RateLimitError.new(retry_after: retry_after, hint: hint)
       when 400, 422
         field_errors = Basecamp.parse_field_errors(body)
         message = Security.truncate(
           Basecamp.compose_validation_message(Basecamp.parse_error_message(body), field_errors) || "Validation failed"
         )
-        Basecamp::ValidationError.new(message, http_status: status, field_errors: field_errors)
+        Basecamp::ValidationError.new(message, hint: hint, http_status: status, field_errors: field_errors)
       when 507
         # A 5xx status carrying a client fact: the account is out of storage, or
         # at its webhook ceiling. Retrying cannot satisfy it, so this is decided
         # before the 5xx arms below.
         message = Security.truncate(Basecamp.parse_error_message(body) || "Account limit reached")
-        Basecamp::LimitExceededError.new(message)
+        Basecamp::LimitExceededError.new(message, hint: hint)
       when 500
-        Basecamp::ApiError.new("Server error (500)", http_status: 500, retryable: true)
+        Basecamp::ApiError.new("Server error (500)", http_status: 500, retryable: true, hint: hint)
       when 502, 503, 504
-        Basecamp::ApiError.new("Gateway error (#{status})", http_status: status, retryable: true)
+        Basecamp::ApiError.new("Gateway error (#{status})", http_status: status, retryable: true, hint: hint)
       else
         message = Security.truncate(Basecamp.parse_error_message(body) || "Request failed (HTTP #{status})")
-        Basecamp::ApiError.from_status(status || 0, message)
+        Basecamp::ApiError.from_status(status || 0, message, hint: hint)
       end
 
       err.instance_variable_set(:@request_id, request_id) if request_id

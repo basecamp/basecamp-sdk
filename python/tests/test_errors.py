@@ -118,6 +118,30 @@ class TestErrorFromResponse:
         err = error_from_response(422, b'{"error": "Name is required"}')
         assert "Name is required" in str(err)
 
+    # SPEC section 6 step 3: a body's error_description becomes the hint,
+    # truncated like the message.
+    def test_error_description_becomes_hint(self):
+        err = error_from_response(403, b'{"error": "denied", "error_description": "You need the admin scope"}')
+        assert err.hint == "You need the admin scope"
+
+    def test_error_description_truncated(self):
+        long = "x" * 600
+        err = error_from_response(403, ('{"error": "denied", "error_description": "' + long + '"}').encode())
+        assert err.hint is not None
+        assert len(err.hint.encode()) == 500
+        assert err.hint.endswith("...")
+
+    def test_non_string_error_description_ignored(self):
+        err = error_from_response(403, b'{"error": "denied", "error_description": {"nested": true}}')
+        assert err.hint is None
+
+    # SPEC section 6 step 5: an empty body on an unmapped status renders the
+    # fixed code-bearing phrase — 599 has no registered reason phrase at all.
+    def test_599_empty_body_renders_fixed_phrase(self):
+        err = error_from_response(599, b"")
+        assert isinstance(err, ApiError)
+        assert str(err) == "Request failed (HTTP 599)"
+
 
 class TestFieldKeyed422:
     def test_flattens_field_errors_into_message(self):

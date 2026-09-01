@@ -17,11 +17,12 @@ module Basecamp
     # Creates an ApiError from an HTTP status code.
     # @param status [Integer] HTTP status code
     # @param message [String, nil] optional error message
+    # @param hint [String, nil] optional hint (SPEC section 6 step 3)
     # @return [ApiError]
-    def self.from_status(status, message = nil)
+    def self.from_status(status, message = nil, hint: nil)
       message ||= "Request failed (HTTP #{status})"
       retryable = status >= 500 && status < 600
-      new(message, http_status: status, retryable: retryable)
+      new(message, http_status: status, hint: hint, retryable: retryable)
     end
   end
 end

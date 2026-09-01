@@ -133,6 +133,41 @@ func TestCheckResponse_InvalidJSON(t *testing.T) {
 	}
 }
 
+// SPEC §6 step 5: an empty or unparsable body on the default arm falls back
+// to the fixed code-bearing phrase — never resp.Status, the wire reason
+// phrase, which does not exist under HTTP/2 and is blank for an unregistered
+// code like 599.
+func TestCheckResponse_DefaultArmFixedPhrase(t *testing.T) {
+	tests := []struct {
+		name   string
+		status int
+		wire   string
+		body   []byte
+		want   string
+	}{
+		{"empty body", 418, "418 I'm a teapot", nil, "Request failed (HTTP 418)"},
+		{"unparsable body", 418, "418 I'm a teapot", []byte("not json"), "Request failed (HTTP 418)"},
+		{"unregistered status, blank reason phrase", 599, "", nil, "Request failed (HTTP 599)"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resp := &http.Response{StatusCode: tt.status, Status: tt.wire, Header: http.Header{}}
+			err := checkResponse(resp, tt.body)
+			e, ok := err.(*Error)
+			if !ok {
+				t.Fatalf("expected *Error, got %T", err)
+			}
+			if e.Message != tt.want {
+				t.Errorf("Message = %q, want %q", e.Message, tt.want)
+			}
+			if strings.Contains(e.Message, "teapot") {
+				t.Errorf("Message renders the wire reason phrase: %q", e.Message)
+			}
+		})
+	}
+}
+
 func TestCheckResponse_FieldKeyed422(t *testing.T) {
 	resp := &http.Response{StatusCode: 422, Header: http.Header{}}
 	body := []byte(`{"errors":{"color":["is not a valid color"]}}`)

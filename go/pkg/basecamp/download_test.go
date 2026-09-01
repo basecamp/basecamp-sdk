@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -1147,6 +1148,259 @@ func TestDownloadURL_AuthHopNoRetryOn404(t *testing.T) {
 	}
 }
 
+// --- SPEC §9: credential-bearing values are never rendered ---
+
+// roundTripperFunc adapts a function to http.RoundTripper.
+type roundTripperFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripperFunc) RoundTrip(req *http.Request) (*http.Response, error) { return f(req) }
+
+// TestDownloadURL_TransportErrorRendersNoURL proves the hop-1 network error
+// carries neither the transport's rendering of the URL nor the transport error
+// itself: a caller-supplied download URL can smuggle a signed query into hop 1
+// (SPEC §9), and Go's *url.Error renders the URL it failed on.
+func TestDownloadURL_TransportErrorRendersNoURL(t *testing.T) {
+	leaky := roundTripperFunc(func(req *http.Request) (*http.Response, error) {
+		// The shape net/http's *url.Error takes: the URL, verbatim, in the text.
+		return nil, errors.New(`Get "` + req.URL.String() + `": connection refused`)
+	})
+
+	cfg := DefaultConfig()
+	cfg.BaseURL = "https://3.basecampapi.com"
+	client := NewClient(cfg, &StaticTokenProvider{Token: "test-token"},
+		WithTransport(leaky), WithMaxRetries(1))
+	ac := client.ForAccount("12345")
+
+	_, err := ac.DownloadURL(context.Background(),
+		"https://storage.3.basecamp.com/999/blobs/abc/download/file.png?verifier=SECRET")
+	if err == nil {
+		t.Fatal("expected network error")
+	}
+	var sdkErr *Error
+	if !isSDKError(err, &sdkErr) || sdkErr.Code != CodeNetwork {
+		t.Fatalf("expected network error, got: %v", err)
+	}
+	rendered := sdkErr.Error() + " " + sdkErr.Hint
+	for _, needle := range []string{"SECRET", "verifier", "basecampapi", "?"} {
+		if strings.Contains(rendered, needle) {
+			t.Errorf("error rendering contains %q: %q", needle, rendered)
+		}
+	}
+	if sdkErr.Cause != nil {
+		t.Errorf("expected severed cause, got %v", sdkErr.Cause)
+	}
+	if unwrapped := errors.Unwrap(sdkErr); unwrapped != nil {
+		t.Errorf("expected nothing beneath the network error, got %v", unwrapped)
+	}
+}
+
+// TestDownloadURL_TransportCancellationStillClassifies proves the projection
+// keeps the one meaning the chain owes (SPEC §9): a cancelled or timed-out
+// hop-1 attempt still satisfies errors.Is through the bare sentinel — and
+// therefore still refuses to trip the circuit — while the URL-bearing
+// transport error itself is gone.
+func TestDownloadURL_TransportCancellationStillClassifies(t *testing.T) {
+	for _, tt := range []struct {
+		name     string
+		sentinel error
+	}{
+		{"canceled", context.Canceled},
+		{"deadline exceeded", context.DeadlineExceeded},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			leaky := roundTripperFunc(func(req *http.Request) (*http.Response, error) {
+				return nil, &url.Error{Op: "Get", URL: req.URL.String(), Err: tt.sentinel}
+			})
+
+			cfg := DefaultConfig()
+			cfg.BaseURL = "https://3.basecampapi.com"
+			client := NewClient(cfg, &StaticTokenProvider{Token: "test-token"},
+				WithTransport(leaky), WithMaxRetries(1))
+			ac := client.ForAccount("12345")
+
+			_, err := ac.DownloadURL(context.Background(),
+				"https://storage.3.basecamp.com/999/blobs/abc/download/file.png?verifier=SECRET")
+			if !errors.Is(err, tt.sentinel) {
+				t.Fatalf("expected errors.Is(err, %v) through the projected chain, got: %v", tt.sentinel, err)
+			}
+			if shouldTripCircuit(err) {
+				t.Error("a cancelled download must not trip the circuit")
+			}
+			var sdkErr *Error
+			if !isSDKError(err, &sdkErr) {
+				t.Fatalf("expected *Error, got %T", err)
+			}
+			if sdkErr.Cause != tt.sentinel {
+				t.Errorf("expected the bare sentinel as cause, got %v", sdkErr.Cause)
+			}
+			rendered := sdkErr.Error() + " " + sdkErr.Hint
+			for _, needle := range []string{"SECRET", "verifier", "?"} {
+				if strings.Contains(rendered, needle) {
+					t.Errorf("error rendering contains %q: %q", needle, rendered)
+				}
+			}
+		})
+	}
+}
+
+// TestDownload_SecondLegTransportErrorRendersNoURL proves the hop-2 network
+// error is the fixed message with nothing beneath it: the signed URL is a
+// credential, and the transport's error renders it (SPEC §9).
+func TestDownload_SecondLegTransportErrorRendersNoURL(t *testing.T) {
+	// A dead port: the signed hop's dial fails after hop 1 succeeds.
+	deadServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	deadURL := deadServer.URL
+	deadServer.Close()
+
+	apiServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Location", deadURL+"/bucket/file.png?X-Amz-Signature=SECRET")
+		w.WriteHeader(http.StatusFound)
+	}))
+	defer apiServer.Close()
+
+	cfg := DefaultConfig()
+	cfg.BaseURL = apiServer.URL
+	client := NewClient(cfg, &StaticTokenProvider{Token: "test-token"},
+		WithTransport(http.DefaultTransport))
+	ac := client.ForAccount("12345")
+
+	_, err := ac.DownloadURL(context.Background(),
+		"https://storage.3.basecamp.com/999/blobs/abc/download/file.png")
+	if err == nil {
+		t.Fatal("expected hop-2 network error")
+	}
+	if err.Error() != "failed to download file" {
+		t.Errorf("expected the fixed message alone, got: %q", err.Error())
+	}
+	if unwrapped := errors.Unwrap(err); unwrapped != nil {
+		t.Errorf("expected nothing beneath the hop-2 error, got %v", unwrapped)
+	}
+}
+
+// TestDownload_SecondLegCancellationClassifies proves a hop-2 timeout still
+// classifies via errors.Is while the signed URL stays out of the rendering.
+func TestDownload_SecondLegCancellationClassifies(t *testing.T) {
+	slowSigned := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(2 * time.Second)
+	}))
+	defer slowSigned.Close()
+
+	apiServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Location", slowSigned.URL+"/bucket/file.png?X-Amz-Signature=SECRET")
+		w.WriteHeader(http.StatusFound)
+	}))
+	defer apiServer.Close()
+
+	cfg := DefaultConfig()
+	cfg.BaseURL = apiServer.URL
+	client := NewClient(cfg, &StaticTokenProvider{Token: "test-token"},
+		WithTransport(http.DefaultTransport))
+	ac := client.ForAccount("12345")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Millisecond)
+	defer cancel()
+	_, err := ac.DownloadURL(ctx, "https://storage.3.basecamp.com/999/blobs/abc/download/file.png")
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("expected errors.Is(err, context.DeadlineExceeded) through the projected chain, got: %v", err)
+	}
+	for _, needle := range []string{"SECRET", "Signature", "?"} {
+		if strings.Contains(err.Error(), needle) {
+			t.Errorf("error rendering contains %q: %q", needle, err.Error())
+		}
+	}
+}
+
+// TestDownloadURL_HookURLOmitsQueryAndFragment proves hop-1 request hooks see
+// origin+path only while the wire request keeps the query (SPEC §9): the
+// caller's URL can smuggle a signed query through the rewrite into hop 1.
+func TestDownloadURL_HookURLOmitsQueryAndFragment(t *testing.T) {
+	var receivedQuery string
+	apiServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		receivedQuery = r.URL.RawQuery
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("content"))
+	}))
+	defer apiServer.Close()
+
+	var startURLs, endURLs []string
+	hooks := &testHooks{
+		onRequestStart: func(ctx context.Context, info RequestInfo) context.Context {
+			startURLs = append(startURLs, info.URL)
+			return ctx
+		},
+		onRequestEnd: func(ctx context.Context, info RequestInfo, result RequestResult) {
+			endURLs = append(endURLs, info.URL)
+		},
+	}
+
+	cfg := DefaultConfig()
+	cfg.BaseURL = apiServer.URL
+	client := NewClient(cfg, &StaticTokenProvider{Token: "test-token"}, WithHooks(hooks))
+	ac := client.ForAccount("12345")
+
+	result, err := ac.DownloadURL(context.Background(),
+		"https://storage.3.basecamp.com/999/blobs/abc/download/file.png?verifier=SECRET#frag")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	defer result.Body.Close()
+	io.Copy(io.Discard, result.Body)
+
+	if receivedQuery != "verifier=SECRET" {
+		t.Errorf("the wire request must keep the query, got %q", receivedQuery)
+	}
+	want := apiServer.URL + "/999/blobs/abc/download/file.png"
+	for _, got := range append(append([]string{}, startURLs...), endURLs...) {
+		if got != want {
+			t.Errorf("hook URL = %q, want origin+path only %q", got, want)
+		}
+	}
+}
+
+// TestDownloadURL_RetryHookURLOmitsQuery extends the projection to on_retry,
+// which builds its RequestInfo in the download retry loop rather than the
+// logging transport.
+func TestDownloadURL_RetryHookURLOmitsQuery(t *testing.T) {
+	var attempts atomic.Int32
+	apiServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if attempts.Add(1) == 1 {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("content"))
+	}))
+	defer apiServer.Close()
+
+	var retryURLs []string
+	hooks := &testHooks{
+		onRetry: func(ctx context.Context, info RequestInfo, attempt int, err error) {
+			retryURLs = append(retryURLs, info.URL)
+		},
+	}
+
+	cfg := DefaultConfig()
+	cfg.BaseURL = apiServer.URL
+	client := NewClient(cfg, &StaticTokenProvider{Token: "test-token"},
+		WithHooks(hooks), WithMaxRetries(3), WithBaseDelay(time.Millisecond), WithMaxJitter(time.Millisecond))
+	ac := client.ForAccount("12345")
+
+	result, err := ac.DownloadURL(context.Background(),
+		"https://storage.3.basecamp.com/999/blobs/abc/download/file.png?verifier=SECRET")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	defer result.Body.Close()
+	io.Copy(io.Discard, result.Body)
+
+	if len(retryURLs) != 1 {
+		t.Fatalf("expected 1 on_retry call, got %d", len(retryURLs))
+	}
+	if want := apiServer.URL + "/999/blobs/abc/download/file.png"; retryURLs[0] != want {
+		t.Errorf("on_retry URL = %q, want origin+path only %q", retryURLs[0], want)
+	}
+}
+
 // --- test helpers ---
 
 // isSDKError extracts an *Error from err via errors.As.
@@ -1160,6 +1414,7 @@ type testHooks struct {
 	onOperationEnd   func(ctx context.Context, op OperationInfo, err error, d time.Duration)
 	onRequestStart   func(ctx context.Context, info RequestInfo) context.Context
 	onRequestEnd     func(ctx context.Context, info RequestInfo, result RequestResult)
+	onRetry          func(ctx context.Context, info RequestInfo, attempt int, err error)
 }
 
 func (h *testHooks) OnOperationStart(ctx context.Context, op OperationInfo) context.Context {
@@ -1188,7 +1443,11 @@ func (h *testHooks) OnRequestEnd(ctx context.Context, info RequestInfo, result R
 	}
 }
 
-func (h *testHooks) OnRetry(context.Context, RequestInfo, int, error) {}
+func (h *testHooks) OnRetry(ctx context.Context, info RequestInfo, attempt int, err error) {
+	if h.onRetry != nil {
+		h.onRetry(ctx, info, attempt, err)
+	}
+}
 
 // testGatingHooks extends testHooks with gating.
 type testGatingHooks struct {

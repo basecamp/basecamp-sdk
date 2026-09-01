@@ -37,10 +37,12 @@ class TestExchangeCode:
             )
         assert exc_info.value.oauth_type == "api_error"
         assert secret not in str(exc_info.value)
-        # from None: JSONDecodeError retains the whole body as .doc — the
-        # chain must be suppressed, not merely sanitized.
+        # SPEC §9 raising boundary: JSONDecodeError retains the whole body as
+        # .doc, and `from None` would leave it sitting in __context__ — the
+        # error is constructed inside the handler and raised after it, so the
+        # RAISED exception retains nothing at all.
         assert exc_info.value.__cause__ is None
-        assert exc_info.value.__suppress_context__
+        assert exc_info.value.__context__ is None
 
     @respx.mock
     def test_exchange_code(self):

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urljoin, urlparse, urlunparse
 
 import httpx
 
@@ -27,6 +27,17 @@ def truncate(s: str | None, max_bytes: int = MAX_ERROR_MESSAGE_BYTES) -> str:
     if max_bytes <= 3:
         return encoded[:max_bytes].decode(errors="ignore")
     return encoded[: max_bytes - 3].decode(errors="ignore") + "..."
+
+
+def display_url(url: str) -> str:
+    """Project a URL to origin+path for rendering (SPEC section 9).
+
+    A download URL's query can carry a signed credential into hop 1, so hooks
+    render origin and path only — no query, no fragment. The wire request
+    keeps the full URL.
+    """
+    parsed = urlparse(url)
+    return urlunparse((parsed.scheme, parsed.netloc, parsed.path, "", "", ""))
 
 
 def require_https(url: str, label: str = "URL") -> None:

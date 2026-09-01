@@ -190,6 +190,24 @@ def parse_error_message(body: str | bytes | None) -> str | None:
     return None
 
 
+def parse_error_hint(body: str | bytes | None) -> str | None:
+    """Extract the SPEC section 6 step-3 hint from a response body.
+
+    The ``error_description`` key, used only when its value is a non-empty
+    string. Callers truncate it like the message.
+    """
+    if not body:
+        return None
+    try:
+        data = json.loads(body)
+    except (json.JSONDecodeError, TypeError):
+        return None
+    if not isinstance(data, dict):
+        return None
+    hint = data.get("error_description")
+    return hint if isinstance(hint, str) and hint else None
+
+
 def parse_field_errors(body: str | bytes | None) -> dict[str, list[str]] | None:
     """Extract the field-keyed validation errors map from a response body.
 
@@ -257,16 +275,20 @@ def error_from_response(status: int, body: str | bytes | None, headers: dict[str
     retry_after = _parse_retry_after(headers.get("Retry-After") or headers.get("retry-after"))
     request_id = headers.get("X-Request-Id") or headers.get("x-request-id")
     message = parse_error_message(body)
+    # SPEC section 6 step 3: a body's error_description becomes the hint.
+    hint = parse_error_hint(body)
+    if hint:
+        hint = _truncate(hint)
 
     err: BasecampError
     if status == 401:
-        err = AuthError(message or "Authentication failed", http_status=401)
+        err = AuthError(message or "Authentication failed", http_status=401, hint=hint)
     elif status == 403:
-        err = ForbiddenError(message or "Access denied", http_status=403)
+        err = ForbiddenError(message or "Access denied", http_status=403, hint=hint)
     elif status == 404:
-        err = NotFoundError(message=_truncate(message or "Not found"), http_status=404)
+        err = NotFoundError(message=_truncate(message or "Not found"), http_status=404, hint=hint)
     elif status == 429:
-        err = RateLimitError(_truncate(message or "Rate limited"), retry_after=retry_after, http_status=429)
+        err = RateLimitError(_truncate(message or "Rate limited"), retry_after=retry_after, http_status=429, hint=hint)
     elif status in (400, 422):
         field_errors = parse_field_errors(body)
         if field_errors:
@@ -274,18 +296,20 @@ def error_from_response(status: int, body: str | bytes | None, headers: dict[str
             # Appended in parentheses after a top-level message, standing alone
             # otherwise; truncated after flattening so the tail is capped too.
             message = f"{message} ({flat})" if message else flat
-        err = ValidationError(_truncate(message or "Validation failed"), http_status=status, field_errors=field_errors)
+        err = ValidationError(
+            _truncate(message or "Validation failed"), http_status=status, field_errors=field_errors, hint=hint
+        )
     elif status == 507:
         # A 5xx status carrying a client fact: the account is out of storage, or
         # at its webhook ceiling. Retrying cannot satisfy it, so this is decided
         # before the 5xx arms below.
-        err = LimitExceededError(_truncate(message or "Account limit reached"), http_status=507)
+        err = LimitExceededError(_truncate(message or "Account limit reached"), http_status=507, hint=hint)
     elif status == 500:
-        err = ApiError("Server error (500)", retryable=True, http_status=500)
+        err = ApiError("Server error (500)", retryable=True, http_status=500, hint=hint)
     elif status in (502, 503, 504):
-        err = ApiError(f"Gateway error ({status})", retryable=True, http_status=status)
+        err = ApiError(f"Gateway error ({status})", retryable=True, http_status=status, hint=hint)
     else:
-        err = ApiError(_truncate(message or f"Request failed (HTTP {status})"), http_status=status)
+        err = ApiError(_truncate(message or f"Request failed (HTTP {status})"), http_status=status, hint=hint)
 
     err.request_id = request_id
     err.retry_after = err.retry_after or retry_after

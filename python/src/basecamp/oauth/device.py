@@ -169,16 +169,22 @@ def request_device_authorization(
             http_status=status,
         )
 
+    parse_error: OAuthError | None = None
     try:
         data = json.loads(body)
     except ValueError:
-        # from None — json.JSONDecodeError retains the whole document as its
-        # .doc attribute; these bodies carry device codes and access tokens.
-        raise OAuthError(
+        # Constructed here and raised outside the handler (SPEC §9):
+        # json.JSONDecodeError retains the whole document — these bodies carry
+        # device codes and access tokens — as its .doc attribute, and
+        # `from None` would still leave it in __context__.
+        data = None
+        parse_error = OAuthError(
             "api_error",
             "Failed to parse device authorization response",
             http_status=status,
-        ) from None
+        )
+    if parse_error is not None:
+        raise parse_error
 
     if not isinstance(data, dict):
         raise OAuthError("api_error", "Device authorization response is not a JSON object", http_status=status)
@@ -689,16 +695,22 @@ def _post_device_token(
             http_status=status,
         )
 
+    parse_error: OAuthError | None = None
     try:
         data = json.loads(body)
     except ValueError:
-        # from None — json.JSONDecodeError retains the whole document as its
-        # .doc attribute; these bodies carry device codes and access tokens.
-        raise OAuthError(
+        # Constructed here and raised outside the handler (SPEC §9):
+        # json.JSONDecodeError retains the whole document — these bodies carry
+        # device codes and access tokens — as its .doc attribute, and
+        # `from None` would still leave it in __context__.
+        data = None
+        parse_error = OAuthError(
             "api_error",
             "Failed to parse device token response",
             http_status=status,
-        ) from None
+        )
+    if parse_error is not None:
+        raise parse_error
     if not isinstance(data, dict):
         raise OAuthError("api_error", "Device token response is not a JSON object", http_status=status)
 
