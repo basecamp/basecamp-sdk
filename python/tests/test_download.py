@@ -763,3 +763,64 @@ class TestSpec9CredentialRendering:
 
         assert hop1.called
         assert hooks.urls == ["https://3.basecampapi.com/files/doc.pdf"] * 2
+
+    @respx.mock
+    def test_hop1_network_error_is_severed_for_caller_and_hooks(self):
+        # The httpx error retains the request it failed on (and any signed
+        # query in its URL), so the caller's error and the hook's are the
+        # fixed NetworkError with neither __cause__ nor __context__.
+        respx.get(self.HOP1_SIGNED).mock(side_effect=httpx.ConnectError("dial refused"))
+
+        class ErrorHooks(BasecampHooks):
+            def __init__(self):
+                self.errors: list[BaseException | None] = []
+
+            def on_request_end(self, info, result):
+                self.errors.append(result.error)
+
+        config = make_fast_config(max_retries=1)
+        hooks = ErrorHooks()
+        with pytest.raises(NetworkError) as exc_info:
+            download_sync(self.RAW_SIGNED, http_client=make_fast_http(config, hooks), config=config)
+
+        assert len(hooks.errors) == 1
+        for err in (exc_info.value, hooks.errors[0]):
+            assert isinstance(err, NetworkError)
+            assert str(err) == "Connection failed"
+            assert err.__cause__ is None
+            assert err.__context__ is None
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_hop1_network_error_is_severed_async(self):
+        respx.get(self.HOP1_SIGNED).mock(side_effect=httpx.ConnectError("dial refused"))
+
+        config = make_fast_config(max_retries=1)
+        http = AsyncHttpClient(config, AsyncBearerAuth(AsyncStaticTokenProvider("test-token")))
+        with pytest.raises(NetworkError) as exc_info:
+            await download_async(self.RAW_SIGNED, http_client=http, config=config)
+
+        assert str(exc_info.value) == "Connection failed"
+        assert exc_info.value.__cause__ is None
+        assert exc_info.value.__context__ is None
+
+    @respx.mock
+    def test_api_network_error_keeps_its_cause(self):
+        # The projection is gated on the download flow; ordinary API requests
+        # keep their transport diagnostic.
+        respx.get("https://3.basecampapi.com/test.json").mock(side_effect=httpx.ConnectError("refused"))
+
+        config = make_fast_config(max_retries=1)
+        with pytest.raises(NetworkError) as exc_info:
+            make_fast_http(config).get("/test.json")
+
+        assert isinstance(exc_info.value.__cause__, httpx.ConnectError)
+
+
+class TestDisplayUrl:
+    def test_drops_userinfo_query_and_fragment_and_keeps_port(self):
+        from basecamp._security import display_url
+
+        assert display_url("https://user:pw@host.example:8443/a/b?sig=SECRET#frag") == "https://host.example:8443/a/b"
+        assert display_url("https://host.example/a") == "https://host.example/a"
+        assert display_url("http://[::1]:3000/x?y=1") == "http://[::1]:3000/x"

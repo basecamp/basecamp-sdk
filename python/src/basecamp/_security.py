@@ -33,11 +33,19 @@ def display_url(url: str) -> str:
     """Project a URL to origin+path for rendering (SPEC section 9).
 
     A download URL's query can carry a signed credential into hop 1, so hooks
-    render origin and path only — no query, no fragment. The wire request
-    keeps the full URL.
+    render origin and path only — no userinfo, query or fragment. The wire
+    request keeps the full URL.
     """
     parsed = urlparse(url)
-    return urlunparse((parsed.scheme, parsed.netloc, parsed.path, "", "", ""))
+    host = parsed.hostname or ""
+    if ":" in host:
+        host = f"[{host}]"
+    try:
+        port = parsed.port
+    except ValueError:
+        port = None
+    netloc = f"{host}:{port}" if port is not None else host
+    return urlunparse((parsed.scheme, netloc, parsed.path, "", "", ""))
 
 
 def require_https(url: str, label: str = "URL") -> None:

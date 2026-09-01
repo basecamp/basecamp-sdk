@@ -513,10 +513,16 @@ class DownloadTest {
     fun downloadURL_hop1NetworkFailureRendersFixedMessageAndNoCause() = runTest {
         // The transport error renders the hop-1 URL — and the caller's URL can
         // smuggle a signed query through the origin rewrite into it — so the
-        // wrapped error is the fixed message with no cause chained.
-        val client = mockClient({ request ->
-            throw java.io.IOException("dial ${request.url} refused")
-        })
+        // wrapped error is the fixed message with no cause chained, and the
+        // request-end hook receives that same projection.
+        val hookErrors = mutableListOf<Throwable?>()
+        val hooks = object : BasecampHooks {
+            override fun onRequestEnd(info: RequestInfo, result: RequestResult) { hookErrors.add(result.error) }
+        }
+        val client = mockClient(
+            handler = { request -> throw java.io.IOException("dial ${request.url} refused") },
+            hooks = hooks,
+        )
         val account = client.forAccount("12345")
 
         val e = assertFailsWith<BasecampException.Network> {
@@ -524,6 +530,11 @@ class DownloadTest {
         }
         assertEquals("Network error", e.message)
         assertNull(e.cause)
+
+        assertEquals(1, hookErrors.size)
+        val hookError = assertIs<BasecampException.Network>(hookErrors[0])
+        assertEquals("Network error", hookError.message)
+        assertNull(hookError.cause)
         client.close()
     }
 

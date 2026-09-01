@@ -533,6 +533,43 @@ final class DownloadTests: XCTestCase {
         }
     }
 
+    /// A retried hop-1 transport failure reaches onRequestEnd/onRetry as the
+    /// same projection the caller would get, never the raw URL-bearing error.
+    func testDownloadURL_retriedHop1NetworkErrorReachesHooksProjected() async throws {
+        final class ErrorSpy: BasecampHooks, @unchecked Sendable {
+            private let lock = NSLock()
+            private var _retryErrors: [any Error] = []
+            var retryErrors: [any Error] { lock.withLock { _retryErrors } }
+            func onRetry(_ info: RequestInfo, attempt: Int, error: any Error, delaySeconds: TimeInterval) {
+                lock.withLock { _retryErrors.append(error) }
+            }
+        }
+
+        let spy = ErrorSpy()
+        let counter = Counter()
+        let transport = MockTransport { request in
+            if counter.increment() == 1 {
+                throw URLLeakingError(url: request.url!.absoluteString)
+            }
+            return (
+                Data("data".utf8),
+                makeHTTPResponse(url: request.url!.absoluteString, statusCode: 200, headers: ["Content-Type": "text/plain"])
+            )
+        }
+        let account = makeTestAccountClient(transport: transport, enableRetry: true, hooks: spy)
+        _ = try await account.downloadURL(
+            "https://3.basecampapi.com/999999999/attachments/abc/download/file.txt?verifier=SECRET")
+
+        XCTAssertEqual(spy.retryErrors.count, 1)
+        guard let projected = spy.retryErrors.first as? BasecampError,
+              case .network(let message, let cause) = projected else {
+            XCTFail("Expected a projected .network in onRetry, got \(String(describing: spy.retryErrors.first))")
+            return
+        }
+        XCTAssertEqual(message, "Network error")
+        XCTAssertNil(cause)
+    }
+
     /// The hop-2 wrap severs the cause the same way: the signed URL is a
     /// credential, and the transport error renders it.
     func testDownloadURL_hop2NetworkErrorSeversCause() async throws {

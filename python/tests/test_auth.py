@@ -224,3 +224,30 @@ class TestOAuthTokenProvider:
         # Lock serializes access, so refresh called once (first thread refreshes,
         # subsequent threads see non-expired token)
         assert mock_post.call_count == 1
+
+
+class TestRefreshTransportFailureRetainsNothing:
+    @respx.mock
+    def test_sync(self):
+        # SPEC §9: the httpx error retains the request — whose form body
+        # carries refresh_token and client_secret — so nothing is chained.
+        respx.post(OAuthTokenProvider.TOKEN_URL).mock(side_effect=httpx.ConnectError("refused"))
+        tp = OAuthTokenProvider(
+            access_token="old", client_id="cid", client_secret="csec", refresh_token="rtok", expires_at=time.time() - 10
+        )
+        with pytest.raises(NetworkError) as exc_info:
+            tp.access_token()
+        assert exc_info.value.__cause__ is None
+        assert exc_info.value.__context__ is None
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_async(self):
+        respx.post(AsyncOAuthTokenProvider.TOKEN_URL).mock(side_effect=httpx.ConnectError("refused"))
+        tp = AsyncOAuthTokenProvider(
+            access_token="old", client_id="cid", client_secret="csec", refresh_token="rtok", expires_at=time.time() - 10
+        )
+        with pytest.raises(NetworkError) as exc_info:
+            await tp.access_token()
+        assert exc_info.value.__cause__ is None
+        assert exc_info.value.__context__ is None

@@ -324,20 +324,21 @@ private suspend fun AccountClient.downloadHop1(
         }
 
         if (failure != null) {
-            val duration = currentTimeMillis() - reqStart
-            parent.hooks.safeOnRequestEnd(requestInfo, RequestResult(
-                statusCode = 0,
-                duration = duration.millisToDuration(),
-                error = failure,
-            ))
             // SPEC §9: the transport error renders the hop-1 URL (and any
             // signed query smuggled into it) — fixed message, no cause
-            // chained. Cancellation was rethrown raw above, so nothing here
-            // needs the chain.
+            // chained, and constructed BEFORE the request-end hook so hooks
+            // and the caller see the same projection. Cancellation was
+            // rethrown raw above, so nothing here needs the chain.
             val wrapped = BasecampException.Network(
                 message = "Network error",
                 cause = null,
             )
+            val duration = currentTimeMillis() - reqStart
+            parent.hooks.safeOnRequestEnd(requestInfo, RequestResult(
+                statusCode = 0,
+                duration = duration.millisToDuration(),
+                error = wrapped,
+            ))
             // Same total-budget carve-out as the client loop: an attempt that
             // consumed its entire per-attempt time budget is a slowness shape
             // a retry tends to repeat, not a transient blip.

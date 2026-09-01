@@ -364,3 +364,19 @@ class TestBareFieldMap:
     def test_not_extracted_outside_validation_statuses(self):
         err = error_from_response(500, b'{"payload_url": ["is not a valid URL"]}')
         assert not hasattr(err, "field_errors")
+
+
+class TestSpec6Caps:
+    def test_401_and_403_messages_are_truncated(self):
+        long = "x" * 600
+        for status in (401, 403):
+            err = error_from_response(status, ('{"error": "' + long + '"}').encode())
+            assert len(str(err).encode()) == 500
+            assert str(err).endswith("...")
+
+    def test_unmapped_5xx_is_retryable(self):
+        # SPEC section 6 step 12: any 5xx outside the mapped arms retries; the
+        # 507 arm is the deliberate exception.
+        assert error_from_response(599, b"").retryable is True
+        assert error_from_response(418, b"").retryable is False
+        assert error_from_response(507, b"").retryable is False

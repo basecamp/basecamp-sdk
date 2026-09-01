@@ -96,6 +96,10 @@ class OAuthTokenProvider:
 
         from basecamp.errors import AuthError, NetworkError
 
+        # SPEC §9: the httpx error retains the request it failed on — the form
+        # body carrying refresh_token and client_secret — so a transport
+        # failure is constructed here and raised outside the handler.
+        transport_error: NetworkError | None = None
         try:
             response = httpx.post(
                 self.TOKEN_URL,
@@ -109,7 +113,9 @@ class OAuthTokenProvider:
                 timeout=30.0,
             )
         except httpx.HTTPError as e:
-            raise NetworkError(f"Token refresh network error: {e}") from e
+            transport_error = NetworkError(f"Token refresh network error: {e}")
+        if transport_error is not None:
+            raise transport_error
 
         if response.status_code >= 400:
             raise AuthError(f"Token refresh failed: {response.status_code}")

@@ -639,7 +639,8 @@ module Basecamp
         # projected from the parse, or the fixed token when no complete origin
         # exists. Truncating the whole URL kept a short query intact.
         origin = if uri&.scheme && uri&.host && !uri.host.empty?
-          "#{uri.scheme}://#{uri.host}"
+          port = uri.port && uri.port != uri.default_port ? ":#{uri.port}" : ""
+          "#{uri.scheme}://#{uri.host}#{port}"
         else
           "unparsable"
         end

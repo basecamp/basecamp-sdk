@@ -1165,10 +1165,19 @@ func TestDownloadURL_TransportErrorRendersNoURL(t *testing.T) {
 		return nil, errors.New(`Get "` + req.URL.String() + `": connection refused`)
 	})
 
+	// The hook sees the same projection: RequestResult.Error is the fixed
+	// network error, not the transport's URL-bearing original.
+	var hookErrors []error
+	hooks := &testHooks{
+		onRequestEnd: func(ctx context.Context, info RequestInfo, result RequestResult) {
+			hookErrors = append(hookErrors, result.Error)
+		},
+	}
+
 	cfg := DefaultConfig()
 	cfg.BaseURL = "https://3.basecampapi.com"
 	client := NewClient(cfg, &StaticTokenProvider{Token: "test-token"},
-		WithTransport(leaky), WithMaxRetries(1))
+		WithTransport(leaky), WithMaxRetries(1), WithHooks(hooks))
 	ac := client.ForAccount("12345")
 
 	_, err := ac.DownloadURL(context.Background(),
@@ -1180,17 +1189,26 @@ func TestDownloadURL_TransportErrorRendersNoURL(t *testing.T) {
 	if !isSDKError(err, &sdkErr) || sdkErr.Code != CodeNetwork {
 		t.Fatalf("expected network error, got: %v", err)
 	}
-	rendered := sdkErr.Error() + " " + sdkErr.Hint
-	for _, needle := range []string{"SECRET", "verifier", "basecampapi", "?"} {
-		if strings.Contains(rendered, needle) {
-			t.Errorf("error rendering contains %q: %q", needle, rendered)
+	if len(hookErrors) != 1 {
+		t.Fatalf("expected 1 OnRequestEnd call, got %d", len(hookErrors))
+	}
+	for name, candidate := range map[string]error{"returned error": sdkErr, "hook error": hookErrors[0]} {
+		var e *Error
+		if !isSDKError(candidate, &e) || e.Code != CodeNetwork {
+			t.Fatalf("%s: expected network *Error, got %T %v", name, candidate, candidate)
 		}
-	}
-	if sdkErr.Cause != nil {
-		t.Errorf("expected severed cause, got %v", sdkErr.Cause)
-	}
-	if unwrapped := errors.Unwrap(sdkErr); unwrapped != nil {
-		t.Errorf("expected nothing beneath the network error, got %v", unwrapped)
+		rendered := e.Error() + " " + e.Hint
+		for _, needle := range []string{"SECRET", "verifier", "basecampapi", "?"} {
+			if strings.Contains(rendered, needle) {
+				t.Errorf("%s rendering contains %q: %q", name, needle, rendered)
+			}
+		}
+		if e.Cause != nil {
+			t.Errorf("%s: expected severed cause, got %v", name, e.Cause)
+		}
+		if unwrapped := errors.Unwrap(e); unwrapped != nil {
+			t.Errorf("%s: expected nothing beneath the network error, got %v", name, unwrapped)
+		}
 	}
 }
 
@@ -1314,9 +1332,9 @@ func TestDownload_SecondLegCancellationClassifies(t *testing.T) {
 // origin+path only while the wire request keeps the query (SPEC §9): the
 // caller's URL can smuggle a signed query through the rewrite into hop 1.
 func TestDownloadURL_HookURLOmitsQueryAndFragment(t *testing.T) {
-	var receivedQuery string
+	var receivedQuery atomic.Value
 	apiServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		receivedQuery = r.URL.RawQuery
+		receivedQuery.Store(r.URL.RawQuery)
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("content"))
 	}))
@@ -1346,11 +1364,14 @@ func TestDownloadURL_HookURLOmitsQueryAndFragment(t *testing.T) {
 	defer result.Body.Close()
 	io.Copy(io.Discard, result.Body)
 
-	if receivedQuery != "verifier=SECRET" {
-		t.Errorf("the wire request must keep the query, got %q", receivedQuery)
+	if got, _ := receivedQuery.Load().(string); got != "verifier=SECRET" {
+		t.Errorf("the wire request must keep the query, got %q", got)
 	}
 	want := apiServer.URL + "/999/blobs/abc/download/file.png"
-	for _, got := range append(append([]string{}, startURLs...), endURLs...) {
+	if len(startURLs) != 1 || len(endURLs) != 1 {
+		t.Fatalf("expected 1 start and 1 end hook call, got %d and %d", len(startURLs), len(endURLs))
+	}
+	for _, got := range []string{startURLs[0], endURLs[0]} {
 		if got != want {
 			t.Errorf("hook URL = %q, want origin+path only %q", got, want)
 		}

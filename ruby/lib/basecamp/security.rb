@@ -32,6 +32,22 @@ module Basecamp
       raise UsageError.new("Invalid #{label}: #{url}")
     end
 
+    # Renders a URL for hooks as origin+path only (SPEC section 9): no
+    # userinfo, query or fragment. The download flow's hop-1 URL can carry a
+    # signed credential in its query; the wire request keeps the whole URL.
+    # @param url [String]
+    # @return [String]
+    def self.display_url(url)
+      uri = URI.parse(url)
+      uri.password = nil
+      uri.user = nil
+      uri.query = nil
+      uri.fragment = nil
+      uri.to_s
+    rescue URI::Error
+      url.sub(/[?#].*/m, "").sub(%r{\A([a-z][a-z0-9+.-]*://)[^/@]*@}i, '\1')
+    end
+
     def self.same_origin?(a, b)
       ua = URI.parse(a)
       ub = URI.parse(b)

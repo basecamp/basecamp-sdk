@@ -457,6 +457,55 @@ class DownloadTest < Minitest::Test
     assert_equal "redirect to undialable download URL: ftp://storage.example", error.message
   end
 
+  def test_download_url_undialable_location_origin_keeps_non_default_port
+    stub_request(:get, "#{base_url}/12345/attachments/abc/download/file.txt")
+      .with(headers: { "Authorization" => "Bearer #{access_token}" })
+      .to_return(status: 302, headers: { "Location" => "ftp://storage.example:8443/file?sig=SECRET" })
+
+    error = assert_raises(Basecamp::ApiError) do
+      @account.download_url("https://3.basecampapi.com/12345/attachments/abc/download/file.txt")
+    end
+    assert_equal "redirect to undialable download URL: ftp://storage.example:8443", error.message
+  end
+
+  # Hop 1's transport error is projected the same way for a download: the
+  # Faraday error can render the URL it failed on, so neither the caller's
+  # error nor the hook's carries it, and MRI's implicit cause is severed too.
+  def test_download_url_hop1_network_failure_is_severed_for_caller_and_hooks
+    hook_errors = []
+    hooks_impl = Class.new do
+      include Basecamp::Hooks
+      define_method(:on_request_end) { |_info, result| hook_errors << result.error }
+    end.new
+
+    account = create_account_client(config: fast_download_config(max_retries: 1), hooks: hooks_impl)
+
+    stub_request(:get, "#{base_url}/12345/download?verifier=SECRET")
+      .to_raise(Faraday::ConnectionFailed.new("dial #{base_url}/12345/download?verifier=SECRET refused"))
+
+    error = assert_raises(Basecamp::NetworkError) do
+      account.download_url("https://3.basecampapi.com/12345/download?verifier=SECRET")
+    end
+
+    [ error, hook_errors.fetch(0) ].each do |e|
+      assert_equal "Connection failed", e.message
+      assert_no_match(/SECRET/, "#{e.message} #{e.hint}")
+      assert_nil e.cause
+    end
+    assert_nil Exception.instance_method(:cause).bind(error).call
+  end
+
+  # Ordinary API requests keep their transport diagnostic: the projection is
+  # gated on the download flow.
+  def test_api_network_failure_still_carries_its_cause
+    http = Basecamp::Http.new(config: fast_download_config(max_retries: 1),
+                              token_provider: Basecamp::StaticTokenProvider.new(access_token))
+    stub_request(:get, "#{base_url}/test.json").to_raise(Faraday::ConnectionFailed.new("refused"))
+
+    error = assert_raises(Basecamp::NetworkError) { http.get("/test.json") }
+    assert_kind_of Faraday::ConnectionFailed, error.cause
+  end
+
   def test_download_url_hostless_location_renders_unparsable_token
     stub_request(:get, "#{base_url}/12345/attachments/abc/download/file.txt")
       .with(headers: { "Authorization" => "Bearer #{access_token}" })
@@ -483,10 +532,16 @@ class DownloadTest < Minitest::Test
     wire = stub_request(:get, "#{base_url}/12345/download?verifier=SECRET")
       .to_return(status: 200, body: "data", headers: { "Content-Type" => "text/plain" })
 
-    account.download_url("https://3.basecampapi.com/12345/download?verifier=SECRET")
+    account.download_url("https://3.basecampapi.com/12345/download?verifier=SECRET#frag")
 
     assert_requested(wire)
     assert_equal [ "#{base_url}/12345/download", "#{base_url}/12345/download" ], hook_urls
+  end
+
+  def test_display_url_drops_userinfo_query_and_fragment
+    assert_equal "https://host.example:8443/a/b",
+                 Basecamp::Security.display_url("https://user:pw@host.example:8443/a/b?sig=SECRET#frag")
+    assert_equal "https://host.example/a", Basecamp::Security.display_url("https://host.example/a")
   end
 
   def test_download_url_retry_hook_url_omits_query

@@ -168,11 +168,14 @@ type loggingTransport struct {
 
 // RoundTrip implements http.RoundTripper with logging and hooks.
 func (t *loggingTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	// A download hop-1 URL is rendered as origin+path only (SPEC §9); every
-	// other request URL carries no credential — the token rides in the
+	// A download hop-1 request is projected for hooks and logs (SPEC §9): its
+	// URL as origin+path only, and a transport failure as the fixed network
+	// error, since *url.Error renders the URL it failed on. Every other
+	// request URL carries no credential — the token rides in the
 	// Authorization header — so hooks and logs get it whole.
+	download := isDownloadRequest(req.Context())
 	displayURL := req.URL.String()
-	if isDownloadRequest(req.Context()) {
+	if download {
 		displayURL = (&url.URL{Scheme: req.URL.Scheme, Host: req.URL.Host, Path: req.URL.Path}).String()
 	}
 
@@ -207,6 +210,9 @@ func (t *loggingTransport) RoundTrip(req *http.Request) (*http.Response, error) 
 	// Record result
 	if err != nil {
 		result.Error = err
+		if download {
+			result.Error = downloadNetworkError(err)
+		}
 	} else {
 		result.StatusCode = resp.StatusCode
 		// Parse Retry-After header for 429/503 responses
