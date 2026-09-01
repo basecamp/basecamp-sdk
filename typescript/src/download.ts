@@ -59,6 +59,18 @@ export function filenameFromURL(rawURL: string): string {
   }
 }
 
+/**
+ * A fresh abort-shaped cause for a projected download error (SPEC §9): the
+ * same DOMException name as the transport's rejection, fixed text, no URL —
+ * or undefined when the rejection was not an abort.
+ */
+function abortSentinel(err: unknown): Error | undefined {
+  if (err instanceof DOMException && (err.name === "AbortError" || err.name === "TimeoutError")) {
+    return new DOMException("The operation was aborted", err.name);
+  }
+  return undefined;
+}
+
 /** Parse Content-Length header defensively, returning -1 for missing/invalid values. */
 function parseContentLength(headers: Headers): number {
   const raw = headers.get("Content-Length");
@@ -145,17 +157,40 @@ export function createDownloadURL(deps: DownloadDeps): (rawURL: string) => Promi
         retryOn: DOWNLOAD_RETRY_ON,
       };
 
+      // Hooks render this flow's URL as origin+path only (SPEC §9): the
+      // caller's URL can smuggle a signed query through the rewrite into
+      // hop 1. The wire request keeps the query; only the rendering is
+      // projected.
+      const hookURL = `${base.origin}${parsed.pathname}`;
       const requestInfoFor = (attempt: number): RequestInfo => ({
         method: "GET",
-        url: rewrittenURL,
+        url: hookURL,
         attempt,
       });
 
       // The download path has no lifecycle middleware, so the emit seams fire
       // the hooks directly. executeWithRetry finalizes only the attempts it
       // abandons; the terminal outcome is finalized after the loop below.
+      //
+      // A hop-1 transport failure reaches hooks projected too (SPEC §9): the
+      // raw fetch error, like the URL, can render the signed query, so every
+      // network-failed attempt (statusCode 0) hands hooks the fixed network
+      // error. Status retries carry the loop's status error untouched, and the
+      // auth-refresh terminal path below finalizes with the strategy's own
+      // error, which is not a transport rendering.
       let currentAttempt = 1;
       let attemptStart = performance.now();
+      let lastStatusCode = 0;
+      const endAttempt = (statusCode: number, error?: Error) => {
+        const durationMs = Math.round(performance.now() - attemptStart);
+        safeInvoke(hooks, "onRequestEnd", requestInfoFor(currentAttempt), {
+          statusCode,
+          durationMs,
+          fromCache: false,
+          ...(error ? { error } : {}),
+        });
+      };
+      const projectedNetworkError = () => Errors.network("Network error");
       const emit: RetryEmit = {
         begin: (attempt) => {
           currentAttempt = attempt;
@@ -163,16 +198,15 @@ export function createDownloadURL(deps: DownloadDeps): (rawURL: string) => Promi
           safeInvoke(hooks, "onRequestStart", requestInfoFor(attempt));
         },
         finalize: (outcome) => {
-          const durationMs = Math.round(performance.now() - attemptStart);
-          safeInvoke(hooks, "onRequestEnd", requestInfoFor(currentAttempt), {
-            statusCode: outcome.statusCode,
-            durationMs,
-            fromCache: false,
-            ...(outcome.error ? { error: outcome.error } : {}),
-          });
+          lastStatusCode = outcome.statusCode;
+          endAttempt(
+            outcome.statusCode,
+            outcome.error && outcome.statusCode === 0 ? projectedNetworkError() : outcome.error,
+          );
         },
         retrying: (failedAttempt, error, delayMs) => {
-          safeInvoke(hooks, "onRetry", requestInfoFor(failedAttempt), failedAttempt + 1, error, delayMs);
+          const projected = lastStatusCode === 0 ? projectedNetworkError() : error;
+          safeInvoke(hooks, "onRetry", requestInfoFor(failedAttempt), failedAttempt + 1, projected, delayMs);
         },
       };
 
@@ -214,13 +248,17 @@ export function createDownloadURL(deps: DownloadDeps): (rawURL: string) => Promi
           // surface the strategy's own error raw — auth faults are neither
           // transport failures nor API errors.
           const reason = err.reason;
-          const error = reason instanceof Error ? reason : new Error(String(reason));
-          emit.finalize({ statusCode: 0, error });
+          endAttempt(0, reason instanceof Error ? reason : new Error(String(reason)));
           throw reason;
         }
-        const error = err instanceof Error ? err : new Error(String(err));
-        emit.finalize({ statusCode: 0, error });
-        throw Errors.network(error.message, error);
+        // SPEC §9: the transport's rendering carries the hop-1 URL (and any
+        // signed query smuggled into it) — the fixed network error is what the
+        // hook and the caller both get. An abort keeps its meaning as a FRESH
+        // abort-shaped cause (fixed text, no URL), so a caller can still tell
+        // a timeout or cancellation from a connection failure.
+        const projected = Errors.network("Network error", abortSentinel(err));
+        endAttempt(0, projected);
+        throw projected;
       }
 
       // Terminal attempt's end — the loop deliberately leaves it to us.
@@ -238,8 +276,25 @@ export function createDownloadURL(deps: DownloadDeps): (rawURL: string) => Promi
             `redirect ${response.status} with no Location header`,
           );
         }
-        // Resolve relative Location against the rewritten API URL
-        const resolvedLocation = new URL(location, rewrittenURL).href;
+        // Resolve relative Location against the rewritten API URL. A Location
+        // that fails URL construction is the same credential the dial would
+        // carry (SPEC §9), and Node's ERR_INVALID_URL retains its input — so
+        // the failure is rendered as the fixed token, never the value.
+        let resolvedLocation: string;
+        try {
+          const resolved = new URL(location, rewrittenURL);
+          if (resolved.protocol !== "http:" && resolved.protocol !== "https:") {
+            // Parses, but is not dialable: rendered as its origin, as Ruby does.
+            throw new BasecampError(
+              "api_error",
+              `redirect to undialable download URL: ${resolved.protocol}//${resolved.host}`,
+            );
+          }
+          resolvedLocation = resolved.href;
+        } catch (err) {
+          if (err instanceof BasecampError) throw err;
+          throw new BasecampError("api_error", "redirect to undialable download URL: unparsable");
+        }
 
         // Hop 2: fetch from signed URL (no auth, no timeout, no request hooks).
         // `redirect: "manual"`, as on hop 1: the signed URL is the one
@@ -250,9 +305,10 @@ export function createDownloadURL(deps: DownloadDeps): (rawURL: string) => Promi
         let signedResponse: Response;
         try {
           signedResponse = await fetch(resolvedLocation, { redirect: "manual" });
-        } catch (err) {
-          const error = err instanceof Error ? err : new Error(String(err));
-          throw Errors.network(error.message, error);
+        } catch {
+          // SPEC §9: the transport error renders the signed URL — fixed
+          // message, no cause chained.
+          throw Errors.network("Download failed");
         }
 
         if (REDIRECT_STATUSES.includes(signedResponse.status)) {

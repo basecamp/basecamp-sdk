@@ -181,9 +181,12 @@ suspend fun AccountClient.downloadURL(rawURL: String): DownloadResult {
                     } catch (e: CancellationException) {
                         throw e
                     } catch (e: Exception) {
+                        // SPEC §9: the transport error renders the signed URL —
+                        // fixed message, no cause chained. Cancellation was
+                        // rethrown raw above, so nothing here needs the chain.
                         throw BasecampException.Network(
-                            message = "Download failed: ${e.message}",
-                            cause = e,
+                            message = "Download failed",
+                            cause = null,
                         )
                     }
 
@@ -235,7 +238,6 @@ suspend fun AccountClient.downloadURL(rawURL: String): DownloadResult {
                     }
                     throw exceptionFromErrorBody(
                         status = status,
-                        statusDescription = response.status.description,
                         bodyText = bodyText,
                         requestId = response.headers["X-Request-Id"],
                         retryAfter = parseRetryAfter(response.headers["Retry-After"]),
@@ -283,9 +285,13 @@ private suspend fun AccountClient.downloadHop1(
     maxAttempts: Int,
     baseDelayMs: Long,
 ): HttpResponse {
+    // Hooks render this flow's URL as origin+path only (SPEC §9): the
+    // caller's URL can smuggle a signed query through the rewrite into hop 1.
+    // The wire request keeps the query; only the rendering is projected.
+    val hookUrl = hookDisplayUrl(url)
     var attempt = 1
     while (true) {
-        val requestInfo = RequestInfo(method = "GET", url = url, attempt = attempt)
+        val requestInfo = RequestInfo(method = "GET", url = hookUrl, attempt = attempt)
         parent.hooks.safeOnRequestStart(requestInfo)
         val reqStart = currentTimeMillis()
 
@@ -318,16 +324,21 @@ private suspend fun AccountClient.downloadHop1(
         }
 
         if (failure != null) {
+            // SPEC §9: the transport error renders the hop-1 URL (and any
+            // signed query smuggled into it) — fixed message, no cause
+            // chained, and constructed BEFORE the request-end hook so hooks
+            // and the caller see the same projection. Cancellation was
+            // rethrown raw above, so nothing here needs the chain.
+            val wrapped = BasecampException.Network(
+                message = "Network error",
+                cause = null,
+            )
             val duration = currentTimeMillis() - reqStart
             parent.hooks.safeOnRequestEnd(requestInfo, RequestResult(
                 statusCode = 0,
                 duration = duration.millisToDuration(),
-                error = failure,
+                error = wrapped,
             ))
-            val wrapped = BasecampException.Network(
-                message = "Network error: ${failure.message}",
-                cause = failure,
-            )
             // Same total-budget carve-out as the client loop: an attempt that
             // consumed its entire per-attempt time budget is a slowness shape
             // a retry tends to repeat, not a transient blip.
@@ -364,6 +375,28 @@ private suspend fun AccountClient.downloadHop1(
         delay(delayMs)
         attempt += 1
     }
+}
+
+/**
+ * Renders a download URL for hooks: origin and path only — no userinfo (a
+ * configured base URL can carry one), no query (where a signed credential
+ * rides), no fragment (SPEC §9). Rebuilt from a parse; a URL with no complete
+ * origin renders as the fixed token, never as any of its own text.
+ */
+private fun hookDisplayUrl(url: String): String {
+    val parsed = try {
+        Url(url)
+    } catch (_: Exception) {
+        null
+    }
+    if (parsed == null || parsed.host.isEmpty()) return "unparsable"
+    val host = if (parsed.host.contains(':') && !parsed.host.startsWith("[")) "[${parsed.host}]" else parsed.host
+    val port = if (parsed.specifiedPort != 0 && parsed.specifiedPort != parsed.protocol.defaultPort) {
+        ":${parsed.specifiedPort}"
+    } else {
+        ""
+    }
+    return "${parsed.protocol.name}://$host$port${parsed.encodedPath}"
 }
 
 /**

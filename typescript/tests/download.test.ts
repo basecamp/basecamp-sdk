@@ -368,6 +368,249 @@ describe("downloadURL", () => {
 
   });
 
+  describe("credential-bearing values are never rendered (SPEC §9)", () => {
+    // A caller-supplied download URL can smuggle a signed query through the
+    // origin rewrite into hop 1, and the signed hop-2 URL is a credential
+    // outright — so download transport errors carry fixed messages with no
+    // cause, and hop-1 hooks see origin+path only.
+    const SIGNED_RAW_URL =
+      "https://storage.3.basecamp.com/999/blobs/abc/download/file.png?verifier=SECRET#frag";
+    const SIGNED_S3_URL = `${S3_URL}?X-Amz-Signature=SECRET`;
+    const PROJECTED_URL = `${API_ORIGIN}/999/blobs/abc/download/file.png`;
+
+    it("hop-1 network error carries a fixed message and no cause — to the caller and to hooks", async () => {
+      server.use(
+        http.get(`${API_ORIGIN}/*`, () => HttpResponse.error()),
+      );
+
+      const hookErrors: (Error | undefined)[] = [];
+      const hooks: BasecampHooks = {
+        onRequestEnd: (_info, result) => {
+          hookErrors.push(result.error);
+        },
+      };
+
+      const downloadURL = makeDownloadURL({ enableRetry: false, hooks });
+      let caught: unknown;
+      try {
+        await downloadURL(SIGNED_RAW_URL);
+      } catch (err) {
+        caught = err;
+      }
+      const error = caught as BasecampError;
+      expect(error).toBeInstanceOf(BasecampError);
+      expect(error.code).toBe("network");
+      expect(error.message).toBe("Network error");
+      expect(error.cause).toBeUndefined();
+
+      expect(hookErrors).toHaveLength(1);
+      const hookError = hookErrors[0] as BasecampError;
+      expect(hookError).toBeInstanceOf(BasecampError);
+      expect(hookError.message).toBe("Network error");
+      expect(hookError.cause).toBeUndefined();
+    });
+
+    it("retried hop-1 network failures reach onRequestEnd and onRetry projected", async () => {
+      let attempts = 0;
+      server.use(
+        http.get(`${API_ORIGIN}/*`, () => {
+          attempts++;
+          if (attempts === 1) {
+            return HttpResponse.error();
+          }
+          return new HttpResponse("content", { headers: { "Content-Type": "text/plain" } });
+        }),
+      );
+
+      const endErrors: (Error | undefined)[] = [];
+      const retryErrors: Error[] = [];
+      const hooks: BasecampHooks = {
+        onRequestEnd: (_info, result) => {
+          endErrors.push(result.error);
+        },
+        onRetry: (_info, _attempt, error) => {
+          retryErrors.push(error);
+        },
+      };
+
+      const downloadURL = makeDownloadURL({ hooks });
+      const result = await downloadURL(SIGNED_RAW_URL);
+      result.body.cancel();
+
+      expect(endErrors).toHaveLength(2);
+      expect(endErrors[0]).toBeInstanceOf(BasecampError);
+      expect(endErrors[0]!.message).toBe("Network error");
+      expect(endErrors[0]!.cause).toBeUndefined();
+      expect(endErrors[1]).toBeUndefined();
+      expect(retryErrors).toHaveLength(1);
+      expect(retryErrors[0]).toBeInstanceOf(BasecampError);
+      expect(retryErrors[0]!.message).toBe("Network error");
+    });
+
+    it("status retries still hand onRetry the status error, not a network projection", async () => {
+      let attempts = 0;
+      server.use(
+        http.get(`${API_ORIGIN}/*`, () => {
+          attempts++;
+          if (attempts === 1) {
+            return new HttpResponse(null, { status: 503 });
+          }
+          return new HttpResponse("content", { headers: { "Content-Type": "text/plain" } });
+        }),
+      );
+
+      const retryErrors: Error[] = [];
+      const hooks: BasecampHooks = {
+        onRetry: (_info, _attempt, error) => {
+          retryErrors.push(error);
+        },
+      };
+
+      const downloadURL = makeDownloadURL({ hooks });
+      const result = await downloadURL(SIGNED_RAW_URL);
+      result.body.cancel();
+
+      expect(retryErrors).toHaveLength(1);
+      expect(retryErrors[0]!.message).toContain("HTTP 503");
+    });
+
+    it("a per-attempt timeout keeps its abort identity as a fresh cause", async () => {
+      server.use(
+        http.get(`${API_ORIGIN}/*`, async () => {
+          await new Promise((resolve) => setTimeout(resolve, 200));
+          return new HttpResponse("late", { headers: { "Content-Type": "text/plain" } });
+        }),
+      );
+
+      const downloadURL = makeDownloadURL({ enableRetry: false, requestTimeoutMs: 20 });
+      let caught: unknown;
+      try {
+        await downloadURL(SIGNED_RAW_URL);
+      } catch (err) {
+        caught = err;
+      }
+      const error = caught as BasecampError;
+      expect(error).toBeInstanceOf(BasecampError);
+      expect(error.message).toBe("Network error");
+      expect(error.cause?.name).toBe("AbortError");
+      expect(String(error.cause)).not.toContain("SECRET");
+    });
+
+    it("a signed Location with a non-HTTP scheme renders its origin only", async () => {
+      server.use(
+        http.get(`${API_ORIGIN}/*`, () =>
+          new HttpResponse(null, {
+            status: 302,
+            headers: { Location: "ftp://storage.example/bucket/file?X-Amz-Signature=SECRET" },
+          })),
+      );
+
+      const client = makeClient();
+      await expect(
+        client.downloadURL("https://storage.3.basecamp.com/999/blobs/abc/download/file.png"),
+      ).rejects.toMatchObject({
+        code: "api_error",
+        message: "redirect to undialable download URL: ftp://storage.example",
+      });
+    });
+
+    it("a signed Location that fails URL construction renders the fixed token", async () => {
+      server.use(
+        http.get(`${API_ORIGIN}/*`, () =>
+          new HttpResponse(null, {
+            status: 302,
+            headers: { Location: "https://[invalid/bucket/file?X-Amz-Signature=SECRET" },
+          })),
+      );
+
+      const client = makeClient();
+      let caught: unknown;
+      try {
+        await client.downloadURL("https://storage.3.basecamp.com/999/blobs/abc/download/file.png");
+      } catch (err) {
+        caught = err;
+      }
+      const error = caught as BasecampError;
+      expect(error).toBeInstanceOf(BasecampError);
+      expect(error.code).toBe("api_error");
+      expect(error.message).toBe("redirect to undialable download URL: unparsable");
+    });
+
+    it("hop-2 network error carries a fixed message and no cause", async () => {
+      server.use(
+        http.get(`${API_ORIGIN}/*`, () =>
+          new HttpResponse(null, { status: 302, headers: { Location: SIGNED_S3_URL } })),
+        http.get(S3_URL, () => HttpResponse.error()),
+      );
+
+      const client = makeClient();
+      let caught: unknown;
+      try {
+        await client.downloadURL("https://storage.3.basecamp.com/999/blobs/abc/download/file.png");
+      } catch (err) {
+        caught = err;
+      }
+      const error = caught as BasecampError;
+      expect(error).toBeInstanceOf(BasecampError);
+      expect(error.code).toBe("network");
+      expect(error.message).toBe("Download failed");
+      expect(error.cause).toBeUndefined();
+    });
+
+    it("hop-1 hook URLs carry no query or fragment while the wire keeps the query", async () => {
+      let wireQuery: string | null = null;
+      const urls: string[] = [];
+      server.use(
+        http.get(`${API_ORIGIN}/*`, ({ request }) => {
+          wireQuery = new URL(request.url).search;
+          return new HttpResponse("content", { headers: { "Content-Type": "text/plain" } });
+        }),
+      );
+
+      const hooks: BasecampHooks = {
+        onRequestStart: (info) => {
+          urls.push(info.url);
+        },
+        onRequestEnd: (info) => {
+          urls.push(info.url);
+        },
+      };
+
+      const downloadURL = makeDownloadURL({ hooks });
+      const result = await downloadURL(SIGNED_RAW_URL);
+      result.body.cancel();
+
+      expect(wireQuery).toBe("?verifier=SECRET");
+      expect(urls).toEqual([PROJECTED_URL, PROJECTED_URL]);
+    });
+
+    it("onRetry sees the projected URL too", async () => {
+      let attempts = 0;
+      const retryURLs: string[] = [];
+      server.use(
+        http.get(`${API_ORIGIN}/*`, () => {
+          attempts++;
+          if (attempts === 1) {
+            return new HttpResponse(null, { status: 503 });
+          }
+          return new HttpResponse("content", { headers: { "Content-Type": "text/plain" } });
+        }),
+      );
+
+      const hooks: BasecampHooks = {
+        onRetry: (info) => {
+          retryURLs.push(info.url);
+        },
+      };
+
+      const downloadURL = makeDownloadURL({ hooks });
+      const result = await downloadURL(SIGNED_RAW_URL);
+      result.body.cancel();
+
+      expect(retryURLs).toEqual([PROJECTED_URL]);
+    });
+  });
+
   describe("hop-1 retry policy (SPEC §14)", () => {
     const RAW_URL = "https://storage.3.basecamp.com/999/blobs/abc/download/file.png";
 

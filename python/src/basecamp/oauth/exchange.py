@@ -114,6 +114,11 @@ def _token_request(token_endpoint: str, params: dict[str, str]) -> OAuthToken:
     if not is_localhost(token_endpoint):
         require_https(token_endpoint, "token endpoint")
 
+    # SPEC §9: the httpx error retains the request it failed on — the form
+    # body carrying client_secret, code, code_verifier or refresh_token — so a
+    # transport failure is constructed here and raised outside the handler,
+    # chaining nothing.
+    transport_error: OAuthError | None = None
     try:
         # request_bounded, not a bare httpx call: httpx's timeout is per
         # I/O phase (it resets on every received chunk), so a peer dripping
@@ -140,10 +145,12 @@ def _token_request(token_endpoint: str, params: dict[str, str]) -> OAuthToken:
             read_body=lambda status: status not in _REDIRECT_STATUSES,
             context="Token",
         )
-    except httpx.TimeoutException as exc:
-        raise OAuthError("network", "Token request timed out", retryable=True) from exc
+    except httpx.TimeoutException:
+        transport_error = OAuthError("network", "Token request timed out", retryable=True)
     except httpx.HTTPError as exc:
-        raise OAuthError("network", f"Token request failed: {exc}", retryable=True) from exc
+        transport_error = OAuthError("network", f"Token request failed: {exc}", retryable=True)
+    if transport_error is not None:
+        raise transport_error
 
     # A redirect is never a valid token-endpoint outcome and its Location is
     # never dialled — refuse it with the body unread.
@@ -158,6 +165,7 @@ def _token_request(token_endpoint: str, params: dict[str, str]) -> OAuthToken:
 
 
 def _parse_token_response(status: int, body: bytes) -> OAuthToken:
+    parse_error: OAuthError | None = None
     try:
         data = json.loads(body)
     except ValueError:
@@ -165,14 +173,18 @@ def _parse_token_response(status: int, body: bytes) -> OAuthToken:
         # material (a syntactically-broken body carrying an access_token) —
         # never echo ANY of it into an error message, where it would reach
         # logs and exception telemetry. The status is diagnosis enough.
-        # from None — json.JSONDecodeError retains the whole document as its
-        # .doc attribute, so chaining it would keep the body alive in
-        # exception telemetry.
-        raise OAuthError(
+        # Constructed here and raised outside the handler (SPEC §9):
+        # json.JSONDecodeError retains the whole document as its .doc
+        # attribute, and `from None` suppresses only the rendering — the
+        # body-retaining exception would still sit in __context__.
+        data = None
+        parse_error = OAuthError(
             "api_error",
             "Failed to parse token response",
             http_status=status,
-        ) from None
+        )
+    if parse_error is not None:
+        raise parse_error
 
     if not isinstance(data, dict):
         raise OAuthError(

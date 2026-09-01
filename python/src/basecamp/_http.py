@@ -129,7 +129,12 @@ class HttpClient:
         directly rather than looked up by operation.
         """
         url = self._build_url(url)
-        return self._request_with_retry("GET", url, retry_on=self.DOWNLOAD_RETRY_ON, accept=None)
+        # download=True projects this flow's hooks and transport errors (SPEC
+        # section 9): the caller's URL can smuggle a signed query through the
+        # rewrite into hop 1, and an httpx error retains the request it failed
+        # on. The wire request keeps the query; only the renderings are
+        # projected.
+        return self._request_with_retry("GET", url, retry_on=self.DOWNLOAD_RETRY_ON, accept=None, download=True)
 
     def close(self) -> None:
         self._client.close()
@@ -157,6 +162,7 @@ class HttpClient:
         operation: str | None = None,
         retry_on: frozenset[int] | None = None,
         accept: str | None = "application/json",
+        download: bool = False,
     ) -> httpx.Response:
         # max_retries is a TOTAL attempt count (config validation guarantees it
         # is >= 0). 0 is accepted as a compatibility exception and means a single
@@ -192,6 +198,7 @@ class HttpClient:
                     allow_cross_origin=allow_cross_origin,
                     accept=accept,
                     refresh_replay=False,
+                    download=download,
                 )
             except AuthError as e:
                 # SPEC §4: the refresh replay is a request on the wire, so it
@@ -243,7 +250,7 @@ class HttpClient:
                 delay = self._calculate_delay(attempt, error.retry_after)
                 safe_hook(
                     self._hooks.on_retry,
-                    RequestInfo(method=method, url=url, attempt=attempt),
+                    RequestInfo(method=method, url=_security.display_url(url) if download else url, attempt=attempt),
                     attempt + 1,
                     error,
                     delay,
@@ -270,6 +277,7 @@ class HttpClient:
         allow_cross_origin: bool = False,
         accept: str | None = "application/json",
         refresh_replay: bool = True,
+        download: bool = False,
     ) -> httpx.Response:
         if not allow_cross_origin and not (
             _security.is_localhost(url) or _security.same_origin(url, self._config.base_url)
@@ -277,10 +285,14 @@ class HttpClient:
             raise UsageError(
                 f"Refusing to send credentials to a different origin than base URL: {_security.truncate(url)}"
             )
-        info = RequestInfo(method=method, url=url, attempt=attempt)
+        # download: the SPEC section 9 projection for a URL whose query can
+        # carry a credential (download hop 1) — hooks see origin+path, and a
+        # transport error is severed below; the wire request keeps url.
+        info = RequestInfo(method=method, url=_security.display_url(url) if download else url, attempt=attempt)
         safe_hook(self._hooks.on_request_start, info)
         start = time.monotonic()
 
+        severed: NetworkError
         try:
             headers = self._request_headers(accept)
             if content_type:
@@ -319,6 +331,7 @@ class HttpClient:
                             allow_cross_origin=allow_cross_origin,
                             accept=accept,
                             refresh_replay=refresh_replay,
+                            download=download,
                         )
                 raise error
 
@@ -334,9 +347,18 @@ class HttpClient:
             raise
         except httpx.HTTPError as e:
             duration = time.monotonic() - start
-            error = NetworkError(f"Connection failed: {e}")
+            # SPEC section 9: on a download hop 1 the httpx error retains the
+            # request it failed on (and any signed query in its URL), so the
+            # error is fixed, unchained, and raised below — outside this
+            # handler, so __context__ retains nothing either. Every other
+            # request keeps its diagnostic.
+            error = NetworkError("Network error") if download else NetworkError(f"Connection failed: {e}")
             safe_hook(self._hooks.on_request_end, info, RequestResult(duration=duration, error=error))
-            raise error from e
+            if not download:
+                raise error from e
+            severed = error
+
+        raise severed
 
     def _handle_error(self, response: httpx.Response) -> BasecampError:
         body = response.content[: _security.MAX_ERROR_BODY_BYTES] if response.content else None

@@ -316,8 +316,11 @@ export function errorFromParsedBody(
   const httpStatus = response.status;
   const retryAfter = parseRetryAfter(response.headers.get("Retry-After"));
 
-  // Try to extract error message from the parsed body
-  let message = response.statusText || "Request failed";
+  // Try to extract error message from the parsed body. The fallback is the
+  // fixed code-bearing phrase (SPEC §6 step 5), never response.statusText —
+  // the wire reason phrase does not exist under HTTP/2 and is empty for an
+  // unregistered code.
+  let message = `Request failed (HTTP ${httpStatus})`;
   let serverMessage: string | undefined;
   let hint: string | undefined;
   let fieldErrors: Record<string, string[]> | undefined;

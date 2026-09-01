@@ -2,6 +2,7 @@ package basecamp
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -18,7 +19,9 @@ import (
 func (c *Client) fetchSignedDownload(ctx context.Context, downloadURL string) (*http.Response, error) {
 	req, err := http.NewRequestWithContext(ctx, "GET", downloadURL, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create download request: %w", err)
+		// SPEC §9: the construction error renders the signed URL — fixed
+		// message, nothing chained.
+		return nil, errors.New("failed to create download request")
 	}
 
 	transport := c.httpOpts.Transport
@@ -39,7 +42,13 @@ func (c *Client) fetchSignedDownload(ctx context.Context, downloadURL string) (*
 
 	resp, err := httpClient.Do(req) // #nosec G704 -- SDK HTTP client: URL is caller-configured
 	if err != nil {
-		return nil, fmt.Errorf("failed to download file: %w", err)
+		// SPEC §9: the transport error renders the signed URL, so neither its
+		// text nor the error itself survives. The bare context sentinel is
+		// chained when one applies, so errors.Is classification still works.
+		if sentinel := contextSentinel(err); sentinel != nil {
+			return nil, fmt.Errorf("failed to download file: %w", sentinel)
+		}
+		return nil, errors.New("failed to download file")
 	}
 
 	if isRedirectStatus(resp.StatusCode) {
@@ -141,6 +150,12 @@ func (c *Client) fetchAPIDownload(ctx context.Context, rawURL string) (*Download
 		Fragment: parsed.Fragment,
 	}
 	rewrittenURL := rewritten.String()
+	// Hooks and logs render this flow's URL as origin+path only (SPEC §9): the
+	// caller's URL can smuggle a signed query through the rewrite into hop 1.
+	displayURL := (&url.URL{Scheme: rewritten.Scheme, Host: rewritten.Host, Path: rewritten.Path}).String()
+	// loggingTransport applies the same projection to the request hooks it
+	// fires for these requests.
+	hopCtx := markDownloadRequest(ctx)
 
 	apiClient := &http.Client{
 		Transport: c.httpClient.Transport, // loggingTransport — fires hooks
@@ -165,11 +180,13 @@ func (c *Client) fetchAPIDownload(ctx context.Context, rawURL string) (*Download
 	var resp *http.Response
 	var lastErr error
 	for attempt := 1; attempt <= maxAttempts; attempt++ {
-		attemptCtx := contextWithAttempt(ctx, attempt)
+		attemptCtx := contextWithAttempt(hopCtx, attempt)
 
 		req, reqErr := http.NewRequestWithContext(attemptCtx, "GET", rewrittenURL, nil)
 		if reqErr != nil {
-			return nil, fmt.Errorf("failed to create request: %w", reqErr)
+			// SPEC §9: the construction error renders the URL — fixed message,
+			// nothing chained.
+			return nil, errors.New("failed to create request")
 		}
 		if authErr := c.authStrategy.Authenticate(attemptCtx, req); authErr != nil {
 			return nil, authErr
@@ -181,7 +198,7 @@ func (c *Client) fetchAPIDownload(ctx context.Context, rawURL string) (*Download
 		var retryAfter int
 		switch {
 		case doErr != nil:
-			lastErr = ErrNetwork(doErr)
+			lastErr = downloadNetworkError(doErr)
 		case r.StatusCode == http.StatusTooManyRequests ||
 			r.StatusCode == http.StatusBadGateway ||
 			r.StatusCode == http.StatusServiceUnavailable ||
@@ -214,7 +231,7 @@ func (c *Client) fetchAPIDownload(ctx context.Context, rawURL string) (*Download
 		if retryAfter > 0 {
 			delay = time.Duration(retryAfter) * time.Second
 		}
-		info := RequestInfo{Method: "GET", URL: rewrittenURL, Attempt: attempt}
+		info := RequestInfo{Method: "GET", URL: displayURL, Attempt: attempt}
 		c.hooks.OnRetry(ctx, info, attempt+1, lastErr)
 		c.logger.Debug("retrying download request", "attempt", attempt, "maxRetries", maxAttempts, "delay", delay, "error", lastErr)
 
@@ -290,6 +307,33 @@ func (c *Client) fetchAPIDownload(ctx context.Context, rawURL string) (*Download
 		}
 		return nil, checkResponse(resp, body)
 	}
+}
+
+// downloadNetworkError wraps a download transport failure per SPEC §9: the
+// transport's rendering carries the request URL, which on this flow can bear a
+// signed credential, so the message and hint are fixed — unlike ErrNetwork,
+// whose hint is the cause's own text — and the cause is projected to the bare
+// context sentinel (shouldTripCircuit and callers' errors.Is still classify
+// cancellation) or severed.
+func downloadNetworkError(doErr error) *Error {
+	return &Error{
+		Code:      CodeNetwork,
+		Message:   "Network error",
+		Hint:      "Check your network connection",
+		Retryable: true,
+		Cause:     contextSentinel(doErr),
+	}
+}
+
+// contextSentinel projects err to the bare context sentinel it wraps, or nil.
+func contextSentinel(err error) error {
+	switch {
+	case errors.Is(err, context.Canceled):
+		return context.Canceled
+	case errors.Is(err, context.DeadlineExceeded):
+		return context.DeadlineExceeded
+	}
+	return nil
 }
 
 // isRedirectStatus reports whether status is one of the redirects the

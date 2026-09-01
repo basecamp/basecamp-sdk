@@ -115,6 +115,62 @@ package final class HTTPClient: Sendable {
     /// cycle from spinning.
     private static let maxCauseChainDepth = 8
 
+    /// SPEC §9 projection of a download transport error's cause: the raw error
+    /// renders the URL it failed on, and download URLs carry credentials, so it
+    /// is never chained. Cancellation is the one meaning the chain must keep —
+    /// ``isCancellation(_:)`` reads through `.network` causes — so it survives
+    /// as a fresh, URL-free instance of the same shape; everything else is
+    /// severed.
+    private static func projectedDownloadCause(_ error: any Error) -> (any Error)? {
+        guard isCancellation(error) else { return nil }
+        if (error as? URLError)?.code == .cancelled { return URLError(.cancelled) }
+        return CancellationError()
+    }
+
+    /// The error a download transport failure becomes for hooks and the
+    /// caller alike (SPEC §9): the fixed `.network` message with a projected
+    /// cause. A transport that already speaks `.network` is projected the
+    /// same way — its own message may render the URL it failed on, which on
+    /// this flow is the credential — so the #567 message passthrough does not
+    /// apply to download hops.
+    private static func projectedDownloadError(_ error: any Error, message: String) -> BasecampError {
+        .network(message: message, cause: projectedDownloadCause(error))
+    }
+
+    /// SPEC §9 projection of a credential-bearing URL for rendering: the origin
+    /// from a successful parse — scheme, host and any non-default port, with
+    /// an IPv6 host bracketed — or the fixed token when no complete origin
+    /// exists.
+    private static func urlOriginForDisplay(_ url: String) -> String {
+        guard let components = URLComponents(string: url),
+              let scheme = components.scheme,
+              let host = components.host, !host.isEmpty
+        else { return "unparsable" }
+        let renderedHost = host.contains(":") ? "[\(host)]" : host
+        let defaultPort: Int? = switch scheme.lowercased() {
+        case "https": 443
+        case "http": 80
+        default: nil
+        }
+        let port = components.port.flatMap { $0 == defaultPort ? nil : ":\($0)" } ?? ""
+        return "\(scheme)://\(renderedHost)\(port)"
+    }
+
+    /// Renders a download URL for hooks: origin and path only — no userinfo
+    /// (a configured base URL can carry one), no query (where a signed
+    /// credential rides), no fragment (SPEC §9). Rebuilt from a parse; a URL
+    /// with no complete origin renders as the fixed token, never as any of
+    /// its own text.
+    private static func stripQueryAndFragment(_ url: String) -> String {
+        guard let components = URLComponents(string: url),
+              let scheme = components.scheme,
+              let host = components.host, !host.isEmpty
+        else { return "unparsable" }
+        let renderedHost = host.contains(":") && !host.hasPrefix("[") ? "[\(host)]" : host
+        let port = components.port.map { ":\($0)" } ?? ""
+        return "\(scheme)://\(renderedHost)\(port)\(components.percentEncodedPath)"
+    }
+
     /// Converts a backoff interval to nanoseconds without trapping.
     ///
     /// `UInt64(_:)` on an out-of-range `Double` is a runtime trap, not an
@@ -376,7 +432,9 @@ package final class HTTPClient: Sendable {
     /// retry collapses the hop to exactly one attempt.
     package func performDownloadRequest(url: String) async throws -> (Data, HTTPURLResponse) {
         guard let requestURL = URL(string: url) else {
-            throw BasecampError.usage(message: "Invalid URL: \(url)", hint: nil)
+            // SPEC §9: this URL can carry a signed credential — render its
+            // origin alone, projected from a parse, or the fixed token.
+            throw BasecampError.usage(message: "Invalid URL: \(Self.urlOriginForDisplay(url))", hint: nil)
         }
 
         var request = URLRequest(url: requestURL)
@@ -390,6 +448,12 @@ package final class HTTPClient: Sendable {
 
         let maxAttempts = config.enableRetry ? Self.downloadMaxAttempts : 1
 
+        // Hooks render this flow's URL as origin+path only (SPEC §9): the
+        // caller's URL can smuggle a signed query through the rewrite into
+        // hop 1. The wire request keeps the query; only the rendering is
+        // projected.
+        let hookURL = Self.stripQueryAndFragment(url)
+
         /// Outcome of a single attempt, computed inside the do/catch and acted
         /// on at the loop tail — the same directive shape performRequest uses,
         /// so retry side effects never run inside a catch clause.
@@ -400,7 +464,7 @@ package final class HTTPClient: Sendable {
         }
 
         for attempt in 1...maxAttempts {
-            let info = RequestInfo(method: "GET", url: url, attempt: attempt)
+            let info = RequestInfo(method: "GET", url: hookURL, attempt: attempt)
             safeInvokeHooks { $0.onRequestStart(info) }
 
             let startTime = CFAbsoluteTimeGetCurrent()
@@ -451,13 +515,15 @@ package final class HTTPClient: Sendable {
                     $0.onRequestEnd(info, result: RequestResult(statusCode: 0, durationMs: durationMs))
                 }
 
-                if Self.isCancellation(error) {
+                if let sentinel = Self.projectedDownloadCause(error) {
                     // Cooperative cancellation is terminal, not a transport
                     // blip: retrying would announce and start an attempt the
-                    // caller has already abandoned. It propagates raw rather
-                    // than wrapped, and the attempt is finalized above so
-                    // start/end stay paired.
-                    directive = .fail(error)
+                    // caller has already abandoned. It propagates unwrapped —
+                    // as a FRESH instance of its own shape, since a
+                    // URLError(.cancelled) from URLSession carries the failing
+                    // URL in its userInfo (SPEC §9) — and the attempt is
+                    // finalized above so start/end stay paired.
+                    directive = .fail(sentinel)
                 } else if attempt < maxAttempts {
                     let delaySeconds = calculateDelay(
                         attempt: attempt,
@@ -466,11 +532,15 @@ package final class HTTPClient: Sendable {
                         retryAfterHeader: nil,
                         statusCode: nil
                     )
-                    directive = .retry(error: error, delaySeconds: delaySeconds)
+                    // SPEC §9: the transport error renders the hop-1 URL (and
+                    // any signed query smuggled into it), so onRetry receives
+                    // the projection, not the raw error.
+                    directive = .retry(
+                        error: Self.projectedDownloadError(error, message: "Network error"),
+                        delaySeconds: delaySeconds)
                 } else {
-                    directive = .fail(
-                        error as? BasecampError
-                            ?? BasecampError.network(message: "Network error", cause: error))
+                    // Same projection for the caller.
+                    directive = .fail(Self.projectedDownloadError(error, message: "Network error"))
                 }
             }
 
@@ -501,7 +571,9 @@ package final class HTTPClient: Sendable {
     /// "Hop-2 Redirect Policy"). Used by downloadURL for the signed-URL hop.
     package func fetchSignedDownload(url: String) async throws -> (Data, HTTPURLResponse) {
         guard let requestURL = URL(string: url) else {
-            throw BasecampError.usage(message: "Invalid URL: \(url)", hint: nil)
+            // SPEC §9: the signed URL is a credential — render its origin
+            // alone, projected from a parse, or the fixed token.
+            throw BasecampError.usage(message: "Invalid URL: \(Self.urlOriginForDisplay(url))", hint: nil)
         }
 
         var request = URLRequest(url: requestURL)
@@ -524,9 +596,16 @@ package final class HTTPClient: Sendable {
 
             return (data, httpResponse)
         } catch let error as BasecampError {
+            // A transport speaking .network is projected like a raw failure —
+            // its message and cause can both carry the signed URL (SPEC §9);
+            // any other BasecampError is the transport's own verdict, rethrown.
+            if case .network = error { throw Self.projectedDownloadError(error, message: "Download failed") }
             throw error
         } catch {
-            throw BasecampError.network(message: "Download failed", cause: error)
+            // SPEC §9: the transport error renders the signed URL, so it is
+            // not chained raw — only its cancellation meaning is projected,
+            // as a fresh, URL-free instance `isCancellation` still matches.
+            throw Self.projectedDownloadError(error, message: "Download failed")
         }
     }
 

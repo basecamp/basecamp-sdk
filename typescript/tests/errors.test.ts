@@ -319,8 +319,10 @@ describe("errorFromResponse", () => {
 
     const error = await errorFromResponse(response);
 
+    // SPEC §6 step 5: the fixed code-bearing phrase, never the wire reason
+    // phrase (which HTTP/2 does not carry at all).
     expect(error.code).toBe("api_error");
-    expect(error.message).toBe("Internal Server Error");
+    expect(error.message).toBe("Request failed (HTTP 500)");
   });
 
   it("should handle empty response body", async () => {
@@ -333,6 +335,17 @@ describe("errorFromResponse", () => {
 
     expect(error.code).toBe("api_error");
     expect(error.retryable).toBe(true);
+  });
+
+  it("renders the fixed code-bearing phrase for an unregistered status with an empty body", async () => {
+    // 599 has no registered reason phrase, so the statusText fallback this
+    // replaced yielded a blank message (SPEC §6 step 5).
+    const response = new Response(null, { status: 599 });
+
+    const error = await errorFromResponse(response);
+
+    expect(error.code).toBe("api_error");
+    expect(error.message).toBe("Request failed (HTTP 599)");
   });
 
   describe("field-keyed 422 bodies", () => {
@@ -407,7 +420,7 @@ describe("errorFromResponse", () => {
       const error = await errorFromResponse(response);
 
       expect(error.fieldErrors).toBeUndefined();
-      expect(error.message).toBe("Forbidden");
+      expect(error.message).toBe("Request failed (HTTP 403)");
     });
 
     it("skips malformed entries and keeps only string messages", async () => {
@@ -442,7 +455,7 @@ describe("errorFromResponse", () => {
         const error = await errorFromResponse(response);
 
         expect(error.fieldErrors).toBeUndefined();
-        expect(error.message).toBe("Unprocessable Entity");
+        expect(error.message).toBe("Request failed (HTTP 422)");
       }
     });
 
@@ -707,7 +720,7 @@ describe("bare field-map error bodies (SPEC §6 step 2)", () => {
     const error = errorFromParsedBody(response, body);
 
     expect(error.fieldErrors).toBeUndefined();
-    expect(error.message).toBe("Bad Request");
+    expect(error.message).toBe("Request failed (HTTP 400)");
   });
 
   // Only "errors" is excluded by name; a flat body's "error"/"message" is a
@@ -721,7 +734,7 @@ describe("bare field-map error bodies (SPEC §6 step 2)", () => {
       body: { message: "Webhook is invalid", payload_url: ["is bad"] },
       message: "Webhook is invalid",
     },
-    { name: "empty errors key", body: { errors: {}, payload_url: ["is bad"] }, message: "Bad Request" },
+    { name: "empty errors key", body: { errors: {}, payload_url: ["is bad"] }, message: "Request failed (HTTP 400)" },
   ])("stays flat for a string $name", ({ body, message }) => {
     const response = new Response(null, { status: 400, statusText: "Bad Request" });
 

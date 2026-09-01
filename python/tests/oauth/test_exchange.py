@@ -37,10 +37,12 @@ class TestExchangeCode:
             )
         assert exc_info.value.oauth_type == "api_error"
         assert secret not in str(exc_info.value)
-        # from None: JSONDecodeError retains the whole body as .doc — the
-        # chain must be suppressed, not merely sanitized.
+        # SPEC §9 raising boundary: JSONDecodeError retains the whole body as
+        # .doc, and `from None` would leave it sitting in __context__ — the
+        # error is constructed inside the handler and raised after it, so the
+        # RAISED exception retains nothing at all.
         assert exc_info.value.__cause__ is None
-        assert exc_info.value.__suppress_context__
+        assert exc_info.value.__context__ is None
 
     @respx.mock
     def test_exchange_code(self):
@@ -327,3 +329,25 @@ class TestRedirectRefusal:
         # The cap error carries the response's real status, as the buffered
         # path it replaced did — an oversized 200 must stay diagnosable.
         assert exc_info.value.http_status == 200
+
+
+class TestTransportFailuresRetainNothing:
+    @respx.mock
+    def test_connect_error_chains_nothing(self):
+        # SPEC §9: the httpx error retains the request — whose form body
+        # carries client_secret — so the raised OAuthError chains neither
+        # __cause__ nor __context__.
+        respx.post(TOKEN_ENDPOINT).mock(side_effect=httpx.ConnectError("refused"))
+
+        with pytest.raises(OAuthError) as exc_info:
+            exchange_code(
+                TOKEN_ENDPOINT,
+                code="auth-code-123",
+                redirect_uri="https://myapp.com/callback",
+                client_id="client-id",
+                client_secret="client-secret",
+            )
+        err = exc_info.value
+        assert err.oauth_type == "network"
+        assert err.__cause__ is None
+        assert err.__context__ is None

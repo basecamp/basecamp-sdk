@@ -302,6 +302,23 @@ class TestRequestDeviceAuthorization:
         assert exc_info.value.code == "api_error"
 
     @respx.mock
+    def test_unparsable_body_retains_nothing(self):
+        # SPEC §9 raising boundary: these bodies carry device codes and access
+        # tokens, and JSONDecodeError retains the whole document as .doc — the
+        # raised error must chain neither __cause__ nor the __context__ that
+        # `from None` would still leave populated.
+        secret = "device-code-SUPERSECRET"
+        respx.post(DEVICE_ENDPOINT).mock(return_value=httpx.Response(200, text='{"device_code": "' + secret + "' oops"))
+
+        with pytest.raises(OAuthError) as exc_info:
+            request_device_authorization(DEVICE_ENDPOINT, "basecamp-cli")
+        err = exc_info.value
+        assert err.code == "api_error"
+        assert secret not in str(err)
+        assert err.__cause__ is None
+        assert err.__context__ is None
+
+    @respx.mock
     def test_non_2xx_with_non_json_body_reports_status_not_parse_error(self):
         # Status is checked BEFORE parsing (as discovery does): a non-2xx with a
         # non-JSON body must surface as "failed with status", not a parse error.
@@ -382,6 +399,24 @@ class TestPollDeviceToken:
             with pytest.raises(OAuthError) as exc_info:
                 poll_device_token(TOKEN_ENDPOINT, "basecamp-cli", "dev-code-123", **kwargs)
             assert exc_info.value.code == "usage", kwargs
+
+    @respx.mock
+    def test_unparsable_token_response_retains_nothing(self):
+        # SPEC §9 raising boundary: the token-poll body carries the access
+        # token, and JSONDecodeError retains the whole document as .doc — the
+        # raised error must chain neither __cause__ nor __context__.
+        secret = "access-token-SUPERSECRET"
+        _queue_token_responses([httpx.Response(200, text='{"access_token": "' + secret + "' oops")])
+
+        with pytest.raises(OAuthError) as exc_info:
+            poll_device_token(
+                TOKEN_ENDPOINT, "basecamp-cli", "dev-code-123", interval=5, expires_in=900, sleep=RecordingSleep()
+            )
+        err = exc_info.value
+        assert err.code == "api_error"
+        assert secret not in str(err)
+        assert err.__cause__ is None
+        assert err.__context__ is None
 
     @respx.mock
     def test_pending_then_slow_down_then_token_sustains_interval(self):

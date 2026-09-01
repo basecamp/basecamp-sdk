@@ -12,7 +12,7 @@ from basecamp.async_auth import AsyncBearerAuth, AsyncStaticTokenProvider
 from basecamp.auth import BearerAuth, StaticTokenProvider
 from basecamp.config import Config
 from basecamp.download import _rewrite_url, download_async, download_sync, filename_from_url
-from basecamp.errors import ApiError, AuthError, UsageError
+from basecamp.errors import ApiError, AuthError, NetworkError, UsageError
 from basecamp.hooks import BasecampHooks
 
 
@@ -647,3 +647,230 @@ class TestHop1RetryAsync:
         assert hop1.call_count == 2
         assert hop2.call_count == 1
         assert provider.refreshes == 1
+
+
+class TestSpec9CredentialRendering:
+    """SPEC §9: credential-bearing values are never rendered."""
+
+    HOP1 = "https://3.basecampapi.com/files/doc.pdf"
+    SIGNED = "https://signed.storage.com/doc.pdf?X-Amz-Signature=SECRET"
+    RAW = "https://original.com/files/doc.pdf"
+    HOP1_SIGNED = "https://3.basecampapi.com/files/doc.pdf?verifier=SECRET"
+    RAW_SIGNED = "https://original.com/files/doc.pdf?verifier=SECRET"
+
+    @respx.mock
+    def test_hop2_network_error_is_fixed_and_retains_nothing(self):
+        respx.get(self.HOP1).mock(return_value=httpx.Response(302, headers={"Location": self.SIGNED}))
+        respx.get(self.SIGNED).mock(side_effect=httpx.ConnectError(f"dial {self.SIGNED} refused"))
+
+        with pytest.raises(NetworkError) as exc_info:
+            download_sync(self.RAW, http_client=make_http(), config=make_config())
+
+        err = exc_info.value
+        # Fixed message, and the raising boundary retains nothing on the
+        # RAISED exception: not __cause__, and not the __context__ that
+        # `raise ... from None` would still leave populated.
+        assert str(err) == "Download failed"
+        assert err.__cause__ is None
+        assert err.__context__ is None
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_hop2_network_error_is_fixed_and_retains_nothing_async(self):
+        respx.get(self.HOP1).mock(return_value=httpx.Response(302, headers={"Location": self.SIGNED}))
+        respx.get(self.SIGNED).mock(side_effect=httpx.ConnectError(f"dial {self.SIGNED} refused"))
+
+        config = make_config()
+        http = AsyncHttpClient(config, AsyncBearerAuth(AsyncStaticTokenProvider("test-token")))
+        with pytest.raises(NetworkError) as exc_info:
+            await download_async(self.RAW, http_client=http, config=config)
+
+        err = exc_info.value
+        assert str(err) == "Download failed"
+        assert err.__cause__ is None
+        assert err.__context__ is None
+
+    @respx.mock
+    def test_hop1_hook_urls_omit_query_while_wire_keeps_it(self):
+        # The caller's URL can smuggle a signed query through the origin
+        # rewrite into hop 1, so hooks see origin+path only; the wire request
+        # keeps the query (respx matches it exactly).
+        hop1 = respx.get(self.HOP1_SIGNED).mock(
+            return_value=httpx.Response(200, content=b"data", headers={"content-type": "text/plain"})
+        )
+
+        class UrlHooks(BasecampHooks):
+            def __init__(self):
+                self.urls: list[str] = []
+
+            def on_request_start(self, info):
+                self.urls.append(info.url)
+
+            def on_request_end(self, info, result):
+                self.urls.append(info.url)
+
+        config = make_config()
+        hooks = UrlHooks()
+        http = HttpClient(config, BearerAuth(StaticTokenProvider("test-token")), hooks)
+        download_sync(self.RAW_SIGNED, http_client=http, config=config)
+
+        assert hop1.called
+        assert hooks.urls == ["https://3.basecampapi.com/files/doc.pdf"] * 2
+
+    @respx.mock
+    def test_on_retry_url_omits_query(self):
+        respx.get(self.HOP1_SIGNED).mock(
+            side_effect=[
+                httpx.Response(503),
+                httpx.Response(200, content=b"data", headers={"content-type": "text/plain"}),
+            ]
+        )
+
+        class RetryUrlHooks(BasecampHooks):
+            def __init__(self):
+                self.urls: list[str] = []
+
+            def on_retry(self, info, attempt, error, delay):
+                self.urls.append(info.url)
+
+        config = make_fast_config()
+        hooks = RetryUrlHooks()
+        download_sync(self.RAW_SIGNED, http_client=make_fast_http(config, hooks), config=config)
+
+        assert hooks.urls == ["https://3.basecampapi.com/files/doc.pdf"]
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_hop1_hook_urls_omit_query_async(self):
+        hop1 = respx.get(self.HOP1_SIGNED).mock(
+            return_value=httpx.Response(200, content=b"data", headers={"content-type": "text/plain"})
+        )
+
+        class UrlHooks(BasecampHooks):
+            def __init__(self):
+                self.urls: list[str] = []
+
+            def on_request_start(self, info):
+                self.urls.append(info.url)
+
+            def on_request_end(self, info, result):
+                self.urls.append(info.url)
+
+        config = make_config()
+        hooks = UrlHooks()
+        http = AsyncHttpClient(config, AsyncBearerAuth(AsyncStaticTokenProvider("test-token")), hooks)
+        await download_async(self.RAW_SIGNED, http_client=http, config=config)
+
+        assert hop1.called
+        assert hooks.urls == ["https://3.basecampapi.com/files/doc.pdf"] * 2
+
+    @respx.mock
+    def test_hop1_network_error_is_severed_for_caller_and_hooks(self):
+        # The httpx error retains the request it failed on (and any signed
+        # query in its URL), so the caller's error and the hook's are the
+        # fixed NetworkError with neither __cause__ nor __context__.
+        respx.get(self.HOP1_SIGNED).mock(side_effect=httpx.ConnectError("dial refused"))
+
+        class ErrorHooks(BasecampHooks):
+            def __init__(self):
+                self.errors: list[BaseException | None] = []
+
+            def on_request_end(self, info, result):
+                self.errors.append(result.error)
+
+        config = make_fast_config(max_retries=1)
+        hooks = ErrorHooks()
+        with pytest.raises(NetworkError) as exc_info:
+            download_sync(self.RAW_SIGNED, http_client=make_fast_http(config, hooks), config=config)
+
+        assert len(hooks.errors) == 1
+        for err in (exc_info.value, hooks.errors[0]):
+            assert isinstance(err, NetworkError)
+            assert str(err) == "Network error"
+            assert err.__cause__ is None
+            assert err.__context__ is None
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_hop1_network_error_is_severed_async(self):
+        respx.get(self.HOP1_SIGNED).mock(side_effect=httpx.ConnectError("dial refused"))
+
+        config = make_fast_config(max_retries=1)
+        http = AsyncHttpClient(config, AsyncBearerAuth(AsyncStaticTokenProvider("test-token")))
+        with pytest.raises(NetworkError) as exc_info:
+            await download_async(self.RAW_SIGNED, http_client=http, config=config)
+
+        assert str(exc_info.value) == "Network error"
+        assert exc_info.value.__cause__ is None
+        assert exc_info.value.__context__ is None
+
+    @respx.mock
+    def test_api_network_error_keeps_its_cause(self):
+        # The projection is gated on the download flow; ordinary API requests
+        # keep their transport diagnostic.
+        respx.get("https://3.basecampapi.com/test.json").mock(side_effect=httpx.ConnectError("refused"))
+
+        config = make_fast_config(max_retries=1)
+        with pytest.raises(NetworkError) as exc_info:
+            make_fast_http(config).get("/test.json")
+
+        assert isinstance(exc_info.value.__cause__, httpx.ConnectError)
+
+
+class TestDisplayUrl:
+    def test_drops_userinfo_query_and_fragment_and_keeps_port(self):
+        from basecamp._security import display_url
+
+        assert display_url("https://user:pw@host.example:8443/a/b?sig=SECRET#frag") == "https://host.example:8443/a/b"
+        assert display_url("https://host.example/a") == "https://host.example/a"
+        assert display_url("http://[::1]:3000/x?y=1") == "http://[::1]:3000/x"
+
+    def test_unparsable_input_renders_fixed_token(self):
+        from basecamp._security import display_url
+
+        assert display_url("http://[::1:3000/x") == "unparsable"
+        assert display_url("not a url") == "unparsable"
+
+
+class TestUndialableSignedLocation:
+    HOP1 = "https://3.basecampapi.com/files/doc.pdf"
+    RAW = "https://original.com/files/doc.pdf"
+    BAD = "https://signed.example:SECRET/file?sig=SECRET"
+
+    @respx.mock
+    def test_malformed_location_is_projected_at_hop_1(self):
+        # httpx builds the redirect request even with follow_redirects=False,
+        # so a malformed Location fails hop 1 itself — inside the download
+        # boundary, which renders the fixed message and chains nothing.
+        respx.get(self.HOP1).mock(return_value=httpx.Response(302, headers={"Location": self.BAD}))
+
+        with pytest.raises(NetworkError) as exc_info:
+            download_sync(self.RAW, http_client=make_http(), config=make_config())
+
+        err = exc_info.value
+        assert str(err) == "Network error"
+        assert err.__cause__ is None
+        assert err.__context__ is None
+
+    def test_hop2_invalid_url_renders_fixed_token(self):
+        # The hop-2 boundary itself: httpx.InvalidURL sits outside HTTPError
+        # and renders the offending component ("Invalid port: 'SECRET'").
+        from basecamp.download import _fetch_signed
+
+        with pytest.raises(ApiError) as exc_info:
+            _fetch_signed(self.BAD, timeout=1.0)
+
+        err = exc_info.value
+        assert str(err) == "redirect to undialable download URL: unparsable"
+        assert err.__cause__ is None
+        assert err.__context__ is None
+
+    @pytest.mark.asyncio
+    async def test_hop2_invalid_url_renders_fixed_token_async(self):
+        from basecamp.download import _fetch_signed_async
+
+        with pytest.raises(ApiError) as exc_info:
+            await _fetch_signed_async(self.BAD, timeout=1.0)
+
+        assert str(exc_info.value) == "redirect to undialable download URL: unparsable"
+        assert exc_info.value.__context__ is None

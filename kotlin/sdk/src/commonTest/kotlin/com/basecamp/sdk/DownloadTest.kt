@@ -507,6 +507,161 @@ class DownloadTest {
         client.close()
     }
 
+    // -- SPEC §9: credential-bearing values are never rendered --
+
+    @Test
+    fun downloadURL_hop1NetworkFailureRendersFixedMessageAndNoCause() = runTest {
+        // The transport error renders the hop-1 URL — and the caller's URL can
+        // smuggle a signed query through the origin rewrite into it — so the
+        // wrapped error is the fixed message with no cause chained, and the
+        // request-end hook receives that same projection.
+        val hookErrors = mutableListOf<Throwable?>()
+        val hooks = object : BasecampHooks {
+            override fun onRequestEnd(info: RequestInfo, result: RequestResult) { hookErrors.add(result.error) }
+        }
+        val client = mockClient(
+            handler = { request -> throw java.io.IOException("dial ${request.url} refused") },
+            hooks = hooks,
+        )
+        val account = client.forAccount("12345")
+
+        val e = assertFailsWith<BasecampException.Network> {
+            account.downloadURL("http://localhost:3000/12345/attachments/abc/download/file.txt?verifier=SECRET")
+        }
+        assertEquals("Network error", e.message)
+        assertNull(e.cause)
+
+        assertEquals(1, hookErrors.size)
+        val hookError = assertIs<BasecampException.Network>(hookErrors[0])
+        assertEquals("Network error", hookError.message)
+        assertNull(hookError.cause)
+        client.close()
+    }
+
+    @Test
+    fun downloadURL_hop2NetworkFailureRendersFixedMessageAndNoCause() = runTest {
+        // The signed URL is a credential, and the transport error renders it.
+        var requestCount = 0
+        val client = mockClient({ request ->
+            requestCount++
+            if (requestCount == 1) {
+                respond(
+                    content = ByteReadChannel(""),
+                    status = HttpStatusCode.Found,
+                    headers = headersOf(
+                        HttpHeaders.Location to listOf("http://localhost:3000/signed/file?X-Amz-Signature=SECRET"),
+                    ),
+                )
+            } else {
+                throw java.io.IOException("dial ${request.url} refused")
+            }
+        })
+        val account = client.forAccount("12345")
+
+        val e = assertFailsWith<BasecampException.Network> {
+            account.downloadURL("http://localhost:3000/12345/attachments/abc/download/file.txt")
+        }
+        assertEquals("Download failed", e.message)
+        assertNull(e.cause)
+        client.close()
+    }
+
+    @Test
+    fun downloadURL_hookUrlsOmitQueryAndFragmentWhileWireKeepsQuery() = runTest {
+        val hookUrls = mutableListOf<String>()
+        var wireQuery: String? = null
+
+        val hooks = object : BasecampHooks {
+            override fun onRequestStart(info: RequestInfo) { hookUrls.add(info.url) }
+            override fun onRequestEnd(info: RequestInfo, result: RequestResult) { hookUrls.add(info.url) }
+        }
+
+        val client = mockClient(
+            handler = { request ->
+                wireQuery = request.url.encodedQuery
+                respond(
+                    content = ByteReadChannel("data"),
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(HttpHeaders.ContentType to listOf("text/plain")),
+                )
+            },
+            hooks = hooks,
+        )
+        val account = client.forAccount("12345")
+        account.downloadURL("http://localhost:3000/12345/attachments/abc/download/file.txt?verifier=SECRET#frag")
+
+        // The wire request keeps the query; only the hook rendering is projected.
+        assertEquals("verifier=SECRET", wireQuery)
+        val projected = "http://localhost:3000/12345/attachments/abc/download/file.txt"
+        assertEquals(listOf(projected, projected), hookUrls)
+        client.close()
+    }
+
+    @Test
+    fun downloadURL_hookUrlOmitsBaseUrlUserinfo() = runTest {
+        // A configured base URL can carry userinfo, which rewriteOrigin
+        // preserves onto the wire URL; the hook rendering drops it.
+        val hookUrls = mutableListOf<String>()
+        val hooks = object : BasecampHooks {
+            override fun onRequestStart(info: RequestInfo) { hookUrls.add(info.url) }
+        }
+        val mockEngine = MockEngine { _ ->
+            respond(
+                content = ByteReadChannel("data"),
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType to listOf("text/plain")),
+            )
+        }
+        val client = testBasecampClient {
+            accessToken("test-token")
+            baseUrl = "http://user:password@localhost:3000"
+            engine = mockEngine
+            enableRetry = false
+            this.hooks = hooks
+        }
+        client.forAccount("12345").downloadURL("http://localhost:3000/12345/attachments/abc/download/file.txt?v=1")
+
+        assertEquals(listOf("http://localhost:3000/12345/attachments/abc/download/file.txt"), hookUrls)
+        client.close()
+    }
+
+    @Test
+    fun downloadURL_retryHookUrlOmitsQuery() = runTest {
+        val retryUrls = mutableListOf<String>()
+        val hooks = object : BasecampHooks {
+            override fun onRetry(info: RequestInfo, attempt: Int, error: Throwable, delayMs: Long) {
+                retryUrls.add(info.url)
+            }
+        }
+
+        var requestCount = 0
+        val client = mockClient(
+            handler = { _ ->
+                requestCount++
+                if (requestCount == 1) {
+                    respond(
+                        content = ByteReadChannel("{}"),
+                        status = HttpStatusCode.ServiceUnavailable,
+                        headers = headersOf(HttpHeaders.ContentType to listOf("application/json")),
+                    )
+                } else {
+                    respond(
+                        content = ByteReadChannel("content"),
+                        status = HttpStatusCode.OK,
+                        headers = headersOf(HttpHeaders.ContentType to listOf("text/plain")),
+                    )
+                }
+            },
+            hooks = hooks,
+            enableRetry = true,
+        )
+        val account = client.forAccount("12345")
+        account.downloadURL("http://localhost:3000/12345/attachments/abc/download/file.txt?verifier=SECRET")
+
+        assertEquals(listOf("http://localhost:3000/12345/attachments/abc/download/file.txt"), retryUrls)
+        client.close()
+    }
+
     // -- Hop-1 retry policy (SPEC §14) --
 
     private val hop1URL = "http://localhost:3000/12345/attachments/abc/download/file.txt"

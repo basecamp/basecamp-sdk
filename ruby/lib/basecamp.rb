@@ -117,31 +117,36 @@ module Basecamp
   # @param retry_after [Integer, nil] Retry-After header value
   # @return [Error]
   def self.error_from_response(status, body = nil, retry_after: nil)
-    message = parse_error_message(body) || "Request failed"
+    # SPEC §6 step 3: a body's error_description becomes the hint. Step 5:
+    # with no body message, the else arm falls back (via from_status) to the
+    # fixed code-bearing phrase, never a reason phrase.
+    hint = parse_error_hint(body)
+    server_message = parse_error_message(body)
+    message = server_message || "Request failed"
 
     case status
     when 400, 422
       field_errors = parse_field_errors(body)
-      message = Security.truncate(compose_validation_message(parse_error_message(body), field_errors) || "Request failed")
-      ValidationError.new(message, http_status: status, field_errors: field_errors)
+      message = Security.truncate(compose_validation_message(server_message, field_errors) || "Request failed")
+      ValidationError.new(message, hint: hint, http_status: status, field_errors: field_errors)
     when 401
-      AuthError.new(message)
+      AuthError.new(message, hint: hint)
     when 403
-      ForbiddenError.new(message)
+      ForbiddenError.new(message, hint: hint)
     when 404
-      NotFoundError.new(message: message)
+      NotFoundError.new(message: message, hint: hint)
     when 429
-      RateLimitError.new(retry_after: retry_after)
+      RateLimitError.new(retry_after: retry_after, hint: hint)
     when 507
       # Decided before the 5xx arms: a 507 is an account limit, not a
       # transient server failure, and no retry can satisfy it.
-      LimitExceededError.new(Security.truncate(message))
+      LimitExceededError.new(Security.truncate(message), hint: hint)
     when 500
-      ApiError.new("Server error (500)", http_status: 500, retryable: true)
+      ApiError.new("Server error (500)", http_status: 500, retryable: true, hint: hint)
     when 502, 503, 504
-      ApiError.new("Gateway error (#{status})", http_status: status, retryable: true)
+      ApiError.new("Gateway error (#{status})", http_status: status, retryable: true, hint: hint)
     else
-      ApiError.from_status(status, message)
+      ApiError.from_status(status, server_message, hint: hint)
     end
   end
 
@@ -176,6 +181,23 @@ module Basecamp
     data = JSON.parse(body)
     msg = data.is_a?(Hash) ? [ data["error"], data["message"] ].find { |value| value.is_a?(String) } : nil
     msg ? Security.truncate(msg) : nil
+  rescue JSON::ParserError, ApiError
+    nil
+  end
+
+  # Parses the SPEC section 6 step-3 hint from a response body: the
+  # "error_description" key, used only when its value is a non-empty String,
+  # truncated like the message.
+  # @param body [String, nil]
+  # @return [String, nil]
+  def self.parse_error_hint(body)
+    return nil if body.nil? || body.empty?
+
+    Security.check_body_size!(body, Security::MAX_ERROR_BODY_BYTES, "Error")
+
+    data = JSON.parse(body)
+    hint = data.is_a?(Hash) ? data["error_description"] : nil
+    hint.is_a?(String) && !hint.empty? ? Security.truncate(hint) : nil
   rescue JSON::ParserError, ApiError
     nil
   end

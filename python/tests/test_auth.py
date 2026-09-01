@@ -6,7 +6,9 @@ from unittest.mock import MagicMock, patch
 
 import httpx
 import pytest
+import respx
 
+from basecamp.async_auth import AsyncOAuthTokenProvider
 from basecamp.auth import BearerAuth, OAuthTokenProvider, StaticTokenProvider
 from basecamp.errors import AuthError, NetworkError
 
@@ -119,6 +121,55 @@ class TestOAuthTokenProvider:
         with pytest.raises(NetworkError):
             tp.access_token()
 
+    @respx.mock
+    def test_unparsable_refresh_response_retains_nothing(self):
+        # SPEC §9: JSONDecodeError retains the whole token-response body as
+        # .doc, so the raised AuthError must chain neither __cause__ nor the
+        # __context__ that `from None` would still leave populated — asserted
+        # on the RAISED exception, not a constructed one.
+        respx.post(OAuthTokenProvider.TOKEN_URL).mock(
+            return_value=httpx.Response(200, text='{"access_token": "sk-live-SUPERSECRET" oops')
+        )
+
+        tp = OAuthTokenProvider(
+            access_token="old",
+            client_id="cid",
+            client_secret="csec",
+            refresh_token="rtok",
+            expires_at=time.time() - 10,
+        )
+        with pytest.raises(AuthError) as exc_info:
+            tp.access_token()
+
+        err = exc_info.value
+        assert str(err) == "Token refresh returned invalid response"
+        assert "SUPERSECRET" not in str(err)
+        assert err.__cause__ is None
+        assert err.__context__ is None
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_async_unparsable_refresh_response_retains_nothing(self):
+        respx.post(AsyncOAuthTokenProvider.TOKEN_URL).mock(
+            return_value=httpx.Response(200, text='{"access_token": "sk-live-SUPERSECRET" oops')
+        )
+
+        tp = AsyncOAuthTokenProvider(
+            access_token="old",
+            client_id="cid",
+            client_secret="csec",
+            refresh_token="rtok",
+            expires_at=time.time() - 10,
+        )
+        with pytest.raises(AuthError) as exc_info:
+            await tp.access_token()
+
+        err = exc_info.value
+        assert str(err) == "Token refresh returned invalid response"
+        assert "SUPERSECRET" not in str(err)
+        assert err.__cause__ is None
+        assert err.__context__ is None
+
     @patch("httpx.post")
     def test_on_refresh_callback_invoked(self, mock_post):
         mock_response = MagicMock()
@@ -173,3 +224,30 @@ class TestOAuthTokenProvider:
         # Lock serializes access, so refresh called once (first thread refreshes,
         # subsequent threads see non-expired token)
         assert mock_post.call_count == 1
+
+
+class TestRefreshTransportFailureRetainsNothing:
+    @respx.mock
+    def test_sync(self):
+        # SPEC §9: the httpx error retains the request — whose form body
+        # carries refresh_token and client_secret — so nothing is chained.
+        respx.post(OAuthTokenProvider.TOKEN_URL).mock(side_effect=httpx.ConnectError("refused"))
+        tp = OAuthTokenProvider(
+            access_token="old", client_id="cid", client_secret="csec", refresh_token="rtok", expires_at=time.time() - 10
+        )
+        with pytest.raises(NetworkError) as exc_info:
+            tp.access_token()
+        assert exc_info.value.__cause__ is None
+        assert exc_info.value.__context__ is None
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_async(self):
+        respx.post(AsyncOAuthTokenProvider.TOKEN_URL).mock(side_effect=httpx.ConnectError("refused"))
+        tp = AsyncOAuthTokenProvider(
+            access_token="old", client_id="cid", client_secret="csec", refresh_token="rtok", expires_at=time.time() - 10
+        )
+        with pytest.raises(NetworkError) as exc_info:
+            await tp.access_token()
+        assert exc_info.value.__cause__ is None
+        assert exc_info.value.__context__ is None

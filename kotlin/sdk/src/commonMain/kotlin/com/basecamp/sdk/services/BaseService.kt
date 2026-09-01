@@ -638,7 +638,6 @@ abstract class BaseService(
         }
         return exceptionFromErrorBody(
             status = response.status.value,
-            statusDescription = response.status.description,
             bodyText = bodyText,
             requestId = response.headers["X-Request-Id"],
             retryAfter = parseRetryAfter(response.headers["Retry-After"]),

@@ -133,6 +133,43 @@ class ErrorsTest < Minitest::Test
     assert_equal({ "color" => [ "is not a valid color" ] }, error.field_errors)
   end
 
+  # SPEC section 6 step 3: a body's error_description becomes the hint,
+  # truncated like the message; class-constant hints fill in when absent.
+  def test_error_from_response_extracts_error_description_as_hint
+    error = Basecamp.error_from_response(403, '{"error": "denied", "error_description": "You need the admin scope"}')
+
+    assert_equal "You need the admin scope", error.hint
+  end
+
+  def test_error_from_response_truncates_error_description
+    long = "x" * 600
+    error = Basecamp.error_from_response(403, %({"error": "denied", "error_description": "#{long}"}))
+
+    assert_equal 500, error.hint.bytesize
+    assert error.hint.end_with?("...")
+  end
+
+  def test_error_from_response_auth_class_hint_when_no_description
+    error = Basecamp.error_from_response(401, '{"error": "nope"}')
+
+    assert_equal "Check your access token or refresh it if expired", error.hint
+  end
+
+  def test_error_from_response_ignores_non_string_error_description
+    error = Basecamp.error_from_response(403, '{"error": "denied", "error_description": {"nested": true}}')
+
+    assert_equal "You do not have permission to access this resource", error.hint
+  end
+
+  # SPEC section 6 step 5: an empty body on an unmapped status renders the
+  # fixed code-bearing phrase — 599 has no registered reason phrase at all.
+  def test_error_from_response_599_empty_body_renders_fixed_phrase
+    error = Basecamp.error_from_response(599, "")
+
+    assert_instance_of Basecamp::ApiError, error
+    assert_equal "Request failed (HTTP 599)", error.message
+  end
+
   def test_error_from_response_403_does_not_extract_field_errors
     error = Basecamp.error_from_response(403, '{"errors": {"color": ["is not a valid color"]}}')
 

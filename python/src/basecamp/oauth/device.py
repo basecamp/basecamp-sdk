@@ -145,6 +145,10 @@ def request_device_authorization(
     if scope:
         params["scope"] = scope
 
+    # SPEC §9: the httpx error retains the request it failed on, so a
+    # transport failure is constructed here and raised outside the handler,
+    # chaining nothing (the poll below sends device_code the same way).
+    transport_error: DeviceFlowError | None = None
     try:
         # A non-2xx device-auth response is a hard failure whose body is unused —
         # skip draining it so a slow error body can't time out and look like transport.
@@ -156,7 +160,9 @@ def request_device_authorization(
             read_body=lambda s: 200 <= s < 300,
         )
     except httpx.HTTPError as exc:
-        raise DeviceFlowError("transport", f"Device authorization request failed: {exc}") from exc
+        transport_error = DeviceFlowError("transport", f"Device authorization request failed: {exc}")
+    if transport_error is not None:
+        raise transport_error
 
     # Check status BEFORE parsing (as discovery does): a non-2xx here is a hard
     # failure with no OAuth error semantics, so a non-JSON error body must surface
@@ -169,16 +175,22 @@ def request_device_authorization(
             http_status=status,
         )
 
+    parse_error: OAuthError | None = None
     try:
         data = json.loads(body)
     except ValueError:
-        # from None — json.JSONDecodeError retains the whole document as its
-        # .doc attribute; these bodies carry device codes and access tokens.
-        raise OAuthError(
+        # Constructed here and raised outside the handler (SPEC §9):
+        # json.JSONDecodeError retains the whole document — these bodies carry
+        # device codes and access tokens — as its .doc attribute, and
+        # `from None` would still leave it in __context__.
+        data = None
+        parse_error = OAuthError(
             "api_error",
             "Failed to parse device authorization response",
             http_status=status,
-        ) from None
+        )
+    if parse_error is not None:
+        raise parse_error
 
     if not isinstance(data, dict):
         raise OAuthError("api_error", "Device authorization response is not a JSON object", http_status=status)
@@ -495,6 +507,7 @@ def poll_device_token(
         if post_remaining <= 0:
             raise DeviceFlowError("expired", "Device code expired before authorization completed")
 
+        poll_error: DeviceFlowError | None = None
         try:
             # Bound the request by the REMAINING code lifetime as well as the
             # per-request timeout: near expiry, a stalled token POST must not
@@ -508,9 +521,14 @@ def poll_device_token(
             # Cancellation-beats-classification on the error path too: a cancel
             # that flipped while the doomed request was in flight must surface
             # as cancelled, not as the transport fault it happened to raise.
+            # Either error is raised outside the handler (SPEC §9): the httpx
+            # error retains the request, whose form body carries device_code.
             if should_cancel is not None and should_cancel():
-                raise DeviceFlowError("cancelled", "Device flow cancelled") from None
-            raise DeviceFlowError("transport", f"Device token poll failed: {exc}") from exc
+                poll_error = DeviceFlowError("cancelled", "Device flow cancelled")
+            else:
+                poll_error = DeviceFlowError("transport", f"Device token poll failed: {exc}")
+        if poll_error is not None:
+            raise poll_error
 
         # Re-check cancellation the moment the round-trip completes: the sync
         # POST cannot observe the probe while in flight (bounded only by its
@@ -689,16 +707,22 @@ def _post_device_token(
             http_status=status,
         )
 
+    parse_error: OAuthError | None = None
     try:
         data = json.loads(body)
     except ValueError:
-        # from None — json.JSONDecodeError retains the whole document as its
-        # .doc attribute; these bodies carry device codes and access tokens.
-        raise OAuthError(
+        # Constructed here and raised outside the handler (SPEC §9):
+        # json.JSONDecodeError retains the whole document — these bodies carry
+        # device codes and access tokens — as its .doc attribute, and
+        # `from None` would still leave it in __context__.
+        data = None
+        parse_error = OAuthError(
             "api_error",
             "Failed to parse device token response",
             http_status=status,
-        ) from None
+        )
+    if parse_error is not None:
+        raise parse_error
     if not isinstance(data, dict):
         raise OAuthError("api_error", "Device token response is not a JSON object", http_status=status)
 

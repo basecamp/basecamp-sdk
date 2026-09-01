@@ -501,6 +501,223 @@ final class DownloadTests: XCTestCase {
         }
     }
 
+    // MARK: - SPEC §9: Credential-Bearing Values Are Never Rendered
+
+    /// An error whose rendering carries the URL it failed on — the shape a raw
+    /// `URLError` takes — so a test can assert the SDK never chains it.
+    private struct URLLeakingError: Error, CustomStringConvertible {
+        let url: String
+        var description: String { "dial \(url) refused" }
+    }
+
+    /// Hop-1 exhaustion wraps the transport error with a fixed message and a
+    /// severed cause: the transport's rendering carries the hop-1 URL, and the
+    /// caller's URL can smuggle a signed query into it through the rewrite.
+    func testDownloadURL_hop1NetworkErrorSeversCause() async throws {
+        let transport = MockTransport { request in
+            throw URLLeakingError(url: request.url!.absoluteString)
+        }
+        let account = makeTestAccountClient(transport: transport)
+
+        do {
+            _ = try await account.downloadURL(
+                "https://3.basecampapi.com/999999999/attachments/abc/download/file.txt?verifier=SECRET")
+            XCTFail("Expected network error")
+        } catch let error as BasecampError {
+            guard case .network(let message, let cause) = error else {
+                XCTFail("Expected .network, got \(error)")
+                return
+            }
+            XCTAssertEqual(message, "Network error")
+            XCTAssertNil(cause)
+        }
+    }
+
+    /// A retried hop-1 transport failure reaches onRequestEnd/onRetry as the
+    /// same projection the caller would get, never the raw URL-bearing error.
+    func testDownloadURL_retriedHop1NetworkErrorReachesHooksProjected() async throws {
+        final class ErrorSpy: BasecampHooks, @unchecked Sendable {
+            private let lock = NSLock()
+            private var _retryErrors: [any Error] = []
+            var retryErrors: [any Error] { lock.withLock { _retryErrors } }
+            func onRetry(_ info: RequestInfo, attempt: Int, error: any Error, delaySeconds: TimeInterval) {
+                lock.withLock { _retryErrors.append(error) }
+            }
+        }
+
+        let spy = ErrorSpy()
+        let counter = Counter()
+        let transport = MockTransport { request in
+            if counter.increment() == 1 {
+                throw URLLeakingError(url: request.url!.absoluteString)
+            }
+            return (
+                Data("data".utf8),
+                makeHTTPResponse(url: request.url!.absoluteString, statusCode: 200, headers: ["Content-Type": "text/plain"])
+            )
+        }
+        let account = makeTestAccountClient(transport: transport, enableRetry: true, hooks: spy)
+        _ = try await account.downloadURL(
+            "https://3.basecampapi.com/999999999/attachments/abc/download/file.txt?verifier=SECRET")
+
+        XCTAssertEqual(spy.retryErrors.count, 1)
+        guard let projected = spy.retryErrors.first as? BasecampError,
+              case .network(let message, let cause) = projected else {
+            XCTFail("Expected a projected .network in onRetry, got \(String(describing: spy.retryErrors.first))")
+            return
+        }
+        XCTAssertEqual(message, "Network error")
+        XCTAssertNil(cause)
+    }
+
+    /// A transport that speaks `.network` itself is projected like a raw
+    /// failure on the download hops: its message can render the URL, so the
+    /// #567 message passthrough does not apply here.
+    func testDownloadURL_transportNetworkErrorMessageIsProjected() async throws {
+        let transport = MockTransport { request in
+            throw BasecampError.network(
+                message: "dial \(request.url!.absoluteString) refused",
+                cause: URLLeakingError(url: request.url!.absoluteString))
+        }
+        let account = makeTestAccountClient(transport: transport)
+
+        do {
+            _ = try await account.downloadURL(
+                "https://3.basecampapi.com/999999999/attachments/abc/download/file.txt?verifier=SECRET")
+            XCTFail("Expected network error")
+        } catch let error as BasecampError {
+            guard case .network(let message, let cause) = error else {
+                XCTFail("Expected .network, got \(error)")
+                return
+            }
+            XCTAssertEqual(message, "Network error")
+            XCTAssertNil(cause)
+        }
+    }
+
+    /// The hop-2 wrap severs the cause the same way: the signed URL is a
+    /// credential, and the transport error renders it.
+    func testDownloadURL_hop2NetworkErrorSeversCause() async throws {
+        let counter = Counter()
+        let transport = MockTransport { request in
+            if counter.increment() == 1 {
+                return (
+                    Data(),
+                    makeHTTPResponse(
+                        url: request.url!.absoluteString,
+                        statusCode: 302,
+                        headers: ["Location": "https://s3.amazonaws.com/bucket/file?X-Amz-Signature=SECRET"]
+                    )
+                )
+            }
+            throw URLLeakingError(url: request.url!.absoluteString)
+        }
+        let account = makeTestAccountClient(transport: transport)
+
+        do {
+            _ = try await account.downloadURL(Self.hop1URL)
+            XCTFail("Expected network error")
+        } catch let error as BasecampError {
+            guard case .network(let message, let cause) = error else {
+                XCTFail("Expected .network, got \(error)")
+                return
+            }
+            XCTAssertEqual(message, "Download failed")
+            XCTAssertNil(cause)
+        }
+    }
+
+    /// A cancelled hop 2 keeps its meaning through the projection: the chained
+    /// cause is a FRESH cancellation sentinel — the shape `isCancellation`
+    /// walks — carrying no rendering of the signed URL.
+    func testDownloadURL_hop2CancellationProjectsFreshSentinel() async throws {
+        let counter = Counter()
+        let transport = MockTransport { request in
+            if counter.increment() == 1 {
+                return (
+                    Data(),
+                    makeHTTPResponse(
+                        url: request.url!.absoluteString,
+                        statusCode: 302,
+                        headers: ["Location": "https://s3.amazonaws.com/bucket/file?X-Amz-Signature=SECRET"]
+                    )
+                )
+            }
+            throw URLError(.cancelled, userInfo: [
+                NSURLErrorFailingURLStringErrorKey: request.url!.absoluteString
+            ])
+        }
+        let account = makeTestAccountClient(transport: transport)
+
+        do {
+            _ = try await account.downloadURL(Self.hop1URL)
+            XCTFail("Expected network error")
+        } catch let error as BasecampError {
+            guard case .network(let message, let cause) = error else {
+                XCTFail("Expected .network, got \(error)")
+                return
+            }
+            XCTAssertEqual(message, "Download failed")
+            let urlError = try XCTUnwrap(cause as? URLError)
+            XCTAssertEqual(urlError.code, .cancelled)
+            XCTAssertFalse(String(describing: cause).contains("SECRET"),
+                           "the projected sentinel must not carry the original's URL rendering")
+        }
+    }
+
+    /// Hop-1 hooks see origin+path only — no query, no fragment — while the
+    /// wire request keeps the query.
+    func testDownloadURL_hookURLsOmitQueryWhileWireKeepsIt() async throws {
+        final class TestHooks: BasecampHooks, @unchecked Sendable {
+            var urls: [String] = []
+            func onRequestStart(_ info: RequestInfo) { urls.append(info.url) }
+            func onRequestEnd(_ info: RequestInfo, result: RequestResult) { urls.append(info.url) }
+        }
+
+        let hooks = TestHooks()
+        let transport = MockTransport { request in
+            (
+                Data("data".utf8),
+                makeHTTPResponse(url: request.url!.absoluteString, statusCode: 200, headers: ["Content-Type": "text/plain"])
+            )
+        }
+        let account = makeTestAccountClient(transport: transport, hooks: hooks)
+        _ = try await account.downloadURL(
+            "https://3.basecampapi.com/999999999/attachments/abc/download/file.txt?verifier=SECRET#frag")
+
+        XCTAssertEqual(transport.requests[0].request.url?.query, "verifier=SECRET")
+        let projected = "https://3.basecampapi.com/999999999/attachments/abc/download/file.txt"
+        XCTAssertEqual(hooks.urls, [projected, projected])
+    }
+
+    /// A signed Location that fails URL construction renders its SPEC §9
+    /// origin projection — the fixed token when nothing parses — never the
+    /// input itself.
+    func testDownloadURL_unparsableSignedLocationRendersNoURL() async throws {
+        let transport = MockTransport { request in
+            (
+                Data(),
+                makeHTTPResponse(
+                    url: request.url!.absoluteString,
+                    statusCode: 302,
+                    headers: ["Location": "https://[invalid/file?sig=SECRET"]
+                )
+            )
+        }
+        let account = makeTestAccountClient(transport: transport)
+
+        do {
+            _ = try await account.downloadURL(Self.hop1URL)
+            XCTFail("Expected usage error")
+        } catch let error as BasecampError {
+            guard case .usage(let message, _) = error else {
+                XCTFail("Expected .usage, got \(error)")
+                return
+            }
+            XCTAssertEqual(message, "Invalid URL: unparsable")
+        }
+    }
+
     // MARK: - Hop-1 Retry Policy (SPEC §14)
 
     private static let hop1URL = "https://3.basecampapi.com/999999999/attachments/abc/download/file.txt"
@@ -880,9 +1097,9 @@ final class DownloadTests: XCTestCase {
     func testDownloadURL_urlErrorCancelledIsTerminal() async throws {
         let spy = RetryHookSpy()
         let counter = Counter()
-        let transport = MockTransport { _ in
+        let transport = MockTransport { request in
             counter.increment()
-            throw URLError(.cancelled)
+            throw URLError(.cancelled, userInfo: [NSURLErrorFailingURLStringErrorKey: request.url!.absoluteString])
         }
         let account = makeTestAccountClient(transport: transport, enableRetry: true, hooks: spy)
 
@@ -890,9 +1107,12 @@ final class DownloadTests: XCTestCase {
             _ = try await account.downloadURL(Self.hop1URL)
             XCTFail("Expected the cancellation to surface")
         } catch let error as URLError {
-            // Terminal errors propagate raw, so the cancellation shape itself
-            // must arrive — not a BasecampError.network wrapping it.
+            // Terminal errors propagate unwrapped, so the cancellation shape
+            // itself must arrive — not a BasecampError.network wrapping it —
+            // as a fresh instance: URLSession's carries the failing URL in
+            // its userInfo, which SPEC §9 keeps out of the download path.
             XCTAssertEqual(error.code, .cancelled)
+            XCTAssertNil(error.userInfo[NSURLErrorFailingURLStringErrorKey])
         } catch {
             XCTFail("Expected URLError(.cancelled) raw, got \(error)")
         }

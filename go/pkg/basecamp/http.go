@@ -3,6 +3,7 @@ package basecamp
 import (
 	"context"
 	"net/http"
+	"net/url"
 	"time"
 )
 
@@ -141,6 +142,22 @@ func attemptFromContext(ctx context.Context) int {
 	return 1
 }
 
+// downloadRequestKey is the context key marking a download hop-1 request, so
+// loggingTransport renders its URL as origin+path only (SPEC §9): the
+// caller-supplied download URL can smuggle a signed query into that hop.
+type downloadRequestKey struct{}
+
+// markDownloadRequest marks the context as belonging to a download hop-1 request.
+func markDownloadRequest(ctx context.Context) context.Context {
+	return context.WithValue(ctx, downloadRequestKey{}, true)
+}
+
+// isDownloadRequest reports whether the context carries the download marker.
+func isDownloadRequest(ctx context.Context) bool {
+	v, _ := ctx.Value(downloadRequestKey{}).(bool)
+	return v
+}
+
 // loggingTransport wraps an http.RoundTripper to log requests and responses,
 // and calls observability hooks for all HTTP requests (including generated client).
 // It holds a pointer to the client so it can access the current logger and hooks.
@@ -151,10 +168,21 @@ type loggingTransport struct {
 
 // RoundTrip implements http.RoundTripper with logging and hooks.
 func (t *loggingTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	// A download hop-1 request is projected for hooks and logs (SPEC §9): its
+	// URL as origin+path only, and a transport failure as the fixed network
+	// error, since *url.Error renders the URL it failed on. Every other
+	// request URL carries no credential — the token rides in the
+	// Authorization header — so hooks and logs get it whole.
+	download := isDownloadRequest(req.Context())
+	displayURL := req.URL.String()
+	if download {
+		displayURL = (&url.URL{Scheme: req.URL.Scheme, Host: req.URL.Host, Path: req.URL.Path}).String()
+	}
+
 	// Call hooks before request
 	info := RequestInfo{
 		Method:  req.Method,
-		URL:     req.URL.String(),
+		URL:     displayURL,
 		Attempt: attemptFromContext(req.Context()),
 	}
 	hookCtx := t.client.hooks.OnRequestStart(req.Context(), info)
@@ -174,7 +202,7 @@ func (t *loggingTransport) RoundTrip(req *http.Request) (*http.Response, error) 
 	if t.client.logger != nil {
 		t.client.logger.Debug("http request",
 			"method", req.Method,
-			"url", req.URL.String())
+			"url", displayURL)
 	}
 
 	resp, err := t.inner.RoundTrip(req)
@@ -182,6 +210,9 @@ func (t *loggingTransport) RoundTrip(req *http.Request) (*http.Response, error) 
 	// Record result
 	if err != nil {
 		result.Error = err
+		if download {
+			result.Error = downloadNetworkError(err)
+		}
 	} else {
 		result.StatusCode = resp.StatusCode
 		// Parse Retry-After header for 429/503 responses

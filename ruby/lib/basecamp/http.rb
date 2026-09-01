@@ -176,7 +176,11 @@ module Basecamp
     # @param url [String] absolute URL
     # @return [Response]
     def get_download(url)
-      request_with_retry(:get, url, retry_on: DOWNLOAD_RETRY_ON, accept: nil)
+      # download: true projects this flow's hooks and transport errors (SPEC
+      # §9): the caller's URL can smuggle a signed query through the rewrite
+      # into hop 1, and a transport error renders the URL it failed on. The
+      # wire request keeps the query; only the renderings are projected.
+      request_with_retry(:get, url, retry_on: DOWNLOAD_RETRY_ON, accept: nil, download: true)
     end
 
     # Fetches all pages of a paginated resource.
@@ -396,7 +400,7 @@ module Basecamp
     end
 
     def request_with_retry(method, url, params: {}, allow_cross_origin: false, operation: nil, retry_on: nil,
-      accept: "application/json")
+      accept: "application/json", download: false)
       op_retry = operation && Http.operation_retry(operation)
       # The cap is floored at one attempt on every path: whether a request
       # reaches the wire at all must not depend on whether the operation
@@ -422,7 +426,7 @@ module Basecamp
 
         begin
           return single_request(method, url, params: params, body: nil, attempt: attempt,
-            allow_cross_origin: allow_cross_origin, accept: accept, refresh_replay: false)
+            allow_cross_origin: allow_cross_origin, accept: accept, refresh_replay: false, download: download)
         rescue Basecamp::AuthError => e
           # SPEC §4: the refresh replay is a request on the wire, so it spends
           # an attempt from THIS budget rather than an uncounted one inside
@@ -474,8 +478,9 @@ module Basecamp
 
           delay = calculate_delay(attempt, error.retry_after)
 
-          @hooks.on_retry(RequestInfo.new(method: method.to_s.upcase, url: url, attempt: attempt), attempt + 1, error,
-                          delay)
+          hook_url = download ? Security.display_url(url) : url
+          @hooks.on_retry(RequestInfo.new(method: method.to_s.upcase, url: hook_url, attempt: attempt),
+                          attempt + 1, error, delay)
           sleep(delay)
         end
       end
@@ -511,14 +516,19 @@ module Basecamp
     end
 
     def single_request(method, url, params:, body:, attempt:, retry_count: 0, allow_cross_origin: false,
-      accept: "application/json", refresh_replay: true)
+      accept: "application/json", refresh_replay: true, download: false)
       assert_credential_origin!(url, allow_cross_origin)
-      info = RequestInfo.new(method: method.to_s.upcase, url: url, attempt: attempt)
+      # download: the SPEC §9 projection for a URL whose query can carry a
+      # credential (download hop 1) — hooks see origin+path, and a transport
+      # error is severed below; the wire request keeps url.
+      info = RequestInfo.new(method: method.to_s.upcase, url: download ? Security.display_url(url) : url,
+                             attempt: attempt)
       @hooks.on_request_start(info)
 
       start_time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
 
-      begin
+      severed = nil
+      result = begin
         response = @faraday.run_request(method, url, body, request_headers(accept: accept)) do |req|
           req.params.merge!(params) if params.any?
         end
@@ -551,17 +561,29 @@ module Basecamp
             && @token_refreshed
           @token_refreshed = false
           return single_request(method, url, params: params, body: body, attempt: attempt, retry_count: retry_count + 1,
-            allow_cross_origin: allow_cross_origin, accept: accept, refresh_replay: refresh_replay)
+            allow_cross_origin: allow_cross_origin, accept: accept, refresh_replay: refresh_replay, download: download)
         end
 
-        raise error
+        # On a download, a status error is raised below the rescue too: the
+        # Faraday exception retains the request (SPEC §9), and raising here
+        # would make it MRI's implicit cause.
+        raise error unless download
+
+        severed = error
       rescue Faraday::Error => e
         duration = Process.clock_gettime(Process::CLOCK_MONOTONIC) - start_time
-        error = Basecamp::NetworkError.new("Connection failed", cause: e)
-        result = RequestResult.new(duration: duration, error: error)
-        @hooks.on_request_end(info, result)
-        raise error
+        # SPEC §9: on a download hop 1 the Faraday error can render the URL it
+        # failed on, so it is neither the cause nor the hint, and it is raised
+        # below — outside this rescue, with cause: nil — so MRI's implicit
+        # cause is severed too. Every other request keeps its diagnostic.
+        error = download ? Basecamp::NetworkError.new : Basecamp::NetworkError.new("Connection failed", cause: e)
+        @hooks.on_request_end(info, RequestResult.new(duration: duration, error: error))
+        raise error unless download
+
+        severed = error
       end
+
+      severed ? raise(severed, cause: nil) : result
     end
 
     # accept: nil is the binary-download carve-out (SPEC §14): hop 1 sends
@@ -624,38 +646,41 @@ module Basecamp
 
       retry_after = parse_retry_after(headers["Retry-After"] || headers["retry-after"])
       request_id = headers["X-Request-Id"] || headers["x-request-id"]
+      # SPEC §6 step 3: a body's error_description becomes the hint. Class
+      # defaults (AuthError, ForbiddenError) still apply when the body has none.
+      hint = Basecamp.parse_error_hint(body)
 
       err = case status
       when 401
         # Try token refresh; flag for caller to retry
         @token_refreshed = refresh_on_401 && @token_provider&.refreshable? && @token_provider.refresh
-        Basecamp::AuthError.new("Authentication failed")
+        Basecamp::AuthError.new("Authentication failed", hint: hint)
       when 403
-        Basecamp::ForbiddenError.new("Access denied")
+        Basecamp::ForbiddenError.new("Access denied", hint: hint)
       when 404
         message = Security.truncate(Basecamp.parse_error_message(body) || "Not found")
-        Basecamp::NotFoundError.new(message: message)
+        Basecamp::NotFoundError.new(message: message, hint: hint)
       when 429
-        Basecamp::RateLimitError.new(retry_after: retry_after)
+        Basecamp::RateLimitError.new(retry_after: retry_after, hint: hint)
       when 400, 422
         field_errors = Basecamp.parse_field_errors(body)
         message = Security.truncate(
           Basecamp.compose_validation_message(Basecamp.parse_error_message(body), field_errors) || "Validation failed"
         )
-        Basecamp::ValidationError.new(message, http_status: status, field_errors: field_errors)
+        Basecamp::ValidationError.new(message, hint: hint, http_status: status, field_errors: field_errors)
       when 507
         # A 5xx status carrying a client fact: the account is out of storage, or
         # at its webhook ceiling. Retrying cannot satisfy it, so this is decided
         # before the 5xx arms below.
         message = Security.truncate(Basecamp.parse_error_message(body) || "Account limit reached")
-        Basecamp::LimitExceededError.new(message)
+        Basecamp::LimitExceededError.new(message, hint: hint)
       when 500
-        Basecamp::ApiError.new("Server error (500)", http_status: 500, retryable: true)
+        Basecamp::ApiError.new("Server error (500)", http_status: 500, retryable: true, hint: hint)
       when 502, 503, 504
-        Basecamp::ApiError.new("Gateway error (#{status})", http_status: status, retryable: true)
+        Basecamp::ApiError.new("Gateway error (#{status})", http_status: status, retryable: true, hint: hint)
       else
         message = Security.truncate(Basecamp.parse_error_message(body) || "Request failed (HTTP #{status})")
-        Basecamp::ApiError.from_status(status || 0, message)
+        Basecamp::ApiError.from_status(status || 0, message, hint: hint)
       end
 
       err.instance_variable_set(:@request_id, request_id) if request_id

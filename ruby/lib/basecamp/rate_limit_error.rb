@@ -3,8 +3,10 @@
 module Basecamp
   # Raised when rate limited (429).
   class RateLimitError < Error
-    def initialize(retry_after: nil, cause: nil)
-      hint = retry_after ? "Try again in #{retry_after} seconds" : "Please slow down requests"
+    def initialize(retry_after: nil, hint: nil, cause: nil)
+      # A concrete Retry-After beats a body-derived hint; the class default
+      # fills in when neither is present.
+      hint = retry_after ? "Try again in #{retry_after} seconds" : (hint || "Please slow down requests")
       super(
         code: ErrorCode::RATE_LIMIT,
         message: "Rate limit exceeded",
