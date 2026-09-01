@@ -62,6 +62,24 @@ public final class ProjectsService: BaseService, @unchecked Sendable {
         )
     }
 
+    public func listRecentProjects() async throws -> [Project] {
+        return try await request(
+            OperationInfo(service: "Projects", operation: "ListRecentProjects", resourceType: "recent_project", isMutation: false),
+            method: "GET",
+            path: "/my/recent_projects.json",
+            retryConfig: Metadata.retryConfig(for: "ListRecentProjects")
+        )
+    }
+
+    public func recordProjectVisit(projectId: Int) async throws {
+        try await requestVoid(
+            OperationInfo(service: "Projects", operation: "RecordProjectVisit", resourceType: "resource", isMutation: true, projectId: projectId),
+            method: "POST",
+            path: "/projects/\(projectId)/recent_visit.json",
+            retryConfig: Metadata.retryConfig(for: "RecordProjectVisit")
+        )
+    }
+
     public func trash(projectId: Int) async throws {
         try await requestVoid(
             OperationInfo(service: "Projects", operation: "TrashProject", resourceType: "project", isMutation: true, projectId: projectId),

@@ -237,6 +237,7 @@ export const PATH_TO_OPERATION: Record<string, string> = {
   "GET:/{accountId}/my/question_reminders.json": "GetQuestionReminders",
   "GET:/{accountId}/my/readings.json": "GetMyNotifications",
   "GET:/{accountId}/my/readings/bubble_ups.json": "GetBubbleUps",
+  "GET:/{accountId}/my/recent_projects.json": "ListRecentProjects",
   "PUT:/{accountId}/my/unreads.json": "MarkAsRead",
 
   // Projects
@@ -250,6 +251,7 @@ export const PATH_TO_OPERATION: Record<string, string> = {
   "POST:/{accountId}/projects/{projectId}/gauge/needles.json": "CreateGaugeNeedle",
   "GET:/{accountId}/projects/{projectId}/people.json": "ListProjectPeople",
   "PUT:/{accountId}/projects/{projectId}/people/users.json": "UpdateProjectAccess",
+  "POST:/{accountId}/projects/{projectId}/recent_visit.json": "RecordProjectVisit",
   "PUT:/{accountId}/projects/{projectId}/status/active.json": "UnarchiveProject",
   "PUT:/{accountId}/projects/{projectId}/status/archived.json": "ArchiveProject",
   "GET:/{accountId}/projects/{projectId}/timeline.json": "GetProjectTimeline",

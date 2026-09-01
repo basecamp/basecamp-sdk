@@ -455,6 +455,14 @@ async function executeOperation(
         return { result: project };
       }
 
+      case "ListRecentProjects":
+        await client.projects.listRecentProjects();
+        break;
+
+      case "RecordProjectVisit":
+        await client.projects.recordProjectVisit(Number(params.projectId));
+        break;
+
       case "CreateProject":
         // Always send a non-empty name to bypass client-side validation.
         // The mock server controls what status/body is returned.

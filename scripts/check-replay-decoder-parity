@@ -97,7 +97,7 @@ jq -r '.[] | select(.mode == "live") | .operation' "$FIXTURE" \
 # Pinned count. Bump deliberately when live-my-surface.json gains or loses a
 # live operation — and register the decoder in all five tables in the same
 # commit, which is the whole point of this check.
-expected_live_ops=31
+expected_live_ops=32
 nLive=$(wc -l < "$WORK/live" | tr -d ' ')
 echo "    source of truth: $nLive live operations in $FIXTURE"
 if [[ "$nLive" != "$expected_live_ops" ]]; then

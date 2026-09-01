@@ -13,6 +13,25 @@ import kotlinx.serialization.json.JsonElement
 class ProjectsService(client: AccountClient) : BaseService(client) {
 
     /**
+     * List the projects the current user has most recently visited, most recent
+     */
+    suspend fun listRecentProjects(): List<Project> {
+        val info = OperationInfo(
+            service = "Projects",
+            operation = "ListRecentProjects",
+            resourceType = "recent_project",
+            isMutation = false,
+            projectId = null,
+            resourceId = null,
+        )
+        return request(info, {
+            httpGet("/my/recent_projects.json", operationName = info.operation)
+        }) { body ->
+            json.decodeFromString<List<Project>>(body)
+        }
+    }
+
+    /**
      * List projects (active by default; optionally archived/trashed)
      * @param options Optional query parameters and pagination control
      */
@@ -120,6 +139,24 @@ class ProjectsService(client: AccountClient) : BaseService(client) {
         )
         request(info, {
             httpDelete("/projects/${projectId}", operationName = info.operation)
+        }) { Unit }
+    }
+
+    /**
+     * Record that the current user visited a project, moving it to the front of
+     * @param projectId The project ID
+     */
+    suspend fun recordProjectVisit(projectId: Long): Unit {
+        val info = OperationInfo(
+            service = "Projects",
+            operation = "RecordProjectVisit",
+            resourceType = "resource",
+            isMutation = true,
+            projectId = projectId,
+            resourceId = null,
+        )
+        request(info, {
+            httpPost("/projects/${projectId}/recent_visit.json", operationName = info.operation)
         }) { Unit }
     }
 

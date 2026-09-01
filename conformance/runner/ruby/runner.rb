@@ -416,6 +416,10 @@ class OperationMapper
       summarize_search(@account.search.search(q: SEARCH_QUERY))
     when "GetProject"
       @account.projects.get(project_id: path_params["projectId"])
+    when "ListRecentProjects"
+      @account.projects.list_recent_projects
+    when "RecordProjectVisit"
+      @account.projects.record_project_visit(project_id: path_params["projectId"])
     when "CreateProject"
       @account.projects.create(name: body["name"])
     when "ListTodos"
@@ -1048,6 +1052,7 @@ RUBY_SKIPS = Set.new([
   "DeleteBookmark DELETE retries when marked idempotent",
   "SpotlightRecording POST retries when marked idempotent",
   "UnspotlightRecording DELETE retries when marked idempotent",
+  "RecordProjectVisit POST retries when marked idempotent",
   "UpdateMyNote PUT retries when marked idempotent",
   "UpdateCalendar PUT retries when marked idempotent",
   "PrioritizeAssignment POST retries when marked idempotent",
@@ -1064,6 +1069,7 @@ RUBY_SKIP_REASONS = {
   "DeleteBookmark DELETE retries when marked idempotent" => "Ruby SDK only retries GET",
   "SpotlightRecording POST retries when marked idempotent" => "Ruby SDK only retries GET",
   "UnspotlightRecording DELETE retries when marked idempotent" => "Ruby SDK only retries GET",
+  "RecordProjectVisit POST retries when marked idempotent" => "Ruby SDK only retries GET",
   "UpdateMyNote PUT retries when marked idempotent" => "Ruby SDK only retries GET",
   "UpdateCalendar PUT retries when marked idempotent" => "Ruby SDK only retries GET",
   "PrioritizeAssignment POST retries when marked idempotent" => "Ruby SDK only retries GET",

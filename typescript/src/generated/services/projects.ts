@@ -62,6 +62,30 @@ export interface UpdateProjectRequest {
 export class ProjectsService extends BaseService {
 
   /**
+   * List the projects the current user has most recently visited, most recent
+   * @returns Array of Project
+   *
+   * @example
+   * ```ts
+   * const result = await client.projects.listRecentProjects();
+   * ```
+   */
+  async listRecentProjects(): Promise<Project[]> {
+    const response = await this.request(
+      {
+        service: "Projects",
+        operation: "ListRecentProjects",
+        resourceType: "recent_project",
+        isMutation: false,
+      },
+      () =>
+        this.client.GET("/my/recent_projects.json", {
+        })
+    );
+    return response ?? [];
+  }
+
+  /**
    * List projects (active by default; optionally archived/trashed)
    * @param options - Optional query parameters
    * @returns All Project across all pages, with .meta.totalCount
@@ -217,6 +241,35 @@ export class ProjectsService extends BaseService {
       },
       () =>
         this.client.DELETE("/projects/{projectId}", {
+          params: {
+            path: { projectId },
+          },
+        })
+    );
+  }
+
+  /**
+   * Record that the current user visited a project, moving it to the front of
+   * @param projectId - The project ID
+   * @returns void
+   * @throws {BasecampError} If the request fails
+   *
+   * @example
+   * ```ts
+   * await client.projects.recordProjectVisit(123);
+   * ```
+   */
+  async recordProjectVisit(projectId: number): Promise<void> {
+    await this.request(
+      {
+        service: "Projects",
+        operation: "RecordProjectVisit",
+        resourceType: "resource",
+        isMutation: true,
+        projectId,
+      },
+      () =>
+        this.client.POST("/projects/{projectId}/recent_visit.json", {
           params: {
             path: { projectId },
           },

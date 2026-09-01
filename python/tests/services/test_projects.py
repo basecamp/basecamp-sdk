@@ -6,7 +6,7 @@ import respx
 
 from basecamp import AsyncClient
 from basecamp.client import Client
-from basecamp.errors import ErrorCode, ForbiddenError, LimitExceededError
+from basecamp.errors import ErrorCode, ForbiddenError, LimitExceededError, NotFoundError
 
 BASE = "https://3.basecampapi.com/12345"
 
@@ -77,6 +77,56 @@ class TestProjects:
 
         assert projects[0]["start_date"] == "2024-01-01"
         assert projects[0]["end_date"] == "2024-03-31"
+
+    @respx.mock
+    def test_list_recent_projects(self):
+        # The recently-visited list is the standard projection plus bookmarked
+        # only — the wire omits starred here (BC3 #13043).
+        def recent(project_id, bookmarked):
+            return {
+                "id": project_id,
+                "name": f"Project {project_id}",
+                "status": "active",
+                "created_at": "2024-01-15T10:00:00Z",
+                "updated_at": "2024-01-15T10:00:00Z",
+                "url": f"https://3.basecampapi.com/12345/projects/{project_id}.json",
+                "app_url": f"https://3.basecamp.com/12345/projects/{project_id}",
+                "bookmarked": bookmarked,
+            }
+
+        respx.get(f"{BASE}/my/recent_projects.json").mock(
+            return_value=httpx.Response(200, json=[recent(2, True), recent(1, False)])
+        )
+
+        client, account = make_account()
+        projects = account.projects.list_recent_projects()
+        client.close()
+
+        assert [p["id"] for p in projects] == [2, 1]
+        assert [p["bookmarked"] for p in projects] == [True, False]
+        assert all("starred" not in p for p in projects)
+
+    @respx.mock
+    def test_record_project_visit(self):
+        route = respx.post(f"{BASE}/projects/42/recent_visit.json").mock(return_value=httpx.Response(204))
+
+        client, account = make_account()
+        assert account.projects.record_project_visit(project_id=42) is None
+        client.close()
+
+        assert route.call_count == 1
+
+    @respx.mock
+    def test_record_project_visit_not_found(self):
+        # An inaccessible project answers 404; archived/trashed ones still 204.
+        respx.post(f"{BASE}/projects/999/recent_visit.json").mock(return_value=httpx.Response(404))
+
+        client, account = make_account()
+        with pytest.raises(NotFoundError) as excinfo:
+            account.projects.record_project_visit(project_id=999)
+        client.close()
+
+        assert excinfo.value.http_status == 404
 
     @respx.mock
     def test_list_projects_forwards_archived_status_filter(self):

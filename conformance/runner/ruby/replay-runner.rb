@@ -48,6 +48,7 @@ class ReplayRunner
   # fixture on every `make check` and CI run.
   DECODERS = {
     "ListProjects"                 => SDK_DECODE,
+    "ListRecentProjects"           => SDK_DECODE,
     "GetProject"                   => SDK_DECODE,
     "GetMyAssignments"             => SDK_DECODE,
     "GetMyCompletedAssignments"    => SDK_DECODE,

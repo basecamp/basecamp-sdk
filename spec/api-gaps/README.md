@@ -77,6 +77,8 @@ making the absorption journey publicly auditable.
 | [notifications-sort-pings-first](notifications-sort-pings-first.md) | partial-coverage | master | low |
 | [bc5-authorization-document-shape](bc5-authorization-document-shape.md) | covered-outside-spec | master | medium |
 | [subtasks-canonical-rename](subtasks-canonical-rename.md) | partial-coverage | master | low |
+| [recent-projects](recent-projects.md) | absorbed-in-sdk | master | medium |
+| [delegated-events-performed-by](delegated-events-performed-by.md) | addressed-in-bc3-pr-13040 | master | low |
 
 > Statuses reflect how BC3's **BC5 API train** actually shipped (8 PRs merged
 > to `master`, 2026-07-18..21); BC3 #10947 closed unmerged, superseded by the
@@ -104,14 +106,45 @@ making the absorption journey publicly auditable.
 > tracked in #12463) and the SDK's matching removal of `GetEverythingBoosts`;
 > its `no-json-contract` is literal — the feed has no JSON API today.
 >
-> The provenance pin is `824013d672d` (2026-08-31). <!-- @bc3-pin -->
+> The provenance pin is `88549ca619e` (2026-08-31). <!-- @bc3-pin -->
 > That line is checked by `make doc-constants-check` and deliberately *not*
 > rewritten by `make sync-api-version`: this file is in
 > `spec/doc-constants.json` `.writerExcludes`, because the pin sentence heads
 > the range triage below and cannot advance without that triage advancing too.
 > The ranges themselves are settled history and stay unmarked.
 >
-> The `71b43f3d9fa..824013d672d` range is **1,109 commits** (156 merges, 953
+> The `824013d672d..88549ca619e` range is **49 commits** (8 merges, 41
+> non-merge). Four non-merge commits touch `doc/api` or `app/views/api`:
+>
+> - BC3 **#13043** — the recently visited projects family, absorbed in this
+>   repin as [`recent-projects.md`](recent-projects.md): `GET
+>   /my/recent_projects.json` (the project projection plus `bookmarked`, most
+>   recent visit first, capped at 50, unpaginated) and the newly documented
+>   `POST /projects/{id}/recent_visit.json` (`204`, naturally idempotent).
+> - BC3 **#13042** (`abdcdc61ef`) and **#13037** (`98856df9aa`) — `starred`
+>   beside `bookmarked`, and the accepted `status=active` alias — were both
+>   absorbed ahead of this repin (SDK #835 and #834). The previous range's
+>   correction discussed #13042 as if it sat inside
+>   `71b43f3d9fa..824013d672d`; it in fact lands here, which changes nothing
+>   about the absorption.
+> - BC3 **#13040** (`4c8b81b9d6`) — the delegated-events `performed_by`
+>   person, documented in the mirror by bc-api #436 and ported back into
+>   `doc/api/`. **Registered**, not absorbed:
+>   [`delegated-events-performed-by.md`](delegated-events-performed-by.md),
+>   `addressed-in-bc3-pr-13040` — `Event` has no `performed_by` member yet.
+>
+> The rest of the range is wire-neutral for the modeled surface: #12995 gates
+> recoloring a docked recording behind project edit (the colors routes are
+> undocumented and unmodeled), #12958 turns over-long enrollment input into a
+> 422 on the signup surface (not API-renderable), #13026 filters the Schedule
+> calendar's HTML frames server-side, #13034 caps exports in job internals,
+> #13032/#13000 touch Action Cable sign-out and the 2FA reset admin flow, and
+> the remainder is hotcell/image infra, chat/web UI, and tests. The route
+> table moves from 377 routes across 65 sections to 379 across 65: exactly
+> the two recent-projects routes. The `bc3-four` compatibility pin does not
+> move: this sync re-verifies only `master`.
+>
+> The previous `71b43f3d9fa..824013d672d` range was **1,109 commits** (156 merges, 953
 > non-merge). It adds exactly one documented API family: BC3 #12860
 > (`06edca6f0b`), the two recording Spotlight state transitions absorbed in
 > [`recording-spotlights.md`](recording-spotlights.md). `POST`

@@ -1913,6 +1913,17 @@
       ]
     }
   },
+  "ListRecentProjects": {
+    "retry": {
+      "backoff": "exponential",
+      "base_delay_ms": 1000,
+      "max": 3,
+      "retry_on": [
+        429,
+        503
+      ]
+    }
+  },
   "ListRecordingBoosts": {
     "retry": {
       "backoff": "exponential",
@@ -2092,6 +2103,18 @@
     }
   },
   "PrioritizeAssignment": {
+    "idempotent": true,
+    "retry": {
+      "backoff": "exponential",
+      "base_delay_ms": 1000,
+      "max": 3,
+      "retry_on": [
+        429,
+        503
+      ]
+    }
+  },
+  "RecordProjectVisit": {
     "idempotent": true,
     "retry": {
       "backoff": "exponential",

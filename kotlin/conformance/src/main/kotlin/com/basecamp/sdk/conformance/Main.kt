@@ -989,6 +989,16 @@ private suspend fun dispatchOperation(tc: TestCase, account: AccountClient): Dis
             DispatchResult(resultJson = resultJson)
         }
 
+        "ListRecentProjects" -> {
+            account.projects.listRecentProjects()
+            DispatchResult()
+        }
+
+        "RecordProjectVisit" -> {
+            account.projects.recordProjectVisit(tc.pathParams.longParam("projectId"))
+            DispatchResult()
+        }
+
         "CreateProject" -> {
             val name = tc.requestBody.stringParam("name")
             account.projects.create(CreateProjectBody(name = name))

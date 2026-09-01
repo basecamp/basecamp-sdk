@@ -711,5 +711,25 @@
         "type": "liveSchemaValidate"
       }
     ]
+  },
+  {
+    "mode": "live",
+    "name": "ListRecentProjects returns the recently visited list and validates against schema",
+    "description": "Smoke check + schema validation for the personal recently-visited list (BC3 #13043). Entries are the project projection plus bookmarked; ordering and the 50-visit cap are server-side.",
+    "operation": "ListRecentProjects",
+    "method": "GET",
+    "path": "/my/recent_projects.json",
+    "tags": [
+      "live",
+      "read-only"
+    ],
+    "liveAssertions": [
+      {
+        "type": "liveCallSucceeds"
+      },
+      {
+        "type": "liveSchemaValidate"
+      }
+    ]
   }
 ]

@@ -311,6 +311,14 @@ func dispatchOperation(_ tc: TestCase, _ account: AccountClient) async throws ->
         let project = try await account.projects.get(projectId: pathParams.longParam("projectId"))
         return DispatchResult(resultJSON: try resultJSON(project))
 
+    case "ListRecentProjects":
+        _ = try await account.projects.listRecentProjects()
+        return DispatchResult()
+
+    case "RecordProjectVisit":
+        try await account.projects.recordProjectVisit(projectId: pathParams.longParam("projectId"))
+        return DispatchResult()
+
     case "CreateProject":
         _ = try await account.projects.create(req: CreateProjectRequest(name: rb.stringParam("name")))
         return DispatchResult()

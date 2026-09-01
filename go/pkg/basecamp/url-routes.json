@@ -1408,6 +1408,19 @@
       }
     },
     {
+      "pattern": "/{accountId}/my/recent_projects",
+      "resource": "Projects",
+      "operations": {
+        "GET": "ListRecentProjects"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        }
+      }
+    },
+    {
       "pattern": "/{accountId}/my/unreads",
       "resource": "MyNotifications",
       "operations": {
@@ -1572,6 +1585,23 @@
       "resource": "People",
       "operations": {
         "PUT": "UpdateProjectAccess"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "projectId": {
+          "role": "bucket",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/projects/{projectId}/recent_visit",
+      "resource": "Projects",
+      "operations": {
+        "POST": "RecordProjectVisit"
       },
       "params": {
         "accountId": {

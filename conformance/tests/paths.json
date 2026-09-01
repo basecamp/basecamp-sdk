@@ -2437,5 +2437,92 @@
       "recordings",
       "spotlights"
     ]
+  },
+  {
+    "name": "ListRecentProjects constructs /my/recent_projects.json",
+    "description": "Verifies ListRecentProjects constructs the personal /my/recent_projects.json path and decodes the project projection plus bookmarked, most recent visit first (BC3 #13043).",
+    "operation": "ListRecentProjects",
+    "method": "GET",
+    "path": "/my/recent_projects.json",
+    "mockResponses": [
+      {
+        "status": 200,
+        "body": [
+          {
+            "id": 2085958505,
+            "status": "active",
+            "created_at": "2026-04-13T20:24:00Z",
+            "updated_at": "2026-07-21T01:05:29Z",
+            "name": "The Leto Laptop",
+            "description": "Laptop product launch.",
+            "purpose": "topic",
+            "clients_enabled": false,
+            "bookmark_url": "https://3.basecampapi.com/999/my/bookmarks/token-2085958505.json",
+            "star_url": "https://3.basecampapi.com/999/buckets/2085958505/stars.json",
+            "url": "https://3.basecampapi.com/999/projects/2085958505.json",
+            "app_url": "https://3.basecamp.com/999/projects/2085958505",
+            "bookmarked": true
+          },
+          {
+            "id": 2085958500,
+            "status": "active",
+            "created_at": "2026-04-13T20:24:00Z",
+            "updated_at": "2026-07-21T01:05:29Z",
+            "name": "The Leto Locator",
+            "description": "Laptop product launch.",
+            "purpose": "topic",
+            "clients_enabled": false,
+            "bookmark_url": "https://3.basecampapi.com/999/my/bookmarks/token-2085958500.json",
+            "star_url": "https://3.basecampapi.com/999/buckets/2085958500/stars.json",
+            "url": "https://3.basecampapi.com/999/projects/2085958500.json",
+            "app_url": "https://3.basecamp.com/999/projects/2085958500",
+            "bookmarked": false
+          }
+        ]
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestPath",
+        "expected": "/999/my/recent_projects.json"
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "path",
+      "projects",
+      "recent-projects"
+    ]
+  },
+  {
+    "name": "RecordProjectVisit constructs the project recent_visit path",
+    "description": "Verifies RecordProjectVisit POSTs /projects/{projectId}/recent_visit.json and accepts the bodyless 204 (BC3 #13043).",
+    "operation": "RecordProjectVisit",
+    "method": "POST",
+    "path": "/projects/{projectId}/recent_visit.json",
+    "pathParams": {
+      "projectId": 2085958505
+    },
+    "mockResponses": [
+      {
+        "status": 204
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestPath",
+        "expected": "/999/projects/2085958505/recent_visit.json"
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "path",
+      "projects",
+      "recent-projects"
+    ]
   }
 ]
