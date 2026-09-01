@@ -1648,7 +1648,7 @@ INTERFACE BasecampHooks
 END
 ```
 
-All methods are optional. A no-op default is valid. `on_paginate` is Ruby-only — new implementations may omit it.
+All methods are optional. A no-op default is valid. `on_paginate` is Ruby- and Python-only — new implementations may omit it.
 
 ### OperationInfo RECORD
 
