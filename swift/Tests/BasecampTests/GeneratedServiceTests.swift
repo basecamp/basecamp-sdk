@@ -14,6 +14,8 @@ final class GeneratedServiceTests: XCTestCase {
             "app_url": "https://3.basecamp.com/1/projects/42", "url": "https://3.basecampapi.com/1/projects/42.json",
             "created_at": "2026-01-01T00:00:00Z", "updated_at": "2026-01-01T00:00:00Z",
             "start_date": "2024-01-01", "end_date": "2024-03-31",
+            "star_url": "https://3.basecampapi.com/1/buckets/42/stars.json",
+            "bookmarked": true, "starred": false,
         ]
         let data = try JSONSerialization.data(withJSONObject: json)
 
@@ -26,6 +28,10 @@ final class GeneratedServiceTests: XCTestCase {
         XCTAssertEqual(project.status, "active")
         XCTAssertEqual(project.startDate, "2024-01-01")
         XCTAssertEqual(project.endDate, "2024-03-31")
+        XCTAssertEqual(project.starUrl, "https://3.basecampapi.com/1/buckets/42/stars.json")
+        // starred implies bookmarked, never the reverse: pinned but unstarred is the discriminating case.
+        XCTAssertEqual(project.bookmarked, true)
+        XCTAssertEqual(project.starred, false)
 
         // Verify request was sent to the correct path
         let lastURL = transport.lastRequest!.request.url!.absoluteString

@@ -69,6 +69,7 @@ func BenchmarkJSONMarshalProject(b *testing.B) {
 		Purpose:        "company_hq",
 		ClientsEnabled: true,
 		BookmarkURL:    "https://3.basecamp.com/12345/bookmarks/67890",
+		StarURL:        "https://3.basecampapi.com/12345/buckets/67890/stars.json",
 		URL:            "https://3.basecampapi.com/12345/projects/67890.json",
 		AppURL:         "https://3.basecamp.com/12345/projects/67890",
 		Dock: []DockItem{
@@ -77,6 +78,7 @@ func BenchmarkJSONMarshalProject(b *testing.B) {
 			{ID: 3, Title: "Schedule", Name: "schedule", Enabled: true, URL: "https://example.com/3"},
 		},
 		Bookmarked: true,
+		Starred:    true,
 	}
 
 	b.ResetTimer()
@@ -97,6 +99,7 @@ func BenchmarkJSONUnmarshalProject(b *testing.B) {
 		"purpose": "company_hq",
 		"clients_enabled": true,
 		"bookmark_url": "https://3.basecamp.com/12345/bookmarks/67890",
+		"star_url": "https://3.basecampapi.com/12345/buckets/67890/stars.json",
 		"url": "https://3.basecampapi.com/12345/projects/67890.json",
 		"app_url": "https://3.basecamp.com/12345/projects/67890",
 		"dock": [
@@ -104,7 +107,8 @@ func BenchmarkJSONUnmarshalProject(b *testing.B) {
 			{"id": 2, "title": "To-dos", "name": "todoset", "enabled": true, "url": "https://example.com/2"},
 			{"id": 3, "title": "Schedule", "name": "schedule", "enabled": true, "url": "https://example.com/3"}
 		],
-		"bookmarked": true
+		"bookmarked": true,
+		"starred": true
 	}`)
 
 	b.ResetTimer()

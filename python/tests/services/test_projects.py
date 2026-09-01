@@ -32,6 +32,9 @@ class TestProjects:
                     "updated_at": "2024-01-15T10:00:00Z",
                     "url": "https://3.basecampapi.com/12345/projects/42.json",
                     "app_url": "https://3.basecamp.com/12345/projects/42",
+                    "star_url": "https://3.basecampapi.com/12345/buckets/42/stars.json",
+                    "bookmarked": True,
+                    "starred": False,
                 },
             )
         )
@@ -42,6 +45,10 @@ class TestProjects:
 
         assert project["start_date"] == "2024-01-01"
         assert project["end_date"] == "2024-03-31"
+        assert project["star_url"] == "https://3.basecampapi.com/12345/buckets/42/stars.json"
+        # starred implies bookmarked, never the reverse: pinned but unstarred is the discriminating case.
+        assert project["bookmarked"] is True
+        assert project["starred"] is False
 
     @respx.mock
     def test_list_projects_includes_schedule_dates(self):

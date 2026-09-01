@@ -10,6 +10,7 @@
   "end_date": "2022-04-01",
   "clients_enabled": false,
   "bookmark_url": "https://3.basecampapi.com/195539477/my/bookmarks/BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL0J1Y2tldC8yMDg1OTU4NDk5P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg1yZWFkYWJsZQY7AFRJIg9leHBpcmVzX2F0BjsAVDA=--691d627098347705738640552798539681dcd3b6.json",
+  "star_url": "https://3.basecampapi.com/195539477/buckets/2085958499/stars.json",
   "url": "https://3.basecampapi.com/195539477/projects/2085958499.json",
   "app_url": "https://3.basecamp.com/195539477/projects/2085958499",
   "dock": [
@@ -85,5 +86,7 @@
       "url": "https://3.basecampapi.com/195539477/buckets/2085958499/card_tables/1069479345.json",
       "app_url": "https://3.basecamp.com/195539477/buckets/2085958499/card_tables/1069479345"
     }
-  ]
+  ],
+  "bookmarked": true,
+  "starred": true
 }

@@ -10,7 +10,7 @@ import type { BasecampClient } from "../../src/client.js";
 
 const BASE_URL = "https://3.basecampapi.com/12345";
 
-const sampleProject = (id = 1) => ({
+const sampleProject = (id = 1, starred = false) => ({
   id,
   name: "My Project",
   description: "<p>A cool project</p>",
@@ -19,6 +19,9 @@ const sampleProject = (id = 1) => ({
   end_date: "2024-03-31",
   created_at: "2024-01-15T10:00:00Z",
   updated_at: "2024-01-15T10:00:00Z",
+  star_url: `${BASE_URL}/buckets/${id}/stars.json`,
+  bookmarked: true,
+  starred,
 });
 
 describe("ProjectsService", () => {
@@ -113,6 +116,22 @@ describe("ProjectsService", () => {
       expect(project.name).toBe("My Project");
       expect(project.start_date).toBe("2024-01-01");
       expect(project.end_date).toBe("2024-03-31");
+      expect(project.star_url).toBe(`${BASE_URL}/buckets/${projectId}/stars.json`);
+      // starred implies bookmarked, never the reverse: pinned but unstarred is the discriminating case.
+      expect(project.bookmarked).toBe(true);
+      expect(project.starred).toBe(false);
+    });
+
+    it("should carry starred through alongside bookmarked", async () => {
+      server.use(
+        http.get(`${BASE_URL}/projects/7`, () => {
+          return HttpResponse.json(sampleProject(7, true));
+        })
+      );
+
+      const project = await client.projects.get(7);
+      expect(project.bookmarked).toBe(true);
+      expect(project.starred).toBe(true);
     });
 
     it("should throw not_found for missing project", async () => {

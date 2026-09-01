@@ -1293,6 +1293,8 @@ class Project(TypedDict):
     id: int
     name: str
     purpose: NotRequired[str]
+    star_url: NotRequired[str]
+    starred: NotRequired[bool]
     start_date: NotRequired[str]
     status: str
     updated_at: str

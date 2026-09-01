@@ -26,8 +26,10 @@ data class Project(
     @SerialName("end_date") val endDate: String? = null,
     @SerialName("clients_enabled") val clientsEnabled: Boolean? = null,
     @SerialName("bookmark_url") val bookmarkUrl: String? = null,
+    @SerialName("star_url") val starUrl: String? = null,
     val dock: List<DockItem>? = null,
     val bookmarked: Boolean? = null,
+    val starred: Boolean? = null,
     @SerialName("client_company") val clientCompany: ClientCompany? = null,
     @Deprecated("This shape is deprecated since 2024-01: Use Client Visibility feature instead")
     val clientside: ClientSide? = null

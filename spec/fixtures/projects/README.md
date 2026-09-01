@@ -39,5 +39,7 @@ JSON fixtures extracted from the canonical projects docs in `basecamp/bc3/doc/ap
 
 - get.json includes a scheduled project with `start_date` and `end_date`
 - list.json includes one scheduled project and one project with `client_company` and `clientside` fields (id: 2085958500)
+- `bookmarked` and `starred` describe the current user's home page (BC3 #13042): `bookmarked` is true when the project is pinned there at all, `starred` only when the pin carries a star — so `starred` implies `bookmarked`, never the reverse. list.json carries one starred project and one bookmarked-but-unstarred project (id: 2085958500), so a decoder that conflated the two would fail on the second
+- `star_url` is the bucket stars collection, `/buckets/{id}/stars.json`
 - DockItem.position can be null when enabled=false
 - All timestamps are ISO8601 format

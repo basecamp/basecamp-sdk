@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-08-31T20:18:08Z
+# Generated: 2026-09-01T04:02:35Z
 
 require "json"
 require "time"
@@ -3169,7 +3169,7 @@ module Basecamp
       include TypeHelpers
       # @!attribute [rw] clientside
       #   @deprecated This shape is deprecated since 2024-01: Use Client Visibility feature instead
-      attr_accessor :app_url, :created_at, :id, :name, :status, :updated_at, :url, :bookmark_url, :bookmarked, :client_company, :clients_enabled, :clientside, :description, :dock, :end_date, :purpose, :start_date
+      attr_accessor :app_url, :created_at, :id, :name, :status, :updated_at, :url, :bookmark_url, :bookmarked, :client_company, :clients_enabled, :clientside, :description, :dock, :end_date, :purpose, :star_url, :starred, :start_date
 
       # @return [Array<Symbol>]
       def self.required_fields
@@ -3193,6 +3193,8 @@ module Basecamp
         @dock = parse_array(data["dock"], "DockItem")
         @end_date = data["end_date"]
         @purpose = data["purpose"]
+        @star_url = data["star_url"]
+        @starred = parse_boolean(data["starred"])
         @start_date = data["start_date"]
       end
 
@@ -3214,6 +3216,8 @@ module Basecamp
           "dock" => @dock,
           "end_date" => @end_date,
           "purpose" => @purpose,
+          "star_url" => @star_url,
+          "starred" => @starred,
           "start_date" => @start_date,
         }.compact
       end
