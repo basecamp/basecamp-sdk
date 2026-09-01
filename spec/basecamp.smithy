@@ -63,6 +63,8 @@ service Basecamp {
     TrashProject,
     ArchiveProject,
     UnarchiveProject,
+    ListRecentProjects,
+    RecordProjectVisit,
     ListTodos,
     GetTodo,
     CreateTodo,
@@ -700,6 +702,57 @@ structure UnarchiveProjectInput {
 }
 
 structure UnarchiveProjectOutput {}
+
+/// List the projects the current user has most recently visited, most recent visit first.
+/// Reads the per-user visit log — capped at the 50 most recent visits, keeping
+/// only active projects the user can still access — not the home grid's
+/// pinned-exclusion and padding. This endpoint is not paginated. Each entry is
+/// the standard project projection plus the current user's bookmarked flag. A
+/// visit is recorded when the user opens a project in Basecamp, when they
+/// create one, and by RecordProjectVisit.
+@readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@http(method: "GET", uri: "/{accountId}/my/recent_projects.json")
+operation ListRecentProjects {
+  input: ListRecentProjectsInput
+  output: ListRecentProjectsOutput
+  errors: [UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure ListRecentProjectsInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+}
+
+structure ListRecentProjectsOutput {
+  projects: ProjectList
+}
+
+/// Record that the current user visited a project, moving it to the front of ListRecentProjects (returns 204 No Content).
+/// Idempotent: re-recording a visit refreshes the same entry. Visits to
+/// archived or trashed projects are accepted but not recorded, and an
+/// inaccessible project answers 404.
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
+@http(method: "POST", uri: "/{accountId}/projects/{projectId}/recent_visit.json", code: 204)
+operation RecordProjectVisit {
+  input: RecordProjectVisitInput
+  output: RecordProjectVisitOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure RecordProjectVisitInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  projectId: ProjectId
+}
+
+structure RecordProjectVisitOutput {}
 
 
 // ===== Sensitive Types (PII) =====

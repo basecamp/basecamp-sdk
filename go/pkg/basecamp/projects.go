@@ -220,6 +220,67 @@ func (s *ProjectsService) List(ctx context.Context, opts *ProjectListOptions) (r
 	return &ProjectListResult{Projects: projects, Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 }
 
+// ListRecent returns the projects the current user has most recently visited,
+// most recent visit first. The API reads the per-user visit log — capped at
+// the 50 most recent visits, keeping only active projects the user can still
+// access — so the response is a single page and no pagination is performed.
+func (s *ProjectsService) ListRecent(ctx context.Context) (result []Project, err error) {
+	op := OperationInfo{
+		Service: "Projects", Operation: "ListRecent",
+		ResourceType: "project", IsMutation: false,
+	}
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
+	start := time.Now()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	resp, err := s.client.parent.gen.ListRecentProjectsWithResponse(ctx, s.client.accountID)
+	if err != nil {
+		return nil, err
+	}
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
+		return nil, err
+	}
+
+	var projects []Project
+	if resp.JSON200 != nil {
+		for _, gp := range *resp.JSON200 {
+			projects = append(projects, projectFromGenerated(gp))
+		}
+	}
+	return projects, nil
+}
+
+// RecordVisit records that the current user visited the project, moving it to
+// the front of ListRecent. Idempotent: re-recording a visit refreshes the same
+// entry. Visits to archived or trashed projects are accepted but not recorded,
+// and an inaccessible project answers 404.
+func (s *ProjectsService) RecordVisit(ctx context.Context, id int64) (err error) {
+	op := OperationInfo{
+		Service: "Projects", Operation: "RecordVisit",
+		ResourceType: "project", IsMutation: true,
+		ProjectID: id,
+	}
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
+	start := time.Now()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	resp, err := s.client.parent.gen.RecordProjectVisitWithResponse(ctx, s.client.accountID, id)
+	if err != nil {
+		return err
+	}
+	return checkResponse(resp.HTTPResponse, resp.Body)
+}
+
 // Get returns a project by ID.
 func (s *ProjectsService) Get(ctx context.Context, id int64) (result *Project, err error) {
 	op := OperationInfo{

@@ -90,6 +90,10 @@ grouped:
       methods: ["Get"]
     - operation: ListProjects
       methods: ["List"]
+    - operation: ListRecentProjects
+      methods: ["ListRecent"]
+    - operation: RecordProjectVisit
+      methods: ["RecordVisit"]
     - operation: TrashProject
       methods: ["Trash"]
     - operation: UnarchiveProject

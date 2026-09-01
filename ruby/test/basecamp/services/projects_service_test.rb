@@ -63,6 +63,52 @@ class ProjectsServiceTest < Minitest::Test
     assert_equal 1, projects.length
   end
 
+  def test_list_recent_projects
+    # The recently-visited list is the standard projection plus bookmarked
+    # only — the wire omits starred here (BC3 #13043).
+    recent = [
+      sample_project(id: 456, name: "Visited Last").except("starred"),
+      sample_project(id: 123, name: "Visited First").except("starred").merge("bookmarked" => false)
+    ]
+    stub_get("/12345/my/recent_projects.json", response_body: recent)
+
+    projects = @account.projects.list_recent_projects.to_a
+
+    assert_equal 2, projects.length
+    assert_equal [ 456, 123 ], projects.map { |p| p["id"] }
+    assert_equal [ true, false ], projects.map { |p| p["bookmarked"] }
+    assert projects.none? { |p| p.key?("starred") }
+  end
+
+  def test_list_recent_projects_forbidden
+    stub_get("/12345/my/recent_projects.json", response_body: { error: "Forbidden" }, status: 403)
+
+    error = assert_raises(Basecamp::ForbiddenError) do
+      @account.projects.list_recent_projects.to_a
+    end
+
+    assert_equal 403, error.http_status
+  end
+
+  def test_record_project_visit
+    stub_post("/12345/projects/123/recent_visit.json", response_body: "", status: 204)
+
+    result = @account.projects.record_project_visit(project_id: 123)
+
+    assert_nil result
+  end
+
+  def test_record_project_visit_not_found
+    # An inaccessible project answers 404; archived/trashed ones still 204.
+    stub_post("/12345/projects/999/recent_visit.json", response_body: "", status: 404)
+
+    error = assert_raises(Basecamp::NotFoundError) do
+      @account.projects.record_project_visit(project_id: 999)
+    end
+
+    assert_equal 404, error.http_status
+  end
+
   def test_get_project
     # Generated service: /projects/{id} without .json
     stub_get("/12345/projects/123", response_body: sample_project)

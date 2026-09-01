@@ -41,6 +41,14 @@ export const LIVE_OPERATIONS: Record<string, DispatchSpec> = {
     },
   },
 
+  ListRecentProjects: {
+    fixtures: [],
+    call: async (ctx) => {
+      const result = await ctx.client.projects.listRecentProjects();
+      return { resolvedIds: {}, result };
+    },
+  },
+
   GetProject: {
     fixtures: ["PROJECT_ID"],
     call: async (ctx, ids) => {

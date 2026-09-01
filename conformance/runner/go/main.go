@@ -730,6 +730,18 @@ func executeOperation(ctx context.Context, account *basecamp.AccountClient, tc T
 		project, err := account.Projects().Get(ctx, projectID)
 		return operationResult{err: err, result: project}
 
+	case "ListRecentProjects":
+		projects, err := account.Projects().ListRecent(ctx)
+		if err != nil {
+			return operationResult{err: err}
+		}
+		return operationResult{result: summarizeProjects(projects)}
+
+	case "RecordProjectVisit":
+		projectID := getInt64Param(tc.PathParams, "projectId")
+		err := account.Projects().RecordVisit(ctx, projectID)
+		return operationResult{err: err}
+
 	case "CreateProject":
 		name := getStringParam(tc.RequestBody, "name")
 		if name == "" {

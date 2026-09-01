@@ -5,7 +5,7 @@
   "source": {
     "repo": "basecamp/bc3",
     "branch": "master",
-    "revision": "824013d672d8e8370b15dc8a44f3a324d969212f",
+    "revision": "88549ca619eafc43e88639d0533f0d02e442edec",
     "date": "2026-08-31",
     "extracted_from": [
       "doc/api/sections/*.md"
@@ -1717,6 +1717,18 @@
     },
     {
       "method": "GET",
+      "path": "/my/recent_projects",
+      "raw": "/my/recent_projects.json",
+      "sections": [
+        "projects.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
       "path": "/people",
       "raw": "/people.json",
       "sections": [
@@ -3113,6 +3125,17 @@
       "evidence": [
         "bullet",
         "example-marker"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/projects/:id/recent_visit",
+      "raw": "/projects/1/recent_visit.json",
+      "sections": [
+        "projects.md"
+      ],
+      "evidence": [
+        "bullet"
       ]
     },
     {

@@ -1731,6 +1731,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/my/recent_projects.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description List the projects the current user has most recently visited, most recent visit first.
+         *     Reads the per-user visit log — capped at the 50 most recent visits, keeping
+         *     only active projects the user can still access — not the home grid's
+         *     pinned-exclusion and padding. This endpoint is not paginated. Each entry is
+         *     the standard project projection plus the current user's bookmarked flag. A
+         *     visit is recorded when the user opens a project in Basecamp, when they
+         *     create one, and by RecordProjectVisit.
+         */
+        get: operations["ListRecentProjects"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/my/unreads.json": {
         parameters: {
             query?: never;
@@ -1944,6 +1969,28 @@ export interface paths {
         /** @description Update project access (grant/revoke/create people) */
         put: operations["UpdateProjectAccess"];
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/projects/{projectId}/recent_visit.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Record that the current user visited a project, moving it to the front of ListRecentProjects (returns 204 No Content).
+         *     Idempotent: re-recording a visit refreshes the same entry. Visits to
+         *     archived or trashed projects are accepted but not recorded, and an
+         *     inaccessible project answers 404.
+         */
+        post: operations["RecordProjectVisit"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4961,6 +5008,7 @@ export interface components {
         ListProjectsResponseContent: components["schemas"]["Project"][];
         ListQuestionAnswerersResponseContent: components["schemas"]["Person"][];
         ListQuestionsResponseContent: components["schemas"]["Question"][];
+        ListRecentProjectsResponseContent: components["schemas"]["Project"][];
         ListRecordingBoostsResponseContent: components["schemas"]["Boost"][];
         ListRecordingsResponseContent: components["schemas"]["Recording"][];
         ListScheduleEntriesResponseContent: components["schemas"]["ScheduleEntry"][];
@@ -15008,6 +15056,62 @@ export interface operations {
             };
         };
     };
+    ListRecentProjects: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description ListRecentProjects 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListRecentProjectsResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
     MarkAsRead: {
         parameters: {
             query?: never;
@@ -16080,6 +16184,71 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ValidationErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    RecordProjectVisit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description RecordProjectVisit 204 response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
                 };
             };
             /** @description RateLimitError 429 response */

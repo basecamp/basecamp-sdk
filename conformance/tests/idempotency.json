@@ -439,5 +439,37 @@
       "delete",
       "spotlights"
     ]
+  },
+  {
+    "name": "RecordProjectVisit POST retries when marked idempotent",
+    "description": "Re-recording a visit refreshes the same entry and still returns 204, so metadata-driven SDKs retry it on 503.",
+    "operation": "RecordProjectVisit",
+    "method": "POST",
+    "path": "/projects/{projectId}/recent_visit.json",
+    "pathParams": {
+      "projectId": 2085958505
+    },
+    "mockResponses": [
+      {
+        "status": 503
+      },
+      {
+        "status": 204
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestCount",
+        "expected": 2
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "idempotent",
+      "post",
+      "recent-projects"
+    ]
   }
 ]

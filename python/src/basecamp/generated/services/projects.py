@@ -11,6 +11,21 @@ from basecamp.hooks import OperationInfo
 
 
 class ProjectsService(BaseService):
+    def list_recent_projects(self) -> ListResult:
+        """List the projects the current user has most recently visited, most recent visit first.
+        Reads the per-user visit log — capped at the 50 most recent visits, keeping
+        only active projects the user can still access — not the home grid's
+        pinned-exclusion and padding. This endpoint is not paginated. Each entry is
+        the standard project projection plus the current user's bookmarked flag. A
+        visit is recorded when the user opens a project in Basecamp, when they
+        create one, and by RecordProjectVisit.
+        """
+        return self._request_list(
+            OperationInfo(service="projects", operation="list_recent_projects", is_mutation=False),
+            "/my/recent_projects.json",
+            operation="ListRecentProjects",
+        )
+
     def list(self, *, status: str | None = None, page: int | None = None, max_items: int | None = None) -> ListResult:
         """List projects (active by default; optionally archived/trashed).
 
@@ -99,6 +114,24 @@ class ProjectsService(BaseService):
             operation="TrashProject",
         )
 
+    def record_project_visit(self, *, project_id: int) -> None:
+        """Record that the current user visited a project, moving it to the front of ListRecentProjects (returns 204 No Content).
+        Idempotent: re-recording a visit refreshes the same entry. Visits to
+        archived or trashed projects are accepted but not recorded, and an
+        inaccessible project answers 404.
+
+        Args:
+            project_id: The project id.
+        """
+        self._request_void(
+            OperationInfo(
+                service="projects", operation="record_project_visit", is_mutation=True, project_id=project_id
+            ),
+            "POST",
+            f"/projects/{project_id}/recent_visit.json",
+            operation="RecordProjectVisit",
+        )
+
     def unarchive(self, *, project_id: int) -> None:
         """Restore a project to active status from trash as well as from the archive (returns 204 No Content).
         This is the inverse of both ArchiveProject and TrashProject. Restoring counts against
@@ -131,6 +164,21 @@ class ProjectsService(BaseService):
 
 
 class AsyncProjectsService(AsyncBaseService):
+    async def list_recent_projects(self) -> ListResult:
+        """List the projects the current user has most recently visited, most recent visit first.
+        Reads the per-user visit log — capped at the 50 most recent visits, keeping
+        only active projects the user can still access — not the home grid's
+        pinned-exclusion and padding. This endpoint is not paginated. Each entry is
+        the standard project projection plus the current user's bookmarked flag. A
+        visit is recorded when the user opens a project in Basecamp, when they
+        create one, and by RecordProjectVisit.
+        """
+        return await self._request_list(
+            OperationInfo(service="projects", operation="list_recent_projects", is_mutation=False),
+            "/my/recent_projects.json",
+            operation="ListRecentProjects",
+        )
+
     async def list(
         self, *, status: str | None = None, page: int | None = None, max_items: int | None = None
     ) -> ListResult:
@@ -219,6 +267,24 @@ class AsyncProjectsService(AsyncBaseService):
             "DELETE",
             f"/projects/{project_id}",
             operation="TrashProject",
+        )
+
+    async def record_project_visit(self, *, project_id: int) -> None:
+        """Record that the current user visited a project, moving it to the front of ListRecentProjects (returns 204 No Content).
+        Idempotent: re-recording a visit refreshes the same entry. Visits to
+        archived or trashed projects are accepted but not recorded, and an
+        inaccessible project answers 404.
+
+        Args:
+            project_id: The project id.
+        """
+        await self._request_void(
+            OperationInfo(
+                service="projects", operation="record_project_visit", is_mutation=True, project_id=project_id
+            ),
+            "POST",
+            f"/projects/{project_id}/recent_visit.json",
+            operation="RecordProjectVisit",
         )
 
     async def unarchive(self, *, project_id: int) -> None:

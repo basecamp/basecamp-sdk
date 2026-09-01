@@ -97,6 +97,7 @@ const val REPLAY_SCHEMA_VERSION = 1
  */
 internal val decoders: Map<String, (String) -> Unit> = mapOf(
     "ListProjects" to { bt -> replayJson.decodeFromString(ListSerializer(Project.serializer()), bt) },
+    "ListRecentProjects" to { bt -> replayJson.decodeFromString(ListSerializer(Project.serializer()), bt) },
     "GetProject" to { bt -> replayJson.decodeFromString(Project.serializer(), bt) },
     "GetMyAssignments" to { bt -> replayJson.decodeFromString(JsonElement.serializer(), bt) },
     "GetMyCompletedAssignments" to { bt -> replayJson.decodeFromString(JsonElement.serializer(), bt) },

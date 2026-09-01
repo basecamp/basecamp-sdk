@@ -11,6 +11,8 @@ apply UpdateProject @tags(["Projects"])
 apply TrashProject @tags(["Projects"])
 apply ArchiveProject @tags(["Projects"])
 apply UnarchiveProject @tags(["Projects"])
+apply ListRecentProjects @tags(["Projects"])
+apply RecordProjectVisit @tags(["Projects"])
 
 // Todos (includes Todolists, TodolistGroups, Todosets)
 apply ListTodos @tags(["Todos"])

@@ -149,6 +149,68 @@ describe("ProjectsService", () => {
     });
   });
 
+  describe("listRecentProjects", () => {
+    it("should list recently visited projects, most recent visit first", async () => {
+      // The recently-visited list is the standard projection plus bookmarked
+      // only — the wire omits starred here (BC3 #13043).
+      const recent = [sampleProject(2), { ...sampleProject(1), bookmarked: false }].map(
+        ({ starred: _starred, ...p }) => p
+      );
+      server.use(
+        http.get(`${BASE_URL}/my/recent_projects.json`, () => {
+          return HttpResponse.json(recent);
+        })
+      );
+
+      const projects = await client.projects.listRecentProjects();
+      expect(projects.map((p) => p.id)).toEqual([2, 1]);
+      expect(projects.map((p) => p.bookmarked)).toEqual([true, false]);
+      expect(projects.every((p) => p.starred === undefined)).toBe(true);
+    });
+
+    it("should return an empty array when nothing has been visited", async () => {
+      server.use(
+        http.get(`${BASE_URL}/my/recent_projects.json`, () => {
+          return HttpResponse.json([]);
+        })
+      );
+
+      await expect(client.projects.listRecentProjects()).resolves.toEqual([]);
+    });
+
+    it("should throw forbidden when the visit log is not accessible", async () => {
+      server.use(
+        http.get(`${BASE_URL}/my/recent_projects.json`, () => {
+          return HttpResponse.json({ error: "Forbidden" }, { status: 403 });
+        })
+      );
+
+      await expect(client.projects.listRecentProjects()).rejects.toThrow(BasecampError);
+    });
+  });
+
+  describe("recordProjectVisit", () => {
+    it("should record a visit with a bodyless 204", async () => {
+      server.use(
+        http.post(`${BASE_URL}/projects/42/recent_visit.json`, () => {
+          return new HttpResponse(null, { status: 204 });
+        })
+      );
+
+      await expect(client.projects.recordProjectVisit(42)).resolves.toBeUndefined();
+    });
+
+    it("should throw not_found for an inaccessible project", async () => {
+      server.use(
+        http.post(`${BASE_URL}/projects/999/recent_visit.json`, () => {
+          return HttpResponse.json({ error: "Not found" }, { status: 404 });
+        })
+      );
+
+      await expect(client.projects.recordProjectVisit(999)).rejects.toThrow(BasecampError);
+    });
+  });
+
   describe("create", () => {
     it("should create a project with name and description", async () => {
       server.use(

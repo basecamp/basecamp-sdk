@@ -148,6 +148,8 @@ runners:
         reason: "GET-only retry (waiver 2B.3)."
       - case: "UnspotlightRecording DELETE retries when marked idempotent"
         reason: "GET-only retry (waiver 2B.3)."
+      - case: "RecordProjectVisit POST retries when marked idempotent"
+        reason: "GET-only retry (waiver 2B.3)."
       - case: "UpdateMyNote PUT retries when marked idempotent"
         reason: "GET-only retry (waiver 2B.3)."
       - case: "UpdateCalendar PUT retries when marked idempotent"

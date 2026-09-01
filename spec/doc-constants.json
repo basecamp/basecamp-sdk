@@ -82,7 +82,7 @@
   "unmarkedPinCitations": {
     "spec/api-gaps/README.md": {
       "count": 1,
-      "reason": "the current range triage names its own endpoint in 71b43f3d9fa..824013d672d; that range is an as-of fact bound to this repin and remains true after the pin advances. The pin sentence is separately marked <!-- @bc3-pin --> and is the only class-A claim in the file",
+      "reason": "the current range triage names its own endpoint in 824013d672d..88549ca619e; that range is an as-of fact bound to this repin and remains true after the pin advances. The pin sentence is separately marked <!-- @bc3-pin --> and is the only class-A claim in the file",
       "$comment": "This reason restates the range it grants, so its endpoint is itself an as-of fact of this repin."
     }
   }

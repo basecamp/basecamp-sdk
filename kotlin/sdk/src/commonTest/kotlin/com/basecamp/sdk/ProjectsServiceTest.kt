@@ -185,6 +185,89 @@ class ProjectsServiceTest {
         client.close()
     }
 
+    // The recently-visited list is the standard projection plus bookmarked
+    // only — the wire omits starred here (BC3 #13043).
+    private fun recentProjectJson(id: Long, name: String, bookmarked: Boolean) = """{
+        "id": $id, "status": "active", "name": "$name",
+        "created_at": "2025-01-01T00:00:00Z", "updated_at": "2025-01-01T00:00:00Z",
+        "url": "https://3.basecampapi.com/12345/projects/$id.json",
+        "app_url": "https://3.basecamp.com/12345/projects/$id",
+        "star_url": "https://3.basecampapi.com/12345/buckets/$id/stars.json",
+        "bookmarked": $bookmarked,
+        "dock": []
+    }"""
+
+    @Test
+    fun listRecentProjects() = runTest {
+        val client = mockClient { request ->
+            assertEquals("/12345/my/recent_projects.json", request.url.encodedPath)
+
+            respond(
+                content = """[
+                    ${recentProjectJson(2, "Visited Last", bookmarked = true)},
+                    ${recentProjectJson(1, "Visited First", bookmarked = false)}
+                ]""",
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+            )
+        }
+
+        val account = client.forAccount("12345")
+        val projects = account.projects.listRecentProjects()
+
+        assertEquals(listOf(2L, 1L), projects.map { it.id })
+        assertEquals(listOf(true, false), projects.map { it.bookmarked })
+        assertEquals(listOf(null, null), projects.map { it.starred })
+
+        client.close()
+    }
+
+    @Test
+    fun recordProjectVisit() = runTest {
+        var capturedMethod: HttpMethod? = null
+        var capturedPath: String? = null
+
+        val client = mockClient { request ->
+            capturedMethod = request.method
+            capturedPath = request.url.encodedPath
+
+            respond(
+                content = "",
+                status = HttpStatusCode.NoContent,
+            )
+        }
+
+        val account = client.forAccount("12345")
+        account.projects.recordProjectVisit(projectId = 42)
+
+        assertEquals(HttpMethod.Post, capturedMethod)
+        assertTrue(capturedPath!!.endsWith("/projects/42/recent_visit.json"))
+
+        client.close()
+    }
+
+    // An inaccessible project answers 404; archived/trashed ones still 204.
+    @Test
+    fun recordProjectVisitNotFoundThrows() = runTest {
+        val client = mockClient { _ ->
+            respond(
+                content = """{"error": "Not found"}""",
+                status = HttpStatusCode.NotFound,
+                headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+            )
+        }
+
+        val account = client.forAccount("12345")
+        try {
+            account.projects.recordProjectVisit(projectId = 999)
+            assertTrue(false, "Should have thrown")
+        } catch (e: BasecampException.NotFound) {
+            assertEquals(404, e.httpStatus)
+        }
+
+        client.close()
+    }
+
     @Test
     fun trashProject() = runTest {
         var capturedMethod: HttpMethod? = null

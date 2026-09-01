@@ -160,6 +160,12 @@ private let resourceTypeOverrides: [String: String] = [
     // "resource" and would split this delete away from the get/update siblings
     // that report "timesheet_entry".
     "DestroyTimesheetEntry": "timesheet_entry",
+    // The whole family reports "project" (as the Go wrapper does); the inferred
+    // "recent_project" would split the list operation into its own telemetry
+    // category, and "Record" is not a verb pattern, so the visit would fall
+    // through to the generic "resource".
+    "ListRecentProjects": "project",
+    "RecordProjectVisit": "project",
 ]
 
 /// Extracts the resource type from an operationId using verb patterns.

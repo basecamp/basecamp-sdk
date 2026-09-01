@@ -46,6 +46,10 @@ var decoders = map[string]func(bodyText string) error{
 		var v generated.ListProjectsResponseContent
 		return json.Unmarshal([]byte(bt), &v)
 	},
+	"ListRecentProjects": func(bt string) error {
+		var v generated.ListRecentProjectsResponseContent
+		return json.Unmarshal([]byte(bt), &v)
+	},
 	"GetProject": func(bt string) error {
 		var v generated.GetProjectResponseContent
 		return json.Unmarshal([]byte(bt), &v)

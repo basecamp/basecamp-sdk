@@ -1983,6 +1983,9 @@ type ListQuestionAnswerersResponseContent = []Person
 // ListQuestionsResponseContent defines model for ListQuestionsResponseContent.
 type ListQuestionsResponseContent = []Question
 
+// ListRecentProjectsResponseContent defines model for ListRecentProjectsResponseContent.
+type ListRecentProjectsResponseContent = []Project
+
 // ListRecordingBoostsResponseContent defines model for ListRecordingBoostsResponseContent.
 type ListRecordingBoostsResponseContent = []Boost
 
@@ -6285,6 +6288,9 @@ type ClientInterface interface {
 	// GetBubbleUps request
 	GetBubbleUps(ctx context.Context, accountId string, params *GetBubbleUpsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// ListRecentProjects request
+	ListRecentProjects(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// MarkAsReadWithBody request with any body
 	MarkAsReadWithBody(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -6349,6 +6355,9 @@ type ClientInterface interface {
 	UpdateProjectAccessWithBody(ctx context.Context, accountId string, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	UpdateProjectAccess(ctx context.Context, accountId string, projectId int64, body UpdateProjectAccessJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RecordProjectVisit request
+	RecordProjectVisit(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UnarchiveProject request
 	UnarchiveProject(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -8526,6 +8535,16 @@ func (c *Client) GetBubbleUps(ctx context.Context, accountId string, params *Get
 
 }
 
+// ListRecentProjects is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) ListRecentProjects(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewListRecentProjectsRequest(c.Server, accountId)
+	}, true, "ListRecentProjects", reqEditors...)
+
+}
+
 // MarkAsReadWithBody is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) MarkAsReadWithBody(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -8785,6 +8804,16 @@ func (c *Client) UpdateProjectAccess(ctx context.Context, accountId string, proj
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateProjectAccessRequest(c.Server, accountId, projectId, body)
 	}, true, "UpdateProjectAccess", reqEditors...)
+
+}
+
+// RecordProjectVisit is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) RecordProjectVisit(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewRecordProjectVisitRequest(c.Server, accountId, projectId)
+	}, true, "RecordProjectVisit", reqEditors...)
 
 }
 
@@ -16892,6 +16921,40 @@ func NewGetBubbleUpsRequest(server string, accountId string, params *GetBubbleUp
 	return req, nil
 }
 
+// NewListRecentProjectsRequest generates requests for ListRecentProjects
+func NewListRecentProjectsRequest(server string, accountId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/my/recent_projects.json", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewMarkAsReadRequest calls the generic MarkAsRead builder with application/json body
 func NewMarkAsReadRequest(server string, accountId string, body MarkAsReadJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -17843,6 +17906,47 @@ func NewUpdateProjectAccessRequestWithBody(server string, accountId string, proj
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewRecordProjectVisitRequest generates requests for RecordProjectVisit
+func NewRecordProjectVisitRequest(server string, accountId string, projectId int64) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/projects/%s/recent_visit.json", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -24313,6 +24417,7 @@ var operationMetadata = map[string]OperationMetadata{
 	"GetQuestionReminders":               {Idempotent: true, HasSensitiveParams: false},
 	"GetMyNotifications":                 {Idempotent: true, HasSensitiveParams: false},
 	"GetBubbleUps":                       {Idempotent: true, HasSensitiveParams: false},
+	"ListRecentProjects":                 {Idempotent: true, HasSensitiveParams: false},
 	"MarkAsRead":                         {Idempotent: true, HasSensitiveParams: false},
 	"ListPeople":                         {Idempotent: true, HasSensitiveParams: false},
 	"GetPerson":                          {Idempotent: true, HasSensitiveParams: false},
@@ -24330,6 +24435,7 @@ var operationMetadata = map[string]OperationMetadata{
 	"CreateGaugeNeedle":                  {Idempotent: false, HasSensitiveParams: false},
 	"ListProjectPeople":                  {Idempotent: true, HasSensitiveParams: false},
 	"UpdateProjectAccess":                {Idempotent: true, HasSensitiveParams: false},
+	"RecordProjectVisit":                 {Idempotent: true, HasSensitiveParams: false},
 	"UnarchiveProject":                   {Idempotent: true, HasSensitiveParams: false},
 	"ArchiveProject":                     {Idempotent: true, HasSensitiveParams: false},
 	"GetProjectTimeline":                 {Idempotent: true, HasSensitiveParams: false},
@@ -24574,6 +24680,7 @@ var operationRetryMax = map[string]int{
 	"GetQuestionReminders":               3,
 	"GetMyNotifications":                 3,
 	"GetBubbleUps":                       3,
+	"ListRecentProjects":                 3,
 	"MarkAsRead":                         2,
 	"ListPeople":                         3,
 	"GetPerson":                          3,
@@ -24591,6 +24698,7 @@ var operationRetryMax = map[string]int{
 	"CreateGaugeNeedle":                  2,
 	"ListProjectPeople":                  3,
 	"UpdateProjectAccess":                3,
+	"RecordProjectVisit":                 3,
 	"UnarchiveProject":                   3,
 	"ArchiveProject":                     3,
 	"GetProjectTimeline":                 3,
@@ -24833,6 +24941,7 @@ var operationRetryOn = map[string][]int{
 	"GetQuestionReminders":               {429, 503},
 	"GetMyNotifications":                 {429, 503},
 	"GetBubbleUps":                       {429, 503},
+	"ListRecentProjects":                 {429, 503},
 	"MarkAsRead":                         {429, 503},
 	"ListPeople":                         {429, 503},
 	"GetPerson":                          {429, 503},
@@ -24850,6 +24959,7 @@ var operationRetryOn = map[string][]int{
 	"CreateGaugeNeedle":                  {429, 503},
 	"ListProjectPeople":                  {429, 503},
 	"UpdateProjectAccess":                {429, 503},
+	"RecordProjectVisit":                 {429, 503},
 	"UnarchiveProject":                   {429, 503},
 	"ArchiveProject":                     {429, 503},
 	"GetProjectTimeline":                 {429, 503},
@@ -25656,6 +25766,10 @@ func (s *PeopleService) GetMyProfile(ctx context.Context, accountId string, reqE
 	return s.client.GetMyProfile(ctx, accountId, reqEditors...)
 }
 
+func (s *ProjectsService) ListRecent(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.ListRecentProjects(ctx, accountId, reqEditors...)
+}
+
 func (s *PeopleService) List(ctx context.Context, accountId string, params *ListPeopleParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	return s.client.ListPeople(ctx, accountId, params, reqEditors...)
 }
@@ -25694,6 +25808,10 @@ func (s *ProjectsService) UpdateWithBody(ctx context.Context, accountId string, 
 
 func (s *ProjectsService) Update(ctx context.Context, accountId string, projectId int64, body UpdateProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	return s.client.UpdateProject(ctx, accountId, projectId, body, reqEditors...)
+}
+
+func (s *ProjectsService) RecordVisit(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.RecordProjectVisit(ctx, accountId, projectId, reqEditors...)
 }
 
 func (s *ProjectsService) Unarchive(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -26375,6 +26493,9 @@ type ClientWithResponsesInterface interface {
 	// GetBubbleUpsWithResponse request
 	GetBubbleUpsWithResponse(ctx context.Context, accountId string, params *GetBubbleUpsParams, reqEditors ...RequestEditorFn) (*GetBubbleUpsResponse, error)
 
+	// ListRecentProjectsWithResponse request
+	ListRecentProjectsWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*ListRecentProjectsResponse, error)
+
 	// MarkAsReadWithBodyWithResponse request with any body
 	MarkAsReadWithBodyWithResponse(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*MarkAsReadResponse, error)
 
@@ -26439,6 +26560,9 @@ type ClientWithResponsesInterface interface {
 	UpdateProjectAccessWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateProjectAccessResponse, error)
 
 	UpdateProjectAccessWithResponse(ctx context.Context, accountId string, projectId int64, body UpdateProjectAccessJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateProjectAccessResponse, error)
+
+	// RecordProjectVisitWithResponse request
+	RecordProjectVisitWithResponse(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*RecordProjectVisitResponse, error)
 
 	// UnarchiveProjectWithResponse request
 	UnarchiveProjectWithResponse(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*UnarchiveProjectResponse, error)
@@ -30971,6 +31095,40 @@ func (r GetBubbleUpsResponse) ContentType() string {
 	return ""
 }
 
+type ListRecentProjectsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ListRecentProjectsResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r ListRecentProjectsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListRecentProjectsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListRecentProjectsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type MarkAsReadResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -31547,6 +31705,40 @@ func (r UpdateProjectAccessResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r UpdateProjectAccessResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type RecordProjectVisitResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r RecordProjectVisitResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RecordProjectVisitResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RecordProjectVisitResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -36913,6 +37105,15 @@ func (c *ClientWithResponses) GetBubbleUpsWithResponse(ctx context.Context, acco
 	return ParseGetBubbleUpsResponse(rsp)
 }
 
+// ListRecentProjectsWithResponse request returning *ListRecentProjectsResponse
+func (c *ClientWithResponses) ListRecentProjectsWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*ListRecentProjectsResponse, error) {
+	rsp, err := c.ListRecentProjects(ctx, accountId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListRecentProjectsResponse(rsp)
+}
+
 // MarkAsReadWithBodyWithResponse request with arbitrary body returning *MarkAsReadResponse
 func (c *ClientWithResponses) MarkAsReadWithBodyWithResponse(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*MarkAsReadResponse, error) {
 	rsp, err := c.MarkAsReadWithBody(ctx, accountId, contentType, body, reqEditors...)
@@ -37120,6 +37321,15 @@ func (c *ClientWithResponses) UpdateProjectAccessWithResponse(ctx context.Contex
 		return nil, err
 	}
 	return ParseUpdateProjectAccessResponse(rsp)
+}
+
+// RecordProjectVisitWithResponse request returning *RecordProjectVisitResponse
+func (c *ClientWithResponses) RecordProjectVisitWithResponse(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*RecordProjectVisitResponse, error) {
+	rsp, err := c.RecordProjectVisit(ctx, accountId, projectId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRecordProjectVisitResponse(rsp)
 }
 
 // UnarchiveProjectWithResponse request returning *UnarchiveProjectResponse
@@ -44686,6 +44896,56 @@ func ParseGetBubbleUpsResponse(rsp *http.Response) (*GetBubbleUpsResponse, error
 	return response, nil
 }
 
+// ParseListRecentProjectsResponse parses an HTTP response from a ListRecentProjectsWithResponse call
+func ParseListRecentProjectsResponse(rsp *http.Response) (*ListRecentProjectsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListRecentProjectsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ListRecentProjectsResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON401 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON403 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON429 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON500 = &dest
+		}
+
+	}
+
+	return response, nil
+}
+
 // ParseMarkAsReadResponse parses an HTTP response from a MarkAsReadWithResponse call
 func ParseMarkAsReadResponse(rsp *http.Response) (*MarkAsReadResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -45549,6 +45809,58 @@ func ParseUpdateProjectAccessResponse(rsp *http.Response) (*UpdateProjectAccessR
 		var dest ValidationErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
 			response.JSON422 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON429 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON500 = &dest
+		}
+
+	}
+
+	return response, nil
+}
+
+// ParseRecordProjectVisitResponse parses an HTTP response from a RecordProjectVisitWithResponse call
+func ParseRecordProjectVisitResponse(rsp *http.Response) (*RecordProjectVisitResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RecordProjectVisitResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON401 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON403 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON404 = &dest
 		}
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:

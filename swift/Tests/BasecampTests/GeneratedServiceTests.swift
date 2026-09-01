@@ -97,6 +97,57 @@ final class GeneratedServiceTests: XCTestCase {
 
     // MARK: - requestVoid path (DELETE)
 
+    func testListRecentProjectsDecodesBookmarkedOnlyProjection() async throws {
+        // The recently-visited list is the standard projection plus bookmarked
+        // only — the wire omits starred here (BC3 #13043).
+        let projects: [[String: Any]] = [
+            ["id": 2, "name": "Visited Last", "status": "active",
+             "app_url": "https://3.basecamp.com/1/projects/2", "url": "https://3.basecampapi.com/1/projects/2.json",
+             "created_at": "2026-01-01T00:00:00Z", "updated_at": "2026-01-01T00:00:00Z",
+             "bookmarked": true],
+            ["id": 1, "name": "Visited First", "status": "active",
+             "app_url": "https://3.basecamp.com/1/projects/1", "url": "https://3.basecampapi.com/1/projects/1.json",
+             "created_at": "2026-01-01T00:00:00Z", "updated_at": "2026-01-01T00:00:00Z",
+             "bookmarked": false],
+        ]
+        let data = try JSONSerialization.data(withJSONObject: projects)
+
+        let transport = MockTransport(statusCode: 200, data: data)
+        let account = makeTestAccountClient(transport: transport)
+
+        let result = try await account.projects.listRecentProjects()
+        XCTAssertEqual(result.map(\.id), [2, 1])
+        XCTAssertEqual(result.map(\.bookmarked), [true, false])
+        XCTAssertEqual(result.map(\.starred), [Bool?.none, Bool?.none])
+
+        let sentURL = transport.lastRequest!.request.url!.absoluteString
+        XCTAssertTrue(sentURL.hasSuffix("/my/recent_projects.json"), "Unexpected URL \(sentURL)")
+    }
+
+    func testRecordProjectVisitSendsPost() async throws {
+        let transport = MockTransport(statusCode: 204, data: Data())
+        let account = makeTestAccountClient(transport: transport)
+
+        try await account.projects.recordProjectVisit(projectId: 7)
+
+        let req = transport.lastRequest!.request
+        XCTAssertEqual(req.httpMethod, "POST")
+        XCTAssertTrue(req.url!.absoluteString.hasSuffix("/projects/7/recent_visit.json"))
+    }
+
+    // An inaccessible project answers 404; archived/trashed ones still 204.
+    func testRecordProjectVisitSurfacesNotFoundError() async throws {
+        let transport = MockTransport(statusCode: 404, data: Data())
+        let account = makeTestAccountClient(transport: transport)
+
+        do {
+            try await account.projects.recordProjectVisit(projectId: 999)
+            XCTFail("Expected not found error")
+        } catch let error as BasecampError {
+            XCTAssertEqual(error.httpStatusCode, 404)
+        }
+    }
+
     func testTrashProjectSendsDelete() async throws {
         let transport = MockTransport(statusCode: 204, data: Data())
         let account = makeTestAccountClient(transport: transport)

@@ -7,6 +7,14 @@ module Basecamp
     # @generated from OpenAPI spec
     class ProjectsService < BaseService
 
+      # List the projects the current user has most recently visited, most recent visit first.
+      # @return [Array<Hash>] response data
+      def list_recent_projects()
+        with_operation(service: "projects", operation: "list_recent_projects", is_mutation: false) do
+          http_get("/my/recent_projects.json", operation: "ListRecentProjects").json
+        end
+      end
+
       # List projects (active by default; optionally archived/trashed)
       # @param status [String, nil] active|archived|trashed
       # @param page [Integer, nil] Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
@@ -57,6 +65,16 @@ module Basecamp
       def trash(project_id:)
         with_operation(service: "projects", operation: "trash", is_mutation: true, project_id: project_id) do
           http_delete("/projects/#{project_id}")
+          nil
+        end
+      end
+
+      # Record that the current user visited a project, moving it to the front of ListRecentProjects (returns 204 No Content).
+      # @param project_id [Integer] project id ID
+      # @return [void]
+      def record_project_visit(project_id:)
+        with_operation(service: "projects", operation: "record_project_visit", is_mutation: true, project_id: project_id) do
+          http_post("/projects/#{project_id}/recent_visit.json")
           nil
         end
       end

@@ -66,6 +66,7 @@ def _decode(body_text: str) -> None:
 # every `make check` and CI run.
 DECODERS: dict[str, Callable[[str], None]] = {
     "ListProjects": _decode,
+    "ListRecentProjects": _decode,
     "GetProject": _decode,
     "GetMyAssignments": _decode,
     "GetMyCompletedAssignments": _decode,

@@ -547,6 +547,99 @@ func TestProjectsService_StatusTransitions(t *testing.T) {
 	}
 }
 
+// The recently-visited list is the standard projection plus bookmarked only —
+// the wire omits starred here (BC3 #13043).
+func TestProject_UnmarshalRecent(t *testing.T) {
+	data := loadFixture(t, "recent.json")
+
+	var projects []Project
+	if err := json.Unmarshal(data, &projects); err != nil {
+		t.Fatalf("failed to unmarshal recent.json: %v", err)
+	}
+
+	if len(projects) != 2 {
+		t.Fatalf("expected 2 projects, got %d", len(projects))
+	}
+	if projects[0].ID != 2085958500 || projects[1].ID != 2085958499 {
+		t.Errorf("ids = [%d, %d], want most recent visit first [2085958500, 2085958499]",
+			projects[0].ID, projects[1].ID)
+	}
+	if projects[0].Bookmarked || !projects[1].Bookmarked {
+		t.Errorf("bookmarked = [%v, %v], want [false, true]",
+			projects[0].Bookmarked, projects[1].Bookmarked)
+	}
+	if projects[0].Starred || projects[1].Starred {
+		t.Error("starred should stay false when the wire omits it")
+	}
+}
+
+func TestProjectsService_ListRecent(t *testing.T) {
+	var gotMethod, gotPath string
+	svc := testProjectsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		gotMethod, gotPath = r.Method, r.URL.Path
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write(loadFixture(t, "recent.json"))
+	})
+
+	projects, err := svc.ListRecent(context.Background())
+	if err != nil {
+		t.Fatalf("ListRecent returned error: %v", err)
+	}
+	if gotMethod != "GET" || gotPath != "/99999/my/recent_projects.json" {
+		t.Errorf("request = %s %s, want GET /99999/my/recent_projects.json", gotMethod, gotPath)
+	}
+	if len(projects) != 2 {
+		t.Fatalf("expected 2 projects, got %d", len(projects))
+	}
+	if projects[0].ID != 2085958500 {
+		t.Errorf("first project ID = %d, want the most recently visited 2085958500", projects[0].ID)
+	}
+	if projects[0].Bookmarked || !projects[1].Bookmarked {
+		t.Errorf("bookmarked = [%v, %v], want [false, true] carried through the wrapper conversion",
+			projects[0].Bookmarked, projects[1].Bookmarked)
+	}
+	if projects[0].Starred || projects[1].Starred {
+		t.Error("starred should stay false when the wire omits it")
+	}
+}
+
+func TestProjectsService_RecordVisit(t *testing.T) {
+	var gotMethod, gotPath string
+	svc := testProjectsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		gotMethod, gotPath = r.Method, r.URL.Path
+		w.WriteHeader(http.StatusNoContent)
+	})
+
+	if err := svc.RecordVisit(context.Background(), 42); err != nil {
+		t.Fatalf("RecordVisit returned error: %v", err)
+	}
+	if gotMethod != "POST" || gotPath != "/99999/projects/42/recent_visit.json" {
+		t.Errorf("request = %s %s, want POST /99999/projects/42/recent_visit.json", gotMethod, gotPath)
+	}
+}
+
+// An inaccessible project answers 404; archived/trashed ones still 204.
+func TestProjectsService_RecordVisitNotFound(t *testing.T) {
+	svc := testProjectsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte(`{"error":"Not found"}`))
+	})
+
+	err := svc.RecordVisit(context.Background(), 999)
+	if err == nil {
+		t.Fatal("RecordVisit should have returned an error on 404")
+	}
+
+	var bcErr *Error
+	if !errors.As(err, &bcErr) {
+		t.Fatalf("error is not *basecamp.Error: %T", err)
+	}
+	if bcErr.HTTPStatus != 404 {
+		t.Errorf("http status = %d, want 404", bcErr.HTTPStatus)
+	}
+}
+
 // The admin pro pack can limit archiving to admins and the project's creator,
 // which bc3 answers with `head :forbidden`.
 func TestProjectsService_ArchiveForbidden(t *testing.T) {
