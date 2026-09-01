@@ -39,7 +39,7 @@ describe("ProjectsService", () => {
     it("should list projects", async () => {
       server.use(
         http.get(`${BASE_URL}/projects.json`, () => {
-          return HttpResponse.json([sampleProject(1), sampleProject(2)]);
+          return HttpResponse.json([sampleProject(1, true), sampleProject(2)]);
         })
       );
 
@@ -48,6 +48,10 @@ describe("ProjectsService", () => {
       expect(projects[0]!.id).toBe(1);
       expect(projects[0]!.start_date).toBe("2024-01-01");
       expect(projects[1]!.id).toBe(2);
+      // starred implies bookmarked, never the reverse: the second project is pinned but unstarred.
+      expect(projects.map((p) => p.bookmarked)).toEqual([true, true]);
+      expect(projects.map((p) => p.starred)).toEqual([true, false]);
+      expect(projects[1]!.star_url).toBe(`${BASE_URL}/buckets/2/stars.json`);
     });
 
     it("should send no status param by default", async () => {

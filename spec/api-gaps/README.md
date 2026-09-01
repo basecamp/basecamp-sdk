@@ -143,9 +143,10 @@ making the absorption journey publicly auditable.
 > One correction to that disposition, not a new range: BC3 #13042
 > (`abdcdc61ef`), inside this range, made `GET /projects.json` emit `starred`
 > beside `bookmarked` and `GET /projects/{id}.json` emit both; the triage
-> above read the projects partial's dock filter and missed the two members
-> the index and show templates add around it. `Project` now carries `starred`
-> and the already-documented `star_url` the partial always emitted. Both are
+> above read the projects partial's dock filter and missed the two members —
+> `bookmarked` and `starred` — the index and show templates add around it.
+> `Project` now carries the newly emitted `starred`, plus `star_url`, which
+> the partial itself always emitted but the spec never modeled. Both are
 > optional, like `bookmarked` and `bookmark_url`, and the fixtures pin the
 > one combination that tells the flags apart: a star is a flag on a pin, so
 > `starred` implies `bookmarked` and pinned-but-unstarred is the case a
