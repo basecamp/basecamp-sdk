@@ -62,7 +62,7 @@ export interface UpdateProjectRequest {
 export class ProjectsService extends BaseService {
 
   /**
-   * List the projects the current user has most recently visited, most recent
+   * List the projects the current user has most recently visited, most recent visit first.
    * @returns Array of Project
    *
    * @example
@@ -249,7 +249,7 @@ export class ProjectsService extends BaseService {
   }
 
   /**
-   * Record that the current user visited a project, moving it to the front of
+   * Record that the current user visited a project, moving it to the front of ListRecentProjects.
    * @param projectId - The project ID
    * @returns void
    * @throws {BasecampError} If the request fails

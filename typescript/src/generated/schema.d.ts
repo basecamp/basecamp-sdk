@@ -1739,13 +1739,13 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * @description List the projects the current user has most recently visited, most recent
-         *     visit first. Reads the per-user visit log — capped at the 50 most recent
-         *     visits, keeping only active projects the user can still access — not the
-         *     home grid's pinned-exclusion and padding. This endpoint is not paginated.
-         *     Each entry is the standard project projection plus the current user's
-         *     bookmarked flag. A visit is recorded when the user opens a project in
-         *     Basecamp, when they create one, and by RecordProjectVisit.
+         * @description List the projects the current user has most recently visited, most recent visit first.
+         *     Reads the per-user visit log — capped at the 50 most recent visits, keeping
+         *     only active projects the user can still access — not the home grid's
+         *     pinned-exclusion and padding. This endpoint is not paginated. Each entry is
+         *     the standard project projection plus the current user's bookmarked flag. A
+         *     visit is recorded when the user opens a project in Basecamp, when they
+         *     create one, and by RecordProjectVisit.
          */
         get: operations["ListRecentProjects"];
         put?: never;
@@ -1985,10 +1985,10 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * @description Record that the current user visited a project, moving it to the front of
-         *     ListRecentProjects (returns 204 No Content). Idempotent: re-recording a
-         *     visit refreshes the same entry. Visits to archived or trashed projects are
-         *     accepted but not recorded, and an inaccessible project answers 404.
+         * @description Record that the current user visited a project, moving it to the front of ListRecentProjects (returns 204 No Content).
+         *     Idempotent: re-recording a visit refreshes the same entry. Visits to
+         *     archived or trashed projects are accepted but not recorded, and an
+         *     inaccessible project answers 404.
          */
         post: operations["RecordProjectVisit"];
         delete?: never;

@@ -13,7 +13,7 @@ import kotlinx.serialization.json.JsonElement
 class ProjectsService(client: AccountClient) : BaseService(client) {
 
     /**
-     * List the projects the current user has most recently visited, most recent
+     * List the projects the current user has most recently visited, most recent visit first.
      */
     suspend fun listRecentProjects(): List<Project> {
         val info = OperationInfo(
@@ -143,7 +143,7 @@ class ProjectsService(client: AccountClient) : BaseService(client) {
     }
 
     /**
-     * Record that the current user visited a project, moving it to the front of
+     * Record that the current user visited a project, moving it to the front of ListRecentProjects.
      * @param projectId The project ID
      */
     suspend fun recordProjectVisit(projectId: Long): Unit {

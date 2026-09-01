@@ -177,6 +177,16 @@ describe("ProjectsService", () => {
 
       await expect(client.projects.listRecentProjects()).resolves.toEqual([]);
     });
+
+    it("should throw forbidden when the visit log is not accessible", async () => {
+      server.use(
+        http.get(`${BASE_URL}/my/recent_projects.json`, () => {
+          return HttpResponse.json({ error: "Forbidden" }, { status: 403 });
+        })
+      );
+
+      await expect(client.projects.listRecentProjects()).rejects.toThrow(BasecampError);
+    });
   });
 
   describe("recordProjectVisit", () => {

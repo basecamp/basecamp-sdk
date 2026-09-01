@@ -12543,7 +12543,7 @@
     },
     "/{accountId}/my/recent_projects.json": {
       "get": {
-        "description": "List the projects the current user has most recently visited, most recent\nvisit first. Reads the per-user visit log — capped at the 50 most recent\nvisits, keeping only active projects the user can still access — not the\nhome grid's pinned-exclusion and padding. This endpoint is not paginated.\nEach entry is the standard project projection plus the current user's\nbookmarked flag. A visit is recorded when the user opens a project in\nBasecamp, when they create one, and by RecordProjectVisit.",
+        "description": "List the projects the current user has most recently visited, most recent visit first.\nReads the per-user visit log — capped at the 50 most recent visits, keeping\nonly active projects the user can still access — not the home grid's\npinned-exclusion and padding. This endpoint is not paginated. Each entry is\nthe standard project projection plus the current user's bookmarked flag. A\nvisit is recorded when the user opens a project in Basecamp, when they\ncreate one, and by RecordProjectVisit.",
         "operationId": "ListRecentProjects",
         "parameters": [
           {
@@ -14657,7 +14657,7 @@
     },
     "/{accountId}/projects/{projectId}/recent_visit.json": {
       "post": {
-        "description": "Record that the current user visited a project, moving it to the front of\nListRecentProjects (returns 204 No Content). Idempotent: re-recording a\nvisit refreshes the same entry. Visits to archived or trashed projects are\naccepted but not recorded, and an inaccessible project answers 404.",
+        "description": "Record that the current user visited a project, moving it to the front of ListRecentProjects (returns 204 No Content).\nIdempotent: re-recording a visit refreshes the same entry. Visits to\narchived or trashed projects are accepted but not recorded, and an\ninaccessible project answers 404.",
         "operationId": "RecordProjectVisit",
         "parameters": [
           {

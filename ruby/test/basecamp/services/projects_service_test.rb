@@ -80,6 +80,16 @@ class ProjectsServiceTest < Minitest::Test
     assert projects.none? { |p| p.key?("starred") }
   end
 
+  def test_list_recent_projects_forbidden
+    stub_get("/12345/my/recent_projects.json", response_body: { error: "Forbidden" }, status: 403)
+
+    error = assert_raises(Basecamp::ForbiddenError) do
+      @account.projects.list_recent_projects.to_a
+    end
+
+    assert_equal 403, error.http_status
+  end
+
   def test_record_project_visit
     stub_post("/12345/projects/123/recent_visit.json", response_body: "", status: 204)
 

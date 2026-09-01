@@ -107,6 +107,19 @@ class TestProjects:
         assert all("starred" not in p for p in projects)
 
     @respx.mock
+    def test_list_recent_projects_forbidden(self):
+        respx.get(f"{BASE}/my/recent_projects.json").mock(
+            return_value=httpx.Response(403, json={"error": "Forbidden"})
+        )
+
+        client, account = make_account()
+        with pytest.raises(ForbiddenError) as excinfo:
+            account.projects.list_recent_projects()
+        client.close()
+
+        assert excinfo.value.http_status == 403
+
+    @respx.mock
     def test_record_project_visit(self):
         route = respx.post(f"{BASE}/projects/42/recent_visit.json").mock(return_value=httpx.Response(204))
 

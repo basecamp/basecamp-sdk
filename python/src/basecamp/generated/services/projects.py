@@ -12,13 +12,13 @@ from basecamp.hooks import OperationInfo
 
 class ProjectsService(BaseService):
     def list_recent_projects(self) -> ListResult:
-        """List the projects the current user has most recently visited, most recent
-        visit first. Reads the per-user visit log — capped at the 50 most recent
-        visits, keeping only active projects the user can still access — not the
-        home grid's pinned-exclusion and padding. This endpoint is not paginated.
-        Each entry is the standard project projection plus the current user's
-        bookmarked flag. A visit is recorded when the user opens a project in
-        Basecamp, when they create one, and by RecordProjectVisit.
+        """List the projects the current user has most recently visited, most recent visit first.
+        Reads the per-user visit log — capped at the 50 most recent visits, keeping
+        only active projects the user can still access — not the home grid's
+        pinned-exclusion and padding. This endpoint is not paginated. Each entry is
+        the standard project projection plus the current user's bookmarked flag. A
+        visit is recorded when the user opens a project in Basecamp, when they
+        create one, and by RecordProjectVisit.
         """
         return self._request_list(
             OperationInfo(service="projects", operation="list_recent_projects", is_mutation=False),
@@ -115,10 +115,10 @@ class ProjectsService(BaseService):
         )
 
     def record_project_visit(self, *, project_id: int) -> None:
-        """Record that the current user visited a project, moving it to the front of
-        ListRecentProjects (returns 204 No Content). Idempotent: re-recording a
-        visit refreshes the same entry. Visits to archived or trashed projects are
-        accepted but not recorded, and an inaccessible project answers 404.
+        """Record that the current user visited a project, moving it to the front of ListRecentProjects (returns 204 No Content).
+        Idempotent: re-recording a visit refreshes the same entry. Visits to
+        archived or trashed projects are accepted but not recorded, and an
+        inaccessible project answers 404.
 
         Args:
             project_id: The project id.
@@ -165,13 +165,13 @@ class ProjectsService(BaseService):
 
 class AsyncProjectsService(AsyncBaseService):
     async def list_recent_projects(self) -> ListResult:
-        """List the projects the current user has most recently visited, most recent
-        visit first. Reads the per-user visit log — capped at the 50 most recent
-        visits, keeping only active projects the user can still access — not the
-        home grid's pinned-exclusion and padding. This endpoint is not paginated.
-        Each entry is the standard project projection plus the current user's
-        bookmarked flag. A visit is recorded when the user opens a project in
-        Basecamp, when they create one, and by RecordProjectVisit.
+        """List the projects the current user has most recently visited, most recent visit first.
+        Reads the per-user visit log — capped at the 50 most recent visits, keeping
+        only active projects the user can still access — not the home grid's
+        pinned-exclusion and padding. This endpoint is not paginated. Each entry is
+        the standard project projection plus the current user's bookmarked flag. A
+        visit is recorded when the user opens a project in Basecamp, when they
+        create one, and by RecordProjectVisit.
         """
         return await self._request_list(
             OperationInfo(service="projects", operation="list_recent_projects", is_mutation=False),
@@ -270,10 +270,10 @@ class AsyncProjectsService(AsyncBaseService):
         )
 
     async def record_project_visit(self, *, project_id: int) -> None:
-        """Record that the current user visited a project, moving it to the front of
-        ListRecentProjects (returns 204 No Content). Idempotent: re-recording a
-        visit refreshes the same entry. Visits to archived or trashed projects are
-        accepted but not recorded, and an inaccessible project answers 404.
+        """Record that the current user visited a project, moving it to the front of ListRecentProjects (returns 204 No Content).
+        Idempotent: re-recording a visit refreshes the same entry. Visits to
+        archived or trashed projects are accepted but not recorded, and an
+        inaccessible project answers 404.
 
         Args:
             project_id: The project id.

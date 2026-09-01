@@ -7,7 +7,7 @@ module Basecamp
     # @generated from OpenAPI spec
     class ProjectsService < BaseService
 
-      # List the projects the current user has most recently visited, most recent
+      # List the projects the current user has most recently visited, most recent visit first.
       # @return [Array<Hash>] response data
       def list_recent_projects()
         with_operation(service: "projects", operation: "list_recent_projects", is_mutation: false) do
@@ -69,7 +69,7 @@ module Basecamp
         end
       end
 
-      # Record that the current user visited a project, moving it to the front of
+      # Record that the current user visited a project, moving it to the front of ListRecentProjects (returns 204 No Content).
       # @param project_id [Integer] project id ID
       # @return [void]
       def record_project_visit(project_id:)
