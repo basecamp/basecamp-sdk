@@ -416,6 +416,66 @@ func TestUpdateAnswerBodyBytes(t *testing.T) {
 	}
 }
 
+// TestMessagesUpdateBodyBytes pins the wire bytes of MessagesService.Update's
+// hand-marshaled body across the category branches: an integer sets it, an
+// explicit clear sends category_id as "" (never null — SPEC §18, BC3 blank-cast
+// per basecamp/bc3#12521), an unaddressed category stays off the wire, and
+// ClearCategory wins over CategoryID when both are set.
+func TestMessagesUpdateBodyBytes(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		req  *UpdateMessageRequest
+		want string
+	}{
+		{
+			name: "set category by id",
+			req:  &UpdateMessageRequest{CategoryID: 1069479341},
+			want: `{"category_id":1069479341}`,
+		},
+		{
+			// The clear the generated *int64 category_id cannot express: "" on
+			// the wire, not null, not omission.
+			name: "clear category sends empty string",
+			req:  &UpdateMessageRequest{ClearCategory: true},
+			want: `{"category_id":""}`,
+		},
+		{
+			// Neither field addressed: category_id stays off the wire so the
+			// existing category is left unchanged.
+			name: "leave category unaddressed",
+			req:  &UpdateMessageRequest{Subject: "Just the subject"},
+			want: `{"subject":"Just the subject"}`,
+		},
+		{
+			// No conflict precedent in the generated surface (CardsService uses a
+			// single pointer), so the documented rule is ClearCategory wins.
+			name: "clear wins over set",
+			req:  &UpdateMessageRequest{CategoryID: 42, ClearCategory: true},
+			want: `{"category_id":""}`,
+		},
+		{
+			name: "set alongside other fields",
+			req:  &UpdateMessageRequest{Subject: "S", Content: "Body", Status: "active", CategoryID: 7},
+			want: `{"category_id":7,"content":"Body","status":"active","subject":"S"}`,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var bodies []string
+			svc := testMessagesServer(t, captureBodies(t, &bodies,
+				`{"id":123}`, `{"id":123}`))
+			if _, err := svc.Update(context.Background(), 123, tc.req); err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if len(bodies) != 1 {
+				t.Fatalf("expected 1 write, got %d", len(bodies))
+			}
+			if bodies[0] != tc.want {
+				t.Errorf("body = %s, want %s", bodies[0], tc.want)
+			}
+		})
+	}
+}
+
 // TestDatePointerCannotSpellEmptyDueOnClear proves the inexpressibility that
 // keeps CardsService.UpdateVerbatim and CardStepsService.Update on hand-
 // marshaled maps (SPEC §18 rule 1 carve-out): their explicit due-date clear
