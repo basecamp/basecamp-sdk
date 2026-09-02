@@ -345,9 +345,12 @@ func (s *MessagesService) Update(ctx context.Context, messageID int64, req *Upda
 	// rule 1 carve-out, mirroring CardsService.UpdateVerbatim): the explicit
 	// category clear is spelled "category_id": "", and the generated *int64
 	// member cannot produce it — its spellings are absent (nil) and an integer.
-	// A literal null would violate the §18 body-compaction rule and diverge from
-	// the "" clear all six SDKs send identically; BC3 blank-casts "" to nil to
-	// clear (basecamp/bc3#12521, messages_controller.rb find_category).
+	// A literal null would violate the §18 body-compaction rule; "" is the
+	// sanctioned clear spelling (the convention the six SDKs' due_on clears
+	// follow). This category clear is Go-only — the shared contract still models
+	// category_id as an integer, so the other SDKs cannot yet spell it — but BC3
+	// blank-casts "" to nil to clear either way (basecamp/bc3#12521,
+	// messages_controller.rb find_category).
 	body := map[string]any{}
 	if req.Subject != "" {
 		body["subject"] = req.Subject
