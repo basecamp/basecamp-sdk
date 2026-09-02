@@ -20,20 +20,22 @@ import (
 // DELETE conformance case).
 //
 // This is the marshaling seam of the SPEC §18 rule 1 carve-out, and its
-// client list is deliberately short. Exactly two methods remain on
+// client list is deliberately short. Exactly three methods remain on
 // hand-marshaled maps (#653):
 //
 //   - CardsService.UpdateVerbatim  ("due_on": "" clear)
 //   - CardStepsService.Update      ("due_on": "" clear)
+//   - MessagesService.Update       ("category_id": "" clear)
 //
-// Both send the explicit due-date clear spelled "due_on": "", which a
-// *types.Date member cannot produce — its three spellings are absent (nil
-// pointer), null (zero Date), and a real date. Null instead would violate
+// Each sends an explicit clear spelled with "" that its generated member
+// cannot produce: a *types.Date has three spellings — absent (nil pointer),
+// null (zero Date), and a real date — and a *int64 category_id has two —
+// absent (nil) and an integer; none of them is "". Null instead would violate
 // the §18 body-compaction rule and diverge from the "" clear all six SDKs
 // send identically (BC3 blank-casts "" to nil, basecamp/bc3#12521).
-// TestDatePointerCannotSpellEmptyDueOnClear proves that exhaustion. Every
-// other former caller builds its generated request type; a new caller needs
-// a wire encoding the generated type provably cannot express.
+// TestDatePointerCannotSpellEmptyDueOnClear proves that exhaustion for the
+// date clears. Every other former caller builds its generated request type; a
+// new caller needs a wire encoding the generated type provably cannot express.
 func marshalBody(m map[string]any) (io.Reader, error) {
 	b, err := json.Marshal(m)
 	if err != nil {
