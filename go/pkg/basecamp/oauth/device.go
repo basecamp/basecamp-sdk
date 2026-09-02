@@ -85,6 +85,7 @@ type deviceConfig struct {
 	policyClient *http.Client
 	scope        string
 	hasScope     bool
+	loginHint    string
 	timeout      time.Duration
 	clock        func() time.Time
 	sleep        func(ctx context.Context, d time.Duration) error
@@ -137,6 +138,15 @@ func WithDeviceScope(scope string) DeviceOption {
 		cfg.scope = scope
 		cfg.hasScope = true
 	}
+}
+
+// WithDeviceLoginHint sets the RFC 8628 §3.1 login_hint sent with the device
+// authorization request: the identifier (an email address) of the user the
+// client expects to approve the code. It steers the server's sign-in page
+// and never authenticates on its own; the approval still comes from whoever
+// holds the session. Empty leaves the parameter out entirely.
+func WithDeviceLoginHint(hint string) DeviceOption {
+	return func(cfg *deviceConfig) { cfg.loginHint = hint }
 }
 
 // WithDeviceTimeout bounds each individual HTTP round-trip. Zero, negative,
@@ -288,6 +298,9 @@ func RequestDeviceAuthorization(ctx context.Context, deviceAuthEndpoint, clientI
 	// Omit scope entirely when unset so the server applies its default (`read`).
 	if cfg.hasScope && cfg.scope != "" {
 		form.Set("scope", cfg.scope)
+	}
+	if cfg.loginHint != "" {
+		form.Set("login_hint", cfg.loginHint)
 	}
 
 	reqCtx, cancel := context.WithTimeout(ctx, cfg.timeout)

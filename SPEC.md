@@ -2343,11 +2343,13 @@ SSRF hardening, requirement 6), since the endpoints they POST credentials to may
 be the ones a discovered issuer's metadata named.
 
 ```
-FUNCTION requestDeviceAuthorization(deviceAuthEndpoint, clientId, scope?) → DeviceAuthorization
+FUNCTION requestDeviceAuthorization(deviceAuthEndpoint, clientId, scope?, loginHint?) → DeviceAuthorization
   1. requireSecureEndpoint(deviceAuthEndpoint)
   2. POST deviceAuthEndpoint (application/x-www-form-urlencoded):
        client_id={clientId}
        scope={scope}          # OMITTED entirely when unset → server default `read`
+       login_hint={loginHint} # OMITTED when unset (RFC 8628 §3.1); steers the
+                              # sign-in page, never authenticates. Go only, today.
   3. Parse → { device_code, user_code, verification_uri,
                verification_uri_complete?, expires_in, interval? }
   4. Validate: device_code, user_code, verification_uri non-empty;
