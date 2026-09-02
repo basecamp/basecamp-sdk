@@ -2348,8 +2348,10 @@ FUNCTION requestDeviceAuthorization(deviceAuthEndpoint, clientId, scope?, loginH
   2. POST deviceAuthEndpoint (application/x-www-form-urlencoded):
        client_id={clientId}
        scope={scope}          # OMITTED entirely when unset → server default `read`
-       login_hint={loginHint} # OMITTED when unset (RFC 8628 §3.1); steers the
-                              # sign-in page, never authenticates. Go only, today.
+       login_hint={loginHint} # OMITTED when unset. Basecamp extension (RFC 8628
+                              # §3.1 permits extension parameters; the name follows
+                              # OIDC Core §3.1.2.1): steers the sign-in page, never
+                              # authenticates. Go only, today.
   3. Parse → { device_code, user_code, verification_uri,
                verification_uri_complete?, expires_in, interval? }
   4. Validate: device_code, user_code, verification_uri non-empty;
@@ -2500,11 +2502,12 @@ fixed at issuance, and a date can only be resolved against wall-clock `now()`, w
 reads. §6 records the exception and its cost; the block above is the contract.
 
 ```
-FUNCTION performDeviceLogin(config: OAuthConfig, clientId, scope?, display, clock?) → Token
+FUNCTION performDeviceLogin(config: OAuthConfig, clientId, scope?, display, clock?, loginHint?) → Token
   1. Capability guard: REQUIRE config.deviceAuthorizationEndpoint present
      AND config.grantTypesSupported ∋ "urn:ietf:params:oauth:grant-type:device_code"
      ELSE raise DeviceFlowError(unavailable)      # accepts an ALREADY-SELECTED config
-  2. auth = requestDeviceAuthorization(config.deviceAuthorizationEndpoint, clientId, scope)
+  2. auth = requestDeviceAuthorization(config.deviceAuthorizationEndpoint, clientId, scope, loginHint)
+     # loginHint is Go only, today (forwarded from WithDeviceLoginHint)
   3. deadline = clock.now() + auth.expiresIn   # anchor at ISSUANCE, before the hook
      display(auth)         # hook: show user_code + verification_uri
   4. remaining = deadline − clock.now()        # deduct display-hook time

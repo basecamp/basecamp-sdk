@@ -140,11 +140,14 @@ func WithDeviceScope(scope string) DeviceOption {
 	}
 }
 
-// WithDeviceLoginHint sets the RFC 8628 §3.1 login_hint sent with the device
-// authorization request: the identifier (an email address) of the user the
-// client expects to approve the code. It steers the server's sign-in page
-// and never authenticates on its own; the approval still comes from whoever
-// holds the session. Empty leaves the parameter out entirely.
+// WithDeviceLoginHint sets login_hint on the device authorization request:
+// the identifier (an email address) of the user the client expects to
+// approve the code. RFC 8628 §3.1 defines only client_id and scope and
+// leaves room for extension parameters; login_hint is Basecamp's extension,
+// borrowing the OpenID Connect Core §3.1.2.1 parameter of the same name. It
+// steers the server's sign-in page and never authenticates on its own; the
+// approval still comes from whoever holds the session. Empty leaves the
+// parameter out entirely.
 func WithDeviceLoginHint(hint string) DeviceOption {
 	return func(cfg *deviceConfig) { cfg.loginHint = hint }
 }
