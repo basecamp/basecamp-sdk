@@ -663,6 +663,16 @@ class OperationMapper:
                 return self._account.projects.list_recent_projects()
             case "RecordProjectVisit":
                 return self._account.projects.record_project_visit(project_id=path_params["projectId"])
+            case "GetTemplateLibrary":
+                return self._account.templates.get_library()
+            case "CreateTemplateLibraryCopy":
+                return self._account.templates.create_library_copy(
+                    template_recording_id=body["template_recording_id"],
+                    destination_parent_id=body["destination_parent_id"],
+                    adding_people_confirmed=body.get("adding_people_confirmed"),
+                )
+            case "GetTemplateLibraryCopy":
+                return self._account.templates.get_library_copy(copy_id=path_params["copyId"])
             case "CreateProject":
                 return self._account.projects.create(name=body["name"])
             case "UpdateProject":

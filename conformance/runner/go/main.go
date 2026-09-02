@@ -742,6 +742,22 @@ func executeOperation(ctx context.Context, account *basecamp.AccountClient, tc T
 		err := account.Projects().RecordVisit(ctx, projectID)
 		return operationResult{err: err}
 
+	case "GetTemplateLibrary":
+		library, err := account.Templates().GetLibrary(ctx)
+		return operationResult{err: err, result: library}
+
+	case "CreateTemplateLibraryCopy":
+		libraryCopy, err := account.Templates().CreateLibraryCopy(ctx, &basecamp.CreateTemplateLibraryCopyRequest{
+			TemplateRecordingID:   getInt64Param(tc.RequestBody, "template_recording_id"),
+			DestinationParentID:   getInt64Param(tc.RequestBody, "destination_parent_id"),
+			AddingPeopleConfirmed: getBoolParam(tc.RequestBody, "adding_people_confirmed"),
+		})
+		return operationResult{err: err, result: libraryCopy}
+
+	case "GetTemplateLibraryCopy":
+		libraryCopy, err := account.Templates().GetLibraryCopy(ctx, getInt64Param(tc.PathParams, "copyId"))
+		return operationResult{err: err, result: libraryCopy}
+
 	case "CreateProject":
 		name := getStringParam(tc.RequestBody, "name")
 		if name == "" {

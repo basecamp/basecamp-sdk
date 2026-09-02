@@ -420,6 +420,16 @@ class OperationMapper
       @account.projects.list_recent_projects
     when "RecordProjectVisit"
       @account.projects.record_project_visit(project_id: path_params["projectId"])
+    when "GetTemplateLibrary"
+      @account.templates.get_library
+    when "CreateTemplateLibraryCopy"
+      @account.templates.create_library_copy(
+        template_recording_id: body["template_recording_id"],
+        destination_parent_id: body["destination_parent_id"],
+        adding_people_confirmed: body["adding_people_confirmed"]
+      )
+    when "GetTemplateLibraryCopy"
+      @account.templates.get_library_copy(copy_id: path_params["copyId"])
     when "CreateProject"
       @account.projects.create(name: body["name"])
     when "ListTodos"

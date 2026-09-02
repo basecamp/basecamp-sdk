@@ -227,4 +227,117 @@ describe("TemplatesService", () => {
       expect(construction.project?.id).toBe(1000);
     });
   });
+
+  describe("template library", () => {
+    it("gets the account template library", async () => {
+      server.use(
+        http.get(`${BASE_URL}/template_library.json`, () => {
+          return HttpResponse.json({
+            bucket: { id: 1, name: "To-do List Templates", type: "TemplateLibrary" },
+            todoset: { id: 2, title: "To-do List Templates", type: "Todoset" },
+            todolists: [{ id: 3, name: "Project kickoff" }],
+          });
+        })
+      );
+
+      const library = await client.templates.getLibrary();
+      expect(library.bucket.type).toBe("TemplateLibrary");
+      expect(library.todoset.id).toBe(2);
+      expect(library.todolists[0]?.name).toBe("Project kickoff");
+    });
+
+    it("surfaces a forbidden template library read", async () => {
+      server.use(
+        http.get(`${BASE_URL}/template_library.json`, () => {
+          return HttpResponse.json({ error: "Forbidden" }, { status: 403 });
+        })
+      );
+
+      await expect(client.templates.getLibrary()).rejects.toMatchObject({
+        code: "forbidden",
+        httpStatus: 403,
+      });
+    });
+
+    it("starts a copy with destination and people confirmation", async () => {
+      server.use(
+        http.post(`${BASE_URL}/template_library/copies.json`, async ({ request }) => {
+          expect(await request.json()).toEqual({
+            template_recording_id: 3,
+            destination_parent_id: 9,
+            adding_people_confirmed: true,
+          });
+          return HttpResponse.json({
+            id: 5,
+            status: "pending",
+            source_recording_id: 3,
+            destination_parent_id: 9,
+            url: `${BASE_URL}/template_library/copies/5.json`,
+          }, { status: 201 });
+        })
+      );
+
+      const copy = await client.templates.createLibraryCopy({
+        templateRecordingId: 3,
+        destinationParentId: 9,
+        addingPeopleConfirmed: true,
+      });
+      expect(copy.id).toBe(5);
+      expect(copy.status).toBe("pending");
+      expect(copy.destination_todolist).toBeUndefined();
+    });
+
+    it("gets a completed copy with its destination to-do list", async () => {
+      server.use(
+        http.get(`${BASE_URL}/template_library/copies/5`, () => {
+          return HttpResponse.json({
+            id: 5,
+            status: "completed",
+            source_recording_id: 3,
+            destination_parent_id: 9,
+            url: `${BASE_URL}/template_library/copies/5.json`,
+            destination_todolist: { id: 10, name: "Project kickoff" },
+          });
+        })
+      );
+
+      const copy = await client.templates.getLibraryCopy(5);
+      expect(copy.status).toBe("completed");
+      expect(copy.destination_todolist?.id).toBe(10);
+    });
+
+    it("surfaces a missing library copy", async () => {
+      server.use(
+        http.get(`${BASE_URL}/template_library/copies/404`, () => {
+          return HttpResponse.json({ error: "Not found" }, { status: 404 });
+        })
+      );
+
+      await expect(client.templates.getLibraryCopy(404)).rejects.toMatchObject({
+        code: "not_found",
+        httpStatus: 404,
+      });
+    });
+
+    it("surfaces people confirmation responses as validation errors", async () => {
+      server.use(
+        http.post(`${BASE_URL}/template_library/copies.json`, () => {
+          return HttpResponse.json({
+            error: "Adding people requires confirmation",
+            people: [{ id: 4, name: "Victor", avatar_url: "https://example.test/avatar.png" }],
+          }, { status: 422 });
+        })
+      );
+
+      const error = await client.templates.createLibraryCopy({
+        templateRecordingId: 3,
+        destinationParentId: 9,
+      }).catch((caught: unknown) => caught);
+
+      expect(error).toBeInstanceOf(BasecampError);
+      expect((error as BasecampError).code).toBe("validation");
+      expect((error as BasecampError).httpStatus).toBe(422);
+      expect((error as BasecampError).message).toBe("Adding people requires confirmation");
+    });
+  });
 });

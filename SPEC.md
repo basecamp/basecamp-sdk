@@ -1178,7 +1178,7 @@ END
 
 ### behavior-model.json Retry Patterns
 
-All `256` operations in `behavior-model.json` use `retry_on: [429, 503]`. <!-- @operation-count --> Three `(max, base_delay_ms)` patterns exist:
+All `259` operations in `behavior-model.json` use `retry_on: [429, 503]`. <!-- @operation-count --> Three `(max, base_delay_ms)` patterns exist:
 - `(2, 1000)` — most create operations
 - `(3, 1000)` — most read/update/delete operations
 - `(3, 2000)` — `CreateAttachment`, `CreateCampfireUpload` (file uploads)
@@ -1735,7 +1735,7 @@ Every JSON API request must include all four headers below. Download requests (�
 Where:
 - `{lang}` is the language identifier: `go`, `ts`, `ruby`, `kotlin`, `swift`
 - `{VERSION}` is the SDK version (e.g., `0.6.0`)
-- `{API_VERSION}` is the API version from `openapi.json` `info.version` (currently `2026-08-31`), derived from the shared date in `spec/api-provenance.json` <!-- @api-version -->
+- `{API_VERSION}` is the API version from `openapi.json` `info.version` (currently `2026-09-02`), derived from the shared date in `spec/api-provenance.json` <!-- @api-version -->
 
 ### Redirect Handling
 
@@ -1781,7 +1781,7 @@ END
 
 ### Hop-1 Retry `[conformance]`
 
-The authenticated first hop retries on **network errors plus {429, 502, 503, 504}** — never 500. The set is declared here rather than inherited from anywhere else, and it matches neither of the two sets an SDK already has to hand: it is broader than the per-operation `retry_on` in `behavior-model.json` (`{429, 503}` for all `256` operations, which never governs `DownloadURL` because it has no entry there), and narrower than the error taxonomy's "all 5xx retryable" flag, which would sweep in the 500 this policy deliberately excludes. It is the gateway-error set Go's hand-written `singleRequest` already uses for GETs. <!-- @operation-count --> Backoff is exponential from a 1-second base with jitter; `Retry-After` is honoured at **every status in that set**, not at 429 alone. The second hop is exempt: no retry, no auth.
+The authenticated first hop retries on **network errors plus {429, 502, 503, 504}** — never 500. The set is declared here rather than inherited from anywhere else, and it matches neither of the two sets an SDK already has to hand: it is broader than the per-operation `retry_on` in `behavior-model.json` (`{429, 503}` for all `259` operations, which never governs `DownloadURL` because it has no entry there), and narrower than the error taxonomy's "all 5xx retryable" flag, which would sweep in the 500 this policy deliberately excludes. It is the gateway-error set Go's hand-written `singleRequest` already uses for GETs. <!-- @operation-count --> Backoff is exponential from a 1-second base with jitter; `Retry-After` is honoured at **every status in that set**, not at 429 alone. The second hop is exempt: no retry, no auth.
 
 That last clause changed with §6's "Retry-After Honouring", and the reason it changed is the reason this set is declared here at all: honouring is derived from retry eligibility, so a loop that declares its own eligibility set inherits the honouring rule over that set rather than over §7's. A 502, 503 or 504 on hop 1 carrying `Retry-After` therefore waits what the origin named, exactly as a 429 does. `[CONFLICT: most download loops honour it on 429 alone today and owe convergence; one SDK already conforms. Per-SDK state and call sites in #775 — not restated here, because this is exactly the row that convergence changes. For conformance: the existing downloads.json case covering the 429 path stays valid; the other three statuses need cases of their own.]` The honoured value is subject to §6's other two clauses on this path as well: nothing is added to it, and it must be awaited through a cancellation handle the caller holds, which not every download path yet gives them (#775).
 
@@ -2739,6 +2739,7 @@ the category slug is the filename (basename, `_` written as `-`).
 | search | `search.json` | §10 Type Fidelity — the polymorphic search projection, whose file-attachment branch is recognized by the ABSENCE of the recording envelope's `id`/`title`/`type`/`url`/`app_url` |
 | security | `security.json` | §9 Security |
 | status-codes | `status-codes.json` | §11 Response Semantics |
+| template-library | `template_library.json` | §3 Client Architecture (account path construction), §6 Error Taxonomy, §10 Type Fidelity, §11 Response Semantics |
 | todolists-read | `todolists_read.json` | §5 Merge-Safe Write Surface (Todolists) — the flat read shape the composites read through |
 | todolists-write | `todolists_write.json` | §5 Merge-Safe Write Surface (Todolists), §18 Hand-Written Composite Methods |
 | todos-write | `todos_write.json` | §5 Merge-Safe Write Surface (Todos), §18 Hand-Written Composite Methods |
@@ -4007,7 +4008,7 @@ Only `API_VERSION` is gated (`<!-- @api-version -->`, checked by `make doc-const
 | `DEFAULT_MAX_PAGES` | 10,000 | — | All six SDKs |
 | `MAX_CACHE_ENTRIES` | 1000 | entries | `typescript/src/client.ts` |
 | `MAX_TOKEN_HASH_ENTRIES` | 100 | entries | `typescript/src/client.ts` |
-| `API_VERSION` | `2026-08-31` | — | `openapi.json` `info.version` <!-- @api-version --> |
+| `API_VERSION` | `2026-09-02` | — | `openapi.json` `info.version` <!-- @api-version --> |
 | `TOKEN_REFRESH_BUFFER` | 300 | seconds | Go OAuth token refresh threshold (5-minute buffer); Ruby refreshes only on expiry (no buffer); TS/Kotlin/Swift delegate expiry to caller |
 | `EVENT_FEED_HANDSHAKE_DEADLINE` | 10 | seconds | §23 timers — dial-to-`welcome` deadline |
 | `EVENT_FEED_CONFIRMATION_DEADLINE` | 10 | seconds | §23 (configurable; default) |
@@ -4171,6 +4172,7 @@ what `make doc-constants-check` asserts — not a case-by-case index.
 | `schedule_entries_write.json` | Carve-out-aware replace/update/edit triad, plus the create-side #641 fields (11 cases: omission-preserves and explicit-clear pairs for `participant_ids`/`url`/`highlighted`, edit-touched vs edit-untouched, and `url`/`highlighted`/`status` present-when-set vs absent-when-unset on `CreateScheduleEntry`) | §5 (Schedule Entries), §18 |
 | `upcoming_schedule.json` | The reduced calendar projection: entry, recurring occurrence, assignable, empty envelope (4 cases) | §10 (Type Fidelity) |
 | `search.json` | The polymorphic search projection: the generic recording envelope plus all four special branches, and the file-attachment branch in isolation (2 cases) | §10 (Type Fidelity) |
+| `template_library.json` | Library read, copy creation, completed-copy decoding, and people-confirmation validation (4 cases) | §3, §6, §10, §11 |
 | `live-my-surface.json` | Live schema validation, 31 read-surface cases (opt-in via `BASECAMP_LIVE`) | External governance (CONTRIBUTING.md, live canary) |
 <!-- @fixture-section-map:end -->
 
@@ -4218,9 +4220,9 @@ Every operation has a `retry` block, including non-idempotent POSTs. For non-ide
 
 ### Operation Counts
 
-- Total operations: `256` <!-- @operation-count -->
+- Total operations: `259` <!-- @operation-count -->
 - Idempotent: 88 (flagged with `idempotent: true`)
-- Non-idempotent: 168 (no `idempotent` field, or not present)
+- Non-idempotent: 171 (no `idempotent` field, or not present)
 - All operations use `retry_on: [429, 503]`
 
 ---

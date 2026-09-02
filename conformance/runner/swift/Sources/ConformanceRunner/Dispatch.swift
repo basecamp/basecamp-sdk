@@ -319,6 +319,22 @@ func dispatchOperation(_ tc: TestCase, _ account: AccountClient) async throws ->
         try await account.projects.recordProjectVisit(projectId: pathParams.longParam("projectId"))
         return DispatchResult()
 
+    case "GetTemplateLibrary":
+        let library = try await account.templates.getLibrary()
+        return DispatchResult(resultJSON: try resultJSON(library))
+
+    case "CreateTemplateLibraryCopy":
+        let libraryCopy = try await account.templates.createLibraryCopy(
+            req: CreateTemplateLibraryCopyRequest(
+                addingPeopleConfirmed: rb.optBool("adding_people_confirmed"),
+                destinationParentId: rb.longParam("destination_parent_id"),
+                templateRecordingId: rb.longParam("template_recording_id")))
+        return DispatchResult(resultJSON: try resultJSON(libraryCopy))
+
+    case "GetTemplateLibraryCopy":
+        let libraryCopy = try await account.templates.getLibraryCopy(copyId: pathParams.longParam("copyId"))
+        return DispatchResult(resultJSON: try resultJSON(libraryCopy))
+
     case "CreateProject":
         _ = try await account.projects.create(req: CreateProjectRequest(name: rb.stringParam("name")))
         return DispatchResult()

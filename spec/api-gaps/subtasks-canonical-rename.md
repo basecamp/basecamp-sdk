@@ -54,6 +54,15 @@ Nothing breaks for the SDK, deliberately:
   `POST /card_tables/cards/:card_id/positions` never had "steps" in its path,
   so it is still the canonical declaration (only its controller was renamed).
 
+BC3 **#12639** (`e6408768f52`) makes that compatibility contract explicit in
+application code. `Kanban::Step` is frozen as the API type for subtasks that
+originated as card steps, and webhook events render `kind` through
+`Event#api_kind` so the same public discriminator survives independently of
+the renamed model. The route declarations now point at `Kanban::StepsController`
+and `Kanban::Steps::CompletionsController` without changing any documented
+path. `CardStep.type` and `Event.kind` already model strings, so the SDK contract
+remains current.
+
 What is missing is on the bc3 side: the canonical routes the code now
 declares are invisible to `doc/api`, so `spec/bc3-routes.json` cannot see
 them and the SDK has nothing documented to model. Documented spellings and

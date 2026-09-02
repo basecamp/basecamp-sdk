@@ -464,6 +464,25 @@ async function executeOperation(
         await client.projects.recordProjectVisit(Number(params.projectId));
         break;
 
+      case "GetTemplateLibrary": {
+        const library = await client.templates.getLibrary();
+        return { result: library };
+      }
+
+      case "CreateTemplateLibraryCopy": {
+        const libraryCopy = await client.templates.createLibraryCopy({
+          templateRecordingId: Number(body.template_recording_id),
+          destinationParentId: Number(body.destination_parent_id),
+          addingPeopleConfirmed: body.adding_people_confirmed === true,
+        });
+        return { result: libraryCopy };
+      }
+
+      case "GetTemplateLibraryCopy": {
+        const libraryCopy = await client.templates.getLibraryCopy(Number(params.copyId));
+        return { result: libraryCopy };
+      }
+
       case "CreateProject":
         // Always send a non-empty name to bypass client-side validation.
         // The mock server controls what status/body is returned.

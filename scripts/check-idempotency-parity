@@ -131,8 +131,11 @@ jq -r '.operations | to_entries[] | select(.value.idempotent == true or .value.r
 # DeleteBubbleUp's DELETE are naturally idempotent — bubbling an already-bubbled
 # recording (and popping an absent one) is a set-membership no-op that still
 # answers 204 — so both land in both counts (+2 each). Neither is readonly.
+# Template Library absorption (+3 ops): GetTemplateLibrary and
+# GetTemplateLibraryCopy are readonly (+2 union only); CreateTemplateLibraryCopy
+# is neither.
 expected_idempotent=88
-expected_union=214
+expected_union=216
 nIdempotent=$(wc -l < "$WORK/idempotentSet" | tr -d ' ')
 nUnion=$(wc -l < "$WORK/unionSet" | tr -d ' ')
 echo "    source of truth: $nIdempotent idempotent, $nUnion idempotent∪readonly"

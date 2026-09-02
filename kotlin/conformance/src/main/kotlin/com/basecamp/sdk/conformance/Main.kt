@@ -999,6 +999,26 @@ private suspend fun dispatchOperation(tc: TestCase, account: AccountClient): Dis
             DispatchResult()
         }
 
+        "GetTemplateLibrary" -> {
+            DispatchResult(resultJson = account.templates.getLibrary())
+        }
+
+        "CreateTemplateLibraryCopy" -> {
+            val rb = tc.requestBody
+            val libraryCopy = account.templates.createLibraryCopy(
+                CreateTemplateLibraryCopyBody(
+                    templateRecordingId = rb.longParam("template_recording_id"),
+                    destinationParentId = rb.longParam("destination_parent_id"),
+                    addingPeopleConfirmed = rb?.get("adding_people_confirmed")?.jsonPrimitive?.booleanOrNull,
+                ),
+            )
+            DispatchResult(resultJson = libraryCopy)
+        }
+
+        "GetTemplateLibraryCopy" -> {
+            DispatchResult(resultJson = account.templates.getLibraryCopy(tc.pathParams.longParam("copyId")))
+        }
+
         "CreateProject" -> {
             val name = tc.requestBody.stringParam("name")
             account.projects.create(CreateProjectBody(name = name))

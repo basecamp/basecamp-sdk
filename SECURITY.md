@@ -184,10 +184,10 @@ print(f"Headers: {safe}")
 ## Retry Behavior
 
 Retry eligibility is decided per *operation*, not per HTTP method. `behavior-model.json` classifies
-all `256` operations: the 126 GETs are retryable by method, and 88 mutations are flagged <!-- @operation-count -->
+all `259` operations: the 128 GETs are retryable by method, and 88 mutations are flagged <!-- @operation-count -->
 `idempotent: true` — all 52 PUTs, all 26 DELETEs, and 10 POSTs (`CompleteTodo`, `PauseQuestion`,
 `SubscribeToCardColumn`, `Subscribe`, `EnableCardColumnOnHold`, `CreateBookmark`, `PrioritizeAssignment`,
-`SpotlightRecording`, `RecordProjectVisit`, `CreateBubbleUp`). The other 42 POSTs are attempted exactly once. SPEC.md §7 specifies the
+`SpotlightRecording`, `RecordProjectVisit`, `CreateBubbleUp`). The other 43 POSTs are attempted exactly once. SPEC.md §7 specifies the
 three-gate algorithm and the per-SDK divergences.
 
 - **Reads (GET)**: retried with exponential backoff on 429/503 in every SDK. (HEAD is idempotent by method too, but Ruby's transport gates on `method == :get` specifically, so a HEAD would not retry there. The API surface has no HEAD operations today, so this is theoretical.)
