@@ -108,7 +108,7 @@ optional `at`) and `DeleteBubbleUp`; the `BubbleUps` tag resolves to
 overrides). Both mutations are flagged idempotent and covered by idempotency
 conformance cases; the Go wrapper adds an `AccountClient.BubbleUps()` accessor
 with create (at present/absent) + delete tests, and `paths.json` carries three
-cases (create-with-`at`, create-now, delete) dispatched in all six runners.
+cases (create-with-`at`, create-without-`at`, delete) dispatched in all six runners.
 The two flat routes are waived in `spec/bc3-route-allowlist.yml`
 (`sdk_routes_absent_from_bc3_docs`) with routes.rb + controller evidence, since
 bc3's `doc/api` documents neither spelling yet.

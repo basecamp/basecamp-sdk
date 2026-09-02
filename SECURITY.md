@@ -191,7 +191,7 @@ all `256` operations: the 126 GETs are retryable by method, and 88 mutations are
 three-gate algorithm and the per-SDK divergences.
 
 - **Reads (GET)**: retried with exponential backoff on 429/503 in every SDK. (HEAD is idempotent by method too, but Ruby's transport gates on `method == :get` specifically, so a HEAD would not retry there. The API surface has no HEAD operations today, so this is theoretical.)
-- **Naturally-idempotent mutations (PUT/DELETE) and the 9 flagged POSTs**: *are* retried on 429/503
+- **Naturally-idempotent mutations (PUT/DELETE) and the 10 flagged POSTs**: *are* retried on 429/503
   by Go (generated operation path), Python, TypeScript, Kotlin, and Swift. Retrying these cannot
   duplicate a resource, which is why the gate is idempotency rather than "is it a mutation".
   **Ruby is the sole exception** — its transport retries GET only.

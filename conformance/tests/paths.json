@@ -1316,6 +1316,11 @@
         "expected": "/999/recordings/900/bubble_up.json"
       },
       {
+        "type": "requestBody",
+        "path": "at",
+        "expected": "2026-09-10T09:00:00Z"
+      },
+      {
         "type": "noError"
       }
     ],
@@ -1342,6 +1347,10 @@
       {
         "type": "requestPath",
         "expected": "/999/recordings/900/bubble_up.json"
+      },
+      {
+        "type": "requestBodyAbsent",
+        "path": "at"
       },
       {
         "type": "noError"

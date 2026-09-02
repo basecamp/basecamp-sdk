@@ -8,7 +8,7 @@ import httpx
 import pytest
 import respx
 
-from basecamp import Client
+from basecamp import AsyncClient, Client
 from basecamp.errors import ForbiddenError, NotFoundError
 
 BASE = "https://3.basecampapi.com/12345"
@@ -21,9 +21,7 @@ def _bubble_ups():
 class TestCreateBubbleUp:
     @respx.mock
     def test_schedules_with_at_on_the_wire(self):
-        route = respx.post(f"{BASE}/recordings/900/bubble_up.json").mock(
-            return_value=httpx.Response(204)
-        )
+        route = respx.post(f"{BASE}/recordings/900/bubble_up.json").mock(return_value=httpx.Response(204))
 
         _bubble_ups().create_bubble_up(recording_id=900, at="2026-09-10T09:00:00Z")
 
@@ -31,9 +29,7 @@ class TestCreateBubbleUp:
 
     @respx.mock
     def test_omits_at_when_absent(self):
-        route = respx.post(f"{BASE}/recordings/900/bubble_up.json").mock(
-            return_value=httpx.Response(204)
-        )
+        route = respx.post(f"{BASE}/recordings/900/bubble_up.json").mock(return_value=httpx.Response(204))
 
         _bubble_ups().create_bubble_up(recording_id=900)
 
@@ -52,9 +48,7 @@ class TestCreateBubbleUp:
 class TestDeleteBubbleUp:
     @respx.mock
     def test_pops_the_bubble_up(self):
-        route = respx.delete(f"{BASE}/recordings/900/bubble_up.json").mock(
-            return_value=httpx.Response(204)
-        )
+        route = respx.delete(f"{BASE}/recordings/900/bubble_up.json").mock(return_value=httpx.Response(204))
 
         _bubble_ups().delete_bubble_up(recording_id=900)
 
@@ -68,3 +62,64 @@ class TestDeleteBubbleUp:
 
         with pytest.raises(ForbiddenError):
             _bubble_ups().delete_bubble_up(recording_id=900)
+
+
+class TestAsyncCreateBubbleUp:
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_schedules_with_at_on_the_wire(self):
+        route = respx.post(f"{BASE}/recordings/900/bubble_up.json").mock(return_value=httpx.Response(204))
+
+        client = AsyncClient(access_token="test-token")
+        await client.for_account("12345").bubble_ups.create_bubble_up(recording_id=900, at="2026-09-10T09:00:00Z")
+        await client.close()
+
+        assert json.loads(route.calls.last.request.content) == {"at": "2026-09-10T09:00:00Z"}
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_omits_at_when_absent(self):
+        route = respx.post(f"{BASE}/recordings/900/bubble_up.json").mock(return_value=httpx.Response(204))
+
+        client = AsyncClient(access_token="test-token")
+        await client.for_account("12345").bubble_ups.create_bubble_up(recording_id=900)
+        await client.close()
+
+        assert "at" not in json.loads(route.calls.last.request.content)
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_404_surfaces_as_not_found(self):
+        respx.post(f"{BASE}/recordings/999/bubble_up.json").mock(
+            return_value=httpx.Response(404, json={"error": "Not found"})
+        )
+
+        client = AsyncClient(access_token="test-token")
+        with pytest.raises(NotFoundError):
+            await client.for_account("12345").bubble_ups.create_bubble_up(recording_id=999)
+        await client.close()
+
+
+class TestAsyncDeleteBubbleUp:
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_pops_the_bubble_up(self):
+        route = respx.delete(f"{BASE}/recordings/900/bubble_up.json").mock(return_value=httpx.Response(204))
+
+        client = AsyncClient(access_token="test-token")
+        await client.for_account("12345").bubble_ups.delete_bubble_up(recording_id=900)
+        await client.close()
+
+        assert route.called
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_403_surfaces_as_forbidden(self):
+        respx.delete(f"{BASE}/recordings/900/bubble_up.json").mock(
+            return_value=httpx.Response(403, json={"error": "Forbidden"})
+        )
+
+        client = AsyncClient(access_token="test-token")
+        with pytest.raises(ForbiddenError):
+            await client.for_account("12345").bubble_ups.delete_bubble_up(recording_id=900)
+        await client.close()
