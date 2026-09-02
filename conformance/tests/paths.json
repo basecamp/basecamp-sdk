@@ -1294,6 +1294,102 @@
     ]
   },
   {
+    "name": "CreateBubbleUp constructs the per-recording bubble_up path",
+    "description": "Verifies CreateBubbleUp POSTs /recordings/{recordingId}/bubble_up.json and accepts 204. Sends the optional 'at' schedule.",
+    "operation": "CreateBubbleUp",
+    "method": "POST",
+    "path": "/recordings/{recordingId}/bubble_up.json",
+    "pathParams": {
+      "recordingId": 900
+    },
+    "requestBody": {
+      "at": "2026-09-10T09:00:00Z"
+    },
+    "mockResponses": [
+      {
+        "status": 204
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestPath",
+        "expected": "/999/recordings/900/bubble_up.json"
+      },
+      {
+        "type": "requestBody",
+        "path": "at",
+        "expected": "2026-09-10T09:00:00Z"
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "path",
+      "bubble-ups"
+    ]
+  },
+  {
+    "name": "CreateBubbleUp omits 'at' from the wire when not supplied",
+    "description": "Verifies CreateBubbleUp POSTs /recordings/{recordingId}/bubble_up.json and leaves 'at' off the body when the caller supplies none (the SDK does not force a value). Accepts 204.",
+    "operation": "CreateBubbleUp",
+    "method": "POST",
+    "path": "/recordings/{recordingId}/bubble_up.json",
+    "pathParams": {
+      "recordingId": 900
+    },
+    "mockResponses": [
+      {
+        "status": 204
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestPath",
+        "expected": "/999/recordings/900/bubble_up.json"
+      },
+      {
+        "type": "requestBodyAbsent",
+        "path": "at"
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "path",
+      "bubble-ups"
+    ]
+  },
+  {
+    "name": "DeleteBubbleUp constructs the per-recording bubble_up path",
+    "description": "Verifies DeleteBubbleUp DELETEs /recordings/{recordingId}/bubble_up.json and accepts 204.",
+    "operation": "DeleteBubbleUp",
+    "method": "DELETE",
+    "path": "/recordings/{recordingId}/bubble_up.json",
+    "pathParams": {
+      "recordingId": 900
+    },
+    "mockResponses": [
+      {
+        "status": 204
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestPath",
+        "expected": "/999/recordings/900/bubble_up.json"
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "path",
+      "bubble-ups"
+    ]
+  },
+  {
     "name": "ListMyDrafts constructs /my/drafts.json",
     "description": "Verifies ListMyDrafts constructs the personal /my/drafts.json path (BC3 #12381). The mock draft is bucket-rooted: parent and scheduled_posting_at are present-but-null, pinning the required-nullable decode in every SDK.",
     "operation": "ListMyDrafts",

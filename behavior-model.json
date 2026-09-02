@@ -73,6 +73,18 @@
         ]
       }
     },
+    "CreateBubbleUp": {
+      "idempotent": true,
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
     "CreateCampfireLine": {
       "retry": {
         "max": 2,
@@ -449,6 +461,18 @@
       }
     },
     "DeleteBoost": {
+      "idempotent": true,
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
+    "DeleteBubbleUp": {
       "idempotent": true,
       "retry": {
         "max": 3,

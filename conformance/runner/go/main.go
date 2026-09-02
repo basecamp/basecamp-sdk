@@ -884,6 +884,20 @@ func executeOperation(ctx context.Context, account *basecamp.AccountClient, tc T
 		err := account.Bookmarks().Delete(ctx, recordingID)
 		return operationResult{err: err}
 
+	case "CreateBubbleUp":
+		recordingID := getInt64Param(tc.PathParams, "recordingId")
+		var at *string
+		if v, ok := tc.RequestBody["at"].(string); ok {
+			at = &v
+		}
+		err := account.BubbleUps().Create(ctx, recordingID, at)
+		return operationResult{err: err}
+
+	case "DeleteBubbleUp":
+		recordingID := getInt64Param(tc.PathParams, "recordingId")
+		err := account.BubbleUps().Delete(ctx, recordingID)
+		return operationResult{err: err}
+
 	case "SpotlightRecording":
 		recordingID := getInt64Param(tc.PathParams, "recordingId")
 		_, err := account.Recordings().Spotlight(ctx, recordingID)

@@ -79,6 +79,7 @@ making the absorption journey publicly auditable.
 | [subtasks-canonical-rename](subtasks-canonical-rename.md) | partial-coverage | master | low |
 | [recent-projects](recent-projects.md) | absorbed-in-sdk | master | medium |
 | [delegated-events-performed-by](delegated-events-performed-by.md) | addressed-in-bc3-pr-13040 | master | low |
+| [recording-bubble-up-write](recording-bubble-up-write.md) | partial-coverage | master | medium |
 
 > Statuses reflect how BC3's **BC5 API train** actually shipped (8 PRs merged
 > to `master`, 2026-07-18..21); BC3 #10947 closed unmerged, superseded by the

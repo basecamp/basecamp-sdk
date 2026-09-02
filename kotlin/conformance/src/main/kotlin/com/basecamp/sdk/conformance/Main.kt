@@ -1396,6 +1396,22 @@ private suspend fun dispatchOperation(tc: TestCase, account: AccountClient): Dis
             DispatchResult()
         }
 
+        "CreateBubbleUp" -> {
+            val rb = tc.requestBody
+            account.bubbleUps.createBubbleUp(
+                tc.pathParams.longParam("recordingId"),
+                CreateBubbleUpBody(
+                    at = rb?.get("at")?.jsonPrimitive?.contentOrNull,
+                ),
+            )
+            DispatchResult()
+        }
+
+        "DeleteBubbleUp" -> {
+            account.bubbleUps.deleteBubbleUp(tc.pathParams.longParam("recordingId"))
+            DispatchResult()
+        }
+
         "SpotlightRecording" -> {
             account.recordings.spotlight(tc.pathParams.longParam("recordingId"))
             DispatchResult()

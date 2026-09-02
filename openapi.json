@@ -17337,6 +17337,209 @@
         }
       }
     },
+    "/{accountId}/recordings/{recordingId}/bubble_up.json": {
+      "delete": {
+        "description": "Remove the current user's bubble-up from a recording (returns 204 No Content).\nIdempotent: popping an absent bubble-up also returns 204.",
+        "operationId": "DeleteBubbleUp",
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
+          {
+            "name": "recordingId",
+            "in": "path",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "DeleteBubbleUp 204 response"
+          },
+          "401": {
+            "description": "UnauthorizedError 401 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ForbiddenError 403 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NotFoundError 404 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundErrorResponseContent"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RateLimitError 429 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitErrorResponseContent"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError 500 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "BubbleUps"
+        ],
+        "x-basecamp-idempotent": {
+          "natural": true
+        },
+        "x-basecamp-retry": {
+          "maxAttempts": 3,
+          "baseDelayMs": 1000,
+          "backoff": "exponential",
+          "retryOn": [
+            429,
+            503
+          ]
+        }
+      },
+      "post": {
+        "description": "Bubble up a recording for the current user, resurfacing it in the current\nuser's readings (the BC5 successor to \"save\"). Returns 204 No Content with\nno body.\n\nThe `at` field controls timing. Send `\"now\"` to bubble up immediately, or a\nscheduling keyword (`\"today\"`, `\"tomorrow\"`, `\"weekend\"`, `\"next_week\"`) or\nan ISO8601 date (e.g. `\"2026-09-10\"`) to schedule it to resurface later.\nNOTE: bc3 currently requires `at` — omitting it raises on the server\n(`Date.iso8601(nil)`), so send `\"now\"` for the immediate case. The field is\nmodeled optional (not `@required`) so a future bc3 default (`params[:at] ||=\n\"now\"`) makes omission mean \"now\" without an SDK change.\n\nIdempotent: bubbling up an already-bubbled recording is set-membership and\nstill returns 204.",
+        "operationId": "CreateBubbleUp",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateBubbleUpRequestContent"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
+          {
+            "name": "recordingId",
+            "in": "path",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "CreateBubbleUp 204 response"
+          },
+          "401": {
+            "description": "UnauthorizedError 401 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ForbiddenError 403 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NotFoundError 404 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundErrorResponseContent"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RateLimitError 429 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitErrorResponseContent"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError 500 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "BubbleUps"
+        ],
+        "x-basecamp-idempotent": {
+          "natural": true
+        },
+        "x-basecamp-retry": {
+          "maxAttempts": 3,
+          "baseDelayMs": 1000,
+          "backoff": "exponential",
+          "retryOn": [
+            429,
+            503
+          ]
+        }
+      }
+    },
     "/{accountId}/recordings/{recordingId}/client_visibility.json": {
       "put": {
         "description": "Set client visibility for a recording",
@@ -28784,6 +28987,15 @@
       },
       "CreateBookmarkResponseContent": {
         "$ref": "#/components/schemas/Bookmark"
+      },
+      "CreateBubbleUpRequestContent": {
+        "type": "object",
+        "properties": {
+          "at": {
+            "type": "string",
+            "description": "Timing for the bubble-up. `\"now\"` bubbles up immediately; a scheduling\nkeyword (`\"today\"`, `\"tomorrow\"`, `\"weekend\"`, `\"next_week\"`) or an ISO8601\ndate (e.g. `\"2026-09-10\"`) schedules it to resurface later. bc3 requires a\nvalue — omitting `at` errors server-side (`Date.iso8601(nil)`) — so send\n`\"now\"` for the immediate case."
+          }
+        }
       },
       "CreateCampfireLineRequestContent": {
         "type": "object",

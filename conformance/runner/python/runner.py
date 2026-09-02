@@ -711,6 +711,12 @@ class OperationMapper:
                 return self._account.bookmarks.create_bookmark(recording_id=path_params["recordingId"])
             case "DeleteBookmark":
                 return self._account.bookmarks.delete_bookmark(recording_id=path_params["recordingId"])
+            case "CreateBubbleUp":
+                return self._account.bubble_ups.create_bubble_up(
+                    recording_id=path_params["recordingId"], at=(body or {}).get("at")
+                )
+            case "DeleteBubbleUp":
+                return self._account.bubble_ups.delete_bubble_up(recording_id=path_params["recordingId"])
             case "SpotlightRecording":
                 return self._account.recordings.spotlight(recording_id=path_params["recordingId"])
             case "UnspotlightRecording":

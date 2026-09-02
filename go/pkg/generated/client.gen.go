@@ -577,6 +577,16 @@ type CreateAttachmentResponseContent struct {
 // is optional (docked recordings and doors omit it).
 type CreateBookmarkResponseContent = Bookmark
 
+// CreateBubbleUpRequestContent defines model for CreateBubbleUpRequestContent.
+type CreateBubbleUpRequestContent struct {
+	// At Timing for the bubble-up. `"now"` bubbles up immediately; a scheduling
+	// keyword (`"today"`, `"tomorrow"`, `"weekend"`, `"next_week"`) or an ISO8601
+	// date (e.g. `"2026-09-10"`) schedules it to resurface later. bc3 requires a
+	// value — omitting `at` errors server-side (`Date.iso8601(nil)`) — so send
+	// `"now"` for the immediate case.
+	At *string `json:"at,omitempty"`
+}
+
 // CreateCampfireLineRequestContent defines model for CreateCampfireLineRequestContent.
 type CreateCampfireLineRequestContent struct {
 	Content     string  `json:"content"`
@@ -5275,6 +5285,9 @@ type UpdateQuestionNotificationSettingsJSONRequestBody = UpdateQuestionNotificat
 // CreateRecordingBoostJSONRequestBody defines body for CreateRecordingBoost for application/json ContentType.
 type CreateRecordingBoostJSONRequestBody = CreateRecordingBoostRequestContent
 
+// CreateBubbleUpJSONRequestBody defines body for CreateBubbleUp for application/json ContentType.
+type CreateBubbleUpJSONRequestBody = CreateBubbleUpRequestContent
+
 // SetClientVisibilityJSONRequestBody defines body for SetClientVisibility for application/json ContentType.
 type SetClientVisibilityJSONRequestBody = SetClientVisibilityRequestContent
 
@@ -6445,6 +6458,14 @@ type ClientInterface interface {
 	CreateRecordingBoostWithBody(ctx context.Context, accountId string, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	CreateRecordingBoost(ctx context.Context, accountId string, recordingId int64, body CreateRecordingBoostJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteBubbleUp request
+	DeleteBubbleUp(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateBubbleUpWithBody request with any body
+	CreateBubbleUpWithBody(ctx context.Context, accountId string, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	CreateBubbleUp(ctx context.Context, accountId string, recordingId int64, body CreateBubbleUpJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// SetClientVisibilityWithBody request with any body
 	SetClientVisibilityWithBody(ctx context.Context, accountId string, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -9154,6 +9175,34 @@ func (c *Client) CreateRecordingBoost(ctx context.Context, accountId string, rec
 		return nil, err
 	}
 	return c.Client.Do(req)
+
+}
+
+// DeleteBubbleUp is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) DeleteBubbleUp(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewDeleteBubbleUpRequest(c.Server, accountId, recordingId)
+	}, true, "DeleteBubbleUp", reqEditors...)
+
+}
+
+// CreateBubbleUpWithBody is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) CreateBubbleUpWithBody(ctx context.Context, accountId string, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewCreateBubbleUpRequestWithBody(c.Server, accountId, recordingId, contentType, body)
+	}, true, "CreateBubbleUp", reqEditors...)
+
+}
+
+func (c *Client) CreateBubbleUp(ctx context.Context, accountId string, recordingId int64, body CreateBubbleUpJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewCreateBubbleUpRequest(c.Server, accountId, recordingId, body)
+	}, true, "CreateBubbleUp", reqEditors...)
 
 }
 
@@ -19241,6 +19290,101 @@ func NewCreateRecordingBoostRequestWithBody(server string, accountId string, rec
 	return req, nil
 }
 
+// NewDeleteBubbleUpRequest generates requests for DeleteBubbleUp
+func NewDeleteBubbleUpRequest(server string, accountId string, recordingId int64) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "recordingId", runtime.ParamLocationPath, recordingId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/recordings/%s/bubble_up.json", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCreateBubbleUpRequest calls the generic CreateBubbleUp builder with application/json body
+func NewCreateBubbleUpRequest(server string, accountId string, recordingId int64, body CreateBubbleUpJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateBubbleUpRequestWithBody(server, accountId, recordingId, "application/json", bodyReader)
+}
+
+// NewCreateBubbleUpRequestWithBody generates requests for CreateBubbleUp with any type of body
+func NewCreateBubbleUpRequestWithBody(server string, accountId string, recordingId int64, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "recordingId", runtime.ParamLocationPath, recordingId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/recordings/%s/bubble_up.json", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewSetClientVisibilityRequest calls the generic SetClientVisibility builder with application/json body
 func NewSetClientVisibilityRequest(server string, accountId string, recordingId int64, body SetClientVisibilityJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -24461,6 +24605,8 @@ var operationMetadata = map[string]OperationMetadata{
 	"CreateBookmark":                     {Idempotent: true, HasSensitiveParams: false},
 	"ListRecordingBoosts":                {Idempotent: true, HasSensitiveParams: false},
 	"CreateRecordingBoost":               {Idempotent: false, HasSensitiveParams: false},
+	"DeleteBubbleUp":                     {Idempotent: true, HasSensitiveParams: false},
+	"CreateBubbleUp":                     {Idempotent: true, HasSensitiveParams: false},
 	"SetClientVisibility":                {Idempotent: true, HasSensitiveParams: false},
 	"ListComments":                       {Idempotent: true, HasSensitiveParams: false},
 	"CreateComment":                      {Idempotent: false, HasSensitiveParams: false},
@@ -24724,6 +24870,8 @@ var operationRetryMax = map[string]int{
 	"CreateBookmark":                     3,
 	"ListRecordingBoosts":                3,
 	"CreateRecordingBoost":               2,
+	"DeleteBubbleUp":                     3,
+	"CreateBubbleUp":                     3,
 	"SetClientVisibility":                3,
 	"ListComments":                       3,
 	"CreateComment":                      2,
@@ -24985,6 +25133,8 @@ var operationRetryOn = map[string][]int{
 	"CreateBookmark":                     {429, 503},
 	"ListRecordingBoosts":                {429, 503},
 	"CreateRecordingBoost":               {429, 503},
+	"DeleteBubbleUp":                     {429, 503},
+	"CreateBubbleUp":                     {429, 503},
 	"SetClientVisibility":                {429, 503},
 	"ListComments":                       {429, 503},
 	"CreateComment":                      {429, 503},
@@ -26650,6 +26800,14 @@ type ClientWithResponsesInterface interface {
 	CreateRecordingBoostWithBodyWithResponse(ctx context.Context, accountId string, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateRecordingBoostResponse, error)
 
 	CreateRecordingBoostWithResponse(ctx context.Context, accountId string, recordingId int64, body CreateRecordingBoostJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateRecordingBoostResponse, error)
+
+	// DeleteBubbleUpWithResponse request
+	DeleteBubbleUpWithResponse(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*DeleteBubbleUpResponse, error)
+
+	// CreateBubbleUpWithBodyWithResponse request with any body
+	CreateBubbleUpWithBodyWithResponse(ctx context.Context, accountId string, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateBubbleUpResponse, error)
+
+	CreateBubbleUpWithResponse(ctx context.Context, accountId string, recordingId int64, body CreateBubbleUpJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateBubbleUpResponse, error)
 
 	// SetClientVisibilityWithBodyWithResponse request with any body
 	SetClientVisibilityWithBodyWithResponse(ctx context.Context, accountId string, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetClientVisibilityResponse, error)
@@ -32604,6 +32762,74 @@ func (r CreateRecordingBoostResponse) ContentType() string {
 	return ""
 }
 
+type DeleteBubbleUpResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteBubbleUpResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteBubbleUpResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteBubbleUpResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateBubbleUpResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateBubbleUpResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateBubbleUpResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateBubbleUpResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type SetClientVisibilityResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -37603,6 +37829,32 @@ func (c *ClientWithResponses) CreateRecordingBoostWithResponse(ctx context.Conte
 		return nil, err
 	}
 	return ParseCreateRecordingBoostResponse(rsp)
+}
+
+// DeleteBubbleUpWithResponse request returning *DeleteBubbleUpResponse
+func (c *ClientWithResponses) DeleteBubbleUpWithResponse(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*DeleteBubbleUpResponse, error) {
+	rsp, err := c.DeleteBubbleUp(ctx, accountId, recordingId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteBubbleUpResponse(rsp)
+}
+
+// CreateBubbleUpWithBodyWithResponse request with arbitrary body returning *CreateBubbleUpResponse
+func (c *ClientWithResponses) CreateBubbleUpWithBodyWithResponse(ctx context.Context, accountId string, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateBubbleUpResponse, error) {
+	rsp, err := c.CreateBubbleUpWithBody(ctx, accountId, recordingId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateBubbleUpResponse(rsp)
+}
+
+func (c *ClientWithResponses) CreateBubbleUpWithResponse(ctx context.Context, accountId string, recordingId int64, body CreateBubbleUpJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateBubbleUpResponse, error) {
+	rsp, err := c.CreateBubbleUp(ctx, accountId, recordingId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateBubbleUpResponse(rsp)
 }
 
 // SetClientVisibilityWithBodyWithResponse request with arbitrary body returning *SetClientVisibilityResponse
@@ -47177,6 +47429,110 @@ func ParseCreateRecordingBoostResponse(rsp *http.Response) (*CreateRecordingBoos
 		var dest ValidationErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
 			response.JSON422 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON429 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON500 = &dest
+		}
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteBubbleUpResponse parses an HTTP response from a DeleteBubbleUpWithResponse call
+func ParseDeleteBubbleUpResponse(rsp *http.Response) (*DeleteBubbleUpResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteBubbleUpResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON401 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON403 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON404 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON429 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON500 = &dest
+		}
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateBubbleUpResponse parses an HTTP response from a CreateBubbleUpWithResponse call
+func ParseCreateBubbleUpResponse(rsp *http.Response) (*CreateBubbleUpResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateBubbleUpResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON401 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON403 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON404 = &dest
 		}
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:

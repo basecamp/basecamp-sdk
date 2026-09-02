@@ -5,6 +5,7 @@ from basecamp.generated.services.attachments import AttachmentsService, AsyncAtt
 from basecamp.generated.services.automation import AutomationService, AsyncAutomationService
 from basecamp.generated.services.bookmarks import BookmarksService, AsyncBookmarksService
 from basecamp.generated.services.boosts import BoostsService, AsyncBoostsService
+from basecamp.generated.services.bubble_ups import BubbleUpsService, AsyncBubbleUpsService
 from basecamp.generated.services.calendars import CalendarsService, AsyncCalendarsService
 from basecamp.generated.services.campfires import CampfiresService, AsyncCampfiresService
 from basecamp.generated.services.card_columns import CardColumnsService, AsyncCardColumnsService
@@ -68,6 +69,8 @@ __all__ = [
     "AsyncBookmarksService",
     "BoostsService",
     "AsyncBoostsService",
+    "BubbleUpsService",
+    "AsyncBubbleUpsService",
     "CalendarsService",
     "AsyncCalendarsService",
     "CampfiresService",

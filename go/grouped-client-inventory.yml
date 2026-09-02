@@ -190,6 +190,7 @@ not_grouped:
   - CreateAnswer
   - CreateAttachment
   - CreateBookmark
+  - CreateBubbleUp
   - CreateCampfireLine
   - CreateCampfireUpload
   - CreateCardColumn
@@ -214,6 +215,7 @@ not_grouped:
   - CreateWormhole
   - DeleteBookmark
   - DeleteBoost
+  - DeleteBubbleUp
   - DeleteCampfireLine
   - DeleteChatbot
   - DeleteFolder

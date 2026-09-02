@@ -337,6 +337,8 @@ service Basecamp {
     GetBookmark,
     CreateBookmark,
     DeleteBookmark,
+    CreateBubbleUp,
+    DeleteBubbleUp,
 
     // Batch 17 - Out of Office
     GetOutOfOffice,
@@ -11643,6 +11645,72 @@ structure DeleteBookmarkInput {
 }
 
 structure DeleteBookmarkOutput {}
+
+/// Bubble up a recording for the current user, resurfacing it in the current
+/// user's readings (the BC5 successor to "save"). Returns 204 No Content with
+/// no body.
+///
+/// The `at` field controls timing. Send `"now"` to bubble up immediately, or a
+/// scheduling keyword (`"today"`, `"tomorrow"`, `"weekend"`, `"next_week"`) or
+/// an ISO8601 date (e.g. `"2026-09-10"`) to schedule it to resurface later.
+/// NOTE: bc3 currently requires `at` — omitting it raises on the server
+/// (`Date.iso8601(nil)`), so send `"now"` for the immediate case. The field is
+/// modeled optional (not `@required`) so a future bc3 default (`params[:at] ||=
+/// "now"`) makes omission mean "now" without an SDK change.
+///
+/// Idempotent: bubbling up an already-bubbled recording is set-membership and
+/// still returns 204.
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
+@http(method: "POST", uri: "/{accountId}/recordings/{recordingId}/bubble_up.json", code: 204)
+operation CreateBubbleUp {
+  input: CreateBubbleUpInput
+  output: CreateBubbleUpOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure CreateBubbleUpInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  recordingId: RecordingId
+
+  /// Timing for the bubble-up. `"now"` bubbles up immediately; a scheduling
+  /// keyword (`"today"`, `"tomorrow"`, `"weekend"`, `"next_week"`) or an ISO8601
+  /// date (e.g. `"2026-09-10"`) schedules it to resurface later. bc3 requires a
+  /// value — omitting `at` errors server-side (`Date.iso8601(nil)`) — so send
+  /// `"now"` for the immediate case.
+  at: String
+}
+
+structure CreateBubbleUpOutput {}
+
+/// Remove the current user's bubble-up from a recording (returns 204 No Content).
+/// Idempotent: popping an absent bubble-up also returns 204.
+@idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
+@http(method: "DELETE", uri: "/{accountId}/recordings/{recordingId}/bubble_up.json", code: 204)
+operation DeleteBubbleUp {
+  input: DeleteBubbleUpInput
+  output: DeleteBubbleUpOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure DeleteBubbleUpInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  recordingId: RecordingId
+}
+
+structure DeleteBubbleUpOutput {}
 
 // ===== Notification Shapes =====
 

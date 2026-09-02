@@ -129,6 +129,8 @@ export const PATH_TO_OPERATION: Record<string, string> = {
   "POST:/{accountId}/recordings/{recordingId}/bookmark.json": "CreateBookmark",
   "GET:/{accountId}/recordings/{recordingId}/boosts.json": "ListRecordingBoosts",
   "POST:/{accountId}/recordings/{recordingId}/boosts.json": "CreateRecordingBoost",
+  "DELETE:/{accountId}/recordings/{recordingId}/bubble_up.json": "DeleteBubbleUp",
+  "POST:/{accountId}/recordings/{recordingId}/bubble_up.json": "CreateBubbleUp",
   "PUT:/{accountId}/recordings/{recordingId}/client_visibility.json": "SetClientVisibility",
   "GET:/{accountId}/recordings/{recordingId}/comments.json": "ListComments",
   "POST:/{accountId}/recordings/{recordingId}/comments.json": "CreateComment",
