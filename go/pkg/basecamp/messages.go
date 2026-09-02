@@ -67,6 +67,12 @@ type CreateMessageRequest struct {
 }
 
 // UpdateMessageRequest specifies the parameters for updating a message.
+//
+// Category handling is presence-bearing across two additive fields. CategoryID
+// sets the message type; leaving it zero omits category_id, so the existing
+// category is left unchanged. ClearCategory removes the category outright and
+// wins over CategoryID when both are set. See MessagesService.Update for the
+// wire encoding.
 type UpdateMessageRequest struct {
 	// Subject is the message title (optional).
 	Subject string `json:"subject,omitempty"`
@@ -74,8 +80,15 @@ type UpdateMessageRequest struct {
 	Content string `json:"content,omitempty"`
 	// Status is either "drafted" or "active" (optional).
 	Status string `json:"status,omitempty"`
-	// CategoryID is the message type ID (optional).
+	// CategoryID is the message type ID. Zero leaves the category unchanged; a
+	// positive value sets it. To remove the category, use ClearCategory.
 	CategoryID int64 `json:"category_id,omitempty"`
+	// ClearCategory removes the message's category. When true it emits
+	// category_id as the empty string on the wire (never null — SPEC §18),
+	// which BC3 blank-casts to nil to clear (basecamp/bc3#12521). It takes
+	// precedence over CategoryID when both are set. It is a control flag, not a
+	// wire field, so it is never marshaled directly.
+	ClearCategory bool `json:"-"`
 }
 
 // MessageListOptions specifies options for listing messages.
@@ -301,6 +314,13 @@ func (s *MessagesService) Create(ctx context.Context, boardID int64, req *Create
 
 // Update updates an existing message.
 // Returns the updated message.
+//
+// To clear a message's category, set ClearCategory on the request; it goes on
+// the wire as category_id: "" (never null — SPEC §18), which BC3 blank-casts to
+// nil to clear (basecamp/bc3#12521), mirroring how CardsService.Update clears a
+// due date. Setting CategoryID to a positive value sets the category; leaving
+// both unset omits category_id and leaves the existing category unchanged.
+// ClearCategory wins when both are set.
 func (s *MessagesService) Update(ctx context.Context, messageID int64, req *UpdateMessageRequest) (result *Message, err error) {
 	op := OperationInfo{
 		Service: "Messages", Operation: "Update",
@@ -321,21 +341,35 @@ func (s *MessagesService) Update(ctx context.Context, messageID int64, req *Upda
 		return nil, err
 	}
 
-	body := generated.UpdateMessageJSONRequestBody{}
+	// Hand-marshaled map, not generated.UpdateMessageJSONRequestBody (SPEC §18
+	// rule 1 carve-out, mirroring CardsService.UpdateVerbatim): the explicit
+	// category clear is spelled "category_id": "", and the generated *int64
+	// member cannot produce it — its spellings are absent (nil) and an integer.
+	// A literal null would violate the §18 body-compaction rule and diverge from
+	// the "" clear all six SDKs send identically; BC3 blank-casts "" to nil to
+	// clear (basecamp/bc3#12521, messages_controller.rb find_category).
+	body := map[string]any{}
 	if req.Subject != "" {
-		body.Subject = &req.Subject
+		body["subject"] = req.Subject
 	}
 	if req.Content != "" {
-		body.Content = &req.Content
+		body["content"] = req.Content
 	}
 	if req.Status != "" {
-		body.Status = &req.Status
+		body["status"] = req.Status
 	}
-	if req.CategoryID != 0 {
-		body.CategoryId = &req.CategoryID
+	switch {
+	case req.ClearCategory:
+		body["category_id"] = ""
+	case req.CategoryID != 0:
+		body["category_id"] = req.CategoryID
 	}
 
-	resp, err := s.client.parent.gen.UpdateMessageWithResponse(ctx, s.client.accountID, messageID, body)
+	bodyReader, err := marshalBody(body)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := s.client.parent.gen.UpdateMessageWithBodyWithResponse(ctx, s.client.accountID, messageID, "application/json", bodyReader)
 	if err != nil {
 		return nil, err
 	}

@@ -536,3 +536,58 @@ func TestMessagesService_CreateVisibleToClients(t *testing.T) {
 		})
 	}
 }
+
+// TestMessagesService_UpdateCategory verifies the presence semantics of the
+// category on update: ClearCategory sends category_id present-and-empty ("")
+// to clear (BC3 blank-casts it to nil, basecamp/bc3#12521), a positive
+// CategoryID sets it, and addressing neither leaves category_id off the wire so
+// the existing category is unchanged. Omission does NOT clear — only an
+// explicit "" does.
+func TestMessagesService_UpdateCategory(t *testing.T) {
+	fixture := loadMessagesFixture(t, "get.json")
+	cases := []struct {
+		name    string
+		req     *UpdateMessageRequest
+		present bool
+		want    any
+	}{
+		{"clear sends empty string", &UpdateMessageRequest{ClearCategory: true}, true, ""},
+		{"set sends the integer", &UpdateMessageRequest{CategoryID: 1069479341}, true, int64(1069479341)},
+		{"unaddressed omits the key", &UpdateMessageRequest{Subject: "s"}, false, nil},
+		{"clear wins over set", &UpdateMessageRequest{CategoryID: 42, ClearCategory: true}, true, ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var receivedBody map[string]any
+			svc := testMessagesServer(t, func(w http.ResponseWriter, r *http.Request) {
+				receivedBody = decodeRequestBody(t, r)
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(200)
+				w.Write(fixture)
+			})
+
+			if _, err := svc.Update(context.Background(), 123, tc.req); err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			val, ok := receivedBody["category_id"]
+			if ok != tc.present {
+				t.Fatalf("category_id present=%v, want %v (body=%v)", ok, tc.present, receivedBody)
+			}
+			if !tc.present {
+				return
+			}
+			switch want := tc.want.(type) {
+			case string:
+				if val != want {
+					t.Errorf("category_id=%#v, want %q (must be present-and-empty to clear, never null)", val, want)
+				}
+			case int64:
+				got, _ := val.(json.Number).Int64()
+				if got != want {
+					t.Errorf("category_id=%#v, want %d", val, want)
+				}
+			}
+		})
+	}
+}
