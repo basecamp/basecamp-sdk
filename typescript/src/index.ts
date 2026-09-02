@@ -309,6 +309,11 @@ export {
 } from "./generated/services/bookmarks.js";
 
 export {
+  BubbleUpsService,
+  type CreateBubbleUpBubbleUpRequest,
+} from "./generated/services/bubble-ups.js";
+
+export {
   FoldersService,
   type Folder,
   type FolderWithProjects,

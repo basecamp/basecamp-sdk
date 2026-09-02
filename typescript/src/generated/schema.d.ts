@@ -2312,6 +2312,42 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/recordings/{recordingId}/bubble_up.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Bubble up a recording for the current user, resurfacing it in the current
+         *     user's readings (the BC5 successor to "save"). Returns 204 No Content with
+         *     no body.
+         *
+         *     The `at` field controls timing. Send `"now"` to bubble up immediately, or a
+         *     scheduling keyword (`"today"`, `"tomorrow"`, `"weekend"`, `"next_week"`) or
+         *     an ISO8601 date (e.g. `"2026-09-10"`) to schedule it to resurface later.
+         *     NOTE: bc3 currently requires `at` — omitting it raises on the server
+         *     (`Date.iso8601(nil)`), so send `"now"` for the immediate case. The field is
+         *     modeled optional (not `@required`) so a future bc3 default (`params[:at] ||=
+         *     "now"`) makes omission mean "now" without an SDK change.
+         *
+         *     Idempotent: bubbling up an already-bubbled recording is set-membership and
+         *     still returns 204.
+         */
+        post: operations["CreateBubbleUp"];
+        /**
+         * @description Remove the current user's bubble-up from a recording (returns 204 No Content).
+         *     Idempotent: popping an absent bubble-up also returns 204.
+         */
+        delete: operations["DeleteBubbleUp"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/recordings/{recordingId}/client_visibility.json": {
         parameters: {
             query?: never;
@@ -4000,6 +4036,16 @@ export interface components {
             attachable_sgid?: string;
         };
         CreateBookmarkResponseContent: components["schemas"]["Bookmark"];
+        CreateBubbleUpRequestContent: {
+            /**
+             * @description Timing for the bubble-up. `"now"` bubbles up immediately; a scheduling
+             *     keyword (`"today"`, `"tomorrow"`, `"weekend"`, `"next_week"`) or an ISO8601
+             *     date (e.g. `"2026-09-10"`) schedules it to resurface later. bc3 requires a
+             *     value — omitting `at` errors server-side (`Date.iso8601(nil)`) — so send
+             *     `"now"` for the immediate case.
+             */
+            at?: string;
+        };
         CreateCampfireLineRequestContent: {
             content: string;
             content_type?: string;
@@ -17868,6 +17914,140 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ValidationErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    CreateBubbleUp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                recordingId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["CreateBubbleUpRequestContent"];
+            };
+        };
+        responses: {
+            /** @description CreateBubbleUp 204 response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    DeleteBubbleUp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                recordingId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description DeleteBubbleUp 204 response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
                 };
             };
             /** @description RateLimitError 429 response */

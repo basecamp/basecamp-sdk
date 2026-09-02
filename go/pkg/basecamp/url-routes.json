@@ -1900,6 +1900,24 @@
       }
     },
     {
+      "pattern": "/{accountId}/recordings/{recordingId}/bubble_up",
+      "resource": "BubbleUps",
+      "operations": {
+        "DELETE": "DeleteBubbleUp",
+        "POST": "CreateBubbleUp"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "recordingId": {
+          "role": "parent",
+          "type": "int64"
+        }
+      }
+    },
+    {
       "pattern": "/{accountId}/recordings/{recordingId}/client_visibility",
       "resource": "ClientFeatures",
       "operations": {

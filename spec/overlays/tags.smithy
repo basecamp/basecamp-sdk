@@ -264,6 +264,8 @@ apply ListMyBookmarks @tags(["Bookmarks"])
 apply GetBookmark @tags(["Bookmarks"])
 apply CreateBookmark @tags(["Bookmarks"])
 apply DeleteBookmark @tags(["Bookmarks"])
+apply CreateBubbleUp @tags(["BubbleUps"])
+apply DeleteBubbleUp @tags(["BubbleUps"])
 apply MarkAsRead @tags(["MyNotifications"])
 
 // Out of Office

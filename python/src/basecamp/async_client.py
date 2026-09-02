@@ -398,6 +398,12 @@ class AsyncAccountClient:
         return self._service("bookmarks", lambda: AsyncBookmarksService(self))
 
     @property
+    def bubble_ups(self):
+        from basecamp.generated.services.bubble_ups import AsyncBubbleUpsService
+
+        return self._service("bubble_ups", lambda: AsyncBubbleUpsService(self))
+
+    @property
     def folders(self):
         from basecamp.generated.services.folders import AsyncFoldersService
 

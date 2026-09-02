@@ -438,6 +438,10 @@ class CreateAttachmentResponseContent(TypedDict):
     attachable_sgid: NotRequired[str]
 
 
+class CreateBubbleUpRequestContent(TypedDict):
+    at: NotRequired[str]
+
+
 class CreateCampfireLineRequestContent(TypedDict):
     content: str
     content_type: NotRequired[str]

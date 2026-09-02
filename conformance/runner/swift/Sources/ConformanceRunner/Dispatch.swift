@@ -686,6 +686,16 @@ func dispatchOperation(_ tc: TestCase, _ account: AccountClient) async throws ->
         try await account.bookmarks.deleteBookmark(recordingId: pathParams.longParam("recordingId"))
         return DispatchResult()
 
+    case "CreateBubbleUp":
+        try await account.bubbleUps.createBubbleUp(
+            recordingId: pathParams.longParam("recordingId"),
+            req: CreateBubbleUpRequest(at: rb.optString("at")))
+        return DispatchResult()
+
+    case "DeleteBubbleUp":
+        try await account.bubbleUps.deleteBubbleUp(recordingId: pathParams.longParam("recordingId"))
+        return DispatchResult()
+
     case "SpotlightRecording":
         _ = try await account.recordings.spotlight(recordingId: pathParams.longParam("recordingId"))
         return DispatchResult()

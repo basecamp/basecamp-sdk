@@ -571,6 +571,16 @@ async function executeOperation(
         await client.bookmarks.deleteBookmark(Number(params.recordingId));
         break;
 
+      case "CreateBubbleUp":
+        await client.bubbleUps.createBubbleUp(Number(params.recordingId), {
+          at: body.at as string | undefined,
+        });
+        break;
+
+      case "DeleteBubbleUp":
+        await client.bubbleUps.deleteBubbleUp(Number(params.recordingId));
+        break;
+
       case "SpotlightRecording":
         await client.recordings.spotlight(Number(params.recordingId));
         break;

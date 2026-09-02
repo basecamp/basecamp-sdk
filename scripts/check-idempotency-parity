@@ -127,8 +127,12 @@ jq -r '.operations | to_entries[] | select(.value.idempotent == true or .value.r
 # UnspotlightRecording's DELETE are naturally idempotent (+2 both counts).
 # Recent Projects absorption (+2 ops): RecordProjectVisit's POST is naturally
 # idempotent (+1 both counts) and ListRecentProjects is readonly (+1 union only).
-expected_idempotent=86
-expected_union=212
+# Recording Bubble Up write absorption (+2 ops): CreateBubbleUp's POST and
+# DeleteBubbleUp's DELETE are naturally idempotent — bubbling an already-bubbled
+# recording (and popping an absent one) is a set-membership no-op that still
+# answers 204 — so both land in both counts (+2 each). Neither is readonly.
+expected_idempotent=88
+expected_union=214
 nIdempotent=$(wc -l < "$WORK/idempotentSet" | tr -d ' ')
 nUnion=$(wc -l < "$WORK/unionSet" | tr -d ' ')
 echo "    source of truth: $nIdempotent idempotent, $nUnion idempotent∪readonly"

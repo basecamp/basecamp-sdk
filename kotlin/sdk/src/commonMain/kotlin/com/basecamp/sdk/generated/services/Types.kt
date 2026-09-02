@@ -52,6 +52,11 @@ data class CreateEventBoostBody(
     val content: String
 )
 
+/** Request body for CreateBubbleUp. */
+data class CreateBubbleUpBody(
+    val at: String? = null
+)
+
 /** Request body for UpdateCalendar. */
 data class UpdateCalendarBody(
     val calendar: JsonObject

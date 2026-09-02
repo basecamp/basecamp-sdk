@@ -507,6 +507,11 @@ module Basecamp
       service(:bookmarks) { Services::BookmarksService.new(self) }
     end
 
+    # @return [Services::BubbleUpsService]
+    def bubble_ups
+      service(:bubble_ups) { Services::BubbleUpsService.new(self) }
+    end
+
     # @return [Services::FoldersService]
     def folders
       service(:folders) { Services::FoldersService.new(self) }

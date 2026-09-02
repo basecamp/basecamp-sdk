@@ -120,6 +120,36 @@ sdk_routes_absent_from_bc3_docs:
       test/api/schedules/entries/occurrences_controller_api_test.rb has a
       "show occurrence via flat route" test plus a flat/scoped parity test.
 
+  - method: POST
+    path: /recordings/:id/bubble_up
+    reason: >-
+      CreateBubbleUp. bc3's doc/api documents no per-recording bubble_up
+      create/destroy in either spelling, so the extractor sees nothing — but the
+      route is drawn and served. `resource :bubble_up, only: %i[show edit create
+      destroy]` (config/routes.rb:232) sits in `concern :recording_actions`
+      (:206), included flat at :276 inside `resources :recordings, only: []`
+      (:261, commented "CANONICAL: Top-level unscoped routes for recording
+      actions") and separately bucket-scoped at :918. Template-less escape hatch,
+      not the GetRecording trap: Recordings::BubbleUpsController#create answers
+      `head :no_content` (app/controllers/recordings/bubble_ups_controller.rb),
+      so no app/views/api template is needed and none exists. The sibling
+      `resource :position` in the SAME concern proves the concern's flat form
+      answers on the API host — test/api/recordings/positions_controller_api_test.rb
+      exercises `/recordings/:id/position` unscoped. bubble_up's own create/destroy
+      are covered at test/controllers/recordings/bubble_ups_controller_test.rb
+      ("create json" / "destroy json", both asserting :no_content). The `at`
+      body param controls timing ("now" immediate; a keyword or ISO8601 date
+      schedules); bc3 currently requires it (an omitted `at` hits
+      Date.iso8601(nil) and raises).
+
+  - method: DELETE
+    path: /recordings/:id/bubble_up
+    reason: >-
+      DeleteBubbleUp. Same draw as CreateBubbleUp (config/routes.rb:232, flat at
+      :276). Recordings::BubbleUpsController#destroy answers `head :no_content`,
+      so no API view is needed; covered by the "destroy json" case in
+      test/controllers/recordings/bubble_ups_controller_test.rb.
+
 # ---------------------------------------------------------------------------
 # Known-defective SDK routes — bc3 does NOT serve these, and we know it.
 #

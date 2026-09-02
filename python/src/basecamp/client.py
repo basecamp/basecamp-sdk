@@ -399,6 +399,12 @@ class AccountClient:
         return self._service("bookmarks", lambda: BookmarksService(self))
 
     @property
+    def bubble_ups(self):
+        from basecamp.generated.services.bubble_ups import BubbleUpsService
+
+        return self._service("bubble_ups", lambda: BubbleUpsService(self))
+
+    @property
     def folders(self):
         from basecamp.generated.services.folders import FoldersService
 

@@ -85,6 +85,7 @@ type AccountClient struct {
 	lineup                *LineupService
 	subscriptions         *SubscriptionsService
 	bookmarks             *BookmarksService
+	bubbleUps             *BubbleUpsService
 	folders               *FoldersService
 	drafts                *DraftsService
 	myNotes               *MyNotesService
@@ -1453,6 +1454,17 @@ func (ac *AccountClient) Bookmarks() *BookmarksService {
 		ac.bookmarks = NewBookmarksService(ac)
 	}
 	return ac.bookmarks
+}
+
+// BubbleUps returns the BubbleUpsService for bubbling recordings up and down in
+// the current user's readings.
+func (ac *AccountClient) BubbleUps() *BubbleUpsService {
+	ac.mu.Lock()
+	defer ac.mu.Unlock()
+	if ac.bubbleUps == nil {
+		ac.bubbleUps = NewBubbleUpsService(ac)
+	}
+	return ac.bubbleUps
 }
 
 // Folders returns the FoldersService for the current user's home-screen folders.
