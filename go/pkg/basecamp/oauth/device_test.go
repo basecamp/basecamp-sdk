@@ -265,6 +265,35 @@ func TestRequestDeviceAuthorization_SendsScopeWhenSet(t *testing.T) {
 	}
 }
 
+func TestRequestDeviceAuthorization_SendsLoginHintWhenSet(t *testing.T) {
+	var form url.Values
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = r.ParseForm()
+		form = r.PostForm
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(deviceAuthBody)
+	}))
+	defer srv.Close()
+
+	_, err := RequestDeviceAuthorization(context.Background(), srv.URL, "basecamp-cli",
+		WithDeviceHTTPClient(tlsClient(srv)), WithDeviceLoginHint("bot@example.com"))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got := form.Get("login_hint"); got != "bot@example.com" {
+		t.Errorf("login_hint = %q, want %q", got, "bot@example.com")
+	}
+
+	_, err = RequestDeviceAuthorization(context.Background(), srv.URL, "basecamp-cli",
+		WithDeviceHTTPClient(tlsClient(srv)))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if _, present := form["login_hint"]; present {
+		t.Errorf("login_hint must be omitted when no hint is set, got %q", form.Get("login_hint"))
+	}
+}
+
 func TestRequestDeviceAuthorization_DefaultsIntervalTo5(t *testing.T) {
 	body := map[string]any{}
 	for k, v := range deviceAuthBody {
