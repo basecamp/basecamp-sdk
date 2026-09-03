@@ -477,6 +477,7 @@ export {
   type CreateTemplateRequest,
   type UpdateTemplateRequest,
   type CreateProjectTemplateRequest,
+  type CreateLibraryCopyTemplateRequest,
 } from "./generated/services/templates.js";
 
 // Lineup service - generated

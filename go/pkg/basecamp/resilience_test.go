@@ -302,6 +302,33 @@ func TestResilienceHooks_OnOperationEnd_UpdatesCircuitBreaker(t *testing.T) {
 		}
 	})
 
+	t.Run("does not count wrapped client errors as failures", func(t *testing.T) {
+		cfg := &CircuitBreakerConfig{
+			FailureThreshold: 1,
+			OpenTimeout:      time.Hour,
+		}
+		rh := &resilienceHooks{
+			inner:           NoopHooks{},
+			circuitBreakers: newCircuitBreakerRegistry(cfg),
+		}
+
+		confirmationOp := OperationInfo{Service: "Templates", Operation: "CreateLibraryCopy"}
+		confirmationErr := &PeopleConfirmationRequiredError{
+			ValidationError: &Error{
+				Code:       CodeValidation,
+				Message:    "people_confirmation_required",
+				HTTPStatus: 422,
+			},
+			People: []TemplateLibraryConfirmationPerson{{ID: 1, Name: "Alice"}},
+		}
+		rh.OnOperationEnd(ctx, confirmationOp, confirmationErr, time.Second)
+
+		cb := rh.circuitBreakers.get("Templates.CreateLibraryCopy")
+		if cb.State() != "closed" {
+			t.Errorf("circuit should be closed after wrapped client error: got %s", cb.State())
+		}
+	})
+
 	t.Run("does not count 429 rate limit errors as failures", func(t *testing.T) {
 		cfg := &CircuitBreakerConfig{
 			FailureThreshold: 2,

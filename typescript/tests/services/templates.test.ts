@@ -14,6 +14,7 @@ import {
   PeopleConfirmationRequiredError,
 } from "../../src/errors.js";
 import type { BasecampClient } from "../../src/client.js";
+import type { CreateLibraryCopyTemplateRequest } from "../../src/index.js";
 
 const BASE_URL = "https://3.basecampapi.com/12345";
 
@@ -280,11 +281,12 @@ describe("TemplatesService", () => {
         })
       );
 
-      const copy = await client.templates.createLibraryCopy({
+      const request: CreateLibraryCopyTemplateRequest = {
         templateRecordingId: 3,
         destinationParentId: 9,
         addingPeopleConfirmed: true,
-      });
+      };
+      const copy = await client.templates.createLibraryCopy(request);
       expect(copy.id).toBe(5);
       expect(copy.status).toBe("pending");
       expect(copy.destination_todolist).toBeUndefined();
