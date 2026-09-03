@@ -2380,6 +2380,49 @@
       }
     },
     {
+      "pattern": "/{accountId}/template_library",
+      "resource": "Automation",
+      "operations": {
+        "GET": "GetTemplateLibrary"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/template_library/copies",
+      "resource": "Automation",
+      "operations": {
+        "POST": "CreateTemplateLibraryCopy"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/template_library/copies/{copyId}",
+      "resource": "Automation",
+      "operations": {
+        "GET": "GetTemplateLibraryCopy"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "copyId": {
+          "role": "recording",
+          "type": "int64"
+        }
+      }
+    },
+    {
       "pattern": "/{accountId}/templates",
       "resource": "Automation",
       "operations": {

@@ -270,6 +270,9 @@ export const PATH_TO_OPERATION: Record<string, string> = {
   "GET:/{accountId}/searches/metadata.json": "GetSearchMetadata",
 
   // Templates
+  "GET:/{accountId}/template_library.json": "GetTemplateLibrary",
+  "POST:/{accountId}/template_library/copies.json": "CreateTemplateLibraryCopy",
+  "GET:/{accountId}/template_library/copies/{copyId}": "GetTemplateLibraryCopy",
   "GET:/{accountId}/templates.json": "ListTemplates",
   "POST:/{accountId}/templates.json": "CreateTemplate",
   "DELETE:/{accountId}/templates/{templateId}": "DeleteTemplate",

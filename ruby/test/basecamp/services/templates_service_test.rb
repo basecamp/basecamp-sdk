@@ -78,4 +78,99 @@ class TemplatesServiceTest < Minitest::Test
     result = @account.templates.get_construction(template_id: 1, construction_id: 1)
     assert_equal "completed", result["status"]
   end
+
+  def test_get_library
+    response = {
+      "bucket" => { "id" => 1, "name" => "To-do List Templates", "type" => "TemplateLibrary" },
+      "todoset" => { "id" => 2, "title" => "To-do List Templates", "type" => "Todoset" },
+      "todolists" => [ { "id" => 3, "name" => "Project kickoff" } ]
+    }
+
+    stub_request(:get, "https://3.basecampapi.com/12345/template_library.json")
+      .to_return(status: 200, body: response.to_json, headers: { "Content-Type" => "application/json" })
+
+    result = @account.templates.get_library
+    assert_equal "TemplateLibrary", result.dig("bucket", "type")
+    assert_equal "Project kickoff", result.dig("todolists", 0, "name")
+  end
+
+  def test_get_library_raises_forbidden_error
+    stub_request(:get, "https://3.basecampapi.com/12345/template_library.json")
+      .to_return(status: 403, body: { error: "Forbidden" }.to_json, headers: { "Content-Type" => "application/json" })
+
+    error = assert_raises(Basecamp::ForbiddenError) { @account.templates.get_library }
+    assert_equal 403, error.http_status
+  end
+
+  def test_create_library_copy
+    response = {
+      "id" => 5,
+      "status" => "pending",
+      "source_recording_id" => 3,
+      "destination_parent_id" => 9,
+      "url" => "https://3.basecampapi.com/12345/template_library/copies/5.json"
+    }
+
+    stub_request(:post, "https://3.basecampapi.com/12345/template_library/copies.json")
+      .with(body: {
+        template_recording_id: 3,
+        destination_parent_id: 9,
+        adding_people_confirmed: true
+      })
+      .to_return(status: 201, body: response.to_json, headers: { "Content-Type" => "application/json" })
+
+    result = @account.templates.create_library_copy(
+      template_recording_id: 3,
+      destination_parent_id: 9,
+      adding_people_confirmed: true
+    )
+    assert_equal "pending", result["status"]
+    assert_not result.key?("destination_todolist")
+  end
+
+  def test_get_completed_library_copy
+    response = {
+      "id" => 5,
+      "status" => "completed",
+      "source_recording_id" => 3,
+      "destination_parent_id" => 9,
+      "url" => "https://3.basecampapi.com/12345/template_library/copies/5.json",
+      "destination_todolist" => { "id" => 10, "name" => "Project kickoff" }
+    }
+
+    stub_request(:get, "https://3.basecampapi.com/12345/template_library/copies/5")
+      .to_return(status: 200, body: response.to_json, headers: { "Content-Type" => "application/json" })
+
+    result = @account.templates.get_library_copy(copy_id: 5)
+    assert_equal "completed", result["status"]
+    assert_equal 10, result.dig("destination_todolist", "id")
+  end
+
+  def test_get_library_copy_raises_not_found_error
+    stub_request(:get, "https://3.basecampapi.com/12345/template_library/copies/404")
+      .to_return(status: 404, body: { error: "Not found" }.to_json, headers: { "Content-Type" => "application/json" })
+
+    error = assert_raises(Basecamp::NotFoundError) { @account.templates.get_library_copy(copy_id: 404) }
+    assert_equal 404, error.http_status
+  end
+
+  def test_create_library_copy_requires_people_confirmation
+    response = {
+      "error" => "Adding people requires confirmation",
+      "people" => [ { "id" => 4, "name" => "Victor", "avatar_url" => "https://example.test/avatar.png" } ]
+    }
+
+    stub_request(:post, "https://3.basecampapi.com/12345/template_library/copies.json")
+      .with(body: { template_recording_id: 3, destination_parent_id: 9 })
+      .to_return(status: 422, body: response.to_json, headers: { "Content-Type" => "application/json" })
+
+    error = assert_raises(Basecamp::PeopleConfirmationRequiredError) do
+      @account.templates.create_library_copy(template_recording_id: 3, destination_parent_id: 9)
+    end
+    assert_equal 422, error.http_status
+    assert_equal "Adding people requires confirmation", error.message
+    assert_equal 1, error.people.length
+    assert_equal 4, error.people.first.id
+    assert_equal "Victor", error.people.first.name
+  end
 end

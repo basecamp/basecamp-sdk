@@ -13,6 +13,22 @@ what wrong behaviour you get if you ignore one. This file is that half.
 
 # Unreleased
 
+### All SDKs: account-wide to-do list template library
+
+The Templates service now reads the account template library, starts an
+asynchronous copy into a project, and polls that copy through completion. Go's
+generated client interfaces gain `GetTemplateLibrary`,
+`CreateTemplateLibraryCopy`, and `GetTemplateLibraryCopy`; implementations of
+those interfaces must add the three methods.
+
+A copy that needs to grant destination-project access raises a specialized
+validation error carrying the affected people. Existing validation-error
+handlers continue to match in Go (`errors.As`), Python, Ruby, and Kotlin.
+TypeScript receives `PeopleConfirmationRequiredError`; Swift receives the new
+`BasecampError.peopleConfirmationRequired` enum case, so exhaustive Swift
+switches must add that case. The error keeps the canonical `validation` code
+and HTTP 422 status in every SDK.
+
 ### All SDKs: token exchange and refresh no longer follow redirects, and every default lane is timeout-bounded (#813)
 
 The token-exchange/refresh POST carries the highest-value credentials the SDK

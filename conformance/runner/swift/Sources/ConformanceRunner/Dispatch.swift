@@ -235,6 +235,26 @@ private func summarizeUpcoming(_ envelope: GetUpcomingScheduleResponseContent) -
     return .object(summary)
 }
 
+/// Exposes representative decoded template-library fields as portable scalars.
+private func summarizeTemplateLibrary(_ library: TemplateLibrary) -> JSON {
+    .object([
+        "bucket_id": .int(Int64(library.bucket.id)),
+        "todoset_id": .int(Int64(library.todoset.id)),
+        "first_todolist_id": .int(Int64(library.todolists.first?.id ?? 0)),
+    ])
+}
+
+private func summarizeTemplateLibraryCopy(_ copy: TemplateLibraryCopy) -> JSON {
+    var summary: [String: JSON] = [
+        "id": .int(Int64(copy.id)),
+        "status": .string(copy.status),
+    ]
+    if let destination = copy.destinationTodolist {
+        summary["destination_todolist_id"] = .int(Int64(destination.id))
+    }
+    return .object(summary)
+}
+
 /// Flattens an accumulated project list into top-level scalars.
 ///
 /// Flat and scalar because that is the only path form every runner can resolve:
@@ -318,6 +338,22 @@ func dispatchOperation(_ tc: TestCase, _ account: AccountClient) async throws ->
     case "RecordProjectVisit":
         try await account.projects.recordProjectVisit(projectId: pathParams.longParam("projectId"))
         return DispatchResult()
+
+    case "GetTemplateLibrary":
+        let library = try await account.templates.getLibrary()
+        return DispatchResult(resultJSON: summarizeTemplateLibrary(library))
+
+    case "CreateTemplateLibraryCopy":
+        let libraryCopy = try await account.templates.createLibraryCopy(
+            req: CreateTemplateLibraryCopyRequest(
+                addingPeopleConfirmed: rb.optBool("adding_people_confirmed"),
+                destinationParentId: rb.longParam("destination_parent_id"),
+                templateRecordingId: rb.longParam("template_recording_id")))
+        return DispatchResult(resultJSON: summarizeTemplateLibraryCopy(libraryCopy))
+
+    case "GetTemplateLibraryCopy":
+        let libraryCopy = try await account.templates.getLibraryCopy(copyId: pathParams.longParam("copyId"))
+        return DispatchResult(resultJSON: summarizeTemplateLibraryCopy(libraryCopy))
 
     case "CreateProject":
         _ = try await account.projects.create(req: CreateProjectRequest(name: rb.stringParam("name")))

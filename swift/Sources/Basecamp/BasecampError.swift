@@ -63,6 +63,11 @@ public enum BasecampError: Error, Sendable, LocalizedError {
         message: String, httpStatus: Int, hint: String?, requestId: String?,
         fieldErrors: [String: [String]]?)
 
+    /// A template copy requires confirmation before granting project access.
+    case peopleConfirmationRequired(
+        message: String, httpStatus: Int, hint: String?, requestId: String?,
+        fieldErrors: [String: [String]]?, people: [TemplateLibraryConfirmationPerson])
+
     /// An account limit blocks the request (HTTP 507) — file storage
     /// exhausted, or a webhook ceiling reached. Never retryable: no amount of
     /// backoff frees storage or raises a plan limit. Distinct from `.api` for
@@ -98,6 +103,7 @@ public enum BasecampError: Error, Sendable, LocalizedError {
         case .notFound: 404
         case .rateLimit: 429
         case .validation(_, let status, _, _, _): status
+        case .peopleConfirmationRequired(_, let status, _, _, _, _): status
         case .api(_, let status, _, _, _): status
         case .limitExceeded: 507
         case .ambiguous: nil
@@ -117,7 +123,7 @@ public enum BasecampError: Error, Sendable, LocalizedError {
         case .network: 6
         case .api: 7
         case .ambiguous: 8
-        case .validation: 9
+        case .validation, .peopleConfirmationRequired: 9
         case .limitExceeded: 10
         }
     }
@@ -134,6 +140,7 @@ public enum BasecampError: Error, Sendable, LocalizedError {
         case .limitExceeded(_, let hint, _): hint
         case .ambiguous(_, _, let hint): hint
         case .validation(_, _, let hint, _, _): hint
+        case .peopleConfirmationRequired(_, _, let hint, _, _, _): hint
         case .usage(_, let hint): hint
         }
     }
@@ -150,6 +157,7 @@ public enum BasecampError: Error, Sendable, LocalizedError {
         case .limitExceeded(let msg, _, _): msg
         case .ambiguous(let resource, _, _): "Ambiguous \(resource)"
         case .validation(let msg, _, _, _, _): msg
+        case .peopleConfirmationRequired(let msg, _, _, _, _, _): msg
         case .usage(let msg, _): msg
         }
     }
@@ -165,6 +173,7 @@ public enum BasecampError: Error, Sendable, LocalizedError {
         case .limitExceeded(_, _, let id): id
         case .ambiguous: nil
         case .validation(_, _, _, let id, _): id
+        case .peopleConfirmationRequired(_, _, _, let id, _, _): id
         case .network: nil
         case .usage: nil
         }
@@ -178,6 +187,15 @@ public enum BasecampError: Error, Sendable, LocalizedError {
     public var fieldErrors: [String: [String]]? {
         switch self {
         case .validation(_, _, _, _, let fieldErrors): fieldErrors
+        case .peopleConfirmationRequired(_, _, _, _, let fieldErrors, _): fieldErrors
+        default: nil
+        }
+    }
+
+    /// The people who need destination-project access before a template copy can start.
+    public var confirmationPeople: [TemplateLibraryConfirmationPerson]? {
+        switch self {
+        case .peopleConfirmationRequired(_, _, _, _, _, let people): people
         default: nil
         }
     }
@@ -263,6 +281,12 @@ public enum BasecampError: Error, Sendable, LocalizedError {
                 // tail is capped too.
                 validationMessage = truncate(serverMessage.map { "\($0) (\(flat))" } ?? flat)
             }
+            if status == 422, let people = parseTemplateLibraryConfirmationPeople(body) {
+                return .peopleConfirmationRequired(
+                    message: validationMessage, httpStatus: status,
+                    hint: hint, requestId: requestId, fieldErrors: fieldErrors, people: people
+                )
+            }
             return .validation(
                 message: validationMessage, httpStatus: status,
                 hint: hint, requestId: requestId, fieldErrors: fieldErrors
@@ -296,6 +320,24 @@ public enum BasecampError: Error, Sendable, LocalizedError {
     static func truncate(_ s: String) -> String {
         if s.count <= maxMessageLength { return s }
         return String(s.prefix(maxMessageLength - 3)) + "..."
+    }
+
+    private static func parseTemplateLibraryConfirmationPeople(
+        _ body: [String: Any]?
+    ) -> [TemplateLibraryConfirmationPerson]? {
+        guard let values = body?["people"] as? [Any], !values.isEmpty else { return nil }
+        var people: [TemplateLibraryConfirmationPerson] = []
+        people.reserveCapacity(values.count)
+        for value in values {
+            guard
+                let person = value as? [String: Any],
+                let id = person["id"] as? Int, id > 0,
+                let name = person["name"] as? String, !name.isEmpty,
+                let avatarUrl = person["avatar_url"] as? String, !avatarUrl.isEmpty
+            else { return nil }
+            people.append(TemplateLibraryConfirmationPerson(avatarUrl: avatarUrl, id: id, name: name))
+        }
+        return people
     }
 
     /// Extracts the field-keyed validation errors map from a parsed error

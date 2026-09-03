@@ -1,7 +1,7 @@
 {
   "$schema": "https://basecamp.com/schemas/sdk-metadata.json",
   "version": "1.0.0",
-  "generated": "2026-09-02T16:49:23Z",
+  "generated": "2026-09-03T02:27:35Z",
   "operations": {
     "GetAccount": {
       "retry": {
@@ -2747,6 +2747,39 @@
       },
       "idempotent": {
         "natural": true
+      }
+    },
+    "GetTemplateLibrary": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      }
+    },
+    "CreateTemplateLibraryCopy": {
+      "retry": {
+        "maxAttempts": 2,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      }
+    },
+    "GetTemplateLibraryCopy": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
       }
     },
     "ListTemplates": {

@@ -65,6 +65,7 @@ val SERVICE_SPLITS: Map<String, Map<String, List<String>>> = mapOf(
         "Templates" to listOf(
             "ListTemplates", "CreateTemplate", "GetTemplate", "UpdateTemplate",
             "DeleteTemplate", "CreateProjectFromTemplate", "GetProjectConstruction",
+            "GetTemplateLibrary", "CreateTemplateLibraryCopy", "GetTemplateLibraryCopy",
         ),
         "Checkins" to listOf(
             "GetQuestionnaire", "ListQuestions", "CreateQuestion", "GetQuestion",
@@ -219,6 +220,9 @@ val METHOD_NAME_OVERRIDES = mapOf(
     "Search" to "search",
     "CreateProjectFromTemplate" to "createProject",
     "GetProjectConstruction" to "getConstruction",
+    "GetTemplateLibrary" to "getLibrary",
+    "CreateTemplateLibraryCopy" to "createLibraryCopy",
+    "GetTemplateLibraryCopy" to "getLibraryCopy",
     "GetRecordingTimesheet" to "forRecording",
     "GetProjectTimesheet" to "forProject",
     "GetTimesheetReport" to "report",
@@ -345,6 +349,9 @@ val TYPE_ALIASES = mapOf(
     "ScheduleEntry" to "ScheduleEntry",
     "Recording" to "Recording",
     "Template" to "Template",
+    "TemplateLibrary" to "TemplateLibrary",
+    "TemplateLibraryCopy" to "TemplateLibraryCopy",
+    "TemplateLibraryConfirmationPerson" to "TemplateLibraryConfirmationPerson",
     "Todolist" to "Todolist",
     "Todoset" to "Todoset",
     "Questionnaire" to "Questionnaire",

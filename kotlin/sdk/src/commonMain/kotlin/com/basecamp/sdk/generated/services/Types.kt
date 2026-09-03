@@ -963,6 +963,13 @@ data class UpdateSubscriptionBody(
     val unsubscriptions: List<Long>? = null
 )
 
+/** Request body for CreateTemplateLibraryCopy. */
+data class CreateTemplateLibraryCopyBody(
+    val templateRecordingId: Long,
+    val destinationParentId: Long,
+    val addingPeopleConfirmed: Boolean? = null
+)
+
 /** Options for ListTemplates. */
 data class ListTemplatesOptions(
     /** active|archived|trashed */

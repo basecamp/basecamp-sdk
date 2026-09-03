@@ -898,7 +898,7 @@ func (c *Client) singleRequest(ctx context.Context, method, url string, body any
 		// api_error with the field-keyed detail dropped.
 		respBody, _ := limitedReadAll(resp.Body, MaxErrorBodyBytes)
 		serverMsg, serverHint, fieldErrors := parseErrorBody(respBody)
-		return nil, validationError(serverMsg, serverHint, fieldErrors, resp.StatusCode, requestID)
+		return nil, validationErrorFromBody(serverMsg, serverHint, fieldErrors, resp.StatusCode, requestID, respBody)
 
 	case http.StatusInsufficientStorage: // 507
 		// Same reason the 400/422 arm above exists: the generated service layer

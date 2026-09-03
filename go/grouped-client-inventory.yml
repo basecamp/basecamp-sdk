@@ -127,10 +127,16 @@ grouped:
   TemplatesService:
     - operation: CreateTemplate
       methods: ["CreateWithBody", "Create"]
+    - operation: CreateTemplateLibraryCopy
+      methods: ["CreateLibraryCopyWithBody", "CreateLibraryCopy"]
     - operation: DeleteTemplate
       methods: ["Delete"]
     - operation: GetTemplate
       methods: ["Get"]
+    - operation: GetTemplateLibrary
+      methods: ["GetLibrary"]
+    - operation: GetTemplateLibraryCopy
+      methods: ["GetLibraryCopy"]
     - operation: ListTemplates
       methods: ["List"]
     - operation: UpdateTemplate

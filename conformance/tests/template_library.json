@@ -1,0 +1,190 @@
+[
+  {
+    "name": "template library read uses the account-scoped library path",
+    "description": "Verifies that the Templates service reads the account's template library and decodes its parent resources and to-do lists.",
+    "operation": "GetTemplateLibrary",
+    "method": "GET",
+    "path": "/template_library.json",
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": { "Content-Type": "application/json" },
+        "body": {
+          "bucket": { "id": 1, "name": "To-do List Templates", "type": "TemplateLibrary" },
+          "todoset": {
+            "id": 2,
+            "title": "To-do List Templates",
+            "type": "Todoset",
+            "url": "https://3.basecampapi.com/999/todosets/2.json",
+            "app_url": "https://3.basecamp.com/999/todosets/2"
+          },
+          "todolists": [
+            {
+              "id": 3,
+              "status": "active",
+              "visible_to_clients": false,
+              "created_at": "2026-08-27T12:00:00Z",
+              "updated_at": "2026-08-27T12:00:00Z",
+              "title": "Project kickoff",
+              "inherits_status": true,
+              "type": "Todolist",
+              "url": "https://3.basecampapi.com/999/todolists/3.json",
+              "app_url": "https://3.basecamp.com/999/todolists/3",
+              "bubble_up_url": "https://3.basecampapi.com/999/recordings/3/bubble_up.json",
+              "parent": {
+                "id": 2,
+                "title": "To-do List Templates",
+                "type": "Todoset",
+                "url": "https://3.basecampapi.com/999/todosets/2.json",
+                "app_url": "https://3.basecamp.com/999/todosets/2"
+              },
+              "bucket": { "id": 1, "name": "To-do List Templates", "type": "TemplateLibrary" },
+              "creator": { "id": 4, "name": "Victor" },
+              "description": "",
+              "description_attachments": [],
+              "name": "Project kickoff",
+              "color": null,
+              "comments_app_url": "https://3.basecamp.com/999/recordings/3/comments"
+            }
+          ]
+        }
+      }
+    ],
+    "assertions": [
+      { "type": "noError" },
+      { "type": "requestCount", "expected": 1 },
+      { "type": "requestMethod", "expected": "GET" },
+      { "type": "requestPath", "expected": "/999/template_library.json" },
+      { "type": "responseBody", "path": "bucket_id", "expected": 1 },
+      { "type": "responseBody", "path": "todoset_id", "expected": 2 },
+      { "type": "responseBody", "path": "first_todolist_id", "expected": 3 }
+    ],
+    "tags": ["templates", "template-library", "decode"]
+  },
+  {
+    "name": "template library copy creation sends destination and confirmation",
+    "description": "Verifies the create-copy path, request field names, 201 response, and pending copy shape.",
+    "operation": "CreateTemplateLibraryCopy",
+    "method": "POST",
+    "path": "/template_library/copies.json",
+    "requestBody": {
+      "template_recording_id": 3,
+      "destination_parent_id": 9,
+      "adding_people_confirmed": true
+    },
+    "mockResponses": [
+      {
+        "status": 201,
+        "headers": { "Content-Type": "application/json" },
+        "body": {
+          "id": 5,
+          "status": "pending",
+          "source_recording_id": 3,
+          "destination_parent_id": 9,
+          "url": "https://3.basecampapi.com/999/template_library/copies/5.json"
+        }
+      }
+    ],
+    "assertions": [
+      { "type": "noError" },
+      { "type": "requestCount", "expected": 1 },
+      { "type": "requestMethod", "expected": "POST" },
+      { "type": "requestPath", "expected": "/999/template_library/copies.json" },
+      { "type": "requestBody", "path": "template_recording_id", "expected": 3 },
+      { "type": "requestBody", "path": "destination_parent_id", "expected": 9 },
+      { "type": "requestBody", "path": "adding_people_confirmed", "expected": true },
+      { "type": "responseBody", "path": "id", "expected": 5 },
+      { "type": "responseBody", "path": "status", "expected": "pending" }
+    ],
+    "tags": ["templates", "template-library", "write"]
+  },
+  {
+    "name": "completed template library copy includes its destination to-do list",
+    "description": "Verifies the copy-status path and the completed response shape with destination_todolist present.",
+    "operation": "GetTemplateLibraryCopy",
+    "method": "GET",
+    "path": "/template_library/copies/{copyId}",
+    "pathParams": { "copyId": 5 },
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": { "Content-Type": "application/json" },
+        "body": {
+          "id": 5,
+          "status": "completed",
+          "source_recording_id": 3,
+          "destination_parent_id": 9,
+          "url": "https://3.basecampapi.com/999/template_library/copies/5.json",
+          "destination_todolist": {
+            "id": 10,
+            "status": "active",
+            "visible_to_clients": false,
+            "created_at": "2026-08-27T12:00:00Z",
+            "updated_at": "2026-08-27T12:00:00Z",
+            "title": "Project kickoff",
+            "inherits_status": true,
+            "type": "Todolist",
+            "url": "https://3.basecampapi.com/999/todolists/10.json",
+            "app_url": "https://3.basecamp.com/999/todolists/10",
+            "bubble_up_url": "https://3.basecampapi.com/999/recordings/10/bubble_up.json",
+            "parent": {
+              "id": 9,
+              "title": "To-dos",
+              "type": "Todoset",
+              "url": "https://3.basecampapi.com/999/todosets/9.json",
+              "app_url": "https://3.basecamp.com/999/todosets/9"
+            },
+            "bucket": { "id": 8, "name": "Project", "type": "Project" },
+            "creator": { "id": 4, "name": "Victor" },
+            "description": "",
+            "description_attachments": [],
+            "name": "Project kickoff",
+            "color": null,
+            "comments_app_url": "https://3.basecamp.com/999/recordings/10/comments"
+          }
+        }
+      }
+    ],
+    "assertions": [
+      { "type": "noError" },
+      { "type": "requestCount", "expected": 1 },
+      { "type": "requestMethod", "expected": "GET" },
+      { "type": "requestPath", "expected": "/999/template_library/copies/5" },
+      { "type": "responseBody", "path": "id", "expected": 5 },
+      { "type": "responseBody", "path": "status", "expected": "completed" },
+      { "type": "responseBody", "path": "destination_todolist_id", "expected": 10 }
+    ],
+    "tags": ["templates", "template-library", "decode"]
+  },
+  {
+    "name": "template library copy reports people confirmation as a validation error",
+    "description": "Verifies that the documented 422 people-confirmation response is surfaced as a specialized validation error retaining the people who need destination-project access.",
+    "operation": "CreateTemplateLibraryCopy",
+    "method": "POST",
+    "path": "/template_library/copies.json",
+    "requestBody": {
+      "template_recording_id": 3,
+      "destination_parent_id": 9
+    },
+    "mockResponses": [
+      {
+        "status": 422,
+        "headers": { "Content-Type": "application/json" },
+        "body": {
+          "error": "Adding people requires confirmation",
+          "people": [
+            { "id": 4, "name": "Victor", "avatar_url": "https://3.basecamp.com/avatars/4.png" }
+          ]
+        }
+      }
+    ],
+    "assertions": [
+      { "type": "requestBodyAbsent", "path": "adding_people_confirmed" },
+      { "type": "errorCode", "expected": "validation" },
+      { "type": "errorField", "path": "httpStatus", "expected": 422 },
+      { "type": "errorField", "path": "confirmationPeople.0.id", "expected": 4 },
+      { "type": "errorMessage", "expected": "Adding people requires confirmation" }
+    ],
+    "tags": ["templates", "template-library", "error-mapping", "validation"]
+  }
+]

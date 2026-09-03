@@ -7,6 +7,34 @@ module Basecamp
     # @generated from OpenAPI spec
     class TemplatesService < BaseService
 
+      # Get the account's to-do list template library
+      # @return [Hash] response data
+      def get_library()
+        with_operation(service: "templates", operation: "get_library", is_mutation: false) do
+          http_get("/template_library.json", operation: "GetTemplateLibrary").json
+        end
+      end
+
+      # Start copying a to-do list template into a project
+      # @param template_recording_id [Integer] template recording id
+      # @param destination_parent_id [Integer] destination parent id
+      # @param adding_people_confirmed [Boolean, nil] Confirm granting destination-project access to people referenced by the template.
+      # @return [Hash] response data
+      def create_library_copy(template_recording_id:, destination_parent_id:, adding_people_confirmed: nil)
+        with_operation(service: "templates", operation: "create_library_copy", is_mutation: true) do
+          http_post("/template_library/copies.json", body: compact_params(template_recording_id: template_recording_id, destination_parent_id: destination_parent_id, adding_people_confirmed: adding_people_confirmed)).json
+        end
+      end
+
+      # Get the current status of a to-do list template copy
+      # @param copy_id [Integer] copy id ID
+      # @return [Hash] response data
+      def get_library_copy(copy_id:)
+        with_operation(service: "templates", operation: "get_library_copy", is_mutation: false, resource_id: copy_id) do
+          http_get("/template_library/copies/#{copy_id}", operation: "GetTemplateLibraryCopy").json
+        end
+      end
+
       # List all templates visible to the current user
       # @param status [String, nil] active|archived|trashed
       # @param page [Integer, nil] Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.

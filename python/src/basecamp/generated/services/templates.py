@@ -11,6 +11,51 @@ from basecamp.hooks import OperationInfo
 
 
 class TemplatesService(BaseService):
+    def get_library(self) -> dict[str, Any]:
+        """Get the account's to-do list template library."""
+        return self._request(
+            OperationInfo(service="templates", operation="get_library", is_mutation=False),
+            "GET",
+            "/template_library.json",
+            operation="GetTemplateLibrary",
+        )
+
+    def create_library_copy(
+        self, *, template_recording_id: int, destination_parent_id: int, adding_people_confirmed: bool | None = None
+    ) -> dict[str, Any]:
+        """Start copying a to-do list template into a project.
+
+        Args:
+            template_recording_id: The template recording id.
+            destination_parent_id: The destination parent id.
+            adding_people_confirmed: Confirm granting destination-project access to people
+                referenced by the template.
+        """
+        return self._request(
+            OperationInfo(service="templates", operation="create_library_copy", is_mutation=True),
+            "POST",
+            "/template_library/copies.json",
+            json_body=self._compact(
+                template_recording_id=template_recording_id,
+                destination_parent_id=destination_parent_id,
+                adding_people_confirmed=adding_people_confirmed,
+            ),
+            operation="CreateTemplateLibraryCopy",
+        )
+
+    def get_library_copy(self, *, copy_id: int) -> dict[str, Any]:
+        """Get the current status of a to-do list template copy.
+
+        Args:
+            copy_id: The copy id.
+        """
+        return self._request(
+            OperationInfo(service="templates", operation="get_library_copy", is_mutation=False, resource_id=copy_id),
+            "GET",
+            f"/template_library/copies/{copy_id}",
+            operation="GetTemplateLibraryCopy",
+        )
+
     def list(self, *, status: str | None = None, page: int | None = None, max_items: int | None = None) -> ListResult:
         """List all templates visible to the current user.
 
@@ -120,6 +165,51 @@ class TemplatesService(BaseService):
 
 
 class AsyncTemplatesService(AsyncBaseService):
+    async def get_library(self) -> dict[str, Any]:
+        """Get the account's to-do list template library."""
+        return await self._request(
+            OperationInfo(service="templates", operation="get_library", is_mutation=False),
+            "GET",
+            "/template_library.json",
+            operation="GetTemplateLibrary",
+        )
+
+    async def create_library_copy(
+        self, *, template_recording_id: int, destination_parent_id: int, adding_people_confirmed: bool | None = None
+    ) -> dict[str, Any]:
+        """Start copying a to-do list template into a project.
+
+        Args:
+            template_recording_id: The template recording id.
+            destination_parent_id: The destination parent id.
+            adding_people_confirmed: Confirm granting destination-project access to people
+                referenced by the template.
+        """
+        return await self._request(
+            OperationInfo(service="templates", operation="create_library_copy", is_mutation=True),
+            "POST",
+            "/template_library/copies.json",
+            json_body=self._compact(
+                template_recording_id=template_recording_id,
+                destination_parent_id=destination_parent_id,
+                adding_people_confirmed=adding_people_confirmed,
+            ),
+            operation="CreateTemplateLibraryCopy",
+        )
+
+    async def get_library_copy(self, *, copy_id: int) -> dict[str, Any]:
+        """Get the current status of a to-do list template copy.
+
+        Args:
+            copy_id: The copy id.
+        """
+        return await self._request(
+            OperationInfo(service="templates", operation="get_library_copy", is_mutation=False, resource_id=copy_id),
+            "GET",
+            f"/template_library/copies/{copy_id}",
+            operation="GetTemplateLibraryCopy",
+        )
+
     async def list(
         self, *, status: str | None = None, page: int | None = None, max_items: int | None = None
     ) -> ListResult:

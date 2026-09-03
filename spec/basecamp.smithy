@@ -51,7 +51,7 @@ use basecamp.traits#basecampAuthRoutableUrl
 /// Basecamp API
 @restJson1
 service Basecamp {
-  version: "2026-08-31"
+  version: "2026-09-02"
   rename: {
     "smithy.api#Document": "JsonDocument"
   }
@@ -252,6 +252,9 @@ service Basecamp {
     DeleteTemplate,
     CreateProjectFromTemplate,
     GetProjectConstruction,
+    GetTemplateLibrary,
+    CreateTemplateLibraryCopy,
+    GetTemplateLibraryCopy,
     GetTool,
     CreateTool,
     UpdateTool,
@@ -8503,6 +8506,80 @@ structure GetProjectConstructionOutput {
   construction: ProjectConstruction
 }
 
+// ===== To-do List Template Library Operations =====
+
+/// Get the account's to-do list template library
+@readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@http(method: "GET", uri: "/{accountId}/template_library.json")
+operation GetTemplateLibrary {
+  input: GetTemplateLibraryInput
+  output: GetTemplateLibraryOutput
+  errors: [UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure GetTemplateLibraryInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+}
+
+structure GetTemplateLibraryOutput {
+  library: TemplateLibrary
+}
+
+/// Start copying a to-do list template into a project
+@basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@http(method: "POST", uri: "/{accountId}/template_library/copies.json", code: 201)
+operation CreateTemplateLibraryCopy {
+  input: CreateTemplateLibraryCopyInput
+  output: CreateTemplateLibraryCopyOutput
+  errors: [PeopleConfirmationRequiredError, NotFoundError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure CreateTemplateLibraryCopyInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  template_recording_id: TodolistId
+
+  @required
+  destination_parent_id: TodosetId
+
+  /// Confirm granting destination-project access to people referenced by the template.
+  adding_people_confirmed: Boolean
+}
+
+structure CreateTemplateLibraryCopyOutput {
+  copy: TemplateLibraryCopy
+}
+
+/// Get the current status of a to-do list template copy
+@readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@http(method: "GET", uri: "/{accountId}/template_library/copies/{copyId}")
+operation GetTemplateLibraryCopy {
+  input: GetTemplateLibraryCopyInput
+  output: GetTemplateLibraryCopyOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure GetTemplateLibraryCopyInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  copyId: TemplateLibraryCopyId
+}
+
+structure GetTemplateLibraryCopyOutput {
+  copy: TemplateLibraryCopy
+}
+
 // ===== Tool Operations =====
 
 /// Get a dock tool by id
@@ -9741,6 +9818,73 @@ structure ProjectConstruction {
   status: String
   url: String
   project: Project
+}
+
+// ===== To-do List Template Library Shapes =====
+
+long TemplateLibraryCopyId
+
+structure TemplateLibrary {
+  @required
+  bucket: RecordingBucket
+
+  @required
+  todoset: RecordingParent
+
+  @required
+  todolists: TodolistList
+}
+
+@documentation("pending|processing|completed|failed")
+string TemplateLibraryCopyStatus
+
+structure TemplateLibraryCopy {
+  @required
+  id: TemplateLibraryCopyId
+
+  @required
+  status: TemplateLibraryCopyStatus
+
+  @required
+  source_recording_id: TodolistId
+
+  @required
+  destination_parent_id: TodosetId
+
+  @required
+  url: String
+
+  /// The copied to-do list. Present when the copy is completed.
+  destination_todolist: Todolist
+}
+
+list TemplateLibraryConfirmationPersonList {
+  member: TemplateLibraryConfirmationPerson
+}
+
+structure TemplateLibraryConfirmationPerson {
+  @required
+  id: PersonId
+
+  @required
+  @basecampSensitive(category: "pii", redact: true)
+  name: PersonName
+
+  @required
+  @basecampSensitive(category: "pii", redact: true)
+  avatar_url: AvatarUrl
+}
+
+/// The copy requires confirmation before granting destination-project access
+/// to people referenced by the template.
+@error("client")
+@httpError(422)
+structure PeopleConfirmationRequiredError {
+  @required
+  error: String
+
+  @required
+  people: TemplateLibraryConfirmationPersonList
 }
 
 // ===== Tool Shapes =====

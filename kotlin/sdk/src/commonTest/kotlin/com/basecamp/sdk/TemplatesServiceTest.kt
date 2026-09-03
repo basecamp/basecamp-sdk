@@ -1,6 +1,7 @@
 package com.basecamp.sdk
 
 import com.basecamp.sdk.generated.services.CreateProjectFromTemplateBody
+import com.basecamp.sdk.generated.services.CreateTemplateLibraryCopyBody
 import com.basecamp.sdk.generated.templates
 import io.ktor.client.engine.mock.*
 import io.ktor.client.request.HttpRequestData
@@ -14,6 +15,7 @@ import kotlinx.serialization.json.put
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 class TemplatesServiceTest {
@@ -64,6 +66,31 @@ class TemplatesServiceTest {
         assertEquals("New Project", project["name"]!!.jsonPrimitive.content)
         assertEquals("From template", project["description"]!!.jsonPrimitive.content)
 
+        client.close()
+    }
+
+    @Test
+    fun createLibraryCopyExposesPeopleRequiringConfirmation() = runTest {
+        val client = mockClient {
+            respond(
+                content = """{"error":"Adding people requires confirmation","people":[{"id":4,"name":"Victor","avatar_url":"https://example.test/avatar.png"}]}""",
+                status = HttpStatusCode.UnprocessableEntity,
+                headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+            )
+        }
+
+        val error = assertFailsWith<BasecampException.PeopleConfirmationRequired> {
+            client.forAccount("12345").templates.createLibraryCopy(
+                CreateTemplateLibraryCopyBody(
+                    templateRecordingId = 3,
+                    destinationParentId = 9,
+                ),
+            )
+        }
+
+        assertEquals(BasecampException.CODE_VALIDATION, error.code)
+        assertEquals(4, error.people.single().id)
+        assertEquals("Victor", error.people.single().name)
         client.close()
     }
 }

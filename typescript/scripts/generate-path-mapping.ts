@@ -130,6 +130,7 @@ function getPathPrefix(path: string): string {
       [/\/attachments/, "Attachments"],
       [/\/projects/, "Projects"],
       [/\/people/, "People"],
+      [/\/template_library/, "Templates"],
       [/\/templates/, "Templates"],
       [/\/my/, "My Profile"],
       [/\/events/, "Events"],

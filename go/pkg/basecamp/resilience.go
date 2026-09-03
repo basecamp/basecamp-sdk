@@ -76,8 +76,9 @@ func shouldTripCircuit(err error) bool {
 		return false
 	}
 
-	// Check if it's our structured Error type
-	if e, ok := err.(*Error); ok {
+	// Check if it's our structured Error type, including specialized wrappers.
+	var e *Error
+	if errors.As(err, &e) {
 		// Network errors trip the circuit UNLESS they wrap context errors
 		// (which we already checked above with errors.Is)
 		if e.Code == CodeNetwork {

@@ -78,6 +78,7 @@ making the absorption journey publicly auditable.
 | [bc5-authorization-document-shape](bc5-authorization-document-shape.md) | covered-outside-spec | master | medium |
 | [subtasks-canonical-rename](subtasks-canonical-rename.md) | partial-coverage | master | low |
 | [recent-projects](recent-projects.md) | absorbed-in-sdk | master | medium |
+| [template-library](template-library.md) | absorbed-in-sdk | master | high |
 | [delegated-events-performed-by](delegated-events-performed-by.md) | addressed-in-bc3-pr-13040 | master | low |
 | [recording-bubble-up-write](recording-bubble-up-write.md) | partial-coverage | master | medium |
 
@@ -107,14 +108,45 @@ making the absorption journey publicly auditable.
 > tracked in #12463) and the SDK's matching removal of `GetEverythingBoosts`;
 > its `no-json-contract` is literal — the feed has no JSON API today.
 >
-> The provenance pin is `88549ca619e` (2026-08-31). <!-- @bc3-pin -->
+> The provenance pin is `c680233ba0e` (2026-09-02). <!-- @bc3-pin -->
 > That line is checked by `make doc-constants-check` and deliberately *not*
 > rewritten by `make sync-api-version`: this file is in
 > `spec/doc-constants.json` `.writerExcludes`, because the pin sentence heads
 > the range triage below and cannot advance without that triage advancing too.
 > The ranges themselves are settled history and stay unmarked.
 >
-> The `824013d672d..88549ca619e` range is **49 commits** (8 merges, 41
+> The `88549ca619e..c680233ba0e` range is **111 commits** (15 merges, 96
+> non-merge). The complete raw diff was inspected because GitHub's compare
+> response exceeded its file cap. Three non-merge commits touch `doc/api` or
+> `app/views/api`:
+>
+> - BC3 **#12953** (`58911921e7b`) ships the to-do list template library API,
+>   absorbed in this repin as [`template-library.md`](template-library.md):
+>   `GET /template_library.json`, `POST /template_library/copies.json`, and
+>   `GET /template_library/copies/{id}.json`. The Smithy model includes the
+>   library envelope, asynchronous copy states, the completed destination
+>   to-do list, and the `422` people-confirmation response.
+> - `b202fe2e771` documents that only the person who started a copy can retrieve
+>   it; other callers receive `404`. `GetTemplateLibraryCopy` already includes
+>   `NotFoundError`, so the clarification requires no additional shape.
+> - BC3 **#12639** (`e6408768f52`) freezes `Kanban::Step` as the public wire
+>   discriminator while the application model remains `Subtask`, and renders
+>   webhook kinds through `Event#api_kind`. The existing `CardStep` and `Event`
+>   contracts already carry those stable wire values; the settled guarantee is
+>   recorded in [`subtasks-canonical-rename.md`](subtasks-canonical-rename.md).
+>
+> The remaining controller and route changes are wire-neutral for the modeled
+> API. The step/subtask route declarations switch controller namespaces while
+> preserving every documented `/steps` path and compatibility alias. Template
+> library web routes already existed; #12953 adds their JSON renderers and
+> public documentation. Other controller changes cover HTML, client approval,
+> chat integrations, exports, bulk actions, and authorization refactors without
+> adding documented JSON routes or changing API view shapes. The route table
+> moves from 379 routes across 65 sections to 382 across 66: exactly the three
+> template-library routes. The `bc3-four` compatibility pin does not move: this
+> sync re-verifies only `master`.
+>
+> The previous `824013d672d..88549ca619e` range is **49 commits** (8 merges, 41
 > non-merge). Four non-merge commits touch `doc/api` or `app/views/api`:
 >
 > - BC3 **#13043** — the recently visited projects family, absorbed in this

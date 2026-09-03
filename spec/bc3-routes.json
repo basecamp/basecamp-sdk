@@ -5,12 +5,12 @@
   "source": {
     "repo": "basecamp/bc3",
     "branch": "master",
-    "revision": "88549ca619eafc43e88639d0533f0d02e442edec",
-    "date": "2026-08-31",
+    "revision": "c680233ba0e7784f08e86405a7319d7ece9cb267",
+    "date": "2026-09-02",
     "extracted_from": [
       "doc/api/sections/*.md"
     ],
-    "sections_scanned": 65,
+    "sections_scanned": 66,
     "generator_sha256": "20e682227ca1962b8127691abb41343dde05155bff529123d0dd0489f5ecc378"
   },
   "routes": [
@@ -2216,6 +2216,30 @@
     },
     {
       "method": "GET",
+      "path": "/template_library",
+      "raw": "/template_library.json",
+      "sections": [
+        "template_library.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/template_library/copies/:id",
+      "raw": "/template_library/copies/1.json",
+      "sections": [
+        "template_library.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
       "path": "/templates",
       "raw": "/templates.json",
       "sections": [
@@ -3289,6 +3313,18 @@
       "raw": "/stacks.json",
       "sections": [
         "folders.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/template_library/copies",
+      "raw": "/template_library/copies.json",
+      "sections": [
+        "template_library.md"
       ],
       "evidence": [
         "bullet",

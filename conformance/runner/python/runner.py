@@ -492,6 +492,23 @@ def _project_id(item: Any) -> Any:
     return item.get("id", 0) if isinstance(item, dict) else 0
 
 
+def _summarize_template_library(library: dict[str, Any]) -> dict[str, Any]:
+    """Expose representative decoded template-library fields as portable scalars."""
+    return {
+        "bucket_id": library["bucket"]["id"],
+        "todoset_id": library["todoset"]["id"],
+        "first_todolist_id": library["todolists"][0]["id"],
+    }
+
+
+def _summarize_template_library_copy(copy: dict[str, Any]) -> dict[str, Any]:
+    """Expose copy state and its decoded destination list as portable scalars."""
+    summary = {"id": copy["id"], "status": copy["status"]}
+    if copy.get("destination_todolist") is not None:
+        summary["destination_todolist_id"] = copy["destination_todolist"]["id"]
+    return summary
+
+
 def _summarize_projects(result: Any) -> dict[str, Any]:
     """Flatten an accumulated project list into top-level scalars.
 
@@ -663,6 +680,20 @@ class OperationMapper:
                 return self._account.projects.list_recent_projects()
             case "RecordProjectVisit":
                 return self._account.projects.record_project_visit(project_id=path_params["projectId"])
+            case "GetTemplateLibrary":
+                return _summarize_template_library(self._account.templates.get_library())
+            case "CreateTemplateLibraryCopy":
+                return _summarize_template_library_copy(
+                    self._account.templates.create_library_copy(
+                        template_recording_id=body["template_recording_id"],
+                        destination_parent_id=body["destination_parent_id"],
+                        adding_people_confirmed=body.get("adding_people_confirmed"),
+                    )
+                )
+            case "GetTemplateLibraryCopy":
+                return _summarize_template_library_copy(
+                    self._account.templates.get_library_copy(copy_id=path_params["copyId"])
+                )
             case "CreateProject":
                 return self._account.projects.create(name=body["name"])
             case "UpdateProject":
@@ -1483,6 +1514,9 @@ def _get_error_field(error: Exception, field_path: str) -> Any:
             return getattr(error, "code", None)
         case "message":
             return str(error)
+        case "confirmationPeople.0.id":
+            people = getattr(error, "people", None)
+            return people[0]["id"] if people else None
         case _:
             return None
 

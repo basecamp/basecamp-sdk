@@ -37,6 +37,16 @@ public final class TemplatesService: BaseService, @unchecked Sendable {
         )
     }
 
+    public func createLibraryCopy(req: CreateTemplateLibraryCopyRequest) async throws -> TemplateLibraryCopy {
+        return try await request(
+            OperationInfo(service: "Templates", operation: "CreateTemplateLibraryCopy", resourceType: "template_library_copy", isMutation: true),
+            method: "POST",
+            path: "/template_library/copies.json",
+            body: req,
+            retryConfig: Metadata.retryConfig(for: "CreateTemplateLibraryCopy")
+        )
+    }
+
     public func delete(templateId: Int) async throws {
         try await requestVoid(
             OperationInfo(service: "Templates", operation: "DeleteTemplate", resourceType: "template", isMutation: true, resourceId: templateId),
@@ -61,6 +71,24 @@ public final class TemplatesService: BaseService, @unchecked Sendable {
             method: "GET",
             path: "/templates/\(templateId)",
             retryConfig: Metadata.retryConfig(for: "GetTemplate")
+        )
+    }
+
+    public func getLibrary() async throws -> TemplateLibrary {
+        return try await request(
+            OperationInfo(service: "Templates", operation: "GetTemplateLibrary", resourceType: "template_library", isMutation: false),
+            method: "GET",
+            path: "/template_library.json",
+            retryConfig: Metadata.retryConfig(for: "GetTemplateLibrary")
+        )
+    }
+
+    public func getLibraryCopy(copyId: Int) async throws -> TemplateLibraryCopy {
+        return try await request(
+            OperationInfo(service: "Templates", operation: "GetTemplateLibraryCopy", resourceType: "template_library_copy", isMutation: false, resourceId: copyId),
+            method: "GET",
+            path: "/template_library/copies/\(copyId)",
+            retryConfig: Metadata.retryConfig(for: "GetTemplateLibraryCopy")
         )
     }
 

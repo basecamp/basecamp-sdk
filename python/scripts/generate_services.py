@@ -84,6 +84,7 @@ SERVICE_SPLITS: dict[str, dict[str, list[str]]] = {
         "Templates": [
             "ListTemplates", "CreateTemplate", "GetTemplate", "UpdateTemplate",
             "DeleteTemplate", "CreateProjectFromTemplate", "GetProjectConstruction",
+            "GetTemplateLibrary", "CreateTemplateLibraryCopy", "GetTemplateLibraryCopy",
         ],
         "Checkins": [
             "GetQuestionnaire", "ListQuestions", "CreateQuestion", "GetQuestion",
@@ -185,6 +186,9 @@ METHOD_NAME_OVERRIDES = {
     "Search": "search",
     "CreateProjectFromTemplate": "create_project",
     "GetProjectConstruction": "get_construction",
+    "GetTemplateLibrary": "get_library",
+    "CreateTemplateLibraryCopy": "create_library_copy",
+    "GetTemplateLibraryCopy": "get_library_copy",
     "GetRecordingTimesheet": "for_recording",
     "GetProjectTimesheet": "for_project",
     "GetTimesheetReport": "report",

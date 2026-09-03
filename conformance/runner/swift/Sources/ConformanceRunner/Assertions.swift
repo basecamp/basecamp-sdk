@@ -31,7 +31,7 @@ func conformanceCode(_ error: BasecampError) -> String {
     case .forbidden: "forbidden"
     case .notFound: "not_found"
     case .rateLimit: "rate_limit"
-    case .validation: "validation"
+    case .validation, .peopleConfirmationRequired: "validation"
     case .api: "api_error"
     case .network: "network"
     case .usage: "usage"
@@ -406,9 +406,10 @@ func evaluateAssertions(
             case "code": conformanceCode(caughtError)
             case "message": caughtError.message
             case "requestId": caughtError.requestId
+            case "confirmationPeople.0.id": caughtError.confirmationPeople?.first?.id
             default: nil
             }
-            if actual == nil, !["httpStatus", "retryable", "code", "message", "requestId"].contains(fieldPath) {
+            if actual == nil, !["httpStatus", "retryable", "code", "message", "requestId", "confirmationPeople.0.id"].contains(fieldPath) {
                 return .fail("Unknown error field: \(fieldPath)")
             }
             if let failure = compareValue("error.\(fieldPath)", assertion.expected, actual) {

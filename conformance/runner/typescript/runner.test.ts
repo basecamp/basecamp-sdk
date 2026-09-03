@@ -10,7 +10,11 @@
 import { describe, it, expect, afterEach, afterAll, beforeAll } from "vitest";
 import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
-import { createBasecampClient, BasecampError } from "@37signals/basecamp";
+import {
+  createBasecampClient,
+  BasecampError,
+  PeopleConfirmationRequiredError,
+} from "@37signals/basecamp";
 import type {
   BasecampClient,
   CreateEntryScheduleRequest,
@@ -272,6 +276,33 @@ function summarizeUpcoming(
   return summary;
 }
 
+/** Exposes representative decoded template-library fields as portable scalars. */
+function summarizeTemplateLibrary(library: {
+  bucket: { id: number };
+  todoset: { id: number };
+  todolists: Array<{ id: number }>;
+}): Record<string, unknown> {
+  return {
+    bucket_id: library.bucket.id,
+    todoset_id: library.todoset.id,
+    first_todolist_id: library.todolists[0]?.id,
+  };
+}
+
+function summarizeTemplateLibraryCopy(copy: {
+  id: number;
+  status: string;
+  destination_todolist?: { id: number };
+}): Record<string, unknown> {
+  return {
+    id: copy.id,
+    status: copy.status,
+    ...(copy.destination_todolist
+      ? { destination_todolist_id: copy.destination_todolist.id }
+      : {}),
+  };
+}
+
 /**
  * Flattens an accumulated project list into top-level scalars.
  *
@@ -463,6 +494,28 @@ async function executeOperation(
       case "RecordProjectVisit":
         await client.projects.recordProjectVisit(Number(params.projectId));
         break;
+
+      case "GetTemplateLibrary": {
+        const library = await client.templates.getLibrary();
+        return { result: summarizeTemplateLibrary(library) };
+      }
+
+      case "CreateTemplateLibraryCopy": {
+        const libraryCopy = await client.templates.createLibraryCopy({
+          templateRecordingId: Number(body.template_recording_id),
+          destinationParentId: Number(body.destination_parent_id),
+          addingPeopleConfirmed:
+            typeof body.adding_people_confirmed === "boolean"
+              ? body.adding_people_confirmed
+              : undefined,
+        });
+        return { result: summarizeTemplateLibraryCopy(libraryCopy) };
+      }
+
+      case "GetTemplateLibraryCopy": {
+        const libraryCopy = await client.templates.getLibraryCopy(Number(params.copyId));
+        return { result: summarizeTemplateLibraryCopy(libraryCopy) };
+      }
 
       case "CreateProject":
         // Always send a non-empty name to bypass client-side validation.
@@ -1623,6 +1676,9 @@ function checkAssertions(
           case "requestId": actual = err.requestId; break;
           case "code": actual = err.code; break;
           case "message": actual = err.message; break;
+          case "confirmationPeople.0.id":
+            actual = err instanceof PeopleConfirmationRequiredError ? err.people[0]?.id : undefined;
+            break;
           default:
             throw new Error(`[${tc.name}] unknown error field: ${fieldPath}`);
         }

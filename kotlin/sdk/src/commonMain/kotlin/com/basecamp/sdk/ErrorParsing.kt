@@ -1,9 +1,11 @@
 package com.basecamp.sdk
 
+import com.basecamp.sdk.generated.models.TemplateLibraryConfirmationPerson
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.decodeFromJsonElement
 
 /**
  * Shared non-2xx error-body handling — the single SPEC §6 implementation
@@ -28,6 +30,7 @@ internal fun exceptionFromErrorBody(
     var serverMessage: String? = null
     var hint: String? = null
     var fieldErrors: Map<String, List<String>>? = null
+    var confirmationPeople: List<TemplateLibraryConfirmationPerson>? = null
 
     try {
         if (!bodyText.isNullOrBlank()) {
@@ -48,6 +51,9 @@ internal fun exceptionFromErrorBody(
                 }
                 if (status == 400 || status == 422) {
                     fieldErrors = parseFieldErrors(jsonBody)
+                    if (status == 422) {
+                        confirmationPeople = parseTemplateLibraryConfirmationPeople(jsonBody, json)
+                    }
                     fieldErrors?.let { fe ->
                         val flat = BasecampException.flattenFieldErrors(fe)
                         // Appended in parentheses after a top-level message,
@@ -62,7 +68,23 @@ internal fun exceptionFromErrorBody(
         // Body is not JSON — use status text
     }
 
-    return BasecampException.fromHttpStatus(status, message, hint, requestId, retryAfter, fieldErrors)
+    return BasecampException.fromHttpStatus(
+        status, message, hint, requestId, retryAfter, fieldErrors, confirmationPeople,
+    )
+}
+
+private fun parseTemplateLibraryConfirmationPeople(
+    body: JsonObject,
+    json: Json,
+): List<TemplateLibraryConfirmationPerson>? {
+    val value = body["people"] as? JsonArray ?: return null
+    if (value.isEmpty()) return null
+    val people = runCatching {
+        json.decodeFromJsonElement<List<TemplateLibraryConfirmationPerson>>(value)
+    }.getOrNull() ?: return null
+    return people.takeIf { entries ->
+        entries.all { it.id > 0 && it.name.isNotEmpty() && it.avatarUrl.isNotEmpty() }
+    }
 }
 
 /** Returns a member's string value, or null when absent or not a string. */

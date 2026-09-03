@@ -18,6 +18,18 @@ import { Errors } from "../../errors.js";
 export type Template = components["schemas"]["Template"];
 
 /**
+ * Request parameters for createLibraryCopy.
+ */
+export interface CreateLibraryCopyTemplateRequest {
+  /** Template recording id */
+  templateRecordingId: number;
+  /** Destination parent id */
+  destinationParentId: number;
+  /** Confirm granting destination-project access to people referenced by the template. */
+  addingPeopleConfirmed?: boolean;
+}
+
+/**
  * Options for list.
  */
 export interface ListTemplateOptions extends PaginationOptions {
@@ -64,6 +76,92 @@ export interface CreateProjectTemplateRequest {
  * Service for Templates operations.
  */
 export class TemplatesService extends BaseService {
+
+  /**
+   * Get the account's to-do list template library
+   * @returns The template_library
+   * @throws {BasecampError} If the resource is not found
+   *
+   * @example
+   * ```ts
+   * const result = await client.templates.getLibrary();
+   * ```
+   */
+  async getLibrary(): Promise<components["schemas"]["GetTemplateLibraryResponseContent"]> {
+    const response = await this.request(
+      {
+        service: "Templates",
+        operation: "GetTemplateLibrary",
+        resourceType: "template_library",
+        isMutation: false,
+      },
+      () =>
+        this.client.GET("/template_library.json", {
+        })
+    );
+    return response;
+  }
+
+  /**
+   * Start copying a to-do list template into a project
+   * @param req - Template_library_copy creation parameters
+   * @returns The template_library_copy
+   * @throws {BasecampError} If required fields are missing or invalid
+   *
+   * @example
+   * ```ts
+   * const result = await client.templates.createLibraryCopy({ templateRecordingId: 1, destinationParentId: 1 });
+   * ```
+   */
+  async createLibraryCopy(req: CreateLibraryCopyTemplateRequest): Promise<components["schemas"]["CreateTemplateLibraryCopyResponseContent"]> {
+    const response = await this.request(
+      {
+        service: "Templates",
+        operation: "CreateTemplateLibraryCopy",
+        resourceType: "template_library_copy",
+        isMutation: true,
+      },
+      () =>
+        this.client.POST("/template_library/copies.json", {
+          body: {
+            template_recording_id: req.templateRecordingId,
+            destination_parent_id: req.destinationParentId,
+            adding_people_confirmed: req.addingPeopleConfirmed,
+          },
+        })
+    );
+    return response;
+  }
+
+  /**
+   * Get the current status of a to-do list template copy
+   * @param copyId - The copy ID
+   * @returns The template_library_copy
+   * @throws {BasecampError} If the resource is not found
+   *
+   * @example
+   * ```ts
+   * const result = await client.templates.getLibraryCopy(123);
+   * ```
+   */
+  async getLibraryCopy(copyId: number): Promise<components["schemas"]["GetTemplateLibraryCopyResponseContent"]> {
+    const response = await this.request(
+      {
+        service: "Templates",
+        operation: "GetTemplateLibraryCopy",
+        resourceType: "template_library_copy",
+        isMutation: false,
+        resourceId: copyId,
+      },
+      () =>
+        this.client.GET("/template_library/copies/{copyId}", {
+          params: {
+            path: { copyId },
+          },
+        })
+    );
+    return response;
+  }
 
   /**
    * List all templates visible to the current user

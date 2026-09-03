@@ -576,6 +576,12 @@ class CreateScheduleEntryRequestContent(TypedDict):
     visible_to_clients: NotRequired[bool]
 
 
+class CreateTemplateLibraryCopyRequestContent(TypedDict):
+    adding_people_confirmed: NotRequired[bool]
+    destination_parent_id: int
+    template_recording_id: int
+
+
 class CreateTemplateRequestContent(TypedDict):
     description: NotRequired[str]
     name: str
@@ -1221,6 +1227,11 @@ class PauseQuestionResponseContent(TypedDict):
     paused: NotRequired[bool]
 
 
+class PeopleConfirmationRequiredErrorResponseContent(TypedDict):
+    error: str
+    people: list[TemplateLibraryConfirmationPerson]
+
+
 class Person(TypedDict):
     admin: NotRequired[bool]
     attachable_sgid: NotRequired[str]
@@ -1732,6 +1743,27 @@ class Template(TypedDict):
     status: NotRequired[str]
     updated_at: str
     url: NotRequired[str]
+
+
+class TemplateLibrary(TypedDict):
+    bucket: RecordingBucket
+    todolists: list[Todolist]
+    todoset: RecordingParent
+
+
+class TemplateLibraryConfirmationPerson(TypedDict):
+    avatar_url: str
+    id: int
+    name: str
+
+
+class TemplateLibraryCopy(TypedDict):
+    destination_parent_id: int
+    destination_todolist: NotRequired[Todolist]
+    id: int
+    source_recording_id: int
+    status: str
+    url: str
 
 
 class TimelineAttachment(TypedDict):

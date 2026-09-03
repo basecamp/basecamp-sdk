@@ -79,6 +79,22 @@ type Error struct {
 	Cause      error
 }
 
+// PeopleConfirmationRequiredError reports the people who need destination-project access before a template copy can start.
+type PeopleConfirmationRequiredError struct {
+	ValidationError *Error
+	People          []TemplateLibraryConfirmationPerson
+}
+
+// Error returns the validation message supplied by Basecamp.
+func (e *PeopleConfirmationRequiredError) Error() string {
+	return e.ValidationError.Error()
+}
+
+// Unwrap exposes the canonical validation error for errors.Is and errors.As.
+func (e *PeopleConfirmationRequiredError) Unwrap() error {
+	return e.ValidationError
+}
+
 // Error implements the error interface.
 func (e *Error) Error() string {
 	if e.Hint != "" {

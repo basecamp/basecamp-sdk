@@ -40,6 +40,37 @@ type ProjectConstruction struct {
 	Project *Project `json:"project,omitempty"`
 }
 
+// TemplateLibrary contains the account's to-do list templates and their parent resources.
+type TemplateLibrary struct {
+	Bucket    Bucket     `json:"bucket"`
+	Todoset   Parent     `json:"todoset"`
+	Todolists []Todolist `json:"todolists"`
+}
+
+// TemplateLibraryConfirmationPerson identifies a person whose project access requires confirmation.
+type TemplateLibraryConfirmationPerson struct {
+	ID        int64  `json:"id"`
+	Name      string `json:"name"`
+	AvatarURL string `json:"avatar_url"`
+}
+
+// TemplateLibraryCopy represents the current state of an asynchronous template copy.
+type TemplateLibraryCopy struct {
+	ID                  int64     `json:"id"`
+	Status              string    `json:"status"`
+	SourceRecordingID   int64     `json:"source_recording_id"`
+	DestinationParentID int64     `json:"destination_parent_id"`
+	URL                 string    `json:"url"`
+	DestinationTodolist *Todolist `json:"destination_todolist,omitempty"`
+}
+
+// CreateTemplateLibraryCopyRequest specifies where to copy a to-do list template.
+type CreateTemplateLibraryCopyRequest struct {
+	TemplateRecordingID   int64 `json:"template_recording_id"`
+	DestinationParentID   int64 `json:"destination_parent_id"`
+	AddingPeopleConfirmed bool  `json:"adding_people_confirmed,omitempty"`
+}
+
 // CreateTemplateRequest specifies the parameters for creating a template.
 type CreateTemplateRequest struct {
 	// Name is the template name (required).
@@ -390,6 +421,107 @@ func (s *TemplatesService) GetConstruction(ctx context.Context, templateID, cons
 	return &construction, nil
 }
 
+// GetLibrary returns the account's to-do list template library.
+func (s *TemplatesService) GetLibrary(ctx context.Context) (result *TemplateLibrary, err error) {
+	op := OperationInfo{
+		Service: "Templates", Operation: "GetLibrary",
+		ResourceType: "template_library", IsMutation: false,
+	}
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
+	start := time.Now()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	resp, err := s.client.parent.gen.GetTemplateLibraryWithResponse(ctx, s.client.accountID)
+	if err != nil {
+		return nil, err
+	}
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
+	}
+
+	library := templateLibraryFromGenerated(*resp.JSON200)
+	return &library, nil
+}
+
+// CreateLibraryCopy starts copying a to-do list template into a project.
+func (s *TemplatesService) CreateLibraryCopy(ctx context.Context, req *CreateTemplateLibraryCopyRequest) (result *TemplateLibraryCopy, err error) {
+	op := OperationInfo{
+		Service: "Templates", Operation: "CreateLibraryCopy",
+		ResourceType: "template_library_copy", IsMutation: true,
+	}
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
+	start := time.Now()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if req == nil {
+		err = ErrUsage("template library copy request is required")
+		return nil, err
+	}
+
+	body := generated.CreateTemplateLibraryCopyJSONRequestBody{
+		TemplateRecordingId:   req.TemplateRecordingID,
+		DestinationParentId:   req.DestinationParentID,
+		AddingPeopleConfirmed: omitzero(req.AddingPeopleConfirmed),
+	}
+	resp, err := s.client.parent.gen.CreateTemplateLibraryCopyWithResponse(ctx, s.client.accountID, body)
+	if err != nil {
+		return nil, err
+	}
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
+		return nil, err
+	}
+	if resp.JSON201 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
+	}
+
+	templateCopy := templateLibraryCopyFromGenerated(*resp.JSON201)
+	return &templateCopy, nil
+}
+
+// GetLibraryCopy returns the current state of a to-do list template copy.
+func (s *TemplatesService) GetLibraryCopy(ctx context.Context, copyID int64) (result *TemplateLibraryCopy, err error) {
+	op := OperationInfo{
+		Service: "Templates", Operation: "GetLibraryCopy",
+		ResourceType: "template_library_copy", IsMutation: false,
+		ResourceID: copyID,
+	}
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
+	start := time.Now()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	resp, err := s.client.parent.gen.GetTemplateLibraryCopyWithResponse(ctx, s.client.accountID, copyID)
+	if err != nil {
+		return nil, err
+	}
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
+	}
+
+	templateCopy := templateLibraryCopyFromGenerated(*resp.JSON200)
+	return &templateCopy, nil
+}
+
 // templateFromGenerated converts a generated Template to our clean type.
 func templateFromGenerated(gt generated.Template) Template {
 	t := Template{
@@ -433,4 +565,41 @@ func projectConstructionFromGenerated(gc generated.ProjectConstruction) ProjectC
 	}
 
 	return c
+}
+
+func templateLibraryFromGenerated(gl generated.TemplateLibrary) TemplateLibrary {
+	library := TemplateLibrary{
+		Bucket: Bucket{
+			ID:   gl.Bucket.Id,
+			Name: gl.Bucket.Name,
+			Type: gl.Bucket.Type,
+		},
+		Todoset: Parent{
+			ID:     gl.Todoset.Id,
+			Title:  gl.Todoset.Title,
+			Type:   gl.Todoset.Type,
+			URL:    gl.Todoset.Url,
+			AppURL: gl.Todoset.AppUrl,
+		},
+		Todolists: make([]Todolist, 0, len(gl.Todolists)),
+	}
+	for _, todolist := range gl.Todolists {
+		library.Todolists = append(library.Todolists, todolistFromGenerated(todolist))
+	}
+	return library
+}
+
+func templateLibraryCopyFromGenerated(gc generated.TemplateLibraryCopy) TemplateLibraryCopy {
+	templateCopy := TemplateLibraryCopy{
+		ID:                  gc.Id,
+		Status:              gc.Status,
+		SourceRecordingID:   gc.SourceRecordingId,
+		DestinationParentID: gc.DestinationParentId,
+		URL:                 gc.Url,
+	}
+	if gc.DestinationTodolist != nil {
+		todolist := todolistFromGenerated(*gc.DestinationTodolist)
+		templateCopy.DestinationTodolist = &todolist
+	}
+	return templateCopy
 }

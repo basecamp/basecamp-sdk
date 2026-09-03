@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-09-02T16:49:23Z
+# Generated: 2026-09-03T02:27:36Z
 
 require "json"
 require "time"
@@ -4285,6 +4285,99 @@ module Basecamp
           "dock" => @dock,
           "status" => @status,
           "url" => @url,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # TemplateLibrary
+    class TemplateLibrary
+      include TypeHelpers
+      attr_accessor :bucket, :todolists, :todoset
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[bucket todolists todoset].freeze
+      end
+
+      def initialize(data = {})
+        @bucket = parse_type(data["bucket"], "RecordingBucket")
+        @todolists = parse_array(data["todolists"], "Todolist")
+        @todoset = parse_type(data["todoset"], "RecordingParent")
+      end
+
+      def to_h
+        {
+          "bucket" => @bucket,
+          "todolists" => @todolists,
+          "todoset" => @todoset,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # TemplateLibraryConfirmationPerson
+    class TemplateLibraryConfirmationPerson
+      include TypeHelpers
+      attr_accessor :avatar_url, :id, :name
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[avatar_url id name].freeze
+      end
+
+      def initialize(data = {})
+        @avatar_url = data["avatar_url"]
+        @id = parse_integer(data["id"])
+        @name = data["name"]
+      end
+
+      def to_h
+        {
+          "avatar_url" => @avatar_url,
+          "id" => @id,
+          "name" => @name,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # TemplateLibraryCopy
+    class TemplateLibraryCopy
+      include TypeHelpers
+      attr_accessor :destination_parent_id, :id, :source_recording_id, :status, :url, :destination_todolist
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[destination_parent_id id source_recording_id status url].freeze
+      end
+
+      def initialize(data = {})
+        @destination_parent_id = parse_integer(data["destination_parent_id"])
+        @id = parse_integer(data["id"])
+        @source_recording_id = parse_integer(data["source_recording_id"])
+        @status = data["status"]
+        @url = data["url"]
+        @destination_todolist = parse_type(data["destination_todolist"], "Todolist")
+      end
+
+      def to_h
+        {
+          "destination_parent_id" => @destination_parent_id,
+          "id" => @id,
+          "source_recording_id" => @source_recording_id,
+          "status" => @status,
+          "url" => @url,
+          "destination_todolist" => @destination_todolist,
         }.compact
       end
 
