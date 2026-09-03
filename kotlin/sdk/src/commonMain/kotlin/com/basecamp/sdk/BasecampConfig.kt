@@ -41,7 +41,7 @@ data class BasecampConfig(
     }
 
     companion object {
-        const val VERSION = "0.15.0"
+        const val VERSION = "0.16.0"
         const val API_VERSION = "2026-09-02"
         const val DEFAULT_BASE_URL = "https://3.basecampapi.com"
         const val DEFAULT_USER_AGENT = "basecamp-sdk-kotlin/$VERSION (api:$API_VERSION)"
