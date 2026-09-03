@@ -11,7 +11,7 @@ what wrong behaviour you get if you ignore one. This file is that half.
 
 ---
 
-# Unreleased
+# v0.16.0
 
 ### All SDKs: account-wide to-do list template library
 
