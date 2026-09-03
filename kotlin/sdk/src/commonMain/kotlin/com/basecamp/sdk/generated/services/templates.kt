@@ -15,7 +15,7 @@ class TemplatesService(client: AccountClient) : BaseService(client) {
     /**
      * Get the account's to-do list template library
      */
-    suspend fun getLibrary(): JsonElement {
+    suspend fun getLibrary(): TemplateLibrary {
         val info = OperationInfo(
             service = "Templates",
             operation = "GetTemplateLibrary",
@@ -27,7 +27,7 @@ class TemplatesService(client: AccountClient) : BaseService(client) {
         return request(info, {
             httpGet("/template_library.json", operationName = info.operation)
         }) { body ->
-            json.decodeFromString<JsonElement>(body)
+            json.decodeFromString<TemplateLibrary>(body)
         }
     }
 
@@ -35,7 +35,7 @@ class TemplatesService(client: AccountClient) : BaseService(client) {
      * Start copying a to-do list template into a project
      * @param body Request body
      */
-    suspend fun createLibraryCopy(body: CreateTemplateLibraryCopyBody): JsonElement {
+    suspend fun createLibraryCopy(body: CreateTemplateLibraryCopyBody): TemplateLibraryCopy {
         val info = OperationInfo(
             service = "Templates",
             operation = "CreateTemplateLibraryCopy",
@@ -51,7 +51,7 @@ class TemplatesService(client: AccountClient) : BaseService(client) {
                 body.addingPeopleConfirmed?.let { put("adding_people_confirmed", kotlinx.serialization.json.JsonPrimitive(it)) }
             }), operationName = info.operation)
         }) { body ->
-            json.decodeFromString<JsonElement>(body)
+            json.decodeFromString<TemplateLibraryCopy>(body)
         }
     }
 
@@ -59,7 +59,7 @@ class TemplatesService(client: AccountClient) : BaseService(client) {
      * Get the current status of a to-do list template copy
      * @param copyId The copy ID
      */
-    suspend fun getLibraryCopy(copyId: Long): JsonElement {
+    suspend fun getLibraryCopy(copyId: Long): TemplateLibraryCopy {
         val info = OperationInfo(
             service = "Templates",
             operation = "GetTemplateLibraryCopy",
@@ -71,7 +71,7 @@ class TemplatesService(client: AccountClient) : BaseService(client) {
         return request(info, {
             httpGet("/template_library/copies/${copyId}", operationName = info.operation)
         }) { body ->
-            json.decodeFromString<JsonElement>(body)
+            json.decodeFromString<TemplateLibraryCopy>(body)
         }
     }
 

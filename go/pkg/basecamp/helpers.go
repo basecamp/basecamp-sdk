@@ -66,7 +66,7 @@ func checkResponse(resp *http.Response, body []byte) error {
 
 	switch resp.StatusCode {
 	case http.StatusBadRequest, http.StatusUnprocessableEntity:
-		return validationError(serverMsg, serverHint, fieldErrors, resp.StatusCode, requestID)
+		return validationErrorFromBody(serverMsg, serverHint, fieldErrors, resp.StatusCode, requestID, body)
 	case http.StatusUnauthorized:
 		return &Error{Code: CodeAuth, Message: msgOrDefault(serverMsg, "authentication required"), Hint: serverHint, HTTPStatus: 401, RequestID: requestID}
 	case http.StatusForbidden:
@@ -129,6 +129,22 @@ func parseErrorBody(body []byte) (message, hint string, fieldErrors map[string][
 		fieldErrors = parseBareFieldErrors(body)
 	}
 	return message, hint, fieldErrors
+}
+
+// parseTemplateLibraryConfirmationPeople decodes a complete people-confirmation projection.
+func parseTemplateLibraryConfirmationPeople(body []byte) []TemplateLibraryConfirmationPerson {
+	var payload struct {
+		People []TemplateLibraryConfirmationPerson `json:"people"`
+	}
+	if err := json.Unmarshal(body, &payload); err != nil || len(payload.People) == 0 {
+		return nil
+	}
+	for _, person := range payload.People {
+		if person.ID <= 0 || person.Name == "" || person.AvatarURL == "" {
+			return nil
+		}
+	}
+	return payload.People
 }
 
 // stringFromRaw decodes a JSON value as a string, returning "" for absent or
@@ -268,6 +284,18 @@ func validationError(serverMsg, serverHint string, fieldErrors map[string][]stri
 		HTTPStatus:  status,
 		RequestID:   requestID,
 	}
+}
+
+func validationErrorFromBody(serverMsg, serverHint string, fieldErrors map[string][]string, status int, requestID string, body []byte) error {
+	validation := validationError(serverMsg, serverHint, fieldErrors, status, requestID)
+	if status != http.StatusUnprocessableEntity {
+		return validation
+	}
+	people := parseTemplateLibraryConfirmationPeople(body)
+	if len(people) == 0 {
+		return validation
+	}
+	return &PeopleConfirmationRequiredError{ValidationError: validation, People: people}
 }
 
 // msgOrDefault returns msg if non-empty, otherwise fallback.

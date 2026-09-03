@@ -150,6 +150,26 @@ final class ErrorTests: XCTestCase {
         }
     }
 
+    func testFromHTTPResponse422ExposesPeopleRequiringConfirmation() {
+        let body = try! JSONSerialization.data(
+            withJSONObject: [
+                "error": "Adding people requires confirmation",
+                "people": [
+                    ["id": 4, "name": "Victor", "avatar_url": "https://example.test/avatar.png"]
+                ],
+            ]
+        )
+        let error = BasecampError.fromHTTPResponse(status: 422, data: body, headers: [:], requestId: nil)
+        if case .peopleConfirmationRequired(let message, let status, _, _, _, let people) = error {
+            XCTAssertEqual(message, "Adding people requires confirmation")
+            XCTAssertEqual(status, 422)
+            XCTAssertEqual(people.first?.id, 4)
+            XCTAssertEqual(people.first?.name, "Victor")
+        } else {
+            XCTFail("Expected .peopleConfirmationRequired")
+        }
+    }
+
     // MARK: - Field-keyed 422 bodies
     //
     // Native mirrors of the conformance error-mapping "field-errors" cases:

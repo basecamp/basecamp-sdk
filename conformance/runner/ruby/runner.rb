@@ -421,15 +421,19 @@ class OperationMapper
     when "RecordProjectVisit"
       @account.projects.record_project_visit(project_id: path_params["projectId"])
     when "GetTemplateLibrary"
-      @account.templates.get_library
+      summarize_template_library(@account.templates.get_library)
     when "CreateTemplateLibraryCopy"
-      @account.templates.create_library_copy(
-        template_recording_id: body["template_recording_id"],
-        destination_parent_id: body["destination_parent_id"],
-        adding_people_confirmed: body["adding_people_confirmed"]
+      summarize_template_library_copy(
+        @account.templates.create_library_copy(
+          template_recording_id: body["template_recording_id"],
+          destination_parent_id: body["destination_parent_id"],
+          adding_people_confirmed: body["adding_people_confirmed"]
+        )
       )
     when "GetTemplateLibraryCopy"
-      @account.templates.get_library_copy(copy_id: path_params["copyId"])
+      summarize_template_library_copy(
+        @account.templates.get_library_copy(copy_id: path_params["copyId"])
+      )
     when "CreateProject"
       @account.projects.create(name: body["name"])
     when "ListTodos"
@@ -784,6 +788,22 @@ class OperationMapper
   # It is required, and the mock returns its queued body regardless of what is
   # asked for.
   SEARCH_QUERY = "Leto"
+
+  # Exposes representative decoded template-library fields as portable scalars.
+  def summarize_template_library(library)
+    {
+      "bucket_id" => library.dig("bucket", "id"),
+      "todoset_id" => library.dig("todoset", "id"),
+      "first_todolist_id" => library.dig("todolists", 0, "id"),
+    }
+  end
+
+  def summarize_template_library_copy(copy)
+    summary = { "id" => copy["id"], "status" => copy["status"] }
+    destination = copy["destination_todolist"]
+    summary["destination_todolist_id"] = destination["id"] if destination
+    summary
+  end
 
   # Flatten a search result list into top-level scalars, one group per branch of
   # BC3's polymorphic search projection.
@@ -1506,6 +1526,8 @@ class TestRunner
                    error.respond_to?(:code) ? error.code : nil
                  when "message"
                    error.message
+                 when "confirmationPeople.0.id"
+                   error.respond_to?(:people) ? error.people.first&.id : nil
                  else
                    failures << "Unknown error field: #{field_path}"
                    next

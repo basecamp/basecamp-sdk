@@ -79,6 +79,19 @@ private fun summarizeUpcoming(envelope: UpcomingScheduleResult): JsonElement = b
     }
 }
 
+/** Exposes representative decoded template-library fields as portable scalars. */
+private fun summarizeTemplateLibrary(library: TemplateLibrary): JsonElement = buildJsonObject {
+    put("bucket_id", library.bucket.id)
+    put("todoset_id", library.todoset.id)
+    library.todolists.firstOrNull()?.let { put("first_todolist_id", it.id) }
+}
+
+private fun summarizeTemplateLibraryCopy(copy: TemplateLibraryCopy): JsonElement = buildJsonObject {
+    put("id", copy.id)
+    put("status", copy.status)
+    copy.destinationTodolist?.let { put("destination_todolist_id", it.id) }
+}
+
 /**
  * Flattens an accumulated project list into top-level scalars.
  *
@@ -819,6 +832,8 @@ private fun runTest(tc: TestCase): TestResult {
                     "code" -> caughtException.code
                     "message" -> caughtException.message
                     "requestId" -> caughtException.requestId
+                    "confirmationPeople.0.id" ->
+                        (caughtException as? BasecampException.PeopleConfirmationRequired)?.people?.firstOrNull()?.id
                     else -> return TestResult(false, "Unknown error field: $fieldPath")
                 }
                 val result = compareValues("error.$fieldPath", assertion.expected, actual)
@@ -1000,7 +1015,7 @@ private suspend fun dispatchOperation(tc: TestCase, account: AccountClient): Dis
         }
 
         "GetTemplateLibrary" -> {
-            DispatchResult(resultJson = account.templates.getLibrary())
+            DispatchResult(resultJson = summarizeTemplateLibrary(account.templates.getLibrary()))
         }
 
         "CreateTemplateLibraryCopy" -> {
@@ -1012,11 +1027,12 @@ private suspend fun dispatchOperation(tc: TestCase, account: AccountClient): Dis
                     addingPeopleConfirmed = rb?.get("adding_people_confirmed")?.jsonPrimitive?.booleanOrNull,
                 ),
             )
-            DispatchResult(resultJson = libraryCopy)
+            DispatchResult(resultJson = summarizeTemplateLibraryCopy(libraryCopy))
         }
 
         "GetTemplateLibraryCopy" -> {
-            DispatchResult(resultJson = account.templates.getLibraryCopy(tc.pathParams.longParam("copyId")))
+            val libraryCopy = account.templates.getLibraryCopy(tc.pathParams.longParam("copyId"))
+            DispatchResult(resultJson = summarizeTemplateLibraryCopy(libraryCopy))
         }
 
         "CreateProject" -> {

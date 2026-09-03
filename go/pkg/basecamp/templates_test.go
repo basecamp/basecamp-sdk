@@ -312,6 +312,18 @@ func TestTemplatesService_CreateLibraryCopy(t *testing.T) {
 	}
 }
 
+func TestTemplatesService_CreateLibraryCopyRequiresRequest(t *testing.T) {
+	svc := testTemplatesServer(t, func(http.ResponseWriter, *http.Request) {
+		t.Fatal("nil request must fail before sending an HTTP request")
+	})
+
+	_, err := svc.CreateLibraryCopy(context.Background(), nil)
+	var apiErr *Error
+	if !errors.As(err, &apiErr) || apiErr.Code != CodeUsage {
+		t.Fatalf("expected usage error, got %v", err)
+	}
+}
+
 func TestTemplatesService_CreateLibraryCopyRequiresPeopleConfirmation(t *testing.T) {
 	svc := testTemplatesServer(t, func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -335,6 +347,13 @@ func TestTemplatesService_CreateLibraryCopyRequiresPeopleConfirmation(t *testing
 	}
 	if apiErr.Message != "Adding people requires confirmation" {
 		t.Fatalf("unexpected error message: %q", apiErr.Message)
+	}
+	var confirmationErr *PeopleConfirmationRequiredError
+	if !errors.As(err, &confirmationErr) || len(confirmationErr.People) != 1 {
+		t.Fatalf("expected confirmation people, got %v", err)
+	}
+	if confirmationErr.People[0].ID != 4 || confirmationErr.People[0].Name != "Victor" {
+		t.Fatalf("unexpected confirmation person: %+v", confirmationErr.People[0])
 	}
 }
 

@@ -9,7 +9,10 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { http, HttpResponse } from "msw";
 import { server } from "../setup.js";
 import { createBasecampClient } from "../../src/client.js";
-import { BasecampError } from "../../src/errors.js";
+import {
+  BasecampError,
+  PeopleConfirmationRequiredError,
+} from "../../src/errors.js";
 import type { BasecampClient } from "../../src/client.js";
 
 const BASE_URL = "https://3.basecampapi.com/12345";
@@ -334,10 +337,13 @@ describe("TemplatesService", () => {
         destinationParentId: 9,
       }).catch((caught: unknown) => caught);
 
-      expect(error).toBeInstanceOf(BasecampError);
+      expect(error).toBeInstanceOf(PeopleConfirmationRequiredError);
       expect((error as BasecampError).code).toBe("validation");
       expect((error as BasecampError).httpStatus).toBe(422);
       expect((error as BasecampError).message).toBe("Adding people requires confirmation");
+      expect((error as PeopleConfirmationRequiredError).people).toEqual([
+        { id: 4, name: "Victor", avatarUrl: "https://example.test/avatar.png" },
+      ]);
     });
   });
 });

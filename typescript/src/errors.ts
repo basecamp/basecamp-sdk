@@ -54,6 +54,13 @@ export type ErrorCode =
   | "usage"
   | "limit_exceeded";
 
+/** A person whose destination-project access requires confirmation. */
+export interface TemplateLibraryConfirmationPerson {
+  id: number;
+  name: string;
+  avatarUrl: string;
+}
+
 /**
  * Options for creating a BasecampError.
  */
@@ -174,6 +181,27 @@ export class BasecampError extends Error {
       requestId: this.requestId,
       fieldErrors: this.fieldErrors,
     };
+  }
+}
+
+/**
+ * A template copy requires confirmation before granting project access to these people.
+ */
+export class PeopleConfirmationRequiredError extends BasecampError {
+  readonly people: TemplateLibraryConfirmationPerson[];
+
+  constructor(
+    message: string,
+    people: TemplateLibraryConfirmationPerson[],
+    options?: Omit<BasecampErrorOptions, "retryable">,
+  ) {
+    super("validation", message, { ...options, retryable: false });
+    this.name = "PeopleConfirmationRequiredError";
+    this.people = people;
+  }
+
+  override toJSON(): Record<string, unknown> {
+    return { ...super.toJSON(), people: this.people };
   }
 }
 
@@ -324,6 +352,7 @@ export function errorFromParsedBody(
   let serverMessage: string | undefined;
   let hint: string | undefined;
   let fieldErrors: Record<string, string[]> | undefined;
+  let confirmationPeople: TemplateLibraryConfirmationPerson[] | undefined;
 
   if (typeof body === "object" && body !== null) {
     if ("error" in body && typeof body.error === "string") {
@@ -341,6 +370,9 @@ export function errorFromParsedBody(
     }
     if (httpStatus === 400 || httpStatus === 422) {
       fieldErrors = parseFieldErrors(body);
+      if (httpStatus === 422) {
+        confirmationPeople = parseTemplateLibraryConfirmationPeople(body);
+      }
       if (fieldErrors) {
         const flat = flattenFieldErrors(fieldErrors);
         // Appended in parentheses after a top-level message, standing alone
@@ -366,7 +398,16 @@ export function errorFromParsedBody(
         requestId,
       });
     case 400:
+      return new BasecampError("validation", message, { httpStatus, hint, requestId, fieldErrors });
     case 422:
+      if (confirmationPeople) {
+        return new PeopleConfirmationRequiredError(message, confirmationPeople, {
+          httpStatus,
+          hint,
+          requestId,
+          fieldErrors,
+        });
+      }
       return new BasecampError("validation", message, { httpStatus, hint, requestId, fieldErrors });
     case 507:
       // A 5xx status carrying a client fact: the account is out of storage, or
@@ -388,6 +429,32 @@ export function errorFromParsedBody(
         requestId,
       });
   }
+}
+
+function parseTemplateLibraryConfirmationPeople(
+  body: object,
+): TemplateLibraryConfirmationPerson[] | undefined {
+  const people = (body as { people?: unknown }).people;
+  if (!Array.isArray(people) || people.length === 0) return undefined;
+
+  const parsed: TemplateLibraryConfirmationPerson[] = [];
+  for (const value of people) {
+    if (typeof value !== "object" || value === null || Array.isArray(value)) return undefined;
+    const person = value as Record<string, unknown>;
+    if (
+      typeof person.id !== "number" ||
+      !Number.isSafeInteger(person.id) ||
+      person.id <= 0 ||
+      typeof person.name !== "string" ||
+      person.name.length === 0 ||
+      typeof person.avatar_url !== "string" ||
+      person.avatar_url.length === 0
+    ) {
+      return undefined;
+    }
+    parsed.push({ id: person.id, name: person.name, avatarUrl: person.avatar_url });
+  }
+  return parsed;
 }
 
 /**

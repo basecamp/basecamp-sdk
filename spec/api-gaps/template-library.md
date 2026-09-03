@@ -74,6 +74,6 @@ Absorbed in all six SDKs. Smithy owns the three routes, request and response
 structures, copy status values, and `PeopleConfirmationRequiredError`.
 Generated service layers and shared conformance cases pin all three paths,
 request field names, the `201` response, the completed-copy projection, and the
-`422` validation mapping. Go's `TemplatesService` provides `GetLibrary`,
+specialized `422` validation error with its typed confirmation people. Go's `TemplatesService` provides `GetLibrary`,
 `CreateLibraryCopy`, and `GetLibraryCopy` convenience methods over generated
 operations.

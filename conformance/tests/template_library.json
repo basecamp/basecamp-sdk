@@ -54,7 +54,10 @@
       { "type": "noError" },
       { "type": "requestCount", "expected": 1 },
       { "type": "requestMethod", "expected": "GET" },
-      { "type": "requestPath", "expected": "/999/template_library.json" }
+      { "type": "requestPath", "expected": "/999/template_library.json" },
+      { "type": "responseBody", "path": "bucket_id", "expected": 1 },
+      { "type": "responseBody", "path": "todoset_id", "expected": 2 },
+      { "type": "responseBody", "path": "first_todolist_id", "expected": 3 }
     ],
     "tags": ["templates", "template-library", "decode"]
   },
@@ -148,13 +151,14 @@
       { "type": "requestMethod", "expected": "GET" },
       { "type": "requestPath", "expected": "/999/template_library/copies/5" },
       { "type": "responseBody", "path": "id", "expected": 5 },
-      { "type": "responseBody", "path": "status", "expected": "completed" }
+      { "type": "responseBody", "path": "status", "expected": "completed" },
+      { "type": "responseBody", "path": "destination_todolist_id", "expected": 10 }
     ],
     "tags": ["templates", "template-library", "decode"]
   },
   {
     "name": "template library copy reports people confirmation as a validation error",
-    "description": "Verifies that the documented 422 people-confirmation response is surfaced as the shared validation error while retaining its message.",
+    "description": "Verifies that the documented 422 people-confirmation response is surfaced as a specialized validation error retaining the people who need destination-project access.",
     "operation": "CreateTemplateLibraryCopy",
     "method": "POST",
     "path": "/template_library/copies.json",
@@ -175,8 +179,10 @@
       }
     ],
     "assertions": [
+      { "type": "requestBodyAbsent", "path": "adding_people_confirmed" },
       { "type": "errorCode", "expected": "validation" },
       { "type": "errorField", "path": "httpStatus", "expected": 422 },
+      { "type": "errorField", "path": "confirmationPeople.0.id", "expected": 4 },
       { "type": "errorMessage", "expected": "Adding people requires confirmation" }
     ],
     "tags": ["templates", "template-library", "error-mapping", "validation"]

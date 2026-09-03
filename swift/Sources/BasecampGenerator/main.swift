@@ -79,7 +79,11 @@ func run() throws {
     let (operations, schemas) = parseAllOperations(spec: spec)
     let retryConfigs = try parseBehaviorModel(data: behaviorData)
     let services = groupOperations(operations, schemas: schemas)
-    let (entitySchemaNames, requestSchemaNames) = collectModelSchemas(operations: operations, schemas: schemas)
+    let (discoveredEntitySchemaNames, requestSchemaNames) = collectModelSchemas(
+        operations: operations, schemas: schemas)
+    let entitySchemaNames = Array(
+        Set(discoveredEntitySchemaNames).union(typeAliases.keys.filter { schemas[$0] != nil })
+    ).sorted()
 
     print("Parsed \(operations.count) operations into \(services.count) services")
     print("Found \(entitySchemaNames.count) entity schemas, \(requestSchemaNames.count) request schemas")

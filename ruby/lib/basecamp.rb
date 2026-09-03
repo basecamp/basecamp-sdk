@@ -128,7 +128,14 @@ module Basecamp
     when 400, 422
       field_errors = parse_field_errors(body)
       message = Security.truncate(compose_validation_message(server_message, field_errors) || "Request failed")
-      ValidationError.new(message, hint: hint, http_status: status, field_errors: field_errors)
+      people = status == 422 ? parse_template_library_confirmation_people(body) : nil
+      if people
+        PeopleConfirmationRequiredError.new(
+          message, people: people, hint: hint, http_status: status, field_errors: field_errors
+        )
+      else
+        ValidationError.new(message, hint: hint, http_status: status, field_errors: field_errors)
+      end
     when 401
       AuthError.new(message, hint: hint)
     when 403
@@ -198,6 +205,29 @@ module Basecamp
     data = JSON.parse(body)
     hint = data.is_a?(Hash) ? data["error_description"] : nil
     hint.is_a?(String) && !hint.empty? ? Security.truncate(hint) : nil
+  rescue JSON::ParserError, ApiError
+    nil
+  end
+
+  # Extracts the people whose destination-project access requires confirmation.
+  # @param body [String, nil]
+  # @return [Array<Basecamp::Types::TemplateLibraryConfirmationPerson>, nil]
+  def self.parse_template_library_confirmation_people(body)
+    return nil if body.nil? || body.empty?
+
+    Security.check_body_size!(body, Security::MAX_ERROR_BODY_BYTES, "Error")
+    data = JSON.parse(body)
+    people = data.is_a?(Hash) ? data["people"] : nil
+    return nil unless people.is_a?(Array) && !people.empty?
+
+    valid = people.all? do |person|
+      person.is_a?(Hash) && person["id"].is_a?(Integer) && person["id"].positive? &&
+        person["name"].is_a?(String) && !person["name"].empty? &&
+        person["avatar_url"].is_a?(String) && !person["avatar_url"].empty?
+    end
+    return nil unless valid
+
+    people.map { |person| Types::TemplateLibraryConfirmationPerson.new(person) }
   rescue JSON::ParserError, ApiError
     nil
   end

@@ -57,6 +57,7 @@ export { type DownloadResult, filenameFromURL } from "./download.js";
 // Errors
 export {
   BasecampError,
+  PeopleConfirmationRequiredError,
   Errors,
   errorFromParsedBody,
   errorFromResponse,
@@ -64,6 +65,7 @@ export {
   isErrorCode,
   type ErrorCode,
   type BasecampErrorOptions,
+  type TemplateLibraryConfirmationPerson,
 } from "./errors.js";
 
 // Hooks

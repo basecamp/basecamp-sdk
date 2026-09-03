@@ -525,8 +525,10 @@ RECORD BasecampError extends Error
   http_status : Integer?      -- HTTP status code that caused the error
   retryable   : Boolean       -- whether the operation can be retried
   retry_after : Integer?      -- seconds to wait before retrying (from Retry-After header)
-  request_id  : String?       -- X-Request-Id from response headers
-  exit_code   : Integer       -- CLI-friendly exit code (derived from code)
+  request_id          : String?       -- X-Request-Id from response headers
+  field_errors        : Map<String, String[]>? -- structured 400/422 field messages
+  confirmation_people : TemplateLibraryConfirmationPerson[]? -- people requiring template-copy access confirmation
+  exit_code           : Integer       -- CLI-friendly exit code (derived from code)
 END
 ```
 
@@ -626,6 +628,23 @@ For `status == 400` or `status == 422` only:
 Field names are data, never structure. Once a field map is recognized, no name is privileged: `"base"` — Rails' record-level error key — renders as an ordinary field (`base: Can't be undocked`), and `"__proto__"` is an ordinary key rather than a prototype mutation. The one place a name carries meaning is step 2's `"errors"` check, which is shape recognition on an unwrapped body — deciding *whether* this JSON object is a field map at all — not a claim about what a field may be called.
 
 Swift carries the slot as a fifth associated value on `.validation` plus a `fieldErrors` property on `BasecampError`; the earlier flatten-only deviation is closed.
+
+### Template-library people confirmation errors
+
+A `422` object with a non-empty `people` array whose entries carry a positive
+integer `id` and non-empty string `name` and `avatar_url` surfaces as the
+public people-confirmation-required validation error. It retains the canonical
+`validation` code, status, message, hint, request ID, and field errors while
+exposing every confirmation person as the typed
+`TemplateLibraryConfirmationPerson` projection. Ruby and Python specialize
+their validation error classes, TypeScript and Go expose dedicated error types,
+Kotlin exposes `BasecampException.PeopleConfirmationRequired`, and Swift
+exposes `BasecampError.peopleConfirmationRequired` plus the
+`confirmationPeople` computed property.
+
+The typed list is available only when every person entry satisfies that shape.
+A different or malformed `people` member remains a canonical validation error,
+so unrelated validation bodies retain the shared error taxonomy.
 
 ### Retry-After Parsing Algorithm
 

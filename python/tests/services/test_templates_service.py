@@ -9,7 +9,7 @@ import pytest
 import respx
 
 from basecamp import AsyncClient, Client
-from basecamp.errors import ForbiddenError, NotFoundError, ValidationError
+from basecamp.errors import ForbiddenError, NotFoundError, PeopleConfirmationRequiredError
 
 
 def _construction() -> dict:
@@ -153,11 +153,12 @@ class TestSyncTemplates:
         )
 
         account = Client(access_token="test-token").for_account("12345")
-        with pytest.raises(ValidationError) as excinfo:
+        with pytest.raises(PeopleConfirmationRequiredError) as excinfo:
             account.templates.create_library_copy(template_recording_id=3, destination_parent_id=9)
 
         assert excinfo.value.http_status == 422
         assert str(excinfo.value) == "Adding people requires confirmation"
+        assert excinfo.value.people == [{"id": 4, "name": "Victor", "avatar_url": "https://example.test/avatar.png"}]
 
 
 class TestAsyncTemplates:

@@ -161,12 +161,16 @@ class TemplatesServiceTest < Minitest::Test
     }
 
     stub_request(:post, "https://3.basecampapi.com/12345/template_library/copies.json")
+      .with(body: { template_recording_id: 3, destination_parent_id: 9 })
       .to_return(status: 422, body: response.to_json, headers: { "Content-Type" => "application/json" })
 
-    error = assert_raises(Basecamp::ValidationError) do
+    error = assert_raises(Basecamp::PeopleConfirmationRequiredError) do
       @account.templates.create_library_copy(template_recording_id: 3, destination_parent_id: 9)
     end
     assert_equal 422, error.http_status
     assert_equal "Adding people requires confirmation", error.message
+    assert_equal 1, error.people.length
+    assert_equal 4, error.people.first.id
+    assert_equal "Victor", error.people.first.name
   end
 end

@@ -220,7 +220,7 @@ sealed class BasecampException(
     }
 
     /** Validation error (400, 422). */
-    class Validation(
+    open class Validation(
         message: String,
         hint: String? = null,
         httpStatus: Int = 422,
@@ -236,6 +236,16 @@ sealed class BasecampException(
          */
         val fieldErrors: Map<String, List<String>>? = null,
     ) : BasecampException(message, CODE_VALIDATION, hint, httpStatus, false, requestId)
+
+    /** A template copy requires confirmation before granting project access. */
+    class PeopleConfirmationRequired(
+        message: String,
+        /** The people who need destination-project access. */
+        val people: List<com.basecamp.sdk.generated.models.TemplateLibraryConfirmationPerson>,
+        hint: String? = null,
+        requestId: String? = null,
+        fieldErrors: Map<String, List<String>>? = null,
+    ) : Validation(message, hint, 422, requestId, fieldErrors)
 
     /**
      * An account limit blocks the request (507) — file storage exhausted, or a
@@ -418,6 +428,7 @@ sealed class BasecampException(
             requestId: String? = null,
             retryAfterSeconds: Int? = null,
             fieldErrors: Map<String, List<String>>? = null,
+            confirmationPeople: List<com.basecamp.sdk.generated.models.TemplateLibraryConfirmationPerson>? = null,
         ): BasecampException {
             val msg = truncateMessage(message ?: "Request failed (HTTP $httpStatus)")
             return when (httpStatus) {
@@ -425,7 +436,10 @@ sealed class BasecampException(
                 403 -> Forbidden(msg, hint, requestId)
                 404 -> NotFound(msg, hint, requestId)
                 429 -> RateLimit(retryAfterSeconds, msg, hint, requestId)
-                400, 422 -> Validation(msg, hint, httpStatus, requestId, fieldErrors)
+                400 -> Validation(msg, hint, httpStatus, requestId, fieldErrors)
+                422 -> confirmationPeople?.takeIf { it.isNotEmpty() }?.let {
+                    PeopleConfirmationRequired(msg, it, hint, requestId, fieldErrors)
+                } ?: Validation(msg, hint, httpStatus, requestId, fieldErrors)
                 // A 5xx status carrying a client fact: the account is out of
                 // storage, or at its webhook ceiling. Matched before the else
                 // arm, which would make it a retryable Api.

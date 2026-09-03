@@ -15,6 +15,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -508,6 +509,26 @@ func runTest(tc TestCase) TestResult {
 	}
 }
 
+// summarizeTemplateLibrary exposes representative decoded fields as portable scalars.
+func summarizeTemplateLibrary(library *basecamp.TemplateLibrary) map[string]interface{} {
+	result := map[string]interface{}{
+		"bucket_id":  library.Bucket.ID,
+		"todoset_id": library.Todoset.ID,
+	}
+	if len(library.Todolists) > 0 {
+		result["first_todolist_id"] = library.Todolists[0].ID
+	}
+	return result
+}
+
+func summarizeTemplateLibraryCopy(copy *basecamp.TemplateLibraryCopy) map[string]interface{} {
+	result := map[string]interface{}{"id": copy.ID, "status": copy.Status}
+	if copy.DestinationTodolist != nil {
+		result["destination_todolist_id"] = copy.DestinationTodolist.ID
+	}
+	return result
+}
+
 // summarizeProjects flattens an accumulated project list into top-level
 // scalars.
 //
@@ -744,19 +765,40 @@ func executeOperation(ctx context.Context, account *basecamp.AccountClient, tc T
 
 	case "GetTemplateLibrary":
 		library, err := account.Templates().GetLibrary(ctx)
-		return operationResult{err: err, result: library}
+		if err != nil {
+			return operationResult{err: err}
+		}
+		return operationResult{result: summarizeTemplateLibrary(library)}
 
 	case "CreateTemplateLibraryCopy":
+		templateRecordingID, parseErr := getExactInt64Param(tc.RequestBody, "template_recording_id")
+		if parseErr != nil {
+			return operationResult{err: basecamp.ErrUsage(parseErr.Error())}
+		}
+		destinationParentID, parseErr := getExactInt64Param(tc.RequestBody, "destination_parent_id")
+		if parseErr != nil {
+			return operationResult{err: basecamp.ErrUsage(parseErr.Error())}
+		}
 		libraryCopy, err := account.Templates().CreateLibraryCopy(ctx, &basecamp.CreateTemplateLibraryCopyRequest{
-			TemplateRecordingID:   getInt64Param(tc.RequestBody, "template_recording_id"),
-			DestinationParentID:   getInt64Param(tc.RequestBody, "destination_parent_id"),
+			TemplateRecordingID:   templateRecordingID,
+			DestinationParentID:   destinationParentID,
 			AddingPeopleConfirmed: getBoolParam(tc.RequestBody, "adding_people_confirmed"),
 		})
-		return operationResult{err: err, result: libraryCopy}
+		if err != nil {
+			return operationResult{err: err}
+		}
+		return operationResult{result: summarizeTemplateLibraryCopy(libraryCopy)}
 
 	case "GetTemplateLibraryCopy":
-		libraryCopy, err := account.Templates().GetLibraryCopy(ctx, getInt64Param(tc.PathParams, "copyId"))
-		return operationResult{err: err, result: libraryCopy}
+		copyID, parseErr := getExactInt64Param(tc.PathParams, "copyId")
+		if parseErr != nil {
+			return operationResult{err: basecamp.ErrUsage(parseErr.Error())}
+		}
+		libraryCopy, err := account.Templates().GetLibraryCopy(ctx, copyID)
+		if err != nil {
+			return operationResult{err: err}
+		}
+		return operationResult{result: summarizeTemplateLibraryCopy(libraryCopy)}
 
 	case "CreateProject":
 		name := getStringParam(tc.RequestBody, "name")
@@ -1921,19 +1963,27 @@ func checkAssertion(
 			return fail(tc, fmt.Sprintf("Expected error field %s, but error is not a *basecamp.Error: %v", fieldPath, sdkErr))
 		}
 		var actual interface{}
-		switch fieldPath {
-		case "httpStatus":
-			actual = sdkError.HTTPStatus
-		case "retryable":
-			actual = sdkError.Retryable
-		case "code":
-			actual = sdkError.Code
-		case "message":
-			actual = sdkError.Message
-		case "requestId":
-			actual = sdkError.RequestID
-		default:
-			return fail(tc, fmt.Sprintf("Unknown error field: %s", fieldPath))
+		if fieldPath == "confirmationPeople.0.id" {
+			var confirmationError *basecamp.PeopleConfirmationRequiredError
+			if !errors.As(sdkErr, &confirmationError) || len(confirmationError.People) == 0 {
+				return fail(tc, "Expected error.confirmationPeople.0.id, but confirmation people were absent")
+			}
+			actual = confirmationError.People[0].ID
+		} else {
+			switch fieldPath {
+			case "httpStatus":
+				actual = sdkError.HTTPStatus
+			case "retryable":
+				actual = sdkError.Retryable
+			case "code":
+				actual = sdkError.Code
+			case "message":
+				actual = sdkError.Message
+			case "requestId":
+				actual = sdkError.RequestID
+			default:
+				return fail(tc, fmt.Sprintf("Unknown error field: %s", fieldPath))
+			}
 		}
 		if result := compareValues(tc, fmt.Sprintf("error.%s", fieldPath), assertion.Expected, actual); result != nil {
 			return result
@@ -2162,6 +2212,29 @@ func jsonString(v interface{}) string {
 		return fmt.Sprintf("%v", v)
 	}
 	return string(b)
+}
+
+// getExactInt64Param extracts a required integer without rounding JSON numbers.
+func getExactInt64Param(params map[string]interface{}, key string) (int64, error) {
+	val, ok := params[key]
+	if !ok {
+		return 0, fmt.Errorf("%s is required", key)
+	}
+	switch n := val.(type) {
+	case json.Number:
+		i, err := n.Int64()
+		if err != nil {
+			return 0, fmt.Errorf("%s must be an integer", key)
+		}
+		return i, nil
+	case float64:
+		if math.IsNaN(n) || math.IsInf(n, 0) || math.Trunc(n) != n || n < -float64(uint64(1)<<63) || n >= float64(uint64(1)<<63) {
+			return 0, fmt.Errorf("%s must be an integer", key)
+		}
+		return int64(n), nil
+	default:
+		return 0, fmt.Errorf("%s must be an integer", key)
+	}
 }
 
 // getInt64Param extracts an int64 parameter from a map (JSON numbers are json.Number or float64)

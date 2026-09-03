@@ -667,7 +667,14 @@ module Basecamp
         message = Security.truncate(
           Basecamp.compose_validation_message(Basecamp.parse_error_message(body), field_errors) || "Validation failed"
         )
-        Basecamp::ValidationError.new(message, hint: hint, http_status: status, field_errors: field_errors)
+        people = status == 422 ? Basecamp.parse_template_library_confirmation_people(body) : nil
+        if people
+          Basecamp::PeopleConfirmationRequiredError.new(
+            message, people: people, hint: hint, http_status: status, field_errors: field_errors
+          )
+        else
+          Basecamp::ValidationError.new(message, hint: hint, http_status: status, field_errors: field_errors)
+        end
       when 507
         # A 5xx status carrying a client fact: the account is out of storage, or
         # at its webhook ceiling. Retrying cannot satisfy it, so this is decided

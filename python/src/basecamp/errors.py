@@ -5,6 +5,8 @@ from datetime import UTC
 from enum import IntEnum, StrEnum
 from typing import Any
 
+from basecamp.generated.types import TemplateLibraryConfirmationPerson
+
 
 class ErrorCode(StrEnum):
     USAGE = "usage"
@@ -169,6 +171,20 @@ class ValidationError(BasecampError):
         self.field_errors = field_errors
 
 
+class PeopleConfirmationRequiredError(ValidationError):
+    """A template copy requires confirmation before granting project access."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        people: list[TemplateLibraryConfirmationPerson],
+        **kwargs: Any,
+    ):
+        super().__init__(message, **kwargs)
+        self.people = people
+
+
 def _error_body_object(body: str | bytes | None) -> dict[str, Any] | None:
     """The response body as a JSON object, or ``None`` when it is not one."""
     if not body:
@@ -178,6 +194,33 @@ def _error_body_object(body: str | bytes | None) -> dict[str, Any] | None:
     except (json.JSONDecodeError, TypeError):
         return None
     return data if isinstance(data, dict) else None
+
+
+def _parse_template_library_confirmation_people(
+    data: dict[str, Any] | None,
+) -> list[TemplateLibraryConfirmationPerson] | None:
+    if data is None or not isinstance(data.get("people"), list) or not data["people"]:
+        return None
+
+    people: list[TemplateLibraryConfirmationPerson] = []
+    for value in data["people"]:
+        if not isinstance(value, dict):
+            return None
+        person_id = value.get("id")
+        name = value.get("name")
+        avatar_url = value.get("avatar_url")
+        if (
+            not isinstance(person_id, int)
+            or isinstance(person_id, bool)
+            or person_id <= 0
+            or not isinstance(name, str)
+            or not name
+            or not isinstance(avatar_url, str)
+            or not avatar_url
+        ):
+            return None
+        people.append({"id": person_id, "name": name, "avatar_url": avatar_url})
+    return people
 
 
 def _message_from(data: dict[str, Any] | None) -> str | None:
@@ -305,9 +348,16 @@ def error_from_response(status: int, body: str | bytes | None, headers: dict[str
             # Appended in parentheses after a top-level message, standing alone
             # otherwise; truncated after flattening so the tail is capped too.
             message = f"{message} ({flat})" if message else flat
-        err = ValidationError(
-            _truncate(message or "Validation failed"), http_status=status, field_errors=field_errors, hint=hint
-        )
+        confirmation_people = _parse_template_library_confirmation_people(data) if status == 422 else None
+        validation_type = PeopleConfirmationRequiredError if confirmation_people else ValidationError
+        validation_kwargs: dict[str, Any] = {
+            "http_status": status,
+            "field_errors": field_errors,
+            "hint": hint,
+        }
+        if confirmation_people:
+            validation_kwargs["people"] = confirmation_people
+        err = validation_type(_truncate(message or "Validation failed"), **validation_kwargs)
     elif status == 507:
         # A 5xx status carrying a client fact: the account is out of storage, or
         # at its webhook ceiling. Retrying cannot satisfy it, so this is decided

@@ -47,6 +47,13 @@ type TemplateLibrary struct {
 	Todolists []Todolist `json:"todolists"`
 }
 
+// TemplateLibraryConfirmationPerson identifies a person whose project access requires confirmation.
+type TemplateLibraryConfirmationPerson struct {
+	ID        int64  `json:"id"`
+	Name      string `json:"name"`
+	AvatarURL string `json:"avatar_url"`
+}
+
 // TemplateLibraryCopy represents the current state of an asynchronous template copy.
 type TemplateLibraryCopy struct {
 	ID                  int64     `json:"id"`
@@ -458,6 +465,11 @@ func (s *TemplatesService) CreateLibraryCopy(ctx context.Context, req *CreateTem
 	start := time.Now()
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if req == nil {
+		err = ErrUsage("template library copy request is required")
+		return nil, err
+	}
 
 	body := generated.CreateTemplateLibraryCopyJSONRequestBody{
 		TemplateRecordingId:   req.TemplateRecordingID,
