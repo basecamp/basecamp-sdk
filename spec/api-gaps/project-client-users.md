@@ -93,6 +93,7 @@ it into the shared `field_errors` slot keyed by each row's `email_address`
 so the rejected addresses reach `message` and the structured slot in every
 language. Conformance pins the three paths, the wire body, the 503 retries,
 and the single-attempt 429. The routes are waived in
-`spec/bc3-route-allowlist.yml` until the next provenance repin, whose range
-(`c680233ba0..`) also carries the Subtask, circles, bulk-enrollment and
-backlinks families and is triaged separately.
+`spec/bc3-route-allowlist.yml` until the next provenance repin: the range from
+the revision `spec/api-provenance.json` currently pins also carries the
+Subtask, circles, bulk-enrollment and backlinks families, which are triaged
+separately.
