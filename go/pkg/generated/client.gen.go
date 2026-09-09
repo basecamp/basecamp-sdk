@@ -25556,6 +25556,11 @@ func (p *StaticTokenProvider) AccessToken(ctx context.Context) (string, error) {
 }
 
 // AuthTransport is an http.RoundTripper that adds Bearer token authentication.
+//
+// The credential is attached only to requests whose origin (scheme and host)
+// matches Origin. Any other request — including a redirect hop that leaves the
+// API origin, which net/http hands to the transport as a fresh request — is
+// forwarded without an Authorization header.
 type AuthTransport struct {
 	// TokenProvider supplies access tokens for requests.
 	TokenProvider TokenProvider
@@ -25563,19 +25568,49 @@ type AuthTransport struct {
 	Base http.RoundTripper
 	// UserAgent is the User-Agent header value. If empty, a default is used.
 	UserAgent string
+	// Origin names the URL whose origin may receive the credential. It is
+	// consulted on every round trip. If nil, the credential is attached to no
+	// request.
+	Origin OriginProvider
 }
 
-// RoundTrip implements http.RoundTripper, adding the Authorization header.
-func (t *AuthTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	// Get access token
-	token, err := t.TokenProvider.AccessToken(req.Context())
-	if err != nil {
-		return nil, err
-	}
+// OriginProvider names the origin that may receive the credential.
+type OriginProvider interface {
+	// Origin returns a URL whose scheme and host bound credential attachment.
+	Origin() string
+}
 
+// StaticOrigin is an OriginProvider for a fixed base URL.
+type StaticOrigin string
+
+// Origin returns the static base URL.
+func (o StaticOrigin) Origin() string {
+	return string(o)
+}
+
+// clientOrigin follows the client's Server, so a later WithBaseURL is honored.
+type clientOrigin struct {
+	client *Client
+}
+
+// Origin returns the client's current Server.
+func (o clientOrigin) Origin() string {
+	return o.client.Server
+}
+
+// RoundTrip implements http.RoundTripper, adding the Authorization header to
+// same-origin requests.
+func (t *AuthTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	// Clone request to avoid mutating the original
 	req2 := req.Clone(req.Context())
-	req2.Header.Set("Authorization", "Bearer "+token)
+
+	if t.allowsCredential(req.URL) {
+		token, err := t.TokenProvider.AccessToken(req.Context())
+		if err != nil {
+			return nil, err
+		}
+		req2.Header.Set("Authorization", "Bearer "+token)
+	}
 
 	if t.UserAgent != "" {
 		req2.Header.Set("User-Agent", t.UserAgent)
@@ -25596,26 +25631,73 @@ func (t *AuthTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	return base.RoundTrip(req2)
 }
 
+func (t *AuthTransport) allowsCredential(target *url.URL) bool {
+	if t.Origin == nil {
+		return false
+	}
+	origin, err := url.Parse(t.Origin.Origin())
+	return err == nil && sameOrigin(origin, target)
+}
+
+// sameOrigin reports whether two URLs share scheme and host, with a default
+// port treated as absent.
+func sameOrigin(a, b *url.URL) bool {
+	return a.Scheme != "" && strings.EqualFold(a.Scheme, b.Scheme) &&
+		strings.EqualFold(originHost(a), originHost(b))
+}
+
+func originHost(u *url.URL) string {
+	host, port := u.Hostname(), u.Port()
+	defaultPort := port == "" ||
+		(strings.EqualFold(u.Scheme, "https") && port == "443") ||
+		(strings.EqualFold(u.Scheme, "http") && port == "80")
+	if defaultPort {
+		return host
+	}
+	return host + ":" + port
+}
+
 // WithAuthTransport returns a ClientOption that configures authentication.
+//
+// A caller-supplied *http.Client keeps its settings: its transport is wrapped,
+// and if it has no CheckRedirect, one that drops Authorization on cross-origin
+// redirects is installed.
 func WithAuthTransport(tokenProvider TokenProvider, userAgent string) ClientOption {
 	return func(c *Client) error {
-		// Wrap the existing client's transport
-		existingTransport := http.DefaultTransport
-		if c.Client != nil {
-			if httpClient, ok := c.Client.(*http.Client); ok && httpClient.Transport != nil {
-				existingTransport = httpClient.Transport
-			}
+		httpClient := &http.Client{}
+		if existing, ok := c.Client.(*http.Client); ok {
+			clone := *existing
+			httpClient = &clone
+		}
+		if httpClient.Transport == nil {
+			httpClient.Transport = http.DefaultTransport
+		}
+		if httpClient.CheckRedirect == nil {
+			httpClient.CheckRedirect = stripAuthorizationAcrossOrigins
 		}
 
-		authTransport := &AuthTransport{
+		httpClient.Transport = &AuthTransport{
 			TokenProvider: tokenProvider,
-			Base:          existingTransport,
+			Base:          httpClient.Transport,
 			UserAgent:     userAgent,
+			Origin:        clientOrigin{client: c},
 		}
-
-		c.Client = &http.Client{Transport: authTransport}
+		c.Client = httpClient
 		return nil
 	}
+}
+
+// stripAuthorizationAcrossOrigins is the default redirect policy: follow up to
+// 10 redirects, dropping the Authorization header whenever a hop leaves the
+// origin of the initial request.
+func stripAuthorizationAcrossOrigins(req *http.Request, via []*http.Request) error {
+	if len(via) >= 10 {
+		return fmt.Errorf("stopped after 10 redirects")
+	}
+	if !sameOrigin(via[0].URL, req.URL) {
+		req.Header.Del("Authorization")
+	}
+	return nil
 }
 
 // =============================================================================
