@@ -194,6 +194,9 @@ three-gate algorithm and the per-SDK divergences.
 - **Naturally-idempotent mutations (PUT/DELETE) and the 11 flagged POSTs**: *are* retried on 429/503
   by Go (generated operation path), Python, TypeScript, Kotlin, and Swift. Retrying these cannot
   duplicate a resource, which is why the gate is idempotency rather than "is it a mutation".
+  One PUT narrows its own set: `UpdateProjectClientAccess` declares `retry_on: [503]`, because its
+  429 is the account seat-limit verdict rather than throttling, so that 429 surfaces on the first
+  attempt in every SDK (SPEC.md §7 Gate 3).
   **Ruby is the sole exception** — its transport retries GET only.
   Go's separate hand-written `pkg/basecamp` HTTP helper is also GET-only.
 - **Non-idempotent POSTs**: never retried on 429/503 or network failure, in any SDK — a retry could create a duplicate resource. This does **not** mean such a POST is always attempted exactly once: a 401 that triggers a successful token refresh replays the request once regardless of idempotency, in Ruby and both Python transports (see the 401 table below). Ruby's **raw upload** path is the exception — `post_raw`/`put_raw` (attachments, campfire uploads) go through `single_request_raw`, which raises the mapped error directly and has no refresh-and-replay branch, so those POSTs really are attempted exactly once.

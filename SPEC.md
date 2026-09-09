@@ -737,7 +737,7 @@ someone noticing it. Every delay-bearing branch in this document, walked back th
 
 | Loop / branch | Repeat is driven by | Verdict |
 |---|---|---|
-| §7 generated-operation retry | declared `retry_on` `{429, 503}`, or a network error | **in** |
+| §7 generated-operation retry | declared `retry_on` (`{429, 503}`; `{503}` for `UpdateProjectClientAccess`), or a network error | **in** |
 | §14 `DownloadURL` hop 1 | declared `{429, 502, 503, 504}`, or a network error | **in** |
 | §16 poll — `authorization_pending`, `slow_down` | a 4xx protocol answer meaning "not yet" | **out** |
 | §16 poll — `429` + `too_many_requests` | the one pair §16 declares retryable; the origin refused to serve | **in** |
@@ -4239,7 +4239,7 @@ what `make doc-constants-check` asserts — not a case-by-case index.
         "max": 3,                   ← total attempts (including first)
         "base_delay_ms": 1000,      ← initial delay before first retry
         "backoff": "exponential",   ← always "exponential" in practice
-        "retry_on": [429, 503]      ← HTTP statuses that trigger retry
+        "retry_on": [429, 503]      ← HTTP statuses that trigger retry ([503] for UpdateProjectClientAccess)
       }
     }
   },
