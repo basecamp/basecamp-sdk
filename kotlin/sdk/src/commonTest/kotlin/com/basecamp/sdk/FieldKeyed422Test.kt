@@ -277,4 +277,51 @@ class FieldKeyed422Test {
             client.close()
         }
     }
+
+    // SPEC §6 step 1b: the batch-invite rendering names rows, not fields.
+    // These are the literal bc3 client_users bodies.
+    @Test
+    fun rowKeyedErrorsAreKeyedByAddress() = runTest {
+        val e = raise422("""{"errors":[{"email_address":"not-an-address","messages":["Email address must be valid"]}]}""")
+        assertEquals("not-an-address: Email address must be valid", e.message)
+        assertEquals(mapOf("not-an-address" to listOf("Email address must be valid")), e.fieldErrors)
+    }
+
+    @Test
+    fun rowKeyedNullAddressIsKeyedByPosition() = runTest {
+        val e = raise422(
+            """{"errors":[{"email_address":"not-an-address","messages":["Email address must be valid"]},""" +
+                """{"email_address":null,"messages":["Email address can't be blank"]}]}""",
+        )
+        assertEquals("1: Email address can't be blank, not-an-address: Email address must be valid", e.message)
+        assertEquals(
+            mapOf("not-an-address" to listOf("Email address must be valid"), "1" to listOf("Email address can't be blank")),
+            e.fieldErrors,
+        )
+    }
+
+    @Test
+    fun rowKeyedIndexRowsAndRepeatedAddresses() = runTest {
+        val indexed = raise422("""{"errors":[{"index":1,"messages":["email_address is invalid"]}]}""")
+        assertEquals(mapOf("1" to listOf("email_address is invalid")), indexed.fieldErrors)
+
+        val repeated = raise422(
+            """{"errors":[{"email_address":"annie@example.com","messages":["Name is too long"]},""" +
+                """{"email_address":"annie@example.com","messages":["Email address is duplicated"]}]}""",
+        )
+        assertEquals("annie@example.com: Name is too long; Email address is duplicated", repeated.message)
+    }
+
+    @Test
+    fun rowKeyedStrictGateLeavesSlotAbsent() = runTest {
+        for (body in listOf(
+            """{"errors": ["nope"]}""",
+            """{"errors": []}""",
+            """{"errors": [{"email_address": "x"}]}""",
+            """{"errors": [{"email_address": "x", "messages": []}]}""",
+            """{"errors": [{"email_address": "x", "messages": ["bad"]}, 42]}""",
+        )) {
+            assertNull(raise422(body).fieldErrors, "expected no fieldErrors for $body")
+        }
+    }
 }

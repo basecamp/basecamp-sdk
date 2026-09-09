@@ -669,3 +669,85 @@ func TestCheckResponse_BareFieldMapNotExtractedOutsideValidation(t *testing.T) {
 		}
 	}
 }
+
+// TestCheckResponse_RowKeyedErrors covers the batch-invite rendering (SPEC §6
+// step 1b): Projects::People::ClientUsersController rejects the whole batch on
+// behalf of one bad row and names the rows — the literal bc3 bodies below.
+func TestCheckResponse_RowKeyedErrors(t *testing.T) {
+	tests := []struct {
+		name        string
+		body        string
+		wantMessage string
+		wantFields  map[string][]string
+	}{
+		{
+			name:        "one rejected address",
+			body:        `{"errors":[{"email_address":"not-an-address","messages":["Email address must be valid"]}]}`,
+			wantMessage: "not-an-address: Email address must be valid",
+			wantFields:  map[string][]string{"not-an-address": {"Email address must be valid"}},
+		},
+		{
+			name:        "a null-address row is keyed by its position",
+			body:        `{"errors":[{"email_address":"not-an-address","messages":["Email address must be valid"]},{"email_address":null,"messages":["Email address can't be blank"]}]}`,
+			wantMessage: "1: Email address can't be blank, not-an-address: Email address must be valid",
+			wantFields: map[string][]string{
+				"not-an-address": {"Email address must be valid"},
+				"1":              {"Email address can't be blank"},
+			},
+		},
+		{
+			name:        "the enrollment API's index-keyed rows",
+			body:        `{"errors":[{"index":1,"messages":["email_address is invalid"]}]}`,
+			wantMessage: "1: email_address is invalid",
+			wantFields:  map[string][]string{"1": {"email_address is invalid"}},
+		},
+		{
+			name:        "a repeated address appends",
+			body:        `{"errors":[{"email_address":"annie@example.com","messages":["Name is too long"]},{"email_address":"annie@example.com","messages":["Email address is duplicated"]}]}`,
+			wantMessage: "annie@example.com: Name is too long; Email address is duplicated",
+			wantFields:  map[string][]string{"annie@example.com": {"Name is too long", "Email address is duplicated"}},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resp := &http.Response{StatusCode: 422, Header: http.Header{}}
+			err := checkResponse(resp, []byte(tt.body))
+			e, ok := err.(*Error)
+			if !ok {
+				t.Fatalf("expected *Error, got %T", err)
+			}
+			if e.Code != CodeValidation {
+				t.Errorf("code = %q, want %q", e.Code, CodeValidation)
+			}
+			if e.Message != tt.wantMessage {
+				t.Errorf("message = %q, want %q", e.Message, tt.wantMessage)
+			}
+			if !reflect.DeepEqual(e.FieldErrors, tt.wantFields) {
+				t.Errorf("FieldErrors = %v, want %v", e.FieldErrors, tt.wantFields)
+			}
+		})
+	}
+}
+
+// One element without a usable messages array means the array is some other
+// list: the slot stays absent, all-or-nothing like the bare field map.
+func TestCheckResponse_RowKeyedErrorsStrictGate(t *testing.T) {
+	for _, body := range []string{
+		`{"errors": ["nope"]}`,
+		`{"errors": []}`,
+		`{"errors": [{"email_address": "x"}]}`,
+		`{"errors": [{"email_address": "x", "messages": []}]}`,
+		`{"errors": [{"email_address": "x", "messages": ["bad"]}, 42]}`,
+	} {
+		resp := &http.Response{StatusCode: 422, Header: http.Header{}}
+		err := checkResponse(resp, []byte(body))
+		e, ok := err.(*Error)
+		if !ok {
+			t.Fatalf("%s: expected *Error, got %T", body, err)
+		}
+		if e.FieldErrors != nil {
+			t.Errorf("%s: FieldErrors = %v, want nil", body, e.FieldErrors)
+		}
+	}
+}

@@ -187,6 +187,8 @@ class PeopleServiceTest < Minitest::Test
       )
     end
     assert_equal 422, error.http_status
+    assert_equal "not-an-address: Email address must be valid", error.message
+    assert_equal({ "not-an-address" => [ "Email address must be valid" ] }, error.field_errors)
   end
 
   def test_update_project_client_access_seat_limit

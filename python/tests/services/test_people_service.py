@@ -73,6 +73,8 @@ class TestUpdateProjectClientAccess:
                 create=[{"email_address": "annie@example.com"}, {"email_address": "not-an-address"}],
             )
         assert excinfo.value.http_status == 422
+        assert str(excinfo.value) == "not-an-address: Email address must be valid"
+        assert excinfo.value.field_errors == {"not-an-address": ["Email address must be valid"]}
 
     @respx.mock
     def test_429_seat_limit_surfaces_as_rate_limit(self):

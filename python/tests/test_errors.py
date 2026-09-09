@@ -380,3 +380,55 @@ class TestSpec6Caps:
         assert error_from_response(599, b"").retryable is True
         assert error_from_response(418, b"").retryable is False
         assert error_from_response(507, b"").retryable is False
+
+
+class TestRowKeyedErrors:
+    """SPEC section 6 step 1b: {"errors": [{"email_address", "messages"}]}, the literal bc3 batch-invite body."""
+
+    @pytest.mark.parametrize(
+        "body, message, field_errors",
+        [
+            (
+                b'{"errors":[{"email_address":"not-an-address","messages":["Email address must be valid"]}]}',
+                "not-an-address: Email address must be valid",
+                {"not-an-address": ["Email address must be valid"]},
+            ),
+            (
+                b'{"errors":[{"email_address":"not-an-address","messages":["Email address must be valid"]},'
+                b'{"email_address":null,"messages":["Email address can\'t be blank"]}]}',
+                "1: Email address can't be blank, not-an-address: Email address must be valid",
+                {"not-an-address": ["Email address must be valid"], "1": ["Email address can't be blank"]},
+            ),
+            (
+                b'{"errors":[{"index":1,"messages":["email_address is invalid"]}]}',
+                "1: email_address is invalid",
+                {"1": ["email_address is invalid"]},
+            ),
+            (
+                b'{"errors":[{"email_address":"annie@example.com","messages":["Name is too long"]},'
+                b'{"email_address":"annie@example.com","messages":["Email address is duplicated"]}]}',
+                "annie@example.com: Name is too long; Email address is duplicated",
+                {"annie@example.com": ["Name is too long", "Email address is duplicated"]},
+            ),
+        ],
+    )
+    def test_keys_rows_by_address_index_or_position(self, body, message, field_errors):
+        err = error_from_response(422, body)
+        assert isinstance(err, ValidationError)
+        assert str(err) == message
+        assert err.field_errors == field_errors
+
+    @pytest.mark.parametrize(
+        "body",
+        [
+            b'{"errors": ["nope"]}',
+            b'{"errors": []}',
+            b'{"errors": [{"email_address": "x"}]}',
+            b'{"errors": [{"email_address": "x", "messages": []}]}',
+            b'{"errors": [{"email_address": "x", "messages": ["bad"]}, 42]}',
+        ],
+    )
+    def test_strict_gate_leaves_slot_absent(self, body):
+        err = error_from_response(422, body)
+        assert isinstance(err, ValidationError)
+        assert err.field_errors is None

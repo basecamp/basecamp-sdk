@@ -257,6 +257,8 @@ describe("PeopleService", () => {
         expect(error).toBeInstanceOf(BasecampError);
         expect((error as BasecampError).code).toBe("validation");
         expect((error as BasecampError).httpStatus).toBe(422);
+        expect((error as BasecampError).message).toBe("not-an-address: Email address must be valid");
+        expect({ ...(error as BasecampError).fieldErrors }).toEqual({ "not-an-address": ["Email address must be valid"] });
       }
     });
 

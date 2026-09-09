@@ -629,6 +629,24 @@ Field names are data, never structure. Once a field map is recognized, no name i
 
 Swift carries the slot as a fifth associated value on `.validation` plus a `fieldErrors` property on `BasecampError`; the earlier flatten-only deviation is closed.
 
+### Row-keyed validation bodies (422) `[conformance]`
+
+Batch endpoints reject a whole request on behalf of one bad row and name the rows, not the fields. `UpdateProjectClientAccess` (bc3 #13098) renders one element per rejected `create` entry:
+
+```json
+{"errors": [{"email_address": "not-an-address", "messages": ["Email address must be valid"]}]}
+```
+
+A row with no address still appears, as `"email_address": null` with a "can't be blank" message. The account enrollment API renders the same list keyed by `index` instead.
+
+For `status == 400` or `status == 422` only, this is **step 1b**, taken when the `"errors"` value is an array (step 1 takes an object; step 2 the wrapperless body):
+
+1. The list is a row list only if it is non-empty and **every** element is an object whose `"messages"` member is an array holding at least one non-empty string. One non-conforming element means it is some other list, and `field_errors` stays absent — the same all-or-nothing gate as step 2, for the same reason: an array under `"errors"` declares less than a field map does, so shape is the only signal.
+2. Each row becomes one `field_errors` entry. Its key is the row's `"email_address"` when that is a non-empty string; otherwise the row's `"index"` when that is an integer, rendered in decimal; otherwise the row's zero-based position in the list, rendered in decimal. A repeated key appends its messages. The non-empty string elements of `"messages"` are the entry's messages.
+3. Flatten, compose and expose exactly as steps 3–5 above, so the rejected addresses reach both `message` (`not-an-address: Email address must be valid`) and the structured slot. No new slot is added: the rows are already a map from an identifier to messages, and every consumer of `field_errors` gets them for free.
+
+The key precedence is deliberate. An address identifies a row to the person who typed it; an `index` identifies it to the program that built the batch; a position in the *errors* list identifies it to nobody, but is unique, so a null-address row still surfaces rather than being dropped or merged.
+
 ### Template-library people confirmation errors
 
 A `422` object with a non-empty `people` array whose entries carry a positive

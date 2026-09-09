@@ -245,7 +245,9 @@ module Basecamp
 
     data = JSON.parse(body)
     errors = data.is_a?(Hash) ? data["errors"] : nil
-    if errors.is_a?(Hash)
+    if errors.is_a?(Array)
+      parse_row_errors(errors)
+    elsif errors.is_a?(Hash)
       field_errors = errors.each_with_object({}) do |(field, values), result|
         next unless values.is_a?(Array)
 
@@ -258,6 +260,35 @@ module Basecamp
     end
   rescue JSON::ParserError, ApiError
     nil
+  end
+
+  # Extracts a row-keyed errors list — the batch-invite rendering
+  # {"errors" => [{"email_address" => "...", "messages" => ["..."]}, ...]}
+  # (SPEC section 6 step 1b), one element per rejected row. Rows are keyed by
+  # their email_address when it is a non-empty string, else by an integer
+  # index, else by their position in the list; a repeated key appends.
+  # All-or-nothing: one element without a usable messages array means this is
+  # some other list, and the slot stays absent.
+  # @param rows [Array] the parsed "errors" array
+  # @return [Hash{String => Array<String>}, nil]
+  def self.parse_row_errors(rows)
+    return nil if rows.empty?
+
+    rows.each_with_index.each_with_object({}) do |(row, position), result|
+      return nil unless row.is_a?(Hash) && row["messages"].is_a?(Array)
+
+      messages = row["messages"].select { |message| message.is_a?(String) && !message.empty? }
+      return nil if messages.empty?
+
+      key = if row["email_address"].is_a?(String) && !row["email_address"].empty?
+        row["email_address"]
+      elsif row["index"].is_a?(Integer)
+        row["index"].to_s
+      else
+        position.to_s
+      end
+      (result[key] ||= []).concat(messages)
+    end
   end
 
   # Extracts an unwrapped field map — the `render json: @webhook.errors`

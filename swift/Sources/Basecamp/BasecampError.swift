@@ -346,6 +346,9 @@ public enum BasecampError: Error, Sendable, LocalizedError {
     /// array are skipped, non-string elements are dropped, and a map with no
     /// usable entries is treated as absent (nil).
     private static func parseFieldErrors(_ body: [String: Any]?) -> [String: [String]]? {
+        if let rows = body?["errors"] as? [Any] {
+            return parseRowErrors(rows)
+        }
         guard let errors = body?["errors"] as? [String: Any] else {
             return parseBareFieldErrors(body)
         }
@@ -358,6 +361,33 @@ public enum BasecampError: Error, Sendable, LocalizedError {
             }
         }
         return fieldErrors.isEmpty ? nil : fieldErrors
+    }
+
+    /// Extracts a row-keyed errors list — the batch-invite rendering
+    /// `{"errors": [{"email_address": "...", "messages": ["..."]}, ...]}` (SPEC
+    /// §6 step 1b), one element per rejected row. Rows are keyed by their
+    /// `email_address` when it is a non-empty string, else by an integer
+    /// `index`, else by their position in the list; a repeated key appends.
+    /// All-or-nothing: one element without a usable `messages` array means
+    /// this is some other list, and the slot stays absent.
+    private static func parseRowErrors(_ rows: [Any]) -> [String: [String]]? {
+        guard !rows.isEmpty else { return nil }
+        var fieldErrors: [String: [String]] = [:]
+        for (position, element) in rows.enumerated() {
+            guard let row = element as? [String: Any], let values = row["messages"] as? [Any] else { return nil }
+            let messages = values.compactMap { $0 as? String }.filter { !$0.isEmpty }
+            guard !messages.isEmpty else { return nil }
+            let key: String
+            if let emailAddress = row["email_address"] as? String, !emailAddress.isEmpty {
+                key = emailAddress
+            } else if let index = row["index"] as? Int {
+                key = String(index)
+            } else {
+                key = String(position)
+            }
+            fieldErrors[key, default: []].append(contentsOf: messages)
+        }
+        return fieldErrors
     }
 
     /// Extracts an unwrapped field map — the `render json: @webhook.errors`

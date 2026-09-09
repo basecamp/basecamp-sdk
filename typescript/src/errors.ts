@@ -468,7 +468,8 @@ function parseTemplateLibraryConfirmationPeople(
  */
 function parseFieldErrors(body: object): Record<string, string[]> | undefined {
   const errors = (body as { errors?: unknown }).errors;
-  if (typeof errors !== "object" || errors === null || Array.isArray(errors)) {
+  if (Array.isArray(errors)) return parseRowErrors(errors);
+  if (typeof errors !== "object" || errors === null) {
     return parseBareFieldErrors(body);
   }
   // Null prototype so an untrusted field name like "__proto__" becomes an
@@ -484,6 +485,35 @@ function parseFieldErrors(body: object): Record<string, string[]> | undefined {
     found = true;
   }
   return found ? fieldErrors : undefined;
+}
+
+/**
+ * Extracts a row-keyed errors list — the batch-invite rendering
+ * `{"errors": [{"email_address": "...", "messages": ["..."]}, ...]}` (SPEC §6
+ * step 1b), where each element is one rejected row. Rows are keyed by their
+ * `email_address` when it is a non-empty string, else by an integer `index`,
+ * else by their position in the list; a repeated key appends. All-or-nothing:
+ * one element without a usable `messages` array means this is some other
+ * list, and the slot stays absent.
+ */
+function parseRowErrors(rows: unknown[]): Record<string, string[]> | undefined {
+  if (rows.length === 0) return undefined;
+  const fieldErrors: Record<string, string[]> = Object.create(null);
+  for (const [position, row] of rows.entries()) {
+    if (typeof row !== "object" || row === null || Array.isArray(row)) return undefined;
+    const { email_address, index, messages } = row as { email_address?: unknown; index?: unknown; messages?: unknown };
+    if (!Array.isArray(messages)) return undefined;
+    const usable = messages.filter((m): m is string => typeof m === "string" && m.length > 0);
+    if (usable.length === 0) return undefined;
+    const key =
+      typeof email_address === "string" && email_address.length > 0
+        ? email_address
+        : Number.isInteger(index)
+          ? String(index)
+          : String(position);
+    fieldErrors[key] = [...(fieldErrors[key] ?? []), ...usable];
+  }
+  return fieldErrors;
 }
 
 /**

@@ -171,6 +171,10 @@ func parseFieldErrors(raw json.RawMessage) map[string][]string {
 	if len(raw) == 0 {
 		return nil
 	}
+	var rows []json.RawMessage
+	if err := json.Unmarshal(raw, &rows); err == nil {
+		return parseRowErrors(rows)
+	}
 	var entries map[string]json.RawMessage
 	if err := json.Unmarshal(raw, &entries); err != nil {
 		return nil
@@ -193,6 +197,48 @@ func parseFieldErrors(raw json.RawMessage) map[string][]string {
 	}
 	if len(fieldErrors) == 0 {
 		return nil
+	}
+	return fieldErrors
+}
+
+// parseRowErrors decodes a row-keyed errors list — the batch-invite rendering
+// {"errors": [{"email_address": "...", "messages": ["..."]}, ...]} (SPEC §6
+// step 1b), one element per rejected row. Rows are keyed by their email_address
+// when it is a non-empty string, else by an integer index, else by their
+// position in the list; a repeated key appends. All-or-nothing: one element
+// without a usable messages array means this is some other list, and the slot
+// stays absent (nil).
+func parseRowErrors(rows []json.RawMessage) map[string][]string {
+	if len(rows) == 0 {
+		return nil
+	}
+	fieldErrors := make(map[string][]string, len(rows))
+	for position, raw := range rows {
+		var row struct {
+			EmailAddress *string `json:"email_address"`
+			Index        *int64  `json:"index"`
+			Messages     []any   `json:"messages"`
+		}
+		if err := json.Unmarshal(raw, &row); err != nil || row.Messages == nil {
+			return nil
+		}
+		messages := make([]string, 0, len(row.Messages))
+		for _, v := range row.Messages {
+			if s, ok := v.(string); ok && s != "" {
+				messages = append(messages, s)
+			}
+		}
+		if len(messages) == 0 {
+			return nil
+		}
+		key := strconv.Itoa(position)
+		switch {
+		case row.EmailAddress != nil && *row.EmailAddress != "":
+			key = *row.EmailAddress
+		case row.Index != nil:
+			key = strconv.FormatInt(*row.Index, 10)
+		}
+		fieldErrors[key] = append(fieldErrors[key], messages...)
 	}
 	return fieldErrors
 }

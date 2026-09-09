@@ -274,6 +274,8 @@ def parse_field_errors(body: str | bytes | None) -> dict[str, list[str]] | None:
         return None
     if not isinstance(data, dict):
         return None
+    if isinstance(data.get("errors"), list):
+        return _parse_row_errors(data["errors"])
     if not isinstance(data.get("errors"), dict):
         return _parse_bare_field_errors(data)
     field_errors: dict[str, list[str]] = {}
@@ -284,6 +286,37 @@ def parse_field_errors(body: str | bytes | None) -> dict[str, list[str]] | None:
         if messages:
             field_errors[str(field)] = messages
     return field_errors or None
+
+
+def _parse_row_errors(rows: list[object]) -> dict[str, list[str]] | None:
+    """Extract a row-keyed errors list -- ``{"errors": [{"email_address": ..., "messages": [...]}]}``.
+
+    This is the batch-invite rendering (SPEC section 6 step 1b), one element per
+    rejected row. Rows are keyed by their ``email_address`` when it is a
+    non-empty string, else by an integer ``index``, else by their position in
+    the list; a repeated key appends. All-or-nothing: one element without a
+    usable ``messages`` array means this is some other list, and the slot stays
+    absent.
+    """
+    if not rows:
+        return None
+    field_errors: dict[str, list[str]] = {}
+    for position, row in enumerate(rows):
+        if not isinstance(row, dict) or not isinstance(row.get("messages"), list):
+            return None
+        messages = [m for m in row["messages"] if isinstance(m, str) and m]
+        if not messages:
+            return None
+        email_address = row.get("email_address")
+        index = row.get("index")
+        if isinstance(email_address, str) and email_address:
+            key = email_address
+        elif isinstance(index, int) and not isinstance(index, bool):
+            key = str(index)
+        else:
+            key = str(position)
+        field_errors.setdefault(key, []).extend(messages)
+    return field_errors
 
 
 def _parse_bare_field_errors(data: dict[str, object]) -> dict[str, list[str]] | None:

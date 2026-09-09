@@ -101,6 +101,7 @@ private fun stringMember(body: JsonObject, key: String): String? =
  * the unwrapped rendering, so this is the entry point for both shapes.
  */
 private fun parseFieldErrors(body: JsonObject): Map<String, List<String>>? {
+    (body["errors"] as? JsonArray)?.let { return parseRowErrors(it) }
     val errors = body["errors"] as? JsonObject ?: return parseBareFieldErrors(body)
     val fieldErrors = mutableMapOf<String, List<String>>()
     for ((field, value) in errors) {
@@ -113,6 +114,37 @@ private fun parseFieldErrors(body: JsonObject): Map<String, List<String>>? {
         }
     }
     return fieldErrors.ifEmpty { null }
+}
+
+/**
+ * Extracts a row-keyed errors list — the batch-invite rendering
+ * `{"errors": [{"email_address": "...", "messages": ["..."]}, ...]}` (SPEC §6
+ * step 1b), one element per rejected row. Rows are keyed by their
+ * `email_address` when it is a non-empty string, else by an integer `index`,
+ * else by their position in the list; a repeated key appends. All-or-nothing:
+ * one element without a usable `messages` array means this is some other
+ * list, and the slot stays absent.
+ */
+private fun parseRowErrors(rows: JsonArray): Map<String, List<String>>? {
+    if (rows.isEmpty()) return null
+    val fieldErrors = mutableMapOf<String, MutableList<String>>()
+    for ((position, element) in rows.withIndex()) {
+        val row = element as? JsonObject ?: return null
+        val values = row["messages"] as? JsonArray ?: return null
+        val messages = values.mapNotNull { message ->
+            (message as? JsonPrimitive)?.takeIf { it.isString }?.content?.takeIf { it.isNotEmpty() }
+        }
+        if (messages.isEmpty()) return null
+        val emailAddress = (row["email_address"] as? JsonPrimitive)?.takeIf { it.isString }?.content
+        val index = (row["index"] as? JsonPrimitive)?.takeIf { !it.isString }?.content?.toLongOrNull()
+        val key = when {
+            !emailAddress.isNullOrEmpty() -> emailAddress
+            index != null -> index.toString()
+            else -> position.toString()
+        }
+        fieldErrors.getOrPut(key) { mutableListOf() }.addAll(messages)
+    }
+    return fieldErrors
 }
 
 /**

@@ -498,4 +498,58 @@ final class ErrorTests: XCTestCase {
 
         XCTAssertNil(error.fieldErrors)
     }
+
+    // MARK: - Row-keyed 422 bodies (SPEC §6 step 1b)
+
+    // The batch-invite rendering names rows, not fields. These are the literal
+    // bc3 client_users bodies.
+    func testFromHTTPResponse422RowKeyedIsKeyedByAddress() {
+        let error = BasecampError.fromHTTPResponse(
+            status: 422,
+            data: Data(#"{"errors":[{"email_address":"not-an-address","messages":["Email address must be valid"]}]}"#.utf8),
+            headers: [:], requestId: nil)
+
+        XCTAssertEqual(error.message, "not-an-address: Email address must be valid")
+        XCTAssertEqual(error.fieldErrors, ["not-an-address": ["Email address must be valid"]])
+    }
+
+    func testFromHTTPResponse422RowKeyedNullAddressIsKeyedByPosition() {
+        let error = BasecampError.fromHTTPResponse(
+            status: 422,
+            data: Data(#"{"errors":[{"email_address":"not-an-address","messages":["Email address must be valid"]},{"email_address":null,"messages":["Email address can't be blank"]}]}"#.utf8),
+            headers: [:], requestId: nil)
+
+        XCTAssertEqual(error.message, "1: Email address can't be blank, not-an-address: Email address must be valid")
+        XCTAssertEqual(error.fieldErrors, [
+            "not-an-address": ["Email address must be valid"],
+            "1": ["Email address can't be blank"],
+        ])
+    }
+
+    func testFromHTTPResponse422RowKeyedIndexRowsAndRepeatedAddresses() {
+        let indexed = BasecampError.fromHTTPResponse(
+            status: 422,
+            data: Data(#"{"errors":[{"index":1,"messages":["email_address is invalid"]}]}"#.utf8),
+            headers: [:], requestId: nil)
+        XCTAssertEqual(indexed.fieldErrors, ["1": ["email_address is invalid"]])
+
+        let repeated = BasecampError.fromHTTPResponse(
+            status: 422,
+            data: Data(#"{"errors":[{"email_address":"annie@example.com","messages":["Name is too long"]},{"email_address":"annie@example.com","messages":["Email address is duplicated"]}]}"#.utf8),
+            headers: [:], requestId: nil)
+        XCTAssertEqual(repeated.message, "annie@example.com: Name is too long; Email address is duplicated")
+    }
+
+    func testFromHTTPResponse422RowKeyedStrictGateLeavesSlotAbsent() {
+        for body in [
+            #"{"errors": ["nope"]}"#,
+            #"{"errors": []}"#,
+            #"{"errors": [{"email_address": "x"}]}"#,
+            #"{"errors": [{"email_address": "x", "messages": []}]}"#,
+            #"{"errors": [{"email_address": "x", "messages": ["bad"]}, 42]}"#,
+        ] {
+            let error = BasecampError.fromHTTPResponse(status: 422, data: Data(body.utf8), headers: [:], requestId: nil)
+            XCTAssertNil(error.fieldErrors, "expected no fieldErrors for \(body)")
+        }
+    }
 }

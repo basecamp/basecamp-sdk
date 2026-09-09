@@ -587,6 +587,12 @@ func TestPeopleService_UpdateProjectClientAccessInvalidRow(t *testing.T) {
 	if bcErr.HTTPStatus != 422 {
 		t.Errorf("http status = %d, want 422", bcErr.HTTPStatus)
 	}
+	if bcErr.Message != "not-an-address: Email address must be valid" {
+		t.Errorf("message = %q, want the rejected address named", bcErr.Message)
+	}
+	if got := bcErr.FieldErrors["not-an-address"]; len(got) != 1 || got[0] != "Email address must be valid" {
+		t.Errorf("FieldErrors[not-an-address] = %v, want the row's messages", got)
+	}
 }
 
 // New addresses beyond the account's user limit answer a bare 429; nobody is invited.
