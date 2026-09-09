@@ -736,6 +736,17 @@ class OperationMapper:
                 )
             case "UpdateMyNote":
                 return self._account.my_notes.update_my_note(note=body["note"])
+            case "UpdateProjectClientAccess":
+                return self._account.people.update_project_client_access(
+                    project_id=path_params["projectId"],
+                    grant=(body or {}).get("grant"),
+                    revoke=(body or {}).get("revoke"),
+                    create=(body or {}).get("create"),
+                )
+            case "EnableProjectClients":
+                return self._account.people.enable_project_clients(project_id=path_params["projectId"])
+            case "DisableProjectClients":
+                return self._account.people.disable_project_clients(project_id=path_params["projectId"])
             case "GetBookmark":
                 return self._account.bookmarks.get_bookmark(recording_id=path_params["recordingId"])
             case "CreateBookmark":

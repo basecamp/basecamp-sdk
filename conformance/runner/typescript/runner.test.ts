@@ -612,6 +612,25 @@ async function executeOperation(
         await client.myNotes.updateMyNote({ note: body.note as { content: string } });
         break;
 
+      case "UpdateProjectClientAccess": {
+        const result = await client.people.updateProjectClientAccess(Number(params.projectId), {
+          grant: body.grant as number[] | undefined,
+          revoke: body.revoke as number[] | undefined,
+          create: body.create as { email_address: string; name?: string; title?: string; company_name?: string }[] | undefined,
+        });
+        return { result };
+      }
+
+      case "EnableProjectClients": {
+        const result = await client.people.enableProjectClients(Number(params.projectId));
+        return { result };
+      }
+
+      case "DisableProjectClients": {
+        const result = await client.people.disableProjectClients(Number(params.projectId));
+        return { result };
+      }
+
       case "GetBookmark":
         await client.bookmarks.getBookmark(Number(params.recordingId));
         break;

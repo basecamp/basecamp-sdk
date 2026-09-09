@@ -134,8 +134,13 @@ jq -r '.operations | to_entries[] | select(.value.idempotent == true or .value.r
 # Template Library absorption (+3 ops): GetTemplateLibrary and
 # GetTemplateLibraryCopy are readonly (+2 union only); CreateTemplateLibraryCopy
 # is neither.
-expected_idempotent=88
-expected_union=216
+# Project client users absorption (+3 ops): UpdateProjectClientAccess is a
+# naturally idempotent PUT (all-or-nothing; a replay re-asks the same question),
+# and EnableProjectClients' POST and DisableProjectClients' DELETE toggle a
+# boolean — re-enabling an enabled project re-answers the same state — so all
+# three land in both counts (+3 each). None is readonly.
+expected_idempotent=91
+expected_union=219
 nIdempotent=$(wc -l < "$WORK/idempotentSet" | tr -d ' ')
 nUnion=$(wc -l < "$WORK/unionSet" | tr -d ' ')
 echo "    source of truth: $nIdempotent idempotent, $nUnion idempotent∪readonly"

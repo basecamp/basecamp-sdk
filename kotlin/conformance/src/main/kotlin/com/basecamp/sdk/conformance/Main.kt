@@ -1417,6 +1417,27 @@ private suspend fun dispatchOperation(tc: TestCase, account: AccountClient): Dis
             DispatchResult()
         }
 
+        "UpdateProjectClientAccess" -> {
+            val rb = tc.requestBody
+            val result = account.people.updateProjectClientAccess(
+                tc.pathParams.longParam("projectId"),
+                UpdateProjectClientAccessBody(
+                    grant = rb?.get("grant")?.jsonArray?.map { it.jsonPrimitive.long },
+                    revoke = rb?.get("revoke")?.jsonArray?.map { it.jsonPrimitive.long },
+                    create = rb?.get("create")?.jsonArray?.map { it.jsonObject },
+                ),
+            )
+            DispatchResult(resultJson = result)
+        }
+
+        "EnableProjectClients" -> {
+            DispatchResult(resultJson = account.people.enableProjectClients(tc.pathParams.longParam("projectId")))
+        }
+
+        "DisableProjectClients" -> {
+            DispatchResult(resultJson = account.people.disableProjectClients(tc.pathParams.longParam("projectId")))
+        }
+
         "GetBookmark" -> {
             account.bookmarks.getBookmark(tc.pathParams.longParam("recordingId"))
             DispatchResult()

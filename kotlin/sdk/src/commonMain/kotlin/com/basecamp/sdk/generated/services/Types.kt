@@ -810,6 +810,13 @@ data class ListProjectPeopleOptions(
     fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
 }
 
+/** Request body for UpdateProjectClientAccess. */
+data class UpdateProjectClientAccessBody(
+    val grant: List<Long>? = null,
+    val revoke: List<Long>? = null,
+    val create: List<JsonObject>? = null
+)
+
 /** Request body for UpdateProjectAccess. */
 data class UpdateProjectAccessBody(
     val grant: List<Long>? = null,

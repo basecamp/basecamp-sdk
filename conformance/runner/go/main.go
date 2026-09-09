@@ -927,6 +927,37 @@ func executeOperation(ctx context.Context, account *basecamp.AccountClient, tc T
 		_, err := account.MyNotes().Update(ctx, content)
 		return operationResult{err: err}
 
+	case "UpdateProjectClientAccess":
+		projectID := getInt64Param(tc.PathParams, "projectId")
+		req := &basecamp.UpdateProjectClientAccessRequest{}
+		if grant, ok := getInt64SliceParam(tc.RequestBody, "grant"); ok {
+			req.Grant = grant
+		}
+		if revoke, ok := getInt64SliceParam(tc.RequestBody, "revoke"); ok {
+			req.Revoke = revoke
+		}
+		if rows, ok := tc.RequestBody["create"].([]interface{}); ok {
+			for _, raw := range rows {
+				row, _ := raw.(map[string]interface{})
+				req.Create = append(req.Create, basecamp.CreateClientRequest{
+					EmailAddress: getStringParam(row, "email_address"),
+					Name:         getStringParam(row, "name"),
+					Title:        getStringParam(row, "title"),
+					CompanyName:  getStringParam(row, "company_name"),
+				})
+			}
+		}
+		result, err := account.People().UpdateProjectClientAccess(ctx, projectID, req)
+		return operationResult{err: err, result: result}
+
+	case "EnableProjectClients":
+		result, err := account.People().EnableProjectClients(ctx, getInt64Param(tc.PathParams, "projectId"))
+		return operationResult{err: err, result: result}
+
+	case "DisableProjectClients":
+		result, err := account.People().DisableProjectClients(ctx, getInt64Param(tc.PathParams, "projectId"))
+		return operationResult{err: err, result: result}
+
 	case "GetBookmark":
 		recordingID := getInt64Param(tc.PathParams, "recordingId")
 		_, err := account.Bookmarks().Get(ctx, recordingID)

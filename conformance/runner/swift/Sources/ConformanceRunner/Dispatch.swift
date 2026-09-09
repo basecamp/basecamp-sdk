@@ -710,6 +710,31 @@ func dispatchOperation(_ tc: TestCase, _ account: AccountClient) async throws ->
             req: UpdateMyNoteRequest(note: MyNoteAttributes(content: note.stringParam("content"))))
         return DispatchResult()
 
+    case "UpdateProjectClientAccess":
+        let create = rb?["create"]?.arrayValue?.compactMap { row -> CreateClientRequest? in
+            guard let row = row.objectValue, let email = row["email_address"]?.stringValue else { return nil }
+            return CreateClientRequest(
+                emailAddress: email,
+                companyName: row["company_name"]?.stringValue,
+                name: row["name"]?.stringValue,
+                title: row["title"]?.stringValue)
+        }
+        let result = try await account.people.updateProjectClientAccess(
+            projectId: pathParams.longParam("projectId"),
+            req: UpdateProjectClientAccessRequest(
+                create: create,
+                grant: rb?["grant"]?.arrayValue?.compactMap { $0.intValue.map(Int.init) },
+                revoke: rb?["revoke"]?.arrayValue?.compactMap { $0.intValue.map(Int.init) }))
+        return DispatchResult(resultJSON: try resultJSON(result))
+
+    case "EnableProjectClients":
+        let result = try await account.people.enableProjectClients(projectId: pathParams.longParam("projectId"))
+        return DispatchResult(resultJSON: try resultJSON(result))
+
+    case "DisableProjectClients":
+        let result = try await account.people.disableProjectClients(projectId: pathParams.longParam("projectId"))
+        return DispatchResult(resultJSON: try resultJSON(result))
+
     case "GetBookmark":
         _ = try await account.bookmarks.getBookmark(recordingId: pathParams.longParam("recordingId"))
         return DispatchResult()

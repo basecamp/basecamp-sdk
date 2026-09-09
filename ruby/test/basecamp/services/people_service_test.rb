@@ -141,4 +141,100 @@ class PeopleServiceTest < Minitest::Test
     assert_not result.key?("end_date")
     assert_not result.key?("back_on_date")
   end
+
+  def test_update_project_client_access
+    stub_put("/12345/projects/100/people/client_users.json", response_body: {
+      "granted" => [ sample_person(id: 444, name: "Annie Bryan").merge("client" => true) ],
+      "revoked" => [ sample_person(id: 333, name: "Former Client").merge("client" => true) ]
+    })
+
+    result = @account.people.update_project_client_access(
+      project_id: 100,
+      revoke: [ 333 ],
+      create: [ { email_address: "annie@example.com", company_name: "Springfield Elementary" } ]
+    )
+
+    assert_requested(:put, "https://3.basecampapi.com/12345/projects/100/people/client_users.json") do |req|
+      JSON.parse(req.body) == {
+        "revoke" => [ 333 ],
+        "create" => [ { "email_address" => "annie@example.com", "company_name" => "Springfield Elementary" } ]
+      }
+    end
+    assert_equal [ 444 ], result["granted"].map { |person| person["id"] }
+    assert result["granted"].first["client"]
+    assert_equal [ 333 ], result["revoked"].map { |person| person["id"] }
+  end
+
+  def test_update_project_client_access_forbidden_until_clients_enabled
+    stub_request(:put, "https://3.basecampapi.com/12345/projects/100/people/client_users.json")
+      .to_return(status: 403, body: "")
+
+    assert_raises(Basecamp::ForbiddenError) do
+      @account.people.update_project_client_access(project_id: 100, grant: [ 111 ])
+    end
+  end
+
+  def test_update_project_client_access_rejects_an_invalid_row
+    stub_request(:put, "https://3.basecampapi.com/12345/projects/100/people/client_users.json")
+      .to_return(status: 422,
+                 body: { "errors" => [ { "email_address" => "not-an-address", "messages" => [ "Email address must be valid" ] } ] }.to_json,
+                 headers: { "Content-Type" => "application/json" })
+
+    error = assert_raises(Basecamp::ValidationError) do
+      @account.people.update_project_client_access(
+        project_id: 100,
+        create: [ { email_address: "annie@example.com" }, { email_address: "not-an-address" } ]
+      )
+    end
+    assert_equal 422, error.http_status
+    assert_equal "not-an-address: Email address must be valid", error.message
+    assert_equal({ "not-an-address" => [ "Email address must be valid" ] }, error.field_errors)
+  end
+
+  def test_update_project_client_access_seat_limit
+    stub_request(:put, "https://3.basecampapi.com/12345/projects/100/people/client_users.json")
+      .to_return(status: 429, body: "")
+
+    error = assert_raises(Basecamp::RateLimitError) do
+      @account.people.update_project_client_access(project_id: 100, create: [ { email_address: "annie@example.com" } ])
+    end
+    assert_equal 429, error.http_status
+  end
+
+  def test_enable_project_clients
+    stub_post("/12345/projects/100/client_enablement.json", response_body: { "clients_enabled" => true }, status: 200)
+
+    result = @account.people.enable_project_clients(project_id: 100)
+
+    assert_requested(:post, "https://3.basecampapi.com/12345/projects/100/client_enablement.json")
+    assert_equal true, result["clients_enabled"]
+  end
+
+  def test_enable_project_clients_forbidden_when_project_cannot_have_clients
+    stub_request(:post, "https://3.basecampapi.com/12345/projects/100/client_enablement.json")
+      .to_return(status: 403, body: "")
+
+    assert_raises(Basecamp::ForbiddenError) do
+      @account.people.enable_project_clients(project_id: 100)
+    end
+  end
+
+  def test_disable_project_clients
+    stub_request(:delete, "https://3.basecampapi.com/12345/projects/100/client_enablement.json")
+      .to_return(status: 200, body: { "clients_enabled" => false }.to_json,
+                 headers: { "Content-Type" => "application/json" })
+
+    result = @account.people.disable_project_clients(project_id: 100)
+
+    assert_equal false, result["clients_enabled"]
+  end
+
+  def test_disable_project_clients_forbidden_while_clients_remain
+    stub_request(:delete, "https://3.basecampapi.com/12345/projects/100/client_enablement.json")
+      .to_return(status: 403, body: "")
+
+    assert_raises(Basecamp::ForbiddenError) do
+      @account.people.disable_project_clients(project_id: 100)
+    end
+  end
 end

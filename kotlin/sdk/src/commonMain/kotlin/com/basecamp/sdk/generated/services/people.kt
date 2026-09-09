@@ -237,6 +237,46 @@ class PeopleService(client: AccountClient) : BaseService(client) {
     }
 
     /**
+     * Enable clients on a project so client users can be added to it
+     * @param projectId The project ID
+     */
+    suspend fun enableProjectClients(projectId: Long): JsonElement {
+        val info = OperationInfo(
+            service = "People",
+            operation = "EnableProjectClients",
+            resourceType = "project",
+            isMutation = true,
+            projectId = projectId,
+            resourceId = null,
+        )
+        return request(info, {
+            httpPost("/projects/${projectId}/client_enablement.json", operationName = info.operation)
+        }) { body ->
+            json.decodeFromString<JsonElement>(body)
+        }
+    }
+
+    /**
+     * Disable clients on a project
+     * @param projectId The project ID
+     */
+    suspend fun disableProjectClients(projectId: Long): JsonElement {
+        val info = OperationInfo(
+            service = "People",
+            operation = "DisableProjectClients",
+            resourceType = "project",
+            isMutation = true,
+            projectId = projectId,
+            resourceId = null,
+        )
+        return request(info, {
+            httpDelete("/projects/${projectId}/client_enablement.json", operationName = info.operation)
+        }) { body ->
+            json.decodeFromString<JsonElement>(body)
+        }
+    }
+
+    /**
      * List all active people on a project
      * @param projectId The project ID
      * @param options Optional query parameters and pagination control
@@ -272,6 +312,31 @@ class PeopleService(client: AccountClient) : BaseService(client) {
      */
     suspend fun listForProject(projectId: Long, options: PaginationOptions? = null): ListResult<Person> =
         listForProject(projectId, ListProjectPeopleOptions(maxItems = options?.maxItems, page = options?.page))
+
+    /**
+     * Update project client access (grant/revoke/create client users)
+     * @param projectId The project ID
+     * @param body Request body
+     */
+    suspend fun updateProjectClientAccess(projectId: Long, body: UpdateProjectClientAccessBody): JsonElement {
+        val info = OperationInfo(
+            service = "People",
+            operation = "UpdateProjectClientAccess",
+            resourceType = "project_access",
+            isMutation = true,
+            projectId = projectId,
+            resourceId = null,
+        )
+        return request(info, {
+            httpPut("/projects/${projectId}/people/client_users.json", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
+                body.grant?.let { put("grant", kotlinx.serialization.json.JsonArray(it.map { kotlinx.serialization.json.JsonPrimitive(it) })) }
+                body.revoke?.let { put("revoke", kotlinx.serialization.json.JsonArray(it.map { kotlinx.serialization.json.JsonPrimitive(it) })) }
+                body.create?.let { put("create", kotlinx.serialization.json.JsonArray(it)) }
+            }), operationName = info.operation)
+        }) { body ->
+            json.decodeFromString<JsonElement>(body)
+        }
+    }
 
     /**
      * Update project access (grant/revoke/create people)

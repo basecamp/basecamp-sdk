@@ -176,6 +176,49 @@ class PeopleService(BaseService):
             operation="DisableOutOfOffice",
         )
 
+    def enable_project_clients(self, *, project_id: int) -> dict[str, Any]:
+        """Enable clients on a project so client users can be added to it.
+
+        A deliberate step separate from adding clients: it turns on the project's
+        client-facing surface and applies the default client visibility (the
+        timeline and most docked tools become client-visible; the card table,
+        Campfire, and Doors stay private). UpdateProjectClientAccess never enables
+        clients implicitly — enable first, then add. 403 unless the project can have
+        clients (the account supports clients and the project is a standard
+        project). Naturally idempotent: enabling an enabled project re-answers
+        `{"clients_enabled": true}`.
+
+        Args:
+            project_id: The project id.
+        """
+        return self._request(
+            OperationInfo(
+                service="people", operation="enable_project_clients", is_mutation=True, project_id=project_id
+            ),
+            "POST",
+            f"/projects/{project_id}/client_enablement.json",
+            operation="EnableProjectClients",
+        )
+
+    def disable_project_clients(self, *, project_id: int) -> dict[str, Any]:
+        """Disable clients on a project.
+
+        403 while the project still has any client users — revoke them first with
+        UpdateProjectClientAccess. Naturally idempotent: disabling a project with
+        clients already off re-answers `{"clients_enabled": false}`.
+
+        Args:
+            project_id: The project id.
+        """
+        return self._request(
+            OperationInfo(
+                service="people", operation="disable_project_clients", is_mutation=True, project_id=project_id
+            ),
+            "DELETE",
+            f"/projects/{project_id}/client_enablement.json",
+            operation="DisableProjectClients",
+        )
+
     def list_for_project(self, *, project_id: int, page: int | None = None, max_items: int | None = None) -> ListResult:
         """List all active people on a project.
 
@@ -193,6 +236,53 @@ class PeopleService(BaseService):
             params=self._compact(page=page),
             max_items=max_items,
             operation="ListProjectPeople",
+        )
+
+    def update_project_client_access(
+        self,
+        *,
+        project_id: int,
+        grant: list[int] | None = None,
+        revoke: list[int] | None = None,
+        create: list[dict] | None = None,
+    ) -> dict[str, Any]:
+        """Update project client access (grant/revoke/create client users).
+
+        The client-side counterpart to UpdateProjectAccess: `grant` adds existing
+        client users by id, `revoke` removes client users, and `create` invites
+        brand-new clients by email (`name` optional, defaulting to the address).
+        Only client users are eligible — a `grant` id belonging to a team member is
+        rejected (omitted from `granted`) rather than cross-graded, and `revoke` never removes a team
+        member. The response mirrors UpdateProjectAccess: `granted` and `revoked`
+        people, each with `client: true`.
+
+        Requires clients to be enabled on the project (EnableProjectClients);
+        otherwise 403. Invitations are all-or-nothing: an invalid `create` row
+        (including one with no email address) answers 422 with the rejected
+        addresses and nobody is invited; new addresses that would exceed the
+        account's user limit answer 429 and nobody is invited. Addresses already on
+        the account take no seat and a repeated address counts once.
+
+        The seat-limit 429 is a verdict, not throttling: it carries no Retry-After
+        and re-asking cannot change the answer, so this operation declares
+        `retryOn: [503]` and a 429 surfaces on the first attempt (status-mapped to
+        `rate_limit`, since the wire status is the only signal). Every other
+        operation retries on 429.
+
+        Args:
+            project_id: The project id.
+            grant: Existing client people IDs to add to the project.
+            revoke: Client people IDs to remove from the project.
+            create: New clients to invite by email.
+        """
+        return self._request(
+            OperationInfo(
+                service="people", operation="update_project_client_access", is_mutation=True, project_id=project_id
+            ),
+            "PUT",
+            f"/projects/{project_id}/people/client_users.json",
+            json_body=self._compact(grant=grant, revoke=revoke, create=create),
+            operation="UpdateProjectClientAccess",
         )
 
     def update_project_access(
@@ -394,6 +484,49 @@ class AsyncPeopleService(AsyncBaseService):
             operation="DisableOutOfOffice",
         )
 
+    async def enable_project_clients(self, *, project_id: int) -> dict[str, Any]:
+        """Enable clients on a project so client users can be added to it.
+
+        A deliberate step separate from adding clients: it turns on the project's
+        client-facing surface and applies the default client visibility (the
+        timeline and most docked tools become client-visible; the card table,
+        Campfire, and Doors stay private). UpdateProjectClientAccess never enables
+        clients implicitly — enable first, then add. 403 unless the project can have
+        clients (the account supports clients and the project is a standard
+        project). Naturally idempotent: enabling an enabled project re-answers
+        `{"clients_enabled": true}`.
+
+        Args:
+            project_id: The project id.
+        """
+        return await self._request(
+            OperationInfo(
+                service="people", operation="enable_project_clients", is_mutation=True, project_id=project_id
+            ),
+            "POST",
+            f"/projects/{project_id}/client_enablement.json",
+            operation="EnableProjectClients",
+        )
+
+    async def disable_project_clients(self, *, project_id: int) -> dict[str, Any]:
+        """Disable clients on a project.
+
+        403 while the project still has any client users — revoke them first with
+        UpdateProjectClientAccess. Naturally idempotent: disabling a project with
+        clients already off re-answers `{"clients_enabled": false}`.
+
+        Args:
+            project_id: The project id.
+        """
+        return await self._request(
+            OperationInfo(
+                service="people", operation="disable_project_clients", is_mutation=True, project_id=project_id
+            ),
+            "DELETE",
+            f"/projects/{project_id}/client_enablement.json",
+            operation="DisableProjectClients",
+        )
+
     async def list_for_project(
         self, *, project_id: int, page: int | None = None, max_items: int | None = None
     ) -> ListResult:
@@ -413,6 +546,53 @@ class AsyncPeopleService(AsyncBaseService):
             params=self._compact(page=page),
             max_items=max_items,
             operation="ListProjectPeople",
+        )
+
+    async def update_project_client_access(
+        self,
+        *,
+        project_id: int,
+        grant: list[int] | None = None,
+        revoke: list[int] | None = None,
+        create: list[dict] | None = None,
+    ) -> dict[str, Any]:
+        """Update project client access (grant/revoke/create client users).
+
+        The client-side counterpart to UpdateProjectAccess: `grant` adds existing
+        client users by id, `revoke` removes client users, and `create` invites
+        brand-new clients by email (`name` optional, defaulting to the address).
+        Only client users are eligible — a `grant` id belonging to a team member is
+        rejected (omitted from `granted`) rather than cross-graded, and `revoke` never removes a team
+        member. The response mirrors UpdateProjectAccess: `granted` and `revoked`
+        people, each with `client: true`.
+
+        Requires clients to be enabled on the project (EnableProjectClients);
+        otherwise 403. Invitations are all-or-nothing: an invalid `create` row
+        (including one with no email address) answers 422 with the rejected
+        addresses and nobody is invited; new addresses that would exceed the
+        account's user limit answer 429 and nobody is invited. Addresses already on
+        the account take no seat and a repeated address counts once.
+
+        The seat-limit 429 is a verdict, not throttling: it carries no Retry-After
+        and re-asking cannot change the answer, so this operation declares
+        `retryOn: [503]` and a 429 surfaces on the first attempt (status-mapped to
+        `rate_limit`, since the wire status is the only signal). Every other
+        operation retries on 429.
+
+        Args:
+            project_id: The project id.
+            grant: Existing client people IDs to add to the project.
+            revoke: Client people IDs to remove from the project.
+            create: New clients to invite by email.
+        """
+        return await self._request(
+            OperationInfo(
+                service="people", operation="update_project_client_access", is_mutation=True, project_id=project_id
+            ),
+            "PUT",
+            f"/projects/{project_id}/people/client_users.json",
+            json_body=self._compact(grant=grant, revoke=revoke, create=create),
+            operation="UpdateProjectClientAccess",
         )
 
     async def update_project_access(

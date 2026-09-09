@@ -57,6 +57,8 @@
             "/components/schemas/Wormhole/properties/destination_url/x-go-type": "string",
             "/components/schemas/Wormhole/properties/color/type": ["string", "null"],
             "/components/schemas/Wormhole/properties/color/x-go-type": "string",
+            "/components/schemas/ClientInvitationError/properties/email_address/type": ["string", "null"],
+            "/components/schemas/ClientInvitationError/properties/email_address/x-go-type": "string",
             "/components/schemas/Folder/properties/gauges_url/type": ["string", "null"],
             "/components/schemas/Folder/properties/gauges_url/x-go-type": "string",
             "/components/schemas/Folder/properties/color/type": ["string", "null"],

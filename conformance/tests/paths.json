@@ -2620,5 +2620,160 @@
       "projects",
       "recent-projects"
     ]
+  },
+  {
+    "name": "UpdateProjectClientAccess constructs the project client_users path",
+    "description": "Verifies UpdateProjectClientAccess PUTs /projects/{projectId}/people/client_users.json with the grant/revoke/create triad on the wire and decodes the granted/revoked people, each client: true (BC3 #13098).",
+    "operation": "UpdateProjectClientAccess",
+    "method": "PUT",
+    "path": "/projects/{projectId}/people/client_users.json",
+    "pathParams": {
+      "projectId": 2085958505
+    },
+    "requestBody": {
+      "revoke": [
+        333
+      ],
+      "create": [
+        {
+          "email_address": "annie@example.com",
+          "company_name": "Springfield Elementary"
+        }
+      ]
+    },
+    "mockResponses": [
+      {
+        "status": 200,
+        "body": {
+          "granted": [
+            {
+              "id": 444,
+              "name": "annie@example.com",
+              "email_address": "annie@example.com",
+              "admin": false,
+              "owner": false,
+              "client": true,
+              "employee": false,
+              "created_at": "2026-09-08T00:00:00Z",
+              "updated_at": "2026-09-08T00:00:00Z"
+            }
+          ],
+          "revoked": [
+            {
+              "id": 333,
+              "name": "Former Client",
+              "email_address": "former@example.com",
+              "admin": false,
+              "owner": false,
+              "client": true,
+              "employee": false,
+              "created_at": "2026-09-08T00:00:00Z",
+              "updated_at": "2026-09-08T00:00:00Z"
+            }
+          ]
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestPath",
+        "expected": "/999/projects/2085958505/people/client_users.json"
+      },
+      {
+        "type": "requestMethod",
+        "expected": "PUT"
+      },
+      {
+        "type": "requestBody",
+        "path": "revoke",
+        "expected": [
+          333
+        ]
+      },
+      {
+        "type": "requestBodyAbsent",
+        "path": "grant"
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "path",
+      "people",
+      "project-clients"
+    ]
+  },
+  {
+    "name": "EnableProjectClients constructs the project client_enablement path",
+    "description": "Verifies EnableProjectClients POSTs /projects/{projectId}/client_enablement.json with no body and decodes {clients_enabled: true} (BC3 #13098).",
+    "operation": "EnableProjectClients",
+    "method": "POST",
+    "path": "/projects/{projectId}/client_enablement.json",
+    "pathParams": {
+      "projectId": 2085958505
+    },
+    "mockResponses": [
+      {
+        "status": 200,
+        "body": {
+          "clients_enabled": true
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestPath",
+        "expected": "/999/projects/2085958505/client_enablement.json"
+      },
+      {
+        "type": "requestMethod",
+        "expected": "POST"
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "path",
+      "people",
+      "project-clients"
+    ]
+  },
+  {
+    "name": "DisableProjectClients constructs the project client_enablement path",
+    "description": "Verifies DisableProjectClients DELETEs /projects/{projectId}/client_enablement.json and decodes {clients_enabled: false} (BC3 #13098).",
+    "operation": "DisableProjectClients",
+    "method": "DELETE",
+    "path": "/projects/{projectId}/client_enablement.json",
+    "pathParams": {
+      "projectId": 2085958505
+    },
+    "mockResponses": [
+      {
+        "status": 200,
+        "body": {
+          "clients_enabled": false
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestPath",
+        "expected": "/999/projects/2085958505/client_enablement.json"
+      },
+      {
+        "type": "requestMethod",
+        "expected": "DELETE"
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "path",
+      "people",
+      "project-clients"
+    ]
   }
 ]

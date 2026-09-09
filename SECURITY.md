@@ -184,16 +184,19 @@ print(f"Headers: {safe}")
 ## Retry Behavior
 
 Retry eligibility is decided per *operation*, not per HTTP method. `behavior-model.json` classifies
-all `259` operations: the 128 GETs are retryable by method, and 88 mutations are flagged <!-- @operation-count -->
-`idempotent: true` — all 52 PUTs, all 26 DELETEs, and 10 POSTs (`CompleteTodo`, `PauseQuestion`,
+all `262` operations: the 128 GETs are retryable by method, and 91 mutations are flagged <!-- @operation-count -->
+`idempotent: true` — all 53 PUTs, all 27 DELETEs, and 11 POSTs (`CompleteTodo`, `PauseQuestion`,
 `SubscribeToCardColumn`, `Subscribe`, `EnableCardColumnOnHold`, `CreateBookmark`, `PrioritizeAssignment`,
-`SpotlightRecording`, `RecordProjectVisit`, `CreateBubbleUp`). The other 43 POSTs are attempted exactly once. SPEC.md §7 specifies the
+`SpotlightRecording`, `RecordProjectVisit`, `CreateBubbleUp`, `EnableProjectClients`). The other 43 POSTs are attempted exactly once. SPEC.md §7 specifies the
 three-gate algorithm and the per-SDK divergences.
 
 - **Reads (GET)**: retried with exponential backoff on 429/503 in every SDK. (HEAD is idempotent by method too, but Ruby's transport gates on `method == :get` specifically, so a HEAD would not retry there. The API surface has no HEAD operations today, so this is theoretical.)
-- **Naturally-idempotent mutations (PUT/DELETE) and the 10 flagged POSTs**: *are* retried on 429/503
+- **Naturally-idempotent mutations (PUT/DELETE) and the 11 flagged POSTs**: *are* retried on 429/503
   by Go (generated operation path), Python, TypeScript, Kotlin, and Swift. Retrying these cannot
   duplicate a resource, which is why the gate is idempotency rather than "is it a mutation".
+  One PUT narrows its own set: `UpdateProjectClientAccess` declares `retry_on: [503]`, because its
+  429 is the account seat-limit verdict rather than throttling, so that 429 surfaces on the first
+  attempt in every SDK (SPEC.md §7 Gate 3).
   **Ruby is the sole exception** — its transport retries GET only.
   Go's separate hand-written `pkg/basecamp` HTTP helper is also GET-only.
 - **Non-idempotent POSTs**: never retried on 429/503 or network failure, in any SDK — a retry could create a duplicate resource. This does **not** mean such a POST is always attempted exactly once: a 401 that triggers a successful token refresh replays the request once regardless of idempotency, in Ruby and both Python transports (see the 401 table below). Ruby's **raw upload** path is the exception — `post_raw`/`put_raw` (attachments, campfire uploads) go through `single_request_raw`, which raises the mapped error directly and has no refresh-and-replay branch, so those POSTs really are attempted exactly once.

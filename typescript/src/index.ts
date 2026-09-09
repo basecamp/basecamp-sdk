@@ -148,6 +148,7 @@ export {
   PeopleService,
   type Person,
   type UpdateProjectAccessPeopleRequest,
+  type UpdateProjectClientAccessPeopleRequest,
 } from "./generated/services/people.js";
 
 // Communication services - generated

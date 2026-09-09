@@ -142,6 +142,45 @@ sdk_routes_absent_from_bc3_docs:
       schedules); bc3 currently requires it (an omitted `at` hits
       Date.iso8601(nil) and raises).
 
+  - method: PUT
+    path: /projects/:id/people/client_users
+    reason: >-
+      UpdateProjectClientAccess. Documented in bc3 master's doc/api/sections/people.md
+      ("Add and remove clients on a project") by bc3 #13098 (1d8d4ce95d, merged
+      2026-09-08), which is past the revision spec/api-provenance.json currently
+      pins, so the vendored route table cannot see it yet. Drawn at
+      config/routes.rb inside `resources :projects` as
+      `resource :client_users, only: %i[edit update], controller:
+      "people/client_users"`; Projects::People::ClientUsersController#update
+      renders app/views/api/projects/people/client_users/update.json.jbuilder
+      (granted/revoked person partials) and is covered by
+      test/api/projects/people/client_users_controller_api_test.rb (grant,
+      invite, revoke, rejected team member, 422 batch rejection, 429 seat
+      limit, both 403s). Delete this entry at the next repin, when the route
+      lands in spec/bc3-routes.json and the gate reports it stale.
+
+  - method: POST
+    path: /projects/:id/client_enablement
+    reason: >-
+      EnableProjectClients. Same bc3 #13098 documentation ("Enable or disable
+      clients on a project", people.md) past the current pin. Drawn as
+      `resource :client_enablement, only: %i[create destroy]` under
+      `resources :projects`; Projects::ClientEnablementsController#create
+      answers `render json: { clients_enabled: true }` for JSON, so no
+      app/views/api template is needed; covered by
+      test/api/projects/client_enablements_controller_api_test.rb. Delete at
+      the next repin.
+
+  - method: DELETE
+    path: /projects/:id/client_enablement
+    reason: >-
+      DisableProjectClients. Same draw as EnableProjectClients;
+      Projects::ClientEnablementsController#destroy answers
+      `render json: { clients_enabled: false }`, refused with 403 while the
+      project still has client users; covered by
+      test/api/projects/client_enablements_controller_api_test.rb. Delete at
+      the next repin.
+
   - method: DELETE
     path: /recordings/:id/bubble_up
     reason: >-

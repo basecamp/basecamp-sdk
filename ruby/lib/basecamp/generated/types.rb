@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-09-03T02:27:36Z
+# Generated: 2026-09-08T23:57:39Z
 
 require "json"
 require "time"
@@ -1135,6 +1135,58 @@ module Basecamp
       end
     end
 
+    # ClientInvitationError
+    class ClientInvitationError
+      include TypeHelpers
+      attr_accessor :email_address, :messages
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[email_address messages].freeze
+      end
+
+      def initialize(data = {})
+        @email_address = data["email_address"]
+        @messages = data["messages"]
+      end
+
+      def to_h
+        {
+          "email_address" => @email_address,
+          "messages" => @messages,
+        }.reject { |k, v| v.nil? && !["email_address"].include?(k) }
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # ClientInvitationErrors
+    class ClientInvitationErrors
+      include TypeHelpers
+      attr_accessor :errors
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[errors].freeze
+      end
+
+      def initialize(data = {})
+        @errors = parse_array(data["errors"], "ClientInvitationError")
+      end
+
+      def to_h
+        {
+          "errors" => @errors,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
     # ClientReply
     class ClientReply
       include TypeHelpers
@@ -1366,6 +1418,37 @@ module Basecamp
           "bookmark_url" => @bookmark_url,
           "boosts_count" => @boosts_count,
           "boosts_url" => @boosts_url,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # CreateClientRequest
+    class CreateClientRequest
+      include TypeHelpers
+      attr_accessor :email_address, :company_name, :name, :title
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[email_address].freeze
+      end
+
+      def initialize(data = {})
+        @email_address = data["email_address"]
+        @company_name = data["company_name"]
+        @name = data["name"]
+        @title = data["title"]
+      end
+
+      def to_h
+        {
+          "email_address" => @email_address,
+          "company_name" => @company_name,
+          "name" => @name,
+          "title" => @title,
         }.compact
       end
 
@@ -3241,6 +3324,31 @@ module Basecamp
         {
           "granted" => @granted,
           "revoked" => @revoked,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # ProjectClientEnablement
+    class ProjectClientEnablement
+      include TypeHelpers
+      attr_accessor :clients_enabled
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[clients_enabled].freeze
+      end
+
+      def initialize(data = {})
+        @clients_enabled = parse_boolean(data["clients_enabled"])
+      end
+
+      def to_h
+        {
+          "clients_enabled" => @clients_enabled,
         }.compact
       end
 

@@ -367,4 +367,51 @@ class ErrorsTest < Minitest::Test
 
     assert_nil message
   end
+
+  # SPEC section 6 step 1b: the batch-invite rendering names rows, not fields.
+  # These are the literal bc3 client_users bodies.
+  def test_error_from_response_row_keyed_errors
+    [
+      [ '{"errors":[{"email_address":"not-an-address","messages":["Email address must be valid"]}]}',
+        "not-an-address: Email address must be valid",
+        { "not-an-address" => [ "Email address must be valid" ] } ],
+      [ '{"errors":[{"email_address":"not-an-address","messages":["Email address must be valid"]},' \
+        '{"email_address":null,"messages":["Email address can\'t be blank"]}]}',
+        "1: Email address can't be blank, not-an-address: Email address must be valid",
+        { "not-an-address" => [ "Email address must be valid" ], "1" => [ "Email address can't be blank" ] } ],
+      [ '{"errors":[{"index":1,"messages":["email_address is invalid"]}]}',
+        "1: email_address is invalid", { "1" => [ "email_address is invalid" ] } ],
+      [ '{"errors":[{"email_address":"annie@example.com","messages":["Name is too long"]},' \
+        '{"email_address":"annie@example.com","messages":["Email address is duplicated"]}]}',
+        "annie@example.com: Name is too long; Email address is duplicated",
+        { "annie@example.com" => [ "Name is too long", "Email address is duplicated" ] } ],
+      [ '{"errors":[{"email_address":42,"messages":["Email address must be valid"]}]}',
+        "0: Email address must be valid", { "0" => [ "Email address must be valid" ] } ],
+      [ '{"errors":[{"email_address":"annie@example.com","index":"1","messages":["Name is too long"]}]}',
+        "annie@example.com: Name is too long", { "annie@example.com" => [ "Name is too long" ] } ],
+      [ '{"errors":[{"email_address":null,"index":true,"messages":["Email address can\'t be blank"]}]}',
+        "0: Email address can't be blank", { "0" => [ "Email address can't be blank" ] } ]
+    ].each do |body, message, field_errors|
+      error = Basecamp.error_from_response(422, body)
+
+      assert_instance_of Basecamp::ValidationError, error
+      assert_equal message, error.message, "unexpected message for #{body}"
+      assert_equal field_errors, error.field_errors, "unexpected field_errors for #{body}"
+    end
+  end
+
+  def test_error_from_response_row_keyed_errors_strict_gate
+    [
+      '{"errors": ["nope"]}',
+      '{"errors": []}',
+      '{"errors": [{"email_address": "x"}]}',
+      '{"errors": [{"email_address": "x", "messages": []}]}',
+      '{"errors": [{"email_address": "x", "messages": ["bad"]}, 42]}'
+    ].each do |body|
+      error = Basecamp.error_from_response(422, body)
+
+      assert_instance_of Basecamp::ValidationError, error
+      assert_nil error.field_errors, "expected nil field_errors for #{body}"
+    end
+  end
 end

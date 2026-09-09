@@ -166,6 +166,12 @@ private let resourceTypeOverrides: [String: String] = [
     // through to the generic "resource".
     "ListRecentProjects": "project",
     "RecordProjectVisit": "project",
+    // Client access is the client-side counterpart of UpdateProjectAccess, which
+    // reports "project_access"; the inferred "project_client_access" would split
+    // the pair. The enablement toggle is project state, as the Go wrapper reports.
+    "UpdateProjectClientAccess": "project_access",
+    "EnableProjectClients": "project",
+    "DisableProjectClients": "project",
 ]
 
 /// Extracts the resource type from an operationId using verb patterns.

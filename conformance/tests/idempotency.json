@@ -533,5 +533,174 @@
       "post",
       "recent-projects"
     ]
+  },
+  {
+    "name": "UpdateProjectClientAccess PUT retries when marked idempotent",
+    "description": "Granting client access is all-or-nothing and a replay re-asks the same question, so the PUT is naturally idempotent and must retry on 503 in the metadata-driven SDKs.",
+    "operation": "UpdateProjectClientAccess",
+    "method": "PUT",
+    "path": "/projects/{projectId}/people/client_users.json",
+    "pathParams": {
+      "projectId": 2085958505
+    },
+    "requestBody": {
+      "grant": [
+        111
+      ]
+    },
+    "mockResponses": [
+      {
+        "status": 503
+      },
+      {
+        "status": 200,
+        "body": {
+          "granted": [
+            {
+              "id": 111,
+              "name": "Annie Bryan",
+              "email_address": "annie@example.com",
+              "admin": false,
+              "owner": false,
+              "client": true,
+              "employee": false,
+              "created_at": "2026-09-08T00:00:00Z",
+              "updated_at": "2026-09-08T00:00:00Z"
+            }
+          ],
+          "revoked": []
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestCount",
+        "expected": 2
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "idempotent",
+      "put"
+    ]
+  },
+  {
+    "name": "UpdateProjectClientAccess 429 is the seat-limit verdict and is not retried",
+    "description": "bc3 answers a bare 429 when the new addresses would exceed the account's user limit. That is a verdict, not throttling: no Retry-After, and re-asking cannot change it, so the operation declares retry_on: [503] and the 429 surfaces on the first attempt, status-mapped to rate_limit.",
+    "operation": "UpdateProjectClientAccess",
+    "method": "PUT",
+    "path": "/projects/{projectId}/people/client_users.json",
+    "pathParams": {
+      "projectId": 2085958505
+    },
+    "requestBody": {
+      "create": [
+        {
+          "email_address": "annie@example.com"
+        }
+      ]
+    },
+    "mockResponses": [
+      {
+        "status": 429
+      },
+      {
+        "status": 200,
+        "body": {
+          "granted": [],
+          "revoked": []
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "errorCode",
+        "expected": "rate_limit"
+      },
+      {
+        "type": "errorField",
+        "path": "httpStatus",
+        "expected": 429
+      }
+    ],
+    "tags": [
+      "idempotent",
+      "put",
+      "seat-limit"
+    ]
+  },
+  {
+    "name": "EnableProjectClients POST retries when marked idempotent",
+    "description": "Enabling clients sets a boolean; re-enabling an enabled project re-answers {clients_enabled: true}, so the POST is naturally idempotent and must retry on 503.",
+    "operation": "EnableProjectClients",
+    "method": "POST",
+    "path": "/projects/{projectId}/client_enablement.json",
+    "pathParams": {
+      "projectId": 2085958505
+    },
+    "mockResponses": [
+      {
+        "status": 503
+      },
+      {
+        "status": 200,
+        "body": {
+          "clients_enabled": true
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestCount",
+        "expected": 2
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "idempotent",
+      "post"
+    ]
+  },
+  {
+    "name": "DisableProjectClients DELETE retries when marked idempotent",
+    "description": "Disabling clients on a project with clients already off re-answers {clients_enabled: false}, so the DELETE is naturally idempotent and must retry on 503.",
+    "operation": "DisableProjectClients",
+    "method": "DELETE",
+    "path": "/projects/{projectId}/client_enablement.json",
+    "pathParams": {
+      "projectId": 2085958505
+    },
+    "mockResponses": [
+      {
+        "status": 503
+      },
+      {
+        "status": 200,
+        "body": {
+          "clients_enabled": false
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestCount",
+        "expected": 2
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "idempotent",
+      "delete"
+    ]
   }
 ]

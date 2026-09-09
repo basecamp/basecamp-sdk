@@ -1017,5 +1017,77 @@
       "5xx",
       "structured-error"
     ]
+  },
+  {
+    "name": "422 row-keyed errors name the rejected invitation rows",
+    "description": "UpdateProjectClientAccess rejects a whole invite batch on behalf of one bad row and answers {errors: [{email_address, messages}]} (bc3 #13098, the literal controller body). SPEC section 6 step 1b keys the shared field_errors slot by each row's address so the rejected addresses reach the flattened message; a null-address row is keyed by its position.",
+    "operation": "UpdateProjectClientAccess",
+    "method": "PUT",
+    "path": "/projects/{projectId}/people/client_users.json",
+    "pathParams": {
+      "projectId": 2085958505
+    },
+    "requestBody": {
+      "create": [
+        {
+          "email_address": "annie@example.com"
+        },
+        {
+          "email_address": "not-an-address"
+        },
+        {
+          "name": "Bart Simpson"
+        }
+      ]
+    },
+    "mockResponses": [
+      {
+        "status": 422,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "errors": [
+            {
+              "email_address": "not-an-address",
+              "messages": [
+                "Email address must be valid"
+              ]
+            },
+            {
+              "email_address": null,
+              "messages": [
+                "Email address can't be blank"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "errorCode",
+        "expected": "validation"
+      },
+      {
+        "type": "errorField",
+        "path": "httpStatus",
+        "expected": 422
+      },
+      {
+        "type": "errorMessage",
+        "expected": "1: Email address can't be blank, not-an-address: Email address must be valid"
+      }
+    ],
+    "tags": [
+      "error-mapping",
+      "validation",
+      "field-errors",
+      "project-clients"
+    ]
   }
 ]

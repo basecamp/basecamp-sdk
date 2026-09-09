@@ -1529,6 +1529,24 @@
       }
     },
     {
+      "pattern": "/{accountId}/projects/{projectId}/client_enablement",
+      "resource": "People",
+      "operations": {
+        "DELETE": "DisableProjectClients",
+        "POST": "EnableProjectClients"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "projectId": {
+          "role": "bucket",
+          "type": "int64"
+        }
+      }
+    },
+    {
       "pattern": "/{accountId}/projects/{projectId}/gauge",
       "resource": "Gauges",
       "operations": {
@@ -1568,6 +1586,23 @@
       "resource": "People",
       "operations": {
         "GET": "ListProjectPeople"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "projectId": {
+          "role": "bucket",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/projects/{projectId}/people/client_users",
+      "resource": "People",
+      "operations": {
+        "PUT": "UpdateProjectClientAccess"
       },
       "params": {
         "accountId": {

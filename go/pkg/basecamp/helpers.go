@@ -171,6 +171,10 @@ func parseFieldErrors(raw json.RawMessage) map[string][]string {
 	if len(raw) == 0 {
 		return nil
 	}
+	var rows []json.RawMessage
+	if err := json.Unmarshal(raw, &rows); err == nil {
+		return parseRowErrors(rows)
+	}
 	var entries map[string]json.RawMessage
 	if err := json.Unmarshal(raw, &entries); err != nil {
 		return nil
@@ -193,6 +197,52 @@ func parseFieldErrors(raw json.RawMessage) map[string][]string {
 	}
 	if len(fieldErrors) == 0 {
 		return nil
+	}
+	return fieldErrors
+}
+
+// parseRowErrors decodes a row-keyed errors list — the batch-invite rendering
+// {"errors": [{"email_address": "...", "messages": ["..."]}, ...]} (SPEC §6
+// step 1b), one element per rejected row. Rows are keyed by their email_address
+// when it is a non-empty string, else by an integer index, else by their
+// position in the list; a repeated key appends. All-or-nothing: one element
+// without a usable messages array means this is some other list, and the slot
+// stays absent (nil).
+func parseRowErrors(rows []json.RawMessage) map[string][]string {
+	if len(rows) == 0 {
+		return nil
+	}
+	fieldErrors := make(map[string][]string, len(rows))
+	for position, raw := range rows {
+		// Members decode independently: only "messages" decides whether this
+		// is a row list, and a wrong-typed selector falls through to the next
+		// one rather than discarding the list.
+		var row map[string]json.RawMessage
+		if err := json.Unmarshal(raw, &row); err != nil {
+			return nil
+		}
+		var values []any
+		if err := json.Unmarshal(row["messages"], &values); err != nil {
+			return nil
+		}
+		messages := make([]string, 0, len(values))
+		for _, v := range values {
+			if s, ok := v.(string); ok && s != "" {
+				messages = append(messages, s)
+			}
+		}
+		if len(messages) == 0 {
+			return nil
+		}
+		key := strconv.Itoa(position)
+		var index int64
+		switch {
+		case stringFromRaw(row["email_address"]) != "":
+			key = stringFromRaw(row["email_address"])
+		case len(row["index"]) > 0 && json.Unmarshal(row["index"], &index) == nil:
+			key = strconv.FormatInt(index, 10)
+		}
+		fieldErrors[key] = append(fieldErrors[key], messages...)
 	}
 	return fieldErrors
 }

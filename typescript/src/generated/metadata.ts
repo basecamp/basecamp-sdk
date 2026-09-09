@@ -37,7 +37,7 @@ export interface MetadataOutput {
 const metadata: MetadataOutput = {
   "$schema": "https://basecamp.com/schemas/sdk-metadata.json",
   "version": "1.0.0",
-  "generated": "2026-09-03T02:27:35.641Z",
+  "generated": "2026-09-08T23:57:37.921Z",
   "operations": {
     "GetAccount": {
       "retry": {
@@ -1782,6 +1782,34 @@ const metadata: MetadataOutput = {
         "natural": true
       }
     },
+    "EnableProjectClients": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      },
+      "idempotent": {
+        "natural": true
+      }
+    },
+    "DisableProjectClients": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      },
+      "idempotent": {
+        "natural": true
+      }
+    },
     "ToggleGauge": {
       "retry": {
         "maxAttempts": 2,
@@ -1837,6 +1865,19 @@ const metadata: MetadataOutput = {
         "style": "link",
         "totalCountHeader": "X-Total-Count",
         "maxPageSize": 50
+      }
+    },
+    "UpdateProjectClientAccess": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          503
+        ]
+      },
+      "idempotent": {
+        "natural": true
       }
     },
     "UpdateProjectAccess": {

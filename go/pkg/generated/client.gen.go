@@ -450,6 +450,25 @@ type ClientCorrespondence struct {
 	VisibleToClients   bool                 `json:"visible_to_clients"`
 }
 
+// ClientInvitationError One rejected `create` row: the address as submitted and the validation
+// messages for it. Always emitted; `null` when the row carried no address (the
+// row is still rejected, with a "can't be blank" message). `@required` models
+// the presence and the nullability is layered on in the OpenAPI
+// (smithy-build.json jsonAdd -> type: ["string","null"]), the Wormhole.color
+// treatment.
+type ClientInvitationError struct {
+	EmailAddress *string  `json:"email_address"`
+	Messages     []string `json:"messages"`
+}
+
+// ClientInvitationErrors The per-row 422 body: {"errors": [{"email_address": ..., "messages": [...]}]}.
+type ClientInvitationErrors struct {
+	Errors []ClientInvitationError `json:"errors"`
+}
+
+// ClientInvitationValidationErrorResponseContent The per-row 422 body: {"errors": [{"email_address": ..., "messages": [...]}]}.
+type ClientInvitationValidationErrorResponseContent = ClientInvitationErrors
+
 // ClientReply defines model for ClientReply.
 type ClientReply struct {
 	AppUrl             string               `json:"app_url"`
@@ -641,6 +660,15 @@ type CreateChatbotRequestContent struct {
 
 // CreateChatbotResponseContent defines model for CreateChatbotResponseContent.
 type CreateChatbotResponseContent = Chatbot
+
+// CreateClientRequest A new client to invite. Unlike CreatePersonRequest, only the address is
+// required: bc3 defaults `name` to the email address when omitted.
+type CreateClientRequest struct {
+	CompanyName  *string `json:"company_name,omitempty"`
+	EmailAddress string  `json:"email_address"`
+	Name         *string `json:"name,omitempty"`
+	Title        *string `json:"title,omitempty"`
+}
 
 // CreateCloudFileRequestContent defines model for CreateCloudFileRequestContent.
 type CreateCloudFileRequestContent struct {
@@ -1097,6 +1125,9 @@ type CreateWormholeResponseContent = Wormhole
 // DisableCardColumnOnHoldResponseContent defines model for DisableCardColumnOnHoldResponseContent.
 type DisableCardColumnOnHoldResponseContent = CardColumn
 
+// DisableProjectClientsResponseContent The project's client-enablement state after a toggle.
+type DisableProjectClientsResponseContent = ProjectClientEnablement
+
 // DockItem defines model for DockItem.
 type DockItem struct {
 	AppUrl   string `json:"app_url"`
@@ -1197,6 +1228,9 @@ type EnableOutOfOfficeRequestContent struct {
 // EnableOutOfOfficeResponseContent When out of office is not enabled, `enabled` is `false` and
 // `start_date`, `end_date`, and `back_on_date` are omitted.
 type EnableOutOfOfficeResponseContent = OutOfOffice
+
+// EnableProjectClientsResponseContent The project's client-enablement state after a toggle.
+type EnableProjectClientsResponseContent = ProjectClientEnablement
 
 // Event defines model for Event.
 type Event struct {
@@ -2415,6 +2449,11 @@ type Project struct {
 type ProjectAccessResult struct {
 	Granted []Person `json:"granted,omitempty"`
 	Revoked []Person `json:"revoked,omitempty"`
+}
+
+// ProjectClientEnablement The project's client-enablement state after a toggle.
+type ProjectClientEnablement struct {
+	ClientsEnabled bool `json:"clients_enabled"`
 }
 
 // ProjectConstruction defines model for ProjectConstruction.
@@ -4192,6 +4231,21 @@ type UpdateProjectAccessRequestContent struct {
 // UpdateProjectAccessResponseContent defines model for UpdateProjectAccessResponseContent.
 type UpdateProjectAccessResponseContent = ProjectAccessResult
 
+// UpdateProjectClientAccessRequestContent defines model for UpdateProjectClientAccessRequestContent.
+type UpdateProjectClientAccessRequestContent struct {
+	// Create New clients to invite by email.
+	Create *[]CreateClientRequest `json:"create,omitempty"`
+
+	// Grant Existing client people IDs to add to the project.
+	Grant *[]int64 `json:"grant,omitempty"`
+
+	// Revoke Client people IDs to remove from the project.
+	Revoke *[]int64 `json:"revoke,omitempty"`
+}
+
+// UpdateProjectClientAccessResponseContent defines model for UpdateProjectClientAccessResponseContent.
+type UpdateProjectClientAccessResponseContent = ProjectAccessResult
+
 // UpdateProjectRequestContent defines model for UpdateProjectRequestContent.
 type UpdateProjectRequestContent struct {
 	// Admissions invite|employee|team
@@ -5335,6 +5389,9 @@ type ToggleGaugeJSONRequestBody = ToggleGaugeRequestContent
 // CreateGaugeNeedleJSONRequestBody defines body for CreateGaugeNeedle for application/json ContentType.
 type CreateGaugeNeedleJSONRequestBody = CreateGaugeNeedleRequestContent
 
+// UpdateProjectClientAccessJSONRequestBody defines body for UpdateProjectClientAccess for application/json ContentType.
+type UpdateProjectClientAccessJSONRequestBody = UpdateProjectClientAccessRequestContent
+
 // UpdateProjectAccessJSONRequestBody defines body for UpdateProjectAccess for application/json ContentType.
 type UpdateProjectAccessJSONRequestBody = UpdateProjectAccessRequestContent
 
@@ -6422,6 +6479,12 @@ type ClientInterface interface {
 
 	UpdateProject(ctx context.Context, accountId string, projectId int64, body UpdateProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// DisableProjectClients request
+	DisableProjectClients(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// EnableProjectClients request
+	EnableProjectClients(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ToggleGaugeWithBody request with any body
 	ToggleGaugeWithBody(ctx context.Context, accountId string, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -6437,6 +6500,11 @@ type ClientInterface interface {
 
 	// ListProjectPeople request
 	ListProjectPeople(ctx context.Context, accountId string, projectId int64, params *ListProjectPeopleParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateProjectClientAccessWithBody request with any body
+	UpdateProjectClientAccessWithBody(ctx context.Context, accountId string, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	UpdateProjectClientAccess(ctx context.Context, accountId string, projectId int64, body UpdateProjectClientAccessJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateProjectAccessWithBody request with any body
 	UpdateProjectAccessWithBody(ctx context.Context, accountId string, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -8827,6 +8895,26 @@ func (c *Client) UpdateProject(ctx context.Context, accountId string, projectId 
 
 }
 
+// DisableProjectClients is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) DisableProjectClients(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewDisableProjectClientsRequest(c.Server, accountId, projectId)
+	}, true, "DisableProjectClients", reqEditors...)
+
+}
+
+// EnableProjectClients is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) EnableProjectClients(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewEnableProjectClientsRequest(c.Server, accountId, projectId)
+	}, true, "EnableProjectClients", reqEditors...)
+
+}
+
 // ToggleGaugeWithBody is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) ToggleGaugeWithBody(ctx context.Context, accountId string, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -8892,6 +8980,24 @@ func (c *Client) ListProjectPeople(ctx context.Context, accountId string, projec
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewListProjectPeopleRequest(c.Server, accountId, projectId, params)
 	}, true, "ListProjectPeople", reqEditors...)
+
+}
+
+// UpdateProjectClientAccessWithBody is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) UpdateProjectClientAccessWithBody(ctx context.Context, accountId string, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewUpdateProjectClientAccessRequestWithBody(c.Server, accountId, projectId, contentType, body)
+	}, true, "UpdateProjectClientAccess", reqEditors...)
+
+}
+
+func (c *Client) UpdateProjectClientAccess(ctx context.Context, accountId string, projectId int64, body UpdateProjectClientAccessJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewUpdateProjectClientAccessRequest(c.Server, accountId, projectId, body)
+	}, true, "UpdateProjectClientAccess", reqEditors...)
 
 }
 
@@ -17806,6 +17912,88 @@ func NewUpdateProjectRequestWithBody(server string, accountId string, projectId 
 	return req, nil
 }
 
+// NewDisableProjectClientsRequest generates requests for DisableProjectClients
+func NewDisableProjectClientsRequest(server string, accountId string, projectId int64) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/projects/%s/client_enablement.json", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewEnableProjectClientsRequest generates requests for EnableProjectClients
+func NewEnableProjectClientsRequest(server string, accountId string, projectId int64) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/projects/%s/client_enablement.json", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewToggleGaugeRequest calls the generic ToggleGauge builder with application/json body
 func NewToggleGaugeRequest(server string, accountId string, projectId int64, body ToggleGaugeJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -18036,6 +18224,60 @@ func NewListProjectPeopleRequest(server string, accountId string, projectId int6
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewUpdateProjectClientAccessRequest calls the generic UpdateProjectClientAccess builder with application/json body
+func NewUpdateProjectClientAccessRequest(server string, accountId string, projectId int64, body UpdateProjectClientAccessJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateProjectClientAccessRequestWithBody(server, accountId, projectId, "application/json", bodyReader)
+}
+
+// NewUpdateProjectClientAccessRequestWithBody generates requests for UpdateProjectClientAccess with any type of body
+func NewUpdateProjectClientAccessRequestWithBody(server string, accountId string, projectId int64, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "projectId", runtime.ParamLocationPath, projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/projects/%s/people/client_users.json", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("PUT", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -24831,10 +25073,13 @@ var operationMetadata = map[string]OperationMetadata{
 	"TrashProject":                       {Idempotent: true, HasSensitiveParams: false},
 	"GetProject":                         {Idempotent: true, HasSensitiveParams: false},
 	"UpdateProject":                      {Idempotent: true, HasSensitiveParams: false},
+	"DisableProjectClients":              {Idempotent: true, HasSensitiveParams: false},
+	"EnableProjectClients":               {Idempotent: true, HasSensitiveParams: false},
 	"ToggleGauge":                        {Idempotent: true, HasSensitiveParams: false},
 	"ListGaugeNeedles":                   {Idempotent: true, HasSensitiveParams: false},
 	"CreateGaugeNeedle":                  {Idempotent: false, HasSensitiveParams: false},
 	"ListProjectPeople":                  {Idempotent: true, HasSensitiveParams: false},
+	"UpdateProjectClientAccess":          {Idempotent: true, HasSensitiveParams: false},
 	"UpdateProjectAccess":                {Idempotent: true, HasSensitiveParams: false},
 	"RecordProjectVisit":                 {Idempotent: true, HasSensitiveParams: false},
 	"UnarchiveProject":                   {Idempotent: true, HasSensitiveParams: false},
@@ -25099,10 +25344,13 @@ var operationRetryMax = map[string]int{
 	"TrashProject":                       3,
 	"GetProject":                         3,
 	"UpdateProject":                      3,
+	"DisableProjectClients":              3,
+	"EnableProjectClients":               3,
 	"ToggleGauge":                        2,
 	"ListGaugeNeedles":                   3,
 	"CreateGaugeNeedle":                  2,
 	"ListProjectPeople":                  3,
+	"UpdateProjectClientAccess":          3,
 	"UpdateProjectAccess":                3,
 	"RecordProjectVisit":                 3,
 	"UnarchiveProject":                   3,
@@ -25365,10 +25613,13 @@ var operationRetryOn = map[string][]int{
 	"TrashProject":                       {429, 503},
 	"GetProject":                         {429, 503},
 	"UpdateProject":                      {429, 503},
+	"DisableProjectClients":              {429, 503},
+	"EnableProjectClients":               {429, 503},
 	"ToggleGauge":                        {429, 503},
 	"ListGaugeNeedles":                   {429, 503},
 	"CreateGaugeNeedle":                  {429, 503},
 	"ListProjectPeople":                  {429, 503},
+	"UpdateProjectClientAccess":          {503},
 	"UpdateProjectAccess":                {429, 503},
 	"RecordProjectVisit":                 {429, 503},
 	"UnarchiveProject":                   {429, 503},
@@ -27054,6 +27305,12 @@ type ClientWithResponsesInterface interface {
 
 	UpdateProjectWithResponse(ctx context.Context, accountId string, projectId int64, body UpdateProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateProjectResponse, error)
 
+	// DisableProjectClientsWithResponse request
+	DisableProjectClientsWithResponse(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*DisableProjectClientsResponse, error)
+
+	// EnableProjectClientsWithResponse request
+	EnableProjectClientsWithResponse(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*EnableProjectClientsResponse, error)
+
 	// ToggleGaugeWithBodyWithResponse request with any body
 	ToggleGaugeWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ToggleGaugeResponse, error)
 
@@ -27069,6 +27326,11 @@ type ClientWithResponsesInterface interface {
 
 	// ListProjectPeopleWithResponse request
 	ListProjectPeopleWithResponse(ctx context.Context, accountId string, projectId int64, params *ListProjectPeopleParams, reqEditors ...RequestEditorFn) (*ListProjectPeopleResponse, error)
+
+	// UpdateProjectClientAccessWithBodyWithResponse request with any body
+	UpdateProjectClientAccessWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateProjectClientAccessResponse, error)
+
+	UpdateProjectClientAccessWithResponse(ctx context.Context, accountId string, projectId int64, body UpdateProjectClientAccessJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateProjectClientAccessResponse, error)
 
 	// UpdateProjectAccessWithBodyWithResponse request with any body
 	UpdateProjectAccessWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateProjectAccessResponse, error)
@@ -32071,6 +32333,76 @@ func (r UpdateProjectResponse) ContentType() string {
 	return ""
 }
 
+type DisableProjectClientsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *DisableProjectClientsResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r DisableProjectClientsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DisableProjectClientsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DisableProjectClientsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type EnableProjectClientsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *EnableProjectClientsResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r EnableProjectClientsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r EnableProjectClientsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r EnableProjectClientsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ToggleGaugeResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -32202,6 +32534,42 @@ func (r ListProjectPeopleResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r ListProjectPeopleResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateProjectClientAccessResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *UpdateProjectClientAccessResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON422      *ClientInvitationValidationErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateProjectClientAccessResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateProjectClientAccessResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateProjectClientAccessResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -37960,6 +38328,24 @@ func (c *ClientWithResponses) UpdateProjectWithResponse(ctx context.Context, acc
 	return ParseUpdateProjectResponse(rsp)
 }
 
+// DisableProjectClientsWithResponse request returning *DisableProjectClientsResponse
+func (c *ClientWithResponses) DisableProjectClientsWithResponse(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*DisableProjectClientsResponse, error) {
+	rsp, err := c.DisableProjectClients(ctx, accountId, projectId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDisableProjectClientsResponse(rsp)
+}
+
+// EnableProjectClientsWithResponse request returning *EnableProjectClientsResponse
+func (c *ClientWithResponses) EnableProjectClientsWithResponse(ctx context.Context, accountId string, projectId int64, reqEditors ...RequestEditorFn) (*EnableProjectClientsResponse, error) {
+	rsp, err := c.EnableProjectClients(ctx, accountId, projectId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseEnableProjectClientsResponse(rsp)
+}
+
 // ToggleGaugeWithBodyWithResponse request with arbitrary body returning *ToggleGaugeResponse
 func (c *ClientWithResponses) ToggleGaugeWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ToggleGaugeResponse, error) {
 	rsp, err := c.ToggleGaugeWithBody(ctx, accountId, projectId, contentType, body, reqEditors...)
@@ -38010,6 +38396,23 @@ func (c *ClientWithResponses) ListProjectPeopleWithResponse(ctx context.Context,
 		return nil, err
 	}
 	return ParseListProjectPeopleResponse(rsp)
+}
+
+// UpdateProjectClientAccessWithBodyWithResponse request with arbitrary body returning *UpdateProjectClientAccessResponse
+func (c *ClientWithResponses) UpdateProjectClientAccessWithBodyWithResponse(ctx context.Context, accountId string, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateProjectClientAccessResponse, error) {
+	rsp, err := c.UpdateProjectClientAccessWithBody(ctx, accountId, projectId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateProjectClientAccessResponse(rsp)
+}
+
+func (c *ClientWithResponses) UpdateProjectClientAccessWithResponse(ctx context.Context, accountId string, projectId int64, body UpdateProjectClientAccessJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateProjectClientAccessResponse, error) {
+	rsp, err := c.UpdateProjectClientAccess(ctx, accountId, projectId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateProjectClientAccessResponse(rsp)
 }
 
 // UpdateProjectAccessWithBodyWithResponse request with arbitrary body returning *UpdateProjectAccessResponse
@@ -46325,6 +46728,118 @@ func ParseUpdateProjectResponse(rsp *http.Response) (*UpdateProjectResponse, err
 	return response, nil
 }
 
+// ParseDisableProjectClientsResponse parses an HTTP response from a DisableProjectClientsWithResponse call
+func ParseDisableProjectClientsResponse(rsp *http.Response) (*DisableProjectClientsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DisableProjectClientsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest DisableProjectClientsResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON401 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON403 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON404 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON429 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON500 = &dest
+		}
+
+	}
+
+	return response, nil
+}
+
+// ParseEnableProjectClientsResponse parses an HTTP response from a EnableProjectClientsWithResponse call
+func ParseEnableProjectClientsResponse(rsp *http.Response) (*EnableProjectClientsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &EnableProjectClientsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest EnableProjectClientsResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON401 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON403 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON404 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON429 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON500 = &dest
+		}
+
+	}
+
+	return response, nil
+}
+
 // ParseToggleGaugeResponse parses an HTTP response from a ToggleGaugeWithResponse call
 func ParseToggleGaugeResponse(rsp *http.Response) (*ToggleGaugeResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -46514,6 +47029,68 @@ func ParseListProjectPeopleResponse(rsp *http.Response) (*ListProjectPeopleRespo
 		var dest ForbiddenErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
 			response.JSON403 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON429 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON500 = &dest
+		}
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateProjectClientAccessResponse parses an HTTP response from a UpdateProjectClientAccessWithResponse call
+func ParseUpdateProjectClientAccessResponse(rsp *http.Response) (*UpdateProjectClientAccessResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateProjectClientAccessResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest UpdateProjectClientAccessResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON401 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON403 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON404 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ClientInvitationValidationErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON422 = &dest
 		}
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:

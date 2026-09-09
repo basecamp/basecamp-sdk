@@ -791,3 +791,89 @@ describe("bare field-map error bodies (SPEC §6 step 2)", () => {
     expect(Array.isArray(Object.getPrototypeOf(error.fieldErrors))).toBe(false);
   });
 });
+
+describe("row-keyed error bodies (SPEC §6 step 1b)", () => {
+  // Projects::People::ClientUsersController rejects a whole invite batch on
+  // behalf of one bad row and names the rows: {"errors": [{"email_address",
+  // "messages"}]}. The bodies below are the literal bc3 renderings.
+  it.each([
+    {
+      name: "one rejected address",
+      body: { errors: [{ email_address: "not-an-address", messages: ["Email address must be valid"] }] },
+      message: "not-an-address: Email address must be valid",
+      fieldErrors: { "not-an-address": ["Email address must be valid"] },
+    },
+    {
+      name: "a null-address row is keyed by its position",
+      body: {
+        errors: [
+          { email_address: "not-an-address", messages: ["Email address must be valid"] },
+          { email_address: null, messages: ["Email address can't be blank"] },
+        ],
+      },
+      message: "1: Email address can't be blank, not-an-address: Email address must be valid",
+      fieldErrors: { "not-an-address": ["Email address must be valid"], "1": ["Email address can't be blank"] },
+    },
+    {
+      name: "the enrollment API's index-keyed rows",
+      body: { errors: [{ index: 1, messages: ["email_address is invalid"] }] },
+      message: "1: email_address is invalid",
+      fieldErrors: { "1": ["email_address is invalid"] },
+    },
+    {
+      name: "a repeated address appends",
+      body: {
+        errors: [
+          { email_address: "annie@example.com", messages: ["Name is too long"] },
+          { email_address: "annie@example.com", messages: ["Email address is duplicated"] },
+        ],
+      },
+      message: "annie@example.com: Name is too long; Email address is duplicated",
+      fieldErrors: { "annie@example.com": ["Name is too long", "Email address is duplicated"] },
+    },
+    {
+      name: "a wrong-typed address falls through to position",
+      body: { errors: [{ email_address: 42, messages: ["Email address must be valid"] }] },
+      message: "0: Email address must be valid",
+      fieldErrors: { "0": ["Email address must be valid"] },
+    },
+    {
+      name: "a wrong-typed index beside a valid address is ignored",
+      body: { errors: [{ email_address: "annie@example.com", index: "1", messages: ["Name is too long"] }] },
+      message: "annie@example.com: Name is too long",
+      fieldErrors: { "annie@example.com": ["Name is too long"] },
+    },
+    {
+      name: "a boolean index is not an index",
+      body: { errors: [{ email_address: null, index: true, messages: ["Email address can't be blank"] }] },
+      message: "0: Email address can't be blank",
+      fieldErrors: { "0": ["Email address can't be blank"] },
+    },
+  ])("$name", ({ body, message, fieldErrors }) => {
+    const response = new Response(null, { status: 422, statusText: "Unprocessable Entity" });
+
+    const error = errorFromParsedBody(response, body);
+
+    expect(error.code).toBe("validation");
+    expect(error.httpStatus).toBe(422);
+    expect(error.message).toBe(message);
+    expect({ ...error.fieldErrors }).toEqual(fieldErrors);
+  });
+
+  // All-or-nothing: an "errors" array declares less than a field map does, so
+  // one element without a usable messages array means some other list.
+  it.each([
+    { name: "strings", body: { errors: ["nope"] } },
+    { name: "empty list", body: { errors: [] } },
+    { name: "row without messages", body: { errors: [{ email_address: "x" }] } },
+    { name: "row with empty messages", body: { errors: [{ email_address: "x", messages: [] }] } },
+    { name: "one malformed row poisons the list", body: { errors: [{ email_address: "x", messages: ["bad"] }, 42] } },
+  ])("leaves the slot absent for $name", ({ body }) => {
+    const response = new Response(null, { status: 422, statusText: "Unprocessable Entity" });
+
+    const error = errorFromParsedBody(response, body);
+
+    expect(error.code).toBe("validation");
+    expect(error.fieldErrors).toBeUndefined();
+  });
+});

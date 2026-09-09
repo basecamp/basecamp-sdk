@@ -1901,6 +1901,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/projects/{projectId}/client_enablement.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Enable clients on a project so client users can be added to it
+         *
+         *     A deliberate step separate from adding clients: it turns on the project's
+         *     client-facing surface and applies the default client visibility (the
+         *     timeline and most docked tools become client-visible; the card table,
+         *     Campfire, and Doors stay private). UpdateProjectClientAccess never enables
+         *     clients implicitly — enable first, then add. 403 unless the project can have
+         *     clients (the account supports clients and the project is a standard
+         *     project). Naturally idempotent: enabling an enabled project re-answers
+         *     `{"clients_enabled": true}`.
+         */
+        post: operations["EnableProjectClients"];
+        /**
+         * @description Disable clients on a project
+         *
+         *     403 while the project still has any client users — revoke them first with
+         *     UpdateProjectClientAccess. Naturally idempotent: disabling a project with
+         *     clients already off re-answers `{"clients_enabled": false}`.
+         */
+        delete: operations["DisableProjectClients"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/projects/{projectId}/gauge.json": {
         parameters: {
             query?: never;
@@ -1951,6 +1986,46 @@ export interface paths {
          */
         get: operations["ListProjectPeople"];
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/projects/{projectId}/people/client_users.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * @description Update project client access (grant/revoke/create client users)
+         *
+         *     The client-side counterpart to UpdateProjectAccess: `grant` adds existing
+         *     client users by id, `revoke` removes client users, and `create` invites
+         *     brand-new clients by email (`name` optional, defaulting to the address).
+         *     Only client users are eligible — a `grant` id belonging to a team member is
+         *     rejected (omitted from `granted`) rather than cross-graded, and `revoke` never removes a team
+         *     member. The response mirrors UpdateProjectAccess: `granted` and `revoked`
+         *     people, each with `client: true`.
+         *
+         *     Requires clients to be enabled on the project (EnableProjectClients);
+         *     otherwise 403. Invitations are all-or-nothing: an invalid `create` row
+         *     (including one with no email address) answers 422 with the rejected
+         *     addresses and nobody is invited; new addresses that would exceed the
+         *     account's user limit answer 429 and nobody is invited. Addresses already on
+         *     the account take no seat and a repeated address counts once.
+         *
+         *     The seat-limit 429 is a verdict, not throttling: it carries no Retry-After
+         *     and re-asking cannot change the answer, so this operation declares
+         *     `retryOn: [503]` and a 429 surfaces on the first attempt (status-mapped to
+         *     `rate_limit`, since the wire status is the only signal). Every other
+         *     operation retries on 429.
+         */
+        put: operations["UpdateProjectClientAccess"];
         post?: never;
         delete?: never;
         options?: never;
@@ -3969,6 +4044,23 @@ export interface components {
             replies_count?: number;
             replies_url?: string;
         };
+        /**
+         * @description One rejected `create` row: the address as submitted and the validation
+         *     messages for it. Always emitted; `null` when the row carried no address (the
+         *     row is still rejected, with a "can't be blank" message). `@required` models
+         *     the presence and the nullability is layered on in the OpenAPI
+         *     (smithy-build.json jsonAdd -> type: ["string","null"]), the Wormhole.color
+         *     treatment.
+         */
+        ClientInvitationError: {
+            email_address: string | null;
+            messages: string[];
+        };
+        /** @description The per-row 422 body: {"errors": [{"email_address": ..., "messages": [...]}]}. */
+        ClientInvitationErrors: {
+            errors: components["schemas"]["ClientInvitationError"][];
+        };
+        ClientInvitationValidationErrorResponseContent: components["schemas"]["ClientInvitationErrors"];
         ClientReply: {
             /** Format: int64 */
             id: number;
@@ -4131,6 +4223,20 @@ export interface components {
             command_url?: string;
         };
         CreateChatbotResponseContent: components["schemas"]["Chatbot"];
+        /**
+         * @description A new client to invite. Unlike CreatePersonRequest, only the address is
+         *     required: bc3 defaults `name` to the email address when omitted.
+         */
+        CreateClientRequest: {
+            /** Format: password */
+            email_address: string;
+            /** Format: password */
+            name?: string;
+            /** Format: password */
+            title?: string;
+            /** Format: password */
+            company_name?: string;
+        };
         CreateCloudFileRequestContent: {
             url: string;
             /**
@@ -4439,6 +4545,7 @@ export interface components {
         };
         CreateWormholeResponseContent: components["schemas"]["Wormhole"];
         DisableCardColumnOnHoldResponseContent: components["schemas"]["CardColumn"];
+        DisableProjectClientsResponseContent: components["schemas"]["ProjectClientEnablement"];
         DockItem: {
             /** Format: int64 */
             id: number;
@@ -4537,6 +4644,7 @@ export interface components {
             out_of_office: components["schemas"]["OutOfOfficePayload"];
         };
         EnableOutOfOfficeResponseContent: components["schemas"]["OutOfOffice"];
+        EnableProjectClientsResponseContent: components["schemas"]["ProjectClientEnablement"];
         Event: {
             /** Format: int64 */
             id: number;
@@ -5500,6 +5608,10 @@ export interface components {
         ProjectAccessResult: {
             granted?: components["schemas"]["Person"][];
             revoked?: components["schemas"]["Person"][];
+        };
+        /** @description The project's client-enablement state after a toggle. */
+        ProjectClientEnablement: {
+            clients_enabled: boolean;
         };
         ProjectConstruction: {
             /** Format: int64 */
@@ -7171,6 +7283,15 @@ export interface components {
             create?: components["schemas"]["CreatePersonRequest"][];
         };
         UpdateProjectAccessResponseContent: components["schemas"]["ProjectAccessResult"];
+        UpdateProjectClientAccessRequestContent: {
+            /** @description Existing client people IDs to add to the project. */
+            grant?: number[];
+            /** @description Client people IDs to remove from the project. */
+            revoke?: number[];
+            /** @description New clients to invite by email. */
+            create?: components["schemas"]["CreateClientRequest"][];
+        };
+        UpdateProjectClientAccessResponseContent: components["schemas"]["ProjectAccessResult"];
         UpdateProjectRequestContent: {
             name: string;
             description?: string;
@@ -16005,6 +16126,140 @@ export interface operations {
             };
         };
     };
+    EnableProjectClients: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description EnableProjectClients 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnableProjectClientsResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    DisableProjectClients: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description DisableProjectClients 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DisableProjectClientsResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
     ToggleGauge: {
         parameters: {
             query?: never;
@@ -16245,6 +16500,86 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    UpdateProjectClientAccess: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["UpdateProjectClientAccessRequestContent"];
+            };
+        };
+        responses: {
+            /** @description UpdateProjectClientAccess 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpdateProjectClientAccessResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description ClientInvitationValidationError 422 response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClientInvitationValidationErrorResponseContent"];
                 };
             };
             /** @description RateLimitError 429 response */
