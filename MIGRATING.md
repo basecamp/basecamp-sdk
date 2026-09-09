@@ -11,6 +11,70 @@ what wrong behaviour you get if you ignore one. This file is that half.
 
 ---
 
+# v0.17.0
+
+### All SDKs: project client access and client enablement (#847)
+
+The People service gains `UpdateProjectClientAccess`, `EnableProjectClients`,
+and `DisableProjectClients`, the client-side counterparts of
+`UpdateProjectAccess`. Go's generated client interfaces (`ClientInterface` and
+`ClientWithResponsesInterface`) gain those three operations plus
+`UpdateProjectClientAccessWithBody` and the `...WithResponse` forms;
+implementations of those interfaces must add the methods.
+
+Two contract traits differ from `UpdateProjectAccess`, and both change what
+your error handling sees:
+
+- **The seat-limit 429 is not retried.** `UpdateProjectClientAccess` declares
+  `retry_on: [503]` where every other operation declares `[429, 503]`,
+  because its 429 (new distinct addresses that would exceed the account's
+  user limit) carries no `Retry-After` and re-asking cannot change the
+  answer. The error surfaces on the **first** attempt, still as the
+  status-mapped rate-limit error (`rate_limit` code, HTTP 429) in every SDK.
+  A retry wrapper of your own that treats every rate-limit error as
+  transient will loop on this one; key on the operation, not the code.
+- **The row-keyed 422 now populates the field-error slot.** An invalid
+  `create` row answers `{"errors": [{"email_address": ..., "messages":
+  [...]}]}`, which every SDK previously dropped as a bare `Request failed
+  (HTTP 422)`. The rows now reach the shared field-error slot — Go
+  `Error.FieldErrors`, TypeScript `fieldErrors`, Ruby and Python
+  `field_errors`, Kotlin and Swift `fieldErrors` — keyed by each row's
+  `email_address`, else its integer `index`, else its position in the list,
+  and the composed message reads `not-an-address: Email address must be
+  valid`. Code that matched on the old bare message must update, and code
+  that assumed the slot's keys are always field names can now see addresses
+  and decimal indexes there. Detection is by shape, so any endpoint that
+  renders the same row list gets the same treatment.
+
+### Go: the generated `AuthTransport` attaches the credential only to the API origin
+
+`generated.AuthTransport` used to set `Authorization` inside `RoundTrip` on
+every hop, so a redirect from the API origin to another host carried the
+bearer token with it. It now consults a new `Origin OriginProvider` field on
+every round trip and attaches the credential only when the request's scheme
+and host match it.
+
+- `WithAuthTransport` wires `Origin` to the client's `Server`, so a later
+  `WithBaseURL` is honoured. It also stops replacing a caller-supplied
+  `http.Client` wholesale: the client is cloned, its `CheckRedirect`,
+  `Timeout`, and `Jar` survive, and one without a `CheckRedirect` gets the
+  same strict same-origin `Authorization` strip `pkg/basecamp` already
+  installs.
+- Direct constructors — `&generated.AuthTransport{TokenProvider: ...,
+  Base: ...}` — must set `Origin`, typically
+  `generated.StaticOrigin(baseURL)`. A nil `Origin` attaches the credential
+  to **no** request.
+
+The hand-written `basecamp.Client` (`pkg/basecamp`) has its own bearer
+strategy and same-origin redirect strip and is unchanged.
+
+**Wrong behaviour you get if you ignore it:** a hand-built `AuthTransport`
+without `Origin` sends every request unauthenticated and every call fails
+with 401 — silently correct-looking construction, uniformly wrong result. A
+retry wrapper that re-asks `UpdateProjectClientAccess` on `rate_limit` never
+gets a different answer; a 422 handler that string-matched `Request failed
+(HTTP 422)` stops matching.
+
 # v0.16.0
 
 ### All SDKs: account-wide to-do list template library
