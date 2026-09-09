@@ -122,6 +122,7 @@ class GaugesServiceTest {
         "bookmark_url": "https://3.basecampapi.com/$accountId/my/bookmarks/BAh7CEkiCGdpZAY6BkVU--abcd1234.json",
         "subscription_url": "https://3.basecampapi.com/$accountId/buckets/$projectId/recordings/$id/subscription.json",
         "comments_count": 2,
+        "comment_count": 2,
         "comments_url": "https://3.basecampapi.com/$accountId/buckets/$projectId/recordings/$id/comments.json",
         "boosts_count": 3,
         "boosts_url": "https://3.basecampapi.com/$accountId/buckets/$projectId/recordings/$id/boosts.json",
@@ -654,8 +655,11 @@ class GaugesServiceTest {
         client.close()
     }
 
+    // bc3's needle_params opens with params.require(:gauge_needle), so a body
+    // without the wrapper is a 400, not a no-op. The wrapper is required and
+    // goes on the wire even when the payload inside it is empty.
     @Test
-    fun updateGaugeNeedleOmitsTheWrapperEntirelyWhenNoAttributesAreGiven() = runTest {
+    fun updateGaugeNeedleAlwaysSendsTheWrapperEvenWhenThePayloadIsEmpty() = runTest {
         var capturedBody: String? = null
 
         val client = mockClient { request ->
@@ -667,10 +671,11 @@ class GaugesServiceTest {
             )
         }
 
-        client.forAccount(accountId).gauges.updateGaugeNeedle(needleId, UpdateGaugeNeedleBody())
+        client.forAccount(accountId).gauges.updateGaugeNeedle(needleId, UpdateGaugeNeedleBody(gaugeNeedle = buildJsonObject {}))
 
         val body = json.parseToJsonElement(capturedBody!!).jsonObject
-        assertTrue(body.isEmpty(), "a null gaugeNeedle sends no wrapper at all; got $capturedBody")
+        assertEquals(setOf("gauge_needle"), body.keys, "the wrapper must be present; got $capturedBody")
+        assertTrue(body["gauge_needle"]!!.jsonObject.isEmpty())
 
         client.close()
     }

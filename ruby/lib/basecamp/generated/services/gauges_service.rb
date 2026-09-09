@@ -18,9 +18,9 @@ module Basecamp
 
       # Update a gauge needle's description. Position and color are immutable.
       # @param needle_id [Integer] needle id ID
-      # @param gauge_needle [Hash, nil] gauge needle
+      # @param gauge_needle [Hash] gauge needle
       # @return [Hash] response data
-      def update_gauge_needle(needle_id:, gauge_needle: nil)
+      def update_gauge_needle(needle_id:, gauge_needle:)
         with_operation(service: "gauges", operation: "update_gauge_needle", is_mutation: true, resource_id: needle_id) do
           http_put("/gauge_needles/#{needle_id}", body: compact_params(gauge_needle: gauge_needle)).json
         end
@@ -62,7 +62,11 @@ module Basecamp
       # Create a gauge needle (progress update) for a project
       # @param project_id [Integer] project id ID
       # @param gauge_needle [Hash] gauge needle
-      # @param notify [String, nil] Who to notify: "everyone", "working_on", "custom", or omit for nobody
+      # @param notify [String, nil] Who to notify: "everyone", "default" (the project's existing
+      #   subscribers), or "custom" (the people in `subscriptions`). Omit for
+      #   nobody: bc3 defaults `notify` to "custom", which with no `subscriptions`
+      #   notifies no one, and any unrecognized value (`Subscribers#find_subscribers`
+      #   accepts exactly these three) falls through to nobody as well.
       # @param subscriptions [Array, nil] Array of people IDs to notify (only used when notify is "custom")
       # @return [Hash] response data
       def create_gauge_needle(project_id:, gauge_needle:, notify: nil, subscriptions: nil)

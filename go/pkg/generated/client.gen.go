@@ -744,7 +744,11 @@ type CreateFolderResponseContent = FolderWithProjects
 type CreateGaugeNeedleRequestContent struct {
 	GaugeNeedle GaugeNeedlePayload `json:"gauge_needle"`
 
-	// Notify Who to notify: "everyone", "working_on", "custom", or omit for nobody
+	// Notify Who to notify: "everyone", "default" (the project's existing
+	// subscribers), or "custom" (the people in `subscriptions`). Omit for
+	// nobody: bc3 defaults `notify` to "custom", which with no `subscriptions`
+	// notifies no one, and any unrecognized value (`Subscribers#find_subscribers`
+	// accepts exactly these three) falls through to nobody as well.
 	Notify *string `json:"notify,omitempty"`
 
 	// Subscriptions Array of people IDs to notify (only used when notify is "custom")
@@ -1467,23 +1471,35 @@ type Gauge struct {
 	InheritsStatus         *bool                `json:"inherits_status,omitempty"`
 	LastNeedleColor        *string              `json:"last_needle_color,omitempty"`
 	LastNeedlePosition     *int32               `json:"last_needle_position,omitempty"`
-	PreviousNeedlePosition *int32               `json:"previous_needle_position,omitempty"`
-	Status                 *string              `json:"status,omitempty"`
-	Title                  *string              `json:"title,omitempty"`
-	Type                   *string              `json:"type,omitempty"`
-	UpdatedAt              time.Time            `json:"updated_at"`
-	Url                    *string              `json:"url,omitempty"`
-	VisibleToClients       *bool                `json:"visible_to_clients,omitempty"`
+
+	// PreviousNeedlePosition Emitted alongside the other needle keys (so optional, like them), and
+	// JSON `null` for a gauge whose only needle is its first — there is no
+	// previous position yet. The enhance pass layers `nullable: true` onto the
+	// OpenAPI so the static SDKs type the value as nullable rather than
+	// flattening the first needle's null into a real 0.
+	PreviousNeedlePosition *int32    `json:"previous_needle_position,omitempty"`
+	Status                 *string   `json:"status,omitempty"`
+	Title                  *string   `json:"title,omitempty"`
+	Type                   *string   `json:"type,omitempty"`
+	UpdatedAt              time.Time `json:"updated_at"`
+	Url                    *string   `json:"url,omitempty"`
+	VisibleToClients       *bool     `json:"visible_to_clients,omitempty"`
 }
 
 // GaugeNeedle defines model for GaugeNeedle.
 type GaugeNeedle struct {
-	AppUrl                 *string              `json:"app_url,omitempty"`
-	BookmarkUrl            *string              `json:"bookmark_url,omitempty"`
-	BoostsCount            *int32               `json:"boosts_count,omitempty"`
-	BoostsUrl              *string              `json:"boosts_url,omitempty"`
-	Bucket                 *RecordingBucket     `json:"bucket,omitempty"`
-	Color                  *string              `json:"color,omitempty"`
+	AppUrl      *string          `json:"app_url,omitempty"`
+	BookmarkUrl *string          `json:"bookmark_url,omitempty"`
+	BoostsCount *int32           `json:"boosts_count,omitempty"`
+	BoostsUrl   *string          `json:"boosts_url,omitempty"`
+	Bucket      *RecordingBucket `json:"bucket,omitempty"`
+	Color       *string          `json:"color,omitempty"`
+
+	// CommentCount Comment count of the needle: the singular branch-partial key that
+	// gauges/needles/_needle.json.jbuilder emits unconditionally, distinct from
+	// the envelope's plural `comments_count`, which a needle also carries. The
+	// same pair SearchResult models.
+	CommentCount           int32                `json:"comment_count"`
 	CommentsCount          *int32               `json:"comments_count,omitempty"`
 	CommentsUrl            *string              `json:"comments_url,omitempty"`
 	CreatedAt              time.Time            `json:"created_at"`
@@ -4133,7 +4149,7 @@ type UpdateFolderResponseContent = FolderWithProjects
 
 // UpdateGaugeNeedleRequestContent defines model for UpdateGaugeNeedleRequestContent.
 type UpdateGaugeNeedleRequestContent struct {
-	GaugeNeedle *GaugeNeedleUpdatePayload `json:"gauge_needle,omitempty"`
+	GaugeNeedle GaugeNeedleUpdatePayload `json:"gauge_needle"`
 }
 
 // UpdateGaugeNeedleResponseContent defines model for UpdateGaugeNeedleResponseContent.
@@ -32415,6 +32431,7 @@ type ToggleGaugeResponse struct {
 	HTTPResponse *http.Response
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
 	JSON429      *RateLimitErrorResponseContent
 	JSON500      *InternalServerErrorResponseContent
 }
@@ -46874,6 +46891,12 @@ func ParseToggleGaugeResponse(rsp *http.Response) (*ToggleGaugeResponse, error) 
 		var dest ForbiddenErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
 			response.JSON403 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON404 = &dest
 		}
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:

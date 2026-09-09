@@ -48,7 +48,7 @@ class GaugesService(client: AccountClient) : BaseService(client) {
         )
         return request(info, {
             httpPut("/gauge_needles/${needleId}", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
-                body.gaugeNeedle?.let { put("gauge_needle", it) }
+                put("gauge_needle", body.gaugeNeedle)
             }), operationName = info.operation)
         }) { body ->
             json.decodeFromString<JsonElement>(body)

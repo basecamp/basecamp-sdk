@@ -10606,7 +10606,11 @@ structure CreateGaugeNeedleInput {
   @required
   gauge_needle: GaugeNeedlePayload
 
-  /// Who to notify: "everyone", "working_on", "custom", or omit for nobody
+  /// Who to notify: "everyone", "default" (the project's existing
+  /// subscribers), or "custom" (the people in `subscriptions`). Omit for
+  /// nobody: bc3 defaults `notify` to "custom", which with no `subscriptions`
+  /// notifies no one, and any unrecognized value (`Subscribers#find_subscribers`
+  /// accepts exactly these three) falls through to nobody as well.
   notify: String
 
   /// Array of people IDs to notify (only used when notify is "custom")
@@ -10650,6 +10654,10 @@ structure UpdateGaugeNeedleInput {
   @httpLabel
   needleId: GaugeNeedleId
 
+  /// Required by bc3, not just by convention: `Gauges::NeedlesController#needle_params`
+  /// opens with `params.require(:gauge_needle)`, so a body without the wrapper
+  /// is a 400, not a no-op update. Same rule as CreateGaugeNeedle.
+  @required
   gauge_needle: GaugeNeedleUpdatePayload
 }
 
@@ -10694,7 +10702,7 @@ structure DestroyGaugeNeedleOutput {}
 operation ToggleGauge {
   input: ToggleGaugeInput
   output: ToggleGaugeOutput
-  errors: [ForbiddenError, UnauthorizedError, RateLimitError, InternalServerError]
+  errors: [NotFoundError, ForbiddenError, UnauthorizedError, RateLimitError, InternalServerError]
 }
 
 structure ToggleGaugeInput {
@@ -10755,6 +10763,11 @@ structure Gauge {
   enabled: Boolean
   last_needle_color: String
   last_needle_position: Integer
+  /// Emitted alongside the other needle keys (so optional, like them), and
+  /// JSON `null` for a gauge whose only needle is its first — there is no
+  /// previous position yet. The enhance pass layers `nullable: true` onto the
+  /// OpenAPI so the static SDKs type the value as nullable rather than
+  /// flattening the first needle's null into a real 0.
   previous_needle_position: Integer
 }
 
@@ -10786,6 +10799,12 @@ structure GaugeNeedle {
   description_attachments: RichTextAttachmentList
   color: String
   position: Integer
+  /// Comment count of the needle: the singular branch-partial key that
+  /// gauges/needles/_needle.json.jbuilder emits unconditionally, distinct from
+  /// the envelope's plural `comments_count`, which a needle also carries. The
+  /// same pair SearchResult models.
+  @required
+  comment_count: Integer
 }
 
 // =============================================================================

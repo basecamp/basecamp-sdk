@@ -20,7 +20,7 @@ import { Errors } from "../../errors.js";
  */
 export interface UpdateGaugeNeedleGaugeRequest {
   /** Gauge needle */
-  gaugeNeedle?: components["schemas"]["GaugeNeedleUpdatePayload"];
+  gaugeNeedle: components["schemas"]["GaugeNeedleUpdatePayload"];
 }
 
 /**
@@ -45,7 +45,11 @@ export interface ListGaugeNeedlesGaugeOptions extends PaginationOptions {
 export interface CreateGaugeNeedleGaugeRequest {
   /** Gauge needle */
   gaugeNeedle: components["schemas"]["GaugeNeedlePayload"];
-  /** Who to notify: "everyone", "working_on", "custom", or omit for nobody */
+  /** Who to notify: "everyone", "default" (the project's existing
+subscribers), or "custom" (the people in `subscriptions`). Omit for
+nobody: bc3 defaults `notify` to "custom", which with no `subscriptions`
+notifies no one, and any unrecognized value (`Subscribers#find_subscribers`
+accepts exactly these three) falls through to nobody as well. */
   notify?: string;
   /** Array of people IDs to notify (only used when notify is "custom") */
   subscriptions?: number[];
@@ -110,10 +114,13 @@ export class GaugesService extends BaseService {
    *
    * @example
    * ```ts
-   * const result = await client.gauges.updateGaugeNeedle(123, { });
+   * const result = await client.gauges.updateGaugeNeedle(123, { gaugeNeedle: {  } });
    * ```
    */
   async updateGaugeNeedle(needleId: number, req: UpdateGaugeNeedleGaugeRequest): Promise<components["schemas"]["UpdateGaugeNeedleResponseContent"]> {
+    if (!req.gaugeNeedle) {
+      throw Errors.validation("Gauge needle is required");
+    }
     const response = await this.request(
       {
         service: "Gauges",

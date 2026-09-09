@@ -27,17 +27,22 @@ type Gauge struct {
 	Status                 string                `json:"status,omitempty"`
 	LastNeedleColor        string                `json:"last_needle_color,omitempty"`
 	LastNeedlePosition     int32                 `json:"last_needle_position,omitempty"`
-	PreviousNeedlePosition int32                 `json:"previous_needle_position,omitempty"`
-	InheritsStatus         bool                  `json:"inherits_status,omitempty"`
-	VisibleToClients       bool                  `json:"visible_to_clients,omitempty"`
-	Type                   string                `json:"type,omitempty"`
-	URL                    string                `json:"url,omitempty"`
-	AppURL                 string                `json:"app_url,omitempty"`
-	BookmarkURL            string                `json:"bookmark_url,omitempty"`
-	Creator                *Person               `json:"creator,omitempty"`
-	Bucket                 *Bucket               `json:"bucket,omitempty"`
-	CreatedAt              time.Time             `json:"created_at"`
-	UpdatedAt              time.Time             `json:"updated_at"`
+	// PreviousNeedlePosition is the position the needle moved from. BC3 emits
+	// it with the other needle keys whenever the gauge has needles, and as JSON
+	// null for a gauge whose only needle is its first — so it is a pointer: nil
+	// is "no previous position", distinct from a genuine move from 0, which a
+	// plain int32 could not tell apart from the null.
+	PreviousNeedlePosition *int32    `json:"previous_needle_position,omitempty"`
+	InheritsStatus         bool      `json:"inherits_status,omitempty"`
+	VisibleToClients       bool      `json:"visible_to_clients,omitempty"`
+	Type                   string    `json:"type,omitempty"`
+	URL                    string    `json:"url,omitempty"`
+	AppURL                 string    `json:"app_url,omitempty"`
+	BookmarkURL            string    `json:"bookmark_url,omitempty"`
+	Creator                *Person   `json:"creator,omitempty"`
+	Bucket                 *Bucket   `json:"bucket,omitempty"`
+	CreatedAt              time.Time `json:"created_at"`
+	UpdatedAt              time.Time `json:"updated_at"`
 }
 
 // GaugeNeedle represents a single needle (progress update) on a gauge.
@@ -59,19 +64,23 @@ type GaugeNeedle struct {
 	InheritsStatus         bool                 `json:"inherits_status,omitempty"`
 	VisibleToClients       bool                 `json:"visible_to_clients,omitempty"`
 	CommentsCount          int32                `json:"comments_count,omitempty"`
-	BoostsCount            int32                `json:"boosts_count,omitempty"`
-	Type                   string               `json:"type,omitempty"`
-	URL                    string               `json:"url,omitempty"`
-	AppURL                 string               `json:"app_url,omitempty"`
-	BookmarkURL            string               `json:"bookmark_url,omitempty"`
-	CommentsURL            string               `json:"comments_url,omitempty"`
-	BoostsURL              string               `json:"boosts_url,omitempty"`
-	SubscriptionURL        string               `json:"subscription_url,omitempty"`
-	Creator                *Person              `json:"creator,omitempty"`
-	Bucket                 *Bucket              `json:"bucket,omitempty"`
-	Parent                 *Parent              `json:"parent,omitempty"`
-	CreatedAt              time.Time            `json:"created_at"`
-	UpdatedAt              time.Time            `json:"updated_at"`
+	// CommentCount is the singular key the needle partial emits unconditionally,
+	// distinct from the envelope's plural CommentsCount, which a needle also
+	// carries. @required, so no omitempty.
+	CommentCount    int32     `json:"comment_count"`
+	BoostsCount     int32     `json:"boosts_count,omitempty"`
+	Type            string    `json:"type,omitempty"`
+	URL             string    `json:"url,omitempty"`
+	AppURL          string    `json:"app_url,omitempty"`
+	BookmarkURL     string    `json:"bookmark_url,omitempty"`
+	CommentsURL     string    `json:"comments_url,omitempty"`
+	BoostsURL       string    `json:"boosts_url,omitempty"`
+	SubscriptionURL string    `json:"subscription_url,omitempty"`
+	Creator         *Person   `json:"creator,omitempty"`
+	Bucket          *Bucket   `json:"bucket,omitempty"`
+	Parent          *Parent   `json:"parent,omitempty"`
+	CreatedAt       time.Time `json:"created_at"`
+	UpdatedAt       time.Time `json:"updated_at"`
 }
 
 // CreateGaugeNeedleRequest specifies parameters for creating a gauge needle.
@@ -82,7 +91,10 @@ type CreateGaugeNeedleRequest struct {
 	Color string `json:"color,omitempty"`
 	// Description is rich text (HTML) description of the progress update.
 	Description string `json:"description,omitempty"`
-	// Notify specifies who to notify: "everyone", "working_on", "custom", or omit for nobody.
+	// Notify specifies who to notify: "everyone", "default" (the project's
+	// existing subscribers), or "custom" (the people in Subscriptions). Omit for
+	// nobody: BC3 defaults notify to "custom", which with no subscriptions
+	// notifies no one, and any unrecognized value falls through to nobody too.
 	Notify string `json:"notify,omitempty"`
 	// Subscriptions is an array of people IDs to notify (only used when Notify is "custom").
 	Subscriptions []int64 `json:"subscriptions,omitempty"`
@@ -408,7 +420,7 @@ func (s *GaugesService) UpdateNeedle(ctx context.Context, needleID int64, req *U
 	}
 
 	body := generated.UpdateGaugeNeedleJSONRequestBody{
-		GaugeNeedle: &generated.GaugeNeedleUpdatePayload{
+		GaugeNeedle: generated.GaugeNeedleUpdatePayload{
 			Description: req.Description,
 		},
 	}

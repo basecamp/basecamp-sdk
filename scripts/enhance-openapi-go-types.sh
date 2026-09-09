@@ -434,6 +434,15 @@ walk(
 |
 .components.schemas.UpcomingAssignable.properties.starts_on += { "nullable": true }
 |
+# Fifth-h pass: Gauge.previous_needle_position is nullable-when-present.
+# app/views/api/gauges/_gauge.json.jbuilder emits it with the other needle keys
+# whenever the gauge has needles, and a gauge whose only needle is its first
+# has no previous position, so the value is JSON null (gauges.md shows exactly
+# that). Optional (not @required, like its siblings) and nullable, so the
+# static SDKs type it `integer | null | undefined` and Go takes the optional
+# pointer, whose nil is distinguishable from a genuine "moved from 0".
+.components.schemas.Gauge.properties.previous_needle_position += { "nullable": true }
+|
 # Sixth pass: Person.id → types.FlexibleInt64
 # The API sometimes returns person IDs as JSON strings (e.g. in notification
 # responses); Go rejects those into int64 fields. Scoped to Person schema only.

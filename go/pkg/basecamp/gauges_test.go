@@ -80,6 +80,46 @@ func TestGaugeNeedle_DecodesDescriptionAttachments(t *testing.T) {
 	}
 }
 
+// bc3's needle partial emits the singular comment_count unconditionally,
+// next to the envelope's plural comments_count; before #731 the wrapper had
+// no field for it and the value was dropped on decode.
+func TestGaugeNeedle_DecodesTheSingularCommentCount(t *testing.T) {
+	body := []byte(`{"id": 42, "type": "Gauge::Needle", "comments_count": 2, "comment_count": 5, "description_attachments": []}`)
+
+	var needle GaugeNeedle
+	if err := json.Unmarshal(body, &needle); err != nil {
+		t.Fatalf("failed to unmarshal GaugeNeedle: %v", err)
+	}
+	if needle.CommentCount != 5 {
+		t.Errorf("expected CommentCount 5 from the singular key, got %d", needle.CommentCount)
+	}
+	if needle.CommentsCount != 2 {
+		t.Errorf("expected CommentsCount 2 from the envelope key, got %d", needle.CommentsCount)
+	}
+}
+
+// A gauge's first needle has no previous position, and bc3 sends the key as
+// JSON null. A plain int32 decoded that to 0 — the same value as a real move
+// from position 0 — so the field is a pointer: nil for the null, a non-nil 0
+// for the genuine zero.
+func TestGauge_PreviousNeedlePositionNullIsNotZero(t *testing.T) {
+	var first Gauge
+	if err := json.Unmarshal([]byte(`{"id": 7, "type": "Gauge", "last_needle_position": 30, "previous_needle_position": null}`), &first); err != nil {
+		t.Fatalf("failed to unmarshal first-needle gauge: %v", err)
+	}
+	if first.PreviousNeedlePosition != nil {
+		t.Errorf("expected nil PreviousNeedlePosition for a null, got %d", *first.PreviousNeedlePosition)
+	}
+
+	var fromZero Gauge
+	if err := json.Unmarshal([]byte(`{"id": 7, "type": "Gauge", "last_needle_position": 30, "previous_needle_position": 0}`), &fromZero); err != nil {
+		t.Fatalf("failed to unmarshal moved-from-zero gauge: %v", err)
+	}
+	if fromZero.PreviousNeedlePosition == nil || *fromZero.PreviousNeedlePosition != 0 {
+		t.Errorf("expected a non-nil 0 PreviousNeedlePosition for a wire 0, got %v", fromZero.PreviousNeedlePosition)
+	}
+}
+
 // TestGauge_DescriptionAttachments_PresenceContract pins Gauge's optional
 // array: an absent key stays nil, a server-sent [] decodes to a non-nil
 // zero-length slice.

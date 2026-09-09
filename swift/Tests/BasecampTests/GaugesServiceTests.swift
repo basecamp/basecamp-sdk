@@ -102,6 +102,7 @@ final class GaugesServiceTests: XCTestCase {
             "subscription_url":
                 "https://3.basecampapi.com/999999999/buckets/\(bucketId)/recordings/\(id)/subscription.json",
             "comments_count": 2,
+            "comment_count": 2,
             "comments_url":
                 "https://3.basecampapi.com/999999999/buckets/\(bucketId)/recordings/\(id)/comments.json",
             "boosts_count": 3,
@@ -308,6 +309,8 @@ final class GaugesServiceTests: XCTestCase {
         XCTAssertEqual(needle.color, "green")
         XCTAssertEqual(needle.position, 72)
         XCTAssertEqual(needle.commentsCount, 2)
+        // The singular branch-partial key, distinct from the envelope's plural.
+        XCTAssertEqual(needle.commentCount, 2)
         XCTAssertEqual(needle.boostsCount, 3)
         XCTAssertNotNil(needle.subscriptionUrl)
         XCTAssertNotNil(needle.commentsUrl)

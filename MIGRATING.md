@@ -22,6 +22,48 @@ service surface, retry, pagination, hooks, structured errors, OAuth, and
 webhook verification; ETag caching and the §23 Event Feed connector are
 follow-ups. See [`rust/basecamp-sdk/README.md`](rust/basecamp-sdk/README.md).
 
+### Gauges: `UpdateGaugeNeedle` requires its `gauge_needle` wrapper, and Go's `Gauge.PreviousNeedlePosition` is a pointer (#731)
+
+Five drifts between the gauges spec and what bc3 serves, in one PR. Two are
+source-breaking.
+
+- **`gauge_needle` is required on `UpdateGaugeNeedle`.** bc3's
+  `needle_params` opens with `params.require(:gauge_needle)`, so a body
+  without the wrapper was always a 400, never a no-op — the spec just let you
+  send one. TypeScript's `updateGaugeNeedle(id, { gaugeNeedle })` now types
+  the member required (and refuses a missing one before the wire, as a
+  `validation` error); Python's `update_gauge_needle(needle_id=, gauge_needle=)`
+  and Ruby's `update_gauge_needle(needle_id:, gauge_needle:)` drop the `None`
+  / `nil` default; Kotlin's `UpdateGaugeNeedleBody(gaugeNeedle)` and Swift's
+  `UpdateGaugeNeedleRequest(gaugeNeedle:)` take a non-optional payload. A
+  call that omitted it (or passed `nil`) stops compiling, or raises before
+  the request, instead of getting the 400 it always got.
+- **Go: `Gauge.PreviousNeedlePosition` is `*int32`, not `int32`.** bc3 emits
+  the key as JSON `null` for a gauge whose only needle is its first, and the
+  value type decoded that to `0` — the same value as a genuine move from
+  position 0. `nil` now means "no previous position". Value-receiver methods
+  do not help here; dereference after a nil check:
+
+  ```go
+  // Before
+  moved := g.PreviousNeedlePosition != g.LastNeedlePosition
+
+  // After
+  moved := g.PreviousNeedlePosition != nil && *g.PreviousNeedlePosition != g.LastNeedlePosition
+  ```
+
+  The OpenAPI member is `nullable: true` now, so TypeScript types it
+  `number | null | undefined`; Kotlin and Swift already typed it optional.
+
+Not breaking, in the same PR: `GaugeNeedle` gains the singular
+`comment_count` bc3 emits unconditionally (Go `CommentCount`, Swift
+`commentCount`; required, so a Swift or Go struct literal you build by hand
+needs it), distinct from the envelope's plural `comments_count`;
+`ToggleGauge` declares `NotFoundError` for an unknown project; and the
+`notify` documentation on `CreateGaugeNeedle` names the values bc3 actually
+accepts — `everyone`, `default`, `custom` — where it used to name a
+`working_on` that silently notified nobody.
+
 ---
 
 # v0.18.0
