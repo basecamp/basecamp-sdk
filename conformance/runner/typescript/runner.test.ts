@@ -1533,20 +1533,30 @@ function checkAssertions(
       }
 
       case "requestBody": {
-        const key = assertion.path!;
+        // `path` names one key; absent, `expected` is the WHOLE body, compared
+        // exactly, so a key the SDK added fails rather than slipping past.
+        const key = assertion.path;
         const idx = assertion.index ?? 0;
+        const what = key === undefined ? "request body" : `request body key ${key}`;
         const bodies = tracker.requestBodies();
         const i = resolveRequestIndex(bodies.length, idx);
         if (i === undefined) {
           throw new Error(
-            `[${tc.name}] expected request body key ${key} on request index ${idx}, but only ${bodies.length} requests were recorded`,
+            `[${tc.name}] expected ${what} on request index ${idx}, but only ${bodies.length} requests were recorded`,
           );
         }
         const body = bodies[i];
         if (body === undefined) {
           throw new Error(
-            `[${tc.name}] expected request body key ${key} on request index ${idx}, but the request had no JSON body`,
+            `[${tc.name}] expected ${what} on request index ${idx}, but the request had no JSON body`,
           );
+        }
+        if (key === undefined) {
+          expect(
+            body,
+            `[${tc.name}] expected request body on request index ${idx} to equal ${JSON.stringify(assertion.expected)} exactly, got ${JSON.stringify(body)}`,
+          ).toStrictEqual(assertion.expected);
+          break;
         }
         const { present, value } = lookupBodyPath(body, key);
         if (!present) {

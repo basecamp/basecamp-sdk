@@ -2744,7 +2744,7 @@ undocumented:
 | `errorRaised` | Operation failed, without naming how — the code-agnostic inverse of `noError`. For cases the SDKs refuse by *different* mechanisms (a hand-written guard raises `api_error`; a model decoder raises its own language's decode failure), so no single `errorType` is assertable and what all six agree on is that the call fails at all. Declaring it also tells the decoder-backed runners that a decode failure is the behaviour under test rather than a stale fixture body, which switches the stop-on-mismatch policy off for that case — so every fixture declaring it must have a non-`errorRaised` control sibling whose decoded body differs in exactly one field, enforced by `conformance/check_kill_case_controls.py`. |
 | `requestPath` | URL path of the outgoing request |
 | `requestMethod` | HTTP method of the outgoing request |
-| `requestBody` | Value at `path` (dot-notation key) inside the captured JSON request body. A request that sent no JSON body fails, as does a body that omits the key. |
+| `requestBody` | Value at `path` (dot-notation key) inside the captured JSON request body — or, with `path` omitted, the **whole** body: `expected` must equal it exactly, so a key the SDK added is a failure, not an unnoticed extra. A request that sent no JSON body fails in either form, as does a body that omits the named key. |
 | `requestBodyAbsent` | The `path` key is **not** present in the captured JSON request body — the assertion that pins body compaction (§18) and, for a merge-semantic endpoint, that an unaddressed field is left off the wire rather than echoed back. A request with no JSON body at all satisfies it. |
 | `errorCode` | Error code in structured error |
 | `errorMessage` | Error message text |
@@ -2761,6 +2761,14 @@ The per-request assertions — `headerPresent`, `headerAbsent`, `headerInjected`
 optional `index` naming which recorded request to inspect (0-based; negative
 counts from the end, so `-1` is the last request). It defaults to `0`, and an
 index past the number of recorded requests fails rather than passing vacuously.
+
+`path` is optional for `requestBody` alone, because its path-less form has a
+meaning (the whole body, above). Every other path-taking type — `errorField`,
+`headerAbsent`, `headerInjected`, `headerPresent`, `headerValue`,
+`requestBodyAbsent`, `responseBody`, `responseMeta` — requires it, and
+`conformance/schema.json` rejects a fixture that omits it, so the form reaches
+`make conformance-fixtures-check` with a message naming the field rather than a
+runner that cannot execute it (#587).
 
 ### Test Categories and Owning Sections
 

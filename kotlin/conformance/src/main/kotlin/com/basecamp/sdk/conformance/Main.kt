@@ -719,15 +719,23 @@ private fun runTest(tc: TestCase): TestResult {
             }
 
             "requestBody" -> {
+                // `path` names one key; empty, `expected` is the WHOLE body,
+                // compared exactly, so a key the SDK added fails rather than
+                // slipping past.
                 val requestIndex = assertion.index ?: 0
                 val key = assertion.path
+                val label = if (key.isEmpty()) "requestBody[$requestIndex]" else "requestBody.$key[$requestIndex]"
                 val idx = resolveRequestIndex(requestIndex, requestBodies.size)
-                    ?: return TestResult(false, "requestBody.$key[$requestIndex]: no request recorded at that index (${requestBodies.size} requests)")
+                    ?: return TestResult(false, "$label: no request recorded at that index (${requestBodies.size} requests)")
                 val body = requestBodies[idx]
-                    ?: return TestResult(false, "requestBody.$key[$requestIndex]: request has no JSON body")
-                val actual = navigateJsonPath(body, key)
-                    ?: return TestResult(false, "requestBody.$key[$requestIndex]: key not present in request body")
-                val result = compareJsonValues("requestBody.$key[$requestIndex]", assertion.expected, actual)
+                    ?: return TestResult(false, "$label: request has no JSON body")
+                val actual = if (key.isEmpty()) {
+                    body
+                } else {
+                    navigateJsonPath(body, key)
+                        ?: return TestResult(false, "$label: key not present in request body")
+                }
+                val result = compareJsonValues(label, assertion.expected, actual)
                 if (result != null) return result
             }
 

@@ -1950,14 +1950,26 @@ func checkAssertion(
 		}
 
 	case "requestBody":
+		// Path names one key; empty, Expected is the WHOLE body, compared
+		// exactly, so a key the SDK added fails rather than slipping past.
 		fieldPath := assertion.Path
 		idx := assertionIndex(assertion)
+		what := "request body"
+		if fieldPath != "" {
+			what = fmt.Sprintf("request body field %q", fieldPath)
+		}
 		i, ok := resolveIndex(idx, len(requestBodies))
 		if !ok {
-			return fail(tc, fmt.Sprintf("Expected request body field %q on request index %d, but only %d requests were recorded", fieldPath, idx, len(requestBodies)))
+			return fail(tc, fmt.Sprintf("Expected %s on request index %d, but only %d requests were recorded", what, idx, len(requestBodies)))
 		}
 		if requestBodies[i] == nil {
-			return fail(tc, fmt.Sprintf("Expected request body field %q on request index %d, but request had no JSON body", fieldPath, idx))
+			return fail(tc, fmt.Sprintf("Expected %s on request index %d, but request had no JSON body", what, idx))
+		}
+		if fieldPath == "" {
+			if !jsonEqual(assertion.Expected, requestBodies[i]) {
+				return fail(tc, fmt.Sprintf("Expected request body on request index %d to equal %s exactly, got %s", idx, jsonString(assertion.Expected), jsonString(requestBodies[i])))
+			}
+			break
 		}
 		actual, present := digPath(requestBodies[i], fieldPath)
 		if !present {

@@ -1480,14 +1480,21 @@ class TestRunner
         end
 
       when "requestBody"
+        # `path` names one key; absent, `expected` is the WHOLE body, compared
+        # exactly, so a key the SDK added fails rather than slipping past.
         key_path = assertion["path"]
         expected = assertion["expected"]
         idx = assertion["index"] || 0
+        what = key_path.nil? ? "request body" : "request body #{key_path}"
         request = request_at(idx)
         if request.nil?
-          failures << "Expected request body #{key_path} on request index #{idx}, but only #{@tracker.request_count} requests were recorded"
+          failures << "Expected #{what} on request index #{idx}, but only #{@tracker.request_count} requests were recorded"
         elsif request[:body].nil?
-          failures << "Expected request body #{key_path} on request index #{idx}, but the request had no JSON body"
+          failures << "Expected #{what} on request index #{idx}, but the request had no JSON body"
+        elsif key_path.nil?
+          unless request[:body] == expected
+            failures << "Expected request body on request index #{idx} to equal #{expected.inspect} exactly, got #{request[:body].inspect}"
+          end
         else
           present, actual = fetch_body_key(request[:body], key_path)
           if !present

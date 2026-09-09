@@ -1371,14 +1371,21 @@ class TestRunner:
                         failures.append(f"Expected request method {expected!r} on request index {idx}, got {request['method']!r}")
 
                 case "requestBody":
-                    body_path = assertion["path"]
+                    # `path` names one key; absent, `expected` is the WHOLE
+                    # body, compared exactly, so a key the SDK added fails
+                    # rather than slipping past.
+                    body_path = assertion.get("path")
                     expected = assertion["expected"]
                     idx = assertion.get("index", 0)
+                    what = "request body" if body_path is None else f"request body {body_path}"
                     request = self._request_at(idx)
                     if request is None:
-                        failures.append(f"Expected request body {body_path} = {expected!r} on request index {idx}, but only {self._tracker.request_count} requests were recorded")
+                        failures.append(f"Expected {what} = {expected!r} on request index {idx}, but only {self._tracker.request_count} requests were recorded")
                     elif request["body"] is None:
-                        failures.append(f"Expected request body {body_path} = {expected!r} on request index {idx}, but the request had no JSON body")
+                        failures.append(f"Expected {what} = {expected!r} on request index {idx}, but the request had no JSON body")
+                    elif body_path is None:
+                        if request["body"] != expected:
+                            failures.append(f"Expected request body on request index {idx} to equal {expected!r} exactly, got {request['body']!r}")
                     else:
                         actual = _dig_body(request["body"], body_path)
                         if actual is _MISSING:
