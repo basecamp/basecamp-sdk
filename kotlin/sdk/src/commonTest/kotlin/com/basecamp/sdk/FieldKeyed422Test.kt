@@ -312,6 +312,17 @@ class FieldKeyed422Test {
         assertEquals("annie@example.com: Name is too long; Email address is duplicated", repeated.message)
     }
 
+    // Selectors decode independently: a wrong-typed one falls through instead
+    // of discarding the list.
+    @Test
+    fun rowKeyedWrongTypedSelectorsFallThrough() = runTest {
+        val wrongAddress = raise422("""{"errors":[{"email_address":42,"messages":["Email address must be valid"]}]}""")
+        assertEquals(mapOf("0" to listOf("Email address must be valid")), wrongAddress.fieldErrors)
+
+        val wrongIndex = raise422("""{"errors":[{"email_address":"annie@example.com","index":"1","messages":["Name is too long"]}]}""")
+        assertEquals(mapOf("annie@example.com" to listOf("Name is too long")), wrongIndex.fieldErrors)
+    }
+
     @Test
     fun rowKeyedStrictGateLeavesSlotAbsent() = runTest {
         for (body in listOf(

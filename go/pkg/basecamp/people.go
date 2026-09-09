@@ -571,7 +571,7 @@ func (s *PeopleService) UpdateProjectAccess(ctx context.Context, projectID int64
 func (s *PeopleService) UpdateProjectClientAccess(ctx context.Context, projectID int64, req *UpdateProjectClientAccessRequest) (result *UpdateProjectAccessResponse, err error) {
 	op := OperationInfo{
 		Service: "People", Operation: "UpdateProjectClientAccess",
-		ResourceType: "person", IsMutation: true,
+		ResourceType: "project_access", IsMutation: true,
 		ProjectID: projectID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {

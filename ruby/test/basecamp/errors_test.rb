@@ -384,7 +384,11 @@ class ErrorsTest < Minitest::Test
       [ '{"errors":[{"email_address":"annie@example.com","messages":["Name is too long"]},' \
         '{"email_address":"annie@example.com","messages":["Email address is duplicated"]}]}',
         "annie@example.com: Name is too long; Email address is duplicated",
-        { "annie@example.com" => [ "Name is too long", "Email address is duplicated" ] } ]
+        { "annie@example.com" => [ "Name is too long", "Email address is duplicated" ] } ],
+      [ '{"errors":[{"email_address":42,"messages":["Email address must be valid"]}]}',
+        "0: Email address must be valid", { "0" => [ "Email address must be valid" ] } ],
+      [ '{"errors":[{"email_address":"annie@example.com","index":"1","messages":["Name is too long"]}]}',
+        "annie@example.com: Name is too long", { "annie@example.com" => [ "Name is too long" ] } ]
     ].each do |body, message, field_errors|
       error = Basecamp.error_from_response(422, body)
 

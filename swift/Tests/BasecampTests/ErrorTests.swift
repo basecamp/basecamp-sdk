@@ -540,6 +540,22 @@ final class ErrorTests: XCTestCase {
         XCTAssertEqual(repeated.message, "annie@example.com: Name is too long; Email address is duplicated")
     }
 
+    // Selectors decode independently: a wrong-typed one falls through instead
+    // of discarding the list.
+    func testFromHTTPResponse422RowKeyedWrongTypedSelectorsFallThrough() {
+        let wrongAddress = BasecampError.fromHTTPResponse(
+            status: 422,
+            data: Data(#"{"errors":[{"email_address":42,"messages":["Email address must be valid"]}]}"#.utf8),
+            headers: [:], requestId: nil)
+        XCTAssertEqual(wrongAddress.fieldErrors, ["0": ["Email address must be valid"]])
+
+        let wrongIndex = BasecampError.fromHTTPResponse(
+            status: 422,
+            data: Data(#"{"errors":[{"email_address":"annie@example.com","index":"1","messages":["Name is too long"]}]}"#.utf8),
+            headers: [:], requestId: nil)
+        XCTAssertEqual(wrongIndex.fieldErrors, ["annie@example.com": ["Name is too long"]])
+    }
+
     func testFromHTTPResponse422RowKeyedStrictGateLeavesSlotAbsent() {
         for body in [
             #"{"errors": ["nope"]}"#,

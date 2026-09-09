@@ -831,6 +831,18 @@ describe("row-keyed error bodies (SPEC §6 step 1b)", () => {
       message: "annie@example.com: Name is too long; Email address is duplicated",
       fieldErrors: { "annie@example.com": ["Name is too long", "Email address is duplicated"] },
     },
+    {
+      name: "a wrong-typed address falls through to position",
+      body: { errors: [{ email_address: 42, messages: ["Email address must be valid"] }] },
+      message: "0: Email address must be valid",
+      fieldErrors: { "0": ["Email address must be valid"] },
+    },
+    {
+      name: "a wrong-typed index beside a valid address is ignored",
+      body: { errors: [{ email_address: "annie@example.com", index: "1", messages: ["Name is too long"] }] },
+      message: "annie@example.com: Name is too long",
+      fieldErrors: { "annie@example.com": ["Name is too long"] },
+    },
   ])("$name", ({ body, message, fieldErrors }) => {
     const response = new Response(null, { status: 422, statusText: "Unprocessable Entity" });
 

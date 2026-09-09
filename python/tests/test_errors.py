@@ -410,6 +410,16 @@ class TestRowKeyedErrors:
                 "annie@example.com: Name is too long; Email address is duplicated",
                 {"annie@example.com": ["Name is too long", "Email address is duplicated"]},
             ),
+            (
+                b'{"errors":[{"email_address":42,"messages":["Email address must be valid"]}]}',
+                "0: Email address must be valid",
+                {"0": ["Email address must be valid"]},
+            ),
+            (
+                b'{"errors":[{"email_address":"annie@example.com","index":"1","messages":["Name is too long"]}]}',
+                "annie@example.com: Name is too long",
+                {"annie@example.com": ["Name is too long"]},
+            ),
         ],
     )
     def test_keys_rows_by_address_index_or_position(self, body, message, field_errors):

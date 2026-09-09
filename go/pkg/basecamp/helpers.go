@@ -214,16 +214,19 @@ func parseRowErrors(rows []json.RawMessage) map[string][]string {
 	}
 	fieldErrors := make(map[string][]string, len(rows))
 	for position, raw := range rows {
-		var row struct {
-			EmailAddress *string `json:"email_address"`
-			Index        *int64  `json:"index"`
-			Messages     []any   `json:"messages"`
-		}
-		if err := json.Unmarshal(raw, &row); err != nil || row.Messages == nil {
+		// Members decode independently: only "messages" decides whether this
+		// is a row list, and a wrong-typed selector falls through to the next
+		// one rather than discarding the list.
+		var row map[string]json.RawMessage
+		if err := json.Unmarshal(raw, &row); err != nil {
 			return nil
 		}
-		messages := make([]string, 0, len(row.Messages))
-		for _, v := range row.Messages {
+		var values []any
+		if err := json.Unmarshal(row["messages"], &values); err != nil {
+			return nil
+		}
+		messages := make([]string, 0, len(values))
+		for _, v := range values {
 			if s, ok := v.(string); ok && s != "" {
 				messages = append(messages, s)
 			}
@@ -232,11 +235,12 @@ func parseRowErrors(rows []json.RawMessage) map[string][]string {
 			return nil
 		}
 		key := strconv.Itoa(position)
+		var index int64
 		switch {
-		case row.EmailAddress != nil && *row.EmailAddress != "":
-			key = *row.EmailAddress
-		case row.Index != nil:
-			key = strconv.FormatInt(*row.Index, 10)
+		case stringFromRaw(row["email_address"]) != "":
+			key = stringFromRaw(row["email_address"])
+		case len(row["index"]) > 0 && json.Unmarshal(row["index"], &index) == nil:
+			key = strconv.FormatInt(index, 10)
 		}
 		fieldErrors[key] = append(fieldErrors[key], messages...)
 	}

@@ -707,6 +707,18 @@ func TestCheckResponse_RowKeyedErrors(t *testing.T) {
 			wantMessage: "annie@example.com: Name is too long; Email address is duplicated",
 			wantFields:  map[string][]string{"annie@example.com": {"Name is too long", "Email address is duplicated"}},
 		},
+		{
+			name:        "a wrong-typed address falls through to position",
+			body:        `{"errors":[{"email_address":42,"messages":["Email address must be valid"]}]}`,
+			wantMessage: "0: Email address must be valid",
+			wantFields:  map[string][]string{"0": {"Email address must be valid"}},
+		},
+		{
+			name:        "a wrong-typed index beside a valid address is ignored",
+			body:        `{"errors":[{"email_address":"annie@example.com","index":"1","messages":["Name is too long"]}]}`,
+			wantMessage: "annie@example.com: Name is too long",
+			wantFields:  map[string][]string{"annie@example.com": {"Name is too long"}},
+		},
 	}
 
 	for _, tt := range tests {
