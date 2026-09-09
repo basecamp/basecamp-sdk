@@ -1236,13 +1236,14 @@ func TestSchedulesService_EditEntryHooksObserveGetEntryAndReplaceEntry(t *testin
 // carry that string through untouched.
 //
 // The trap this pins: ScheduleEntry.StartsAt is types.FlexibleTime, whose
-// UnmarshalJSON accepts the bare date by treating it as midnight UTC, and whose
-// MarshalJSON then renders time.Time's RFC3339 form. Round-tripping the DECODED
-// value would therefore rewrite "2026-06-01" into "2026-06-01T00:00:00Z", which
-// BC3 re-parses in the account's own zone — west of UTC that lands on the
-// previous day and moves the entry. ScheduleEntryFields carries strings for
-// exactly this reason, sourced from the raw response bytes rather than the
-// decoded time.
+// UnmarshalJSON accepts the bare date by treating it as midnight UTC. Until
+// #633 its MarshalJSON then rendered time.Time's RFC3339 form, so
+// round-tripping the DECODED value rewrote "2026-06-01" into
+// "2026-06-01T00:00:00Z", which BC3 re-parses in the account's own zone — west
+// of UTC that lands on the previous day and moves the entry. FlexibleTime now
+// re-emits the form it parsed; ScheduleEntryFields still carries strings,
+// sourced from the raw response bytes, because that read is also what proves
+// the key was present at all (see scheduleEntryFieldsFrom).
 func TestSchedulesService_EditEntryRoundTripsAnAllDayBareDate(t *testing.T) {
 	get := patchScheduleEntryFixture(t, scheduleEntryReadBack(t), map[string]any{
 		"all_day":   true,
@@ -1273,23 +1274,31 @@ func TestSchedulesService_EditEntryRoundTripsAnAllDayBareDate(t *testing.T) {
 	}
 }
 
-// The other half of that finding, stated directly: this is what the composite
-// would have sent had it re-rendered the decoded value. If FlexibleTime ever
-// learns to preserve its source text, this test is the thing that says so.
-func TestFlexibleTimeMarshalRewritesABareDate(t *testing.T) {
+// The other half of that finding, stated directly at the model layer: an
+// entry decoded from the wire re-marshals its all-day bound as the bare date
+// bc3 sent, not as the midnight-UTC instant it decoded to. Before #633 this
+// produced "2026-06-01T00:00:00Z".
+func TestScheduleEntry_MarshalPreservesABareDateBound(t *testing.T) {
 	var entry ScheduleEntry
-	if err := json.Unmarshal([]byte(`{"starts_at":"2026-06-01","all_day":true}`), &entry); err != nil {
+	if err := json.Unmarshal([]byte(`{"starts_at":"2026-06-01","ends_at":"2026-06-03","all_day":true}`), &entry); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	out, err := json.Marshal(entry.StartsAt)
+	out, err := json.Marshal(entry)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if string(out) == `"2026-06-01"` {
-		t.Skip("FlexibleTime now round-trips its source text; ScheduleEntryFields could carry the decoded value")
+	var body map[string]any
+	if err := json.Unmarshal(out, &body); err != nil {
+		t.Fatalf("unexpected error: %v", err)
 	}
-	if string(out) != `"2026-06-01T00:00:00Z"` {
-		t.Errorf("expected the midnight-UTC rewrite %q, got %s", "2026-06-01T00:00:00Z", out)
+	if body["starts_at"] != "2026-06-01" {
+		t.Errorf("expected starts_at %q verbatim, got %v", "2026-06-01", body["starts_at"])
+	}
+	if body["ends_at"] != "2026-06-03" {
+		t.Errorf("expected ends_at %q verbatim, got %v", "2026-06-03", body["ends_at"])
+	}
+	if !entry.StartsAt.DateOnly() || !entry.EndsAt.DateOnly() {
+		t.Error("expected both bounds to report DateOnly()")
 	}
 }
 

@@ -310,10 +310,11 @@ walk(
 #
 # time.Time cannot hold that value: it marshals RFC3339 unconditionally, so a
 # bare date could not be SENT even after being parsed. types.FlexibleTime is not
-# the fix either — it decodes a bare date but marshals it back as a midnight
-# timestamp (issue #633), the same loss one layer down. The bound is opaque on
-# the way in and must round-trip verbatim, which is how the hand-marshaled body
-# of ReplaceScheduleEntryRequest already treats it.
+# the fix either: it round-trips the form it DECODED (#633), but a request bound
+# is never decoded — the caller supplies it, and a string carries whichever
+# form they chose without a parse in between. The bound is opaque on the way in
+# and must reach the wire verbatim, which is how the hand-marshaled body of
+# ReplaceScheduleEntryRequest already treats it.
 #
 # Go was alone in this. Every other SDK generates `string` here straight from
 # the OpenAPI type, so create and replace agreed everywhere but Go, where a
