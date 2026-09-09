@@ -30,6 +30,9 @@ paths-ignore:
   # out to be noisy (py/unused-import in every generated service), so codeql.yml's
   # SARIF filter now strips generated/ except services/_ — keeping both
   # hand-written files scanned.
+  # The actions analysis extracted this lockfile and reported a YAML syntax
+  # error (alert #239); no language analyses lockfiles.
+  - '**/Gemfile.lock'
   # Test infrastructure
   - conformance/
   - kotlin/conformance/

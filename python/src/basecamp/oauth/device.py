@@ -147,12 +147,13 @@ def request_device_authorization(
 
     # SPEC §9: the httpx error retains the request it failed on, so a
     # transport failure is constructed here and raised outside the handler,
-    # chaining nothing (the poll below sends device_code the same way).
-    transport_error: DeviceFlowError | None = None
+    # chaining nothing (the poll below sends device_code the same way). Both
+    # arms bind one name so the continuing path is definitely assigned.
+    outcome: tuple[int, bytes] | DeviceFlowError
     try:
         # A non-2xx device-auth response is a hard failure whose body is unused —
         # skip draining it so a slow error body can't time out and look like transport.
-        status, body = _post_form_bounded(
+        outcome = _post_form_bounded(
             device_authorization_endpoint,
             params,
             timeout,
@@ -160,9 +161,10 @@ def request_device_authorization(
             read_body=lambda s: 200 <= s < 300,
         )
     except httpx.HTTPError as exc:
-        transport_error = DeviceFlowError("transport", f"Device authorization request failed: {exc}")
-    if transport_error is not None:
-        raise transport_error
+        outcome = DeviceFlowError("transport", f"Device authorization request failed: {exc}")
+    if isinstance(outcome, DeviceFlowError):
+        raise outcome
+    status, body = outcome
 
     # Check status BEFORE parsing (as discovery does): a non-2xx here is a hard
     # failure with no OAuth error semantics, so a non-JSON error body must surface
