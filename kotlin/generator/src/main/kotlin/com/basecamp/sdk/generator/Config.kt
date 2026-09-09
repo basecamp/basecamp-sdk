@@ -321,6 +321,12 @@ val RESOURCE_TYPE_OVERRIDES = mapOf(
     // through to the generic "resource".
     "ListRecentProjects" to "project",
     "RecordProjectVisit" to "project",
+    // Client access is the client-side counterpart of UpdateProjectAccess, which
+    // reports "project_access"; the inferred "project_client_access" would split
+    // the pair. The enablement toggle is project state, as the Go wrapper reports.
+    "UpdateProjectClientAccess" to "project_access",
+    "EnableProjectClients" to "project",
+    "DisableProjectClients" to "project",
 )
 
 /**

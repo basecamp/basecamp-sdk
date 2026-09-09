@@ -647,6 +647,109 @@ final class GeneratedServiceTests: XCTestCase {
         XCTAssertTrue(sentURL.hasSuffix("/my/profile.json"))
     }
 
+    func testPeopleServiceUpdateProjectClientAccess() async throws {
+        let responseJSON: [String: Any] = [
+            "granted": [["id": 444, "name": "annie@example.com", "email_address": "annie@example.com", "client": true]],
+            "revoked": [["id": 333, "name": "Former Client", "client": true]],
+        ]
+        let data = try JSONSerialization.data(withJSONObject: responseJSON)
+        let transport = MockTransport(statusCode: 200, data: data)
+        let account = makeTestAccountClient(transport: transport)
+
+        let result = try await account.people.updateProjectClientAccess(
+            projectId: 100,
+            req: UpdateProjectClientAccessRequest(
+                create: [CreateClientRequest(emailAddress: "annie@example.com", companyName: "Springfield Elementary")],
+                revoke: [333]))
+
+        XCTAssertEqual(result.granted?.map(\.id), [444])
+        XCTAssertEqual(result.granted?.first?.client, true)
+        XCTAssertEqual(result.revoked?.map(\.id), [333])
+
+        let req = transport.lastRequest!.request
+        XCTAssertEqual(req.httpMethod, "PUT")
+        XCTAssertTrue(req.url!.absoluteString.hasSuffix("/projects/100/people/client_users.json"))
+        let sentBody = try JSONSerialization.jsonObject(with: req.httpBody!) as! [String: Any]
+        XCTAssertEqual(sentBody["revoke"] as? [Int], [333])
+        let rows = sentBody["create"] as! [[String: Any]]
+        XCTAssertEqual(rows.count, 1)
+        XCTAssertEqual(rows[0]["email_address"] as? String, "annie@example.com")
+        XCTAssertEqual(rows[0]["company_name"] as? String, "Springfield Elementary")
+        XCTAssertNil(rows[0]["name"], "name is optional; bc3 defaults it to the address")
+        XCTAssertNil(sentBody["grant"])
+    }
+
+    // Clients must be enabled on the project first; bc3 answers `head :forbidden`.
+    func testPeopleServiceUpdateProjectClientAccessForbiddenUntilEnabled() async throws {
+        let transport = MockTransport(statusCode: 403, data: Data())
+        let account = makeTestAccountClient(transport: transport)
+
+        do {
+            _ = try await account.people.updateProjectClientAccess(
+                projectId: 100, req: UpdateProjectClientAccessRequest(grant: [111]))
+            XCTFail("Expected forbidden error")
+        } catch let error as BasecampError {
+            XCTAssertEqual(error.httpStatusCode, 403)
+        }
+    }
+
+    // An invalid create row rejects the whole batch with the offending addresses.
+    func testPeopleServiceUpdateProjectClientAccessInvalidRow() async throws {
+        let body = try JSONSerialization.data(withJSONObject: [
+            "errors": [["email_address": "not-an-address", "messages": ["Email address must be valid"]]],
+        ])
+        let transport = MockTransport(statusCode: 422, data: body)
+        let account = makeTestAccountClient(transport: transport)
+
+        do {
+            _ = try await account.people.updateProjectClientAccess(
+                projectId: 100,
+                req: UpdateProjectClientAccessRequest(create: [CreateClientRequest(emailAddress: "not-an-address")]))
+            XCTFail("Expected validation error")
+        } catch let error as BasecampError {
+            XCTAssertEqual(error.httpStatusCode, 422)
+        }
+    }
+
+    func testPeopleServiceEnableProjectClients() async throws {
+        let data = try JSONSerialization.data(withJSONObject: ["clients_enabled": true])
+        let transport = MockTransport(statusCode: 200, data: data)
+        let account = makeTestAccountClient(transport: transport)
+
+        let result = try await account.people.enableProjectClients(projectId: 100)
+        XCTAssertTrue(result.clientsEnabled)
+
+        let req = transport.lastRequest!.request
+        XCTAssertEqual(req.httpMethod, "POST")
+        XCTAssertTrue(req.url!.absoluteString.hasSuffix("/projects/100/client_enablement.json"))
+    }
+
+    func testPeopleServiceDisableProjectClients() async throws {
+        let data = try JSONSerialization.data(withJSONObject: ["clients_enabled": false])
+        let transport = MockTransport(statusCode: 200, data: data)
+        let account = makeTestAccountClient(transport: transport)
+
+        let result = try await account.people.disableProjectClients(projectId: 100)
+        XCTAssertFalse(result.clientsEnabled)
+
+        let req = transport.lastRequest!.request
+        XCTAssertEqual(req.httpMethod, "DELETE")
+        XCTAssertTrue(req.url!.absoluteString.hasSuffix("/projects/100/client_enablement.json"))
+    }
+
+    // Disabling is refused while the project still has client users.
+    func testPeopleServiceDisableProjectClientsForbiddenWithClients() async throws {
+        let transport = MockTransport(statusCode: 403, data: Data())
+        let account = makeTestAccountClient(transport: transport)
+
+        do {
+            _ = try await account.people.disableProjectClients(projectId: 100)
+            XCTFail("Expected forbidden error")
+        } catch let error as BasecampError {
+            XCTAssertEqual(error.httpStatusCode, 403)
+        }
+    }
+
     /// A dock tool's projection is the bare recordings/recording partial —
     /// api/docks/tools/show.json.jbuilder renders it and adds nothing — so it
     /// carries no `name` and no `enabled`, and it does carry `type`,

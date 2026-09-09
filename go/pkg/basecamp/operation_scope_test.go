@@ -83,6 +83,15 @@ func TestOperationProjectResourceScope(t *testing.T) {
 		{"People.UpdateProjectAccess", func(ctx context.Context, ac *AccountClient) {
 			_, _ = ac.People().UpdateProjectAccess(ctx, projectID, &UpdateProjectAccessRequest{})
 		}, projectID, 0},
+		{"People.UpdateProjectClientAccess", func(ctx context.Context, ac *AccountClient) {
+			_, _ = ac.People().UpdateProjectClientAccess(ctx, projectID, &UpdateProjectClientAccessRequest{})
+		}, projectID, 0},
+		{"People.EnableProjectClients", func(ctx context.Context, ac *AccountClient) {
+			_, _ = ac.People().EnableProjectClients(ctx, projectID)
+		}, projectID, 0},
+		{"People.DisableProjectClients", func(ctx context.Context, ac *AccountClient) {
+			_, _ = ac.People().DisableProjectClients(ctx, projectID)
+		}, projectID, 0},
 		{"Timesheet.ProjectReport", func(ctx context.Context, ac *AccountClient) {
 			_, _ = ac.Timesheet().ProjectReport(ctx, projectID, nil)
 		}, projectID, 0},

@@ -42,6 +42,15 @@ public final class PeopleService: BaseService, @unchecked Sendable {
         )
     }
 
+    public func disableProjectClients(projectId: Int) async throws -> ProjectClientEnablement {
+        return try await request(
+            OperationInfo(service: "People", operation: "DisableProjectClients", resourceType: "project", isMutation: true, projectId: projectId),
+            method: "DELETE",
+            path: "/projects/\(projectId)/client_enablement.json",
+            retryConfig: Metadata.retryConfig(for: "DisableProjectClients")
+        )
+    }
+
     public func enableOutOfOffice(personId: Int, req: EnableOutOfOfficeRequest) async throws -> OutOfOffice {
         return try await request(
             OperationInfo(service: "People", operation: "EnableOutOfOffice", resourceType: "out_of_office", isMutation: true, resourceId: personId),
@@ -49,6 +58,15 @@ public final class PeopleService: BaseService, @unchecked Sendable {
             path: "/people/\(personId)/out_of_office.json",
             body: req,
             retryConfig: Metadata.retryConfig(for: "EnableOutOfOffice")
+        )
+    }
+
+    public func enableProjectClients(projectId: Int) async throws -> ProjectClientEnablement {
+        return try await request(
+            OperationInfo(service: "People", operation: "EnableProjectClients", resourceType: "project", isMutation: true, projectId: projectId),
+            method: "POST",
+            path: "/projects/\(projectId)/client_enablement.json",
+            retryConfig: Metadata.retryConfig(for: "EnableProjectClients")
         )
     }
 
@@ -161,6 +179,16 @@ public final class PeopleService: BaseService, @unchecked Sendable {
             path: "/projects/\(projectId)/people/users.json",
             body: req,
             retryConfig: Metadata.retryConfig(for: "UpdateProjectAccess")
+        )
+    }
+
+    public func updateProjectClientAccess(projectId: Int, req: UpdateProjectClientAccessRequest) async throws -> ProjectAccessResult {
+        return try await request(
+            OperationInfo(service: "People", operation: "UpdateProjectClientAccess", resourceType: "project_access", isMutation: true, projectId: projectId),
+            method: "PUT",
+            path: "/projects/\(projectId)/people/client_users.json",
+            body: req,
+            retryConfig: Metadata.retryConfig(for: "UpdateProjectClientAccess")
         )
     }
 }

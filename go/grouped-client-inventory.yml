@@ -233,9 +233,11 @@ not_grouped:
   - DestroyGaugeNeedle
   - DestroyTimesheetEntry
   - DisableCardColumnOnHold
+  - DisableProjectClients
   - DisableOutOfOffice
   - DisableTool
   - EnableCardColumnOnHold
+  - EnableProjectClients
   - EnableOutOfOffice
   - EnableTool
   - GetAccount
@@ -374,6 +376,7 @@ not_grouped:
   - UpdateMyPreferences
   - UpdateMyProfile
   - UpdateProjectAccess
+  - UpdateProjectClientAccess
   - UpdateQuestion
   - UpdateQuestionNotificationSettings
   - UpdateScheduleSettings

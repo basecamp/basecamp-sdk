@@ -78,6 +78,18 @@ export interface ListForProjectPeopleOptions extends PaginationOptions {
 }
 
 /**
+ * Request parameters for updateProjectClientAccess.
+ */
+export interface UpdateProjectClientAccessPeopleRequest {
+  /** Existing client people IDs to add to the project. */
+  grant?: number[];
+  /** Client people IDs to remove from the project. */
+  revoke?: number[];
+  /** New clients to invite by email. */
+  create?: components["schemas"]["CreateClientRequest"][];
+}
+
+/**
  * Request parameters for updateProjectAccess.
  */
 export interface UpdateProjectAccessPeopleRequest {
@@ -396,6 +408,66 @@ export class PeopleService extends BaseService {
   }
 
   /**
+   * Enable clients on a project so client users can be added to it
+   * @param projectId - The project ID
+   * @returns The project
+   * @throws {BasecampError} If the request fails
+   *
+   * @example
+   * ```ts
+   * const result = await client.people.enableProjectClients(123);
+   * ```
+   */
+  async enableProjectClients(projectId: number): Promise<components["schemas"]["EnableProjectClientsResponseContent"]> {
+    const response = await this.request(
+      {
+        service: "People",
+        operation: "EnableProjectClients",
+        resourceType: "project",
+        isMutation: true,
+        projectId,
+      },
+      () =>
+        this.client.POST("/projects/{projectId}/client_enablement.json", {
+          params: {
+            path: { projectId },
+          },
+        })
+    );
+    return response;
+  }
+
+  /**
+   * Disable clients on a project
+   * @param projectId - The project ID
+   * @returns The project
+   * @throws {BasecampError} If the request fails
+   *
+   * @example
+   * ```ts
+   * const result = await client.people.disableProjectClients(123);
+   * ```
+   */
+  async disableProjectClients(projectId: number): Promise<components["schemas"]["DisableProjectClientsResponseContent"]> {
+    const response = await this.request(
+      {
+        service: "People",
+        operation: "DisableProjectClients",
+        resourceType: "project",
+        isMutation: true,
+        projectId,
+      },
+      () =>
+        this.client.DELETE("/projects/{projectId}/client_enablement.json", {
+          params: {
+            path: { projectId },
+          },
+        })
+    );
+    return response;
+  }
+
+  /**
    * List all active people on a project
    * @param projectId - The project ID
    * @param options - Optional query parameters
@@ -427,6 +499,42 @@ export class PeopleService extends BaseService {
         })
       , options
     );
+  }
+
+  /**
+   * Update project client access (grant/revoke/create client users)
+   * @param projectId - The project ID
+   * @param req - Project_access update parameters
+   * @returns The project_access
+   * @throws {BasecampError} If the resource is not found or fields are invalid
+   *
+   * @example
+   * ```ts
+   * const result = await client.people.updateProjectClientAccess(123, { });
+   * ```
+   */
+  async updateProjectClientAccess(projectId: number, req: UpdateProjectClientAccessPeopleRequest): Promise<components["schemas"]["UpdateProjectClientAccessResponseContent"]> {
+    const response = await this.request(
+      {
+        service: "People",
+        operation: "UpdateProjectClientAccess",
+        resourceType: "project_access",
+        isMutation: true,
+        projectId,
+      },
+      () =>
+        this.client.PUT("/projects/{projectId}/people/client_users.json", {
+          params: {
+            path: { projectId },
+          },
+          body: {
+            grant: req.grant,
+            revoke: req.revoke,
+            create: req.create,
+          },
+        })
+    );
+    return response;
   }
 
   /**

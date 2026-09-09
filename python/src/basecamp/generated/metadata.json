@@ -659,6 +659,18 @@
       ]
     }
   },
+  "DisableProjectClients": {
+    "idempotent": true,
+    "retry": {
+      "backoff": "exponential",
+      "base_delay_ms": 1000,
+      "max": 3,
+      "retry_on": [
+        429,
+        503
+      ]
+    }
+  },
   "DisableTool": {
     "idempotent": true,
     "retry": {
@@ -688,6 +700,18 @@
       "backoff": "exponential",
       "base_delay_ms": 1000,
       "max": 2,
+      "retry_on": [
+        429,
+        503
+      ]
+    }
+  },
+  "EnableProjectClients": {
+    "idempotent": true,
+    "retry": {
+      "backoff": "exponential",
+      "base_delay_ms": 1000,
+      "max": 3,
       "retry_on": [
         429,
         503
@@ -2788,6 +2812,17 @@
       "max": 3,
       "retry_on": [
         429,
+        503
+      ]
+    }
+  },
+  "UpdateProjectClientAccess": {
+    "idempotent": true,
+    "retry": {
+      "backoff": "exponential",
+      "base_delay_ms": 1000,
+      "max": 3,
+      "retry_on": [
         503
       ]
     }

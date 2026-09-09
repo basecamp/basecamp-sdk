@@ -981,7 +981,7 @@ If `behavior-model.json` marks an operation with `idempotent: true`, the POST be
 
 The error must be retryable. Two categories qualify:
 
-- **HTTP status retry:** Response status is in the operation's **declared** retryable set. `behavior-model.json` specifies `retry_on: [429, 503]` for all operations. The declared set is **exhaustive**: a status outside it — including 500, 502, and 504 — is not retried and is surfaced to the caller on the first attempt. An implementation may still *classify* those statuses as retryable in its error taxonomy (§6); that is a caller-facing hint and must not widen the transport's gate.
+- **HTTP status retry:** Response status is in the operation's **declared** retryable set. `behavior-model.json` specifies `retry_on: [429, 503]` for every operation but one: `UpdateProjectClientAccess` declares `retry_on: [503]`, because its 429 is the account seat-limit verdict (no `Retry-After`; re-asking cannot change the answer), not throttling. The declared set is **exhaustive**: a status outside it — including 500, 502, and 504 — is not retried and is surfaced to the caller on the first attempt. An implementation may still *classify* those statuses as retryable in its error taxonomy (§6); that is a caller-facing hint and must not widen the transport's gate.
 - **Network error retry:** Connection failures, timeouts, and DNS errors (no HTTP response received) are retryable. These correspond to `BasecampError(code: "network", retryable: true)` in §6. **Divergence:** **Go, Python, Swift, TypeScript, and Kotlin** retry network errors for retry-eligible operations — including idempotent mutations — with Swift, Go, TypeScript, and Kotlin gating on operation idempotency, so a non-idempotent POST is attempted once. TypeScript additionally treats caller aborts and request timeouts as terminal, and Kotlin carves out the whole-request time budget (Ktor's `HttpRequestTimeoutException`): once the caller's configured request timeout has elapsed, the failure surfaces without retry. **Ruby** retries network errors too, but only on GET: its transport routes every non-GET to a single-attempt path, so no mutation ever sees a network retry. The spec prescribes network error retry as the target behavior.
 
 **Non-retryable statuses (never retry regardless of method):** 401, 403, 404, 400, 422.
@@ -1197,7 +1197,7 @@ END
 
 ### behavior-model.json Retry Patterns
 
-All `259` operations in `behavior-model.json` use `retry_on: [429, 503]`. <!-- @operation-count --> Three `(max, base_delay_ms)` patterns exist:
+All `262` operations in `behavior-model.json` use `retry_on: [429, 503]`, except `UpdateProjectClientAccess` (`[503]` — its 429 is a seat-limit verdict, §7 Gate 3). <!-- @operation-count --> Three `(max, base_delay_ms)` patterns exist:
 - `(2, 1000)` — most create operations
 - `(3, 1000)` — most read/update/delete operations
 - `(3, 2000)` — `CreateAttachment`, `CreateCampfireUpload` (file uploads)
@@ -1800,7 +1800,7 @@ END
 
 ### Hop-1 Retry `[conformance]`
 
-The authenticated first hop retries on **network errors plus {429, 502, 503, 504}** — never 500. The set is declared here rather than inherited from anywhere else, and it matches neither of the two sets an SDK already has to hand: it is broader than the per-operation `retry_on` in `behavior-model.json` (`{429, 503}` for all `259` operations, which never governs `DownloadURL` because it has no entry there), and narrower than the error taxonomy's "all 5xx retryable" flag, which would sweep in the 500 this policy deliberately excludes. It is the gateway-error set Go's hand-written `singleRequest` already uses for GETs. <!-- @operation-count --> Backoff is exponential from a 1-second base with jitter; `Retry-After` is honoured at **every status in that set**, not at 429 alone. The second hop is exempt: no retry, no auth.
+The authenticated first hop retries on **network errors plus {429, 502, 503, 504}** — never 500. The set is declared here rather than inherited from anywhere else, and it matches neither of the two sets an SDK already has to hand: it is broader than the per-operation `retry_on` in `behavior-model.json` (`{429, 503}` for all `262` operations but `UpdateProjectClientAccess`, and never governing `DownloadURL` because it has no entry there), and narrower than the error taxonomy's "all 5xx retryable" flag, which would sweep in the 500 this policy deliberately excludes. It is the gateway-error set Go's hand-written `singleRequest` already uses for GETs. <!-- @operation-count --> Backoff is exponential from a 1-second base with jitter; `Retry-After` is honoured at **every status in that set**, not at 429 alone. The second hop is exempt: no retry, no auth.
 
 That last clause changed with §6's "Retry-After Honouring", and the reason it changed is the reason this set is declared here at all: honouring is derived from retry eligibility, so a loop that declares its own eligibility set inherits the honouring rule over that set rather than over §7's. A 502, 503 or 504 on hop 1 carrying `Retry-After` therefore waits what the origin named, exactly as a 429 does. `[CONFLICT: most download loops honour it on 429 alone today and owe convergence; one SDK already conforms. Per-SDK state and call sites in #775 — not restated here, because this is exactly the row that convergence changes. For conformance: the existing downloads.json case covering the 429 path stays valid; the other three statuses need cases of their own.]` The honoured value is subject to §6's other two clauses on this path as well: nothing is added to it, and it must be awaited through a cancellation handle the caller holds, which not every download path yet gives them (#775).
 
@@ -2903,6 +2903,9 @@ manifests rather than being checked on its own.
 - "SpotlightRecording POST retries when marked idempotent" — GET-only retry (waiver 2B.3).
 - "UnspotlightRecording DELETE retries when marked idempotent" — GET-only retry (waiver 2B.3).
 - "RecordProjectVisit POST retries when marked idempotent" — GET-only retry (waiver 2B.3).
+- "UpdateProjectClientAccess PUT retries when marked idempotent" — GET-only retry (waiver 2B.3).
+- "EnableProjectClients POST retries when marked idempotent" — GET-only retry (waiver 2B.3).
+- "DisableProjectClients DELETE retries when marked idempotent" — GET-only retry (waiver 2B.3).
 - "UpdateMyNote PUT retries when marked idempotent" — GET-only retry (waiver 2B.3).
 - "UpdateCalendar PUT retries when marked idempotent" — GET-only retry (waiver 2B.3).
 - "PrioritizeAssignment POST retries when marked idempotent" — GET-only retry (waiver 2B.3).
@@ -4244,10 +4247,10 @@ Every operation has a `retry` block, including non-idempotent POSTs. For non-ide
 
 ### Operation Counts
 
-- Total operations: `259` <!-- @operation-count -->
-- Idempotent: 88 (flagged with `idempotent: true`)
+- Total operations: `262` <!-- @operation-count -->
+- Idempotent: 91 (flagged with `idempotent: true`)
 - Non-idempotent: 171 (no `idempotent` field, or not present)
-- All operations use `retry_on: [429, 503]`
+- All operations use `retry_on: [429, 503]`, except `UpdateProjectClientAccess` (`[503]`)
 
 ---
 

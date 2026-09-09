@@ -353,6 +353,15 @@ class ClientCorrespondence(TypedDict):
     visible_to_clients: bool
 
 
+class ClientInvitationError(TypedDict):
+    email_address: str | None
+    messages: list[str]
+
+
+class ClientInvitationErrors(TypedDict):
+    errors: list[ClientInvitationError]
+
+
 class ClientReply(TypedDict):
     app_url: str
     bookmark_url: NotRequired[str]
@@ -468,6 +477,13 @@ class CreateCardStepRequestContent(TypedDict):
 class CreateChatbotRequestContent(TypedDict):
     command_url: NotRequired[str]
     service_name: str
+
+
+class CreateClientRequest(TypedDict):
+    company_name: NotRequired[str]
+    email_address: str
+    name: NotRequired[str]
+    title: NotRequired[str]
 
 
 class CreateCloudFileRequestContent(TypedDict):
@@ -1321,6 +1337,10 @@ class ProjectAccessResult(TypedDict):
     revoked: NotRequired[list[Person]]
 
 
+class ProjectClientEnablement(TypedDict):
+    clients_enabled: bool
+
+
 class ProjectConstruction(TypedDict):
     id: int
     project: NotRequired[Project]
@@ -2156,6 +2176,12 @@ class UpdateMyProfileRequestContent(TypedDict):
 
 class UpdateProjectAccessRequestContent(TypedDict):
     create: NotRequired[list[CreatePersonRequest]]
+    grant: NotRequired[list[int]]
+    revoke: NotRequired[list[int]]
+
+
+class UpdateProjectClientAccessRequestContent(TypedDict):
+    create: NotRequired[list[CreateClientRequest]]
     grant: NotRequired[list[int]]
     revoke: NotRequired[list[int]]
 

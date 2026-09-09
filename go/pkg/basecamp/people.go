@@ -39,6 +39,37 @@ type UpdateProjectAccessResponse struct {
 	Revoked []Person `json:"revoked"`
 }
 
+// UpdateProjectClientAccessRequest specifies the parameters for updating a
+// project's client access. Only client users are eligible: a Grant ID that
+// belongs to a team member is omitted from the granted list rather than
+// cross-graded, and Revoke never removes a team member.
+type UpdateProjectClientAccessRequest struct {
+	// Grant is a list of existing client person IDs to add to the project.
+	Grant []int64 `json:"grant,omitempty"`
+	// Revoke is a list of client person IDs to remove from the project.
+	Revoke []int64 `json:"revoke,omitempty"`
+	// Create is a list of new clients to invite by email and grant access.
+	Create []CreateClientRequest `json:"create,omitempty"`
+}
+
+// CreateClientRequest specifies the parameters for inviting a new client.
+type CreateClientRequest struct {
+	// EmailAddress is the client's email address (required).
+	EmailAddress string `json:"email_address"`
+	// Name is the client's full name (optional; defaults to the email address).
+	Name string `json:"name,omitempty"`
+	// Title is the client's job title (optional).
+	Title string `json:"title,omitempty"`
+	// CompanyName is the client's company name (optional).
+	CompanyName string `json:"company_name,omitempty"`
+}
+
+// ProjectClientEnablement is a project's client-enablement state after a toggle.
+type ProjectClientEnablement struct {
+	// ClientsEnabled reports whether clients can be added to the project.
+	ClientsEnabled bool `json:"clients_enabled"`
+}
+
 // FirstWeekDay represents the first day of the week.
 // Use the exported constants (FirstWeekDaySunday, FirstWeekDayMonday, etc.).
 type FirstWeekDay string
@@ -530,6 +561,143 @@ func (s *PeopleService) UpdateProjectAccess(ctx context.Context, projectID int64
 	}
 
 	return accessResult, nil
+}
+
+// UpdateProjectClientAccess grants, revokes, or invites client users on a
+// project. The project must have clients enabled (see EnableProjectClients);
+// otherwise the API answers 403. Invitations are all-or-nothing: an invalid
+// Create row answers 422 and new addresses beyond the account's user limit
+// answer 429, and in either case nobody is invited.
+func (s *PeopleService) UpdateProjectClientAccess(ctx context.Context, projectID int64, req *UpdateProjectClientAccessRequest) (result *UpdateProjectAccessResponse, err error) {
+	op := OperationInfo{
+		Service: "People", Operation: "UpdateProjectClientAccess",
+		ResourceType: "person", IsMutation: true,
+		ProjectID: projectID,
+	}
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
+	start := time.Now()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if req == nil || (len(req.Grant) == 0 && len(req.Revoke) == 0 && len(req.Create) == 0) {
+		err = ErrUsage("at least one of grant, revoke, or create must be specified")
+		return nil, err
+	}
+
+	body := generated.UpdateProjectClientAccessJSONRequestBody{}
+	if req.Grant != nil {
+		body.Grant = &req.Grant
+	}
+	if req.Revoke != nil {
+		body.Revoke = &req.Revoke
+	}
+	if req.Create != nil {
+		create := make([]generated.CreateClientRequest, 0, len(req.Create))
+		for _, cc := range req.Create {
+			create = append(create, generated.CreateClientRequest{
+				EmailAddress: cc.EmailAddress,
+				Name:         omitzero(cc.Name),
+				Title:        omitzero(cc.Title),
+				CompanyName:  omitzero(cc.CompanyName),
+			})
+		}
+		body.Create = &create
+	}
+
+	resp, err := s.client.parent.gen.UpdateProjectClientAccessWithResponse(ctx, s.client.accountID, projectID, body)
+	if err != nil {
+		return nil, err
+	}
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
+	}
+
+	accessResult := &UpdateProjectAccessResponse{
+		Granted: make([]Person, 0, len(resp.JSON200.Granted)),
+		Revoked: make([]Person, 0, len(resp.JSON200.Revoked)),
+	}
+	for _, gp := range resp.JSON200.Granted {
+		accessResult.Granted = append(accessResult.Granted, personFromGenerated(gp))
+	}
+	for _, gp := range resp.JSON200.Revoked {
+		accessResult.Revoked = append(accessResult.Revoked, personFromGenerated(gp))
+	}
+
+	return accessResult, nil
+}
+
+// EnableProjectClients enables clients on a project so client users can be
+// added to it. Enabling applies the project's default client visibility, so it
+// is a deliberate step separate from UpdateProjectClientAccess. The API answers
+// 403 unless the project can have clients.
+func (s *PeopleService) EnableProjectClients(ctx context.Context, projectID int64) (result *ProjectClientEnablement, err error) {
+	op := OperationInfo{
+		Service: "People", Operation: "EnableProjectClients",
+		ResourceType: "project", IsMutation: true,
+		ProjectID: projectID,
+	}
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
+	start := time.Now()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	resp, err := s.client.parent.gen.EnableProjectClientsWithResponse(ctx, s.client.accountID, projectID)
+	if err != nil {
+		return nil, err
+	}
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
+	}
+
+	return &ProjectClientEnablement{ClientsEnabled: resp.JSON200.ClientsEnabled}, nil
+}
+
+// DisableProjectClients disables clients on a project. The API answers 403
+// while the project still has any client users; revoke them first.
+func (s *PeopleService) DisableProjectClients(ctx context.Context, projectID int64) (result *ProjectClientEnablement, err error) {
+	op := OperationInfo{
+		Service: "People", Operation: "DisableProjectClients",
+		ResourceType: "project", IsMutation: true,
+		ProjectID: projectID,
+	}
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
+	start := time.Now()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	resp, err := s.client.parent.gen.DisableProjectClientsWithResponse(ctx, s.client.accountID, projectID)
+	if err != nil {
+		return nil, err
+	}
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
+	}
+
+	return &ProjectClientEnablement{ClientsEnabled: resp.JSON200.ClientsEnabled}, nil
 }
 
 // Preferences represents user preferences.

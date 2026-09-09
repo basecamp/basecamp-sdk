@@ -663,6 +663,18 @@
         ]
       }
     },
+    "DisableProjectClients": {
+      "idempotent": true,
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
     "DisableTool": {
       "idempotent": true,
       "retry": {
@@ -690,6 +702,18 @@
     "EnableOutOfOffice": {
       "retry": {
         "max": 2,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
+    "EnableProjectClients": {
+      "idempotent": true,
+      "retry": {
+        "max": 3,
         "base_delay_ms": 1000,
         "backoff": "exponential",
         "retry_on": [
@@ -3193,6 +3217,17 @@
         ]
       }
     },
+    "UpdateProjectClientAccess": {
+      "idempotent": true,
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          503
+        ]
+      }
+    },
     "UpdateQuestion": {
       "idempotent": true,
       "retry": {
@@ -3343,6 +3378,12 @@
     }
   },
   "redaction": {
+    "CreateClientRequest": [
+      "$.email_address",
+      "$.name",
+      "$.title",
+      "$.company_name"
+    ],
     "CreatePersonRequest": [
       "$.name",
       "$.email_address",

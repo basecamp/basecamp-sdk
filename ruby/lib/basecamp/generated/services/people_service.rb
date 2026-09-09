@@ -107,6 +107,24 @@ module Basecamp
         end
       end
 
+      # Enable clients on a project so client users can be added to it
+      # @param project_id [Integer] project id ID
+      # @return [Hash] response data
+      def enable_project_clients(project_id:)
+        with_operation(service: "people", operation: "enable_project_clients", is_mutation: true, project_id: project_id) do
+          http_post("/projects/#{project_id}/client_enablement.json").json
+        end
+      end
+
+      # Disable clients on a project
+      # @param project_id [Integer] project id ID
+      # @return [Hash] response data
+      def disable_project_clients(project_id:)
+        with_operation(service: "people", operation: "disable_project_clients", is_mutation: true, project_id: project_id) do
+          http_delete("/projects/#{project_id}/client_enablement.json").json
+        end
+      end
+
       # List all active people on a project
       # @param project_id [Integer] project id ID
       # @param page [Integer, nil] Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
@@ -116,6 +134,18 @@ module Basecamp
         wrap_paginated(service: "people", operation: "list_for_project", is_mutation: false, project_id: project_id) do
           params = compact_query_params(page: page)
           paginate("/projects/#{project_id}/people.json", params: params, operation: "ListProjectPeople", max_items: max_items)
+        end
+      end
+
+      # Update project client access (grant/revoke/create client users)
+      # @param project_id [Integer] project id ID
+      # @param grant [Array, nil] Existing client people IDs to add to the project.
+      # @param revoke [Array, nil] Client people IDs to remove from the project.
+      # @param create [Array, nil] New clients to invite by email.
+      # @return [Hash] response data
+      def update_project_client_access(project_id:, grant: nil, revoke: nil, create: nil)
+        with_operation(service: "people", operation: "update_project_client_access", is_mutation: true, project_id: project_id) do
+          http_put("/projects/#{project_id}/people/client_users.json", body: compact_params(grant: grant, revoke: revoke, create: create)).json
         end
       end
 

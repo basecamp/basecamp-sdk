@@ -167,6 +167,27 @@ apply UpdateProjectAccess @examples([
   }
 ])
 
+apply UpdateProjectClientAccess @examples([
+  {
+    title: "Grant access to existing clients"
+    documentation: "Use grant array with client person IDs; team-member IDs are omitted from granted"
+    input: { accountId: "999", projectId: 12345678, grant: [111] }
+    output: { result: {
+      granted: [{ id: 111, name: "Annie Bryan", client: true }],
+      revoked: []
+    } }
+  },
+  {
+    title: "Invite new clients by email"
+    documentation: "Use create array; name is optional and defaults to the address"
+    input: { accountId: "999", projectId: 12345678, create: [{ email_address: "annie@example.com", company_name: "Springfield Elementary" }] }
+    output: { result: {
+      granted: [{ id: 444, name: "annie@example.com", email_address: "annie@example.com", client: true }],
+      revoked: []
+    } }
+  }
+])
+
 apply UpdateSubscription @examples([
   {
     title: "Add subscribers"

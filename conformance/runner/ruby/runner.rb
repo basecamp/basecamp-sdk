@@ -467,6 +467,15 @@ class OperationMapper
       @account.calendars.update_calendar(calendar_id: path_params["calendarId"], calendar: body["calendar"])
     when "UpdateMyNote"
       @account.my_notes.update_my_note(note: body["note"])
+    when "UpdateProjectClientAccess"
+      @account.people.update_project_client_access(
+        project_id: path_params["projectId"],
+        grant: body && body["grant"], revoke: body && body["revoke"], create: body && body["create"]
+      )
+    when "EnableProjectClients"
+      @account.people.enable_project_clients(project_id: path_params["projectId"])
+    when "DisableProjectClients"
+      @account.people.disable_project_clients(project_id: path_params["projectId"])
     when "GetBookmark"
       @account.bookmarks.get_bookmark(recording_id: path_params["recordingId"])
     when "CreateBookmark"
@@ -1089,6 +1098,9 @@ RUBY_SKIPS = Set.new([
   "SpotlightRecording POST retries when marked idempotent",
   "UnspotlightRecording DELETE retries when marked idempotent",
   "RecordProjectVisit POST retries when marked idempotent",
+  "UpdateProjectClientAccess PUT retries when marked idempotent",
+  "EnableProjectClients POST retries when marked idempotent",
+  "DisableProjectClients DELETE retries when marked idempotent",
   "UpdateMyNote PUT retries when marked idempotent",
   "UpdateCalendar PUT retries when marked idempotent",
   "PrioritizeAssignment POST retries when marked idempotent",
@@ -1108,6 +1120,9 @@ RUBY_SKIP_REASONS = {
   "SpotlightRecording POST retries when marked idempotent" => "Ruby SDK only retries GET",
   "UnspotlightRecording DELETE retries when marked idempotent" => "Ruby SDK only retries GET",
   "RecordProjectVisit POST retries when marked idempotent" => "Ruby SDK only retries GET",
+  "UpdateProjectClientAccess PUT retries when marked idempotent" => "Ruby SDK only retries GET",
+  "EnableProjectClients POST retries when marked idempotent" => "Ruby SDK only retries GET",
+  "DisableProjectClients DELETE retries when marked idempotent" => "Ruby SDK only retries GET",
   "UpdateMyNote PUT retries when marked idempotent" => "Ruby SDK only retries GET",
   "UpdateCalendar PUT retries when marked idempotent" => "Ruby SDK only retries GET",
   "PrioritizeAssignment POST retries when marked idempotent" => "Ruby SDK only retries GET",

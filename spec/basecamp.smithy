@@ -195,6 +195,9 @@ service Basecamp {
     ListProjectPeople,
     ListPingablePeople,
     UpdateProjectAccess,
+    UpdateProjectClientAccess,
+    EnableProjectClients,
+    DisableProjectClients,
     GetSubscription,
     Subscribe,
     Unsubscribe,
@@ -6403,6 +6406,182 @@ structure UpdateProjectAccessOutput {
 structure ProjectAccessResult {
   granted: PersonList
   revoked: PersonList
+}
+
+/// Update project client access (grant/revoke/create client users)
+///
+/// The client-side counterpart to UpdateProjectAccess: `grant` adds existing
+/// client users by id, `revoke` removes client users, and `create` invites
+/// brand-new clients by email (`name` optional, defaulting to the address).
+/// Only client users are eligible — a `grant` id belonging to a team member is
+/// rejected (omitted from `granted`) rather than cross-graded, and `revoke` never removes a team
+/// member. The response mirrors UpdateProjectAccess: `granted` and `revoked`
+/// people, each with `client: true`.
+///
+/// Requires clients to be enabled on the project (EnableProjectClients);
+/// otherwise 403. Invitations are all-or-nothing: an invalid `create` row
+/// (including one with no email address) answers 422 with the rejected
+/// addresses and nobody is invited; new addresses that would exceed the
+/// account's user limit answer 429 and nobody is invited. Addresses already on
+/// the account take no seat and a repeated address counts once.
+///
+/// The seat-limit 429 is a verdict, not throttling: it carries no Retry-After
+/// and re-asking cannot change the answer, so this operation declares
+/// `retryOn: [503]` and a 429 surfaces on the first attempt (status-mapped to
+/// `rate_limit`, since the wire status is the only signal). Every other
+/// operation retries on 429.
+@idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [503])
+@basecampIdempotent(natural: true)
+@http(method: "PUT", uri: "/{accountId}/projects/{projectId}/people/client_users.json")
+operation UpdateProjectClientAccess {
+  input: UpdateProjectClientAccessInput
+  output: UpdateProjectClientAccessOutput
+  errors: [NotFoundError, ClientInvitationValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure UpdateProjectClientAccessInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  projectId: ProjectId
+
+  /// Existing client people IDs to add to the project.
+  grant: PersonIdList
+  /// Client people IDs to remove from the project.
+  revoke: PersonIdList
+  /// New clients to invite by email.
+  create: CreateClientRequestList
+}
+
+list CreateClientRequestList {
+  member: CreateClientRequest
+}
+
+/// A new client to invite. Unlike CreatePersonRequest, only the address is
+/// required: bc3 defaults `name` to the email address when omitted.
+structure CreateClientRequest {
+  @required
+  email_address: EmailAddress
+
+  name: PersonName
+  title: PersonTitle
+  company_name: CompanyName
+}
+
+structure UpdateProjectClientAccessOutput {
+
+  result: ProjectAccessResult
+}
+
+/// 422 whose body lists the rejected client invitations
+/// ({"errors": [{"email_address": "...", "messages": [...]}]}) — the per-row
+/// rendering of UpdateProjectClientAccess. The whole batch is rejected, so
+/// nobody named in a 422 was invited.
+@error("client")
+@httpError(422)
+structure ClientInvitationValidationError {
+  /// Single member so the OpenAPI unwrap resolves to ClientInvitationErrors —
+  /// the {"errors": [...]} wire shape (the FieldValidationError treatment).
+  @required
+  invitation_errors: ClientInvitationErrors
+}
+
+/// The per-row 422 body: {"errors": [{"email_address": ..., "messages": [...]}]}.
+structure ClientInvitationErrors {
+  @required
+  errors: ClientInvitationErrorList
+}
+
+list ClientInvitationErrorList {
+  member: ClientInvitationError
+}
+
+/// One rejected `create` row: the address as submitted and the validation
+/// messages for it. Always emitted; `null` when the row carried no address (the
+/// row is still rejected, with a "can't be blank" message). `@required` models
+/// the presence and the nullability is layered on in the OpenAPI
+/// (smithy-build.json jsonAdd -> type: ["string","null"]), the Wormhole.color
+/// treatment.
+structure ClientInvitationError {
+  @required
+  email_address: String
+
+  @required
+  messages: StringList
+}
+
+/// Enable clients on a project so client users can be added to it
+///
+/// A deliberate step separate from adding clients: it turns on the project's
+/// client-facing surface and applies the default client visibility (the
+/// timeline and most docked tools become client-visible; the card table,
+/// Campfire, and Doors stay private). UpdateProjectClientAccess never enables
+/// clients implicitly — enable first, then add. 403 unless the project can have
+/// clients (the account supports clients and the project is a standard
+/// project). Naturally idempotent: enabling an enabled project re-answers
+/// `{"clients_enabled": true}`.
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
+@http(method: "POST", uri: "/{accountId}/projects/{projectId}/client_enablement.json")
+operation EnableProjectClients {
+  input: EnableProjectClientsInput
+  output: EnableProjectClientsOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure EnableProjectClientsInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  projectId: ProjectId
+}
+
+structure EnableProjectClientsOutput {
+
+  enablement: ProjectClientEnablement
+}
+
+/// Disable clients on a project
+///
+/// 403 while the project still has any client users — revoke them first with
+/// UpdateProjectClientAccess. Naturally idempotent: disabling a project with
+/// clients already off re-answers `{"clients_enabled": false}`.
+@idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
+@http(method: "DELETE", uri: "/{accountId}/projects/{projectId}/client_enablement.json")
+operation DisableProjectClients {
+  input: DisableProjectClientsInput
+  output: DisableProjectClientsOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure DisableProjectClientsInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  projectId: ProjectId
+}
+
+structure DisableProjectClientsOutput {
+
+  enablement: ProjectClientEnablement
+}
+
+/// The project's client-enablement state after a toggle.
+structure ProjectClientEnablement {
+  @required
+  clients_enabled: Boolean
 }
 
 // ===== Subscription Operations =====

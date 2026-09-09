@@ -3,6 +3,7 @@ package basecamp
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -498,5 +499,176 @@ func TestOutOfOffice_UnmarshalDisabled(t *testing.T) {
 	if ooo.StartDate != "" || ooo.EndDate != "" || ooo.BackOnDate != "" {
 		t.Errorf("expected omitted dates to be empty, got start=%q end=%q back_on=%q",
 			ooo.StartDate, ooo.EndDate, ooo.BackOnDate)
+	}
+}
+
+func TestPeopleService_UpdateProjectClientAccess(t *testing.T) {
+	var receivedMethod, receivedPath string
+	var receivedBody map[string]any
+	svc := testPeopleServer(t, func(w http.ResponseWriter, r *http.Request) {
+		receivedMethod, receivedPath = r.Method, r.URL.Path
+		receivedBody = decodeRequestBody(t, r)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"granted":[{"id":444,"name":"annie@example.com","email_address":"annie@example.com","client":true}],"revoked":[{"id":333,"name":"Former Client","client":true}]}`))
+	})
+
+	result, err := svc.UpdateProjectClientAccess(context.Background(), 42, &UpdateProjectClientAccessRequest{
+		Revoke: []int64{333},
+		Create: []CreateClientRequest{{EmailAddress: "annie@example.com", CompanyName: "Springfield Elementary"}},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if receivedMethod != "PUT" || receivedPath != "/99999/projects/42/people/client_users.json" {
+		t.Errorf("request = %s %s, want PUT /99999/projects/42/people/client_users.json", receivedMethod, receivedPath)
+	}
+	if _, present := receivedBody["grant"]; present {
+		t.Errorf("expected grant omitted when nil, got %v", receivedBody["grant"])
+	}
+	create, ok := receivedBody["create"].([]any)
+	if !ok || len(create) != 1 {
+		t.Fatalf("expected one create row, got %v", receivedBody["create"])
+	}
+	row := create[0].(map[string]any)
+	if row["email_address"] != "annie@example.com" || row["company_name"] != "Springfield Elementary" {
+		t.Errorf("unexpected create row %v", row)
+	}
+	if _, present := row["name"]; present {
+		t.Errorf("expected name omitted when blank so bc3 defaults it, got %v", row["name"])
+	}
+	if len(result.Granted) != 1 || result.Granted[0].ID != 444 || !result.Granted[0].Client {
+		t.Errorf("unexpected granted %+v", result.Granted)
+	}
+	if len(result.Revoked) != 1 || result.Revoked[0].ID != 333 {
+		t.Errorf("unexpected revoked %+v", result.Revoked)
+	}
+}
+
+func TestPeopleService_UpdateProjectClientAccessRequiresAChange(t *testing.T) {
+	svc := testPeopleServer(t, func(w http.ResponseWriter, r *http.Request) {
+		t.Error("no request expected for an empty change set")
+	})
+
+	_, err := svc.UpdateProjectClientAccess(context.Background(), 42, &UpdateProjectClientAccessRequest{})
+	var bcErr *Error
+	if !errors.As(err, &bcErr) || bcErr.Code != CodeUsage {
+		t.Fatalf("expected usage error, got %v", err)
+	}
+}
+
+// Clients must be enabled on the project first; bc3 answers `head :forbidden`.
+func TestPeopleService_UpdateProjectClientAccessForbiddenUntilEnabled(t *testing.T) {
+	svc := testPeopleServer(t, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusForbidden)
+	})
+
+	_, err := svc.UpdateProjectClientAccess(context.Background(), 42, &UpdateProjectClientAccessRequest{Grant: []int64{111}})
+	var bcErr *Error
+	if !errors.As(err, &bcErr) || bcErr.Code != CodeForbidden {
+		t.Fatalf("expected forbidden error, got %v", err)
+	}
+}
+
+// An invalid create row rejects the whole batch with the offending addresses.
+func TestPeopleService_UpdateProjectClientAccessInvalidRow(t *testing.T) {
+	svc := testPeopleServer(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		_, _ = w.Write([]byte(`{"errors":[{"email_address":"not-an-address","messages":["Email address must be valid"]}]}`))
+	})
+
+	_, err := svc.UpdateProjectClientAccess(context.Background(), 42, &UpdateProjectClientAccessRequest{
+		Create: []CreateClientRequest{{EmailAddress: "annie@example.com"}, {EmailAddress: "not-an-address"}},
+	})
+	var bcErr *Error
+	if !errors.As(err, &bcErr) || bcErr.Code != CodeValidation {
+		t.Fatalf("expected validation error, got %v", err)
+	}
+	if bcErr.HTTPStatus != 422 {
+		t.Errorf("http status = %d, want 422", bcErr.HTTPStatus)
+	}
+}
+
+// New addresses beyond the account's user limit answer a bare 429; nobody is invited.
+func TestPeopleService_UpdateProjectClientAccessSeatLimit(t *testing.T) {
+	svc := testPeopleServer(t, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusTooManyRequests)
+	})
+
+	_, err := svc.UpdateProjectClientAccess(context.Background(), 42, &UpdateProjectClientAccessRequest{
+		Create: []CreateClientRequest{{EmailAddress: "annie@example.com"}},
+	})
+	var bcErr *Error
+	if !errors.As(err, &bcErr) || bcErr.Code != CodeRateLimit {
+		t.Fatalf("expected rate_limit error, got %v", err)
+	}
+	if bcErr.HTTPStatus != 429 {
+		t.Errorf("http status = %d, want 429", bcErr.HTTPStatus)
+	}
+}
+
+func TestPeopleService_EnableProjectClients(t *testing.T) {
+	var receivedMethod, receivedPath string
+	svc := testPeopleServer(t, func(w http.ResponseWriter, r *http.Request) {
+		receivedMethod, receivedPath = r.Method, r.URL.Path
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"clients_enabled":true}`))
+	})
+
+	result, err := svc.EnableProjectClients(context.Background(), 42)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if receivedMethod != "POST" || receivedPath != "/99999/projects/42/client_enablement.json" {
+		t.Errorf("request = %s %s, want POST /99999/projects/42/client_enablement.json", receivedMethod, receivedPath)
+	}
+	if !result.ClientsEnabled {
+		t.Error("expected clients_enabled true")
+	}
+}
+
+// bc3 refuses to enable clients on a project that can't have them.
+func TestPeopleService_EnableProjectClientsForbidden(t *testing.T) {
+	svc := testPeopleServer(t, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusForbidden)
+	})
+
+	_, err := svc.EnableProjectClients(context.Background(), 42)
+	var bcErr *Error
+	if !errors.As(err, &bcErr) || bcErr.Code != CodeForbidden {
+		t.Fatalf("expected forbidden error, got %v", err)
+	}
+}
+
+func TestPeopleService_DisableProjectClients(t *testing.T) {
+	var receivedMethod, receivedPath string
+	svc := testPeopleServer(t, func(w http.ResponseWriter, r *http.Request) {
+		receivedMethod, receivedPath = r.Method, r.URL.Path
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"clients_enabled":false}`))
+	})
+
+	result, err := svc.DisableProjectClients(context.Background(), 42)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if receivedMethod != "DELETE" || receivedPath != "/99999/projects/42/client_enablement.json" {
+		t.Errorf("request = %s %s, want DELETE /99999/projects/42/client_enablement.json", receivedMethod, receivedPath)
+	}
+	if result.ClientsEnabled {
+		t.Error("expected clients_enabled false")
+	}
+}
+
+// Disabling is refused while the project still has client users.
+func TestPeopleService_DisableProjectClientsForbiddenWithClients(t *testing.T) {
+	svc := testPeopleServer(t, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusForbidden)
+	})
+
+	_, err := svc.DisableProjectClients(context.Background(), 42)
+	var bcErr *Error
+	if !errors.As(err, &bcErr) || bcErr.Code != CodeForbidden {
+		t.Fatalf("expected forbidden error, got %v", err)
 	}
 }
