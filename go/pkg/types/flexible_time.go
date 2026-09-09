@@ -32,8 +32,22 @@ func (ft FlexibleTime) DateOnly() bool {
 // UnmarshalJSON implements json.Unmarshaler for FlexibleTime.
 func (ft *FlexibleTime) UnmarshalJSON(data []byte) error {
 	s := strings.Trim(string(data), `"`)
+	if s == "null" {
+		ft.Time = time.Time{}
+		ft.dateOnly = false
+		return nil
+	}
+	return ft.UnmarshalText([]byte(s))
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler. Defined here rather than
+// promoted from the embedded time.Time so that every decode path, not only
+// JSON, records which form it parsed — a promoted UnmarshalText would replace
+// the time and leave a stale bare-date flag behind.
+func (ft *FlexibleTime) UnmarshalText(data []byte) error {
+	s := string(data)
 	ft.dateOnly = false
-	if s == "null" || s == "" {
+	if s == "" {
 		ft.Time = time.Time{}
 		return nil
 	}
@@ -60,15 +74,26 @@ func (ft *FlexibleTime) UnmarshalJSON(data []byte) error {
 	return fmt.Errorf("cannot parse %q as RFC3339, RFC3339Nano, or date-only", s)
 }
 
-// MarshalJSON implements json.Marshaler for FlexibleTime.
-// Zero times marshal as null; a value parsed from a bare date marshals as that
-// date; any other non-zero time uses time.Time's JSON encoding.
-func (ft FlexibleTime) MarshalJSON() ([]byte, error) {
-	if ft.IsZero() {
-		return []byte("null"), nil
+// MarshalText implements encoding.TextMarshaler: the bare date when one was
+// parsed, otherwise time.Time's RFC3339 text.
+func (ft FlexibleTime) MarshalText() ([]byte, error) {
+	if ft.dateOnly {
+		return []byte(ft.Format("2006-01-02")), nil
 	}
+	return ft.Time.MarshalText()
+}
+
+// MarshalJSON implements json.Marshaler for FlexibleTime.
+// A value parsed from a bare date marshals as that date, even "0001-01-01",
+// which is Go's zero time and would otherwise collapse to null; a zero time
+// that was never parsed from a date marshals as null; any other time uses
+// time.Time's JSON encoding.
+func (ft FlexibleTime) MarshalJSON() ([]byte, error) {
 	if ft.dateOnly {
 		return []byte(`"` + ft.Format("2006-01-02") + `"`), nil
+	}
+	if ft.IsZero() {
+		return []byte("null"), nil
 	}
 	return ft.Time.MarshalJSON()
 }

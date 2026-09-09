@@ -102,6 +102,7 @@ func TestFlexibleTime_RoundTripPreservesTheParsedForm(t *testing.T) {
 		dateOnly bool
 	}{
 		{"bare date", `"2026-08-04"`, true},
+		{"bare date at Go's zero time", `"0001-01-01"`, true},
 		{"UTC timestamp", `"2026-08-04T00:00:00Z"`, false},
 		{"offset timestamp", `"2026-08-04T09:30:00-07:00"`, false},
 		{"fractional timestamp", `"2022-11-01T10:00:00.123456Z"`, false},
@@ -146,5 +147,39 @@ func TestFlexibleTime_ReuseResetsTheParsedForm(t *testing.T) {
 	}
 	if ft.DateOnly() {
 		t.Error("a null must not read as date-only")
+	}
+}
+
+// The flag must follow every decode path, not only JSON: a FlexibleTime that
+// decoded a bare date and is then fed a timestamp through UnmarshalText (the
+// path text-based decoders and map keys take) must not keep the date flag.
+func TestFlexibleTime_TextRoundTripPreservesTheParsedForm(t *testing.T) {
+	var ft FlexibleTime
+	if err := json.Unmarshal([]byte(`"2026-08-04"`), &ft); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if err := ft.UnmarshalText([]byte("2026-08-04T10:00:00Z")); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if ft.DateOnly() {
+		t.Error("UnmarshalText of a timestamp left the bare-date flag set")
+	}
+	out, err := json.Marshal(ft)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if string(out) != `"2026-08-04T10:00:00Z"` {
+		t.Errorf("expected the timestamp back, got %s", out)
+	}
+
+	if err := ft.UnmarshalText([]byte("2026-08-05")); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	text, err := ft.MarshalText()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if string(text) != "2026-08-05" {
+		t.Errorf("expected MarshalText to emit the bare date, got %s", text)
 	}
 }
