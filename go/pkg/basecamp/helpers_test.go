@@ -719,6 +719,12 @@ func TestCheckResponse_RowKeyedErrors(t *testing.T) {
 			wantMessage: "annie@example.com: Name is too long",
 			wantFields:  map[string][]string{"annie@example.com": {"Name is too long"}},
 		},
+		{
+			name:        "a boolean index is not an index",
+			body:        `{"errors":[{"email_address":null,"index":true,"messages":["Email address can't be blank"]}]}`,
+			wantMessage: "0: Email address can't be blank",
+			wantFields:  map[string][]string{"0": {"Email address can't be blank"}},
+		},
 	}
 
 	for _, tt := range tests {

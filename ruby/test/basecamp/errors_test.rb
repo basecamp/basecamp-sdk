@@ -388,7 +388,9 @@ class ErrorsTest < Minitest::Test
       [ '{"errors":[{"email_address":42,"messages":["Email address must be valid"]}]}',
         "0: Email address must be valid", { "0" => [ "Email address must be valid" ] } ],
       [ '{"errors":[{"email_address":"annie@example.com","index":"1","messages":["Name is too long"]}]}',
-        "annie@example.com: Name is too long", { "annie@example.com" => [ "Name is too long" ] } ]
+        "annie@example.com: Name is too long", { "annie@example.com" => [ "Name is too long" ] } ],
+      [ '{"errors":[{"email_address":null,"index":true,"messages":["Email address can\'t be blank"]}]}',
+        "0: Email address can't be blank", { "0" => [ "Email address can't be blank" ] } ]
     ].each do |body, message, field_errors|
       error = Basecamp.error_from_response(422, body)
 

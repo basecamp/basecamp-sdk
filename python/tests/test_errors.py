@@ -420,6 +420,11 @@ class TestRowKeyedErrors:
                 "annie@example.com: Name is too long",
                 {"annie@example.com": ["Name is too long"]},
             ),
+            (
+                b'{"errors":[{"email_address":null,"index":true,"messages":["Email address can\'t be blank"]}]}',
+                "0: Email address can't be blank",
+                {"0": ["Email address can't be blank"]},
+            ),
         ],
     )
     def test_keys_rows_by_address_index_or_position(self, body, message, field_errors):

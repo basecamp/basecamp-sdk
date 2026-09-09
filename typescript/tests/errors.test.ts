@@ -843,6 +843,12 @@ describe("row-keyed error bodies (SPEC §6 step 1b)", () => {
       message: "annie@example.com: Name is too long",
       fieldErrors: { "annie@example.com": ["Name is too long"] },
     },
+    {
+      name: "a boolean index is not an index",
+      body: { errors: [{ email_address: null, index: true, messages: ["Email address can't be blank"] }] },
+      message: "0: Email address can't be blank",
+      fieldErrors: { "0": ["Email address can't be blank"] },
+    },
   ])("$name", ({ body, message, fieldErrors }) => {
     const response = new Response(null, { status: 422, statusText: "Unprocessable Entity" });
 

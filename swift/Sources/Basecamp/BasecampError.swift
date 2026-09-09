@@ -380,8 +380,13 @@ public enum BasecampError: Error, Sendable, LocalizedError {
             let key: String
             if let emailAddress = row["email_address"] as? String, !emailAddress.isEmpty {
                 key = emailAddress
-            } else if let index = row["index"] as? Int {
-                key = String(index)
+            } else if let index = row["index"] as? NSNumber,
+                      CFGetTypeID(index) != CFBooleanGetTypeID(),
+                      !CFNumberIsFloatType(index) {
+                // JSONSerialization bridges `true`/`false` to NSNumber, and
+                // `as? Int` would happily read them as 1/0; only an integer is
+                // an index (SPEC §6 step 1b).
+                key = String(index.intValue)
             } else {
                 key = String(position)
             }

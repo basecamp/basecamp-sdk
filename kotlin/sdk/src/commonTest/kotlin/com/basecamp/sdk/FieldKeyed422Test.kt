@@ -321,6 +321,9 @@ class FieldKeyed422Test {
 
         val wrongIndex = raise422("""{"errors":[{"email_address":"annie@example.com","index":"1","messages":["Name is too long"]}]}""")
         assertEquals(mapOf("annie@example.com" to listOf("Name is too long")), wrongIndex.fieldErrors)
+
+        val booleanIndex = raise422("""{"errors":[{"email_address":null,"index":true,"messages":["Email address can't be blank"]}]}""")
+        assertEquals(mapOf("0" to listOf("Email address can't be blank")), booleanIndex.fieldErrors)
     }
 
     @Test

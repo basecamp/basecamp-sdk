@@ -554,6 +554,13 @@ final class ErrorTests: XCTestCase {
             data: Data(#"{"errors":[{"email_address":"annie@example.com","index":"1","messages":["Name is too long"]}]}"#.utf8),
             headers: [:], requestId: nil)
         XCTAssertEqual(wrongIndex.fieldErrors, ["annie@example.com": ["Name is too long"]])
+
+        // JSONSerialization bridges booleans to NSNumber; `true` must not be read as index 1.
+        let booleanIndex = BasecampError.fromHTTPResponse(
+            status: 422,
+            data: Data(#"{"errors":[{"email_address":null,"index":true,"messages":["Email address can't be blank"]}]}"#.utf8),
+            headers: [:], requestId: nil)
+        XCTAssertEqual(booleanIndex.fieldErrors, ["0": ["Email address can't be blank"]])
     }
 
     func testFromHTTPResponse422RowKeyedStrictGateLeavesSlotAbsent() {
