@@ -288,6 +288,23 @@ func TestTemplatesService_CreateProjectStartDate(t *testing.T) {
 	}
 }
 
+func TestTemplatesService_CreateProjectMultipleOptions(t *testing.T) {
+	svc := testTemplatesServer(t, func(w http.ResponseWriter, r *http.Request) {
+		t.Errorf("expected no request, got %s %s", r.Method, r.URL.Path)
+	})
+
+	_, err := svc.CreateProject(context.Background(), 2085958507, "Marketing Campaign", "",
+		&CreateProjectOptions{StartDate: "2026-09-01"},
+		&CreateProjectOptions{StartDate: "2026-09-08"})
+	if err == nil {
+		t.Fatal("expected error for multiple options")
+	}
+	apiErr, ok := errors.AsType[*Error](err)
+	if !ok || apiErr.Code != CodeUsage {
+		t.Errorf("expected usage error, got: %v", err)
+	}
+}
+
 func TestTemplatesService_GetLibrary(t *testing.T) {
 	var receivedMethod, receivedPath string
 	svc := testTemplatesServer(t, func(w http.ResponseWriter, r *http.Request) {

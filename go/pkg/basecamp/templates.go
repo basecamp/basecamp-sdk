@@ -44,7 +44,7 @@ type ProjectConstruction struct {
 type CreateProjectOptions struct {
 	// StartDate is the date the new project starts on (ISO 8601, e.g. "2026-09-01").
 	// Template dates are anchored to the Sunday on or before it. Empty anchors them
-	// to the week the construction is created.
+	// to the week in which the asynchronous construction is processed.
 	StartDate string
 }
 
