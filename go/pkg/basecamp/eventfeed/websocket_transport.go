@@ -230,7 +230,7 @@ func (t *WebSocketTransport) Dial(ctx context.Context, wsURL string, maxFrameByt
 		return nil, &DialError{Kind: DialPolicy, Reason: "cable server did not negotiate the " + cableSubprotocol + " subprotocol"}
 	}
 	conn.SetReadLimit(maxFrameBytes)
-	lifetime, endLifetime := context.WithCancel(context.Background())
+	lifetime, endLifetime := context.WithCancel(context.Background()) //nolint:gosec // G118: endLifetime is the connection's own; Close calls it once the close budget is spent
 	return &wsConn{conn: conn, lifetime: lifetime, endLifetime: endLifetime}, nil
 }
 
