@@ -2651,3 +2651,58 @@ func TestQueuedFatalOutranksAWelcomePastItsDeadline(t *testing.T) {
 		t.Fatalf("mint calls = %d, want 1", got)
 	}
 }
+
+// TestTypedNilSeamErrorsFailClosed: a host-supplied seam that returns a nil
+// *MintError, *PollError, *DialError or *CloseError through a non-nil error
+// interface is a Go footgun, not a contract the connector can rely on the
+// host to avoid. errors.As reports a match and leaves the target nil, and the
+// classification that followed dereferenced it — a panic on the consumer's
+// goroutine, where the documented outcome is the seam's unclassified terminal
+// (or, for a dial, a transient failure and a reconnect).
+func TestTypedNilSeamErrorsFailClosed(t *testing.T) {
+	t.Run("mint", func(t *testing.T) {
+		h := newHarness(t)
+		h.minter.ScriptError((*eventfeed.MintError)(nil))
+		h.start()
+		h.join()
+		_, terminal, _ := h.snapshot()
+		if terminal == nil || terminal.Reason != eventfeed.ReasonMintFailed {
+			t.Fatalf("terminal = %v, want reason %q", terminal, eventfeed.ReasonMintFailed)
+		}
+		if msg := terminal.Error(); !strings.Contains(msg, "typed-nil") {
+			t.Fatalf("terminal renders %q, want the typed-nil cause named rather than the nil value retained", msg)
+		}
+	})
+	t.Run("poll", func(t *testing.T) {
+		h := newHarness(t)
+		h.minter.ScriptTicket(ticket(1))
+		h.polls.ScriptError((*eventfeed.PollError)(nil))
+		h.start()
+		conn := h.driveToSubscribed()
+		conn.Serve(frameConfirm(noFilterIdentifier))
+		h.join()
+		_, terminal, _ := h.snapshot()
+		if terminal == nil || terminal.Reason != eventfeed.ReasonPollFailed {
+			t.Fatalf("terminal = %v, want reason %q", terminal, eventfeed.ReasonPollFailed)
+		}
+		if msg := terminal.Error(); !strings.Contains(msg, "typed-nil") {
+			t.Fatalf("terminal renders %q, want the typed-nil cause named", msg)
+		}
+	})
+	t.Run("dial", func(t *testing.T) {
+		h := newHarness(t)
+		h.minter.ScriptTicket(ticket(1))
+		h.tr.FailNextDial((*eventfeed.DialError)(nil))
+		h.start()
+		// A typed-nil dial error is a transient failure: transition 7, one
+		// backoff round, never a policy terminal read off a nil Kind.
+		h.awaitTimer(timerBackoff)
+		assertTimers(t, h.clock, map[string]int{timerBackoff: 1})
+	})
+	t.Run("close error", func(t *testing.T) {
+		got := eventfeed.ExportObservableSocketError((*eventfeed.CloseError)(nil))
+		if got != eventfeed.ExportSocketFailedErr() {
+			t.Fatalf("observable error = %v, want the generic socket failure by identity", got)
+		}
+	})
+}

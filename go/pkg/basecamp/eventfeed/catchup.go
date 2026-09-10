@@ -1343,6 +1343,12 @@ func (l *loop) recoverPoll(at *attempt, cursor Cursor, err error) (walkStep, cyc
 			Reason: ReasonPollFailed, Msg: "unclassified poll failure", Err: err,
 		}}, true
 	}
+	if pe == nil {
+		l.disposeAttempt(at, nil)
+		return walkStep{}, cycleOutcome{kind: outcomeTerminal, term: &TerminalError{
+			Reason: ReasonPollFailed, Msg: "unclassified poll failure", Err: errNilSeamError,
+		}}, true
+	}
 	switch pe.Kind {
 	case PollTransient, PollThrottled:
 		// The self-loop inside CatchingUp: a wait, not a state change. The
