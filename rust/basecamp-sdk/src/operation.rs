@@ -157,7 +157,8 @@ impl Operation {
     }
 
     /// One file under a multipart form field. The field, filename and content type are
-    /// part headers, so a line break in any of them is dropped rather than written.
+    /// part headers, so a line break in any of them is dropped rather than written, and a
+    /// quote or backslash in a quoted parameter is percent-encoded rather than escaped.
     pub fn multipart(
         &mut self,
         field: &str,
@@ -207,7 +208,7 @@ impl Operation {
 }
 
 fn escape_quotes(value: &str) -> String {
-    without_line_breaks(&value.replace('"', "%22"))
+    without_line_breaks(&value.replace('\\', "%5C").replace('"', "%22"))
 }
 
 fn without_line_breaks(value: &str) -> String {
@@ -280,12 +281,12 @@ mod tests {
             Operation::for_route(&crate::generated::routes::UPDATE_ACCOUNT_LOGO, &[]);
         operation.multipart(
             "logo",
-            "a\r\nb\"c.png",
+            "a\r\nb\"c\\d.png",
             "image/png\r\n\r\nprefix",
             b"pixels",
         );
         let body = String::from_utf8(operation.body_bytes().unwrap().to_vec()).unwrap();
-        assert!(body.contains("filename=\"ab%22c.png\""), "{body}");
+        assert!(body.contains("filename=\"ab%22c%5Cd.png\""), "{body}");
         assert!(
             body.contains("Content-Type: image/pngprefix\r\n\r\npixels"),
             "{body}"

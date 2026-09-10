@@ -61,7 +61,8 @@ pub fn redact_headers(headers: &HeaderMap) -> HeaderMap {
 /// A URL projected to its origin and path — no userinfo, query or fragment — which is all
 /// an error or a hook needs from a request that may carry a signature in its query.
 pub fn redact_url(url: &Url) -> String {
-    match (url.host_str(), url.scheme()) {
+    // `Url::host` renders an IPv6 literal with its brackets; `host_str` drops them.
+    match (url.host(), url.scheme()) {
         (Some(host), scheme) if !scheme.is_empty() => {
             let port = url
                 .port()
@@ -76,17 +77,16 @@ pub fn redact_url(url: &Url) -> String {
 /// The origin alone — `https://host:port` — or the fixed token `unparsable`.
 pub fn origin_of(raw: &str) -> String {
     match Url::parse(raw) {
-        Ok(url) if url.host_str().is_some() => {
-            let port = url
-                .port()
-                .map(|port| format!(":{port}"))
-                .unwrap_or_default();
-            format!(
-                "{}://{}{port}",
-                url.scheme(),
-                url.host_str().unwrap_or_default()
-            )
-        }
+        Ok(url) => match url.host() {
+            Some(host) => {
+                let port = url
+                    .port()
+                    .map(|port| format!(":{port}"))
+                    .unwrap_or_default();
+                format!("{}://{host}{port}", url.scheme())
+            }
+            None => "unparsable".to_string(),
+        },
         _ => "unparsable".to_string(),
     }
 }
@@ -145,5 +145,12 @@ mod tests {
             "https://storage.example.com:8443"
         );
         assert_eq!(origin_of("not a url"), "unparsable");
+    }
+
+    #[test]
+    fn ipv6_hosts_keep_their_brackets() {
+        let url = Url::parse("https://[::1]:8443/x?s=1").unwrap();
+        assert_eq!(redact_url(&url), "https://[::1]:8443/x");
+        assert_eq!(origin_of("https://[::1]:8443/x"), "https://[::1]:8443");
     }
 }

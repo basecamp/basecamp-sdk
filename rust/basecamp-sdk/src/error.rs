@@ -252,7 +252,7 @@ impl Error {
         error.inner.request_id = headers
             .get("x-request-id")
             .and_then(|value| value.to_str().ok())
-            .map(str::to_string);
+            .map(truncate);
         error.inner.field_errors = field_errors;
         error.inner.confirmation_people = confirmation_people;
         if !body.is_empty() {
@@ -706,6 +706,38 @@ mod tests {
             assert_eq!(error.request_id(), Some("req-1"));
             assert_eq!(error.message(), format!("Request failed (HTTP {status})"));
         }
+    }
+
+    #[test]
+    fn a_composed_validation_message_is_truncated_once() {
+        // 496 ASCII bytes, a three-byte character straddling the cut, then more: cutting the
+        // scalar before composition would leave an ellipsis for the final cut to land in.
+        let scalar = format!("{}\u{20ac}bb", "a".repeat(MAX_ERROR_MESSAGE_LENGTH - 4));
+        let body = serde_json::json!({"error": scalar, "errors": {"name": ["x"]}}).to_string();
+        let error = Error::from_response(
+            StatusCode::UNPROCESSABLE_ENTITY,
+            &HeaderMap::new(),
+            body.as_bytes(),
+        );
+        assert_eq!(
+            error.message(),
+            format!("{}...", "a".repeat(MAX_ERROR_MESSAGE_LENGTH - 4))
+        );
+        assert_eq!(error.field_errors().unwrap()["name"], vec!["x".to_string()]);
+    }
+
+    #[test]
+    fn request_id_read_off_a_response_is_bounded_like_the_setter() {
+        let long = "r".repeat(MAX_ERROR_MESSAGE_LENGTH + 1);
+        let error = Error::from_response(
+            StatusCode::BAD_GATEWAY,
+            &headers(&[("x-request-id", &long)]),
+            b"",
+        );
+        let expected = Error::usage("x").with_request_id(&long);
+        assert_eq!(error.request_id(), expected.request_id());
+        assert_eq!(error.request_id().unwrap().len(), MAX_ERROR_MESSAGE_LENGTH);
+        assert!(error.request_id().unwrap().ends_with("..."));
     }
 
     #[test]
