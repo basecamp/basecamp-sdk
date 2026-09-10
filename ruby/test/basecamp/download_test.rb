@@ -507,7 +507,6 @@ class DownloadTest < Minitest::Test
     assert_nil Exception.instance_method(:cause).bind(error).call
   end
 
-  # Ordinary API requests keep their transport diagnostic: the projection is
   # A read timeout on hop 1 is the same transport failure as a refused dial:
   # Faraday::TimeoutError < Faraday::ServerError, and the status path would
   # otherwise classify it as a status-less api_error.
@@ -528,6 +527,7 @@ class DownloadTest < Minitest::Test
     assert_nil Exception.instance_method(:cause).bind(error).call
   end
 
+  # Ordinary API requests keep their transport diagnostic: the projection is
   # gated on the download flow.
   def test_api_network_failure_still_carries_its_cause
     http = Basecamp::Http.new(config: fast_download_config(max_retries: 1),
