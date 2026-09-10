@@ -350,16 +350,21 @@ package final class HTTPClient: Sendable {
                     // Check if we should retry
                     let statusCode = httpResponse.statusCode
                     if effectiveConfig.retryOn.contains(statusCode), attempt < maxAttempts {
+                        // Parsed once: the same value governs the sleep and
+                        // rides on the error onRetry receives (SPEC §7 step 3i).
+                        let retryAfter = BasecampError.parseRetryAfter(
+                            httpResponse.value(forHTTPHeaderField: "Retry-After"))
                         let delaySeconds = calculateDelay(
                             attempt: attempt,
                             baseDelayMs: effectiveConfig.baseDelayMs,
                             backoff: effectiveConfig.backoff,
-                            retryAfterHeader: httpResponse.value(forHTTPHeaderField: "Retry-After")
+                            retryAfter: retryAfter
                         )
                         let error = BasecampError.fromHTTPResponse(
                             status: statusCode, data: data,
                             headers: httpResponse.allHeaderFields as? [String: String] ?? [:],
-                            requestId: httpResponse.value(forHTTPHeaderField: "X-Request-Id")
+                            requestId: httpResponse.value(forHTTPHeaderField: "X-Request-Id"),
+                            retryAfter: retryAfter
                         )
                         directive = .retry(error: error, delaySeconds: delaySeconds)
                     } else {
@@ -401,7 +406,7 @@ package final class HTTPClient: Sendable {
                         attempt: attempt,
                         baseDelayMs: effectiveConfig.baseDelayMs,
                         backoff: effectiveConfig.backoff,
-                        retryAfterHeader: nil
+                        retryAfter: nil
                     )
                     directive = .retry(error: error, delaySeconds: delaySeconds)
                 } else {
@@ -536,16 +541,19 @@ package final class HTTPClient: Sendable {
 
                 let statusCode = httpResponse.statusCode
                 if Self.downloadRetryOn.contains(statusCode), attempt < maxAttempts {
+                    let retryAfter = BasecampError.parseRetryAfter(
+                        httpResponse.value(forHTTPHeaderField: "Retry-After"))
                     let delaySeconds = calculateDelay(
                         attempt: attempt,
                         baseDelayMs: Self.defaultBaseDelayMs,
                         backoff: .exponential,
-                        retryAfterHeader: httpResponse.value(forHTTPHeaderField: "Retry-After")
+                        retryAfter: retryAfter
                     )
                     let error = BasecampError.fromHTTPResponse(
                         status: statusCode, data: data,
                         headers: httpResponse.allHeaderFields as? [String: String] ?? [:],
-                        requestId: httpResponse.value(forHTTPHeaderField: "X-Request-Id")
+                        requestId: httpResponse.value(forHTTPHeaderField: "X-Request-Id"),
+                        retryAfter: retryAfter
                     )
                     directive = .retry(error: error, delaySeconds: delaySeconds)
                 } else {
@@ -579,7 +587,7 @@ package final class HTTPClient: Sendable {
                         attempt: attempt,
                         baseDelayMs: Self.defaultBaseDelayMs,
                         backoff: .exponential,
-                        retryAfterHeader: nil
+                        retryAfter: nil
                     )
                     // SPEC §9: the transport error renders the hop-1 URL (and
                     // any signed query smuggled into it), so onRetry receives
@@ -676,14 +684,15 @@ package final class HTTPClient: Sendable {
         attempt: Int,
         baseDelayMs: UInt64,
         backoff: RetryBackoff,
-        retryAfterHeader: String?
+        retryAfter: Int?
     ) -> TimeInterval {
-        // A Retry-After replaces the backoff at EVERY status this is reached
-        // for — the caller already passed the declared retry set, and SPEC §6
-        // "Retry-After Honouring" derives honouring from retry eligibility, not
-        // from a status list. A `statusCode == 429` gate here left a 503
-        // carrying `Retry-After: 120` backing off ~1s.
-        if let retryAfter = BasecampError.parseRetryAfter(retryAfterHeader) {
+        // A parsed Retry-After replaces the backoff at EVERY status this is
+        // reached for — the caller already passed the declared retry set, and
+        // SPEC §6 "Retry-After Honouring" derives honouring from retry
+        // eligibility, not from a status list. A `statusCode == 429` gate here
+        // left a 503 carrying `Retry-After: 120` backing off ~1s. The caller
+        // parses, once, so the error it builds carries this same value.
+        if let retryAfter {
             return TimeInterval(retryAfter)
         }
 

@@ -364,6 +364,24 @@ final class ErrorTests: XCTestCase {
         XCTAssertNil(BasecampError.fromHTTPResponse(status: 503, data: nil, headers: [:], requestId: nil).retryAfterSeconds)
     }
 
+    /// SPEC §7 step 3i: the error onRetry receives carries the retryAfter that
+    /// governs the sleep. The loop parses the header once and hands that value
+    /// to the mapper; a mapper that parsed again could round an HTTP-date to
+    /// one second less (or nil near expiry) across a whole-second boundary.
+    func testFromHTTPResponseCarriesTheCallersParsedRetryAfter() {
+        let handed = BasecampError.fromHTTPResponse(
+            status: 503, data: nil, headers: ["Retry-After": "3"], requestId: nil, retryAfter: 7)
+        XCTAssertEqual(handed.retryAfterSeconds, 7)
+        let rateLimited = BasecampError.fromHTTPResponse(
+            status: 429, data: nil, headers: ["Retry-After": "3"], requestId: nil, retryAfter: 7)
+        XCTAssertEqual(rateLimited.retryAfterSeconds, 7)
+        XCTAssertEqual(rateLimited.hint, "Retry after 7 seconds")
+        // Absent, the header is parsed here, as before.
+        XCTAssertEqual(
+            BasecampError.fromHTTPResponse(status: 503, data: nil, headers: ["Retry-After": "3"], requestId: nil).retryAfterSeconds,
+            3)
+    }
+
     // MARK: - LocalizedError
 
     func testLocalizedDescriptionWithHint() {

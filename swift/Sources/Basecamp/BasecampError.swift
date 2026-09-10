@@ -265,6 +265,24 @@ public enum BasecampError: Error, Sendable, LocalizedError {
         headers: [String: String],
         requestId: String?
     ) -> BasecampError {
+        fromHTTPResponse(
+            status: status, data: data, headers: headers, requestId: requestId,
+            retryAfter: parseRetryAfter(headers["Retry-After"])
+        )
+    }
+
+    /// The same mapping with the `Retry-After` already parsed: a retry loop
+    /// hands over the value that governs the sleep it is about to take, so the
+    /// error §7 step 3i gives `onRetry` carries that number and not a second
+    /// parse of an HTTP-date, which can round to one second less — or to nil
+    /// near expiry — across a whole-second boundary.
+    static func fromHTTPResponse(
+        status: Int,
+        data: Data?,
+        headers: [String: String],
+        requestId: String?,
+        retryAfter: Int?
+    ) -> BasecampError {
         let body = data.flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] }
         // "error" wins; "message" is the SPEC §6 step-4 fallback.
         let serverMessage = ((body?["error"] as? String) ?? (body?["message"] as? String))
@@ -274,7 +292,6 @@ public enum BasecampError: Error, Sendable, LocalizedError {
         // and empty of meaning for an unregistered code.
         let message = serverMessage ?? "Request failed (HTTP \(status))"
         let hint = truncate(body?["error_description"] as? String)
-        let retryAfter = parseRetryAfter(headers["Retry-After"])
 
         switch status {
         case 401:
