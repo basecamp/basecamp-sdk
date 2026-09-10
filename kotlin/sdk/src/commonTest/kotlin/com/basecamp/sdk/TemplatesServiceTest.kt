@@ -70,6 +70,41 @@ class TemplatesServiceTest {
     }
 
     @Test
+    fun createProjectSendsStartDateUnderProjectEnvelope() = runTest {
+        var capturedBody: String? = null
+
+        val client = mockClient { request ->
+            capturedBody = request.body.toByteArray().decodeToString()
+
+            respond(
+                content = """{"id": 598194962, "status": "pending"}""",
+                status = HttpStatusCode.Created,
+                headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+            )
+        }
+
+        val account = client.forAccount("12345")
+        account.templates.createProject(
+            templateId = 2085958507,
+            body = CreateProjectFromTemplateBody(
+                project = buildJsonObject {
+                    put("name", "Marketing Campaign")
+                    put("description", "For Client: Xyz Corp Conference")
+                    put("start_date", "2026-09-01")
+                },
+            ),
+        )
+
+        val bodyJson = json.parseToJsonElement(capturedBody!!).jsonObject
+        assertFalse(bodyJson.containsKey("start_date"))
+        val project = bodyJson["project"]!!.jsonObject
+        assertEquals("2026-09-01", project["start_date"]!!.jsonPrimitive.content)
+        assertEquals("Marketing Campaign", project["name"]!!.jsonPrimitive.content)
+
+        client.close()
+    }
+
+    @Test
     fun createLibraryCopyExposesPeopleRequiringConfirmation() = runTest {
         val client = mockClient {
             respond(

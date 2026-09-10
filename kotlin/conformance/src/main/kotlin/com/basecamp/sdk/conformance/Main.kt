@@ -1030,6 +1030,26 @@ private suspend fun dispatchOperation(tc: TestCase, account: AccountClient): Dis
             DispatchResult(resultJson = summarizeTemplateLibraryCopy(libraryCopy))
         }
 
+        "CreateProjectFromTemplate" -> {
+            val rb = tc.requestBody
+            val construction = account.templates.createProject(
+                tc.pathParams.longParam("templateId"),
+                CreateProjectFromTemplateBody(
+                    project = buildJsonObject {
+                        put("name", rb.stringParam("name"))
+                        rb?.get("description")?.let { put("description", it) }
+                        rb?.get("start_date")?.let { put("start_date", it) }
+                    },
+                ),
+            ).jsonObject
+            DispatchResult(
+                resultJson = buildJsonObject {
+                    put("id", construction.getValue("id"))
+                    put("status", construction.getValue("status"))
+                },
+            )
+        }
+
         "GetTemplateLibraryCopy" -> {
             val libraryCopy = account.templates.getLibraryCopy(tc.pathParams.longParam("copyId"))
             DispatchResult(resultJson = summarizeTemplateLibraryCopy(libraryCopy))

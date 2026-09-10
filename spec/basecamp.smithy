@@ -8649,6 +8649,13 @@ structure ProjectConstructionAttributes {
   name: String
 
   description: String
+
+  /// Date the new project starts on. Template dates are relative to the start
+  /// of the template's first week, and template weeks start on a Sunday, so
+  /// the project's dates are anchored to the Sunday on or before this date.
+  /// Omitted, they are anchored to the week in which the construction is
+  /// processed.
+  start_date: ISO8601Date
 }
 
 structure CreateProjectFromTemplateOutput {

@@ -1351,6 +1351,7 @@ class ProjectConstruction(TypedDict):
 class ProjectConstructionAttributes(TypedDict):
     description: NotRequired[str]
     name: str
+    start_date: NotRequired[str]
 
 
 class ProjectLimitErrorResponseContent(TypedDict):

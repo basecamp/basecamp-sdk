@@ -521,6 +521,10 @@ func summarizeTemplateLibrary(library *basecamp.TemplateLibrary) map[string]inte
 	return result
 }
 
+func summarizeProjectConstruction(construction *basecamp.ProjectConstruction) map[string]interface{} {
+	return map[string]interface{}{"id": construction.ID, "status": construction.Status}
+}
+
 func summarizeTemplateLibraryCopy(copy *basecamp.TemplateLibraryCopy) map[string]interface{} {
 	result := map[string]interface{}{"id": copy.ID, "status": copy.Status}
 	if copy.DestinationTodolist != nil {
@@ -788,6 +792,20 @@ func executeOperation(ctx context.Context, account *basecamp.AccountClient, tc T
 			return operationResult{err: err}
 		}
 		return operationResult{result: summarizeTemplateLibraryCopy(libraryCopy)}
+
+	case "CreateProjectFromTemplate":
+		templateID, parseErr := getExactInt64Param(tc.PathParams, "templateId")
+		if parseErr != nil {
+			return operationResult{err: basecamp.ErrUsage(parseErr.Error())}
+		}
+		construction, err := account.Templates().CreateProject(ctx, templateID,
+			getStringParam(tc.RequestBody, "name"),
+			getStringParam(tc.RequestBody, "description"),
+			&basecamp.CreateProjectOptions{StartDate: getStringParam(tc.RequestBody, "start_date")})
+		if err != nil {
+			return operationResult{err: err}
+		}
+		return operationResult{result: summarizeProjectConstruction(construction)}
 
 	case "GetTemplateLibraryCopy":
 		copyID, parseErr := getExactInt64Param(tc.PathParams, "copyId")

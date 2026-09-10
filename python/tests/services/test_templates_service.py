@@ -43,6 +43,32 @@ class TestSyncTemplates:
         assert result["id"] == 900
 
     @respx.mock
+    def test_create_project_sends_start_date_under_project_envelope(self):
+        route = respx.post("https://3.basecampapi.com/12345/templates/2085958507/project_constructions.json").mock(
+            return_value=httpx.Response(201, json=_construction())
+        )
+
+        account = Client(access_token="test-token").for_account("12345")
+        account.templates.create_project(
+            template_id=2085958507,
+            project={
+                "name": "Marketing Campaign",
+                "description": "For Client: Xyz Corp Conference",
+                "start_date": "2026-09-01",
+            },
+        )
+
+        body = json.loads(route.calls[0].request.content)
+        assert body == {
+            "project": {
+                "name": "Marketing Campaign",
+                "description": "For Client: Xyz Corp Conference",
+                "start_date": "2026-09-01",
+            }
+        }
+        assert "start_date" not in body
+
+    @respx.mock
     def test_get_library(self):
         route = respx.get("https://3.basecampapi.com/12345/template_library.json").mock(
             return_value=httpx.Response(

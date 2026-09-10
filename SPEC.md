@@ -2776,6 +2776,7 @@ the category slug is the filename (basename, `_` written as `-`).
 | network-retry | `network-retry.json` | §7 Retry (network errors, Gate 2) |
 | pagination | `pagination.json` | §8 Pagination |
 | paths | `paths.json` | §3 Client Architecture (account path construction) |
+| project-constructions | `project_constructions.json` | §3 Client Architecture (account path construction), §10 Type Fidelity (an optional wire field sent when given and omitted, not nulled, when not), §11 Response Semantics |
 | retry | `retry.json` | §7 Retry |
 | schedule-entries-write | `schedule_entries_write.json` | §5 Merge-Safe Write Surface (Schedule Entries), §18 Hand-Written Composite Methods, §10 Type Fidelity (explicit-empty vs. omitted wire semantics) |
 | search | `search.json` | §10 Type Fidelity — the polymorphic search projection, whose file-attachment branch is recognized by the ABSENCE of the recording envelope's `id`/`title`/`type`/`url`/`app_url` |
@@ -4218,6 +4219,7 @@ what `make doc-constants-check` asserts — not a case-by-case index.
 | `upcoming_schedule.json` | The reduced calendar projection: entry, recurring occurrence, assignable, empty envelope (4 cases) | §10 (Type Fidelity) |
 | `search.json` | The polymorphic search projection: the generic recording envelope plus all four special branches, and the file-attachment branch in isolation (2 cases) | §10 (Type Fidelity) |
 | `template_library.json` | Library read, copy creation, completed-copy decoding, and people-confirmation validation (4 cases) | §3, §6, §10, §11 |
+| `project_constructions.json` | Project construction from a template: attributes nested under the `project` envelope, `start_date` carried when given and absent when omitted (2 cases) | §3, §10, §11 |
 | `live-my-surface.json` | Live schema validation, 31 read-surface cases (opt-in via `BASECAMP_LIVE`) | External governance (CONTRIBUTING.md, live canary) |
 <!-- @fixture-section-map:end -->
 

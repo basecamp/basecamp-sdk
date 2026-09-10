@@ -242,6 +242,69 @@ func TestTemplatesService_CreateProjectEnvelope(t *testing.T) {
 	}
 }
 
+// TestTemplatesService_CreateProjectStartDate verifies the optional start date
+// rides under the "project" envelope as start_date, and stays off the wire when
+// no options are given, so the server anchors to the week of construction.
+func TestTemplatesService_CreateProjectStartDate(t *testing.T) {
+	fixture := loadTemplatesFixture(t, "project_construction.json")
+
+	var receivedBody map[string]any
+	svc := testTemplatesServer(t, func(w http.ResponseWriter, r *http.Request) {
+		receivedBody = decodeRequestBody(t, r)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		w.Write(fixture)
+	})
+
+	_, err := svc.CreateProject(context.Background(), 2085958507, "Marketing Campaign", "For Client: Xyz Corp Conference",
+		&CreateProjectOptions{StartDate: "2026-09-01"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	project, ok := receivedBody["project"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected params nested under \"project\" envelope, got body: %v", receivedBody)
+	}
+	if project["start_date"] != "2026-09-01" {
+		t.Errorf("expected project.start_date '2026-09-01', got %v", project["start_date"])
+	}
+	if _, flat := receivedBody["start_date"]; flat {
+		t.Error("expected no top-level \"start_date\"; params must be nested under \"project\"")
+	}
+
+	_, err = svc.CreateProject(context.Background(), 2085958507, "Marketing Campaign", "")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	project = receivedBody["project"].(map[string]any)
+	if _, present := project["start_date"]; present {
+		t.Errorf("expected start_date omitted when no options are given, got %v", project["start_date"])
+	}
+	if _, present := project["description"]; present {
+		t.Errorf("expected description omitted when blank, got %v", project["description"])
+	}
+}
+
+func TestTemplatesService_CreateProjectMultipleOptions(t *testing.T) {
+	svc := testTemplatesServer(t, func(w http.ResponseWriter, r *http.Request) {
+		t.Errorf("expected no request, got %s %s", r.Method, r.URL.Path)
+	})
+
+	_, err := svc.CreateProject(context.Background(), 2085958507, "Marketing Campaign", "",
+		&CreateProjectOptions{StartDate: "2026-09-01"},
+		&CreateProjectOptions{StartDate: "2026-09-08"})
+	if err == nil {
+		t.Fatal("expected error for multiple options")
+	}
+	apiErr, ok := errors.AsType[*Error](err)
+	if !ok || apiErr.Code != CodeUsage {
+		t.Errorf("expected usage error, got: %v", err)
+	}
+}
+
 func TestTemplatesService_GetLibrary(t *testing.T) {
 	var receivedMethod, receivedPath string
 	svc := testTemplatesServer(t, func(w http.ResponseWriter, r *http.Request) {

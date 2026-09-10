@@ -430,6 +430,13 @@ class OperationMapper
           adding_people_confirmed: body["adding_people_confirmed"]
         )
       )
+    when "CreateProjectFromTemplate"
+      summarize_project_construction(
+        @account.templates.create_project(
+          template_id: path_params["templateId"],
+          project: body.slice("name", "description", "start_date")
+        )
+      )
     when "GetTemplateLibraryCopy"
       summarize_template_library_copy(
         @account.templates.get_library_copy(copy_id: path_params["copyId"])
@@ -805,6 +812,10 @@ class OperationMapper
       "todoset_id" => library.dig("todoset", "id"),
       "first_todolist_id" => library.dig("todolists", 0, "id"),
     }
+  end
+
+  def summarize_project_construction(construction)
+    { "id" => construction["id"], "status" => construction["status"] }
   end
 
   def summarize_template_library_copy(copy)

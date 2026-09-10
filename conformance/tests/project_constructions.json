@@ -1,0 +1,71 @@
+[
+  {
+    "name": "project construction sends name, description and start_date under the project envelope",
+    "description": "Verifies that constructing a project from a template nests every attribute under `project` and carries `start_date` on the wire, the ISO 8601 date the server anchors the template's relative dates to (Sunday of that week).",
+    "operation": "CreateProjectFromTemplate",
+    "method": "POST",
+    "path": "/templates/{templateId}/project_constructions.json",
+    "pathParams": { "templateId": 2085958507 },
+    "requestBody": {
+      "name": "Marketing Campaign",
+      "description": "For Client: Xyz Corp Conference",
+      "start_date": "2026-09-01"
+    },
+    "mockResponses": [
+      {
+        "status": 201,
+        "headers": { "Content-Type": "application/json" },
+        "body": {
+          "id": 598194962,
+          "status": "pending",
+          "url": "https://3.basecampapi.com/999/templates/2085958507/project_constructions/598194962.json"
+        }
+      }
+    ],
+    "assertions": [
+      { "type": "noError" },
+      { "type": "requestCount", "expected": 1 },
+      { "type": "requestMethod", "expected": "POST" },
+      { "type": "requestPath", "expected": "/999/templates/2085958507/project_constructions.json" },
+      { "type": "requestBody", "path": "project.name", "expected": "Marketing Campaign" },
+      { "type": "requestBody", "path": "project.description", "expected": "For Client: Xyz Corp Conference" },
+      { "type": "requestBody", "path": "project.start_date", "expected": "2026-09-01" },
+      { "type": "requestBodyAbsent", "path": "name" },
+      { "type": "requestBodyAbsent", "path": "start_date" },
+      { "type": "responseBody", "path": "id", "expected": 598194962 },
+      { "type": "responseBody", "path": "status", "expected": "pending" }
+    ],
+    "tags": ["templates", "project-construction", "write"]
+  },
+  {
+    "name": "project construction omits start_date when none is given",
+    "description": "Verifies that a construction without a start date leaves `start_date` off the wire entirely rather than sending null or an empty string, so the server anchors the template's dates to the week of construction.",
+    "operation": "CreateProjectFromTemplate",
+    "method": "POST",
+    "path": "/templates/{templateId}/project_constructions.json",
+    "pathParams": { "templateId": 2085958507 },
+    "requestBody": {
+      "name": "Marketing Campaign"
+    },
+    "mockResponses": [
+      {
+        "status": 201,
+        "headers": { "Content-Type": "application/json" },
+        "body": {
+          "id": 598194963,
+          "status": "pending",
+          "url": "https://3.basecampapi.com/999/templates/2085958507/project_constructions/598194963.json"
+        }
+      }
+    ],
+    "assertions": [
+      { "type": "noError" },
+      { "type": "requestCount", "expected": 1 },
+      { "type": "requestBody", "path": "project.name", "expected": "Marketing Campaign" },
+      { "type": "requestBodyAbsent", "path": "project.start_date" },
+      { "type": "requestBodyAbsent", "path": "project.description" },
+      { "type": "responseBody", "path": "id", "expected": 598194963 }
+    ],
+    "tags": ["templates", "project-construction", "write"]
+  }
+]
