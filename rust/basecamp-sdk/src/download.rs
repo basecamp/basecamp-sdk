@@ -46,8 +46,14 @@ impl AccountClient {
     /// bare — no credentials, no retry, no redirect. Hop-2 errors name only the storage
     /// origin: the signed URL is itself a credential (SPEC §9).
     pub async fn download_url(&self, raw_url: &str) -> Result<DownloadResult, Error> {
-        let given = Url::parse(raw_url)
-            .map_err(|_| Error::usage(format!("download URL is not absolute: {raw_url:?}")))?;
+        // An unparseable input may itself be a signed URL, so the error names only what
+        // SPEC §9's projection allows: the origin, or the fixed `unparsable` token.
+        let given = Url::parse(raw_url).map_err(|_| {
+            Error::usage(format!(
+                "download URL is not absolute ({})",
+                crate::security::origin_of(raw_url)
+            ))
+        })?;
         if !matches!(given.scheme(), "http" | "https") {
             return Err(Error::usage(format!(
                 "download URL must be http(s): {}",
@@ -57,7 +63,7 @@ impl AccountClient {
         let mut url = self.base_url().clone();
         url.set_path(given.path());
         url.set_query(given.query());
-        url.set_fragment(given.fragment());
+        // A fragment never goes on the wire, and `http::Uri` refuses one.
 
         let response = self.download_hop_one(&url).await?;
         let status = response.status();

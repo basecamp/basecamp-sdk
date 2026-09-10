@@ -33,8 +33,6 @@ pub struct Config {
     /// Total attempts per request, the initial one included; `0` is one attempt and no
     /// retries. Each operation's own ceiling applies under it.
     pub max_retries: u32,
-    /// The base of the local backoff curve.
-    pub base_delay: Duration,
     /// The most jitter added to a locally computed backoff.
     pub max_jitter: Duration,
     /// How many pages an auto-paginating read follows.
@@ -52,7 +50,6 @@ impl Default for Config {
             base_url: DEFAULT_BASE_URL.to_string(),
             timeout: DEFAULT_TIMEOUT,
             max_retries: DEFAULT_MAX_RETRIES,
-            base_delay: DEFAULT_BASE_DELAY,
             max_jitter: DEFAULT_MAX_JITTER,
             max_pages: DEFAULT_MAX_PAGES,
             max_response_body_bytes: MAX_RESPONSE_BODY_BYTES,

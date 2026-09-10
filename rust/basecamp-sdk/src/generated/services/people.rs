@@ -76,7 +76,7 @@ impl<'a> PeopleService<'a> {
     /// Enable or replace out of office for a person.
     /// Admins on Pro Pack accounts can manage others; otherwise self only.
     ///
-    /// `POST /people/{personId}/out_of_office.json` — not idempotent, never retried; retries up to 2 attempt(s) on 429, 503.
+    /// `POST /people/{personId}/out_of_office.json` — not idempotent, never retried.
     pub async fn enable_out_of_office(
         &self,
         person_id: i64,

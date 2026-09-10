@@ -32,7 +32,7 @@ impl<'a> CardStepsService<'a> {
 
     /// Create a step on a card
     ///
-    /// `POST /card_tables/cards/{cardId}/steps.json` — not idempotent, never retried; retries up to 2 attempt(s) on 429, 503.
+    /// `POST /card_tables/cards/{cardId}/steps.json` — not idempotent, never retried.
     pub async fn create(
         &self,
         card_id: i64,
@@ -55,7 +55,7 @@ impl<'a> CardStepsService<'a> {
 
     /// Reposition a step within a card
     ///
-    /// `POST /card_tables/cards/{cardId}/positions.json` — not idempotent, never retried; retries up to 2 attempt(s) on 429, 503.
+    /// `POST /card_tables/cards/{cardId}/positions.json` — not idempotent, never retried.
     pub async fn reposition(
         &self,
         card_id: i64,

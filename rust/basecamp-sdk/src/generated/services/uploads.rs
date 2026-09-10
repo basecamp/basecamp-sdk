@@ -40,7 +40,7 @@ impl<'a> UploadsService<'a> {
 
     /// Create a new upload in a vault
     ///
-    /// `POST /vaults/{vaultId}/uploads.json` — not idempotent, never retried; retries up to 2 attempt(s) on 429, 503.
+    /// `POST /vaults/{vaultId}/uploads.json` — not idempotent, never retried.
     pub async fn create(
         &self,
         vault_id: i64,
@@ -57,7 +57,7 @@ impl<'a> UploadsService<'a> {
     /// past version. Use this instead of CreateUpload when publishing a new release of the
     /// same file, so its published link keeps working.
     ///
-    /// `POST /uploads/{uploadId}/versions.json` — not idempotent, never retried; retries up to 2 attempt(s) on 429, 503.
+    /// `POST /uploads/{uploadId}/versions.json` — not idempotent, never retried.
     pub async fn create_version(
         &self,
         upload_id: i64,

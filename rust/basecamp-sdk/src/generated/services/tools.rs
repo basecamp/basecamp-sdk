@@ -32,7 +32,7 @@ impl<'a> ToolsService<'a> {
 
     /// Create a tool in a project dock
     ///
-    /// `POST /buckets/{bucketId}/dock/tools.json` — not idempotent, never retried; retries up to 2 attempt(s) on 429, 503.
+    /// `POST /buckets/{bucketId}/dock/tools.json` — not idempotent, never retried.
     pub async fn create(
         &self,
         bucket_id: i64,
@@ -61,7 +61,7 @@ impl<'a> ToolsService<'a> {
 
     /// Enable a tool (show it on the project dock)
     ///
-    /// `POST /recordings/{toolId}/position.json` — not idempotent, never retried; retries up to 2 attempt(s) on 429, 503.
+    /// `POST /recordings/{toolId}/position.json` — not idempotent, never retried.
     pub async fn enable(&self, tool_id: i64) -> Result<(), Error> {
         let operation = self.client.operation(&routes::ENABLE_TOOL, &[&tool_id]);
         self.client.send_unit(operation).await

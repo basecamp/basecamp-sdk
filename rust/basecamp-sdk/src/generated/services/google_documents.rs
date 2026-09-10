@@ -36,7 +36,7 @@ impl<'a> GoogleDocumentsService<'a> {
     /// type"\]}} — the enum would otherwise raise rather than add an error.
     /// Omitting `title` is allowed and reads back as "Untitled".
     ///
-    /// `POST /buckets/{bucketId}/vaults/{vaultId}/google_documents.json` — not idempotent, never retried; retries up to 2 attempt(s) on 429, 503.
+    /// `POST /buckets/{bucketId}/vaults/{vaultId}/google_documents.json` — not idempotent, never retried.
     pub async fn create_google_document(
         &self,
         bucket_id: i64,
