@@ -219,7 +219,7 @@ impl Error {
                     .as_ref()
                     .and_then(|value| value.get("message").and_then(Value::as_str))
             })
-            .map(truncate);
+            .map(str::to_string);
         let mut message = scalar
             .clone()
             .unwrap_or_else(|| format!("Request failed (HTTP {status_code})"));
@@ -706,6 +706,24 @@ mod tests {
             assert_eq!(error.request_id(), Some("req-1"));
             assert_eq!(error.message(), format!("Request failed (HTTP {status})"));
         }
+    }
+
+    #[test]
+    fn a_composed_validation_message_is_truncated_once() {
+        // 496 ASCII bytes, a three-byte character straddling the cut, then more: cutting the
+        // scalar before composition would leave an ellipsis for the final cut to land in.
+        let scalar = format!("{}\u{20ac}bb", "a".repeat(MAX_ERROR_MESSAGE_LENGTH - 4));
+        let body = serde_json::json!({"error": scalar, "errors": {"name": ["x"]}}).to_string();
+        let error = Error::from_response(
+            StatusCode::UNPROCESSABLE_ENTITY,
+            &HeaderMap::new(),
+            body.as_bytes(),
+        );
+        assert_eq!(
+            error.message(),
+            format!("{}...", "a".repeat(MAX_ERROR_MESSAGE_LENGTH - 4))
+        );
+        assert_eq!(error.field_errors().unwrap()["name"], vec!["x".to_string()]);
     }
 
     #[test]
