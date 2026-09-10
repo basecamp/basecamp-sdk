@@ -266,17 +266,26 @@ class TestParseRetryAfter:
         assert _parse_retry_after("Wed Jun  9 10:18:17 2021", now=now) == 3
         assert _parse_retry_after("Wed Jun 19 10:18:17 2021", now=now) == 864003
 
-    def test_other_zoneless_spellings_are_not_http_dates(self):
-        # parsedate_to_datetime is RFC 5322's parser and hands back a naive
-        # datetime for more than asctime: a bare date, or an IMF-fixdate whose
-        # zone it does not know. Reading those as UTC turned a value outside
-        # SPEC section 6's table into a saturated delay; only asctime earns the
-        # zone, the rest fall through to backoff.
+    def test_only_the_three_http_date_shapes_parse(self):
+        # parsedate_to_datetime is RFC 5322's parser and reads far more than
+        # RFC 7231's three forms: a bare date, a numeric or unknown zone. Each
+        # of those used to become a saturated delay (naive ones once the
+        # asctime branch read naive as UTC; aware ones outright); SPEC section
+        # 6's table says they are not dates, so the shape is gated before the
+        # parser sees the value and they fall through to backoff.
         now = datetime(2021, 6, 9, 10, 18, 14, tzinfo=UTC)
-        assert _parse_retry_after("1 Jan 2099 00:00:00", now=now) is None
-        assert _parse_retry_after("Wed, 09 Jun 2021 10:18:17 XYZ", now=now) is None
-        assert _parse_retry_after("Wed, 09 Jun 2021 10:18:17 -0000", now=now) is None
         assert _parse_retry_after("Wed, 09 Jun 2021 10:18:17 GMT", now=now) == 3
+        assert _parse_retry_after("Wednesday, 09-Jun-21 10:18:17 GMT", now=now) == 3
+        assert _parse_retry_after("Wed Jun  9 10:18:17 2021", now=now) == 3
+        for value in (
+            "1 Jan 2099 00:00:00",
+            "Wed, 09 Jun 2021 10:18:17 XYZ",
+            "Wed, 09 Jun 2021 10:18:17 -0000",
+            "Thu, 31 Dec 2099 23:59:59 +0000",
+            "Thu, 31 Dec 2099 23:59:59 UTC",
+            "Wed, 9 Jun 2021 10:18:17 GMT",
+        ):
+            assert _parse_retry_after(value, now=now) is None, value
 
     def test_none(self):
         assert _parse_retry_after(None) is None
@@ -285,7 +294,7 @@ class TestParseRetryAfter:
         from email.utils import format_datetime
 
         future = datetime.now(UTC) + timedelta(seconds=30)
-        value = format_datetime(future)
+        value = format_datetime(future, usegmt=True)  # IMF-fixdate ends in GMT
         result = _parse_retry_after(value)
         assert result is not None
         assert 25 <= result <= 35  # allow some clock drift
@@ -294,7 +303,7 @@ class TestParseRetryAfter:
         from email.utils import format_datetime
 
         past = datetime.now(UTC) - timedelta(seconds=30)
-        value = format_datetime(past)
+        value = format_datetime(past, usegmt=True)
         assert _parse_retry_after(value) is None
 
     def test_http_date_sub_second_remainder_rounds_up(self):

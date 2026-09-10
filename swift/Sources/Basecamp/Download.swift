@@ -101,9 +101,13 @@ extension AccountClient {
                 // Redirect — extract Location, proceed to hop 2
                 guard let location = httpResponse.value(forHTTPHeaderField: "Location"),
                       !location.isEmpty else {
+                    // A hop-1 response, so its Retry-After rides on the error
+                    // like any other status's (SPEC §6 Status Mapping).
                     throw BasecampError.api(
                         message: "redirect \(statusCode) with no Location header",
-                        httpStatus: statusCode, hint: nil, requestId: nil, decodeFailure: nil, retryAfterSeconds: nil
+                        httpStatus: statusCode, hint: nil, requestId: nil, decodeFailure: nil,
+                        retryAfterSeconds: BasecampError.parseRetryAfter(
+                            httpResponse.value(forHTTPHeaderField: "Retry-After"))
                     )
                 }
 
