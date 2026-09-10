@@ -11,6 +11,21 @@ what wrong behaviour you get if you ignore one. This file is that half.
 
 ---
 
+# Unreleased
+
+### Go: `TemplatesService.CreateProject` takes a variadic options argument (#856)
+
+`CreateProject(ctx, templateID, name, description)` gains a trailing
+`opts ...*CreateProjectOptions`, the carrier for the new `start_date` on
+project construction (`CreateProjectOptions{StartDate: "2026-09-01"}`; empty
+is omitted from the wire). Every existing call compiles unchanged. What does
+not: code that holds the method as a func value of the old type, or an
+interface of your own that names the old signature — both must add the
+variadic parameter. The other five SDKs take the project attributes as a
+struct or map and gain the optional field with no signature change.
+
+---
+
 # v0.17.0
 
 ### All SDKs: project client access and client enablement (#847)
