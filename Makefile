@@ -662,14 +662,15 @@ rs-deny:
 	@command -v cargo-deny >/dev/null || (echo "Install cargo-deny: cargo install cargo-deny --locked (or brew install cargo-deny)" && exit 1)
 	@echo "==> cargo deny (rust + conformance/runner/rust)..."
 	cargo deny --manifest-path rust/Cargo.toml check
-	cargo deny --manifest-path conformance/runner/rust/Cargo.toml check
+	cargo deny --manifest-path conformance/runner/rust/Cargo.toml --config rust/deny.toml check
 
 # Regenerate rust/basecamp-sdk/src/generated from openapi.json + behavior-model.json
+# The generator resolves openapi.json, behavior-model.json and its own names.toml
+# from the repository root (`--root`, defaulting to the workspace's parent) and
+# writes rust/basecamp-sdk/src/generated unless `--output` says otherwise.
 rs-generate:
 	@echo "==> Generating Rust SDK from OpenAPI..."
-	cd rust && cargo run -q --locked -p $(RS_CRATE)-generator -- \
-		--openapi ../openapi.json --behavior ../behavior-model.json \
-		--output basecamp-sdk/src/generated
+	cd rust && cargo run -q --locked -p $(RS_CRATE)-generator
 
 # Non-mutating regenerate + diff (the Swift/Python shape)
 rs-check-drift:
@@ -692,7 +693,7 @@ rs-clean:
 # Conformance Test targets
 #------------------------------------------------------------------------------
 
-.PHONY: conformance conformance-runner-tests conformance-runner-tests-go conformance-runner-tests-python conformance-runner-tests-ruby conformance-runner-tests-kotlin conformance-runner-tests-swift check-runner-test-reachability conformance-go conformance-go-replay conformance-kotlin conformance-kotlin-replay conformance-typescript conformance-typescript-live conformance-ruby conformance-ruby-replay conformance-python conformance-python-replay conformance-swift conformance-build conformance-live conformance-canary oauth-fixtures-check oauth-token-fixtures-check event-feed-fixtures-check event-feed-digest-fixtures-check conformance-fixtures-check check-search-fixture-copy check-fixture-execution
+.PHONY: conformance conformance-runner-tests conformance-runner-tests-go conformance-runner-tests-python conformance-runner-tests-ruby conformance-runner-tests-kotlin conformance-runner-tests-swift conformance-runner-tests-rust check-runner-test-reachability conformance-go conformance-go-replay conformance-kotlin conformance-kotlin-replay conformance-typescript conformance-typescript-live conformance-ruby conformance-ruby-replay conformance-python conformance-python-replay conformance-swift conformance-rust conformance-build conformance-live conformance-canary oauth-fixtures-check oauth-token-fixtures-check event-feed-fixtures-check event-feed-digest-fixtures-check conformance-fixtures-check check-search-fixture-copy check-fixture-execution
 
 # NOTE: conformance-swift and conformance-runner-tests-swift are defined in the
 # Swift SDK targets section below — their IS_MACOS conditional must parse after
@@ -792,7 +793,7 @@ check-search-fixture-copy:
 #
 # errorRaised (#576) is the same shape: every fixture declaring it is one the
 # SDK does refuse, so its failing branch is unreachable from conformance/tests/
-# and a handler that accepted everything would look green in all six runners.
+# and a handler that accepted everything would look green in all seven runners.
 #
 # Every recipe below DISCOVERS its suites; none names a test file. #572: the
 # Python and Ruby lines used to name `test_delay_gaps.py` / `delay_gaps_test.rb`
@@ -806,7 +807,7 @@ check-search-fixture-copy:
 # Split per language so CI's per-language jobs can call the make target for
 # their own toolchain — one definition of what "run the runner tests" means,
 # instead of a second enumeration in .github/workflows/test.yml.
-conformance-runner-tests: conformance-runner-tests-go conformance-runner-tests-python conformance-runner-tests-ruby conformance-runner-tests-kotlin conformance-runner-tests-swift
+conformance-runner-tests: conformance-runner-tests-go conformance-runner-tests-python conformance-runner-tests-ruby conformance-runner-tests-kotlin conformance-runner-tests-swift conformance-runner-tests-rust
 	@echo "==> Conformance runner unit tests passed"
 
 conformance-runner-tests-go:
@@ -860,11 +861,19 @@ conformance-runner-tests-kotlin:
 	@echo "==> Running Kotlin conformance runner unit tests..."
 	cd kotlin && ./gradlew --quiet :conformance:test
 
+# `cargo test` compiles every #[test] in the runner crate's module tree, so
+# discovery is the toolchain's and no file is named here (#572). --locked: the
+# runner Cargo.lock is tracked and records the SDK's version through its path
+# dep, so a stale one must fail rather than be rewritten mid-check.
+conformance-runner-tests-rust:
+	@echo "==> Running Rust conformance runner unit tests..."
+	cd conformance/runner/rust && cargo test --locked
+
 # Wipes the manifest directory before ANY conformance runner writes to it, so
-# "six manifests present" means "six runners reported in this run" rather than
-# "five reported and a sixth is left over from a different machine".
+# "seven manifests present" means "seven runners reported in this run" rather than
+# "six reported and a seventh is left over from a different machine".
 #
-# An ORDER-ONLY prerequisite (`|`) shared by all six language targets, which is
+# An ORDER-ONLY prerequisite (`|`) shared by all seven language targets, which is
 # what makes it correct under `make -j`: make builds a prerequisite to
 # completion before any dependent starts, and builds this phony target once per
 # invocation — so the reset cannot race the runners it protects. Ordering it as
@@ -881,7 +890,7 @@ conformance-manifests-reset:
 	@rm -rf conformance/manifests
 
 conformance-go conformance-kotlin conformance-typescript conformance-ruby \
-conformance-python conformance-swift: | conformance-manifests-reset
+conformance-python conformance-swift conformance-rust: | conformance-manifests-reset
 
 # Build conformance test runner
 conformance-build:
@@ -972,8 +981,15 @@ conformance-python-replay:
 	@test -n "$$BASECAMP_BACKEND" || (echo "BASECAMP_BACKEND is required" >&2; exit 1)
 	cd conformance/runner/python && uv sync --locked && uv run python replay_runner.py
 
+# Run Rust conformance tests. The runner is its own Cargo workspace with a
+# path dep on rust/basecamp-sdk; --locked for the reason every other Rust
+# recipe has it.
+conformance-rust:
+	@echo "==> Running Rust conformance tests..."
+	cd conformance/runner/rust && cargo run --locked -q
+
 # Run all conformance tests
-conformance: oauth-fixtures-check oauth-token-fixtures-check event-feed-fixtures-check event-feed-digest-fixtures-check conformance-fixtures-check conformance-runner-tests conformance-go conformance-kotlin conformance-typescript conformance-ruby conformance-python conformance-swift
+conformance: oauth-fixtures-check oauth-token-fixtures-check event-feed-fixtures-check event-feed-digest-fixtures-check conformance-fixtures-check conformance-runner-tests conformance-go conformance-kotlin conformance-typescript conformance-ruby conformance-python conformance-swift conformance-rust
 	@echo "==> Conformance tests passed"
 
 # Orchestrate one canary pass against a single backend:
@@ -1193,8 +1209,8 @@ endif
 # The macOS gate bounds the case census (#602) too, and the bound is worth
 # naming: every runner asserts that passed+failed+skipped equals the non-live
 # case count in conformance/tests, but on Linux this recipe prints SKIP and
-# Swift's copy of that assertion never runs. A green Linux `make` is five-runner
-# census coverage, not six. CI closes it by running test-swift on macos-15;
+# Swift's copy of that assertion never runs. A green Linux `make` is six-runner
+# census coverage, not seven. CI closes it by running test-swift on macos-15;
 # nothing closes it for a Linux developer.
 conformance-swift:
 ifdef IS_MACOS
@@ -1208,28 +1224,28 @@ endif
 #
 # Each runner's own case census (#742) answers a narrower question: "did THIS
 # runner account for every case". A case every runner deliberately excludes
-# leaves all six censuses green, because each one counted its own skip. Only a
-# comparison ACROSS runners can see it, and that needs all six exclusion
+# leaves all seven censuses green, because each one counted its own skip. Only a
+# comparison ACROSS runners can see it, and that needs all seven exclusion
 # manifests, which a conformance run produces.
 #
 # FULL mode is macOS-only, and the reason is the same ifdef as conformance-swift
-# directly above: on Linux `make conformance` produces five manifests and never
-# a sixth, so the all-six claim cannot be made there at all. Requiring six and
+# directly above: on Linux `make conformance` produces six manifests and never
+# a seventh, so the all-seven claim cannot be made there at all. Requiring seven and
 # failing on absence is the whole point — a missing manifest must never read as
 # "that runner executed everything", which is precisely what would make an
-# all-six case invisible.
+# all-seven case invisible.
 #
 # On Linux it runs in PARTIAL mode instead: it reports a case excluded by every
 # VISIBLE runner as a warning and exits 0. That is deliberately not a failure —
-# five-of-six is not the all-six claim, Swift may well execute the case, and a
+# six-of-seven is not the all-seven claim, Swift may well execute the case, and a
 # warning cannot produce a false failure. A Linux developer gets the signal
 # without the gate being able to lie.
 #
-# CI closes the gap properly: the fan-in job collects the Linux five and the
-# macOS one as artifacts and runs FULL mode over all six.
+# CI closes the gap properly: the fan-in job collects the Linux six and the
+# macOS one as artifacts and runs FULL mode over all seven.
 #
 # The self-test runs after the live check for the reason it exists: maximum
-# overlap today is 2 of 6 (#596 narrowed it), so a live run proves only that the
+# overlap today is 2 of 7 (#596 narrowed it), so a live run proves only that the
 # gate can say yes. The state it exists to reject cannot be produced by any
 # committed fixture.
 # Depends on `conformance`, and freshness is guaranteed by
@@ -1238,8 +1254,8 @@ endif
 # The edge on its own is not enough, and the gap is exactly the kind this gate
 # exists to catch: on Linux `conformance-swift` is a no-op, so a `swift.json`
 # left by an earlier macOS run over the same checkout SURVIVES while the other
-# five are refreshed. The gate then sees six manifests, stops treating the run
-# as partial, and compares five current exclusion sets against a stale sixth —
+# six are refreshed. The gate then sees seven manifests, stops treating the run
+# as partial, and compares six current exclusion sets against a stale seventh —
 # missing a newly all-excluded case, or failing on an exclusion Swift no longer
 # has. Both PR bots found it; it is silent-wrong, the worst shape for a gate
 # whose whole claim is about what the runners actually did.
@@ -1248,7 +1264,7 @@ endif
 # being uploaded by the very job that produced it.
 check-fixture-execution: conformance
 ifdef IS_MACOS
-	@echo "==> Checking no fixture case is executed by nothing (all six runners)..."
+	@echo "==> Checking no fixture case is executed by nothing (all seven runners)..."
 	@ruby scripts/check-fixture-execution.rb
 else
 	@echo "==> Checking fixture execution (partial: Swift's manifest is macOS-only)..."
@@ -1258,7 +1274,7 @@ endif
 	@ruby scripts/test-check-fixture-execution.rb
 
 # Unit-test the Swift runner's own assertion helpers (macOS only). Same reason
-# as the other five: the bounds branches never execute against a fixture that
+# as the other six: the bounds branches never execute against a fixture that
 # passes, so a vacuous assertion survives a fully green conformance run.
 # Reached from conformance-runner-tests, which is platform-agnostic and defers
 # the gate to this target. `swift test` discovers the whole Tests/ tree — no
@@ -1384,7 +1400,7 @@ tools:
 check-bucket-flat-parity:
 	@./scripts/check-bucket-flat-parity.sh
 
-# Verify the six SDKs agree on WHICH services exist. The service split is one
+# Verify the seven SDKs agree on WHICH services exist. The service split is one
 # mapping hand-transcribed into five generator configs, and every per-SDK
 # check-*-service-drift script validates ONE SDK against ITS OWN generator and
 # config — the TypeScript/Ruby/Python/Swift ones by regenerate-and-diff (which
@@ -1690,7 +1706,7 @@ check:
 	 if [ $$rc -ne 0 ]; then exit $$rc; fi; \
 	 echo "==> All checks passed"
 
-check-targets: check-gradle-serialization test-check-gradle-serialization test-promote-migrating lint-actions sync-spec-version-check smithy-check smithy-mapper-test behavior-model-check provenance-check sync-api-version-check doc-constants-check url-routes-check bc3-route-parity test-bc3-route-parity go-check-drift go-check-wrapper-drift go-check-generated-drift check-grouped-client-coverage test-check-grouped-client-coverage auth-routable-check check-service-inventory-parity test-check-service-inventory-parity check-operation-assignment-parity test-check-operation-assignment-parity kt-check-drift swift-check-drift go-check ts-check rb-check kt-check swift-check py-check check-bucket-flat-parity validate-api-gaps check-deprecation-parity check-fixture-coverage kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-idempotency-parity check-write-semantics-parity check-retry-metadata-parity check-runner-test-reachability conformance check-fixture-execution check-replay-decoder-parity check-readme-env-vars test-check-readme-env-vars lint-npm-lockfile-writes test-lint-npm-lockfile-writes test-assert-sdk-built test-assert-lockfiles-unchanged check-projected-examples
+check-targets: check-gradle-serialization test-check-gradle-serialization test-promote-migrating lint-actions sync-spec-version-check smithy-check smithy-mapper-test behavior-model-check provenance-check sync-api-version-check doc-constants-check url-routes-check bc3-route-parity test-bc3-route-parity go-check-drift go-check-wrapper-drift go-check-generated-drift check-grouped-client-coverage test-check-grouped-client-coverage auth-routable-check check-service-inventory-parity test-check-service-inventory-parity check-operation-assignment-parity test-check-operation-assignment-parity kt-check-drift swift-check-drift rs-check-drift go-check ts-check rb-check kt-check swift-check py-check rs-check check-bucket-flat-parity validate-api-gaps check-deprecation-parity check-fixture-coverage kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-idempotency-parity check-write-semantics-parity check-retry-metadata-parity check-runner-test-reachability conformance check-fixture-execution check-replay-decoder-parity check-readme-env-vars test-check-readme-env-vars lint-npm-lockfile-writes test-lint-npm-lockfile-writes test-assert-sdk-built test-assert-lockfiles-unchanged check-projected-examples
 	@:
 
 # Clean all build artifacts

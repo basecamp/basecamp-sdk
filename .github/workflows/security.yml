@@ -443,7 +443,7 @@ jobs:
       - name: cargo deny check (both workspaces)
         run: |
           cargo deny --manifest-path rust/Cargo.toml check
-          cargo deny --manifest-path conformance/runner/rust/Cargo.toml check
+          cargo deny --manifest-path conformance/runner/rust/Cargo.toml --config rust/deny.toml check
 
       # Ground truth, and the authoritative check: the static parser predicts
       # that nothing writes a lockfile, this observes whether anything did. A CI

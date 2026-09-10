@@ -2948,6 +2948,8 @@ manifests rather than being checked on its own.
 **Swift** (`conformance/runner/swift/.../Runner.swift` — `temporarySkips` is empty; the entry below comes from the `link-header` tag branch) — architectural:
 - "List operation returns first page with Link header" — same as Kotlin: auto-pagination plus a last-consumed-response status model.
 
+**Rust** (`conformance/runner/rust/src/main.rs` `RUST_SKIPS`) — none; the `link-header` fixture above runs; only its `requestCount` assertion is suppressed.
+
 <!-- @zero-skip-roster:end -->
 
 Swift carries no capability skips. It is three-gate on retry (status, network,

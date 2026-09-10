@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-# Guard: the five generated SDKs hang each OPERATION off the same service.
+# Guard: the six generated SDKs hang each OPERATION off the same service.
 #
 # `scripts/check-service-inventory-parity` answers "which services exist". This
 # answers "which service does a given operation live on", and they are different
@@ -10,11 +10,11 @@
 # one quantity, and its own header forbids growing per-SDK rules into it.
 #
 # WHAT IS UNDETECTABLE WITHOUT THIS. `SERVICE_SPLITS` maps tag -> {service ->
-# [operationIds]} and is transcribed by hand into five generator configs
+# [operationIds]} and is transcribed by hand into six generator configs
 # (typescript/scripts, ruby/scripts, python/scripts,
-# kotlin/generator/.../Config.kt, swift's ServiceGrouper). If ONE of them routes
-# an operation to a DIFFERENT BUT ALREADY-EXISTING service, every gate stays
-# green:
+# kotlin/generator/.../Config.kt, swift's ServiceGrouper, rust/generator). If ONE
+# of them routes an operation to a DIFFERENT BUT ALREADY-EXISTING service, every
+# gate stays green:
 #
 #   - the service-name union is unchanged, so check-service-inventory-parity
 #     sees nothing: both services still exist in every SDK
@@ -23,7 +23,7 @@
 #     generator, and the operation is still emitted somewhere
 #   - the SDK compiles, and its tests exercise the method wherever it now lives
 #
-# Five SDKs then expose `account.cardTables.get`, one exposes
+# Six SDKs then expose `account.cardTables.get`, one exposes
 # `account.cards.get`, and both are "present". This gate is the only thing that
 # looks at the pairing.
 #
@@ -31,15 +31,15 @@
 # "SERVICE_SPLITS\|TAG_TO_SERVICE" go/` returns nothing: Go's service layer is
 # hand-authored wrappers over one flat oapi-codegen client
 # (go/pkg/generated/client.gen.go), which has no service grouping at all. Go has
-# no split table that could disagree with the other five, so it is outside this
-# failure mode entirely — the bug class is five tables, and five sources cover it
+# no split table that could disagree with the other six, so it is outside this
+# failure mode entirely — the bug class is six tables, and six sources cover it
 # completely.
 #
 # Go is also deliberately assigned differently, which is the second reason. It
 # re-exposes TrashRecording on TEN services (cards.Trash(), documents.Trash(),
 # ...), and SetClientVisibility, ListLineupMarkers and the progress reports all
-# sit elsewhere by design: 27 operationIds that a six-source gate would have to
-# exempt. That carve-out table would be an order of magnitude larger than
+# sit elsewhere by design: 27 operationIds that a seven-source gate would have
+# to exempt. That carve-out table would be an order of magnitude larger than
 # check-service-inventory-parity's GO_CARVE_OUTS and would encode intent, not
 # drift. A gate whose exemption list is bigger than its signal is not a gate.
 #
@@ -60,7 +60,7 @@
 # openapi.json below rather than assumed, which is what lets the assignment be a
 # plain map instead of something that has to count.
 #
-# NO SIXTH HAND-COPY. openapi.json appears below for exactly two things: the
+# NO SEVENTH HAND-COPY. openapi.json appears below for exactly two things: the
 # ROSTER of operations each SDK must be shown to emit, and the operationId used
 # to LABEL a failure. It is never consulted for which service an operation
 # belongs on — deriving the expected assignment from openapi.json plus one
@@ -80,20 +80,21 @@
 # THE SERVICE NAME COMES FROM THE CLASS DECLARATION, NOT THE FILENAME, and that
 # is what keeps this gate free of a per-SDK naming table. Filenames diverge —
 # `card-tables.ts`, `card_tables_service.rb`, `card_tables.py`, `card-tables.kt`,
-# `CardTablesService.swift`, plus the one module `generate_services.py` renames —
-# and reading them would mean transcribing check-service-inventory-parity's
-# per-source drop/strip/rename/spelling table a second time. The CLASS is
-# `#{service}Service` in all five, so one universal rule serves: squash to
+# `CardTablesService.swift`, `card_tables.rs`, plus the one module
+# `generate_services.py` renames — and reading them would mean transcribing
+# check-service-inventory-parity's per-source drop/strip/rename/spelling table a
+# second time. The CLASS is `#{service}Service` in all six (Rust's carries a
+# lifetime, `CardTablesService<'a>`), so one universal rule serves: squash to
 # lowercase alphanumerics, strip a trailing `service`. It also lands on the same
 # spelling Ruby and Python already emit in OperationInfo (`service:
 # "cardtables"`), which is what the failure messages below quote.
 #
 # The strip is `sub`, not `gsub`, and that is COSMETIC — say so rather than
 # implying a guarantee. A service group whose own name ended in "Service" would
-# be class `NotificationServiceService` in all five renderings, so any consistent
-# strip rule leaves all five agreeing and the verdict is the same either way;
+# be class `NotificationServiceService` in all six renderings, so any consistent
+# strip rule leaves all six agreeing and the verdict is the same either way;
 # only the name in the message changes. Reading the class rather than the filename
-# is what actually removes the hazard, because it removes the five different
+# is what actually removes the hazard, because it removes the six different
 # spellings. (Measured: making this `gsub` turns no self-test case red, and the
 # suite says so instead of pretending otherwise.)
 #
@@ -130,7 +131,7 @@ UTF8 = "UTF-8"
 # Floor on the ANCHOR, not on the SDK reads. openapi.json is walked with two
 # nested Hash iterations; a shape change (a moved `paths` key, a $ref-ed path
 # item) yields fewer operations rather than an error, and a collapsed anchor
-# would report all 250 operations as "extra" in all five SDKs — 1250 lines of
+# would report all 250 operations as "extra" in all six SDKs — 1500 lines of
 # true statements describing the wrong problem. Deliberately far below the real
 # value: this catches collapse, not drift.
 MIN_OPERATIONS = 200
@@ -141,7 +142,7 @@ MIN_OPERATIONS = 200
 # as every operation missing from every SDK.
 ACCOUNT_PREFIX = %r{\A/\{accountId\}}
 
-# The five renderings. Each is a directory of generated service files.
+# The six renderings. Each is a directory of generated service files.
 #
 #   class_pattern  captures the service class name; also splits the file, so
 #                  operations are attributed to the class they sit in rather
@@ -240,6 +241,27 @@ SOURCES = [
       { pattern: /requestPaginated(?:Wrapped)?\(\s*OperationInfo\([^)]*\),\s*path: "(?<path>[^"]*)"/m, method: "GET" },
     ],
   },
+  {
+    id: "rust",
+    path: "rust/basecamp-sdk/src/generated/services",
+    ext: ".rs",
+    drop: ["mod"],
+    # The struct declaration; its `impl<'a> CardTablesService<'a>` block follows
+    # in the same file and is what the chunk below actually reads.
+    class_pattern: /^pub struct (\w+)<'a>/,
+    calls: [
+      # THE CALL CARRIES NO PATH. Every generated Rust method dispatches through
+      # `routes::CONST`, a static in routes.rs that owns the method and the path,
+      # so the service file holds no request literal at all. What it does hold,
+      # in every method's doc block after the summary, is the wire line the
+      # generator emits verbatim — /// `GET /buckets/{projectId}/cards/{id}.json`
+      # — idempotent; retries up to 3 attempt(s) on [429, 503]. — and the
+      # backticked head of that line is read here as the request-call pattern.
+      # A generator that stops emitting it drops the operation from this
+      # rendering and the completeness check names it.
+      { pattern: /^[ \t]*\/\/\/ `(?<method>GET|POST|PUT|DELETE|PATCH) (?<path>[^`]*)`/ },
+    ],
+  },
 ].freeze
 
 failures = []
@@ -251,9 +273,9 @@ def die(failures)
   warn ""
   # NEUTRAL ON PURPOSE, the same way check-service-inventory-parity's footer is.
   # This prints for every failure class — a missing input, an operation read out
-  # of only four SDKs, a duplicated key, a drifted Python async twin — and most
+  # of only five SDKs, a duplicated key, a drifted Python async twin — and most
   # of those are not a split-table disagreement. Naming a cause the gate cannot
-  # observe sends the reader to five generator configs when the thing to look at
+  # observe sends the reader to six generator configs when the thing to look at
   # is one regex or one file.
   warn "  This gate compares which service each operation is emitted on, SDK against"
   warn "  SDK. It can report WHICH renderings disagree and about WHICH operation; it"
@@ -261,10 +283,10 @@ def die(failures)
   exit 1
 end
 
-# One universal rule, because all five generators name the class
+# One universal rule, because all six generators name the class
 # `#{service}Service`. `sub` not `gsub`: exactly one suffix comes off, so a
 # service group whose own name ends in "Service" is spelled the same way by all
-# five rather than being taken apart by one of them.
+# six rather than being taken apart by one of them.
 def canonical_service(class_name)
   class_name.downcase.gsub(/[^a-z0-9]/, "").sub(/service\z/, "")
 end
@@ -275,7 +297,7 @@ def normalize_path(raw)
     .gsub(/\$\{[^}]*\}/, "{}") # TypeScript, Kotlin
     .gsub(/#\{[^}]*\}/, "{}")  # Ruby
     .gsub(/\\\([^)]*\)/, "{}") # Swift
-    .gsub(/\{[^}]*\}/, "{}")   # Python f-strings, and openapi.json itself
+    .gsub(/\{[^}]*\}/, "{}")   # Python f-strings, Rust doc lines, and openapi.json itself
 end
 
 def scan_calls(body, calls)
@@ -409,7 +431,7 @@ end
 # --------------------------------------------------------------- completeness
 
 # Reported BEFORE the parity diff, and separately from it. An operation read out
-# of four SDKs and not the fifth is an extraction or emission problem; describing
+# of five SDKs and not the sixth is an extraction or emission problem; describing
 # it as an assignment disagreement would name a cause the gate has not observed.
 assignments.each do |id, assignment|
   missing = (expected.keys - assignment.keys).sort

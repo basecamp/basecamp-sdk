@@ -196,7 +196,7 @@ jobs:
         env:
           LC_ALL: C
 
-      - name: Deprecation signal parity across six SDKs
+      - name: Deprecation signal parity across seven SDKs
         run: make check-deprecation-parity
 
       - name: Generated Go optional fields can represent absence
@@ -479,10 +479,10 @@ jobs:
           ./conformance-runner
 
       - name: Upload go execution manifest
-        # One of the six exclusion sets the cross-runner gate compares (#602).
+        # One of the seven exclusion sets the cross-runner gate compares (#602).
         # Each runner's own census cannot see a case that EVERY runner excludes,
         # because each one counted its own skip; the fan-in job below requires
-        # all six manifests and fails if any is absent.
+        # all seven manifests and fails if any is absent.
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: execution-manifest-go
@@ -583,10 +583,10 @@ jobs:
           npx vitest run
 
       - name: Upload typescript execution manifest
-        # One of the six exclusion sets the cross-runner gate compares (#602).
+        # One of the seven exclusion sets the cross-runner gate compares (#602).
         # Each runner's own census cannot see a case that EVERY runner excludes,
         # because each one counted its own skip; the fan-in job below requires
-        # all six manifests and fails if any is absent.
+        # all seven manifests and fails if any is absent.
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: execution-manifest-typescript
@@ -705,10 +705,10 @@ jobs:
         # one version only, so an unconditional upload fires on every other one
         # with nothing to upload and `if-no-files-found: error`.
         if: matrix.ruby == '3.3'
-        # One of the six exclusion sets the cross-runner gate compares (#602).
+        # One of the seven exclusion sets the cross-runner gate compares (#602).
         # Each runner's own census cannot see a case that EVERY runner excludes,
         # because each one counted its own skip; the fan-in job below requires
-        # all six manifests and fails if any is absent.
+        # all seven manifests and fails if any is absent.
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: execution-manifest-ruby
@@ -832,10 +832,10 @@ jobs:
         # one version only, so an unconditional upload fires on every other one
         # with nothing to upload and `if-no-files-found: error`.
         if: matrix.python == '3.13'
-        # One of the six exclusion sets the cross-runner gate compares (#602).
+        # One of the seven exclusion sets the cross-runner gate compares (#602).
         # Each runner's own census cannot see a case that EVERY runner excludes,
         # because each one counted its own skip; the fan-in job below requires
-        # all six manifests and fails if any is absent.
+        # all seven manifests and fails if any is absent.
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: execution-manifest-python
@@ -903,6 +903,11 @@ jobs:
     defaults:
       run:
         working-directory: rust
+    env:
+      # rust/rust-toolchain.toml pins the dev toolchain, and a toolchain file
+      # outranks the default the action sets — so without this the MSRV lane
+      # would silently build on 1.98.1. The env var outranks the file.
+      RUSTUP_TOOLCHAIN: ${{ matrix.toolchain }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -1053,10 +1058,10 @@ jobs:
         run: make conformance-swift
 
       - name: Upload swift execution manifest
-        # One of the six exclusion sets the cross-runner gate compares (#602).
+        # One of the seven exclusion sets the cross-runner gate compares (#602).
         # Each runner's own census cannot see a case that EVERY runner excludes,
         # because each one counted its own skip; the fan-in job below requires
-        # all six manifests and fails if any is absent.
+        # all seven manifests and fails if any is absent.
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: execution-manifest-swift
@@ -1138,10 +1143,10 @@ jobs:
         run: ./gradlew :conformance:run
 
       - name: Upload kotlin execution manifest
-        # One of the six exclusion sets the cross-runner gate compares (#602).
+        # One of the seven exclusion sets the cross-runner gate compares (#602).
         # Each runner's own census cannot see a case that EVERY runner excludes,
         # because each one counted its own skip; the fan-in job below requires
-        # all six manifests and fails if any is absent.
+        # all seven manifests and fails if any is absent.
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: execution-manifest-kotlin
@@ -1174,7 +1179,7 @@ jobs:
     # which includes its conformance step — did not succeed.
     name: Conformance Tests
     runs-on: ubuntu-latest
-    needs: [test-go, test-typescript, test-ruby, test-kotlin, test-python, test-swift, spec-gates]
+    needs: [test-go, test-typescript, test-ruby, test-kotlin, test-python, test-swift, test-rust, spec-gates]
     if: always()
     permissions:
       contents: read
@@ -1202,8 +1207,8 @@ jobs:
         with:
           ruby-version: '3.4'
 
-      - name: Collect execution manifests from all six runners
-        # merge-multiple flattens the six single-file artifacts back into one
+      - name: Collect execution manifests from all seven runners
+        # merge-multiple flattens the seven single-file artifacts back into one
         # directory. Not `continue-on-error`: a download that silently produced
         # nothing would leave the gate reading an empty directory, and it fails
         # closed on that — but failing here names the real cause.
@@ -1213,23 +1218,23 @@ jobs:
           merge-multiple: true
           path: conformance/manifests/
 
-      - name: Fixture-execution gate self-test (crafts the all-six state)
+      - name: Fixture-execution gate self-test (crafts the all-seven state)
         # The live check below runs against committed inputs that are built to
-        # PASS — maximum overlap is 2 of 6 — so on its own it proves only that
+        # PASS — maximum overlap is 2 of 7 — so on its own it proves only that
         # the gate can say yes. Without this step a regression that made the
-        # gate accept a missing manifest, or an all-six exclusion, would leave
+        # gate accept a missing manifest, or an all-seven exclusion, would leave
         # CI green: the self-test is otherwise reachable only through the Make
         # target, which this workflow deliberately bypasses (it must not re-run
         # the runners). Same reason the other gates' self-tests run in
         # spec-gates.
         run: ruby scripts/test-check-fixture-execution.rb
 
-      - name: No fixture case is executed by nothing (all six runners)
+      - name: No fixture case is executed by nothing (all seven runners)
         # THE #602 check, and the only place it can run. Each language job sees
         # one runner's exclusion set; a case every runner excludes leaves all
-        # six censuses green because each counted its own skip. This job is the
-        # one place all six sets exist together — which is exactly why it runs
-        # in FULL mode, requiring six manifests and failing on absence. A
+        # seven censuses green because each counted its own skip. This job is the
+        # one place all seven sets exist together — which is exactly why it runs
+        # in FULL mode, requiring seven manifests and failing on absence. A
         # missing manifest is never "that runner executed everything".
         #
         # ORDERED AFTER the results check above, deliberately. This job is
@@ -1238,8 +1243,8 @@ jobs:
         # gate first would then report "missing manifest: ruby" for what is
         # really "the Ruby job failed", burying the actual cause behind a
         # second, derived failure. With the results check first, the run stops
-        # there and says so; by the time this step runs, all six jobs succeeded,
-        # so all six manifests must exist and an absent one is a real defect.
+        # there and says so; by the time this step runs, all seven jobs succeeded,
+        # so all seven manifests must exist and an absent one is a real defect.
         run: ruby scripts/check-fixture-execution.rb
 
   lint:

@@ -29,13 +29,13 @@ trap 'rm -rf "$TMP_OUT"' EXIT
 
 echo "==> Regenerating Rust SDK into a temp directory..."
 # The generator is a workspace member of rust/; run it from there (like
-# `make rs-generate`) with absolute inputs and an absolute output so the
-# committed tree is untouched. --locked: drift detection must not be the
+# `make rs-generate`). It reads openapi.json, behavior-model.json and its
+# names.toml relative to --root, and --output sends the tree to the temp path
+# so the committed one is untouched. --locked: drift detection must not be the
 # thing that rewrites the lockfile.
 (cd "$ROOT_DIR/rust" && \
   cargo run -q --locked -p basecamp-sdk-generator -- \
-    --openapi "$ROOT_DIR/openapi.json" \
-    --behavior "$ROOT_DIR/behavior-model.json" \
+    --root "$ROOT_DIR" \
     --output "$TMP_OUT") > /dev/null
 
 echo "==> Diffing against committed rust/basecamp-sdk/src/generated/ ..."

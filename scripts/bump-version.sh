@@ -64,16 +64,17 @@ sedi "s/^version = \".*\"/version = \"$VERSION\"/" python/pyproject.toml
 # 10. Python _version.py
 sedi "s/^VERSION = \".*\"/VERSION = \"$VERSION\"/" python/src/basecamp/_version.py
 
-# 11. Rust workspace Cargo.toml — the ONE Rust version constant (the crate
-# inherits it with `version.workspace = true`; code reads env!("CARGO_PKG_VERSION")).
-# The edit is bounded to the [workspace.package] table: a bare `^version = `
-# sed also matches `[package]` and `[dependencies]` lines when the file is
-# reordered, and cargo has no built-in setter without cargo-edit.
+# 11. Rust crate Cargo.toml — the ONE Rust version constant (code reads
+# env!("CARGO_PKG_VERSION")). The edit is bounded to the [package] table: a
+# bare `^version = ` sed also matches `[dependencies]` lines and any reordered
+# table, and cargo has no built-in setter without cargo-edit.
 awk -v want="version = \"$VERSION\"" '
-  /^\[/ { intable = ($0 == "[workspace.package]") }
+  /^\[/ { intable = ($0 == "[package]") }
   intable && /^version = "/ { $0 = want }
   { print }
-' rust/Cargo.toml > rust/Cargo.toml.tmp && cat rust/Cargo.toml.tmp > rust/Cargo.toml && rm rust/Cargo.toml.tmp
+' rust/basecamp-sdk/Cargo.toml > rust/basecamp-sdk/Cargo.toml.tmp \
+  && cat rust/basecamp-sdk/Cargo.toml.tmp > rust/basecamp-sdk/Cargo.toml \
+  && rm rust/basecamp-sdk/Cargo.toml.tmp
 
 # Sync TypeScript lockfile
 echo "Syncing TypeScript lockfile..."

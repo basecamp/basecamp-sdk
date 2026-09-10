@@ -155,6 +155,7 @@ PY_RB = {"Python": gate.SDKS["Python"], "Ruby": gate.SDKS["Ruby"]}
 SW_SDK = {"Swift": gate.SDKS["Swift"]}
 KT_SDK = {"Kotlin": gate.SDKS["Kotlin"]}
 GO_SDK = {"Go": gate.SDKS["Go"]}
+RS_SDK = {"Rust": gate.SDKS["Rust"]}
 
 TABLE = "| Variable | Description |\n|---|---|\n| `{var}` | thing |\n"
 
@@ -1712,6 +1713,130 @@ def main() -> int:
         check("a wrapped swift environment chain is a read",
               run_gate(root, SW_SDK, no_env_sdks=("Swift",)),
               ["noenv:Swift:BASECAMP_REAL"])
+
+        # Rust. Every form the crate spells a read in, and every lexical form
+        # that could hide or invent one: comments in all three spellings, both
+        # raw-string shapes, the lifetime tick and the char literal.
+        root = tmp / "rust-reads"
+        build(root, {
+            "rust/basecamp-sdk/README.md":
+                "The SDK reads BASECAMP_STD, BASECAMP_OS, BASECAMP_USE and BASECAMP_HELPER.\n",
+            "rust/basecamp-sdk/src/config.rs":
+                'use std::env;\n'
+                'let a = std::env::var("BASECAMP_STD");\n'
+                'let b = std::env::var_os("BASECAMP_OS");\n'
+                'let c = env::var("BASECAMP_USE");\n'
+                'let d = env_value("BASECAMP_HELPER");\n'
+                'fn env_value(name: &str) -> Option<String> { env::var(name).ok() }\n',
+        })
+        check("rust std::env::var, var_os, env::var and the env_value helper are reads",
+              run_gate(root, RS_SDK), [])
+
+        # A local module that merely spells `env` is not std::env.
+        root = tmp / "rust-local-env-module"
+        build(root, {
+            "rust/basecamp-sdk/README.md": "no tables\n",
+            "rust/basecamp-sdk/src/c.rs": 'let v = crate::env::var("BASECAMP_LOCAL");\n',
+        })
+        check("rust crate::env::var is not an environment read",
+              run_gate(root, RS_SDK), [])
+
+        root = tmp / "rust-comments"
+        build(root, {
+            "rust/basecamp-sdk/README.md": TABLE.format(var="BASECAMP_FAKE"),
+            "rust/basecamp-sdk/src/c.rs":
+                '//! std::env::var("BASECAMP_FAKE")\n'
+                '/// std::env::var("BASECAMP_FAKE")\n'
+                '// std::env::var("BASECAMP_FAKE")\n'
+                '/* outer /* inner */ std::env::var("BASECAMP_FAKE") */\n',
+        })
+        check("rust line, doc, inner-doc and nested block comments are not reads",
+              run_gate(root, RS_SDK), ["forward:Rust:BASECAMP_FAKE"])
+
+        # ...while code after an inner `*/` is still comment: Rust nests.
+        root = tmp / "rust-nested-comment-tail"
+        build(root, {
+            "rust/basecamp-sdk/README.md": "no tables\n",
+            "rust/basecamp-sdk/src/c.rs":
+                '/* outer /* inner */ let v = std::env::var("BASECAMP_FAKE"); */\n',
+        })
+        check("rust block comments nest", run_gate(root, RS_SDK), [])
+
+        root = tmp / "rust-raw-string"
+        build(root, {
+            "rust/basecamp-sdk/README.md": TABLE.format(var="BASECAMP_FAKE"),
+            "rust/basecamp-sdk/src/c.rs":
+                'let s = r#"std::env::var("BASECAMP_FAKE")"#;\n'
+                'let t = r##"env_value("BASECAMP_FAKE")"##;\n',
+        })
+        check("a read inside a rust raw string is not a read",
+              run_gate(root, RS_SDK), ["forward:Rust:BASECAMP_FAKE"])
+
+        # The case above passes without the fence rule too — the read's prefix
+        # sits inside a plain string either way. What the fence rule buys is an
+        # unpaired quote INSIDE the raw body: read as a plain string, `"say "`
+        # closes early and the `"#;` after it opens one that runs into the real
+        # read and masks it.
+        root = tmp / "rust-raw-unpaired-quote"
+        build(root, {
+            "rust/basecamp-sdk/README.md": "The SDK reads BASECAMP_ODD.\n",
+            "rust/basecamp-sdk/src/c.rs":
+                'let s = r#"say "hi"#; let v = std::env::var("BASECAMP_ODD");\n',
+        })
+        check("a rust hashed raw string ends at its fence, not at an inner quote",
+              run_gate(root, RS_SDK), [])
+
+        # `r"\"` is a complete raw string holding one backslash. Read with
+        # escapes, the backslash shields the quote and the literal swallows the
+        # line after it — and the read with it.
+        root = tmp / "rust-raw-prefix"
+        build(root, {
+            "rust/basecamp-sdk/README.md": "The SDK reads BASECAMP_RAWEND.\n",
+            "rust/basecamp-sdk/src/c.rs":
+                'let sep = r"\\"; let v = std::env::var("BASECAMP_RAWEND");\n',
+        })
+        check("a rust r-string processes no escapes", run_gate(root, RS_SDK), [])
+
+        root = tmp / "rust-lifetime"
+        build(root, {
+            "rust/basecamp-sdk/README.md": "The SDK reads BASECAMP_LT.\n",
+            "rust/basecamp-sdk/src/c.rs":
+                "fn f(x: &'static str) -> Option<String> { std::env::var(\"BASECAMP_LT\").ok() }\n"
+                "fn g<'a>(x: &'a str, y: &'a str) -> Option<String> { env::var(\"BASECAMP_LT\").ok() }\n",
+        })
+        check("a rust lifetime tick does not open a string", run_gate(root, RS_SDK), [])
+
+        root = tmp / "rust-char-literal"
+        build(root, {
+            "rust/basecamp-sdk/README.md": "The SDK reads BASECAMP_CH.\n",
+            "rust/basecamp-sdk/src/c.rs":
+                "if c == '\"' { let v = std::env::var(\"BASECAMP_CH\"); }\n"
+                "if d == '\\'' { let w = env::var(\"BASECAMP_CH\"); }\n",
+        })
+        check("a rust char literal holding a quote does not open a string",
+              run_gate(root, RS_SDK), [])
+
+        # An ordinary Rust string may span lines. Ended at the newline instead,
+        # the closing quote on the next line would OPEN a string that runs into
+        # the read beside it and masks it.
+        root = tmp / "rust-multiline-string"
+        build(root, {
+            "rust/basecamp-sdk/README.md": "The SDK reads BASECAMP_AFTER.\n",
+            "rust/basecamp-sdk/src/c.rs":
+                'let s = "line one\nline two"; let v = std::env::var("BASECAMP_AFTER");\n',
+        })
+        check("a rust string spanning lines closes on the later line",
+              run_gate(root, RS_SDK), [])
+
+        # tests/ beside src/ is outside the scanned root, and a `_test.rs`
+        # under src/ is a test by name.
+        root = tmp / "rust-test-code"
+        build(root, {
+            "rust/basecamp-sdk/README.md": "no tables\n",
+            "rust/basecamp-sdk/tests/e2e.rs": 'let v = std::env::var("BASECAMP_FAKE");\n',
+            "rust/basecamp-sdk/src/config_test.rs": 'let v = std::env::var("BASECAMP_FAKE");\n',
+        })
+        check("rust test code is excluded", run_gate(root, RS_SDK), [])
 
         # `import os as X` rebinds the module, moving every qualified spelling.
         root = tmp / "py-module-alias"

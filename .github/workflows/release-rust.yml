@@ -80,7 +80,7 @@ jobs:
       - name: Advisories, licenses, bans (both workspaces)
         run: |
           cargo deny --manifest-path Cargo.toml check
-          cargo deny --manifest-path ../conformance/runner/rust/Cargo.toml check
+          cargo deny --manifest-path ../conformance/runner/rust/Cargo.toml --config deny.toml check
 
   # Packaging is deliberately separate from publishing: this job carries no
   # `environment:`, so a workflow_dispatch rehearsal runs it from any ref

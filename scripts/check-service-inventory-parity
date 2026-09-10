@@ -1,12 +1,13 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-# Guard: the six SDKs agree on WHICH services exist.
+# Guard: the seven SDKs agree on WHICH services exist.
 #
 # The service split is one mapping — `TAG_TO_SERVICE` plus `SERVICE_SPLITS` —
-# transcribed by hand into five generator configs (typescript/scripts,
+# transcribed by hand into six generator configs (typescript/scripts,
 # ruby/scripts, kotlin/generator/.../Config.kt, python/scripts, swift's
-# ServiceGrouper). Until this gate, nothing compared them TO EACH OTHER.
+# ServiceGrouper, rust/generator). Until this gate, nothing compared them TO EACH
+# OTHER.
 #
 # Be precise about what the existing checks do, because the loose version of this
 # sentence ("they only compare operationIds") is false and a gate whose stated
@@ -32,7 +33,7 @@
 # GO IS THE ONE EXCEPTION, and saying "it reads generator output" flatly is an
 # over-claim worth not making. Go has no generated per-service files, so its
 # rendering here is the hand-written AccountClient accessors in
-# go/pkg/basecamp/client.go — a hand-written surface compared against seven
+# go/pkg/basecamp/client.go — a hand-written surface compared against nine
 # generated ones. That is not a flaw in the comparison (Go's accessors are still
 # an independent statement of which services exist) but it is why Go, alone,
 # needs three recorded carve-outs, and why it gets the accessor-vs-returned-type
@@ -43,13 +44,14 @@
 # independent transcriptions, not two renderings of one root, so a service
 # omitted from BOTH generators' tables leaves them agreeing and certifies the
 # old roster and the old count. That residue was named on #745 and left open.
-# Comparing all eight renderings closes it: the other six have no way to agree
+# Comparing all ten renderings closes it: the other eight have no way to agree
 # with a mistake made in those two.
 #
-# The two accessor files are checked against their OWN generated service
-# directories as well, which is the other half. §5's derivation reads accessors;
-# a Kotlin generator that emitted a service file but no accessor would leave the
-# roster short with every services directory agreeing that the service exists.
+# The three generated accessor files are checked against their OWN generated
+# service directories as well, which is the other half. §5's derivation reads
+# accessors; a Kotlin generator that emitted a service file but no accessor would
+# leave the roster short with every services directory agreeing that the service
+# exists.
 #
 # NORMALIZATION IS DATA, NOT BRANCHES. Each SDK spells the same service its own
 # way, and the entire rule set for a source is the fields on its SOURCES entry:
@@ -85,9 +87,9 @@ UTF8 = "UTF-8"
 # comparison below catches on its own.
 MIN_SERVICES = 40
 
-# The eight renderings. `spelling` names the identifier casing the raw name
+# The ten renderings. `spelling` names the identifier casing the raw name
 # arrives in; every source is normalized to snake_case, which is the spelling
-# three of them already use.
+# five of them already use.
 #
 #   :snake  already snake_case          my_notifications
 #   :kebab  hyphenated                  my-notifications
@@ -146,7 +148,7 @@ SOURCES = [
     # verbatim — including one whose canonical name legitimately ENDS in
     # `_service`. Stripping the suffix unconditionally (as Ruby correctly does,
     # because Ruby suffixes every file) would take that name apart, report a
-    # Python service the other seven do not have, and fail a build where every
+    # Python service the other nine do not have, and fail a build where every
     # generator mapping agreed. A false positive here is worse than a miss: it
     # blocks a correct change and invites someone to "fix" a mapping that was
     # never wrong.
@@ -172,6 +174,16 @@ SOURCES = [
     spelling: :camel,
   },
   {
+    id: "rust",
+    path: "rust/basecamp-sdk/src/generated/services",
+    kind: :directory,
+    ext: ".rs",
+    # `mod.rs` is the module barrel the generator writes beside the services;
+    # it is the only non-service file in the directory.
+    drop: ["mod"],
+    spelling: :snake,
+  },
+  {
     id: "kotlin-accessors",
     path: "kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/ServiceAccessors.kt",
     kind: :file,
@@ -187,6 +199,19 @@ SOURCES = [
     kind: :file,
     pattern: /^\s*public var ([A-Za-z][A-Za-z0-9_]*)\s*:\s*[A-Za-z0-9_]+Service\b/,
     spelling: :camel,
+  },
+  {
+    id: "rust-accessors",
+    path: "rust/basecamp-sdk/src/generated/accessors.rs",
+    kind: :file,
+    # `pub fn card_tables(&self) -> services::card_tables::CardTablesService<'_>`
+    # inside the `impl AccountClient` block; the accessor name is the snake_case
+    # service, and the return type carries its module path. rustfmt wraps the
+    # longer signatures — `pub fn client_correspondences(\n&self,\n) -> …` — so
+    # the whitespace between the pieces is free, and the file is scanned whole
+    # rather than line by line.
+    pattern: /^\s*pub fn ([a-z][a-z0-9_]*)\(\s*&self,?\s*\)\s*->\s*(?:[A-Za-z0-9_]+::)*[A-Za-z0-9_]+Service\b/,
+    spelling: :snake,
   },
   {
     id: "go-accessors",
@@ -259,7 +284,7 @@ def die(failures)
   # would have sent maintainers to the wrong file for five of its own self-test
   # cases. Each failure above names its own area; this says only what the gate
   # measured.
-  warn "  This gate compares the service inventories the six SDKs emit against each"
+  warn "  This gate compares the service inventories the seven SDKs emit against each"
   warn "  other. It can report WHICH renderings disagree; it cannot see WHY, so read"
   warn "  the specific failures above for the area to look at."
   exit 1

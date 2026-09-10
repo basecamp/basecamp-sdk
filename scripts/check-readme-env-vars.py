@@ -39,12 +39,14 @@ that matter: counting a doc example as a read lets a phantom table row pass,
 and missing a real read lets an undocumented variable pass.
 
 That scanner is a lexer, not a parser, and the distinction is worth stating
-plainly rather than discovering later. It models what these six languages
+plainly rather than discovering later. It models what these seven languages
 actually do with comments, string literals, and interpolation — including the
-parts that differ, which is why `LANG_FLAGS` exists: Swift and Kotlin nest block
-comments and Go and TypeScript do not; a triple-quoted literal is documentation
-in Python and an ordinary string in Kotlin; only Swift has raw strings. It does
-*not* model preprocessor conditionals, macros, or heredocs, and it assumes source is
+parts that differ, which is why `LANG_FLAGS` exists: Swift, Kotlin and Rust nest
+block comments and Go and TypeScript do not; a triple-quoted literal is
+documentation in Python and an ordinary string in Kotlin; only Swift and Rust
+have raw strings, and only Rust has a `'` that is not a quote. It does *not*
+model preprocessor conditionals, macros, or heredocs — Rust's `#[cfg(test)]`
+modules included, so a read inside one counts — and it assumes source is
 syntactically valid — a file with an unterminated literal is consumed to the
 end rather than resynchronised.
 
@@ -175,6 +177,28 @@ SDKS = {
         "suffixes": (".kt",),
         "patterns": [rf"System\.getenv\(\s*{DQ}{NAME}{ENDQ}"],
     },
+    # rust/basecamp-sdk/src only: the crate's tests/ and benches/ sit beside
+    # src/ and are never shipped. The inline `#[cfg(test)] mod tests` blocks
+    # inside src/ are NOT excluded — conditional compilation is outside this
+    # lexer — so a read written in one counts. None reads the environment today.
+    "Rust": {
+        "readme": "rust/basecamp-sdk/README.md",
+        "source": "rust/basecamp-sdk/src",
+        "comments": "slash",
+        "suffixes": (".rs",),
+        "patterns": [
+            # `std::env::var("X")`, `env::var_os("X")` after `use std::env;`, and
+            # the fully qualified `::std::env::var("X")`. The lookbehind keeps a
+            # local module that merely spells `env` (`crate::env::var`) out.
+            rf"(?<![\w:])(?:::)?(?:std::)?env::var(?:_os)?\(\s*{DQ}{NAME}{ENDQ}",
+            # The crate's own helper. config.rs reads through
+            # `fn env_value(name: &str) -> Option<String> { env::var(name)… }`,
+            # so the literal never reaches env::var and the pattern above sees
+            # a variable, not a name. The call sites — `env_value("BASECAMP_…")`
+            # — are where the names are, so they are the read here.
+            rf"(?<![\w.:])env_value\(\s*{DQ}{NAME}{ENDQ}",
+        ],
+    },
 }
 
 # Python binds the unqualified spellings by import, so whether `getenv("X")` is
@@ -282,6 +306,21 @@ def python_dynamic_patterns(text: str) -> list[str]:
 #   condition_regex: TypeScript, where `if (...)` is followed by a statement and
 #            a statement may begin with a regex. Off for Ruby, whose statement
 #            modifiers put a genuine division after the same `)`.
+#   char_literal: Rust only, where `'` never opens a string. It is either a
+#            one-character literal (`'a'`, `'\n'`, `'"'`) or the tick of a
+#            lifetime (`&'a str`, `<'static>`), and reading it as a quote fails
+#            in both directions: the lifetime tick runs to the next `'` on the
+#            line and masks the read after it, and `'"'` opens a phantom string
+#            on its double quote. The flag takes `'` out of the quote set and
+#            skips a well-formed character literal as data.
+#   raw_prefix: Rust only, where an `r` before the quote (`r"…"`, `br"…"`)
+#            makes the literal escape-free the way Go's backtick is — a trailing
+#            backslash cannot protect the delimiter. Python's `r"…"` is the
+#            other kind, keyed off the `hash` style rather than a flag: there
+#            the backslash stays AND keeps the next quote from closing. Rust's
+#            hashed form `r#"…"#` rides on `raw`, whose fence handling is the
+#            same as Swift's; only the `\#(` interpolation hole is Swift's, and
+#            it is keyed off `interp`.
 LANG_FLAGS = {
     "Go": {
         "triple": False, "nested": False, "raw": False, "fstring": False,
@@ -374,6 +413,27 @@ LANG_FLAGS = {
         "percent": False,
         "interp": {'"': [("${", "}")]},
     },
+    # No triple: `"""` in Rust is an empty string and then another quote, as in
+    # Ruby. An ordinary literal may span lines, so `multiline` is on and an
+    # unbalanced quote runs to the next one rather than to the newline — which
+    # is why `'` has to be kept out of the quote set (`char_literal`) rather
+    # than tolerated. Interpolates nowhere: `format!("{x}")` is a macro over a
+    # plain literal, and its braces name locals, never an environment read.
+    "Rust": {
+        "triple": False, "nested": True, "raw": True, "fstring": False,
+        "multiline": True,
+        "regex": False,
+        "command_regex": False,
+        "newline_operand": False,
+        "condition_regex": False,
+        "backtick_string": False,
+        "backtick_raw": False,
+        "triple_raw": False,
+        "percent": False,
+        "char_literal": True,
+        "raw_prefix": True,
+        "interp": {},
+    },
 }
 # Permissive union, used only when no language is supplied.
 DEFAULT_FLAGS = {
@@ -448,7 +508,27 @@ def string_quotes(style: str | None, flags: dict | None = None) -> str:
     quotes = STRING_QUOTES[style]
     if flags and flags.get("backtick_string"):
         quotes += "`"
+    if flags and flags.get("char_literal"):
+        quotes = quotes.replace("'", "")
     return quotes
+
+
+# A Rust character literal: one character, one escape (`\n`, `\'`, `\\`), a
+# `\x41` byte or a `\u{1F600}` scalar, between single quotes. Anything else
+# after a `'` — `'a>`, `'a str`, `'static` — is a lifetime and matches nothing.
+CHAR_LITERAL_RE = re.compile(r"'(?:[^'\\\n]|\\x[0-9a-fA-F]{2}|\\u\{[0-9a-fA-F]{1,6}\}|\\.)'")
+
+
+def char_literal_extent(text: str, i: int, flags: dict | None) -> int:
+    """End of the character literal at `i`, else `i`.
+
+    Only where `char_literal` is set. A lifetime tick returns `i`, and the
+    caller steps over it as ordinary code — which it is.
+    """
+    if not flags or not flags.get("char_literal") or text[i] != "'":
+        return i
+    match = CHAR_LITERAL_RE.match(text, i)
+    return match.end() if match else i
 
 
 
@@ -818,6 +898,10 @@ def matching_delimiter(text: str, start: int, open_ch: str, close_ch: str,
             if literal_end > k:
                 k = literal_end
                 continue
+        char_end = char_literal_extent(text, k, flags)
+        if char_end > k:
+            k = char_end
+            continue
         # A delimiter inside a comment is not a delimiter either: in
         # `${foo(/* } */ x)}` the commented brace must not end the hole.
         comment_end = comment_extent(text, k, style, flags)
@@ -948,8 +1032,12 @@ def scan_literal(text: str, i: int, style: str,
             body_stop = close_at if close_at != -1 else n
             # Raw: the escape is `\#(` with the fence, so a lone backslash here
             # is data. `#"\\#(x)"#` is a literal backslash then an interpolation.
-            holes = brace_holes(text, body_start, body_stop, style, flags,
-                                "\\" + fence + "(", ")", raw=True)
+            # Only where `\(` interpolates at all: Rust's `r#"…"#` shares the
+            # fence and has no hole to open.
+            holes = []
+            if ("\\(", ")") in flags["interp"].get('"', []):
+                holes = brace_holes(text, body_start, body_stop, style, flags,
+                                    "\\" + fence + "(", ")", raw=True)
             return end, holes
 
     triple_quote = None
@@ -995,7 +1083,11 @@ def scan_literal(text: str, i: int, style: str,
     # literal the backslash is nothing at all, so a trailing one cannot protect
     # the delimiter and the literal simply ends.
     py_raw = style == "hash" and has_raw_prefix(text, i)
-    raw = py_raw or (quote == "`" and flags.get("backtick_raw"))
+    # Rust's `r"…"` is Go's kind, not Python's: no escape processing at all, so
+    # the branch below that lets a Python raw backslash shield the quote must
+    # not run for it.
+    rust_raw = bool(flags.get("raw_prefix")) and has_raw_prefix(text, i)
+    raw = py_raw or rust_raw or (quote == "`" and flags.get("backtick_raw"))
     j = i + 1
     holes = []
     while j < n:
@@ -1089,6 +1181,12 @@ def mask_literals(text: str, lo: int, hi: int, style: str, in_string: bytearray,
                 mask_literals(text, hole_start, min(hole_end, hi), style, in_string, flags)
             i = end
             continue
+        char_end = char_literal_extent(text, i, flags)
+        if char_end > i:
+            for k in range(i, min(char_end, hi)):
+                in_string[k] = 1
+            i = char_end
+            continue
         i += 1
 
 
@@ -1178,6 +1276,13 @@ def strip_noncode(text: str, style: str, flags: dict | None = None) -> tuple[str
             continue
         if text[i] in quotes:
             i = take_literal(i)
+            continue
+        # A character literal is data, and its body may be a double quote.
+        char_end = char_literal_extent(text, i, flags)
+        if char_end > i:
+            for k in range(i, char_end):
+                in_string[k] = 1
+            i = char_end
             continue
         # Regex before comment: Ruby interpolates with `#{...}`, and the comment
         # branch would eat the `#` and the rest of the line with it. regex_extent

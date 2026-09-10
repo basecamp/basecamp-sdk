@@ -5,7 +5,7 @@
 #
 # This is #602. Each runner's own case census (#742) answers a narrower
 # question: "did THIS runner account for every case it should have". A case that
-# every runner deliberately excludes leaves all six censuses green, because each
+# every runner deliberately excludes leaves all seven censuses green, because each
 # one counted its own skip. Only a comparison ACROSS runners can see it, and
 # that is what this gate does.
 #
@@ -18,25 +18,25 @@
 # Five runners print `SKIP: <name>`; TypeScript does not, because a skip there
 # is `it.skip` and vitest reports it in its own format. A gate scraping stdout
 # would be blind to exactly one runner, in the silent direction: TypeScript
-# would contribute an empty exclusion set and no case could ever reach all-six.
+# would contribute an empty exclusion set and no case could ever reach all-seven.
 # The manifests are written from the counters each run loop increments.
 #
 # ## The absence rule, which is the whole design problem
 #
-# A gate over six inputs is only as good as its behaviour when an input is
+# A gate over seven inputs is only as good as its behaviour when an input is
 # missing, and "missing" is the normal state here: `conformance-swift` is
-# macOS-only, so a Linux run produces five manifests and never a sixth.
+# macOS-only, so a Linux run produces six manifests and never a seventh.
 #
 # The rule is therefore split, and neither half can go vacuous:
 #
-#   FULL mode (default) requires ALL SIX manifests and fails if any is absent.
+#   FULL mode (default) requires ALL SEVEN manifests and fails if any is absent.
 #   A missing manifest is never "assume that runner ran everything" — that
-#   assumption is exactly what makes an all-six case invisible. This is the mode
+#   assumption is exactly what makes an all-seven case invisible. This is the mode
 #   CI runs, after collecting the Linux five and the macOS one.
 #
-#   PARTIAL mode (--partial) is for a run that cannot produce all six. It
+#   PARTIAL mode (--partial) is for a run that cannot produce all seven. It
 #   reports a case excluded by every VISIBLE runner as a WARNING and exits 0.
-#   That is deliberately not a failure: five-of-six is not the all-six claim,
+#   That is deliberately not a failure: six-of-seven is not the all-seven claim,
 #   and Swift may well execute the case. A warning cannot produce a false
 #   failure, which is the only reason it is allowed to run on partial input.
 #
@@ -48,7 +48,7 @@
 #
 # Maximum overlap today is 2 of 6 (#596 narrowed it), so this gate passes on the
 # current tree and a live run only ever proves it can say yes.
-# scripts/test-check-fixture-execution.rb crafts the all-six state and asserts
+# scripts/test-check-fixture-execution.rb crafts the all-seven state and asserts
 # it says no.
 #
 # Exit non-zero on any violation.
@@ -65,11 +65,11 @@ require_relative "zero_skip_roster"
 # so a live run only ever proves it can say yes.
 ROOT = File.expand_path(ENV.fetch("FIXTURE_EXECUTION_ROOT", File.expand_path("..", __dir__)))
 
-# The six runners that must report. Hardcoded ON PURPOSE: deriving this from
+# The seven runners that must report. Hardcoded ON PURPOSE: deriving this from
 # whatever files happen to be present is precisely the absence bug — a runner
 # that stopped writing its manifest would silently shrink the expected set and
 # the gate would go on reporting success over five, then four.
-EXPECTED_RUNNERS = %w[go kotlin python ruby swift typescript].freeze
+EXPECTED_RUNNERS = %w[go kotlin python ruby rust swift typescript].freeze
 
 MANIFEST_DIR = File.join(ROOT, "conformance", "manifests")
 
@@ -111,7 +111,7 @@ def load_manifest(path)
   # own `executed + excluded` integrity check then fails spuriously, and two
   # genuinely different cases become indistinguishable in the intersection
   # below, where a name excluded by three runners in one file and three in
-  # another would read as excluded by all six.
+  # another would read as excluded by all seven.
   excluded = entries.map do |entry|
     unless entry.is_a?(Hash)
       raise Failure, "#{File.basename(path)}: an `excluded` entry is not an object"
@@ -194,7 +194,7 @@ end
 # from the runners' skip mechanisms". Nothing checked that, and it was already
 # untrue when this was written: Kotlin and Swift each exclude the `link-header`
 # case wholesale via their tag branch, and the roster described that in prose
-# instead of enumerating it -- two of six runners wrong, in a roster nobody
+# instead of enumerating it -- two of seven runners wrong, in a roster nobody
 # re-derives by hand.
 #
 # The manifests make the ENUMERATION derivable, so it is checked here for set
@@ -285,9 +285,9 @@ def run(partial:)
 
   if !missing.empty? && !partial
     raise Failure, "missing manifest(s) for: #{missing.join(', ')}. Every runner must report " \
-                   "before an all-six claim can be made; a missing manifest is not a runner that " \
+                   "before an all-seven claim can be made; a missing manifest is not a runner that " \
                    "executed everything. (Swift is macOS-only — use --partial for a run that " \
-                   "cannot produce all six.)"
+                   "cannot produce all seven.)"
   end
 
   # BEFORE the partial branch, deliberately. Roster drift is checkable against
@@ -298,7 +298,7 @@ def run(partial:)
   # roster at all, so a stale Go or Ruby line passed locally and only the CI
   # fan-in could catch it. Both bots found that.
   #
-  # Partial input relaxes exactly one thing, the all-six overlap verdict below,
+  # Partial input relaxes exactly one thing, the all-seven overlap verdict below,
   # because that is the only claim needing every runner. A runner that did not
   # report simply is not compared; its roster section is neither confirmed nor
   # contradicted.
@@ -322,7 +322,7 @@ def run(partial:)
   # `--partial` is a statement about the INPUT, not a licence to soften the
   # verdict. When every expected runner reported anyway — a macOS developer
   # passing the flag out of habit, or a CI step that keeps it for safety —
-  # "excluded by all present runners" IS the all-six claim, and downgrading it
+  # "excluded by all present runners" IS the all-seven claim, and downgrading it
   # to a warning would let the one state this gate exists to reject exit 0.
   # Partial handling applies only when a manifest is genuinely absent.
   partial &&= !missing.empty?
@@ -364,7 +364,7 @@ if __FILE__ == $PROGRAM_NAME
   partial = false
   OptionParser.new do |o|
     o.banner = "Usage: check-fixture-execution.rb [--partial]"
-    o.on("--partial", "Accept fewer than six manifests; report all-visible overlap as a warning") do
+    o.on("--partial", "Accept fewer than seven manifests; report all-visible overlap as a warning") do
       partial = true
     end
   end.parse!
