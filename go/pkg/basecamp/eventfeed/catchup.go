@@ -168,6 +168,15 @@ func (l *loop) walk(at *attempt, cursor Cursor, presentClass bool) (out cycleOut
 				return cycleOutcome{kind: outcomeTerminal, term: terr}, "", true
 			}
 		}
+		// An expiry already in before the poll is issued is transition 21
+		// now, not a deferral: issued anyway, the call would make the rendered
+		// verdict look in-flight — granted a grace phase, its page possibly
+		// accepted first. The repair cadence and the poll-retry arms make the
+		// same check before entering the walk; this covers the walk's own
+		// entries — after CatchUpStarted, and after a re-entry's callbacks.
+		if out, done := l.expiredStaleness(at, nil); done {
+			return out, "", true
+		}
 		p := l.pollPage(at, cursor)
 		if p.ended {
 			// Servicing the socket during the call ended the cycle: an
@@ -367,6 +376,26 @@ func (l *loop) walk(at *attempt, cursor Cursor, presentClass bool) (out cycleOut
 		// observed. Following `next` on a dead socket would walk the whole
 		// frozen head before noticing, delaying the reconnect cycle by the
 		// length of the walk.
+		//
+		// A verdict PARKED during that call is dispatched before the socket is
+		// probed afresh. The deferral latched a grace wake on the staleness
+		// timer, and a page whose delivery ran past that deadline finds the
+		// wake fired: probing first reads it as an expiry, disposes the
+		// attempt — which clears the slot — and reports staleness where the
+		// parked verdict was the server's own, a protocol-fatal disconnect
+		// reconnected into. Only an OCCUPIED slot takes this path: the fatal
+		// probe admits what it dequeues, and with nothing parked the ordinary
+		// order — the expired window before any admission — is the right one,
+		// or an overflow the scan manufactured would end the cycle ahead of a
+		// staleness verdict that was already in.
+		if l.deferred != nil {
+			if out, done := l.probeFatal(at); done {
+				return out, "", true
+			}
+			if out, done := l.dispatchDeferred(at); done {
+				return out, "", true
+			}
+		}
 		if out, done := l.socketCheck(at); done {
 			return out, "", true
 		}
@@ -750,12 +779,7 @@ func (l *loop) dispatchDeferred(at *attempt) (cycleOutcome, bool) {
 	l.deferred = nil
 	switch {
 	case d.stale:
-		l.disposeAttempt(at, nil)
-		if l.cfg.observer.StaleConnection != nil {
-			l.cfg.observer.StaleConnection(d.age)
-		}
-		l.observeDisconnected("", errStaleConnection)
-		return cycleOutcome{kind: outcomeFailed}, true
+		return l.staleTeardown(at, nil, d.age), true
 	case d.closed:
 		return l.pumpExited(at, nil), true
 	}
@@ -785,18 +809,8 @@ func (l *loop) ownershipCut(at *attempt) (cycleOutcome, bool) {
 // pump queued — a socket failure, a disconnect frame, or live events for the
 // buffer.
 func (l *loop) socketCheck(at *attempt) (cycleOutcome, bool) {
-	staleTimer, staleGen := at.lc.stale.current()
-	select {
-	case <-staleTimer.C():
-		if age, ok := at.lc.stale.evaluate(staleGen); ok {
-			l.disposeAttempt(at, nil)
-			if l.cfg.observer.StaleConnection != nil {
-				l.cfg.observer.StaleConnection(age)
-			}
-			l.observeDisconnected("", errStaleConnection)
-			return cycleOutcome{kind: outcomeFailed}, true
-		}
-	default:
+	if out, done := l.expiredStaleness(at, nil); done {
+		return out, true
 	}
 	return l.admissionPass(at)
 }
@@ -987,7 +1001,7 @@ func (l *loop) fatalScan(at *attempt, budget *int) (cycleOutcome, bool) {
 	if d := l.deferred; d != nil && !d.closed && !d.stale {
 		if f, ok := protocolFatalFrame(d.item); ok {
 			l.deferred = nil
-			return l.terminateProtocolFatal(at, f), true
+			return l.terminateProtocolFatal(at, nil, f), true
 		}
 	}
 	// An occupied slot no longer ENDS the scan (#760). It used to, on the
@@ -1025,7 +1039,7 @@ func (l *loop) fatalScan(at *attempt, budget *int) (cycleOutcome, bool) {
 			case handled:
 			default:
 				if f, ok := protocolFatalFrame(item); ok {
-					return l.terminateProtocolFatal(at, f), true
+					return l.terminateProtocolFatal(at, nil, f), true
 				}
 				l.deferForDrain(&deferredFrame{item: item})
 			}
@@ -1100,11 +1114,11 @@ func (l *loop) deferForDrain(d *deferredFrame) {
 // terminateProtocolFatal takes the raw disconnect's state-generic terminal
 // through the ordinary dispatch, so the frame is counted as handled and the
 // disconnect observation carries the server's reason verbatim.
-func (l *loop) terminateProtocolFatal(at *attempt, f frame) cycleOutcome {
+func (l *loop) terminateProtocolFatal(at *attempt, pending Timer, f frame) cycleOutcome {
 	if l.hooks.frameHandled != nil {
 		l.hooks.frameHandled(f.kind)
 	}
-	return l.dispatchDisconnect(at, nil, f)
+	return l.dispatchDisconnect(at, pending, f)
 }
 
 // protocolFatalFrame reports whether one pump item is a raw
@@ -1144,17 +1158,8 @@ func (l *loop) stream(at *attempt) cycleOutcome {
 			// accepted first — where transition 25 fires directly from every
 			// socket-open state, staleness among its triggers. evaluate
 			// arbitrates as ever.
-			select {
-			case <-staleTimer.C():
-				if age, authoritative := at.lc.stale.evaluate(staleGen); authoritative {
-					l.disposeAttempt(at, repair)
-					if l.cfg.observer.StaleConnection != nil {
-						l.cfg.observer.StaleConnection(age)
-					}
-					l.observeDisconnected("", errStaleConnection)
-					return cycleOutcome{kind: outcomeFailed}
-				}
-			default:
+			if out, done := l.expiredStaleness(at, repair); done {
+				return out
 			}
 			// Transition 24 → CatchingUp: one repair walk from the connector's
 			// current position, returning here through Draining. The next
@@ -1177,12 +1182,7 @@ func (l *loop) stream(at *attempt) cycleOutcome {
 				continue
 			}
 			// Transition 25's staleness trigger.
-			l.disposeAttempt(at, repair)
-			if l.cfg.observer.StaleConnection != nil {
-				l.cfg.observer.StaleConnection(age)
-			}
-			l.observeDisconnected("", errStaleConnection)
-			return cycleOutcome{kind: outcomeFailed}
+			return l.staleTeardown(at, repair, age)
 		case item, ok := <-at.lc.frames:
 			if !ok {
 				return l.pumpExited(at, repair)
@@ -1202,21 +1202,15 @@ func (l *loop) stream(at *attempt) cycleOutcome {
 			// already in, where §23 pins the fired deadline as authoritative
 			// over frames that did not reset it. evaluate is the arbiter: a
 			// frame the pump received FIRST moved the generation, so its
-			// firing is not evidence and the frame delivers as ever.
-			select {
-			case <-staleTimer.C():
-				if age, authoritative := at.lc.stale.evaluate(staleGen); authoritative {
-					// Transition 25 first; the frame is discarded with the
-					// socket — the reconnect walk repairs anything the
-					// stream carried.
-					l.disposeAttempt(at, repair)
-					if l.cfg.observer.StaleConnection != nil {
-						l.cfg.observer.StaleConnection(age)
-					}
-					l.observeDisconnected("", errStaleConnection)
-					return cycleOutcome{kind: outcomeFailed}
-				}
-			default:
+			// firing is not evidence and the frame delivers as ever. Transition
+			// 25 first; the frame is discarded with the socket — the reconnect
+			// walk repairs anything the stream carried — unless the frame IS
+			// the server's own terminal verdict, which outranks the expiry.
+			if f, ok := l.serverVerdict(item); ok {
+				return l.dispatchServerVerdict(at, repair, f)
+			}
+			if out, done := l.expiredStaleness(at, repair); done {
+				return out
 			}
 			if out, done := l.handleLiveFrame(at, repair, item, true); done {
 				return out
@@ -1274,17 +1268,13 @@ func (l *loop) handleLiveFrame(at *attempt, pending Timer, item pumpItem, delive
 	if item.err != nil {
 		// Socket failure: peer close, read error, or the transport's
 		// frame-size rejection (transitions 21/25).
-		l.disposeAttempt(at, pending)
-		l.observeDisconnected("", item.err)
-		return cycleOutcome{kind: outcomeFailed}, true
+		return l.failSocket(at, pending, item.err), true
 	}
 	f, err := parseFrame(item.data)
 	if err != nil {
 		// Invalid-frame class, parse shape: a socket-failure dispatch, never
 		// terminal, never a silent skip.
-		l.disposeAttempt(at, pending)
-		l.observeDisconnected("", err)
-		return cycleOutcome{kind: outcomeFailed}, true
+		return l.failSocket(at, pending, err), true
 	}
 	if l.hooks.frameHandled != nil {
 		l.hooks.frameHandled(f.kind)
@@ -1302,9 +1292,7 @@ func (l *loop) handleLiveFrame(at *attempt, pending Timer, item pumpItem, delive
 		ev, derr := decodeMessageEvent(f.message)
 		if derr != nil {
 			// Invalid-frame class, decode shape.
-			l.disposeAttempt(at, pending)
-			l.observeDisconnected("", derr)
-			return cycleOutcome{kind: outcomeFailed}, true
+			return l.failSocket(at, pending, derr), true
 		}
 		if !deliverLive {
 			return l.admitLive(at, pending, ev)
@@ -1462,19 +1450,8 @@ func (l *loop) waitPollRetry(at *attempt, d time.Duration) (cycleOutcome, bool) 
 			// expired window takes transition 21 now, exactly as it would
 			// have had its case won the select. The retry timer has fired
 			// and is no longer outstanding, so disposal is handed nil.
-			select {
-			case <-staleTimer.C():
-				if age, ok := at.lc.stale.evaluate(staleGen); ok {
-					l.disposeAttempt(at, nil)
-					if l.cfg.observer.StaleConnection != nil {
-						l.cfg.observer.StaleConnection(age)
-					}
-					l.observeDisconnected("", errStaleConnection)
-					return cycleOutcome{kind: outcomeFailed}, true
-				}
-				// Superseded or suspended: not evidence, and evaluate has
-				// re-armed the window — proceed with the retry.
-			default:
+			if out, done := l.expiredStaleness(at, nil); done {
+				return out, true
 			}
 			return cycleOutcome{}, false
 		case <-at.lc.stale.rearmed():
@@ -1485,12 +1462,7 @@ func (l *loop) waitPollRetry(at *attempt, d time.Duration) (cycleOutcome, bool) 
 				continue
 			}
 			// Transition 21's staleness trigger.
-			l.disposeAttempt(at, t)
-			if l.cfg.observer.StaleConnection != nil {
-				l.cfg.observer.StaleConnection(age)
-			}
-			l.observeDisconnected("", errStaleConnection)
-			return cycleOutcome{kind: outcomeFailed}, true
+			return l.staleTeardown(at, t, age), true
 		case item, ok := <-at.lc.frames:
 			if !ok {
 				return l.pumpExited(at, t), true

@@ -1105,11 +1105,12 @@ func (l *loop) awaitConfirmation(at *attempt, deadline Timer) cycleOutcome {
 		case <-deadline.C():
 			// Transition 9 (handshake lapse) or 14 (confirmation lapse):
 			// full teardown — conn, pump, and ALL the attempt's timers —
-			// then a jittered fresh-ticket retry.
-			lapsed := errDeadlineLapsed(l.state)
-			l.disposeAttempt(at, nil)
-			l.observeDisconnected("", lapsed)
-			return cycleOutcome{kind: outcomeFailed}
+			// then a jittered fresh-ticket retry. A verdict the pump has
+			// already queued outranks the lapse: the frame arm would have
+			// dispatched it, but a deadline firing in the same instant is a
+			// both-ready select, and losing that coin flip must not turn a
+			// terminal rejection into a reconnect.
+			return l.lapse(at)
 		case <-at.lc.stale.rearmed():
 			continue
 		case <-staleTimer.C():
@@ -1120,12 +1121,7 @@ func (l *loop) awaitConfirmation(at *attempt, deadline Timer) cycleOutcome {
 				continue
 			}
 			// Staleness expiry — rows 9/15's staleness trigger.
-			l.disposeAttempt(at, deadline)
-			if l.cfg.observer.StaleConnection != nil {
-				l.cfg.observer.StaleConnection(age)
-			}
-			l.observeDisconnected("", errStaleConnection)
-			return cycleOutcome{kind: outcomeFailed}
+			return l.staleTeardown(at, deadline, age)
 		case item, ok := <-at.lc.frames:
 			if !ok {
 				// The pump exited without a terminating error — only
@@ -1152,18 +1148,14 @@ func (l *loop) awaitConfirmation(at *attempt, deadline Timer) cycleOutcome {
 			// the teardown and resurfaces after reconnect — or hands a
 			// confirmation a live catch-up on a socket whose staleness
 			// verdict is already in. evaluate arbitrates: a frame the pump
-			// received first moved the generation and is handled as ever.
-			select {
-			case <-staleTimer.C():
-				if age, authoritative := at.lc.stale.evaluate(staleGen); authoritative {
-					l.disposeAttempt(at, deadline)
-					if l.cfg.observer.StaleConnection != nil {
-						l.cfg.observer.StaleConnection(age)
-					}
-					l.observeDisconnected("", errStaleConnection)
-					return cycleOutcome{kind: outcomeFailed}
-				}
-			default:
+			// received first moved the generation and is handled as ever —
+			// except a terminal verdict in hand, which outranks the expiry as
+			// it outranks every recoverable teardown.
+			if f, ok := l.serverVerdict(item); ok {
+				return l.dispatchServerVerdict(at, deadline, f)
+			}
+			if out, done := l.expiredStaleness(at, deadline); done {
+				return out
 			}
 			if out, done := l.handleFrame(at, &deadline, item); done {
 				return out
@@ -1219,10 +1211,19 @@ func (l *loop) writeSubscribe(at *attempt, deadline *Timer) (cycleOutcome, bool)
 				l.disposeAttempt(at, *deadline)
 				return cycleOutcome{kind: outcomeClosed}, true
 			}
+			// The expired window outranks the write's result too: both can be
+			// ready, and accepting a completed subscribe on a socket whose
+			// staleness verdict is already in announces AwaitingConfirmation
+			// and arms a confirmation deadline for one select turn on a dead
+			// socket — or reports a failed write as the failure, where the
+			// verdict was the window's. The teardown it takes is the stale
+			// arm's, queued-verdict scan included: which arm won the select
+			// must not decide whether a queued rejection is honoured.
+			if out, done := l.expiredStaleness(at, *deadline); done {
+				return out, true
+			}
 			if werr != nil {
-				l.disposeAttempt(at, *deadline)
-				l.observeDisconnected("", werr)
-				return cycleOutcome{kind: outcomeFailed}, true
+				return l.failSocket(at, *deadline, werr), true
 			}
 			if l.hooks.subscribeWritten != nil {
 				l.hooks.subscribeWritten()
@@ -1232,27 +1233,23 @@ func (l *loop) writeSubscribe(at *attempt, deadline *Timer) (cycleOutcome, bool)
 			l.disposeAttempt(at, *deadline)
 			return cycleOutcome{kind: outcomeClosed}, true
 		case <-(*deadline).C():
-			// The deadline is spent, so disposal is handed nil: the attempt's
-			// timer set is empty from here, as on every other lapse.
-			lapsed := errDeadlineLapsed(l.state)
-			l.disposeAttempt(at, nil)
-			l.observeDisconnected("", lapsed)
-			return cycleOutcome{kind: outcomeFailed}, true
+			// The server's own verdict outranks the lapse: this wait has no
+			// frame arm — a write in flight cannot dispatch frames without
+			// re-entering the handshake it is part of — so a disconnect or a
+			// correlated rejection the pump queued while a conforming
+			// transport kept the write blocked would otherwise die with the
+			// socket, and the connector would reconnect into a verdict §23
+			// says is terminal with zero reconnects. lapse scans first.
+			return l.lapse(at), true
 		case <-at.lc.stale.rearmed():
 		case <-staleTimer.C():
 			age, ok := at.lc.stale.evaluate(staleGen)
 			if !ok {
 				continue
 			}
-			// Rows 9/15's staleness trigger, observed mid-write: full
-			// teardown, and disposal's cancel is what returns the abandoned
-			// write.
-			l.disposeAttempt(at, *deadline)
-			if l.cfg.observer.StaleConnection != nil {
-				l.cfg.observer.StaleConnection(age)
-			}
-			l.observeDisconnected("", errStaleConnection)
-			return cycleOutcome{kind: outcomeFailed}, true
+			// Rows 9/15's staleness trigger, observed mid-write; disposal's
+			// cancel is what returns the abandoned write.
+			return l.staleTeardown(at, *deadline, age), true
 		}
 	}
 }
@@ -1265,6 +1262,84 @@ func errDeadlineLapsed(s connState) error {
 	return errors.New("event feed confirmation deadline lapsed before confirm_subscription")
 }
 
+// queuedServerVerdict scans what the pump has already handed off — plus the
+// one frame a blocked hand-off is holding, the same pumpDepth+1 bound the
+// drain's scan carries — for the server's own verdict on the socket
+// (serverVerdict), and dispatches it when one is found. It runs wherever the
+// connector is about to tear the attempt down for a LOCAL reason — a lapsed
+// deadline, an expired window, a read or write error, an invalid frame —
+// because a queued disconnect or rejection is the server's last word and
+// outranks every one of those: a garbled frame ahead of a queued
+// invalid_event_stream_command reconnected into the rejection, a lapse
+// ahead of a queued pre-welcome `unauthorized` skipped the shared counter.
+// Everything else it dequeues is discarded: every other frame is either
+// liveness, which the teardown makes moot, or a socket outcome that ends the
+// attempt exactly as the teardown is about to.
+func (l *loop) queuedServerVerdict(at *attempt, pending Timer) (cycleOutcome, bool) {
+	for range pumpDepth + 1 {
+		select {
+		case item, ok := <-at.lc.frames:
+			if !ok {
+				return cycleOutcome{}, false
+			}
+			if f, ok := l.serverVerdict(item); ok {
+				return l.dispatchServerVerdict(at, pending, f), true
+			}
+		default:
+			return cycleOutcome{}, false
+		}
+	}
+	return cycleOutcome{}, false
+}
+
+// serverVerdict classifies one pump item as the server's own verdict on the
+// socket, which outranks any local reason for tearing it down: a raw
+// disconnect frame of ANY reason — the reason-string dispatch decides what
+// it means (protocol-fatal terminal from every state; a pre-welcome
+// `unauthorized` increments the shared counter and is terminal at its
+// threshold; `remote` and the rest a socket drop), and only the dispatch may
+// decide it, since a scan that recognised the fatal alone would discard an
+// `unauthorized` the counter needed — or a correlated `reject_subscription`
+// once a subscribe has been sent (transition 12 is drawn from
+// AwaitingConfirmation alone, exactly as handleFrame gates it).
+func (l *loop) serverVerdict(item pumpItem) (frame, bool) {
+	if item.err != nil {
+		return frame{}, false
+	}
+	f, err := parseFrame(item.data)
+	if err != nil {
+		return frame{}, false
+	}
+	switch {
+	case f.kind == frameDisconnect:
+		return f, true
+	case f.kind == frameReject && l.state == stateAwaitingConfirmation && f.identifier == l.identifier:
+		return f, true
+	}
+	return frame{}, false
+}
+
+// dispatchServerVerdict takes a verdict serverVerdict classified: a
+// disconnect through the ordinary reason dispatch, the rejection as
+// transition 12 — deadline cancelled, socket explicitly closed, zero
+// reconnects.
+func (l *loop) dispatchServerVerdict(at *attempt, pending Timer, f frame) cycleOutcome {
+	if f.kind == frameDisconnect {
+		if l.hooks.frameHandled != nil {
+			l.hooks.frameHandled(f.kind)
+		}
+		return l.dispatchDisconnect(at, pending, f)
+	}
+	if l.hooks.frameHandled != nil {
+		l.hooks.frameHandled(f.kind)
+	}
+	l.disposeAttempt(at, pending)
+	return cycleOutcome{kind: outcomeTerminal, term: &TerminalError{
+		Reason: ReasonSubscriptionRejected,
+		Msg:    "the server rejected the EventsChannel subscription",
+	}}
+}
+
 // handleFrame dispatches one pump item in AwaitingWelcome /
 // AwaitingConfirmation. It returns done=true when the cycle is over —
 // including the confirmed handoff's own outcome flowing back through it.
@@ -1272,18 +1347,14 @@ func (l *loop) handleFrame(at *attempt, deadline *Timer, item pumpItem) (cycleOu
 	if item.err != nil {
 		// Socket failure: peer close, read error, or the transport's
 		// frame-size rejection (rows 9/15).
-		l.disposeAttempt(at, *deadline)
-		l.observeDisconnected("", item.err)
-		return cycleOutcome{kind: outcomeFailed}, true
+		return l.failSocket(at, *deadline, item.err), true
 	}
 	f, err := parseFrame(item.data)
 	if err != nil {
 		// Invalid-frame class, parse shape: a peer protocol violation
 		// dispatched as a socket failure — never terminal, never a silent
 		// skip (SPEC.md §23 "Cable Protocol Details").
-		l.disposeAttempt(at, *deadline)
-		l.observeDisconnected("", err)
-		return cycleOutcome{kind: outcomeFailed}, true
+		return l.failSocket(at, *deadline, err), true
 	}
 	if l.hooks.frameHandled != nil {
 		l.hooks.frameHandled(f.kind)
@@ -1306,10 +1377,7 @@ func (l *loop) handleFrame(at *attempt, deadline *Timer, item pumpItem) (cycleOu
 				// confirmation window and accept a welcome that arrived past
 				// the deadline — transition 9's lapse, silently converted
 				// into a live handshake half the time it happens.
-				lapsed := errDeadlineLapsed(l.state)
-				l.disposeAttempt(at, nil)
-				l.observeDisconnected("", lapsed)
-				return cycleOutcome{kind: outcomeFailed}, true
+				return l.lapse(at), true
 			}
 			*deadline = l.cfg.clock.NewTimer(l.cfg.confirmationDeadline, timerConfirmationDeadline)
 			at.phase = *deadline
@@ -1335,10 +1403,7 @@ func (l *loop) handleFrame(at *attempt, deadline *Timer, item pumpItem) (cycleOu
 			// subscription whose confirmation arrived past transition 14's
 			// deadline, so the lapse is not merely swallowed but overwritten
 			// by a successful handoff.
-			lapsed := errDeadlineLapsed(l.state)
-			l.disposeAttempt(at, nil)
-			l.observeDisconnected("", lapsed)
-			return cycleOutcome{kind: outcomeFailed}, true
+			return l.lapse(at), true
 		}
 		l.failedCycles = 0
 		if l.cfg.observer.Confirmed != nil {
@@ -1376,9 +1441,7 @@ func (l *loop) handleFrame(at *attempt, deadline *Timer, item pumpItem) (cycleOu
 		if derr != nil {
 			// Invalid-frame class, decode shape: same socket-failure
 			// disposition as the parse shape.
-			l.disposeAttempt(at, *deadline)
-			l.observeDisconnected("", derr)
-			return cycleOutcome{kind: outcomeFailed}, true
+			return l.failSocket(at, *deadline, derr), true
 		}
 		return l.admitLive(at, *deadline, ev)
 	}
@@ -1576,6 +1639,98 @@ func (l *loop) disposeAttempt(at *attempt, deadline Timer) {
 func (l *loop) observeDisconnected(reason string, err error) {
 	if l.cfg.observer.Disconnected != nil {
 		l.cfg.observer.Disconnected(truncateErrorText(reason), observableSocketError(err))
+	}
+}
+
+// observeStale reports one staleness teardown: StaleConnection carrying the
+// silence the verdict measured, then the same errStaleConnection disconnect
+// every staleness edge reports. One helper so the pair cannot drift apart
+// between the arms that fire it.
+func (l *loop) observeStale(age time.Duration) {
+	if l.cfg.observer.StaleConnection != nil {
+		l.cfg.observer.StaleConnection(age)
+	}
+	l.observeDisconnected("", errStaleConnection)
+}
+
+// expiredStaleness probes the staleness timer WITHOUT waiting on it, and takes
+// the current state's staleness edge when an authoritative expiry is already
+// in: full teardown (pending is the state's own timer, stopped with the
+// attempt), StaleConnection, then the disconnect. A firing that is not
+// evidence — superseded by a frame the pump received first, or overlapping a
+// blocked hand-off — is disregarded under the same rule every select applies,
+// and evaluate re-arms it.
+//
+// It is the arbiter every arm that is about to do something ELSE on the
+// socket runs first: follow a repair cadence or a poll-retry into a walk,
+// accept a subscribe write, dispatch a ready frame, or issue a poll. Each of
+// those makes an already-rendered verdict look in-flight — a walk's first
+// poll defers it and grants a grace phase, a frame delivers from a socket
+// whose death is already decided — where §23 says the state's own failure
+// edge fires directly, staleness among its triggers.
+func (l *loop) expiredStaleness(at *attempt, pending Timer) (cycleOutcome, bool) {
+	age, ok := l.probeStaleness(at)
+	if !ok {
+		return cycleOutcome{}, false
+	}
+	return l.staleTeardown(at, pending, age), true
+}
+
+// staleTeardown is every staleness edge's teardown: a queued terminal verdict
+// first, then the full disposal and the StaleConnection-then-Disconnected
+// report. The scan comes first because staleness is a recoverable verdict and
+// a queued protocol-fatal disconnect or correlated rejection is not — a
+// teardown that discarded one would reconnect into a rejection §23 says is
+// terminal with zero reconnects, and which arm of a select observed the
+// expiry must not decide that.
+func (l *loop) staleTeardown(at *attempt, pending Timer, age time.Duration) cycleOutcome {
+	if out, done := l.queuedServerVerdict(at, pending); done {
+		return out
+	}
+	l.disposeAttempt(at, pending)
+	l.observeStale(age)
+	return cycleOutcome{kind: outcomeFailed}
+}
+
+// failSocket is every recoverable socket-failure teardown — a read error, a
+// peer close, an invalid frame, a failed write: the server's last word first
+// if the pump has already queued it, else the full disposal and the
+// Disconnected report carrying the cause. The scan is what keeps a
+// recoverable outcome that arrived first from ending the cycle over a
+// verdict that arrived behind it — a garbled frame ahead of a queued
+// invalid_event_stream_command reconnected into the rejection.
+func (l *loop) failSocket(at *attempt, pending Timer, err error) cycleOutcome {
+	if out, done := l.queuedServerVerdict(at, pending); done {
+		return out
+	}
+	l.disposeAttempt(at, pending)
+	l.observeDisconnected("", err)
+	return cycleOutcome{kind: outcomeFailed}
+}
+
+// lapse is the phase deadline's teardown (transitions 9 and 14), the same
+// scan first: the deadline is spent, so the attempt's timer set is empty
+// from here and disposal is handed nil.
+func (l *loop) lapse(at *attempt) cycleOutcome {
+	if out, done := l.queuedServerVerdict(at, nil); done {
+		return out
+	}
+	lapsed := errDeadlineLapsed(l.state)
+	l.disposeAttempt(at, nil)
+	l.observeDisconnected("", lapsed)
+	return cycleOutcome{kind: outcomeFailed}
+}
+
+// probeStaleness is expiredStaleness's verdict without its teardown: the
+// non-blocking evaluate alone, for a caller that has something to do between
+// learning the window has expired and disposing the attempt.
+func (l *loop) probeStaleness(at *attempt) (time.Duration, bool) {
+	staleTimer, staleGen := at.lc.stale.current()
+	select {
+	case <-staleTimer.C():
+		return at.lc.stale.evaluate(staleGen)
+	default:
+		return 0, false
 	}
 }
 

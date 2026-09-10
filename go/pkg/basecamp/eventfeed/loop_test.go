@@ -2444,3 +2444,210 @@ func TestUnauthorizedMintCarriesNoRetryAfterFloor(t *testing.T) {
 		t.Fatalf("backoff armed for %s: an unauthorized mint's seam-supplied RetryAfter floored the reconnect delay; unauthorized carries no retry_after and the local draw alone governs", d)
 	}
 }
+
+// TestQueuedVerdictOutranksATeardownDuringABlockedSubscribeWrite: the
+// subscribe write's wait has no frame arm — a write in flight cannot dispatch
+// frames without re-entering the handshake it belongs to — and a conforming
+// transport is only required to unblock a write on Close or cancellation. A
+// verdict the pump queued while the write stayed blocked was therefore torn
+// down with the socket when the wait ended for its own reason, and the
+// connector reconnected into a rejection §23 says is terminal with zero
+// reconnects: a raw invalid_event_stream_command, at the handshake deadline
+// or the staleness window; or a correlated reject_subscription queued behind
+// a duplicate welcome's blocked retransmit, at the confirmation deadline.
+func TestQueuedVerdictOutranksATeardownDuringABlockedSubscribeWrite(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		// arrange drives the socket to the blocked write and queues the
+		// verdict; it returns the frame to queue.
+		verdict func(identifier string) []byte
+		// duplicate blocks the RETRANSMIT rather than the first subscribe,
+		// so the verdict is correlated to a subscribe the server received.
+		duplicate bool
+		// end takes the wait's own teardown.
+		end    func(h *harness)
+		reason eventfeed.TerminalReason
+	}{
+		{
+			name:    "protocol-fatal at the handshake deadline",
+			verdict: func(string) []byte { return frameDisconnect("invalid_event_stream_command", false) },
+			end:     func(h *harness) { h.fireTimer(timerHandshakeDeadline) },
+			reason:  eventfeed.ReasonProtocolFatal,
+		},
+		{
+			name:    "protocol-fatal at the staleness window",
+			verdict: func(string) []byte { return frameDisconnect("invalid_event_stream_command", false) },
+			end:     func(h *harness) { h.clock.Advance(staleAfter) },
+			reason:  eventfeed.ReasonProtocolFatal,
+		},
+		{
+			name:      "rejection at the confirmation deadline",
+			verdict:   frameReject,
+			duplicate: true,
+			end:       func(h *harness) { h.fireTimer(timerConfirmationDeadline) },
+			reason:    eventfeed.ReasonSubscriptionRejected,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			h := newHarness(t)
+			h.minter.ScriptTicket(ticket(1))
+			// A reconnecting connector ends at Terminal(mint_failed) with two
+			// mint calls; a correct one at the verdict's terminal with one.
+			h.minter.ScriptError(&eventfeed.MintError{Kind: eventfeed.MintUnrecoverable})
+			handedOff := make(chan struct{}, 8)
+			h.conn.OnPumpHandedOff(func(bool) {
+				select {
+				case handedOff <- struct{}{}:
+				default:
+				}
+			})
+			h.start()
+			var conn *feedtest.Conn
+			if tc.duplicate {
+				conn = h.driveToSubscribed()
+				conn.StallWrites()
+				conn.Serve(frameWelcome())
+			} else {
+				conn = h.liveConn()
+				conn.StallWrites()
+				conn.Serve(frameWelcome())
+			}
+			// The duplicate's own handling is the rendezvous — the first
+			// welcome's notification is already queued and must not be
+			// mistaken for it.
+			h.awaitFrameHandled("welcome")
+			if tc.duplicate {
+				h.awaitFrameHandled("welcome")
+			}
+			drain(handedOff)
+			conn.Serve(tc.verdict(noFilterIdentifier))
+			select {
+			case <-handedOff:
+			case <-time.After(watchdog):
+				t.Fatal("the verdict frame never reached the hand-off queue")
+			}
+			tc.end(h)
+			h.awaitEndOrReconnect()
+			h.join()
+
+			_, terminal, _ := h.snapshot()
+			if terminal == nil || terminal.Reason != tc.reason {
+				t.Fatalf("terminal = %v, want reason %q — the verdict was already queued when the wait ended", terminal, tc.reason)
+			}
+			if got := h.minter.Calls(); got != 1 {
+				t.Fatalf("mint calls = %d, want 1: a terminal verdict must not reconnect", got)
+			}
+			if !conn.Closed() {
+				t.Fatal("the socket was not explicitly closed")
+			}
+			assertTimers(t, h.clock, map[string]int{})
+		})
+	}
+}
+
+// TestQueuedUnauthorizedBehindALapseCountsTowardTheThreshold: the scan every
+// recoverable teardown runs recognises a disconnect of ANY reason, not the
+// protocol-fatal alone, because the reason dispatch is what decides its
+// meaning. A pre-welcome `unauthorized` queued behind a blocked subscribe
+// write is the case that shows why: with two unauthorized failures already
+// on the shared counter, a lapse that discarded it reconnected with the
+// counter still at two, where dispatching it is the third and terminal.
+func TestQueuedUnauthorizedBehindALapseCountsTowardTheThreshold(t *testing.T) {
+	h := newHarness(t)
+	h.minter.ScriptError(&eventfeed.MintError{Kind: eventfeed.MintUnauthorized})
+	h.minter.ScriptError(&eventfeed.MintError{Kind: eventfeed.MintUnauthorized})
+	h.minter.ScriptTicket(ticket(3))
+	// A fourth mint would mean the queued unauthorized was discarded.
+	h.minter.ScriptError(&eventfeed.MintError{Kind: eventfeed.MintUnrecoverable})
+	handedOff := make(chan struct{}, 8)
+	h.conn.OnPumpHandedOff(func(bool) {
+		select {
+		case handedOff <- struct{}{}:
+		default:
+		}
+	})
+	h.start()
+	h.fireTimer(timerBackoff)
+	h.fireTimer(timerBackoff)
+	conn := h.liveConn()
+	conn.StallWrites()
+	conn.Serve(frameWelcome())
+	h.awaitFrameHandled("welcome")
+	drain(handedOff)
+	conn.Serve(frameDisconnect("unauthorized", false))
+	select {
+	case <-handedOff:
+	case <-time.After(watchdog):
+		t.Fatal("the unauthorized disconnect never reached the hand-off queue")
+	}
+	h.fireTimer(timerHandshakeDeadline)
+	h.awaitEndOrReconnect()
+	h.join()
+
+	_, terminal, _ := h.snapshot()
+	if terminal == nil || terminal.Reason != eventfeed.ReasonAuthorizationFailed {
+		t.Fatalf("terminal = %v, want reason %q — the queued unauthorized was the third consecutive on the shared counter", terminal, eventfeed.ReasonAuthorizationFailed)
+	}
+	if got := h.minter.Calls(); got != 3 {
+		t.Fatalf("mint calls = %d, want 3", got)
+	}
+}
+
+// TestQueuedFatalOutranksAWelcomePastItsDeadline: a welcome whose handshake
+// deadline had already fired takes the lapse through Stop's false return —
+// and a protocol-fatal disconnect queued behind it is the server's verdict,
+// which the lapse must not discard. The deadline is fired while the state
+// machine is parked on the welcome, so the write's completion and the fired
+// deadline are both ready when it resumes: whichever arm wins, the lapse it
+// takes scans first. (The confirmation branch's Stop-false lapse is the same
+// helper.)
+func TestQueuedFatalOutranksAWelcomePastItsDeadline(t *testing.T) {
+	h := newHarness(t)
+	h.minter.ScriptTicket(ticket(1))
+	h.minter.ScriptError(&eventfeed.MintError{Kind: eventfeed.MintUnrecoverable})
+	handedOff := make(chan struct{}, 8)
+	h.conn.OnPumpHandedOff(func(bool) {
+		select {
+		case handedOff <- struct{}{}:
+		default:
+		}
+	})
+	parked := make(chan struct{})
+	gate := make(chan struct{})
+	var once sync.Once
+	h.conn.OnFrameHandled(func(kind string) {
+		if kind == "welcome" {
+			once.Do(func() {
+				close(parked)
+				<-gate
+			})
+		}
+	})
+	h.start()
+	conn := h.liveConn()
+	conn.Serve(frameWelcome())
+	select {
+	case <-parked:
+	case <-time.After(watchdog):
+		t.Fatal("the state machine never parked on the welcome")
+	}
+	h.fireTimer(timerHandshakeDeadline)
+	drain(handedOff)
+	conn.Serve(frameDisconnect("invalid_event_stream_command", false))
+	select {
+	case <-handedOff:
+	case <-time.After(watchdog):
+		t.Fatal("the fatal never reached the hand-off queue")
+	}
+	close(gate)
+	h.awaitEndOrReconnect()
+	h.join()
+
+	_, terminal, _ := h.snapshot()
+	if terminal == nil || terminal.Reason != eventfeed.ReasonProtocolFatal {
+		t.Fatalf("terminal = %v, want reason %q — the verdict was queued when the lapse was taken", terminal, eventfeed.ReasonProtocolFatal)
+	}
+	if got := h.minter.Calls(); got != 1 {
+		t.Fatalf("mint calls = %d, want 1", got)
+	}
+}
