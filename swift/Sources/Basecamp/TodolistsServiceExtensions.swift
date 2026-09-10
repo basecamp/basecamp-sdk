@@ -142,7 +142,7 @@ extension TodolistsService {
                     + "malformed response cannot be written back safely. Use replace(id:req:) "
                     + "to write the record deliberately.",
                 requestId: nil,
-                decodeFailure: decodeFailure
+                decodeFailure: decodeFailure, retryAfterSeconds: nil
             )
         }
 
@@ -161,7 +161,7 @@ extension TodolistsService {
                 hint: "The name is presence-validated server-side, so an empty one is a "
                     + "malformed response. The caller did not ask to clear it.",
                 requestId: nil,
-                decodeFailure: nil
+                decodeFailure: nil, retryAfterSeconds: nil
             )
         }
         return todolist

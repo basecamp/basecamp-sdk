@@ -47,7 +47,7 @@ public struct DocumentFields: Sendable {
                     + "would blank the current one. Use replace(documentId:req:) to write the "
                     + "record deliberately.",
                 requestId: nil,
-                decodeFailure: nil
+                decodeFailure: nil, retryAfterSeconds: nil
             )
         }
         title = document.title
@@ -145,7 +145,7 @@ extension DocumentsService {
                     + "malformed response cannot be written back safely. Use "
                     + "replace(documentId:req:) to write the record deliberately.",
                 requestId: nil,
-                decodeFailure: decodeFailure
+                decodeFailure: decodeFailure, retryAfterSeconds: nil
             )
         }
     }

@@ -582,7 +582,7 @@ final class TodolistsServiceExtensionsTests: XCTestCase {
                 id: 2, req: UpdateTodolistRequest(description: "<p>New</p>"))
             XCTFail("expected an empty name from the wire to be refused")
         } catch let error as BasecampError {
-            guard case .api(let message, _, _, _, _) = error else {
+            guard case .api(let message, _, _, _, _, _) = error else {
                 return XCTFail("expected .api for a malformed response, got \(error)")
             }
             XCTAssertTrue(
@@ -609,7 +609,7 @@ final class TodolistsServiceExtensionsTests: XCTestCase {
                 id: 2, req: UpdateTodolistRequest(name: "Renamed"))
             XCTFail("expected a decode failure to surface as a BasecampError")
         } catch let error as BasecampError {
-            guard case .api(let message, let httpStatus, let hint, _, _) = error else {
+            guard case .api(let message, let httpStatus, let hint, _, _, _) = error else {
                 return XCTFail("expected .api for a malformed body, got \(error)")
             }
             XCTAssertNil(httpStatus, "the transport succeeded, so there is no status to report")
@@ -659,7 +659,7 @@ extension XCTestCase {
     func assertStatuslessDecodeFailure(
         _ error: BasecampError, file: StaticString = #filePath, line: UInt = #line
     ) -> String {
-        guard case .api(let message, let httpStatus, _, _, _) = error else {
+        guard case .api(let message, let httpStatus, _, _, _, _) = error else {
             XCTFail("expected .api for a malformed body, got \(error)", file: file, line: line)
             return ""
         }

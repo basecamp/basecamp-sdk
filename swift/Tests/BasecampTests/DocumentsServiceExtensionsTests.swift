@@ -141,7 +141,7 @@ final class DocumentsServiceExtensionsTests: XCTestCase {
                 documentId: 42, req: UpdateDocumentRequest(content: "<p>New body.</p>"))
             XCTFail("expected the call to fail, but it succeeded")
         } catch let error as BasecampError {
-            guard case .api(_, let httpStatus, let hint, _, _) = error else {
+            guard case .api(_, let httpStatus, let hint, _, _, _) = error else {
                 return XCTFail("expected .api, got \(error)")
             }
             XCTAssertNil(httpStatus, "a malformed 2xx body carries no status")

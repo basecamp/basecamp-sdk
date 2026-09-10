@@ -49,9 +49,14 @@ public enum BasecampError: Error, Sendable, LocalizedError {
     /// Read it through ``decodeFailure``, not by matching this case: that
     /// property is nil for every other error shape, and it will not move again
     /// when this case gains a sixth value.
+    ///
+    /// `retryAfterSeconds` is the response's parsed `Retry-After`, carried at
+    /// every status (SPEC §6 "HTTP Status Mapping Algorithm") so an exhausted
+    /// 503 reports the wait the origin named. Read it through
+    /// ``retryAfterSeconds``, which also covers `.rateLimit`.
     case api(
         message: String, httpStatus: Int?, hint: String?, requestId: String?,
-        decodeFailure: (any Error & Sendable)?)
+        decodeFailure: (any Error & Sendable)?, retryAfterSeconds: Int?)
 
     /// Validation error (HTTP 400, 422).
     ///
@@ -88,7 +93,7 @@ public enum BasecampError: Error, Sendable, LocalizedError {
         switch self {
         case .rateLimit: true
         case .network: true
-        case .api(_, let status, _, _, _): status.map { $0 >= 500 } ?? false
+        case .api(_, let status, _, _, _, _): status.map { $0 >= 500 } ?? false
         case .limitExceeded: false
         case .ambiguous: false
         default: false
@@ -104,7 +109,7 @@ public enum BasecampError: Error, Sendable, LocalizedError {
         case .rateLimit: 429
         case .validation(_, let status, _, _, _): status
         case .peopleConfirmationRequired(_, let status, _, _, _, _): status
-        case .api(_, let status, _, _, _): status
+        case .api(_, let status, _, _, _, _): status
         case .limitExceeded: 507
         case .ambiguous: nil
         case .network: nil
@@ -136,7 +141,7 @@ public enum BasecampError: Error, Sendable, LocalizedError {
         case .notFound(_, let hint, _): hint
         case .rateLimit(_, _, let hint, _): hint
         case .network: "Check your network connection"
-        case .api(_, _, let hint, _, _): hint
+        case .api(_, _, let hint, _, _, _): hint
         case .limitExceeded(_, let hint, _): hint
         case .ambiguous(_, _, let hint): hint
         case .validation(_, _, let hint, _, _): hint
@@ -153,7 +158,7 @@ public enum BasecampError: Error, Sendable, LocalizedError {
         case .notFound(let msg, _, _): msg
         case .rateLimit(let msg, _, _, _): msg
         case .network(let msg, _): msg
-        case .api(let msg, _, _, _, _): msg
+        case .api(let msg, _, _, _, _, _): msg
         case .limitExceeded(let msg, _, _): msg
         case .ambiguous(let resource, _, _): "Ambiguous \(resource)"
         case .validation(let msg, _, _, _, _): msg
@@ -169,7 +174,7 @@ public enum BasecampError: Error, Sendable, LocalizedError {
         case .forbidden(_, _, let id): id
         case .notFound(_, _, let id): id
         case .rateLimit(_, _, _, let id): id
-        case .api(_, _, _, let id, _): id
+        case .api(_, _, _, let id, _, _): id
         case .limitExceeded(_, _, let id): id
         case .ambiguous: nil
         case .validation(_, _, _, let id, _): id
@@ -224,7 +229,18 @@ public enum BasecampError: Error, Sendable, LocalizedError {
     /// how this SDK words a sentence to tell the shapes apart.
     public var decodeFailure: (any Error & Sendable)? {
         switch self {
-        case .api(_, _, _, _, let decodeFailure): decodeFailure
+        case .api(_, _, _, _, let decodeFailure, _): decodeFailure
+        default: nil
+        }
+    }
+
+    /// Seconds the response's `Retry-After` named, parsed per SPEC §6, at
+    /// whatever status carried it. Nil when the header was absent, malformed,
+    /// or already past — and for the error shapes no response produced.
+    public var retryAfterSeconds: Int? {
+        switch self {
+        case .rateLimit(_, let seconds, _, _): seconds
+        case .api(_, _, _, _, _, let seconds): seconds
         default: nil
         }
     }
@@ -256,6 +272,7 @@ public enum BasecampError: Error, Sendable, LocalizedError {
         // and empty of meaning for an unregistered code.
         let message = serverMessage ?? "Request failed (HTTP \(status))"
         let hint = truncate(body?["error_description"] as? String)
+        let retryAfter = parseRetryAfter(headers["Retry-After"])
 
         switch status {
         case 401:
@@ -265,7 +282,6 @@ public enum BasecampError: Error, Sendable, LocalizedError {
         case 404:
             return .notFound(message: message, hint: hint, requestId: requestId)
         case 429:
-            let retryAfter = parseRetryAfter(headers["Retry-After"])
             let retryHint = retryAfter.map { "Retry after \($0) seconds" } ?? hint
             return .rateLimit(
                 message: message, retryAfterSeconds: retryAfter,
@@ -299,7 +315,7 @@ public enum BasecampError: Error, Sendable, LocalizedError {
         default:
             return .api(
                 message: message, httpStatus: status,
-                hint: hint, requestId: requestId, decodeFailure: nil
+                hint: hint, requestId: requestId, decodeFailure: nil, retryAfterSeconds: retryAfter
             )
         }
     }
@@ -434,18 +450,36 @@ public enum BasecampError: Error, Sendable, LocalizedError {
             .joined(separator: ", ")
     }
 
-    /// Parses a Retry-After header value (seconds or HTTP-date).
+    /// SPEC §6 `MAX_RETRY_AFTER_SECONDS`: the value a parsed Retry-After
+    /// saturates at, in both wire forms. A representability bound pinned once
+    /// for all six SDKs — the narrowest `retryAfter` integer any of them ships,
+    /// and the same ceiling §16 already names — not a policy cap. Its
+    /// nanosecond product (~2.1e18) is inside `UInt64`, which is what lets the
+    /// sleep drop the day-long clamp it used to carry.
+    public static let maxRetryAfterSeconds = 2_147_483_647
+
+    /// Parses a Retry-After header value (SPEC §6 "Retry-After Parsing
+    /// Algorithm"): RFC 9110 delay-seconds — `1*DIGIT`, so a signed value is
+    /// not a delay even though `Int(_:)` would read one — or an IMF-fixdate
+    /// reduced to the seconds remaining, rounded up. Either form saturates at
+    /// ``maxRetryAfterSeconds``: `1*DIGIT` has no upper bound, so no digit
+    /// string is malformed for its length, and reading "wait a very long time"
+    /// as "no delay" hammers a peer that just asked to be left alone.
     static func parseRetryAfter(_ value: String?) -> Int? {
         guard let value, !value.isEmpty else { return nil }
-        if let seconds = Int(value), seconds > 0 {
-            return seconds
+        if value.allSatisfy({ $0.isASCII && $0.isNumber }) {
+            let digits = value.drop { $0 == "0" }
+            if digits.count > String(maxRetryAfterSeconds).count { return maxRetryAfterSeconds }
+            guard let seconds = Int(digits), seconds > 0 else { return nil }
+            return min(seconds, maxRetryAfterSeconds)
         }
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.dateFormat = "EEE, dd MMM yyyy HH:mm:ss zzz"
         if let date = formatter.date(from: value) {
-            let seconds = Int(date.timeIntervalSinceNow.rounded(.up))
-            return seconds > 0 ? seconds : nil
+            let remaining = date.timeIntervalSinceNow.rounded(.up)
+            guard remaining > 0 else { return nil }
+            return remaining >= Double(maxRetryAfterSeconds) ? maxRetryAfterSeconds : Int(remaining)
         }
         return nil
     }
