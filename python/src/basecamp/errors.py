@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import math
+import re
 from datetime import UTC, datetime
 from enum import IntEnum, StrEnum
 from typing import Any
@@ -416,6 +417,16 @@ def error_from_response(status: int, body: str | bytes | None, headers: dict[str
     return err
 
 
+# SPEC section 6 MAX_RETRY_AFTER_SECONDS: the value a parsed Retry-After
+# saturates at, in both wire forms. A representability bound pinned once for
+# all six SDKs (the narrowest retry_after integer any of them ships, and the
+# ceiling section 16 already names), not a policy cap. Python's int is
+# arbitrary-precision, so without it the failure was one layer down: float()
+# raised OverflowError on the retry path.
+MAX_RETRY_AFTER_SECONDS = 2_147_483_647
+_DELAY_SECONDS = re.compile(r"^[0-9]+$")
+
+
 def _parse_retry_after(value: str | None, *, now: datetime | None = None) -> int | None:
     """SPEC section 6 "Retry-After Parsing Algorithm".
 
@@ -424,22 +435,28 @@ def _parse_retry_after(value: str | None, *, now: datetime | None = None) -> int
     """
     if not value:
         return None
-    try:
+    # RFC 9110 spells delay-seconds as 1*DIGIT: no sign, which int() would
+    # accept. A value over the ceiling saturates whatever its width, since
+    # 1*DIGIT has no upper bound and no digit string is malformed for its
+    # length.
+    if _DELAY_SECONDS.match(value):
         seconds = int(value)
-        return seconds if seconds > 0 else None
-    except ValueError:
-        pass
+        return min(seconds, MAX_RETRY_AFTER_SECONDS) if seconds > 0 else None
     # Try HTTP-date
     from email.utils import parsedate_to_datetime
 
     try:
         date = parsedate_to_datetime(value)
+        # asctime carries no zone, and parsedate_to_datetime hands it back
+        # naive; RFC 7231 reads every HTTP-date as UTC.
+        if date.tzinfo is None:
+            date = date.replace(tzinfo=UTC)
         # Rounded UP (SPEC section 6 step 2): truncating a sub-second remainder
         # toward zero turned a date 400ms out into 0, which reads as "no usable
         # value" and drops onto the backoff curve, and retried up to a second
         # before the moment the server named.
         diff = math.ceil((date - (now or datetime.now(UTC))).total_seconds())
-        return diff if diff > 0 else None
+        return min(diff, MAX_RETRY_AFTER_SECONDS) if diff > 0 else None
     except (ValueError, TypeError):
         pass
     return None
