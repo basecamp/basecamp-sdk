@@ -117,8 +117,9 @@ def _token_request(token_endpoint: str, params: dict[str, str]) -> OAuthToken:
     # SPEC §9: the httpx error retains the request it failed on — the form
     # body carrying client_secret, code, code_verifier or refresh_token — so a
     # transport failure is constructed here and raised outside the handler,
-    # chaining nothing.
-    transport_error: OAuthError | None = None
+    # chaining nothing. Both arms bind one name so the continuing path is
+    # definitely assigned.
+    outcome: tuple[int, bytes] | OAuthError
     try:
         # request_bounded, not a bare httpx call: httpx's timeout is per
         # I/O phase (it resets on every received chunk), so a peer dripping
@@ -132,7 +133,7 @@ def _token_request(token_endpoint: str, params: dict[str, str]) -> OAuthToken:
         # the refused redirect statuses so they classify from the headers
         # with the body unread: a 302 whose body stalls forever is the typed
         # refusal below, never a timeout.
-        status, body = request_bounded(
+        outcome = request_bounded(
             "POST",
             token_endpoint,
             headers={
@@ -146,11 +147,12 @@ def _token_request(token_endpoint: str, params: dict[str, str]) -> OAuthToken:
             context="Token",
         )
     except httpx.TimeoutException:
-        transport_error = OAuthError("network", "Token request timed out", retryable=True)
+        outcome = OAuthError("network", "Token request timed out", retryable=True)
     except httpx.HTTPError as exc:
-        transport_error = OAuthError("network", f"Token request failed: {exc}", retryable=True)
-    if transport_error is not None:
-        raise transport_error
+        outcome = OAuthError("network", f"Token request failed: {exc}", retryable=True)
+    if isinstance(outcome, OAuthError):
+        raise outcome
+    status, body = outcome
 
     # A redirect is never a valid token-endpoint outcome and its Location is
     # never dialled — refuse it with the body unread.

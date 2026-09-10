@@ -99,11 +99,12 @@ class AsyncOAuthTokenProvider:
 
         # SPEC §9: the httpx error retains the request it failed on — the form
         # body carrying refresh_token and client_secret — so a transport
-        # failure is constructed here and raised outside the handler.
-        transport_error: NetworkError | None = None
+        # failure is constructed here and raised outside the handler. Both arms
+        # bind one name so the continuing path is definitely assigned.
+        outcome: httpx.Response | NetworkError
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:
-                response = await client.post(
+                outcome = await client.post(
                     self.TOKEN_URL,
                     data={
                         "type": "refresh",
@@ -114,9 +115,10 @@ class AsyncOAuthTokenProvider:
                     headers={"Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json"},
                 )
         except httpx.HTTPError as e:
-            transport_error = NetworkError(f"Token refresh network error: {e}")
-        if transport_error is not None:
-            raise transport_error
+            outcome = NetworkError(f"Token refresh network error: {e}")
+        if isinstance(outcome, NetworkError):
+            raise outcome
+        response = outcome
 
         if response.status_code >= 400:
             raise AuthError(f"Token refresh failed: {response.status_code}")

@@ -27,6 +27,20 @@ jobs:
         with:
           advanced-security: false
 
+  # setup-gradle already validates the wrapper jars on the Kotlin jobs;
+  # Scorecard's BinaryArtifacts check recognises only this dedicated action.
+  gradle-wrapper:
+    name: Gradle wrapper validation
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: gradle/actions/wrapper-validation@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+
   smithy:
     uses: ./.github/workflows/smithy-verify.yml
     permissions:

@@ -98,10 +98,11 @@ class OAuthTokenProvider:
 
         # SPEC §9: the httpx error retains the request it failed on — the form
         # body carrying refresh_token and client_secret — so a transport
-        # failure is constructed here and raised outside the handler.
-        transport_error: NetworkError | None = None
+        # failure is constructed here and raised outside the handler. Both arms
+        # bind one name so the continuing path is definitely assigned.
+        outcome: httpx.Response | NetworkError
         try:
-            response = httpx.post(
+            outcome = httpx.post(
                 self.TOKEN_URL,
                 data={
                     "type": "refresh",
@@ -113,9 +114,10 @@ class OAuthTokenProvider:
                 timeout=30.0,
             )
         except httpx.HTTPError as e:
-            transport_error = NetworkError(f"Token refresh network error: {e}")
-        if transport_error is not None:
-            raise transport_error
+            outcome = NetworkError(f"Token refresh network error: {e}")
+        if isinstance(outcome, NetworkError):
+            raise outcome
+        response = outcome
 
         if response.status_code >= 400:
             raise AuthError(f"Token refresh failed: {response.status_code}")
