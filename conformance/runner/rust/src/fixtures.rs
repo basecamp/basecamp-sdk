@@ -72,10 +72,6 @@ impl TestCase {
         self.mode.as_deref().is_none_or(|mode| mode == "mock")
     }
 
-    pub fn has_tag(&self, tag: &str) -> bool {
-        self.tags.iter().any(|t| t == tag)
-    }
-
     /// Whether any queued response carries a `rel="next"` Link, so the SDK will follow it
     /// and the transport should answer the overrun with an empty page rather than a 500.
     pub fn auto_paginates(&self) -> bool {

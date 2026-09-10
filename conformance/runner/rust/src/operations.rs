@@ -12,8 +12,10 @@ use std::collections::BTreeMap;
 use std::time::Duration;
 
 use basecamp_sdk::models::*;
-use basecamp_sdk::services::*;
-use basecamp_sdk::{AccountClient, Client, Config, Error, ListResult, Page};
+use basecamp_sdk::services::{
+    bookmarks, drafts, projects, reports, search, timeline, timesheets, todolist_groups, todos,
+};
+use basecamp_sdk::{AccountClient, Client, Config, Date, Error, ListResult, Page};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use serde_json::{Value, json};
@@ -125,24 +127,48 @@ async fn list<T: DeserializeOwned + Serialize>(
     case: &TestCase,
     first: Result<Page<Vec<T>>, Error>,
 ) -> Result<Outcome, Error> {
-    let result = account.collect_all(first?, max_items(case)).await?;
-    Ok(Outcome::List {
-        meta: list_meta(&result),
-        value: serde_json::to_value(&result.items).unwrap_or(Value::Null),
+    list_with(account, case, first, |items| {
+        Ok(serde_json::to_value(items).unwrap_or(Value::Null))
     })
+    .await
 }
 
 /// Like [`list`], but the body is a summary computed from the decoded items.
+///
+/// A case that pins a `page` (SPEC §8) asks for exactly that page: in this SDK the typed
+/// method answers one `Page` and following the cursor is the caller's separate, explicit
+/// `collect_all`, so a pinned page is the page as answered, with `truncated` reporting
+/// whether a next link was offered or the `max_items` cap bit.
 async fn list_with<T: DeserializeOwned>(
     account: &AccountClient,
     case: &TestCase,
     first: Result<Page<Vec<T>>, Error>,
     summarize: impl FnOnce(&[T]) -> Result<Value, Error>,
 ) -> Result<Outcome, Error> {
-    let result = account.collect_all(first?, max_items(case)).await?;
+    let first = first?;
+    if case.config_overrides.page.is_none() {
+        let result = account.collect_all(first, max_items(case)).await?;
+        return Ok(Outcome::List {
+            meta: list_meta(&result),
+            value: summarize(&result.items)?,
+        });
+    }
+    let has_next = first.next_url().is_some();
+    let total_count = first.total_count().unwrap_or(0);
+    let mut items = first.into_inner();
+    let truncated = match max_items(case) {
+        Some(cap) if items.len() > cap => {
+            items.truncate(cap);
+            true
+        }
+        _ => has_next,
+    };
     Ok(Outcome::List {
-        meta: list_meta(&result),
-        value: summarize(&result.items)?,
+        meta: BTreeMap::from([
+            ("totalCount".to_string(), json!(total_count)),
+            ("truncated".to_string(), json!(truncated)),
+        ]),
+        value: summarize(&items)?,
     })
 }
 
@@ -160,7 +186,7 @@ async fn dispatch(account: &AccountClient, case: &TestCase) -> Result<Outcome, E
     match case.operation.as_str() {
         // --- projects / templates ------------------------------------------------------
         "ListProjects" => {
-            let params = ListProjectsParams {
+            let params = projects::ListProjectsParams {
                 page: page_param(case),
                 ..Default::default()
             };
@@ -247,7 +273,7 @@ async fn dispatch(account: &AccountClient, case: &TestCase) -> Result<Outcome, E
 
         // --- todos / todolists ---------------------------------------------------------
         "ListTodos" => {
-            let params = ListTodosParams::default();
+            let params = todos::ListTodosParams::default();
             list(
                 account,
                 case,
@@ -293,8 +319,8 @@ async fn dispatch(account: &AccountClient, case: &TestCase) -> Result<Outcome, E
                     body,
                     "completion_subscriber_ids",
                 ),
-                due_on: optional_string_param(body, "due_on"),
-                starts_on: optional_string_param(body, "starts_on"),
+                due_on: date_param(body, "due_on")?,
+                starts_on: date_param(body, "starts_on")?,
                 notify: optional_bool_param(body, "notify"),
                 ..Default::default()
             };
@@ -310,7 +336,7 @@ async fn dispatch(account: &AccountClient, case: &TestCase) -> Result<Outcome, E
             unit(account.todolists().replace(id("id"), &request).await)
         }
         "ListTodolistGroups" => {
-            let params = ListTodolistGroupsParams {
+            let params = todolist_groups::ListTodolistGroupsParams {
                 page: page_param(case),
             };
             list_with(
@@ -352,8 +378,13 @@ async fn dispatch(account: &AccountClient, case: &TestCase) -> Result<Outcome, E
         | "UpdateScheduleEntry"
         | "EditScheduleEntry"
         | "UpdateCard"
-        | "UploadsDownload"
-        | "DownloadURL" => Err(not_wired(&case.operation)),
+        | "UploadsDownload" => Err(not_wired(&case.operation)),
+        "DownloadURL" => {
+            // An absolute URL the SDK accepts: it rewrites scheme and host to the configured
+            // origin (SPEC §14), so only the case's path matters.
+            let raw = format!("https://storage.3.basecamp.com{}", case.path);
+            unit(account.download_url(&raw).await)
+        }
 
         // --- documents / schedules / cards ---------------------------------------------
         "ReplaceDocument" => {
@@ -415,7 +446,7 @@ async fn dispatch(account: &AccountClient, case: &TestCase) -> Result<Outcome, E
             let request = UpdateCardRequestContent {
                 title: optional_string_param(body, "title"),
                 content: optional_string_param(body, "content"),
-                due_on: optional_string_param(body, "due_on"),
+                due_on: date_param(body, "due_on")?,
                 assignee_ids: optional_int64_list_param(body, "assignee_ids"),
                 ..Default::default()
             };
@@ -430,7 +461,7 @@ async fn dispatch(account: &AccountClient, case: &TestCase) -> Result<Outcome, E
         // --- my things -----------------------------------------------------------------
         "Subscribe" => unit(account.subscriptions().subscribe(id("recordingId")).await),
         "ListMyBookmarks" => {
-            let params = ListMyBookmarksParams::default();
+            let params = bookmarks::ListMyBookmarksParams::default();
             list(
                 account,
                 case,
@@ -439,7 +470,7 @@ async fn dispatch(account: &AccountClient, case: &TestCase) -> Result<Outcome, E
             .await
         }
         "ListMyDrafts" => {
-            let params = ListMyDraftsParams::default();
+            let params = drafts::ListMyDraftsParams::default();
             list(
                 account,
                 case,
@@ -603,7 +634,7 @@ async fn dispatch(account: &AccountClient, case: &TestCase) -> Result<Outcome, E
             unit(account.timesheets().update(id("entryId"), &request).await)
         }
         "GetProjectTimesheet" => {
-            let params = GetProjectTimesheetParams::default();
+            let params = timesheets::GetProjectTimesheetParams::default();
             unit(
                 account
                     .timesheets()
@@ -612,7 +643,7 @@ async fn dispatch(account: &AccountClient, case: &TestCase) -> Result<Outcome, E
             )
         }
         "GetProjectTimeline" => {
-            let params = GetProjectTimelineParams::default();
+            let params = timeline::GetProjectTimelineParams::default();
             list(
                 account,
                 case,
@@ -624,20 +655,17 @@ async fn dispatch(account: &AccountClient, case: &TestCase) -> Result<Outcome, E
             .await
         }
         "GetProgressReport" => {
-            let params = GetProgressReportParams::default();
+            let params = reports::GetProgressReportParams::default();
             list(account, case, account.reports().progress(&params).await).await
         }
         "GetPersonProgress" => {
-            let params = GetPersonProgressParams::default();
-            list(
-                account,
-                case,
+            let params = reports::GetPersonProgressParams::default();
+            unit(
                 account
                     .reports()
                     .person_progress(id("personId"), &params)
                     .await,
             )
-            .await
         }
         "GetUpcomingSchedule" => {
             let result = account
@@ -711,7 +739,7 @@ async fn dispatch(account: &AccountClient, case: &TestCase) -> Result<Outcome, E
                 case,
                 account
                     .search()
-                    .search(SEARCH_QUERY, &SearchParams::default())
+                    .search(SEARCH_QUERY, &search::SearchParams::default())
                     .await,
                 |results| Ok(summarize_search(results)),
             )
@@ -987,6 +1015,15 @@ async fn dispatch(account: &AccountClient, case: &TestCase) -> Result<Outcome, E
     }
 }
 
+/// A date the fixture carries, as the typed request spells it. A raw replace has no way to
+/// spell the `""` clear — that is the composites' carve-out (SPEC §18) — so an empty
+/// string here is a fixture asking for something this arm cannot send.
+fn date_param(params: &Params, key: &str) -> Result<Option<Date>, Error> {
+    optional_string_param(params, key)
+        .map(|text| Date::parse(&text))
+        .transpose()
+}
+
 /// A required integer read without rounding: a fixture id past 2^53 must survive.
 fn exact_int64(params: &Params, key: &str) -> Result<i64, Error> {
     match params.get(key) {
@@ -1040,7 +1077,13 @@ fn summarize_upcoming(result: &GetUpcomingScheduleResponseContent) -> Value {
     if let Some(occurrence) = result.recurring_schedule_entry_occurrences.first() {
         summary["occurrence_recurring"] = json!(occurrence.recurring);
         summary["occurrence_all_day"] = json!(occurrence.all_day);
-        summary["occurrence_starts_at"] = json!(occurrence.starts_at.date_string());
+        summary["occurrence_starts_at"] = json!(
+            occurrence
+                .starts_at
+                .date()
+                .map(|d| d.to_string())
+                .unwrap_or_default()
+        );
     }
     if let Some(assignable) = result.assignables.first() {
         summary["assignable_content"] = json!(assignable.content);
