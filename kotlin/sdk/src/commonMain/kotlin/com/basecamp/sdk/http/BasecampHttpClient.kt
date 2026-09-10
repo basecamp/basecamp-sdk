@@ -222,8 +222,10 @@ internal class BasecampHttpClient(
                 calculateBackoffDelay(baseDelayMs, attempt)
             }
 
+            // The hook error carries the delay that governs this very sleep
+            // (SPEC §7 step 3i), as the terminal error would.
             hooks.safeOnRetry(info, attempt + 1, BasecampException.Api(
-                "HTTP $status", status
+                "HTTP $status", status, retryAfterSeconds = retryAfter
             ), delayMs)
 
             kotlinx.coroutines.delay(delayMs)
