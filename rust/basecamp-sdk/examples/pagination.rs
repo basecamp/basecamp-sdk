@@ -1,5 +1,7 @@
 //! Walking a paginated read: a page at a time, or all at once under a cap.
 
+#![allow(clippy::unwrap_used, clippy::expect_used)] // an example stops on a missing environment variable
+
 use basecamp_sdk::services::todos::ListTodosParams;
 use basecamp_sdk::{Client, Config};
 

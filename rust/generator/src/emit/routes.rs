@@ -4,7 +4,7 @@ use crate::emit::{HEADER, string_literal};
 use crate::model::{Body, Model, Operation, ParamKind, Response};
 use crate::naming::constant_name;
 
-pub fn render(model: &Model) -> String {
+pub(crate) fn render(model: &Model) -> String {
     let mut out = String::from(HEADER);
     out.push_str("//! Every modelled route as public data: method, path, parameters and the behaviour the\n//! model attaches to it.\n\n");
     out.push_str("use crate::generated::metadata;\n");
@@ -103,7 +103,7 @@ fn option_literal(value: Option<&str>) -> String {
     }
 }
 
-pub fn param_kind(kind: ParamKind) -> &'static str {
+pub(crate) fn param_kind(kind: ParamKind) -> &'static str {
     match kind {
         ParamKind::String => "String",
         ParamKind::Bool => "Bool",

@@ -968,10 +968,11 @@ jobs:
         working-directory: .
         run: make rs-check
 
-      # Rust analog of Go's api-compat job. Advisory until the crate has a
-      # published baseline on crates.io: the action compares against the
-      # registry, and a first release has nothing to compare against.
-      - name: Semver check against the published baseline (advisory)
+      # Rust analog of Go's api-compat job: the PR's crate against the crate at
+      # the PR's base commit. Advisory until the first PR whose base carries the
+      # crate — before that the baseline has nothing to build — after which
+      # continue-on-error comes off and this is a gate.
+      - name: Semver check against the base commit (advisory)
         if: matrix.role == 'stable' && github.event_name == 'pull_request'
         continue-on-error: true
         uses: obi1kenobi/cargo-semver-checks-action@6b69fcf40e9b5fb17adeb57e4b6ecd020649a239 # v2.9
@@ -979,6 +980,7 @@ jobs:
           manifest-path: rust/basecamp-sdk/Cargo.toml
           package: basecamp-sdk
           feature-group: all-features
+          baseline-rev: ${{ github.event.pull_request.base.sha }}
 
       - name: Run Rust conformance runner unit tests
         # Unit-tests the runner's own assertion helpers. Through the make

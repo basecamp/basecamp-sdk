@@ -5,7 +5,7 @@ use crate::emit::{HEADER, doc_comment, string_literal};
 use crate::model::{Body, FieldType, Model, Operation, ParamKind, Response, Service, Shape};
 use crate::naming::{constant_name, field_ident};
 
-pub fn render_mod(model: &Model) -> String {
+pub(crate) fn render_mod(model: &Model) -> String {
     let mut out = String::from(HEADER);
     out.push_str("//! One module per service, each a handle on an [`AccountClient`](crate::client::AccountClient).\n\n");
     for service in &model.services {
@@ -14,7 +14,7 @@ pub fn render_mod(model: &Model) -> String {
     out
 }
 
-pub fn render_service(service: &Service, model: &Model) -> Result<String, String> {
+pub(crate) fn render_service(service: &Service, model: &Model) -> Result<String, String> {
     let name = &service.struct_name;
     let mut out = String::from(HEADER);
     writeln!(out, "//! {} operations.\n", service.name).unwrap();
@@ -158,6 +158,7 @@ fn render_params(out: &mut String, operation: &Operation) {
     out.push_str("}\n\n");
 }
 
+#[allow(clippy::too_many_lines)]
 fn render_method(out: &mut String, operation: &Operation, model: &Model) -> Result<(), String> {
     let mut arguments = vec!["&self".to_string()];
     for param in &operation.path_params {

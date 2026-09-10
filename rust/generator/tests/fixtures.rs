@@ -3,6 +3,8 @@
 //!
 //! Regenerate the golden files with `UPDATE_FIXTURES=1 cargo test -p basecamp-sdk-generator`.
 
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -121,10 +123,13 @@ fn refusal(edit: impl FnOnce(&mut serde_json::Value, &mut serde_json::Value)) ->
 
 fn rand_suffix() -> u64 {
     use std::time::{SystemTime, UNIX_EPOCH};
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap()
-        .as_nanos() as u64
+    u64::try_from(
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos(),
+    )
+    .unwrap_or(u64::MAX)
 }
 
 #[test]

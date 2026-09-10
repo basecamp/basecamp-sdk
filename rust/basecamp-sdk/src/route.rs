@@ -9,6 +9,7 @@ use crate::http::Method;
 
 /// One modelled operation.
 #[derive(Debug)]
+#[non_exhaustive]
 pub struct Route {
     /// The `operationId`.
     pub id: &'static str,
@@ -41,6 +42,7 @@ pub struct Route {
 
 /// One path parameter.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct RouteParam {
     /// The name in the path template.
     pub name: &'static str,
@@ -111,6 +113,7 @@ pub enum Pagination {
 
 /// SPEC §18 write semantics for a replace-style operation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct WriteSemantics {
     /// A field the body omits is cleared by the server.
     pub clears_omitted: bool,
@@ -120,6 +123,7 @@ pub struct WriteSemantics {
 
 /// Per-operation behaviour from `behavior-model.json`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct OperationMetadata {
     /// The `operationId`.
     pub operation: &'static str,
@@ -133,6 +137,7 @@ pub struct OperationMetadata {
 
 /// The retry tuple of one operation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct RetryConfig {
     /// Total attempts, the initial request included.
     pub max_attempts: u32,

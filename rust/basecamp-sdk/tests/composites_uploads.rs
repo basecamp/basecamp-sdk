@@ -1,5 +1,6 @@
 //! SPEC §18 `uploads.download`, from `conformance/tests/uploads_download.json`.
 
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 #![cfg(feature = "reqwest")]
 
 mod composites_support;

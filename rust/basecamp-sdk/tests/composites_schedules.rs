@@ -2,6 +2,7 @@
 //! `conformance/tests/schedule_entries_write.json`. The three `create-*` cases are plain
 //! `create_entry` wire cases that share the file; they are reproduced here as well.
 
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 #![cfg(feature = "reqwest")]
 
 mod composites_support;

@@ -4,7 +4,7 @@ use crate::emit::{HEADER, doc_comment, string_literal};
 use crate::model::{Field, FieldType, Model, Role, Schema, Shape};
 use crate::naming::{field_ident, variant_name};
 
-pub fn render(model: &Model) -> String {
+pub(crate) fn render(model: &Model) -> String {
     let mut out = String::from(HEADER);
     out.push_str("//! The request and response shapes the Basecamp API speaks.\n\n");
     // A field of a deprecated type warns at its declaration; the field carries its own
@@ -204,7 +204,7 @@ fn render_enum(out: &mut String, schema: &Schema, values: &[String]) {
     .unwrap();
 }
 
-pub fn rust_type(kind: &FieldType, recursive: bool) -> String {
+pub(crate) fn rust_type(kind: &FieldType, recursive: bool) -> String {
     match kind {
         FieldType::String => "String".into(),
         FieldType::SensitiveString => "SensitiveString".into(),

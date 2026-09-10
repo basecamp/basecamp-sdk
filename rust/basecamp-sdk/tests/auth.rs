@@ -1,5 +1,6 @@
 //! SPEC §4: the 401 refresh-and-replay, its budget gate, and coalescing.
 
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 #![cfg(feature = "reqwest")]
 
 mod support;

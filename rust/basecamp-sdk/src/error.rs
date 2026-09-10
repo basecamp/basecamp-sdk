@@ -275,9 +275,10 @@ impl Error {
         self
     }
 
-    /// The same error carrying a request id.
+    /// The same error carrying a request id, bounded like the message: the header is the
+    /// server's to fill.
     pub fn with_request_id(mut self, request_id: impl Into<String>) -> Error {
-        self.inner.request_id = Some(request_id.into());
+        self.inner.request_id = Some(truncate(&request_id.into()));
         self
     }
 

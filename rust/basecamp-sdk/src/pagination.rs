@@ -175,15 +175,17 @@ impl AccountClient {
     /// the page was pinned. The read is the same operation as the first page — same hooks
     /// identity, same retry policy — and a `Link` header pointing off the origin the walk
     /// started on, or downgrading it to plain HTTP, is refused rather than followed.
-    pub async fn next_page<T: DeserializeOwned>(
+    pub fn next_page<T: DeserializeOwned>(
         &self,
         page: &Page<T>,
-    ) -> Result<Option<Page<T>>, Error> {
-        match page.next_target() {
-            None => Ok(None),
-            Some(next) => {
-                let operation = self.follow_up(page, &next?)?;
-                self.send_page(operation).await.map(Some)
+    ) -> impl Future<Output = Result<Option<Page<T>>, Error>> + Send + '_ {
+        // The follow-up is built here, not in the future, so the future never holds
+        // `&Page<T>` across an await and is `Send` whatever `T` is.
+        let operation = page.next_target().map(|next| self.follow_up(page, &next?));
+        async move {
+            match operation {
+                None => Ok(None),
+                Some(operation) => self.send_page(operation?).await.map(Some),
             }
         }
     }

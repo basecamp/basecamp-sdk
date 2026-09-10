@@ -1,6 +1,8 @@
 //! Public-API guarantees: thread-safety bounds, `Send` futures, configuration validation
 //! and the route table.
 
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
 use basecamp_sdk::{AccountClient, Client, Config, Error, ErrorCode};
 
 fn assert_send_sync<T: Send + Sync>() {}
@@ -28,11 +30,44 @@ fn returned_futures_are_send() {
     assert_send_future(account.projects().get(1));
     assert_send_future(account.projects().list(&Default::default()));
     assert_send_future(account.download_url("https://3.basecampapi.com/999/blobs/x"));
+    let collecting = account.clone();
     let page_future = async move {
-        let page = account.projects().list(&Default::default()).await?;
-        account.collect_all(page, None).await
+        let page = collecting.projects().list(&Default::default()).await?;
+        collecting.collect_all(page, None).await
     };
     assert_send_future(page_future);
+    let following = account.clone();
+    let next_future = async move {
+        let page = following.projects().list(&Default::default()).await?;
+        following.next_page(&page).await
+    };
+    assert_send_future(next_future);
+    let streaming = account.clone();
+    let stream_future = async move {
+        use futures_util::StreamExt;
+        let page = streaming.projects().list(&Default::default()).await?;
+        let pages = streaming.pages(page).count().await;
+        let page = streaming.projects().list(&Default::default()).await?;
+        let items = streaming.items(page).count().await;
+        Ok::<_, Error>(pages + items)
+    };
+    assert_send_future(stream_future);
+    let composite = account.clone();
+    assert_send_future(async move {
+        composite
+            .todos()
+            .update(
+                1,
+                &basecamp_sdk::services::todos::UpdateTodoRequest::default(),
+            )
+            .await
+    });
+    #[cfg(feature = "oauth")]
+    {
+        let oauth = basecamp_sdk::OAuthClient::shipped().unwrap();
+        assert_send_future(oauth.exchange_code(&basecamp_sdk::ExchangeRequest::default()));
+        assert_send_future(oauth.refresh_token(&basecamp_sdk::RefreshRequest::default()));
+    }
 }
 
 #[test]
@@ -75,8 +110,10 @@ fn configuration_is_validated() {
         "Provide either auth or access_token, not both"
     );
 
-    let mut config = Config::default();
-    config.max_pages = 0;
+    let config = Config {
+        max_pages: 0,
+        ..Config::default()
+    };
     assert_eq!(
         Client::builder(config)
             .access_token("t")
@@ -85,8 +122,10 @@ fn configuration_is_validated() {
             .code(),
         ErrorCode::Usage
     );
-    let mut config = Config::default();
-    config.timeout = std::time::Duration::ZERO;
+    let config = Config {
+        timeout: std::time::Duration::ZERO,
+        ..Config::default()
+    };
     assert_eq!(
         Client::builder(config)
             .access_token("t")

@@ -1,15 +1,24 @@
 #![doc = include_str!("../README.md")]
 #![cfg_attr(docsrs, feature(doc_cfg))]
+#![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used))]
 //!
 //! # Request construction policy
 //!
-//! Request bodies and query-parameter structs are plain `pub` structs with `Default` and no
-//! `#[non_exhaustive]`, so they are built literally — `CreateTodoRequestContent { content,
-//! ..Default::default() }` — from any crate. A field the model adds to one of them is
-//! therefore a source break, accepted as a `0.MINOR` release under the pre-1.0 policy.
-//! Response models and open enumerations (`ErrorCode`, the model's own string enums) are
-//! `#[non_exhaustive]`: a field or variant the API grows is not a break. Types with private
-//! fields ([`Error`], [`Client`]) need neither.
+//! Request bodies, query-parameter structs and [`Config`] are plain `pub` structs with
+//! `Default` and no `#[non_exhaustive]`, so they are built literally —
+//! `CreateTodoRequestContent { content, ..Default::default() }` — from any crate. A field
+//! the model adds to one of them is therefore a source break, accepted as a `0.MINOR`
+//! release under the pre-1.0 policy. Response models and open enumerations (`ErrorCode`,
+//! the model's own string enums) are `#[non_exhaustive]`: a field or variant the API grows
+//! is not a break. Types with private fields ([`Error`], [`Client`]) need neither.
+//!
+//! # Re-exported dependencies
+//!
+//! [`chrono`] types are the model's date and time representation and [`reqwest`]'s
+//! builder is the shipped transport's seam, so both crates are re-exported here at the
+//! version this crate was built against: use `basecamp_sdk::chrono` and
+//! `basecamp_sdk::reqwest` rather than guessing the matching minor. A minor bump of either
+//! is a `0.MINOR` release of this crate.
 //!
 //! # Public traits
 //!
@@ -61,6 +70,11 @@ pub use operation::Operation;
 pub use pagination::{ListMeta, ListResult, Page};
 pub use types::{AuthRoutableUrl, Date, DateTime, FlexibleTime, SensitiveString};
 pub use version::{API_VERSION, VERSION};
+
+pub use chrono;
+#[cfg(feature = "reqwest")]
+#[cfg_attr(docsrs, doc(cfg(feature = "reqwest")))]
+pub use reqwest;
 
 /// The request and response types the Basecamp API speaks, generated from the model.
 pub mod models {

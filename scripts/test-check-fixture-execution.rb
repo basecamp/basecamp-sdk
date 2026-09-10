@@ -243,11 +243,14 @@ expect_fail(failures, "a manifest missing a required key", out, status, "missing
 # The same NAME in two different fixtures is two different cases. Three files
 # share "replace-omission-clears: sparse replace sends the request verbatim with
 # no GET" and two share the non-idempotent POST retry name, so a name-keyed
-# comparison would read "excluded by three runners in one file and three in
-# another" as excluded by all seven — a false failure on cases that all run.
+# comparison would read "excluded by three runners in one file and the rest in
+# another" as excluded by all seven — a false failure on cases that all run. The
+# two halves must cover every runner, or a name-keyed comparison sees fewer than
+# seven and passes for the wrong reason.
+raise "the split must cover every runner" unless (RUNNERS.first(3) + RUNNERS.drop(3)).sort == RUNNERS.sort
 out, status = gate lambda { |m|
   exclude(m, "shared name", RUNNERS.first(3), file: "alpha.json")
-  exclude(m, "shared name", RUNNERS.last(3), file: "beta.json")
+  exclude(m, "shared name", RUNNERS.drop(3), file: "beta.json")
 }
 expect_pass(failures, "one name in two files is two cases, not an all-seven overlap", out, status)
 

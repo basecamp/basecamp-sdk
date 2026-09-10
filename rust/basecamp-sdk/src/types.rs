@@ -112,11 +112,11 @@ impl fmt::Display for FlexibleTime {
 }
 
 /// Reads a nullable pixel dimension the API may spell as a float (`1024.0`), per SPEC §10.
-pub mod flex_int {
+pub(crate) mod flex_int {
     use serde::{Deserialize, Deserializer};
 
     /// `null` is `None`; an integer or an integral float is the integer.
-    pub fn deserialize<'de, D: Deserializer<'de>>(
+    pub(crate) fn deserialize<'de, D: Deserializer<'de>>(
         deserializer: D,
     ) -> Result<Option<i32>, D::Error> {
         match Option::<serde_json::Value>::deserialize(deserializer)? {
@@ -149,7 +149,7 @@ pub mod flex_int {
 /// Reads a 64-bit id the API may spell as a string. A string that is not a number — the
 /// `"basecamp"` system actor's id — reads as `0`, as Go's `FlexibleInt64` and Kotlin's
 /// `FlexibleLongSerializer` read it; a numeric string past 64 bits is still an error.
-pub mod flexible_i64 {
+pub(crate) mod flexible_i64 {
     use serde::{Deserialize, Deserializer};
 
     #[derive(Deserialize)]
@@ -160,7 +160,7 @@ pub mod flexible_i64 {
     }
 
     /// An integer, a string holding one, or `0` for a non-numeric sentinel.
-    pub fn deserialize<'de, D: Deserializer<'de>>(deserializer: D) -> Result<i64, D::Error> {
+    pub(crate) fn deserialize<'de, D: Deserializer<'de>>(deserializer: D) -> Result<i64, D::Error> {
         match Flexible::deserialize(deserializer)? {
             Flexible::Number(value) => Ok(value),
             Flexible::Text(text) => from_text(&text).map_err(serde::de::Error::custom),
@@ -178,8 +178,10 @@ pub mod flexible_i64 {
             .map_err(|_| format!("integer id {trimmed:?} does not fit 64 bits"))
     }
 
-    /// [`deserialize`], with `null` as `None`.
-    pub fn deserialize_optional<'de, D: Deserializer<'de>>(
+    /// [`deserialize`], with `null` as `None`. The generator emits it for an optional
+    /// flexible id; the model has none today.
+    #[allow(dead_code)]
+    pub(crate) fn deserialize_optional<'de, D: Deserializer<'de>>(
         deserializer: D,
     ) -> Result<Option<i64>, D::Error> {
         match Option::<Flexible>::deserialize(deserializer)? {

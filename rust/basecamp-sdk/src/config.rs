@@ -19,10 +19,11 @@ pub const DEFAULT_MAX_PAGES: usize = 10_000;
 /// The most of a successful body the client will hold in memory.
 pub const MAX_RESPONSE_BODY_BYTES: usize = 52_428_800;
 
-/// The client configuration. Build one literally, or from the environment with
-/// [`Config::from_env`], and hand it to [`crate::Client::builder`].
+/// The client configuration. Build one literally — `Config { max_pages: 50,
+/// ..Default::default() }` — or from the environment with [`Config::from_env`], and hand it
+/// to [`crate::Client::builder`]. Like the request structs, it is plain data: a field a
+/// release adds is a source break, taken as `0.MINOR`.
 #[derive(Debug, Clone, PartialEq, Eq)]
-#[non_exhaustive]
 pub struct Config {
     /// The API origin, without a trailing slash.
     pub base_url: String,

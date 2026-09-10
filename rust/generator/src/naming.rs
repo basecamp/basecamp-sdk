@@ -9,7 +9,7 @@ use serde::Deserialize;
 /// `operation_resource_types` is `RESOURCE_TYPE_OVERRIDES`. They must agree operation by
 /// operation, and `scripts/check-operation-assignment-parity` fails when they do not.
 #[derive(Deserialize, Default)]
-pub struct Naming {
+pub(crate) struct Naming {
     #[serde(default)]
     services: BTreeMap<String, String>,
     #[serde(default)]
@@ -141,13 +141,13 @@ const SIMPLE_RESOURCES: &[&str] = &[
 ];
 
 impl Naming {
-    pub fn parse(source: &str) -> Result<Naming, String> {
+    pub(crate) fn parse(source: &str) -> Result<Naming, String> {
         toml::from_str(source).map_err(|error| format!("names.toml: {error}"))
     }
 
-    /// The service an operation belongs to, PascalCase (`CardTables`): the split table
+    /// The service an operation belongs to, `PascalCase` (`CardTables`): the split table
     /// first, then the tag table, then the tag with its spaces removed.
-    pub fn service_for(&self, operation_id: &str, tag: &str) -> String {
+    pub(crate) fn service_for(&self, operation_id: &str, tag: &str) -> String {
         if let Some(service) = self.operation_services.get(operation_id) {
             service.clone()
         } else if let Some(service) = self.services.get(tag) {
@@ -157,8 +157,8 @@ impl Naming {
         }
     }
 
-    /// SPEC §18's method-naming algorithm, then snake_cased.
-    pub fn method_for(&self, operation_id: &str) -> Result<String, String> {
+    /// SPEC §18's method-naming algorithm, then `snake_case`d.
+    pub(crate) fn method_for(&self, operation_id: &str) -> Result<String, String> {
         let camel = match self.operation_methods.get(operation_id) {
             Some(method) => method.clone(),
             None => derive_method(operation_id),
@@ -174,8 +174,8 @@ impl Naming {
     }
 
     /// The noun an operation acts on, as the hooks report it: the override table, else the
-    /// verb-stripped remainder, snake_cased and singular.
-    pub fn resource_type_for(&self, operation_id: &str) -> String {
+    /// verb-stripped remainder, `snake_case`d and singular.
+    pub(crate) fn resource_type_for(&self, operation_id: &str) -> String {
         if let Some(resource_type) = self.operation_resource_types.get(operation_id) {
             return resource_type.clone();
         }
@@ -192,7 +192,7 @@ impl Naming {
 
     /// What a schema is called in Rust. A shape whose Smithy name collides with something
     /// the language already has is renamed here; the wire is untouched.
-    pub fn type_for(&self, schema: &str) -> String {
+    pub(crate) fn type_for(&self, schema: &str) -> String {
         self.type_names
             .get(schema)
             .cloned()
@@ -242,16 +242,16 @@ fn singular(word: &str) -> String {
     }
 }
 
-pub fn module_name(service: &str) -> String {
+pub(crate) fn module_name(service: &str) -> String {
     service.to_snake_case()
 }
 
-pub fn struct_name(service: &str) -> String {
+pub(crate) fn struct_name(service: &str) -> String {
     format!("{}Service", service.to_pascal_case())
 }
 
 /// A wire name as a Rust field or parameter: `bucket_ids[]` → `bucket_ids`, `type` → `r#type`.
-pub fn field_ident(wire_name: &str) -> String {
+pub(crate) fn field_ident(wire_name: &str) -> String {
     let ident = wire_name
         .replace(['[', ']'], "_")
         .trim_end_matches('_')
@@ -263,11 +263,11 @@ pub fn field_ident(wire_name: &str) -> String {
     }
 }
 
-pub fn constant_name(operation_id: &str) -> String {
+pub(crate) fn constant_name(operation_id: &str) -> String {
     operation_id.to_snake_case().to_uppercase()
 }
 
-pub fn variant_name(value: &str) -> String {
+pub(crate) fn variant_name(value: &str) -> String {
     let name = value.to_pascal_case();
     if name.chars().next().is_some_and(|c| c.is_ascii_digit()) {
         format!("V{name}")

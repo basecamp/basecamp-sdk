@@ -7,7 +7,7 @@ use crate::naming::constant_name;
 /// One labelled struct literal per operation, on one line each (`#[rustfmt::skip]`), so the
 /// repository's regex-based parity readers — `check-retry-metadata-parity.py`,
 /// `check-idempotency-parity` — can read the tuple the way they read Swift's `Metadata.swift`.
-pub fn render(model: &Model) -> String {
+pub(crate) fn render(model: &Model) -> String {
     let mut out = String::from(HEADER);
     out.push_str("//! Per-operation behaviour from `behavior-model.json`: idempotency, read-onlyness and the\n//! retry tuple SPEC §7's three gates consume.\n\n");
     out.push_str("use crate::route::{Backoff, OperationMetadata, RetryConfig};\n\n");
@@ -39,7 +39,7 @@ pub fn render(model: &Model) -> String {
     out
 }
 
-pub fn backoff_variant(backoff: &str) -> &'static str {
+pub(crate) fn backoff_variant(backoff: &str) -> &'static str {
     match backoff {
         "exponential" => "Exponential",
         "linear" => "Linear",

@@ -6,6 +6,9 @@
 //! when the checked-in files differ from what it would generate; with `--output <dir>` it
 //! writes somewhere other than the checked-in tree, which is how the drift script diffs.
 
+// The emitters write into `String`s, whose `write!` cannot fail.
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
 mod emit;
 mod model;
 mod naming;
@@ -63,9 +66,9 @@ fn run() -> Result<(), String> {
 
     let target = output.unwrap_or_else(|| root.join("rust/basecamp-sdk/src/generated"));
     if check {
-        verify(&target, files)
+        verify(&target, &files)
     } else {
-        write(&target, files)?;
+        write(&target, &files)?;
         println!(
             "{} operations, {} schemas, {} services",
             model.operations().count(),
@@ -108,19 +111,19 @@ fn render_mod(model: &Model) -> String {
     )
 }
 
-fn write(target: &Path, files: BTreeMap<PathBuf, String>) -> Result<(), String> {
+fn write(target: &Path, files: &BTreeMap<PathBuf, String>) -> Result<(), String> {
     if target.exists() {
         fs::remove_dir_all(target).map_err(|error| format!("{}: {error}", target.display()))?;
     }
-    let paths = write_all(target, &files)?;
+    let paths = write_all(target, files)?;
     format(&paths)?;
     println!("Generated {} files in {}", paths.len(), target.display());
     Ok(())
 }
 
-fn verify(target: &Path, files: BTreeMap<PathBuf, String>) -> Result<(), String> {
+fn verify(target: &Path, files: &BTreeMap<PathBuf, String>) -> Result<(), String> {
     let scratch = env::temp_dir().join(format!("basecamp-sdk-generator-{}", std::process::id()));
-    let paths = write_all(&scratch, &files)?;
+    let paths = write_all(&scratch, files)?;
     let formatted = format(&paths);
     let mut stale = Vec::new();
     for relative in files.keys() {

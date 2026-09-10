@@ -1,4 +1,4 @@
-#![allow(dead_code, unreachable_pub)]
+#![allow(dead_code, unreachable_pub, clippy::unwrap_used, clippy::expect_used)]
 
 use std::sync::{Arc, Mutex};
 

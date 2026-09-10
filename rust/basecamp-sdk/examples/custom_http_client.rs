@@ -3,6 +3,8 @@
 //! The SDK sends on one [`HttpClient`]; this example wraps the shipped reqwest client to
 //! count requests, and installs [`Hooks`] that print each attempt.
 
+#![allow(clippy::unwrap_used, clippy::expect_used)] // an example stops on a missing environment variable
+
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;

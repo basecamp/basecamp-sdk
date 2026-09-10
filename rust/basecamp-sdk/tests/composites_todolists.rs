@@ -1,6 +1,7 @@
 //! SPEC §5 "Merge-Safe Write Surface (Todolists)", from
 //! `conformance/tests/todolists_write.json`.
 
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 #![cfg(feature = "reqwest")]
 
 mod composites_support;

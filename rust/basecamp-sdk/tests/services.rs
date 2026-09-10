@@ -2,6 +2,7 @@
 //! the SPEC §13 headers reach the wire. One representative operation per service, chosen as the
 //! simplest read the service offers.
 
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 #![cfg(feature = "reqwest")]
 
 mod support;

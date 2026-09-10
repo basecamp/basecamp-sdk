@@ -1,5 +1,6 @@
 //! SPEC §5 "Merge-Safe Write Surface (Cards)", from `conformance/tests/cards_write.json`.
 
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 #![cfg(feature = "reqwest")]
 
 mod composites_support;

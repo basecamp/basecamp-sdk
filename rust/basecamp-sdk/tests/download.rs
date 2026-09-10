@@ -1,5 +1,6 @@
 //! SPEC §14 wire-level cases, from `conformance/tests/downloads.json`.
 
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 #![cfg(feature = "reqwest")]
 
 mod support;
@@ -12,9 +13,10 @@ use wiremock::matchers::{header_exists, method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 fn no_jitter() -> Config {
-    let mut config = Config::default();
-    config.max_jitter = Duration::ZERO;
-    config
+    Config {
+        max_jitter: Duration::ZERO,
+        ..Config::default()
+    }
 }
 
 fn blob_url(server: &MockServer) -> String {

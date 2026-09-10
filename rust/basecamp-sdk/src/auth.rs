@@ -150,12 +150,13 @@ impl<P: TokenProvider + std::fmt::Debug> std::fmt::Debug for BearerAuth<P> {
 impl<P: TokenProvider + 'static> AuthStrategy for BearerAuth<P> {
     async fn authenticate(&self, request: &mut Request<Bytes>) -> Result<(), Error> {
         let token = self.provider.access_token().await?;
-        let value = HeaderValue::from_str(&format!("Bearer {token}")).map_err(|_| {
+        let mut value = HeaderValue::from_str(&format!("Bearer {token}")).map_err(|_| {
             Error::new(
                 crate::ErrorCode::AuthRequired,
                 "access token is not a valid header value",
             )
         })?;
+        value.set_sensitive(true);
         request.headers_mut().insert(AUTHORIZATION, value);
         Ok(())
     }

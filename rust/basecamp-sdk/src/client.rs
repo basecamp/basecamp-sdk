@@ -49,8 +49,9 @@ pub(crate) struct Shared {
     pub(crate) hooks: Arc<dyn Hooks>,
 }
 
-/// What came back from Basecamp, before it is decoded.
-#[derive(Debug, Clone)]
+/// What came back from Basecamp, before it is decoded. Its `Debug` form redacts the
+/// credential-bearing headers (SPEC §9).
+#[derive(Clone)]
 #[non_exhaustive]
 pub struct Response {
     /// The status.
@@ -61,6 +62,17 @@ pub struct Response {
     pub body: Bytes,
     /// The URL the answer came from.
     pub url: Url,
+}
+
+impl fmt::Debug for Response {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Response")
+            .field("status", &self.status)
+            .field("headers", &crate::security::redact_headers(&self.headers))
+            .field("body", &self.body)
+            .field("url", &self.url)
+            .finish()
+    }
 }
 
 impl Response {

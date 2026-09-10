@@ -21,8 +21,10 @@ unexpected_cfgs = { level = "warn", check-cfg = ['cfg(docsrs)'] }
 [workspace.lints.clippy]
 all = { level = "warn", priority = -1 }
 pedantic = { level = "warn", priority = -1 }
-nursery = "allow"
-cargo = "allow"
+nursery = { level = "allow", priority = -1 }
+cargo = { level = "allow", priority = -1 }
+unwrap_used = "deny"                # a panic is never an answer; tests and the generator opt out at file level
+expect_used = "deny"
 # pedantic allowlist — each entry needs a one-line reason
 module_name_repetitions = "allow"   # services::ProjectsService is the intended shape
 must_use_candidate = "allow"        # builders return Self; noise

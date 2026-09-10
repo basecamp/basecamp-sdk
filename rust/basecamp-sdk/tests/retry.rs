@@ -1,5 +1,6 @@
 //! SPEC §7 wire-level cases, from `conformance/tests/retry.json` and `network-retry.json`.
 
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 #![cfg(feature = "reqwest")]
 
 mod support;
@@ -14,9 +15,10 @@ use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 fn no_jitter() -> Config {
-    let mut config = Config::default();
-    config.max_jitter = Duration::ZERO;
-    config
+    Config {
+        max_jitter: Duration::ZERO,
+        ..Config::default()
+    }
 }
 
 fn uri(request: &basecamp_sdk::http::Request<bytes::Bytes>) -> String {

@@ -5,6 +5,8 @@
 //! BASECAMP_ACCOUNT=999 cargo run --example device_login
 //! ```
 
+#![allow(clippy::unwrap_used, clippy::expect_used)] // an example stops on a missing environment variable
+
 use basecamp_sdk::oauth::{DiscoveryOutcome, MonotonicClock, OAuthClient, RefreshingTokenProvider};
 use basecamp_sdk::{Client, Config};
 

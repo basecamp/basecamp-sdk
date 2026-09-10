@@ -4,6 +4,8 @@
 //! BASECAMP_TOKEN=… BASECAMP_ACCOUNT=999 cargo run --example first_call
 //! ```
 
+#![allow(clippy::unwrap_used, clippy::expect_used)] // an example stops on a missing environment variable
+
 use basecamp_sdk::{Client, Config};
 
 #[tokio::main]

@@ -28,7 +28,11 @@ pub struct RefreshingTokenProvider {
     token_endpoint: String,
     client_id: String,
     client_secret: Option<SensitiveString>,
+    /// The token in use, locked only for the moment it is read or replaced, so a request
+    /// authenticating during a refresh is not held behind the token endpoint's round trip.
     token: Mutex<Token>,
+    /// One refresh at a time through this provider.
+    refreshing: Mutex<()>,
     on_refresh: Option<RefreshHook>,
 }
 
@@ -46,6 +50,7 @@ impl RefreshingTokenProvider {
             client_id: client_id.into(),
             client_secret: None,
             token: Mutex::new(token),
+            refreshing: Mutex::new(()),
             on_refresh: None,
         }
     }
@@ -93,8 +98,12 @@ impl TokenProvider for RefreshingTokenProvider {
     }
 
     async fn refresh(&self) -> Result<bool, Error> {
-        let mut stored = self.token.lock().await;
-        let Some(refresh_token) = stored.refresh_token.clone() else {
+        let _one_at_a_time = self.refreshing.lock().await;
+        let (refresh_token, resource) = {
+            let stored = self.token.lock().await;
+            (stored.refresh_token.clone(), stored.resource.clone())
+        };
+        let Some(refresh_token) = refresh_token else {
             return Err(Error::new(
                 ErrorCode::AuthRequired,
                 "the token cannot be refreshed: no refresh token was issued",
@@ -105,18 +114,20 @@ impl TokenProvider for RefreshingTokenProvider {
             refresh_token,
             client_id: self.client_id.clone(),
             client_secret: self.client_secret.clone(),
-            resource: stored.resource.clone(),
+            resource,
         };
         let mut rotated = self.oauth.refresh_token(&request).await?;
-        if rotated.refresh_token.is_none() {
-            rotated.refresh_token = stored.refresh_token.take();
-        }
-        if rotated.resource.is_none() {
-            rotated.resource = stored.resource.take();
-        }
-        *stored = rotated;
-        let rotated = stored.clone();
-        drop(stored);
+        let rotated = {
+            let mut stored = self.token.lock().await;
+            if rotated.refresh_token.is_none() {
+                rotated.refresh_token = stored.refresh_token.take();
+            }
+            if rotated.resource.is_none() {
+                rotated.resource = stored.resource.take();
+            }
+            *stored = rotated;
+            stored.clone()
+        };
         if let Some(hook) = &self.on_refresh {
             crate::hooks::guarded(|| hook(&rotated));
         }

@@ -4,38 +4,38 @@ use serde_json::Value;
 
 use crate::naming::{Naming, module_name, struct_name};
 
-pub struct Model {
-    pub api_version: String,
-    pub schemas: Vec<Schema>,
-    pub services: Vec<Service>,
+pub(crate) struct Model {
+    pub(crate) api_version: String,
+    pub(crate) schemas: Vec<Schema>,
+    pub(crate) services: Vec<Service>,
 }
 
 impl Model {
     /// Every operation, in `operationId` order.
-    pub fn operations(&self) -> impl Iterator<Item = &Operation> {
+    pub(crate) fn operations(&self) -> impl Iterator<Item = &Operation> {
         self.services.iter().flat_map(|service| &service.operations)
     }
 }
 
-pub struct Schema {
-    pub name: String,
-    pub description: Option<String>,
+pub(crate) struct Schema {
+    pub(crate) name: String,
+    pub(crate) description: Option<String>,
     /// The `x-deprecated-reason`, or a fixed note, when the whole shape is deprecated.
-    pub deprecated: Option<String>,
-    pub role: Role,
-    pub shape: Shape,
+    pub(crate) deprecated: Option<String>,
+    pub(crate) role: Role,
+    pub(crate) shape: Shape,
 }
 
 /// Whether a shape is something a caller builds (a request body, or anything reachable from
 /// one) or something the API answers with. Response shapes are `#[non_exhaustive]` so a
 /// field the API grows is not a breaking change; request shapes stay literal-constructible.
 #[derive(Clone, Copy, PartialEq, Eq)]
-pub enum Role {
+pub(crate) enum Role {
     Request,
     Response,
 }
 
-pub enum Shape {
+pub(crate) enum Shape {
     Struct(Vec<Field>),
     Alias(FieldType),
     Enum(Vec<String>),
@@ -43,20 +43,20 @@ pub enum Shape {
     Bytes,
 }
 
-pub struct Field {
-    pub wire_name: String,
-    pub description: Option<String>,
-    pub kind: FieldType,
-    pub required: bool,
+pub(crate) struct Field {
+    pub(crate) wire_name: String,
+    pub(crate) description: Option<String>,
+    pub(crate) kind: FieldType,
+    pub(crate) required: bool,
     /// The wire may carry an explicit `null`: a `["T", "null"]` union, an `anyOf` with a
     /// null member, or `nullable: true`.
-    pub nullable: bool,
-    pub recursive: bool,
-    pub deprecated: Option<String>,
+    pub(crate) nullable: bool,
+    pub(crate) recursive: bool,
+    pub(crate) deprecated: Option<String>,
 }
 
 #[derive(Clone, PartialEq, Eq)]
-pub enum FieldType {
+pub(crate) enum FieldType {
     String,
     SensitiveString,
     AuthRoutableUrl,
@@ -77,54 +77,54 @@ pub enum FieldType {
     Map(Box<FieldType>),
 }
 
-pub struct Service {
-    /// PascalCase, as every Basecamp SDK names it: `CardTables`.
-    pub name: String,
+pub(crate) struct Service {
+    /// `PascalCase`, as every Basecamp SDK names it: `CardTables`.
+    pub(crate) name: String,
     /// The Rust module: `card_tables`.
-    pub module: String,
+    pub(crate) module: String,
     /// The Rust struct: `CardTablesService`.
-    pub struct_name: String,
-    pub operations: Vec<Operation>,
+    pub(crate) struct_name: String,
+    pub(crate) operations: Vec<Operation>,
 }
 
-pub struct Operation {
-    pub id: String,
-    pub service: String,
-    pub method_name: String,
-    pub description: Option<String>,
-    pub http_method: String,
+pub(crate) struct Operation {
+    pub(crate) id: String,
+    pub(crate) service: String,
+    pub(crate) method_name: String,
+    pub(crate) description: Option<String>,
+    pub(crate) http_method: String,
     /// The path as the API serves it, without the `/{accountId}` prefix.
-    pub path: String,
-    pub resource_type: String,
-    pub path_params: Vec<PathParam>,
-    pub query_params: Vec<QueryParam>,
-    pub body: Body,
-    pub response: Response,
+    pub(crate) path: String,
+    pub(crate) resource_type: String,
+    pub(crate) path_params: Vec<PathParam>,
+    pub(crate) query_params: Vec<QueryParam>,
+    pub(crate) body: Body,
+    pub(crate) response: Response,
     /// `behavior-model.json`'s `idempotent: true`: the naturally idempotent mutations, the
     /// flag that opens SPEC §7's Gate 2 for a POST.
-    pub idempotent: bool,
-    pub readonly: bool,
-    pub pagination: Option<Pagination>,
-    pub retry: Retry,
-    pub write: Option<WriteSemantics>,
-    pub deprecated: Option<String>,
+    pub(crate) idempotent: bool,
+    pub(crate) readonly: bool,
+    pub(crate) pagination: Option<Pagination>,
+    pub(crate) retry: Retry,
+    pub(crate) write: Option<WriteSemantics>,
+    pub(crate) deprecated: Option<String>,
 }
 
-pub struct PathParam {
-    pub wire_name: String,
-    pub kind: ParamKind,
+pub(crate) struct PathParam {
+    pub(crate) wire_name: String,
+    pub(crate) kind: ParamKind,
 }
 
-pub struct QueryParam {
-    pub wire_name: String,
-    pub kind: ParamKind,
-    pub required: bool,
-    pub description: Option<String>,
-    pub deprecated: Option<String>,
+pub(crate) struct QueryParam {
+    pub(crate) wire_name: String,
+    pub(crate) kind: ParamKind,
+    pub(crate) required: bool,
+    pub(crate) description: Option<String>,
+    pub(crate) deprecated: Option<String>,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
-pub enum ParamKind {
+pub(crate) enum ParamKind {
     String,
     Bool,
     Int32,
@@ -133,37 +133,42 @@ pub enum ParamKind {
     Int64List,
 }
 
-pub enum Body {
+pub(crate) enum Body {
     None,
     Json(String),
     Octet,
     Multipart { field: String },
 }
 
-pub enum Response {
+pub(crate) enum Response {
     Empty,
     Json(String),
 }
 
-pub struct Pagination {
-    pub key: Option<String>,
-    pub total_count_header: Option<String>,
+pub(crate) struct Pagination {
+    pub(crate) key: Option<String>,
+    pub(crate) total_count_header: Option<String>,
 }
 
-pub struct Retry {
-    pub max: u32,
-    pub base_delay_ms: u64,
-    pub backoff: String,
-    pub retry_on: Vec<u16>,
+#[allow(clippy::struct_field_names)] // `retry_on` is the model's own key
+pub(crate) struct Retry {
+    pub(crate) max: u32,
+    pub(crate) base_delay_ms: u64,
+    pub(crate) backoff: String,
+    pub(crate) retry_on: Vec<u16>,
 }
 
-pub struct WriteSemantics {
-    pub clears_omitted: bool,
-    pub preserved_on_omission: Vec<String>,
+pub(crate) struct WriteSemantics {
+    pub(crate) clears_omitted: bool,
+    pub(crate) preserved_on_omission: Vec<String>,
 }
 
 impl Model {
-    pub fn build(openapi: &Value, behavior: &Value, naming: &Naming) -> Result<Model, String> {
+    pub(crate) fn build(
+        openapi: &Value,
+        behavior: &Value,
+        naming: &Naming,
+    ) -> Result<Model, String> {
         let api_version = openapi["info"]["version"]
             .as_str()
             .ok_or("openapi.json has no info.version")?
@@ -323,7 +328,7 @@ fn deprecation_of(value: &Value) -> Option<String> {
     }
 }
 
-/// The non-null member of an OpenAPI 3.1 `["T", "null"]` union, or the scalar `type`.
+/// The non-null member of an `OpenAPI` 3.1 `["T", "null"]` union, or the scalar `type`.
 fn scalar_type(property: &Value) -> Option<&str> {
     match &property["type"] {
         Value::String(t) => Some(t.as_str()),

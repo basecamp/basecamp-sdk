@@ -1,5 +1,6 @@
 //! SPEC §8 wire-level cases, from `conformance/tests/pagination.json`.
 
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 #![cfg(feature = "reqwest")]
 
 mod support;
@@ -98,8 +99,10 @@ async fn collect_all_follows_every_link() {
 async fn the_page_cap_truncates_and_says_so() {
     let server = MockServer::start().await;
     three_pages(&server).await;
-    let mut config = Config::default();
-    config.max_pages = 2;
+    let config = Config {
+        max_pages: 2,
+        ..Config::default()
+    };
     let client = account_with(&server, config);
     let first = client
         .projects()
@@ -260,8 +263,10 @@ async fn follow_on_pages_carry_the_operation_retry_policy() {
         Answer::Status(503, vec![], ""),
         Answer::Status(200, vec![], "[]"),
     ]);
-    let mut config = Config::default();
-    config.max_jitter = std::time::Duration::ZERO;
+    let config = Config {
+        max_jitter: std::time::Duration::ZERO,
+        ..Config::default()
+    };
     let client = scripted_account(script.clone(), config);
     let first = client
         .projects()
@@ -474,8 +479,10 @@ async fn the_item_stream_ends_with_an_error_when_the_page_cap_cuts_it_short() {
     use futures_util::StreamExt;
     let server = MockServer::start().await;
     three_pages(&server).await;
-    let mut config = Config::default();
-    config.max_pages = 2;
+    let config = Config {
+        max_pages: 2,
+        ..Config::default()
+    };
     let client = account_with(&server, config);
     let first = client
         .projects()
@@ -512,8 +519,10 @@ async fn the_item_stream_ends_with_an_error_when_the_page_cap_cuts_it_short() {
     assert!(last.has_next(), "the last page still names its successor");
     assert!(pages.next().await.is_none());
 
-    let mut config = Config::default();
-    config.max_pages = 3;
+    let config = Config {
+        max_pages: 3,
+        ..Config::default()
+    };
     let client = account_with(&server, config);
     let first = client
         .projects()

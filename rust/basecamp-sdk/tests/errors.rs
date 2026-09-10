@@ -1,5 +1,6 @@
 //! SPEC §6 wire-level cases, from the bodies in `conformance/tests/error-mapping.json`.
 
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 #![cfg(feature = "reqwest")]
 #![allow(clippy::unreadable_literal)]
 
@@ -105,8 +106,10 @@ async fn rate_limits_are_retried_then_surfaced_retryable() {
         rate_limited(),
         rate_limited(),
     ]);
-    let mut config = basecamp_sdk::Config::default();
-    config.max_jitter = std::time::Duration::ZERO;
+    let config = basecamp_sdk::Config {
+        max_jitter: std::time::Duration::ZERO,
+        ..basecamp_sdk::Config::default()
+    };
     let error = support::scripted_account(script.clone(), config)
         .projects()
         .list(&Default::default())

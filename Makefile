@@ -683,9 +683,11 @@ rs-check-drift:
 
 # Metadata, `include`, README path, no path deps: everything crates.io would
 # reject that lockfile freshness says nothing about. Run before the tag exists.
+# --allow-dirty so the develop loop passes on an uncommitted edit; the release
+# workflow packages from a clean checkout and asserts it.
 rs-publish-check:
 	@echo "==> cargo publish --dry-run..."
-	cd rust && cargo publish -p $(RS_CRATE) --dry-run --locked
+	cd rust && cargo publish -p $(RS_CRATE) --dry-run --locked --allow-dirty
 
 # The {lang}-check contract: exactly what CI's test-rust job runs on stable.
 rs-check: rs-lint rs-test rs-doc rs-deny rs-check-drift rs-publish-check
