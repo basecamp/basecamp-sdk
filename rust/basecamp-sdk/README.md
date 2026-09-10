@@ -78,8 +78,23 @@ ships one over rustls; with `--no-default-features` an application supplies its 
 
 ## Environment variables
 
-[`Config::from_env`](crate::Config::from_env) reads `BASECAMP_BASE_URL`, `BASECAMP_TIMEOUT`
-(seconds) and `BASECAMP_MAX_RETRIES` (total attempts). Nothing is read implicitly.
+Only [`Config::from_env`](crate::Config::from_env) reads the environment; a `Config` built
+literally reads no variable at all.
+
+| Variable | Meaning | Only when |
+|---|---|---|
+| `BASECAMP_BASE_URL` | The API origin (trailing `/` stripped) | `Config::from_env()` |
+| `BASECAMP_TIMEOUT` | Per-attempt timeout, in seconds | `Config::from_env()` |
+| `BASECAMP_MAX_RETRIES` | Total attempts per request, the first included | `Config::from_env()` |
+
+`BASECAMP_TOKEN` and `BASECAMP_ACCOUNT_ID` appear in the examples only because the caller
+reads them; the SDK never looks either up.
+
+## Examples
+
+`examples/` holds one compiled program per README section — `first_call`, `pagination`,
+`errors` and `custom_transport` (a scripted `HttpClient` plus `Hooks`, so it runs without a
+network). `cargo run --example custom_transport` needs no token.
 
 ## Versioning
 
