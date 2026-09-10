@@ -301,7 +301,13 @@ export abstract class BaseService {
           : saturatingBackoff(retryConfig.baseDelayMs ?? 1000, "exponential", attempt);
 
         try {
-          const retryError = new Error(`${response.status} ${response.statusText}`);
+          // SPEC §7 step 3i: the status-mapped error, carrying the parsed
+          // retryAfter that governs this sleep, not a bare Error.
+          const retryError = errorFromParsedBody(
+            response,
+            null,
+            response.headers.get("X-Request-Id") ?? undefined,
+          );
           // SPEC section 7: RequestInfo.attempt is the attempt that just failed
           // (1-based), while the standalone argument is the UPCOMING attempt.
           this.hooks?.onRetry?.(

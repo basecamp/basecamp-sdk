@@ -8,7 +8,7 @@
  */
 
 // errors.ts imports nothing, so this edge introduces no cycle.
-import { parseRetryAfter } from "./errors.js";
+import { errorFromParsedBody, parseRetryAfter } from "./errors.js";
 
 /**
  * Retry configuration matching x-basecamp-retry extension schema.
@@ -195,8 +195,15 @@ export async function executeWithRetry(
         ? timerSafeDelayMs(retryAfterSeconds)
         : calculateBackoffDelay(config, attempt - 1);
 
-    const statusError = new Error(
-      `HTTP ${response.status}: ${response.statusText || "Request failed"}`,
+    // SPEC §7 step 3i: the error handed to onRetry is the status-mapped
+    // BasecampError, so a hook sees the same httpStatus and retryAfter the
+    // terminal error would carry — the parsed value that governs this very
+    // sleep. Built from the status and headers alone: the body is being
+    // discarded below, and the mapper needs none of it for those fields.
+    const statusError = errorFromParsedBody(
+      response,
+      null,
+      response.headers.get("X-Request-Id") ?? undefined,
     );
 
     // End the failed attempt before sleeping, so a slow backoff cannot leave

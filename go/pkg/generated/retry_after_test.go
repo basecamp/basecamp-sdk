@@ -1,60 +1,118 @@
-package generated
+package generated_test
 
 import (
+	"context"
+	"errors"
 	"net/http"
+	"net/http/httptest"
+	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
 )
 
-// The generated client's own copy of SPEC §6's Retry-After Parsing Algorithm.
-// Before it existed the retry loop did a bare strconv.Atoi (#798): no HTTP-date
-// form, an unchecked range error, and a seconds×time.Second product that
-// wrapped negative for the largest int64 — an already-expired timer.
-func TestParseRetryAfter(t *testing.T) {
+// The generated client's retry loop, driven through its public surface the
+// way auth_transport_test.go drives the transport: nothing here names an
+// unexported symbol, so a regeneration cannot leave it testing a shape the
+// template no longer emits. Before #855 the loop did a bare strconv.Atoi
+// behind a 429 gate (#798): no HTTP-date form, a 503's header ignored, and a
+// seconds×time.Second product that wrapped negative for the largest int64 —
+// an already-expired timer, so a typed operation burned its whole attempt
+// budget back to back against an origin that had asked it to wait.
+
+// retryAfterClient answers every request with the given handler and retries
+// on a millisecond curve, so any delay at or above a second can only have
+// come from the Retry-After header.
+func retryAfterClient(t *testing.T, handler http.HandlerFunc) (*generated.Client, *httptest.Server) {
+	t.Helper()
+	server := httptest.NewServer(handler)
+	t.Cleanup(server.Close)
+	client, err := generated.NewClient(server.URL, generated.WithRetryConfig(generated.RetryConfig{
+		MaxRetries: 3,
+		BaseDelay:  time.Millisecond,
+		MaxDelay:   time.Millisecond,
+		Multiplier: 2,
+	}))
+	if err != nil {
+		t.Fatalf("NewClient: %v", err)
+	}
+	return client, server
+}
+
+func serviceUnavailableThenOK(retryAfter string, attempts *atomic.Int32) http.HandlerFunc {
+	return func(w http.ResponseWriter, _ *http.Request) {
+		if attempts.Add(1) == 1 {
+			w.Header().Set("Retry-After", retryAfter)
+			w.WriteHeader(http.StatusServiceUnavailable)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{}`))
+	}
+}
+
+// A 503's Retry-After governs the wait (SPEC §6 "Retry-After Honouring"), in
+// both wire forms, and is waited exactly rather than as a floor under the
+// jittered curve — the elapsed floor is the header's own value.
+func TestGeneratedClient_HonoursRetryAfterAt503(t *testing.T) {
 	for _, tc := range []struct {
-		name   string
-		header string
-		want   int
+		name        string
+		header      func() string
+		wantAtLeast time.Duration
 	}{
-		{"absent", "", 0},
-		{"seconds", "120", 120},
-		{"leading zeros", "0120", 120},
-		{"zero", "0", 0},
-		{"negative", "-5", 0},
-		{"signed", "+5", 0},
-		{"fractional", "1.5", 0},
-		{"partly numeric", "120junk", 0},
-		{"unparseable", "sometime next week", 0},
-		{"http-date in the past", "Wed, 09 Jun 2021 10:18:14 GMT", 0},
-		{"ceiling", "2147483647", maxRetryAfterSeconds},
-		{"one past the ceiling", "2147483648", maxRetryAfterSeconds},
-		{"largest int64", "9223372036854775807", maxRetryAfterSeconds},
-		{"one past the largest int64", "9223372036854775808", maxRetryAfterSeconds},
-		{"digits beyond int64 range", "99999999999999999999", maxRetryAfterSeconds},
-		{"far-future http-date", "Fri, 31 Dec 9999 23:59:59 GMT", maxRetryAfterSeconds},
+		{"delta-seconds", func() string { return "2" }, 2 * time.Second},
+		// Minted inside the subtest, not before the table: the delta-seconds
+		// case spends two seconds, and a date minted before it would be a
+		// second nearer by the time this case reads it. A whole-second date,
+		// because the wire form carries whole seconds: the remainder at parse
+		// time is in (2s, 3s] and rounds up to 3.
+		{"http-date", func() string {
+			return time.Now().Truncate(time.Second).Add(3 * time.Second).UTC().Format(http.TimeFormat)
+		}, 2 * time.Second},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := parseRetryAfter(tc.header); got != tc.want {
-				t.Errorf("parseRetryAfter(%q) = %d, want %d", tc.header, got, tc.want)
+			var attempts atomic.Int32
+			client, _ := retryAfterClient(t, serviceUnavailableThenOK(tc.header(), &attempts))
+
+			start := time.Now()
+			resp, err := client.GetProject(context.Background(), "999", 1)
+			elapsed := time.Since(start)
+
+			if err != nil {
+				t.Fatalf("GetProject: %v", err)
+			}
+			_ = resp.Body.Close()
+			if got := attempts.Load(); got != 2 {
+				t.Errorf("made %d requests, want 2", got)
+			}
+			if elapsed < tc.wantAtLeast {
+				t.Errorf("retried after %v, want at least %v — the 503's Retry-After must replace the millisecond curve", elapsed, tc.wantAtLeast)
 			}
 		})
 	}
 }
 
-// One-sided, per SPEC §6 "Rounding": the parsed delay is never shorter than the
-// time actually remaining, re-measured after the parse, which scheduling delay
-// can only weaken toward vacuity and never turn red.
-func TestParseRetryAfter_HTTPDateRoundsUp(t *testing.T) {
-	// A whole-second target, because the wire form carries whole seconds: a
-	// sub-second target would be truncated by the formatting, and the parse
-	// would then be measured against a moment the header never named.
-	target := time.Now().Truncate(time.Second).Add(3 * time.Second)
-	got := parseRetryAfter(target.UTC().Format(http.TimeFormat))
-	remaining := time.Until(target)
-	if got <= 0 {
-		t.Fatalf("parseRetryAfter(future date) = %d, want a positive delay", got)
-	}
-	if float64(got) < remaining.Seconds() {
-		t.Errorf("parseRetryAfter(future date) = %ds, shorter than the %v actually remaining — the remainder must round UP", got, remaining)
+// The regression for the wrapped conversion. Against the old Atoi loop the
+// largest int64 became a -1s timer that fired at once, and the whole attempt
+// budget went out inside the deadline; against the saturating parser the loop
+// is still waiting when the deadline lands, having sent exactly one request.
+func TestGeneratedClient_OverRangeRetryAfterSaturatesRatherThanWrapping(t *testing.T) {
+	for _, header := range []string{"9223372036854775807", "99999999999999999999", "2147483648"} {
+		t.Run(header, func(t *testing.T) {
+			var attempts atomic.Int32
+			client, _ := retryAfterClient(t, serviceUnavailableThenOK(header, &attempts))
+
+			ctx, cancel := context.WithTimeout(context.Background(), 300*time.Millisecond)
+			defer cancel()
+			_, err := client.GetProject(ctx, "999", 1)
+
+			if !errors.Is(err, context.DeadlineExceeded) {
+				t.Fatalf("GetProject returned %v, want context.DeadlineExceeded — the loop must still be waiting out the (saturated) header when the deadline lands", err)
+			}
+			if got := attempts.Load(); got != 1 {
+				t.Errorf("made %d requests inside the deadline, want exactly 1 — a wrapped delay retries at once", got)
+			}
+		})
 	}
 }
