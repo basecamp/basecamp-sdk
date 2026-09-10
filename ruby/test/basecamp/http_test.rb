@@ -422,6 +422,88 @@ class HTTPTest < Minitest::Test
     end
   end
 
+  # -- Transport failures (SPEC §6 "network") --
+  #
+  # Faraday::TimeoutError < Faraday::ServerError, so a rescue that names the
+  # status classes first turns a stalled read into a status-less,
+  # non-retryable api_error ("Request failed (HTTP )"). WebMock's to_timeout
+  # raises Net::OpenTimeout, which Faraday maps to ConnectionFailed, so these
+  # raise the read-side classes the adapter actually produces.
+
+  def test_read_timeout_is_a_retryable_network_error
+    requests_ended = []
+    hooks_impl = Class.new do
+      include Basecamp::Hooks
+      define_method(:on_request_end) { |info, result| requests_ended << [ info, result ] }
+    end.new
+    config = Basecamp::Config.new(base_url: base_url, timeout: 5, max_retries: 1)
+    http = Basecamp::Http.new(config: config, token_provider: @token_provider, hooks: hooks_impl)
+
+    stub_request(:get, "https://3.basecampapi.com/test.json").to_raise(Net::ReadTimeout)
+
+    error = assert_raises(Basecamp::NetworkError) { http.get("/test.json") }
+
+    assert_equal "network", error.code
+    assert_equal "Request timed out", error.message
+    assert_nil error.http_status
+    assert error.retryable?
+    assert_kind_of Faraday::TimeoutError, error.cause
+
+    assert_equal 1, requests_ended.length
+    assert_nil requests_ended[0][1].status_code
+    assert_same error, requests_ended[0][1].error
+  end
+
+  def test_read_timeout_is_retried_on_get
+    config = Basecamp::Config.new(base_url: base_url, timeout: 5, max_retries: 3, base_delay: 0.001, max_jitter: 0.0)
+    http = Basecamp::Http.new(config: config, token_provider: @token_provider)
+
+    stub_request(:get, "https://3.basecampapi.com/test.json")
+      .to_raise(Faraday::TimeoutError.new("execution expired"))
+      .then.to_return(status: 200, body: '{"ok": true}')
+
+    response = http.get("/test.json")
+
+    assert_equal 200, response.status
+    assert_requested(:get, "https://3.basecampapi.com/test.json", times: 2)
+  end
+
+  def test_connection_failure_is_a_retryable_network_error
+    stub_request(:get, "https://3.basecampapi.com/test.json")
+      .to_raise(Faraday::ConnectionFailed.new("refused"))
+
+    error = assert_raises(Basecamp::NetworkError) { @http.get("/test.json") }
+
+    assert_equal "network", error.code
+    assert_equal "Connection failed", error.message
+    assert error.retryable?
+    assert_kind_of Faraday::ConnectionFailed, error.cause
+  end
+
+  def test_raw_post_read_timeout_is_a_network_error
+    stub_request(:post, "https://3.basecampapi.com/upload.json").to_raise(Net::ReadTimeout)
+
+    error = assert_raises(Basecamp::NetworkError) do
+      @http.post_raw("/upload.json", body: "bytes", content_type: "application/octet-stream")
+    end
+
+    assert_equal "Request timed out", error.message
+    assert error.retryable?
+    assert_kind_of Faraday::TimeoutError, error.cause
+    assert_requested(:post, "https://3.basecampapi.com/upload.json", times: 1)
+  end
+
+  # A 408 is a response, not a transport failure: Faraday raises it as a
+  # ClientError, and it keeps the status mapping's verdict.
+  def test_408_response_stays_a_status_error
+    stub_request(:get, "https://3.basecampapi.com/test.json").to_return(status: 408, body: "")
+
+    error = assert_raises(Basecamp::ApiError) { @http.get("/test.json") }
+
+    assert_equal 408, error.http_status
+    assert_not error.retryable?
+  end
+
   def test_response_json_parsing
     stub_request(:get, "https://3.basecampapi.com/test.json")
       .to_return(status: 200, body: '{"name": "Test", "count": 42}')
