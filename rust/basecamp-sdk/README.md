@@ -9,7 +9,7 @@ merge-safe composites.
 
 ```toml
 [dependencies]
-basecamp-sdk = "0.17"
+basecamp-sdk = "0.18"
 tokio = { version = "1", features = ["full"] }
 ```
 
