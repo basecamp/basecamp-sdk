@@ -236,6 +236,14 @@ fn shapes_the_generator_cannot_spell_are_refused() {
         stderr.contains("ListWidgets: its 2xx responses disagree on the body"),
         "{stderr}"
     );
+    let stderr = refusal(|openapi, _| {
+        let responses = &mut openapi["paths"]["/{accountId}/widgets.json"]["get"]["responses"];
+        *responses = serde_json::json!({"404": {"description": "gone"}});
+    });
+    assert!(
+        stderr.contains("\"ListWidgets\" has no 2xx response"),
+        "{stderr}"
+    );
 }
 
 #[test]

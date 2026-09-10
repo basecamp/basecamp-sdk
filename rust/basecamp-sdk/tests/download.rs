@@ -321,3 +321,84 @@ async fn a_deadline_during_the_hop_one_refresh_is_the_deadline() {
         .unwrap_err();
     assert!(error.is_deadline_exceeded(), "{error:?}");
 }
+/// A refreshable provider whose one refresh answers as scripted.
+struct RefreshScript {
+    outcome: std::sync::Mutex<Option<Result<bool, basecamp_sdk::Error>>>,
+}
+
+#[async_trait::async_trait]
+impl basecamp_sdk::TokenProvider for RefreshScript {
+    async fn access_token(&self) -> Result<String, basecamp_sdk::Error> {
+        Ok("t".to_string())
+    }
+
+    fn refreshable(&self) -> bool {
+        true
+    }
+
+    async fn refresh(&self) -> Result<bool, basecamp_sdk::Error> {
+        self.outcome
+            .lock()
+            .unwrap()
+            .take()
+            .expect("refresh asked more than once")
+    }
+}
+
+fn refreshing_account(
+    script: std::sync::Arc<Scripted>,
+    outcome: Result<bool, basecamp_sdk::Error>,
+) -> basecamp_sdk::AccountClient {
+    let config = no_jitter()
+        .with_base_url("https://3.basecampapi.com")
+        .with_timeout(Duration::from_secs(86_400));
+    basecamp_sdk::Client::builder(config)
+        .token_provider(RefreshScript {
+            outcome: std::sync::Mutex::new(Some(outcome)),
+        })
+        .http_client(script)
+        .build()
+        .unwrap()
+        .for_account("999")
+}
+
+const BLOB: &str = "https://3.basecampapi.com/999999999/blobs/abcd1234/download/logo.png";
+
+#[tokio::test]
+async fn hop_one_replays_a_401_once_the_credentials_are_refreshed() {
+    let script = Scripted::new(vec![
+        Answer::Status(401, vec![], ""),
+        Answer::Status(200, vec![("content-type", "image/png")], "pixels"),
+    ]);
+    let result = refreshing_account(script.clone(), Ok(true))
+        .download_url(BLOB)
+        .await
+        .unwrap();
+    assert_eq!(result.body, "pixels");
+    assert_eq!(script.sent_count(), 2);
+}
+
+#[tokio::test]
+async fn a_hop_one_refresh_that_fails_is_why_credentials_are_still_required() {
+    let script = Scripted::new(vec![
+        Answer::Status(401, vec![], ""),
+        Answer::Status(200, vec![("content-type", "image/png")], "pixels"),
+    ]);
+    let error = refreshing_account(
+        script.clone(),
+        Err(basecamp_sdk::Error::new(
+            ErrorCode::Network,
+            "the token endpoint is down",
+        )),
+    )
+    .download_url(BLOB)
+    .await
+    .unwrap_err();
+    assert_eq!(error.code(), ErrorCode::AuthRequired);
+    assert_eq!(error.http_status(), Some(401));
+    assert_eq!(error.message(), "credentials could not be refreshed");
+    assert!(!error.is_deadline_exceeded());
+    let source = std::error::Error::source(&error).expect("the provider's failure is chained");
+    assert_eq!(source.to_string(), "the token endpoint is down");
+    assert_eq!(script.sent_count(), 1);
+}
