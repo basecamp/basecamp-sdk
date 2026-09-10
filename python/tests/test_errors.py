@@ -254,6 +254,9 @@ class TestParseRetryAfter:
         assert _parse_retry_after("2147483647") == MAX_RETRY_AFTER_SECONDS
         assert _parse_retry_after("2147483648") == MAX_RETRY_AFTER_SECONDS
         assert _parse_retry_after("9" * 400) == MAX_RETRY_AFTER_SECONDS
+        # Past int()'s own digit limit (sys.int_info.str_digits_check_threshold and up).
+        assert _parse_retry_after("9" * 5000) == MAX_RETRY_AFTER_SECONDS
+        assert _parse_retry_after("0" * 5000) is None
         assert _parse_retry_after("Fri, 31 Dec 9999 23:59:59 GMT") == MAX_RETRY_AFTER_SECONDS
 
     def test_asctime_form_is_read_as_utc(self):

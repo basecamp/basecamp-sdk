@@ -234,9 +234,11 @@ public enum BasecampError: Error, Sendable, LocalizedError {
         }
     }
 
-    /// Seconds the response's `Retry-After` named, parsed per SPEC §6, at
-    /// whatever status carried it. Nil when the header was absent, malformed,
-    /// or already past — and for the error shapes no response produced.
+    /// Seconds the response's `Retry-After` named, parsed per SPEC §6. Carried
+    /// by `.rateLimit` and `.api` — every status a retry loop reaches, and
+    /// every 5xx — and nil on the other cases, which have no slot for it (SPEC
+    /// §6 records that as a conflict with its every-status rule). Also nil when
+    /// the header was absent, malformed, or already past.
     public var retryAfterSeconds: Int? {
         switch self {
         case .rateLimit(_, let seconds, _, _): seconds

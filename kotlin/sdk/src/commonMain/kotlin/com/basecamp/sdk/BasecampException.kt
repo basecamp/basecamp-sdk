@@ -40,10 +40,11 @@ sealed class BasecampException(
     val requestId: String? = null,
     cause: Throwable? = null,
     /**
-     * Seconds the response's `Retry-After` named, parsed per SPEC §6, at
-     * whatever status carried it (SPEC §6 "HTTP Status Mapping Algorithm").
-     * Null when the header was absent, malformed or already past — and for
-     * the error shapes no response produced.
+     * Seconds the response's `Retry-After` named, parsed per SPEC §6. Carried
+     * by [RateLimit] and [Api] — every status a retry loop reaches, and every
+     * 5xx — and null on the other shapes, whose constructors have no slot for
+     * it (SPEC §6 records that as a conflict with its every-status rule). Also
+     * null when the header was absent, malformed or already past.
      */
     open val retryAfterSeconds: Int? = null,
 ) : Exception(message, cause) {
