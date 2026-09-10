@@ -57,6 +57,12 @@ class HTTPRetryExtendedTest < Minitest::Test
   end
 
   def test_503_with_retry_after_header
+    # SPEC §6 "Retry-After Honouring": the header governs the wait at every
+    # status in the declared retry set, not at 429 alone. Before the gateway
+    # arm carried retry_after this slept the 0.01s backoff curve instead.
+    delays = []
+    @http.define_singleton_method(:sleep) { |delay| delays << delay }
+
     stub_request(:get, "https://3.basecampapi.com/test.json")
       .to_return(status: 503, body: "{}", headers: { "Retry-After" => "5" })
       .then.to_return(status: 200, body: '{"ok": true}')
@@ -64,6 +70,28 @@ class HTTPRetryExtendedTest < Minitest::Test
     response = @http.get("/test.json")
 
     assert_equal 200, response.status
+    assert_equal [ 5 ], delays
+  end
+
+  def test_503_error_carries_retry_after
+    stub_request(:get, "https://3.basecampapi.com/test.json")
+      .to_return(status: 503, body: "{}", headers: { "Retry-After" => "7" })
+
+    error = assert_raises(Basecamp::ApiError) { @http.get("/test.json") }
+
+    assert_equal 503, error.http_status
+    assert_equal 7, error.retry_after
+  end
+
+  def test_parse_retry_after_rounds_a_sub_second_remainder_up
+    # SPEC §6 step 2: 2.75s out is 3 seconds, never 2. Truncation retried up
+    # to a second before the moment the server named, and turned a remainder
+    # under a second into 0 — read as "no usable value".
+    now = Time.utc(2021, 6, 9, 10, 18, 14.25)
+
+    assert_equal 3, @http.send(:parse_retry_after, "Wed, 09 Jun 2021 10:18:17 GMT", now: now)
+    assert_equal 1, @http.send(:parse_retry_after, "Wed, 09 Jun 2021 10:18:15 GMT", now: now)
+    assert_nil @http.send(:parse_retry_after, "Wed, 09 Jun 2021 10:18:14 GMT", now: now)
   end
 
   def test_502_bad_gateway_is_retryable

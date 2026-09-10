@@ -698,15 +698,24 @@ module Basecamp
         message = Security.truncate(Basecamp.parse_error_message(body) || "Account limit reached")
         Basecamp::LimitExceededError.new(message, hint: hint)
       when 500
-        Basecamp::ApiError.new("Server error (500)", http_status: 500, retryable: true, hint: hint)
+        Basecamp::ApiError.new("Server error (500)", http_status: 500, retryable: true, hint: hint, retry_after: retry_after)
       when 502, 503, 504
-        Basecamp::ApiError.new("Gateway error (#{status})", http_status: status, retryable: true, hint: hint)
+        # retry_after rides along here as it does on the 429 arm (SPEC §6
+        # "HTTP Status Mapping Algorithm"): request_with_retry reads the delay
+        # off the error, so this is also what makes a 503's Retry-After govern
+        # the sleep rather than the backoff curve.
+        Basecamp::ApiError.new(
+          "Gateway error (#{status})", http_status: status, retryable: true, hint: hint, retry_after: retry_after
+        )
       else
         message = Security.truncate(Basecamp.parse_error_message(body) || "Request failed (HTTP #{status})")
-        Basecamp::ApiError.from_status(status || 0, message, hint: hint)
+        Basecamp::ApiError.from_status(status || 0, message, hint: hint, retry_after: retry_after)
       end
 
       err.instance_variable_set(:@request_id, request_id) if request_id
+      # Every status carries a parsed Retry-After (SPEC §6), including the arms
+      # whose error classes take no such argument.
+      err.instance_variable_set(:@retry_after, retry_after) if retry_after && err.retry_after.nil?
       err
     end
 
@@ -757,17 +766,20 @@ module Basecamp
       base + jitter
     end
 
-    def parse_retry_after(value)
+    def parse_retry_after(value, now: Time.now)
       return nil if value.nil? || value.empty?
 
       # Try parsing as seconds (integer)
       seconds = Integer(value, exception: false)
       return seconds if seconds&.positive?
 
-      # Try parsing as HTTP-date
+      # Try parsing as HTTP-date. Rounded UP (SPEC §6 step 2): truncating a
+      # sub-second remainder toward zero turned a date 400ms out into 0, which
+      # reads as "no usable value" and drops onto the backoff curve, and
+      # retried up to a second before the moment the server named.
       begin
         date = Time.httpdate(value)
-        diff = (date - Time.now).to_i
+        diff = (date - now).ceil
         return diff if diff.positive?
       rescue ArgumentError
         # Not a valid HTTP-date
