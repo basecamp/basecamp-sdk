@@ -592,10 +592,14 @@ func (c *Connector) Close() error {
 // loop needs nothing extra: the iterator returning is the same guarantee — the
 // run goroutine has exited by then, so no save can be in flight.
 //
-// It is not callable from a consumer callback. Every callback — an observer, a
-// signal handler, the loop body — runs ON the run goroutine, so waiting for
-// that goroutine from inside one waits for itself. Close is the call that is
-// safe from anywhere; this is the one that is safe from anywhere ELSE.
+// It is not callable from anything the run is waiting on. Every consumer
+// callback — an observer, a signal handler, the loop body — runs ON the run
+// goroutine, so waiting for that goroutine from inside one waits for itself;
+// and every seam the run calls synchronously — TicketMinter, PollSource,
+// CableTransport and its CableConn, CheckpointStore, Clock — is awaited by
+// that goroutine, so a Wait from inside one of those blocks the call the run
+// is blocked on. Close is the call that is safe from anywhere; this is the one
+// that is safe only from a goroutine taking no part in the run.
 func (c *Connector) Wait() {
 	c.mu.Lock()
 	done := c.runDone
