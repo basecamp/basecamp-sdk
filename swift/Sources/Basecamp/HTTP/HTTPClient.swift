@@ -144,7 +144,7 @@ package final class HTTPClient: Sendable {
     /// default rendering of `.network(message:cause:)` prints all of it, query
     /// included. The error is rebuilt from parts this SDK chooses: the same
     /// code, so ``isCancellation(_:)`` and a caller's own `URLError` matching
-    /// classify it as before; the localized description; and the failing URL
+    /// classify it as before, and the failing URL
     /// as origin and path — never its query, userinfo or fragment. A transport
     /// that already speaks `.network` (#567) keeps its message and has its
     /// cause projected the same way, to the same depth bound
@@ -152,9 +152,13 @@ package final class HTTPClient: Sendable {
     /// diagnostic and passes through unchanged.
     static func projectedTransportError(_ error: any Error, depth: Int = 0) -> any Error {
         if let urlError = error as? URLError {
-            var userInfo: [String: Any] = [NSLocalizedDescriptionKey: urlError.localizedDescription]
-            if let failingURL = urlError.failingURL,
-               let projected = URL(string: stripQueryAndFragment(failingURL.absoluteString)) {
+            // Nothing the transport wrote survives — not even its description,
+            // which a custom Transport can build around the URL; the code is
+            // the diagnostic, and Foundation describes it on its own.
+            var userInfo: [String: Any] = [:]
+            let failingURL = urlError.failingURL?.absoluteString
+                ?? urlError.userInfo[NSURLErrorFailingURLStringErrorKey] as? String
+            if let failingURL, let projected = URL(string: stripQueryAndFragment(failingURL)) {
                 userInfo[NSURLErrorFailingURLErrorKey] = projected
                 userInfo[NSURLErrorFailingURLStringErrorKey] = projected.absoluteString
             }

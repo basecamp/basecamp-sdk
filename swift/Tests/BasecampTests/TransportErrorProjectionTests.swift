@@ -112,6 +112,19 @@ final class TransportErrorProjectionTests: XCTestCase {
         Self.assertNoSecret(projected, "projected cancellation")
     }
 
+    // A custom Transport can build its URLError's own description around the
+    // URL; nothing the transport wrote survives, only the code.
+    func testTransportWrittenDescriptionIsDropped() throws {
+        let raw = URLError(.timedOut, userInfo: [
+            NSLocalizedDescriptionKey: "Timed out fetching \(Self.signedURL)",
+            NSURLErrorFailingURLStringErrorKey: Self.signedURL,
+        ])
+        let projected = try XCTUnwrap(HTTPClient.projectedTransportError(raw) as? URLError)
+        XCTAssertEqual(projected.code, .timedOut)
+        XCTAssertEqual(projected.failingURL?.absoluteString, "http://127.0.0.1:1/blob")
+        Self.assertNoSecret(projected, "projected description")
+    }
+
     // An error that is not a URLError is the transport's own and passes through untouched.
     func testForeignTransportErrorPassesThrough() {
         struct ForeignTransportError: Error, Equatable { let id: Int }
