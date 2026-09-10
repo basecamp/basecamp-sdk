@@ -421,6 +421,23 @@ class PaginationTest {
      * formatter the parser uses. Recorded here rather than left to be
      * rediscovered.
      */
+    /**
+     * SPEC §6's parsing table: `1*DIGIT` has no sign, so `+5` is not a delay
+     * even though `toIntOrNull` reads one; and no digit string is malformed for
+     * its width — over the ceiling saturates, where `toIntOrNull` used to hand
+     * back null and drop the request onto the backoff curve.
+     */
+    @Test
+    fun parseRetryAfterRejectsSignAndSaturatesOverRange() {
+        assertNull(parseRetryAfter("+5"))
+        assertNull(parseRetryAfter("-5"))
+        assertEquals(120, parseRetryAfter("0120"))
+        assertEquals(MAX_RETRY_AFTER_SECONDS, parseRetryAfter("2147483647"))
+        assertEquals(MAX_RETRY_AFTER_SECONDS, parseRetryAfter("2147483648"))
+        assertEquals(MAX_RETRY_AFTER_SECONDS, parseRetryAfter("9223372036854775808"))
+        assertEquals(MAX_RETRY_AFTER_SECONDS, parseRetryAfter("99999999999999999999"))
+    }
+
     @Test
     fun parseRetryAfterParsesFutureHttpDate() {
         val seconds = parseRetryAfter("Thu, 01 Jan 2060 00:00:00 GMT")

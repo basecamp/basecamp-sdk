@@ -39,6 +39,13 @@ sealed class BasecampException(
     /** Request ID from the server for debugging. */
     val requestId: String? = null,
     cause: Throwable? = null,
+    /**
+     * Seconds the response's `Retry-After` named, parsed per SPEC §6, at
+     * whatever status carried it (SPEC §6 "HTTP Status Mapping Algorithm").
+     * Null when the header was absent, malformed or already past — and for
+     * the error shapes no response produced.
+     */
+    open val retryAfterSeconds: Int? = null,
 ) : Exception(message, cause) {
 
     /** Exit code for CLI applications (matches Go/TS/Ruby SDKs). */
@@ -71,12 +78,12 @@ sealed class BasecampException(
     /** Rate limit error (429). Retryable with optional Retry-After. */
     class RateLimit(
         /** Number of seconds to wait before retrying, from the Retry-After header. */
-        val retryAfterSeconds: Int? = null,
+        override val retryAfterSeconds: Int? = null,
         message: String = "Rate limit exceeded",
         hint: String? = retryAfterSeconds?.let { "Retry after $it seconds" } ?: "Please slow down requests",
         requestId: String? = null,
         cause: Throwable? = null,
-    ) : BasecampException(message, CODE_RATE_LIMIT, hint, 429, true, requestId, cause)
+    ) : BasecampException(message, CODE_RATE_LIMIT, hint, 429, true, requestId, cause, retryAfterSeconds)
 
     /** Network error (connection failures, DNS, timeout). Retryable. */
     class Network(
@@ -149,7 +156,8 @@ sealed class BasecampException(
          * exactly the #730 bug.
          */
         val decodeFailure: SerializationException?,
-    ) : BasecampException(message, CODE_API, hint, httpStatus, retryable, requestId, cause) {
+        retryAfterSeconds: Int? = null,
+    ) : BasecampException(message, CODE_API, hint, httpStatus, retryable, requestId, cause, retryAfterSeconds) {
 
         constructor(
             message: String,
@@ -158,7 +166,8 @@ sealed class BasecampException(
             retryable: Boolean = httpStatus != null && httpStatus in 500..599,
             requestId: String? = null,
             cause: Throwable? = null,
-        ) : this(message, httpStatus, hint, retryable, requestId, cause, decodeFailure = null)
+            retryAfterSeconds: Int? = null,
+        ) : this(message, httpStatus, hint, retryable, requestId, cause, decodeFailure = null, retryAfterSeconds = retryAfterSeconds)
 
         internal companion object {
             /**
@@ -444,7 +453,7 @@ sealed class BasecampException(
                 // storage, or at its webhook ceiling. Matched before the else
                 // arm, which would make it a retryable Api.
                 507 -> LimitExceeded(msg, hint, requestId)
-                else -> Api(msg, httpStatus, hint, httpStatus in 500..599, requestId)
+                else -> Api(msg, httpStatus, hint, httpStatus in 500..599, requestId, retryAfterSeconds = retryAfterSeconds)
             }
         }
     }
