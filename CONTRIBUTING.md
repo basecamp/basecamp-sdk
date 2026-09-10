@@ -611,15 +611,18 @@ OIDC exchange; the first real tag after step 5 is the first end-to-end test.
 1. On `main`, with a clean tree and `make check` green.
 2. Mint a crates.io API token scoped to `publish-new` and `change-owners`, with a
    one-day expiry.
-3. Publish from the workspace, reproducibly:
+3. Publish from the workspace, reproducibly, with the token from step 2 in the
+   environment (never `cargo login`: that writes it to `~/.cargo/credentials.toml`):
    ```bash
+   export CARGO_REGISTRY_TOKEN=<token from step 2>
    cd rust && SOURCE_DATE_EPOCH=$(git log -1 --format=%ct) cargo publish -p basecamp-sdk --locked
    ```
-4. Hand ownership to the team: `cargo owner --add github:basecamp:cli basecamp-sdk`.
+4. Hand ownership to the team, still under that token:
+   `cargo owner --add github:basecamp:cli basecamp-sdk`.
 5. On the crate's settings page, configure Trusted Publishing: owner `basecamp`,
    repository `basecamp-sdk`, workflow `release-rust.yml`, environment
    `release-crates`.
-6. Revoke the token from step 2.
+6. Revoke the token from step 2 and `unset CARGO_REGISTRY_TOKEN`.
 7. `make release VERSION=…` from the same SHA, so the tag and the published
    crate agree.
 
