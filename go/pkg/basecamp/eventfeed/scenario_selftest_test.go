@@ -391,6 +391,37 @@ func TestScenarioDriverRejectsUnmodelledScripts(t *testing.T) {
 			script: `{"name":"x","description":"d","only":true,"steps":[{"advance":{"ms":1}}],"finally":{"state":"closed"}}`,
 			wants:  `unknown key "only"`,
 		},
+		// Duplicate members at each level: encoding/json keeps the last one
+		// and DisallowUnknownFields never sees the first, so each of these
+		// would otherwise pass as a fixture with one expectation quietly
+		// dropped.
+		{
+			name:   "duplicate top-level key",
+			script: `{"name":"x","description":"d","steps":[{"advance":{"ms":1}}],"steps":[],"finally":{"state":"closed"}}`,
+			wants:  `duplicate key "steps"`,
+		},
+		{
+			name:   "duplicate directive in one step",
+			script: `{"name":"x","description":"d","steps":[{"advance":{"ms":1},"advance":{"ms":2}}],"finally":{"state":"closed"}}`,
+			wants:  `duplicate key "advance"`,
+		},
+		{
+			name:   "duplicate key inside a payload",
+			script: `{"name":"x","description":"d","steps":[{"advance":{"ms":1,"ms":2}}],"finally":{"state":"closed"}}`,
+			wants:  `duplicate key "ms"`,
+		},
+		{
+			name:   "escape-equivalent duplicate key",
+			script: `{"name":"x","description":"d","steps":[{"advance":{"ms":1,"m\u0073":2}}],"finally":{"state":"closed"}}`,
+			wants:  `duplicate key "ms"`,
+		},
+		{
+			// The duplicate walk must not be the thing that judges a number:
+			// a literal beyond float64 is the ms handling's verdict.
+			name:   "duplicate key beside a number beyond float64",
+			script: `{"name":"x","description":"d","steps":[{"advance":{"ms":1e999,"ms":2}}],"finally":{"state":"closed"}}`,
+			wants:  `duplicate key "ms"`,
+		},
 		{
 			name:   "unknown placeholder",
 			script: `{"name":"x","description":"d","steps":[{"expectConnect":{"url":"{{CABLE_HOST:1}}"}}],"finally":{"state":"closed"}}`,
@@ -698,6 +729,15 @@ func TestDriverSeamClassificationIsPresenceKeyed(t *testing.T) {
 	d := &driver{h: newScenarioHarness()}
 	defer d.h.close()
 
+	// The parsed value rides on the throttled kind alone: an unauthorized
+	// mint carries no retry_after by contract, whatever header the scripted
+	// response happened to carry.
+	unauthorized := d.mintOutcomeFrom(mintRespond{Status: intp(401), Headers: map[string]string{"Retry-After": "3"}})
+	var ue *eventfeed.MintError
+	if !errors.As(unauthorized.err, &ue) || ue.Kind != eventfeed.MintUnauthorized || ue.RetryAfter != 0 {
+		t.Fatalf("401 with Retry-After: 3 = %+v, want MintUnauthorized carrying no RetryAfter", unauthorized.err)
+	}
+
 	// A retryable non-429/503 status WITH a parsed Retry-After is throttled,
 	// carrying the value.
 	out := d.mintOutcomeFrom(mintRespond{Status: intp(502), Headers: map[string]string{"Retry-After": "3"}})
@@ -758,6 +798,13 @@ func TestDriverRetryAfterParseIsTheSpecAlgorithm(t *testing.T) {
 	var me *eventfeed.MintError
 	if !errors.As(out.err, &me) || me.Kind != eventfeed.MintThrottled || me.RetryAfter != 91*time.Second {
 		t.Fatalf("HTTP-date 90.3s out = %+v, want MintThrottled carrying 91s (sub-second remainder rounds UP)", out.err)
+	}
+	// A far-future date saturates at the digit branch's ceiling rather than
+	// wrapping: Sub saturates at ~292 years, and rounding that up to seconds
+	// and multiplying back overflowed into a negative delay.
+	out = d.mintOutcomeFrom(mintRespond{Status: intp(429), Headers: map[string]string{"Retry-After": "Fri, 31 Dec 9999 23:59:59 GMT"}})
+	if !errors.As(out.err, &me) || me.Kind != eventfeed.MintThrottled || me.RetryAfter != time.Duration(math.MaxInt32)*time.Second {
+		t.Fatalf("year-9999 HTTP-date = %+v, want MintThrottled saturated at %s", out.err, time.Duration(math.MaxInt32)*time.Second)
 	}
 	// A date already passed is undefined — max(0, ·) is not > 0.
 	past := now.Add(-time.Minute).UTC().Format(http.TimeFormat)

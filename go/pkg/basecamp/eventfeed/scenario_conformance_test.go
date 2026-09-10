@@ -1015,8 +1015,13 @@ func (h *scenarioHarness) violation() error {
 // Throttled-vs-transient is keyed on the PRESENCE of a §6-parsed Retry-After
 // (SPEC's fixed adapter mapping — "whatever its status"), never on the
 // status: a status key would honour the header at one retryable status and
-// drop it at another. Unauthorized keeps a parsed value too — row 4 floors
-// the below-threshold reconnect delay on it.
+// drop it at another. The parsed value rides on the throttled kind ALONE:
+// §23 defines retry_after for throttled and pins unauthorized as carrying
+// none (row 4 — the backoff draw alone governs), so a driver populating it
+// on a 401 would be modelling a nonconforming adapter, and a connector that
+// wrongly honoured it would be indistinguishable here from one that did not.
+// That the connector ignores such a value is a tier-3 pin
+// (TestUnauthorizedMintCarriesNoRetryAfterFloor), not this driver's.
 func (d *driver) mintOutcomeFrom(respond mintRespond) mintOutcome {
 	if respond.Body != nil {
 		return mintOutcome{ticket: eventfeed.StreamTicket{
@@ -1025,16 +1030,16 @@ func (d *driver) mintOutcomeFrom(respond mintRespond) mintOutcome {
 			URL:       respond.Body.URL,
 		}}
 	}
-	retryAfter, present := d.retryAfterFrom(respond.Headers)
-	mintErr := &eventfeed.MintError{RetryAfter: retryAfter, Err: fmt.Errorf("mint responded %d", *respond.Status)}
+	mintErr := &eventfeed.MintError{Err: fmt.Errorf("mint responded %d", *respond.Status)}
 	switch *respond.Status {
 	case 401, 403:
 		mintErr.Kind = eventfeed.MintUnauthorized
 	case 404, 422:
 		mintErr.Kind = eventfeed.MintUnrecoverable
 	default:
-		if present {
+		if retryAfter, present := d.retryAfterFrom(respond.Headers); present {
 			mintErr.Kind = eventfeed.MintThrottled
+			mintErr.RetryAfter = retryAfter
 		} else {
 			mintErr.Kind = eventfeed.MintTransient
 		}
@@ -1210,6 +1215,14 @@ func (d *driver) retryAfterFrom(headers map[string]string) (value time.Duration,
 	seconds := int64(remainder / time.Second)
 	if remainder%time.Second != 0 {
 		seconds++
+	}
+	// The same ceiling as the digit branch, for the same reason: Sub
+	// saturates at time.Duration's ~292-year maximum, and rounding that
+	// remainder up to whole seconds and multiplying back overflows into a
+	// negative delay — a "present" Retry-After the connector would treat as
+	// no wait at all. A year-9999 date is a valid HTTP-date.
+	if seconds > math.MaxInt32 {
+		seconds = math.MaxInt32
 	}
 	return time.Duration(seconds) * time.Second, true
 }
