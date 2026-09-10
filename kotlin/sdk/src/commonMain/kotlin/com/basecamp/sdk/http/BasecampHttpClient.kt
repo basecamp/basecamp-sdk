@@ -25,9 +25,9 @@ internal class BasecampHttpClient(
     private val hooks: BasecampHooks,
     internal val json: Json,
     /**
-     * The per-attempt budget the SDK's own HttpTimeout enforces, rendered
-     * beside a projected timeout; null when the caller supplied the
-     * [HttpClient], whose budget the SDK does not know.
+     * The budget the SDK's own HttpTimeout enforces — request, connect and
+     * socket alike — rendered beside a projected timeout; null when the
+     * caller supplied the [HttpClient], whose budgets the SDK does not know.
      */
     private val requestTimeoutMillis: Long? = null,
 ) {
@@ -159,7 +159,7 @@ internal class BasecampHttpClient(
         } catch (e: Exception) {
             // SPEC §9: projected once, before the request-end hook, so hooks
             // and the caller see the same URL-free shape.
-            val projected = redactTransportError(e, url, config.baseUrl, requestTimeoutMillis)
+            val projected = redactTransportError(e, url, config.baseUrl, requestTimeoutMillis, requestTimeoutMillis)
             val duration = currentTimeMillis() - startTime
             hooks.safeOnRequestEnd(info, RequestResult(
                 statusCode = 0,
@@ -296,7 +296,7 @@ internal class BasecampHttpClient(
             throw e
         } catch (e: Exception) {
             // SPEC §9: same projection as the retrying path.
-            val projected = redactTransportError(e, url, config.baseUrl, requestTimeoutMillis)
+            val projected = redactTransportError(e, url, config.baseUrl, requestTimeoutMillis, requestTimeoutMillis)
             val duration = currentTimeMillis() - startTime
             hooks.safeOnRequestEnd(info, RequestResult(
                 statusCode = 0,

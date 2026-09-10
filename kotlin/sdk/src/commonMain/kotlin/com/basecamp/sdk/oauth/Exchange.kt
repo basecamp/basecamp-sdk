@@ -308,7 +308,7 @@ private suspend fun postTokenRequest(
         // CancellationException, so left alone it would masquerade as a
         // cooperative cancellation — to the retryable network fault the other
         // SDKs raise here ("Token request timed out", TS/Python/Ruby).
-        throw BasecampException.Network("Token request timed out", cause = redactTransportError(e, endpoint, timeoutMillis = TOKEN_REQUEST_TIMEOUT_MS))
+        throw BasecampException.Network("Token request timed out", cause = redactTransportError(e, endpoint, requestTimeoutMillis = TOKEN_REQUEST_TIMEOUT_MS))
     } finally {
         // Always ours: hardenedTokenClient built it, an injected client only
         // lent its engine (which close() leaves running).

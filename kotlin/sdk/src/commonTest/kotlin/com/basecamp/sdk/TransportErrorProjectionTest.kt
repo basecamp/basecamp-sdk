@@ -144,6 +144,12 @@ class TransportErrorProjectionTest {
         val untrusted = redactTransportError(HttpRequestTimeoutException(signed, null), signed)
         assertEquals("Request timeout has expired [url=http://localhost:3000, request_timeout=unknown ms]", untrusted.message)
 
+        // A connect or socket budget is rendered only when the caller installed one.
+        val connect = redactTransportError(ConnectTimeoutException("x"), signed, "http://localhost:3000", requestTimeoutMillis = 5)
+        assertEquals("Connect timeout has expired [url=http://localhost:3000/12345/blob, connect_timeout=unknown ms]", connect.message)
+        val socket = redactTransportError(SocketTimeoutException("x"), signed, "http://localhost:3000", 5, 7)
+        assertEquals("Socket timeout has expired [url=http://localhost:3000/12345/blob, socket_timeout=7 ms]", socket.message)
+
         val unparsable = redactTransportError(HttpRequestTimeoutException("://nope", null), "://nope")
         assertEquals("Request timeout has expired [url=unparsable, request_timeout=unknown ms]", unparsable.message)
     }

@@ -504,7 +504,7 @@ private suspend fun fetchDiscoveryDocument(url: String, baseClient: HttpClient?)
         throw e
     } catch (e: Throwable) {
         // Transport failure / timeout, projected first (SPEC §9).
-        val projected = redactTransportError(e, url, timeoutMillis = DISCOVERY_TIMEOUT_MS)
+        val projected = redactTransportError(e, url, requestTimeoutMillis = DISCOVERY_TIMEOUT_MS)
         throw BasecampException.Network(
             "OAuth discovery failed: ${projected.message ?: projected::class.simpleName}",
             cause = projected,

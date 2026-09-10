@@ -21,13 +21,17 @@ import io.ktor.http.Url
  * anywhere else, since a storage service can sign the path as readily as the
  * query. Every other exception is the transport's own diagnostic (a JVM
  * socket failure names host and port at most) and passes through unchanged,
- * cause chain included.
+ * cause chain included. A rebuilt message carries only a budget the caller
+ * knows it installed — the request budget for the request timeout, the
+ * connect/socket budget for the other two, `unknown` otherwise — never the
+ * number in the transport's text.
  */
 internal fun redactTransportError(
     e: Throwable,
     url: String,
     trustedOrigin: String? = null,
-    timeoutMillis: Long? = null,
+    requestTimeoutMillis: Long? = null,
+    socketTimeoutMillis: Long? = null,
 ): Throwable {
     val shown = if (trustedOrigin != null && isSameOrigin(url, trustedOrigin) && !hasUserinfo(url)) {
         displayUrl(url)
@@ -35,11 +39,11 @@ internal fun redactTransportError(
         displayOrigin(url)
     }
     return when (e) {
-        is HttpRequestTimeoutException -> HttpRequestTimeoutException(shown, timeoutMillis)
+        is HttpRequestTimeoutException -> HttpRequestTimeoutException(shown, requestTimeoutMillis)
         is ConnectTimeoutException ->
-            ConnectTimeoutException("Connect timeout has expired [url=$shown, connect_timeout=${timeoutMillis ?: "unknown"} ms]")
+            ConnectTimeoutException("Connect timeout has expired [url=$shown, connect_timeout=${socketTimeoutMillis ?: "unknown"} ms]")
         is SocketTimeoutException ->
-            SocketTimeoutException("Socket timeout has expired [url=$shown, socket_timeout=${timeoutMillis ?: "unknown"} ms]")
+            SocketTimeoutException("Socket timeout has expired [url=$shown, socket_timeout=${socketTimeoutMillis ?: "unknown"} ms]")
         else -> e
     }
 }
