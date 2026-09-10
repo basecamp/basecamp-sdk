@@ -150,10 +150,10 @@ state = generate_state()
 
 ```rust
 // Rust
-let pkce = basecamp_sdk::oauth::Pkce::generate()?;
-// pkce.verifier, pkce.challenge
+let pkce = basecamp_sdk::oauth::generate_pkce();
+// pkce.verifier (a SensitiveString), pkce.challenge
 
-let state = basecamp_sdk::oauth::generate_state()?;
+let state = basecamp_sdk::oauth::generate_state();
 ```
 
 **Security properties**:
