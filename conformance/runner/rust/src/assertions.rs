@@ -313,6 +313,9 @@ fn check(run: &Run, assertion: &Assertion) -> Result<(), String> {
                 "code" => Value::from(error.code().as_str()),
                 "message" => Value::from(error.message()),
                 "requestId" => Value::from(error.request_id().unwrap_or_default()),
+                // Absent is JSON null, as Go's *int and Python's None render it; the
+                // fixture pins a value only where a Retry-After was served.
+                "retryAfter" => error.retry_after().map_or(Value::Null, Value::from),
                 "confirmationPeople.0.id" => {
                     let Some(first) = error.confirmation_people().and_then(<[_]>::first) else {
                         return Err("Expected error.confirmationPeople.0.id, but confirmation people were absent".to_string());
