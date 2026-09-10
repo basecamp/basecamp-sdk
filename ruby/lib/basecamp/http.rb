@@ -766,12 +766,25 @@ module Basecamp
       base + jitter
     end
 
+    # SPEC §6 MAX_RETRY_AFTER_SECONDS: the value a parsed Retry-After saturates
+    # at, in both wire forms. A representability bound pinned once for all six
+    # SDKs (the narrowest retry_after integer any of them ships, and the ceiling
+    # §16 already names), not a policy cap. Ruby's Integer is arbitrary-
+    # precision, so without it the failure was one layer down: sleep raised
+    # RangeError on the retry path.
+    MAX_RETRY_AFTER_SECONDS = 2_147_483_647
+
     def parse_retry_after(value, now: Time.now)
       return nil if value.nil? || value.empty?
 
-      # Try parsing as seconds (integer)
-      seconds = Integer(value, exception: false)
-      return seconds if seconds&.positive?
+      # RFC 9110 spells delay-seconds as 1*DIGIT: no sign, which Integer()
+      # would accept. A value over the ceiling saturates whatever its width,
+      # since 1*DIGIT has no upper bound and no digit string is malformed for
+      # its length.
+      if value.match?(/\A\d+\z/)
+        seconds = value.to_i
+        return seconds.positive? ? [ seconds, MAX_RETRY_AFTER_SECONDS ].min : nil
+      end
 
       # Try parsing as HTTP-date. Rounded UP (SPEC §6 step 2): truncating a
       # sub-second remainder toward zero turned a date 400ms out into 0, which
@@ -780,7 +793,7 @@ module Basecamp
       begin
         date = Time.httpdate(value)
         diff = (date - now).ceil
-        return diff if diff.positive?
+        return [ diff, MAX_RETRY_AFTER_SECONDS ].min if diff.positive?
       rescue ArgumentError
         # Not a valid HTTP-date
       end
