@@ -116,6 +116,20 @@ pub fn resolve_index(index: i64, n: usize) -> Option<usize> {
         .flatten()
 }
 
+/// A fixture `min` in milliseconds as a duration: fractional and negative values are
+/// schema-legal, so the floor is taken and a negative floor is no floor.
+fn min_millis(min: f64) -> u64 {
+    if min.is_finite() && min > 0.0 {
+        // f64 -> u64 is saturating in Rust; a value past u64::MAX is not a real bound.
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+        {
+            min.floor() as u64
+        }
+    } else {
+        0
+    }
+}
+
 fn index_of(assertion: &Assertion) -> i64 {
     assertion.index.unwrap_or(0)
 }
@@ -132,7 +146,7 @@ fn check(run: &Run, assertion: &Assertion) -> Result<(), String> {
         }
         "delayBetweenRequests" => check_delay_gaps(
             &recorded.times,
-            Duration::from_millis(assertion.min.max(0.0) as u64),
+            Duration::from_millis(min_millis(assertion.min)),
             assertion.index,
         )
         .map_or(Ok(()), Err),
@@ -229,7 +243,9 @@ fn check(run: &Run, assertion: &Assertion) -> Result<(), String> {
             let actual = lookup(body, path).ok_or_else(|| {
                 format!("Expected request body field {path:?} on request index {index}, but it was absent")
             })?;
-            if json_equal(&assertion.expected, actual) {
+            // Canonical JSON equality, as the Go runner's jsonEqual: a body that sent
+            // "42" where the fixture says 42 is a wrong body, not a spelling.
+            if assertion.expected == *actual {
                 Ok(())
             } else {
                 Err(format!(
@@ -422,7 +438,7 @@ fn expected_int(assertion: &Assertion) -> Result<i64, String> {
     match &assertion.expected {
         Value::Number(n) => n
             .as_i64()
-            .or_else(|| n.as_f64().map(|f| f as i64))
+            .or_else(|| n.as_f64().and_then(integral))
             .ok_or_else(|| {
                 format!(
                     "{}: expected an integer, got {}",
@@ -433,6 +449,17 @@ fn expected_int(assertion: &Assertion) -> Result<i64, String> {
             "{}: expected an integer, got {other}",
             assertion.kind
         )),
+    }
+}
+
+/// An integral float as the integer it spells; anything fractional or out of range is not
+/// an integer the fixture meant.
+fn integral(f: f64) -> Option<i64> {
+    if f.is_finite() && f.fract() == 0.0 && f.abs() < 9_007_199_254_740_992.0 {
+        #[allow(clippy::cast_possible_truncation)]
+        Some(f as i64)
+    } else {
+        None
     }
 }
 
@@ -466,8 +493,10 @@ pub fn lookup<'a>(value: &'a Value, path: &str) -> Option<&'a Value> {
     Some(current)
 }
 
-/// Compares an expected fixture value with an actual value: integers exactly (large ids
-/// included), floats numerically, everything else by canonical JSON.
+/// Compares an expected fixture value with a value read off a decoded model or an error
+/// field — integers exactly (large ids included), floats numerically, and a number or
+/// bool against its string rendering, as the Go runner's compareValues does for values
+/// that arrive through `%v`. Request bodies are NOT compared this way; see requestBody.
 pub fn compare_values(label: &str, expected: &Value, actual: &Value) -> Result<(), String> {
     if json_equal(expected, actual) {
         Ok(())
@@ -567,6 +596,35 @@ mod tests {
         assert!(check_request_count(3, 2).is_some());
         assert!(request_count_applies(&["pagination".to_string()]));
         assert!(!request_count_applies(&["link-header".to_string()]));
+    }
+
+    #[test]
+    fn request_bodies_compare_by_canonical_json() {
+        let case: TestCase = serde_json::from_value(json!({
+            "name": "a", "method": "PUT",
+            "assertions": [{"type": "requestBody", "path": "position", "expected": 42}]
+        }))
+        .unwrap();
+        let mut recorded = Recorded::default();
+        recorded.methods.push("PUT".into());
+        recorded.bodies.push(Some(json!({"position": "42"})));
+        let run = Run {
+            case: &case,
+            outcome: &Ok(Outcome::Unit),
+            recorded: &recorded,
+        };
+        assert!(
+            check_all(&run)
+                .unwrap_err()
+                .contains("Expected request body position = 42")
+        );
+        recorded.bodies[0] = Some(json!({"position": 42}));
+        let run = Run {
+            case: &case,
+            outcome: &Ok(Outcome::Unit),
+            recorded: &recorded,
+        };
+        assert_eq!(check_all(&run), Ok(()));
     }
 
     #[test]

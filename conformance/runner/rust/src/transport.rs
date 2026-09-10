@@ -59,12 +59,15 @@ impl ScriptedTransport {
     pub fn recorded(&self) -> Recorded {
         self.recorded
             .lock()
-            .unwrap_or_else(|e| e.into_inner())
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
             .clone()
     }
 
     fn record(&self, request: &Request<Bytes>) -> usize {
-        let mut recorded = self.recorded.lock().unwrap_or_else(|e| e.into_inner());
+        let mut recorded = self
+            .recorded
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         recorded.times.push(Instant::now());
         recorded.urls.push(request.uri().to_string());
         recorded.paths.push(request.uri().path().to_string());
@@ -105,7 +108,7 @@ impl HttpClient for ScriptedTransport {
         }
         // A header the fixture spells wrong is a fixture defect, not a network condition;
         // surfacing it as a usage error fails the case with the resolver's message.
-        serve(mock).map_err(|error| Error::usage(format!("fixture error: {error}")))
+        serve(mock).map_err(|error| Error::usage(format!("harness: fixture error: {error}")))
     }
 }
 

@@ -218,8 +218,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .build()?;
 
     let account = client.for_account(std::env::var("BASECAMP_ACCOUNT_ID")?);
-    let projects = account.projects().list(None).await?;
-    for project in projects.items() {
+    let projects = account.projects().list(&Default::default()).await?;
+    for project in projects.iter() {
         println!("{}: {}", project.id, project.name);
     }
     Ok(())

@@ -41,10 +41,14 @@ jobs:
 
             for WF in "${WORKFLOWS[@]}"; do
               # Fetch recent runs and find the one matching this tag push
+              # --event push: a workflow_dispatch rehearsal on the same tag is a
+              # dry run whose publish job was skipped, and it must not stand in
+              # for the tag-triggered publish.
               RUN_JSON=$(gh run list \
                 --repo "$GITHUB_REPOSITORY" \
                 --workflow "$WF" \
                 --branch "$TAG" \
+                --event push \
                 --limit 5 \
                 --json conclusion,headSha \
                 --jq "[.[] | select(.headSha == \"$GITHUB_SHA\")] | .[0] // empty")

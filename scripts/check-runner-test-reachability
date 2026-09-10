@@ -498,6 +498,30 @@ check_cargo_discovery() {
         return
     fi
 
+    # Under src/ a file is compiled only if the module tree names it: a
+    # `foo.rs` (or `foo/mod.rs`) no `mod foo;` anywhere under src/ declares is
+    # matched by the scan above, and compiled by nothing. One level of the tree
+    # is checked — the declaration may sit in any src/ file — which is the
+    # shape this runner has; a deeper tree needs the check widened deliberately.
+    local orphans=() stem
+    while IFS= read -r file; do
+        rel="${file#"$pkg"/src/}"
+        [[ "$rel" == main.rs || "$rel" == lib.rs ]] && continue
+        grep -Eq "$marker" "$file" || continue
+        stem="$(basename "$rel" .rs)"
+        [[ "$stem" == mod ]] && stem="$(basename "$(dirname "$rel")")"
+        grep -Eqr "^[[:space:]]*(pub(\([^)]*\))?[[:space:]]+)?mod[[:space:]]+${stem}[[:space:]]*;" "$pkg/src" \
+            || orphans+=("$file")
+    done < <(find_sources "$pkg/src" rs)
+    if [[ "${#orphans[@]}" -gt 0 ]]; then
+        note_fail "$label: test file(s) under src/ that no \`mod\` declaration reaches" \
+            "${orphans[@]}" \
+            "cargo compiles src/ through the module tree; a file nothing declares is" \
+            "correctly named, correctly placed, and built by nothing. Declare it, or" \
+            "delete it."
+        return
+    fi
+
     pass=$((pass + 1))
     echo "  ok: $label — $found test file(s), all under $pkg/src or top-level $pkg/tests"
 }
@@ -2099,7 +2123,7 @@ if [[ "$SELF_TEST" -eq 1 ]]; then
     # spellings. The arm has to print ok, or 34's silence would prove nothing.
     selftest_tree "$WORK/rs-ok" "$RECURSIVE_RECIPE"
     mkdir -p "$WORK/rs-ok/conformance/runner/rust/src" "$WORK/rs-ok/conformance/runner/rust/tests"
-    printf 'fn main() {}\n' > "$WORK/rs-ok/conformance/runner/rust/src/main.rs"
+    printf 'mod assertions;\nfn main() {}\n' > "$WORK/rs-ok/conformance/runner/rust/src/main.rs"
     printf 'pub fn check() {}\n\n#[cfg(test)]\nmod tests {\n    #[tokio::test]\n    async fn asserts() {}\n}\n' \
         > "$WORK/rs-ok/conformance/runner/rust/src/assertions.rs"
     printf '#[test]\nfn probe() {}\n' > "$WORK/rs-ok/conformance/runner/rust/tests/probe.rs"
@@ -2117,6 +2141,27 @@ if [[ "$SELF_TEST" -eq 1 ]]; then
         st_fail=1
     else
         echo "  ok: Rust tests under src/ and top-level tests/ accepted"
+    fi
+
+    echo "==> Self-test 36: a Rust test file under src/ that no mod declares must be reported"
+    # Correctly named, correctly placed, and compiled by nothing: cargo reaches
+    # src/ files only through the module tree. Same tree as 35 with one more
+    # file and no declaration for it.
+    selftest_tree "$WORK/rs-orphan" "$RECURSIVE_RECIPE"
+    mkdir -p "$WORK/rs-orphan/conformance/runner/rust/src"
+    printf 'mod assertions;\nfn main() {}\n' > "$WORK/rs-orphan/conformance/runner/rust/src/main.rs"
+    printf 'pub fn check() {}\n\n#[cfg(test)]\nmod tests {\n    #[test]\n    fn asserts() {}\n}\n' \
+        > "$WORK/rs-orphan/conformance/runner/rust/src/assertions.rs"
+    printf '#[cfg(test)]\nmod tests {\n    #[test]\n    fn stranded() {}\n}\n' \
+        > "$WORK/rs-orphan/conformance/runner/rust/src/orphan.rs"
+    out="$(REPO_ROOT="$WORK/rs-orphan" "$SELF" 2>&1)"; st=$?
+    if [[ "$st" -eq 0 ]] || ! grep -q 'orphan\.rs' <<<"$out"; then
+        echo "  FAIL: a src/ test file no mod declaration reaches was not reported"
+        # shellcheck disable=SC2001  # indenting every line, not a substring swap
+        sed 's/^/        /' <<<"$out"
+        st_fail=1
+    else
+        echo "  ok: undeclared src/ test file reported unreachable (exit $st)"
     fi
 
     echo ""

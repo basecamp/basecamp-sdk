@@ -601,8 +601,12 @@ justification.
 Trusted Publishing can only be configured on a crate that already exists. The
 first version is therefore pushed by hand, once, by a maintainer with crates.io
 access; every later release is `make release` like the other SDKs. Until step 5
-below is done, the workflow's publish job rehearses with `--dry-run` and exits
-green, so a tag pushed early does no harm and publishes nothing.
+below is done, a `v*` tag FAILS `release-rust.yml`'s publish job — and with it
+the GitHub Release, which would otherwise publish notes advertising a crate
+version nobody can install. So the bootstrap happens before the first tag, and
+steps 1–7 run back-to-back on one SHA. A `workflow_dispatch` run rehearses
+packaging from any ref without touching the registry, and never exercises the
+OIDC exchange; the first real tag after step 5 is the first end-to-end test.
 
 1. On `main`, with a clean tree and `make check` green.
 2. Mint a crates.io API token scoped to `publish-new` and `change-owners`, with a

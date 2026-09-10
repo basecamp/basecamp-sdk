@@ -30,7 +30,7 @@ const CONFORMANCE_TOKEN: &str = "conformance-test-token";
 /// Default account for conformance cases.
 const ACCOUNT_ID: &str = "999";
 
-/// The date window every GetUpcomingSchedule case is dispatched with. Fixed here rather
+/// The date window every `GetUpcomingSchedule` case is dispatched with. Fixed here rather
 /// than read from the case because no mock runner consumes queryParams and no assertion
 /// type can pin a query string.
 const UPCOMING_WINDOW_START: &str = "2026-06-01";
@@ -42,6 +42,8 @@ const UPCOMING_WINDOW_END: &str = "2026-06-30";
 const SEARCH_QUERY: &str = "Leto";
 
 /// What an operation answered, in a shape the assertions can read.
+///
+/// `List` carries the pagination metadata a list result reports.
 pub enum Outcome {
     Unit,
     Json(Value),
@@ -67,9 +69,32 @@ impl Outcome {
     }
 }
 
-pub async fn execute_case(case: &TestCase, transport: ScriptedTransport) -> Result<Outcome, Error> {
-    let account = client_for(case, transport)?;
-    dispatch(&account, case).await
+/// A failure of the harness itself — an operation this runner has no arm for, a fixture
+/// value it cannot express — as distinct from what the SDK answered. It is reported as a
+/// failed case, never as an SDK error an `errorRaised` or `errorCode` assertion could
+/// accept.
+#[derive(Debug)]
+pub struct Harness(pub String);
+
+pub async fn execute_case(
+    case: &TestCase,
+    transport: ScriptedTransport,
+) -> Result<Result<Outcome, Error>, Harness> {
+    let account = match client_for(case, transport) {
+        Ok(account) => account,
+        Err(error) => return Ok(Err(error)),
+    };
+    // Harness failures travel as usage errors tagged `harness:` so the arms can use `?`
+    // uniformly; they are separated from SDK errors here, before any assertion runs.
+    match dispatch(&account, case).await {
+        Err(error)
+            if error.code() == basecamp_sdk::ErrorCode::Usage
+                && error.message().starts_with("harness:") =>
+        {
+            Err(Harness(error.message().to_string()))
+        }
+        other => Ok(other),
+    }
 }
 
 fn client_for(case: &TestCase, transport: ScriptedTransport) -> Result<AccountClient, Error> {
@@ -97,17 +122,22 @@ fn max_items(case: &TestCase) -> Option<usize> {
         .map(|n| usize::try_from(n).unwrap_or(usize::MAX))
 }
 
-/// The pinned page a case asks for, as the generated params spell it.
+/// The pinned page a case asks for, as the generated params spell it. SPEC §8 pins on a
+/// POSITIVE page only; zero is not a selection.
 fn page_param(case: &TestCase) -> Option<i32> {
     case.config_overrides
         .page
+        .filter(|page| *page > 0)
         .and_then(|page| i32::try_from(page).ok())
 }
 
+#[allow(clippy::unnecessary_wraps)] // every arm is a `Result`, and `json(x.await?)` reads as one
 fn json<T: Serialize>(value: T) -> Result<Outcome, Error> {
-    Ok(Outcome::Json(
-        serde_json::to_value(value).unwrap_or(Value::Null),
-    ))
+    Ok(decoded(value))
+}
+
+fn decoded<T: Serialize>(value: T) -> Outcome {
+    Outcome::Json(serde_json::to_value(value).unwrap_or(Value::Null))
 }
 
 fn unit<T>(result: Result<T, Error>) -> Result<Outcome, Error> {
@@ -146,7 +176,7 @@ async fn list_with<T: DeserializeOwned>(
     summarize: impl FnOnce(&[T]) -> Result<Value, Error>,
 ) -> Result<Outcome, Error> {
     let first = first?;
-    if case.config_overrides.page.is_none() {
+    if page_param(case).is_none() {
         let result = account.collect_all(first, max_items(case)).await?;
         return Ok(Outcome::List {
             meta: list_meta(&result),
@@ -172,8 +202,12 @@ async fn list_with<T: DeserializeOwned>(
     })
 }
 
+fn harness(message: impl std::fmt::Display) -> Error {
+    Error::usage(format!("harness: {message}"))
+}
+
 fn not_wired(operation: &str) -> Error {
-    Error::usage(format!(
+    harness(format!(
         "{operation}: this runner has no dispatch arm for it yet (composite pending integration)"
     ))
 }
@@ -348,7 +382,7 @@ async fn dispatch(account: &AccountClient, case: &TestCase) -> Result<Outcome, E
                     // decoded element, so nothing would be compared.
                     groups.first().map_or_else(
                         || {
-                            Err(Error::usage(
+                            Err(harness(
                                 "ListTodolistGroups decoded 0 groups; responseBody assertions read the first element, so there is nothing to assert against",
                             ))
                         },
@@ -1011,7 +1045,7 @@ async fn dispatch(account: &AccountClient, case: &TestCase) -> Result<Outcome, E
                 .await,
         ),
 
-        other => Err(Error::usage(format!("unknown operation: {other}"))),
+        other => Err(harness(format!("unknown operation: {other}"))),
     }
 }
 
@@ -1020,17 +1054,20 @@ async fn dispatch(account: &AccountClient, case: &TestCase) -> Result<Outcome, E
 /// string here is a fixture asking for something this arm cannot send.
 fn date_param(params: &Params, key: &str) -> Result<Option<Date>, Error> {
     optional_string_param(params, key)
-        .map(|text| Date::parse(&text))
+        .map(|text| {
+            Date::parse(&text)
+                .map_err(|error| harness(format!("{key}={text:?} is not a date ({error})")))
+        })
         .transpose()
 }
 
 /// A required integer read without rounding: a fixture id past 2^53 must survive.
 fn exact_int64(params: &Params, key: &str) -> Result<i64, Error> {
     match params.get(key) {
-        None => Err(Error::usage(format!("{key} is required"))),
+        None => Err(harness(format!("{key} is required"))),
         Some(value) => value
             .as_i64()
-            .ok_or_else(|| Error::usage(format!("{key} must be an integer"))),
+            .ok_or_else(|| harness(format!("{key} must be an integer"))),
     }
 }
 

@@ -190,16 +190,54 @@ SDKS = {
             # `std::env::var("X")`, `env::var_os("X")` after `use std::env;`, and
             # the fully qualified `::std::env::var("X")`. The lookbehind keeps a
             # local module that merely spells `env` (`crate::env::var`) out.
-            rf"(?<![\w:])(?:::)?(?:std::)?env::var(?:_os)?\(\s*{DQ}{NAME}{ENDQ}",
+            # `r"X"`/`br"X"` is a legal argument too; the optional prefix keeps a
+            # raw-string spelling from hiding a read.
+            rf"(?<![\w:])(?:::)?(?:std::)?env::var(?:_os)?\(\s*b?r?{DQ}{NAME}{ENDQ}",
             # The crate's own helper. config.rs reads through
             # `fn env_value(name: &str) -> Option<String> { env::var(name)… }`,
             # so the literal never reaches env::var and the pattern above sees
             # a variable, not a name. The call sites — `env_value("BASECAMP_…")`
             # — are where the names are, so they are the read here.
-            rf"(?<![\w.:])env_value\(\s*{DQ}{NAME}{ENDQ}",
+            rf"(?<![\w.:])env_value\(\s*b?r?{DQ}{NAME}{ENDQ}",
         ],
     },
 }
+
+# Rust binds the unqualified spellings by `use`, as Python does by `import`:
+# `use std::env::var;` (or `::{var, var_os}`, or `as` an alias) makes a bare
+# `var("X")` an environment read, and no fixed pattern could know the local name.
+RS_USE_ENV_RE = re.compile(
+    r"^[ \t]*(?:pub(?:\([^)]*\))?[ \t]+)?use[ \t]+(?:::)?std::env::(\{[^}]*\}|var_os|var)(?:[ \t]+as[ \t]+(\w+))?[ \t]*;",
+    re.M)
+
+
+def rust_env_aliases(text: str) -> list[str]:
+    """Local names this file binds to `std::env::var` / `var_os` through `use`."""
+    bound: list[str] = []
+    for match in RS_USE_ENV_RE.finditer(text):
+        group, alias = match.group(1), match.group(2)
+        if not group.startswith("{"):
+            bound.append(alias or group)
+            continue
+        for part in group.strip("{}").split(","):
+            bits = part.split()
+            if len(bits) == 3 and bits[1] == "as" and bits[0] in ("var", "var_os"):
+                bound.append(bits[2])
+            elif len(bits) == 1 and bits[0] in ("var", "var_os"):
+                bound.append(bits[0])
+    return bound
+
+
+def rust_dynamic_patterns(text: str) -> list[str]:
+    """Read patterns for the names this file imported from `std::env`.
+
+    The lookbehind keeps these off the qualified spellings, which the static
+    patterns already match.
+    """
+    return [
+        rf"(?<![\w.:]){re.escape(name)}\(\s*b?r?{DQ}{NAME}{ENDQ}"
+        for name in sorted(set(rust_env_aliases(text)))
+    ]
 
 # Python binds the unqualified spellings by import, so whether `getenv("X")` is
 # an environment read is a fact about the file's import lines, not about the
@@ -450,6 +488,7 @@ for _sdk, _spec in SDKS.items():
 # it, and only Python has one: its unqualified read spellings are bound by the
 # file's own import lines, so their patterns cannot be known until the file is.
 SDKS["Python"]["dynamic_patterns"] = python_dynamic_patterns
+SDKS["Rust"]["dynamic_patterns"] = rust_dynamic_patterns
 
 ROOT_README = "README.md"
 

@@ -75,6 +75,15 @@ awk -v want="version = \"$VERSION\"" '
 ' rust/basecamp-sdk/Cargo.toml > rust/basecamp-sdk/Cargo.toml.tmp \
   && cat rust/basecamp-sdk/Cargo.toml.tmp > rust/basecamp-sdk/Cargo.toml \
   && rm rust/basecamp-sdk/Cargo.toml.tmp
+# Read it back through cargo's own parser: an awk pattern that matched nothing
+# exits 0, and a bump that announced success over an unchanged crate version
+# would only be caught at `make release`.
+RUST_VERSION=$(cd rust && cargo metadata --no-deps --format-version 1 2>/dev/null \
+  | jq -r '.packages[] | select(.name == "basecamp-sdk") | .version')
+if [ "$RUST_VERSION" != "$VERSION" ]; then
+  echo "ERROR: rust/basecamp-sdk/Cargo.toml [package] version reads $RUST_VERSION after the edit, not $VERSION" >&2
+  exit 1
+fi
 
 # Sync TypeScript lockfile
 echo "Syncing TypeScript lockfile..."

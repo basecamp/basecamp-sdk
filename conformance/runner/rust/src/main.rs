@@ -167,7 +167,9 @@ async fn run_case(case: &TestCase) -> Result<(), String> {
     }
     let transport =
         transport::ScriptedTransport::new(case.mock_responses.clone(), case.auto_paginates());
-    let outcome = operations::execute_case(case, transport.clone()).await;
+    let outcome = operations::execute_case(case, transport.clone())
+        .await
+        .map_err(|operations::Harness(message)| message)?;
     let recorded = transport.recorded();
     assertions::check_all(&assertions::Run {
         case,

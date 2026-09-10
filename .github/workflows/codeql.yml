@@ -212,6 +212,12 @@ jobs:
           sarif_file: sarif-results
           category: "/language:${{ matrix.language }}"
 
+      # The Go and Rust extractors resolve dependencies through their toolchains,
+      # which can rewrite a manifest; the same guard every language job carries.
+      - name: Dependency manifests unchanged by this job
+        if: always()
+        run: ./scripts/assert-lockfiles-unchanged --verify-clean
+
   analyze-swift:
     name: Analyze (swift)
     needs: changes

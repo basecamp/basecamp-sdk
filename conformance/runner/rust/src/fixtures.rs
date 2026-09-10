@@ -131,7 +131,7 @@ mod tests {
     use super::*;
     use serde_json::json;
 
-    fn params(value: Value) -> Params {
+    fn params(value: &Value) -> Params {
         value.as_object().cloned().unwrap_or_default()
     }
 
@@ -149,7 +149,7 @@ mod tests {
 
     #[test]
     fn presence_bearing_params_distinguish_empty_from_absent() {
-        let body = params(json!({"title": "", "assignee_ids": [], "due_on": null}));
+        let body = params(&json!({"title": "", "assignee_ids": [], "due_on": null}));
         assert_eq!(optional_string_param(&body, "title"), Some(String::new()));
         assert_eq!(optional_string_param(&body, "content"), None);
         assert_eq!(optional_string_param(&body, "due_on"), Some(String::new()));

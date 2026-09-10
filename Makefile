@@ -661,8 +661,8 @@ rs-doc:
 rs-deny:
 	@command -v cargo-deny >/dev/null || (echo "Install cargo-deny: cargo install cargo-deny --locked (or brew install cargo-deny)" && exit 1)
 	@echo "==> cargo deny (rust + conformance/runner/rust)..."
-	cargo deny --manifest-path rust/Cargo.toml check
-	cargo deny --manifest-path conformance/runner/rust/Cargo.toml --config rust/deny.toml check
+	cargo deny --manifest-path rust/Cargo.toml --locked check
+	cargo deny --manifest-path conformance/runner/rust/Cargo.toml --config rust/deny.toml --locked check
 
 # Regenerate rust/basecamp-sdk/src/generated from openapi.json + behavior-model.json
 # The generator resolves openapi.json, behavior-model.json and its own names.toml

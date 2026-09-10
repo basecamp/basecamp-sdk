@@ -35,3 +35,6 @@ module_name_repetitions = "allow"
 too_many_lines = "allow"          # the dispatch match is one long function by design
 missing_errors_doc = "allow"
 missing_panics_doc = "allow"
+wildcard_imports = "allow"          # the dispatch names hundreds of generated model types
+default_trait_access = "allow"      # `&Default::default()` for a params struct the arm never names
+needless_update = "allow"           # `..Default::default()` keeps an arm compiling when a request type grows

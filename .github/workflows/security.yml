@@ -370,8 +370,8 @@ jobs:
 
       # Full-severity SARIF for Security-tab visibility; the gate step below enforces policy.
       # (In SARIF mode the action reports all severities unless limit-severities-for-sarif is set.)
-      # Trivy reads Cargo.lock, so both workspaces are covered from the repo
-      # root by scanning the two directories that carry one.
+      # Trivy reads Cargo.lock; the crate workspace and the conformance runner's
+      # are two lockfiles in two directories, so each is scanned on its own.
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
@@ -380,6 +380,27 @@ jobs:
           ignore-unfixed: true
           format: 'sarif'
           output: 'trivy-rust-results.sarif'
+
+      - name: Run Trivy vulnerability scanner (conformance runner)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        env:
+          TRIVY_SKIP_DB_UPDATE: true
+        with:
+          scan-type: 'fs'
+          scan-ref: './conformance/runner/rust'
+          ignore-unfixed: true
+          format: 'sarif'
+          output: 'trivy-rust-runner-results.sarif'
+          skip-setup-trivy: true
+          cache: 'false'
+
+      - name: Upload runner scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
+        if: always()
+        continue-on-error: true  # Requires GitHub Advanced Security
+        with:
+          sarif_file: 'trivy-rust-runner-results.sarif'
+          category: 'trivy-rust-runner'
 
       - name: Upload Trivy scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
@@ -397,6 +418,20 @@ jobs:
         with:
           scan-type: 'fs'
           scan-ref: './rust'
+          severity: 'HIGH,CRITICAL'
+          exit-code: '1'
+          ignore-unfixed: true
+          format: 'table'
+          skip-setup-trivy: true
+          cache: 'false'
+
+      - name: Fail on HIGH/CRITICAL vulnerabilities (conformance runner)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        env:
+          TRIVY_SKIP_DB_UPDATE: true
+        with:
+          scan-type: 'fs'
+          scan-ref: './conformance/runner/rust'
           severity: 'HIGH,CRITICAL'
           exit-code: '1'
           ignore-unfixed: true
@@ -442,8 +477,8 @@ jobs:
 
       - name: cargo deny check (both workspaces)
         run: |
-          cargo deny --manifest-path rust/Cargo.toml check
-          cargo deny --manifest-path conformance/runner/rust/Cargo.toml --config rust/deny.toml check
+          cargo deny --manifest-path rust/Cargo.toml --locked check
+          cargo deny --manifest-path conformance/runner/rust/Cargo.toml --config rust/deny.toml --locked check
 
       # Ground truth, and the authoritative check: the static parser predicts
       # that nothing writes a lockfile, this observes whether anything did. A CI

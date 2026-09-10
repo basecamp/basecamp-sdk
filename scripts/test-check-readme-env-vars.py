@@ -1732,6 +1732,30 @@ def main() -> int:
         check("rust std::env::var, var_os, env::var and the env_value helper are reads",
               run_gate(root, RS_SDK), [])
 
+        # An imported name is a read: `use std::env::var;` binds the bare
+        # `var("X")`, a brace list binds both, and `as` renames. A raw-string
+        # argument is a legal spelling of the same read.
+        root = tmp / "rust-use-imports"
+        build(root, {
+            "rust/basecamp-sdk/README.md": "no tables\n",
+            "rust/basecamp-sdk/src/a.rs": 'use std::env::var;\nlet a = var("BASECAMP_USED");\n',
+            "rust/basecamp-sdk/src/b.rs": 'use std::env::{var as read, var_os};\nlet b = read("BASECAMP_ALIASED");\nlet c = var_os(r"BASECAMP_RAW");\n',
+            "rust/basecamp-sdk/src/c.rs": 'let d = std::env::var(r#"BASECAMP_HASHRAW"#);\n',
+        })
+        check("rust use-imported var/var_os and raw-string arguments are reads",
+              run_gate(root, RS_SDK),
+              ["reverse:Rust:BASECAMP_ALIASED", "reverse:Rust:BASECAMP_HASHRAW",
+               "reverse:Rust:BASECAMP_RAW", "reverse:Rust:BASECAMP_USED"])
+
+        # ...but a bare `var(` with no such import is some other function.
+        root = tmp / "rust-bare-var-unimported"
+        build(root, {
+            "rust/basecamp-sdk/README.md": "no tables\n",
+            "rust/basecamp-sdk/src/a.rs": 'let a = var("BASECAMP_NOT_ENV");\n',
+        })
+        check("rust bare var() without a std::env import is not a read",
+              run_gate(root, RS_SDK), [])
+
         # A local module that merely spells `env` is not std::env.
         root = tmp / "rust-local-env-module"
         build(root, {
