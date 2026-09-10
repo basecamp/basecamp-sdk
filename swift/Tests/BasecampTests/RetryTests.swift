@@ -295,6 +295,49 @@ final class RetryTests: XCTestCase {
         XCTAssertLessThan(elapsed, 5.0, "Retry-After header should override base delay")
     }
 
+    /// SPEC §6 "Retry-After Honouring": the header governs the wait at every
+    /// status in the declared retry set. A `statusCode == 429` gate left a 503
+    /// carrying `Retry-After: 1` on the backoff curve (#775) — here a 10s base,
+    /// so honouring the header is what keeps this under the 5s ceiling.
+    func testRetryAfterHonouredAt503() async throws {
+        let counter = Counter()
+        let transport = MockTransport { request in
+            let count = counter.increment()
+            if count == 1 {
+                let response = HTTPURLResponse(
+                    url: request.url!, statusCode: 503,
+                    httpVersion: "HTTP/1.1", headerFields: ["Retry-After": "1"]
+                )!
+                return (Data(), response)
+            } else {
+                let response = HTTPURLResponse(
+                    url: request.url!, statusCode: 200,
+                    httpVersion: "HTTP/1.1", headerFields: [:]
+                )!
+                return (Data("{}".utf8), response)
+            }
+        }
+
+        let client = makeTestClient(transport: transport, enableRetry: true)
+        let account = client.forAccount("999999999")
+
+        let start = CFAbsoluteTimeGetCurrent()
+        let (_, response) = try await account.httpClient.performRequest(
+            method: "GET",
+            url: "https://3.basecampapi.com/999999999/projects.json",
+            retryConfig: RetryConfig(
+                maxAttempts: 2, baseDelayMs: 10_000,
+                backoff: .constant, retryOn: [503]
+            )
+        )
+        let elapsed = CFAbsoluteTimeGetCurrent() - start
+
+        XCTAssertEqual(response.statusCode, 200)
+        XCTAssertEqual(counter.value, 2)
+        XCTAssertGreaterThanOrEqual(elapsed, 1.0, "Retry-After: 1 on a 503 must be waited")
+        XCTAssertLessThan(elapsed, 5.0, "Retry-After: 1 on a 503 must replace the 10s base delay")
+    }
+
     // MARK: - Network Error Triggers Retry
 
     func testNetworkErrorTriggersRetry() async throws {

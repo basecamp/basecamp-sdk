@@ -49,7 +49,7 @@ extension AccountClient {
     ///
     /// The first hop retries under the SPEC §14 policy — network errors plus
     /// {429, 502, 503, 504}, never 500 — with exponential backoff, honoring
-    /// `Retry-After` on 429, over a fixed three attempts when
+    /// `Retry-After` at every status in that set, over a fixed three attempts when
     /// ``BasecampConfig/enableRetry`` is true and exactly one when it is false.
     /// Every attempt is authenticated. The second hop is exempt: no retry, and
     /// no credentials on the signed URL.
