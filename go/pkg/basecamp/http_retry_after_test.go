@@ -23,8 +23,10 @@ func TestTransport_RequestResultCarriesRetryAfterAtEveryStatus(t *testing.T) {
 	client := NewClient(&Config{BaseURL: server.URL, CacheEnabled: false}, &StaticTokenProvider{Token: "test-token"})
 	client.hooks = hooks
 
-	if _, err := client.Get(context.Background(), "/missing.json"); err == nil {
-		t.Fatal("Get succeeded, want a 404 error")
+	// Driven through a generated operation, as a caller would, rather than
+	// the raw transport path.
+	if _, err := client.ForAccount("12345").Projects().Get(context.Background(), 999999999); err == nil {
+		t.Fatal("Projects.Get succeeded, want a 404 error")
 	}
 	if len(hooks.endCalls) != 1 {
 		t.Fatalf("OnRequestEnd fired %d times, want 1", len(hooks.endCalls))

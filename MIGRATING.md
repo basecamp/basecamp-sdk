@@ -44,7 +44,10 @@ Swift) or raising on the retry path (Python's `OverflowError`, Ruby's `RangeErro
 Kotlin's `BasecampException` gains a base-class `retryAfterSeconds`, populated on
 `Api` and `RateLimit`. `Api`'s six-argument constructor is unchanged; a second
 overload takes `retryAfterSeconds: Int?` as a required seventh parameter (name it
-from Kotlin). Not a break for Kotlin or Java callers.
+from Kotlin). Every existing call compiles unchanged, in Kotlin and Java. What
+does not: an untyped constructor reference — `::Api`, `BasecampException::Api` —
+which used to resolve to the sole public constructor and is now ambiguous between
+the two; give it an expected function type, or wrap the call in a lambda.
 
 ### Gauges: `UpdateGaugeNeedle` requires its payload, `GaugeNeedle` gains a required `comment_count`, and Go's `Gauge.PreviousNeedlePosition` is a pointer (#731)
 
