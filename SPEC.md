@@ -689,7 +689,7 @@ permits around any field value:
    `MAX_RETRY_AFTER_SECONDS` → return `MAX_RETRY_AFTER_SECONDS`. Otherwise → return it.
 3. → `undefined`: no server-directed delay. The caller falls through to the backoff formula.
 
-The same algorithm as a table, because the six SDKs each inherited a different answer from whatever
+The same algorithm as a table, because the seven SDKs each inherited a different answer from whatever
 standard-library parse they reached for, and the rows are where that showed:
 
 | `value` | Result | Why |
@@ -706,8 +706,8 @@ standard-library parse they reached for, and the rows are where that showed:
 | `2021-06-09T10:18:14Z`, `2099`, `Jan 1 2099` | `undefined` | not an HTTP-date. A permissive date parser is how a malformed header once bought a 73-year delay (#781) |
 
 **`MAX_RETRY_AFTER_SECONDS` is 2,147,483,647** (Appendix A), and it is a representability bound
-pinned once for all six SDKs rather than a policy cap: the largest value the narrowest integer any
-of the six carries a `retry_after` in can hold — Go's `int` on its 32-bit targets, Kotlin's `Int` —
+pinned once for all seven SDKs rather than a policy cap: the largest value the narrowest integer any
+of the seven carries a `retry_after` in can hold — Go's `int` on its 32-bit targets, Kotlin's `Int` —
 and the same number §16 already names as the shared token-lifetime ceiling. It replaces the two-tier
 rule an earlier revision stated here, under which a digit string wider than the parser's own integer
 type was *malformed* and one inside it *saturated*. That tier boundary was the parser's word size,
@@ -746,7 +746,7 @@ status set into the steps above.
 
 `[CONFLICT: the table is the contract; the SDKs converge on it in two steps. The status gate, the
 rounding rule and the added-jitter defect are converged; the ceiling row is implemented in Go
-(both parsers) and owed by the other five — each still refuses or raises above its own integer width —
+(both parsers) and in Rust, and owed by the other five — each still refuses or raises above its own integer width —
 and the sign row is owed by Ruby, Python, Kotlin and Swift. Per-parser inventory and call sites in
 #799 and #775.]`
 
@@ -955,7 +955,7 @@ cites, and is recorded as a conflict below.
 own ceilings (`RangeError` from `sleep`, `OverflowError` from `float`); TypeScript, Kotlin and Swift
 refuse above their integer width instead of saturating. All five owe the parser ceiling — the exact
 sites are in the Parsing Algorithm's conflict note. Go implements it in both parsers as of #796 and
-the template change that closed #798.]`
+the template change that closed #798; Rust shipped with it (#859).]`
 
 **The exemption is conditioned on the escape, not on a number.** There is deliberately no policy cap;
 in its place, **an honoured `Retry-After` delay MUST be awaited through the platform's cancellation
@@ -4095,7 +4095,7 @@ consumption) are recorded in Appendix F with their compensating tier-3 tests.
 
 All magic numbers in one place, derived from shipping SDK code (not `rubric-audit.json`).
 
-Only `API_VERSION` is gated (`<!-- @api-version -->`, checked by `make doc-constants-check`). The other 15 pre-§23 rows are hand-maintained: 13 were read against their cited sources on 2026-08-03 — all 13 matched — `MAX_BACKOFF_DELAY` joined with #592 under that PR's own six-SDK verification (the sentence previously said 13 rows while the table carried 14), and `MAX_RETRY_AFTER_SECONDS` joined with the Retry-After convergence, verified in Go's two parsers and owed by the other five (§6). The `EVENT_FEED_*` block below them is different in kind and marked so: those rows are contract-first — their source is §23's normative text, connector code ships in later PRs, and the two server-owned values are provisional until bc3's merge-time gate; when the connector lands, they join the read-against-source discipline. They are not gated because each is asserted of several SDKs at once in a different spelling per language (Go `1 * time.Second`, Python `1.0`, Ruby `1.0`, Kotlin `30.seconds`, Swift `1_000`), so a checker would need a per-row, per-language extraction rule rather than the one-value-one-source substitution the marker convention is built on. The name in the table is the concept, not a symbol to grep: `MAX_ERROR_MESSAGE_LENGTH` is `MaxErrorMessageBytes` in Go and `MAX_ERROR_MESSAGE_BYTES` in Ruby, and `TOKEN_REFRESH_BUFFER` is the literal `300` in `creds.ExpiresAt-300` (`go/pkg/basecamp/auth.go`) rather than a named constant at all. If one of these starts moving, gate that row rather than the appendix.
+Only `API_VERSION` is gated (`<!-- @api-version -->`, checked by `make doc-constants-check`). The other 15 pre-§23 rows are hand-maintained: 13 were read against their cited sources on 2026-08-03 — all 13 matched — `MAX_BACKOFF_DELAY` joined with #592 under that PR's own six-SDK verification (the sentence previously said 13 rows while the table carried 14), and `MAX_RETRY_AFTER_SECONDS` joined with the Retry-After convergence, verified in Go's two parsers and Rust's and owed by the other five (§6). The `EVENT_FEED_*` block below them is different in kind and marked so: those rows are contract-first — their source is §23's normative text, connector code ships in later PRs, and the two server-owned values are provisional until bc3's merge-time gate; when the connector lands, they join the read-against-source discipline. They are not gated because each is asserted of several SDKs at once in a different spelling per language (Go `1 * time.Second`, Python `1.0`, Ruby `1.0`, Kotlin `30.seconds`, Swift `1_000`), so a checker would need a per-row, per-language extraction rule rather than the one-value-one-source substitution the marker convention is built on. The name in the table is the concept, not a symbol to grep: `MAX_ERROR_MESSAGE_LENGTH` is `MaxErrorMessageBytes` in Go and `MAX_ERROR_MESSAGE_BYTES` in Ruby, and `TOKEN_REFRESH_BUFFER` is the literal `300` in `creds.ExpiresAt-300` (`go/pkg/basecamp/auth.go`) rather than a named constant at all. If one of these starts moving, gate that row rather than the appendix.
 
 | Constant | Value | Unit | Source |
 |----------|-------|------|--------|
