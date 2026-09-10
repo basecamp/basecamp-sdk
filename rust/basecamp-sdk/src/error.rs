@@ -84,8 +84,8 @@ impl fmt::Display for ErrorCode {
 
 /// The error every SDK call can answer with: SPEC §6's record, read through accessors.
 ///
-/// It is one pointer wide — the record lives behind a box — so a `Result<T, Error>` costs a
-/// caller nothing on the success path.
+/// It is three pointers wide — the record lives behind a box, beside an optional boxed
+/// cause — so a `Result<T, Error>` stays small on the success path.
 #[derive(thiserror::Error)]
 #[error("{}", self.render())]
 pub struct Error {

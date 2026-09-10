@@ -1,6 +1,7 @@
 //! Generates the Rust Basecamp SDK's types, routes, metadata, services and accessors.
 //!
-//! Reads `openapi.json` and `behavior-model.json` from the repository root and writes
+//! Reads `openapi.json` and `behavior-model.json` from the repository root (`--root`, or
+//! `--openapi`/`--behavior`/`--names` for each input) and writes
 //! `rust/basecamp-sdk/src/generated/`. With `--check` it writes nothing and exits non-zero
 //! when the checked-in files differ from what it would generate; with `--output <dir>` it
 //! writes somewhere other than the checked-in tree, which is how the drift script diffs.
@@ -31,23 +32,31 @@ fn run() -> Result<(), String> {
     let mut check = false;
     let mut root = default_root();
     let mut output = None;
+    let mut openapi_path = None;
+    let mut behavior_path = None;
+    let mut names_path = None;
     let mut arguments = env::args().skip(1);
     while let Some(argument) = arguments.next() {
+        let mut path = |flag: &str| -> Result<PathBuf, String> {
+            arguments
+                .next()
+                .map(PathBuf::from)
+                .ok_or_else(|| format!("{flag} needs a path"))
+        };
         match argument.as_str() {
             "--check" => check = true,
-            "--root" => root = PathBuf::from(arguments.next().ok_or("--root needs a path")?),
-            "--output" => {
-                output = Some(PathBuf::from(
-                    arguments.next().ok_or("--output needs a path")?,
-                ));
-            }
+            "--root" => root = path("--root")?,
+            "--output" => output = Some(path("--output")?),
+            "--openapi" => openapi_path = Some(path("--openapi")?),
+            "--behavior" => behavior_path = Some(path("--behavior")?),
+            "--names" => names_path = Some(path("--names")?),
             other => return Err(format!("unknown argument {other}")),
         }
     }
 
-    let openapi = read_json(&root.join("openapi.json"))?;
-    let behavior = read_json(&root.join("behavior-model.json"))?;
-    let names = read(&root.join("rust/generator/names.toml"))?;
+    let openapi = read_json(&openapi_path.unwrap_or_else(|| root.join("openapi.json")))?;
+    let behavior = read_json(&behavior_path.unwrap_or_else(|| root.join("behavior-model.json")))?;
+    let names = read(&names_path.unwrap_or_else(|| root.join("rust/generator/names.toml")))?;
     let naming = Naming::parse(&names)?;
     let model = Model::build(&openapi, &behavior, &naming)?;
     let files = render(&model);

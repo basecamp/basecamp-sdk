@@ -66,3 +66,7 @@ workspace = true
 [[example]]
 name = "custom_http_client"
 required-features = ["reqwest"]
+
+[[example]]
+name = "device_login"
+required-features = ["reqwest", "oauth"]
