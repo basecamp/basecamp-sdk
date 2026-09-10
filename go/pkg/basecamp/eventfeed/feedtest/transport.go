@@ -160,6 +160,7 @@ type Conn struct {
 	pending       [][]byte
 	finalErr      error // after pending drains: peer close or scripted read failure
 	violation     error // latched max-frame-bytes rejection
+	dead          error // the read outcome that killed the connection, once surfaced
 
 	writes      [][]byte
 	writeErr    error
@@ -261,10 +262,12 @@ func (c *Conn) ReadFrame(ctx context.Context) ([]byte, error) {
 				// against a classification the real transport defeats.
 				c.violation = fmt.Errorf("feedtest: inbound frame of %d bytes exceeds max frame bytes %d: %w",
 					len(frame), c.maxFrameBytes, eventfeed.ErrFrameOversize)
+				c.dead = c.violation
 				return nil, c.violation
 			}
 			return frame, nil
 		case c.finalErr != nil:
+			c.dead = c.finalErr
 			return nil, c.finalErr
 		default:
 			c.cond.Wait()
@@ -273,8 +276,12 @@ func (c *Conn) ReadFrame(ctx context.Context) ([]byte, error) {
 }
 
 // WriteFrame implements eventfeed.CableConn: it records the frame verbatim.
-// A done context, a local Close, and a scripted write failure each fail the
-// write instead; a scripted stall blocks until one of the first two happens.
+// A done context, a local Close, a read outcome that already killed the
+// connection (a surfaced peer close, read failure or oversize violation — a
+// real WebSocket is dead after any of them, so a write the connector orders
+// afterwards must fail the way production's would rather than be recorded
+// as sent), and a scripted write failure each fail the write instead; a
+// scripted stall blocks until one of the first two happens.
 func (c *Conn) WriteFrame(ctx context.Context, data []byte) error {
 	if err := ctx.Err(); err != nil {
 		return err
@@ -295,6 +302,9 @@ func (c *Conn) WriteFrame(ctx context.Context, data []byte) error {
 	}
 	if c.closed {
 		return errConnClosed
+	}
+	if c.dead != nil {
+		return c.dead
 	}
 	if c.writeErr != nil {
 		return c.writeErr

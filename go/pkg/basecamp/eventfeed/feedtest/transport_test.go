@@ -139,6 +139,53 @@ func TestConn_OversizeFrameMatchesSentinelAndLatches(t *testing.T) {
 	}
 }
 
+// TestConn_WritesFailOnceAReadHasKilledTheConnection: after ReadFrame has
+// surfaced a peer close or a latched oversize violation, WriteFrame fails
+// with that same outcome instead of recording the frame — a real WebSocket
+// is dead after either, and a fake that kept accepting writes would let a
+// connector test pass a subscribe ordered after the death that production
+// routes through socket-failure recovery. The latch is on the SURFACED
+// outcome: a scripted tail behind queued frames does not fail writes until a
+// read has reached it.
+func TestConn_WritesFailOnceAReadHasKilledTheConnection(t *testing.T) {
+	tr := NewTransport()
+	conn, _ := tr.Dial(context.Background(), "wss://a/cable", 1<<20)
+	c := tr.LastConn()
+	c.Serve([]byte(`{"type":"welcome"}`))
+	c.ServeClose(1006, "abnormal closure")
+
+	if err := conn.WriteFrame(context.Background(), []byte(`before`)); err != nil {
+		t.Fatalf("write before the tail is read = %v, want nil", err)
+	}
+	if _, err := conn.ReadFrame(context.Background()); err != nil {
+		t.Fatalf("frame 1 = %v", err)
+	}
+	if err := conn.WriteFrame(context.Background(), []byte(`between`)); err != nil {
+		t.Fatalf("write with the tail still unread = %v, want nil", err)
+	}
+	_, readErr := conn.ReadFrame(context.Background())
+	var ce *eventfeed.CloseError
+	if !errors.As(readErr, &ce) {
+		t.Fatalf("read past tail = %v, want *eventfeed.CloseError", readErr)
+	}
+	if err := conn.WriteFrame(context.Background(), []byte(`after`)); !errors.Is(err, readErr) {
+		t.Fatalf("write after the surfaced close = %v, want the close itself", err)
+	}
+	if got := c.Writes(); len(got) != 2 || string(got[0]) != "before" || string(got[1]) != "between" {
+		t.Fatalf("writes = %q, want only the two before the death", got)
+	}
+
+	// The oversize violation latches writes the same way.
+	conn2, _ := tr.Dial(context.Background(), "wss://a/cable", 8)
+	tr.LastConn().Serve([]byte(`{"type":"welcome"}`))
+	if _, err := conn2.ReadFrame(context.Background()); !errors.Is(err, eventfeed.ErrFrameOversize) {
+		t.Fatalf("oversize read = %v", err)
+	}
+	if err := conn2.WriteFrame(context.Background(), []byte(`x`)); !errors.Is(err, eventfeed.ErrFrameOversize) {
+		t.Fatalf("write after the violation = %v, want the sentinel", err)
+	}
+}
+
 func TestConn_WritesRecordedVerbatimAndCopied(t *testing.T) {
 	tr := NewTransport()
 	conn, _ := tr.Dial(context.Background(), "wss://a/cable", 1<<20)
