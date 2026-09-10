@@ -196,13 +196,18 @@ package final class HTTPClient: Sendable {
     /// with no complete origin renders as the fixed token, never as any of
     /// its own text.
     private static func stripQueryAndFragment(_ url: String) -> String {
-        guard let components = URLComponents(string: url),
-              let scheme = components.scheme,
+        guard var components = URLComponents(string: url),
+              components.scheme != nil,
               let host = components.host, !host.isEmpty
         else { return "unparsable" }
-        let renderedHost = host.contains(":") && !host.hasPrefix("[") ? "[\(host)]" : host
-        let port = components.port.map { ":\($0)" } ?? ""
-        return "\(scheme)://\(renderedHost)\(port)\(components.percentEncodedPath)"
+        // Cleared on the components rather than re-interpolated, so a host or
+        // path with a percent-encoded delimiter keeps its encoding instead of
+        // being reparsed as a query, fragment or userinfo boundary.
+        components.user = nil
+        components.password = nil
+        components.query = nil
+        components.fragment = nil
+        return components.string ?? "unparsable"
     }
 
     /// Converts a backoff interval to nanoseconds without trapping.
@@ -448,7 +453,15 @@ package final class HTTPClient: Sendable {
         request.setValue(config.userAgent, forHTTPHeaderField: "User-Agent")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
 
-        let (data, response) = try await transport.data(for: request)
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await transport.data(for: request)
+        } catch {
+            // A follow-up page's URL carries the server's query; the failure
+            // propagates as the caller has always seen it, projected (SPEC §9).
+            throw Self.projectedTransportError(error)
+        }
 
         guard let httpResponse = response as? HTTPURLResponse else {
             // Neither of these two helpers retries, so the guard can surface

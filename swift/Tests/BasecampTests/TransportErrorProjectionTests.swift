@@ -84,6 +84,30 @@ final class TransportErrorProjectionTests: XCTestCase {
         }
     }
 
+    // A follow-up page's transport failure propagates unwrapped, projected.
+    func testPaginationTransportFailureRendersNoSignedQuery() async throws {
+        let client = BasecampClient(
+            auth: BearerAuth(tokenProvider: StaticTokenProvider("token")),
+            userAgent: "test/1.0",
+            config: BasecampConfig(baseURL: "http://127.0.0.1:1", enableRetry: false)
+        )
+        do {
+            _ = try await client.httpClient.fetchPage(url: Self.signedURL)
+            XCTFail("expected the dial to a closed port to fail")
+        } catch {
+            let urlError = try XCTUnwrap(error as? URLError, "the failure keeps its type")
+            XCTAssertEqual(urlError.failingURL?.absoluteString, "http://127.0.0.1:1/blob")
+            Self.assertNoSecret(error, "fetchPage error")
+        }
+    }
+
+    // A percent-encoded delimiter in the host stays encoded, never reparsed.
+    func testProjectionKeepsEncodedHostBoundaries() throws {
+        let raw = URLError(.timedOut, userInfo: [NSURLErrorFailingURLStringErrorKey: "https://foo%3Fbar/path?secret=SECRETVALUE"])
+        let projected = try XCTUnwrap(HTTPClient.projectedTransportError(raw) as? URLError)
+        XCTAssertEqual(projected.failingURL?.absoluteString, "https://foo%3Fbar/path")
+    }
+
     // A Transport that speaks .network (#567) wraps its own URLSession error;
     // the projection reaches through it and keeps the transport's message.
     func testTransportSpokenNetworkErrorIsProjectedThroughItsCause() throws {
