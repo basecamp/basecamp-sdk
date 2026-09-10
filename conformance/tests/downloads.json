@@ -119,6 +119,69 @@
     "tags": ["download", "retry", "429", "retry-after"]
   },
   {
+    "name": "DownloadURL honors Retry-After on 502 at the auth'd first hop",
+    "description": "SPEC §14 \"Hop-1 Retry\" declares {429, 502, 503, 504} and honours Retry-After at every status in that set, not at 429 alone (SPEC §6 \"Retry-After Honouring\": honouring is derived from retry eligibility, so a loop that declares its own set inherits the rule over that set). Until this case existed five of six download loops honoured the header on 429 only, so a 502 carrying `Retry-After: 2` backed off ~1s instead. The 2000ms floor sits above the longest first backoff (1000ms base + 100ms jitter), which the 429 sibling's 1000ms floor does not — that one cannot tell the header from the curve. Retry succeeds with 302 → 200 body.",
+    "operation": "DownloadURL",
+    "method": "GET",
+    "path": "/999999999/blobs/abcd1234/download/logo.png",
+    "mockResponses": [
+      {"status": 502, "headers": {"Retry-After": "2"}},
+      {"status": 302, "headers": {"Location": "/signed/logo.png"}},
+      {"status": 200, "headers": {"Content-Type": "image/png"}, "body": "pixels"}
+    ],
+    "assertions": [
+      {"type": "requestCount", "expected": 3},
+      {"type": "delayBetweenRequests", "min": 2000, "index": 0},
+      {"type": "noError"},
+      {"type": "headerPresent", "path": "Authorization", "index": 0},
+      {"type": "headerAbsent", "path": "Authorization", "index": -1},
+      {"type": "requestPath", "expected": "/signed/logo.png", "index": -1}
+    ],
+    "tags": ["download", "retry", "502", "retry-after", "retry-after-honoured"]
+  },
+  {
+    "name": "DownloadURL honors Retry-After on 503 at the auth'd first hop",
+    "description": "SPEC §14 \"Hop-1 Retry\" declares {429, 502, 503, 504} and honours Retry-After at every status in that set, not at 429 alone (SPEC §6 \"Retry-After Honouring\": honouring is derived from retry eligibility, so a loop that declares its own set inherits the rule over that set). Until this case existed five of six download loops honoured the header on 429 only, so a 503 carrying `Retry-After: 2` backed off ~1s instead. The 2000ms floor sits above the longest first backoff (1000ms base + 100ms jitter), which the 429 sibling's 1000ms floor does not — that one cannot tell the header from the curve. Retry succeeds with 302 → 200 body.",
+    "operation": "DownloadURL",
+    "method": "GET",
+    "path": "/999999999/blobs/abcd1234/download/logo.png",
+    "mockResponses": [
+      {"status": 503, "headers": {"Retry-After": "2"}},
+      {"status": 302, "headers": {"Location": "/signed/logo.png"}},
+      {"status": 200, "headers": {"Content-Type": "image/png"}, "body": "pixels"}
+    ],
+    "assertions": [
+      {"type": "requestCount", "expected": 3},
+      {"type": "delayBetweenRequests", "min": 2000, "index": 0},
+      {"type": "noError"},
+      {"type": "headerPresent", "path": "Authorization", "index": 0},
+      {"type": "headerAbsent", "path": "Authorization", "index": -1},
+      {"type": "requestPath", "expected": "/signed/logo.png", "index": -1}
+    ],
+    "tags": ["download", "retry", "503", "retry-after", "retry-after-honoured"]
+  },
+  {
+    "name": "DownloadURL honors Retry-After on 504 at the auth'd first hop",
+    "description": "SPEC §14 \"Hop-1 Retry\" declares {429, 502, 503, 504} and honours Retry-After at every status in that set, not at 429 alone (SPEC §6 \"Retry-After Honouring\": honouring is derived from retry eligibility, so a loop that declares its own set inherits the rule over that set). Until this case existed five of six download loops honoured the header on 429 only, so a 504 carrying `Retry-After: 2` backed off ~1s instead. The 2000ms floor sits above the longest first backoff (1000ms base + 100ms jitter), which the 429 sibling's 1000ms floor does not — that one cannot tell the header from the curve. Retry succeeds with 302 → 200 body.",
+    "operation": "DownloadURL",
+    "method": "GET",
+    "path": "/999999999/blobs/abcd1234/download/logo.png",
+    "mockResponses": [
+      {"status": 504, "headers": {"Retry-After": "2"}},
+      {"status": 302, "headers": {"Location": "/signed/logo.png"}},
+      {"status": 200, "headers": {"Content-Type": "image/png"}, "body": "pixels"}
+    ],
+    "assertions": [
+      {"type": "requestCount", "expected": 3},
+      {"type": "delayBetweenRequests", "min": 2000, "index": 0},
+      {"type": "noError"},
+      {"type": "headerPresent", "path": "Authorization", "index": 0},
+      {"type": "headerAbsent", "path": "Authorization", "index": -1},
+      {"type": "requestPath", "expected": "/signed/logo.png", "index": -1}
+    ],
+    "tags": ["download", "retry", "504", "retry-after", "retry-after-honoured"]
+  },
+  {
     "name": "DownloadURL surfaces redirect with no Location",
     "description": "A 3xx response without a Location header is a protocol error, not a retryable failure. SDK surfaces an error after one request.",
     "operation": "DownloadURL",

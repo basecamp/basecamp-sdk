@@ -490,8 +490,10 @@ private fun runTest(tc: TestCase): TestResult {
 
             val responseHeaders = HeadersBuilder().apply {
                 append(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                // Resolved at serve time: a `{{httpdate+Ns}}` value is relative
+                // to NOW, not to when the fixture was loaded.
                 for ((key, value) in mockResp.headers) {
-                    append(key, value)
+                    append(key, resolveHeaderValue(value, System.currentTimeMillis()))
                 }
             }
 

@@ -30,6 +30,7 @@ import {
   writeExecutionManifest,
 } from "./case-census.js";
 import { checkDelayGaps } from "./delay-gaps.js";
+import { resolveHeaderValue } from "./header-tokens.js";
 import { errorRaisedFailure } from "./error-raised.js";
 import { checkRequestCount, requestCountApplies } from "./request-count.js";
 
@@ -1272,8 +1273,10 @@ function installMockHandlers(tc: TestCase): {
       "Content-Type": "application/json",
     };
     if (mock.headers) {
+      // Resolved at serve time: a `{{httpdate+Ns}}` value is relative to NOW,
+      // not to when the fixture was loaded.
       for (const [k, v] of Object.entries(mock.headers)) {
-        headers[k] = v;
+        headers[k] = resolveHeaderValue(v, Date.now());
       }
     }
 

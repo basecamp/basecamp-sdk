@@ -7,10 +7,12 @@ them against the SDK using respx for HTTP stubbing.
 from __future__ import annotations
 
 import json
+import math
 import os
 import re
 import sys
 import time
+from email.utils import formatdate
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -459,6 +461,36 @@ def _summarize_upcoming(envelope: dict) -> dict:
         summary["assignable_parent_title"] = assignables[0]["parent"]["title"]
         summary["assignable_completion_url"] = assignables[0]["completion_url"]
     return summary
+
+
+_HEADER_TOKEN = re.compile(r"^\{\{(.*)\}\}$")
+_HTTPDATE_TOKEN = re.compile(r"^httpdate\+([0-9]+)s$")
+
+
+def resolve_header_value(value: str, now: float) -> str:
+    """Substitute the one token a fixture header value may carry, `{{httpdate+Ns}}`.
+
+    Resolved at the moment the response is served (SPEC section 19,
+    conformance/schema.json) to the IMF-fixdate of floor(now) + N + 1 seconds:
+    the first whole second strictly more than N seconds after the second the
+    response is served in. A compliant SPEC section 6 parser sees a remainder in
+    (N - latency, N + 1] and, rounding up, computes at least N whole seconds, so
+    the fixture pairs it with a `delayBetweenRequests` floor of N * 1000 ms. It
+    exists because a static fixture has no clock: a literal past date pins only
+    the fall-through, and a far-future one is differently behaved per host.
+
+    An unrecognised `{{...}}` is an error rather than a literal: a typo'd token
+    served verbatim would be an unparseable header, which the SDK answers with
+    its ordinary backoff -- the exact outcome the case exists to distinguish from.
+    Every other value passes through untouched.
+    """
+    token = _HEADER_TOKEN.match(value)
+    if token is None:
+        return value
+    inner = _HTTPDATE_TOKEN.match(token.group(1))
+    if inner is None:
+        raise ValueError(f"unrecognised header token {value!r}: only {{{{httpdate+Ns}}}} is defined (conformance/schema.json)")
+    return formatdate(math.floor(now) + int(inner.group(1)) + 1, usegmt=True)
 
 
 def _normalize_body(body: Any, status: int | None) -> Any:
@@ -1170,7 +1202,9 @@ class TestRunner:
                     raise httpx.ConnectError("simulated network error")
                 body = json.dumps(_normalize_body(r["body"], r.get("status"))).encode() if r.get("body") is not None else b""
                 headers = {"Content-Type": "application/json"}
-                headers.update(r.get("headers", {}))
+                # Resolved at serve time: a `{{httpdate+Ns}}` value is
+                # relative to NOW, not to when the fixture was loaded.
+                headers.update({k: resolve_header_value(v, time.time()) for k, v in r.get("headers", {}).items()})
                 return httpx.Response(r["status"], content=body, headers=headers)
             elif paginates:
                 return httpx.Response(200, content=b"[]", headers={"Content-Type": "application/json"})

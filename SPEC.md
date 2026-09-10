@@ -528,7 +528,7 @@ RECORD BasecampError extends Error
   hint        : String?       -- optional user-friendly resolution guidance
   http_status : Integer?      -- HTTP status code that caused the error
   retryable   : Boolean       -- whether the operation can be retried
-  retry_after : Integer?      -- seconds to wait before retrying (from Retry-After header)
+  retry_after : Integer?      -- seconds to wait before retrying (from Retry-After header, at any status)
   request_id          : String?       -- X-Request-Id from response headers
   field_errors        : Map<String, String[]>? -- structured 400/422 field messages
   confirmation_people : TemplateLibraryConfirmationPerson[]? -- people requiring template-copy access confirmation
@@ -536,7 +536,7 @@ RECORD BasecampError extends Error
 END
 ```
 
-**Go divergence:** Go exposes a `Cause` field (the underlying error) not present in this canonical RECORD — a language-specific extension. `retry_after` is no longer a divergence: Go's `Error` carries it, populated at both 429 construction sites, and the raw GET retry loop sleeps it in place of the backoff curve. `RequestResult.retry_after` is unchanged and remains the hook-facing copy rather than the only one.
+**Go divergence:** Go exposes a `Cause` field (the underlying error) not present in this canonical RECORD — a language-specific extension. `retry_after` is no longer a divergence: Go's `Error` carries it, populated at every status the header parses at, and the raw GET retry loop sleeps it in place of the backoff curve. `RequestResult.retry_after` is unchanged and remains the hook-facing copy rather than the only one.
 
 ### Error Code Table
 
@@ -579,6 +579,14 @@ Given an HTTP response with status code `status` and body `body`:
 Step 11 must precede the 5xx catch-all. A 507 is a *server* status carrying a *client* fact: the account is out of storage, or at its webhook ceiling. Retrying cannot satisfy it, so classifying it by its 5xx range alone would report a plan limit as a transient server error — indistinguishable, to a caller deciding whether to back off, from a 500. Ordering is what makes the distinction, since both steps match.
 
 In all cases, extract `request_id` from `X-Request-Id` response header if present. `[conformance]`
+
+In all cases, `retry_after` is `parseRetryAfter(headers)` — populated at **every** status the header
+parses at, not only in step 4. One parse feeds both the retry loop's sleep and the error's field, so
+an exhausted 503 that was slept on for the value the origin named surfaces that value to the caller,
+and so does the error §7 step 3i hands to `on_retry`. Step 4 spells it out only because 429 is where
+the `hint` is derived from it. `[CONFLICT: Go, TypeScript, Ruby and Python populate it at every
+status; Kotlin's `Api` and Swift's `.api` carry no slot for it yet — adding one is a source-breaking
+change to Swift's enum, tracked in #775.]`
 
 ### Statusless `api_error` for a malformed 2xx body `[manual]`
 
@@ -668,23 +676,79 @@ The typed list is available only when every person entry satisfies that shape.
 A different or malformed `people` member remains a canonical validation error,
 so unrelated validation bodies retain the shared error taxonomy.
 
-### Retry-After Parsing Algorithm
+### Retry-After Parsing Algorithm `[conformance]`
 
-Given header value `value`:
+Given header value `value`, after the transport has stripped the optional whitespace RFC 9110
+permits around any field value:
 
-1. Attempt parse as integer. If valid and > 0 → return as seconds.
-2. Attempt parse as HTTP-date (RFC 7231, e.g., `Wed, 09 Jun 2021 10:18:14 GMT`). If valid → compute `max(0, date - now())` in seconds, **rounding a sub-second remainder up**; if > 0 → return.
-3. → `undefined` (fall through to backoff formula).
+1. If `value` is RFC 9110's `delay-seconds` — `1*DIGIT`, nothing else — read it as a whole number of
+   seconds. If that is `0` → step 3. If it exceeds `MAX_RETRY_AFTER_SECONDS` → return
+   `MAX_RETRY_AFTER_SECONDS`. Otherwise → return it.
+2. If `value` is an HTTP-date (RFC 7231 §7.1.1.1) → compute `date - now()` in seconds, **rounding a
+   sub-second remainder up**. If that is not positive → step 3. If it exceeds
+   `MAX_RETRY_AFTER_SECONDS` → return `MAX_RETRY_AFTER_SECONDS`. Otherwise → return it.
+3. → `undefined`: no server-directed delay. The caller falls through to the backoff formula.
 
-Step 2's rounding is up, not truncating, for two reasons: a positive remainder must never round to
+The same algorithm as a table, because the six SDKs each inherited a different answer from whatever
+standard-library parse they reached for, and the rows are where that showed:
+
+| `value` | Result | Why |
+|---|---|---|
+| absent, or empty | `undefined` | nothing was said |
+| `120` | 120 | step 1 |
+| `0` | `undefined` | a zero wait is not an instruction to retry at once; it is no instruction, and the backoff curve applies |
+| `-5`, `+5`, `1.5`, `120junk` | `undefined` | not `1*DIGIT`. A sign, a fraction, a trailing character — any of them makes the whole value malformed. Parsers that delegate to a stdlib integer parse tend to accept `+5` as 5; the grammar does not |
+| `2147483648`, `99999999999999999999` | `2147483647` | step 1 saturates. The value is over-range, not malformed: `1*DIGIT` has no upper bound, so no digit string is refused for its length, and a parse that reads it as "no delay" would replace a request for a very long wait with the millisecond backoff curve |
+| `Wed, 09 Jun 2021 10:18:14 GMT` (past) | `undefined` | step 2, non-positive |
+| IMF-fixdate 2.4 s ahead | 3 | step 2, rounded up |
+| IMF-fixdate centuries ahead | `2147483647` | step 2 saturates, the same ceiling |
+| `Sunday, 06-Nov-94 08:49:37 GMT` (RFC 850), `Sun Nov  6 08:49:37 1994` (asctime) | MAY parse as step 2; otherwise `undefined` | see "Date forms" |
+| `2021-06-09T10:18:14Z`, `2099`, `Jan 1 2099` | `undefined` | not an HTTP-date. A permissive date parser is how a malformed header once bought a 73-year delay (#781) |
+
+**`MAX_RETRY_AFTER_SECONDS` is 2,147,483,647** (Appendix A), and it is a representability bound
+pinned once for all six SDKs rather than a policy cap: the largest value the narrowest integer any
+of the six carries a `retry_after` in can hold — Go's `int` on its 32-bit targets, Kotlin's `Int` —
+and the same number §16 already names as the shared token-lifetime ceiling. It replaces the two-tier
+rule an earlier revision stated here, under which a digit string wider than the parser's own integer
+type was *malformed* and one inside it *saturated*. That tier boundary was the parser's word size,
+which is exactly the kind of inherited-not-chosen answer this table exists to remove: the same header
+was honoured on a 64-bit build and dropped on a 32-bit one. One ceiling, compared against the digit
+string before any conversion can overflow, gives every host the same answer. Saturation sits **in the
+parser**, so the error's `retry_after` reads the saturated value; that is the one deliberate exception
+to the "never in the parser" rule in the next section, and it is accepted because a value beyond the
+ceiling is one the SDK could not have reported faithfully in that field anyway.
+
+**Rounding** (step 2) is up, not truncating, for two reasons: a positive remainder must never round to
 zero, because zero is read as "no usable value" and drops the request onto the local backoff curve —
 the opposite of what the header said; and rounding down retries up to a second *before* the moment
-the server named, which is the one thing a date is unambiguous about. TypeScript, Kotlin, Swift and
-Go round up. Python and Ruby still truncate, tracked in #799.
+the server named, which is the one thing a date is unambiguous about. The difference is exactly one
+second wide, so a test that asserts the parsed value against a literal is flaky by construction — the
+room before the answer drops by one is `1 - frac(now)`; pin it one-sidedly (the parsed delay is never
+shorter than the time actually remaining) or against a frozen clock.
+
+**Date forms.** RFC 7231 §7.1.1.1 obliges a sender to emit IMF-fixdate (`Sun, 06 Nov 1994 08:49:37
+GMT`) and a recipient to also accept the obsolete RFC 850 and asctime forms. This contract requires the
+first and permits the other two: **an SDK MUST accept IMF-fixdate, MAY accept RFC 850 and asctime, and
+MUST NOT accept a shape that is not an HTTP-date at all.** The obsolete forms are permitted rather than
+required because no conformant origin can send them, BC5 does not, and requiring them costs the SDKs
+whose standard library lacks them a hand-rolled two-digit-year pivot for a header they will never see —
+whereas the cost of not accepting one is a ~1 s local backoff in place of the server's interval, which
+nothing hangs on. The last clause is the load-bearing one: it is the shape gate that keeps an ISO-8601
+timestamp or a bare year from being read as a date. An SDK whose stdlib parser takes the obsolete forms
+keeps them; an SDK whose parser takes a wider family of HTTP-date-shaped variants (Kotlin's ktor list)
+is inside the MAY, because every member is an HTTP-date shape. What this rules out is the accidental
+state that preceded it — two permissive by inheritance, four strict by inheritance, and the contract
+silent on which.
 
 This algorithm defines **parsing** only — how a header value becomes a number of seconds. Which
 statuses honour the result, and what bounds the sleep it buys, is the next section; do not read a
 status set into the steps above.
+
+`[CONFLICT: the table is the contract; the SDKs converge on it in two steps. The status gate, the
+rounding rule and the added-jitter defect are converged; the ceiling row is implemented in Go
+(both parsers) and owed by the other five — each still refuses or raises above its own integer width —
+and the sign row is owed by Ruby, Python, Kotlin and Swift. Per-parser inventory and call sites in
+#799 and #775.]`
 
 ### Retry-After Honouring `[CONFLICT]`
 
@@ -800,22 +864,22 @@ jitter term is part of the locally computed formula, where it exists to decorrel
 the same delay independently; a delay the origin named is already the origin's choice, so adding to
 it makes the client wait longer than it was told for no benefit. An implementation MAY have a **host
 limit** — a timer that cannot schedule the value, a conversion that would trap or wrap — and where a
-parsed value meets one it MUST bound the value there: saturate, per the second representability tier
-below, never let the conversion trap or wrap, and never fall back to the local backoff. A bound of
+parsed value meets one it MUST bound the value there: saturate, never let the conversion trap or
+wrap, and never fall back to the local backoff. A bound of
 that kind belongs at the sleep, so wherever the error carries `retry_after` the caller reads what the
 server said, never the clamped copy. TypeScript's `Math.min(seconds × 1000,
 MAX_TIMEOUT_MS)`, applied in both of its retry loops as the delay is computed, is the worked example:
 the parser's result stays the public `retryAfter`, and only what reaches the timer is clamped.
 
-That is a guarantee about the field's *integrity*, not its *presence*. The Status Mapping Algorithm
-above populates `retry_after` in its 429 arm only, so today an exhausted 503 that was slept on for
-the value the origin named surfaces no `retry_after` to the caller, and neither does the error §7 step
-3i hands to `on_retry`. Whether the mapping grows the field at every status a declared retry set
-carries is part of the status convergence in #775, not decided here — for the SDKs whose delay loop
-reads the value off the constructed error, it is the same change as the status gate, because one
-parse feeds both.
+That is a guarantee about the field's *integrity*, and the Status Mapping Algorithm above now settles
+its *presence* too: `retry_after` is populated at every status the header parses at, so an exhausted
+503 that was slept on for the value the origin named surfaces that value, and so does the error §7
+step 3i hands to `on_retry`. For the SDKs whose delay loop reads the value off the constructed error
+it is literally the same change as the status gate, because one parse feeds both. The one exception
+to integrity is the ceiling: a value above `MAX_RETRY_AFTER_SECONDS` saturates in the parser, so the
+field reads the ceiling rather than the origin's number (Parsing Algorithm above).
 
-Read that paragraph narrowly: it says what may not be done *to* the value — not capped, not summed
+Read the paragraph before last narrowly: it says what may not be done *to* the value — not capped, not summed
 with a jitter term. It does not say what the value is combined *with*, which is the next paragraph's
 subject and is not the same question. `max(interval, retryAfter)` neither caps the value nor adds to
 it.
@@ -866,74 +930,32 @@ was going to be retried anyway; only the composition differs, which is the whole
 
 The five rows do not conflict with each other — they are five loops, not five answers to one
 question — and this paragraph converges nothing: each section keeps the behaviour it already has, and
-what changes is that it now states it on purpose rather than by omission. One *implementation*
-divergence sits on this axis and is already recorded below: the generated Go client sleeps
-`retryDelay + rand(0, 100ms)` on the §7 row, which is the added jitter the paragraph above forbids,
-and it is tracked with the rest in #775.
+what changes is that it now states it on purpose rather than by omission. The one *implementation*
+divergence that sat on this axis — the generated Go client sleeping `retryDelay + rand(0, 100ms)` on
+the §7 row — is closed: `go/templates/client.tmpl` now waits a server-directed delay exactly and adds
+its jitter to the local curve alone.
 
-**Representability is not a policy cap, and it is exempt from the "never in the parser" rule.** A
+**Representability is not a policy cap, and its one bound is fixed by the Parsing Algorithm.** A
 policy cap answers "how long *should* a caller wait"; representability answers "can this host express
-the value at all", and where the answer is no there is nothing to preserve. Two tiers, in the shape
-§16's device-flow parser already settled — its second tier bounds against a domain ceiling (the
-remaining device-code lifetime) rather than a host one, but the fall-back-versus-clamp split is the
-same and is adopted here:
+the value at all", and where the answer is no there is nothing to preserve. The Parsing Algorithm
+above pins that bound once for every SDK — `MAX_RETRY_AFTER_SECONDS`, applied in the parser to both
+the delta-seconds and the HTTP-date form — so the honoured wait no longer depends on which integer
+type a standard-library parse happened to use. Below the ceiling, a host that cannot *schedule* a
+value it can hold MUST still saturate at its own limit — at the sleep, never by falling back to the
+local backoff, which would replace a server's request for a long wait with the millisecond curve and
+hammer a peer that just asked to be left alone. TypeScript's `setTimeout` bound of 2,147,483,647 ms
+is the worked example: the parser's result stays the public `retryAfter`, and only what reaches the
+timer is clamped. Every other host can schedule the full ceiling — 2,147,483,647 s is inside `sleep`,
+`time.sleep`, `float`, `Duration`, coroutine `delay` and `Task.sleep`'s nanosecond `UInt64` alike — so
+no second bound is needed elsewhere, and none is permitted: Swift's 86,400 s clamp is a policy cap by
+its own comment ("no SDK retry is worth sleeping longer"), five orders of magnitude below the trap it
+cites, and is recorded as a conflict below.
 
-- **Unrepresentable in the parser's own numeric type → malformed.** It falls out at step 3 of the
-  Parsing Algorithm to the local backoff, exactly like a fractional or non-positive value. Nothing is
-  surfaced on the error, because nothing was parsed.
-- **Representable by the parser but beyond what the host can schedule → saturate**, never fall back.
-  Falling back would replace a server's request for a long wait with the millisecond backoff curve
-  and hammer a peer that just asked to be left alone — the same tight loop by another route. Where
-  the overflowing conversion is the one *feeding* the parser's own output type, the saturation may
-  sit in the parser, and the caller then reads the saturated value; that is accepted, and it is the
-  one carve-out from the paragraph above.
-
-The host whose limit binds is the one the build runs on, and an SDK that ships to more than one
-build target MAY pin the second-tier ceiling at the smallest value every supported target can
-represent and schedule, so the delay honoured does not vary by build. That is still a
-representability bound, not a policy cap: it is derived from a host limit — the narrowest one the
-SDK ships to — and answers "can every host express this value" rather than "how long should a caller
-wait". It clamps nothing the narrowest build could have honoured, and what it costs the wider builds
-is only the waits the narrowest one could never have scheduled.
-
-The width itself is deliberately not fixed here, because it is a property of the host. *(As-of
-observation, verified against `wt/lane-spec` @ `fc5645dfe` — kept because the decision not to fix a
-width is unreadable without it, not as a live claim: TypeScript rejects above
-`Number.MAX_SAFE_INTEGER`, Kotlin above `Int.MAX_VALUE` on the delta-seconds form — its date form
-computes in `Long` and saturates to `Int.MAX_VALUE` instead, which is the parser-output carve-out
-above rather than a rejection — Swift above its 64-bit `Int`, and Go above native `int`: both its
-hand-written and its generated parser are `strconv.Atoi` at that revision, so the width is 32 bits on
-the 32-bit targets this repository keeps viable and 64 elsewhere. #796 has since moved the
-hand-written parser to `ParseInt` into `int64`; the generated one stays `Atoi` until #798.)*
-Four hosts reject cleanly at thresholds differing by nine orders of magnitude without any of them
-misbehaving, which is the evidence that the width does not need fixing — a `Retry-After` naming a wait
-longer than the host can count is not a delay any caller is worse off for missing.
-
-`[CONFLICT: Ruby and Python have no such width, and that is a defect rather than a third position —
-but it is the **second** tier they owe, not the first. `Integer` and `int` are arbitrary-precision, so
-the parse cannot fail on magnitude and the first tier has nothing to fire on; the failure is one layer
-down, at the scheduler, where the sleep raises rather than saturating. Reading it as the first tier
-would oblige an implementer to invent a parser limit this section otherwise forbids. Both owe
-saturation at whatever their own sleep can schedule, applied at the sleep — which for Python is two
-different ceilings for the sync and async clients, since the binding host limit differs. Exact
-ceilings, exception types and call sites in #775.]`
-
-Go is the worked example of the two tiers meeting in one parser, and the two numbers govern different
-questions: a digit string too large for the parser's own `int64` is **malformed** and falls through to
-the backoff (first tier), while a value it holds but the host cannot schedule **saturates** (second
-tier) at the pinned portable ceiling the tier permits — `math.MaxInt32` seconds, the smallest value
-every supported `GOARCH` can represent, and the same 2,147,483,647 §16 already names as a shared
-cross-SDK ceiling. Pinning matters because two host limits sit above a Go `Retry-After` — native
-`int`, which the public `Error.RetryAfter` field is and which is 32 bits wide on the 32-bit targets
-this repository keeps viable, and `time.Duration` — and a ceiling derived from only the larger would
-change with `GOARCH`. That is what #796 ships: `ParseInt` into `int64`, over-range malformed, and a
-clamp at `math.MaxInt32` inside the shared hand-written `parseRetryAfter` that the raw retry loop,
-the download path and the hook result all read.
-
-The identical unclamped conversion in `go/pkg/generated/client.gen.go`, and an `Atoi` there whose
-range error is discarded into a rate-limit hint, are **not yet fixed anywhere**. Their fix *belongs*
-in `go/templates/client.tmpl` — the generated file is emitted from it and must never be edited
-directly — and #798 is where the work is tracked, not where it has landed.
+`[CONFLICT: Ruby and Python parse arbitrary-precision integers and raise at the scheduler above their
+own ceilings (`RangeError` from `sleep`, `OverflowError` from `float`); TypeScript, Kotlin and Swift
+refuse above their integer width instead of saturating. All five owe the parser ceiling — the exact
+sites are in the Parsing Algorithm's conflict note. Go implements it in both parsers as of #796 and
+the template change that closed #798.]`
 
 **The exemption is conditioned on the escape, not on a number.** There is deliberately no policy cap;
 in its place, **an honoured `Retry-After` delay MUST be awaited through the platform's cancellation
@@ -951,31 +973,22 @@ changes their mind still waits it out, and bounding the worst case that way is a
 another name. Which satisfying shape each language picks carries a caller-facing API dimension and is
 not settled here.
 
-`[CONFLICT: the cost of this position is not uniform — four of the SDK sleep paths give the caller no
-handle at all today, and all four already carry the exposure independently of this decision: each
-honours Retry-After on its 429 path now, so the un-abandonable server-directed sleep predates the
-status rule, and widening the status set widens it rather than introducing it. Per-path inventory
-and remedies in #775.]`
+`[CONFLICT: four of the SDK sleep paths give the caller no handle today — TypeScript's multipart
+upload and `DownloadURL` hop 1, Ruby, and Python's sync client — and all four carried the exposure
+before the status rule, since each honoured Retry-After on its 429 path already; the status
+convergence widened it rather than introducing it. Per-path inventory and remedies in #775.]`
 
 Strictly, none of those four is *uninterruptible*: a signal on the main thread, or `Thread#raise`
 from another, will break any of them. What they lack is a cancellation handle the caller can **hold**,
 and the requirement above is about the handle, not about whether the platform can ever intervene.
 
-`[CONFLICT: five of the seven SDKs gate honouring on a narrower status set than this section
-prescribes, in three different shapes, and two of this section's other clauses are also divergent —
-one policy cap and one added jitter term. Converging is a behaviour change across five SDKs. The
-per-SDK inventory is deliberately NOT restated here: it states current behaviour, the convergence
-work below changes the very rows it would state, and no gate can catch it going stale. It lives in
-#775, verified as of that issue's dated comment.]`
-
-Which **date forms** step 2 accepts diverges on a second axis, and the inventory is over *parsers*
-rather than one per SDK — Go has two and they do not agree, the generated one
-accepting no date form at all, so **every** HTTP-date falls through to local backoff on **every**
-generated Go wire operation. That matters to the contract in one way only, and it is the reason this
-sentence stays: convergence scoped by SDK name would fix the hand-written parser and leave the
-generated surface untouched, so the fix site is `go/templates/client.tmpl`, never a file under
-`go/pkg/generated/`. `[CONFLICT: per-parser inventory in #775; the template change rides with #798,
-which owns the other two `Retry-After` defects at those same two lines.]`
+**Where the seven stand against this section**, stated as which clause is still open rather than as a
+per-SDK inventory, which changes as work lands and belongs in #775: the status gate is converged in
+all seven loops (§7 and §14 hop 1 alike, `retry.json` and `downloads.json` pin it); the added-jitter
+term is gone; `retry_after` is on the error at every status except in Kotlin and Swift (Status
+Mapping Algorithm); the parser ceiling and the sign row are held by Go's two parsers and Rust's and
+owed by the other five (Parsing Algorithm); the policy cap is Swift's alone; and the cancellation
+handle is owed by the four paths above.
 
 ---
 
@@ -1180,17 +1193,16 @@ Requirements:
 4. **`Retry-After` is exempt.** It is server-directed and takes precedence per step 3h,
    at every status that step reaches (§6 "Retry-After Honouring"); the ceiling governs
    the locally-computed formula only, and step 2's jitter is part of that formula rather
-   than an addend on a server-directed delay. Implementations may still bound it against
-   **host limits** — a timer that cannot schedule the value, such as TypeScript's clamp to
-   the 2,147,483,647ms `setTimeout` accepts, or a conversion that would trap or wrap, such
-   as the seconds→`time.Duration` saturation Go takes (#796) — and may reject outright a
-   value the parser's own numeric type cannot hold. §6 "Retry-After Honouring" governs
-   which of those belongs at the sleep and which may sit in the parser. A **policy** cap is a
-   different thing and is not permitted: Swift's 86,400s clamp is one (the `UInt64`
-   nanosecond trap it cites sits five orders of magnitude higher), and §6 records it as a
-   conflict alongside the status divergence. The exemption is not unconditional: §6
-   requires the honoured delay to be awaited through the caller's cancellation primitive,
-   and that requirement — not a number — is what stands in for a policy cap here.
+   than an addend on a server-directed delay. The one bound on it is
+   `MAX_RETRY_AFTER_SECONDS`, applied in the parser (§6 "Retry-After Parsing Algorithm"),
+   plus whatever a host's timer cannot schedule below that — TypeScript's clamp to the
+   2,147,483,647 ms `setTimeout` accepts — applied at the sleep. A **policy** cap is a
+   different thing and is not permitted: Swift's 86,400 s clamp is one (the `UInt64`
+   nanosecond trap it cites sits five orders of magnitude higher, and the parser ceiling
+   already keeps the product inside `UInt64`), and §6 records it as a conflict. The
+   exemption is not unconditional: §6 requires the honoured delay to be awaited through
+   the caller's cancellation primitive, and that requirement — not a number — is what
+   stands in for a policy cap here.
 
 **Reachability.** Every SDK exposes a path to a high attempt count: Kotlin's builder
 validates `maxRetries >= 0` with no upper bound, Go's `WithMaxRetries` only rejects
@@ -1829,7 +1841,7 @@ END
 
 The authenticated first hop retries on **network errors plus {429, 502, 503, 504}** — never 500. The set is declared here rather than inherited from anywhere else, and it matches neither of the two sets an SDK already has to hand: it is broader than the per-operation `retry_on` in `behavior-model.json` (`{429, 503}` for all `262` operations but `UpdateProjectClientAccess`, and never governing `DownloadURL` because it has no entry there), and narrower than the error taxonomy's "all 5xx retryable" flag, which would sweep in the 500 this policy deliberately excludes. It is the gateway-error set Go's hand-written `singleRequest` already uses for GETs. <!-- @operation-count --> Backoff is exponential from a 1-second base with jitter; `Retry-After` is honoured at **every status in that set**, not at 429 alone. The second hop is exempt: no retry, no auth.
 
-That last clause changed with §6's "Retry-After Honouring", and the reason it changed is the reason this set is declared here at all: honouring is derived from retry eligibility, so a loop that declares its own eligibility set inherits the honouring rule over that set rather than over §7's. A 502, 503 or 504 on hop 1 carrying `Retry-After` therefore waits what the origin named, exactly as a 429 does. `[CONFLICT: most download loops honour it on 429 alone today and owe convergence; one SDK already conforms. Per-SDK state and call sites in #775 — not restated here, because this is exactly the row that convergence changes. For conformance: the existing downloads.json case covering the 429 path stays valid; the other three statuses need cases of their own.]` The honoured value is subject to §6's other two clauses on this path as well: nothing is added to it, and it must be awaited through a cancellation handle the caller holds, which not every download path yet gives them (#775).
+That last clause changed with §6's "Retry-After Honouring", and the reason it changed is the reason this set is declared here at all: honouring is derived from retry eligibility, so a loop that declares its own eligibility set inherits the honouring rule over that set rather than over §7's. A 502, 503 or 504 on hop 1 carrying `Retry-After` therefore waits what the origin named, exactly as a 429 does — `downloads.json` pins all four statuses. The honoured value is subject to §6's other two clauses on this path as well: nothing is added to it, and it must be awaited through a cancellation handle the caller holds, which not every download path yet gives them (#775).
 
 **Composition (§6 "Composition is per-loop"): a valid `Retry-After` REPLACES this hop's exponential-plus-jitter delay**, the same answer §7's loop gives and for the same reason — the wait is pacing a retry of exactly the request the origin just answered. It is stated here rather than inherited: §6 supplies no default, so a loop that declares its own retry set (as this one does) declares its own composition too.
 
@@ -2724,6 +2736,21 @@ Test cases conform to `conformance/schema.json`. Each test specifies:
 - `path` — URL path pattern
 - `mockResponses` — sequence of mock responses the test server returns
 - `assertions` — behavioral assertions to verify
+
+A fixture is a static JSON literal, and the harness has no clock of its own — which is enough for
+every assertion but one. §6's Retry-After Parsing Algorithm honours an HTTP-date only when
+`date - now()` is positive, so a literal date is either already past (and pins only the fall-through)
+or far enough ahead to make a compliant SDK sleep for years. A response header value MAY therefore
+carry the token **`{{httpdate+Ns}}`** (`N` = `1*DIGIT`), which every runner resolves **at the moment
+it serves that response** to the IMF-fixdate of `floor(now) + N + 1` seconds — the first whole
+second strictly more than `N` seconds after the second the response is served in. A compliant parser
+sees a remainder in `(N - latency, N + 1]` and, rounding up, computes at least `N` whole seconds for
+any serve-to-parse latency under one second, so the fixture asserts `delayBetweenRequests` with
+`min: N × 1000`; a parser that drops the date form waits the ~1 s local backoff instead and fails.
+The token is deliberately relative and near: an absolute far-future date is not merely slow, it is
+differently behaved per host (one saturates, one clamps, four run long), so a fixture naming one would
+assert six different things. An unrecognised `{{…}}` token is a runner error, never served literally.
+Each runner's resolver is unit-tested the way `checkDelayGaps` is.
 
 ### Assertion Types
 
@@ -4067,7 +4094,7 @@ consumption) are recorded in Appendix F with their compensating tier-3 tests.
 
 All magic numbers in one place, derived from shipping SDK code (not `rubric-audit.json`).
 
-Only `API_VERSION` is gated (`<!-- @api-version -->`, checked by `make doc-constants-check`). The other 14 pre-§23 rows are hand-maintained: 13 were read against their cited sources on 2026-08-03 — all 13 matched — and `MAX_BACKOFF_DELAY` joined with #592 under that PR's own six-SDK verification (the sentence previously said 13 rows while the table carried 14). The `EVENT_FEED_*` block below them is different in kind and marked so: those rows are contract-first — their source is §23's normative text, connector code ships in later PRs, and the two server-owned values are provisional until bc3's merge-time gate; when the connector lands, they join the read-against-source discipline. They are not gated because each is asserted of several SDKs at once in a different spelling per language (Go `1 * time.Second`, Python `1.0`, Ruby `1.0`, Kotlin `30.seconds`, Swift `1_000`), so a checker would need a per-row, per-language extraction rule rather than the one-value-one-source substitution the marker convention is built on. The name in the table is the concept, not a symbol to grep: `MAX_ERROR_MESSAGE_LENGTH` is `MaxErrorMessageBytes` in Go and `MAX_ERROR_MESSAGE_BYTES` in Ruby, and `TOKEN_REFRESH_BUFFER` is the literal `300` in `creds.ExpiresAt-300` (`go/pkg/basecamp/auth.go`) rather than a named constant at all. If one of these starts moving, gate that row rather than the appendix.
+Only `API_VERSION` is gated (`<!-- @api-version -->`, checked by `make doc-constants-check`). The other 15 pre-§23 rows are hand-maintained: 13 were read against their cited sources on 2026-08-03 — all 13 matched — `MAX_BACKOFF_DELAY` joined with #592 under that PR's own six-SDK verification (the sentence previously said 13 rows while the table carried 14), and `MAX_RETRY_AFTER_SECONDS` joined with the Retry-After convergence, verified in Go's two parsers and owed by the other five (§6). The `EVENT_FEED_*` block below them is different in kind and marked so: those rows are contract-first — their source is §23's normative text, connector code ships in later PRs, and the two server-owned values are provisional until bc3's merge-time gate; when the connector lands, they join the read-against-source discipline. They are not gated because each is asserted of several SDKs at once in a different spelling per language (Go `1 * time.Second`, Python `1.0`, Ruby `1.0`, Kotlin `30.seconds`, Swift `1_000`), so a checker would need a per-row, per-language extraction rule rather than the one-value-one-source substitution the marker convention is built on. The name in the table is the concept, not a symbol to grep: `MAX_ERROR_MESSAGE_LENGTH` is `MaxErrorMessageBytes` in Go and `MAX_ERROR_MESSAGE_BYTES` in Ruby, and `TOKEN_REFRESH_BUFFER` is the literal `300` in `creds.ExpiresAt-300` (`go/pkg/basecamp/auth.go`) rather than a named constant at all. If one of these starts moving, gate that row rather than the appendix.
 
 | Constant | Value | Unit | Source |
 |----------|-------|------|--------|
@@ -4081,6 +4108,7 @@ Only `API_VERSION` is gated (`<!-- @api-version -->`, checked by `make doc-const
 | `DEFAULT_BASE_DELAY` | 1000 | milliseconds | All seven SDKs |
 | `DEFAULT_MAX_JITTER` | 100 | milliseconds | All seven SDKs |
 | `MAX_BACKOFF_DELAY` | 30,000 (30s) | milliseconds | All seven SDKs; ceiling on the §7 backoff term, jitter added on top. Was Go's generated `RetryConfig.MaxDelay` before #577 generalized it |
+| `MAX_RETRY_AFTER_SECONDS` | 2,147,483,647 | seconds | §6 Retry-After Parsing Algorithm — the value a parsed `Retry-After` saturates at, in both wire forms; a representability bound (the narrowest `retry_after` integer any SDK ships, and §16's shared ceiling), not a policy cap. `go/pkg/basecamp/client.go` (`maxRetryAfterSeconds`), `go/templates/client.tmpl`, `rust/basecamp-sdk/src/error.rs` (`MAX_RETRY_AFTER_SECONDS`); owed by the other five (§6) |
 | `DEFAULT_MAX_PAGES` | 10,000 | — | All seven SDKs |
 | `MAX_CACHE_ENTRIES` | 1000 | entries | `typescript/src/client.ts` |
 | `MAX_TOKEN_HASH_ENTRIES` | 100 | entries | `typescript/src/client.ts` |
@@ -4204,6 +4232,8 @@ what `make doc-constants-check` asserts — not a case-by-case index.
 | `retry.json` | Retry-After HTTP-date in the past falls through to backoff | §6, §7 |
 | `retry.json` | Retry-After of 0, and a negative value, rejected | §6, §7 |
 | `retry.json` | Partly numeric Retry-After rejected (`1*DIGIT`) | §6, §7 |
+| `retry.json` | GET retries on 503 with Retry-After (honoured at every declared status) | §6, §7 |
+| `retry.json` | Retry-After HTTP-date in the future is honoured (`{{httpdate+Ns}}`) | §6, §7, §19 |
 | `security.json` | Cross-origin Link rejected | §8, §9 |
 | `security.json` | HTTPS enforced (non-localhost) | §9 |
 | `security.json` | HTTP allowed for localhost | §9 |
@@ -4230,6 +4260,7 @@ what `make doc-constants-check` asserts — not a case-by-case index.
 | `downloads.json` | DownloadURL retries hop 1 on a network error | §14, §7 |
 | `downloads.json` | DownloadURL does not retry hop 1 on 500 | §14, §7 |
 | `downloads.json` | DownloadURL honors Retry-After on 429 at the auth'd first hop | §14, §7 |
+| `downloads.json` | DownloadURL honors Retry-After on 502, 503 and 504 at the auth'd first hop | §14, §6 |
 | `downloads.json` | DownloadURL surfaces redirect with no Location | §14 |
 | `downloads.json` | DownloadURL refuses a redirect on the signed second hop | §14 |
 | `network-retry.json` | Network error on a non-idempotent POST is not retried | §7 (Gate 2) |
