@@ -54,6 +54,12 @@ sedi "s/public static let apiVersion = \".*\"/public static let apiVersion = \"$
 sedi "s/^API_VERSION = \".*\"/API_VERSION = \"$API_VERSION\"/" \
   python/src/basecamp/_version.py
 
+# Rust — the generator emits this constant from the same openapi.json, so this
+# rewrite is idempotent after `make rs-generate`; it exists so a spec bump that
+# skips regeneration still leaves the constant true.
+sedi "s/^pub const API_VERSION: &str = \".*\";/pub const API_VERSION: \&str = \"$API_VERSION\";/" \
+  rust/basecamp-sdk/src/generated/mod.rs
+
 # Prose: the same constants restated in SPEC.md / COORDINATION.md / api-gaps.
 # Only HTML-comment-marked spans are touched, so the ~20 historical bc3 SHAs
 # cited in spec/api-gaps/ narrative are left alone. Assertion-type table drift

@@ -43,6 +43,8 @@ jobs:
               - 'kotlin/**'
             python:
               - 'python/**'
+            rust:
+              - 'rust/**'
             actions:
               - '.github/**'
             config:
@@ -59,6 +61,7 @@ jobs:
           SWIFT: ${{ steps.filter.outputs.swift }}
           KOTLIN: ${{ steps.filter.outputs.kotlin }}
           PYTHON: ${{ steps.filter.outputs.python }}
+          RUST: ${{ steps.filter.outputs.rust }}
           ACTIONS: ${{ steps.filter.outputs.actions }}
           CONFIG: ${{ steps.filter.outputs.config }}
         run: |
@@ -72,6 +75,7 @@ jobs:
             add ruby none
             add python none
             add java-kotlin manual
+            add rust none
             swift=true
           else
             if [ "$ACTIONS" = "true" ]; then add actions none; fi
@@ -80,6 +84,7 @@ jobs:
             if [ "$RUBY" = "true" ]; then add ruby none; fi
             if [ "$PYTHON" = "true" ]; then add python none; fi
             if [ "$KOTLIN" = "true" ]; then add java-kotlin manual; fi
+            if [ "$RUST" = "true" ]; then add rust none; fi
             swift=$SWIFT
           fi
 
@@ -129,6 +134,15 @@ jobs:
         uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
         with:
           cache-provider: basic
+
+      # CodeQL's Rust extractor is build-less (`build-mode: none`) but resolves
+      # the workspace through cargo metadata, so it needs a toolchain on PATH.
+      # Pinned to the same stable the test job uses.
+      - name: Set up Rust
+        if: matrix.language == 'rust'
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # v1
+        with:
+          toolchain: '1.98.1'
 
       # --- CodeQL init ---
 

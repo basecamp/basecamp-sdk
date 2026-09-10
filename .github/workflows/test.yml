@@ -884,6 +884,133 @@ jobs:
         working-directory: .
         run: ./scripts/assert-lockfiles-unchanged --verify-clean
 
+  test-rust:
+    name: Rust ${{ matrix.role }} (${{ matrix.toolchain }})
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # MSRV: the exact `rust-version` the crate declares, building the
+          # LIBRARY with the committed lockfile. The generator and the
+          # conformance runner float on stable and are tested there.
+          - role: msrv
+            toolchain: '1.88'
+          - role: stable
+            toolchain: '1.98.1'
+    defaults:
+      run:
+        working-directory: rust
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # v1
+        with:
+          toolchain: ${{ matrix.toolchain }}
+          components: clippy, rustfmt
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@63fed3e2fecf6f7b51dc6f043341b79ef82a9ae7 # v2.9.2
+        with:
+          workspaces: |
+            rust
+            conformance/runner/rust
+          key: ${{ matrix.role }}
+
+      # --- MSRV lane: the library on exactly rust-version, locked ---
+      - name: Build and test the library on the MSRV (locked)
+        if: matrix.role == 'msrv'
+        run: |
+          cargo build -p basecamp-sdk --all-features --locked
+          cargo build -p basecamp-sdk --no-default-features --locked
+          cargo test -p basecamp-sdk --all-features --locked
+
+      # Resolver 3 only PREFERS MSRV-compatible versions; it falls back to
+      # incompatible ones when none exist, so a dependabot bump can move the
+      # effective MSRV past 1.88 while the locked build above stays green.
+      # This resolves from scratch in a scratch copy (the tree's Cargo.lock is
+      # never touched) and is advisory: it reports the day the fresh resolution
+      # breaks, before a consumer with no lockfile does.
+      - name: Build the library on the MSRV with a fresh resolution (advisory)
+        if: matrix.role == 'msrv'
+        continue-on-error: true
+        run: |
+          cp -R . "$RUNNER_TEMP/fresh-msrv"
+          cd "$RUNNER_TEMP/fresh-msrv"
+          rm -f Cargo.lock
+          cargo generate-lockfile
+          cargo build -p basecamp-sdk --all-features
+
+      # --- stable lane: the {lang}-check contract ---
+      - name: Install cargo-deny
+        if: matrix.role == 'stable'
+        uses: taiki-e/install-action@c3ec0de9ae7f1019cea21aa96aa0a895b9552063 # v2.87.9
+        with:
+          tool: cargo-deny@0.20.2
+
+      # `make rs-check` is fmt, clippy -D warnings, the feature-matrix tests
+      # plus compiled examples, docs -D warnings, cargo deny over both
+      # workspaces, the regenerate-and-diff drift check and
+      # `cargo publish --dry-run --locked` — one definition, shared with the
+      # release workflow and the local gate.
+      - name: Format, lint, test, doc, deny, drift, publish dry-run
+        if: matrix.role == 'stable'
+        working-directory: .
+        run: make rs-check
+
+      # Rust analog of Go's api-compat job. Advisory until the crate has a
+      # published baseline on crates.io: the action compares against the
+      # registry, and a first release has nothing to compare against.
+      - name: Semver check against the published baseline (advisory)
+        if: matrix.role == 'stable' && github.event_name == 'pull_request'
+        continue-on-error: true
+        uses: obi1kenobi/cargo-semver-checks-action@6b69fcf40e9b5fb17adeb57e4b6ecd020649a239 # v2.9
+        with:
+          manifest-path: rust/basecamp-sdk/Cargo.toml
+          package: basecamp-sdk
+          feature-group: all-features
+
+      - name: Run Rust conformance runner unit tests
+        # Unit-tests the runner's own assertion helpers. Through the make
+        # target, not a command spelled out here (#572): discovery is the only
+        # selector, so adding a runner test is enough to run it.
+        if: matrix.role == 'stable'
+        working-directory: .
+        run: make conformance-runner-tests-rust
+
+      - name: Run Rust conformance tests
+        if: matrix.role == 'stable'
+        working-directory: .
+        run: make conformance-rust
+
+      - name: Upload rust execution manifest
+        # One of the seven exclusion sets the cross-runner gate compares (#602).
+        # Each runner's own census cannot see a case that EVERY runner excludes,
+        # because each one counted its own skip; the fan-in job below requires
+        # all seven manifests and fails if any is absent.
+        if: matrix.role == 'stable'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: execution-manifest-rust
+          path: conformance/manifests/rust.json
+          if-no-files-found: error
+          overwrite: true
+
+      # Ground truth, and the authoritative check: the static parser predicts
+      # that nothing writes a lockfile, this observes whether anything did. A CI
+      # checkout starts pristine, so the committed tree is the baseline. Catches
+      # a manifest that was modified AND one CREATED where none was tracked, and
+      # runs on failure too, so a job cannot fail and hide what it dirtied.
+      - name: Dependency manifests unchanged by this job
+        if: always()
+        working-directory: .
+        run: ./scripts/assert-lockfiles-unchanged --verify-clean
+
   test-swift:
     name: Swift Tests
     runs-on: macos-15

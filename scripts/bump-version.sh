@@ -64,6 +64,17 @@ sedi "s/^version = \".*\"/version = \"$VERSION\"/" python/pyproject.toml
 # 10. Python _version.py
 sedi "s/^VERSION = \".*\"/VERSION = \"$VERSION\"/" python/src/basecamp/_version.py
 
+# 11. Rust workspace Cargo.toml — the ONE Rust version constant (the crate
+# inherits it with `version.workspace = true`; code reads env!("CARGO_PKG_VERSION")).
+# The edit is bounded to the [workspace.package] table: a bare `^version = `
+# sed also matches `[package]` and `[dependencies]` lines when the file is
+# reordered, and cargo has no built-in setter without cargo-edit.
+awk -v want="version = \"$VERSION\"" '
+  /^\[/ { intable = ($0 == "[workspace.package]") }
+  intable && /^version = "/ { $0 = want }
+  { print }
+' rust/Cargo.toml > rust/Cargo.toml.tmp && cat rust/Cargo.toml.tmp > rust/Cargo.toml && rm rust/Cargo.toml.tmp
+
 # Sync TypeScript lockfile
 echo "Syncing TypeScript lockfile..."
 (cd typescript && npm install --package-lock-only --ignore-scripts)
@@ -92,4 +103,20 @@ echo "Syncing conformance Ruby runner lockfile..."
 echo "Syncing conformance Python runner lockfile..."
 (cd conformance/runner/python && uv lock --quiet)
 
-echo "Done. Bumped 10 version files and synced 6 lockfiles to $VERSION."
+# Sync the Rust lockfiles. Both record the SDK's version (the workspace's own
+# members in rust/Cargo.lock; the path dep on ../../../rust/basecamp-sdk in the
+# conformance runner's). Both are tracked and every CI/make consumer passes
+# --locked, so a stale one fails the next build instead of being rewritten
+# silently. `-w` limits the update to workspace members; --offline because
+# nothing else moves.
+if ! command -v cargo >/dev/null 2>&1; then
+  echo "ERROR: cargo is required to refresh the Rust lockfiles" >&2
+  exit 1
+fi
+echo "Syncing Rust lockfile..."
+(cd rust && cargo update -q -w --offline)
+
+echo "Syncing conformance Rust runner lockfile..."
+(cd conformance/runner/rust && cargo update -q -w --offline)
+
+echo "Done. Bumped 11 version files and synced 8 lockfiles to $VERSION."

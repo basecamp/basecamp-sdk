@@ -22,6 +22,10 @@ python:
   - changed-files:
       - any-glob-to-any-file: "python/**"
 
+rust:
+  - changed-files:
+      - any-glob-to-any-file: "rust/**"
+
 spec:
   - changed-files:
       - any-glob-to-any-file:

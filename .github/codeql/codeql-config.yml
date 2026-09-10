@@ -9,6 +9,7 @@ paths:
   - swift/
   - kotlin/
   - python/
+  - rust/
 
 paths-ignore:
   # Generated SDK code (fix in the generator or spec, not here).
@@ -22,6 +23,7 @@ paths-ignore:
   - ruby/lib/basecamp/generated/
   - swift/Sources/Basecamp/Generated/
   - kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/
+  - rust/basecamp-sdk/src/generated/
   # python/src/basecamp/generated/ is deliberately NOT listed. It holds two
   # hand-written files — services/_base.py and services/_async_base.py, the HTTP,
   # retry and pagination plumbing (AGENTS.md exempts them from the generator) —
@@ -37,6 +39,8 @@ paths-ignore:
   - conformance/
   - kotlin/conformance/
   - python/tests/
+  - rust/basecamp-sdk/tests/
+  - rust/generator/
 
 query-filters:
   - exclude:

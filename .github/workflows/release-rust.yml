@@ -1,0 +1,366 @@
+name: Release Rust SDK
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:  # Manual trigger is always dry-run (rehearsal mode)
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  CRATE: basecamp-sdk
+  CARGO_TERM_COLOR: always
+  # A cold `cargo` first touches the index on every job; stale-index retries
+  # are the one flaky step a release cannot afford.
+  CARGO_NET_RETRY: '5'
+
+jobs:
+  smithy:
+    uses: ./.github/workflows/smithy-verify.yml
+    permissions:
+      contents: read
+
+  test:
+    name: Test Rust SDK
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: rust
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # v1
+        with:
+          toolchain: '1.98.1'
+          components: clippy, rustfmt
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@63fed3e2fecf6f7b51dc6f043341b79ef82a9ae7 # v2.9.2
+        # zizmor: ignore[cache-poisoning] -- cached deps are for testing, not release artifact generation; the package and publish jobs below build without the cache
+        with:
+          workspaces: |
+            rust
+            conformance/runner/rust
+
+      - name: Format
+        run: cargo fmt --all --check
+
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
+
+      - name: Test
+        run: cargo test --workspace --all-features --locked
+
+      - name: Docs
+        env:
+          RUSTDOCFLAGS: -D warnings
+        run: cargo doc --no-deps --all-features -p "$CRATE" --locked
+
+      # Same script `make rs-check-drift` and the test workflow run: regenerate
+      # into a tmpdir and diff, never in place (see release-python.yml for why
+      # the in-place `git status` shape is wrong here).
+      - name: Check generated code drift
+        run: ../scripts/check-rust-service-drift.sh
+
+      - name: Install cargo-deny
+        uses: taiki-e/install-action@c3ec0de9ae7f1019cea21aa96aa0a895b9552063 # v2.87.9
+        with:
+          tool: cargo-deny@0.20.2
+
+      - name: Advisories, licenses, bans (both workspaces)
+        run: |
+          cargo deny --manifest-path Cargo.toml check
+          cargo deny --manifest-path ../conformance/runner/rust/Cargo.toml check
+
+  # Packaging is deliberately separate from publishing: this job carries no
+  # `environment:`, so a workflow_dispatch rehearsal runs it from any ref
+  # without needing the release-crates deployment approval, and it holds no
+  # publishing credentials.
+  #
+  # Cargo cannot publish a pre-built .crate, so the artifact this job uploads
+  # is EVIDENCE, not input: the publish job packages again from the same SHA
+  # with the same toolchain and SOURCE_DATE_EPOCH and asserts the two tarballs
+  # are byte-identical before it uploads anything.
+  package:
+    name: Package crate
+    needs: [smithy, test]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      sha256: ${{ steps.package.outputs.sha256 }}
+    defaults:
+      run:
+        working-directory: rust
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify tag is on main
+        if: github.event_name == 'push'
+        run: |
+          git fetch origin main
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # v1
+        with:
+          toolchain: '1.98.1'
+
+      # The version is read back through cargo's own parser, not a regex over
+      # TOML: `^version = ` also matches `[workspace.package]`, `[dependencies]`
+      # and any reordered table.
+      - name: Extract version
+        id: version
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          CARGO_VERSION=$(cargo metadata --no-deps --locked --format-version 1 \
+            | jq -r --arg name "$CRATE" '.packages[] | select(.name == $name) | .version')
+          if [ -z "$CARGO_VERSION" ] || [ "$CARGO_VERSION" = "null" ]; then
+            echo "::error::Could not read the $CRATE version from cargo metadata"
+            exit 1
+          fi
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            echo "version=$CARGO_VERSION" >> "$GITHUB_OUTPUT"
+            echo "Rehearsal for version: $CARGO_VERSION"
+          else
+            VERSION="${GITHUB_REF#refs/tags/v}"
+            if [ "$CARGO_VERSION" != "$VERSION" ]; then
+              echo "::error::Cargo version ($CARGO_VERSION) does not match tag version ($VERSION)"
+              exit 1
+            fi
+            echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+            echo "Releasing version: $VERSION"
+          fi
+
+      # SOURCE_DATE_EPOCH pins the tarball's mtimes to the commit time so the
+      # publish job's repackaging reproduces these exact bytes. --locked: a
+      # lockfile the package step would rewrite is a release that was never
+      # built the way it is about to be shipped.
+      - name: Package
+        id: package
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          SOURCE_DATE_EPOCH="$(git log -1 --format=%ct "$GITHUB_SHA")"
+          export SOURCE_DATE_EPOCH
+          cargo package -p "$CRATE" --locked
+          CRATE_FILE="target/package/${CRATE}-${VERSION}.crate"
+          test -f "$CRATE_FILE" || { echo "::error::$CRATE_FILE was not produced"; exit 1; }
+          echo "sha256=$(sha256sum "$CRATE_FILE" | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+          sha256sum "$CRATE_FILE"
+
+      # .cargo_vcs_info.json is the only provenance anchor crates.io keeps
+      # (it ignores git tags), so the SHA and path it records must be the
+      # commit being released and the crate's real directory — asserted here,
+      # BEFORE anything can be published.
+      - name: Verify packaged VCS provenance
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          VCS=$(tar -xzOf "target/package/${CRATE}-${VERSION}.crate" "${CRATE}-${VERSION}/.cargo_vcs_info.json")
+          echo "$VCS"
+          SHA=$(echo "$VCS" | jq -r '.git.sha1')
+          PATH_IN_VCS=$(echo "$VCS" | jq -r '.path_in_vcs')
+          if [ "$SHA" != "$GITHUB_SHA" ]; then
+            echo "::error::.cargo_vcs_info.json sha1 ($SHA) != GITHUB_SHA ($GITHUB_SHA)"
+            exit 1
+          fi
+          if [ "$PATH_IN_VCS" != "rust/basecamp-sdk" ]; then
+            echo "::error::.cargo_vcs_info.json path_in_vcs ($PATH_IN_VCS) != rust/basecamp-sdk"
+            exit 1
+          fi
+
+      - name: Dry-run publish verification
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          cargo publish -p "$CRATE" --dry-run --locked
+          ls -la target/package/
+          echo "::notice::Dry run mode - not actually publishing"
+
+      - name: Upload crate
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: rust-crate
+          path: rust/target/package/*.crate
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    name: Publish to crates.io
+    needs: package
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    # The environment is restricted to `v*` tag refs with required reviewers;
+    # together with the `if: push` above, no branch or dispatch run can reach
+    # the OIDC exchange below.
+    environment: release-crates
+    defaults:
+      run:
+        working-directory: rust
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Download packaged crate
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: rust-crate
+          path: rust/packaged/
+
+      # Three outcomes, and only one of them publishes:
+      #   404 for the CRATE      → never bootstrapped. Trusted publishing needs
+      #                            a manual first publish (CONTRIBUTING.md), so
+      #                            this rehearses with --dry-run and succeeds,
+      #                            keeping release-github.yml's roster green.
+      #   404 for the VERSION    → publish.
+      #   200 for the VERSION    → already published (a re-run after a partial
+      #                            failure); yanked → fail, else succeed idempotently.
+      #   anything else          → fail closed. A 5xx must not become a second
+      #                            publish attempt.
+      - name: Check crates.io state
+        id: state
+        env:
+          VERSION: ${{ needs.package.outputs.version }}
+        run: |
+          UA="basecamp-sdk-release (https://github.com/basecamp/basecamp-sdk)"
+          CRATE_STATUS=$(curl -sS -A "$UA" -o /dev/null -w "%{http_code}" "https://crates.io/api/v1/crates/${CRATE}")
+          case "$CRATE_STATUS" in
+            200) ;;
+            404)
+              echo "state=unbootstrapped" >> "$GITHUB_OUTPUT"
+              echo "::warning::${CRATE} does not exist on crates.io yet. Trusted publishing requires a one-time manual first publish — see CONTRIBUTING.md (Rust release bootstrap). Rehearsing with --dry-run."
+              exit 0
+              ;;
+            *)
+              echo "::error::crates.io answered HTTP ${CRATE_STATUS} for ${CRATE}; refusing to guess"
+              exit 1
+              ;;
+          esac
+          BODY=$(mktemp)
+          VERSION_STATUS=$(curl -sS -A "$UA" -o "$BODY" -w "%{http_code}" "https://crates.io/api/v1/crates/${CRATE}/${VERSION}")
+          case "$VERSION_STATUS" in
+            200)
+              if [ "$(jq -r '.version.yanked' "$BODY")" = "true" ]; then
+                echo "::error::${CRATE} ${VERSION} is published AND yanked on crates.io; release the next patch instead"
+                exit 1
+              fi
+              echo "checksum=$(jq -r '.version.checksum' "$BODY")" >> "$GITHUB_OUTPUT"
+              echo "state=published" >> "$GITHUB_OUTPUT"
+              echo "::notice::${CRATE} ${VERSION} is already on crates.io; nothing to publish"
+              ;;
+            404)
+              echo "state=publish" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "::error::crates.io answered HTTP ${VERSION_STATUS} for ${CRATE} ${VERSION}; refusing to guess"
+              exit 1
+              ;;
+          esac
+
+      - name: Set up Rust
+        if: steps.state.outputs.state != 'published'
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # v1
+        with:
+          toolchain: '1.98.1'
+
+      # Repackage from the same SHA with the same SOURCE_DATE_EPOCH and assert
+      # byte equality with the package job's artifact. This is what ties the
+      # evidence to the upload: cargo publishes what IT packages, never a file.
+      - name: Repackage and verify against the packaged artifact
+        if: steps.state.outputs.state != 'published'
+        env:
+          VERSION: ${{ needs.package.outputs.version }}
+          EXPECTED_SHA256: ${{ needs.package.outputs.sha256 }}
+        run: |
+          SOURCE_DATE_EPOCH="$(git log -1 --format=%ct "$GITHUB_SHA")"
+          export SOURCE_DATE_EPOCH
+          cargo package -p "$CRATE" --locked
+          LOCAL=$(sha256sum "target/package/${CRATE}-${VERSION}.crate" | cut -d' ' -f1)
+          ARTIFACT=$(sha256sum "packaged/${CRATE}-${VERSION}.crate" | cut -d' ' -f1)
+          echo "package job: $EXPECTED_SHA256"
+          echo "artifact:    $ARTIFACT"
+          echo "this job:    $LOCAL"
+          if [ "$LOCAL" != "$ARTIFACT" ] || [ "$LOCAL" != "$EXPECTED_SHA256" ]; then
+            echo "::error::Repackaged crate differs from the package job's artifact; packaging is not reproducible from this SHA"
+            exit 1
+          fi
+
+      - name: Dry-run publish (crate not yet bootstrapped)
+        if: steps.state.outputs.state == 'unbootstrapped'
+        run: cargo publish -p "$CRATE" --dry-run --locked
+
+      - name: Authenticate with crates.io (OIDC)
+        if: steps.state.outputs.state == 'publish'
+        id: auth
+        uses: rust-lang/crates-io-auth-action@c6f97d42243bad5fab37ca0427f495c86d5b1a18 # v1.0.5
+
+      - name: Publish
+        if: steps.state.outputs.state == 'publish'
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
+        run: |
+          SOURCE_DATE_EPOCH="$(git log -1 --format=%ct "$GITHUB_SHA")"
+          export SOURCE_DATE_EPOCH
+          cargo publish -p "$CRATE" --locked
+
+      # The index can lag the upload by a few seconds. Poll, then compare the
+      # checksum crates.io recorded with the artifact's: the bytes on the
+      # registry must be the bytes the package job produced.
+      - name: Verify published checksum
+        if: steps.state.outputs.state == 'publish'
+        env:
+          VERSION: ${{ needs.package.outputs.version }}
+          EXPECTED_SHA256: ${{ needs.package.outputs.sha256 }}
+        run: |
+          UA="basecamp-sdk-release (https://github.com/basecamp/basecamp-sdk)"
+          for _ in $(seq 1 24); do
+            BODY=$(mktemp)
+            STATUS=$(curl -sS -A "$UA" -o "$BODY" -w "%{http_code}" "https://crates.io/api/v1/crates/${CRATE}/${VERSION}")
+            if [ "$STATUS" = "200" ]; then
+              PUBLISHED=$(jq -r '.version.checksum' "$BODY")
+              echo "crates.io checksum: $PUBLISHED"
+              echo "artifact checksum:  $EXPECTED_SHA256"
+              if [ "$PUBLISHED" != "$EXPECTED_SHA256" ]; then
+                echo "::error::crates.io recorded a different checksum than the packaged artifact"
+                exit 1
+              fi
+              echo "Published ${CRATE} ${VERSION}"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "::error::${CRATE} ${VERSION} did not appear on crates.io within 2 minutes of publishing; the upload may have completed — re-run this job before retagging"
+          exit 1
+
+      - name: Verify already-published checksum
+        if: steps.state.outputs.state == 'published'
+        env:
+          PUBLISHED: ${{ steps.state.outputs.checksum }}
+          EXPECTED_SHA256: ${{ needs.package.outputs.sha256 }}
+        run: |
+          echo "crates.io checksum: $PUBLISHED"
+          echo "artifact checksum:  $EXPECTED_SHA256"
+          if [ "$PUBLISHED" != "$EXPECTED_SHA256" ]; then
+            echo "::error::The version on crates.io was built from different bytes than this tag packages"
+            exit 1
+          fi

@@ -40,6 +40,9 @@ make_repo() {
   printf 'example.com/x v1.0.0 h1:aaa=\n' > "$dir/go/go.sum"
   printf 'example.com/y v1.0.0 h1:bbb=\n' > "$dir/conformance/runner/go/go.sum"
   printf 'example.com/z v1.0.0 h1:ccc=\n' > "$dir/go.work.sum"
+  mkdir -p "$dir/rust" "$dir/conformance/runner/rust"
+  printf 'version = 4\n[[package]]\nname = "a"\nversion = "1.0.0"\n' > "$dir/rust/Cargo.lock"
+  printf 'version = 4\n[[package]]\nname = "b"\nversion = "1.0.0"\n' > "$dir/conformance/runner/rust/Cargo.lock"
   git -C "$dir" init --quiet
   git -C "$dir" add -A
   echo "$dir"
@@ -104,6 +107,20 @@ expect fail "the conformance runner's go.sum rewritten" \
 expect fail "go.work.sum rewritten" \
   "printf 'example.com/z v1.0.1 h1:zzz=\n' > go.work.sum"
 
+# `cargo` rewrites Cargo.lock on any unlocked invocation, and `make check` runs
+# Rust targets. Both workspaces' lockfiles are tracked.
+expect fail "rust/Cargo.lock rewritten" \
+  "printf 'version = 4\n[[package]]\nname = \"a\"\nversion = \"1.0.1\"\n' > rust/Cargo.lock"
+
+expect fail "the conformance runner's Cargo.lock rewritten" \
+  "printf 'version = 4\n[[package]]\nname = \"b\"\nversion = \"1.0.1\"\n' > conformance/runner/rust/Cargo.lock"
+
+# A build-tree copy of a lockfile is cargo's own scratch, not a manifest: the
+# `.crate` packaging step writes one under target/package/, and hashing it
+# would fail every `make check` that ran rs-publish-check.
+expect pass "a Cargo.lock under a target/ build tree" \
+  "mkdir -p rust/target/package/x && printf 'version = 4\n' > rust/target/package/x/Cargo.lock"
+
 expect fail "a lockfile deleted" "rm typescript/package-lock.json"
 
 # The point of this check: it observes bytes, so the mechanism does not matter.
@@ -149,6 +166,7 @@ vc fail "a tracked lockfile modified" "printf 'x' >> typescript/package-lock.jso
 vc fail "a NEW untracked lockfile created" "printf '{}' > package-lock.json"
 vc fail "a new lockfile in a new directory" "mkdir -p n && printf '{}' > n/package-lock.json"
 vc fail "go.sum modified" "printf 'x' >> go/go.sum"
+vc fail "Cargo.lock modified" "printf 'x' >> rust/Cargo.lock"
 vc fail "a tracked lockfile deleted" "rm python/uv.lock"
 vc pass "an unrelated file changed" "echo x > README.md"
 

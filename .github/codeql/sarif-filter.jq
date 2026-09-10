@@ -9,6 +9,6 @@
 .runs |= map(.results |= (. // [] | map(
   select(
     (.locations // [])[0].physicalLocation.artifactLocation.uri // "" |
-    test("(^|/)(go/pkg/generated/|typescript/(src/generated|dist)/|ruby/lib/basecamp/generated/|swift/Sources/Basecamp/Generated/|kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/|python/src/basecamp/generated/(?!services/_))") | not
+    test("(^|/)(go/pkg/generated/|typescript/(src/generated|dist)/|ruby/lib/basecamp/generated/|swift/Sources/Basecamp/Generated/|kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/|rust/basecamp-sdk/src/generated/|python/src/basecamp/generated/(?!services/_))") | not
   )
 )))

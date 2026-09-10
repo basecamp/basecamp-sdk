@@ -60,6 +60,18 @@
           "locations": [{"physicalLocation": {"artifactLocation": {"uri": "python/src/basecamp/generated/services/_async_base.py"}}}]
         },
         {
+          "ruleId": "drop-rust-generated",
+          "locations": [{"physicalLocation": {"artifactLocation": {"uri": "rust/basecamp-sdk/src/generated/routes.rs"}}}]
+        },
+        {
+          "ruleId": "keep-rust-runtime",
+          "locations": [{"physicalLocation": {"artifactLocation": {"uri": "rust/basecamp-sdk/src/client.rs"}}}]
+        },
+        {
+          "ruleId": "keep-rust-generator",
+          "locations": [{"physicalLocation": {"artifactLocation": {"uri": "rust/generator/src/main.rs"}}}]
+        },
+        {
           "ruleId": "keep-no-locations",
           "locations": []
         },

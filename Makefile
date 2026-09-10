@@ -269,6 +269,9 @@ endif
 		{ echo "ERROR: Python pyproject.toml [project].version does not match $(VERSION). Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
 	@grep -qF 'VERSION = "$(VERSION)"' python/src/basecamp/_version.py || \
 		{ echo "ERROR: Python version does not match $(VERSION). Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
+	@# Rust: read back through cargo's own TOML parser, not a regex over the file
+	@test "$$(cd rust && cargo metadata --no-deps --locked --format-version 1 | jq -r '.packages[] | select(.name == "$(RS_CRATE)") | .version')" = "$(VERSION)" || \
+		{ echo "ERROR: Rust crate version does not match $(VERSION). Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
 	@./scripts/promote-migrating.sh --check $(VERSION)
 	@# Verify lockfiles are frozen against their manifests
 	@test "$$(jq -r '.version' typescript/package-lock.json)" = "$(VERSION)" -a "$$(jq -r '.packages[""].version' typescript/package-lock.json)" = "$(VERSION)" || \
@@ -289,6 +292,16 @@ endif
 		{ echo "ERROR: conformance/runner/ruby/Gemfile.lock's CHECKSUMS entry records a stale SDK version. Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
 	@(cd conformance/runner/python && uv lock --check) || \
 		{ echo "ERROR: conformance/runner/python/uv.lock is stale. Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
+	@# Both Rust lockfiles record the crate version; --locked fails on a stale one.
+	@# The runner's records it through its path dep on ../../../rust/basecamp-sdk.
+	@(cd rust && cargo metadata --locked --format-version 1 > /dev/null) || \
+		{ echo "ERROR: rust/Cargo.lock is stale. Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
+	@(cd conformance/runner/rust && cargo metadata --locked --format-version 1 > /dev/null) || \
+		{ echo "ERROR: conformance/runner/rust/Cargo.lock is stale. Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
+	@grep -qF 'version = "$(VERSION)"' conformance/runner/rust/Cargo.lock || \
+		{ echo "ERROR: conformance/runner/rust/Cargo.lock records a stale SDK version. Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
+	@# Lock freshness says nothing about `include`, the README path or metadata.
+	@$(MAKE) rs-publish-check
 	@git diff --quiet && git diff --cached --quiet || \
 		{ echo "ERROR: Working tree has uncommitted changes. Commit first."; exit 1; }
 	@# Verify we're on main — release tags must be on the default branch
@@ -337,6 +350,7 @@ sync-api-version-check:
 	grep -q "const val API_VERSION = \"$$API_VER\"" kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/BasecampConfig.kt || ok=false; \
 	grep -q "public static let apiVersion = \"$$API_VER\"" swift/Sources/Basecamp/BasecampConfig.swift || ok=false; \
 	grep -q "API_VERSION = \"$$API_VER\"" python/src/basecamp/_version.py || ok=false; \
+	grep -q "pub const API_VERSION: &str = \"$$API_VER\";" rust/basecamp-sdk/src/generated/mod.rs || ok=false; \
 	if [ "$$ok" = false ]; then echo "ERROR: API_VERSION constants are out of date. Run 'make sync-api-version'"; exit 1; fi
 	@echo "API version constants are up to date"
 
@@ -598,6 +612,81 @@ py-check-drift:
 
 py-clean:
 	rm -rf python/dist python/.pytest_cache python/src/*.egg-info python/.venv
+
+#------------------------------------------------------------------------------
+# Rust SDK targets
+#------------------------------------------------------------------------------
+
+# rust/ is a Cargo workspace (basecamp-sdk + generator); the conformance runner
+# is its own workspace at conformance/runner/rust with a path dep on the crate.
+# Every cargo invocation passes --locked: both Cargo.lock files are tracked, so
+# a stale one fails the build here rather than being rewritten mid-check and
+# tripping assert-lockfiles-unchanged after the fact.
+RS_CRATE := basecamp-sdk
+
+.PHONY: rs-build rs-test rs-lint rs-doc rs-deny rs-generate rs-check-drift rs-publish-check rs-check rs-clean rs-fmt
+
+rs-build:
+	@echo "==> Building Rust SDK..."
+	cd rust && cargo build --workspace --locked
+
+# Feature matrix (default, --no-default-features, --all-features) plus the
+# compiled examples: a README snippet that stops compiling is a docs bug the
+# doctests alone would miss when the fence is `no_run`.
+rs-test:
+	@echo "==> Running Rust tests..."
+	cd rust && cargo test --workspace --all-features --locked
+	cd rust && cargo test -p $(RS_CRATE) --no-default-features --locked
+	cd rust && cargo test -p $(RS_CRATE) --locked
+	cd rust && cargo build -p $(RS_CRATE) --examples --locked
+
+rs-fmt:
+	cd rust && cargo fmt --all
+
+rs-lint:
+	@echo "==> Linting Rust SDK..."
+	cd rust && cargo fmt --all --check
+	cd rust && cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
+
+# Broken intra-doc links and missing docs fail the build; -D warnings is
+# applied here rather than in [lints] so a local `cargo build` still succeeds
+# with a warning the developer can see.
+rs-doc:
+	@echo "==> Building Rust docs..."
+	cd rust && RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --all-features -p $(RS_CRATE) --locked
+
+# One advisory/licence/bans gate over BOTH Cargo workspaces, from the checked-in
+# rust/deny.toml (the runner workspace points at the same file). cargo-audit is
+# deliberately not run beside it — same RustSec database, one tool.
+rs-deny:
+	@command -v cargo-deny >/dev/null || (echo "Install cargo-deny: cargo install cargo-deny --locked (or brew install cargo-deny)" && exit 1)
+	@echo "==> cargo deny (rust + conformance/runner/rust)..."
+	cargo deny --manifest-path rust/Cargo.toml check
+	cargo deny --manifest-path conformance/runner/rust/Cargo.toml check
+
+# Regenerate rust/basecamp-sdk/src/generated from openapi.json + behavior-model.json
+rs-generate:
+	@echo "==> Generating Rust SDK from OpenAPI..."
+	cd rust && cargo run -q --locked -p $(RS_CRATE)-generator -- \
+		--openapi ../openapi.json --behavior ../behavior-model.json \
+		--output basecamp-sdk/src/generated
+
+# Non-mutating regenerate + diff (the Swift/Python shape)
+rs-check-drift:
+	@echo "==> Checking Rust service drift..."
+	@./scripts/check-rust-service-drift.sh
+
+# Metadata, `include`, README path, no path deps: everything crates.io would
+# reject that lockfile freshness says nothing about. Run before the tag exists.
+rs-publish-check:
+	@echo "==> cargo publish --dry-run..."
+	cd rust && cargo publish -p $(RS_CRATE) --dry-run --locked
+
+# The {lang}-check contract: exactly what CI's test-rust job runs on stable.
+rs-check: rs-lint rs-test rs-doc rs-deny rs-check-drift rs-publish-check
+
+rs-clean:
+	rm -rf rust/target conformance/runner/rust/target
 
 #------------------------------------------------------------------------------
 # Conformance Test targets
@@ -1567,12 +1656,13 @@ generate:
 	         rb-generate rb-generate-services \
 	         py-generate \
 	         kt-generate-services \
-	         swift-generate
+	         swift-generate \
+	         rs-generate
 	@$(MAKE) -C go generate
 	@$(MAKE) sync-api-version
 	@echo "==> Generation complete"
 
-# Run all checks (Smithy + Go + TypeScript + Ruby + Kotlin + Swift + Python + Behavior Model + Conformance + Provenance + Actions lint)
+# Run all checks (Smithy + Go + TypeScript + Ruby + Kotlin + Swift + Python + Rust + Behavior Model + Conformance + Provenance + Actions lint)
 #
 # Wrapped rather than a bare dependency list so the lockfiles can be hashed
 # before the checks and again after. lint-npm-lockfile-writes predicts that
@@ -1604,7 +1694,7 @@ check-targets: check-gradle-serialization test-check-gradle-serialization test-p
 	@:
 
 # Clean all build artifacts
-clean: smithy-clean go-clean ts-clean rb-clean kt-clean swift-clean py-clean
+clean: smithy-clean go-clean ts-clean rb-clean kt-clean swift-clean py-clean rs-clean
 
 # Help
 help:
@@ -1680,8 +1770,9 @@ help:
 	@echo "  conformance-python         Run Python conformance tests"
 	@echo "  conformance-python-replay  Decode TS-captured wire snapshots through Python SDK"
 	@echo "  conformance-swift          Run Swift conformance tests (macOS only)"
+	@echo "  conformance-rust           Run Rust conformance tests"
 	@echo "  conformance-runner-tests   Unit-test every runner's own assertion helpers"
-	@echo "  conformance-runner-tests-<lang>  ...for one of go|python|ruby|kotlin|swift"
+	@echo "  conformance-runner-tests-<lang>  ...for one of go|python|ruby|kotlin|swift|rust"
 	@echo "  conformance-build          Build Go conformance test runner"
 	@echo "  oauth-fixtures-check       Validate OAuth discovery fixtures against their schema"
 	@echo "  oauth-token-fixtures-check Validate OAuth token wire-behavior fixtures against their schema"
@@ -1710,6 +1801,18 @@ help:
 	@echo "  py-check-drift       Check service drift vs OpenAPI spec"
 	@echo "  py-clean             Remove Python build artifacts"
 	@echo ""
+	@echo "Rust SDK:"
+	@echo "  rs-generate          Regenerate src/generated from OpenAPI + behavior model"
+	@echo "  rs-build             Build Rust SDK workspace"
+	@echo "  rs-test              Run Rust tests (feature matrix + examples)"
+	@echo "  rs-lint              rustfmt --check + clippy -D warnings"
+	@echo "  rs-doc               Build crate docs with -D warnings"
+	@echo "  rs-deny              cargo deny (advisories/licenses/bans, both workspaces)"
+	@echo "  rs-check-drift       Check generated Rust is current (regenerate + diff)"
+	@echo "  rs-publish-check     cargo publish --dry-run"
+	@echo "  rs-check             Run all Rust checks (what CI runs on stable)"
+	@echo "  rs-clean             Remove Rust build artifacts"
+	@echo ""
 	@echo "Provenance:"
 	@echo "  provenance-sync  Copy provenance into Go package for go:embed"
 	@echo "  provenance-check Verify Go embedded provenance is up to date"
@@ -1731,6 +1834,6 @@ help:
 	@echo ""
 	@echo "Combined:"
 	@echo "  generate         Regenerate every machine-derived artifact (Smithy + per-language SDKs + provenance)"
-	@echo "  check            Run all checks (Smithy + behavior-model/drift + Go + TypeScript + Ruby + Swift + Kotlin + Python + Conformance + Provenance + API version sync + parity lint + api-gaps + fixture-coverage + kt-optional-arrays + Actions lint)"
+	@echo "  check            Run all checks (Smithy + behavior-model/drift + Go + TypeScript + Ruby + Swift + Kotlin + Python + Rust + Conformance + Provenance + API version sync + parity lint + api-gaps + fixture-coverage + kt-optional-arrays + Actions lint)"
 	@echo "  clean            Remove all build artifacts"
 	@echo "  help             Show this help"
