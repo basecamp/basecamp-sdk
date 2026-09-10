@@ -236,6 +236,23 @@ class TestRetryAfter:
         assert resp.status_code == 200
         mock_sleep.assert_called_once_with(1.0)
 
+    @respx.mock
+    def test_retry_after_honoured_on_503(self):
+        # SPEC section 6 "Retry-After Honouring": the header governs the wait at
+        # every status in the declared retry set, not at 429 alone.
+        from unittest.mock import patch
+
+        route = respx.get("https://3.basecampapi.com/test")
+        route.side_effect = [
+            httpx.Response(503, headers={"Retry-After": "2"}),
+            httpx.Response(200, json={"ok": True}),
+        ]
+        client = make_client(max_retries=3)
+        with patch("time.sleep") as mock_sleep:
+            resp = client.get("/test")
+        assert resp.status_code == 200
+        mock_sleep.assert_called_once_with(2.0)
+
 
 class TestHeaders:
     @respx.mock
