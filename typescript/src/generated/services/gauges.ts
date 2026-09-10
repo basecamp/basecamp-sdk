@@ -114,7 +114,7 @@ export class GaugesService extends BaseService {
    *
    * @example
    * ```ts
-   * const result = await client.gauges.updateGaugeNeedle(123, { gaugeNeedle: {  } });
+   * const result = await client.gauges.updateGaugeNeedle(123, { gaugeNeedle: { description: "Details here" } });
    * ```
    */
   async updateGaugeNeedle(needleId: number, req: UpdateGaugeNeedleGaugeRequest): Promise<components["schemas"]["UpdateGaugeNeedleResponseContent"]> {

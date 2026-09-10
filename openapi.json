@@ -31786,9 +31786,12 @@
         "properties": {
           "description": {
             "type": "string",
-            "description": "Rich text (HTML) description"
+            "description": "Rich text (HTML) description. Required: it is the only member bc3's\nupdate accepts (`needle_params.except(:color, :position)`), and\n`params.require(:gauge_needle)` rejects an empty wrapper as missing, so a\npayload without it is the same 400 as no wrapper at all."
           }
-        }
+        },
+        "required": [
+          "description"
+        ]
       },
       "GaugeTogglePayload": {
         "type": "object",

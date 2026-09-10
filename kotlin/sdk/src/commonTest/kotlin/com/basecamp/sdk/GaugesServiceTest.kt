@@ -655,31 +655,6 @@ class GaugesServiceTest {
         client.close()
     }
 
-    // bc3's needle_params opens with params.require(:gauge_needle), so a body
-    // without the wrapper is a 400, not a no-op. The wrapper is required and
-    // goes on the wire even when the payload inside it is empty.
-    @Test
-    fun updateGaugeNeedleAlwaysSendsTheWrapperEvenWhenThePayloadIsEmpty() = runTest {
-        var capturedBody: String? = null
-
-        val client = mockClient { request ->
-            capturedBody = request.body.toByteArray().decodeToString()
-            respond(
-                content = needleJson(),
-                status = HttpStatusCode.OK,
-                headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
-            )
-        }
-
-        client.forAccount(accountId).gauges.updateGaugeNeedle(needleId, UpdateGaugeNeedleBody(gaugeNeedle = buildJsonObject {}))
-
-        val body = json.parseToJsonElement(capturedBody!!).jsonObject
-        assertEquals(setOf("gauge_needle"), body.keys, "the wrapper must be present; got $capturedBody")
-        assertTrue(body["gauge_needle"]!!.jsonObject.isEmpty())
-
-        client.close()
-    }
-
     @Test
     fun updateGaugeNeedleNotFoundThrowsNotFoundWithStatusCodeAndServerMessage() = runTest {
         val client = errorClient(HttpStatusCode.NotFound, """{"error": "Needle not found"}""")

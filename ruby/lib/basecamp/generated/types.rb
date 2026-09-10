@@ -2277,6 +2277,11 @@ module Basecamp
       include TypeHelpers
       attr_accessor :description
 
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[description].freeze
+      end
+
       def initialize(data = {})
         @description = data["description"]
       end

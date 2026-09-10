@@ -2,9 +2,9 @@
 import Foundation
 
 public struct GaugeNeedleUpdatePayload: Codable, Sendable {
-    public var description: String?
+    public let description: String
 
-    public init(description: String? = nil) {
+    public init(description: String) {
         self.description = description
     }
 }

@@ -1533,8 +1533,11 @@ type GaugeNeedlePayload struct {
 
 // GaugeNeedleUpdatePayload defines model for GaugeNeedleUpdatePayload.
 type GaugeNeedleUpdatePayload struct {
-	// Description Rich text (HTML) description
-	Description *string `json:"description,omitempty"`
+	// Description Rich text (HTML) description. Required: it is the only member bc3's
+	// update accepts (`needle_params.except(:color, :position)`), and
+	// `params.require(:gauge_needle)` rejects an empty wrapper as missing, so a
+	// payload without it is the same 400 as no wrapper at all.
+	Description string `json:"description"`
 }
 
 // GaugeTogglePayload defines model for GaugeTogglePayload.

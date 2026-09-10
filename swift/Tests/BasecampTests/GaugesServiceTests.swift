@@ -537,8 +537,7 @@ final class GaugesServiceTests: XCTestCase {
         let transport = MockTransport(statusCode: 200, data: data)
         let account = makeTestAccountClient(transport: transport)
 
-        var payload = GaugeNeedleUpdatePayload()
-        payload.description = "<div>Revised note</div>"
+        let payload = GaugeNeedleUpdatePayload(description: "<div>Revised note</div>")
         let needle = try await account.gauges.updateGaugeNeedle(
             needleId: Self.needleId, req: UpdateGaugeNeedleRequest(gaugeNeedle: payload))
 
@@ -562,8 +561,7 @@ final class GaugesServiceTests: XCTestCase {
         let transport = MockTransport(statusCode: 404, data: body)
         let account = makeTestAccountClient(transport: transport)
 
-        var payload = GaugeNeedleUpdatePayload()
-        payload.description = "<div>Revised note</div>"
+        let payload = GaugeNeedleUpdatePayload(description: "<div>Revised note</div>")
 
         do {
             _ = try await account.gauges.updateGaugeNeedle(

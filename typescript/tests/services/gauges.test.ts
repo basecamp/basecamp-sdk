@@ -484,6 +484,31 @@ describe("GaugesService", () => {
       expect(needle.position).toBe(72);
     });
 
+    // bc3's needle_params opens with params.require(:gauge_needle), so a body
+    // without the wrapper was always a 400. The generated method refuses it
+    // before the wire; no request is made.
+    it("refuses a missing gauge_needle wrapper as a validation error before the request", async () => {
+      let requests = 0;
+      server.use(
+        http.put(`${BASE_URL}/gauge_needles/${needleFixture.id}`, () => {
+          requests += 1;
+          return HttpResponse.json(sampleNeedle(needleFixture.id));
+        })
+      );
+
+      const error = asBasecampError(
+        await rejection(
+          client.gauges.updateGaugeNeedle(
+            needleFixture.id,
+            {} as unknown as Parameters<typeof client.gauges.updateGaugeNeedle>[1]
+          )
+        )
+      );
+      expect(error.code).toBe("validation");
+      expect(error.message).toBe("Gauge needle is required");
+      expect(requests).toBe(0);
+    });
+
     it("maps a 404 on an unknown needle to not_found", async () => {
       server.use(
         http.put(`${BASE_URL}/gauge_needles/999`, () =>

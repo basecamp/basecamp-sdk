@@ -4968,8 +4968,13 @@ export interface components {
             description?: string;
         };
         GaugeNeedleUpdatePayload: {
-            /** @description Rich text (HTML) description */
-            description?: string;
+            /**
+             * @description Rich text (HTML) description. Required: it is the only member bc3's
+             *     update accepts (`needle_params.except(:color, :position)`), and
+             *     `params.require(:gauge_needle)` rejects an empty wrapper as missing, so a
+             *     payload without it is the same 400 as no wrapper at all.
+             */
+            description: string;
         };
         GaugeTogglePayload: {
             enabled: boolean;

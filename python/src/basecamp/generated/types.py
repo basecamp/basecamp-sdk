@@ -945,7 +945,7 @@ class GaugeNeedlePayload(TypedDict):
 
 
 class GaugeNeedleUpdatePayload(TypedDict):
-    description: NotRequired[str]
+    description: str
 
 
 class GaugeTogglePayload(TypedDict):
