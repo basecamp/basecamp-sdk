@@ -1,7 +1,7 @@
 [package]
 name = "basecamp-sdk"
 version = "0.18.0"
-description = "Official Basecamp API client, generated from the Smithy model in spec/"
+description = "Official client for Basecamp - https://basecamp.com"
 readme = "README.md"
 homepage = "https://github.com/basecamp/basecamp-sdk"
 documentation = "https://docs.rs/basecamp-sdk"
