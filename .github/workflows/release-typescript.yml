@@ -208,11 +208,23 @@ jobs:
         env:
           VERSION: ${{ needs.build.outputs.version }}
         run: |
-          if npm view "@37signals/basecamp@${VERSION}" version 2>/dev/null; then
-            echo "already_published=true" >> $GITHUB_OUTPUT
+          # Publish only when the registry positively says the version is absent
+          # (E404). Any other failure — network, auth, registry outage — stops the
+          # job rather than guessing; a re-run of this run is the recovery. An empty
+          # cache keeps npm from answering from a stale packument when the fetch fails.
+          set +e
+          output=$(npm view --cache "$RUNNER_TEMP/npm-view-cache" "@37signals/basecamp@${VERSION}" version 2>&1)
+          status=$?
+          set -e
+          if [ "$status" -eq 0 ] && [ -n "$output" ]; then
+            echo "already_published=true" >> "$GITHUB_OUTPUT"
             echo "::notice::Version ${VERSION} already published to npm"
+          elif echo "$output" | grep -q "E404"; then
+            echo "already_published=false" >> "$GITHUB_OUTPUT"
           else
-            echo "already_published=false" >> $GITHUB_OUTPUT
+            echo "$output"
+            echo "::error::Could not determine whether @37signals/basecamp@${VERSION} is on npm (npm view exit $status); not publishing blind"
+            exit 1
           fi
 
       - name: Publish to npm
