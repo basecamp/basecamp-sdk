@@ -772,11 +772,15 @@ func (l *loop) run(yield func(Event, error) bool) {
 				return
 			}
 			// The failed attempt is fully disposed, so the exact
-			// outstanding-timer set on entry to Backoff is {backoff}.
+			// outstanding-timer set on entry to Backoff is {backoff} — and
+			// the timer is armed BEFORE the state is announced, as every
+			// state's timer is, so an observer reacting to the announcement
+			// sees the set §23 publishes for it rather than the empty set a
+			// statement earlier.
 			l.failedCycles++
-			l.setState(stateBackoff)
 			d := reconnectDelay(out.retryAfter, l.failedCycles, l.cfg.rand)
 			t := l.cfg.clock.NewTimer(d, timerBackoff)
+			l.setState(stateBackoff)
 			select {
 			case <-t.C():
 				// Transition 2: Backoff → Minting; a fresh ticket is ALWAYS
@@ -915,21 +919,24 @@ func (l *loop) runCycle(delay time.Duration) cycleOutcome {
 		return l.classifyMintFailure(err)
 	}
 
-	// Transition 3 → Connecting: dial the mint's url verbatim. The cable-URL
-	// policy pre-check runs before anything is armed — a policy violation
-	// recurs on every re-mint, so it is Terminal(invalid_cable_url), never
-	// Backoff. The error never carries the URL: the ticket rides in its
-	// query string.
+	// Transition 3 → Connecting: dial the mint's url verbatim. The handshake
+	// deadline arms on entry to Connecting, BEFORE dial — it spans
+	// dial-to-welcome, so a stalled dial expires it (transition 7) — and
+	// before the state is announced, so the announcement is made with the
+	// set §23 publishes for Connecting already outstanding. The cable-URL
+	// policy pre-check follows: a policy violation recurs on every re-mint,
+	// so it is Terminal(invalid_cable_url), never Backoff, and the deadline
+	// is stopped on the way out (a terminal's set is {}). The error never
+	// carries the URL: the ticket rides in its query string.
+	hs := l.cfg.clock.NewTimer(handshakeDeadline, timerHandshakeDeadline)
+	at.phase = hs
 	l.setState(stateConnecting)
 	if derr := checkCableURL(ticket.URL); derr != nil {
+		hs.Stop()
 		return cycleOutcome{kind: outcomeTerminal, term: &TerminalError{
 			Reason: ReasonInvalidCableURL, Msg: derr.Reason, Err: derr,
 		}}
 	}
-	// The handshake deadline arms on entry to Connecting, BEFORE dial — it
-	// spans dial-to-welcome, so a stalled dial expires it (transition 7).
-	hs := l.cfg.clock.NewTimer(handshakeDeadline, timerHandshakeDeadline)
-	at.phase = hs
 	type dialResult struct {
 		conn CableConn
 		err  error
