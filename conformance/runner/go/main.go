@@ -2049,6 +2049,8 @@ func checkAssertion(
 				actual = sdkError.Message
 			case "requestId":
 				actual = sdkError.RequestID
+			case "retryAfter":
+				actual = sdkError.RetryAfter
 			default:
 				return fail(tc, fmt.Sprintf("Unknown error field: %s", fieldPath))
 			}

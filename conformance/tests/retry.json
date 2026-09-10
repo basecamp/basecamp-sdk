@@ -188,7 +188,8 @@
     ],
     "assertions": [
       {"type": "requestCount", "expected": 1},
-      {"type": "statusCode", "expected": 429}
+      {"type": "statusCode", "expected": 429},
+      {"type": "errorField", "path": "retryAfter", "expected": 1}
     ],
     "tags": ["no-retry", "post", "429"]
   },

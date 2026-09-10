@@ -585,8 +585,9 @@ parses at, not only in step 4. One parse feeds both the retry loop's sleep and t
 an exhausted 503 that was slept on for the value the origin named surfaces that value to the caller,
 and so does the error §7 step 3i hands to `on_retry`. Step 4 spells it out only because 429 is where
 the `hint` is derived from it. `[CONFLICT: Go, TypeScript, Ruby, Python and Rust populate it at every
-status; Kotlin's `Api` and Swift's `.api` carry no slot for it yet — adding one is a source-breaking
-change to Swift's enum, tracked in #775.]`
+status. Kotlin and Swift carry it on their rate-limit and `api_error` shapes — every status a retry
+loop reaches, and every 5xx — but not on the 401/403/404/400/422/507 shapes, whose classes have no
+slot; `error-mapping.json` pins the `api_error` arm and `retry.json` the 429 arm.]`
 
 ### Statusless `api_error` for a malformed 2xx body `[manual]`
 
@@ -4225,6 +4226,7 @@ what `make doc-constants-check` asserts — not a case-by-case index.
 | `error-mapping.json` | 503 → api_error (retryable) | §6 |
 | `error-mapping.json` | 504 → api_error (retryable) | §6 |
 | `error-mapping.json` | X-Request-Id extracted | §6 |
+| `error-mapping.json` | Retry-After surfaces as `retry_after` on a 503 api_error | §6 |
 | `idempotency.json` | PUT retries on 503 | §7 (Gate 1) |
 | `idempotency.json` | DELETE retries on 503 | §7 (Gate 1) |
 | `idempotency.json` | POST does NOT retry | §7 (Gate 2) |
