@@ -288,7 +288,7 @@ private suspend fun AccountClient.downloadHop1(
     // Hooks render this flow's URL as origin+path only (SPEC §9): the
     // caller's URL can smuggle a signed query through the rewrite into hop 1.
     // The wire request keeps the query; only the rendering is projected.
-    val hookUrl = hookDisplayUrl(url)
+    val hookUrl = displayUrl(url)
     var attempt = 1
     while (true) {
         val requestInfo = RequestInfo(method = "GET", url = hookUrl, attempt = attempt)
@@ -377,27 +377,6 @@ private suspend fun AccountClient.downloadHop1(
     }
 }
 
-/**
- * Renders a download URL for hooks: origin and path only — no userinfo (a
- * configured base URL can carry one), no query (where a signed credential
- * rides), no fragment (SPEC §9). Rebuilt from a parse; a URL with no complete
- * origin renders as the fixed token, never as any of its own text.
- */
-private fun hookDisplayUrl(url: String): String {
-    val parsed = try {
-        Url(url)
-    } catch (_: Exception) {
-        null
-    }
-    if (parsed == null || parsed.host.isEmpty()) return "unparsable"
-    val host = if (parsed.host.contains(':') && !parsed.host.startsWith("[")) "[${parsed.host}]" else parsed.host
-    val port = if (parsed.specifiedPort != 0 && parsed.specifiedPort != parsed.protocol.defaultPort) {
-        ":${parsed.specifiedPort}"
-    } else {
-        ""
-    }
-    return "${parsed.protocol.name}://$host$port${parsed.encodedPath}"
-}
 
 /**
  * Rewrites a URL's origin (scheme + host + port) to match the base URL,
