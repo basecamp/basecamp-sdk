@@ -183,7 +183,12 @@ class BasecampClient internal constructor(
         config = config,
         hooks = hooks,
         json = json,
+        requestTimeoutMillis = if (externalHttpClient == null) installedTimeoutMillis else null,
     )
+
+    /** The HttpTimeout budget [configureClient] installs, if any. */
+    private val installedTimeoutMillis: Long?
+        get() = config.timeout.takeIf { it.isFinite() }?.inWholeMilliseconds
 
     private fun HttpClientConfig<*>.configureClient() {
         expectSuccess = false
