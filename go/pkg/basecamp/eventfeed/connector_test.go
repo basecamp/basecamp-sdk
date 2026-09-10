@@ -2048,3 +2048,111 @@ func TestPanicArmingStalenessClosesTheDialedSocket(t *testing.T) {
 	}
 	assertTimers(t, clock.Clock, map[string]int{})
 }
+
+// panickingDialTransport and panickingWriteConn make a seam panic on the
+// worker goroutine the connector runs it on.
+type panickingDialTransport struct{ inner *feedtest.Transport }
+
+func (p *panickingDialTransport) Dial(context.Context, string, int64) (eventfeed.CableConn, error) {
+	panic("host transport panicked in Dial")
+}
+
+type panickingWriteTransport struct{ inner *feedtest.Transport }
+
+func (p *panickingWriteTransport) Dial(ctx context.Context, wsURL string, maxFrameBytes int64) (eventfeed.CableConn, error) {
+	conn, err := p.inner.Dial(ctx, wsURL, maxFrameBytes)
+	if err != nil {
+		return nil, err
+	}
+	return &panickingWriteConn{CableConn: conn}, nil
+}
+
+type panickingWriteConn struct{ eventfeed.CableConn }
+
+func (c *panickingWriteConn) WriteFrame(context.Context, []byte) error {
+	panic("host connection panicked in WriteFrame")
+}
+
+// TestSeamPanicsPropagateOnTheConsumerGoroutine: Dial, WriteFrame and Poll
+// run on worker goroutines so the state machine can keep selecting, and Go's
+// recovery is goroutine-local — a host seam panicking on one of them ended
+// the process, bypassing the recovery that disposes the attempt for a panic
+// on the consumer's goroutine. Each worker now captures the panic and the
+// receiving arm re-raises it where runCycle's recovery runs: the consumer's
+// recover sees the seam's own value, the socket (where one exists) is
+// disposed, and no timer survives.
+func TestSeamPanicsPropagateOnTheConsumerGoroutine(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		setup func(h *harness) (drive func(), want string)
+		opts  func(h *harness) []eventfeed.Option
+	}{
+		{
+			name: "poll",
+			setup: func(h *harness) (func(), string) {
+				h.polls.OnCall(func(feedtest.PollCall) { panic("host poll source panicked") })
+				return func() {
+					conn := h.driveToSubscribed()
+					conn.Serve(frameConfirm(noFilterIdentifier))
+				}, "host poll source panicked"
+			},
+		},
+		{
+			name: "write",
+			setup: func(h *harness) (func(), string) {
+				return func() {
+					conn := h.liveConn()
+					conn.Serve(frameWelcome())
+				}, "host connection panicked in WriteFrame"
+			},
+			opts: func(h *harness) []eventfeed.Option {
+				return []eventfeed.Option{eventfeed.WithTransport(&panickingWriteTransport{inner: h.tr})}
+			},
+		},
+		{
+			name:  "dial",
+			setup: func(h *harness) (func(), string) { return func() {}, "host transport panicked in Dial" },
+			opts: func(h *harness) []eventfeed.Option {
+				return []eventfeed.Option{eventfeed.WithTransport(&panickingDialTransport{inner: h.tr})}
+			},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			base := newHarness(t)
+			var opts []eventfeed.Option
+			if tc.opts != nil {
+				opts = tc.opts(base)
+			}
+			h := newHarness(t, opts...)
+			if tc.opts != nil {
+				// The wrapper closes over the FIRST harness's transport; point
+				// this one at it so dials land where the test can see them.
+				h.tr = base.tr
+			}
+			h.minter.ScriptTicket(ticket(1))
+			drive, want := tc.setup(h)
+			recovered := make(chan any, 1)
+			go func() {
+				defer func() { recovered <- recover() }()
+				for range h.conn.Events(context.Background()) {
+				}
+			}()
+			drive()
+			select {
+			case r := <-recovered:
+				if r == nil {
+					t.Fatal("the panic did not propagate out of the iteration")
+				}
+				if s, _ := r.(string); s != want {
+					t.Fatalf("recovered %v, want the seam's own panic value %q", r, want)
+				}
+			case <-time.After(watchdog):
+				t.Fatal("the iteration neither panicked nor returned")
+			}
+			if sock := h.tr.LastConn(); sock != nil && !sock.Closed() {
+				t.Fatal("the live socket was not disposed during panic unwinding")
+			}
+			assertTimers(t, h.clock, map[string]int{})
+		})
+	}
+}

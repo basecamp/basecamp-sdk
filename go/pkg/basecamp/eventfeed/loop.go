@@ -148,6 +148,29 @@ type pumpItem struct {
 	err  error
 }
 
+// seamPanic is a panic captured on a worker goroutine, carried back to the
+// state machine's goroutine and re-raised there. Three seam calls run on
+// workers so the state machine can keep selecting while they are in flight
+// — Dial, WriteFrame, and Poll — and Go's recovery is goroutine-local: a
+// host seam panicking on one of them would end the process, bypassing
+// runCycle's recovery, where the same panic on the consumer's goroutine
+// disposes the attempt and propagates to the consumer. The worker recovers,
+// the receiving arm re-panics, and runCycle's deferred recovery runs as for
+// any host-code panic.
+type seamPanic struct{ value any }
+
+// capturePanic runs f, converting a panic into a seamPanic for the caller
+// to re-raise on its own goroutine.
+func capturePanic(f func()) (p *seamPanic) {
+	defer func() {
+		if r := recover(); r != nil {
+			p = &seamPanic{value: r}
+		}
+	}()
+	f()
+	return nil
+}
+
 // liveConn is one live socket with its reader pump and staleness holder.
 type liveConn struct {
 	conn   CableConn
@@ -938,16 +961,26 @@ func (l *loop) runCycle(delay time.Duration) cycleOutcome {
 		}}
 	}
 	type dialResult struct {
-		conn CableConn
-		err  error
+		conn     CableConn
+		err      error
+		panicked *seamPanic
 	}
 	dialCh := make(chan dialResult, 1)
 	go func() {
-		conn, dialErr := l.cfg.transport.Dial(at.ctx, ticket.URL, maxFrameBytes)
-		dialCh <- dialResult{conn: conn, err: dialErr}
+		var r dialResult
+		r.panicked = capturePanic(func() {
+			r.conn, r.err = l.cfg.transport.Dial(at.ctx, ticket.URL, maxFrameBytes)
+		})
+		dialCh <- r
 	}()
 	select {
 	case r := <-dialCh:
+		if r.panicked != nil {
+			// Re-raised here, on the state machine's goroutine: runCycle's
+			// recovery stops the handshake deadline (no liveConn exists yet)
+			// and the panic reaches the consumer as a host-code panic does.
+			panic(r.panicked.value)
+		}
 		if l.runCtx.Err() != nil {
 			hs.Stop()
 			if r.conn != nil {
@@ -1230,12 +1263,26 @@ func (l *loop) awaitConfirmation(at *attempt, deadline Timer) cycleOutcome {
 // wait carries the case like every other socket-open wait, generation dance
 // and all.
 func (l *loop) writeSubscribe(at *attempt, deadline *Timer) (cycleOutcome, bool) {
-	written := make(chan error, 1)
-	go func() { written <- at.lc.conn.WriteFrame(at.ctx, l.subscribeFrame) }()
+	type writeResult struct {
+		err      error
+		panicked *seamPanic
+	}
+	written := make(chan writeResult, 1)
+	go func() {
+		var r writeResult
+		r.panicked = capturePanic(func() { r.err = at.lc.conn.WriteFrame(at.ctx, l.subscribeFrame) })
+		written <- r
+	}()
 	for {
 		staleTimer, staleGen := at.lc.stale.current()
 		select {
-		case werr := <-written:
+		case r := <-written:
+			if r.panicked != nil {
+				// Re-raised on the state machine's goroutine; runCycle's
+				// recovery disposes the live attempt.
+				panic(r.panicked.value)
+			}
+			werr := r.err
 			// Close outranks the write's result: cancellation surfaces
 			// through a conforming WriteFrame as its own error, so `written`
 			// and runCtx.Done() can be ready together — and dispatching the
