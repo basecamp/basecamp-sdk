@@ -167,10 +167,14 @@ jobs:
       # restores it, and an UP-TO-DATE compile emits nothing (empty database).
       # Scoped to :basecamp-sdk — :generator is in neither codeql-config.yml's
       # paths-ignore nor the SARIF filter, so building it would leak alerts.
+      # The init script compiles with the newest Kotlin CodeQL supports rather
+      # than the catalog's: the extractor refuses a newer compiler outright
+      # ("Kotlin version 2.4.20 is too recent"), and dependabot reaches each
+      # Kotlin release before CodeQL does.
       - name: Build (Kotlin)
         if: matrix.language == 'java-kotlin'
         working-directory: kotlin
-        run: ./gradlew --no-build-cache clean :basecamp-sdk:compileKotlinJvm
+        run: ./gradlew --init-script ../.github/codeql/kotlin-version.init.gradle.kts --no-build-cache clean :basecamp-sdk:compileKotlinJvm
 
       # --- Analysis (fails build on real errors) ---
 
