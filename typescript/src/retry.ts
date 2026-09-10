@@ -198,12 +198,15 @@ export async function executeWithRetry(
     // SPEC §7 step 3i: the error handed to onRetry is the status-mapped
     // BasecampError, so a hook sees the same httpStatus and retryAfter the
     // terminal error would carry — the parsed value that governs this very
-    // sleep. Built from the status and headers alone: the body is being
-    // discarded below, and the mapper needs none of it for those fields.
+    // sleep, handed over rather than parsed again, so an HTTP-date crossing
+    // a second boundary between the two cannot make the hook's number
+    // differ from the wait. Built from the status and headers alone: the
+    // body is being discarded below, and the mapper needs none of it.
     const statusError = errorFromParsedBody(
       response,
       null,
       response.headers.get("X-Request-Id") ?? undefined,
+      retryAfterSeconds,
     );
 
     // End the failed attempt before sleeping, so a slow backoff cannot leave

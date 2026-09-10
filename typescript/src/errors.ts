@@ -339,10 +339,15 @@ export async function errorFromResponse(
 export function errorFromParsedBody(
   response: Response,
   body: unknown,
-  requestId?: string
+  requestId?: string,
+  // The parsed Retry-After, when the caller already holds it: a retry loop
+  // hands over the value that governs the sleep it is about to take, so the
+  // error §7 step 3i gives on_retry carries that number and not a second
+  // parse of an HTTP-date, which can round to one second less across a
+  // whole-second boundary. Absent, the header is parsed here.
+  retryAfter: number | undefined = parseRetryAfter(response.headers.get("Retry-After"))
 ): BasecampError {
   const httpStatus = response.status;
-  const retryAfter = parseRetryAfter(response.headers.get("Retry-After"));
 
   // Try to extract error message from the parsed body. The fallback is the
   // fixed code-bearing phrase (SPEC §6 step 5), never response.statusText —

@@ -584,7 +584,7 @@ In all cases, `retry_after` is `parseRetryAfter(headers)` — populated at **eve
 parses at, not only in step 4. One parse feeds both the retry loop's sleep and the error's field, so
 an exhausted 503 that was slept on for the value the origin named surfaces that value to the caller,
 and so does the error §7 step 3i hands to `on_retry`. Step 4 spells it out only because 429 is where
-the `hint` is derived from it. `[CONFLICT: Go, TypeScript, Ruby and Python populate it at every
+the `hint` is derived from it. `[CONFLICT: Go, TypeScript, Ruby, Python and Rust populate it at every
 status; Kotlin's `Api` and Swift's `.api` carry no slot for it yet — adding one is a source-breaking
 change to Swift's enum, tracked in #775.]`
 
@@ -747,8 +747,8 @@ status set into the steps above.
 `[CONFLICT: the table is the contract; the SDKs converge on it in two steps. The status gate, the
 rounding rule and the added-jitter defect are converged; the ceiling row is implemented in Go
 (both parsers) and in Rust, and owed by the other five — each still refuses or raises above its own integer width —
-and the sign row is owed by Ruby, Python, Kotlin and Swift. Per-parser inventory and call sites in
-#799 and #775.]`
+and the sign row is owed by TypeScript, Ruby, Python, Kotlin and Swift. Per-parser inventory and call
+sites in #799 and #775.]`
 
 ### Retry-After Honouring `[CONFLICT]`
 

@@ -280,6 +280,24 @@ describe("the shared retry loop honours the parsed value", () => {
     expect(timerSafeDelayMs(error.retryAfter!)).toBeLessThanOrEqual(2_147_483_647);
   });
 
+  /**
+   * SPEC §7 step 3i: the error on_retry receives carries the retryAfter that
+   * governs the sleep. The loop parses the header once for the delay and
+   * hands that value to the mapper; a mapper that parsed the header a second
+   * time could round an HTTP-date to one second less across a whole-second
+   * boundary, and the hook would then report a shorter wait than the loop
+   * takes.
+   */
+  it("carries the caller's parsed retryAfter instead of parsing the header again", () => {
+    const response = new Response(null, {
+      status: 503,
+      headers: { "Retry-After": "3" },
+    });
+    expect(errorFromParsedBody(response, null, undefined, 7).retryAfter).toBe(7);
+    // Absent, the header is parsed here, as before.
+    expect(errorFromParsedBody(response, null).retryAfter).toBe(3);
+  });
+
   it("honours Retry-After on 503, not only on 429", async () => {
     // SPEC §6 "Retry-After Honouring": the header governs the wait at every
     // status in the declared retryOn set. A `status === 429` ternary here left

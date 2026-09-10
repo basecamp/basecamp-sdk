@@ -302,11 +302,13 @@ export abstract class BaseService {
 
         try {
           // SPEC §7 step 3i: the status-mapped error, carrying the parsed
-          // retryAfter that governs this sleep, not a bare Error.
+          // retryAfter that governs this sleep — the same value, not a
+          // second parse — rather than a bare Error.
           const retryError = errorFromParsedBody(
             response,
             null,
             response.headers.get("X-Request-Id") ?? undefined,
+            retryAfterSeconds,
           );
           // SPEC section 7: RequestInfo.attempt is the attempt that just failed
           // (1-based), while the standalone argument is the UPCOMING attempt.
