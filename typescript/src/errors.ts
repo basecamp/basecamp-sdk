@@ -573,7 +573,23 @@ function flattenFieldErrors(fieldErrors: Record<string, string[]>): string {
  * `delay-seconds` per RFC 9110, plus the leading sign every other SDK's integer
  * parser consumes and the surrounding whitespace `parseInt` already tolerated.
  */
-const DELAY_SECONDS = /^[+-]?\d+$/;
+const DELAY_SECONDS = /^\d+$/;
+
+/**
+ * SPEC §6 `MAX_RETRY_AFTER_SECONDS`: the value a parsed Retry-After saturates
+ * at, in both wire forms. A representability bound pinned once for all six
+ * SDKs — the narrowest `retry_after` integer any of them ships, and the same
+ * ceiling §16 already names — not a policy cap. Compared against the digit
+ * string's width before any conversion, so a 400-digit value never becomes
+ * Infinity on its way to the comparison.
+ */
+export const MAX_RETRY_AFTER_SECONDS = 2_147_483_647;
+const MAX_RETRY_AFTER_DIGITS = String(MAX_RETRY_AFTER_SECONDS).length;
+
+function saturateRetryAfter(seconds: number): number {
+  return seconds > MAX_RETRY_AFTER_SECONDS ? MAX_RETRY_AFTER_SECONDS : seconds;
+}
+
 
 /**
  * IMF-fixdate per RFC 7231 — `Sun, 06 Nov 1994 08:49:37 GMT`. A shape gate
@@ -641,8 +657,10 @@ export function parseRetryAfter(value: string | null): number | undefined {
   // instruction would become a tight retry loop against a server already
   // answering 429 (SPEC §7's backoff ceiling exists for exactly this).
   if (DELAY_SECONDS.test(trimmed)) {
-    const seconds = Number(trimmed);
-    return Number.isSafeInteger(seconds) && seconds > 0 ? seconds : undefined;
+    const digits = trimmed.replace(/^0+/, "");
+    if (digits.length > MAX_RETRY_AFTER_DIGITS) return MAX_RETRY_AFTER_SECONDS;
+    const seconds = Number(digits);
+    return seconds > 0 ? saturateRetryAfter(seconds) : undefined;
   }
 
   // Step 2 — an HTTP-date, reduced to the seconds remaining and honoured when
@@ -655,7 +673,7 @@ export function parseRetryAfter(value: string | null): number | undefined {
     if (!isNaN(date)) {
       const diffMs = date - Date.now();
       if (diffMs > 0) {
-        return Math.ceil(diffMs / 1000);
+        return saturateRetryAfter(Math.ceil(diffMs / 1000));
       }
     }
   }
