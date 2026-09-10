@@ -39,7 +39,7 @@ def _gauge_stub(gauge_id: int) -> dict:
 
 
 def _needle_stub(needle_id: int) -> dict:
-    return {"id": needle_id, "type": "Gauge::Needle", "color": "green", "position": 50}
+    return {"id": needle_id, "type": "Gauge::Needle", "color": "green", "position": 50, "comment_count": 1}
 
 
 def _link_to(url: str) -> dict[str, str]:

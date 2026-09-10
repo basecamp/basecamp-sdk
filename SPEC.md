@@ -390,8 +390,12 @@ Every SDK exposes the same three-method, two-state surface over it:
 
   This still holds for `UpdateTodolistRequest` and `UpdateDocumentRequest`. It no
   longer holds for uploads: `UpdateUploadRequest.Description` and
-  `CreateUploadVersionRequest.Description` are `*string`, following the
-  gauge-needle precedent, so `Ptr("")` clears and `nil` leaves the field alone.
+  `CreateUploadVersionRequest.Description` are `*string`, so `Ptr("")` clears
+  and `nil` leaves the field alone. `UpdateGaugeNeedleRequest.Description` is
+  `*string` too but carries no third state: the description is the payload's
+  only member and bc3 requires it, so `nil` is refused as a usage error before
+  any request is sent — it never left the field alone; it bought the server's
+  400 — and there is nothing to clear.
   `BaseName` stays a plain `string` on both — `Upload#base_name=` guards on
   `new_base_name.present?`, so `""` and absent are the same write server-side and
   there is no third state a pointer could express.

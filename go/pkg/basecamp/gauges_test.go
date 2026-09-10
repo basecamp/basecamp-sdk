@@ -26,6 +26,7 @@ func TestGaugeNeedle_DecodesDescriptionAttachments(t *testing.T) {
 	body := []byte(`{
 		"id": 42,
 		"type": "Gauge::Needle",
+		"comment_count": 1,
 		"description": "<div>Progress update with files</div>",
 		"description_attachments": [
 			{
@@ -268,7 +269,7 @@ func TestGaugesService_ListNeedles_PageSelectsOnePage(t *testing.T) {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(200)
-		w.Write([]byte(`[{"id": 11, "type": "Gauge::Needle"}]`))
+		w.Write([]byte(`[{"id": 11, "type": "Gauge::Needle", "comment_count": 1}]`))
 	})
 
 	result, err := svc.ListNeedles(context.Background(), 7, &GaugeNeedleListOptions{Page: 2})
@@ -295,7 +296,7 @@ func TestGaugesService_ListNeedles_PinnedFinalPageIsNotTruncated(t *testing.T) {
 		requestCount++
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(200)
-		w.Write([]byte(`[{"id": 11, "type": "Gauge::Needle"}]`))
+		w.Write([]byte(`[{"id": 11, "type": "Gauge::Needle", "comment_count": 1}]`))
 	})
 
 	result, err := svc.ListNeedles(context.Background(), 7, &GaugeNeedleListOptions{Page: 9})
@@ -348,7 +349,7 @@ func TestGaugesService_ListNeedles_PageComposesWithLimit(t *testing.T) {
 	svc := testGaugesServer(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(200)
-		w.Write([]byte(`[{"id": 11}, {"id": 12}, {"id": 13}]`))
+		w.Write([]byte(`[{"id": 11, "comment_count": 1}, {"id": 12, "comment_count": 1}, {"id": 13, "comment_count": 1}]`))
 	})
 
 	result, err := svc.ListNeedles(context.Background(), 7, &GaugeNeedleListOptions{Page: 2, Limit: 1})

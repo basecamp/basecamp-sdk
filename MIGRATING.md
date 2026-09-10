@@ -49,7 +49,8 @@ are source-breaking.
   - Go: `UpdateGaugeNeedleRequest.Description` stays `*string`, but `nil` is
     refused before the request as a usage error; it never left the
     description untouched, it produced the 400.
-  - Rust: `UpdateGaugeNeedleRequest { gauge_needle }` takes a
+  - Rust: `UpdateGaugeNeedleRequestContent { gauge_needle }` (re-exported
+    from the crate's `types` module) takes a
     `GaugeNeedleUpdatePayload` rather than an `Option`, and its
     `description` is a `String` rather than an `Option<String>`.
 - **`GaugeNeedle.comment_count` is required.** bc3 emits the singular key
@@ -75,7 +76,10 @@ are source-breaking.
   ```
 
   The OpenAPI member is `nullable: true` now, so TypeScript types it
-  `number | null | undefined`; Kotlin and Swift already typed it optional.
+  `number | null | undefined` and Python's `Gauge` TypedDict types it
+  `NotRequired[Optional[int]]` — a key-presence check no longer narrows it to
+  `int`, so check for `None` too. Kotlin, Swift and Rust already typed it
+  optional.
 
 Not breaking, in the same PR: `ToggleGauge` declares `NotFoundError` for an
 unknown project, and the `notify` documentation on `CreateGaugeNeedle`
