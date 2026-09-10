@@ -492,9 +492,17 @@ public enum BasecampError: Error, Sendable, LocalizedError {
             guard let seconds = Int(digits), seconds > 0 else { return nil }
             return min(seconds, maxRetryAfterSeconds)
         }
+        // The shape is gated before the formatter sees the value: `zzz` reads
+        // any zone name it knows, so `Thu, 31 Dec 2099 23:59:59 PST` parsed as
+        // a date and saturated the delay, where SPEC §6's table says a value
+        // that is not an HTTP-date is not a date at all. IMF-fixdate only; the
+        // obsolete RFC 850 and asctime forms stay outside the MAY here, as in
+        // Ruby and TypeScript, and fall through to the backoff curve.
+        guard value.range(of: imfFixdatePattern, options: .regularExpression) != nil else { return nil }
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.dateFormat = "EEE, dd MMM yyyy HH:mm:ss zzz"
+        formatter.timeZone = TimeZone(identifier: "GMT")
+        formatter.dateFormat = "EEE, dd MMM yyyy HH:mm:ss 'GMT'"
         if let date = formatter.date(from: value) {
             let remaining = date.timeIntervalSinceNow.rounded(.up)
             guard remaining > 0 else { return nil }
@@ -502,4 +510,10 @@ public enum BasecampError: Error, Sendable, LocalizedError {
         }
         return nil
     }
+
+    /// RFC 7231 §7.1.1.1 IMF-fixdate — `Sun, 06 Nov 1994 08:49:37 GMT` — as a
+    /// whole-value shape. The formatter still does the calendar arithmetic and
+    /// still rejects an impossible day or hour.
+    private static let imfFixdatePattern =
+        #"^(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun), \d{2} (?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) \d{4} \d{2}:\d{2}:\d{2} GMT$"#
 }

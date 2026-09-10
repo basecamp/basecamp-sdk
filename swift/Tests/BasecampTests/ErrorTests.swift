@@ -354,6 +354,30 @@ final class ErrorTests: XCTestCase {
         XCTAssertEqual(BasecampError.parseRetryAfter("Fri, 31 Dec 9999 23:59:59 GMT"), BasecampError.maxRetryAfterSeconds)
     }
 
+    /// SPEC §6 "Date forms": IMF-fixdate parses, and a value that is not an
+    /// HTTP-date does not — `DateFormatter`'s `zzz` used to read any zone
+    /// name it knew, so a far-future date in `PST` saturated the delay.
+    func testParseRetryAfterOnlyTheImfFixdateShapeParses() {
+        XCTAssertEqual(BasecampError.parseRetryAfter("Thu, 31 Dec 2099 23:59:59 GMT"), BasecampError.maxRetryAfterSeconds)
+        XCTAssertNil(BasecampError.parseRetryAfter("Wed, 09 Jun 2021 10:18:14 GMT"))  // past
+        for value in [
+            "Thu, 31 Dec 2099 23:59:59 PST",
+            "Thu, 31 Dec 2099 23:59:59 UTC",
+            "Thu, 31 Dec 2099 23:59:59 +0000",
+            "Thu, 31 Dec 2099 23:59:59 -0000",
+            "Thu, 31 Dec 2099 23:59:59",
+            "Thu, 9 Jan 2099 23:59:59 GMT",
+            "Thursday, 31-Dec-99 23:59:59 GMT",
+            "Thu Dec 31 23:59:59 2099",
+            "2099-12-31T23:59:59Z",
+            "Dec 31 2099",
+        ] {
+            XCTAssertNil(BasecampError.parseRetryAfter(value), value)
+        }
+        // A bare year is `1*DIGIT`, so it is step 1's delay-seconds, not a date.
+        XCTAssertEqual(BasecampError.parseRetryAfter("2099"), 2099)
+    }
+
     /// SPEC §6 "HTTP Status Mapping Algorithm": the field rides on the
     /// api_error shape, not only on .rateLimit.
     func testApiErrorCarriesRetryAfter() {
