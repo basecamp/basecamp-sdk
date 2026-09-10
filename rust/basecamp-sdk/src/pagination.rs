@@ -2,6 +2,7 @@
 
 use std::ops::Deref;
 
+use futures_util::Stream;
 use serde::de::DeserializeOwned;
 use url::Url;
 
@@ -192,6 +193,46 @@ impl AccountClient {
             page = self.send_page(operation).await?;
             pages += 1;
         }
+    }
+}
+
+impl AccountClient {
+    /// Every page from `first` onward as a lazy stream, one request per page as it is
+    /// polled, up to the client's page cap. An error ends the stream; the pages before it
+    /// have already been yielded. Cancellation-safe: dropping the stream between pages
+    /// sends nothing more.
+    pub fn pages<T: DeserializeOwned + Send + 'static>(
+        &self,
+        first: Page<T>,
+    ) -> impl Stream<Item = Result<Page<T>, Error>> + Send + '_ {
+        let max_pages = self.max_pages();
+        futures_util::stream::try_unfold(
+            (Some(first), 0usize),
+            move |(pending, yielded)| async move {
+                let Some(page) = pending else {
+                    return Ok(None);
+                };
+                let next = match page.next_url() {
+                    Some(next) if yielded + 1 < max_pages => {
+                        let operation = self.follow_up(page.route(), page.origin(), next)?;
+                        Some(self.send_page(operation).await?)
+                    }
+                    _ => None,
+                };
+                Ok(Some((page, (next, yielded + 1))))
+            },
+        )
+    }
+
+    /// Every item from `first` onward as a lazy stream, page by page.
+    pub fn items<T: DeserializeOwned + Send + 'static>(
+        &self,
+        first: Page<Vec<T>>,
+    ) -> impl Stream<Item = Result<T, Error>> + Send + '_ {
+        use futures_util::TryStreamExt;
+        self.pages(first)
+            .map_ok(|page| futures_util::stream::iter(page.into_inner().into_iter().map(Ok)))
+            .try_flatten()
     }
 }
 

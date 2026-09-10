@@ -51,7 +51,14 @@ async fn hop_one_is_authenticated_and_hop_two_is_bare() {
     assert_eq!(result.content_length, 6);
     let requests = server.received_requests().await.unwrap();
     assert!(requests[0].headers.get("authorization").is_some());
-    assert!(requests[0].headers.get("accept").is_none());
+    assert_ne!(
+        requests[0]
+            .headers
+            .get("accept")
+            .map(|value| value.to_str().unwrap()),
+        Some("application/json"),
+        "a download asks for bytes, not JSON"
+    );
     assert!(requests[1].headers.get("authorization").is_none());
     assert_eq!(requests[1].url.path(), "/signed/logo.png");
 }
@@ -96,9 +103,11 @@ async fn hop_one_retries_on_503_and_network_errors_but_not_500() {
     assert_eq!(result.body, "pixels");
     assert_eq!(script.sent_count(), 4);
     assert!(started.elapsed() >= Duration::from_secs(3), "1s then 2s");
-    let sent = script.sent.lock().unwrap();
-    assert!(sent[2].headers().get("authorization").is_some());
-    assert!(sent[3].headers().get("authorization").is_none());
+    {
+        let sent = script.sent.lock().unwrap();
+        assert!(sent[2].headers().get("authorization").is_some());
+        assert!(sent[3].headers().get("authorization").is_none());
+    }
 
     let script = Scripted::new(vec![Answer::Status(
         500,

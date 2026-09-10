@@ -15,10 +15,8 @@ use crate::types::{AuthRoutableUrl, Date, DateTime, FlexibleTime, SensitiveStrin
 #[non_exhaustive]
 pub struct Account {
     /// `id`.
-    #[serde(default)]
     pub id: i64,
     /// `name`.
-    #[serde(default)]
     pub name: String,
     /// `owner_name`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -133,7 +131,6 @@ pub struct AccountSubscription {
 #[non_exhaustive]
 pub struct BadRequestErrorResponseContent {
     /// `error`.
-    #[serde(default)]
     pub error: String,
     /// `message`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -153,14 +150,12 @@ pub type BareFieldValidationErrorResponseContent = FieldErrorMap;
 #[non_exhaustive]
 pub struct Bookmark {
     /// `id`.
-    #[serde(default)]
     pub id: i64,
     /// `created_at`.
     pub created_at: DateTime,
     /// `updated_at`.
     pub updated_at: DateTime,
     /// `recording`.
-    #[serde(default)]
     pub recording: Recording,
 }
 
@@ -169,7 +164,6 @@ pub struct Bookmark {
 #[non_exhaustive]
 pub struct BookmarkStatus {
     /// `bookmarked`.
-    #[serde(default)]
     pub bookmarked: bool,
 }
 
@@ -178,7 +172,6 @@ pub struct BookmarkStatus {
 #[non_exhaustive]
 pub struct Boost {
     /// `id`.
-    #[serde(default)]
     pub id: i64,
     /// `content`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -199,10 +192,8 @@ pub struct Boost {
 #[non_exhaustive]
 pub struct BucketCardsGroup {
     /// `bucket`.
-    #[serde(default)]
     pub bucket: RecordingBucket,
     /// `cards`.
-    #[serde(default)]
     pub cards: Vec<Card>,
 }
 
@@ -212,10 +203,8 @@ pub struct BucketCardsGroup {
 #[non_exhaustive]
 pub struct BucketTodosGroup {
     /// `bucket`.
-    #[serde(default)]
     pub bucket: RecordingBucket,
     /// `todos`.
-    #[serde(default)]
     pub todos: Vec<Todo>,
 }
 
@@ -224,30 +213,23 @@ pub struct BucketTodosGroup {
 #[non_exhaustive]
 pub struct Calendar {
     /// `id`.
-    #[serde(default)]
     pub id: i64,
     /// `type`.
-    #[serde(default)]
     pub r#type: String,
     /// `name`.
-    #[serde(default)]
     pub name: String,
     /// One of: white, red, orange, yellow, green, blue, aqua, purple, gray,
     /// pink, brown.
-    #[serde(default)]
     pub color: String,
     /// `created_at`.
     pub created_at: DateTime,
     /// `updated_at`.
     pub updated_at: DateTime,
     /// `url`.
-    #[serde(default)]
     pub url: String,
     /// `app_url`.
-    #[serde(default)]
     pub app_url: String,
     /// API URL of the calendar's underlying schedule resource.
-    #[serde(default)]
     pub schedule_url: String,
 }
 
@@ -257,7 +239,6 @@ pub struct Calendar {
 pub struct CalendarAttributes {
     /// One of: white, red, orange, yellow, green, blue, aqua, purple, gray,
     /// pink, brown.
-    #[serde(default)]
     pub color: String,
 }
 
@@ -266,32 +247,24 @@ pub struct CalendarAttributes {
 #[non_exhaustive]
 pub struct Campfire {
     /// `id`.
-    #[serde(default)]
     pub id: i64,
     /// `status`.
-    #[serde(default)]
     pub status: String,
     /// `visible_to_clients`.
-    #[serde(default)]
     pub visible_to_clients: bool,
     /// `created_at`.
     pub created_at: DateTime,
     /// `updated_at`.
     pub updated_at: DateTime,
     /// `title`.
-    #[serde(default)]
     pub title: String,
     /// `inherits_status`.
-    #[serde(default)]
     pub inherits_status: bool,
     /// `type`.
-    #[serde(default)]
     pub r#type: String,
     /// `url`.
-    #[serde(default)]
     pub url: String,
     /// `app_url`.
-    #[serde(default)]
     pub app_url: String,
     /// `bookmark_url`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -303,10 +276,8 @@ pub struct Campfire {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub position: Option<i32>,
     /// `bucket`.
-    #[serde(default)]
     pub bucket: TodoBucket,
     /// `creator`.
-    #[serde(default)]
     pub creator: Person,
     /// `topic`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -324,32 +295,24 @@ pub struct Campfire {
 #[non_exhaustive]
 pub struct CampfireLine {
     /// `id`.
-    #[serde(default)]
     pub id: i64,
     /// `status`.
-    #[serde(default)]
     pub status: String,
     /// `visible_to_clients`.
-    #[serde(default)]
     pub visible_to_clients: bool,
     /// `created_at`.
     pub created_at: DateTime,
     /// `updated_at`.
     pub updated_at: DateTime,
     /// `title`.
-    #[serde(default)]
     pub title: String,
     /// `inherits_status`.
-    #[serde(default)]
     pub inherits_status: bool,
     /// `type`.
-    #[serde(default)]
     pub r#type: String,
     /// `url`.
-    #[serde(default)]
     pub url: String,
     /// `app_url`.
-    #[serde(default)]
     pub app_url: String,
     /// `bookmark_url`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -361,13 +324,10 @@ pub struct CampfireLine {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub attachments: Option<Vec<CampfireLineAttachment>>,
     /// `parent`.
-    #[serde(default)]
     pub parent: RecordingParent,
     /// `bucket`.
-    #[serde(default)]
     pub bucket: TodoBucket,
     /// `creator`.
-    #[serde(default)]
     pub creator: Person,
     /// `boosts_count`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -406,32 +366,24 @@ pub struct CampfireLineAttachment {
 #[non_exhaustive]
 pub struct Card {
     /// `id`.
-    #[serde(default)]
     pub id: i64,
     /// `status`.
-    #[serde(default)]
     pub status: String,
     /// `visible_to_clients`.
-    #[serde(default)]
     pub visible_to_clients: bool,
     /// `created_at`.
     pub created_at: DateTime,
     /// `updated_at`.
     pub updated_at: DateTime,
     /// `title`.
-    #[serde(default)]
     pub title: String,
     /// `inherits_status`.
-    #[serde(default)]
     pub inherits_status: bool,
     /// `type`.
-    #[serde(default)]
     pub r#type: String,
     /// `url`.
-    #[serde(default)]
     pub url: String,
     /// `app_url`.
-    #[serde(default)]
     pub app_url: String,
     /// `bookmark_url`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -449,7 +401,6 @@ pub struct Card {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
     /// `description_attachments`.
-    #[serde(default)]
     pub description_attachments: Vec<RichTextAttachment>,
     /// `due_on`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -470,13 +421,10 @@ pub struct Card {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub completion_url: Option<String>,
     /// `parent`.
-    #[serde(default)]
     pub parent: RecordingParent,
     /// `bucket`.
-    #[serde(default)]
     pub bucket: TodoBucket,
     /// `creator`.
-    #[serde(default)]
     pub creator: Person,
     /// `completer`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -503,32 +451,24 @@ pub struct Card {
 #[non_exhaustive]
 pub struct CardColumn {
     /// `id`.
-    #[serde(default)]
     pub id: i64,
     /// `status`.
-    #[serde(default)]
     pub status: String,
     /// `visible_to_clients`.
-    #[serde(default)]
     pub visible_to_clients: bool,
     /// `created_at`.
     pub created_at: DateTime,
     /// `updated_at`.
     pub updated_at: DateTime,
     /// `title`.
-    #[serde(default)]
     pub title: String,
     /// `inherits_status`.
-    #[serde(default)]
     pub inherits_status: bool,
     /// `type`.
-    #[serde(default)]
     pub r#type: String,
     /// `url`.
-    #[serde(default)]
     pub url: String,
     /// `app_url`.
-    #[serde(default)]
     pub app_url: String,
     /// `bookmark_url`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -552,13 +492,10 @@ pub struct CardColumn {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub cards_url: Option<String>,
     /// `parent`.
-    #[serde(default)]
     pub parent: RecordingParent,
     /// `bucket`.
-    #[serde(default)]
     pub bucket: TodoBucket,
     /// `creator`.
-    #[serde(default)]
     pub creator: Person,
     /// `subscribers`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -573,26 +510,20 @@ pub struct CardColumn {
 #[non_exhaustive]
 pub struct CardColumnOnHold {
     /// `id`.
-    #[serde(default)]
     pub id: i64,
     /// `status`.
-    #[serde(default)]
     pub status: String,
     /// `inherits_status`.
-    #[serde(default)]
     pub inherits_status: bool,
     /// `title`.
-    #[serde(default)]
     pub title: String,
     /// `created_at`.
     pub created_at: DateTime,
     /// `updated_at`.
     pub updated_at: DateTime,
     /// `cards_count`.
-    #[serde(default)]
     pub cards_count: i32,
     /// `cards_url`.
-    #[serde(default)]
     pub cards_url: String,
 }
 
@@ -601,32 +532,24 @@ pub struct CardColumnOnHold {
 #[non_exhaustive]
 pub struct CardStep {
     /// `id`.
-    #[serde(default)]
     pub id: i64,
     /// `status`.
-    #[serde(default)]
     pub status: String,
     /// `visible_to_clients`.
-    #[serde(default)]
     pub visible_to_clients: bool,
     /// `created_at`.
     pub created_at: DateTime,
     /// `updated_at`.
     pub updated_at: DateTime,
     /// `title`.
-    #[serde(default)]
     pub title: String,
     /// `inherits_status`.
-    #[serde(default)]
     pub inherits_status: bool,
     /// `type`.
-    #[serde(default)]
     pub r#type: String,
     /// `url`.
-    #[serde(default)]
     pub url: String,
     /// `app_url`.
-    #[serde(default)]
     pub app_url: String,
     /// `bookmark_url`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -644,13 +567,10 @@ pub struct CardStep {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub completed_at: Option<DateTime>,
     /// `parent`.
-    #[serde(default)]
     pub parent: RecordingParent,
     /// `bucket`.
-    #[serde(default)]
     pub bucket: TodoBucket,
     /// `creator`.
-    #[serde(default)]
     pub creator: Person,
     /// `completer`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -668,32 +588,24 @@ pub struct CardStep {
 #[non_exhaustive]
 pub struct CardTable {
     /// `id`.
-    #[serde(default)]
     pub id: i64,
     /// `status`.
-    #[serde(default)]
     pub status: String,
     /// `visible_to_clients`.
-    #[serde(default)]
     pub visible_to_clients: bool,
     /// `created_at`.
     pub created_at: DateTime,
     /// `updated_at`.
     pub updated_at: DateTime,
     /// `title`.
-    #[serde(default)]
     pub title: String,
     /// `inherits_status`.
-    #[serde(default)]
     pub inherits_status: bool,
     /// `type`.
-    #[serde(default)]
     pub r#type: String,
     /// `url`.
-    #[serde(default)]
     pub url: String,
     /// `app_url`.
-    #[serde(default)]
     pub app_url: String,
     /// `bookmark_url`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -702,10 +614,8 @@ pub struct CardTable {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub subscription_url: Option<String>,
     /// `bucket`.
-    #[serde(default)]
     pub bucket: TodoBucket,
     /// `creator`.
-    #[serde(default)]
     pub creator: Person,
     /// `subscribers`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -723,14 +633,12 @@ pub struct CardTable {
 #[non_exhaustive]
 pub struct Chatbot {
     /// `id`.
-    #[serde(default)]
     pub id: i64,
     /// `created_at`.
     pub created_at: DateTime,
     /// `updated_at`.
     pub updated_at: DateTime,
     /// `service_name`.
-    #[serde(default)]
     pub service_name: String,
     /// Only present when the requester is an account administrator; possession of this URL is enough to command the bot.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -751,32 +659,24 @@ pub struct Chatbot {
 #[non_exhaustive]
 pub struct ClientApproval {
     /// `id`.
-    #[serde(default)]
     pub id: i64,
     /// `status`.
-    #[serde(default)]
     pub status: String,
     /// `visible_to_clients`.
-    #[serde(default)]
     pub visible_to_clients: bool,
     /// `created_at`.
     pub created_at: DateTime,
     /// `updated_at`.
     pub updated_at: DateTime,
     /// `title`.
-    #[serde(default)]
     pub title: String,
     /// `inherits_status`.
-    #[serde(default)]
     pub inherits_status: bool,
     /// `type`.
-    #[serde(default)]
     pub r#type: String,
     /// `url`.
-    #[serde(default)]
     pub url: String,
     /// `app_url`.
-    #[serde(default)]
     pub app_url: String,
     /// `bookmark_url`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -785,19 +685,15 @@ pub struct ClientApproval {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub subscription_url: Option<String>,
     /// `parent`.
-    #[serde(default)]
     pub parent: RecordingParent,
     /// `bucket`.
-    #[serde(default)]
     pub bucket: RecordingBucket,
     /// `creator`.
-    #[serde(default)]
     pub creator: Person,
     /// `content`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub content: Option<String>,
     /// `content_attachments`.
-    #[serde(default)]
     pub content_attachments: Vec<RichTextAttachment>,
     /// `subject`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -878,10 +774,8 @@ pub struct ClientApprovalResponse {
 #[non_exhaustive]
 pub struct ClientCompany {
     /// `id`.
-    #[serde(default)]
     pub id: i64,
     /// `name`.
-    #[serde(default)]
     pub name: String,
 }
 
@@ -890,32 +784,24 @@ pub struct ClientCompany {
 #[non_exhaustive]
 pub struct ClientCorrespondence {
     /// `id`.
-    #[serde(default)]
     pub id: i64,
     /// `status`.
-    #[serde(default)]
     pub status: String,
     /// `visible_to_clients`.
-    #[serde(default)]
     pub visible_to_clients: bool,
     /// `created_at`.
     pub created_at: DateTime,
     /// `updated_at`.
     pub updated_at: DateTime,
     /// `title`.
-    #[serde(default)]
     pub title: String,
     /// `inherits_status`.
-    #[serde(default)]
     pub inherits_status: bool,
     /// `type`.
-    #[serde(default)]
     pub r#type: String,
     /// `url`.
-    #[serde(default)]
     pub url: String,
     /// `app_url`.
-    #[serde(default)]
     pub app_url: String,
     /// `bookmark_url`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -924,22 +810,17 @@ pub struct ClientCorrespondence {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub subscription_url: Option<String>,
     /// `parent`.
-    #[serde(default)]
     pub parent: RecordingParent,
     /// `bucket`.
-    #[serde(default)]
     pub bucket: RecordingBucket,
     /// `creator`.
-    #[serde(default)]
     pub creator: Person,
     /// `content`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub content: Option<String>,
     /// `content_attachments`.
-    #[serde(default)]
     pub content_attachments: Vec<RichTextAttachment>,
     /// `subject`.
-    #[serde(default)]
     pub subject: String,
     /// `replies_count`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -962,7 +843,6 @@ pub struct ClientInvitationError {
     #[serde(deserialize_with = "serde::Deserialize::deserialize")]
     pub email_address: Option<String>,
     /// `messages`.
-    #[serde(default)]
     pub messages: Vec<String>,
 }
 
@@ -971,7 +851,6 @@ pub struct ClientInvitationError {
 #[non_exhaustive]
 pub struct ClientInvitationErrors {
     /// `errors`.
-    #[serde(default)]
     pub errors: Vec<ClientInvitationError>,
 }
 
@@ -983,50 +862,37 @@ pub type ClientInvitationValidationErrorResponseContent = ClientInvitationErrors
 #[non_exhaustive]
 pub struct ClientReply {
     /// `id`.
-    #[serde(default)]
     pub id: i64,
     /// `status`.
-    #[serde(default)]
     pub status: String,
     /// `visible_to_clients`.
-    #[serde(default)]
     pub visible_to_clients: bool,
     /// `created_at`.
     pub created_at: DateTime,
     /// `updated_at`.
     pub updated_at: DateTime,
     /// `title`.
-    #[serde(default)]
     pub title: String,
     /// `inherits_status`.
-    #[serde(default)]
     pub inherits_status: bool,
     /// `type`.
-    #[serde(default)]
     pub r#type: String,
     /// `url`.
-    #[serde(default)]
     pub url: String,
     /// `app_url`.
-    #[serde(default)]
     pub app_url: String,
     /// `bookmark_url`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub bookmark_url: Option<String>,
     /// `parent`.
-    #[serde(default)]
     pub parent: RecordingParent,
     /// `bucket`.
-    #[serde(default)]
     pub bucket: RecordingBucket,
     /// `creator`.
-    #[serde(default)]
     pub creator: Person,
     /// `content`.
-    #[serde(default)]
     pub content: String,
     /// `content_attachments`.
-    #[serde(default)]
     pub content_attachments: Vec<RichTextAttachment>,
 }
 
@@ -1050,36 +916,28 @@ pub struct ClientSide {
 #[non_exhaustive]
 pub struct CloudFile {
     /// `id`.
-    #[serde(default)]
     pub id: i64,
     /// `status`.
-    #[serde(default)]
     pub status: String,
     /// `visible_to_clients`.
-    #[serde(default)]
     pub visible_to_clients: bool,
     /// `created_at`.
     pub created_at: DateTime,
     /// `updated_at`.
     pub updated_at: DateTime,
     /// `title`.
-    #[serde(default)]
     pub title: String,
     /// `inherits_status`.
-    #[serde(default)]
     pub inherits_status: bool,
     /// `type`.
-    #[serde(default)]
     pub r#type: String,
     /// The link on the external service — NOT this record's API URL. The
     /// cloud_files jbuilder renders the shared recording partial first and then
     /// `json.(recording.recordable, :url, :service)`, which overwrites the
     /// recording's `url` key with the recordable's. `app_url` is still this
     /// record's Basecamp URL.
-    #[serde(default)]
     pub url: String,
     /// `app_url`.
-    #[serde(default)]
     pub app_url: String,
     /// `bookmark_url`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1097,22 +955,17 @@ pub struct CloudFile {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub position: Option<i32>,
     /// `parent`.
-    #[serde(default)]
     pub parent: RecordingParent,
     /// `bucket`.
-    #[serde(default)]
     pub bucket: TodoBucket,
     /// `creator`.
-    #[serde(default)]
     pub creator: Person,
     /// `description`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
     /// `description_attachments`.
-    #[serde(default)]
     pub description_attachments: Vec<RichTextAttachment>,
     /// `service`.
-    #[serde(default)]
     pub service: CloudFileService,
     /// `boosts_count`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1130,19 +983,15 @@ pub struct CloudFile {
 #[non_exhaustive]
 pub struct CloudFileService {
     /// `name`.
-    #[serde(default)]
     pub name: String,
     /// A representative URL for the service, suitable as an input placeholder.
-    #[serde(default)]
     pub example_url: String,
     /// Short identifier for the external service — "dropbox", "google_doc",
     /// "figma", "other", … Derived from the CloudFile::Service subclass name, so it
     /// is always present. `other` accepts any well-formed HTTPS URL.
-    #[serde(default)]
     pub code: String,
     /// Regular expressions the cloud file's `url` is validated against. Sending a
     /// `url` that matches none of the selected service's patterns is a 422.
-    #[serde(default)]
     pub valid_patterns: Vec<String>,
     /// Human-readable hint ("a file or folder on Dropbox"). Absent for services
     /// that declare none — CloudFile::Service::Services::Other, for one.
@@ -1155,50 +1004,37 @@ pub struct CloudFileService {
 #[non_exhaustive]
 pub struct Comment {
     /// `id`.
-    #[serde(default)]
     pub id: i64,
     /// `status`.
-    #[serde(default)]
     pub status: String,
     /// `visible_to_clients`.
-    #[serde(default)]
     pub visible_to_clients: bool,
     /// `created_at`.
     pub created_at: DateTime,
     /// `updated_at`.
     pub updated_at: DateTime,
     /// `title`.
-    #[serde(default)]
     pub title: String,
     /// `inherits_status`.
-    #[serde(default)]
     pub inherits_status: bool,
     /// `type`.
-    #[serde(default)]
     pub r#type: String,
     /// `url`.
-    #[serde(default)]
     pub url: String,
     /// `app_url`.
-    #[serde(default)]
     pub app_url: String,
     /// `bookmark_url`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub bookmark_url: Option<String>,
     /// `parent`.
-    #[serde(default)]
     pub parent: RecordingParent,
     /// `bucket`.
-    #[serde(default)]
     pub bucket: TodoBucket,
     /// `creator`.
-    #[serde(default)]
     pub creator: Person,
     /// `content`.
-    #[serde(default)]
     pub content: String,
     /// `content_attachments`.
-    #[serde(default)]
     pub content_attachments: Vec<RichTextAttachment>,
     /// `boosts_count`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1242,7 +1078,6 @@ pub struct CreateBubbleUpRequestContent {
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct CreateCampfireLineRequestContent {
     /// `content`.
-    #[serde(default)]
     pub content: String,
     /// `content_type`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1263,7 +1098,6 @@ pub type CreateCampfireUploadResponseContent = CampfireLine;
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct CreateCardColumnRequestContent {
     /// `title`.
-    #[serde(default)]
     pub title: String,
     /// `description`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1277,7 +1111,6 @@ pub type CreateCardColumnResponseContent = CardColumn;
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct CreateCardRequestContent {
     /// `title`.
-    #[serde(default)]
     pub title: String,
     /// `content`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1297,7 +1130,6 @@ pub type CreateCardResponseContent = Card;
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct CreateCardStepRequestContent {
     /// `title`.
-    #[serde(default)]
     pub title: String,
     /// `due_on`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1314,7 +1146,6 @@ pub type CreateCardStepResponseContent = CardStep;
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct CreateChatbotRequestContent {
     /// `service_name`.
-    #[serde(default)]
     pub service_name: String,
     /// `command_url`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1329,7 +1160,6 @@ pub type CreateChatbotResponseContent = Chatbot;
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct CreateClientRequest {
     /// `email_address`.
-    #[serde(default)]
     pub email_address: String,
     /// `name`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1346,12 +1176,10 @@ pub struct CreateClientRequest {
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct CreateCloudFileRequestContent {
     /// `url`.
-    #[serde(default)]
     pub url: String,
     /// Short identifier for the external service — "dropbox", "google_doc",
     /// "figma", "other", … Derived from the CloudFile::Service subclass name, so it
     /// is always present. `other` accepts any well-formed HTTPS URL.
-    #[serde(default)]
     pub service: String,
     /// `title`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1377,7 +1205,6 @@ pub type CreateCloudFileResponseContent = CloudFile;
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct CreateCommentRequestContent {
     /// `content`.
-    #[serde(default)]
     pub content: String,
 }
 
@@ -1388,7 +1215,6 @@ pub type CreateCommentResponseContent = Comment;
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct CreateDocumentRequestContent {
     /// `title`.
-    #[serde(default)]
     pub title: String,
     /// `content`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1411,7 +1237,6 @@ pub type CreateDocumentResponseContent = Document;
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct CreateEventBoostRequestContent {
     /// `content`.
-    #[serde(default)]
     pub content: String,
 }
 
@@ -1439,7 +1264,6 @@ pub type CreateFolderResponseContent = FolderWithProjects;
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct CreateGaugeNeedleRequestContent {
     /// `gauge_needle`.
-    #[serde(default)]
     pub gauge_needle: GaugeNeedlePayload,
     /// Who to notify: "everyone", "working_on", "custom", or omit for nobody
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1456,13 +1280,11 @@ pub type CreateGaugeNeedleResponseContent = GaugeNeedle;
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct CreateGoogleDocumentRequestContent {
     /// `url`.
-    #[serde(default)]
     pub url: String,
     /// One of "doc", "sheet", "slide", "other". Backed by a Rails enum, so an
     /// unrecognized value is rejected up front with a field-keyed 422
     /// ({"errors": {"document_type": \["is not a valid document type"\]}}) rather
     /// than reaching validation.
-    #[serde(default)]
     pub document_type: String,
     /// `title`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1491,10 +1313,8 @@ pub type CreateGoogleDocumentResponseContent = GoogleDocument;
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct CreateLineupMarkerRequestContent {
     /// `name`.
-    #[serde(default)]
     pub name: String,
     /// `date`.
-    #[serde(default)]
     pub date: String,
 }
 
@@ -1502,7 +1322,6 @@ pub struct CreateLineupMarkerRequestContent {
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct CreateMessageRequestContent {
     /// `subject`.
-    #[serde(default)]
     pub subject: String,
     /// `content`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1528,10 +1347,8 @@ pub type CreateMessageResponseContent = Message;
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct CreateMessageTypeRequestContent {
     /// `name`.
-    #[serde(default)]
     pub name: String,
     /// `icon`.
-    #[serde(default)]
     pub icon: String,
 }
 
@@ -1542,10 +1359,8 @@ pub type CreateMessageTypeResponseContent = MessageType;
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct CreatePersonRequest {
     /// `name`.
-    #[serde(default)]
     pub name: String,
     /// `email_address`.
-    #[serde(default)]
     pub email_address: String,
     /// `title`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1559,7 +1374,6 @@ pub struct CreatePersonRequest {
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct CreateProjectFromTemplateRequestContent {
     /// `project`.
-    #[serde(default)]
     pub project: ProjectConstructionAttributes,
 }
 
@@ -1570,7 +1384,6 @@ pub type CreateProjectFromTemplateResponseContent = ProjectConstruction;
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct CreateProjectRequestContent {
     /// `name`.
-    #[serde(default)]
     pub name: String,
     /// `description`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1584,10 +1397,8 @@ pub type CreateProjectResponseContent = Project;
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct CreateQuestionRequestContent {
     /// `title`.
-    #[serde(default)]
     pub title: String,
     /// `schedule`.
-    #[serde(default)]
     pub schedule: QuestionSchedule,
     /// `visible_to_clients`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1601,7 +1412,6 @@ pub type CreateQuestionResponseContent = Question;
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct CreateRecordingBoostRequestContent {
     /// `content`.
-    #[serde(default)]
     pub content: String,
 }
 
@@ -1612,7 +1422,6 @@ pub type CreateRecordingBoostResponseContent = Boost;
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct CreateScheduleEntryRequestContent {
     /// `summary`.
-    #[serde(default)]
     pub summary: String,
     /// The entry's start, as a bare date ("2026-06-01") for an all-day entry or a
     /// full timestamp ("2026-06-01T09:00:00Z") otherwise — the same two forms the
@@ -1627,10 +1436,8 @@ pub struct CreateScheduleEntryRequestContent {
     /// Treat the value as opaque and send it verbatim. Parsing it into a
     /// date-time type and re-rendering rewrites an all-day entry's bounds into
     /// midnight timestamps, which is why every SDK models it as a string.
-    #[serde(default)]
     pub starts_at: String,
     /// The entry's end. See starts_at for the date-vs-timestamp rule.
-    #[serde(default)]
     pub ends_at: String,
     /// `description`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1699,10 +1506,8 @@ pub type CreateScheduleEntryResponseContent = ScheduleEntry;
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct CreateTemplateLibraryCopyRequestContent {
     /// `template_recording_id`.
-    #[serde(default)]
     pub template_recording_id: i64,
     /// `destination_parent_id`.
-    #[serde(default)]
     pub destination_parent_id: i64,
     /// Confirm granting destination-project access to people referenced by the template.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1716,7 +1521,6 @@ pub type CreateTemplateLibraryCopyResponseContent = TemplateLibraryCopy;
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct CreateTemplateRequestContent {
     /// `name`.
-    #[serde(default)]
     pub name: String,
     /// `description`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1730,10 +1534,8 @@ pub type CreateTemplateResponseContent = Template;
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct CreateTimesheetEntryRequestContent {
     /// `date`.
-    #[serde(default)]
     pub date: String,
     /// `hours`.
-    #[serde(default)]
     pub hours: String,
     /// `description`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1750,7 +1552,6 @@ pub type CreateTimesheetEntryResponseContent = TimesheetEntry;
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct CreateTodoRequestContent {
     /// `content`.
-    #[serde(default)]
     pub content: String,
     /// `description`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1779,7 +1580,6 @@ pub type CreateTodoResponseContent = Todo;
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct CreateTodolistGroupRequestContent {
     /// `name`.
-    #[serde(default)]
     pub name: String,
 }
 
@@ -1790,7 +1590,6 @@ pub type CreateTodolistGroupResponseContent = Todolist;
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct CreateTodolistRequestContent {
     /// `name`.
-    #[serde(default)]
     pub name: String,
     /// `description`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1807,7 +1606,6 @@ pub type CreateTodolistResponseContent = Todolist;
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct CreateTodosetTodoRequestContent {
     /// `content`.
-    #[serde(default)]
     pub content: String,
     /// `description`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1836,7 +1634,6 @@ pub type CreateTodosetTodoResponseContent = Todo;
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct CreateToolRequestContent {
     /// Tool type to add to the project dock. Values: Chat::Transcript|Inbox|Kanban::Board|Message::Board|Questionnaire|Schedule|Todoset|Vault.
-    #[serde(default)]
     pub tool_type: String,
     /// Title for the new tool. When omitted, Basecamp assigns the next available default title for the tool type.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1853,7 +1650,6 @@ pub type CreateToolResponseContent = Tool;
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct CreateUploadRequestContent {
     /// `attachable_sgid`.
-    #[serde(default)]
     pub attachable_sgid: String,
     /// `description`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1876,7 +1672,6 @@ pub type CreateUploadResponseContent = Upload;
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct CreateUploadVersionRequestContent {
     /// `attachable_sgid`.
-    #[serde(default)]
     pub attachable_sgid: String,
     /// Omit to keep the uploaded file's own name. Sending "" also keeps it.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1903,7 +1698,6 @@ pub type CreateUploadVersionResponseContent = Upload;
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct CreateVaultRequestContent {
     /// `title`.
-    #[serde(default)]
     pub title: String,
 }
 
@@ -1914,10 +1708,8 @@ pub type CreateVaultResponseContent = Vault;
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct CreateWebhookRequestContent {
     /// `payload_url`.
-    #[serde(default)]
     pub payload_url: String,
     /// `types`.
-    #[serde(default)]
     pub types: Vec<String>,
     /// `active`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1931,7 +1723,6 @@ pub type CreateWebhookResponseContent = Webhook;
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct CreateWormholeRequestContent {
     /// Id of the destination column (on another accessible card table) to link to.
-    #[serde(default)]
     pub destination_recording_id: i64,
 }
 
@@ -1949,25 +1740,19 @@ pub type DisableProjectClientsResponseContent = ProjectClientEnablement;
 #[non_exhaustive]
 pub struct DockItem {
     /// `id`.
-    #[serde(default)]
     pub id: i64,
     /// `title`.
-    #[serde(default)]
     pub title: String,
     /// `name`.
-    #[serde(default)]
     pub name: String,
     /// `enabled`.
-    #[serde(default)]
     pub enabled: bool,
     /// `position`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub position: Option<i32>,
     /// `url`.
-    #[serde(default)]
     pub url: String,
     /// `app_url`.
-    #[serde(default)]
     pub app_url: String,
 }
 
@@ -1976,32 +1761,24 @@ pub struct DockItem {
 #[non_exhaustive]
 pub struct Document {
     /// `id`.
-    #[serde(default)]
     pub id: i64,
     /// `status`.
-    #[serde(default)]
     pub status: String,
     /// `visible_to_clients`.
-    #[serde(default)]
     pub visible_to_clients: bool,
     /// `created_at`.
     pub created_at: DateTime,
     /// `updated_at`.
     pub updated_at: DateTime,
     /// `title`.
-    #[serde(default)]
     pub title: String,
     /// `inherits_status`.
-    #[serde(default)]
     pub inherits_status: bool,
     /// `type`.
-    #[serde(default)]
     pub r#type: String,
     /// `url`.
-    #[serde(default)]
     pub url: String,
     /// `app_url`.
-    #[serde(default)]
     pub app_url: String,
     /// `bookmark_url`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -2019,19 +1796,15 @@ pub struct Document {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub position: Option<i32>,
     /// `parent`.
-    #[serde(default)]
     pub parent: RecordingParent,
     /// `bucket`.
-    #[serde(default)]
     pub bucket: TodoBucket,
     /// `creator`.
-    #[serde(default)]
     pub creator: Person,
     /// `content`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub content: Option<String>,
     /// `content_attachments`.
-    #[serde(default)]
     pub content_attachments: Vec<RichTextAttachment>,
     /// `boosts_count`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -2072,26 +1845,20 @@ pub struct DoorService {
 #[non_exhaustive]
 pub struct Draft {
     /// `id`.
-    #[serde(default)]
     pub id: i64,
     /// `app_url`.
-    #[serde(default)]
     pub app_url: String,
     /// `title`.
-    #[serde(default)]
     pub title: String,
     /// Short recordable name: message, document, upload, client_approval,
     /// or client_correspondence.
-    #[serde(default)]
     pub r#type: String,
     /// `bucket`.
-    #[serde(default)]
     pub bucket: DraftBucket,
     /// `parent`.
     #[serde(deserialize_with = "serde::Deserialize::deserialize")]
     pub parent: Option<DraftParent>,
     /// Up to 300 characters of plain text; empty string when the draft has no body.
-    #[serde(default)]
     pub excerpt: String,
     /// `created_at`.
     pub created_at: DateTime,
@@ -2108,13 +1875,10 @@ pub struct Draft {
 #[non_exhaustive]
 pub struct DraftBucket {
     /// `id`.
-    #[serde(default)]
     pub id: i64,
     /// `name`.
-    #[serde(default)]
     pub name: String,
     /// `app_url`.
-    #[serde(default)]
     pub app_url: String,
 }
 
@@ -2123,13 +1887,10 @@ pub struct DraftBucket {
 #[non_exhaustive]
 pub struct DraftParent {
     /// `id`.
-    #[serde(default)]
     pub id: i64,
     /// `title`.
-    #[serde(default)]
     pub title: String,
     /// `app_url`.
-    #[serde(default)]
     pub app_url: String,
 }
 
@@ -2140,7 +1901,6 @@ pub type EnableCardColumnOnHoldResponseContent = CardColumn;
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct EnableOutOfOfficeRequestContent {
     /// `out_of_office`.
-    #[serde(default)]
     pub out_of_office: OutOfOfficePayload,
 }
 
@@ -2155,13 +1915,10 @@ pub type EnableProjectClientsResponseContent = ProjectClientEnablement;
 #[non_exhaustive]
 pub struct Event {
     /// `id`.
-    #[serde(default)]
     pub id: i64,
     /// `recording_id`.
-    #[serde(default)]
     pub recording_id: i64,
     /// `action`.
-    #[serde(default)]
     pub action: String,
     /// `details`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -2169,7 +1926,6 @@ pub struct Event {
     /// `created_at`.
     pub created_at: DateTime,
     /// `creator`.
-    #[serde(default)]
     pub creator: Person,
     /// `boosts_count`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -2319,7 +2075,6 @@ pub type FieldErrorMap = BTreeMap<String, Vec<String>>;
 #[non_exhaustive]
 pub struct FieldKeyedErrors {
     /// `errors`.
-    #[serde(default)]
     pub errors: FieldErrorMap,
 }
 
@@ -2409,13 +2164,10 @@ impl<'de> Deserialize<'de> for FirstWeekDay {
 #[non_exhaustive]
 pub struct Folder {
     /// `id`.
-    #[serde(default)]
     pub id: i64,
     /// `name`.
-    #[serde(default)]
     pub name: String,
     /// Always the string `Stack` — the wire type kept its pre-rename name.
-    #[serde(default)]
     pub r#type: String,
     /// `created_at`.
     pub created_at: DateTime,
@@ -2423,13 +2175,10 @@ pub struct Folder {
     pub updated_at: DateTime,
     /// IDs of the projects filed into this folder. Same ids as `project_ids` on
     /// create, and the ids FolderWithProjects expands under `projects`.
-    #[serde(default)]
     pub bucket_ids: Vec<i64>,
     /// `is_emoji_only_name`.
-    #[serde(default)]
     pub is_emoji_only_name: bool,
     /// `star_url`.
-    #[serde(default)]
     pub star_url: String,
     /// Gauges URL covering this folder's projects; always emitted, `null` when
     /// none of them is gauged. `@required` models the presence — the nullability
@@ -2448,7 +2197,6 @@ pub struct Folder {
     #[serde(deserialize_with = "serde::Deserialize::deserialize")]
     pub image_url: Option<String>,
     /// `url`.
-    #[serde(default)]
     pub url: String,
 }
 
@@ -2460,13 +2208,10 @@ pub struct Folder {
 #[non_exhaustive]
 pub struct FolderWithProjects {
     /// `id`.
-    #[serde(default)]
     pub id: i64,
     /// `name`.
-    #[serde(default)]
     pub name: String,
     /// Always the string `Stack` — the wire type kept its pre-rename name.
-    #[serde(default)]
     pub r#type: String,
     /// `created_at`.
     pub created_at: DateTime,
@@ -2474,13 +2219,10 @@ pub struct FolderWithProjects {
     pub updated_at: DateTime,
     /// IDs of the projects filed into this folder — the same set `projects`
     /// expands.
-    #[serde(default)]
     pub bucket_ids: Vec<i64>,
     /// `is_emoji_only_name`.
-    #[serde(default)]
     pub is_emoji_only_name: bool,
     /// `star_url`.
-    #[serde(default)]
     pub star_url: String,
     /// Gauges URL covering this folder's projects; always emitted, `null` when
     /// none of them is gauged. Required-and-nullable (see Folder.gauges_url).
@@ -2495,11 +2237,9 @@ pub struct FolderWithProjects {
     #[serde(deserialize_with = "serde::Deserialize::deserialize")]
     pub image_url: Option<String>,
     /// `url`.
-    #[serde(default)]
     pub url: String,
     /// The projects filed into this folder, expanded. Always emitted; empty for
     /// an empty folder.
-    #[serde(default)]
     pub projects: Vec<Project>,
 }
 
@@ -2508,7 +2248,6 @@ pub struct FolderWithProjects {
 #[non_exhaustive]
 pub struct ForbiddenErrorResponseContent {
     /// `error`.
-    #[serde(default)]
     pub error: String,
     /// `message`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -2520,32 +2259,24 @@ pub struct ForbiddenErrorResponseContent {
 #[non_exhaustive]
 pub struct Forward {
     /// `id`.
-    #[serde(default)]
     pub id: i64,
     /// `status`.
-    #[serde(default)]
     pub status: String,
     /// `visible_to_clients`.
-    #[serde(default)]
     pub visible_to_clients: bool,
     /// `created_at`.
     pub created_at: DateTime,
     /// `updated_at`.
     pub updated_at: DateTime,
     /// `title`.
-    #[serde(default)]
     pub title: String,
     /// `inherits_status`.
-    #[serde(default)]
     pub inherits_status: bool,
     /// `type`.
-    #[serde(default)]
     pub r#type: String,
     /// `url`.
-    #[serde(default)]
     pub url: String,
     /// `app_url`.
-    #[serde(default)]
     pub app_url: String,
     /// `bookmark_url`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -2554,22 +2285,17 @@ pub struct Forward {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub subscription_url: Option<String>,
     /// `parent`.
-    #[serde(default)]
     pub parent: RecordingParent,
     /// `bucket`.
-    #[serde(default)]
     pub bucket: TodoBucket,
     /// `creator`.
-    #[serde(default)]
     pub creator: Person,
     /// `content`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub content: Option<String>,
     /// `content_attachments`.
-    #[serde(default)]
     pub content_attachments: Vec<RichTextAttachment>,
     /// `subject`.
-    #[serde(default)]
     pub subject: String,
     /// `from`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -2587,50 +2313,37 @@ pub struct Forward {
 #[non_exhaustive]
 pub struct ForwardReply {
     /// `id`.
-    #[serde(default)]
     pub id: i64,
     /// `status`.
-    #[serde(default)]
     pub status: String,
     /// `visible_to_clients`.
-    #[serde(default)]
     pub visible_to_clients: bool,
     /// `created_at`.
     pub created_at: DateTime,
     /// `updated_at`.
     pub updated_at: DateTime,
     /// `title`.
-    #[serde(default)]
     pub title: String,
     /// `inherits_status`.
-    #[serde(default)]
     pub inherits_status: bool,
     /// `type`.
-    #[serde(default)]
     pub r#type: String,
     /// `url`.
-    #[serde(default)]
     pub url: String,
     /// `app_url`.
-    #[serde(default)]
     pub app_url: String,
     /// `bookmark_url`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub bookmark_url: Option<String>,
     /// `parent`.
-    #[serde(default)]
     pub parent: RecordingParent,
     /// `bucket`.
-    #[serde(default)]
     pub bucket: TodoBucket,
     /// `creator`.
-    #[serde(default)]
     pub creator: Person,
     /// `content`.
-    #[serde(default)]
     pub content: String,
     /// `content_attachments`.
-    #[serde(default)]
     pub content_attachments: Vec<RichTextAttachment>,
     /// `boosts_count`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -2645,7 +2358,6 @@ pub struct ForwardReply {
 #[non_exhaustive]
 pub struct Gauge {
     /// `id`.
-    #[serde(default)]
     pub id: i64,
     /// `status`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -2709,7 +2421,6 @@ pub struct Gauge {
 #[non_exhaustive]
 pub struct GaugeNeedle {
     /// `id`.
-    #[serde(default)]
     pub id: i64,
     /// `status`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -2767,7 +2478,6 @@ pub struct GaugeNeedle {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
     /// `description_attachments`.
-    #[serde(default)]
     pub description_attachments: Vec<RichTextAttachment>,
     /// `color`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -2781,7 +2491,6 @@ pub struct GaugeNeedle {
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct GaugeNeedlePayload {
     /// Position of the needle (0-100)
-    #[serde(default)]
     pub position: i32,
     /// Status color: green (default), yellow, or red
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -2803,7 +2512,6 @@ pub struct GaugeNeedleUpdatePayload {
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct GaugeTogglePayload {
     /// `enabled`.
-    #[serde(default)]
     pub enabled: bool,
 }
 
@@ -2993,12 +2701,10 @@ pub struct GetMyNotificationsResponseContent {
     pub reads: Option<Vec<Notification>>,
     /// Total number of current bubble-ups, for notification UI counts
     /// (independent of the `limit_bubble_ups` cap on the `bubble_ups` array).
-    #[serde(default)]
     pub bubble_ups_count: i32,
     /// Total number of scheduled bubble-ups, for notification UI counts
     /// (present even when `limit_bubble_ups` omits the `scheduled_bubble_ups`
     /// array).
-    #[serde(default)]
     pub scheduled_bubble_ups_count: i32,
     /// Legacy "save forever" collection. Permanently `\[\]` on BC5 by documented
     /// contract (`doc/api/sections/my_notifications.md`, codified by BC3 #11628):
@@ -3051,10 +2757,8 @@ pub struct GetOverdueTodosResponseContent {
 #[non_exhaustive]
 pub struct GetPersonProgressResponseContent {
     /// `person`.
-    #[serde(default)]
     pub person: Person,
     /// `events`.
-    #[serde(default)]
     pub events: Vec<TimelineEvent>,
 }
 
@@ -3138,16 +2842,13 @@ pub struct GetUpcomingScheduleResponseContent {
     /// present — `reports/schedules/upcoming/index.json.jbuilder` writes all
     /// three keys unconditionally, so an empty window is three empty arrays
     /// rather than a missing key.
-    #[serde(default)]
     pub schedule_entries: Vec<UpcomingScheduleEntry>,
     /// Realized occurrences of recurring entries falling in the window. Rendered
     /// through the same calendar entry partial as schedule_entries, so the two
     /// arrays carry the same shape; an occurrence is distinguished only by its
     /// `recurring` flag being true. Always present.
-    #[serde(default)]
     pub recurring_schedule_entry_occurrences: Vec<UpcomingScheduleEntry>,
     /// Dated to-dos, cards and steps falling in the window. Always present.
-    #[serde(default)]
     pub assignables: Vec<UpcomingAssignable>,
 }
 
@@ -3165,33 +2866,25 @@ pub type GetWebhookResponseContent = Webhook;
 #[non_exhaustive]
 pub struct GoogleDocument {
     /// `id`.
-    #[serde(default)]
     pub id: i64,
     /// `status`.
-    #[serde(default)]
     pub status: String,
     /// `visible_to_clients`.
-    #[serde(default)]
     pub visible_to_clients: bool,
     /// `created_at`.
     pub created_at: DateTime,
     /// `updated_at`.
     pub updated_at: DateTime,
     /// `title`.
-    #[serde(default)]
     pub title: String,
     /// `inherits_status`.
-    #[serde(default)]
     pub inherits_status: bool,
     /// `type`.
-    #[serde(default)]
     pub r#type: String,
     /// The Google Workspace document link — NOT this record's API URL. Same
     /// recordable-overwrites-recording rendering as CloudFile#url.
-    #[serde(default)]
     pub url: String,
     /// `app_url`.
-    #[serde(default)]
     pub app_url: String,
     /// `bookmark_url`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -3209,25 +2902,20 @@ pub struct GoogleDocument {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub position: Option<i32>,
     /// `parent`.
-    #[serde(default)]
     pub parent: RecordingParent,
     /// `bucket`.
-    #[serde(default)]
     pub bucket: TodoBucket,
     /// `creator`.
-    #[serde(default)]
     pub creator: Person,
     /// `description`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
     /// `description_attachments`.
-    #[serde(default)]
     pub description_attachments: Vec<RichTextAttachment>,
     /// One of "doc", "sheet", "slide", "other". Backed by a Rails enum, so an
     /// unrecognized value is rejected up front with a field-keyed 422
     /// ({"errors": {"document_type": \["is not a valid document type"\]}}) rather
     /// than reaching validation.
-    #[serde(default)]
     pub document_type: String,
     /// `boosts_count`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -3242,10 +2930,8 @@ pub struct GoogleDocument {
 #[non_exhaustive]
 pub struct HillChart {
     /// `enabled`.
-    #[serde(default)]
     pub enabled: bool,
     /// `stale`.
-    #[serde(default)]
     pub stale: bool,
     /// `updated_at`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -3266,16 +2952,12 @@ pub struct HillChart {
 #[non_exhaustive]
 pub struct HillChartDot {
     /// `id`.
-    #[serde(default)]
     pub id: i64,
     /// `label`.
-    #[serde(default)]
     pub label: String,
     /// `color`.
-    #[serde(default)]
     pub color: String,
     /// `position`.
-    #[serde(default)]
     pub position: i32,
     /// `url`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -3290,32 +2972,24 @@ pub struct HillChartDot {
 #[non_exhaustive]
 pub struct Inbox {
     /// `id`.
-    #[serde(default)]
     pub id: i64,
     /// `status`.
-    #[serde(default)]
     pub status: String,
     /// `visible_to_clients`.
-    #[serde(default)]
     pub visible_to_clients: bool,
     /// `created_at`.
     pub created_at: DateTime,
     /// `updated_at`.
     pub updated_at: DateTime,
     /// `title`.
-    #[serde(default)]
     pub title: String,
     /// `inherits_status`.
-    #[serde(default)]
     pub inherits_status: bool,
     /// `type`.
-    #[serde(default)]
     pub r#type: String,
     /// `url`.
-    #[serde(default)]
     pub url: String,
     /// `app_url`.
-    #[serde(default)]
     pub app_url: String,
     /// `bookmark_url`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -3324,10 +2998,8 @@ pub struct Inbox {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub position: Option<i32>,
     /// `bucket`.
-    #[serde(default)]
     pub bucket: TodoBucket,
     /// `creator`.
-    #[serde(default)]
     pub creator: Person,
     /// `forwards_count`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -3342,7 +3014,6 @@ pub struct Inbox {
 #[non_exhaustive]
 pub struct InternalServerErrorResponseContent {
     /// `error`.
-    #[serde(default)]
     pub error: String,
     /// `message`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -3354,13 +3025,10 @@ pub struct InternalServerErrorResponseContent {
 #[non_exhaustive]
 pub struct LineupMarker {
     /// `id`.
-    #[serde(default)]
     pub id: i64,
     /// `name`.
-    #[serde(default)]
     pub name: String,
     /// `date`.
-    #[serde(default)]
     pub date: String,
     /// `created_at`.
     pub created_at: DateTime,
@@ -3498,7 +3166,6 @@ pub type ListWebhooksResponseContent = Vec<Webhook>;
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct MarkAsReadRequestContent {
     /// Array of readable_sgid values identifying the items to mark as read
-    #[serde(default)]
     pub readables: Vec<String>,
 }
 
@@ -3507,32 +3174,24 @@ pub struct MarkAsReadRequestContent {
 #[non_exhaustive]
 pub struct Message {
     /// `id`.
-    #[serde(default)]
     pub id: i64,
     /// `status`.
-    #[serde(default)]
     pub status: String,
     /// `visible_to_clients`.
-    #[serde(default)]
     pub visible_to_clients: bool,
     /// `created_at`.
     pub created_at: DateTime,
     /// `updated_at`.
     pub updated_at: DateTime,
     /// `title`.
-    #[serde(default)]
     pub title: String,
     /// `inherits_status`.
-    #[serde(default)]
     pub inherits_status: bool,
     /// `type`.
-    #[serde(default)]
     pub r#type: String,
     /// `url`.
-    #[serde(default)]
     pub url: String,
     /// `app_url`.
-    #[serde(default)]
     pub app_url: String,
     /// `bookmark_url`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -3547,22 +3206,16 @@ pub struct Message {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub comments_url: Option<String>,
     /// `parent`.
-    #[serde(default)]
     pub parent: RecordingParent,
     /// `bucket`.
-    #[serde(default)]
     pub bucket: TodoBucket,
     /// `creator`.
-    #[serde(default)]
     pub creator: Person,
     /// `subject`.
-    #[serde(default)]
     pub subject: String,
     /// `content`.
-    #[serde(default)]
     pub content: String,
     /// `content_attachments`.
-    #[serde(default)]
     pub content_attachments: Vec<RichTextAttachment>,
     /// `category`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -3580,32 +3233,24 @@ pub struct Message {
 #[non_exhaustive]
 pub struct MessageBoard {
     /// `id`.
-    #[serde(default)]
     pub id: i64,
     /// `status`.
-    #[serde(default)]
     pub status: String,
     /// `visible_to_clients`.
-    #[serde(default)]
     pub visible_to_clients: bool,
     /// `created_at`.
     pub created_at: DateTime,
     /// `updated_at`.
     pub updated_at: DateTime,
     /// `title`.
-    #[serde(default)]
     pub title: String,
     /// `inherits_status`.
-    #[serde(default)]
     pub inherits_status: bool,
     /// `type`.
-    #[serde(default)]
     pub r#type: String,
     /// `url`.
-    #[serde(default)]
     pub url: String,
     /// `app_url`.
-    #[serde(default)]
     pub app_url: String,
     /// `bookmark_url`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -3614,10 +3259,8 @@ pub struct MessageBoard {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub position: Option<i32>,
     /// `bucket`.
-    #[serde(default)]
     pub bucket: TodoBucket,
     /// `creator`.
-    #[serde(default)]
     pub creator: Person,
     /// `messages_count`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -3635,13 +3278,10 @@ pub struct MessageBoard {
 #[non_exhaustive]
 pub struct MessageType {
     /// `id`.
-    #[serde(default)]
     pub id: i64,
     /// `name`.
-    #[serde(default)]
     pub name: String,
     /// `icon`.
-    #[serde(default)]
     pub icon: String,
     /// `created_at`.
     pub created_at: DateTime,
@@ -3653,10 +3293,8 @@ pub struct MessageType {
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct MoveCardColumnRequestContent {
     /// `source_id`.
-    #[serde(default)]
     pub source_id: i64,
     /// `target_id`.
-    #[serde(default)]
     pub target_id: i64,
     /// `position`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -3667,7 +3305,6 @@ pub struct MoveCardColumnRequestContent {
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct MoveCardRequestContent {
     /// `column_id`.
-    #[serde(default)]
     pub column_id: i64,
     /// 1-indexed position within the destination column. Defaults to 1 (top).
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -3679,7 +3316,6 @@ pub struct MoveCardRequestContent {
 #[non_exhaustive]
 pub struct MyAssignment {
     /// `id`.
-    #[serde(default)]
     pub id: i64,
     /// `app_url`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -3730,13 +3366,10 @@ pub struct MyAssignment {
 #[non_exhaustive]
 pub struct MyAssignmentAssignee {
     /// `id`.
-    #[serde(default)]
     pub id: i64,
     /// `name`.
-    #[serde(default)]
     pub name: String,
     /// `avatar_url`.
-    #[serde(default)]
     pub avatar_url: String,
 }
 
@@ -3745,7 +3378,6 @@ pub struct MyAssignmentAssignee {
 #[non_exhaustive]
 pub struct MyAssignmentBucket {
     /// `id`.
-    #[serde(default)]
     pub id: i64,
     /// `name`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -3760,7 +3392,6 @@ pub struct MyAssignmentBucket {
 #[non_exhaustive]
 pub struct MyAssignmentParent {
     /// `id`.
-    #[serde(default)]
     pub id: i64,
     /// `title`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -3780,7 +3411,6 @@ pub struct MyNote {
     #[serde(deserialize_with = "serde::Deserialize::deserialize")]
     pub id: Option<i64>,
     /// `type`.
-    #[serde(default)]
     pub r#type: String,
     /// Null until the note is first written.
     #[serde(deserialize_with = "serde::Deserialize::deserialize")]
@@ -3789,16 +3419,12 @@ pub struct MyNote {
     #[serde(deserialize_with = "serde::Deserialize::deserialize")]
     pub updated_at: Option<DateTime>,
     /// `content`.
-    #[serde(default)]
     pub content: String,
     /// `content_attachments`.
-    #[serde(default)]
     pub content_attachments: Vec<RichTextAttachment>,
     /// `url`.
-    #[serde(default)]
     pub url: String,
     /// `app_url`.
-    #[serde(default)]
     pub app_url: String,
 }
 
@@ -3807,7 +3433,6 @@ pub struct MyNote {
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct MyNoteAttributes {
     /// The note's rich-text body (HTML).
-    #[serde(default)]
     pub content: String,
 }
 
@@ -3816,7 +3441,6 @@ pub struct MyNoteAttributes {
 #[non_exhaustive]
 pub struct NotFoundErrorResponseContent {
     /// `error`.
-    #[serde(default)]
     pub error: String,
     /// `message`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -3828,7 +3452,6 @@ pub struct NotFoundErrorResponseContent {
 #[non_exhaustive]
 pub struct Notification {
     /// `id`.
-    #[serde(default)]
     pub id: i64,
     /// `created_at`.
     pub created_at: DateTime,
@@ -3938,10 +3561,8 @@ pub struct OutOfOffice {
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct OutOfOfficePayload {
     /// Start date in ISO 8601 format (YYYY-MM-DD)
-    #[serde(default)]
     pub start_date: String,
     /// End date in ISO 8601 format (YYYY-MM-DD)
-    #[serde(default)]
     pub end_date: String,
 }
 
@@ -3953,13 +3574,10 @@ pub struct OutOfOfficePayload {
 #[non_exhaustive]
 pub struct OutOfOfficePerson {
     /// `id`.
-    #[serde(default)]
     pub id: i64,
     /// `name`.
-    #[serde(default)]
     pub name: String,
     /// `avatar_url`.
-    #[serde(default)]
     pub avatar_url: String,
 }
 
@@ -3978,10 +3596,8 @@ pub struct PauseQuestionResponseContent {
 #[non_exhaustive]
 pub struct PeopleConfirmationRequiredErrorResponseContent {
     /// `error`.
-    #[serde(default)]
     pub error: String,
     /// `people`.
-    #[serde(default)]
     pub people: Vec<TemplateLibraryConfirmationPerson>,
 }
 
@@ -3990,13 +3606,12 @@ pub struct PeopleConfirmationRequiredErrorResponseContent {
 #[non_exhaustive]
 pub struct Person {
     /// `id`.
-    #[serde(default, deserialize_with = "crate::types::flexible_i64::deserialize")]
+    #[serde(deserialize_with = "crate::types::flexible_i64::deserialize")]
     pub id: i64,
     /// `attachable_sgid`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub attachable_sgid: Option<String>,
     /// `name`.
-    #[serde(default)]
     pub name: SensitiveString,
     /// `email_address`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -4066,10 +3681,8 @@ pub struct Person {
 #[non_exhaustive]
 pub struct PersonCompany {
     /// `id`.
-    #[serde(default)]
     pub id: i64,
     /// `name`.
-    #[serde(default)]
     pub name: String,
 }
 
@@ -4145,7 +3758,6 @@ pub struct PreviewableAttachment {
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct PrioritizeAssignmentRequestContent {
     /// The recording id to prioritize.
-    #[serde(default)]
     pub id: i64,
 }
 
@@ -4154,17 +3766,14 @@ pub struct PrioritizeAssignmentRequestContent {
 #[non_exhaustive]
 pub struct Project {
     /// `id`.
-    #[serde(default)]
     pub id: i64,
     /// active|archived|trashed
-    #[serde(default)]
     pub status: String,
     /// `created_at`.
     pub created_at: DateTime,
     /// `updated_at`.
     pub updated_at: DateTime,
     /// `name`.
-    #[serde(default)]
     pub name: String,
     /// `description`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -4188,10 +3797,8 @@ pub struct Project {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub star_url: Option<String>,
     /// `url`.
-    #[serde(default)]
     pub url: String,
     /// `app_url`.
-    #[serde(default)]
     pub app_url: String,
     /// `dock`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -4231,7 +3838,6 @@ pub struct ProjectAccessResult {
 #[non_exhaustive]
 pub struct ProjectClientEnablement {
     /// `clients_enabled`.
-    #[serde(default)]
     pub clients_enabled: bool,
 }
 
@@ -4240,10 +3846,8 @@ pub struct ProjectClientEnablement {
 #[non_exhaustive]
 pub struct ProjectConstruction {
     /// `id`.
-    #[serde(default)]
     pub id: i64,
     /// `status`.
-    #[serde(default)]
     pub status: String,
     /// `url`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -4257,7 +3861,6 @@ pub struct ProjectConstruction {
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct ProjectConstructionAttributes {
     /// `name`.
-    #[serde(default)]
     pub name: String,
     /// `description`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -4277,7 +3880,6 @@ pub struct ProjectConstructionAttributes {
 #[non_exhaustive]
 pub struct ProjectLimitErrorResponseContent {
     /// `error`.
-    #[serde(default)]
     pub error: String,
     /// `message`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -4289,32 +3891,24 @@ pub struct ProjectLimitErrorResponseContent {
 #[non_exhaustive]
 pub struct Question {
     /// `id`.
-    #[serde(default)]
     pub id: i64,
     /// `status`.
-    #[serde(default)]
     pub status: String,
     /// `visible_to_clients`.
-    #[serde(default)]
     pub visible_to_clients: bool,
     /// `created_at`.
     pub created_at: DateTime,
     /// `updated_at`.
     pub updated_at: DateTime,
     /// `title`.
-    #[serde(default)]
     pub title: String,
     /// `inherits_status`.
-    #[serde(default)]
     pub inherits_status: bool,
     /// `type`.
-    #[serde(default)]
     pub r#type: String,
     /// `url`.
-    #[serde(default)]
     pub url: String,
     /// `app_url`.
-    #[serde(default)]
     pub app_url: String,
     /// `bookmark_url`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -4323,13 +3917,10 @@ pub struct Question {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub subscription_url: Option<String>,
     /// `parent`.
-    #[serde(default)]
     pub parent: RecordingParent,
     /// `bucket`.
-    #[serde(default)]
     pub bucket: RecordingBucket,
     /// `creator`.
-    #[serde(default)]
     pub creator: Person,
     /// `paused`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -4350,32 +3941,24 @@ pub struct Question {
 #[non_exhaustive]
 pub struct QuestionAnswer {
     /// `id`.
-    #[serde(default)]
     pub id: i64,
     /// `status`.
-    #[serde(default)]
     pub status: String,
     /// `visible_to_clients`.
-    #[serde(default)]
     pub visible_to_clients: bool,
     /// `created_at`.
     pub created_at: DateTime,
     /// `updated_at`.
     pub updated_at: DateTime,
     /// `title`.
-    #[serde(default)]
     pub title: String,
     /// `inherits_status`.
-    #[serde(default)]
     pub inherits_status: bool,
     /// `type`.
-    #[serde(default)]
     pub r#type: String,
     /// `url`.
-    #[serde(default)]
     pub url: String,
     /// `app_url`.
-    #[serde(default)]
     pub app_url: String,
     /// `bookmark_url`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -4390,22 +3973,17 @@ pub struct QuestionAnswer {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub comments_url: Option<String>,
     /// `content`.
-    #[serde(default)]
     pub content: String,
     /// `content_attachments`.
-    #[serde(default)]
     pub content_attachments: Vec<RichTextAttachment>,
     /// `group_on`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub group_on: Option<Date>,
     /// `parent`.
-    #[serde(default)]
     pub parent: RecordingParent,
     /// `bucket`.
-    #[serde(default)]
     pub bucket: RecordingBucket,
     /// `creator`.
-    #[serde(default)]
     pub creator: Person,
     /// `boosts_count`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -4419,7 +3997,6 @@ pub struct QuestionAnswer {
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct QuestionAnswerPayload {
     /// `content`.
-    #[serde(default)]
     pub content: String,
     /// `group_on`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -4430,7 +4007,6 @@ pub struct QuestionAnswerPayload {
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct QuestionAnswerUpdatePayload {
     /// `content`.
-    #[serde(default)]
     pub content: String,
     /// `group_on`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -4492,32 +4068,24 @@ pub struct QuestionSchedule {
 #[non_exhaustive]
 pub struct Questionnaire {
     /// `id`.
-    #[serde(default)]
     pub id: i64,
     /// `status`.
-    #[serde(default)]
     pub status: String,
     /// `visible_to_clients`.
-    #[serde(default)]
     pub visible_to_clients: bool,
     /// `created_at`.
     pub created_at: DateTime,
     /// `updated_at`.
     pub updated_at: DateTime,
     /// `title`.
-    #[serde(default)]
     pub title: String,
     /// `inherits_status`.
-    #[serde(default)]
     pub inherits_status: bool,
     /// `type`.
-    #[serde(default)]
     pub r#type: String,
     /// `url`.
-    #[serde(default)]
     pub url: String,
     /// `app_url`.
-    #[serde(default)]
     pub app_url: String,
     /// `bookmark_url`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -4529,13 +4097,10 @@ pub struct Questionnaire {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub questions_count: Option<i32>,
     /// `name`.
-    #[serde(default)]
     pub name: String,
     /// `bucket`.
-    #[serde(default)]
     pub bucket: RecordingBucket,
     /// `creator`.
-    #[serde(default)]
     pub creator: Person,
 }
 
@@ -4544,7 +4109,6 @@ pub struct Questionnaire {
 #[non_exhaustive]
 pub struct RateLimitErrorResponseContent {
     /// `error`.
-    #[serde(default)]
     pub error: String,
     /// `message`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -4559,35 +4123,27 @@ pub struct RateLimitErrorResponseContent {
 #[non_exhaustive]
 pub struct Recording {
     /// `id`.
-    #[serde(default)]
     pub id: i64,
     /// `status`.
-    #[serde(default)]
     pub status: String,
     /// `visible_to_clients`.
-    #[serde(default)]
     pub visible_to_clients: bool,
     /// `created_at`.
     pub created_at: DateTime,
     /// `updated_at`.
     pub updated_at: DateTime,
     /// `title`.
-    #[serde(default)]
     pub title: String,
     /// `inherits_status`.
-    #[serde(default)]
     pub inherits_status: bool,
     /// `type`.
-    #[serde(default)]
     pub r#type: String,
     /// API URL of the recording. Exception: in the `type=Door` (external-link)
     /// projection, `url` is the door's **external destination address** (e.g. the
     /// Figma/Dropbox URL) and `app_url` is the Basecamp redirector — see the
     /// door-specific `service`/`description` fields below.
-    #[serde(default)]
     pub url: String,
     /// `app_url`.
-    #[serde(default)]
     pub app_url: String,
     /// `bookmark_url`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -4674,10 +4230,8 @@ pub struct Recording {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub parent: Option<RecordingParent>,
     /// `bucket`.
-    #[serde(default)]
     pub bucket: RecordingBucket,
     /// `creator`.
-    #[serde(default)]
     pub creator: Person,
 }
 
@@ -4686,13 +4240,10 @@ pub struct Recording {
 #[non_exhaustive]
 pub struct RecordingBucket {
     /// `id`.
-    #[serde(default)]
     pub id: i64,
     /// `name`.
-    #[serde(default)]
     pub name: String,
     /// `type`.
-    #[serde(default)]
     pub r#type: String,
 }
 
@@ -4703,10 +4254,8 @@ pub struct RecordingBucket {
 #[non_exhaustive]
 pub struct RecordingCategory {
     /// `id`.
-    #[serde(default)]
     pub id: i64,
     /// `name`.
-    #[serde(default)]
     pub name: String,
     /// `icon`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -4718,19 +4267,14 @@ pub struct RecordingCategory {
 #[non_exhaustive]
 pub struct RecordingParent {
     /// `id`.
-    #[serde(default)]
     pub id: i64,
     /// `title`.
-    #[serde(default)]
     pub title: String,
     /// `type`.
-    #[serde(default)]
     pub r#type: String,
     /// `url`.
-    #[serde(default)]
     pub url: String,
     /// `app_url`.
-    #[serde(default)]
     pub app_url: String,
     /// `bucket`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -4741,10 +4285,8 @@ pub struct RecordingParent {
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct ReorderUpNextRequestContent {
     /// The recording id to move, chosen the same way as when prioritizing.
-    #[serde(default)]
     pub source_id: i64,
     /// The 1-based position to move it to.
-    #[serde(default)]
     pub position: i32,
 }
 
@@ -4771,10 +4313,8 @@ pub struct ReplaceScheduleEntryRequestContent {
     /// The entry's start, as a bare date ("2026-06-01") for an all-day entry or a
     /// full timestamp otherwise. Same rule as CreateScheduleEntry: send it
     /// verbatim, never parsed and re-rendered.
-    #[serde(default)]
     pub starts_at: String,
     /// The entry's end. See starts_at for the date-vs-timestamp rule.
-    #[serde(default)]
     pub ends_at: String,
     /// `description`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -4833,7 +4373,6 @@ pub type ReplaceScheduleEntryResponseContent = ScheduleEntry;
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct ReplaceTodoRequestContent {
     /// `content`.
-    #[serde(default)]
     pub content: String,
     /// `description`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -4862,10 +4401,8 @@ pub type ReplaceTodoResponseContent = Todo;
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct RepositionCardStepRequestContent {
     /// `source_id`.
-    #[serde(default)]
     pub source_id: i64,
     /// 0-indexed position
-    #[serde(default)]
     pub position: i32,
 }
 
@@ -4873,7 +4410,6 @@ pub struct RepositionCardStepRequestContent {
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct RepositionTodoRequestContent {
     /// `position`.
-    #[serde(default)]
     pub position: i32,
     /// Optional todolist ID to move the todo to a different parent
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -4884,7 +4420,6 @@ pub struct RepositionTodoRequestContent {
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct RepositionTodolistGroupRequestContent {
     /// `position`.
-    #[serde(default)]
     pub position: i32,
 }
 
@@ -4892,7 +4427,6 @@ pub struct RepositionTodolistGroupRequestContent {
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct RepositionTodolistRequestContent {
     /// `position`.
-    #[serde(default)]
     pub position: i32,
 }
 
@@ -4900,7 +4434,6 @@ pub struct RepositionTodolistRequestContent {
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct RepositionToolRequestContent {
     /// `position`.
-    #[serde(default)]
     pub position: i32,
 }
 
@@ -4923,22 +4456,16 @@ pub struct ResumeQuestionResponseContent {
 #[non_exhaustive]
 pub struct RichTextAttachment {
     /// `id`.
-    #[serde(default)]
     pub id: i64,
     /// `sgid`.
-    #[serde(default)]
     pub sgid: String,
     /// `filename`.
-    #[serde(default)]
     pub filename: String,
     /// `content_type`.
-    #[serde(default)]
     pub content_type: String,
     /// `byte_size`.
-    #[serde(default)]
     pub byte_size: i64,
     /// `download_url`.
-    #[serde(default)]
     pub download_url: AuthRoutableUrl,
     /// Pixel dimensions, present as keys on every attachment but null for
     /// non-image blobs, and the BC3 API may serialize them float-spelled
@@ -4962,13 +4489,10 @@ pub struct RichTextAttachment {
     )]
     pub height: Option<i32>,
     /// `previewable`.
-    #[serde(default)]
     pub previewable: bool,
     /// `preview_url`.
-    #[serde(default)]
     pub preview_url: String,
     /// `thumbnail_url`.
-    #[serde(default)]
     pub thumbnail_url: String,
 }
 
@@ -4977,32 +4501,24 @@ pub struct RichTextAttachment {
 #[non_exhaustive]
 pub struct Schedule {
     /// `id`.
-    #[serde(default)]
     pub id: i64,
     /// `status`.
-    #[serde(default)]
     pub status: String,
     /// `visible_to_clients`.
-    #[serde(default)]
     pub visible_to_clients: bool,
     /// `created_at`.
     pub created_at: DateTime,
     /// `updated_at`.
     pub updated_at: DateTime,
     /// `title`.
-    #[serde(default)]
     pub title: String,
     /// `inherits_status`.
-    #[serde(default)]
     pub inherits_status: bool,
     /// `type`.
-    #[serde(default)]
     pub r#type: String,
     /// `url`.
-    #[serde(default)]
     pub url: String,
     /// `app_url`.
-    #[serde(default)]
     pub app_url: String,
     /// `bookmark_url`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -5011,10 +4527,8 @@ pub struct Schedule {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub position: Option<i32>,
     /// `bucket`.
-    #[serde(default)]
     pub bucket: TodoBucket,
     /// `creator`.
-    #[serde(default)]
     pub creator: Person,
     /// `include_due_assignments`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -5043,32 +4557,24 @@ pub struct ScheduleAttributes {
 #[non_exhaustive]
 pub struct ScheduleEntry {
     /// `id`.
-    #[serde(default)]
     pub id: i64,
     /// `status`.
-    #[serde(default)]
     pub status: String,
     /// `visible_to_clients`.
-    #[serde(default)]
     pub visible_to_clients: bool,
     /// `created_at`.
     pub created_at: DateTime,
     /// `updated_at`.
     pub updated_at: DateTime,
     /// `title`.
-    #[serde(default)]
     pub title: String,
     /// `inherits_status`.
-    #[serde(default)]
     pub inherits_status: bool,
     /// `type`.
-    #[serde(default)]
     pub r#type: String,
     /// `url`.
-    #[serde(default)]
     pub url: String,
     /// `app_url`.
-    #[serde(default)]
     pub app_url: String,
     /// `bookmark_url`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -5083,26 +4589,20 @@ pub struct ScheduleEntry {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub comments_url: Option<String>,
     /// `parent`.
-    #[serde(default)]
     pub parent: RecordingParent,
     /// `bucket`.
-    #[serde(default)]
     pub bucket: TodoBucket,
     /// `creator`.
-    #[serde(default)]
     pub creator: Person,
     /// `summary`.
-    #[serde(default)]
     pub summary: String,
     /// `description`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
     /// `description_attachments`.
-    #[serde(default)]
     pub description_attachments: Vec<RichTextAttachment>,
     /// Always sent. schedule_entries.all_day is NOT NULL with a false default,
     /// and every partial that renders an entry emits it.
-    #[serde(default)]
     pub all_day: bool,
     /// Always sent, and a date rather than a timestamp for an all-day entry:
     /// BC3 renders starts_at_date_or_time, which is `starts_at.to_date` unless
@@ -5164,25 +4664,18 @@ pub struct ScheduleEntry {
 #[non_exhaustive]
 pub struct SearchMetadata {
     /// `recording_search_types`.
-    #[serde(default)]
     pub recording_search_types: Vec<SearchType>,
     /// `file_search_types`.
-    #[serde(default)]
     pub file_search_types: Vec<SearchType>,
     /// `default_creator_label`.
-    #[serde(default)]
     pub default_creator_label: String,
     /// `default_bucket_label`.
-    #[serde(default)]
     pub default_bucket_label: String,
     /// `default_circle_label`.
-    #[serde(default)]
     pub default_circle_label: String,
     /// `default_file_type_label`.
-    #[serde(default)]
     pub default_file_type_label: String,
     /// `default_type_label`.
-    #[serde(default)]
     pub default_type_label: String,
 }
 
@@ -5431,16 +4924,12 @@ pub struct SearchResult {
 #[non_exhaustive]
 pub struct SearchResultAttachment {
     /// Original filename (both variants).
-    #[serde(default)]
     pub filename: String,
     /// MIME type of the file (both variants).
-    #[serde(default)]
     pub content_type: String,
     /// Size of the file in bytes (both variants).
-    #[serde(default)]
     pub byte_size: i64,
     /// Authenticated download URL for the file (both variants).
-    #[serde(default)]
     pub download_url: AuthRoutableUrl,
     /// Attachment id (rich-text variant).
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -5493,7 +4982,6 @@ pub struct SearchType {
     #[serde(deserialize_with = "serde::Deserialize::deserialize")]
     pub key: Option<String>,
     /// `value`.
-    #[serde(default)]
     pub value: String,
 }
 
@@ -5501,7 +4989,6 @@ pub struct SearchType {
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct SetCardColumnColorRequestContent {
     /// Valid colors: white, red, orange, yellow, green, blue, aqua, purple, gray, pink, brown
-    #[serde(default)]
     pub color: String,
 }
 
@@ -5512,7 +4999,6 @@ pub type SetCardColumnColorResponseContent = CardColumn;
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct SetCardStepCompletionRequestContent {
     /// Set to "on" to complete the step, "" (empty) to uncomplete
-    #[serde(default)]
     pub completion: String,
 }
 
@@ -5523,7 +5009,6 @@ pub type SetCardStepCompletionResponseContent = CardStep;
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct SetClientVisibilityRequestContent {
     /// `visible_to_clients`.
-    #[serde(default)]
     pub visible_to_clients: bool,
 }
 
@@ -5542,7 +5027,6 @@ pub type SpotlightRecordingResponseContent = Recording;
 #[non_exhaustive]
 pub struct StorageLimitErrorResponseContent {
     /// `error`.
-    #[serde(default)]
     pub error: String,
     /// `message`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -5557,13 +5041,10 @@ pub type SubscribeResponseContent = Subscription;
 #[non_exhaustive]
 pub struct Subscription {
     /// `subscribed`.
-    #[serde(default)]
     pub subscribed: bool,
     /// `count`.
-    #[serde(default)]
     pub count: i32,
     /// `url`.
-    #[serde(default)]
     pub url: String,
     /// `subscribers`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -5575,7 +5056,6 @@ pub struct Subscription {
 #[non_exhaustive]
 pub struct Template {
     /// `id`.
-    #[serde(default)]
     pub id: i64,
     /// `status`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -5585,7 +5065,6 @@ pub struct Template {
     /// `updated_at`.
     pub updated_at: DateTime,
     /// `name`.
-    #[serde(default)]
     pub name: String,
     /// `description`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -5606,13 +5085,10 @@ pub struct Template {
 #[non_exhaustive]
 pub struct TemplateLibrary {
     /// `bucket`.
-    #[serde(default)]
     pub bucket: RecordingBucket,
     /// `todoset`.
-    #[serde(default)]
     pub todoset: RecordingParent,
     /// `todolists`.
-    #[serde(default)]
     pub todolists: Vec<Todolist>,
 }
 
@@ -5621,13 +5097,10 @@ pub struct TemplateLibrary {
 #[non_exhaustive]
 pub struct TemplateLibraryConfirmationPerson {
     /// `id`.
-    #[serde(default)]
     pub id: i64,
     /// `name`.
-    #[serde(default)]
     pub name: SensitiveString,
     /// `avatar_url`.
-    #[serde(default)]
     pub avatar_url: SensitiveString,
 }
 
@@ -5636,19 +5109,14 @@ pub struct TemplateLibraryConfirmationPerson {
 #[non_exhaustive]
 pub struct TemplateLibraryCopy {
     /// `id`.
-    #[serde(default)]
     pub id: i64,
     /// pending|processing|completed|failed
-    #[serde(default)]
     pub status: String,
     /// `source_recording_id`.
-    #[serde(default)]
     pub source_recording_id: i64,
     /// `destination_parent_id`.
-    #[serde(default)]
     pub destination_parent_id: i64,
     /// `url`.
-    #[serde(default)]
     pub url: String,
     /// `destination_todolist`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -5863,7 +5331,6 @@ pub struct TimelineEventData {
     /// Whether the entry is all-day. BC3 emits all three members unconditionally
     /// whenever the data object is present (schedule_entry_* events), so they are
     /// required within this struct.
-    #[serde(default)]
     pub all_day: bool,
     /// `starts_at`.
     #[serde(deserialize_with = "serde::Deserialize::deserialize")]
@@ -5878,44 +5345,33 @@ pub struct TimelineEventData {
 #[non_exhaustive]
 pub struct TimesheetEntry {
     /// `id`.
-    #[serde(default)]
     pub id: i64,
     /// `status`.
-    #[serde(default)]
     pub status: String,
     /// `visible_to_clients`.
-    #[serde(default)]
     pub visible_to_clients: bool,
     /// `created_at`.
     pub created_at: DateTime,
     /// `updated_at`.
     pub updated_at: DateTime,
     /// `title`.
-    #[serde(default)]
     pub title: String,
     /// `inherits_status`.
-    #[serde(default)]
     pub inherits_status: bool,
     /// `type`.
-    #[serde(default)]
     pub r#type: String,
     /// `url`.
-    #[serde(default)]
     pub url: String,
     /// `app_url`.
-    #[serde(default)]
     pub app_url: String,
     /// `bookmark_url`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub bookmark_url: Option<String>,
     /// `parent`.
-    #[serde(default)]
     pub parent: RecordingParent,
     /// `bucket`.
-    #[serde(default)]
     pub bucket: TodoBucket,
     /// `creator`.
-    #[serde(default)]
     pub creator: Person,
     /// `date`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -5936,32 +5392,24 @@ pub struct TimesheetEntry {
 #[non_exhaustive]
 pub struct Todo {
     /// `id`.
-    #[serde(default)]
     pub id: i64,
     /// active|archived|trashed
-    #[serde(default)]
     pub status: String,
     /// `visible_to_clients`.
-    #[serde(default)]
     pub visible_to_clients: bool,
     /// `created_at`.
     pub created_at: DateTime,
     /// `updated_at`.
     pub updated_at: DateTime,
     /// `title`.
-    #[serde(default)]
     pub title: String,
     /// `inherits_status`.
-    #[serde(default)]
     pub inherits_status: bool,
     /// `type`.
-    #[serde(default)]
     pub r#type: String,
     /// `url`.
-    #[serde(default)]
     pub url: String,
     /// `app_url`.
-    #[serde(default)]
     pub app_url: String,
     /// `bookmark_url`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -5979,13 +5427,10 @@ pub struct Todo {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub position: Option<i32>,
     /// `parent`.
-    #[serde(default)]
     pub parent: TodoParent,
     /// `bucket`.
-    #[serde(default)]
     pub bucket: TodoBucket,
     /// `creator`.
-    #[serde(default)]
     pub creator: Person,
     /// `description`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -5994,10 +5439,8 @@ pub struct Todo {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub completed: Option<bool>,
     /// `content`.
-    #[serde(default)]
     pub content: String,
     /// `description_attachments`.
-    #[serde(default)]
     pub description_attachments: Vec<RichTextAttachment>,
     /// `starts_on`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -6032,13 +5475,10 @@ pub struct Todo {
 #[non_exhaustive]
 pub struct TodoBucket {
     /// `id`.
-    #[serde(default)]
     pub id: i64,
     /// `name`.
-    #[serde(default)]
     pub name: String,
     /// `type`.
-    #[serde(default)]
     pub r#type: String,
 }
 
@@ -6047,19 +5487,14 @@ pub struct TodoBucket {
 #[non_exhaustive]
 pub struct TodoParent {
     /// `id`.
-    #[serde(default)]
     pub id: i64,
     /// `title`.
-    #[serde(default)]
     pub title: String,
     /// `type`.
-    #[serde(default)]
     pub r#type: String,
     /// `url`.
-    #[serde(default)]
     pub url: String,
     /// `app_url`.
-    #[serde(default)]
     pub app_url: String,
 }
 
@@ -6087,32 +5522,24 @@ pub struct TodoParent {
 #[non_exhaustive]
 pub struct Todolist {
     /// `id`.
-    #[serde(default)]
     pub id: i64,
     /// active|archived|trashed
-    #[serde(default)]
     pub status: String,
     /// `visible_to_clients`.
-    #[serde(default)]
     pub visible_to_clients: bool,
     /// `created_at`.
     pub created_at: DateTime,
     /// `updated_at`.
     pub updated_at: DateTime,
     /// `title`.
-    #[serde(default)]
     pub title: String,
     /// `inherits_status`.
-    #[serde(default)]
     pub inherits_status: bool,
     /// `type`.
-    #[serde(default)]
     pub r#type: String,
     /// `url`.
-    #[serde(default)]
     pub url: String,
     /// `app_url`.
-    #[serde(default)]
     pub app_url: String,
     /// `bookmark_url`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -6125,7 +5552,6 @@ pub struct Todolist {
     /// with `bubbleupable: true` unconditionally, and every list, show, and group
     /// path renders that partial — so the key is present on every projection of
     /// this shape.
-    #[serde(default)]
     pub bubble_up_url: String,
     /// `comments_count`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -6137,13 +5563,10 @@ pub struct Todolist {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub position: Option<i32>,
     /// `parent`.
-    #[serde(default)]
     pub parent: TodoParent,
     /// `bucket`.
-    #[serde(default)]
     pub bucket: TodoBucket,
     /// `creator`.
-    #[serde(default)]
     pub creator: Person,
     /// Rich text description (HTML). Required and never null: the shared rich-text
     /// partial emits the key unconditionally, and `format_api_content` funnels a
@@ -6151,12 +5574,10 @@ pub struct Todolist {
     /// than nil. A list with no description carries `""`, not `null`, and a group
     /// carries it too — `todolists/groups/{index,show}.json.jbuilder` render the
     /// same partial.
-    #[serde(default)]
     pub description: String,
     /// Downloadable files embedded in `description`. Required and never null:
     /// the partial emits `rich_text&.downloadable_attachments.to_a`, so the value
     /// is `\[\]` when there is no description and when there are no attachments.
-    #[serde(default)]
     pub description_attachments: Vec<RichTextAttachment>,
     /// `completed`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -6165,7 +5586,6 @@ pub struct Todolist {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub completed_ratio: Option<String>,
     /// `name`.
-    #[serde(default)]
     pub name: String,
     /// `todos_url`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -6219,7 +5639,6 @@ pub struct Todolist {
     /// raises, and has no nil path. Native `@required` is enough here precisely
     /// because the value is never null, so it costs the examples a real URL rather
     /// than a fiction.
-    #[serde(default)]
     pub comments_app_url: String,
     /// `boosts_count`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -6234,32 +5653,24 @@ pub struct Todolist {
 #[non_exhaustive]
 pub struct Todoset {
     /// `id`.
-    #[serde(default)]
     pub id: i64,
     /// `status`.
-    #[serde(default)]
     pub status: String,
     /// `visible_to_clients`.
-    #[serde(default)]
     pub visible_to_clients: bool,
     /// `created_at`.
     pub created_at: DateTime,
     /// `updated_at`.
     pub updated_at: DateTime,
     /// `title`.
-    #[serde(default)]
     pub title: String,
     /// `inherits_status`.
-    #[serde(default)]
     pub inherits_status: bool,
     /// `type`.
-    #[serde(default)]
     pub r#type: String,
     /// `url`.
-    #[serde(default)]
     pub url: String,
     /// `app_url`.
-    #[serde(default)]
     pub app_url: String,
     /// `bookmark_url`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -6268,13 +5679,10 @@ pub struct Todoset {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub position: Option<i32>,
     /// `bucket`.
-    #[serde(default)]
     pub bucket: TodoBucket,
     /// `creator`.
-    #[serde(default)]
     pub creator: Person,
     /// `name`.
-    #[serde(default)]
     pub name: String,
     /// `todolists_count`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -6309,7 +5717,6 @@ pub struct Todoset {
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct ToggleGaugeRequestContent {
     /// `gauge`.
-    #[serde(default)]
     pub gauge: GaugeTogglePayload,
 }
 
@@ -6318,26 +5725,21 @@ pub struct ToggleGaugeRequestContent {
 #[non_exhaustive]
 pub struct Tool {
     /// `id`.
-    #[serde(default)]
     pub id: i64,
     /// `status`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub status: Option<String>,
     /// `visible_to_clients`.
-    #[serde(default)]
     pub visible_to_clients: bool,
     /// `created_at`.
     pub created_at: DateTime,
     /// `updated_at`.
     pub updated_at: DateTime,
     /// `title`.
-    #[serde(default)]
     pub title: String,
     /// `inherits_status`.
-    #[serde(default)]
     pub inherits_status: bool,
     /// The tool's recordable type, e.g. `Chat::Transcript`, `Todoset`, `Vault`.
-    #[serde(default)]
     pub r#type: String,
     /// `url`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -6364,7 +5766,6 @@ pub struct Tool {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub bucket: Option<RecordingBucket>,
     /// `creator`.
-    #[serde(default)]
     pub creator: Person,
     /// Not emitted by this projection. The dock array on a project
     /// (`DockItem$name`) carries the tool's slug; this key is absent from every
@@ -6383,7 +5784,6 @@ pub struct Tool {
 #[non_exhaustive]
 pub struct UnauthorizedErrorResponseContent {
     /// `error`.
-    #[serde(default)]
     pub error: String,
     /// `message`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -6405,19 +5805,14 @@ pub struct UnauthorizedErrorResponseContent {
 #[non_exhaustive]
 pub struct UpcomingAssignable {
     /// `id`.
-    #[serde(default)]
     pub id: i64,
     /// `status`.
-    #[serde(default)]
     pub status: String,
     /// `visible_to_clients`.
-    #[serde(default)]
     pub visible_to_clients: bool,
     /// The item's own Basecamp API URL.
-    #[serde(default)]
     pub url: String,
     /// `app_url`.
-    #[serde(default)]
     pub app_url: String,
     /// The item's start date, `null` unless this is a to-do that has one:
     /// Kanban cards and steps both define `starts_on` as a literal nil to
@@ -6440,21 +5835,16 @@ pub struct UpcomingAssignable {
     /// `short_recordable_name` demodulizes and downcases the recordable class,
     /// so this does not match the CamelCase `type` other recording projections
     /// carry.
-    #[serde(default)]
     pub r#type: String,
     /// The item's text — `recordable.title`. Spelled `content`, not `title`:
     /// this partial names it after the Todo/Card content attribute rather than
     /// the recording's title.
-    #[serde(default)]
     pub content: String,
     /// Present and possibly empty, never absent.
-    #[serde(default)]
     pub assignees: Vec<UpcomingSchedulePerson>,
     /// `bucket`.
-    #[serde(default)]
     pub bucket: UpcomingScheduleBucket,
     /// `parent`.
-    #[serde(default)]
     pub parent: UpcomingAssignableParent,
     /// Where to POST/PUT the item's completion.
     ///
@@ -6463,19 +5853,15 @@ pub struct UpcomingAssignable {
     /// `bucket_step_completions_path` for everything else, and a `_path` helper
     /// emits no host. Resolve this against the account base rather than assuming
     /// it is absolute.
-    #[serde(default)]
     pub completion_url: String,
     /// `completed`.
-    #[serde(default)]
     pub completed: bool,
     /// Whether the item repeats.
-    #[serde(default)]
     pub repeating: bool,
     /// `completion`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub completion: Option<UpcomingAssignableCompletion>,
     /// `comments_count`.
-    #[serde(default)]
     pub comments_count: i32,
 }
 
@@ -6486,7 +5872,6 @@ pub struct UpcomingAssignableCompletion {
     /// `created_at`.
     pub created_at: DateTime,
     /// `creator`.
-    #[serde(default)]
     pub creator: UpcomingSchedulePerson,
 }
 
@@ -6500,10 +5885,8 @@ pub struct UpcomingAssignableCompletion {
 #[non_exhaustive]
 pub struct UpcomingAssignableParent {
     /// `id`.
-    #[serde(default)]
     pub id: i64,
     /// `title`.
-    #[serde(default)]
     pub title: String,
 }
 
@@ -6517,10 +5900,8 @@ pub struct UpcomingAssignableParent {
 #[non_exhaustive]
 pub struct UpcomingScheduleBucket {
     /// `id`.
-    #[serde(default)]
     pub id: i64,
     /// `name`.
-    #[serde(default)]
     pub name: String,
 }
 
@@ -6545,33 +5926,25 @@ pub struct UpcomingScheduleBucket {
 #[non_exhaustive]
 pub struct UpcomingScheduleEntry {
     /// `id`.
-    #[serde(default)]
     pub id: i64,
     /// `status`.
-    #[serde(default)]
     pub status: String,
     /// `visible_to_clients`.
-    #[serde(default)]
     pub visible_to_clients: bool,
     /// The entry's own Basecamp API URL. Unlike the ScheduleEntry projection,
     /// this report never carries the entry's join link, so `url` here has no
     /// `join_url` sibling to be confused with.
-    #[serde(default)]
     pub url: String,
     /// `app_url`.
-    #[serde(default)]
     pub app_url: String,
     /// Always the literal string "ScheduleEntry" — the calendar partial hardcodes
     /// it rather than deriving it from the recordable, so an occurrence reads
     /// back as "ScheduleEntry" too, not "Schedule::Entry::Occurrence".
-    #[serde(default)]
     pub r#type: String,
     /// `summary`.
-    #[serde(default)]
     pub summary: String,
     /// Whether the entry occupies whole days rather than a time range.
     /// Discriminates the two renderings of starts_at/ends_at below.
-    #[serde(default)]
     pub all_day: bool,
     /// Whether the entry repeats. Emitted only by this partial —
     /// `recording.schedule_entry.recurring?`, i.e. whether the entry carries a
@@ -6582,7 +5955,6 @@ pub struct UpcomingScheduleEntry {
     /// `recurring_schedule_entry_occurrences` with `recurrence_schedule` NOT
     /// NULL, so this reads false throughout the first array and true throughout
     /// the second.
-    #[serde(default)]
     pub recurring: bool,
     /// A date for an all-day entry and a full timestamp for a timed one —
     /// `starts_at_date_or_time`, the same rendering ScheduleEntry documents.
@@ -6592,16 +5964,12 @@ pub struct UpcomingScheduleEntry {
     /// See starts_at for the date-vs-timestamp rendering.
     pub ends_at: FlexibleTime,
     /// `creator`.
-    #[serde(default)]
     pub creator: UpcomingSchedulePerson,
     /// Everyone attending. Present and possibly empty, never absent.
-    #[serde(default)]
     pub participants: Vec<UpcomingSchedulePerson>,
     /// `bucket`.
-    #[serde(default)]
     pub bucket: UpcomingScheduleBucket,
     /// Comments on the entry — or, for an occurrence, on that occurrence.
-    #[serde(default)]
     pub comments_count: i32,
 }
 
@@ -6617,13 +5985,10 @@ pub struct UpcomingScheduleEntry {
 #[non_exhaustive]
 pub struct UpcomingSchedulePerson {
     /// `id`.
-    #[serde(default)]
     pub id: i64,
     /// `name`.
-    #[serde(default)]
     pub name: String,
     /// `avatar_url`.
-    #[serde(default)]
     pub avatar_url: String,
 }
 
@@ -6634,7 +5999,6 @@ pub type UpdateAccountLogoInputPayload = Vec<u8>;
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct UpdateAccountNameRequestContent {
     /// `name`.
-    #[serde(default)]
     pub name: String,
 }
 
@@ -6645,7 +6009,6 @@ pub type UpdateAccountNameResponseContent = Account;
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct UpdateCalendarRequestContent {
     /// `calendar`.
-    #[serde(default)]
     pub calendar: CalendarAttributes,
 }
 
@@ -6656,7 +6019,6 @@ pub type UpdateCalendarResponseContent = Calendar;
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct UpdateCampfireLineRequestContent {
     /// The new line content, interpreted as rich text (HTML)
-    #[serde(default)]
     pub content: String,
 }
 
@@ -6715,7 +6077,6 @@ pub type UpdateCardStepResponseContent = CardStep;
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct UpdateChatbotRequestContent {
     /// `service_name`.
-    #[serde(default)]
     pub service_name: String,
     /// `command_url`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -6729,12 +6090,10 @@ pub type UpdateChatbotResponseContent = Chatbot;
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct UpdateCloudFileRequestContent {
     /// `url`.
-    #[serde(default)]
     pub url: String,
     /// Short identifier for the external service — "dropbox", "google_doc",
     /// "figma", "other", … Derived from the CloudFile::Service subclass name, so it
     /// is always present. `other` accepts any well-formed HTTPS URL.
-    #[serde(default)]
     pub service: String,
     /// `title`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -6754,7 +6113,6 @@ pub type UpdateCloudFileResponseContent = CloudFile;
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct UpdateCommentRequestContent {
     /// `content`.
-    #[serde(default)]
     pub content: String,
 }
 
@@ -6766,7 +6124,6 @@ pub type UpdateCommentResponseContent = Comment;
 pub struct UpdateFolderRequestContent {
     /// The folder's new name. Blank is rejected with 422 — unlike create, update
     /// does not fall back to a default name.
-    #[serde(default)]
     pub name: String,
 }
 
@@ -6788,13 +6145,11 @@ pub type UpdateGaugeNeedleResponseContent = GaugeNeedle;
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct UpdateGoogleDocumentRequestContent {
     /// `url`.
-    #[serde(default)]
     pub url: String,
     /// One of "doc", "sheet", "slide", "other". Backed by a Rails enum, so an
     /// unrecognized value is rejected up front with a field-keyed 422
     /// ({"errors": {"document_type": \["is not a valid document type"\]}}) rather
     /// than reaching validation.
-    #[serde(default)]
     pub document_type: String,
     /// `title`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -6876,7 +6231,6 @@ pub type UpdateMessageTypeResponseContent = MessageType;
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct UpdateMyNoteRequestContent {
     /// `note`.
-    #[serde(default)]
     pub note: MyNoteAttributes,
 }
 
@@ -6887,7 +6241,6 @@ pub type UpdateMyNoteResponseContent = MyNote;
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct UpdateMyPreferencesRequestContent {
     /// `person`.
-    #[serde(default)]
     pub person: PreferencesPayload,
 }
 
@@ -6961,7 +6314,6 @@ pub type UpdateProjectClientAccessResponseContent = ProjectAccessResult;
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct UpdateProjectRequestContent {
     /// `name`.
-    #[serde(default)]
     pub name: String,
     /// `description`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -7021,7 +6373,6 @@ pub type UpdateQuestionResponseContent = Question;
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct UpdateScheduleSettingsRequestContent {
     /// `include_due_assignments`.
-    #[serde(default)]
     pub include_due_assignments: bool,
 }
 
@@ -7080,7 +6431,6 @@ pub type UpdateTimesheetEntryResponseContent = TimesheetEntry;
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct UpdateTodolistOrGroupRequestContent {
     /// Name (required for a to-do list and for a group alike) - presence-validated server-side, so omitting it is a 422, not a preserve
-    #[serde(default)]
     pub name: String,
     /// Description (rich text HTML) - writable for a todolist group as well as a todolist, and omitting it clears it either way
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -7094,7 +6444,6 @@ pub type UpdateTodolistOrGroupResponseContent = Todolist;
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct UpdateToolRequestContent {
     /// `title`.
-    #[serde(default)]
     pub title: String,
 }
 
@@ -7147,7 +6496,6 @@ pub type UpdateWebhookResponseContent = Webhook;
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct UpdateWormholeRequestContent {
     /// Id of the new destination column (on another accessible card table).
-    #[serde(default)]
     pub destination_recording_id: i64,
 }
 
@@ -7159,32 +6507,24 @@ pub type UpdateWormholeResponseContent = Wormhole;
 #[non_exhaustive]
 pub struct Upload {
     /// `id`.
-    #[serde(default)]
     pub id: i64,
     /// `status`.
-    #[serde(default)]
     pub status: String,
     /// `visible_to_clients`.
-    #[serde(default)]
     pub visible_to_clients: bool,
     /// `created_at`.
     pub created_at: DateTime,
     /// `updated_at`.
     pub updated_at: DateTime,
     /// `title`.
-    #[serde(default)]
     pub title: String,
     /// `inherits_status`.
-    #[serde(default)]
     pub inherits_status: bool,
     /// `type`.
-    #[serde(default)]
     pub r#type: String,
     /// `url`.
-    #[serde(default)]
     pub url: String,
     /// `app_url`.
-    #[serde(default)]
     pub app_url: String,
     /// `bookmark_url`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -7202,19 +6542,15 @@ pub struct Upload {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub position: Option<i32>,
     /// `parent`.
-    #[serde(default)]
     pub parent: RecordingParent,
     /// `bucket`.
-    #[serde(default)]
     pub bucket: TodoBucket,
     /// `creator`.
-    #[serde(default)]
     pub creator: Person,
     /// `description`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
     /// `description_attachments`.
-    #[serde(default)]
     pub description_attachments: Vec<RichTextAttachment>,
     /// `content_type`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -7263,13 +6599,10 @@ pub struct Upload {
 #[non_exhaustive]
 pub struct UploadVersion {
     /// `id`.
-    #[serde(default)]
     pub id: i64,
     /// `recording_id`.
-    #[serde(default)]
     pub recording_id: i64,
     /// `action`.
-    #[serde(default)]
     pub action: String,
     /// `details`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -7277,7 +6610,6 @@ pub struct UploadVersion {
     /// `created_at`.
     pub created_at: DateTime,
     /// `creator`.
-    #[serde(default)]
     pub creator: Person,
     /// `boosts_count`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -7301,14 +6633,11 @@ pub struct UploadVersionFile {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub byte_size: Option<i64>,
     /// `filename`.
-    #[serde(default)]
     pub filename: String,
     /// Fetches THIS version's bytes. The upload's own download_url always serves the
     /// latest, which is the whole point of the feature.
-    #[serde(default)]
     pub download_url: AuthRoutableUrl,
     /// `app_download_url`.
-    #[serde(default)]
     pub app_download_url: String,
     /// True for the newest version *event*, and for exactly one element of any
     /// non-empty response. The renderer computes it positionally — `event ==
@@ -7322,7 +6651,6 @@ pub struct UploadVersionFile {
     /// event references the upload's current recordable — and this flag still
     /// marks exactly one element, the newest event. bc3 pins that case by name in
     /// "exactly one version is current after a metadata-only update".
-    #[serde(default)]
     pub current: bool,
 }
 
@@ -7331,7 +6659,6 @@ pub struct UploadVersionFile {
 #[non_exhaustive]
 pub struct ValidationErrorResponseContent {
     /// `error`.
-    #[serde(default)]
     pub error: String,
     /// `message`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -7343,32 +6670,24 @@ pub struct ValidationErrorResponseContent {
 #[non_exhaustive]
 pub struct Vault {
     /// `id`.
-    #[serde(default)]
     pub id: i64,
     /// `status`.
-    #[serde(default)]
     pub status: String,
     /// `visible_to_clients`.
-    #[serde(default)]
     pub visible_to_clients: bool,
     /// `created_at`.
     pub created_at: DateTime,
     /// `updated_at`.
     pub updated_at: DateTime,
     /// `title`.
-    #[serde(default)]
     pub title: String,
     /// `inherits_status`.
-    #[serde(default)]
     pub inherits_status: bool,
     /// `type`.
-    #[serde(default)]
     pub r#type: String,
     /// `url`.
-    #[serde(default)]
     pub url: String,
     /// `app_url`.
-    #[serde(default)]
     pub app_url: String,
     /// `bookmark_url`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -7380,10 +6699,8 @@ pub struct Vault {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub parent: Option<RecordingParent>,
     /// `bucket`.
-    #[serde(default)]
     pub bucket: TodoBucket,
     /// `creator`.
-    #[serde(default)]
     pub creator: Person,
     /// `documents_count`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -7410,7 +6727,6 @@ pub struct Vault {
 #[non_exhaustive]
 pub struct Webhook {
     /// `id`.
-    #[serde(default)]
     pub id: i64,
     /// `active`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -7420,16 +6736,13 @@ pub struct Webhook {
     /// `updated_at`.
     pub updated_at: DateTime,
     /// `payload_url`.
-    #[serde(default)]
     pub payload_url: String,
     /// `types`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub types: Option<Vec<String>>,
     /// `url`.
-    #[serde(default)]
     pub url: String,
     /// `app_url`.
-    #[serde(default)]
     pub app_url: String,
     /// Up to the 25 most recent delivery exchanges, most recent first.
     /// Empty when the webhook hasn't delivered anything yet.
@@ -7546,7 +6859,6 @@ pub type WebhookHeadersMap = BTreeMap<String, String>;
 #[non_exhaustive]
 pub struct WebhookLimitErrorResponseContent {
     /// `error`.
-    #[serde(default)]
     pub error: String,
     /// `message`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -7562,44 +6874,33 @@ pub struct WebhookLimitErrorResponseContent {
 #[non_exhaustive]
 pub struct Wormhole {
     /// `id`.
-    #[serde(default)]
     pub id: i64,
     /// `status`.
-    #[serde(default)]
     pub status: String,
     /// `visible_to_clients`.
-    #[serde(default)]
     pub visible_to_clients: bool,
     /// `created_at`.
     pub created_at: DateTime,
     /// `updated_at`.
     pub updated_at: DateTime,
     /// `title`.
-    #[serde(default)]
     pub title: String,
     /// `inherits_status`.
-    #[serde(default)]
     pub inherits_status: bool,
     /// `type`.
-    #[serde(default)]
     pub r#type: String,
     /// `url`.
-    #[serde(default)]
     pub url: String,
     /// `app_url`.
-    #[serde(default)]
     pub app_url: String,
     /// `bookmark_url`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub bookmark_url: Option<String>,
     /// `parent`.
-    #[serde(default)]
     pub parent: RecordingParent,
     /// `bucket`.
-    #[serde(default)]
     pub bucket: TodoBucket,
     /// `creator`.
-    #[serde(default)]
     pub creator: Person,
     /// Wormhole color; always emitted on the wire (`json.color recording.color`),
     /// `null` when unset. Like destination_url, `@required` models the presence and
@@ -7610,7 +6911,6 @@ pub struct Wormhole {
     pub color: Option<String>,
     /// True only while the destination column, its board, and its bucket are all
     /// active; false once the destination is unlinked. Always emitted.
-    #[serde(default)]
     pub linked: bool,
     /// URL of the destination column; always present on the wire, `null` for an
     /// unlinked wormhole. `@required` models the presence; the nullability of the

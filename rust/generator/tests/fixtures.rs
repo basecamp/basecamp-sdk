@@ -81,8 +81,9 @@ fn the_mini_model_renders_the_golden_output() {
 /// scratch directory; answers the generator's stderr on failure.
 fn refusal(edit: impl FnOnce(&mut serde_json::Value, &mut serde_json::Value)) -> String {
     let root = std::env::temp_dir().join(format!(
-        "basecamp-sdk-generator-refusal-{}-{}",
+        "basecamp-sdk-generator-refusal-{}-{:?}-{}",
         std::process::id(),
+        std::thread::current().id(),
         rand_suffix()
     ));
     let _ = fs::remove_dir_all(&root);

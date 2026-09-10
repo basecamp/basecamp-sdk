@@ -46,13 +46,20 @@ pub use client::{AccountClient, Client, ClientBuilder, Response};
 pub use config::Config;
 pub use download::DownloadResult;
 pub use error::{Error, ErrorCode};
+pub use generated::OPERATION_COUNT;
 pub use hooks::Hooks;
 pub use http::HttpClient;
+#[cfg(feature = "oauth")]
+#[cfg_attr(docsrs, doc(cfg(feature = "oauth")))]
+pub use oauth::{
+    DeviceAuthorization, DeviceFlowError, DeviceFlowReason, DiscoveryOutcome, ExchangeRequest,
+    FallbackReason, OAuthClient, Pkce, ProtectedResourceMetadata, RefreshRequest,
+    RefreshingTokenProvider, SelectionError, SelectionFailure, ServerMetadata, Token,
+};
 pub use operation::Operation;
 pub use pagination::{ListMeta, ListResult, Page};
 pub use types::{AuthRoutableUrl, Date, DateTime, FlexibleTime, SensitiveString};
 pub use version::{API_VERSION, VERSION};
-pub use generated::OPERATION_COUNT;
 
 /// The request and response types the Basecamp API speaks, generated from the model.
 pub mod models {

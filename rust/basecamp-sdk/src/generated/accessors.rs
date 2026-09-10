@@ -5,6 +5,7 @@
 use crate::client::AccountClient;
 use crate::generated::services;
 
+#[rustfmt::skip]
 impl AccountClient {
     /// `Account` operations.
     pub fn account(&self) -> services::account::AccountService<'_> {
@@ -77,9 +78,7 @@ impl AccountClient {
     }
 
     /// `ClientCorrespondences` operations.
-    pub fn client_correspondences(
-        &self,
-    ) -> services::client_correspondences::ClientCorrespondencesService<'_> {
+    pub fn client_correspondences(&self) -> services::client_correspondences::ClientCorrespondencesService<'_> {
         services::client_correspondences::ClientCorrespondencesService::new(self)
     }
 
@@ -277,4 +276,5 @@ impl AccountClient {
     pub fn wormholes(&self) -> services::wormholes::WormholesService<'_> {
         services::wormholes::WormholesService::new(self)
     }
+
 }

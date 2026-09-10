@@ -132,10 +132,22 @@ async fn the_budget_gate_is_checked_before_refreshing() {
 
 #[tokio::test(start_paused = true)]
 async fn concurrent_401s_coalesce_into_one_refresh() {
-    let server = MockServer::start().await;
-    mount_401_then_200(&server).await;
+    use support::{Answer, Scripted};
+    let script = Scripted::new(vec![
+        Answer::Status(401, vec![], r#"{"error": "Unauthorized"}"#),
+        Answer::Status(401, vec![], r#"{"error": "Unauthorized"}"#),
+        Answer::Status(401, vec![], r#"{"error": "Unauthorized"}"#),
+        Answer::Status(200, vec![], PROJECT),
+        Answer::Status(200, vec![], PROJECT),
+        Answer::Status(200, vec![], PROJECT),
+    ]);
     let provider = rotating(&["stale", "fresh"], Duration::from_millis(50));
-    let account = client(&server, provider.clone(), 3);
+    let account = Client::builder(Config::default())
+        .token_provider(provider.clone())
+        .http_client(script.clone())
+        .build()
+        .unwrap()
+        .for_account("999");
     let (projects_a, projects_b, projects_c) =
         (account.projects(), account.projects(), account.projects());
     let (a, b, c) = tokio::join!(
@@ -144,10 +156,29 @@ async fn concurrent_401s_coalesce_into_one_refresh() {
         projects_c.get(12345)
     );
     assert!(a.is_ok() && b.is_ok() && c.is_ok(), "{a:?} {b:?} {c:?}");
-    assert_eq!(provider.refreshes.load(Ordering::SeqCst), 1);
-    assert_eq!(server.received_requests().await.unwrap().len(), 6);
+    assert_eq!(
+        provider.refreshes.load(Ordering::SeqCst),
+        1,
+        "one refresh serves every waiter"
+    );
+    assert_eq!(script.sent_count(), 6);
+    let sent = script.sent.lock().unwrap();
+    let tokens: Vec<&str> = sent
+        .iter()
+        .map(|request| request.headers()["authorization"].to_str().unwrap())
+        .collect();
+    assert_eq!(
+        tokens,
+        [
+            "Bearer stale",
+            "Bearer stale",
+            "Bearer stale",
+            "Bearer fresh",
+            "Bearer fresh",
+            "Bearer fresh"
+        ]
+    );
 }
-
 #[tokio::test]
 async fn a_static_token_is_never_refreshed() {
     let server = MockServer::start().await;

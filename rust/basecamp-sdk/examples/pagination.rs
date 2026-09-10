@@ -1,43 +1,52 @@
-//! Walking every page of a list, with the SDK following `Link: rel="next"` on the same
-//! origin and stopping at the configured page cap.
-//!
-//! ```sh
-//! BASECAMP_TOKEN=... BASECAMP_ACCOUNT_ID=... cargo run --example pagination
-//! ```
+//! Walking a paginated read: a page at a time, or all at once under a cap.
 
-use basecamp_sdk::services::projects::ListProjectsParams;
+use basecamp_sdk::services::todos::ListTodosParams;
 use basecamp_sdk::{Client, Config};
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let client = Client::builder(Config::default())
-        .access_token(std::env::var("BASECAMP_TOKEN")?)
-        .build()?;
-    let account = client.for_account(std::env::var("BASECAMP_ACCOUNT_ID")?);
+async fn main() -> Result<(), basecamp_sdk::Error> {
+    let token = std::env::var("BASECAMP_TOKEN").expect("BASECAMP_TOKEN");
+    let account_id = std::env::var("BASECAMP_ACCOUNT").expect("BASECAMP_ACCOUNT");
+    let todolist_id: i64 = std::env::var("BASECAMP_TODOLIST")
+        .expect("BASECAMP_TODOLIST")
+        .parse()
+        .expect("a numeric todolist id");
 
-    // One page at a time: `next_page` follows the cursor the last response carried.
-    let mut page = account
-        .projects()
-        .list(&ListProjectsParams::default())
-        .await?;
-    let mut seen = page.len();
-    while let Some(next) = account.next_page(&page).await? {
-        seen += next.len();
-        page = next;
+    let account = Client::builder(Config::default())
+        .access_token(token)
+        .build()?
+        .for_account(account_id);
+
+    // A page at a time: every follow-on read is the same operation, with the same retry
+    // policy, and a Link header pointing off the API origin is refused.
+    let params = ListTodosParams {
+        completed: Some(false),
+        ..Default::default()
+    };
+    let mut page = account.todos().list(todolist_id, &params).await?;
+    loop {
+        for todo in page.iter() {
+            println!("- {}", todo.title);
+        }
+        match account.next_page(&page).await? {
+            Some(next) => page = next,
+            None => break,
+        }
     }
-    println!("{seen} projects across every page");
 
-    // Or all at once, capped at 50 items; `meta.truncated` says whether the cap bit.
-    let first = account
-        .projects()
-        .list(&ListProjectsParams::default())
-        .await?;
-    let all = account.collect_all(first, Some(50)).await?;
+    // Or everything at once, capped: `truncated` says whether the cap or the client's
+    // page limit stopped the walk before the end.
+    let first = account.todos().list(todolist_id, &params).await?;
+    let all = account.collect_all(first, Some(500)).await?;
     println!(
-        "{} of {} projects (truncated: {})",
+        "{} of {} to-dos{}",
         all.items.len(),
         all.meta.total_count,
-        all.meta.truncated
+        if all.meta.truncated {
+            " (truncated)"
+        } else {
+            ""
+        }
     );
     Ok(())
 }

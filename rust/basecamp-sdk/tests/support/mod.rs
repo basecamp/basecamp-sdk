@@ -74,9 +74,7 @@ impl HttpClient for Scripted {
         *copy.headers_mut() = headers;
         self.sent.lock().unwrap().push(copy);
         let mut answers = self.answers.lock().unwrap();
-        if answers.is_empty() {
-            panic!("no scripted answer left");
-        }
+        assert!(!answers.is_empty(), "no scripted answer left");
         match answers.remove(0) {
             Answer::NetworkError => Err(Error::network(std::io::Error::other("connection reset"))),
             Answer::Status(status, headers, body) => {

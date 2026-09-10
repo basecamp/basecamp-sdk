@@ -22,13 +22,13 @@ fn page(ids: &[i64], link: Option<&str>, total: Option<&str>) -> ResponseTemplat
 
 async fn three_pages(server: &MockServer) {
     Mock::given(method("GET"))
-        .and(path("/999/projects.json"))
+        .and(path("/projects.json"))
         .and(query_param("page", "3"))
         .respond_with(page(&[5], None, None))
         .mount(server)
         .await;
     Mock::given(method("GET"))
-        .and(path("/999/projects.json"))
+        .and(path("/projects.json"))
         .and(query_param("page", "2"))
         .respond_with(page(
             &[3, 4],
@@ -107,7 +107,9 @@ async fn the_page_cap_truncates_and_says_so() {
     let all = client.collect_all(first, None).await.unwrap();
     assert_eq!(all.items.len(), 4);
     assert!(all.meta.truncated);
-    assert_eq!(all.meta.next_url.unwrap().query(), Some("page=3"));
+    let next = all.meta.next_url.unwrap();
+    assert_eq!(next.path(), "/projects.json");
+    assert_eq!(next.query(), Some("page=3"));
     assert_eq!(server.received_requests().await.unwrap().len(), 2);
 }
 
@@ -143,7 +145,7 @@ async fn malformed_next_parts_do_not_hide_a_later_one() {
     ] {
         let server = MockServer::start().await;
         Mock::given(method("GET"))
-            .and(path("/999/projects.json"))
+            .and(path("/projects.json"))
             .and(query_param("page", "2"))
             .respond_with(page(&[2], None, None))
             .mount(&server)
@@ -236,38 +238,37 @@ async fn a_pinned_page_is_one_request_that_still_reports_truncation() {
 
 #[tokio::test(start_paused = true)]
 async fn follow_on_pages_carry_the_operation_retry_policy() {
-    let server = MockServer::start().await;
-    Mock::given(method("GET"))
-        .and(path("/999/projects.json"))
-        .and(query_param("page", "2"))
-        .respond_with(ResponseTemplate::new(503))
-        .up_to_n_times(1)
-        .mount(&server)
-        .await;
-    Mock::given(method("GET"))
-        .and(path("/999/projects.json"))
-        .and(query_param("page", "2"))
-        .respond_with(page(&[2], None, None))
-        .mount(&server)
-        .await;
-    Mock::given(method("GET"))
-        .and(path("/999/projects.json"))
-        .respond_with(page(
-            &[1],
-            Some("</projects.json?page=2>; rel=\"next\""),
-            None,
-        ))
-        .mount(&server)
-        .await;
+    use support::{Answer, Scripted, scripted_account};
+    let script = Scripted::new(vec![
+        Answer::Status(
+            200,
+            vec![("link", "</999/projects.json?page=2>; rel=\"next\"")],
+            "[]",
+        ),
+        Answer::Status(503, vec![], ""),
+        Answer::Status(200, vec![], "[]"),
+    ]);
     let mut config = Config::default();
     config.max_jitter = std::time::Duration::ZERO;
-    let client = account_with(&server, config);
+    let client = scripted_account(script.clone(), config);
     let first = client
         .projects()
         .list(&ListProjectsParams::default())
         .await
         .unwrap();
-    let all = client.collect_all(first, None).await.unwrap();
-    assert_eq!(all.items.len(), 2);
-    assert_eq!(server.received_requests().await.unwrap().len(), 3);
+    let started = tokio::time::Instant::now();
+    let all: basecamp_sdk::ListResult<basecamp_sdk::models::Project> =
+        client.collect_all(first, None).await.unwrap();
+    assert!(all.items.is_empty());
+    assert_eq!(script.sent_count(), 3);
+    assert_eq!(
+        started.elapsed(),
+        std::time::Duration::from_secs(1),
+        "the second page was retried on the curve"
+    );
+    let sent = script.sent.lock().unwrap();
+    assert_eq!(
+        sent[1].uri().to_string(),
+        "https://3.basecampapi.com/999/projects.json?page=2"
+    );
 }

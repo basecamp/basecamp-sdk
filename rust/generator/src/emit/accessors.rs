@@ -10,7 +10,7 @@ pub fn render(model: &Model) -> String {
     out.push_str("//! The service accessors on [`AccountClient`], one per generated service.\n\n");
     out.push_str("use crate::client::AccountClient;\n");
     out.push_str("use crate::generated::services;\n\n");
-    out.push_str("impl AccountClient {\n");
+    out.push_str("#[rustfmt::skip]\nimpl AccountClient {\n");
     for service in &model.services {
         writeln!(out, "    /// `{}` operations.\n    pub fn {}(&self) -> services::{}::{}<'_> {{\n        services::{}::{}::new(self)\n    }}\n",
             service.name, service.module, service.module, service.struct_name, service.module, service.struct_name
