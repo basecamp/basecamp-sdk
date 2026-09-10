@@ -83,6 +83,17 @@ func (ft FlexibleTime) MarshalText() ([]byte, error) {
 	return ft.Time.MarshalText()
 }
 
+// AppendText implements encoding.TextAppender with the same form MarshalText
+// emits; the promoted time.Time.AppendText would append the RFC3339 form of
+// a bare date.
+func (ft FlexibleTime) AppendText(b []byte) ([]byte, error) {
+	text, err := ft.MarshalText()
+	if err != nil {
+		return b, err
+	}
+	return append(b, text...), nil
+}
+
 // MarshalJSON implements json.Marshaler for FlexibleTime.
 // A value parsed from a bare date marshals as that date, even "0001-01-01",
 // which is Go's zero time and would otherwise collapse to null; a zero time

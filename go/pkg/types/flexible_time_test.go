@@ -182,4 +182,11 @@ func TestFlexibleTime_TextRoundTripPreservesTheParsedForm(t *testing.T) {
 	if string(text) != "2026-08-05" {
 		t.Errorf("expected MarshalText to emit the bare date, got %s", text)
 	}
+	appended, err := ft.AppendText([]byte("at "))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if string(appended) != "at 2026-08-05" {
+		t.Errorf("expected AppendText to agree with MarshalText, got %q", appended)
+	}
 }
