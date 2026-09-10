@@ -110,6 +110,14 @@ const sincePresent = "now"
 // errStaleConnection reports a staleness teardown.
 var errStaleConnection = errors.New("event feed connection stale: no inbound frames within the staleness window")
 
+// errNilSeamError is what a seam's typed-nil error value is classified as: a
+// non-nil error interface holding a nil *MintError, *PollError, *DialError or
+// *CloseError. errors.As reports a match and leaves the target nil, so the
+// classification that follows would dereference it and panic on the
+// consumer's goroutine. The value is not retained as a cause — rendering it
+// is the same dereference.
+var errNilSeamError = errors.New("event feed seam returned a typed-nil error value")
+
 // attempt is one connect cycle's mutable ownership: its cancellation scope
 // (cancelled on teardown, so an in-flight seam call or dial belonging to the
 // attempt returns promptly) and, once dialed, the live connection.
@@ -855,12 +863,23 @@ func (l *loop) runCycle(delay time.Duration) cycleOutcome {
 	// that already disposed re-disposes harmlessly; the panic itself
 	// propagates untouched. Phase timers held as locals are deliberately not
 	// chased: unfired, they fire into nothing.
+	// conn is declared ahead of the recovery so a socket that was dialed but
+	// not yet owned by a liveConn — the product Clock panicking inside
+	// newLiveConn, between the dial and the assignment of at.lc — is closed
+	// on unwind rather than leaked with its pump never started.
+	var conn CableConn
 	defer func() {
 		if r := recover(); r != nil {
-			if at.lc != nil {
+			switch {
+			case at.lc != nil:
 				l.disposeAttempt(at, at.phase)
-			} else if at.phase != nil {
-				at.phase.Stop()
+			default:
+				if conn != nil {
+					_ = conn.Close(closeCodeNormal, "")
+				}
+				if at.phase != nil {
+					at.phase.Stop()
+				}
 			}
 			panic(r)
 		}
@@ -920,7 +939,6 @@ func (l *loop) runCycle(delay time.Duration) cycleOutcome {
 		conn, dialErr := l.cfg.transport.Dial(at.ctx, ticket.URL, maxFrameBytes)
 		dialCh <- dialResult{conn: conn, err: dialErr}
 	}()
-	var conn CableConn
 	select {
 	case r := <-dialCh:
 		if l.runCtx.Err() != nil {
@@ -941,7 +959,7 @@ func (l *loop) runCycle(delay time.Duration) cycleOutcome {
 				_ = r.conn.Close(closeCodeNormal, "")
 			}
 			var derr *DialError
-			if errors.As(r.err, &derr) && derr.Kind == DialPolicy {
+			if errors.As(r.err, &derr) && derr != nil && derr.Kind == DialPolicy {
 				// The KIND is read; the text is not. This DialError came out
 				// of CableTransport.Dial, a documented extension point, so
 				// its Reason and its cause are host-authored — and the dialed
@@ -1056,6 +1074,11 @@ func (l *loop) classifyMintFailure(err error) cycleOutcome {
 	if !errors.As(err, &me) {
 		return cycleOutcome{kind: outcomeTerminal, term: &TerminalError{
 			Reason: ReasonMintFailed, Msg: "unclassified mint failure", Err: err,
+		}}
+	}
+	if me == nil {
+		return cycleOutcome{kind: outcomeTerminal, term: &TerminalError{
+			Reason: ReasonMintFailed, Msg: "unclassified mint failure", Err: errNilSeamError,
 		}}
 	}
 	switch me.Kind {
@@ -1820,7 +1843,7 @@ func observableSocketError(err error) error {
 		return context.DeadlineExceeded
 	}
 	var ce *CloseError
-	if errors.As(err, &ce) {
+	if errors.As(err, &ce) && ce != nil {
 		// REBUILT code-only, not passed along. CloseError.Error renders the
 		// integer alone, which is what made passing the value through look
 		// safe — but Reason is an exported field holding the peer's string,
@@ -1831,7 +1854,7 @@ func observableSocketError(err error) error {
 		return &CloseError{Code: ce.Code}
 	}
 	var ife *invalidFrameError
-	if errors.As(err, &ife) {
+	if errors.As(err, &ife) && ife != nil {
 		// Flat by construction and renders only its shape, over a closed
 		// two-value vocabulary. See invalidFrameError.
 		return ife

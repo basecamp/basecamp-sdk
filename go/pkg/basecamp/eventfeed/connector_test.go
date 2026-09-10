@@ -1988,3 +1988,63 @@ func TestCloseFromTheDrainBodyStopsTheScan(t *testing.T) {
 		t.Fatalf("clean close after one delivery: got %d elements, terminal %v", elements, terminal)
 	}
 }
+
+// panickingStaleClock wraps the harness clock so the FIRST staleness timer
+// it is asked for panics — the product Clock seam failing inside newLiveConn,
+// after the dial succeeded and before the attempt owns the connection.
+type panickingStaleClock struct {
+	*feedtest.Clock
+	once sync.Once
+}
+
+func (c *panickingStaleClock) NewTimer(d time.Duration, kind string) eventfeed.Timer {
+	panicked := false
+	if kind == timerStaleness {
+		c.once.Do(func() { panicked = true })
+	}
+	if panicked {
+		panic("host clock panicked arming staleness")
+	}
+	return c.Clock.NewTimer(d, kind)
+}
+
+// TestPanicArmingStalenessClosesTheDialedSocket: the panic recovery disposes
+// a live attempt through at.lc, but a Clock that panics from NewTimer inside
+// newLiveConn does so before at.lc is assigned. The recovery then saw no live
+// connection, stopped the handshake timer, and left the successfully dialed
+// socket open with its pump never started — a permanent leak in a process an
+// outer recovery keeps alive.
+func TestPanicArmingStalenessClosesTheDialedSocket(t *testing.T) {
+	clock := &panickingStaleClock{Clock: feedtest.NewClock()}
+	tr := feedtest.NewTransport()
+	minter := feedtest.NewMinter()
+	minter.ScriptTicket(ticket(1))
+	c, err := eventfeed.New(testOrigin, "5951425", minter, feedtest.NewPolls(),
+		eventfeed.WithTransport(tr), eventfeed.WithClock(clock))
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	t.Cleanup(func() { c.Close() })
+	recovered := make(chan any, 1)
+	go func() {
+		defer func() { recovered <- recover() }()
+		for range c.Events(context.Background()) {
+		}
+	}()
+	select {
+	case r := <-recovered:
+		if r == nil {
+			t.Fatal("the panic did not propagate out of the iteration")
+		}
+	case <-time.After(watchdog):
+		t.Fatal("the iteration neither panicked nor returned")
+	}
+	sock := tr.LastConn()
+	if sock == nil {
+		t.Fatal("no connection was dialed")
+	}
+	if !sock.Closed() {
+		t.Fatal("the dialed socket was leaked by the panic unwinding")
+	}
+	assertTimers(t, clock.Clock, map[string]int{})
+}
