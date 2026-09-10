@@ -60,6 +60,7 @@ pub(super) async fn send_within(
 ) -> Result<Response<Body>, TransportFailure> {
     match tokio::time::timeout_at(deadline, http.send(request)).await {
         Ok(Ok(response)) => Ok(response),
+        Ok(Err(error)) if error.is_timeout() => Err(TransportFailure::TimedOut),
         Ok(Err(error)) => Err(TransportFailure::Failed(error)),
         Err(_) => Err(TransportFailure::TimedOut),
     }
@@ -77,6 +78,7 @@ pub(super) async fn read_within(
     match tokio::time::timeout_at(deadline, read).await {
         Ok(Ok(body)) => Ok(body),
         Ok(Err(error)) if error.is_response_too_large() => Err(BodyFailure::TooLarge(error)),
+        Ok(Err(error)) if error.is_timeout() => Err(BodyFailure::TimedOut),
         Ok(Err(error)) => Err(BodyFailure::Failed(error)),
         Err(_) => Err(BodyFailure::TimedOut),
     }

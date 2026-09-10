@@ -226,3 +226,63 @@ async fn a_failed_refresh_is_shared_with_every_waiter() {
     );
     assert_eq!(script.sent_count(), 3);
 }
+
+#[tokio::test(start_paused = true)]
+async fn a_request_authenticated_after_a_wave_is_not_bound_by_its_verdict() {
+    use support::{Answer, Scripted};
+    let script = Scripted::new(vec![
+        Answer::Status(401, vec![], ""),
+        Answer::Status(401, vec![], ""),
+        Answer::Status(401, vec![], ""),
+        Answer::Status(200, vec![], PROJECT),
+    ]);
+    let provider = rotating(&["stale", "stale", "fresh"], Duration::ZERO);
+    let account = Client::builder(Config::default())
+        .token_provider(provider.clone())
+        .http_client(script.clone())
+        .build()
+        .unwrap()
+        .for_account("999");
+    // The first refresh rotates to another stale token and reports success; the replay
+    // meets a second 401 and has spent its one refresh.
+    assert_eq!(
+        account.projects().get(1).await.unwrap_err().code(),
+        ErrorCode::AuthRequired
+    );
+    assert_eq!(provider.refreshes.load(Ordering::SeqCst), 1);
+    // A request authenticated after that attempt gets its own refresh.
+    let project = account.projects().get(1).await.unwrap();
+    assert_eq!(project.id, 12345);
+    assert_eq!(provider.refreshes.load(Ordering::SeqCst), 2);
+    assert_eq!(script.sent_count(), 4);
+}
+
+#[tokio::test(start_paused = true)]
+async fn a_request_after_a_failed_refresh_starts_another_attempt() {
+    use support::{Answer, Scripted};
+    let script = Scripted::new(vec![
+        Answer::Status(401, vec![], ""),
+        Answer::Status(401, vec![], ""),
+        Answer::Status(200, vec![], PROJECT),
+    ]);
+    let provider = rotating(&["stale"], Duration::ZERO);
+    let account = Client::builder(Config::default())
+        .token_provider(provider.clone())
+        .http_client(script.clone())
+        .build()
+        .unwrap()
+        .for_account("999");
+    assert_eq!(
+        account.projects().get(1).await.unwrap_err().code(),
+        ErrorCode::AuthRequired
+    );
+    assert_eq!(provider.refreshes.load(Ordering::SeqCst), 1);
+    provider.tokens.lock().unwrap().push("fresh");
+    let project = account.projects().get(1).await.unwrap();
+    assert_eq!(project.id, 12345);
+    assert_eq!(
+        provider.refreshes.load(Ordering::SeqCst),
+        2,
+        "the issuer recovered, so the next 401 refreshes again"
+    );
+}

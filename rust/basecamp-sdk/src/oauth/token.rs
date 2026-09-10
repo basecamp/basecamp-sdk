@@ -264,7 +264,11 @@ fn require(condition: bool, message: &str) -> Result<(), Error> {
 /// `validation`; a 5xx is a retryable `api_error`; anything else is `api_error`.
 pub(super) fn token_endpoint_error(status: StatusCode, headers: &HeaderMap, body: &[u8]) -> Error {
     let code = status.as_u16();
-    let fields = oauth_error_fields(body);
+    let fields = if status.is_redirection() {
+        None
+    } else {
+        oauth_error_fields(body)
+    };
     let (error_code, retryable) = match (code, fields.as_ref().map(|(name, _)| name.as_str())) {
         (_, Some("invalid_grant" | "invalid_client" | "unauthorized_client" | "access_denied")) => {
             (ErrorCode::AuthRequired, false)
@@ -402,7 +406,7 @@ pub(super) fn whole_seconds(number: &serde_json::Number, ceiling: u64) -> Option
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "reqwest"))]
 mod tests {
     use serde_json::json;
     use wiremock::matchers::{body_string_contains, header, method, path};
@@ -539,7 +543,8 @@ mod tests {
             .mount(&server)
             .await;
 
-        let token = OAuthClient::default()
+        let token = OAuthClient::shipped()
+            .unwrap()
             .exchange_code(&exchange(&server))
             .await
             .unwrap();
@@ -566,7 +571,8 @@ mod tests {
             code_verifier: None,
             ..exchange(&server)
         };
-        OAuthClient::default()
+        OAuthClient::shipped()
+            .unwrap()
             .exchange_code(&request)
             .await
             .unwrap();
@@ -578,7 +584,8 @@ mod tests {
 
     #[tokio::test]
     async fn exchange_wants_its_required_fields() {
-        let error = OAuthClient::default()
+        let error = OAuthClient::shipped()
+            .unwrap()
             .exchange_code(&ExchangeRequest::default())
             .await
             .unwrap_err();
@@ -592,7 +599,8 @@ mod tests {
             token_endpoint: "http://as.example/token".to_string(),
             ..refresh(&MockServer::start().await)
         };
-        let error = OAuthClient::default()
+        let error = OAuthClient::shipped()
+            .unwrap()
             .refresh_token(&request)
             .await
             .unwrap_err();
@@ -610,7 +618,8 @@ mod tests {
             })))
             .mount(&server)
             .await;
-        let error = OAuthClient::default()
+        let error = OAuthClient::shipped()
+            .unwrap()
             .exchange_code(&exchange(&server))
             .await
             .unwrap_err();
@@ -629,7 +638,8 @@ mod tests {
             .respond_with(ResponseTemplate::new(503).set_body_string("refresh_token=refresh-1"))
             .mount(&server)
             .await;
-        let error = OAuthClient::default()
+        let error = OAuthClient::shipped()
+            .unwrap()
             .refresh_token(&refresh(&server))
             .await
             .unwrap_err();
@@ -651,7 +661,8 @@ mod tests {
             )
             .mount(&server)
             .await;
-        let error = OAuthClient::default()
+        let error = OAuthClient::shipped()
+            .unwrap()
             .refresh_token(&refresh(&server))
             .await
             .unwrap_err();
@@ -672,7 +683,8 @@ mod tests {
             .respond_with(ResponseTemplate::new(304))
             .mount(&server)
             .await;
-        let error = OAuthClient::default()
+        let error = OAuthClient::shipped()
+            .unwrap()
             .refresh_token(&refresh(&server))
             .await
             .unwrap_err();
@@ -691,8 +703,9 @@ mod tests {
             )
             .mount(&server)
             .await;
-        let client =
-            OAuthClient::default().with_request_timeout(std::time::Duration::from_millis(200));
+        let client = OAuthClient::shipped()
+            .unwrap()
+            .with_request_timeout(std::time::Duration::from_millis(200));
         let error = client.refresh_token(&refresh(&server)).await.unwrap_err();
         assert_eq!(error.code(), ErrorCode::Network);
         assert!(error.is_retryable());
@@ -709,7 +722,8 @@ mod tests {
             .respond_with(ResponseTemplate::new(200).set_body_bytes(vec![b'{'; 1_048_577]))
             .mount(&server)
             .await;
-        let error = OAuthClient::default()
+        let error = OAuthClient::shipped()
+            .unwrap()
             .refresh_token(&refresh(&server))
             .await
             .unwrap_err();
@@ -719,7 +733,7 @@ mod tests {
 
     #[test]
     fn timeouts_normalize_to_the_default_when_invalid() {
-        let client = OAuthClient::default();
+        let client = OAuthClient::shipped().unwrap();
         assert_eq!(
             client.request_timeout(),
             super::super::DEFAULT_REQUEST_TIMEOUT
@@ -885,7 +899,10 @@ mod tests {
                 resource: fixture.request.and_then(|request| request.resource),
                 ..refresh(&server)
             };
-            let result = OAuthClient::default().refresh_token(&request).await;
+            let result = OAuthClient::shipped()
+                .unwrap()
+                .refresh_token(&request)
+                .await;
 
             match fixture.expect.outcome.as_str() {
                 "token" => {

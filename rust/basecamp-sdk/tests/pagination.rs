@@ -376,3 +376,34 @@ async fn the_page_stream_is_lazy() {
         "no mock answers page 2"
     );
 }
+
+#[tokio::test]
+async fn the_page_stream_yields_a_page_before_failing_on_its_bad_cursor() {
+    use futures_util::StreamExt;
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/999/projects.json"))
+        .respond_with(page(&[1], Some("<http://[>; rel=\"next\""), None))
+        .mount(&server)
+        .await;
+    let client = account(&server);
+    let first = client
+        .projects()
+        .list(&ListProjectsParams::default())
+        .await
+        .unwrap();
+    let mut pages = std::pin::pin!(client.pages(first));
+    assert_eq!(pages.next().await.unwrap().unwrap().len(), 1);
+    assert_eq!(
+        pages.next().await.unwrap().unwrap_err().code(),
+        ErrorCode::Usage
+    );
+    let first = client
+        .projects()
+        .list(&ListProjectsParams::default())
+        .await
+        .unwrap();
+    let mut items = std::pin::pin!(client.items(first));
+    assert!(items.next().await.unwrap().is_ok());
+    assert!(items.next().await.unwrap().is_err());
+}

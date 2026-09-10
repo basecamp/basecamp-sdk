@@ -4,7 +4,7 @@
 //! Everything here goes out through one [`OAuthClient`], which sends on any
 //! [`HttpClient`] and holds the transport policy every credential-bearing request shares:
 //! a bounded request timeout (30 s by default, never more than an hour), a bounded body
-//! read, and no redirect ever followed. With the `reqwest` feature, [`OAuthClient::default`]
+//! read, and no redirect ever followed. With the `reqwest` feature, [`OAuthClient::shipped`]
 //! builds one over the client the SDK ships.
 //!
 //! The secrets the flows create or receive — the PKCE verifier, an authorization code, the
@@ -120,15 +120,14 @@ impl fmt::Debug for OAuthClient {
 
 #[cfg(feature = "reqwest")]
 #[cfg_attr(docsrs, doc(cfg(feature = "reqwest")))]
-impl Default for OAuthClient {
+impl OAuthClient {
     /// A client over the shipped [`ReqwestClient`](crate::http::ReqwestClient), whose own
     /// timeout is set to the ceiling so that the bound in force is this layer's: the device
     /// poll backs off from a request this layer timed out, and would end the flow on one
     /// the transport gave up on first.
-    fn default() -> OAuthClient {
-        let http =
-            crate::http::ReqwestClient::with_timeout(MAX_REQUEST_TIMEOUT).unwrap_or_default();
-        OAuthClient::new(http)
+    pub fn shipped() -> Result<OAuthClient, crate::Error> {
+        let http = crate::http::ReqwestClient::with_timeout(MAX_REQUEST_TIMEOUT)?;
+        Ok(OAuthClient::new(http))
     }
 }
 

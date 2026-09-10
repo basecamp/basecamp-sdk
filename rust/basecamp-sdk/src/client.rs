@@ -383,10 +383,11 @@ impl AccountClient {
         let mut retry_index: u32 = 0;
 
         loop {
-            let request = self.prepare(operation, &url).await?;
-            // Read after authenticating: a stamp older than the credentials only costs an
-            // extra refresh, a stamp newer than them would replay a rejected token.
+            // Read before authenticating: a stamp older than the credentials shares the
+            // verdict of the refresh that produced them, where a newer one would refresh
+            // again.
             let generation = self.shared.auth.generation();
+            let request = self.prepare(operation, &url).await?;
             let info = RequestInfo {
                 method: operation.method.clone(),
                 url: url.clone(),

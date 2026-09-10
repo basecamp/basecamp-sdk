@@ -656,7 +656,7 @@ fn is_string_array(value: &Value) -> bool {
         .is_some_and(|items| items.iter().all(Value::is_string))
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "reqwest"))]
 mod tests {
     use super::*;
 
@@ -763,7 +763,7 @@ mod tests {
 
 /// The data-only scenarios of `conformance/oauth/fixtures`, each driven against wiremock
 /// origins substituted for the placeholders (see `conformance/oauth/README.md`).
-#[cfg(test)]
+#[cfg(all(test, feature = "reqwest"))]
 mod conformance {
     use std::net::TcpListener;
     use std::path::PathBuf;
@@ -960,7 +960,9 @@ mod conformance {
             mount(server, WELL_KNOWN_AS, hop2).await;
         }
 
-        let client = OAuthClient::default().with_launchpad_issuer(launchpad.uri());
+        let client = OAuthClient::shipped()
+            .unwrap()
+            .with_launchpad_issuer(launchpad.uri());
         let result = match fixture.operation.as_str() {
             "discoverFromResource" => client
                 .discover_from_resource(

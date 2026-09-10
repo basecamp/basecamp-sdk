@@ -13,7 +13,7 @@ const CLIENT_ID: &str = "basecamp-cli";
 #[tokio::main]
 async fn main() -> Result<(), basecamp_sdk::Error> {
     let account_id = std::env::var("BASECAMP_ACCOUNT").expect("BASECAMP_ACCOUNT");
-    let oauth = OAuthClient::default();
+    let oauth = OAuthClient::shipped()?;
 
     // Resource-first discovery: ask the API host which authorization server it trusts.
     let metadata = match oauth

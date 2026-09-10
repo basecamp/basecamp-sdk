@@ -76,9 +76,9 @@ pub trait AuthStrategy: Send + Sync {
         false
     }
 
-    /// A counter that moves every time the credentials change. The client reads it before
-    /// authenticating a request and hands it back to [`AuthStrategy::refresh`], which is how
-    /// concurrent 401s coalesce into one refresh.
+    /// A counter that moves every time a refresh completes, whichever way. The client
+    /// reads it before authenticating a request and hands it back to
+    /// [`AuthStrategy::refresh`], which is how concurrent 401s coalesce into one refresh.
     fn generation(&self) -> u64 {
         0
     }
@@ -98,10 +98,11 @@ pub trait AuthStrategy: Send + Sync {
 /// meets one while it runs waits and shares its answer rather than refreshing again.
 pub struct BearerAuth<P: TokenProvider> {
     provider: P,
+    /// Moves once per completed refresh attempt, success or failure.
     generation: AtomicU64,
-    /// The generation whose refresh failed, when the last one did: every request that was
-    /// authenticated under it shares that verdict instead of refreshing again.
-    failed: Mutex<Option<u64>>,
+    /// Whether the last completed refresh renewed the credentials. A request authenticated
+    /// before that attempt shares its verdict; one authenticated after it may start another.
+    last_renewed: Mutex<bool>,
 }
 
 impl<P: TokenProvider> BearerAuth<P> {
@@ -110,7 +111,7 @@ impl<P: TokenProvider> BearerAuth<P> {
         BearerAuth {
             provider,
             generation: AtomicU64::new(0),
-            failed: Mutex::new(None),
+            last_renewed: Mutex::new(false),
         }
     }
 
@@ -151,24 +152,16 @@ impl<P: TokenProvider> AuthStrategy for BearerAuth<P> {
     }
 
     async fn refresh(&self, seen: u64) -> Result<bool, Error> {
-        // One refresh at a time. A request that was authenticated before the refresh that
-        // just finished sees the generation move and replays without refreshing again; one
-        // authenticated under a generation whose refresh already failed shares that verdict.
-        let mut failed = self.failed.lock().await;
+        // One refresh at a time. A request authenticated before the attempt that just
+        // completed shares its verdict — renewed or not — rather than refreshing again; a
+        // request authenticated after a failed attempt may start the next one.
+        let mut last_renewed = self.last_renewed.lock().await;
         if self.generation.load(Ordering::Acquire) != seen {
-            return Ok(true);
-        }
-        if *failed == Some(seen) {
-            return Ok(false);
+            return Ok(*last_renewed);
         }
         let outcome = self.provider.refresh().await;
-        match outcome {
-            Ok(true) => {
-                self.generation.fetch_add(1, Ordering::AcqRel);
-                *failed = None;
-            }
-            Ok(false) | Err(_) => *failed = Some(seen),
-        }
+        *last_renewed = matches!(outcome, Ok(true));
+        self.generation.fetch_add(1, Ordering::AcqRel);
         outcome
     }
 }

@@ -106,16 +106,18 @@ struct Inner {
     confirmation_people: Option<Vec<TemplateLibraryConfirmationPerson>>,
     response_too_large: bool,
     deadline_exceeded: bool,
+    timeout: bool,
     body: Option<Box<[u8]>>,
 }
 
 impl Error {
-    /// An error with a code and a message.
+    /// An error with a code and a message. The message is bounded to
+    /// [`MAX_ERROR_MESSAGE_LENGTH`] here, so every construction site is bounded.
     pub fn new(code: ErrorCode, message: impl Into<String>) -> Error {
         Error {
             inner: Box::new(Inner {
                 code,
-                message: message.into(),
+                message: truncate(&message.into()),
                 hint: None,
                 http_status: None,
                 retryable: false,
@@ -125,10 +127,20 @@ impl Error {
                 confirmation_people: None,
                 response_too_large: false,
                 deadline_exceeded: false,
+                timeout: false,
                 body: None,
             }),
             source: None,
         }
+    }
+
+    /// A transport failure that was a timeout: the request was sent and no answer arrived
+    /// in the transport's own time. Retryable, and told apart from other transport failures
+    /// by [`Error::is_timeout`] where a loop treats the two differently (SPEC §16).
+    pub fn network_timeout(source: impl std::error::Error + Send + Sync + 'static) -> Error {
+        let mut error = Error::network(source);
+        error.inner.timeout = true;
+        error
     }
 
     /// A client-side misuse.
@@ -344,6 +356,11 @@ impl Error {
     /// The operation deadline passed.
     pub fn is_deadline_exceeded(&self) -> bool {
         self.inner.deadline_exceeded
+    }
+
+    /// The transport reported a timeout.
+    pub fn is_timeout(&self) -> bool {
+        self.inner.timeout
     }
 
     fn render(&self) -> String {

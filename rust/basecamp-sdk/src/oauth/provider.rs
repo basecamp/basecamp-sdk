@@ -115,8 +115,10 @@ impl TokenProvider for RefreshingTokenProvider {
             rotated.resource = stored.resource.take();
         }
         *stored = rotated;
+        let rotated = stored.clone();
+        drop(stored);
         if let Some(hook) = &self.on_refresh {
-            hook(&stored);
+            crate::hooks::guarded(|| hook(&rotated));
         }
         Ok(true)
     }

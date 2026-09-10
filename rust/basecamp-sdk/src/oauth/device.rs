@@ -333,7 +333,7 @@ impl OAuthClient {
             .request_device_authorization(endpoint, client_id, scope, login_hint)
             .await?;
         let deadline = clock.now() + Duration::from_secs(authorization.expires_in);
-        display(&authorization);
+        crate::hooks::guarded(|| display(&authorization));
         if clock.now() >= deadline {
             return Err(DeviceFlowError::into_error(DeviceFlowReason::Expired, None));
         }
