@@ -506,6 +506,22 @@ func (h *staleHolder) graceWake(d time.Duration) {
 	h.timer = h.clock.NewTimer(max(d, 0), timerStaleness)
 }
 
+// latched reports an expiry the holder has already decided authoritative —
+// arm's Stop-false verdict — with the silence it measured, whether or not the
+// fired timer's channel has delivered yet. The two are not the same instant:
+// the shipped SystemClock fires through time.AfterFunc, whose callback
+// deregisters and THEN sends, so Stop reports false a moment before the
+// channel is ready, and a probe that consults the channel alone would act
+// on a socket whose verdict is already in.
+func (h *staleHolder) latched() (time.Duration, bool) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if h.stopped || !h.expired {
+		return 0, false
+	}
+	return h.clock.Now().Sub(h.last), true
+}
+
 // stop cancels the timer permanently.
 func (h *staleHolder) stop() {
 	h.mu.Lock()
@@ -1822,6 +1838,12 @@ func (l *loop) lapse(at *attempt) cycleOutcome {
 // non-blocking evaluate alone, for a caller that has something to do between
 // learning the window has expired and disposing the attempt.
 func (l *loop) probeStaleness(at *attempt) (time.Duration, bool) {
+	// The latch outranks the channel: an expiry arm has already decided
+	// authoritative is one whether or not the firing has been delivered yet
+	// (staleHolder.latched).
+	if age, ok := at.lc.stale.latched(); ok {
+		return age, true
+	}
 	staleTimer, staleGen := at.lc.stale.current()
 	select {
 	case <-staleTimer.C():

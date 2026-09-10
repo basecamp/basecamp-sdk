@@ -3756,3 +3756,85 @@ func TestQueuedFatalOutranksARecoverableFrameAheadOfIt(t *testing.T) {
 		t.Fatalf("mint calls = %d, want 1", got)
 	}
 }
+
+// heldFiringClock wraps the harness clock so a timer's Stop reports the
+// firing before its channel delivers it — the gap the shipped SystemClock has
+// between time.AfterFunc's callback starting (Stop reports false) and its
+// send. The firing is forwarded only once the test releases it.
+type heldFiringClock struct {
+	*feedtest.Clock
+	hold    chan struct{}
+	holding string
+}
+
+func (c *heldFiringClock) NewTimer(d time.Duration, kind string) eventfeed.Timer {
+	t := c.Clock.NewTimer(d, kind)
+	if kind != c.holding {
+		return t
+	}
+	proxy := make(chan time.Time, 1)
+	go func() {
+		v, ok := <-t.C()
+		if !ok {
+			return
+		}
+		<-c.hold
+		proxy <- v
+	}()
+	return &heldFiringTimer{Timer: t, c: proxy}
+}
+
+type heldFiringTimer struct {
+	eventfeed.Timer
+	c chan time.Time
+}
+
+func (t *heldFiringTimer) C() <-chan time.Time { return t.c }
+
+// TestLatchedStalenessOutranksAFrameBeforeTheFiringDelivers: a frame that
+// arrives after the window expired latches the expiry on arm's Stop verdict,
+// and the staleness probe used to consult the timer channel alone — so in the
+// gap before the firing delivers, the frame was delivered from a socket whose
+// verdict was already in. The probe consults the latch first.
+func TestLatchedStalenessOutranksAFrameBeforeTheFiringDelivers(t *testing.T) {
+	clock := &heldFiringClock{Clock: feedtest.NewClock(), hold: make(chan struct{}), holding: timerStaleness}
+	var mu sync.Mutex
+	var ages []time.Duration
+	h := newHarness(t,
+		eventfeed.WithClock(clock),
+		eventfeed.WithObserver(eventfeed.Observer{
+			StaleConnection: func(age time.Duration) {
+				mu.Lock()
+				ages = append(ages, age)
+				mu.Unlock()
+			},
+		}))
+	h.clock = clock.Clock
+	t.Cleanup(func() { close(clock.hold) })
+	h.minter.ScriptTicket(ticket(1))
+	h.minter.ScriptError(&eventfeed.MintError{Kind: eventfeed.MintUnrecoverable})
+	h.polls.ScriptPage(eventfeed.PollPage{Position: "pos-1"})
+	h.start()
+	conn := h.driveToSubscribed()
+	conn.Serve(frameConfirm(noFilterIdentifier))
+	h.awaitStreaming()
+	// The window expires (the firing is held back from the channel), and a
+	// frame then arrives: the pump's reset sees Stop report false and latches.
+	h.fireTimer(timerStaleness)
+	conn.Serve(frameMessage(noFilterIdentifier, 101))
+	h.waitUntil("the verdict or a delivery", func() bool {
+		mu.Lock()
+		defer mu.Unlock()
+		return len(ages) > 0 || len(h.deliveredIDs()) > 0
+	})
+	if ids := h.deliveredIDs(); len(ids) != 0 {
+		t.Fatalf("delivered %v from a socket whose staleness verdict was latched", ids)
+	}
+	h.awaitEndOrReconnect()
+	h.join()
+	mu.Lock()
+	defer mu.Unlock()
+	if len(ages) != 1 {
+		t.Fatalf("StaleConnection ages = %v, want exactly one", ages)
+	}
+}
