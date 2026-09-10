@@ -108,6 +108,7 @@ impl AccountClient {
         let mut attempt = 1;
         let mut refreshed = false;
         loop {
+            let generation = self.shared().auth.generation();
             let mut request = Request::builder()
                 .method(crate::http::Method::GET)
                 .uri(url.as_str())
@@ -117,7 +118,6 @@ impl AccountClient {
                 .headers_mut()
                 .insert(USER_AGENT, header_value(&self.shared().user_agent)?);
             self.shared().auth.authenticate(&mut request).await?;
-            let generation = self.shared().auth.generation();
             let info = RequestInfo {
                 method: crate::http::Method::GET,
                 url: shown.clone(),
@@ -127,9 +127,23 @@ impl AccountClient {
             let started = Instant::now();
             let sent = self.shared().http.send(request).await;
             let duration = started.elapsed();
-            let (failure, retry_after) = match &sent {
-                Err(_) => (Some(Error::network_at(&origin_of(url.as_str()))), None),
-                Ok(response) if DOWNLOAD_RETRY_ON.contains(&response.status().as_u16()) => (
+
+            // What this attempt failed with, if it failed; a status outside the retry set
+            // is still a failure to the hooks, it is just not one that is retried.
+            let (status, failure, retry_after) = match &sent {
+                Err(_) => (
+                    None,
+                    Some(Error::network_at(&origin_of(url.as_str()))),
+                    None,
+                ),
+                Ok(response)
+                    if response.status().is_success()
+                        || REDIRECTS.contains(&response.status().as_u16()) =>
+                {
+                    (Some(response.status()), None, None)
+                }
+                Ok(response) => (
+                    Some(response.status()),
                     Some(Error::from_response(
                         response.status(),
                         response.headers(),
@@ -137,45 +151,7 @@ impl AccountClient {
                     )),
                     parse_retry_after_header(response.headers(), chrono::Utc::now()),
                 ),
-                Ok(_) => (None, None),
             };
-            let status = sent.as_ref().ok().map(Response::status);
-            if status == Some(crate::http::StatusCode::UNAUTHORIZED)
-                && !refreshed
-                && attempt < attempts
-                && self.shared().auth.refreshable()
-            {
-                let cause = Error::from_response(
-                    crate::http::StatusCode::UNAUTHORIZED,
-                    &crate::http::HeaderMap::new(),
-                    &[],
-                );
-                crate::hooks::guarded(|| {
-                    hooks.on_request_end(
-                        &info,
-                        &RequestResult {
-                            status,
-                            duration,
-                            error: Some(&cause),
-                            retry_after: None,
-                        },
-                    );
-                });
-                refreshed = true;
-                if self
-                    .shared()
-                    .auth
-                    .refresh(generation)
-                    .await
-                    .unwrap_or(false)
-                {
-                    crate::hooks::guarded(|| {
-                        hooks.on_retry(&info, attempt + 1, &cause, Duration::ZERO);
-                    });
-                    attempt += 1;
-                    continue;
-                }
-            }
             crate::hooks::guarded(|| {
                 hooks.on_request_end(
                     &info,
@@ -187,24 +163,47 @@ impl AccountClient {
                     },
                 );
             });
-            match (sent, failure) {
-                (Ok(response), None) => return Ok(response),
-                (_, Some(cause)) if attempt < attempts => {
-                    let delay = match retry_after {
-                        Some(seconds) => Duration::from_secs(u64::from(seconds)),
-                        None => backoff_with_jitter(
-                            &DEFAULT_RETRY_CONFIG,
-                            attempt - 1,
-                            config.max_jitter,
-                        ),
-                    };
-                    crate::hooks::guarded(|| hooks.on_retry(&info, attempt + 1, &cause, delay));
-                    tokio::time::sleep(delay).await;
-                    attempt += 1;
+
+            let Some(cause) = failure else {
+                return sent.map_err(|_| Error::network_at(&origin_of(url.as_str())));
+            };
+            if status == Some(crate::http::StatusCode::UNAUTHORIZED) {
+                if !refreshed && attempt < attempts && self.shared().auth.refreshable() {
+                    refreshed = true;
+                    if self
+                        .shared()
+                        .auth
+                        .refresh(generation)
+                        .await
+                        .unwrap_or(false)
+                    {
+                        crate::hooks::guarded(|| {
+                            hooks.on_retry(&info, attempt + 1, &cause, Duration::ZERO);
+                        });
+                        attempt += 1;
+                        continue;
+                    }
                 }
-                (Ok(response), Some(_)) => return Err(self.download_failure(response).await),
-                (Err(_), _) => return Err(Error::network_at(&origin_of(url.as_str()))),
+                return Err(self.download_failure(sent?).await);
             }
+            let retried =
+                sent.is_err() || status.is_some_and(|s| DOWNLOAD_RETRY_ON.contains(&s.as_u16()));
+            if retried && attempt < attempts {
+                let delay = match retry_after {
+                    Some(seconds) => Duration::from_secs(u64::from(seconds)),
+                    None => {
+                        backoff_with_jitter(&DEFAULT_RETRY_CONFIG, attempt - 1, config.max_jitter)
+                    }
+                };
+                crate::hooks::guarded(|| hooks.on_retry(&info, attempt + 1, &cause, delay));
+                tokio::time::sleep(delay).await;
+                attempt += 1;
+                continue;
+            }
+            return match sent {
+                Ok(response) => Err(self.download_failure(response).await),
+                Err(_) => Err(cause),
+            };
         }
     }
 

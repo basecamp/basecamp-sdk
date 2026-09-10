@@ -228,12 +228,12 @@ impl AccountClient {
                     None => return Ok(None),
                     Some(Ok(page)) => page,
                     Some(Err(next)) => {
-                        let operation = self.follow_up(route, &origin, &next)?;
+                        let operation = self.follow_up(route, &origin, &next?)?;
                         self.send_page(operation).await?
                     }
                 };
                 let following = if yielded + 1 < max_pages {
-                    page.next_target().transpose()?.map(Err)
+                    page.next_target().map(Err)
                 } else {
                     None
                 };

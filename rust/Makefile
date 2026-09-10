@@ -40,6 +40,7 @@ test:
 .PHONY: test-features
 test-features:
 	$(CARGO) test -p basecamp-sdk --no-default-features --locked
+	$(CARGO) test -p basecamp-sdk --no-default-features --features oauth --locked
 	$(CARGO) test -p basecamp-sdk --locked
 	$(CARGO) test -p basecamp-sdk --all-features --locked
 

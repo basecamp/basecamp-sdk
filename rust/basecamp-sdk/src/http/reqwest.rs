@@ -19,35 +19,34 @@ pub struct ReqwestClient {
 }
 
 impl ReqwestClient {
+    /// A client with the SDK's default per-attempt timeout.
+    pub fn new() -> Result<ReqwestClient, Error> {
+        ReqwestClient::with_timeout(DEFAULT_TIMEOUT)
+    }
+
     /// A client that gives an answer `timeout` to arrive.
     pub fn with_timeout(timeout: Duration) -> Result<ReqwestClient, Error> {
         ReqwestClient::from_builder(reqwest::Client::builder().timeout(timeout))
     }
 
     /// A client built from settings of the caller's own — a proxy, a root certificate, a
-    /// timeout. Three settings the builder carries are replaced, because each would act
+    /// timeout. Two settings the builder carries are replaced, because each would act
     /// beneath the SDK where it cannot see: redirects are never followed (the SDK follows
-    /// its own), reqwest's own retries are off (SPEC §7's attempt budget counts every
-    /// request), and default headers are cleared (the SDK sets every header per request,
-    /// and a download's second hop must go out bare — a default `Authorization` would
-    /// reach the storage host).
+    /// its own) and reqwest's own retries are off (SPEC §7's attempt budget counts every
+    /// request).
+    ///
+    /// Default headers are the caller's and cannot be taken back: reqwest adds them to
+    /// every request that lacks the header, including a download's second hop, which must
+    /// go out bare. A builder carrying a default `Authorization` or `Cookie` would send it
+    /// to the storage host, so give it none — the SDK sets every header it needs per
+    /// request.
     pub fn from_builder(builder: reqwest::ClientBuilder) -> Result<ReqwestClient, Error> {
         let http = builder
             .redirect(Policy::none())
             .retry(reqwest::retry::never())
-            .default_headers(crate::http::HeaderMap::new())
             .build()
             .map_err(|error| Error::usage(format!("HTTP client: {error}")))?;
         Ok(ReqwestClient { http })
-    }
-}
-
-impl Default for ReqwestClient {
-    fn default() -> ReqwestClient {
-        match ReqwestClient::with_timeout(DEFAULT_TIMEOUT) {
-            Ok(client) => client,
-            Err(error) => panic!("reqwest could not build a client from its defaults: {error}"),
-        }
     }
 }
 
@@ -55,7 +54,7 @@ impl Default for ReqwestClient {
 impl HttpClient for ReqwestClient {
     async fn send(&self, request: Request<Bytes>) -> Result<Response<Body>, Error> {
         let request = reqwest::Request::try_from(request).map_err(Error::network)?;
-        let answered = self.http.execute(request).await.map_err(Error::network)?;
+        let answered = self.http.execute(request).await.map_err(classify)?;
 
         let status = answered.status();
         let version = answered.version();
@@ -75,7 +74,15 @@ fn chunks(response: reqwest::Response) -> impl stream::Stream<Item = Result<Byte
         match response.chunk().await {
             Ok(Some(chunk)) => Ok(Some((chunk, response))),
             Ok(None) => Ok(None),
-            Err(error) => Err(Error::network(error)),
+            Err(error) => Err(classify(error)),
         }
     })
+}
+
+fn classify(error: reqwest::Error) -> Error {
+    if error.is_timeout() {
+        Error::network_timeout(error)
+    } else {
+        Error::network(error)
+    }
 }
