@@ -39,20 +39,22 @@ import Foundation
 public enum PublicAPIConsumer {
     // MARK: - The #735 case: all-optional request payloads
 
-    /// `GaugeNeedleUpdatePayload` has one optional member and no required one.
-    /// Before #735 this function could not be written outside the module: the
-    /// payload had no `public init`, so `UpdateGaugeNeedleRequest(gaugeNeedle:)`
-    /// could only ever be handed `nil` — an empty `{}` PUT that bc3 rejects.
+    /// `GaugeNeedleUpdatePayload` had one optional member and no required one
+    /// when #735 found it: the payload had no `public init`, so
+    /// `UpdateGaugeNeedleRequest(gaugeNeedle:)` could only ever be handed
+    /// `nil` — an empty `{}` PUT that bc3 rejects. #731 then made both the
+    /// wrapper and its `description` required, which is what bc3 always
+    /// demanded, so this is now written the way a consumer writes a
+    /// required-member payload; `PreferencesPayload` below keeps the
+    /// all-optional shape #735 was about.
     public static func updateGaugeNeedleDescription(
         account: AccountClient,
         needleId: Int,
         description: String
     ) async throws -> GaugeNeedle {
-        var payload = GaugeNeedleUpdatePayload()
-        payload.description = description
-        return try await account.gauges.updateGaugeNeedle(
+        try await account.gauges.updateGaugeNeedle(
             needleId: needleId,
-            req: UpdateGaugeNeedleRequest(gaugeNeedle: payload)
+            req: UpdateGaugeNeedleRequest(gaugeNeedle: GaugeNeedleUpdatePayload(description: description))
         )
     }
 
@@ -110,7 +112,6 @@ public enum PublicAPIConsumer {
         _ = DoorService()
         _ = EventDetails()
         _ = EverythingFile()
-        _ = GaugeNeedleUpdatePayload()
         _ = GetAssignedTodosResponseContent()
         _ = GetMyAssignmentsResponseContent()
         _ = GetOverdueTodosResponseContent()
