@@ -137,31 +137,35 @@ fn render_method(out: &mut String, operation: &Operation) {
     if operation.description.is_some() {
         out.push_str("    ///\n");
     }
-    writeln!(
-        out,
-        "    /// `{} {}` — {}; retries up to {} attempt(s) on {}.",
-        operation.http_method,
-        operation.path,
-        if operation.idempotent
-            || matches!(
-                operation.http_method.as_str(),
-                "GET" | "HEAD" | "PUT" | "DELETE"
-            )
-        {
-            "idempotent"
-        } else {
-            "not idempotent, never retried"
-        },
-        operation.retry.max,
-        operation
-            .retry
-            .retry_on
-            .iter()
-            .map(ToString::to_string)
-            .collect::<Vec<_>>()
-            .join(", ")
-    )
-    .unwrap();
+    let eligible = operation.idempotent
+        || matches!(
+            operation.http_method.as_str(),
+            "GET" | "HEAD" | "PUT" | "DELETE"
+        );
+    if eligible {
+        writeln!(
+            out,
+            "    /// `{} {}` — idempotent; retries up to {} attempt(s) on {}.",
+            operation.http_method,
+            operation.path,
+            operation.retry.max,
+            operation
+                .retry
+                .retry_on
+                .iter()
+                .map(ToString::to_string)
+                .collect::<Vec<_>>()
+                .join(", ")
+        )
+        .unwrap();
+    } else {
+        writeln!(
+            out,
+            "    /// `{} {}` — not idempotent, sent exactly once.",
+            operation.http_method, operation.path
+        )
+        .unwrap();
+    }
     if let Some(note) = &operation.deprecated {
         writeln!(out, "    #[deprecated(note = {})]", string_literal(note)).unwrap();
     }

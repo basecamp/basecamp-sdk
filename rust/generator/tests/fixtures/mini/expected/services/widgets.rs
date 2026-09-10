@@ -45,7 +45,7 @@ impl<'a> WidgetsService<'a> {
         self.client
     }
 
-    /// `POST /widgets.json` — not idempotent, never retried; retries up to 2 attempt(s) on 429, 503.
+    /// `POST /widgets.json` — not idempotent, sent exactly once.
     pub async fn create_widget(
         &self,
         body: &CreateWidgetRequestContent,

@@ -68,7 +68,7 @@ impl AccountClient {
         let mut url = self.base_url().clone();
         url.set_path(given.path());
         url.set_query(given.query());
-        url.set_fragment(given.fragment());
+        url.set_fragment(None);
 
         let response = self.download_hop_one(&url).await?;
         let status = response.status();

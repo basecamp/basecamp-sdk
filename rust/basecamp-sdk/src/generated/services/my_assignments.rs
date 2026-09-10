@@ -112,7 +112,7 @@ impl<'a> MyAssignmentsService<'a> {
     /// unprioritized recording, and a bare bodyless 404 for an inaccessible
     /// recording.
     ///
-    /// `POST /my/priority_moves.json` — not idempotent, never retried; retries up to 3 attempt(s) on 429, 503.
+    /// `POST /my/priority_moves.json` — not idempotent, sent exactly once.
     pub async fn reorder_up_next(&self, body: &ReorderUpNextRequestContent) -> Result<(), Error> {
         let mut operation = self.client.operation(&routes::REORDER_UP_NEXT, &[]);
         operation.json(body)?;

@@ -42,7 +42,7 @@ impl<'a> TemplatesService<'a> {
 
     /// Create a new template
     ///
-    /// `POST /templates.json` — not idempotent, never retried; retries up to 2 attempt(s) on 429, 503.
+    /// `POST /templates.json` — not idempotent, sent exactly once.
     pub async fn create(
         &self,
         body: &CreateTemplateRequestContent,
@@ -54,7 +54,7 @@ impl<'a> TemplatesService<'a> {
 
     /// Start copying a to-do list template into a project
     ///
-    /// `POST /template_library/copies.json` — not idempotent, never retried; retries up to 2 attempt(s) on 429, 503.
+    /// `POST /template_library/copies.json` — not idempotent, sent exactly once.
     pub async fn create_library_copy(
         &self,
         body: &CreateTemplateLibraryCopyRequestContent,
@@ -68,7 +68,7 @@ impl<'a> TemplatesService<'a> {
 
     /// Create a project from a template (asynchronous)
     ///
-    /// `POST /templates/{templateId}/project_constructions.json` — not idempotent, never retried; retries up to 2 attempt(s) on 429, 503.
+    /// `POST /templates/{templateId}/project_constructions.json` — not idempotent, sent exactly once.
     pub async fn create_project(
         &self,
         template_id: i64,

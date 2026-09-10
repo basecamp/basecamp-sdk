@@ -36,7 +36,7 @@ impl<'a> WormholesService<'a> {
     /// id is a valid `column_id` for MoveCard, teleporting the card across projects.
     /// `destinationRecordingId` is the id of a column on another accessible card table.
     ///
-    /// `POST /buckets/{bucketId}/card_tables/{cardTableId}/wormholes.json` — not idempotent, never retried; retries up to 2 attempt(s) on 429, 503.
+    /// `POST /buckets/{bucketId}/card_tables/{cardTableId}/wormholes.json` — not idempotent, sent exactly once.
     pub async fn create(
         &self,
         bucket_id: i64,

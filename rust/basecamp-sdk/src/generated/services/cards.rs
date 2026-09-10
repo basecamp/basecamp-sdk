@@ -40,7 +40,7 @@ impl<'a> CardsService<'a> {
 
     /// Create a card in a column
     ///
-    /// `POST /card_tables/lists/{columnId}/cards.json` — not idempotent, never retried; retries up to 2 attempt(s) on 429, 503.
+    /// `POST /card_tables/lists/{columnId}/cards.json` — not idempotent, sent exactly once.
     pub async fn create(
         &self,
         column_id: i64,
@@ -77,7 +77,7 @@ impl<'a> CardsService<'a> {
 
     /// Move a card to a different column
     ///
-    /// `POST /card_tables/cards/{cardId}/moves.json` — not idempotent, never retried; retries up to 2 attempt(s) on 429, 503.
+    /// `POST /card_tables/cards/{cardId}/moves.json` — not idempotent, sent exactly once.
     pub async fn move_card(
         &self,
         card_id: i64,

@@ -44,7 +44,7 @@ impl<'a> MessagesService<'a> {
 
     /// Create a new message on a message board
     ///
-    /// `POST /message_boards/{boardId}/messages.json` — not idempotent, never retried; retries up to 2 attempt(s) on 429, 503.
+    /// `POST /message_boards/{boardId}/messages.json` — not idempotent, sent exactly once.
     pub async fn create(
         &self,
         board_id: i64,
@@ -83,7 +83,7 @@ impl<'a> MessagesService<'a> {
 
     /// Pin a message to the top of the message board
     ///
-    /// `POST /recordings/{messageId}/pin.json` — not idempotent, never retried; retries up to 2 attempt(s) on 429, 503.
+    /// `POST /recordings/{messageId}/pin.json` — not idempotent, sent exactly once.
     pub async fn pin(&self, message_id: i64) -> Result<(), Error> {
         let operation = self.client.operation(&routes::PIN_MESSAGE, &[&message_id]);
         self.client.send_unit(operation).await

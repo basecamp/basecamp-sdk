@@ -64,7 +64,7 @@ impl<'a> CampfiresService<'a> {
 
     /// Create a new chatbot for a campfire
     ///
-    /// `POST /buckets/{bucketId}/chats/{campfireId}/integrations.json` — not idempotent, never retried; retries up to 2 attempt(s) on 429, 503.
+    /// `POST /buckets/{bucketId}/chats/{campfireId}/integrations.json` — not idempotent, sent exactly once.
     pub async fn create_chatbot(
         &self,
         bucket_id: i64,
@@ -80,7 +80,7 @@ impl<'a> CampfiresService<'a> {
 
     /// Create a new line (message) in a campfire
     ///
-    /// `POST /chats/{campfireId}/lines.json` — not idempotent, never retried; retries up to 2 attempt(s) on 429, 503.
+    /// `POST /chats/{campfireId}/lines.json` — not idempotent, sent exactly once.
     pub async fn create_line(
         &self,
         campfire_id: i64,
@@ -95,7 +95,7 @@ impl<'a> CampfiresService<'a> {
 
     /// Upload a file to a campfire
     ///
-    /// `POST /chats/{campfireId}/uploads.json` — not idempotent, never retried; retries up to 3 attempt(s) on 429, 503.
+    /// `POST /chats/{campfireId}/uploads.json` — not idempotent, sent exactly once.
     pub async fn create_upload(
         &self,
         campfire_id: i64,

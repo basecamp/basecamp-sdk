@@ -127,7 +127,9 @@ pub mod flex_int {
                         .map(Some)
                         .map_err(|_| serde::de::Error::custom("dimension out of range"))
                 } else if let Some(value) = number.as_f64() {
-                    if value.fract() == 0.0 && value.abs() < f64::from(i32::MAX) {
+                    if value.fract() == 0.0
+                        && (f64::from(i32::MIN)..=f64::from(i32::MAX)).contains(&value)
+                    {
                         #[allow(clippy::cast_possible_truncation)]
                         Ok(Some(value as i32))
                     } else {
@@ -324,6 +326,13 @@ mod tests {
             Some(1024)
         );
         assert!(serde_json::from_str::<Dimensions>(r#"{"width": 2.5}"#).is_err());
+        assert_eq!(
+            serde_json::from_str::<Dimensions>(r#"{"width": 2147483647.0}"#)
+                .unwrap()
+                .width,
+            Some(i32::MAX)
+        );
+        assert!(serde_json::from_str::<Dimensions>(r#"{"width": 2147483648.0}"#).is_err());
     }
 
     #[test]

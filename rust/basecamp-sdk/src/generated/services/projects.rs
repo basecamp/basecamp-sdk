@@ -54,7 +54,7 @@ impl<'a> ProjectsService<'a> {
 
     /// Create a new project
     ///
-    /// `POST /projects.json` — not idempotent, never retried; retries up to 3 attempt(s) on 429, 503.
+    /// `POST /projects.json` — not idempotent, sent exactly once.
     pub async fn create(
         &self,
         body: &CreateProjectRequestContent,

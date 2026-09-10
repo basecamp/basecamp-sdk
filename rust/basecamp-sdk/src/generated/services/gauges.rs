@@ -50,7 +50,7 @@ impl<'a> GaugesService<'a> {
 
     /// Create a gauge needle (progress update) for a project
     ///
-    /// `POST /projects/{projectId}/gauge/needles.json` — not idempotent, never retried; retries up to 2 attempt(s) on 429, 503.
+    /// `POST /projects/{projectId}/gauge/needles.json` — not idempotent, sent exactly once.
     pub async fn create_gauge_needle(
         &self,
         project_id: i64,

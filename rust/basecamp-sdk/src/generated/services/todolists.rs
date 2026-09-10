@@ -42,7 +42,7 @@ impl<'a> TodolistsService<'a> {
 
     /// Create a new todolist in a todoset
     ///
-    /// `POST /todosets/{todosetId}/todolists.json` — not idempotent, never retried; retries up to 2 attempt(s) on 429, 503.
+    /// `POST /todosets/{todosetId}/todolists.json` — not idempotent, sent exactly once.
     pub async fn create(
         &self,
         todoset_id: i64,
