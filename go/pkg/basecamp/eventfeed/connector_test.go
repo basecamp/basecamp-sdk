@@ -2156,3 +2156,50 @@ func TestSeamPanicsPropagateOnTheConsumerGoroutine(t *testing.T) {
 		})
 	}
 }
+
+// panickingOnCancelTransport blocks the dial until its context is cancelled
+// and then panics — the seam answering cancellation with a panic.
+type panickingOnCancelTransport struct{}
+
+func (panickingOnCancelTransport) Dial(ctx context.Context, _ string, _ int64) (eventfeed.CableConn, error) {
+	<-ctx.Done()
+	panic("host transport panicked on cancellation")
+}
+
+// TestDialPanicOnCancellationPropagates: the two arms that cancel a pending
+// dial — the handshake deadline and Close — join the worker and inspect only
+// the connection it may have returned; a panic the cancelled dial raised was
+// captured by the worker and then dropped, so the connector reconnected (or
+// closed) over a host panic the consumer never saw.
+func TestDialPanicOnCancellationPropagates(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		cancel func(h *harness)
+	}{
+		{"handshake deadline", func(h *harness) { h.fireTimer(timerHandshakeDeadline) }},
+		{"close", func(h *harness) { h.conn.Close() }}, //nolint:errcheck // asserted via the recover
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			h := newHarness(t, eventfeed.WithTransport(panickingOnCancelTransport{}))
+			h.minter.ScriptTicket(ticket(1))
+			h.minter.ScriptError(&eventfeed.MintError{Kind: eventfeed.MintUnrecoverable})
+			recovered := make(chan any, 1)
+			go func() {
+				defer func() { recovered <- recover() }()
+				for range h.conn.Events(context.Background()) {
+				}
+			}()
+			h.awaitTimer(timerHandshakeDeadline)
+			tc.cancel(h)
+			select {
+			case r := <-recovered:
+				if s, _ := r.(string); s != "host transport panicked on cancellation" {
+					t.Fatalf("recovered %v, want the seam's own panic value", r)
+				}
+			case <-time.After(watchdog):
+				t.Fatal("the iteration neither panicked nor returned")
+			}
+			assertTimers(t, h.clock, map[string]int{})
+		})
+	}
+}

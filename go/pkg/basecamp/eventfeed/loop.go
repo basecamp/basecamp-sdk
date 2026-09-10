@@ -1039,16 +1039,29 @@ func (l *loop) runCycle(delay time.Duration) cycleOutcome {
 	case <-hs.C():
 		// Transition 7: the deadline expired mid-dial — cancel the pending
 		// dial (the seam contract requires a prompt return) and dispose any
-		// connection it raced to open.
+		// connection it raced to open. A dial that answers cancellation by
+		// panicking is a host panic like any other: re-raised once the
+		// connection it may have returned is closed.
 		at.cancel()
-		if r := <-dialCh; r.conn != nil {
-			_ = r.conn.Close(closeCodeNormal, "")
+		if r := <-dialCh; r.conn != nil || r.panicked != nil {
+			if r.conn != nil {
+				_ = r.conn.Close(closeCodeNormal, "")
+			}
+			if r.panicked != nil {
+				panic(r.panicked.value)
+			}
 		}
 		return cycleOutcome{kind: outcomeFailed}
 	case <-l.runCtx.Done():
 		at.cancel()
-		if r := <-dialCh; r.conn != nil {
-			_ = r.conn.Close(closeCodeNormal, "")
+		if r := <-dialCh; r.conn != nil || r.panicked != nil {
+			if r.conn != nil {
+				_ = r.conn.Close(closeCodeNormal, "")
+			}
+			if r.panicked != nil {
+				hs.Stop()
+				panic(r.panicked.value)
+			}
 		}
 		hs.Stop()
 		return cycleOutcome{kind: outcomeClosed}
