@@ -42,7 +42,12 @@ SDK (Ruby, Python, Kotlin and Swift used to honour it as 5). A value above
 2,147,483,647 seconds saturates there instead of being refused (TypeScript, Kotlin,
 Swift) or raising on the retry path (Python's `OverflowError`, Ruby's `RangeError`).
 Kotlin's `BasecampException` gains a base-class `retryAfterSeconds`, populated on
-`Api` and `RateLimit`.
+`Api` and `RateLimit`. `Api`'s public constructor grows a trailing defaulted
+`retryAfterSeconds: Int? = null`, which changes its JVM descriptor: Kotlin source
+recompiles unchanged, Java source that constructs one directly passes a seventh
+`null`, and a compiled caller from an earlier version needs a recompile. The
+SDK keeps exactly one Java-selectable `Api` constructor on purpose (#751), so
+no bridge overload is emitted.
 
 ### Gauges: `UpdateGaugeNeedle` requires its payload, `GaugeNeedle` gains a required `comment_count`, and Go's `Gauge.PreviousNeedlePosition` is a pointer (#731)
 

@@ -424,7 +424,8 @@ def error_from_response(status: int, body: str | bytes | None, headers: dict[str
 # arbitrary-precision, so without it the failure was one layer down: float()
 # raised OverflowError on the retry path.
 MAX_RETRY_AFTER_SECONDS = 2_147_483_647
-_DELAY_SECONDS = re.compile(r"^[0-9]+$")
+_DELAY_SECONDS = re.compile(r"[0-9]+")
+_MAX_RETRY_AFTER_DIGITS = len(str(MAX_RETRY_AFTER_SECONDS))
 
 
 def _parse_retry_after(value: str | None, *, now: datetime | None = None) -> int | None:
@@ -439,8 +440,14 @@ def _parse_retry_after(value: str | None, *, now: datetime | None = None) -> int
     # accept. A value over the ceiling saturates whatever its width, since
     # 1*DIGIT has no upper bound and no digit string is malformed for its
     # length.
-    if _DELAY_SECONDS.match(value):
-        seconds = int(value)
+    if _DELAY_SECONDS.fullmatch(value):
+        # Width before conversion: int() itself refuses a string past the
+        # interpreter's digit limit (4300 by default), and a ValueError here
+        # would be the exception this branch exists to keep off the retry path.
+        digits = value.lstrip("0")
+        if len(digits) > _MAX_RETRY_AFTER_DIGITS:
+            return MAX_RETRY_AFTER_SECONDS
+        seconds = int(digits or "0")
         return min(seconds, MAX_RETRY_AFTER_SECONDS) if seconds > 0 else None
     # Try HTTP-date
     from email.utils import parsedate_to_datetime

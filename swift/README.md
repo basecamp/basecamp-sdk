@@ -354,7 +354,7 @@ do {
         }
     case .network(let message, _):
         print("Network error: \(message)")
-    case .api(let message, let status, _, _, _):
+    case .api(let message, let status, _, _, _, _):
         print("API error (\(status ?? 0)): \(message)")
     case .validation(let message, _, _, _, let fieldErrors):
         print("Validation: \(message)")

@@ -570,8 +570,10 @@ function flattenFieldErrors(fieldErrors: Record<string, string[]>): string {
 }
 
 /**
- * `delay-seconds` per RFC 9110, plus the leading sign every other SDK's integer
- * parser consumes and the surrounding whitespace `parseInt` already tolerated.
+ * `delay-seconds` per RFC 9110: `1*DIGIT`, unsigned ASCII digits and nothing
+ * else. A leading sign is malformed (SPEC §6's parsing table), even though an
+ * earlier revision accepted one on the precedent of the stdlib integer parsers
+ * that do. Surrounding whitespace is trimmed by the caller before the test.
  */
 const DELAY_SECONDS = /^\d+$/;
 
