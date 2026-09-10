@@ -24,7 +24,7 @@ import (
 // retryAfterClient answers every request with the given handler and retries
 // on a millisecond curve, so any delay at or above a second can only have
 // come from the Retry-After header.
-func retryAfterClient(t *testing.T, handler http.HandlerFunc) (*generated.Client, *httptest.Server) {
+func retryAfterClient(t *testing.T, handler http.HandlerFunc) *generated.Client {
 	t.Helper()
 	server := httptest.NewServer(handler)
 	t.Cleanup(server.Close)
@@ -37,7 +37,7 @@ func retryAfterClient(t *testing.T, handler http.HandlerFunc) (*generated.Client
 	if err != nil {
 		t.Fatalf("NewClient: %v", err)
 	}
-	return client, server
+	return client
 }
 
 func serviceUnavailableThenOK(retryAfter string, attempts *atomic.Int32) http.HandlerFunc {
@@ -73,7 +73,7 @@ func TestGeneratedClient_HonoursRetryAfterAt503(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var attempts atomic.Int32
-			client, _ := retryAfterClient(t, serviceUnavailableThenOK(tc.header(), &attempts))
+			client := retryAfterClient(t, serviceUnavailableThenOK(tc.header(), &attempts))
 
 			start := time.Now()
 			resp, err := client.GetProject(context.Background(), "999", 1)
@@ -101,11 +101,14 @@ func TestGeneratedClient_OverRangeRetryAfterSaturatesRatherThanWrapping(t *testi
 	for _, header := range []string{"9223372036854775807", "99999999999999999999", "2147483648"} {
 		t.Run(header, func(t *testing.T) {
 			var attempts atomic.Int32
-			client, _ := retryAfterClient(t, serviceUnavailableThenOK(header, &attempts))
+			client := retryAfterClient(t, serviceUnavailableThenOK(header, &attempts))
 
 			ctx, cancel := context.WithTimeout(context.Background(), 300*time.Millisecond)
 			defer cancel()
-			_, err := client.GetProject(ctx, "999", 1)
+			resp, err := client.GetProject(ctx, "999", 1)
+			if resp != nil {
+				_ = resp.Body.Close()
+			}
 
 			if !errors.Is(err, context.DeadlineExceeded) {
 				t.Fatalf("GetProject returned %v, want context.DeadlineExceeded — the loop must still be waiting out the (saturated) header when the deadline lands", err)
