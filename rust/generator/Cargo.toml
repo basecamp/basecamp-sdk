@@ -1,0 +1,21 @@
+[package]
+name = "basecamp-sdk-generator"
+version = "0.0.0"
+description = "Generates the Rust Basecamp SDK's types, routes, metadata and services from openapi.json and behavior-model.json"
+publish = false
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[[bin]]
+name = "basecamp-sdk-generator"
+path = "src/main.rs"
+
+[dependencies]
+heck = "0.5"
+serde = { workspace = true }
+serde_json = { workspace = true, features = ["preserve_order"] }
+toml = "0.9"
+
+[lints]
+workspace = true

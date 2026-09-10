@@ -1,6 +1,6 @@
 # <img src="assets/basecamp-badge.svg" height="28" alt="Basecamp"> Basecamp SDK
 
-Official [Basecamp](https://basecamp.com) [API](https://github.com/basecamp/bc3-api) clients, runtimes, and software development kits for Go, Ruby, TypeScript, Swift, Kotlin, and Python.
+Official [Basecamp](https://basecamp.com) [API](https://github.com/basecamp/bc3-api) clients, runtimes, and software development kits for Go, Ruby, TypeScript, Swift, Kotlin, Python, and Rust.
 
 OpenAPI 3.1 spec included.
 
@@ -16,17 +16,18 @@ OpenAPI 3.1 spec included.
 | [Swift](swift/) | `swift/` | Active | `Basecamp` (SPM) |
 | [Kotlin](kotlin/) | `kotlin/` | Active | `com.basecamp:basecamp-sdk` (GitHub Packages) |
 | [Python](python/) | `python/` | Active | `basecamp-sdk` (PyPI) |
+| [Rust](rust/) | `rust/` | Active | `basecamp-sdk` (crates.io) |
 
-| Feature | Go | TypeScript | Ruby | Swift | Kotlin | Python |
-|---------|:--:|:----------:|:----:|:-----:|:------:|:------:|
-| OAuth 2.0 Authentication | ✓ | ✓ | ✓ | ✗ | ✓ | ✓ |
-| Static Token Authentication | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| ETag HTTP Caching (opt-in) | ✓ | ✓ | via Faraday† | ✓ | ✓ | ✗ |
-| Automatic Retry with Backoff | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Pagination Handling | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Observability Hooks | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Structured Errors | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Webhook Verification | ✓ | ✓ | ✓ | ✗ | ✓ | ✓ |
+| Feature | Go | TypeScript | Ruby | Swift | Kotlin | Python | Rust |
+|---------|:--:|:----------:|:----:|:-----:|:------:|:------:|:----:|
+| OAuth 2.0 Authentication | ✓ | ✓ | ✓ | ✗ | ✓ | ✓ | ✓ |
+| Static Token Authentication | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| ETag HTTP Caching (opt-in) | ✓ | ✓ | via Faraday† | ✓ | ✓ | ✗ | ✗ |
+| Automatic Retry with Backoff | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Pagination Handling | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Observability Hooks | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Structured Errors | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Webhook Verification | ✓ | ✓ | ✓ | ✗ | ✓ | ✓ | ✓ |
 
 † Ruby SDK uses Faraday - add caching via [faraday-http-cache](https://github.com/sourcelevel/faraday-http-cache)
 
@@ -47,8 +48,8 @@ Every Basecamp API request carries an OAuth 2.0 access token. There is no API ke
 | Your integration | Grant | Who refreshes the token |
 |---|---|---|
 | already holds a token you obtained elsewhere | **static token** | you do |
-| can receive a browser redirect (web app, or a local callback server) | **authorization code + PKCE** | a refreshing token provider (built in for Go, Ruby, Python; wire it yourself in TypeScript and Kotlin) |
-| has no browser, but a person can approve on another device (CLI, headless server, TV) | **device flow** ([RFC 8628](https://www.rfc-editor.org/rfc/rfc8628)) | Go's `AuthManager`; in Ruby and Python the standalone refresh helper, **not** their built-in token providers (see below); wire it yourself in TypeScript and Kotlin |
+| can receive a browser redirect (web app, or a local callback server) | **authorization code + PKCE** | a refreshing token provider (built in for Go, Ruby, Python, Rust; wire it yourself in TypeScript and Kotlin) |
+| has no browser, but a person can approve on another device (CLI, headless server, TV) | **device flow** ([RFC 8628](https://www.rfc-editor.org/rfc/rfc8628)) | Go's `AuthManager`; in Ruby and Python the standalone refresh helper, **not** their built-in token providers (see below); in Rust the `oauth` module's device grant plus its refresh helper; wire it yourself in TypeScript and Kotlin |
 
 The one-line rule: **a redirect URI you control → authorization code; no browser but someone to approve → device flow; a token already in hand → static token.** An unattended daemon or CI job fits none of the three on its own — the device flow needs a person to enter the user code at the verification URI — so provision a token out of band and hand it to the process as a static or refresh token.
 
@@ -60,7 +61,7 @@ The one-line rule: **a redirect URI you control → authorization code; no brows
 
 A device-flow token needs a matching refresh path. BC5 device logins mint multi-account refresh tokens carrying an RFC 8707 `resource` indicator, and a refresh that does not echo it is rejected with `400 invalid_request`. Go's `AuthManager` refreshes against the stored token endpoint and echoes `resource`, so it handles this. Ruby's `OauthTokenProvider` and Python's `OAuthTokenProvider` do **not** — both are pinned to Launchpad's legacy token URL, send no `resource`, and expect a client secret the public client does not have. In those two, refresh a device token with `Basecamp::Oauth.refresh_token` / `basecamp.oauth.exchange.refresh_token`, passing the stored `resource`.
 
-A static token is the shortest path to a first successful call, and it is the one option the SDK will never refresh for you — once it expires, every request fails with `401` until you supply a new one. The Quick Start snippets below all use static tokens for brevity; move to one of the other two grants before you ship. OAuth is available in every SDK except Swift, and the device flow in Go, Ruby, TypeScript, Kotlin, and Python — see the per-language docs linked under [Documentation](#documentation).
+A static token is the shortest path to a first successful call, and it is the one option the SDK will never refresh for you — once it expires, every request fails with `401` until you supply a new one. The Quick Start snippets below all use static tokens for brevity; move to one of the other two grants before you ship. OAuth is available in every SDK except Swift, and the device flow in Go, Ruby, TypeScript, Kotlin, Python, and Rust — see the per-language docs linked under [Documentation](#documentation).
 
 ## Finding your account ID
 
@@ -79,7 +80,7 @@ The document is account-independent, so call it on the *top-level* client, befor
 
 It lives on the authorization server that issued your token, not on the Basecamp API — which matters once you leave Launchpad behind. A Launchpad-issued token (authorization code, or a static token from there) reads it at Launchpad. A **device-flow** token is issued by the discovered BC5 server, and its document lives there too. Ruby follows the token: `Http#get_authorization_document` runs resource-first discovery and fetches from the *selected* issuer. The other three hardcode Launchpad, so a device-flow token needs the issuer supplied — Go takes `GetInfoOptions.Endpoint` and TypeScript an `endpoint` option, while Python's `authorization.get()` accepts no override at all, so fetch the document yourself as in the `curl` below.
 
-Swift and Kotlin ship no `authorization` service. Fetch it once with any HTTP client:
+Swift, Kotlin, and Rust ship no `authorization` service. Fetch it once with any HTTP client:
 
 ```bash
 # Launchpad-issued token. For a device-flow token, replace the host with the
@@ -203,12 +204,34 @@ for project in projects:
     print(f"{project['id']}: {project['name']}")
 ```
 
+### Rust
+
+Install with `cargo add basecamp-sdk` (MSRV 1.88). Every service method is `async`, so a Tokio runtime is required.
+
+```rust
+use basecamp_sdk::{Client, Config};
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let client = Client::builder(Config::default())
+        .access_token(std::env::var("BASECAMP_TOKEN")?)
+        .build()?;
+
+    let account = client.for_account(std::env::var("BASECAMP_ACCOUNT_ID")?);
+    let projects = account.projects().list(&Default::default()).await?;
+    for project in projects.iter() {
+        println!("{}: {}", project.id, project.name);
+    }
+    Ok(())
+}
+```
+
 ## Features
 
 All SDKs provide:
 
 - **Full API coverage** - 35+ services covering projects, todos, messages, schedules, campfires, card tables, and more
-- **OAuth 2.0 authentication** - Token refresh, PKCE support (Go, TypeScript, Ruby, Kotlin, Python), and static token options
+- **OAuth 2.0 authentication** - Token refresh, PKCE support (Go, TypeScript, Ruby, Kotlin, Python, Rust), and static token options
 - **Automatic retry** - Exponential backoff with jitter, respects `Retry-After` headers
 - **Pagination** - Link header–based pagination support (high-level handling may vary by SDK; see language docs)
 - **ETag caching** - Opt-in HTTP caching for efficient API usage (Go, TypeScript, Ruby†, Swift, Kotlin); off by default everywhere
@@ -248,6 +271,7 @@ See the [spec README](spec/README.md) for details on the model structure.
 - [Swift SDK documentation](swift/README.md) - SPM package with async/await
 - [Kotlin SDK documentation](kotlin/README.md) - Gradle package with coroutines
 - [Python SDK documentation](python/README.md) - PyPI package with sync and async support
+- [Rust SDK documentation](rust/basecamp-sdk/README.md) - crates.io package, docs.rs API reference
 - [Contributing guide](CONTRIBUTING.md) - Development setup and guidelines
 - [Security policy](SECURITY.md) - Reporting vulnerabilities
 
@@ -257,9 +281,9 @@ There is no environment variable every SDK honours. The Quick Start snippets abo
 
 | Variable | Read by | Only when |
 |----------|---------|-----------|
-| `BASECAMP_BASE_URL` | Go, Ruby, Python | `cfg.LoadConfigFromEnv()` / `Config.from_env` |
-| `BASECAMP_TIMEOUT` | Ruby, Python | `Config.from_env` |
-| `BASECAMP_MAX_RETRIES` | Ruby, Python | `Config.from_env` |
+| `BASECAMP_BASE_URL` | Go, Ruby, Python, Rust | `cfg.LoadConfigFromEnv()` / `Config.from_env` / `Config::from_env()` |
+| `BASECAMP_TIMEOUT` | Ruby, Python, Rust | `Config.from_env` / `Config::from_env()` |
+| `BASECAMP_MAX_RETRIES` | Ruby, Python, Rust | `Config.from_env` / `Config::from_env()` |
 | `BASECAMP_CACHE_ENABLED`, `BASECAMP_CACHE_DIR` | Go | `cfg.LoadConfigFromEnv()` |
 | `BASECAMP_PROJECT_ID`, `BASECAMP_TODOLIST_ID` | Go | `cfg.LoadConfigFromEnv()` |
 | `BASECAMP_TOKEN` | Go | you authenticate through `AuthManager`, which prefers it over the stored OAuth credentials |

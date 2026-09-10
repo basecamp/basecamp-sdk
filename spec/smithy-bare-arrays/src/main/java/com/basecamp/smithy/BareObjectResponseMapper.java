@@ -1,5 +1,5 @@
 /*
- * Copyright Basecamp, LLC
+ * Copyright 37signals LLC
  * SPDX-License-Identifier: Apache-2.0
  *
  * Transforms *ResponseContent schemas from wrapped objects to bare $ref.

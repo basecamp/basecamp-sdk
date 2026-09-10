@@ -22,7 +22,7 @@ require "fileutils"
 require "open3"
 
 GATE = File.join(__dir__, "check-fixture-execution.rb")
-RUNNERS = %w[go kotlin python ruby swift typescript].freeze
+RUNNERS = %w[go kotlin python ruby rust swift typescript].freeze
 ROSTER_FILE = "spec/zero-skip-roster.yml"
 
 failures = []
@@ -141,26 +141,26 @@ end
 # --- positive control --------------------------------------------------------
 
 out, status = gate
-expect_pass(failures, "positive control: six clean manifests", out, status)
+expect_pass(failures, "positive control: seven clean manifests", out, status)
 
 # --- THE case the gate exists to reject --------------------------------------
 
 # Excluded by every runner. No single runner's census can see this: each one
 # counted its own skip and reported a matching total.
 out, status = gate lambda { |m| exclude(m, "dead fixture case", RUNNERS) }
-expect_fail(failures, "case excluded by all six runners", out, status,
-            "is excluded by ALL 6 runners")
+expect_fail(failures, "case excluded by all seven runners", out, status,
+            "is excluded by ALL 7 runners")
 
-# The boundary. Five of six is NOT the all-six claim — the sixth runner does
+# The boundary. Six of seven is NOT the all-seven claim — the seventh runner does
 # execute the case, so failing here would be a false alarm, and this is the case
 # that would fire if the comparison were written as "excluded by most".
 out, status = gate lambda { |m| exclude(m, "thin but covered", RUNNERS - ["swift"]) }
-expect_pass(failures, "five of six is not all six", out, status)
+expect_pass(failures, "six of seven is not all seven", out, status)
 
 # --- the absence rule --------------------------------------------------------
 
 # A missing manifest must never read as "that runner executed everything" —
-# that assumption is exactly what makes an all-six case invisible.
+# that assumption is exactly what makes an all-seven case invisible.
 out, status = gate lambda { |m| m["swift"] = nil }
 expect_fail(failures, "a missing manifest fails full mode", out, status,
             "missing manifest(s) for: swift")
@@ -170,7 +170,7 @@ out, status = gate(lambda { |m| m["swift"] = nil }, partial: true)
 expect_pass(failures, "partial mode accepts five manifests", out, status)
 
 # Excluded by every VISIBLE runner, with one absent. This must WARN and pass:
-# five-of-six is not the all-six claim, and a warning cannot false-fail — which
+# six-of-seven is not the all-seven claim, and a warning cannot false-fail — which
 # is the only reason partial mode is allowed to run at all.
 out, status = gate(lambda { |m|
   exclude(m, "unsettled case", RUNNERS - ["swift"])
@@ -183,11 +183,11 @@ end
 
 # `--partial` describes the INPUT, not a softer verdict. With every runner
 # reporting anyway — a macOS developer passing the flag out of habit — this IS
-# the all-six claim, and warning here would let the one state the gate exists to
+# the all-seven claim, and warning here would let the one state the gate exists to
 # reject exit 0.
 out, status = gate(lambda { |m| exclude(m, "dead fixture case", RUNNERS) }, partial: true)
-expect_fail(failures, "partial flag does not soften a complete six-runner set", out, status,
-            "is excluded by ALL 6 runners")
+expect_fail(failures, "partial flag does not soften a complete seven-runner set", out, status,
+            "is excluded by ALL 7 runners")
 
 # Zero manifests is not agreement. An empty directory means the runners did not
 # run, and a gate reporting success over no input certifies nothing.
@@ -243,19 +243,22 @@ expect_fail(failures, "a manifest missing a required key", out, status, "missing
 # The same NAME in two different fixtures is two different cases. Three files
 # share "replace-omission-clears: sparse replace sends the request verbatim with
 # no GET" and two share the non-idempotent POST retry name, so a name-keyed
-# comparison would read "excluded by three runners in one file and three in
-# another" as excluded by all six — a false failure on cases that all run.
+# comparison would read "excluded by three runners in one file and the rest in
+# another" as excluded by all seven — a false failure on cases that all run. The
+# two halves must cover every runner, or a name-keyed comparison sees fewer than
+# seven and passes for the wrong reason.
+raise "the split must cover every runner" unless (RUNNERS.first(3) + RUNNERS.drop(3)).sort == RUNNERS.sort
 out, status = gate lambda { |m|
   exclude(m, "shared name", RUNNERS.first(3), file: "alpha.json")
-  exclude(m, "shared name", RUNNERS.last(3), file: "beta.json")
+  exclude(m, "shared name", RUNNERS.drop(3), file: "beta.json")
 }
-expect_pass(failures, "one name in two files is two cases, not an all-six overlap", out, status)
+expect_pass(failures, "one name in two files is two cases, not an all-seven overlap", out, status)
 
 # ...and the converse: the SAME case in the same file, excluded everywhere,
 # still fails. Without this the case above could be "fixed" by never matching.
 out, status = gate lambda { |m| exclude(m, "shared name", RUNNERS, file: "alpha.json") }
 expect_fail(failures, "one name in one file excluded everywhere still fails", out, status,
-            "is excluded by ALL 6 runners")
+            "is excluded by ALL 7 runners")
 
 # A manifest whose entries lack `file` cannot be compared by identity at all.
 # This is also what a manifest written by a pre-#602 runner looks like.
@@ -323,8 +326,8 @@ out, status = gate(nil, roster: nil)
 expect_fail(failures, "no roster file", out, status, "is missing")
 
 # An EMPTY roster is the vacuity case: both sides empty must not be a pass.
-# Every runner is required, so an empty `runners` map fails as six missing
-# sections rather than as agreement with six empty manifests.
+# Every runner is required, so an empty `runners` map fails as seven missing
+# sections rather than as agreement with seven empty manifests.
 out, status = gate(nil, roster: { "runners" => {} })
 expect_fail(failures, "an empty roster is not agreement", out, status, "no section for")
 
@@ -675,7 +678,7 @@ expect_fail(failures, "one case listed twice under a runner", out, status, "more
 # Roster drift must be caught in PARTIAL mode too. The normal Linux `make
 # check` path always passes --partial (Swift's manifest is macOS-only), so a
 # roster check that ran only in full mode never ran locally at all — a stale Go
-# or Ruby entry would reach CI untouched. Partial input relaxes the all-six
+# or Ruby entry would reach CI untouched. Partial input relaxes the all-seven
 # overlap verdict and nothing else.
 out, status = gate(lambda { |m|
   exclude(m, "unlisted skip", ["ruby"])

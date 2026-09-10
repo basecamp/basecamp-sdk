@@ -2,8 +2,8 @@
 #
 # assert-lockfiles-unchanged — observe, rather than predict, that `make check`
 # left every dependency manifest byte-identical: npm lockfiles, Gemfile.lock,
-# uv.lock, and the Go checksum files, which `go` rewrites as readily as `npm`
-# rewrites a lockfile.
+# uv.lock, Cargo.lock, and the Go checksum files, which `go` rewrites as readily
+# as `npm` rewrites a lockfile.
 #
 # `--record` before the checks, `--verify` after: both are wired into the `check`
 # target, so `make check` proves the property on every local run.
@@ -74,10 +74,11 @@ hash_lockfiles() {
       shasum -a 256 "$f"
     fi
   done < <(find . \
-             \( -name node_modules -o -name .git -o -name dist -o -name build \) -prune \
+             \( -name node_modules -o -name .git -o -name dist -o -name build \
+                -o -name target \) -prune \
              -o -type f \( -name 'package-lock.json' -o -name 'Gemfile.lock' \
                            -o -name 'uv.lock' -o -name 'go.sum' \
-                           -o -name 'go.work.sum' \) -print \
+                           -o -name 'go.work.sum' -o -name 'Cargo.lock' \) -print \
            | LC_ALL=C sort)
 }
 
@@ -107,7 +108,8 @@ case "${1:-}" in
       "release flow, and what gets written depends on which tool version ran it" \
       "(#612). Install from the lockfile without writing it back: \`npm ci\` for" \
       "npm, \`BUNDLE_FROZEN=true bundle install\` for bundler, \`uv sync --locked\`" \
-      "for uv; \`go\` rewrites go.sum only when go.mod drifts — tidy and commit." >&2
+      "for uv, \`cargo … --locked\` for cargo; \`go\` rewrites go.sum only when" \
+      "go.mod drifts — tidy and commit." >&2
     exit 1
     ;;
   --verify-clean)
@@ -117,7 +119,7 @@ case "${1:-}" in
     # is the case a tracked-files-only comparison can never see.
     dirty=$(git status --porcelain --untracked-files=all -- \
               '*package-lock.json' '*Gemfile.lock' '*uv.lock' \
-              '*go.sum' 'go.work.sum' 2>/dev/null)
+              '*go.sum' 'go.work.sum' '*Cargo.lock' 2>/dev/null)
     if [[ -z "$dirty" ]]; then
       echo "Dependency manifests match the committed tree."
       exit 0
@@ -130,7 +132,8 @@ case "${1:-}" in
       "and what gets written depends on which tool version ran it (#612). Install" \
       "from the lockfile without writing it back: \`npm ci\` for npm," \
       "\`BUNDLE_FROZEN=true bundle install\` for bundler, \`uv sync --locked\` for" \
-      "uv; \`go\` rewrites go.sum only when go.mod drifts — tidy and commit." >&2
+      "uv, \`cargo … --locked\` for cargo; \`go\` rewrites go.sum only when go.mod" \
+      "drifts — tidy and commit." >&2
     exit 1
     ;;
   *)

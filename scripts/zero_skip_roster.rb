@@ -42,16 +42,17 @@ require "yaml"
 module ZeroSkipRoster
   RELATIVE_PATH = "spec/zero-skip-roster.yml"
 
-  # Hardcoded, and REQUIRED — all six, always. Deriving the set from whatever
+  # Hardcoded, and REQUIRED — all seven, always. Deriving the set from whatever
   # keys the file happens to carry is the absence bug this repo keeps relearning:
   # a runner that quietly lost its section would shrink the expected set and both
   # gates would go on reporting success over five, then four. The order is the
   # render order, and it is the order SPEC has always used.
-  RUNNERS = %w[go python ruby typescript kotlin swift].freeze
+  RUNNERS = %w[go python ruby typescript kotlin swift rust].freeze
 
   LABELS = {
     "go" => "Go", "python" => "Python", "ruby" => "Ruby",
-    "typescript" => "TypeScript", "kotlin" => "Kotlin", "swift" => "Swift"
+    "typescript" => "TypeScript", "kotlin" => "Kotlin", "swift" => "Swift",
+    "rust" => "Rust"
   }.freeze
 
   SECTION_KEYS = %w[source classification note skips].freeze
@@ -80,7 +81,7 @@ module ZeroSkipRoster
   class Malformed < StandardError; end
 
   class << self
-    # Returns { runner => Section } for all six runners, or raises Malformed.
+    # Returns { runner => Section } for all seven runners, or raises Malformed.
     def load(root)
       path = File.join(root, RELATIVE_PATH)
       raise Malformed, "#{RELATIVE_PATH} is missing" unless File.exist?(path)
@@ -153,7 +154,7 @@ module ZeroSkipRoster
 
       missing = RUNNERS - runners.keys
       unless missing.empty?
-        raise Malformed, "#{RELATIVE_PATH}: no section for #{missing.join(', ')}. All six runners " \
+        raise Malformed, "#{RELATIVE_PATH}: no section for #{missing.join(', ')}. All seven runners " \
                          "are required — a runner that skips nothing carries an empty `skips` list " \
                          "and a note saying why. An absent section reads as unset and contributes " \
                          "nothing to either comparison, which is how a runner's skips go unrecorded."

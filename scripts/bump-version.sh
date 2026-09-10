@@ -64,6 +64,27 @@ sedi "s/^version = \".*\"/version = \"$VERSION\"/" python/pyproject.toml
 # 10. Python _version.py
 sedi "s/^VERSION = \".*\"/VERSION = \"$VERSION\"/" python/src/basecamp/_version.py
 
+# 11. Rust crate Cargo.toml — the ONE Rust version constant (code reads
+# env!("CARGO_PKG_VERSION")). The edit is bounded to the [package] table: a
+# bare `^version = ` sed also matches `[dependencies]` lines and any reordered
+# table, and cargo has no built-in setter without cargo-edit.
+awk -v want="version = \"$VERSION\"" '
+  /^\[/ { intable = ($0 == "[package]") }
+  intable && /^version = "/ { $0 = want }
+  { print }
+' rust/basecamp-sdk/Cargo.toml > rust/basecamp-sdk/Cargo.toml.tmp \
+  && cat rust/basecamp-sdk/Cargo.toml.tmp > rust/basecamp-sdk/Cargo.toml \
+  && rm rust/basecamp-sdk/Cargo.toml.tmp
+# Read it back through cargo's own parser: an awk pattern that matched nothing
+# exits 0, and a bump that announced success over an unchanged crate version
+# would only be caught at `make release`.
+RUST_VERSION=$(cd rust && cargo metadata --no-deps --format-version 1 2>/dev/null \
+  | jq -r '.packages[] | select(.name == "basecamp-sdk") | .version')
+if [ "$RUST_VERSION" != "$VERSION" ]; then
+  echo "ERROR: rust/basecamp-sdk/Cargo.toml [package] version reads $RUST_VERSION after the edit, not $VERSION" >&2
+  exit 1
+fi
+
 # Sync TypeScript lockfile
 echo "Syncing TypeScript lockfile..."
 (cd typescript && npm install --package-lock-only --ignore-scripts)
@@ -92,4 +113,20 @@ echo "Syncing conformance Ruby runner lockfile..."
 echo "Syncing conformance Python runner lockfile..."
 (cd conformance/runner/python && uv lock --quiet)
 
-echo "Done. Bumped 10 version files and synced 6 lockfiles to $VERSION."
+# Sync the Rust lockfiles. Both record the SDK's version (the workspace's own
+# members in rust/Cargo.lock; the path dep on ../../../rust/basecamp-sdk in the
+# conformance runner's). Both are tracked and every CI/make consumer passes
+# --locked, so a stale one fails the next build instead of being rewritten
+# silently. `-w` limits the update to workspace members; --offline because
+# nothing else moves.
+if ! command -v cargo >/dev/null 2>&1; then
+  echo "ERROR: cargo is required to refresh the Rust lockfiles" >&2
+  exit 1
+fi
+echo "Syncing Rust lockfile..."
+(cd rust && cargo update -q -w --offline)
+
+echo "Syncing conformance Rust runner lockfile..."
+(cd conformance/runner/rust && cargo update -q -w --offline)
+
+echo "Done. Bumped 11 version files and synced 8 lockfiles to $VERSION."

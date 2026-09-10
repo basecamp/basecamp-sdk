@@ -60,6 +60,10 @@ ZERO_SKIP_YAML = <<~YAML
       source: "`x`"
       note: "nothing to skip"
       skips: []
+    rust:
+      source: "`x`"
+      note: "nothing to skip"
+      skips: []
 YAML
 
 ZERO_SKIP_LINES = [
@@ -75,6 +79,8 @@ ZERO_SKIP_LINES = [
   "**Kotlin** (`x`) — none; nothing to skip.",
   "",
   "**Swift** (`x`) — none; nothing to skip.",
+  "",
+  "**Rust** (`x`) — none; nothing to skip.",
   "",
 ].freeze
 ZERO_SKIP_BLOCK = ZERO_SKIP_LINES.map { |line| "#{line}\n" }.join

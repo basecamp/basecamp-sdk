@@ -21,6 +21,7 @@ Two acceptance criteria:
             - typescript/src/generated/metadata.ts          (camelCase)
             - kotlin/.../generated/Metadata.kt              (positional)
             - swift/Sources/Basecamp/Generated/Metadata.swift (labelled)
+            - rust/basecamp-sdk/src/generated/metadata.rs    (labelled OperationMetadata statics)
         * max + retry_on:
             - go/pkg/generated/client.gen.go operationRetryMax + operationRetryOn maps
 
@@ -32,7 +33,7 @@ Two acceptance criteria:
       in a comment would pass. Behavioral proof lives in each SDK's retry tests.
       Fields emitted but never read are guarded for PARITY only (criterion 1) and
       classified emitted-but-runtime-inert — NOT claimed as runtime parity:
-        * TypeScript / Swift / Kotlin: consume the full tuple.
+        * TypeScript / Swift / Kotlin / Rust: consume the full tuple.
         * Go / Python / Ruby:          consume `max` (per-op ceiling) AND
                                        `retry_on` (the status gate); base_delay
                                        and backoff are emitted-but-inert. Ruby
@@ -153,6 +154,38 @@ def from_swift() -> dict[str, tuple]:
     return out
 
 
+def from_rust() -> dict[str, tuple]:
+    text = (ROOT / "rust/basecamp-sdk/src/generated/metadata.rs").read_text()
+    # One `pub static OP: OperationMetadata = OperationMetadata { operation: "OpId",
+    # idempotent: …, readonly: …, retry: RetryConfig { max_attempts: N,
+    # base_delay_ms: N, backoff: Backoff::Exponential, retry_on: &[429, 503] } };`
+    # per operation, on one line under `#[rustfmt::skip]`. Split on the static
+    # declarations first so each block is parsed on its own: a block missing its
+    # `retry:` then reads as a missing operation rather than borrowing the next
+    # block's tuple, which a single DOTALL regex over the whole file would do.
+    # DOTALL so a future rustfmt'd multi-line `RetryConfig { }` still reads;
+    # field order is fixed by the generator and asserted here.
+    op_re = re.compile(r'\boperation:\s*"(?P<op>\w+)"')
+    retry_re = re.compile(
+        r"\bretry:\s*RetryConfig\s*\{\s*max_attempts:\s*(?P<max>\d+),\s*"
+        r"base_delay_ms:\s*(?P<delay>\d+),\s*backoff:\s*Backoff::(?P<backoff>\w+),\s*"
+        r"retry_on:\s*&\[(?P<ro>[^\]]*)\]",
+        re.DOTALL,
+    )
+    out: dict[str, tuple] = {}
+    for block in re.split(r"^pub static ", text, flags=re.M)[1:]:
+        op = op_re.search(block)
+        retry = retry_re.search(block)
+        if not op or not retry:
+            continue
+        # `Backoff::Exponential` is the model's "exponential"; a multi-word
+        # variant would come back snake_case the same way.
+        backoff = re.sub(r"(?<!^)(?=[A-Z])", "_", retry.group("backoff")).lower()
+        ro = tuple(int(x) for x in re.findall(r"\d+", retry.group("ro")))
+        out[op.group("op")] = (int(retry.group("max")), int(retry.group("delay")), backoff, ro)
+    return out
+
+
 def from_go_max() -> dict[str, int]:
     # Go emits the per-op retry ceiling as a separate `operationRetryMax` map
     # (kept off the exported OperationMetadata struct to avoid a source break).
@@ -247,6 +280,19 @@ RUNTIME_CONSUMPTION = [
     ("Kotlin", "full tuple", "kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/http/BasecampHttpClient.kt",
      ["opRetry.retryOn", "opRetry?.maxRetries", "opRetry?.baseDelayMs", "minOf(", "coerceAtLeast(1)"], [],
      "BasecampHttpClient.kt: status in opRetry.retryOn, min(caller cap, opRetry.maxRetries), baseDelayMs"),
+    # TODO(integration): confirm consuming file + usage-form tokens against the crate.
+    # The Rust runtime is not in this tree yet; these two rows were read off the
+    # crate's sibling checkout (client.rs resolves the per-operation tuple and
+    # gates on it, retry.rs turns base_delay_ms + backoff into the delay) and
+    # must be re-verified against the integrated rust/basecamp-sdk/src before
+    # this marker is removed.
+    ("Rust", "full tuple", "rust/basecamp-sdk/src/client.rs",
+     ["retry.retry_on.contains", "retry.max_attempts", "backoff_with_jitter("], [],
+     "client.rs: retry_on.contains(status), attempt budget from retry.max_attempts, backoff_with_jitter(retry, …)"),
+    ("Rust", "full tuple", "rust/basecamp-sdk/src/retry.rs",
+     ["config.base_delay_ms", "config.backoff", "Backoff::Exponential"], [],
+     "retry.rs backoff_ms: base_delay_ms scaled by the Backoff variant"),
+    # END TODO(integration)
     ("Go", "max + retry_on", "go/templates/client.tmpl",
      ["opMax < maxAttempts", "operationRetryMax[operationId]",
       "operationRetryOn[operationId]", "isRetryableStatus(resp.StatusCode, operationId)"],
@@ -308,6 +354,7 @@ def main() -> int:
     errors += check_full_tuple("TypeScript metadata.ts", from_typescript(), model)
     errors += check_full_tuple("Kotlin  Metadata.kt", from_kotlin(), model)
     errors += check_full_tuple("Swift   Metadata.swift", from_swift(), model)
+    errors += check_full_tuple("Rust    metadata.rs", from_rust(), model)
     errors += check_max_only("Go      operationRetryMax", from_go_max(), model)
     errors += check_retry_on_only("Go      operationRetryOn", from_go_retry_on(), model)
 

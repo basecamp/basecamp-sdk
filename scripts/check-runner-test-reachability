@@ -21,11 +21,11 @@
 #
 #   (2) DISCOVERABILITY. Every file that CONTAINS tests (detected by content —
 #       a TestCase subclass, a Minitest::Test, a `func TestX`, a vitest import,
-#       an `@Test`, an XCTestCase) must sit where its language's discovery
-#       looks: matching the discovery glob for Go/Python/Ruby/TypeScript, and
-#       under the test source root for Kotlin/Swift (Gradle and SwiftPM discover
-#       by directory, not by filename). This is the tooth a misnamed or
-#       misplaced future file trips.
+#       an `@Test`, an XCTestCase, a `#[test]`) must sit where its language's
+#       discovery looks: matching the discovery glob for Go/Python/Ruby/
+#       TypeScript, and under the test source root for Kotlin/Swift/Rust
+#       (Gradle, SwiftPM and cargo discover by directory, not by filename).
+#       This is the tooth a misnamed or misplaced future file trips.
 #
 #       NAME IS NOT ENOUGH — reachability is name AND placement. Each glob
 #       language declares a discovery SCOPE:
@@ -441,6 +441,91 @@ check_dir_discovery() {
     echo "  ok: $label — $found test file(s), all under $test_root"
 }
 
+# check_cargo_discovery <label> <package-dir> <content-marker-regex>
+#   `cargo test` compiles two kinds of test host, and this arm accepts exactly
+#   those: any .rs under src/ (unit tests live in `#[cfg(test)] mod tests`
+#   blocks beside the code, reached through the crate's module tree), and each
+#   top-level tests/*.rs as its own integration-test crate — where a file under
+#   tests/<dir>/ is compiled only as tests/<dir>/main.rs (cargo's subdirectory
+#   convention), so any other .rs nested there is compiled by nothing and is
+#   reported. src/ is the test root and must exist; tests/ is optional.
+#
+#   WHAT IS NOT VERIFIED, stated so it is not assumed: module-tree
+#   reachability. A src/orphan.rs that no `mod orphan;` names is never compiled,
+#   `#[test]`s and all, and passes here — following `mod` declarations is a
+#   parser's job and the cheap approximation (every .rs under src/) is the
+#   permissive direction. Custom `[[test]] path = …` and `[[bench]]` targets in
+#   Cargo.toml are likewise not read. cargo's own output under target/ is
+#   uncommitted scratch and is skipped, the way node_modules is pruned.
+check_cargo_discovery() {
+    local label="$1" pkg="$2" marker="$3"
+
+    if [[ ! -d "$pkg/src" ]]; then
+        note_fail "$label: test root $pkg/src does not exist" \
+            "the runner layout moved — update this check deliberately"
+        return
+    fi
+
+    local found=0 stranded=() file rel
+    while IFS= read -r file; do
+        rel="${file#"$pkg"/}"
+        [[ "$rel" == target/* ]] && continue
+        grep -Eq "$marker" "$file" || continue
+        # `*` matches `/` inside [[ ]], so top-level-ness is spelled as a
+        # second, negative pattern rather than assumed from the first.
+        if [[ "$rel" == src/* ]] \
+            || [[ "$rel" == tests/*.rs && "$rel" != tests/*/* ]] \
+            || [[ "$rel" == tests/*/main.rs && "$rel" != tests/*/*/* ]]; then
+            found=$((found + 1))
+            TEST_BASENAMES+=("$(basename "$file")")
+        else
+            stranded+=("$file")
+        fi
+    done < <(find_sources "$pkg" rs)
+
+    if [[ "$found" -eq 0 ]]; then
+        note_fail "$label: no test-bearing files found under $pkg/src or $pkg/tests" \
+            "the content detector matched nothing — a broken detector, not an empty suite"
+        return
+    fi
+
+    if [[ "${#stranded[@]}" -gt 0 ]]; then
+        note_fail "$label: test file(s) outside anything cargo test compiles" \
+            "${stranded[@]}" \
+            "cargo compiles src/ through the module tree and each top-level tests/*.rs" \
+            "(or tests/<dir>/main.rs) as its own crate — a .rs nested elsewhere under" \
+            "tests/, or under benches/ or examples/, is built by nothing."
+        return
+    fi
+
+    # Under src/ a file is compiled only if the module tree names it: a
+    # `foo.rs` (or `foo/mod.rs`) no `mod foo;` anywhere under src/ declares is
+    # matched by the scan above, and compiled by nothing. One level of the tree
+    # is checked — the declaration may sit in any src/ file — which is the
+    # shape this runner has; a deeper tree needs the check widened deliberately.
+    local orphans=() stem
+    while IFS= read -r file; do
+        rel="${file#"$pkg"/src/}"
+        [[ "$rel" == main.rs || "$rel" == lib.rs ]] && continue
+        grep -Eq "$marker" "$file" || continue
+        stem="$(basename "$rel" .rs)"
+        [[ "$stem" == mod ]] && stem="$(basename "$(dirname "$rel")")"
+        grep -Eqr "^[[:space:]]*(pub(\([^)]*\))?[[:space:]]+)?mod[[:space:]]+${stem}[[:space:]]*;" "$pkg/src" \
+            || orphans+=("$file")
+    done < <(find_sources "$pkg/src" rs)
+    if [[ "${#orphans[@]}" -gt 0 ]]; then
+        note_fail "$label: test file(s) under src/ that no \`mod\` declaration reaches" \
+            "${orphans[@]}" \
+            "cargo compiles src/ through the module tree; a file nothing declares is" \
+            "correctly named, correctly placed, and built by nothing. Declare it, or" \
+            "delete it."
+        return
+    fi
+
+    pass=$((pass + 1))
+    echo "  ok: $label — $found test file(s), all under $pkg/src or top-level $pkg/tests"
+}
+
 # ---------------------------------------------------------------------------
 # drop_disabled_workflow_blocks — remove steps and jobs that a statically false
 # `if:` turns off, so an invocation check reads only what CI would run.
@@ -748,6 +833,13 @@ else
         'XCTestCase|^[[:space:]]*@Test([[:space:](]|$)'
 fi
 
+# The attribute may carry arguments — `#[tokio::test(flavor = "multi_thread")]`
+# — so the marker accepts `(` after the name, the same rule as @Test above. It
+# does not accept `_`, so `#[test_case(…)]`-style helper attributes are not
+# declarations on their own.
+check_cargo_discovery "Rust" conformance/runner/rust \
+    '^[[:space:]]*#\[(tokio::)?test(\(|\]|[[:space:]])'
+
 # --- Tooth 1: the Makefile recipes ------------------------------------------
 MAKE_RECIPES="$(make_recipes '^conformance-runner-tests[[:alnum:]-]*:')"
 if [[ -z "$MAKE_RECIPES" ]]; then
@@ -762,7 +854,7 @@ fi
 # The invocation loop above only establishes that CI calls the target; the
 # target itself is one `@true` away from running nothing, and the workflow
 # would be unchanged. The TypeScript wrapper is already followed for exactly
-# this reason (below), and leaving the other five trusted by name was an
+# this reason (below), and leaving the other six trusted by name was an
 # asymmetry, not a decision.
 #
 # One expected command per language. When a recipe legitimately changes
@@ -775,11 +867,12 @@ runner_target_tool() {
         ruby)   echo 'bundle exec ruby' ;;
         kotlin) echo ':conformance:test' ;;
         swift)  echo 'swift test' ;;
+        rust)   echo 'cargo test' ;;
         *)      echo '' ;;
     esac
 }
 hollow_targets=()
-for target in go python ruby kotlin swift; do
+for target in go python ruby kotlin swift rust; do
     target_recipe="$(make_recipes "^conformance-runner-tests-$target:")"
     target_tool="$(runner_target_tool "$target")"
     grep -qF -- "$target_tool" <<<"$target_recipe" \
@@ -792,7 +885,7 @@ if [[ "${#hollow_targets[@]}" -gt 0 ]]; then
         "leaves the workflow unchanged and the suite unrun (#572)."
 else
     pass=$((pass + 1))
-    echo "  ok: all five conformance-runner-tests-* recipes run their test runner"
+    echo "  ok: all six conformance-runner-tests-* recipes run their test runner"
 fi
 
 # --- Tooth 1: the CI workflow ------------------------------------------------
@@ -835,7 +928,7 @@ else
     }
 
     missing_targets=()
-    for target in go python ruby kotlin swift; do
+    for target in go python ruby kotlin swift rust; do
         invoked_by_workflow "make[[:space:]]+conformance-runner-tests-$target" \
             || missing_targets+=("conformance-runner-tests-$target")
     done
@@ -844,11 +937,11 @@ else
             "${missing_targets[@]}"
     else
         pass=$((pass + 1))
-        echo "  ok: $WORKFLOW invokes all five conformance-runner-tests-* targets"
+        echo "  ok: $WORKFLOW invokes all six conformance-runner-tests-* targets"
     fi
 
 
-    # TypeScript is the sixth language and the only one with NO
+    # TypeScript is the seventh language and the only one with NO
     # conformance-runner-tests-* target: its runner tests and its conformance
     # suite are the same vitest invocation, which CI spells `npx vitest run`
     # (deliberately, not `npm test` — see the workflow's own comment about the
@@ -1075,6 +1168,14 @@ fi
 #                    CI still invokes the target, the workflow is unchanged, and
 #                    the suite runs nowhere: case 21's hollow wrapper one level
 #                    in.
+# Case 34 a `#[test]` in conformance/runner/rust/tests/nested/x.rs → reported.
+#                    cargo compiles tests/<dir>/main.rs and nothing else under a
+#                    tests/ subdirectory, so the file is built by nothing while
+#                    src/ keeps `found` nonzero.
+# Case 35 the quiet pair: a `#[tokio::test]` in src/assertions.rs and a
+#                    `#[test]` in top-level tests/probe.rs → NOT reported, and
+#                    the arm prints ok, so 34 cannot be satisfied by the arm
+#                    failing outright.
 # ---------------------------------------------------------------------------
 selftest_tree() {
     # selftest_tree <dir> <ruby-recipe-body>
@@ -1345,7 +1446,7 @@ if [[ "$SELF_TEST" -eq 1 ]]; then
         echo 'jobs:'
         echo '  test:'
         echo '    steps:'
-        for t in go python ruby kotlin swift; do
+        for t in go python ruby kotlin swift rust; do
             echo "      - run: make conformance-runner-tests-$t"
         done
     } > "$WORK/ts-uninvoked/.github/workflows/test.yml"
@@ -1400,7 +1501,7 @@ if [[ "$SELF_TEST" -eq 1 ]]; then
         echo '  test:'
         echo '    steps:'
         echo '      # - run: make conformance-runner-tests-go'
-        for t in python ruby kotlin swift; do
+        for t in python ruby kotlin swift rust; do
             echo "      - run: make conformance-runner-tests-$t"
         done
         echo '      - run: npx vitest run'
@@ -1546,7 +1647,7 @@ if [[ "$SELF_TEST" -eq 1 ]]; then
         echo '  test:'
         echo '    steps:'
         echo '      - run: echo make conformance-runner-tests-go'
-        for t in python ruby kotlin swift; do
+        for t in python ruby kotlin swift rust; do
             echo "      - run: make conformance-runner-tests-$t"
         done
         echo '      - run: npx vitest run'
@@ -1638,7 +1739,7 @@ if [[ "$SELF_TEST" -eq 1 ]]; then
         echo 'jobs:'
         echo '  test:'
         echo '    steps:'
-        for t in go python ruby kotlin swift; do
+        for t in go python ruby kotlin swift rust; do
             echo "      - run: make conformance-runner-tests-$t"
         done
         echo '      - run: make conformance-typescript'
@@ -1705,7 +1806,7 @@ if [[ "$SELF_TEST" -eq 1 ]]; then
             [[ -n "$step_cond" ]] && echo "        $step_cond"
             echo '        run: make conformance-runner-tests-go'
             local t
-            for t in python ruby kotlin swift; do
+            for t in python ruby kotlin swift rust; do
                 echo "      - run: make conformance-runner-tests-$t"
             done
             echo '      - run: npx vitest run'
@@ -1771,7 +1872,7 @@ if [[ "$SELF_TEST" -eq 1 ]]; then
         # shellcheck disable=SC2001  # indenting every line, not a substring swap
         sed 's/^/        /' <<<"$out"
         st_fail=1
-    elif ! grep -q 'invokes all five conformance-runner-tests-\* targets' <<<"$out"; then
+    elif ! grep -q 'invokes all six conformance-runner-tests-\* targets' <<<"$out"; then
         echo "  FAIL: the invocation check did not report ok, so its silence proves"
         echo "        nothing about the matrix-conditioned step"
         # shellcheck disable=SC2001  # indenting every line, not a substring swap
@@ -1794,7 +1895,7 @@ if [[ "$SELF_TEST" -eq 1 ]]; then
             echo '        working-directory: typescript'
             echo '    steps:'
             local t
-            for t in go python ruby kotlin swift; do
+            for t in go python ruby kotlin swift rust; do
                 echo "      - run: make conformance-runner-tests-$t"
             done
             echo '      - name: Run TypeScript conformance tests'
@@ -1987,6 +2088,80 @@ if [[ "$SELF_TEST" -eq 1 ]]; then
         st_fail=1
     else
         echo "  ok: vitest support module accepted (imported by the suites, not collected)"
+    fi
+
+    echo ""
+    echo "==> Self-test 34: a Rust test nested under tests/ must be reported"
+    # cargo's integration-test convention: tests/foo.rs and tests/foo/main.rs are
+    # crates; tests/foo/x.rs is only ever a module of tests/foo/main.rs, and
+    # with no main.rs there is nothing to be a module of. A real src/ file
+    # keeps `found` nonzero so the report is about placement, not detection.
+    selftest_tree "$WORK/rs-nested" "$RECURSIVE_RECIPE"
+    mkdir -p "$WORK/rs-nested/conformance/runner/rust/src" "$WORK/rs-nested/conformance/runner/rust/tests/nested"
+    printf 'fn main() {}\n\n#[cfg(test)]\nmod tests {\n    #[test]\n    fn real() {}\n}\n' \
+        > "$WORK/rs-nested/conformance/runner/rust/src/main.rs"
+    printf '#[test]\nfn stranded() {\n    panic!("compiled by nothing");\n}\n' \
+        > "$WORK/rs-nested/conformance/runner/rust/tests/nested/x.rs"
+    out="$(REPO_ROOT="$WORK/rs-nested" "$SELF" 2>&1)"
+    st=$?
+    if [[ "$st" -eq 0 ]]; then
+        echo "  FAIL: rs-nested tree passed (exit 0) — tests/ is being taken as recursive"
+        st_fail=1
+    elif ! grep -q 'tests/nested/x\.rs' <<<"$out"; then
+        echo "  FAIL: a #[test] nested under tests/ was not reported — cargo compiles"
+        echo "        tests/<dir>/main.rs only, so this file is built by nothing"
+        # shellcheck disable=SC2001  # indenting every line, not a substring swap
+        sed 's/^/        /' <<<"$out"
+        st_fail=1
+    else
+        echo "  ok: Rust test nested under tests/ reported unreachable (exit $st)"
+    fi
+
+    echo ""
+    echo "==> Self-test 35: Rust tests under src/ and top-level tests/ must NOT be reported"
+    # Both places cargo test really compiles, with the attribute in both of its
+    # spellings. The arm has to print ok, or 34's silence would prove nothing.
+    selftest_tree "$WORK/rs-ok" "$RECURSIVE_RECIPE"
+    mkdir -p "$WORK/rs-ok/conformance/runner/rust/src" "$WORK/rs-ok/conformance/runner/rust/tests"
+    printf 'mod assertions;\nfn main() {}\n' > "$WORK/rs-ok/conformance/runner/rust/src/main.rs"
+    printf 'pub fn check() {}\n\n#[cfg(test)]\nmod tests {\n    #[tokio::test]\n    async fn asserts() {}\n}\n' \
+        > "$WORK/rs-ok/conformance/runner/rust/src/assertions.rs"
+    printf '#[test]\nfn probe() {}\n' > "$WORK/rs-ok/conformance/runner/rust/tests/probe.rs"
+    out="$(REPO_ROOT="$WORK/rs-ok" "$SELF" 2>&1)"
+    if grep -Eq 'assertions\.rs|tests/probe\.rs' <<<"$out"; then
+        echo "  FAIL: a Rust test cargo compiles was reported unreachable"
+        # shellcheck disable=SC2001  # indenting every line, not a substring swap
+        sed 's/^/        /' <<<"$out"
+        st_fail=1
+    elif ! grep -q 'ok: Rust' <<<"$out"; then
+        echo "  FAIL: the Rust arm did not report ok, so its silence about the two"
+        echo "        files proves nothing — it bailed out before judging any file"
+        # shellcheck disable=SC2001  # indenting every line, not a substring swap
+        sed 's/^/        /' <<<"$out"
+        st_fail=1
+    else
+        echo "  ok: Rust tests under src/ and top-level tests/ accepted"
+    fi
+
+    echo "==> Self-test 36: a Rust test file under src/ that no mod declares must be reported"
+    # Correctly named, correctly placed, and compiled by nothing: cargo reaches
+    # src/ files only through the module tree. Same tree as 35 with one more
+    # file and no declaration for it.
+    selftest_tree "$WORK/rs-orphan" "$RECURSIVE_RECIPE"
+    mkdir -p "$WORK/rs-orphan/conformance/runner/rust/src"
+    printf 'mod assertions;\nfn main() {}\n' > "$WORK/rs-orphan/conformance/runner/rust/src/main.rs"
+    printf 'pub fn check() {}\n\n#[cfg(test)]\nmod tests {\n    #[test]\n    fn asserts() {}\n}\n' \
+        > "$WORK/rs-orphan/conformance/runner/rust/src/assertions.rs"
+    printf '#[cfg(test)]\nmod tests {\n    #[test]\n    fn stranded() {}\n}\n' \
+        > "$WORK/rs-orphan/conformance/runner/rust/src/orphan.rs"
+    out="$(REPO_ROOT="$WORK/rs-orphan" "$SELF" 2>&1)"; st=$?
+    if [[ "$st" -eq 0 ]] || ! grep -q 'orphan\.rs' <<<"$out"; then
+        echo "  FAIL: a src/ test file no mod declaration reaches was not reported"
+        # shellcheck disable=SC2001  # indenting every line, not a substring swap
+        sed 's/^/        /' <<<"$out"
+        st_fail=1
+    else
+        echo "  ok: undeclared src/ test file reported unreachable (exit $st)"
     fi
 
     echo ""

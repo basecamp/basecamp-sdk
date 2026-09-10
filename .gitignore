@@ -68,6 +68,10 @@ kotlin/sdk/build/
 kotlin/generator/build/
 kotlin/conformance/build/
 
+# Rust SDK and conformance runner build artifacts (Cargo.lock is committed)
+rust/target/
+conformance/runner/rust/target/
+
 # Conformance execution manifests (#602): each runner writes its exclusion set
 # here during a conformance run, and scripts/check-fixture-execution.rb compares
 # all six. A build product of a run, never committed — a stale committed copy

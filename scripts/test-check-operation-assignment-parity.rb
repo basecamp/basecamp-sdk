@@ -14,7 +14,7 @@
 #
 # THE SYNTHETIC TREE IS ITSELF UNDER TEST, the same way
 # test-check-service-inventory-parity.rb's is. It is built by INVERTING what the
-# checker reads: five class-declaration syntaxes, every request helper the checker
+# checker reads: six class-declaration syntaxes, every request helper the checker
 # declares a pattern for, and all four path-interpolation spellings (`{p}`,
 # `${p}`, `#{p}`, `\(p)`). A builder that spelled anything differently from the
 # real generators would make every negative case below fail for a reason
@@ -23,14 +23,14 @@
 #
 # THE ROSTER IS SCRAPED, NOT WRITTEN DOWN. operationId -> (method, path) comes
 # from openapi.json and operationId -> service from the real Swift service
-# filenames plus their `operation:` strings. A literal would be a sixth hand-copy
-# of the very table this gate exists because there are already five of. The scrape
+# filenames plus their `operation:` strings. A literal would be a seventh hand-copy
+# of the very table this gate exists because there are already six of. The scrape
 # is deliberately NOT the checker's own extraction: it keys on operationId, which
 # the checker never reads out of an SDK, so the builder and the thing it drives
 # do not share a reader.
 #
 # EXERCISING EVERY DECLARED HELPER IS THE POINT OF THE ROTATION below. The
-# checker declares 13 request-call patterns across the five sources; a pattern
+# checker declares 15 request-call patterns across the six sources; a pattern
 # that matches nothing is a dead rule, indistinguishable from a stale carve-out.
 # The builder rotates helper choice by the operation's index so each pattern is
 # hit, which makes the synthetic positive control fail if any of them is deleted
@@ -77,19 +77,19 @@
 # 2 and 3 red and nothing else; removing the duplicate-key check turns EXACTLY 7
 # red. What the blunt rows do buy is dead-rule detection — a pattern that matches
 # nothing is indistinguishable from a stale carve-out, and the rotation in the
-# builder is what makes all 13 of them load-bearing.
+# builder is what makes all 15 of them load-bearing.
 #
 # ONE MUTATION SURVIVES ON PURPOSE, and it is recorded rather than papered over.
 # Changing the service-suffix strip from `sub` to `gsub` turns no case red, because
-# the strip is cosmetic: all five generators spell the class identically, so any
-# consistent rule leaves all five agreeing. No case is added for it, because a
+# the strip is cosmetic: all six generators spell the class identically, so any
+# consistent rule leaves all six agreeing. No case is added for it, because a
 # case that cannot distinguish the two would be decoration. The checker's header
 # says the same thing at the code.
 #
 # TWO CASES PIN A MESSAGE RATHER THAN A VERDICT (4 and 5), which is deliberate. An
-# operation read out of four SDKs and not the fifth is an extraction or emission
+# operation read out of five SDKs and not the sixth is an extraction or emission
 # problem, and describing it as an assignment disagreement would send the reader
-# to five generator configs when the thing to look at is one regex. Both are
+# to six generator configs when the thing to look at is one regex. Both are
 # pinned as ABSENCES (`expect_fail_without`), because the only way to hold a
 # diagnostic honest is to assert what it must NOT say. Case 13 is the mirror: it
 # expects a PASS, and pins that the gate answers ONE question — agreement — and
@@ -138,6 +138,7 @@ RB_DIR = "ruby/lib/basecamp/generated/services"
 PY_DIR = "python/src/basecamp/generated/services"
 KT_DIR = "kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services"
 SW_DIR = "swift/Sources/Basecamp/Generated/Services"
+RS_DIR = "rust/basecamp-sdk/src/generated/services"
 SW_REAL = File.join(ROOT, SW_DIR)
 OPENAPI = "openapi.json"
 
@@ -151,6 +152,8 @@ def lower_camel(name)
   parts = snake_case(name).split("_")
   ([parts.first] + parts.drop(1).map(&:capitalize)).join
 end
+
+def screaming(name) = snake_case(name).upcase
 
 # --- The scraped roster --------------------------------------------------------
 #
@@ -360,6 +363,24 @@ def sw_method(id, op, index)
   SW
 end
 
+# The Rust method carries no path of its own: it dispatches through a
+# `routes::CONST` static, and the wire line lives in the doc block the generator
+# writes on every method, after the summary and with the retry prose appended.
+# That doc line is what the checker's one Rust pattern reads, so it is the
+# load-bearing part of this rendering, suffix included.
+def rs_method(id, op, index)
+  path = interpolate(op[:path], :braces)
+  verdict = index.even? ? "idempotent" : "not idempotent, never retried"
+  <<~RS
+        /// #{id}
+        ///
+        /// `#{op[:method]} #{path}` — #{verdict}; retries up to 3 attempt(s) on [429, 503].
+        pub async fn #{snake_case(id)}(&self) -> Result<serde_json::Value, Error> {
+            self.client.request(&routes::#{screaming(id)}).await
+        }
+  RS
+end
+
 # `plan` is a list of [operationId, op, index] already resolved to its
 # (possibly reassigned) service, grouped by the class it must be emitted into.
 def group(plan)
@@ -409,6 +430,19 @@ def build_root(dir, plan:, async_plan:, openapi:)
       #{ops.map { |id, op, i| sw_method(id, op, i) }.join("\n")}
       }
     SW
+
+    write_file(dir, "#{RS_DIR}/#{snake}.rs", <<~RS)
+      // @generated — do not edit
+      use crate::generated::routes;
+
+      pub struct #{service}Service<'a> {
+          client: &'a AccountClient,
+      }
+
+      impl<'a> #{service}Service<'a> {
+      #{ops.map { |id, op, i| rs_method(id, op, i) }.join("\n")}
+      }
+    RS
   end
 
   # Python is emitted from its own plan so a case can drift the async twin alone.
@@ -444,6 +478,7 @@ def build_root(dir, plan:, async_plan:, openapi:)
   write_file(dir, "#{PY_DIR}/_base.py", "class BaseService:\n    def _paginate(self, path, **kw):\n        return None\n")
   write_file(dir, "#{PY_DIR}/_async_base.py", "class AsyncBaseService:\n    async def _paginate(self, path, **kw):\n        return None\n")
   write_file(dir, "#{KT_DIR}/Types.kt", "package com.basecamp.sdk.generated.services\n")
+  write_file(dir, "#{RS_DIR}/mod.rs", "pub mod account;\n")
 end
 
 # Builds the per-SDK plans. `reassign` moves an operation to another service in
@@ -474,7 +509,7 @@ def plans(reassign: {}, reassign_async: {}, duplicate: {}, omit: {}, extra: {})
 end
 
 # Every source is written from the SAME plan unless a case names an SDK, so the
-# builder writes one tree and the checker's five readers must agree on it. That
+# builder writes one tree and the checker's six readers must agree on it. That
 # is what makes the synthetic positive control a round-trip proof.
 def with_root(reassign: {}, reassign_async: {}, duplicate: {}, omit: {}, extra: {}, openapi: nil)
   built = plans(reassign: reassign, reassign_async: reassign_async, duplicate: duplicate,
@@ -486,12 +521,12 @@ def with_root(reassign: {}, reassign_async: {}, duplicate: {}, omit: {}, extra: 
     end
     doc = openapi || { "openapi" => "3.0.3", "paths" => spec_paths }
 
-    # The five sources are built one at a time so a case can name a single SDK.
-    # Each writer only touches its own directory, so writing five trees into one
-    # root and keeping the last of each is exactly the same as five roots.
+    # The six sources are built one at a time so a case can name a single SDK.
+    # Each writer only touches its own directory, so writing six trees into one
+    # root and keeping the last of each is exactly the same as six roots.
     build_root(dir, plan: built[:plan].call("typescript"), async_plan: built[:async].call("python"),
                     openapi: doc)
-    %w[ruby kotlin swift python].each do |sdk|
+    %w[ruby kotlin swift rust python].each do |sdk|
       rebuild_source(dir, sdk, built[:plan].call(sdk), built[:async].call(sdk))
     end
 
@@ -501,10 +536,11 @@ def with_root(reassign: {}, reassign_async: {}, duplicate: {}, omit: {}, extra: 
 end
 
 # Rewrites one SDK's directory from its own plan, after build_root laid down all
-# five from the TypeScript plan. Removing the directory first is what makes an
+# six from the TypeScript plan. Removing the directory first is what makes an
 # `omit` or a reassignment that empties a service actually disappear.
 def rebuild_source(dir, sdk, plan, async_plan)
-  target = { "ruby" => RB_DIR, "kotlin" => KT_DIR, "swift" => SW_DIR, "python" => PY_DIR }.fetch(sdk)
+  target = { "ruby" => RB_DIR, "kotlin" => KT_DIR, "swift" => SW_DIR, "rust" => RS_DIR,
+             "python" => PY_DIR }.fetch(sdk)
   FileUtils.rm_rf(File.join(dir, target))
   Dir.mktmpdir("operation-assignment-parity-one") do |scratch|
     build_root(scratch, plan: plan, async_plan: async_plan, openapi: { "paths" => {} })
@@ -570,7 +606,7 @@ puts "==> operation assignment parity self-test (checker: #{CHECKER.sub("#{ROOT}
 # --- Positive controls ---------------------------------------------------------
 #
 # Both load-bearing. The first says the real tree agrees; the second says the
-# synthetic builder spells all five renderings — and every request helper, and
+# synthetic builder spells all six renderings — and every request helper, and
 # all four interpolation styles — the way the real generators do, without which
 # no negative case below means anything.
 
@@ -593,7 +629,7 @@ out, status = with_root(reassign: { "typescript" => { MOVED => MOVED_TO } })
 expect_fail(failures, "1. one SDK assigns an operation to a different existing service", out, status,
             "#{MOVED} (#{ROSTER.fetch(MOVED)[:method]} #{ROSTER.fetch(MOVED)[:path]}) is assigned to different services",
             "`#{canonical(MOVED_TO)}` in typescript",
-            "`#{canonical(FROM_SERVICE)}` in kotlin, python, ruby, swift")
+            "`#{canonical(FROM_SERVICE)}` in kotlin, python, ruby, rust, swift")
 
 # --- 2. Two SDKs on the minority side -------------------------------------------
 #
@@ -603,7 +639,7 @@ expect_fail(failures, "1. one SDK assigns an operation to a different existing s
 out, status = with_root(reassign: { "typescript" => { MOVED => MOVED_TO },
                                     "kotlin" => { MOVED => MOVED_TO } })
 expect_fail(failures, "2. two SDKs reassign the same operation", out, status,
-            "`#{canonical(FROM_SERVICE)}` in python, ruby, swift; `#{canonical(MOVED_TO)}` in kotlin, typescript")
+            "`#{canonical(FROM_SERVICE)}` in python, ruby, rust, swift; `#{canonical(MOVED_TO)}` in kotlin, typescript")
 
 # --- 3. Two classes whose contents were swapped wholesale ------------------------
 #
@@ -623,7 +659,7 @@ expect_fail(failures, "3. one SDK swaps two classes' contents wholesale", out, s
 #
 # An extraction or emission problem, NOT an assignment disagreement. Pinned as an
 # absence: the gate must report it against openapi.json and must not send the
-# reader to five generator configs. It is also why completeness is reported and
+# reader to six generator configs. It is also why completeness is reported and
 # exits BEFORE the parity diff — a key one SDK never emits would otherwise show
 # up as a nil service in the spread.
 
@@ -677,7 +713,7 @@ expect_fail(failures, "7. one SDK emitting an operation on two services", out, s
 # transcription of the same assignment by the same generator, and a user who
 # reaches for the async client gets the drifted one. Reported as itself rather
 # than folded into the cross-SDK diff, which would describe it as Python
-# disagreeing with the other four when Python disagrees with itself.
+# disagreeing with the other five when Python disagrees with itself.
 
 out, status = with_root(reassign_async: { "python" => { MOVED => MOVED_TO } })
 expect_fail(failures, "8. Python's async class assigning an operation elsewhere", out, status,
@@ -700,7 +736,7 @@ expect_fail(failures, "10. openapi.json missing is named for what it is", out, s
 #
 # The SDKs put the account in the base URL, so the prefix is stripped before
 # comparing. A convention change would otherwise surface as all 250 operations
-# missing from all five SDKs — 1250 true statements describing the wrong problem.
+# missing from all six SDKs — 1500 true statements describing the wrong problem.
 
 bare = { "openapi" => "3.0.3", "paths" => { "/fanfares.json" => { "get" => { "operationId" => "ListFanfares" } } } }
 out, status = with_root(openapi: bare)
@@ -720,16 +756,16 @@ expect_fail(failures, "12. extraction floor catches a collapsed anchor", out, st
 
 # --- 13. A service this gate has never heard of ---------------------------------
 #
-# ALL FIVE move an operation onto a brand-new service. This gate's question is
+# ALL SIX move an operation onto a brand-new service. This gate's question is
 # agreement, and only agreement: which services exist is
 # check-service-inventory-parity's question, and answering both here is the
 # failure mode #755 documents. So a roster change every SDK made together must
 # PASS — a rule that exists to prevent a false positive can only be pinned by a
 # case that is supposed to pass.
 
-everywhere = %w[typescript ruby python kotlin swift].to_h { |sdk| [sdk, { MOVED => "Fanfares" }] }
+everywhere = %w[typescript ruby python kotlin swift rust].to_h { |sdk| [sdk, { MOVED => "Fanfares" }] }
 out, status = with_root(reassign: everywhere, reassign_async: everywhere)
-expect_pass(failures, "13. a new service all five SDKs agree on is not this gate's business",
+expect_pass(failures, "13. a new service all six SDKs agree on is not this gate's business",
             out, status)
 
 # --- Report --------------------------------------------------------------------

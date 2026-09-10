@@ -11,6 +11,19 @@ what wrong behaviour you get if you ignore one. This file is that half.
 
 ---
 
+# Unreleased
+
+### Rust: new SDK
+
+A seventh SDK, not a breaking change for anyone. The `basecamp-sdk` crate on
+crates.io (library name `basecamp_sdk`, MSRV 1.88, Tokio async, pre-1.0 semver
+with `0.MINOR` for breaking and `0.x.PATCH` for additive) ships the generated
+service surface, retry, pagination, hooks, structured errors, OAuth, and
+webhook verification; ETag caching and the §23 Event Feed connector are
+follow-ups. See [`rust/basecamp-sdk/README.md`](rust/basecamp-sdk/README.md).
+
+---
+
 # v0.18.0
 
 ### Go: `TemplatesService.CreateProject` takes a variadic options argument (#856)

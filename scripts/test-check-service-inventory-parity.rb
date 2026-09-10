@@ -14,8 +14,9 @@
 #
 # THE SYNTHETIC TREE IS ITSELF UNDER TEST. It is built by INVERTING each source's
 # normalization — snake_case back to kebab, camelCase, PascalCase, `_service`
-# suffixes, Go's three carve-outs — from one canonical list read out of the real
-# Kotlin accessors. A builder that spelled anything differently from the real
+# suffixes, Rust's `<Pascal>Service<'_>` accessors, Go's three carve-outs — from
+# one canonical list read out of the real Kotlin accessors. A builder that
+# spelled anything differently from the real
 # generators would make every negative case below fail for a reason unrelated to
 # its mutation, so the synthetic positive control runs second and is as
 # load-bearing as the real one. It is also the round-trip proof for the casing
@@ -122,6 +123,8 @@ SW_DIR     = "swift/Sources/Basecamp/Generated/Services"
 PY_BARREL  = "python/src/basecamp/generated/services/__init__.py"
 KT_ACCESS  = "kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/ServiceAccessors.kt"
 SW_ACCESS  = "swift/Sources/Basecamp/Generated/AccountClient+Services.swift"
+RS_DIR     = "rust/basecamp-sdk/src/generated/services"
+RS_ACCESS  = "rust/basecamp-sdk/src/generated/accessors.rs"
 GO_CLIENT  = "go/pkg/basecamp/client.go"
 
 def read_utf8(path) = File.read(path, encoding: "UTF-8")
@@ -138,8 +141,8 @@ def pascal(name) = name.split("_").map(&:capitalize).join
 def camel(name) = name.split("_").each_with_index.map { |p, i| i.zero? ? p : p.capitalize }.join
 
 # The canonical roster, read from the real Kotlin accessors rather than typed out
-# here — a literal would be a ninth hand-copy of the very table this gate exists
-# because there are already five of.
+# here — a literal would be an eleventh hand-copy of the very table this gate
+# exists because there are already six of.
 CANONICAL = read_utf8(File.join(ROOT, KT_ACCESS))
   .scan(/^val AccountClient\.([A-Za-z][A-Za-z0-9_]*)\s*:/).flatten.map { |n| snake_case(n) }.sort.freeze
 
@@ -163,6 +166,16 @@ def write_file(root, rel, body)
   File.write(path, body)
 end
 
+def rs_accessor(name)
+  ret = "services::#{name}::#{pascal(name)}Service<'_>"
+  body = "        services::#{name}::#{pascal(name)}Service::new(self)\n    }"
+  if name.length > 20
+    "    pub fn #{name}(\n        &self,\n    ) -> #{ret} {\n#{body}"
+  else
+    "    pub fn #{name}(&self) -> #{ret} {\n#{body}"
+  end
+end
+
 # Go's carve-outs, inverted: the two folded services have no accessor at all, and
 # `timesheets` is spelled singular.
 GO_FOLDED = %w[automation client_visibility].freeze
@@ -177,7 +190,8 @@ end
 def every_source(list)
   {
     "typescript" => list, "ruby" => list, "python" => list, "kotlin" => list,
-    "swift" => list, "kotlin-accessors" => list, "swift-accessors" => list,
+    "swift" => list, "rust" => list, "kotlin-accessors" => list,
+    "swift-accessors" => list, "rust-accessors" => list,
     "python-modules" => list, "go-accessors" => go_accessor_names(list),
   }
 end
@@ -188,8 +202,10 @@ def build_root(dir, names)
   py = names.fetch("python", CANONICAL)
   kt = names.fetch("kotlin", CANONICAL)
   sw = names.fetch("swift", CANONICAL)
+  rs = names.fetch("rust", CANONICAL)
   kta = names.fetch("kotlin-accessors", CANONICAL)
   swa = names.fetch("swift-accessors", CANONICAL)
+  rsa = names.fetch("rust-accessors", CANONICAL)
   go = names.fetch("go-accessors", go_accessor_names(CANONICAL))
 
   write_dir(dir, TS_DIR, ts.map { |n| "#{kebab(n)}.ts" } + ["index.ts"])
@@ -206,6 +222,7 @@ def build_root(dir, names)
   PYTHON
   write_dir(dir, KT_DIR, kt.map { |n| "#{kebab(n)}.kt" } + ["Types.kt"])
   write_dir(dir, SW_DIR, sw.map { |n| "#{pascal(n)}Service.swift" })
+  write_dir(dir, RS_DIR, rs.map { |n| "#{n}.rs" } + ["mod.rs"])
 
   write_file(dir, KT_ACCESS, <<~KOTLIN)
     package com.basecamp.sdk.generated
@@ -217,6 +234,15 @@ def build_root(dir, names)
     #{swa.map { |n| "    public var #{camel(n)}: #{pascal(n)}Service { service(\"#{camel(n)}\") { #{pascal(n)}Service(accountClient: self) } }" }.join("\n")}
     }
   SWIFT
+
+  # rustfmt wraps the signatures that overrun its width, so the real file
+  # carries both shapes; the longer names are written wrapped here so the
+  # reader is pinned on both.
+  write_file(dir, RS_ACCESS, <<~RUST)
+    impl AccountClient {
+    #{rsa.map { |n| rs_accessor(n) }.join("\n")}
+    }
+  RUST
 
   write_file(dir, GO_CLIENT, <<~GO)
     package basecamp
@@ -289,7 +315,7 @@ puts "==> service inventory parity self-test (checker: #{CHECKER.sub("#{ROOT}/",
 # --- Positive controls ---------------------------------------------------------
 #
 # Both load-bearing. The first says the real tree agrees; the second says the
-# synthetic builder spells all eight renderings the way the real generators do,
+# synthetic builder spells all ten renderings the way the real generators do,
 # without which no negative case below means anything.
 
 out, status = run_checker(ROOT)
@@ -311,12 +337,12 @@ extra = CANONICAL + ["fanfares"]
 out, status = with_root(names: { "typescript" => extra, "ruby" => extra, "python" => extra })
 expect_fail(failures, "1. service in the TS/Ruby/Python tables only (#745 residue)", out, status,
             "`fanfares` is emitted by typescript, ruby, python but NOT by " \
-            "kotlin, swift, kotlin-accessors, swift-accessors, go-accessors")
+            "kotlin, swift, rust, kotlin-accessors, swift-accessors, rust-accessors, go-accessors")
 
 # --- 2. One SDK short ----------------------------------------------------------
 
 out, status = with_root(names: { "ruby" => CANONICAL - ["gauges"] })
-expect_fail(failures, "2. one SDK missing a service the other seven emit", out, status,
+expect_fail(failures, "2. one SDK missing a service the other nine emit", out, status,
             "but NOT by ruby")
 
 # --- 3. A generated service with no accessor beside it -------------------------
@@ -417,7 +443,7 @@ expect_fail(failures, "10. Go exposing both Timesheet and Timesheets", out, stat
 # that sweep: this gate is the one reader such a regression cannot fool.
 #
 # This case EXPECTS A PASS, which is the only shape that can pin the fix: the
-# stale module must not make Python look like it emits a service the other seven
+# stale module must not make Python look like it emits a service the other nine
 # do not. Run against the pre-fix checker (which enumerated the directory) the
 # same input fails with "`fanfares` is emitted by python but NOT by ...".
 
@@ -431,7 +457,7 @@ expect_pass(failures, "11. stale Python module on disk is not counted as emitted
 # modules, so only the barrel reading can catch it.
 
 out, status = with_root(names: { "python" => CANONICAL - ["gauges"], "python-modules" => CANONICAL })
-expect_fail(failures, "12. Python barrel omitting a service the other seven emit", out, status,
+expect_fail(failures, "12. Python barrel omitting a service the other nine emit", out, status,
             "but NOT by python")
 
 # --- 13. A service whose canonical name legitimately ends in `_service` --------
@@ -440,7 +466,7 @@ expect_fail(failures, "12. Python barrel omitting a service the other seven emit
 # `snake == "webhooks"`, so a service group whose canonical snake name is
 # `notification_service` is emitted as `notification_service.py`, unchanged. A
 # gate that stripped `_service` unconditionally would read that back as
-# `notification`, report a Python service the other seven do not have, and fail
+# `notification`, report a Python service the other nine do not have, and fail
 # a build where every generator mapping agreed.
 #
 # That is a FALSE POSITIVE, which is why this case expects a PASS: the failure

@@ -28,8 +28,8 @@
 #
 # --- Entry semantics ----------------------------------------------------------
 #
-# `runners` holds exactly six keys — go, python, ruby, typescript, kotlin,
-# swift — and every one is required. A runner is not omitted when it skips
+# `runners` holds exactly seven keys — go, python, ruby, typescript, kotlin,
+# swift, rust — and every one is required. A runner is not omitted when it skips
 # nothing; it carries an empty `skips` list and says why. An absent key would
 # read as "not stated yet" and contribute nothing to either comparison, which is
 # how a runner's skips go unrecorded.
@@ -190,3 +190,12 @@ runners:
     skips:
       - case: "List operation returns first page with Link header"
         reason: "same as Kotlin: auto-pagination plus a last-consumed-response status model."
+
+  # Rust's `RUST_SKIPS` is genuinely empty, like Python's. Its runner drives
+  # the SDK through a scripted `HttpClient` rather than a socket, so the two
+  # origin-normalization cases Go cannot dial run here, and the `link-header`
+  # fixture RUNS with only its `requestCount` assertion suppressed.
+  rust:
+    source: "`conformance/runner/rust/src/main.rs` `RUST_SKIPS`"
+    note: "the `link-header` fixture above runs; only its `requestCount` assertion is suppressed"
+    skips: []

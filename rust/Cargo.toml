@@ -1,0 +1,35 @@
+[workspace]
+members = ["basecamp-sdk", "generator"]
+resolver = "3"
+
+[workspace.package]
+edition = "2024"
+license = "MIT"
+repository = "https://github.com/basecamp/basecamp-sdk"
+rust-version = "1.88"
+
+[workspace.dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+missing_docs = "warn"
+unreachable_pub = "warn"
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(docsrs)'] }
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+nursery = { level = "allow", priority = -1 }
+cargo = { level = "allow", priority = -1 }
+unwrap_used = "deny"                # a panic is never an answer; tests and the generator opt out at file level
+expect_used = "deny"
+# pedantic allowlist — each entry needs a one-line reason
+module_name_repetitions = "allow"   # services::ProjectsService is the intended shape
+must_use_candidate = "allow"        # builders return Self; noise
+missing_errors_doc = "allow"        # every op returns Result<_, Error>; the error type is documented once
+missing_panics_doc = "allow"        # no public fn panics; enforced by review, not doc lines
+struct_excessive_bools = "allow"    # route metadata is a record of booleans by nature
+return_self_not_must_use = "allow"  # builders return Self; noise
+default_trait_access = "allow"      # `&Default::default()` is the intended spelling for an all-optional params struct

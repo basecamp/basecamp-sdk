@@ -36,6 +36,16 @@ indent_style = space
 indent_size = 2
 trim_trailing_whitespace = false
 
+# Rust (rustfmt standard)
+[*.rs]
+indent_style = space
+indent_size = 4
+
+# Cargo manifests
+[*.toml]
+indent_style = space
+indent_size = 2
+
 # Makefiles must use tabs
 [Makefile]
 indent_style = tab
