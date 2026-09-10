@@ -53,8 +53,8 @@ pub fn backoff_ms(config: &RetryConfig, retry_index: u32) -> u64 {
             // Doublings from `base` to the ceiling, rounded up: the first index at or past
             // it is on the ceiling. Bounded by log2(30_000) < 15, so the shift is always
             // in range.
-            let crossing = (MAX_BACKOFF_DELAY_MS / base).ilog2()
-                + u32::from(!(MAX_BACKOFF_DELAY_MS / base).is_power_of_two());
+            let ratio = MAX_BACKOFF_DELAY_MS.div_ceil(base);
+            let crossing = ratio.ilog2() + u32::from(!ratio.is_power_of_two());
             if retry_index >= crossing {
                 MAX_BACKOFF_DELAY_MS
             } else {
@@ -119,6 +119,9 @@ mod tests {
         assert_eq!(backoff_ms(&config, 15), 30_000);
         assert_eq!(backoff_ms(&config, 200), 30_000);
         assert_eq!(backoff_ms(&exponential(30_000), 0), 30_000);
+        assert_eq!(backoff_ms(&exponential(14_000), 1), 28_000);
+        assert_eq!(backoff_ms(&exponential(14_000), 2), 30_000);
+        assert_eq!(backoff_ms(&exponential(15_000), 1), 30_000);
         assert_eq!(backoff_ms(&exponential(40_000), 0), 30_000);
         assert_eq!(backoff_ms(&exponential(0), 3), 0);
     }

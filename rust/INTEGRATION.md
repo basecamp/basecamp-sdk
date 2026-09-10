@@ -226,8 +226,10 @@ assert_contains "$RS_SVC" '#[deprecated(note = "prefer bucket_ids[].")]' "Rust: 
 assert_contains "$RS_SVC" '#[deprecated(note = "prefer creator_ids[].")]' "Rust: search 'creator_id' param marker"
 assert_count "$RS_SVC" '#\[deprecated\(' 3 "Rust: exactly three param markers (controls clean)"
 RS_TYPES=rust/basecamp-sdk/src/generated/types.rs
-assert_contains "$RS_TYPES" '#[deprecated(note = "This shape is deprecated since 2024-01: Use Client Visibility feature instead")]' "Rust: ClientSide struct + clientside field markers"
-assert_count "$RS_TYPES" '#\[deprecated\(' 2 "Rust: exactly the ClientSide struct and the Project.clientside field are marked"
+# rustfmt wraps the long note onto its own line, so the attribute and its note are two lines.
+assert_count "$RS_TYPES" '^#\[deprecated\($' 1 "Rust: the ClientSide struct is marked"
+assert_count "$RS_TYPES" '^    #\[deprecated\($' 1 "Rust: the Project.clientside field is marked"
+assert_count "$RS_TYPES" 'note = "This shape is deprecated since 2024-01: Use Client Visibility feature instead"' 2 "Rust: both markers carry the reason"
 assert_contains "$RS_SVC" '#[allow(deprecated)]' "Rust: search method reads its deprecated params under an allow"
 assert_field_undeprecated "$RS_SVC" "pub type_names: Option<Vec<String>>," "Rust control: type_names replacement is present and unmarked"
 ```

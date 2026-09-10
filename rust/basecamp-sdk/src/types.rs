@@ -144,7 +144,9 @@ pub mod flex_int {
     }
 }
 
-/// Reads a 64-bit id the API may spell as a string.
+/// Reads a 64-bit id the API may spell as a string. A string that is not a number — the
+/// `"basecamp"` system actor's id — reads as `0`, as Go's `FlexibleInt64` and Kotlin's
+/// `FlexibleLongSerializer` read it; a numeric string past 64 bits is still an error.
 pub mod flexible_i64 {
     use serde::{Deserialize, Deserializer};
 
@@ -155,12 +157,23 @@ pub mod flexible_i64 {
         Text(String),
     }
 
-    /// An integer, or a string holding one.
+    /// An integer, a string holding one, or `0` for a non-numeric sentinel.
     pub fn deserialize<'de, D: Deserializer<'de>>(deserializer: D) -> Result<i64, D::Error> {
         match Flexible::deserialize(deserializer)? {
             Flexible::Number(value) => Ok(value),
-            Flexible::Text(text) => text.parse().map_err(serde::de::Error::custom),
+            Flexible::Text(text) => from_text(&text).map_err(serde::de::Error::custom),
         }
+    }
+
+    fn from_text(text: &str) -> Result<i64, String> {
+        let trimmed = text.trim();
+        let digits = trimmed.strip_prefix('-').unwrap_or(trimmed);
+        if digits.is_empty() || !digits.bytes().all(|b| b.is_ascii_digit()) {
+            return Ok(0);
+        }
+        trimmed
+            .parse()
+            .map_err(|_| format!("integer id {trimmed:?} does not fit 64 bits"))
     }
 
     /// [`deserialize`], with `null` as `None`.
@@ -170,7 +183,9 @@ pub mod flexible_i64 {
         match Option::<Flexible>::deserialize(deserializer)? {
             None => Ok(None),
             Some(Flexible::Number(value)) => Ok(Some(value)),
-            Some(Flexible::Text(text)) => text.parse().map(Some).map_err(serde::de::Error::custom),
+            Some(Flexible::Text(text)) => {
+                from_text(&text).map(Some).map_err(serde::de::Error::custom)
+            }
         }
     }
 }
@@ -325,6 +340,20 @@ mod tests {
                 .id,
             42
         );
+        assert_eq!(
+            serde_json::from_str::<Identified>(r#"{"id": "basecamp"}"#)
+                .unwrap()
+                .id,
+            0
+        );
+        assert!(serde_json::from_str::<Identified>(r#"{"id": "99999999999999999999"}"#).is_err());
+        assert_eq!(
+            serde_json::from_str::<Identified>(r#"{"id": "basecamp"}"#)
+                .unwrap()
+                .id,
+            0
+        );
+        assert!(serde_json::from_str::<Identified>(r#"{"id": "99999999999999999999"}"#).is_err());
     }
 
     #[test]

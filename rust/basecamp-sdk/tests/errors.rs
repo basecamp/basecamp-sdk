@@ -1,5 +1,6 @@
 //! SPEC §6 wire-level cases, from the bodies in `conformance/tests/error-mapping.json`.
 
+#![cfg(feature = "reqwest")]
 #![allow(clippy::unreadable_literal)]
 
 mod support;

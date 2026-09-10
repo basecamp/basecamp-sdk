@@ -1,5 +1,7 @@
 //! SPEC §5 "Merge-Safe Write Surface (Todos)", from `conformance/tests/todos_write.json`.
 
+#![cfg(feature = "reqwest")]
+
 mod composites_support;
 
 use basecamp_sdk::ErrorCode;

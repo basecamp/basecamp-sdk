@@ -2,6 +2,8 @@
 //! the SPEC §13 headers reach the wire. One representative operation per service, chosen as the
 //! simplest read the service offers.
 
+#![cfg(feature = "reqwest")]
+
 mod support;
 
 use support::account;

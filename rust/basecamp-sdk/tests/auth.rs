@@ -1,5 +1,7 @@
 //! SPEC §4: the 401 refresh-and-replay, its budget gate, and coalescing.
 
+#![cfg(feature = "reqwest")]
+
 mod support;
 
 use std::sync::Arc;
@@ -194,4 +196,33 @@ async fn a_static_token_is_never_refreshed() {
         .await
         .unwrap_err();
     assert_eq!(error.code(), ErrorCode::AuthRequired);
+}
+
+#[tokio::test(start_paused = true)]
+async fn a_failed_refresh_is_shared_with_every_waiter() {
+    use support::{Answer, Scripted};
+    let script = Scripted::new(vec![
+        Answer::Status(401, vec![], ""),
+        Answer::Status(401, vec![], ""),
+        Answer::Status(401, vec![], ""),
+    ]);
+    let provider = rotating(&["stale"], Duration::from_millis(50));
+    let account = Client::builder(Config::default())
+        .token_provider(provider.clone())
+        .http_client(script.clone())
+        .build()
+        .unwrap()
+        .for_account("999");
+    let (projects_a, projects_b, projects_c) =
+        (account.projects(), account.projects(), account.projects());
+    let (a, b, c) = tokio::join!(projects_a.get(1), projects_b.get(1), projects_c.get(1));
+    for outcome in [a, b, c] {
+        assert_eq!(outcome.unwrap_err().code(), ErrorCode::AuthRequired);
+    }
+    assert_eq!(
+        provider.refreshes.load(Ordering::SeqCst),
+        1,
+        "one failed refresh answers the wave"
+    );
+    assert_eq!(script.sent_count(), 3);
 }

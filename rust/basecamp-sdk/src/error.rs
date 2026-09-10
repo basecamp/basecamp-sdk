@@ -199,7 +199,7 @@ impl Error {
             _ => (ErrorCode::ApiError, false),
         };
         let parsed = serde_json::from_slice::<Value>(body).ok();
-        let mut message = parsed
+        let scalar = parsed
             .as_ref()
             .and_then(|value| value.get("error").and_then(Value::as_str))
             .or_else(|| {
@@ -207,10 +207,10 @@ impl Error {
                     .as_ref()
                     .and_then(|value| value.get("message").and_then(Value::as_str))
             })
-            .map_or_else(
-                || format!("Request failed (HTTP {status_code})"),
-                str::to_string,
-            );
+            .map(str::to_string);
+        let mut message = scalar
+            .clone()
+            .unwrap_or_else(|| format!("Request failed (HTTP {status_code})"));
         let hint = parsed
             .as_ref()
             .and_then(|value| value.get("error_description").and_then(Value::as_str))
@@ -222,14 +222,9 @@ impl Error {
         };
         if let Some(fields) = &field_errors {
             let flattened = flatten(fields);
-            message = if parsed
-                .as_ref()
-                .is_some_and(|value| value.get("error").is_some() || value.get("message").is_some())
-                && !message.starts_with("Request failed (HTTP")
-            {
-                format!("{message} ({flattened})")
-            } else {
-                flattened
+            message = match scalar {
+                Some(_) => format!("{message} ({flattened})"),
+                None => flattened,
             };
         }
         let confirmation_people = match (status_code, &parsed) {
@@ -509,11 +504,12 @@ pub fn parse_retry_after(value: &str, now: DateTime<Utc>) -> Option<u32> {
     }
     let until = parse_http_date(value)?;
     let left = until.signed_duration_since(now);
-    let millis = left.num_milliseconds();
-    if millis <= 0 {
+    let whole = left.num_seconds();
+    let started = left > chrono::TimeDelta::seconds(whole);
+    if whole < 0 || (whole == 0 && !started) {
         return None;
     }
-    let seconds = (millis + 999) / 1000;
+    let seconds = whole.saturating_add(i64::from(started));
     Some(
         u32::try_from(seconds)
             .unwrap_or(MAX_RETRY_AFTER_SECONDS)
@@ -597,6 +593,20 @@ mod tests {
         assert_eq!(
             parse_retry_after("Wed, 09 Jun 2021 10:18:14 GMT", now),
             None
+        );
+        let just_before = DateTime::parse_from_rfc3339("2021-06-09T10:18:14.999999999Z")
+            .unwrap()
+            .with_timezone(&Utc);
+        assert_eq!(
+            parse_retry_after("Wed, 09 Jun 2021 10:18:15 GMT", just_before),
+            Some(1)
+        );
+        let just_after = DateTime::parse_from_rfc3339("2021-06-09T10:18:13.999999999Z")
+            .unwrap()
+            .with_timezone(&Utc);
+        assert_eq!(
+            parse_retry_after("Wed, 09 Jun 2021 10:18:15 GMT", just_after),
+            Some(2)
         );
         assert_eq!(
             parse_retry_after("Wed, 09 Jun 2021 09:00:00 GMT", now),
@@ -730,6 +740,16 @@ mod tests {
             br#"{"errors": {"x": ["y"]}}"#,
         );
         assert!(error.field_errors().is_none());
+    }
+
+    #[test]
+    fn a_server_message_that_looks_synthetic_is_still_composed() {
+        let error = Error::from_response(
+            StatusCode::UNPROCESSABLE_ENTITY,
+            &headers(&[]),
+            br#"{"error": "Request failed (HTTP 422) upstream", "errors": {"x": ["y"]}}"#,
+        );
+        assert_eq!(error.message(), "Request failed (HTTP 422) upstream (x: y)");
     }
 
     #[test]

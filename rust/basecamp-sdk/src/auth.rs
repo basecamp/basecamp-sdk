@@ -99,7 +99,9 @@ pub trait AuthStrategy: Send + Sync {
 pub struct BearerAuth<P: TokenProvider> {
     provider: P,
     generation: AtomicU64,
-    refreshing: Mutex<()>,
+    /// The generation whose refresh failed, when the last one did: every request that was
+    /// authenticated under it shares that verdict instead of refreshing again.
+    failed: Mutex<Option<u64>>,
 }
 
 impl<P: TokenProvider> BearerAuth<P> {
@@ -108,7 +110,7 @@ impl<P: TokenProvider> BearerAuth<P> {
         BearerAuth {
             provider,
             generation: AtomicU64::new(0),
-            refreshing: Mutex::new(()),
+            failed: Mutex::new(None),
         }
     }
 
@@ -150,16 +152,24 @@ impl<P: TokenProvider> AuthStrategy for BearerAuth<P> {
 
     async fn refresh(&self, seen: u64) -> Result<bool, Error> {
         // One refresh at a time. A request that was authenticated before the refresh that
-        // just finished sees the generation move and replays without refreshing again.
-        let _running = self.refreshing.lock().await;
+        // just finished sees the generation move and replays without refreshing again; one
+        // authenticated under a generation whose refresh already failed shares that verdict.
+        let mut failed = self.failed.lock().await;
         if self.generation.load(Ordering::Acquire) != seen {
             return Ok(true);
         }
-        let refreshed = self.provider.refresh().await?;
-        if refreshed {
-            self.generation.fetch_add(1, Ordering::AcqRel);
+        if *failed == Some(seen) {
+            return Ok(false);
         }
-        Ok(refreshed)
+        let outcome = self.provider.refresh().await;
+        match outcome {
+            Ok(true) => {
+                self.generation.fetch_add(1, Ordering::AcqRel);
+                *failed = None;
+            }
+            Ok(false) | Err(_) => *failed = Some(seen),
+        }
+        outcome
     }
 }
 

@@ -21,19 +21,21 @@ pub struct ReqwestClient {
 impl ReqwestClient {
     /// A client that gives an answer `timeout` to arrive.
     pub fn with_timeout(timeout: Duration) -> Result<ReqwestClient, Error> {
-        ReqwestClient::from_builder(
-            reqwest::Client::builder()
-                .timeout(timeout)
-                .default_headers(crate::http::HeaderMap::new()),
-        )
+        ReqwestClient::from_builder(reqwest::Client::builder().timeout(timeout))
     }
 
-    /// A client built from settings of the caller's own — a proxy, a root certificate, a set
-    /// of default headers. Whatever redirect policy the builder carries is replaced with
-    /// none, since following one here would hide it from the SDK.
+    /// A client built from settings of the caller's own — a proxy, a root certificate, a
+    /// timeout. Three settings the builder carries are replaced, because each would act
+    /// beneath the SDK where it cannot see: redirects are never followed (the SDK follows
+    /// its own), reqwest's own retries are off (SPEC §7's attempt budget counts every
+    /// request), and default headers are cleared (the SDK sets every header per request,
+    /// and a download's second hop must go out bare — a default `Authorization` would
+    /// reach the storage host).
     pub fn from_builder(builder: reqwest::ClientBuilder) -> Result<ReqwestClient, Error> {
         let http = builder
             .redirect(Policy::none())
+            .retry(reqwest::retry::never())
+            .default_headers(crate::http::HeaderMap::new())
             .build()
             .map_err(|error| Error::usage(format!("HTTP client: {error}")))?;
         Ok(ReqwestClient { http })

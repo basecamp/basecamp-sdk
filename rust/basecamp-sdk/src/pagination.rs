@@ -17,7 +17,7 @@ use crate::route::Route;
 #[derive(Debug, Clone)]
 pub struct Page<T> {
     value: T,
-    next_url: Option<Url>,
+    next: Option<Result<Url, String>>,
     total_count: Option<u64>,
     route: &'static Route,
     origin: Url,
@@ -25,16 +25,16 @@ pub struct Page<T> {
 
 impl<T> Page<T> {
     pub(crate) fn new(value: T, response: &Response, route: &'static Route) -> Page<T> {
-        let next_url = response
+        let next = response
             .header("link")
             .and_then(parse_next_link)
-            .and_then(|target| response.url.join(&target).ok());
+            .map(|target| response.url.join(&target).map_err(|_| target));
         let total_count = response
             .header("x-total-count")
             .and_then(|value| value.trim().parse().ok());
         Page {
             value,
-            next_url,
+            next,
             total_count,
             route,
             origin: response.url.clone(),
@@ -59,14 +59,25 @@ impl<T> Page<T> {
         &self.value
     }
 
-    /// The URL of the page after this one, as the `Link` header named it.
+    /// The URL of the page after this one, as the `Link` header named it, when it named
+    /// one that is a URL.
     pub fn next_url(&self) -> Option<&Url> {
-        self.next_url.as_ref()
+        self.next.as_ref().and_then(|next| next.as_ref().ok())
     }
 
-    /// Whether Basecamp named a page after this one.
+    /// Whether Basecamp named a page after this one, whether or not its target resolves.
     pub fn has_next(&self) -> bool {
-        self.next_url.is_some()
+        self.next.is_some()
+    }
+
+    /// The next target as a URL, or a usage error when Basecamp named one that is not.
+    pub(crate) fn next_target(&self) -> Option<Result<Url, Error>> {
+        self.next.as_ref().map(|next| match next {
+            Ok(url) => Ok(url.clone()),
+            Err(_) => Err(Error::usage(
+                "pagination Link header names a target that is not a URL",
+            )),
+        })
     }
 
     /// The `X-Total-Count` header, when the read carried one.
@@ -78,7 +89,7 @@ impl<T> Page<T> {
     pub fn map<U>(self, f: impl FnOnce(T) -> U) -> Page<U> {
         Page {
             value: f(self.value),
-            next_url: self.next_url,
+            next: self.next,
             total_count: self.total_count,
             route: self.route,
             origin: self.origin,
@@ -128,10 +139,10 @@ impl AccountClient {
         &self,
         page: &Page<T>,
     ) -> Result<Option<Page<T>>, Error> {
-        match page.next_url() {
+        match page.next_target() {
             None => Ok(None),
             Some(next) => {
-                let operation = self.follow_up(page.route(), page.origin(), next)?;
+                let operation = self.follow_up(page.route(), page.origin(), &next?)?;
                 self.send_page(operation).await.map(Some)
             }
         }
@@ -153,7 +164,7 @@ impl AccountClient {
         let route = page.route();
         let origin = page.origin().clone();
         loop {
-            let next_url = page.next_url().cloned();
+            let next_url = page.next_target().transpose()?;
             items.extend(page.into_inner());
             if let Some(cap) = max_items
                 && items.len() >= cap
@@ -206,22 +217,29 @@ impl AccountClient {
         first: Page<T>,
     ) -> impl Stream<Item = Result<Page<T>, Error>> + Send + '_ {
         let max_pages = self.max_pages();
-        futures_util::stream::try_unfold(
-            (Some(first), 0usize),
-            move |(pending, yielded)| async move {
-                let Some(page) = pending else {
-                    return Ok(None);
-                };
-                let next = match page.next_url() {
-                    Some(next) if yielded + 1 < max_pages => {
-                        let operation = self.follow_up(page.route(), page.origin(), next)?;
-                        Some(self.send_page(operation).await?)
+        let route = first.route();
+        let origin = first.origin().clone();
+        // The page in hand is yielded before its successor is asked for, so taking one
+        // page costs one request and a failing follow-up comes after the pages before it.
+        futures_util::stream::try_unfold((Some(Ok(first)), 0usize), move |(pending, yielded)| {
+            let origin = origin.clone();
+            async move {
+                let page = match pending {
+                    None => return Ok(None),
+                    Some(Ok(page)) => page,
+                    Some(Err(next)) => {
+                        let operation = self.follow_up(route, &origin, &next)?;
+                        self.send_page(operation).await?
                     }
-                    _ => None,
                 };
-                Ok(Some((page, (next, yielded + 1))))
-            },
-        )
+                let following = if yielded + 1 < max_pages {
+                    page.next_target().transpose()?.map(Err)
+                } else {
+                    None
+                };
+                Ok(Some((page, (following, yielded + 1))))
+            }
+        })
     }
 
     /// Every item from `first` onward as a lazy stream, page by page.

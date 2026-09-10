@@ -1,5 +1,7 @@
 //! SPEC §7 wire-level cases, from `conformance/tests/retry.json` and `network-retry.json`.
 
+#![cfg(feature = "reqwest")]
+
 mod support;
 
 use std::sync::Arc;

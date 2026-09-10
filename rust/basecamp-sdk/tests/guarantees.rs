@@ -18,6 +18,7 @@ fn clients_and_errors_are_send_sync_and_clone() {
 }
 
 #[test]
+#[cfg(feature = "reqwest")]
 fn returned_futures_are_send() {
     let account = Client::builder(Config::default())
         .access_token("t")
@@ -35,6 +36,7 @@ fn returned_futures_are_send() {
 }
 
 #[test]
+#[cfg(feature = "reqwest")]
 fn configuration_is_validated() {
     let error = Client::builder(Config::default().with_base_url("http://evil.example.com"))
         .access_token("t")
