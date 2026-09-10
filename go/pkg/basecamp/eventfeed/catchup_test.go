@@ -620,7 +620,7 @@ func TestPollFailureClassification(t *testing.T) {
 			"redirect refused is invalid_continuation",
 			&eventfeed.PollError{Kind: eventfeed.PollRedirectRefused, LocationOrigin: "https://attacker.example.com"},
 			eventfeed.ReasonInvalidContinuation,
-			"the poll refused a cross-origin redirect",
+			"the poll refused a redirect whose Location failed continuation validation",
 		},
 	}
 	for _, tc := range cases {

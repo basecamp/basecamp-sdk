@@ -275,16 +275,21 @@ type CableTransport interface {
 	// the classification and a cause of your own choosing, never the peer's
 	// or a library's rendering of the URL.
 	//
-	// Where it is exposed, stated exactly, because the obvious guess is wrong:
-	// a dial failure does NOT reach Observer.Disconnected. There is no socket
-	// yet, so there is no teardown to report. A DialPolicy failure becomes
-	// Terminal(invalid_cable_url) and is yielded as the iteration's terminal
-	// error — the consumer's own error value, which is a stronger exposure
-	// than a callback, not a weaker one. Every other kind takes transition 7
-	// to backoff, where the connector reports the classification and drops the
-	// cause entirely. So the obligation above is not softened by the callback
-	// never firing; it is what keeps a credential out of the error a caller
-	// receives from Events.
+	// What the connector does with the error, stated exactly, because the
+	// obvious guess is wrong: NOTHING it carries is forwarded. A dial failure
+	// does not reach Observer.Disconnected — there is no socket yet, so there
+	// is no teardown to report. A DialPolicy failure becomes
+	// Terminal(invalid_cable_url), and that terminal is the connector's own
+	// fixed message with no cause attached: the Kind is read, the Reason and
+	// the wrapped error are not. Every other kind takes transition 7 to
+	// backoff, where only the classification survives. The connector reduces
+	// rather than trusts, precisely because a documented extension point is
+	// host code and the dialed URL carries the ticket; a transport's
+	// diagnostics therefore never reach a consumer through this seam, and a
+	// transport that needs them surfaced logs them itself. The obligation
+	// above still binds — an error is opaque text to everything OUTSIDE this
+	// package, and a host that wraps or logs the seam's return directly has
+	// no reduction in front of it.
 	Dial(ctx context.Context, wsURL string, maxFrameBytes int64) (CableConn, error)
 }
 
