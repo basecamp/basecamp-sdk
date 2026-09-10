@@ -877,3 +877,18 @@ describe("row-keyed error bodies (SPEC §6 step 1b)", () => {
     expect(error.fieldErrors).toBeUndefined();
   });
 });
+
+describe("retryAfter at every status (SPEC §6 HTTP Status Mapping Algorithm)", () => {
+  it("carries a parsed Retry-After on a 503 api_error, not only on 429", () => {
+    const response = new Response(null, { status: 503, headers: { "Retry-After": "7" } });
+    const error = errorFromParsedBody(response, { error: "Service Unavailable" });
+
+    expect(error.code).toBe("api_error");
+    expect(error.retryAfter).toBe(7);
+  });
+
+  it("leaves retryAfter undefined when the header is absent", () => {
+    const error = errorFromParsedBody(new Response(null, { status: 503 }), null);
+    expect(error.retryAfter).toBeUndefined();
+  });
+});

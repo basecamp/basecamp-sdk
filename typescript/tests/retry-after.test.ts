@@ -280,10 +280,10 @@ describe("the shared retry loop honours the parsed value", () => {
     expect(timerSafeDelayMs(error.retryAfter!)).toBeLessThanOrEqual(2_147_483_647);
   });
 
-  it("ignores Retry-After on a status that is not 429", async () => {
-    // Which statuses honour the header is divergent across the six SDKs and is
-    // tracked in #775; this pins TypeScript's current position so a parsing
-    // change cannot move it by accident.
+  it("honours Retry-After on 503, not only on 429", async () => {
+    // SPEC §6 "Retry-After Honouring": the header governs the wait at every
+    // status in the declared retryOn set. A `status === 429` ternary here left
+    // a 503 carrying `Retry-After: 120` on the ~1s backoff curve (#775).
     const controller = new AbortController();
     let chosen = Number.NaN;
     const emit: RetryEmit = {
@@ -304,7 +304,6 @@ describe("the shared retry loop honours the parsed value", () => {
       ),
     ).rejects.toThrow("delay captured");
 
-    expect(chosen).toBeGreaterThanOrEqual(BACKOFF_MIN_MS);
-    expect(chosen).toBeLessThanOrEqual(BACKOFF_MAX_MS);
+    expect(chosen).toBe(120_000);
   });
 });

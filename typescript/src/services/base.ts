@@ -286,14 +286,14 @@ export abstract class BaseService {
         // Drain response body before retry to free resources and enable connection reuse
         response.body?.cancel();
 
-        // Backoff before retry. The header goes through errors.ts's
-        // parseRetryAfter — the single SPEC §6 implementation — rather than a
-        // local parseInt: the copy this replaced had no HTTP-date branch and
-        // guarded with `>= 0`, so it honoured `Retry-After: 0` as a
-        // zero-millisecond delay and retried with no wait at all.
-        const retryAfterSeconds = response.status === 429
-          ? parseRetryAfter(response.headers.get("Retry-After"))
-          : undefined;
+        // Backoff before retry. A Retry-After replaces the curve at every
+        // status this branch reaches (SPEC §6 "Retry-After Honouring"), and
+        // the header goes through errors.ts's parseRetryAfter — the single
+        // SPEC §6 implementation — rather than a local parseInt: the copy this
+        // replaced had no HTTP-date branch and guarded with `>= 0`, so it
+        // honoured `Retry-After: 0` as a zero-millisecond delay and retried
+        // with no wait at all.
+        const retryAfterSeconds = parseRetryAfter(response.headers.get("Retry-After"));
         // The locally-computed term is bounded by SPEC §7's ceiling; the
         // server-directed Retry-After is not, per the same section.
         const delay = retryAfterSeconds !== undefined

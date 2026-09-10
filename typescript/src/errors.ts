@@ -384,11 +384,11 @@ export function errorFromParsedBody(
 
   switch (httpStatus) {
     case 401:
-      return new BasecampError("auth_required", message, { httpStatus, hint, requestId });
+      return new BasecampError("auth_required", message, { httpStatus, hint, requestId, retryAfter });
     case 403:
-      return new BasecampError("forbidden", message, { httpStatus, hint, requestId });
+      return new BasecampError("forbidden", message, { httpStatus, hint, requestId, retryAfter });
     case 404:
-      return new BasecampError("not_found", message, { httpStatus, hint, requestId });
+      return new BasecampError("not_found", message, { httpStatus, hint, requestId, retryAfter });
     case 429:
       return new BasecampError("rate_limit", message, {
         httpStatus,
@@ -398,7 +398,7 @@ export function errorFromParsedBody(
         requestId,
       });
     case 400:
-      return new BasecampError("validation", message, { httpStatus, hint, requestId, fieldErrors });
+      return new BasecampError("validation", message, { httpStatus, hint, requestId, fieldErrors, retryAfter });
     case 422:
       if (confirmationPeople) {
         return new PeopleConfirmationRequiredError(message, confirmationPeople, {
@@ -406,9 +406,10 @@ export function errorFromParsedBody(
           hint,
           requestId,
           fieldErrors,
+          retryAfter,
         });
       }
-      return new BasecampError("validation", message, { httpStatus, hint, requestId, fieldErrors });
+      return new BasecampError("validation", message, { httpStatus, hint, requestId, fieldErrors, retryAfter });
     case 507:
       // A 5xx status carrying a client fact: the account is out of storage, or
       // at its webhook ceiling. Retrying cannot satisfy it, so this must be
@@ -418,15 +419,20 @@ export function errorFromParsedBody(
         retryable: false,
         hint,
         requestId,
+        retryAfter,
       });
     default:
       // 5xx errors are retryable
       const retryable = httpStatus >= 500 && httpStatus < 600;
+      // retryAfter rides along at every status (SPEC §6 "HTTP Status Mapping
+      // Algorithm"): one parse feeds both the retry loop's sleep and this
+      // field, so an exhausted 503 reports the wait the origin named.
       return new BasecampError("api_error", message, {
         httpStatus,
         retryable,
         hint,
         requestId,
+        retryAfter,
       });
   }
 }

@@ -12,7 +12,7 @@ import {
 /**
  * The fixed hop-1 retry policy (SPEC §14): three total attempts when retry is
  * enabled, retrying network errors plus {429, 502, 503, 504} — never 500 —
- * with exponential backoff, honoring Retry-After on 429. DownloadURL is
+ * with exponential backoff, honoring Retry-After at every status in that set. DownloadURL is
  * deliberately absent from behavior-model.json, so the policy is passed to
  * the retry primitive directly rather than looked up by operation. There is
  * no public knob for the attempt count.
