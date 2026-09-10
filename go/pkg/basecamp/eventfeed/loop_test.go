@@ -2706,3 +2706,48 @@ func TestTypedNilSeamErrorsFailClosed(t *testing.T) {
 		}
 	})
 }
+
+// TestStateAnnouncementsCarryTheirTimerSet: §23's per-state exact timer sets
+// are what an observer of a state transition sees at the announcement, so
+// each state's timer is armed before the state is published — Connecting
+// with {handshake-deadline} and Backoff with {backoff} were the two that
+// announced first and armed a statement later, which an await-state-then-
+// assert-timers scenario could observe as the empty set.
+func TestStateAnnouncementsCarryTheirTimerSet(t *testing.T) {
+	h := newHarness(t)
+	var mu sync.Mutex
+	seen := map[string][]string{}
+	h.conn.OnStateChanged(func(state string) {
+		mu.Lock()
+		seen[state] = append([]string(nil), h.clock.Outstanding()...)
+		mu.Unlock()
+	})
+	h.minter.ScriptTicket(ticket(1))
+	h.tr.FailNextDial(&eventfeed.DialError{Kind: eventfeed.DialTransient})
+	h.start()
+	h.awaitTimer(timerBackoff)
+
+	mu.Lock()
+	defer mu.Unlock()
+	if got := seen["connecting"]; len(got) != 1 || got[0] != timerHandshakeDeadline {
+		t.Fatalf("outstanding at the Connecting announcement = %v, want [%s]", got, timerHandshakeDeadline)
+	}
+	if got := seen["backoff"]; len(got) != 1 || got[0] != timerBackoff {
+		t.Fatalf("outstanding at the Backoff announcement = %v, want [%s]", got, timerBackoff)
+	}
+}
+
+// TestInvalidCableURLLeavesNoTimer: the handshake deadline is armed before
+// the cable-URL check now, so a policy refusal must stop it on the way to
+// its terminal — a terminal's exact set is {}.
+func TestInvalidCableURLLeavesNoTimer(t *testing.T) {
+	h := newHarness(t)
+	h.minter.ScriptTicket(eventfeed.StreamTicket{Ticket: "t", ExpiresIn: 120, URL: "ws://cable.example.com/cable?ticket=t"})
+	h.start()
+	h.join()
+	_, terminal, _ := h.snapshot()
+	if terminal == nil || terminal.Reason != eventfeed.ReasonInvalidCableURL {
+		t.Fatalf("terminal = %v, want reason %q", terminal, eventfeed.ReasonInvalidCableURL)
+	}
+	assertTimers(t, h.clock, map[string]int{})
+}
