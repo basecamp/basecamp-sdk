@@ -231,15 +231,32 @@ fn check(run: &Run, assertion: &Assertion) -> Result<(), String> {
             }
         }
         "requestBody" => {
+            // Path names one key; empty, `expected` is the WHOLE body, compared
+            // exactly, so a key the SDK added fails rather than slipping past.
             let path = &assertion.path;
+            let what = if path.is_empty() {
+                "request body".to_string()
+            } else {
+                format!("request body field {path:?}")
+            };
             let (i, index) = pick(assertion, recorded.bodies.len(), || {
-                format!("Expected request body field {path:?}")
+                format!("Expected {what}")
             })?;
             let Some(body) = &recorded.bodies[i] else {
                 return Err(format!(
-                    "Expected request body field {path:?} on request index {index}, but request had no JSON body"
+                    "Expected {what} on request index {index}, but request had no JSON body"
                 ));
             };
+            if path.is_empty() {
+                return if assertion.expected == *body {
+                    Ok(())
+                } else {
+                    Err(format!(
+                        "Expected request body on request index {index} to equal {} exactly, got {body}",
+                        assertion.expected
+                    ))
+                };
+            }
             let actual = lookup(body, path).ok_or_else(|| {
                 format!("Expected request body field {path:?} on request index {index}, but it was absent")
             })?;
@@ -623,6 +640,37 @@ mod tests {
                 .contains("Expected request body position = 42")
         );
         recorded.bodies[0] = Some(json!({"position": 42}));
+        let run = Run {
+            case: &case,
+            outcome: &Ok(Outcome::Unit),
+            recorded: &recorded,
+        };
+        assert_eq!(check_all(&run), Ok(()));
+    }
+
+    #[test]
+    fn a_path_less_request_body_assertion_pins_the_whole_body() {
+        let case: TestCase = serde_json::from_value(json!({
+            "name": "a", "method": "PUT",
+            "assertions": [{"type": "requestBody", "expected": {"summary": "Team Meeting"}}]
+        }))
+        .unwrap();
+        let mut recorded = Recorded::default();
+        recorded.methods.push("PUT".into());
+        recorded
+            .bodies
+            .push(Some(json!({"summary": "Team Meeting", "all_day": false})));
+        let run = Run {
+            case: &case,
+            outcome: &Ok(Outcome::Unit),
+            recorded: &recorded,
+        };
+        assert!(
+            check_all(&run)
+                .unwrap_err()
+                .contains("Expected request body on request index 0 to equal")
+        );
+        recorded.bodies[0] = Some(json!({"summary": "Team Meeting"}));
         let run = Run {
             case: &case,
             outcome: &Ok(Outcome::Unit),

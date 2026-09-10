@@ -1384,13 +1384,13 @@ class TestRunner:
                     elif request["body"] is None:
                         failures.append(f"Expected {what} = {expected!r} on request index {idx}, but the request had no JSON body")
                     elif body_path is None:
-                        if request["body"] != expected:
+                        if not _json_equal(expected, request["body"]):
                             failures.append(f"Expected request body on request index {idx} to equal {expected!r} exactly, got {request['body']!r}")
                     else:
                         actual = _dig_body(request["body"], body_path)
                         if actual is _MISSING:
                             failures.append(f"Expected request body {body_path} = {expected!r} on request index {idx}, but the key is absent")
-                        elif actual != expected:
+                        elif not _json_equal(expected, actual):
                             failures.append(f"Expected request body {body_path} = {expected!r} on request index {idx}, got {actual!r}")
 
                 case "requestBodyAbsent":
@@ -1518,6 +1518,21 @@ def _dig_path(obj: Any, path: str) -> Any:
         else:
             obj = getattr(obj, key, None)
     return obj
+
+
+def _json_equal(expected: Any, actual: Any) -> bool:
+    """Equality at the JSON level, not Python's: `False == 0` and `True == 1` in
+    Python, so native comparison lets a body that sent `0` where the fixture says
+    `false` pass. The other runners reject that wire-type mismatch; so does this."""
+    if isinstance(expected, bool) or isinstance(actual, bool):
+        return isinstance(expected, bool) and isinstance(actual, bool) and expected is actual
+    if isinstance(expected, dict) and isinstance(actual, dict):
+        return expected.keys() == actual.keys() and all(_json_equal(v, actual[k]) for k, v in expected.items())
+    if isinstance(expected, list) and isinstance(actual, list):
+        return len(expected) == len(actual) and all(_json_equal(e, a) for e, a in zip(expected, actual))
+    if isinstance(expected, (dict, list)) or isinstance(actual, (dict, list)):
+        return False
+    return expected == actual
 
 
 def _dig_body(obj: Any, path: str) -> Any:

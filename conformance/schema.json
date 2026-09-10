@@ -184,6 +184,10 @@
               }
             },
             "then": { "required": ["path"] }
+          },
+          {
+            "if": { "properties": { "type": { "const": "requestBody" } } },
+            "then": { "required": ["expected"] }
           }
         ]
       }

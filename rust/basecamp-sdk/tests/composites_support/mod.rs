@@ -123,12 +123,18 @@ fn check(assertion: &Value, requests: &[Request], error: Option<&Error>) {
             "request path"
         ),
         "requestBody" => {
-            let path = assertion["path"].as_str().expect("body path");
-            assert_eq!(
-                member(&body_of(request_at(requests, assertion)), path),
-                Some(&assertion["expected"]),
-                "request body member {path}"
-            );
+            // `path` names one member; absent, `expected` is the WHOLE body,
+            // compared exactly, so a key the SDK added fails rather than
+            // slipping past (conformance/schema.json).
+            let body = body_of(request_at(requests, assertion));
+            match assertion["path"].as_str() {
+                Some(path) => assert_eq!(
+                    member(&body, path),
+                    Some(&assertion["expected"]),
+                    "request body member {path}"
+                ),
+                None => assert_eq!(body, assertion["expected"], "request body"),
+            }
         }
         "requestBodyAbsent" => {
             let path = assertion["path"].as_str().expect("body path");

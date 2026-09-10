@@ -2768,7 +2768,10 @@ meaning (the whole body, above). Every other path-taking type — `errorField`,
 `requestBodyAbsent`, `responseBody`, `responseMeta` — requires it, and
 `conformance/schema.json` rejects a fixture that omits it, so the form reaches
 `make conformance-fixtures-check` with a message naming the field rather than a
-runner that cannot execute it (#587).
+runner that cannot execute it (#587). The same schema requires `expected` on a
+`requestBody` assertion, since a path-less one has nothing else to say: without
+it, `{"type": "requestBody"}` was schema-valid and failed in a different way per
+runner.
 
 ### Test Categories and Owning Sections
 
