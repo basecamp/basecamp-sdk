@@ -137,6 +137,40 @@ package final class HTTPClient: Sendable {
         .network(message: message, cause: projectedDownloadCause(error))
     }
 
+    /// SPEC §9 projection of an API-request transport failure, for the cause
+    /// chain, the retry hook and cancellation alike. `URLError` carries the
+    /// failing URL in its `userInfo` — `NSURLErrorFailingURLErrorKey`, its
+    /// string twin, and the session task's own description — and Swift's
+    /// default rendering of `.network(message:cause:)` prints all of it, query
+    /// included. The error is rebuilt from parts this SDK chooses: the same
+    /// code, so ``isCancellation(_:)`` and a caller's own `URLError` matching
+    /// classify it as before, and the failing URL
+    /// as origin and path — never its query, userinfo or fragment. A transport
+    /// that already speaks `.network` (#567) keeps its message and has its
+    /// cause projected the same way, to the same depth bound
+    /// ``isCancellation(_:)`` walks. Any other error is the transport's own
+    /// diagnostic and passes through unchanged.
+    static func projectedTransportError(_ error: any Error, depth: Int = 0) -> any Error {
+        if let urlError = error as? URLError {
+            // Nothing the transport wrote survives — not even its description,
+            // which a custom Transport can build around the URL; the code is
+            // the diagnostic, and Foundation describes it on its own.
+            var userInfo: [String: Any] = [:]
+            let failingURL = urlError.failingURL?.absoluteString
+                ?? urlError.userInfo[NSURLErrorFailingURLStringErrorKey] as? String
+            if let failingURL, let projected = URL(string: stripQueryAndFragment(failingURL)) {
+                userInfo[NSURLErrorFailingURLErrorKey] = projected
+                userInfo[NSURLErrorFailingURLStringErrorKey] = projected.absoluteString
+            }
+            return URLError(urlError.code, userInfo: userInfo)
+        }
+        if let basecampError = error as? BasecampError, case .network(let message, let cause) = basecampError {
+            guard let cause, depth < maxCauseChainDepth else { return BasecampError.network(message: message, cause: nil) }
+            return BasecampError.network(message: message, cause: projectedTransportError(cause, depth: depth + 1))
+        }
+        return error
+    }
+
     /// SPEC §9 projection of a credential-bearing URL for rendering: the origin
     /// from a successful parse — scheme, host and any non-default port, with
     /// an IPv6 host bracketed — or the fixed token when no complete origin
@@ -162,13 +196,18 @@ package final class HTTPClient: Sendable {
     /// with no complete origin renders as the fixed token, never as any of
     /// its own text.
     private static func stripQueryAndFragment(_ url: String) -> String {
-        guard let components = URLComponents(string: url),
-              let scheme = components.scheme,
+        guard var components = URLComponents(string: url),
+              components.scheme != nil,
               let host = components.host, !host.isEmpty
         else { return "unparsable" }
-        let renderedHost = host.contains(":") && !host.hasPrefix("[") ? "[\(host)]" : host
-        let port = components.port.map { ":\($0)" } ?? ""
-        return "\(scheme)://\(renderedHost)\(port)\(components.percentEncodedPath)"
+        // Cleared on the components rather than re-interpolated, so a host or
+        // path with a percent-encoded delimiter keeps its encoding instead of
+        // being reparsed as a query, fragment or userinfo boundary.
+        components.user = nil
+        components.password = nil
+        components.query = nil
+        components.fragment = nil
+        return components.string ?? "unparsable"
     }
 
     /// Converts a backoff interval to nanoseconds without trapping.
@@ -339,7 +378,11 @@ package final class HTTPClient: Sendable {
             } catch {
                 // Network-level error — a raw transport failure, or a Transport
                 // that reports connectivity failure as BasecampError.network
-                // (#567). Both mean the same thing, so both retry.
+                // (#567). Both mean the same thing, so both retry. Projected
+                // once, before anything renders it (SPEC §9): the retry hook,
+                // the cause chain and a propagated cancellation all see the
+                // same URL-free shape.
+                let error = Self.projectedTransportError(error)
                 let durationMs = Int((CFAbsoluteTimeGetCurrent() - startTime) * 1000)
                 safeInvokeHooks {
                     $0.onRequestEnd(info, result: RequestResult(statusCode: 0, durationMs: durationMs))
@@ -348,9 +391,9 @@ package final class HTTPClient: Sendable {
                 if Self.isCancellation(error) {
                     // Cooperative cancellation is terminal, not a transport
                     // blip: retrying would announce and start an attempt the
-                    // caller has already abandoned. It propagates raw rather
-                    // than wrapped, and the attempt is finalized above so
-                    // start/end stay paired.
+                    // caller has already abandoned. It propagates unwrapped,
+                    // and the attempt is finalized above so start/end stay
+                    // paired.
                     directive = .fail(error)
                 } else if attempt < maxAttempts {
                     let delaySeconds = calculateDelay(
@@ -410,7 +453,15 @@ package final class HTTPClient: Sendable {
         request.setValue(config.userAgent, forHTTPHeaderField: "User-Agent")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
 
-        let (data, response) = try await transport.data(for: request)
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await transport.data(for: request)
+        } catch {
+            // A follow-up page's URL carries the server's query; the failure
+            // propagates as the caller has always seen it, projected (SPEC §9).
+            throw Self.projectedTransportError(error)
+        }
 
         guard let httpResponse = response as? HTTPURLResponse else {
             // Neither of these two helpers retries, so the guard can surface
