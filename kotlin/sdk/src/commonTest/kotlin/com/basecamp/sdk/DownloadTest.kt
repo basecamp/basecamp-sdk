@@ -187,17 +187,20 @@ class DownloadTest {
 
     @Test
     fun downloadURL_redirectNoLocation() = runTest {
+        // A hop-1 response, so its Retry-After rides on the error like any
+        // other status's (SPEC §6 Status Mapping) rather than being dropped.
         val client = mockClient({ _ ->
             respond(
                 content = ByteReadChannel(""),
                 status = HttpStatusCode.Found,
-                headers = headersOf()
+                headers = headersOf(HttpHeaders.RetryAfter to listOf("12"))
             )
         })
         val account = client.forAccount("12345")
-        assertFailsWith<BasecampException.Api> {
+        val e = assertFailsWith<BasecampException.Api> {
             account.downloadURL("http://localhost:3000/12345/attachments/abc/download/file.txt")
         }
+        assertEquals(12, e.retryAfterSeconds)
         client.close()
     }
 
