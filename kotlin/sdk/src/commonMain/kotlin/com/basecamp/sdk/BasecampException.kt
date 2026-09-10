@@ -167,7 +167,25 @@ sealed class BasecampException(
             retryable: Boolean = httpStatus != null && httpStatus in 500..599,
             requestId: String? = null,
             cause: Throwable? = null,
-            retryAfterSeconds: Int? = null,
+        ) : this(message, httpStatus, hint, retryable, requestId, cause, decodeFailure = null, retryAfterSeconds = null)
+
+        /**
+         * The six-argument constructor above is #751's and keeps its JVM
+         * descriptor byte-identical for compiled and Java callers; this
+         * overload carries the response's Retry-After. [retryAfterSeconds]
+         * has no default on purpose — a defaulted seventh parameter on the
+         * constructor above would have replaced that descriptor, and a second
+         * fully-defaulted overload would make every short call ambiguous — so
+         * Kotlin callers name it and Java callers pass all seven.
+         */
+        constructor(
+            message: String,
+            httpStatus: Int? = null,
+            hint: String? = null,
+            retryable: Boolean = httpStatus != null && httpStatus in 500..599,
+            requestId: String? = null,
+            cause: Throwable? = null,
+            retryAfterSeconds: Int?,
         ) : this(message, httpStatus, hint, retryable, requestId, cause, decodeFailure = null, retryAfterSeconds = retryAfterSeconds)
 
         internal companion object {

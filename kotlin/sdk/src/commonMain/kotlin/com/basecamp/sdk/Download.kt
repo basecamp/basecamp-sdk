@@ -373,7 +373,9 @@ private suspend fun AccountClient.downloadHop1(
         } else {
             BasecampHttpClient.calculateBackoffDelay(baseDelayMs, attempt)
         }
-        parent.hooks.safeOnRetry(requestInfo, attempt + 1, BasecampException.Api("HTTP $status", status), delayMs)
+        parent.hooks.safeOnRetry(
+            requestInfo, attempt + 1, BasecampException.Api("HTTP $status", status, retryAfterSeconds = retryAfter), delayMs,
+        )
         delay(delayMs)
         attempt += 1
     }
