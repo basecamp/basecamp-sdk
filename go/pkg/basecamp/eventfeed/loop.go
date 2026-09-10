@@ -496,9 +496,17 @@ type liveBuffer struct {
 	// copied the whole backing — an O(capacity) copy spike, and a transient
 	// SECOND buffer's worth of retained payload at each growth step, the
 	// exact retention class add's zeroing exists to prevent. Entries live at
-	// [head, head+size) modulo len(events); a wrap can exist only once the
-	// store has reached capacity, because drops happen only at capacity and
-	// pre-capacity inserts always land at or before len(events).
+	// [head, head+size) modulo len(events), and the layout invariant that
+	// makes growth safe is that a wrap exists ONLY once the store has reached
+	// capacity: below it the occupied range is contiguous and ends at or
+	// before len(events), so an insert that lands at len(events) appends and
+	// leaves every existing index valid under the grown modulus. A drain's
+	// shifts move head off zero long before capacity, which is why the
+	// insert has to ask "has the store reached capacity?" and never "does the
+	// tail's index fall below the head?" — the latter is true of a
+	// pre-capacity store whose tail has reached len(events), and wrapping
+	// there and growing afterwards strands the wrapped entry under a modulus
+	// it was not written against (2, 3, 4 read back as 2, 4, 3).
 	events []Event
 	head   int
 	size   int
@@ -527,13 +535,17 @@ func (b *liveBuffer) add(ev Event) []int64 {
 	switch pos := b.head + b.size; {
 	case pos < len(b.events):
 		b.events[pos] = ev
-	case pos-len(b.events) < b.head:
-		// Wrapped: the store is at capacity and the tail circles back below
-		// the head.
-		b.events[pos-len(b.events)] = ev
-	default:
-		// Still filling: pos == len(events) < capacity, so the store grows.
+	case len(b.events) < b.capacity:
+		// Still filling: the occupied range is contiguous below capacity, so
+		// pos == len(events) here and the store grows. Growing is the ONLY
+		// move that keeps order once head has moved off zero — see the
+		// layout invariant on the events field.
 		b.events = append(b.events, ev)
+	default:
+		// Wrapped: the store is at capacity and the tail circles back below
+		// the head (size < capacity == len(events) after the drops above, so
+		// pos-len(events) < head).
+		b.events[pos-len(b.events)] = ev
 	}
 	b.size++
 	b.changed()

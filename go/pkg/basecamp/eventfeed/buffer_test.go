@@ -1,6 +1,9 @@
 package eventfeed
 
-import "testing"
+import (
+	"fmt"
+	"testing"
+)
 
 // TestLiveBufferAddClearsEvictedSlots pins the eviction half of the live
 // buffer's memory ceiling. SPEC.md §23 publishes the connector's worst case
@@ -69,5 +72,66 @@ func TestSustainedOverflowRetainsTheBacking(t *testing.T) {
 	})
 	if allocs > capacity {
 		t.Fatalf("a full window of sustained overflow made %.0f allocations, want at most %d (one dropped-ids slice per admit): the backing was reallocated instead of retained", allocs, capacity)
+	}
+}
+
+// TestLiveBufferGrowsAfterAPartialWrapInOrder pins FIFO order across the one
+// layout the ring's growth rule did not account for: a store that has not yet
+// reached capacity, whose head a drain's shifts have moved off zero, and
+// whose tail has since circled back below the head. Growing the backing then
+// changes the modulus every existing index is taken against, and a wrapped
+// entry that was logically last becomes physically stranded — with capacity
+// 3, add 1 and 2, shift 1, add 3 (wraps to index 0), add 4 (appends index 2)
+// read back as 2, 4, 3. fatalScan interleaves admissions with drain shifts,
+// so this is the drain's own delivery order, not a contrived one.
+func TestLiveBufferGrowsAfterAPartialWrapInOrder(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		capacity int
+		adds     int
+		shifts   int
+		more     int
+	}{
+		{"capacity 3: fill 2, shift 1, add 2", 3, 2, 1, 2},
+		{"capacity 5: fill 3, shift 2, add 3", 5, 3, 2, 3},
+		{"capacity 4: fill 1, shift 1, add 4", 4, 1, 1, 4},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			b := newLiveBuffer(tc.capacity, nil)
+			var next int64 = 1
+			var want []int64
+			for range tc.adds {
+				b.add(Event{ID: next})
+				want = append(want, next)
+				next++
+			}
+			for range tc.shifts {
+				if ev, ok := b.shift(); !ok || ev.ID != want[0] {
+					t.Fatalf("shift = %+v (%t), want id %d", ev, ok, want[0])
+				}
+				want = want[1:]
+			}
+			for range tc.more {
+				if dropped := b.add(Event{ID: next}); len(dropped) != 0 {
+					t.Fatalf("add %d dropped %v below capacity %d", next, dropped, tc.capacity)
+				}
+				want = append(want, next)
+				next++
+			}
+			got := b.snapshot()
+			ids := make([]int64, len(got))
+			for i, ev := range got {
+				ids[i] = ev.ID
+			}
+			if fmt.Sprint(ids) != fmt.Sprint(want) {
+				t.Fatalf("logical order = %v, want %v", ids, want)
+			}
+			for i, id := range want {
+				ev, ok := b.shift()
+				if !ok || ev.ID != id {
+					t.Fatalf("shift %d = %+v (%t), want id %d", i, ev, ok, id)
+				}
+			}
+		})
 	}
 }
