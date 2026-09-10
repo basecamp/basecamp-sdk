@@ -632,11 +632,15 @@ rs-build:
 
 # Feature matrix (default, --no-default-features, --all-features) plus the
 # compiled examples: a README snippet that stops compiling is a docs bug the
-# doctests alone would miss when the fence is `no_run`.
+# doctests alone would miss when the fence is `no_run`. Without default
+# features the crate ships no transport, so that lane builds the library and
+# runs its unit tests; the integration tests under tests/ drive wiremock
+# through the shipped reqwest client by design and run in the other two.
 rs-test:
 	@echo "==> Running Rust tests..."
 	cd rust && cargo test --workspace --all-features --locked
-	cd rust && cargo test -p $(RS_CRATE) --no-default-features --locked
+	cd rust && cargo build -p $(RS_CRATE) --no-default-features --locked
+	cd rust && cargo test -p $(RS_CRATE) --no-default-features --lib --locked
 	cd rust && cargo test -p $(RS_CRATE) --locked
 	cd rust && cargo build -p $(RS_CRATE) --examples --locked
 

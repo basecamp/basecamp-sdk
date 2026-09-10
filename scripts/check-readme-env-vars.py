@@ -190,15 +190,15 @@ SDKS = {
             # `std::env::var("X")`, `env::var_os("X")` after `use std::env;`, and
             # the fully qualified `::std::env::var("X")`. The lookbehind keeps a
             # local module that merely spells `env` (`crate::env::var`) out.
-            # `r"X"`/`br"X"` is a legal argument too; the optional prefix keeps a
-            # raw-string spelling from hiding a read.
-            rf"(?<![\w:])(?:::)?(?:std::)?env::var(?:_os)?\(\s*b?r?{DQ}{NAME}{ENDQ}",
+            # `r"X"`, `br"X"` and `r#"X"#` are legal arguments too; the optional
+            # prefix and fence keep a raw-string spelling from hiding a read.
+            rf"(?<![\w:])(?:::)?(?:std::)?env::var(?:_os)?\(\s*b?r?#*{DQ}{NAME}{ENDQ}",
             # The crate's own helper. config.rs reads through
             # `fn env_value(name: &str) -> Option<String> { env::var(name)… }`,
             # so the literal never reaches env::var and the pattern above sees
             # a variable, not a name. The call sites — `env_value("BASECAMP_…")`
             # — are where the names are, so they are the read here.
-            rf"(?<![\w.:])env_value\(\s*b?r?{DQ}{NAME}{ENDQ}",
+            rf"(?<![\w.:])env_value\(\s*b?r?#*{DQ}{NAME}{ENDQ}",
         ],
     },
 }
@@ -235,7 +235,7 @@ def rust_dynamic_patterns(text: str) -> list[str]:
     patterns already match.
     """
     return [
-        rf"(?<![\w.:]){re.escape(name)}\(\s*b?r?{DQ}{NAME}{ENDQ}"
+        rf"(?<![\w.:]){re.escape(name)}\(\s*b?r?#*{DQ}{NAME}{ENDQ}"
         for name in sorted(set(rust_env_aliases(text)))
     ]
 
