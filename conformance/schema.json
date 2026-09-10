@@ -157,7 +157,8 @@
           },
           "path": {
             "type": "string",
-            "description": "JSONPath or dot-notation path for nested value assertions. For requestBody / requestBodyAbsent, the key (dot-notation) inside the captured request body. Optional for requestBody alone: omitted, `expected` is the WHOLE captured body and must equal it exactly, so a key the SDK added fails rather than passing unseen. Every other path-taking type requires it (the allOf below), so a path-less fixture is rejected here instead of reaching a runner that cannot execute it."
+            "minLength": 1,
+            "description": "JSONPath or dot-notation path for nested value assertions. For requestBody / requestBodyAbsent, the key (dot-notation) inside the captured request body. Optional for requestBody alone: omitted, `expected` is the WHOLE captured body and must equal it exactly, so a key the SDK added fails rather than passing unseen. Every other path-taking type requires it (the allOf below), so a path-less fixture is rejected here instead of reaching a runner that cannot execute it. Never empty: three runners treat \"\" as an absent path and three as a lookup of the empty key, so minLength keeps that disagreement out of any schema-valid fixture."
           },
           "index": {
             "type": "integer",
