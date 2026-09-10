@@ -64,10 +64,10 @@ type Error struct {
 	FieldErrors map[string][]string
 	HTTPStatus  int
 	Retryable   bool
-	// RetryAfter is the server-specified delay in seconds from a 429's
+	// RetryAfter is the server-specified delay in seconds from the response's
 	// Retry-After header, resolved from either wire form (delta-seconds or
-	// HTTP-date). Zero when the server named no delay, which is every status
-	// but 429 today. The GET retry loop sleeps this instead of its backoff
+	// HTTP-date) and carried at every status (SPEC §6). Zero when the server
+	// named no delay. The GET retry loop sleeps this instead of its backoff
 	// curve when it is positive; callers that give up and reschedule the work
 	// themselves read it off the returned error.
 	//

@@ -186,7 +186,7 @@ func WithAuthStrategy(strategy AuthStrategy) ClientOption {
 //   - Retries failed GET requests with exponential backoff
 //   - Does NOT retry POST/PUT/DELETE on 429/5xx (to avoid duplicating data)
 //   - Retries mutations once after successful 401 token refresh
-//   - Respects Retry-After headers on 429 responses
+//   - Respects Retry-After headers at every retried status
 //   - Follows pagination via Link headers
 //
 // Configuration options:
@@ -701,9 +701,9 @@ func (c *Client) doRequestURL(ctx context.Context, method, url string, body any)
 			// A server-specified Retry-After replaces the backoff curve
 			// outright — no jitter, no policy ceiling (only the
 			// representability clamp parseRetryAfter already applied), same
-			// idiom as downloadURL. Only the 429 arm of singleRequest sets it
-			// today; widening the set of statuses that carry one is #775's
-			// call, not this loop's.
+			// idiom as downloadURL. Every retryable arm of singleRequest sets
+			// it, so the header governs the wait at 503 as it does at 429
+			// (SPEC §6 "Retry-After Honouring").
 			if apiErr.RetryAfter > 0 {
 				delay = time.Duration(apiErr.RetryAfter) * time.Second
 			} else {
@@ -917,14 +917,20 @@ func (c *Client) singleRequest(ctx context.Context, method, url string, body any
 		}).withRequestID(requestID)
 
 	case http.StatusInternalServerError: // 500
-		return nil, ErrAPI(500, "Server error (500)").withRequestID(requestID)
+		apiErr := ErrAPI(500, "Server error (500)").withRequestID(requestID)
+		apiErr.RetryAfter = parseRetryAfter(resp.Header.Get("Retry-After"))
+		return nil, apiErr
 
 	case http.StatusBadGateway, http.StatusServiceUnavailable, http.StatusGatewayTimeout: // 502, 503, 504
+		// RetryAfter is carried at every status (SPEC §6 "HTTP Status Mapping
+		// Algorithm"): the retry loop above reads it off this error, so this
+		// is also what makes a 503's Retry-After govern the sleep.
 		return nil, (&Error{
 			Code:       CodeAPI,
 			Message:    fmt.Sprintf("Gateway error (%d)", resp.StatusCode),
 			HTTPStatus: resp.StatusCode,
 			Retryable:  true,
+			RetryAfter: parseRetryAfter(resp.Header.Get("Retry-After")),
 		}).withRequestID(requestID)
 
 	default:
@@ -1153,6 +1159,23 @@ func isDelaySeconds(value string) bool {
 	return true
 }
 
+// maxRetryAfterDigits is the width of maxRetryAfterSeconds in decimal; a
+// digit string longer than it (leading zeros aside) is over the ceiling
+// without needing to be converted.
+const maxRetryAfterDigits = len("2147483647")
+
+// exceedsRetryAfterCeiling reports whether a `1*DIGIT` value is above
+// maxRetryAfterSeconds, by width and then by value, so the answer never
+// depends on an integer conversion that could itself overflow.
+func exceedsRetryAfterCeiling(digits string) bool {
+	digits = strings.TrimLeft(digits, "0")
+	if len(digits) > maxRetryAfterDigits {
+		return true
+	}
+	seconds, err := strconv.ParseInt(digits, 10, 64)
+	return err == nil && seconds > maxRetryAfterSeconds
+}
+
 // parseRetryAfter parses the Retry-After header value.
 // It handles both seconds (integer) and HTTP-date formats.
 // Returns 0 if the header is empty or cannot be parsed, and clamps a parsed
@@ -1163,34 +1186,25 @@ func parseRetryAfter(header string) int {
 	if header == "" {
 		return 0
 	}
-	// Try parsing as seconds (integer). Parsed as an int64 rather than through
-	// Atoi, whose range is int's: `Retry-After: 2147483648` would otherwise be
-	// ErrRange, hence malformed, hence the millisecond backoff on a 32-bit
-	// build while the same header is honoured on a 64-bit one. Deciding the
-	// ceiling is the clamp's job, not the parse's.
+	// Delta-seconds. The digits are checked rather than left to ParseInt,
+	// which accepts a leading `+` or `-`: RFC 9110 spells delay-seconds as
+	// `1*DIGIT` — no sign — so `+5` is not a delay at all, and ParseInt would
+	// otherwise honour it as 5. Same digits-only test SPEC §16's device parser
+	// makes, and the same reading conformance's "partly numeric rejected
+	// (`1*DIGIT`)" case asserts.
 	//
-	// A value too large for that int64 is treated as MALFORMED and falls
-	// through to step 3's backoff rather than saturating. So is any other
-	// unparseable input: ParseInt returns 0 with ErrSyntax, and a negative
-	// range error clamps to math.MinInt64, both caught by the `> 0` guard
-	// alongside the err check. Saturation is reserved for a value the parser
-	// holds but the host cannot schedule, and that is clampRetryAfterSeconds'
-	// job below.
-	//
-	// That split is Go's, not something §6's parsing algorithm mandates on
-	// its own — the algorithm says only "parse a positive integer". It is the
-	// two-tier rule #793 states in SPEC §6 "Retry-After Honouring"
-	// (unrepresentable in the parser's own type → malformed; representable but
-	// unschedulable → saturate); the cross-SDK convergence on over-range
-	// values, which the SDKs still answer differently, is #799's. The rule is
-	// deliberately not restated here; #793 is where it is argued.
-	//
-	// The digits are checked rather than left to ParseInt, which accepts a
-	// leading `+` or `-`. RFC 9110 spells delay-seconds as `1*DIGIT` — no sign
-	// — so `+5` is not a delay at all, and ParseInt would otherwise honour it
-	// as 5. Same digits-only test SPEC §16's device parser makes, and the same
-	// reading conformance's "partly numeric rejected (`1*DIGIT`)" case asserts.
+	// `1*DIGIT` has no upper bound, so no digit string is malformed for its
+	// length: a value above maxRetryAfterSeconds SATURATES there (SPEC §6
+	// "Retry-After Parsing Algorithm"), whether or not it fits an int64. An
+	// earlier revision treated a string too wide for the parser's own int64 as
+	// malformed and fell through to the backoff, which made the honoured wait
+	// depend on the parser's word size — and reading "wait a very long time"
+	// as "no delay" hammers a peer that just asked to be left alone. The
+	// width test comes before ParseInt so no conversion can overflow.
 	if isDelaySeconds(header) {
+		if exceedsRetryAfterCeiling(header) {
+			return maxRetryAfterSeconds
+		}
 		if seconds, err := strconv.ParseInt(header, 10, 64); err == nil && seconds > 0 {
 			return clampRetryAfterSeconds(seconds)
 		}

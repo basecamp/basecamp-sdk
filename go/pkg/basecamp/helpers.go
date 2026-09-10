@@ -85,7 +85,9 @@ func checkResponse(resp *http.Response, body []byte) error {
 		// SPEC §6 step 5: the fixed code-bearing phrase, never resp.Status —
 		// the wire reason phrase does not exist under HTTP/2 and a platform's
 		// table is empty for an unregistered code.
-		return &Error{Code: CodeAPI, Message: msgOrDefault(serverMsg, fmt.Sprintf("Request failed (HTTP %d)", resp.StatusCode)), Hint: serverHint, HTTPStatus: resp.StatusCode, Retryable: retryable, RequestID: requestID}
+		// RetryAfter is carried at every status (SPEC §6 "HTTP Status Mapping
+		// Algorithm"), so an exhausted 503 reports the wait the origin named.
+		return &Error{Code: CodeAPI, Message: msgOrDefault(serverMsg, fmt.Sprintf("Request failed (HTTP %d)", resp.StatusCode)), Hint: serverHint, HTTPStatus: resp.StatusCode, Retryable: retryable, RetryAfter: parseRetryAfter(resp.Header.Get("Retry-After")), RequestID: requestID}
 	}
 }
 
