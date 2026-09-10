@@ -520,6 +520,15 @@ func (l *loop) pollPage(at *attempt, cursor Cursor) pollAttempt {
 			if !ok {
 				l.deferred = &deferredFrame{closed: true}
 			} else {
+				// Close outranks a ready item, as on every other arm that
+				// receives: the item may be the cancellation the pump handed
+				// off after Close, and servicing it — or admitting a frame
+				// queued ahead of it — is post-Close work. Disposing here is
+				// what returns the abandoned call.
+				if l.runCtx.Err() != nil {
+					l.disposeAttempt(at, nil)
+					return pollAttempt{ended: true, out: cycleOutcome{kind: outcomeClosed}}
+				}
 				handled, out, ended := l.admitDuringPoll(at, item)
 				if ended {
 					// The drop's own disposition. Disposing the attempt is what
@@ -805,6 +814,15 @@ func (l *loop) admissionPass(at *attempt) (cycleOutcome, bool) {
 			if !ok {
 				return l.pumpExited(at, nil), true
 			}
+			// Close outranks a ready item. The pass is entered under a check,
+			// but it dequeues up to liveBufferCapacity items after it, and a
+			// Close landing mid-pass is followed by the pump's cancellation
+			// error — which handleLiveFrame would report to
+			// Observer.Disconnected as a socket failure, after Close returned.
+			if l.runCtx.Err() != nil {
+				l.disposeAttempt(at, nil)
+				return cycleOutcome{kind: outcomeClosed}, true
+			}
 			if out, done := l.handleLiveFrame(at, nil, item, false); done {
 				return out, true
 			}
@@ -992,6 +1010,14 @@ func (l *loop) fatalScan(at *attempt, budget *int) (cycleOutcome, bool) {
 				return cycleOutcome{}, false
 			}
 			*budget--
+			// Close outranks a ready item here as in every receive: a consumer
+			// that closed from the drain's own loop body continues the range,
+			// and the next scan must not admit — or dispatch — what the pump
+			// queued after that Close.
+			if l.runCtx.Err() != nil {
+				l.disposeAttempt(at, nil)
+				return cycleOutcome{kind: outcomeClosed}, true
+			}
 			handled, out, ended := l.admitDuringPoll(at, item)
 			switch {
 			case ended:

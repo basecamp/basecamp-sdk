@@ -1441,6 +1441,19 @@ func (l *loop) dispatchDisconnect(at *attempt, deadline Timer, f frame) cycleOut
 // something to park until a later cut — a cut a stalled or failing call may
 // never reach.
 func (l *loop) admitLive(at *attempt, deadline Timer, ev Event) (cycleOutcome, bool) {
+	// Close outranks the admission itself. Every path that admits is a
+	// receive from the pump's queue, and after Close the queue is being
+	// drained toward a buffer the next run never reads — an admission then
+	// can only manufacture a drop, and with it a BufferOverflow observer call
+	// and a handler dispatch that run after Close returned. Checked HERE, at
+	// the one place every admission passes, rather than only at the arms that
+	// happen to receive: an accepting handler that closed the connector is
+	// then refused its next admission wherever the pass it returned into
+	// receives it, instead of continuing until that pass's own dispatch point.
+	if l.runCtx.Err() != nil {
+		l.disposeAttempt(at, deadline)
+		return cycleOutcome{kind: outcomeClosed}, true
+	}
 	dropped := l.buffer.add(ev)
 	if len(dropped) == 0 {
 		return cycleOutcome{}, false

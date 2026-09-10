@@ -1722,3 +1722,269 @@ func TestCloseFromSignalObserverSkipsTheHandler(t *testing.T) {
 		}
 	})
 }
+
+// TestCloseFromAnAcceptingHandlerRefusesTheNextAdmission: a registered
+// SignalHandler that closes the connector and returns Accept is host code
+// ending the feed from inside a dispatch. The in-flight-poll servicing that
+// dispatched it keeps receiving until the seam call returns, and a frame
+// already queued behind the overflowing one used to be admitted anyway —
+// manufacturing a second drop, and with it a second Observer.BufferOverflow
+// call, after Close returned. Admission is refused once runCtx is cancelled,
+// wherever the pass that dispatched the handler receives it. Rounds-driven:
+// the abandoned call's own return races the queued frame at the select.
+func TestCloseFromAnAcceptingHandlerRefusesTheNextAdmission(t *testing.T) {
+	const rounds = 10
+	violations := 0
+	for i := range rounds {
+		func() {
+			var overflows atomic.Int32
+			var afterClose atomic.Int32
+			closed := make(chan struct{})
+			handedOff := make(chan struct{}, 8)
+			var h *harness
+			h = newHarness(t,
+				eventfeed.WithStart(eventfeed.StartPresent()),
+				eventfeed.WithLiveBufferCapacity(1),
+				eventfeed.WithObserver(eventfeed.Observer{
+					BufferOverflow: func(int) {
+						overflows.Add(1)
+						select {
+						case <-closed:
+							afterClose.Add(1)
+						default:
+						}
+					},
+				}),
+				eventfeed.WithSignalHandler(func(eventfeed.Signal) eventfeed.Disposition {
+					// A third frame is queued BEFORE the handler closes, so the
+					// servicing loop it returns into finds it ready.
+					drain(handedOff)
+					h.tr.LastConn().Serve(frameMessage(noFilterIdentifier, 103))
+					select {
+					case <-handedOff:
+					case <-time.After(watchdog):
+						t.Error("the third frame never reached the hand-off queue")
+					}
+					h.conn.Close() //nolint:errcheck // asserted via the observer
+					close(closed)
+					return eventfeed.Accept
+				}))
+			h.conn.OnPumpHandedOff(func(bool) {
+				select {
+				case handedOff <- struct{}{}:
+				default:
+				}
+			})
+			h.minter.ScriptTicket(ticket(1))
+			h.polls.StallNext()
+			h.start()
+
+			conn := h.driveToSubscribed()
+			conn.Serve(frameConfirm(noFilterIdentifier))
+			h.polls.OnCall(func(feedtest.PollCall) {})
+			h.waitUntil("the entry poll to be in flight", func() bool { return h.polls.CallCount() == 1 })
+			drain(handedOff)
+			conn.Serve(frameMessage(noFilterIdentifier, 101))
+			conn.Serve(frameMessage(noFilterIdentifier, 102))
+			h.join()
+			if n := afterClose.Load(); n != 0 {
+				violations++
+				t.Logf("round %d: %d BufferOverflow observer call(s) after Close returned from the handler", i, n)
+			}
+			if _, terminal, elements := h.snapshot(); terminal != nil || elements != 0 {
+				t.Fatalf("clean close: got %d elements, terminal %v", elements, terminal)
+			}
+		}()
+	}
+	if violations != 0 {
+		t.Errorf("%d/%d rounds admitted a frame after the accepting handler closed the connector", violations, rounds)
+	}
+}
+
+// TestCloseMidAdmissionPassTakesTheClosedEdge: the bounded admission pass is
+// entered under a cancellation check but dequeues up to liveBufferCapacity
+// items after it, and a Close landing mid-pass is followed by the pump's own
+// cancellation error — which the pass dispatched through the ordinary
+// live-frame path, reporting the consumer's Close to Observer.Disconnected as
+// a socket failure after Close returned. The state machine is parked inside
+// the pass by a frame-handled callback, Close lands, and the cancellation is
+// queued behind the parked frame before the pass resumes.
+func TestCloseMidAdmissionPassTakesTheClosedEdge(t *testing.T) {
+	disconnected := make(chan error, 4)
+	handedOff := make(chan struct{}, 8)
+	handedOffErr := make(chan struct{}, 4)
+	var conn *feedtest.Conn
+	var deliveredOnce sync.Once
+	h := newHarness(t,
+		eventfeed.WithStart(eventfeed.StartPresent()),
+		eventfeed.WithObserver(eventfeed.Observer{
+			PageDelivered: func(int, string) {
+				deliveredOnce.Do(func() {
+					// Queued AFTER the entry page returned and BEFORE the
+					// cut's pass runs, so the pass — not the in-flight
+					// servicing — is what dequeues them.
+					drain(handedOff)
+					conn.Serve(framePing())
+					conn.Serve(framePing())
+					for range 2 {
+						select {
+						case <-handedOff:
+						case <-time.After(watchdog):
+							t.Error("a ping never reached the hand-off queue")
+						}
+					}
+				})
+			},
+			Disconnected: func(_ string, err error) {
+				select {
+				case disconnected <- err:
+				default:
+				}
+			},
+		}))
+	h.conn.OnPumpHandedOff(func(isErr bool) {
+		ch := handedOff
+		if isErr {
+			ch = handedOffErr
+		}
+		select {
+		case ch <- struct{}{}:
+		default:
+		}
+	})
+	parked := make(chan struct{})
+	gate := make(chan struct{})
+	var parkOnce sync.Once
+	h.conn.OnFrameHandled(func(kind string) {
+		if kind != "ping" {
+			return
+		}
+		parkOnce.Do(func() {
+			close(parked)
+			<-gate
+		})
+	})
+	h.minter.ScriptTicket(ticket(1))
+	h.polls.ScriptPage(eventfeed.PollPage{Position: "pos-1"})
+	h.start()
+	conn = h.driveToSubscribed()
+	conn.Serve(frameConfirm(noFilterIdentifier))
+	select {
+	case <-parked:
+	case <-time.After(watchdog):
+		t.Fatal("the state machine never parked inside the admission pass")
+	}
+	h.conn.Close() //nolint:errcheck // asserted via the observer
+	select {
+	case <-handedOffErr:
+	case <-time.After(watchdog):
+		t.Fatal("the pump never handed off the cancellation error")
+	}
+	close(gate)
+	h.join()
+	select {
+	case err := <-disconnected:
+		t.Fatalf("Disconnected(%v) fired after Close returned: the pass dispatched the consumer's own cancellation as a socket failure", err)
+	default:
+	}
+	if _, terminal, elements := h.snapshot(); terminal != nil || elements != 0 {
+		t.Fatalf("clean close: got %d elements, terminal %v", elements, terminal)
+	}
+}
+
+// TestCloseFromTheDrainBodyStopsTheScan: a consumer that closes the connector
+// from the loop body while a drained event is in hand, and then continues the
+// range, re-enters the drain's protocol-fatal scan. The scan received every
+// frame the pump had queued since — dispatching a queued protocol-fatal
+// disconnect to Observer.Disconnected, admitting events into a buffer the
+// next run never reads and, when that admission dropped, calling
+// Observer.BufferOverflow — all after Close returned. The scan's receive now
+// takes the Closed edge like every other. The fatal frame is queued FIRST: it
+// bypasses admitLive's own guard, so it is what pins the scan's check rather
+// than the admission's.
+func TestCloseFromTheDrainBodyStopsTheScan(t *testing.T) {
+	var overflows atomic.Int32
+	disconnected := make(chan error, 4)
+	handedOff := make(chan struct{}, 8)
+	handedOffErr := make(chan struct{}, 4)
+	var conn *feedtest.Conn
+	h := newHarness(t,
+		eventfeed.WithStart(eventfeed.StartPresent()),
+		eventfeed.WithLiveBufferCapacity(1),
+		eventfeed.WithObserver(eventfeed.Observer{
+			BufferOverflow: func(int) { overflows.Add(1) },
+			Disconnected: func(_ string, err error) {
+				select {
+				case disconnected <- err:
+				default:
+				}
+			},
+		}))
+	h.conn.OnPumpHandedOff(func(isErr bool) {
+		ch := handedOff
+		if isErr {
+			ch = handedOffErr
+		}
+		select {
+		case ch <- struct{}{}:
+		default:
+		}
+	})
+	h.pauseAfter = 1
+	h.minter.ScriptTicket(ticket(1))
+	var once sync.Once
+	h.polls.OnCall(func(feedtest.PollCall) {
+		once.Do(func() {
+			// One event admitted while the entry poll is in flight: the drain
+			// has something to deliver, and the collector parks holding it.
+			drain(handedOff)
+			conn.Serve(frameMessage(noFilterIdentifier, 101))
+			select {
+			case <-handedOff:
+			case <-time.After(watchdog):
+				t.Error("the straggler never reached the hand-off queue")
+			}
+		})
+	})
+	h.polls.ScriptPage(eventfeed.PollPage{Position: "pos-1"})
+	h.start()
+	conn = h.driveToSubscribed()
+	conn.Serve(frameConfirm(noFilterIdentifier))
+	h.waitUntil("the collector to park mid-drain", func() bool { return len(h.deliveredIDs()) == 1 })
+	drain(handedOff)
+	// A fatal disconnect and two more events queued while the collector
+	// holds the drained one: dispatching the fatal calls Disconnected, and
+	// admitting both events into a capacity-1 buffer drops the first — each
+	// the post-Close work the scan must not do. (Queued before the Close,
+	// because a cancelled read returns its error ahead of any pending frame —
+	// nothing served after Close reaches the queue.)
+	conn.Serve(frameDisconnect("invalid_event_stream_command", false))
+	conn.Serve(frameMessage(noFilterIdentifier, 102))
+	conn.Serve(frameMessage(noFilterIdentifier, 103))
+	for range 3 {
+		select {
+		case <-handedOff:
+		case <-time.After(watchdog):
+			t.Fatal("a queued frame never reached the hand-off queue")
+		}
+	}
+	h.conn.Close() //nolint:errcheck // asserted via the observer
+	select {
+	case <-handedOffErr:
+	case <-time.After(watchdog):
+		t.Fatal("the pump never handed off the cancellation error")
+	}
+	h.resume()
+	h.join()
+	select {
+	case err := <-disconnected:
+		t.Fatalf("Disconnected(%v) fired after Close returned from the drain's loop body: the scan dispatched a queued verdict", err)
+	default:
+	}
+	if n := overflows.Load(); n != 0 {
+		t.Fatalf("BufferOverflow fired %d time(s) after Close returned from the drain's loop body", n)
+	}
+	if _, terminal, elements := h.snapshot(); terminal != nil || elements != 1 {
+		t.Fatalf("clean close after one delivery: got %d elements, terminal %v", elements, terminal)
+	}
+}
