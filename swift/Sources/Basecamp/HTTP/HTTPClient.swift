@@ -213,14 +213,16 @@ package final class HTTPClient: Sendable {
     /// Converts a backoff interval to nanoseconds without trapping.
     ///
     /// `UInt64(_:)` on an out-of-range `Double` is a runtime trap, not an
-    /// error, and a hostile or simply buggy `Retry-After` can name a delay
-    /// whose nanosecond product overflows `UInt64` — `Retry-After: 99999999999`
-    /// is 9.9e19 ns against a 1.8e19 ceiling. Clamp to a day instead: no SDK
-    /// retry is worth sleeping longer, and a crash is never the right answer
-    /// to a response header.
+    /// error. The parser already saturates a `Retry-After` at
+    /// ``BasecampError/maxRetryAfterSeconds`` (SPEC §6), whose nanosecond
+    /// product is inside `UInt64`, so the same bound here is a
+    /// representability guard for a value that arrived some other way — not
+    /// the day-long policy cap this used to apply, which SPEC §7 forbids: a
+    /// client that silently caps a server's instruction retries sooner than
+    /// the origin asked for.
     private static func sleepNanoseconds(_ seconds: TimeInterval) -> UInt64 {
         guard seconds.isFinite, seconds > 0 else { return 0 }
-        return UInt64(min(seconds, 86_400) * 1_000_000_000)
+        return UInt64(min(seconds, Double(BasecampError.maxRetryAfterSeconds)) * 1_000_000_000)
     }
 
     package init(

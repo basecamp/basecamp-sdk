@@ -397,7 +397,7 @@ open class BaseService: @unchecked Sendable {
             guard isSameOrigin(nextURL, initialURL) else {
                 throw BasecampError.api(
                     message: "Pagination Link header points to different origin: \(nextURL)",
-                    httpStatus: nil, hint: nil, requestId: nil, decodeFailure: nil
+                    httpStatus: nil, hint: nil, requestId: nil, decodeFailure: nil, retryAfterSeconds: nil
                 )
             }
 
@@ -455,7 +455,7 @@ open class BaseService: @unchecked Sendable {
             guard isSameOrigin(nextURL, initialURL) else {
                 throw BasecampError.api(
                     message: "Pagination Link header points to different origin: \(nextURL)",
-                    httpStatus: nil, hint: nil, requestId: nil, decodeFailure: nil
+                    httpStatus: nil, hint: nil, requestId: nil, decodeFailure: nil, retryAfterSeconds: nil
                 )
             }
 
@@ -607,7 +607,7 @@ open class BaseService: @unchecked Sendable {
             httpStatus: nil,
             hint: nil,
             requestId: nil,
-            decodeFailure: error
+            decodeFailure: error, retryAfterSeconds: nil
         )
     }
 

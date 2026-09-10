@@ -328,7 +328,7 @@ final class DownloadTests: XCTestCase {
             _ = try await account.downloadURL("https://3.basecampapi.com/999999999/attachments/abc/download/file.txt")
             XCTFail("Expected the signed hop's redirect to be refused")
         } catch let error as BasecampError {
-            guard case .api(let message, let httpStatus, _, _, _) = error else {
+            guard case .api(let message, let httpStatus, _, _, _, _) = error else {
                 XCTFail("Expected api error, got \(error)")
                 return
             }
