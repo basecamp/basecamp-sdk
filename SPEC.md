@@ -2741,7 +2741,8 @@ A fixture is a static JSON literal, and the harness has no clock of its own — 
 every assertion but one. §6's Retry-After Parsing Algorithm honours an HTTP-date only when
 `date - now()` is positive, so a literal date is either already past (and pins only the fall-through)
 or far enough ahead to make a compliant SDK sleep for years. A response header value MAY therefore
-carry the token **`{{httpdate+Ns}}`** (`N` = `1*DIGIT`), which every runner resolves **at the moment
+carry the token **`{{httpdate+Ns}}`** (`N` = one to nine digits, so every runner resolves it in exact
+integer arithmetic and every date formatter stays in range), which every runner resolves **at the moment
 it serves that response** to the IMF-fixdate of `floor(now) + N + 1` seconds — the first whole
 second strictly more than `N` seconds after the second the response is served in. A compliant parser
 sees a remainder in `(N - latency, N + 1]` and, rounding up, computes at least `N` whole seconds for

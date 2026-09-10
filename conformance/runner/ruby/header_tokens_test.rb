@@ -30,7 +30,7 @@ class HeaderTokensTest < Minitest::Test
   end
 
   def test_unknown_tokens_are_errors_not_literals
-    [ "{{httpdate}}", "{{httpdate+2}}", "{{httpdate-2s}}", "{{now}}", "{{}}" ].each do |value|
+    [ "{{httpdate}}", "{{httpdate+2}}", "{{httpdate-2s}}", "{{now}}", "{{}}", "{{httpdate+1000000000s}}" ].each do |value|
       error = assert_raises(ArgumentError) { HeaderTokens.resolve(value, NOW) }
       assert_includes error.message, value
     end

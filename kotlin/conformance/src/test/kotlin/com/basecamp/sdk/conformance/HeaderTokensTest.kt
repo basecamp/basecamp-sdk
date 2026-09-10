@@ -33,7 +33,7 @@ class HeaderTokensTest {
 
     @Test
     fun `unknown tokens are errors not literals`() {
-        for (value in listOf("{{httpdate}}", "{{httpdate+2}}", "{{httpdate-2s}}", "{{now}}", "{{}}")) {
+        for (value in listOf("{{httpdate}}", "{{httpdate+2}}", "{{httpdate-2s}}", "{{now}}", "{{}}", "{{httpdate+1000000000s}}")) {
             val error = assertFailsWith<IllegalArgumentException> { resolveHeaderValue(value, nowMs) }
             assertContains(error.message ?: "", value)
         }

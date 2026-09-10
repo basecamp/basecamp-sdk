@@ -34,7 +34,7 @@ def test_httpdate_resolves_to_the_whole_second_past_n(token: str, expected: str)
     assert resolve_header_value(token, NOW) == expected
 
 
-@pytest.mark.parametrize("value", ["{{httpdate}}", "{{httpdate+2}}", "{{httpdate-2s}}", "{{now}}", "{{}}"])
+@pytest.mark.parametrize("value", ["{{httpdate}}", "{{httpdate+2}}", "{{httpdate-2s}}", "{{now}}", "{{}}", "{{httpdate+1000000000s}}"])
 def test_unknown_tokens_are_errors_not_literals(value: str) -> None:
     with pytest.raises(ValueError, match="unrecognised header token"):
         resolve_header_value(value, NOW)

@@ -25,7 +25,7 @@ final class HeaderTokensTests: XCTestCase {
     }
 
     func testUnknownTokensAreErrorsNotLiterals() {
-        for value in ["{{httpdate}}", "{{httpdate+2}}", "{{httpdate-2s}}", "{{now}}", "{{}}"] {
+        for value in ["{{httpdate}}", "{{httpdate+2}}", "{{httpdate-2s}}", "{{now}}", "{{}}", "{{httpdate+1000000000s}}"] {
             XCTAssertThrowsError(try resolveHeaderValue(value, now: now), value) { error in
                 XCTAssertTrue("\(error)".contains(value), "error for \(value) does not name the token: \(error)")
             }

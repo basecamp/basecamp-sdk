@@ -45,7 +45,10 @@ func TestParseRetryAfter(t *testing.T) {
 // time actually remaining, re-measured after the parse, which scheduling delay
 // can only weaken toward vacuity and never turn red.
 func TestParseRetryAfter_HTTPDateRoundsUp(t *testing.T) {
-	target := time.Now().Add(2500 * time.Millisecond)
+	// A whole-second target, because the wire form carries whole seconds: a
+	// sub-second target would be truncated by the formatting, and the parse
+	// would then be measured against a moment the header never named.
+	target := time.Now().Truncate(time.Second).Add(3 * time.Second)
 	got := parseRetryAfter(target.UTC().Format(http.TimeFormat))
 	remaining := time.Until(target)
 	if got <= 0 {

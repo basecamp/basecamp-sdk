@@ -37,7 +37,7 @@ func TestResolveHeaderValue_ResolvesHttpdateToTheWholeSecondPastN(t *testing.T) 
 }
 
 func TestResolveHeaderValue_RejectsAnUnknownToken(t *testing.T) {
-	for _, v := range []string{"{{httpdate}}", "{{httpdate+2}}", "{{httpdate-2s}}", "{{now}}", "{{}}"} {
+	for _, v := range []string{"{{httpdate}}", "{{httpdate+2}}", "{{httpdate-2s}}", "{{now}}", "{{}}", "{{httpdate+1000000000s}}"} {
 		got, err := resolveHeaderValue(v, tokenNow)
 		if err == nil {
 			t.Errorf("resolveHeaderValue(%q) = %q, want an error — an unknown token must never be served literally", v, got)

@@ -74,6 +74,8 @@ class HTTPRetryExtendedTest < Minitest::Test
   end
 
   def test_503_error_carries_retry_after
+    @http.define_singleton_method(:sleep) { |_delay| }
+
     stub_request(:get, "https://3.basecampapi.com/test.json")
       .to_return(status: 503, body: "{}", headers: { "Retry-After" => "7" })
 

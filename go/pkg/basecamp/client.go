@@ -880,17 +880,17 @@ func (c *Client) singleRequest(ctx context.Context, method, url string, body any
 				}
 			}
 		}
-		return nil, ErrAuth("Authentication failed").withRequestID(requestID)
+		return nil, ErrAuth("Authentication failed").withRequestID(requestID).withRetryAfter(resp.Header.Get("Retry-After"))
 
 	case http.StatusForbidden: // 403
 		// Check if this might be a scope issue
 		if method != "GET" {
-			return nil, ErrForbiddenScope().withRequestID(requestID)
+			return nil, ErrForbiddenScope().withRequestID(requestID).withRetryAfter(resp.Header.Get("Retry-After"))
 		}
-		return nil, ErrForbidden("Access denied").withRequestID(requestID)
+		return nil, ErrForbidden("Access denied").withRequestID(requestID).withRetryAfter(resp.Header.Get("Retry-After"))
 
 	case http.StatusNotFound: // 404
-		return nil, ErrNotFound("Resource", url).withRequestID(requestID)
+		return nil, ErrNotFound("Resource", url).withRequestID(requestID).withRetryAfter(resp.Header.Get("Retry-After"))
 
 	case http.StatusBadRequest, http.StatusUnprocessableEntity: // 400, 422
 		// The generated service layer maps these through checkResponse; the raw
@@ -898,7 +898,7 @@ func (c *Client) singleRequest(ctx context.Context, method, url string, body any
 		// api_error with the field-keyed detail dropped.
 		respBody, _ := limitedReadAll(resp.Body, MaxErrorBodyBytes)
 		serverMsg, serverHint, fieldErrors := parseErrorBody(respBody)
-		return nil, validationErrorFromBody(serverMsg, serverHint, fieldErrors, resp.StatusCode, requestID, respBody)
+		return nil, validationErrorFromBody(serverMsg, serverHint, fieldErrors, resp.StatusCode, requestID, parseRetryAfter(resp.Header.Get("Retry-After")), respBody)
 
 	case http.StatusInsufficientStorage: // 507
 		// Same reason the 400/422 arm above exists: the generated service layer
@@ -914,12 +914,10 @@ func (c *Client) singleRequest(ctx context.Context, method, url string, body any
 			Hint:       serverHint,
 			HTTPStatus: 507,
 			Retryable:  false,
-		}).withRequestID(requestID)
+		}).withRequestID(requestID).withRetryAfter(resp.Header.Get("Retry-After"))
 
 	case http.StatusInternalServerError: // 500
-		apiErr := ErrAPI(500, "Server error (500)").withRequestID(requestID)
-		apiErr.RetryAfter = parseRetryAfter(resp.Header.Get("Retry-After"))
-		return nil, apiErr
+		return nil, ErrAPI(500, "Server error (500)").withRequestID(requestID).withRetryAfter(resp.Header.Get("Retry-After"))
 
 	case http.StatusBadGateway, http.StatusServiceUnavailable, http.StatusGatewayTimeout: // 502, 503, 504
 		// RetryAfter is carried at every status (SPEC §6 "HTTP Status Mapping
@@ -946,7 +944,7 @@ func (c *Client) singleRequest(ctx context.Context, method, url string, body any
 			Message:    msgOrDefault(serverMsg, fmt.Sprintf("Request failed (HTTP %d)", resp.StatusCode)),
 			Hint:       serverHint,
 			HTTPStatus: resp.StatusCode,
-		}).withRequestID(requestID)
+		}).withRequestID(requestID).withRetryAfter(resp.Header.Get("Retry-After"))
 	}
 }
 

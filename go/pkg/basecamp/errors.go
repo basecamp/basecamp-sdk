@@ -119,6 +119,21 @@ func (e *Error) withRequestID(requestID string) *Error {
 	return &errCopy
 }
 
+// withRetryAfter returns a copy carrying the delay a Retry-After header names,
+// parsed per SPEC §6. Every status-mapped error carries it (SPEC §6 "HTTP
+// Status Mapping Algorithm"), not only the ones a retry loop reads it off, so
+// a caller rescheduling the work themselves sees what the origin said whatever
+// the status. A header that names no delay leaves the error untouched.
+func (e *Error) withRetryAfter(header string) *Error {
+	retryAfter := parseRetryAfter(header)
+	if e == nil || retryAfter == 0 {
+		return e
+	}
+	errCopy := *e
+	errCopy.RetryAfter = retryAfter
+	return &errCopy
+}
+
 // ExitCode returns the appropriate exit code for this error.
 func (e *Error) ExitCode() int {
 	return ExitCodeFor(e.Code)

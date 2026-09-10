@@ -26,7 +26,7 @@ describe("resolveHeaderValue", () => {
   });
 
   it("throws on an unknown token rather than serving it literally", () => {
-    for (const value of ["{{httpdate}}", "{{httpdate+2}}", "{{httpdate-2s}}", "{{now}}", "{{}}"]) {
+    for (const value of ["{{httpdate}}", "{{httpdate+2}}", "{{httpdate-2s}}", "{{now}}", "{{}}", "{{httpdate+1000000000s}}"]) {
       expect(() => resolveHeaderValue(value, NOW_MS)).toThrow(value);
     }
   });

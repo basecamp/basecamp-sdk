@@ -464,7 +464,7 @@ def _summarize_upcoming(envelope: dict) -> dict:
 
 
 _HEADER_TOKEN = re.compile(r"^\{\{(.*)\}\}$")
-_HTTPDATE_TOKEN = re.compile(r"^httpdate\+([0-9]+)s$")
+_HTTPDATE_TOKEN = re.compile(r"^httpdate\+([0-9]{1,9})s$")
 
 
 def resolve_header_value(value: str, now: float) -> str:
@@ -478,6 +478,9 @@ def resolve_header_value(value: str, now: float) -> str:
     the fixture pairs it with a `delayBetweenRequests` floor of N * 1000 ms. It
     exists because a static fixture has no clock: a literal past date pins only
     the fall-through, and a far-future one is differently behaved per host.
+
+    N is one to nine digits, so the arithmetic is exact everywhere and every
+    runner's date formatter stays in range; a longer N is an unrecognised token.
 
     An unrecognised `{{...}}` is an error rather than a literal: a typo'd token
     served verbatim would be an unparseable header, which the SDK answers with

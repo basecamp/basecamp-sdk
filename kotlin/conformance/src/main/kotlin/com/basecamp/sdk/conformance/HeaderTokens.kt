@@ -4,7 +4,7 @@ import io.ktor.http.toHttpDate
 import io.ktor.util.date.GMTDate
 
 private val HEADER_TOKEN = Regex("""^\{\{(.*)\}\}$""")
-private val HTTPDATE_TOKEN = Regex("""^httpdate\+(\d+)s$""")
+private val HTTPDATE_TOKEN = Regex("""^httpdate\+(\d{1,9})s$""")
 
 /**
  * Substitutes the one token a fixture header value may carry, `{{httpdate+Ns}}`
@@ -18,6 +18,9 @@ private val HTTPDATE_TOKEN = Regex("""^httpdate\+(\d+)s$""")
  * pairs it with a `delayBetweenRequests` floor of N × 1000 ms. It exists
  * because a static fixture has no clock: a literal past date pins only the
  * fall-through, and a far-future one is differently behaved per host.
+ *
+ * N is one to nine digits, so the arithmetic is exact everywhere and every
+ * runner's date formatter stays in range; a longer N is an unrecognised token.
  *
  * An unrecognised `{{…}}` throws rather than passing through: a typo'd token
  * served verbatim would be an unparseable header, which the SDK answers with

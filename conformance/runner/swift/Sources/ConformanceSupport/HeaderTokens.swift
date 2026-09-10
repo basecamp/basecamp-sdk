@@ -22,13 +22,16 @@ public struct UnrecognisedHeaderToken: Error, CustomStringConvertible, Sendable 
 /// the fixture pairs it with a `delayBetweenRequests` floor of N × 1000 ms. It
 /// exists because a static fixture has no clock: a literal past date pins only
 /// the fall-through, and a far-future one is differently behaved per host.
+///
+/// N is one to nine digits, so the arithmetic is exact everywhere and every
+/// runner's date formatter stays in range; a longer N is an unrecognised token.
 public func resolveHeaderValue(_ value: String, now: Date) throws -> String {
     guard value.hasPrefix("{{"), value.hasSuffix("}}"), value.count >= 4 else { return value }
     let inner = value.dropFirst(2).dropLast(2)
     let prefix = "httpdate+"
     guard inner.hasPrefix(prefix), inner.hasSuffix("s") else { throw UnrecognisedHeaderToken(value: value) }
     let digits = inner.dropFirst(prefix.count).dropLast()
-    guard !digits.isEmpty, digits.allSatisfy({ $0.isASCII && $0.isNumber }), let n = Int(digits) else {
+    guard !digits.isEmpty, digits.count <= 9, digits.allSatisfy({ $0.isASCII && $0.isNumber }), let n = Int(digits) else {
         throw UnrecognisedHeaderToken(value: value)
     }
     let seconds = floor(now.timeIntervalSince1970) + Double(n) + 1
