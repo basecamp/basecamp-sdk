@@ -17,6 +17,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -666,8 +667,10 @@ func TestScenarioDriverRejectsUnmatchedActions(t *testing.T) {
 // MATHEMATICAL value is integral, so 1000.0 and 1e3 are integer instances a
 // schema-valid fixture may carry, and only the Go driver was refusing them —
 // the same float-spelled-int class FlexInt absorbs on the rich-text lane.
-// Integrality is decidable without precision loss: everything in range sits
-// far below float64's 2^53 exact-integer ceiling.
+// The literal is judged exactly, as text, by the one normalization walk the
+// loader runs before any typed decode; the ms fields' 10-year range is then
+// the value check's verdict, which is why an out-of-range spelling here is
+// named by the walk's int64 bound and an in-range-but-zero one by the range.
 func TestScenarioMsAcceptsIntegralNumberSpellings(t *testing.T) {
 	base := `{"name":"x","description":"d","config":{"stalenessMs":%s},"steps":[{"advance":{"ms":%s}}],"finally":{"state":"closed"}}`
 	cases := []struct {
@@ -690,21 +693,21 @@ func TestScenarioMsAcceptsIntegralNumberSpellings(t *testing.T) {
 		// A bomb is refused by its EFFECTIVE magnitude — significand length
 		// plus exponent — never by materializing the number, and never by
 		// the exponent's spelling alone: a significand can offset it.
-		{"exponent bomb", "1e999999999", "1000", "beyond any modeled ms value", 0},
+		{"exponent bomb", "1e999999999", "1000", "beyond any modeled value", 0},
 		{"significand offsets a negative exponent", "100000000000000000000000000000000000000000000e-41", "1000", "", 1000},
 		{"significand offsets to one hundred", "1000000000000000000000000000000000000000000e-40", "1000", "", 100},
 		{"fraction-led spelling of one", "0.00000000000000000000000000000000000000001e41", "1000", "", 1},
-		{"negative exponent bomb", "1e-999999999", "1000", "beyond any modeled ms value", 0},
+		{"negative exponent bomb", "1e-999999999", "1000", "beyond any modeled value", 0},
 		{"parse-bomb literal", strings.Repeat("9", 100001), "1000", "characters", 0},
 		// The platform's max integer as an exponent must not wrap the place
 		// arithmetic into acceptance.
-		{"max-int exponent", "1e9223372036854775807", "1000", "beyond any modeled ms value", 0},
-		{"min-int exponent", "1e-9223372036854775808", "1000", "beyond any modeled ms value", 0},
+		{"max-int exponent", "1e9223372036854775807", "1000", "beyond any modeled value", 0},
+		{"min-int exponent", "1e-9223372036854775808", "1000", "beyond any modeled value", 0},
 		// Exponents past int64 overflow the fixed-width parse itself; the
 		// range error takes the bound's own verdict, so the diagnostic is
 		// the same on every platform width.
-		{"beyond-int64 exponent", "1e9223372036854775808", "1000", "beyond any modeled ms value", 0},
-		{"beyond-int64 negative exponent", "1e-9223372036854775809", "1000", "beyond any modeled ms value", 0},
+		{"beyond-int64 exponent", "1e9223372036854775808", "1000", "beyond any modeled value", 0},
+		{"beyond-int64 negative exponent", "1e-9223372036854775809", "1000", "beyond any modeled value", 0},
 		// Zero short-circuits before any exponent expansion; a zero
 		// stalenessMs is then the RANGE check's refusal, not a parse error.
 		{"zero with a large exponent", "0e199999", "1000", "must be in [1,", 0},
@@ -725,6 +728,55 @@ func TestScenarioMsAcceptsIntegralNumberSpellings(t *testing.T) {
 			}
 			if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
 				t.Fatalf("err = %v, want one naming %q", err, tc.wantErr)
+			}
+		})
+	}
+}
+
+// TestScenarioIntegerFieldsAcceptIntegralNumberSpellings pins the same
+// number model onto EVERY schema integer, not only the ms fields: the
+// schema's top-level description promises drivers judge each numeric
+// literal by its exact value, and that promise is only true cross-driver if
+// a status, an id and a capacity spelled 200.0 / 1e2 / 1.0 load as their
+// integer spellings do. One normalization walk over the document is what
+// makes it true at once, so no field type has to opt in — and a non-integral
+// literal in any of them is refused in the schema's terms, naming the member.
+func TestScenarioIntegerFieldsAcceptIntegralNumberSpellings(t *testing.T) {
+	base := `{"name":"x","description":"d","config":{"liveBufferCapacity":%s},"steps":[{"expectMint":{"respond":{"status":%s,"body":{"ticket":"{{TICKET:1}}","expires_in":120,"url":"{{CABLE_URL:1}}"}}}}],"finally":{"state":"closed","delivered":{"exact":[%s]}}}`
+	load := func(t *testing.T, capacity, status, id string) (*scenario, error) {
+		t.Helper()
+		return parseScenario([]byte(fmt.Sprintf(base, capacity, status, id)), "x.json")
+	}
+	want, err := load(t, "1", "200", "100")
+	if err != nil {
+		t.Fatalf("the integer spellings must load: %v", err)
+	}
+	cases := []struct{ name, capacity, status, id string }{
+		{"float spellings", "1.0", "200.0", "100.0"},
+		{"exponent spellings", "1e0", "2e2", "1e2"},
+		{"mixed spellings", "1.0", "2000e-1", "0.1e3"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := load(t, tc.capacity, tc.status, tc.id)
+			if err != nil {
+				t.Fatalf("an integral spelling must load: %v", err)
+			}
+			if !reflect.DeepEqual(got, want) {
+				t.Errorf("loaded scenario differs from its integer-spelled twin:\n got %+v\nwant %+v", got, want)
+			}
+		})
+	}
+	refused := []struct{ name, capacity, status, id, wants string }{
+		{"non-integral capacity", "1.5", "200", "100", "config.liveBufferCapacity: 1.5 is not an integer"},
+		{"non-integral status", "1", "200.5", "100", "respond.status: 200.5 is not an integer"},
+		{"non-integral id", "1", "200", "100.25", "delivered.exact[0]: 100.25 is not an integer"},
+	}
+	for _, tc := range refused {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := load(t, tc.capacity, tc.status, tc.id)
+			if err == nil || !strings.Contains(err.Error(), tc.wants) {
+				t.Fatalf("err = %v, want one naming %q", err, tc.wants)
 			}
 		})
 	}

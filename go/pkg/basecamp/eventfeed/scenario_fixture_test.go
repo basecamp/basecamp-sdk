@@ -66,7 +66,11 @@ type scenarioConfig struct {
 // distinguishes: absent (the zero optionalMs — use the default), JSON null
 // (set, null — rejected, "type": "integer" refuses it), and a value (set,
 // ranged). encoding/json calls a value type's UnmarshalJSON for null where it
-// short-circuits a pointer's, which is exactly why this is not a *int64.
+// short-circuits a pointer's, which is exactly why this is not a *int64. The
+// number itself arrives already judged and rewritten to its integer spelling
+// by normalizeNumbers, so only the STRING gate remains here: a quoted "1000"
+// is a string instance the schema refuses, though json.Number's own
+// Unmarshal would take it.
 type optionalMs struct {
 	set  bool
 	null bool
@@ -79,133 +83,24 @@ func (o *optionalMs) UnmarshalJSON(data []byte) error {
 		o.null = true
 		return nil
 	}
-	v, err := parseIntegralMs(data)
-	o.v = v
-	return err
+	return unmarshalScenarioInt(data, &o.v)
 }
 
-// parseIntegralMs parses one JSON number the way draft 2020-12's "integer"
-// judges it: by MATHEMATICAL value, not spelling — 1000.0 and 1e3 are integer
-// instances a schema-valid fixture may carry, and only this driver was
-// refusing them (the float-spelled-int class FlexInt absorbs on the
-// rich-text lane). Integrality is a fact about the TEXT, which json.Number
-// preserves: a float64 detour rounds 1000.00000000000001 to exactly 1000 —
-// and 315575999999.99999 to exactly the maximum — before any check can look,
-// so the literal is judged exactly, with big.Rat. Two gates come first: a
-// quoted "1000" is a STRING instance the schema refuses, though json.Number's
-// own Unmarshal would take it; and an exponent is read as a NUMBER'S text
-// before anything is materialized, so an exponent bomb (1e999999999) is
-// refused for its magnitude, never expanded.
-func parseIntegralMs(data []byte) (int64, error) {
+// unmarshalScenarioInt decodes one already-normalized integer literal,
+// refusing a string instance in the schema's own terms.
+func unmarshalScenarioInt(data []byte, dst *int64) error {
 	trimmed := strings.TrimLeft(string(data), " \t\r\n")
 	if strings.HasPrefix(trimmed, `"`) {
-		return 0, fmt.Errorf("%s is a string: the schema's type is integer — quote-wrapping a number makes it a different instance", trimmed)
+		return fmt.Errorf("%s is a string: the schema's type is integer — quote-wrapping a number makes it a different instance", trimmed)
 	}
-	var n json.Number
-	if err := json.Unmarshal(data, &n); err != nil {
-		return 0, err
-	}
-	lit := n.String()
-	// A bomb is refused before anything is materialized, and by the value's
-	// EFFECTIVE magnitude, never the exponent's spelling alone — draft
-	// 2020-12 constrains the mathematical value, and a significand can
-	// offset any exponent (1e44-digits × e-41 is exactly 1000). Two string
-	// judgments suffice, both exact:
-	//   - the most significant nonzero digit's decimal place caps the
-	//     value: above place 13 nothing fits [0, maxScenarioMs] (12 digits);
-	//   - a least significant nonzero digit below the units place makes the
-	//     value non-integral outright (decimal digits do not carry), which
-	//     refuses 1e-999999999 without a 10^999999999 denominator.
-	// A length cap comes first so no multi-megabyte literal is ever walked
-	// into a rational — the schema's top-level description sanctions exactly
-	// this bound (a resource limit on spellings, not a value constraint), so
-	// refusing "1" + 100k zeros + e-100000 (mathematically 1) is conformant.
-	if len(lit) > 100000 {
-		return 0, fmt.Errorf("a %d-character number is beyond any modeled ms value (literals are capped at 100000 characters)", len(lit))
-	}
-	mant, expText := lit, ""
-	if i := strings.IndexAny(lit, "eE"); i >= 0 {
-		mant = lit[:i]
-		expText = strings.TrimPrefix(lit[i+1:], "+")
-	}
-	digits := strings.TrimPrefix(mant, "-")
-	point := strings.IndexByte(digits, '.')
-	intLen := len(digits)
-	if point >= 0 {
-		intLen = point
-		digits = digits[:point] + digits[point+1:]
-	}
-	firstNZ, lastNZ := -1, -1
-	for i := 0; i < len(digits); i++ {
-		if digits[i] >= '1' && digits[i] <= '9' {
-			if firstNZ < 0 {
-				firstNZ = i
-			}
-			lastNZ = i
-		}
-	}
-	if firstNZ < 0 {
-		// Zero, however spelled (0, 0.000, 0e200001): integral, the range
-		// judgment's to refuse, and decided before the exponent is even
-		// parsed — an exponent multiplies a significand, and this one is
-		// zero.
-		return 0, nil
-	}
-	exp := 0
-	if expText != "" {
-		// ParseInt at a FIXED width, not Atoi: int is 32 bits on some
-		// targets, where an exponent like 1e9223372036854775807 would fail
-		// as unreadable before reaching the magnitude judgment and change
-		// the diagnostic by platform. A 64-bit overflow can only mean the
-		// exponent is beyond the ±200000 bound below, so range errors take
-		// the bound's own verdict.
-		e, err := strconv.ParseInt(expText, 10, 64)
-		if err != nil {
-			if errors.Is(err, strconv.ErrRange) {
-				return 0, fmt.Errorf("%s is beyond any modeled ms value", lit)
-			}
-			return 0, fmt.Errorf("%s is not a number this driver can read", lit)
-		}
-		// Bound the exponent before any place arithmetic: at the platform's
-		// integer extremes, intLen - firstNZ + exp wraps and the magnitude
-		// judgments below judge garbage. The literal cap above bounds the
-		// significand at 100000 digits, so no in-range value needs an
-		// exponent beyond ±200000 to spell.
-		if e > 200000 || e < -200000 {
-			return 0, fmt.Errorf("%s is beyond any modeled ms value", lit)
-		}
-		exp = int(e)
-	}
-	{
-		// Digit i occupies decimal place intLen - i + exp (units = 1).
-		if msd := intLen - firstNZ + exp; msd > 13 {
-			return 0, fmt.Errorf("%s is beyond any modeled ms value", lit)
-		}
-		if lsd := intLen - lastNZ + exp; lsd < 1 {
-			return 0, fmt.Errorf("%s is not an integer: the schema's type is integer — a number whose mathematical value is integral", lit)
-		}
-	}
-	r, ok := new(big.Rat).SetString(lit)
-	if !ok {
-		return 0, fmt.Errorf("%s is not a number this driver can read", lit)
-	}
-	if !r.IsInt() {
-		return 0, fmt.Errorf("%s is not an integer: the schema's type is integer — a number whose mathematical value is integral", lit)
-	}
-	num := r.Num()
-	if !num.IsInt64() {
-		return 0, fmt.Errorf("%s is beyond any modeled ms value", lit)
-	}
-	return num.Int64(), nil
+	return json.Unmarshal(data, dst)
 }
 
 // scenarioMs is a required ms value under the same number model.
 type scenarioMs int64
 
 func (m *scenarioMs) UnmarshalJSON(data []byte) error {
-	v, err := parseIntegralMs(data)
-	*m = scenarioMs(v)
-	return err
+	return unmarshalScenarioInt(data, (*int64)(m))
 }
 
 // storeScript is the schema's scripted CheckpointStore.
@@ -442,6 +337,10 @@ func checkScenarioMs(what string, v, floor int64) error {
 // driver does not model.
 func parseScenario(raw []byte, file string) (*scenario, error) {
 	if err := rejectDuplicateKeys(raw); err != nil {
+		return nil, err
+	}
+	raw, err := normalizeNumbers(raw)
+	if err != nil {
 		return nil, err
 	}
 	top, err := objectKeys(raw)
@@ -1077,6 +976,179 @@ func rejectDuplicateKeys(raw []byte) error {
 			valueDone()
 		}
 	}
+}
+
+// normalizeNumbers rewrites every number literal in raw to its integer
+// spelling, judging each the way draft 2020-12's "integer" does: by
+// MATHEMATICAL value, not spelling — 1000.0, 1e3 and 200.0 are integer
+// instances a schema-valid fixture may carry, and the schema's every number
+// is an integer. One walk over the whole document, before any typed decode,
+// is what makes the schema's all-numeric cross-driver claim true for every
+// field at once: a status, an id, a capacity and a duration are all judged
+// here, and the typed script then reads plain integer spellings — so no
+// field needs its own number type, and adding a field cannot reopen the
+// class. Integrality is a fact about the TEXT, which json.Number preserves:
+// a float64 detour rounds 1000.00000000000001 to exactly 1000 before any
+// check can look, so the literal is judged exactly, with big.Rat. An
+// exponent is read as a NUMBER'S text before anything is materialized, so an
+// exponent bomb (1e999999999) is refused for its magnitude, never expanded.
+// Strings pass through untouched: a quoted "1000" stays the STRING instance
+// the schema refuses, for the typed decode to reject.
+func normalizeNumbers(raw []byte) ([]byte, error) {
+	dec := json.NewDecoder(bytes.NewReader(raw))
+	dec.UseNumber()
+	var doc any
+	if err := dec.Decode(&doc); err != nil {
+		return nil, err
+	}
+	if dec.More() {
+		return nil, fmt.Errorf("trailing JSON content")
+	}
+	if err := integralizeNumbers(doc, "fixture"); err != nil {
+		return nil, err
+	}
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	enc.SetEscapeHTML(false)
+	if err := enc.Encode(doc); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+// integralizeNumbers rewrites, in place, every json.Number under doc to its
+// integer spelling, naming the member path in any refusal.
+func integralizeNumbers(doc any, path string) error {
+	switch v := doc.(type) {
+	case map[string]any:
+		for key, member := range v {
+			at := path + "." + key
+			if n, ok := member.(json.Number); ok {
+				lit, err := integerSpelling(n.String())
+				if err != nil {
+					return fmt.Errorf("%s: %w", at, err)
+				}
+				v[key] = json.Number(lit)
+				continue
+			}
+			if err := integralizeNumbers(member, at); err != nil {
+				return err
+			}
+		}
+	case []any:
+		for i, member := range v {
+			at := fmt.Sprintf("%s[%d]", path, i)
+			if n, ok := member.(json.Number); ok {
+				lit, err := integerSpelling(n.String())
+				if err != nil {
+					return fmt.Errorf("%s: %w", at, err)
+				}
+				v[i] = json.Number(lit)
+				continue
+			}
+			if err := integralizeNumbers(member, at); err != nil {
+				return err
+			}
+		}
+	case json.Number:
+		// A bare top-level number is not a fixture; the typed decode says so.
+	}
+	return nil
+}
+
+// integerSpelling answers the plain decimal integer spelling of one JSON
+// number literal, or why it has none. A bomb is refused before anything is
+// materialized, and by the value's EFFECTIVE magnitude, never the exponent's
+// spelling alone — draft 2020-12 constrains the mathematical value, and a
+// significand can offset any exponent (1e44-digits × e-41 is exactly 1000).
+// Two string judgments suffice, both exact:
+//   - the most significant nonzero digit's decimal place caps the value:
+//     above place 19 nothing fits int64, the widest integer any schema
+//     field decodes into (the ms fields' 10-year range is judged after, on
+//     the value, since its floor differs by field);
+//   - a least significant nonzero digit below the units place makes the
+//     value non-integral outright (decimal digits do not carry), which
+//     refuses 1e-999999999 without a 10^999999999 denominator.
+//
+// A length cap comes first so no multi-megabyte literal is ever walked into
+// a rational — the schema's top-level description sanctions exactly this
+// bound (a resource limit on spellings, not a value constraint), so refusing
+// "1" + 100k zeros + e-100000 (mathematically 1) is conformant.
+func integerSpelling(lit string) (string, error) {
+	if len(lit) > 100000 {
+		return "", fmt.Errorf("a %d-character number is beyond any modeled value (literals are capped at 100000 characters)", len(lit))
+	}
+	mant, expText := lit, ""
+	if i := strings.IndexAny(lit, "eE"); i >= 0 {
+		mant = lit[:i]
+		expText = strings.TrimPrefix(lit[i+1:], "+")
+	}
+	digits := strings.TrimPrefix(mant, "-")
+	point := strings.IndexByte(digits, '.')
+	intLen := len(digits)
+	if point >= 0 {
+		intLen = point
+		digits = digits[:point] + digits[point+1:]
+	}
+	firstNZ, lastNZ := -1, -1
+	for i := 0; i < len(digits); i++ {
+		if digits[i] >= '1' && digits[i] <= '9' {
+			if firstNZ < 0 {
+				firstNZ = i
+			}
+			lastNZ = i
+		}
+	}
+	if firstNZ < 0 {
+		// Zero, however spelled (0, 0.000, 0e200001): integral, and decided
+		// before the exponent is even parsed — an exponent multiplies a
+		// significand, and this one is zero.
+		return "0", nil
+	}
+	exp := 0
+	if expText != "" {
+		// ParseInt at a FIXED width, not Atoi: int is 32 bits on some
+		// targets, where an exponent like 1e9223372036854775807 would fail
+		// as unreadable before reaching the magnitude judgment and change
+		// the diagnostic by platform. A 64-bit overflow can only mean the
+		// exponent is beyond the ±200000 bound below, so range errors take
+		// the bound's own verdict.
+		e, err := strconv.ParseInt(expText, 10, 64)
+		if err != nil {
+			if errors.Is(err, strconv.ErrRange) {
+				return "", fmt.Errorf("%s is beyond any modeled value", lit)
+			}
+			return "", fmt.Errorf("%s is not a number this driver can read", lit)
+		}
+		// Bound the exponent before any place arithmetic: at the platform's
+		// integer extremes, intLen - firstNZ + exp wraps and the magnitude
+		// judgments below judge garbage. The literal cap above bounds the
+		// significand at 100000 digits, so no in-range value needs an
+		// exponent beyond ±200000 to spell.
+		if e > 200000 || e < -200000 {
+			return "", fmt.Errorf("%s is beyond any modeled value", lit)
+		}
+		exp = int(e)
+	}
+	// Digit i occupies decimal place intLen - i + exp (units = 1).
+	if msd := intLen - firstNZ + exp; msd > 19 {
+		return "", fmt.Errorf("%s is beyond any modeled value", lit)
+	}
+	if lsd := intLen - lastNZ + exp; lsd < 1 {
+		return "", fmt.Errorf("%s is not an integer: the schema's type is integer — a number whose mathematical value is integral", lit)
+	}
+	r, ok := new(big.Rat).SetString(lit)
+	if !ok {
+		return "", fmt.Errorf("%s is not a number this driver can read", lit)
+	}
+	if !r.IsInt() {
+		return "", fmt.Errorf("%s is not an integer: the schema's type is integer — a number whose mathematical value is integral", lit)
+	}
+	num := r.Num()
+	if !num.IsInt64() {
+		return "", fmt.Errorf("%s is beyond any modeled value", lit)
+	}
+	return num.String(), nil
 }
 
 // decodeStrict decodes exactly one JSON value into dst, rejecting unknown
