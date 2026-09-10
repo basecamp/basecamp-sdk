@@ -739,7 +739,7 @@ timestamp or a bare year from being read as a date. An SDK whose stdlib parser t
 keeps them; an SDK whose parser takes a wider family of HTTP-date-shaped variants (Kotlin's ktor list)
 is inside the MAY, because every member is an HTTP-date shape. What this rules out is the accidental
 state that preceded it — two permissive by inheritance, four strict by inheritance, and the contract
-silent on which.
+silent on which. Shape is the template, not the alphabet of its tokens: a value in one of the three forms whose day-name is not one of the seven, or whose month is misspelt, is still an HTTP-date shape, and what the SDK honours is the date fields, which name the instant on their own. An SDK MAY enumerate the names (Swift's gate does); one that does not is not accepting a foreign shape, so no SDK needs a per-token regex for it.
 
 This algorithm defines **parsing** only — how a header value becomes a number of seconds. Which
 statuses honour the result, and what bounds the sleep it buys, is the next section; do not read a
