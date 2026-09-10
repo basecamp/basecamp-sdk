@@ -41,6 +41,13 @@ pub trait HttpClient: Send + Sync {
     async fn send(&self, request: Request<Bytes>) -> Result<Response<Body>, Error>;
 }
 
+#[async_trait]
+impl<H: HttpClient + ?Sized> HttpClient for std::sync::Arc<H> {
+    async fn send(&self, request: Request<Bytes>) -> Result<Response<Body>, Error> {
+        (**self).send(request).await
+    }
+}
+
 /// A response body as it arrives, read once.
 ///
 /// An implementation builds one with [`Body::from_stream`], passing along the length the

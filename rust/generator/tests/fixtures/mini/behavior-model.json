@@ -1,0 +1,9 @@
+{
+  "operations": {
+    "ListWidgets": {"readonly": true, "pagination": {"style": "link"}, "retry": {"max": 3, "base_delay_ms": 1000, "backoff": "exponential", "retry_on": [429, 503]}},
+    "CreateWidget": {"retry": {"max": 2, "base_delay_ms": 1000, "backoff": "exponential", "retry_on": [429, 503]}},
+    "ReplaceWidget": {"idempotent": true, "write": {"mode": "replace", "clearsOmitted": true, "preservedOnOmission": ["color"]}, "retry": {"max": 3, "base_delay_ms": 1000, "backoff": "exponential", "retry_on": [503]}},
+    "TrashWidget": {"idempotent": true, "retry": {"max": 3, "base_delay_ms": 1000, "backoff": "exponential", "retry_on": [429, 503]}},
+    "UpdateGadgetLogo": {"idempotent": true, "retry": {"max": 2, "base_delay_ms": 1000, "backoff": "exponential", "retry_on": [429, 503]}}
+  }
+}
