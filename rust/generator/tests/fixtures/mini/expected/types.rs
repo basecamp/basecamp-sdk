@@ -14,7 +14,6 @@ use crate::types::{AuthRoutableUrl, Date, DateTime, FlexibleTime, SensitiveStrin
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct CreateWidgetRequestContent {
     /// `name`.
-    #[serde(default)]
     pub name: String,
     /// `color`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -38,10 +37,9 @@ pub type ListWidgetsResponseContent = Vec<Widget>;
 #[non_exhaustive]
 pub struct Widget {
     /// `id`.
-    #[serde(default, deserialize_with = "crate::types::flexible_i64::deserialize")]
+    #[serde(deserialize_with = "crate::types::flexible_i64::deserialize")]
     pub id: i64,
     /// `name`.
-    #[serde(default)]
     pub name: String,
     /// Always present; `null` when unset.
     #[serde(deserialize_with = "serde::Deserialize::deserialize")]
@@ -89,7 +87,6 @@ pub struct Widget {
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct Owner {
     /// `id`.
-    #[serde(default)]
     pub id: i64,
 }
 

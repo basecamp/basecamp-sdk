@@ -30,3 +30,4 @@ missing_errors_doc = "allow"        # every op returns Result<_, Error>; the err
 missing_panics_doc = "allow"        # no public fn panics; enforced by review, not doc lines
 struct_excessive_bools = "allow"    # route metadata is a record of booleans by nature
 return_self_not_must_use = "allow"  # builders return Self; noise
+default_trait_access = "allow"      # `&Default::default()` is the intended spelling for an all-optional params struct

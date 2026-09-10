@@ -1,5 +1,7 @@
 //! SPEC §6 wire-level cases, from the bodies in `conformance/tests/error-mapping.json`.
 
+#![allow(clippy::unreadable_literal)]
+
 mod support;
 
 use basecamp_sdk::ErrorCode;
@@ -87,37 +89,37 @@ async fn gateway_statuses_are_retryable_api_errors_but_not_retried() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(start_paused = true)]
 async fn rate_limits_are_retried_then_surfaced_retryable() {
-    let server = MockServer::start().await;
-    Mock::given(method("GET"))
-        .and(path("/999/projects.json"))
-        .respond_with(
-            ResponseTemplate::new(429)
-                .set_body_string(r#"{"error": "Rate limit exceeded"}"#)
-                .insert_header("Retry-After", "0")
-                .insert_header("X-Request-Id", "req-rate-789"),
+    let rate_limited = || {
+        support::Answer::Status(
+            429,
+            vec![("retry-after", "0"), ("x-request-id", "req-rate-789")],
+            r#"{"error": "Rate limit exceeded"}"#,
         )
-        .expect(3)
-        .mount(&server)
-        .await;
-    let client = account_with_no_jitter(&server);
-    tokio::time::pause();
-    let error = client
+    };
+    let script = support::Scripted::new(vec![
+        rate_limited(),
+        rate_limited(),
+        rate_limited(),
+        rate_limited(),
+    ]);
+    let mut config = basecamp_sdk::Config::default();
+    config.max_jitter = std::time::Duration::ZERO;
+    let error = support::scripted_account(script.clone(), config)
         .projects()
         .list(&Default::default())
         .await
         .unwrap_err();
     assert_eq!(error.code(), ErrorCode::RateLimit);
     assert!(error.is_retryable());
-    assert_eq!(error.retry_after(), None);
+    assert_eq!(error.retry_after(), None, "a zero Retry-After is no value");
     assert_eq!(error.request_id(), Some("req-rate-789"));
-}
-
-fn account_with_no_jitter(server: &MockServer) -> basecamp_sdk::AccountClient {
-    let mut config = basecamp_sdk::Config::default();
-    config.max_jitter = std::time::Duration::ZERO;
-    support::account_with(server, config)
+    assert_eq!(
+        script.sent_count(),
+        3,
+        "three attempts, then the last answer is surfaced"
+    );
 }
 
 #[tokio::test]
@@ -285,8 +287,8 @@ async fn a_malformed_2xx_body_is_a_statusless_api_error_keeping_the_request_id()
 
 #[tokio::test]
 async fn an_unparseable_body_yields_the_fixed_phrase_and_keeps_the_body() {
-    let error = error_for(503, "<html>down</html>", &[]).await;
-    assert_eq!(error.message(), "Request failed (HTTP 503)");
-    assert_eq!(error.body(), Some(b"<html>down</html>".as_slice()));
-    assert_eq!(error.to_string(), "Request failed (HTTP 503)");
+    let error = error_for(404, "<html>gone</html>", &[]).await;
+    assert_eq!(error.message(), "Request failed (HTTP 404)");
+    assert_eq!(error.body(), Some(b"<html>gone</html>".as_slice()));
+    assert_eq!(error.to_string(), "Request failed (HTTP 404)");
 }

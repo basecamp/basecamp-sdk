@@ -17,135 +17,100 @@ fn no_jitter() -> Config {
     config
 }
 
-async fn mount_sequence(
-    server: &MockServer,
-    verb: &str,
-    route: &str,
-    responses: Vec<ResponseTemplate>,
-) {
-    let count = responses.len();
-    for (index, response) in responses.into_iter().enumerate() {
-        let mock = Mock::given(method(verb))
-            .and(path(route))
-            .respond_with(response);
-        let mock = if index + 1 < count {
-            mock.up_to_n_times(1)
-        } else {
-            mock
-        };
-        mock.mount(server).await;
-    }
+fn uri(request: &basecamp_sdk::http::Request<bytes::Bytes>) -> String {
+    request.uri().to_string()
 }
 
 #[tokio::test(start_paused = true)]
 async fn a_get_retries_on_503_with_exponential_backoff() {
-    let server = MockServer::start().await;
-    mount_sequence(
-        &server,
-        "GET",
-        "/999/projects.json",
-        vec![
-            ResponseTemplate::new(503).set_body_string("null"),
-            ResponseTemplate::new(503).set_body_string("null"),
-            ResponseTemplate::new(200).set_body_json(serde_json::json!([])),
-        ],
-    )
-    .await;
+    let script = Scripted::new(vec![
+        Answer::Status(503, vec![], "null"),
+        Answer::Status(503, vec![], "null"),
+        Answer::Status(200, vec![], "[]"),
+    ]);
     let started = tokio::time::Instant::now();
-    let page = account_with(&server, no_jitter())
+    let page = scripted_account(script.clone(), no_jitter())
         .projects()
         .list(&Default::default())
         .await
         .unwrap();
     assert!(page.is_empty());
-    assert_eq!(server.received_requests().await.unwrap().len(), 3);
+    assert_eq!(script.sent_count(), 3);
+    assert_eq!(
+        started.elapsed(),
+        Duration::from_millis(3000),
+        "1s then 2s of backoff, no jitter"
+    );
+    let sent = script.sent.lock().unwrap();
     assert!(
-        started.elapsed() >= Duration::from_millis(3000),
-        "1s then 2s of backoff"
+        sent.iter()
+            .all(|request| uri(request) == "https://3.basecampapi.com/999/projects.json")
     );
 }
 
 #[tokio::test(start_paused = true)]
 async fn a_429_waits_the_retry_after_it_named() {
-    let server = MockServer::start().await;
-    mount_sequence(
-        &server,
-        "GET",
-        "/999/projects/12345",
-        vec![
-            ResponseTemplate::new(429).insert_header("Retry-After", "2"),
-            ResponseTemplate::new(200).set_body_string(PROJECT),
-        ],
-    )
-    .await;
+    let script = Scripted::new(vec![
+        Answer::Status(429, vec![("retry-after", "2")], "null"),
+        Answer::Status(200, vec![], PROJECT),
+    ]);
     let started = tokio::time::Instant::now();
-    let project = account_with(&server, no_jitter())
+    let project = scripted_account(script.clone(), no_jitter())
         .projects()
         .get(12345)
         .await
         .unwrap();
     assert_eq!(project.id, 12345);
-    assert_eq!(server.received_requests().await.unwrap().len(), 2);
-    let elapsed = started.elapsed();
-    assert!(
-        elapsed >= Duration::from_secs(2) && elapsed < Duration::from_millis(2500),
-        "{elapsed:?}"
+    assert_eq!(script.sent_count(), 2);
+    assert_eq!(
+        started.elapsed(),
+        Duration::from_secs(2),
+        "the server's delay, no jitter"
     );
 }
 
 #[tokio::test(start_paused = true)]
 async fn unusable_retry_after_values_fall_through_to_backoff() {
-    for value in ["Wed, 09 Jun 2021 10:18:14 GMT", "0", "-5", "120junk", "+5"] {
-        let server = MockServer::start().await;
-        mount_sequence(
-            &server,
-            "GET",
-            "/999/projects/12345",
-            vec![
-                ResponseTemplate::new(429).insert_header("Retry-After", value),
-                ResponseTemplate::new(200).set_body_string(PROJECT),
-            ],
-        )
-        .await;
+    for value in [
+        "Wed, 09 Jun 2021 10:18:14 GMT",
+        "0",
+        "-5",
+        "120junk",
+        "+5",
+        "2.5",
+    ] {
+        let script = Scripted::new(vec![
+            Answer::Status(429, vec![("retry-after", value)], "null"),
+            Answer::Status(200, vec![], PROJECT),
+        ]);
         let started = tokio::time::Instant::now();
-        account_with(&server, no_jitter())
+        scripted_account(script.clone(), no_jitter())
             .projects()
             .get(12345)
             .await
             .unwrap();
+        assert_eq!(script.sent_count(), 2, "{value}");
         assert_eq!(
-            server.received_requests().await.unwrap().len(),
-            2,
-            "{value}"
-        );
-        let elapsed = started.elapsed();
-        assert!(
-            elapsed >= Duration::from_secs(1) && elapsed < Duration::from_millis(1500),
-            "{value}: {elapsed:?}"
+            started.elapsed(),
+            Duration::from_secs(1),
+            "{value}: the local curve"
         );
     }
 }
 
 #[tokio::test(start_paused = true)]
 async fn a_retry_after_on_503_is_honoured_too() {
-    let server = MockServer::start().await;
-    mount_sequence(
-        &server,
-        "GET",
-        "/999/projects/12345",
-        vec![
-            ResponseTemplate::new(503).insert_header("Retry-After", "3"),
-            ResponseTemplate::new(200).set_body_string(PROJECT),
-        ],
-    )
-    .await;
+    let script = Scripted::new(vec![
+        Answer::Status(503, vec![("retry-after", "3")], ""),
+        Answer::Status(200, vec![], PROJECT),
+    ]);
     let started = tokio::time::Instant::now();
-    account_with(&server, no_jitter())
+    scripted_account(script.clone(), no_jitter())
         .projects()
         .get(12345)
         .await
         .unwrap();
-    assert!(started.elapsed() >= Duration::from_secs(3));
+    assert_eq!(started.elapsed(), Duration::from_secs(3));
 }
 
 #[tokio::test]
@@ -190,22 +155,23 @@ async fn a_post_is_not_retried_unless_the_model_says_idempotent() {
 
 #[tokio::test(start_paused = true)]
 async fn an_idempotent_post_is_retried() {
-    let server = MockServer::start().await;
-    mount_sequence(
-        &server,
-        "POST",
-        "/999/todos/2/completion.json",
-        vec![ResponseTemplate::new(503), ResponseTemplate::new(204)],
-    )
-    .await;
-    account_with(&server, no_jitter())
+    let script = Scripted::new(vec![
+        Answer::Status(503, vec![], ""),
+        Answer::Status(204, vec![], ""),
+    ]);
+    scripted_account(script.clone(), no_jitter())
         .todos()
         .complete(2)
         .await
         .unwrap();
-    assert_eq!(server.received_requests().await.unwrap().len(), 2);
+    assert_eq!(script.sent_count(), 2);
+    let sent = script.sent.lock().unwrap();
+    assert_eq!(
+        uri(&sent[0]),
+        "https://3.basecampapi.com/999/todos/2/completion.json"
+    );
+    assert_eq!(sent[0].method(), basecamp_sdk::http::Method::POST);
 }
-
 #[tokio::test]
 async fn statuses_outside_the_declared_set_are_never_retried() {
     for (status, body, code) in [
@@ -256,20 +222,18 @@ async fn max_retries_zero_sends_exactly_one_request() {
 
 #[tokio::test(start_paused = true)]
 async fn the_operation_ceiling_caps_a_raised_client_budget() {
-    let server = MockServer::start().await;
-    Mock::given(method("PUT"))
-        .and(path("/999/account/name.json"))
-        .respond_with(ResponseTemplate::new(503))
-        .expect(2)
-        .mount(&server)
-        .await;
+    let script = Scripted::new(vec![
+        Answer::Status(503, vec![], ""),
+        Answer::Status(503, vec![], ""),
+    ]);
     let request = basecamp_sdk::models::UpdateAccountNameRequestContent { name: "x".into() };
-    let error = account_with(&server, no_jitter().with_max_retries(10))
+    let error = scripted_account(script.clone(), no_jitter().with_max_retries(10))
         .account()
         .update_account_name(&request)
         .await
         .unwrap_err();
     assert_eq!(error.http_status(), Some(503));
+    assert_eq!(script.sent_count(), 2);
     assert_eq!(
         basecamp_sdk::routes::UPDATE_ACCOUNT_NAME
             .metadata
@@ -278,7 +242,6 @@ async fn the_operation_ceiling_caps_a_raised_client_budget() {
         2
     );
 }
-
 #[tokio::test]
 async fn update_project_client_access_declares_only_503() {
     assert_eq!(
@@ -335,15 +298,13 @@ async fn network_errors_retry_under_the_idempotency_gate() {
 
 #[tokio::test(start_paused = true)]
 async fn the_operation_deadline_bounds_the_whole_call() {
-    let server = MockServer::start().await;
-    Mock::given(method("GET"))
-        .and(path("/999/projects/12345"))
-        .respond_with(ResponseTemplate::new(429).insert_header("Retry-After", "30"))
-        .mount(&server)
-        .await;
+    let script = Scripted::new(vec![
+        Answer::Status(429, vec![("retry-after", "30")], ""),
+        Answer::Status(200, vec![], PROJECT),
+    ]);
     let mut config = no_jitter();
     config.operation_deadline = Some(Duration::from_secs(5));
-    let error = account_with(&server, config)
+    let error = scripted_account(script.clone(), config)
         .projects()
         .get(12345)
         .await
@@ -351,9 +312,12 @@ async fn the_operation_deadline_bounds_the_whole_call() {
     assert!(error.is_deadline_exceeded());
     assert_eq!(error.code(), ErrorCode::Network);
     assert!(!error.is_retryable());
-    assert_eq!(server.received_requests().await.unwrap().len(), 1);
+    assert_eq!(
+        script.sent_count(),
+        1,
+        "the wait outlives the deadline, so nothing more is sent"
+    );
 }
-
 #[tokio::test(start_paused = true)]
 async fn hooks_see_every_attempt_and_the_retry_delay() {
     use basecamp_sdk::hooks::{Hooks, OperationInfo, OperationResult, RequestInfo, RequestResult};
@@ -403,28 +367,19 @@ async fn hooks_see_every_attempt_and_the_retry_delay() {
         }
     }
 
-    let server = MockServer::start().await;
-    mount_sequence(
-        &server,
-        "GET",
-        "/999/projects/12345",
-        vec![
-            ResponseTemplate::new(503),
-            ResponseTemplate::new(200).set_body_string(PROJECT),
-        ],
-    )
-    .await;
+    let script = Scripted::new(vec![
+        Answer::Status(503, vec![], ""),
+        Answer::Status(200, vec![], PROJECT),
+    ]);
     let log = Arc::new(Log::default());
-    let client = basecamp_sdk::Client::builder(
-        no_jitter()
-            .with_base_url(server.uri())
-            .with_timeout(Duration::from_secs(86_400)),
-    )
-    .access_token("t")
-    .hooks(log.clone())
-    .build()
-    .unwrap()
-    .for_account("999");
+    let client =
+        basecamp_sdk::Client::builder(no_jitter().with_base_url("https://3.basecampapi.com"))
+            .access_token("t")
+            .http_client(script)
+            .hooks(log.clone())
+            .build()
+            .unwrap()
+            .for_account("999");
     client.projects().get(12345).await.unwrap();
     assert_eq!(
         *log.0.lock().unwrap(),

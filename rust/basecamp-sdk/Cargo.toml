@@ -62,3 +62,7 @@ wiremock = "0.6"
 
 [lints]
 workspace = true
+
+[[example]]
+name = "custom_http_client"
+required-features = ["reqwest"]

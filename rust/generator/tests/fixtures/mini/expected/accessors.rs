@@ -5,6 +5,7 @@
 use crate::client::AccountClient;
 use crate::generated::services;
 
+#[rustfmt::skip]
 impl AccountClient {
     /// `Account` operations.
     pub fn account(&self) -> services::account::AccountService<'_> {
@@ -15,4 +16,5 @@ impl AccountClient {
     pub fn widgets(&self) -> services::widgets::WidgetsService<'_> {
         services::widgets::WidgetsService::new(self)
     }
+
 }

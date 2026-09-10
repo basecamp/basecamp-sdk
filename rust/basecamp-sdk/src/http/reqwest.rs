@@ -21,7 +21,11 @@ pub struct ReqwestClient {
 impl ReqwestClient {
     /// A client that gives an answer `timeout` to arrive.
     pub fn with_timeout(timeout: Duration) -> Result<ReqwestClient, Error> {
-        ReqwestClient::from_builder(reqwest::Client::builder().timeout(timeout))
+        ReqwestClient::from_builder(
+            reqwest::Client::builder()
+                .timeout(timeout)
+                .default_headers(crate::http::HeaderMap::new()),
+        )
     }
 
     /// A client built from settings of the caller's own — a proxy, a root certificate, a set

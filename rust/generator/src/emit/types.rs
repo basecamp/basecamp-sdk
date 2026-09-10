@@ -96,17 +96,13 @@ fn render_struct(out: &mut String, schema: &Schema, fields: &[Field]) {
                 format!("Option<{kind}>")
             }
             (true, false, FieldType::FlexibleInt64) => {
-                attributes.push("default".into());
                 attributes
                     .push("deserialize_with = \"crate::types::flexible_i64::deserialize\"".into());
                 kind
             }
-            // A moment has no zero value worth reading in for an absent key.
-            (true, false, FieldType::DateTime | FieldType::Date | FieldType::FlexibleTime) => kind,
-            (true, false, _) => {
-                attributes.push("default".into());
-                kind
-            }
+            // A required member is always present (SPEC §10): an absent key is a malformed
+            // body, never a zero value read in its place.
+            (true, false, _) => kind,
             (false, _, FieldType::FlexInt) => {
                 attributes.push("default".into());
                 attributes

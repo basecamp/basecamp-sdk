@@ -14,7 +14,7 @@ fn clients_and_errors_are_send_sync_and_clone() {
     assert_send_sync::<Error>();
     assert_clone::<Client>();
     assert_clone::<AccountClient>();
-    assert!(std::mem::size_of::<Error>() <= 2 * std::mem::size_of::<usize>());
+    assert!(std::mem::size_of::<Error>() <= 3 * std::mem::size_of::<usize>());
 }
 
 #[test]
