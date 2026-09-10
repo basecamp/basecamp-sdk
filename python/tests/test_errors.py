@@ -5,6 +5,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 
 from basecamp.errors import (
+    MAX_RETRY_AFTER_SECONDS,
     AmbiguousError,
     ApiError,
     AuthError,
@@ -241,6 +242,25 @@ class TestParseRetryAfter:
 
     def test_negative_returns_none(self):
         assert _parse_retry_after("-5") is None
+
+    def test_sign_is_not_a_delay(self):
+        # RFC 9110's 1*DIGIT has no sign; int() would have read +5 as 5.
+        assert _parse_retry_after("+5") is None
+
+    def test_over_range_saturates_at_the_ceiling(self):
+        # No digit string is malformed for its width; before the ceiling the
+        # arbitrary-precision int reached float() on the retry path and raised.
+        assert _parse_retry_after("0120") == 120
+        assert _parse_retry_after("2147483647") == MAX_RETRY_AFTER_SECONDS
+        assert _parse_retry_after("2147483648") == MAX_RETRY_AFTER_SECONDS
+        assert _parse_retry_after("9" * 400) == MAX_RETRY_AFTER_SECONDS
+        assert _parse_retry_after("Fri, 31 Dec 9999 23:59:59 GMT") == MAX_RETRY_AFTER_SECONDS
+
+    def test_asctime_form_is_read_as_utc(self):
+        # parsedate_to_datetime hands the zoneless asctime form back naive;
+        # subtracting an aware now used to raise TypeError, swallowed into None.
+        now = datetime(2021, 6, 9, 10, 18, 14, tzinfo=UTC)
+        assert _parse_retry_after("Wed Jun  9 10:18:17 2021", now=now) == 3
 
     def test_none(self):
         assert _parse_retry_after(None) is None
