@@ -528,6 +528,15 @@ func decodeMessageEvent(raw json.RawMessage) (Event, error) {
 		// JSON null carries no value: the same decode shape as an absent key.
 		return Event{}, newInvalidFrameError(invalidFrameEventDecode)
 	}
+	// The schema's value bounds (pushEvent: every id `minimum: 1`, every
+	// string `minLength: 1`): a zero or negative id and an empty kind,
+	// event_type or action are out of contract, and a frame carrying one is
+	// the decode shape rather than an event that reaches delivery and the
+	// dedup ledger with a key nothing real can share.
+	if *id < 1 || *bucketID < 1 || *creatorID < 1 || *recordingID < 1 ||
+		*kind == "" || *eventType == "" || *action == "" {
+		return Event{}, newInvalidFrameError(invalidFrameEventDecode)
+	}
 	return Event{
 		ID:               *id,
 		Kind:             *kind,

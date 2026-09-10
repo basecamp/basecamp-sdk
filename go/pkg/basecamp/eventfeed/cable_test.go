@@ -336,6 +336,16 @@ func TestInvalidFrameErrorRendersShapeOnly(t *testing.T) {
 			wantShape: invalidFrameEventDecode,
 		},
 		{
+			name: "event decode shape, out-of-bounds values",
+			err: mustErr(t, func() error {
+				// Every key present and well-typed; id is below the schema's
+				// minimum of 1 and action is below its minLength of 1.
+				_, err := decodeMessageEvent([]byte(`{"id":0,"kind":"message","event_type":"message.created","action":"","created_at":"2026-01-01T00:00:00Z","bucket_id":2,"creator_id":3,"recording_id":900,"visible_to_clients":false}`))
+				return err
+			}),
+			wantShape: invalidFrameEventDecode,
+		},
+		{
 			name: "parse shape, wrong-typed identifier",
 			err: mustErr(t, func() error {
 				_, err := parseFrame([]byte(`{"type":"confirm_subscription","identifier":["` + frameCanary + `"]}`))
