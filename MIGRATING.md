@@ -49,13 +49,17 @@ are source-breaking.
   - Go: `UpdateGaugeNeedleRequest.Description` stays `*string`, but `nil` is
     refused before the request as a usage error; it never left the
     description untouched, it produced the 400.
+  - Rust: `UpdateGaugeNeedleRequest { gauge_needle }` takes a
+    `GaugeNeedleUpdatePayload` rather than an `Option`, and its
+    `description` is a `String` rather than an `Option<String>`.
 - **`GaugeNeedle.comment_count` is required.** bc3 emits the singular key
   unconditionally (distinct from the envelope's plural `comments_count`), so
   the spec models it `@required`: Swift's public `GaugeNeedle` initializer
   gains a required `commentCount:` parameter, TypeScript's and Python's
-  model types gain a required member, and Go's `GaugeNeedle` gains
-  `CommentCount int32`. Code that constructs these values by hand has to
-  supply it; code that decodes them from the wire gets it for free.
+  model types gain a required member, Go's `GaugeNeedle` gains
+  `CommentCount int32`, and Rust's gains `comment_count: i32`. Code that
+  constructs these values by hand has to supply it; code that decodes them
+  from the wire gets it for free.
 - **Go: `Gauge.PreviousNeedlePosition` is `*int32`, not `int32`.** bc3 emits
   the key as JSON `null` for a gauge whose only needle is its first, and the
   value type decoded that to `0` — the same value as a genuine move from

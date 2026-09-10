@@ -1265,7 +1265,11 @@ pub type CreateFolderResponseContent = FolderWithProjects;
 pub struct CreateGaugeNeedleRequestContent {
     /// `gauge_needle`.
     pub gauge_needle: GaugeNeedlePayload,
-    /// Who to notify: "everyone", "working_on", "custom", or omit for nobody
+    /// Who to notify: "everyone", "default" (the project's existing
+    /// subscribers), or "custom" (the people in `subscriptions`). Omit for
+    /// nobody: bc3 defaults `notify` to "custom", which with no `subscriptions`
+    /// notifies no one, and any unrecognized value (`Subscribers#find_subscribers`
+    /// accepts exactly these three) falls through to nobody as well.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub notify: Option<String>,
     /// Array of people IDs to notify (only used when notify is "custom")
@@ -2411,7 +2415,11 @@ pub struct Gauge {
     /// `last_needle_position`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub last_needle_position: Option<i32>,
-    /// `previous_needle_position`.
+    /// Emitted alongside the other needle keys (so optional, like them), and
+    /// JSON `null` for a gauge whose only needle is its first — there is no
+    /// previous position yet. The enhance pass layers `nullable: true` onto the
+    /// OpenAPI so the static SDKs type the value as nullable rather than
+    /// flattening the first needle's null into a real 0.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub previous_needle_position: Option<i32>,
 }
@@ -2485,6 +2493,11 @@ pub struct GaugeNeedle {
     /// `position`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub position: Option<i32>,
+    /// Comment count of the needle: the singular branch-partial key that
+    /// gauges/needles/_needle.json.jbuilder emits unconditionally, distinct from
+    /// the envelope's plural `comments_count`, which a needle also carries. The
+    /// same pair SearchResult models.
+    pub comment_count: i32,
 }
 
 /// The `GaugeNeedlePayload` shape of the Basecamp API.
@@ -2503,9 +2516,11 @@ pub struct GaugeNeedlePayload {
 /// The `GaugeNeedleUpdatePayload` shape of the Basecamp API.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct GaugeNeedleUpdatePayload {
-    /// Rich text (HTML) description
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub description: Option<String>,
+    /// Rich text (HTML) description. Required: it is the only member bc3's
+    /// update accepts (`needle_params.except(:color, :position)`), and
+    /// `params.require(:gauge_needle)` rejects an empty wrapper as missing, so a
+    /// payload without it is the same 400 as no wrapper at all.
+    pub description: String,
 }
 
 /// The `GaugeTogglePayload` shape of the Basecamp API.
@@ -6142,8 +6157,7 @@ pub type UpdateFolderResponseContent = FolderWithProjects;
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct UpdateGaugeNeedleRequestContent {
     /// `gauge_needle`.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub gauge_needle: Option<GaugeNeedleUpdatePayload>,
+    pub gauge_needle: GaugeNeedleUpdatePayload,
 }
 
 /// `UpdateGaugeNeedleResponseContent`.

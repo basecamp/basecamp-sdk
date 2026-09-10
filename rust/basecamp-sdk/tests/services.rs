@@ -503,7 +503,7 @@ async fn gauges_gauge_needle_reaches_the_wire() {
         .and(header("Authorization", "Bearer test-token"))
         .and(header("Accept", "application/json"))
         .and(header("User-Agent", basecamp_sdk::version::default_user_agent().as_str()))
-        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({"created_at": "2025-01-01T00:00:00Z", "description_attachments": [], "id": 1, "updated_at": "2025-01-01T00:00:00Z"})))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({"comment_count": 0, "created_at": "2025-01-01T00:00:00Z", "description_attachments": [], "id": 1, "updated_at": "2025-01-01T00:00:00Z"})))
         .expect(1)
         .mount(&server)
         .await;
