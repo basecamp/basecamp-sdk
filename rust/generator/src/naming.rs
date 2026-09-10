@@ -289,10 +289,7 @@ mod tests {
             naming.method_for("GetProjectTimeline").unwrap(),
             "project_timeline"
         );
-        assert_eq!(
-            naming.method_for("CreateScheduleEntry").unwrap(),
-            "create"
-        );
+        assert_eq!(naming.method_for("CreateScheduleEntry").unwrap(), "create");
         assert_eq!(naming.method_for("Search").unwrap(), "search");
         assert_eq!(
             naming.method_for("RecordProjectVisit").unwrap(),
