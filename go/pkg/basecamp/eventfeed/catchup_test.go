@@ -16,6 +16,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -3516,4 +3517,242 @@ func TestAuthAndFilterTerminalsCarryNoContinuationURL(t *testing.T) {
 		}
 		assertClean(t, terminal)
 	})
+}
+
+// TestParkedFatalSurvivesALateGraceWakeAtThePageBoundary: a protocol-fatal
+// disconnect deferred while a poll was in flight is parked in the slot, and
+// the deferral latches a grace wake on the staleness timer. When the page
+// returns before the grace deadline but its delivery runs past it, the wake
+// has fired by the time the walk reaches the page boundary — and probing the
+// socket there BEFORE dispatching the parked verdict read the wake as an
+// expiry, disposed the attempt (clearing the slot), and reconnected into the
+// rejection the server had already declared terminal.
+func TestParkedFatalSurvivesALateGraceWakeAtThePageBoundary(t *testing.T) {
+	store := feedtest.NewStore()
+	store.Stored("pos-0")
+	var mu sync.Mutex
+	var ages []time.Duration
+	var h *harness
+	var delivered sync.Once
+	h = storedHarness(t, store, eventfeed.WithObserver(eventfeed.Observer{
+		StaleConnection: func(age time.Duration) {
+			mu.Lock()
+			ages = append(ages, age)
+			mu.Unlock()
+		},
+		PageDelivered: func(int, string) {
+			delivered.Do(func() {
+				// The page's delivery runs past the grace deadline: the
+				// latched wake fires before the walk reaches the boundary.
+				h.clock.Advance(staleAfter)
+			})
+		},
+	}))
+	h.minter.ScriptTicket(ticket(1))
+	// A reconnecting connector ends at Terminal(mint_failed) with two mint
+	// calls; a correct one at Terminal(protocol_fatal) with one.
+	h.minter.ScriptError(&eventfeed.MintError{Kind: eventfeed.MintUnrecoverable})
+	h.polls.ScriptPage(eventfeed.PollPage{Position: "pos-1", Next: testOrigin + "/999/events.json?after=1"})
+	h.polls.ScriptPage(eventfeed.PollPage{Position: "pos-2"})
+	h.drainHandled()
+	deferral := &deferralWatch{ch: make(chan struct{}, 4)}
+	h.conn.OnFrameDeferred(func() { deferral.ch <- struct{}{} })
+	t.Cleanup(func() { deferral.report(t) })
+
+	var conn *feedtest.Conn
+	var once sync.Once
+	h.polls.OnCall(func(feedtest.PollCall) {
+		once.Do(func() {
+			// The fatal is parked while the first page is still in flight;
+			// the call then returns normally, inside the grace phase.
+			conn.Serve(frameDisconnect("invalid_event_stream_command", false))
+			deferral.await()
+		})
+	})
+	h.start()
+	conn = h.driveToSubscribed()
+	conn.Serve(frameConfirm(noFilterIdentifier))
+	h.awaitEndOrReconnect()
+	h.join()
+
+	_, terminal, _ := h.snapshot()
+	if terminal == nil || terminal.Reason != eventfeed.ReasonProtocolFatal {
+		t.Fatalf("terminal = %v, want reason %q — the parked verdict was the server's own", terminal, eventfeed.ReasonProtocolFatal)
+	}
+	if got := h.minter.Calls(); got != 1 {
+		t.Fatalf("mint calls = %d, want 1: a protocol-fatal rejection must not reconnect", got)
+	}
+	assertPositions(t, store.Saves(), "pos-1")
+	mu.Lock()
+	defer mu.Unlock()
+	if len(ages) != 0 {
+		t.Fatalf("StaleConnection ages = %v, want none — the grace wake is not an expiry", ages)
+	}
+}
+
+// TestExpiredStalenessBeforeTheEntryPollIsNotDeferred: the walk's own entry
+// is the third place a rendered verdict could be made to look in-flight. A
+// window that expires while Observer.CatchUpStarted runs is already in when
+// the walk reaches its first poll; issuing the call anyway parked the expiry
+// as a deferral, granted the call a grace phase, and accepted its page on a
+// socket whose death was decided before the request was made. The walk
+// probes before it polls, exactly as the repair cadence and the poll-retry
+// arms do before entering it.
+func TestExpiredStalenessBeforeTheEntryPollIsNotDeferred(t *testing.T) {
+	var mu sync.Mutex
+	var ages []time.Duration
+	var h *harness
+	var started sync.Once
+	h = newHarness(t, eventfeed.WithObserver(eventfeed.Observer{
+		StaleConnection: func(age time.Duration) {
+			mu.Lock()
+			ages = append(ages, age)
+			mu.Unlock()
+		},
+		CatchUpStarted: func(eventfeed.Cursor) {
+			started.Do(func() { h.clock.Advance(staleAfter) })
+		},
+	}))
+	h.minter.ScriptTicket(ticket(1))
+	h.minter.ScriptError(&eventfeed.MintError{Kind: eventfeed.MintUnrecoverable})
+	h.polls.ScriptPage(eventfeed.PollPage{Position: "pos-1"})
+	h.start()
+	conn := h.driveToSubscribed()
+	conn.Serve(frameConfirm(noFilterIdentifier))
+	h.awaitEndOrReconnect()
+	h.join()
+
+	if got := h.polls.CallCount(); got != 0 {
+		t.Fatalf("poll calls = %d, want 0: the expired window was in before the entry poll, so transition 21 fires directly", got)
+	}
+	if !conn.Closed() {
+		t.Fatal("the stale socket was not torn down")
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if len(ages) != 1 || ages[0] < staleAfter {
+		t.Fatalf("StaleConnection ages = %v, want one at or past the window", ages)
+	}
+}
+
+// TestExpiredStalenessAtThePageBoundaryOutranksAQueuedOverflow: with nothing
+// parked, the page boundary's order is the expired window first, then the
+// admission pass. Running the fatal probe unconditionally ahead of it admitted
+// what the pump had queued before the window was honoured, and an admission
+// that dropped — capacity 1, one event still buffered from the poll — ended
+// the cycle at Terminal(buffer_overflow) where transition 21 was already due:
+// a recoverable staleness turned terminal by the probe's own admission.
+func TestExpiredStalenessAtThePageBoundaryOutranksAQueuedOverflow(t *testing.T) {
+	store := feedtest.NewStore()
+	store.Stored("pos-0")
+	var mu sync.Mutex
+	var ages []time.Duration
+	// Rendezvous by ABSOLUTE hand-off count, not by draining anonymous
+	// notifications: the pump publishes a notification after its send, so a
+	// late one for an earlier frame could satisfy a wait meant for a later
+	// one. Welcome, confirm, 101 and 102 are the four frames this socket
+	// ever carries.
+	var handedOff atomic.Int32
+	var conn *feedtest.Conn
+	var h *harness
+	var delivered sync.Once
+	h = storedHarness(t, store,
+		eventfeed.WithLiveBufferCapacity(1),
+		eventfeed.WithObserver(eventfeed.Observer{
+			StaleConnection: func(age time.Duration) {
+				mu.Lock()
+				ages = append(ages, age)
+				mu.Unlock()
+			},
+			PageDelivered: func(int, string) {
+				delivered.Do(func() {
+					// The window expires during the page's delivery, and a
+					// second event reaches the queue after it: the boundary
+					// must honour the expiry before admitting anything.
+					h.clock.Advance(staleAfter)
+					conn.Serve(frameMessage(noFilterIdentifier, 102))
+					h.waitUntil("the second event to be handed off", func() bool { return handedOff.Load() >= 4 })
+				})
+			},
+		}))
+	h.conn.OnPumpHandedOff(func(isErr bool) {
+		if !isErr {
+			handedOff.Add(1)
+		}
+	})
+	h.minter.ScriptTicket(ticket(1))
+	h.minter.ScriptError(&eventfeed.MintError{Kind: eventfeed.MintUnrecoverable})
+	h.polls.ScriptPage(eventfeed.PollPage{Position: "pos-1", Next: testOrigin + "/999/events.json?after=1"})
+	h.drainHandled()
+	var once sync.Once
+	h.polls.OnCall(func(feedtest.PollCall) {
+		once.Do(func() {
+			// One event admitted while the page is in flight, so a second
+			// admission at capacity 1 is a drop.
+			conn.Serve(frameMessage(noFilterIdentifier, 101))
+			h.waitUntil("the first event to be handed off", func() bool { return handedOff.Load() >= 3 })
+		})
+	})
+	h.start()
+	conn = h.driveToSubscribed()
+	conn.Serve(frameConfirm(noFilterIdentifier))
+	h.awaitEndOrReconnect()
+	h.join()
+
+	_, terminal, _ := h.snapshot()
+	if terminal == nil || terminal.Reason != eventfeed.ReasonMintFailed {
+		t.Fatalf("terminal = %v, want the reconnect's scripted %q — a recoverable staleness must not become buffer_overflow", terminal, eventfeed.ReasonMintFailed)
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if len(ages) != 1 {
+		t.Fatalf("StaleConnection ages = %v, want exactly one: the expired window was the boundary's verdict", ages)
+	}
+}
+
+// TestQueuedFatalOutranksARecoverableFrameAheadOfIt: a malformed frame is a
+// recoverable socket failure, and dispatching it used to end the cycle with
+// the pump's queue never inspected — so an invalid_event_stream_command
+// queued right behind it died with the socket and the connector reconnected
+// into the rejection. The recoverable teardown scans first.
+func TestQueuedFatalOutranksARecoverableFrameAheadOfIt(t *testing.T) {
+	h := newHarness(t)
+	h.minter.ScriptTicket(ticket(1))
+	h.minter.ScriptError(&eventfeed.MintError{Kind: eventfeed.MintUnrecoverable})
+	h.polls.ScriptPage(eventfeed.PollPage{Position: "pos-1"})
+	handedOff := make(chan struct{}, 8)
+	h.conn.OnPumpHandedOff(func(bool) {
+		select {
+		case handedOff <- struct{}{}:
+		default:
+		}
+	})
+	h.pauseAfter = 1
+	h.start()
+	conn := h.driveToSubscribed()
+	conn.Serve(frameConfirm(noFilterIdentifier))
+	h.awaitStreaming()
+	conn.Serve(frameMessage(noFilterIdentifier, 101))
+	h.waitUntil("the collector to park mid-delivery", func() bool { return len(h.deliveredIDs()) == 1 })
+	drain(handedOff)
+	conn.Serve([]byte("{not json"))
+	conn.Serve(frameDisconnect("invalid_event_stream_command", false))
+	for range 2 {
+		select {
+		case <-handedOff:
+		case <-time.After(watchdog):
+			t.Fatal("a frame never reached the hand-off queue")
+		}
+	}
+	h.resume()
+	h.awaitEndOrReconnect()
+	h.join()
+
+	_, terminal, _ := h.snapshot()
+	if terminal == nil || terminal.Reason != eventfeed.ReasonProtocolFatal {
+		t.Fatalf("terminal = %v, want reason %q — the fatal was queued behind the garbled frame", terminal, eventfeed.ReasonProtocolFatal)
+	}
+	if got := h.minter.Calls(); got != 1 {
+		t.Fatalf("mint calls = %d, want 1", got)
+	}
 }
