@@ -5,7 +5,7 @@
 //! BASECAMP_TOKEN=... BASECAMP_ACCOUNT_ID=... cargo run --example pagination
 //! ```
 
-use basecamp_sdk::services::ListProjectsParams;
+use basecamp_sdk::services::projects::ListProjectsParams;
 use basecamp_sdk::{Client, Config};
 
 #[tokio::main]

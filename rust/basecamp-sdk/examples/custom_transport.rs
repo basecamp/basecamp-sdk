@@ -12,7 +12,7 @@ use std::time::Duration;
 use async_trait::async_trait;
 use basecamp_sdk::hooks::{OperationInfo, OperationResult, RequestInfo};
 use basecamp_sdk::http::{Body, HttpClient, Request, Response, StatusCode};
-use basecamp_sdk::services::ListProjectsParams;
+use basecamp_sdk::services::projects::ListProjectsParams;
 use basecamp_sdk::{Client, Config, Error, Hooks};
 use bytes::Bytes;
 

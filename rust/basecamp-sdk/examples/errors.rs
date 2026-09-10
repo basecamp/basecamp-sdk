@@ -20,7 +20,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             match error.code() {
                 ErrorCode::NotFound => println!("no such project"),
                 ErrorCode::AuthRequired => {
-                    println!("token expired or revoked: {}", error.message())
+                    println!("token expired or revoked: {}", error.message());
                 }
                 ErrorCode::Validation => {
                     for (field, messages) in error.field_errors().into_iter().flatten() {

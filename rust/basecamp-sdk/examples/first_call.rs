@@ -4,7 +4,7 @@
 //! BASECAMP_TOKEN=... BASECAMP_ACCOUNT_ID=... cargo run --example first_call
 //! ```
 
-use basecamp_sdk::services::ListProjectsParams;
+use basecamp_sdk::services::projects::ListProjectsParams;
 use basecamp_sdk::{Client, Config};
 
 #[tokio::main]
