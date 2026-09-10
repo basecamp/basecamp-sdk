@@ -400,11 +400,15 @@ fn check(run: &Run, assertion: &Assertion) -> Result<(), String> {
         }
         "urlOrigin" => {
             let expected = expected_string(assertion)?;
-            if expected == "rejected" && recorded.count() > 1 {
+            if expected != "rejected" {
+                Ok(())
+            } else if recorded.count() > 1 {
                 Err(format!(
                     "Expected cross-origin URL rejection (1 request), but {} requests were made",
                     recorded.count()
                 ))
+            } else if sdk_error.is_none() {
+                Err("Expected cross-origin URL rejection, but the operation succeeded".to_string())
             } else {
                 Ok(())
             }

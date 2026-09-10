@@ -156,7 +156,8 @@ impl Operation {
         self
     }
 
-    /// One file under a multipart form field.
+    /// One file under a multipart form field. The field, filename and content type are
+    /// part headers, so a line break in any of them is dropped rather than written.
     pub fn multipart(
         &mut self,
         field: &str,
@@ -175,7 +176,13 @@ impl Operation {
             )
             .as_bytes(),
         );
-        body.extend_from_slice(format!("Content-Type: {content_type}\r\n\r\n").as_bytes());
+        body.extend_from_slice(
+            format!(
+                "Content-Type: {}\r\n\r\n",
+                without_line_breaks(content_type)
+            )
+            .as_bytes(),
+        );
         body.extend_from_slice(bytes);
         body.extend_from_slice(format!("\r\n--{boundary}--\r\n").as_bytes());
         self.body = Some(Body {
@@ -200,7 +207,11 @@ impl Operation {
 }
 
 fn escape_quotes(value: &str) -> String {
-    value.replace('"', "%22").replace(['\r', '\n'], "")
+    without_line_breaks(&value.replace('"', "%22"))
+}
+
+fn without_line_breaks(value: &str) -> String {
+    value.replace(['\r', '\n'], "")
 }
 
 /// Drops every `null` member of every object, recursively. Arrays keep their nulls: a
@@ -260,6 +271,24 @@ mod tests {
         assert_eq!(
             ids_of(&routes::CREATE_CLOUD_FILE, &[&12, &56]),
             (Some(12), Some(56))
+        );
+    }
+
+    #[test]
+    fn multipart_part_headers_cannot_be_broken_by_their_values() {
+        let mut operation =
+            Operation::for_route(&crate::generated::routes::UPDATE_ACCOUNT_LOGO, &[]);
+        operation.multipart(
+            "logo",
+            "a\r\nb\"c.png",
+            "image/png\r\n\r\nprefix",
+            b"pixels",
+        );
+        let body = String::from_utf8(operation.body_bytes().unwrap().to_vec()).unwrap();
+        assert!(body.contains("filename=\"ab%22c.png\""), "{body}");
+        assert!(
+            body.contains("Content-Type: image/pngprefix\r\n\r\npixels"),
+            "{body}"
         );
     }
 

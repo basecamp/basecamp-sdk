@@ -180,29 +180,34 @@ impl AccountClient {
                     parse_retry_after_header(response.headers(), chrono::Utc::now()),
                 ),
             };
-            crate::hooks::guarded(|| {
-                hooks.on_request_end(
-                    &info,
-                    &RequestResult {
-                        status,
-                        duration,
-                        error: failure.as_ref(),
-                        retry_after,
-                    },
-                );
-            });
+            let ended = |error: Option<&Error>| {
+                crate::hooks::guarded(|| {
+                    hooks.on_request_end(
+                        &info,
+                        &RequestResult {
+                            status,
+                            duration,
+                            error,
+                            retry_after,
+                        },
+                    );
+                });
+            };
 
             let Some(cause) = failure else {
                 let response = sent.map_err(|_| Error::network_at(&origin_of(url.as_str())))?;
                 if REDIRECTS.contains(&response.status().as_u16()) {
+                    ended(None);
                     return Ok(HopOne::Redirected(response));
                 }
-                // A direct answer's body is read inside the attempt, so a connection that
-                // breaks while it streams is retried like one that never answered.
-                match self
+                // A direct answer's body is read inside the attempt — its end is the
+                // attempt's end, as the hooks see it — so a connection that breaks while
+                // it streams is retried like one that never answered.
+                let read = self
                     .read_download(url, filename.to_string(), response, deadline)
-                    .await
-                {
+                    .await;
+                ended(read.as_ref().err());
+                match read {
                     Ok(result) => return Ok(HopOne::Downloaded(result)),
                     Err(error)
                         if attempt < attempts
@@ -223,6 +228,7 @@ impl AccountClient {
                     Err(error) => return Err(error),
                 }
             };
+            ended(Some(&cause));
             if status == Some(crate::http::StatusCode::UNAUTHORIZED) {
                 if !refreshed && attempt < attempts && self.shared().auth.refreshable() {
                     refreshed = true;

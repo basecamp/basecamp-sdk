@@ -659,3 +659,22 @@ async fn a_successor_the_caps_never_reach_is_not_validated() {
     let capped = client.collect_all(first, Some(2)).await.unwrap();
     assert!(capped.meta.truncated);
 }
+
+#[tokio::test]
+async fn an_unresolvable_cursor_past_the_item_cap_is_not_an_error() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/999/projects.json"))
+        .respond_with(page(&[1, 2], Some("<http://[>; rel=\"next\""), None))
+        .mount(&server)
+        .await;
+    let client = account(&server);
+    let first = client
+        .projects()
+        .list(&ListProjectsParams::default())
+        .await
+        .unwrap();
+    let capped = client.collect_all(first, Some(2)).await.unwrap();
+    assert_eq!(capped.items.len(), 2);
+    assert!(capped.meta.truncated);
+}

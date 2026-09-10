@@ -208,9 +208,9 @@ impl AccountClient {
         let info = page.info().clone();
         let origin = page.origin().clone();
         loop {
-            // The successor is validated only once it is about to be fetched: a page the
-            // caps end the walk on may name one the walk never needs.
-            let next_url = page.next_target().transpose()?;
+            // The successor is resolved and validated only once it is about to be
+            // fetched: a page the caps end the walk on may name one the walk never needs.
+            let next_target = page.next_target();
             let more = page.has_next();
             let named = page.next_url().cloned();
             items.extend(page.into_inner().into_items());
@@ -228,7 +228,7 @@ impl AccountClient {
                     },
                 });
             }
-            let Some(next) = next_url else {
+            let Some(next) = next_target.transpose()? else {
                 return Ok(ListResult {
                     items,
                     meta: ListMeta {

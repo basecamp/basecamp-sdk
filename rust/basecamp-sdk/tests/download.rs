@@ -402,3 +402,35 @@ async fn a_hop_one_refresh_that_fails_is_why_credentials_are_still_required() {
     assert_eq!(source.to_string(), "the token endpoint is down");
     assert_eq!(script.sent_count(), 1);
 }
+
+#[tokio::test(start_paused = true)]
+async fn a_direct_body_that_breaks_ends_its_attempt_as_a_failure_in_the_hooks() {
+    use support::HookLog;
+    let script = Scripted::new(vec![
+        Answer::BrokenBody(200),
+        Answer::Status(200, vec![("content-type", "image/png")], "pixels"),
+    ]);
+    let log = std::sync::Arc::new(HookLog::default());
+    let client =
+        basecamp_sdk::Client::builder(no_jitter().with_base_url("https://3.basecampapi.com"))
+            .access_token("t")
+            .http_client(script)
+            .hooks(log.clone())
+            .build()
+            .unwrap()
+            .for_account("999");
+    client
+        .download_url("https://3.basecampapi.com/999999999/blobs/abcd1234/download/logo.png")
+        .await
+        .unwrap();
+    assert_eq!(
+        log.lines(),
+        [
+            "req start 1",
+            "req end 1 Some(200) network",
+            "retry 1 -> 2 in 1s",
+            "req start 2",
+            "req end 2 Some(200) ok",
+        ]
+    );
+}
