@@ -3183,7 +3183,9 @@ is shared:
   until the run has exited, after which no save can be in flight. A consumer that owns the
   iteration needs nothing extra, since the iteration terminating is the same guarantee.
   Await termination — or `wait()` — before opening a second connector over the same store.
-  `wait()` is not callable from a consumer callback, for the reason `close()` does not wait.
+  `wait()` is not callable from anything the run is waiting on — a consumer callback, or a
+  seam, store, or clock implementation the run is synchronously awaiting — for the reason
+  `close()` does not wait.
 - A consumer break takes the identical teardown path; the in-flight page's checkpoint is
   **not** saved.
 - All Observer callbacks fire on the consumer's execution context, never concurrently with a

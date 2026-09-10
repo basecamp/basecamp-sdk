@@ -15,13 +15,16 @@
 // policy and its WebSocket transport, and the deterministic fakes the
 // conformance harness drives.
 //
-// ONE piece is still to land, and it is what keeps the package unusable
-// against the live API: the Layer-1 adapters over the generated
-// CreateStreamTicket and PollEvents operations that back the TicketMinter and
-// PollSource seams. Until they exist, the seams have no production
-// implementation and a host must supply its own. Two obligations ride on
-// those adapters rather than on anything here — zero egress to a foreign
-// redirect target (conformance/event-feed/README.md's row-15 note), and the
+// ONE piece is still to land, and it is what keeps the package from running
+// against the live API out of the box: the Layer-1 adapters over the
+// generated CreateStreamTicket and PollEvents operations that back the
+// TicketMinter and PollSource seams. Until they exist the package ships no
+// implementation of those two seams, and a host that wants the live feed
+// supplies its own over the generated operations — a supported path, and
+// the one the seam contracts are written for, not a workaround. Two
+// obligations ride on whichever adapters back the seams rather than on
+// anything here — zero egress to a foreign redirect target
+// (conformance/event-feed/README.md's row-15 note), and the
 // no-automatic-redirect-following rule §23 places on PollEvents.
 //
 // # Seams-first architecture
