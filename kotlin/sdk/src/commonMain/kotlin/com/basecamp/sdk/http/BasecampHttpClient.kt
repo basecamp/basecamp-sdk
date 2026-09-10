@@ -151,13 +151,16 @@ internal class BasecampHttpClient(
             ))
             throw e
         } catch (e: Exception) {
+            // SPEC §9: projected once, before the request-end hook, so hooks
+            // and the caller see the same URL-free shape.
+            val projected = redactTransportError(e, url, config.baseUrl, requestTimeoutMillis)
             val duration = currentTimeMillis() - startTime
             hooks.safeOnRequestEnd(info, RequestResult(
                 statusCode = 0,
                 duration = duration.millisToDuration(),
-                error = e,
+                error = projected,
             ))
-            AttemptOutcome.NetworkFailure(e)
+            AttemptOutcome.NetworkFailure(projected)
         }
 
         val response: HttpResponse = when (outcome) {
@@ -286,15 +289,17 @@ internal class BasecampHttpClient(
             ))
             throw e
         } catch (e: Exception) {
+            // SPEC §9: same projection as the retrying path.
+            val projected = redactTransportError(e, url, config.baseUrl, requestTimeoutMillis)
             val duration = currentTimeMillis() - startTime
             hooks.safeOnRequestEnd(info, RequestResult(
                 statusCode = 0,
                 duration = duration.millisToDuration(),
-                error = e,
+                error = projected,
             ))
             throw BasecampException.Network(
-                message = "Network error: ${e.message}",
-                cause = e,
+                message = "Network error: ${projected.message}",
+                cause = projected,
             )
         }
 
@@ -313,6 +318,10 @@ internal class BasecampHttpClient(
      * Localhost is carved out for dev/test. Mirrors the same-origin guard used
      * for pagination Link headers.
      */
+    /** The per-attempt budget HttpTimeout enforces, rendered into a projected timeout. */
+    private val requestTimeoutMillis: Long? =
+        config.timeout.takeIf { it.isFinite() }?.inWholeMilliseconds
+
     private fun requireSameOrigin(url: String) {
         if (!isLocalhost(url) && !isSameOrigin(url, config.baseUrl)) {
             throw BasecampException.Usage(
@@ -385,7 +394,7 @@ internal class BasecampHttpClient(
  */
 private sealed interface AttemptOutcome {
     class Completed(val response: HttpResponse) : AttemptOutcome
-    class NetworkFailure(val cause: Exception) : AttemptOutcome
+    class NetworkFailure(val cause: Throwable) : AttemptOutcome
 }
 
 /**

@@ -1,6 +1,7 @@
 package com.basecamp.sdk.oauth
 
 import com.basecamp.sdk.BasecampException
+import com.basecamp.sdk.redactTransportError
 import com.basecamp.sdk.isSameOrigin
 import com.basecamp.sdk.requireOriginRoot
 import io.ktor.client.HttpClient
@@ -502,10 +503,11 @@ private suspend fun fetchDiscoveryDocument(url: String, baseClient: HttpClient?)
     } catch (e: BasecampException) {
         throw e
     } catch (e: Throwable) {
-        // Transport failure / timeout.
+        // Transport failure / timeout, projected first (SPEC §9).
+        val projected = redactTransportError(e, url, timeoutMillis = DISCOVERY_TIMEOUT_MS)
         throw BasecampException.Network(
-            "OAuth discovery failed: ${e.message ?: e::class.simpleName}",
-            cause = e,
+            "OAuth discovery failed: ${projected.message ?: projected::class.simpleName}",
+            cause = projected,
         )
     } finally {
         httpClient.close()

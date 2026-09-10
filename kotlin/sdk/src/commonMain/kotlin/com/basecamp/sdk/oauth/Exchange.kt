@@ -11,6 +11,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import com.basecamp.sdk.BasecampException
 import com.basecamp.sdk.requireSecureEndpoint
+import com.basecamp.sdk.redactTransportError
 import com.basecamp.sdk.http.currentTimeMillis
 
 /**
@@ -307,7 +308,7 @@ private suspend fun postTokenRequest(
         // CancellationException, so left alone it would masquerade as a
         // cooperative cancellation — to the retryable network fault the other
         // SDKs raise here ("Token request timed out", TS/Python/Ruby).
-        throw BasecampException.Network("Token request timed out", cause = e)
+        throw BasecampException.Network("Token request timed out", cause = redactTransportError(e, endpoint, timeoutMillis = TOKEN_REQUEST_TIMEOUT_MS))
     } finally {
         // Always ours: hardenedTokenClient built it, an injected client only
         // lent its engine (which close() leaves running).
