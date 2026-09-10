@@ -13,7 +13,9 @@ package eventfeed_test
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"regexp"
 	"strconv"
 	"strings"
@@ -233,6 +235,9 @@ type expectPositionRejectedStep struct {
 // parseScenario decodes one substituted fixture, failing on anything the
 // driver does not model.
 func parseScenario(raw []byte, file string) (*scenario, error) {
+	if err := rejectDuplicateKeys(raw); err != nil {
+		return nil, err
+	}
 	top, err := objectKeys(raw)
 	if err != nil {
 		return nil, err
@@ -720,6 +725,69 @@ func validateInvocations(records []invocation) error {
 }
 
 // --- decoding helpers ----------------------------------------------------
+
+// rejectDuplicateKeys walks raw as a token stream and fails on any object
+// that names a member twice, at any depth. encoding/json keeps the LAST of
+// two same-named members and DisallowUnknownFields never sees the first, so a
+// fixture that spelled an expectation twice would silently discard one of
+// them and stay green — against the loader's promise that nothing is
+// silently ignored. Names are compared DECODED, so an escape-equivalent
+// spelling ("ms" and "m\u0073") is the same name; the schema gate cannot
+// see this either, since its validator's JSON parser collapses duplicates
+// the same way.
+func rejectDuplicateKeys(raw []byte) error {
+	dec := json.NewDecoder(bytes.NewReader(raw))
+	// Numbers pass through as their literal text: this walk decides only
+	// whether a member name repeats, and a literal outside float64's range
+	// is a verdict for the loader's own number handling, not for this one.
+	dec.UseNumber()
+	type container struct {
+		object bool
+		seen   map[string]bool
+		// key reports that the next token in an object is a member name.
+		key bool
+	}
+	var stack []*container
+	// valueDone marks that the enclosing object, if any, expects a name next.
+	valueDone := func() {
+		if n := len(stack); n > 0 && stack[n-1].object {
+			stack[n-1].key = true
+		}
+	}
+	for {
+		tok, err := dec.Token()
+		if errors.Is(err, io.EOF) {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		switch v := tok.(type) {
+		case json.Delim:
+			switch v {
+			case '{':
+				stack = append(stack, &container{object: true, seen: map[string]bool{}, key: true})
+			case '[':
+				stack = append(stack, &container{})
+			default:
+				stack = stack[:len(stack)-1]
+				valueDone()
+			}
+		case string:
+			if n := len(stack); n > 0 && stack[n-1].object && stack[n-1].key {
+				if stack[n-1].seen[v] {
+					return fmt.Errorf("duplicate key %q", v)
+				}
+				stack[n-1].seen[v] = true
+				stack[n-1].key = false
+				continue
+			}
+			valueDone()
+		default:
+			valueDone()
+		}
+	}
+}
 
 // decodeStrict decodes exactly one JSON value into dst, rejecting unknown
 // object keys and trailing content.
