@@ -1,0 +1,13 @@
+[services]
+"Untagged" = "Miscellaneous"
+
+[operation_services]
+UpdateGadgetLogo = "Account"
+
+[operation_methods]
+UpdateGadgetLogo = "updateLogo"
+
+[operation_resource_types]
+TrashWidget = "widget"
+
+[type_names]

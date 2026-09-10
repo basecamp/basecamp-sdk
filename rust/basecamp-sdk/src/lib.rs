@@ -52,6 +52,7 @@ pub use operation::Operation;
 pub use pagination::{ListMeta, ListResult, Page};
 pub use types::{AuthRoutableUrl, Date, DateTime, FlexibleTime, SensitiveString};
 pub use version::{API_VERSION, VERSION};
+pub use generated::OPERATION_COUNT;
 
 /// The request and response types the Basecamp API speaks, generated from the model.
 pub mod models {

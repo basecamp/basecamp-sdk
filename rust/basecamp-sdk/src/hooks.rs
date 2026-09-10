@@ -86,6 +86,28 @@ pub trait Hooks: Send + Sync {
     fn on_retry(&self, _info: &RequestInfo, _next_attempt: u32, _error: &Error, _delay: Duration) {}
 }
 
+impl<H: Hooks + ?Sized> Hooks for Arc<H> {
+    fn on_operation_start(&self, info: &OperationInfo) {
+        (**self).on_operation_start(info);
+    }
+
+    fn on_operation_end(&self, info: &OperationInfo, result: &OperationResult<'_>) {
+        (**self).on_operation_end(info, result);
+    }
+
+    fn on_request_start(&self, info: &RequestInfo) {
+        (**self).on_request_start(info);
+    }
+
+    fn on_request_end(&self, info: &RequestInfo, result: &RequestResult<'_>) {
+        (**self).on_request_end(info, result);
+    }
+
+    fn on_retry(&self, info: &RequestInfo, next_attempt: u32, error: &Error, delay: Duration) {
+        (**self).on_retry(info, next_attempt, error, delay);
+    }
+}
+
 /// Hooks that do nothing: what a client runs with until it is given others.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct NoopHooks;

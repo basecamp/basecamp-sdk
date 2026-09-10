@@ -1,0 +1,111 @@
+{
+  "openapi": "3.1.0",
+  "info": {"title": "Mini", "version": "2026-01-02"},
+  "paths": {
+    "/{accountId}/widgets.json": {
+      "get": {
+        "operationId": "ListWidgets",
+        "description": "Lists widgets.\n\nSee [the docs](https://example.com) and <b>bold</b>.",
+        "tags": ["Widgets"],
+        "parameters": [
+          {"name": "accountId", "in": "path", "required": true, "schema": {"type": "string"}},
+          {"name": "status", "in": "query", "schema": {"type": "string"}, "description": "Filter by status."},
+          {"name": "page", "in": "query", "schema": {"type": "integer", "format": "int32"}},
+          {"name": "tag_ids[]", "in": "query", "schema": {"type": "array", "items": {"type": "integer", "format": "int64"}}},
+          {"name": "type", "in": "query", "schema": {"type": "string"}, "deprecated": true, "x-deprecated-reason": "prefer kinds[]."}
+        ],
+        "responses": {"200": {"description": "ok", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ListWidgetsResponseContent"}}}}},
+        "x-basecamp-pagination": {"style": "link", "totalCountHeader": "X-Total-Count"},
+        "x-basecamp-retry": {"maxAttempts": 3, "baseDelayMs": 1000, "backoff": "exponential", "retryOn": [429, 503]}
+      },
+      "post": {
+        "operationId": "CreateWidget",
+        "tags": ["Widgets"],
+        "parameters": [{"name": "accountId", "in": "path", "required": true, "schema": {"type": "string"}}],
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CreateWidgetRequestContent"}}}},
+        "responses": {"201": {"description": "created", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CreateWidgetResponseContent"}}}}},
+        "x-basecamp-retry": {"maxAttempts": 2, "baseDelayMs": 1000, "backoff": "exponential", "retryOn": [429, 503]}
+      }
+    },
+    "/{accountId}/buckets/{bucketId}/widgets/{widgetId}": {
+      "put": {
+        "operationId": "ReplaceWidget",
+        "tags": ["Widgets"],
+        "parameters": [
+          {"name": "accountId", "in": "path", "required": true, "schema": {"type": "string"}},
+          {"name": "bucketId", "in": "path", "required": true, "schema": {"type": "integer", "format": "int64"}},
+          {"name": "widgetId", "in": "path", "required": true, "schema": {"type": "integer", "format": "int64"}}
+        ],
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CreateWidgetRequestContent"}}}},
+        "responses": {"200": {"description": "ok", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CreateWidgetResponseContent"}}}}},
+        "x-basecamp-idempotent": {"natural": true},
+        "x-basecamp-write-semantics": {"mode": "replace", "clearsOmitted": true, "preservedOnOmission": ["color"]},
+        "x-basecamp-retry": {"maxAttempts": 3, "baseDelayMs": 1000, "backoff": "exponential", "retryOn": [503]}
+      },
+      "delete": {
+        "operationId": "TrashWidget",
+        "tags": ["Widgets"],
+        "parameters": [
+          {"name": "accountId", "in": "path", "required": true, "schema": {"type": "string"}},
+          {"name": "bucketId", "in": "path", "required": true, "schema": {"type": "integer", "format": "int64"}},
+          {"name": "widgetId", "in": "path", "required": true, "schema": {"type": "integer", "format": "int64"}}
+        ],
+        "responses": {"204": {"description": "gone"}},
+        "x-basecamp-idempotent": {"natural": true},
+        "x-basecamp-retry": {"maxAttempts": 3, "baseDelayMs": 1000, "backoff": "exponential", "retryOn": [429, 503]}
+      }
+    },
+    "/{accountId}/account/logo.json": {
+      "put": {
+        "operationId": "UpdateGadgetLogo",
+        "parameters": [{"name": "accountId", "in": "path", "required": true, "schema": {"type": "string"}}],
+        "requestBody": {"required": true, "content": {"multipart/form-data": {"schema": {"type": "object", "properties": {"logo": {"type": "string", "format": "binary"}}}}}},
+        "responses": {"204": {"description": "ok"}},
+        "x-basecamp-multipart": {"field": "logo"},
+        "x-basecamp-retry": {"maxAttempts": 2, "baseDelayMs": 1000, "backoff": "exponential", "retryOn": [429, 503]}
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "CreateWidgetRequestContent": {
+        "type": "object",
+        "properties": {
+          "name": {"type": "string"},
+          "color": {"type": "string"},
+          "due_on": {"type": "string", "x-go-type": "types.Date", "nullable": true},
+          "owner": {"$ref": "#/components/schemas/Owner"}
+        },
+        "required": ["name"]
+      },
+      "CreateWidgetResponseContent": {"$ref": "#/components/schemas/Widget"},
+      "ListWidgetsResponseContent": {"type": "array", "items": {"$ref": "#/components/schemas/Widget"}},
+      "Widget": {
+        "type": "object",
+        "description": "A widget.",
+        "properties": {
+          "id": {"type": "integer", "format": "int64", "x-go-type": "types.FlexibleInt64"},
+          "name": {"type": "string"},
+          "color": {"type": ["string", "null"], "description": "Always present; `null` when unset."},
+          "created_at": {"type": "string", "x-go-type": "time.Time"},
+          "starts_at": {"type": ["string", "null"], "x-go-type": "types.FlexibleTime"},
+          "width": {"type": "integer", "format": "int32", "nullable": true, "x-go-type": "types.FlexInt"},
+          "email": {"type": "string", "format": "password", "x-basecamp-sensitive": {"category": "pii", "redact": true}},
+          "download_url": {"type": "string", "x-basecamp-auth-routable-url": {}},
+          "parent": {"anyOf": [{"$ref": "#/components/schemas/Owner"}, {"type": "null"}]},
+          "children": {"type": "array", "items": {"$ref": "#/components/schemas/Widget"}},
+          "labels": {"type": "object", "additionalProperties": {"type": "string"}},
+          "kind": {"$ref": "#/components/schemas/Kind"},
+          "extra": {"type": "object"},
+          "legacy": {"$ref": "#/components/schemas/Legacy", "deprecated": true, "x-deprecated-reason": "gone"}
+        },
+        "required": ["id", "name", "color", "created_at", "starts_at", "parent"]
+      },
+      "Owner": {"type": "object", "properties": {"id": {"type": "integer", "format": "int64"}}, "required": ["id"]},
+      "Kind": {"type": "string", "enum": ["basic", "fancy"]},
+      "Legacy": {"type": "object", "deprecated": true, "x-deprecated-reason": "gone", "properties": {"url": {"type": "string"}}},
+      "LabelMap": {"type": "object", "additionalProperties": {"type": "array", "items": {"type": "string"}}},
+      "UpdateGadgetLogoInputPayload": {"type": "string", "contentEncoding": "byte"}
+    }
+  }
+}

@@ -1,0 +1,166 @@
+//! SPEC §4: the 401 refresh-and-replay, its budget gate, and coalescing.
+
+mod support;
+
+use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::time::Duration;
+
+use async_trait::async_trait;
+use basecamp_sdk::{Client, Config, Error, ErrorCode, TokenProvider};
+use support::PROJECT;
+use wiremock::matchers::{header, method, path};
+use wiremock::{Mock, MockServer, ResponseTemplate};
+
+struct Rotating {
+    tokens: std::sync::Mutex<Vec<&'static str>>,
+    refreshes: AtomicUsize,
+    refresh_delay: Duration,
+}
+
+#[async_trait]
+impl TokenProvider for Rotating {
+    async fn access_token(&self) -> Result<String, Error> {
+        Ok(self.tokens.lock().unwrap()[0].to_string())
+    }
+
+    fn refreshable(&self) -> bool {
+        true
+    }
+
+    async fn refresh(&self) -> Result<bool, Error> {
+        tokio::time::sleep(self.refresh_delay).await;
+        self.refreshes.fetch_add(1, Ordering::SeqCst);
+        let mut tokens = self.tokens.lock().unwrap();
+        if tokens.len() > 1 {
+            tokens.remove(0);
+            Ok(true)
+        } else {
+            Ok(false)
+        }
+    }
+}
+
+fn rotating(tokens: &[&'static str], refresh_delay: Duration) -> Arc<Rotating> {
+    Arc::new(Rotating {
+        tokens: std::sync::Mutex::new(tokens.to_vec()),
+        refreshes: AtomicUsize::new(0),
+        refresh_delay,
+    })
+}
+
+async fn mount_401_then_200(server: &MockServer) {
+    Mock::given(method("GET"))
+        .and(path("/999/projects/12345"))
+        .and(header("Authorization", "Bearer stale"))
+        .respond_with(ResponseTemplate::new(401).set_body_string(r#"{"error": "Unauthorized"}"#))
+        .mount(server)
+        .await;
+    Mock::given(method("GET"))
+        .and(path("/999/projects/12345"))
+        .and(header("Authorization", "Bearer fresh"))
+        .respond_with(ResponseTemplate::new(200).set_body_string(PROJECT))
+        .mount(server)
+        .await;
+}
+
+fn client(
+    server: &MockServer,
+    provider: Arc<Rotating>,
+    max_retries: u32,
+) -> basecamp_sdk::AccountClient {
+    Client::builder(
+        Config::default()
+            .with_base_url(server.uri())
+            .with_max_retries(max_retries)
+            .with_timeout(Duration::from_secs(86_400)),
+    )
+    .token_provider(provider)
+    .build()
+    .unwrap()
+    .for_account("999")
+}
+
+#[tokio::test]
+async fn a_401_is_replayed_once_with_the_refreshed_token() {
+    let server = MockServer::start().await;
+    mount_401_then_200(&server).await;
+    let provider = rotating(&["stale", "fresh"], Duration::ZERO);
+    let project = client(&server, provider.clone(), 3)
+        .projects()
+        .get(12345)
+        .await
+        .unwrap();
+    assert_eq!(project.id, 12345);
+    assert_eq!(provider.refreshes.load(Ordering::SeqCst), 1);
+    assert_eq!(server.received_requests().await.unwrap().len(), 2);
+}
+
+#[tokio::test]
+async fn a_failed_refresh_surfaces_auth_required_without_a_replay() {
+    let server = MockServer::start().await;
+    mount_401_then_200(&server).await;
+    let provider = rotating(&["stale"], Duration::ZERO);
+    let error = client(&server, provider.clone(), 3)
+        .projects()
+        .get(12345)
+        .await
+        .unwrap_err();
+    assert_eq!(error.code(), ErrorCode::AuthRequired);
+    assert_eq!(error.http_status(), Some(401));
+    assert_eq!(server.received_requests().await.unwrap().len(), 1);
+}
+
+#[tokio::test]
+async fn the_budget_gate_is_checked_before_refreshing() {
+    let server = MockServer::start().await;
+    mount_401_then_200(&server).await;
+    let provider = rotating(&["stale", "fresh"], Duration::ZERO);
+    let error = client(&server, provider.clone(), 1)
+        .projects()
+        .get(12345)
+        .await
+        .unwrap_err();
+    assert_eq!(error.code(), ErrorCode::AuthRequired);
+    assert_eq!(
+        provider.refreshes.load(Ordering::SeqCst),
+        0,
+        "no refresh is spent when nothing can use it"
+    );
+    assert_eq!(server.received_requests().await.unwrap().len(), 1);
+}
+
+#[tokio::test(start_paused = true)]
+async fn concurrent_401s_coalesce_into_one_refresh() {
+    let server = MockServer::start().await;
+    mount_401_then_200(&server).await;
+    let provider = rotating(&["stale", "fresh"], Duration::from_millis(50));
+    let account = client(&server, provider.clone(), 3);
+    let (projects_a, projects_b, projects_c) =
+        (account.projects(), account.projects(), account.projects());
+    let (a, b, c) = tokio::join!(
+        projects_a.get(12345),
+        projects_b.get(12345),
+        projects_c.get(12345)
+    );
+    assert!(a.is_ok() && b.is_ok() && c.is_ok(), "{a:?} {b:?} {c:?}");
+    assert_eq!(provider.refreshes.load(Ordering::SeqCst), 1);
+    assert_eq!(server.received_requests().await.unwrap().len(), 6);
+}
+
+#[tokio::test]
+async fn a_static_token_is_never_refreshed() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/999/projects/12345"))
+        .respond_with(ResponseTemplate::new(401).set_body_string(r#"{"error": "Unauthorized"}"#))
+        .expect(1)
+        .mount(&server)
+        .await;
+    let error = support::account(&server)
+        .projects()
+        .get(12345)
+        .await
+        .unwrap_err();
+    assert_eq!(error.code(), ErrorCode::AuthRequired);
+}
