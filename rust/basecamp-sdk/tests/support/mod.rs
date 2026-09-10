@@ -2,7 +2,10 @@
 
 use std::sync::{Arc, Mutex};
 
+use std::time::Duration;
+
 use async_trait::async_trait;
+use basecamp_sdk::hooks::{Hooks, OperationInfo, OperationResult, RequestInfo, RequestResult};
 use basecamp_sdk::http::{Body, HttpClient, Request, Response, StatusCode};
 use basecamp_sdk::{AccountClient, Client, Config, Error};
 use bytes::Bytes;
@@ -42,6 +45,12 @@ pub struct Scripted {
 pub enum Answer {
     Status(u16, Vec<(&'static str, &'static str)>, &'static str),
     NetworkError,
+    /// The transport's per-attempt timeout elapsed.
+    Timeout,
+    /// No answer ever comes: what an operation deadline cuts short.
+    Hang,
+    /// A status and headers arrive, then the connection breaks while the body streams.
+    BrokenBody(u16),
 }
 
 impl Scripted {
@@ -73,10 +82,27 @@ impl HttpClient for Scripted {
             .unwrap();
         *copy.headers_mut() = headers;
         self.sent.lock().unwrap().push(copy);
-        let mut answers = self.answers.lock().unwrap();
-        assert!(!answers.is_empty(), "no scripted answer left");
-        match answers.remove(0) {
+        let answer = {
+            let mut answers = self.answers.lock().unwrap();
+            assert!(!answers.is_empty(), "no scripted answer left");
+            answers.remove(0)
+        };
+        match answer {
             Answer::NetworkError => Err(Error::network(std::io::Error::other("connection reset"))),
+            Answer::Timeout => Err(Error::network_timeout(std::io::Error::new(
+                std::io::ErrorKind::TimedOut,
+                "operation timed out",
+            ))),
+            Answer::Hang => std::future::pending().await,
+            Answer::BrokenBody(status) => {
+                let chunks = futures_util::stream::iter([
+                    Ok(Bytes::from_static(b"{\"id\": 1")),
+                    Err(Error::network(std::io::Error::other("connection reset"))),
+                ]);
+                let mut response = Response::new(Body::from_stream(chunks, None));
+                *response.status_mut() = StatusCode::from_u16(status).unwrap();
+                Ok(response)
+            }
             Answer::Status(status, headers, body) => {
                 let mut response = Response::new(Body::from(body));
                 *response.status_mut() = StatusCode::from_u16(status).unwrap();
@@ -100,4 +126,54 @@ pub fn scripted_account(script: Arc<Scripted>, config: Config) -> AccountClient 
     .build()
     .unwrap()
     .for_account("999")
+}
+
+/// Hooks that write every callback down, in order.
+#[derive(Default)]
+pub struct HookLog(pub Mutex<Vec<String>>);
+
+impl HookLog {
+    pub fn lines(&self) -> Vec<String> {
+        self.0.lock().unwrap().clone()
+    }
+
+    fn push(&self, line: String) {
+        self.0.lock().unwrap().push(line);
+    }
+}
+
+impl Hooks for HookLog {
+    fn on_operation_start(&self, info: &OperationInfo) {
+        self.push(format!(
+            "op start {} project={:?} resource={:?}",
+            info.operation, info.project_id, info.resource_id
+        ));
+    }
+
+    fn on_operation_end(&self, info: &OperationInfo, result: &OperationResult<'_>) {
+        self.push(format!(
+            "op end {} ok={}",
+            info.operation,
+            result.error.is_none()
+        ));
+    }
+
+    fn on_request_start(&self, info: &RequestInfo) {
+        self.push(format!("req start {}", info.attempt));
+    }
+
+    fn on_request_end(&self, info: &RequestInfo, result: &RequestResult<'_>) {
+        self.push(format!(
+            "req end {} {:?} {}",
+            info.attempt,
+            result.status.map(|s| s.as_u16()),
+            result
+                .error
+                .map_or("ok".to_string(), |e| e.code().to_string())
+        ));
+    }
+
+    fn on_retry(&self, info: &RequestInfo, next: u32, _error: &Error, delay: Duration) {
+        self.push(format!("retry {} -> {next} in {delay:?}", info.attempt));
+    }
 }

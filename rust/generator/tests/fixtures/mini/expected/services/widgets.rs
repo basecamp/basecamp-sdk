@@ -29,6 +29,21 @@ pub struct ListWidgetsParams {
     pub r#type: Option<String>,
 }
 
+/// Optional query parameters for `GetWidgetProgress`.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct GetWidgetProgressParams {
+    /// `page`.
+    pub page: Option<i32>,
+}
+
+impl crate::pagination::PageItems for GetWidgetProgressResponseContent {
+    type Item = Widget;
+
+    fn into_items(self) -> Vec<Widget> {
+        self.events
+    }
+}
+
 /// `Widgets` operations, sent through one [`AccountClient`].
 #[derive(Debug, Clone, Copy)]
 pub struct WidgetsService<'a> {
@@ -93,5 +108,22 @@ impl<'a> WidgetsService<'a> {
             .client
             .operation(&routes::TRASH_WIDGET, &[&bucket_id, &widget_id]);
         self.client.send_unit(operation).await
+    }
+
+    /// A widget's activity, page by page.
+    ///
+    /// Each page is the envelope; its `events` member is the collection, which [`AccountClient::collect_all`] and [`AccountClient::items`] gather across pages. The other members are on every page: read them off the first.
+    ///
+    /// `GET /widgets/{widgetId}/progress.json` — idempotent; retries up to 3 attempt(s) on 429, 503.
+    pub async fn widget_progress(
+        &self,
+        widget_id: i64,
+        params: &GetWidgetProgressParams,
+    ) -> Result<Page<GetWidgetProgressResponseContent>, Error> {
+        let mut operation = self
+            .client
+            .operation(&routes::GET_WIDGET_PROGRESS, &[&widget_id]);
+        operation.query_optional("page", params.page.as_ref());
+        self.client.send_page(operation).await
     }
 }

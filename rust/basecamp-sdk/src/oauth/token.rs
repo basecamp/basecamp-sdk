@@ -219,17 +219,23 @@ impl OAuthClient {
             .await
             .map_err(|failure| network_failure(&url, &failure))?;
         let status = response.status();
-        if is_refused_redirect(status) {
-            return Err(Error::new(
-                ErrorCode::ApiError,
-                format!(
-                    "redirect {} on the token endpoint is not followed",
-                    status.as_u16()
-                ),
-            )
-            .with_status(status.as_u16()));
-        }
         let headers = response.headers().clone();
+        if status.is_redirection() {
+            // Any 3xx is classified off the status line: a redirect is refused, and no
+            // other 3xx carries a token, so neither body is worth waiting for.
+            return Err(if is_refused_redirect(status) {
+                Error::new(
+                    ErrorCode::ApiError,
+                    format!(
+                        "redirect {} on the token endpoint is not followed",
+                        status.as_u16()
+                    ),
+                )
+                .with_status(status.as_u16())
+            } else {
+                token_endpoint_error(status, &headers, &[])
+            });
+        }
         let body = match read_within(deadline, response.into_body(), status).await {
             Ok(body) => body,
             Err(BodyFailure::TooLarge(error)) => return Err(error),
@@ -257,7 +263,8 @@ fn require(condition: bool, message: &str) -> Result<(), Error> {
 }
 
 /// A non-200 from the token endpoint, rendered as its status and the RFC 6749 `error` and
-/// `error_description` alone (SPEC §9).
+/// `error_description` alone (SPEC §9), carrying `Retry-After` and `X-Request-Id` as the
+/// structured fields of SPEC §6's record.
 ///
 /// The code follows what the caller can do about it: a grant the server no longer honours
 /// (`invalid_grant`, `invalid_client`, `unauthorized_client`, `access_denied`, or a 401) is
@@ -294,13 +301,21 @@ pub(super) fn token_endpoint_error(status: StatusCode, headers: &HeaderMap, body
         ),
     };
     error = error.with_status(code).retryable(retryable);
-    if error.hint().is_none()
-        && let Some(retry_after) = headers
-            .get(RETRY_AFTER)
-            .and_then(|value| value.to_str().ok())
-            .and_then(|value| parse_retry_after(value, Utc::now()))
+    if let Some(request_id) = headers
+        .get("x-request-id")
+        .and_then(|value| value.to_str().ok())
     {
-        error = error.with_hint(format!("retry after {retry_after} seconds"));
+        error = error.with_request_id(request_id);
+    }
+    if let Some(retry_after) = headers
+        .get(RETRY_AFTER)
+        .and_then(|value| value.to_str().ok())
+        .and_then(|value| parse_retry_after(value, Utc::now()))
+    {
+        error = error.with_retry_after(retry_after);
+        if error.hint().is_none() {
+            error = error.with_hint(format!("retry after {retry_after} seconds"));
+        }
     }
     error
 }
@@ -649,6 +664,60 @@ mod tests {
         assert_eq!(error.message(), "token request failed with status 503");
         assert_eq!(error.hint(), None);
         assert!(!error.to_string().contains("refresh-1"));
+    }
+
+    #[tokio::test]
+    async fn a_throttled_token_request_carries_its_retry_after_and_request_id() {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/token"))
+            .respond_with(
+                ResponseTemplate::new(429)
+                    .insert_header("retry-after", "7")
+                    .insert_header("x-request-id", "req-1")
+                    .set_body_string(
+                        r#"{"error": "slow_down", "error_description": "Too many requests"}"#,
+                    ),
+            )
+            .mount(&server)
+            .await;
+        let error = OAuthClient::shipped()
+            .unwrap()
+            .refresh_token(&refresh(&server))
+            .await
+            .unwrap_err();
+        assert_eq!(error.code(), ErrorCode::RateLimit);
+        assert!(error.is_retryable());
+        assert_eq!(error.http_status(), Some(429));
+        assert_eq!(error.retry_after(), Some(7));
+        assert_eq!(error.request_id(), Some("req-1"));
+        assert_eq!(error.hint(), Some("Too many requests"));
+    }
+
+    #[tokio::test]
+    async fn a_3xx_that_is_not_a_redirect_is_a_status_failure() {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/token"))
+            .respond_with(ResponseTemplate::new(300).set_body_string("choices"))
+            .mount(&server)
+            .await;
+        let error = OAuthClient::shipped()
+            .unwrap()
+            .refresh_token(&refresh(&server))
+            .await
+            .unwrap_err();
+        assert_eq!(error.code(), ErrorCode::ApiError);
+        assert_eq!(error.http_status(), Some(300));
+        assert!(
+            !error.message().contains("not followed"),
+            "{}",
+            error.message()
+        );
+        assert!(
+            !error.message().contains("choices"),
+            "the body is not rendered"
+        );
     }
 
     #[tokio::test]

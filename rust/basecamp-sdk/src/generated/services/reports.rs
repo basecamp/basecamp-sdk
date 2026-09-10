@@ -36,6 +36,14 @@ pub struct GetProgressReportParams {
     pub page: Option<i32>,
 }
 
+impl crate::pagination::PageItems for GetPersonProgressResponseContent {
+    type Item = TimelineEvent;
+
+    fn into_items(self) -> Vec<TimelineEvent> {
+        self.events
+    }
+}
+
 /// `Reports` operations, sent through one [`AccountClient`].
 #[derive(Debug, Clone, Copy)]
 pub struct ReportsService<'a> {
@@ -76,6 +84,8 @@ impl<'a> ReportsService<'a> {
     }
 
     /// Get a person's activity timeline
+    ///
+    /// Each page is the envelope; its `events` member is the collection, which [`AccountClient::collect_all`] and [`AccountClient::items`] gather across pages. The other members are on every page: read them off the first.
     ///
     /// `GET /reports/users/progress/{personId}.json` — idempotent; retries up to 3 attempt(s) on 429, 503.
     pub async fn person_progress(

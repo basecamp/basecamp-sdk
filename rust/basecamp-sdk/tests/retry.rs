@@ -396,3 +396,78 @@ async fn hooks_see_every_attempt_and_the_retry_delay() {
         ]
     );
 }
+
+#[tokio::test(start_paused = true)]
+async fn a_deadline_that_cuts_a_request_short_still_closes_its_hooks() {
+    use support::HookLog;
+    let script = Scripted::new(vec![Answer::Hang]);
+    let log = Arc::new(HookLog::default());
+    let mut config = no_jitter().with_base_url("https://3.basecampapi.com");
+    config.operation_deadline = Some(Duration::from_secs(5));
+    let client = basecamp_sdk::Client::builder(config)
+        .access_token("t")
+        .http_client(script.clone())
+        .hooks(log.clone())
+        .build()
+        .unwrap()
+        .for_account("999");
+    let error = client.projects().get(12345).await.unwrap_err();
+    assert!(error.is_deadline_exceeded());
+    assert_eq!(script.sent_count(), 1);
+    assert_eq!(
+        log.lines(),
+        [
+            "op start GetProject project=Some(12345) resource=None",
+            "req start 1",
+            "req end 1 None network",
+            "op end GetProject ok=false",
+        ]
+    );
+}
+
+#[tokio::test(start_paused = true)]
+async fn a_per_attempt_timeout_is_terminal() {
+    let script = Scripted::new(vec![Answer::Timeout, Answer::Status(200, vec![], PROJECT)]);
+    let error = scripted_account(script.clone(), no_jitter())
+        .projects()
+        .get(12345)
+        .await
+        .unwrap_err();
+    assert_eq!(error.code(), ErrorCode::Network);
+    assert!(error.is_timeout());
+    assert!(
+        error.is_retryable(),
+        "retryable by the caller, not by the loop"
+    );
+    assert_eq!(script.sent_count(), 1, "a timed-out attempt is not resent");
+}
+
+#[tokio::test(start_paused = true)]
+async fn a_connection_that_breaks_during_the_body_is_retried_like_one_that_never_answered() {
+    let script = Scripted::new(vec![
+        Answer::BrokenBody(200),
+        Answer::Status(200, vec![], PROJECT),
+    ]);
+    let started = tokio::time::Instant::now();
+    let project = scripted_account(script.clone(), no_jitter())
+        .projects()
+        .get(12345)
+        .await
+        .unwrap();
+    assert_eq!(project.id, 12345);
+    assert_eq!(script.sent_count(), 2);
+    assert_eq!(started.elapsed(), Duration::from_secs(1));
+
+    let script = Scripted::new(vec![Answer::BrokenBody(201)]);
+    let request = CreateProjectRequestContent {
+        name: "x".into(),
+        ..Default::default()
+    };
+    let error = scripted_account(script.clone(), no_jitter())
+        .projects()
+        .create(&request)
+        .await
+        .unwrap_err();
+    assert_eq!(error.code(), ErrorCode::Network);
+    assert_eq!(script.sent_count(), 1);
+}

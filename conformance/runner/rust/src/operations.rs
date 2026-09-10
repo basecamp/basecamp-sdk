@@ -12,6 +12,7 @@ use std::collections::BTreeMap;
 use std::time::Duration;
 
 use basecamp_sdk::models::*;
+use basecamp_sdk::pagination::PageItems;
 use basecamp_sdk::services::cards::UpdateCardRequest;
 use basecamp_sdk::services::documents::UpdateDocumentRequest;
 use basecamp_sdk::services::schedules::UpdateScheduleEntryRequest;
@@ -158,53 +159,34 @@ fn list_meta<T>(result: &ListResult<T>) -> BTreeMap<String, Value> {
 }
 
 /// Walks every page of a list read and answers its metadata, with the items as the body.
-async fn list<T: DeserializeOwned + Serialize>(
+async fn list<P>(
     account: &AccountClient,
     case: &TestCase,
-    first: Result<Page<Vec<T>>, Error>,
-) -> Result<Outcome, Error> {
+    first: Result<Page<P>, Error>,
+) -> Result<Outcome, Error>
+where
+    P: PageItems + DeserializeOwned,
+    P::Item: Serialize,
+{
     list_with(account, case, first, |items| {
         Ok(serde_json::to_value(items).unwrap_or(Value::Null))
     })
     .await
 }
 
-/// Like [`list`], but the body is a summary computed from the decoded items.
-///
-/// A case that pins a `page` (SPEC §8) asks for exactly that page: in this SDK the typed
-/// method answers one `Page` and following the cursor is the caller's separate, explicit
-/// `collect_all`, so a pinned page is the page as answered, with `truncated` reporting
-/// whether a next link was offered or the `max_items` cap bit.
-async fn list_with<T: DeserializeOwned>(
+/// Like [`list`], but the body is a summary computed from the decoded items. A case that
+/// pins a `page` (SPEC §8) gets the SDK's own answer: `collect_all` on a pinned page
+/// follows nothing and reports the cursor it did not follow as `truncated`.
+async fn list_with<P: PageItems + DeserializeOwned>(
     account: &AccountClient,
     case: &TestCase,
-    first: Result<Page<Vec<T>>, Error>,
-    summarize: impl FnOnce(&[T]) -> Result<Value, Error>,
+    first: Result<Page<P>, Error>,
+    summarize: impl FnOnce(&[P::Item]) -> Result<Value, Error>,
 ) -> Result<Outcome, Error> {
-    let first = first?;
-    if page_param(case).is_none() {
-        let result = account.collect_all(first, max_items(case)).await?;
-        return Ok(Outcome::List {
-            meta: list_meta(&result),
-            value: summarize(&result.items)?,
-        });
-    }
-    let has_next = first.next_url().is_some();
-    let total_count = first.total_count().unwrap_or(0);
-    let mut items = first.into_inner();
-    let truncated = match max_items(case) {
-        Some(cap) if items.len() > cap => {
-            items.truncate(cap);
-            true
-        }
-        _ => has_next,
-    };
+    let result = account.collect_all(first?, max_items(case)).await?;
     Ok(Outcome::List {
-        meta: BTreeMap::from([
-            ("totalCount".to_string(), json!(total_count)),
-            ("truncated".to_string(), json!(truncated)),
-        ]),
-        value: summarize(&items)?,
+        meta: list_meta(&result),
+        value: summarize(&result.items)?,
     })
 }
 
@@ -873,13 +855,18 @@ async fn dispatch(account: &AccountClient, case: &TestCase) -> Result<Outcome, E
             list(account, case, account.reports().progress(&params).await).await
         }
         "GetPersonProgress" => {
-            let params = reports::GetPersonProgressParams::default();
-            unit(
+            let params = reports::GetPersonProgressParams {
+                page: page_param(case),
+            };
+            list(
+                account,
+                case,
                 account
                     .reports()
                     .person_progress(id("personId"), &params)
                     .await,
             )
+            .await
         }
         "GetUpcomingSchedule" => {
             let result = account

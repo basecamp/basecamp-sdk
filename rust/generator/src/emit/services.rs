@@ -1,7 +1,8 @@
 use std::fmt::Write;
 
+use crate::emit::types::rust_type;
 use crate::emit::{HEADER, doc_comment, string_literal};
-use crate::model::{Body, Model, Operation, ParamKind, Response, Service};
+use crate::model::{Body, FieldType, Model, Operation, ParamKind, Response, Service, Shape};
 use crate::naming::{constant_name, field_ident};
 
 pub fn render_mod(model: &Model) -> String {
@@ -13,7 +14,7 @@ pub fn render_mod(model: &Model) -> String {
     out
 }
 
-pub fn render_service(service: &Service) -> String {
+pub fn render_service(service: &Service, model: &Model) -> Result<String, String> {
     let name = &service.struct_name;
     let mut out = String::from(HEADER);
     writeln!(out, "//! {} operations.\n", service.name).unwrap();
@@ -45,6 +46,9 @@ pub fn render_service(service: &Service) -> String {
     for operation in &service.operations {
         render_params(&mut out, operation);
     }
+    for operation in &service.operations {
+        render_page_items(&mut out, operation, model)?;
+    }
 
     writeln!(
         out,
@@ -62,10 +66,65 @@ pub fn render_service(service: &Service) -> String {
     out.push_str("    /// The client this service sends through.\n");
     out.push_str("    pub fn client(&self) -> &'a AccountClient {\n        self.client\n    }\n\n");
     for operation in &service.operations {
-        render_method(&mut out, operation);
+        render_method(&mut out, operation, model)?;
     }
     out.push_str("}\n");
-    out
+    Ok(out)
+}
+
+/// The member of a paginated envelope that holds the collection, when the model names one
+/// (`x-basecamp-pagination.key`): its field and element type.
+fn wrapped_items<'m>(
+    operation: &Operation,
+    model: &'m Model,
+) -> Result<Option<(&'m str, String)>, String> {
+    let (Some(pagination), Response::Json(response)) = (&operation.pagination, &operation.response)
+    else {
+        return Ok(None);
+    };
+    let Some(key) = &pagination.key else {
+        return Ok(None);
+    };
+    let refuse = |what: &str| {
+        Err(format!(
+            "{} paginates over `{key}`, which {what}",
+            operation.id
+        ))
+    };
+    let Some(schema) = model.schemas.iter().find(|schema| &schema.name == response) else {
+        return refuse(&format!("is not a member of {response}"));
+    };
+    let Shape::Struct(fields) = &schema.shape else {
+        return refuse(&format!("is not a member of {response}"));
+    };
+    let Some(field) = fields.iter().find(|field| &field.wire_name == key) else {
+        return refuse(&format!("is not a member of {response}"));
+    };
+    match &field.kind {
+        FieldType::List(inner) if field.required && !field.nullable => {
+            Ok(Some((field.wire_name.as_str(), rust_type(inner, false))))
+        }
+        FieldType::List(_) => refuse("is optional on the wire"),
+        _ => refuse("is not an array"),
+    }
+}
+
+/// The envelope of a wrapped paginated read implements `PageItems`, so `collect_all` and
+/// `items` gather its collection the way they gather a bare array.
+fn render_page_items(out: &mut String, operation: &Operation, model: &Model) -> Result<(), String> {
+    let Some((key, item)) = wrapped_items(operation, model)? else {
+        return Ok(());
+    };
+    let Response::Json(response) = &operation.response else {
+        return Ok(());
+    };
+    writeln!(
+        out,
+        "impl crate::pagination::PageItems for {response} {{\n    type Item = {item};\n\n    fn into_items(self) -> Vec<{item}> {{\n        self.{}\n    }}\n}}\n",
+        field_ident(key)
+    )
+    .unwrap();
+    Ok(())
 }
 
 fn render_params(out: &mut String, operation: &Operation) {
@@ -99,7 +158,7 @@ fn render_params(out: &mut String, operation: &Operation) {
     out.push_str("}\n\n");
 }
 
-fn render_method(out: &mut String, operation: &Operation) {
+fn render_method(out: &mut String, operation: &Operation, model: &Model) -> Result<(), String> {
     let mut arguments = vec!["&self".to_string()];
     for param in &operation.path_params {
         arguments.push(format!(
@@ -136,6 +195,13 @@ fn render_method(out: &mut String, operation: &Operation) {
     out.push_str(&doc_comment(operation.description.as_deref(), "    "));
     if operation.description.is_some() {
         out.push_str("    ///\n");
+    }
+    if let Some((key, _)) = wrapped_items(operation, model)? {
+        writeln!(
+            out,
+            "    /// Each page is the envelope; its `{key}` member is the collection, which [`AccountClient::collect_all`] and [`AccountClient::items`] gather across pages. The other members are on every page: read them off the first.\n    ///",
+        )
+        .unwrap();
     }
     let eligible = operation.idempotent
         || matches!(
@@ -240,6 +306,7 @@ fn render_method(out: &mut String, operation: &Operation) {
     )
     .unwrap();
     out.push_str("    }\n\n");
+    Ok(())
 }
 
 fn uses_types(operation: &Operation) -> bool {

@@ -10,6 +10,7 @@ use url::Url;
 
 use crate::auth::{AuthStrategy, BearerAuth, StaticTokenProvider, TokenProvider};
 use crate::config::Config;
+use crate::deadline::Deadline;
 use crate::error::{Error, ErrorCode, parse_retry_after_header};
 use crate::hooks::{Hooks, NoopHooks, OperationResult, RequestInfo, RequestResult};
 use crate::http::header::{ACCEPT, CONTENT_TYPE, USER_AGENT};
@@ -264,6 +265,11 @@ impl AccountClient {
         self.run(operation, |response| response.json()).await
     }
 
+    /// The whole-operation deadline, started now (SPEC §2's `operation_deadline`).
+    pub(crate) fn deadline(&self) -> Deadline {
+        Deadline::starting_now(self.shared.config.operation_deadline)
+    }
+
     /// Sends an operation whose answer carries no body worth reading.
     pub async fn send_unit(&self, operation: Operation) -> Result<(), Error> {
         self.run(operation, |_| Ok(())).await
@@ -275,8 +281,10 @@ impl AccountClient {
         operation: Operation,
     ) -> Result<Page<T>, Error> {
         let route = operation.route;
+        let info = operation.info.clone();
+        let pinned = operation.pins_a_page();
         self.run(operation, |response| {
-            Ok(Page::new(response.json()?, &response, route))
+            Ok(Page::new(response.json()?, &response, route, info, pinned))
         })
         .await
     }
@@ -288,30 +296,27 @@ impl AccountClient {
         operation: Operation,
         decode: impl FnOnce(Response) -> Result<T, Error>,
     ) -> Result<T, Error> {
+        let deadline = self.deadline();
         self.observe(&operation, async {
-            self.dispatch(&operation).await.and_then(decode)
+            self.dispatch(&operation, &deadline).await.and_then(decode)
         })
         .await
     }
 
-    /// The follow-on read for a `Link` target: the same route and identity, the target
-    /// checked against the origin the walk started on (SPEC §8).
+    /// The follow-on read for a `Link` target: the same route and hook identity as the
+    /// page it follows, the target checked against the origin the walk started on
+    /// (SPEC §8).
     #[allow(clippy::unused_self)]
-    pub(crate) fn follow_up(
-        &self,
-        route: &'static Route,
-        origin: &Url,
-        next: &Url,
-    ) -> Result<Operation, Error> {
-        if !is_same_origin(next, origin) {
+    pub(crate) fn follow_up<T>(&self, page: &Page<T>, next: &Url) -> Result<Operation, Error> {
+        if !is_same_origin(next, page.origin()) {
             return Err(Error::usage(format!(
                 "pagination Link header points to a different origin: {}",
                 crate::security::redact_url(next)
             )));
         }
         Ok(Operation::at(
-            route,
-            Operation::info_for(route),
+            page.route(),
+            page.info().clone(),
             next.clone(),
         ))
     }
@@ -320,10 +325,14 @@ impl AccountClient {
     /// failures under SPEC §7's three gates, resends once after a refreshed 401, and maps
     /// every non-2xx status onto an [`Error`].
     pub async fn execute(&self, operation: Operation) -> Result<Response, Error> {
-        self.observe(&operation, self.dispatch(&operation)).await
+        let deadline = self.deadline();
+        self.observe(&operation, self.dispatch(&operation, &deadline))
+            .await
     }
 
-    /// Runs `work` inside the operation hook lifecycle and the operation deadline.
+    /// Runs `work` inside the operation hook lifecycle. The operation deadline is applied
+    /// inside `work`, at each await, so a request the deadline cuts short still reports
+    /// its end to the request hooks before the operation ends.
     pub(crate) async fn observe<T>(
         &self,
         operation: &Operation,
@@ -332,13 +341,7 @@ impl AccountClient {
         let started = Instant::now();
         let hooks = self.shared.hooks.clone();
         crate::hooks::guarded(|| hooks.on_operation_start(&operation.info));
-        let outcome = match self.shared.config.operation_deadline {
-            None => work.await,
-            Some(deadline) => match tokio::time::timeout(deadline, work).await {
-                Ok(outcome) => outcome,
-                Err(_) => Err(Error::deadline_exceeded(deadline)),
-            },
-        };
+        let outcome = work.await;
         let result = OperationResult {
             error: outcome.as_ref().err(),
             duration: started.elapsed(),
@@ -348,7 +351,11 @@ impl AccountClient {
     }
 
     #[cfg(feature = "tracing")]
-    async fn dispatch(&self, operation: &Operation) -> Result<Response, Error> {
+    async fn dispatch(
+        &self,
+        operation: &Operation,
+        deadline: &Deadline,
+    ) -> Result<Response, Error> {
         use tracing::Instrument;
         let span = tracing::info_span!(
             "basecamp.operation",
@@ -357,20 +364,32 @@ impl AccountClient {
             http.status = tracing::field::Empty,
             request_id = tracing::field::Empty,
         );
-        self.attempts(operation).instrument(span).await
+        self.attempts(operation, deadline).instrument(span).await
     }
 
     #[cfg(not(feature = "tracing"))]
-    async fn dispatch(&self, operation: &Operation) -> Result<Response, Error> {
-        self.attempts(operation).await
+    async fn dispatch(
+        &self,
+        operation: &Operation,
+        deadline: &Deadline,
+    ) -> Result<Response, Error> {
+        self.attempts(operation, deadline).await
     }
 
     /// SPEC §7's loop, written out in the order the specification states it.
     #[allow(clippy::too_many_lines)]
-    async fn attempts(&self, operation: &Operation) -> Result<Response, Error> {
+    async fn attempts(
+        &self,
+        operation: &Operation,
+        deadline: &Deadline,
+    ) -> Result<Response, Error> {
         let route = operation.route;
         let retry = &route.metadata.retry;
         let eligible = route.retry_eligible();
+        // The caller's total-attempt budget (SPEC §4), and under it the transient-retry
+        // ceiling (SPEC §7): a route the gates make single-attempt still has the caller's
+        // budget for the replay after a refreshed 401.
+        let budget = effective_attempts(self.shared.config.max_retries, u32::MAX);
         let attempts = if eligible {
             effective_attempts(self.shared.config.max_retries, retry.max_attempts)
         } else {
@@ -387,7 +406,7 @@ impl AccountClient {
             // verdict of the refresh that produced them, where a newer one would refresh
             // again.
             let generation = self.shared.auth.generation();
-            let request = self.prepare(operation, &url).await?;
+            let request = deadline.bound(self.prepare(operation, &url)).await?;
             let info = RequestInfo {
                 method: operation.method.clone(),
                 url: url.clone(),
@@ -395,7 +414,7 @@ impl AccountClient {
             };
             crate::hooks::guarded(|| hooks.on_request_start(&info));
             let sent_at = Instant::now();
-            let sent = self.shared.http.send(request).await;
+            let sent = deadline.bound(self.shared.http.send(request)).await;
             let duration = sent_at.elapsed();
 
             match sent {
@@ -411,9 +430,16 @@ impl AccountClient {
                             },
                         );
                     });
-                    if eligible && attempt < attempts {
+                    // A timed-out attempt spent its whole per-attempt budget; another
+                    // would spend another on the same slowness (SPEC §14).
+                    if eligible
+                        && attempt < attempts
+                        && !error.is_timeout()
+                        && !error.is_deadline_exceeded()
+                    {
                         let delay =
                             backoff_with_jitter(retry, retry_index, self.shared.config.max_jitter);
+                        deadline.admits(delay)?;
                         crate::hooks::guarded(|| hooks.on_retry(&info, attempt + 1, &error, delay));
                         tokio::time::sleep(delay).await;
                         retry_index += 1;
@@ -440,7 +466,7 @@ impl AccountClient {
                     }
                     if status == StatusCode::UNAUTHORIZED
                         && !refreshed
-                        && attempt < attempts
+                        && attempt < budget
                         && self.shared.auth.refreshable()
                     {
                         let cause = Error::from_response(status, response.headers(), &[]);
@@ -456,17 +482,19 @@ impl AccountClient {
                             );
                         });
                         refreshed = true;
-                        let renewed = match self.shared.auth.refresh(generation).await {
-                            Ok(renewed) => renewed,
-                            Err(cause) => {
-                                return Err(Error::new(
-                                    ErrorCode::AuthRequired,
-                                    "credentials could not be refreshed",
-                                )
-                                .with_status(401)
-                                .with_source(cause));
-                            }
-                        };
+                        let renewed =
+                            match deadline.bound(self.shared.auth.refresh(generation)).await {
+                                Ok(renewed) => renewed,
+                                Err(cause) if cause.is_deadline_exceeded() => return Err(cause),
+                                Err(cause) => {
+                                    return Err(Error::new(
+                                        ErrorCode::AuthRequired,
+                                        "credentials could not be refreshed",
+                                    )
+                                    .with_status(401)
+                                    .with_source(cause));
+                                }
+                            };
                         if renewed {
                             crate::hooks::guarded(|| {
                                 hooks.on_retry(&info, attempt + 1, &cause, Duration::ZERO);
@@ -497,13 +525,16 @@ impl AccountClient {
                                 self.shared.config.max_jitter,
                             ),
                         };
+                        deadline.admits(delay)?;
                         crate::hooks::guarded(|| hooks.on_retry(&info, attempt + 1, &cause, delay));
                         tokio::time::sleep(delay).await;
                         retry_index += 1;
                         attempt += 1;
                         continue;
                     }
-                    let finished = self.finish(operation, url.clone(), response).await;
+                    let finished = self
+                        .finish(operation, url.clone(), response, deadline)
+                        .await;
                     crate::hooks::guarded(|| {
                         hooks.on_request_end(
                             &info,
@@ -515,14 +546,39 @@ impl AccountClient {
                             },
                         );
                     });
-                    return finished;
+                    // A connection that broke while the body was streaming is the same
+                    // transport failure as one that broke before the status arrived, and
+                    // is retried the same way; a decode or size refusal is not.
+                    match finished {
+                        Err(error)
+                            if eligible
+                                && attempt < attempts
+                                && error.code() == ErrorCode::Network
+                                && !error.is_timeout()
+                                && !error.is_deadline_exceeded() =>
+                        {
+                            let delay = backoff_with_jitter(
+                                retry,
+                                retry_index,
+                                self.shared.config.max_jitter,
+                            );
+                            deadline.admits(delay)?;
+                            crate::hooks::guarded(|| {
+                                hooks.on_retry(&info, attempt + 1, &error, delay);
+                            });
+                            tokio::time::sleep(delay).await;
+                            retry_index += 1;
+                            attempt += 1;
+                        }
+                        finished => return finished,
+                    }
                 }
             }
         }
     }
 
-    /// SPEC §3's `buildURL`: an absolute same-origin URL as given; else the base URL, the
-    /// account id and the path.
+    /// SPEC §3's `buildURL`: an absolute same-origin URL as given; else the base URL —
+    /// any path it carries included — the account id and the path.
     pub(crate) fn url_for(&self, operation: &Operation) -> Result<Url, Error> {
         let mut url = if let Some(url) = &operation.url {
             if !is_same_origin(url, &self.shared.base_url) {
@@ -532,7 +588,9 @@ impl AccountClient {
         } else {
             let path = operation.path.trim_start_matches('/');
             let mut url = self.shared.base_url.clone();
-            url.set_path(&format!("/{}/{path}", self.account_id));
+            let prefix = self.shared.base_url.path().trim_end_matches('/');
+            let account = account_segment(&self.account_id)?;
+            url.set_path(&format!("{prefix}/{account}/{path}"));
             url
         };
         if !operation.query.is_empty() {
@@ -563,16 +621,23 @@ impl AccountClient {
         operation: &Operation,
         url: Url,
         response: HttpResponse<Body>,
+        deadline: &Deadline,
     ) -> Result<Response, Error> {
         let status = response.status();
         if !status.is_success() {
-            return Err(self.finish_failure(operation, response).await);
+            let failure = async { Ok(self.finish_failure(operation, response).await) };
+            return Err(match deadline.bound(failure).await {
+                Ok(error) | Err(error) => error,
+            });
         }
         let headers = response.headers().clone();
         let limit = self.shared.config.max_response_body_bytes;
-        let body = response
-            .into_body()
-            .collect(limit, || Error::response_too_large(limit))
+        let body = deadline
+            .bound(
+                response
+                    .into_body()
+                    .collect(limit, || Error::response_too_large(limit)),
+            )
             .await?;
         if operation.route.response == Representation::Json
             && body.is_empty()
@@ -617,6 +682,25 @@ fn shipped_http_client(_timeout: Duration) -> Result<Arc<dyn HttpClient>, Error>
         "no HTTP client: supply one with ClientBuilder::http_client, or enable the reqwest feature",
     ))
 }
+
+/// The account id as one path segment: percent-encoded, and never a segment that the URL
+/// parser would fold away (`.`, `..`, nothing at all), which would put the request outside
+/// the account's scope.
+fn account_segment(account_id: &str) -> Result<String, Error> {
+    let trimmed = account_id.trim_matches('.');
+    if account_id.is_empty() || trimmed.is_empty() {
+        return Err(Error::usage(format!(
+            "account id {account_id:?} is not a path segment"
+        )));
+    }
+    Ok(percent_encoding::utf8_percent_encode(account_id, ACCOUNT_SEGMENT).to_string())
+}
+
+const ACCOUNT_SEGMENT: &percent_encoding::AsciiSet = &percent_encoding::NON_ALPHANUMERIC
+    .remove(b'-')
+    .remove(b'_')
+    .remove(b'.')
+    .remove(b'~');
 
 fn parse_base_url(base_url: &str) -> Result<Url, Error> {
     let mut url = Url::parse(base_url.trim_end_matches('/'))

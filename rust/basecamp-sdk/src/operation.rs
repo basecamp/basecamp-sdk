@@ -189,6 +189,14 @@ impl Operation {
     pub fn body_bytes(&self) -> Option<&Bytes> {
         self.body.as_ref().map(|body| &body.bytes)
     }
+
+    /// Whether the query selects exactly one page: SPEC §8's positive `page`, whose
+    /// answer is never followed.
+    pub(crate) fn pins_a_page(&self) -> bool {
+        self.query
+            .iter()
+            .any(|(name, value)| name == "page" && value.parse::<i64>().is_ok_and(|page| page > 0))
+    }
 }
 
 fn escape_quotes(value: &str) -> String {
@@ -214,7 +222,8 @@ pub(crate) fn compact(value: serde_json::Value) -> serde_json::Value {
 }
 
 /// The project the path is scoped to and the record it names: the `bucketId` or
-/// `projectId` parameter, and the last numeric parameter when it is not that one.
+/// `projectId` parameter, and the last numeric parameter when it is not that one. A path
+/// naming only the project names no record, as the other SDKs' hook metadata has it.
 fn ids_of(route: &Route, params: &[&dyn Display]) -> (Option<i64>, Option<i64>) {
     let mut project_id = None;
     let mut resource_id = None;
@@ -227,12 +236,8 @@ fn ids_of(route: &Route, params: &[&dyn Display]) -> (Option<i64>, Option<i64>) 
         }
         resource_id = Some(id);
     }
-    if resource_id == project_id && route.params.len() == 1 {
-        resource_id = if route.params[0].name == "bucketId" {
-            None
-        } else {
-            project_id
-        };
+    if route.params.len() == 1 && project_id.is_some() {
+        resource_id = None;
     }
     (project_id, resource_id)
 }
@@ -242,6 +247,21 @@ mod tests {
     use serde_json::json;
 
     use super::*;
+
+    #[test]
+    fn ids_name_the_project_and_the_record_the_path_names() {
+        use crate::generated::routes;
+        assert_eq!(ids_of(&routes::GET_PROJECT, &[&12]), (Some(12), None));
+        assert_eq!(
+            ids_of(&routes::LIST_PROJECT_PEOPLE, &[&12]),
+            (Some(12), None)
+        );
+        assert_eq!(ids_of(&routes::GET_TODO, &[&34]), (None, Some(34)));
+        assert_eq!(
+            ids_of(&routes::CREATE_CLOUD_FILE, &[&12, &56]),
+            (Some(12), Some(56))
+        );
+    }
 
     #[test]
     fn compaction_strips_nulls_but_not_empty_strings() {

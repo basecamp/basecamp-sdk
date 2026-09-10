@@ -55,6 +55,21 @@
         "x-basecamp-retry": {"maxAttempts": 3, "baseDelayMs": 1000, "backoff": "exponential", "retryOn": [429, 503]}
       }
     },
+    "/{accountId}/widgets/{widgetId}/progress.json": {
+      "get": {
+        "operationId": "GetWidgetProgress",
+        "description": "A widget's activity, page by page.",
+        "tags": ["Widgets"],
+        "parameters": [
+          {"name": "accountId", "in": "path", "required": true, "schema": {"type": "string"}},
+          {"name": "widgetId", "in": "path", "required": true, "schema": {"type": "integer", "format": "int64"}},
+          {"name": "page", "in": "query", "schema": {"type": "integer", "format": "int32"}}
+        ],
+        "responses": {"200": {"description": "ok", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/GetWidgetProgressResponseContent"}}}}},
+        "x-basecamp-pagination": {"style": "link", "totalCountHeader": "X-Total-Count", "key": "events"},
+        "x-basecamp-retry": {"maxAttempts": 3, "baseDelayMs": 1000, "backoff": "exponential", "retryOn": [429, 503]}
+      }
+    },
     "/{accountId}/account/logo.json": {
       "put": {
         "operationId": "UpdateGadgetLogo",
@@ -79,6 +94,7 @@
         "required": ["name"]
       },
       "CreateWidgetResponseContent": {"$ref": "#/components/schemas/Widget"},
+      "GetWidgetProgressResponseContent": {"type": "object", "properties": {"owner": {"$ref": "#/components/schemas/Owner"}, "events": {"type": "array", "items": {"$ref": "#/components/schemas/Widget"}}}, "required": ["owner", "events"]},
       "ListWidgetsResponseContent": {"type": "array", "items": {"$ref": "#/components/schemas/Widget"}},
       "Widget": {
         "type": "object",

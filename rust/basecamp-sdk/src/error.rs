@@ -281,6 +281,19 @@ impl Error {
         self
     }
 
+    /// The same error carrying the seconds a `Retry-After` header named.
+    pub fn with_retry_after(mut self, seconds: u32) -> Error {
+        self.inner.retry_after = Some(seconds);
+        self
+    }
+
+    /// The same error marked as a transport timeout, for a projection of one that kept
+    /// only the origin (SPEC §9).
+    pub(crate) fn timed_out(mut self) -> Error {
+        self.inner.timeout = true;
+        self
+    }
+
     /// The same error with a cause.
     pub fn with_source(mut self, source: impl std::error::Error + Send + Sync + 'static) -> Error {
         self.source = Some(Box::new(source));
@@ -538,13 +551,16 @@ pub fn parse_retry_after(value: &str, now: DateTime<Utc>) -> Option<u32> {
     )
 }
 
-/// IMF-fixdate, then the obsolete RFC 850 and asctime forms.
+/// An HTTP-date and nothing else: IMF-fixdate, then the obsolete RFC 850 and asctime forms
+/// (RFC 9110 §5.6.7). RFC 2822's wider grammar — numeric offsets, zone names, `Z`, a
+/// missing weekday — is not an HTTP-date and falls through.
 fn parse_http_date(value: &str) -> Option<DateTime<Utc>> {
-    if let Ok(date) = DateTime::parse_from_rfc2822(value) {
-        return Some(date.with_timezone(&Utc));
-    }
     let collapsed: String = value.split_whitespace().collect::<Vec<_>>().join(" ");
-    for format in ["%A, %d-%b-%y %H:%M:%S GMT", "%a %b %d %H:%M:%S %Y"] {
+    for format in [
+        "%a, %d %b %Y %H:%M:%S GMT",
+        "%A, %d-%b-%y %H:%M:%S GMT",
+        "%a %b %d %H:%M:%S %Y",
+    ] {
         if let Ok(naive) = chrono::NaiveDateTime::parse_from_str(&collapsed, format) {
             return Some(naive.and_utc());
         }
@@ -642,6 +658,21 @@ mod tests {
             parse_retry_after("Tue, 31 Dec 2999 00:00:00 GMT", now),
             Some(2_147_483_647)
         );
+        for not_http_date in [
+            "Wed, 09 Jun 2021 10:18:16 -0500",
+            "Wed, 09 Jun 2021 10:18:16 +0000",
+            "Wed, 09 Jun 2021 10:18:16 UT",
+            "Wed, 09 Jun 2021 10:18:16 EST",
+            "Wed, 09 Jun 2021 10:18:16 Z",
+            "09 Jun 2021 10:18:16 GMT",
+            "Wed, 09 Jun 21 10:18:16 GMT",
+        ] {
+            assert_eq!(
+                parse_retry_after(not_http_date, now),
+                None,
+                "{not_http_date} is RFC 2822, not an HTTP-date"
+            );
+        }
         assert_eq!(parse_retry_after("not a date", now), None);
     }
 

@@ -26,6 +26,29 @@ pub static CREATE_WIDGET: Route = Route {
     metadata: &metadata::CREATE_WIDGET,
 };
 
+/// `GET /widgets/{widgetId}/progress.json`.
+pub static GET_WIDGET_PROGRESS: Route = Route {
+    id: "GetWidgetProgress",
+    service: "Widgets",
+    method: Method::GET,
+    path: "/widgets/{widgetId}/progress.json",
+    pattern: "/widgets/{widgetId}/progress",
+    resource_type: "widget_progress",
+    params: &[RouteParam {
+        name: "widgetId",
+        kind: ParamKind::Int64,
+    }],
+    body: BodyKind::None,
+    response: Representation::Json,
+    pagination: Pagination::Link {
+        key: Some("events"),
+        total_count_header: Some("X-Total-Count"),
+    },
+    write: None,
+    deprecated: false,
+    metadata: &metadata::GET_WIDGET_PROGRESS,
+};
+
 /// `GET /widgets.json`.
 pub static LIST_WIDGETS: Route = Route {
     id: "ListWidgets",
@@ -121,6 +144,7 @@ pub static UPDATE_GADGET_LOGO: Route = Route {
 /// Every route the SDK knows, one per operation, in `operationId` order.
 pub static ROUTES: &[&Route] = &[
     &CREATE_WIDGET,
+    &GET_WIDGET_PROGRESS,
     &LIST_WIDGETS,
     &REPLACE_WIDGET,
     &TRASH_WIDGET,

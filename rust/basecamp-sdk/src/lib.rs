@@ -21,6 +21,7 @@
 pub mod auth;
 pub mod client;
 pub mod config;
+mod deadline;
 pub mod download;
 pub mod error;
 #[doc(hidden)]

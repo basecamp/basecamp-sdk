@@ -59,7 +59,7 @@ fn run() -> Result<(), String> {
     let names = read(&names_path.unwrap_or_else(|| root.join("rust/generator/names.toml")))?;
     let naming = Naming::parse(&names)?;
     let model = Model::build(&openapi, &behavior, &naming)?;
-    let files = render(&model);
+    let files = render(&model)?;
 
     let target = output.unwrap_or_else(|| root.join("rust/basecamp-sdk/src/generated"));
     if check {
@@ -76,7 +76,7 @@ fn run() -> Result<(), String> {
     }
 }
 
-fn render(model: &Model) -> BTreeMap<PathBuf, String> {
+fn render(model: &Model) -> Result<BTreeMap<PathBuf, String>, String> {
     let mut files = BTreeMap::new();
     files.insert(PathBuf::from("mod.rs"), render_mod(model));
     files.insert(PathBuf::from("types.rs"), emit::types::render(model));
@@ -93,10 +93,10 @@ fn render(model: &Model) -> BTreeMap<PathBuf, String> {
     for service in &model.services {
         files.insert(
             PathBuf::from(format!("services/{}.rs", service.module)),
-            emit::services::render_service(service),
+            emit::services::render_service(service, model)?,
         );
     }
-    files
+    Ok(files)
 }
 
 fn render_mod(model: &Model) -> String {

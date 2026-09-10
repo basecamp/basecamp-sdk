@@ -235,7 +235,17 @@ async fn a_pinned_page_is_one_request_that_still_reports_truncation() {
     let pinned = client.projects().list(&params).await.unwrap();
     assert_eq!(pinned.len(), 1);
     assert!(pinned.has_next());
+    assert!(pinned.is_pinned());
     assert_eq!(pinned.total_count(), Some(9));
+    assert!(
+        client.next_page(&pinned).await.unwrap().is_none(),
+        "a pinned page's cursor is never followed"
+    );
+    let all = client.collect_all(pinned, None).await.unwrap();
+    assert_eq!(all.items.len(), 1);
+    assert!(all.meta.truncated);
+    assert_eq!(all.meta.next_url.unwrap().query(), Some("page=4"));
+    assert_eq!(server.received_requests().await.unwrap().len(), 1);
 }
 
 #[tokio::test(start_paused = true)]
@@ -406,4 +416,172 @@ async fn the_page_stream_yields_a_page_before_failing_on_its_bad_cursor() {
     let mut items = std::pin::pin!(client.items(first));
     assert!(items.next().await.unwrap().is_ok());
     assert!(items.next().await.unwrap().is_err());
+}
+
+#[tokio::test]
+async fn follow_on_pages_report_the_same_hook_identity_as_the_first() {
+    use basecamp_sdk::services::todos::ListTodosParams;
+    use support::HookLog;
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/todolists/67890/todos.json"))
+        .and(query_param("page", "2"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(Vec::<serde_json::Value>::new()))
+        .mount(&server)
+        .await;
+    Mock::given(method("GET"))
+        .and(path("/999/todolists/67890/todos.json"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_json(Vec::<serde_json::Value>::new())
+                .insert_header("Link", "</todolists/67890/todos.json?page=2>; rel=\"next\""),
+        )
+        .mount(&server)
+        .await;
+    let log = std::sync::Arc::new(HookLog::default());
+    let client = basecamp_sdk::Client::builder(
+        Config::default()
+            .with_base_url(server.uri())
+            .with_timeout(std::time::Duration::from_secs(86_400)),
+    )
+    .access_token("test-token")
+    .hooks(log.clone())
+    .build()
+    .unwrap()
+    .for_account("999");
+    let first = client
+        .todos()
+        .list(67890, &ListTodosParams::default())
+        .await
+        .unwrap();
+    client.collect_all(first, None).await.unwrap();
+    let starts: Vec<_> = log
+        .lines()
+        .into_iter()
+        .filter(|line| line.starts_with("op start"))
+        .collect();
+    assert_eq!(
+        starts,
+        [
+            "op start ListTodos project=None resource=Some(67890)",
+            "op start ListTodos project=None resource=Some(67890)",
+        ]
+    );
+}
+
+#[tokio::test]
+async fn the_item_stream_ends_with_an_error_when_the_page_cap_cuts_it_short() {
+    use futures_util::StreamExt;
+    let server = MockServer::start().await;
+    three_pages(&server).await;
+    let mut config = Config::default();
+    config.max_pages = 2;
+    let client = account_with(&server, config);
+    let first = client
+        .projects()
+        .list(&ListProjectsParams::default())
+        .await
+        .unwrap();
+    let mut items = std::pin::pin!(client.items(first));
+    let mut ids = Vec::new();
+    let mut ending = None;
+    while let Some(item) = items.next().await {
+        match item {
+            Ok(project) => ids.push(project.id),
+            Err(error) => ending = Some(error),
+        }
+    }
+    assert_eq!(ids, [1, 2, 3, 4]);
+    let ending = ending.expect("the cap is signalled");
+    assert_eq!(ending.code(), ErrorCode::Usage);
+    assert!(
+        ending.message().contains("max_pages = 2"),
+        "{}",
+        ending.message()
+    );
+    assert_eq!(server.received_requests().await.unwrap().len(), 2);
+
+    let first = client
+        .projects()
+        .list(&ListProjectsParams::default())
+        .await
+        .unwrap();
+    let mut pages = std::pin::pin!(client.pages(first));
+    assert_eq!(pages.next().await.unwrap().unwrap().len(), 2);
+    let last = pages.next().await.unwrap().unwrap();
+    assert!(last.has_next(), "the last page still names its successor");
+    assert!(pages.next().await.is_none());
+
+    let mut config = Config::default();
+    config.max_pages = 3;
+    let client = account_with(&server, config);
+    let first = client
+        .projects()
+        .list(&ListProjectsParams::default())
+        .await
+        .unwrap();
+    let all: Vec<_> = client.items(first).collect().await;
+    assert!(
+        all.iter().all(Result::is_ok),
+        "a complete walk ends cleanly"
+    );
+    assert_eq!(all.len(), 5);
+}
+
+#[tokio::test]
+async fn a_wrapped_collection_is_gathered_across_pages_from_its_envelope() {
+    use basecamp_sdk::services::reports::GetPersonProgressParams;
+    use futures_util::StreamExt;
+    let person = serde_json::json!({"id": 45678, "name": "n", "email_address": "e", "personable_type": "User", "created_at": "2025-01-01T00:00:00Z", "updated_at": "2025-01-01T00:00:00Z", "admin": false, "owner": false, "client": false, "employee": false, "time_zone": "UTC", "avatar_url": "https://x/a.png"});
+    let envelope = |ids: &[i64]| {
+        let events: Vec<_> = ids.iter().map(|id| serde_json::json!({"id": id})).collect();
+        serde_json::json!({"person": person.clone(), "events": events})
+    };
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/reports/users/progress/45678.json"))
+        .and(query_param("page", "2"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(envelope(&[3])))
+        .mount(&server)
+        .await;
+    Mock::given(method("GET"))
+        .and(path("/999/reports/users/progress/45678.json"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_json(envelope(&[1, 2]))
+                .insert_header(
+                    "Link",
+                    "</reports/users/progress/45678.json?page=2>; rel=\"next\"",
+                )
+                .insert_header("X-Total-Count", "3"),
+        )
+        .mount(&server)
+        .await;
+    let client = account(&server);
+    let first = client
+        .reports()
+        .person_progress(45678, &GetPersonProgressParams::default())
+        .await
+        .unwrap();
+    assert_eq!(
+        first.person.id, 45678,
+        "the envelope's other members are on the page"
+    );
+    assert_eq!(first.events.len(), 2);
+    let all = client.collect_all(first, None).await.unwrap();
+    assert_eq!(
+        all.items.iter().map(|event| event.id).collect::<Vec<_>>(),
+        [Some(1), Some(2), Some(3)]
+    );
+    assert_eq!(all.meta.total_count, 3);
+    assert!(!all.meta.truncated);
+
+    let first = client
+        .reports()
+        .person_progress(45678, &GetPersonProgressParams::default())
+        .await
+        .unwrap();
+    let streamed: Vec<_> = client.items(first).collect().await;
+    assert_eq!(streamed.len(), 3);
+    assert!(streamed.iter().all(Result::is_ok));
 }

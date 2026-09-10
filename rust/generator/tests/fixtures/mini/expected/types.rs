@@ -29,6 +29,16 @@ pub struct CreateWidgetRequestContent {
 /// `CreateWidgetResponseContent`.
 pub type CreateWidgetResponseContent = Widget;
 
+/// The `GetWidgetProgressResponseContent` shape of the Basecamp API.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct GetWidgetProgressResponseContent {
+    /// `owner`.
+    pub owner: Owner,
+    /// `events`.
+    pub events: Vec<Widget>,
+}
+
 /// `ListWidgetsResponseContent`.
 pub type ListWidgetsResponseContent = Vec<Widget>;
 

@@ -43,7 +43,12 @@ Basecamp handed out. Follow it a page at a time with
 [`AccountClient::next_page`](crate::AccountClient::next_page), or collect the whole
 collection with [`AccountClient::collect_all`](crate::AccountClient::collect_all), which
 stops at the client's page cap and says so in [`ListMeta::truncated`](crate::ListMeta).
-A `Link` header pointing off the API origin is refused, never followed.
+[`AccountClient::pages`](crate::AccountClient::pages) and
+[`AccountClient::items`](crate::AccountClient::items) walk lazily as streams; the item
+stream ends with a `usage` error when the cap leaves a page unread. A read whose page is
+an envelope around the collection gathers the same way: its generated shape implements
+[`PageItems`](crate::pagination::PageItems). A `Link` header pointing off the API origin
+is refused, never followed.
 
 ## Errors
 

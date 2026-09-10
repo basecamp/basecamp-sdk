@@ -176,3 +176,23 @@ fn an_operation_missing_from_the_behavior_model_fails_generation() {
         "{stderr}"
     );
 }
+
+#[test]
+fn a_pagination_key_that_is_not_a_required_array_fails_generation() {
+    let stderr = refusal(|openapi, _| {
+        openapi["components"]["schemas"]["GetWidgetProgressResponseContent"]["properties"]["events"] =
+            serde_json::json!({"type": "string"});
+    });
+    assert!(
+        stderr.contains("GetWidgetProgress paginates over `events`, which is not an array"),
+        "{stderr}"
+    );
+    let stderr = refusal(|openapi, _| {
+        openapi["paths"]["/{accountId}/widgets/{widgetId}/progress.json"]["get"]["x-basecamp-pagination"]
+            ["key"] = serde_json::json!("missing");
+    });
+    assert!(
+        stderr.contains("GetWidgetProgress paginates over `missing`, which is not a member of GetWidgetProgressResponseContent"),
+        "{stderr}"
+    );
+}

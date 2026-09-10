@@ -8,6 +8,9 @@ use crate::route::{Backoff, OperationMetadata, RetryConfig};
 /// `CreateWidget`.
 #[rustfmt::skip]
 pub static CREATE_WIDGET: OperationMetadata = OperationMetadata { operation: "CreateWidget", idempotent: false, readonly: false, retry: RetryConfig { max_attempts: 2, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
+/// `GetWidgetProgress`.
+#[rustfmt::skip]
+pub static GET_WIDGET_PROGRESS: OperationMetadata = OperationMetadata { operation: "GetWidgetProgress", idempotent: false, readonly: true, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
 /// `ListWidgets`.
 #[rustfmt::skip]
 pub static LIST_WIDGETS: OperationMetadata = OperationMetadata { operation: "ListWidgets", idempotent: false, readonly: true, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
@@ -24,6 +27,7 @@ pub static UPDATE_GADGET_LOGO: OperationMetadata = OperationMetadata { operation
 /// Every operation's metadata, in `operationId` order.
 pub static OPERATIONS: &[&OperationMetadata] = &[
     &CREATE_WIDGET,
+    &GET_WIDGET_PROGRESS,
     &LIST_WIDGETS,
     &REPLACE_WIDGET,
     &TRASH_WIDGET,

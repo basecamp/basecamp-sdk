@@ -255,8 +255,8 @@ jobs:
           VERSION: ${{ needs.package.outputs.version }}
         run: |
           UA="basecamp-sdk-release (https://github.com/basecamp/basecamp-sdk)"
-          CURL="curl -sS -A $UA --connect-timeout 10 --max-time 30"
-          CRATE_STATUS=$($CURL -o /dev/null -w "%{http_code}" "https://crates.io/api/v1/crates/${CRATE}")
+          CURL=(curl -sS -A "$UA" --connect-timeout 10 --max-time 30)
+          CRATE_STATUS=$("${CURL[@]}" -o /dev/null -w "%{http_code}" "https://crates.io/api/v1/crates/${CRATE}")
           case "$CRATE_STATUS" in
             200) ;;
             404)
@@ -269,7 +269,7 @@ jobs:
               ;;
           esac
           BODY=$(mktemp)
-          VERSION_STATUS=$($CURL -o "$BODY" -w "%{http_code}" "https://crates.io/api/v1/crates/${CRATE}/${VERSION}")
+          VERSION_STATUS=$("${CURL[@]}" -o "$BODY" -w "%{http_code}" "https://crates.io/api/v1/crates/${CRATE}/${VERSION}")
           case "$VERSION_STATUS" in
             200)
               if [ "$(jq -r '.version.yanked' "$BODY")" = "true" ]; then

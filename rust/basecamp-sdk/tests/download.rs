@@ -199,3 +199,71 @@ async fn redirects_without_location_and_on_hop_two_are_refused() {
         "the signed URL is never rendered"
     );
 }
+
+#[tokio::test]
+async fn the_filename_comes_from_the_given_url_not_the_signed_one() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path(
+            "/999999999/blobs/abcd1234/download/report%20final.pdf",
+        ))
+        .respond_with(ResponseTemplate::new(302).insert_header("Location", "/signed/blob?sig=abc"))
+        .expect(1)
+        .mount(&server)
+        .await;
+    Mock::given(method("GET"))
+        .and(path("/signed/blob"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw("pdf", "application/pdf"))
+        .expect(1)
+        .mount(&server)
+        .await;
+    let result = account_with(&server, no_jitter())
+        .download_url(&format!(
+            "{}/999999999/blobs/abcd1234/download/report%20final.pdf",
+            server.uri()
+        ))
+        .await
+        .unwrap();
+    assert_eq!(result.filename, "report final.pdf");
+}
+
+#[tokio::test(start_paused = true)]
+async fn hop_one_does_not_resend_a_timed_out_attempt() {
+    let script = Scripted::new(vec![
+        Answer::Timeout,
+        Answer::Status(200, vec![("content-type", "image/png")], "pixels"),
+    ]);
+    let error = scripted_account(script.clone(), no_jitter())
+        .download_url("https://3.basecampapi.com/999999999/blobs/abcd1234/download/logo.png")
+        .await
+        .unwrap_err();
+    assert_eq!(error.code(), ErrorCode::Network);
+    assert!(error.is_timeout());
+    assert!(
+        !error.message().contains("abcd1234"),
+        "the projection keeps only the origin"
+    );
+    assert_eq!(script.sent_count(), 1);
+}
+
+#[tokio::test(start_paused = true)]
+async fn a_deadline_that_cuts_hop_one_short_still_closes_its_hooks() {
+    use support::HookLog;
+    let script = Scripted::new(vec![Answer::Hang]);
+    let log = std::sync::Arc::new(HookLog::default());
+    let mut config = no_jitter().with_base_url("https://3.basecampapi.com");
+    config.operation_deadline = Some(Duration::from_secs(5));
+    let client = basecamp_sdk::Client::builder(config)
+        .access_token("t")
+        .http_client(script.clone())
+        .hooks(log.clone())
+        .build()
+        .unwrap()
+        .for_account("999");
+    let error = client
+        .download_url("https://3.basecampapi.com/999999999/blobs/abcd1234/download/logo.png")
+        .await
+        .unwrap_err();
+    assert!(error.is_deadline_exceeded());
+    assert_eq!(log.lines(), ["req start 1", "req end 1 None network"]);
+}

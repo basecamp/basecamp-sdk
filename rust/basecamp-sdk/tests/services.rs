@@ -1031,3 +1031,62 @@ async fn wormholes_delete_reaches_the_wire() {
         .await;
     account(&server).wormholes().delete(100, 101).await.unwrap();
 }
+
+#[tokio::test]
+async fn a_base_url_path_prefix_is_kept_in_front_of_the_account() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/api/v1/999/account.json"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({"created_at": "2025-01-01T00:00:00Z", "id": 1, "name": "x", "updated_at": "2025-01-01T00:00:00Z"})))
+        .expect(1)
+        .mount(&server)
+        .await;
+    let account = basecamp_sdk::Client::builder(
+        basecamp_sdk::Config::default().with_base_url(format!("{}/api/v1/", server.uri())),
+    )
+    .access_token("test-token")
+    .build()
+    .unwrap()
+    .for_account("999");
+    account.account().account().await.unwrap();
+}
+
+#[tokio::test]
+async fn an_account_id_is_one_path_segment_or_a_usage_error() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/a%20b/account.json"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({"created_at": "2025-01-01T00:00:00Z", "id": 1, "name": "x", "updated_at": "2025-01-01T00:00:00Z"})))
+        .expect(1)
+        .mount(&server)
+        .await;
+    let client =
+        basecamp_sdk::Client::builder(basecamp_sdk::Config::default().with_base_url(server.uri()))
+            .access_token("test-token")
+            .build()
+            .unwrap();
+    client.for_account("a b").account().account().await.unwrap();
+    for account in ["", ".", ".."] {
+        let error = client
+            .for_account(account)
+            .account()
+            .account()
+            .await
+            .unwrap_err();
+        assert_eq!(error.code(), basecamp_sdk::ErrorCode::Usage, "{account:?}");
+    }
+    assert_eq!(server.received_requests().await.unwrap().len(), 1);
+    let error = client
+        .for_account("../../evil")
+        .account()
+        .account()
+        .await
+        .unwrap_err();
+    assert_eq!(error.code(), basecamp_sdk::ErrorCode::NotFound);
+    let requests = server.received_requests().await.unwrap();
+    assert_eq!(
+        requests[1].url.path(),
+        "/..%2F..%2Fevil/account.json",
+        "a path-shaped id stays one segment"
+    );
+}

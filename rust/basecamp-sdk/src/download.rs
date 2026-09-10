@@ -7,6 +7,7 @@ use bytes::Bytes;
 use url::Url;
 
 use crate::client::{AccountClient, header_value};
+use crate::deadline::Deadline;
 use crate::error::{Error, ErrorCode, parse_retry_after_header};
 use crate::hooks::{RequestInfo, RequestResult};
 use crate::http::header::USER_AGENT;
@@ -27,7 +28,8 @@ pub struct DownloadResult {
     pub content_type: String,
     /// The size in bytes, or -1 when unknown.
     pub content_length: i64,
-    /// The last segment of the URL's path.
+    /// The last segment of the download URL's path as it was given, percent-decoded, or
+    /// `download` when it has none. The signed URL hop 1 redirects to names nothing.
     pub filename: String,
 }
 
@@ -46,17 +48,15 @@ impl AccountClient {
     /// bare — no credentials, no retry, no redirect. Hop-2 errors name only the storage
     /// origin: the signed URL is itself a credential (SPEC §9).
     pub async fn download_url(&self, raw_url: &str) -> Result<DownloadResult, Error> {
-        let work = self.download_within(raw_url);
-        match self.config().operation_deadline {
-            None => work.await,
-            Some(deadline) => match tokio::time::timeout(deadline, work).await {
-                Ok(outcome) => outcome,
-                Err(_) => Err(Error::deadline_exceeded(deadline)),
-            },
-        }
+        let deadline = self.deadline();
+        self.download_within(raw_url, &deadline).await
     }
 
-    async fn download_within(&self, raw_url: &str) -> Result<DownloadResult, Error> {
+    async fn download_within(
+        &self,
+        raw_url: &str,
+        deadline: &Deadline,
+    ) -> Result<DownloadResult, Error> {
         let given = Url::parse(raw_url)
             .map_err(|_| Error::usage("download URL is not an absolute http(s) URL"))?;
         if !matches!(given.scheme(), "http" | "https") {
@@ -69,8 +69,9 @@ impl AccountClient {
         url.set_path(given.path());
         url.set_query(given.query());
         url.set_fragment(None);
+        let filename = filename_of(&given);
 
-        let response = self.download_hop_one(&url).await?;
+        let response = self.download_hop_one(&url, deadline).await?;
         let status = response.status();
         if REDIRECTS.contains(&status.as_u16()) {
             let location = response
@@ -91,16 +92,20 @@ impl AccountClient {
                 )
                 .with_status(status.as_u16())
             })?;
-            return self.download_hop_two(&target).await;
+            return self.download_hop_two(&target, filename, deadline).await;
         }
         if status.is_success() {
-            return self.read_download(&url, response).await;
+            return self.read_download(&url, filename, response, deadline).await;
         }
-        Err(self.download_failure(response).await)
+        Err(self.download_failure(response, deadline).await)
     }
 
     #[allow(clippy::too_many_lines)]
-    async fn download_hop_one(&self, url: &Url) -> Result<Response<Body>, Error> {
+    async fn download_hop_one(
+        &self,
+        url: &Url,
+        deadline: &Deadline,
+    ) -> Result<Response<Body>, Error> {
         let config = self.config();
         let attempts = effective_attempts(config.max_retries, u32::MAX);
         let shown = Url::parse(&redact_url(url)).unwrap_or_else(|_| url.clone());
@@ -117,7 +122,9 @@ impl AccountClient {
             request
                 .headers_mut()
                 .insert(USER_AGENT, header_value(&self.shared().user_agent)?);
-            self.shared().auth.authenticate(&mut request).await?;
+            deadline
+                .bound(self.shared().auth.authenticate(&mut request))
+                .await?;
             let info = RequestInfo {
                 method: crate::http::Method::GET,
                 url: shown.clone(),
@@ -125,12 +132,26 @@ impl AccountClient {
             };
             crate::hooks::guarded(|| hooks.on_request_start(&info));
             let started = Instant::now();
-            let sent = self.shared().http.send(request).await;
+            let sent = deadline.bound(self.shared().http.send(request)).await;
             let duration = started.elapsed();
 
             // What this attempt failed with, if it failed; a status outside the retry set
-            // is still a failure to the hooks, it is just not one that is retried.
+            // is still a failure to the hooks, it is just not one that is retried. A
+            // transport failure is projected to the origin (SPEC §9), keeping only whether
+            // it was a timeout or the deadline, which decide what happens next.
             let (status, failure, retry_after) = match &sent {
+                Err(error) if error.is_deadline_exceeded() => (
+                    None,
+                    Some(Error::deadline_exceeded(
+                        self.config().operation_deadline.unwrap_or_default(),
+                    )),
+                    None,
+                ),
+                Err(error) if error.is_timeout() => (
+                    None,
+                    Some(Error::network_at(&origin_of(url.as_str())).timed_out()),
+                    None,
+                ),
                 Err(_) => (
                     None,
                     Some(Error::network_at(&origin_of(url.as_str()))),
@@ -170,10 +191,8 @@ impl AccountClient {
             if status == Some(crate::http::StatusCode::UNAUTHORIZED) {
                 if !refreshed && attempt < attempts && self.shared().auth.refreshable() {
                     refreshed = true;
-                    if self
-                        .shared()
-                        .auth
-                        .refresh(generation)
+                    if deadline
+                        .bound(self.shared().auth.refresh(generation))
                         .await
                         .unwrap_or(false)
                     {
@@ -184,10 +203,14 @@ impl AccountClient {
                         continue;
                     }
                 }
-                return Err(self.download_failure(sent?).await);
+                return Err(self.download_failure(sent?, deadline).await);
             }
-            let retried =
-                sent.is_err() || status.is_some_and(|s| DOWNLOAD_RETRY_ON.contains(&s.as_u16()));
+            // A timed-out attempt spent its whole per-attempt budget and is not resent
+            // (SPEC §14); neither is one the operation deadline cut short.
+            let retried = match &sent {
+                Err(_) => !cause.is_timeout() && !cause.is_deadline_exceeded(),
+                Ok(_) => status.is_some_and(|s| DOWNLOAD_RETRY_ON.contains(&s.as_u16())),
+            };
             if retried && attempt < attempts {
                 let delay = match retry_after {
                     Some(seconds) => Duration::from_secs(u64::from(seconds)),
@@ -195,19 +218,25 @@ impl AccountClient {
                         backoff_with_jitter(&DEFAULT_RETRY_CONFIG, attempt - 1, config.max_jitter)
                     }
                 };
+                deadline.admits(delay)?;
                 crate::hooks::guarded(|| hooks.on_retry(&info, attempt + 1, &cause, delay));
                 tokio::time::sleep(delay).await;
                 attempt += 1;
                 continue;
             }
             return match sent {
-                Ok(response) => Err(self.download_failure(response).await),
+                Ok(response) => Err(self.download_failure(response, deadline).await),
                 Err(_) => Err(cause),
             };
         }
     }
 
-    async fn download_hop_two(&self, target: &Url) -> Result<DownloadResult, Error> {
+    async fn download_hop_two(
+        &self,
+        target: &Url,
+        filename: String,
+        deadline: &Deadline,
+    ) -> Result<DownloadResult, Error> {
         let origin = origin_of(target.as_str());
         require_secure_endpoint(target).map_err(|_| {
             Error::usage(format!("download redirect to an insecure origin: {origin}"))
@@ -217,12 +246,16 @@ impl AccountClient {
             .uri(target.as_str())
             .body(Bytes::new())
             .map_err(|error| Error::usage(format!("request could not be built: {error}")))?;
-        let response = self
-            .shared()
-            .http
-            .send(request)
+        let response = deadline
+            .bound(self.shared().http.send(request))
             .await
-            .map_err(|_| Error::network_at(&origin))?;
+            .map_err(|error| {
+                if error.is_deadline_exceeded() {
+                    error
+                } else {
+                    Error::network_at(&origin)
+                }
+            })?;
         let status = response.status();
         if REDIRECTS.contains(&status.as_u16()) {
             return Err(Error::new(
@@ -238,13 +271,16 @@ impl AccountClient {
             )
             .with_status(status.as_u16()));
         }
-        self.read_download(target, response).await
+        self.read_download(target, filename, response, deadline)
+            .await
     }
 
     async fn read_download(
         &self,
         url: &Url,
+        filename: String,
         response: Response<Body>,
+        deadline: &Deadline,
     ) -> Result<DownloadResult, Error> {
         let content_type = response
             .headers()
@@ -255,14 +291,17 @@ impl AccountClient {
         let declared = response.body().content_length();
         let limit = self.config().max_response_body_bytes;
         let origin = origin_of(url.as_str());
-        let body = response
-            .into_body()
-            .collect(limit, || Error::response_too_large(limit))
+        let body = deadline
+            .bound(
+                response
+                    .into_body()
+                    .collect(limit, || Error::response_too_large(limit)),
+            )
             .await
             .map_err(|error| {
                 // A transport's account of a failing read may render the URL it was
                 // reading, which on hop 2 is a credential (SPEC §9): only the origin survives.
-                if error.code() == ErrorCode::Network {
+                if error.code() == ErrorCode::Network && !error.is_deadline_exceeded() {
                     Error::network_at(&origin)
                 } else {
                     error
@@ -272,11 +311,6 @@ impl AccountClient {
             Some(length) => i64::try_from(length).unwrap_or(-1),
             None => i64::try_from(body.len()).unwrap_or(-1),
         };
-        let filename = url
-            .path_segments()
-            .and_then(|mut segments| segments.next_back())
-            .unwrap_or_default()
-            .to_string();
         Ok(DownloadResult {
             body,
             content_type,
@@ -285,16 +319,53 @@ impl AccountClient {
         })
     }
 
-    async fn download_failure(&self, response: Response<Body>) -> Error {
+    async fn download_failure(&self, response: Response<Body>, deadline: &Deadline) -> Error {
         let status = response.status();
         let headers = response.headers().clone();
-        let body = response
-            .into_body()
-            .collect(crate::error::MAX_ERROR_BODY_BYTES, || {
-                Error::response_too_large(crate::error::MAX_ERROR_BODY_BYTES)
-            })
+        let body = deadline
+            .bound(
+                response
+                    .into_body()
+                    .collect(crate::error::MAX_ERROR_BODY_BYTES, || {
+                        Error::response_too_large(crate::error::MAX_ERROR_BODY_BYTES)
+                    }),
+            )
             .await
             .unwrap_or_default();
         Error::from_response(status, &headers, &body)
+    }
+}
+
+/// SPEC §14's `filename`: the last segment of the given URL's path, percent-decoded, or
+/// `download` when there is none — the same rule as Go's and TypeScript's.
+fn filename_of(url: &Url) -> String {
+    let last = url
+        .path_segments()
+        .and_then(|mut segments| segments.rfind(|segment| !segment.is_empty()))
+        .unwrap_or_default();
+    if last.is_empty() || last == "." {
+        "download".to_string()
+    } else {
+        percent_encoding::percent_decode_str(last)
+            .decode_utf8()
+            .map_or_else(|_| last.to_string(), std::borrow::Cow::into_owned)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_filename_is_the_last_segment_decoded_or_download() {
+        let named = |raw: &str| filename_of(&Url::parse(raw).unwrap());
+        assert_eq!(
+            named("https://x/a/report%20final.pdf?sig=1"),
+            "report final.pdf"
+        );
+        assert_eq!(named("https://x/a/logo.png/"), "logo.png");
+        assert_eq!(named("https://x/"), "download");
+        assert_eq!(named("https://x"), "download");
+        assert_eq!(named("https://x/a/%ZZ"), "%ZZ");
     }
 }

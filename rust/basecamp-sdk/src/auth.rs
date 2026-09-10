@@ -1,12 +1,14 @@
 //! SPEC §4: how credentials get onto a request, and how a refreshed token replaces a
 //! rejected one.
 
-use std::sync::Arc;
+use std::panic::AssertUnwindSafe;
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{Arc, Mutex};
 
 use async_trait::async_trait;
 use bytes::Bytes;
-use tokio::sync::Mutex;
+use futures_util::FutureExt;
+use futures_util::future::{BoxFuture, Shared};
 
 use crate::error::Error;
 use crate::http::header::AUTHORIZATION;
@@ -94,24 +96,39 @@ pub trait AuthStrategy: Send + Sync {
 }
 
 /// `Authorization: Bearer {token}` from a [`TokenProvider`], with concurrent refreshes
-/// coalesced: whichever request meets the 401 first runs the refresh, and every request that
-/// meets one while it runs waits and shares its answer rather than refreshing again.
+/// coalesced: whichever request meets the 401 first starts the refresh, and every request
+/// that meets one while it runs waits on the same refresh and shares its answer rather than
+/// refreshing again. The refresh outlives the request that started it: a request dropped
+/// mid-refresh — an operation deadline shorter than the token endpoint's round trip — leaves
+/// the refresh in flight for the next request to finish, not a second refresh to start.
 pub struct BearerAuth<P: TokenProvider> {
-    provider: P,
+    provider: Arc<P>,
     /// Moves once per completed refresh attempt, success or failure.
     generation: AtomicU64,
+    state: Mutex<RefreshState>,
+}
+
+/// The outcome every waiter on one refresh shares.
+type RefreshOutcome = Result<bool, Arc<Error>>;
+
+struct RefreshState {
     /// Whether the last completed refresh renewed the credentials. A request authenticated
     /// before that attempt shares its verdict; one authenticated after it may start another.
-    last_renewed: Mutex<bool>,
+    last_renewed: bool,
+    /// The refresh under way for the current generation, if one is.
+    in_flight: Option<Shared<BoxFuture<'static, RefreshOutcome>>>,
 }
 
 impl<P: TokenProvider> BearerAuth<P> {
     /// Bearer authentication over a provider.
     pub fn new(provider: P) -> BearerAuth<P> {
         BearerAuth {
-            provider,
+            provider: Arc::new(provider),
             generation: AtomicU64::new(0),
-            last_renewed: Mutex::new(false),
+            state: Mutex::new(RefreshState {
+                last_renewed: false,
+                in_flight: None,
+            }),
         }
     }
 
@@ -130,7 +147,7 @@ impl<P: TokenProvider + std::fmt::Debug> std::fmt::Debug for BearerAuth<P> {
 }
 
 #[async_trait]
-impl<P: TokenProvider> AuthStrategy for BearerAuth<P> {
+impl<P: TokenProvider + 'static> AuthStrategy for BearerAuth<P> {
     async fn authenticate(&self, request: &mut Request<Bytes>) -> Result<(), Error> {
         let token = self.provider.access_token().await?;
         let value = HeaderValue::from_str(&format!("Bearer {token}")).map_err(|_| {
@@ -152,17 +169,54 @@ impl<P: TokenProvider> AuthStrategy for BearerAuth<P> {
     }
 
     async fn refresh(&self, seen: u64) -> Result<bool, Error> {
-        // One refresh at a time. A request authenticated before the attempt that just
+        // One refresh per generation. A request authenticated before the attempt that just
         // completed shares its verdict — renewed or not — rather than refreshing again; a
-        // request authenticated after a failed attempt may start the next one.
-        let mut last_renewed = self.last_renewed.lock().await;
-        if self.generation.load(Ordering::Acquire) != seen {
-            return Ok(*last_renewed);
+        // request authenticated after a failed attempt may start the next one. The refresh
+        // itself is a shared future: whoever polls it drives it, so a starter that is
+        // dropped leaves it for the next waiter rather than abandoning it.
+        let refresh = {
+            let mut state = self
+                .state
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            if self.generation.load(Ordering::Acquire) != seen {
+                return Ok(state.last_renewed);
+            }
+            state
+                .in_flight
+                .get_or_insert_with(|| {
+                    let provider = self.provider.clone();
+                    AssertUnwindSafe(async move { provider.refresh().await })
+                        .catch_unwind()
+                        .map(|caught| match caught {
+                            Ok(outcome) => outcome.map_err(Arc::new),
+                            Err(_) => Err(Arc::new(Error::new(
+                                crate::ErrorCode::AuthRequired,
+                                "the token provider panicked while refreshing",
+                            ))),
+                        })
+                        .boxed()
+                        .shared()
+                })
+                .clone()
+        };
+        let outcome = refresh.await;
+        {
+            let mut state = self
+                .state
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            if self.generation.load(Ordering::Acquire) == seen {
+                state.last_renewed = matches!(outcome, Ok(true));
+                state.in_flight = None;
+                self.generation.fetch_add(1, Ordering::AcqRel);
+            }
         }
-        let outcome = self.provider.refresh().await;
-        *last_renewed = matches!(outcome, Ok(true));
-        self.generation.fetch_add(1, Ordering::AcqRel);
-        outcome
+        outcome.map_err(|error| {
+            Error::new(error.code(), error.message())
+                .with_status(error.http_status().unwrap_or(401))
+                .with_source(error)
+        })
     }
 }
 

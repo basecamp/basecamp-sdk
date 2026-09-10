@@ -286,3 +286,85 @@ async fn a_request_after_a_failed_refresh_starts_another_attempt() {
         "the issuer recovered, so the next 401 refreshes again"
     );
 }
+
+#[tokio::test]
+async fn a_401_on_a_non_idempotent_post_is_replayed_after_a_refresh() {
+    use basecamp_sdk::models::CreateProjectRequestContent;
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/999/projects.json"))
+        .and(header("Authorization", "Bearer stale"))
+        .respond_with(ResponseTemplate::new(401).set_body_string(r#"{"error": "Unauthorized"}"#))
+        .mount(&server)
+        .await;
+    Mock::given(method("POST"))
+        .and(path("/999/projects.json"))
+        .and(header("Authorization", "Bearer fresh"))
+        .respond_with(ResponseTemplate::new(201).set_body_string(PROJECT))
+        .mount(&server)
+        .await;
+    let provider = rotating(&["stale", "fresh"], Duration::ZERO);
+    let request = CreateProjectRequestContent {
+        name: "x".into(),
+        ..Default::default()
+    };
+    let project = client(&server, provider.clone(), 3)
+        .projects()
+        .create(&request)
+        .await
+        .unwrap();
+    assert_eq!(project.id, 12345);
+    assert_eq!(provider.refreshes.load(Ordering::SeqCst), 1);
+    assert_eq!(
+        server.received_requests().await.unwrap().len(),
+        2,
+        "the replay spends the caller's budget, not the transient-retry ceiling"
+    );
+
+    let provider = rotating(&["stale", "fresh"], Duration::ZERO);
+    let error = client(&server, provider.clone(), 1)
+        .projects()
+        .create(&request)
+        .await
+        .unwrap_err();
+    assert_eq!(error.code(), ErrorCode::AuthRequired);
+    assert_eq!(provider.refreshes.load(Ordering::SeqCst), 0);
+}
+
+#[tokio::test]
+async fn a_refresh_outlives_the_request_that_started_it() {
+    let server = MockServer::start().await;
+    mount_401_then_200(&server).await;
+    let provider = rotating(&["stale", "fresh"], Duration::from_millis(300));
+    let account = Client::builder(
+        Config::default()
+            .with_base_url(server.uri())
+            .with_timeout(Duration::from_secs(86_400)),
+    )
+    .operation_deadline(Duration::from_millis(50))
+    .token_provider(provider.clone())
+    .build()
+    .unwrap()
+    .for_account("999");
+    let mut outcomes = Vec::new();
+    for _ in 0..12 {
+        let outcome = account.projects().get(12345).await;
+        let done = outcome.is_ok();
+        outcomes.push(outcome.map(|_| ()).map_err(|e| e.is_deadline_exceeded()));
+        if done {
+            break;
+        }
+    }
+    assert_eq!(
+        provider.refreshes.load(Ordering::SeqCst),
+        1,
+        "the refresh a deadline cut short is finished by later requests, not restarted: {outcomes:?}"
+    );
+    assert!(outcomes.last().unwrap().is_ok(), "{outcomes:?}");
+    assert!(
+        outcomes[..outcomes.len() - 1]
+            .iter()
+            .all(|outcome| *outcome == Err(true)),
+        "{outcomes:?}"
+    );
+}
