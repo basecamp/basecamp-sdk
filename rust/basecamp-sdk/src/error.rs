@@ -262,9 +262,10 @@ impl Error {
         error
     }
 
-    /// The same error with a hint.
+    /// The same error with a hint, cut to the message cap like the message itself: a
+    /// transport's rendering of its own failure is not bounded by anyone else.
     pub fn with_hint(mut self, hint: impl Into<String>) -> Error {
-        self.inner.hint = Some(hint.into());
+        self.inner.hint = Some(truncate(&hint.into()));
         self
     }
 
@@ -386,15 +387,18 @@ impl fmt::Debug for Error {
     }
 }
 
-/// Cuts a message to [`MAX_ERROR_MESSAGE_LENGTH`] characters, ending it in `...` when it was
-/// longer. The unit is the character, a language adaptation SPEC §9 allows.
+/// Cuts a message to [`MAX_ERROR_MESSAGE_LENGTH`] bytes, ending it in `...` when it was
+/// longer. The unit is the byte, as in Go and Ruby (SPEC §9); the cut lands on a UTF-8
+/// character boundary so the result is always a valid `str`.
 pub fn truncate(message: &str) -> String {
-    if message.chars().count() <= MAX_ERROR_MESSAGE_LENGTH {
-        message.to_string()
-    } else {
-        let kept: String = message.chars().take(MAX_ERROR_MESSAGE_LENGTH - 3).collect();
-        format!("{kept}...")
+    if message.len() <= MAX_ERROR_MESSAGE_LENGTH {
+        return message.to_string();
     }
+    let mut end = MAX_ERROR_MESSAGE_LENGTH - 3;
+    while !message.is_char_boundary(end) {
+        end -= 1;
+    }
+    format!("{}...", &message[..end])
 }
 
 /// SPEC §6's field-keyed algorithm, steps 1, 1b and 2.

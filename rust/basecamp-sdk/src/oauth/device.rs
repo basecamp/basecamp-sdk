@@ -62,6 +62,7 @@ impl Clock for MonotonicClock {
 /// An RFC 8628 §3.2 device authorization response: what to show the user, and what to poll
 /// with. The device code redeems the token, so it prints as `[REDACTED]`.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct DeviceAuthorization {
     /// The code polled at the token endpoint.
     pub device_code: SensitiveString,
@@ -79,6 +80,7 @@ pub struct DeviceAuthorization {
 
 /// Why a device flow ended without a token.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum DeviceFlowReason {
     /// The user declined.
     AccessDenied,

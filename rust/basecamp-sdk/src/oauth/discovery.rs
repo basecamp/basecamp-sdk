@@ -34,6 +34,7 @@ const LIST_FIELDS: &[&str] = &[
 /// it before use — [`authorization_url`](super::authorization_url) does — and the device
 /// grant asserts `device_authorization_endpoint` and its grant type the same way.
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct ServerMetadata {
     /// The issuer identifier: the origin the metadata was read from, code point for code
     /// point.
@@ -62,6 +63,7 @@ pub struct ServerMetadata {
 
 /// What a protected resource publishes about who may issue tokens for it (RFC 9728).
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct ProtectedResourceMetadata {
     /// The resource identifier: the origin asked, code point for code point.
     pub resource: String,
@@ -75,6 +77,7 @@ pub struct ProtectedResourceMetadata {
 /// Why [`OAuthClient::discover_from_resource`] answered with Launchpad instead of a
 /// selected issuer. These two are the only soft outcomes; every other failure raises.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum FallbackReason {
     /// The resource metadata could not be fetched, parsed or bound, before any issuer was
     /// committed to.
@@ -133,6 +136,7 @@ impl DiscoveryOutcome {
 /// Launchpad request by a consumer: once a resource has advertised an issuer, that issuer
 /// is the only one its tokens may come from.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum SelectionFailure {
     /// Two or more non-Launchpad issuers advertised and no expected issuer to choose by.
     AmbiguousIssuers,

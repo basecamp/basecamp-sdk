@@ -36,6 +36,7 @@ pub const MAX_TOKEN_LIFETIME_SECONDS: u64 = 2_147_483_647;
 /// `urn:bc:account:<id>`). Echo it when refreshing — [`RefreshRequest::resource`] — since a
 /// BC5 multi-account refresh token is refused without it.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct Token {
     /// The bearer token.
     pub access_token: SensitiveString,
