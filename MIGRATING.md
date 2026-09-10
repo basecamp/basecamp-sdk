@@ -11,7 +11,7 @@ what wrong behaviour you get if you ignore one. This file is that half.
 
 ---
 
-# Unreleased
+# v0.18.0
 
 ### Go: `TemplatesService.CreateProject` takes a variadic options argument (#856)
 
