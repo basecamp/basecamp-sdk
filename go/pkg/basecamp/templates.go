@@ -40,6 +40,14 @@ type ProjectConstruction struct {
 	Project *Project `json:"project,omitempty"`
 }
 
+// CreateProjectOptions specifies optional parameters for creating a project from a template.
+type CreateProjectOptions struct {
+	// StartDate is the date the new project starts on (ISO 8601, e.g. "2026-09-01").
+	// Template dates are anchored to the Sunday on or before it. Empty anchors them
+	// to the week the construction is created.
+	StartDate string
+}
+
 // TemplateLibrary contains the account's to-do list templates and their parent resources.
 type TemplateLibrary struct {
 	Bucket    Bucket     `json:"bucket"`
@@ -346,7 +354,7 @@ func (s *TemplatesService) Delete(ctx context.Context, templateID int64) (err er
 
 // CreateProject creates a new project from a template.
 // This operation is asynchronous; use GetConstruction to check the status.
-func (s *TemplatesService) CreateProject(ctx context.Context, templateID int64, name, description string) (result *ProjectConstruction, err error) {
+func (s *TemplatesService) CreateProject(ctx context.Context, templateID int64, name, description string, opts ...*CreateProjectOptions) (result *ProjectConstruction, err error) {
 	op := OperationInfo{
 		Service: "Templates", Operation: "CreateProject",
 		ResourceType: "project_construction", IsMutation: true,
@@ -361,6 +369,11 @@ func (s *TemplatesService) CreateProject(ctx context.Context, templateID int64, 
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
+	if len(opts) > 1 {
+		err = ErrUsage("CreateProject accepts at most one CreateProjectOptions argument")
+		return nil, err
+	}
+
 	if name == "" {
 		err = ErrUsage("project name is required")
 		return nil, err
@@ -371,6 +384,9 @@ func (s *TemplatesService) CreateProject(ctx context.Context, templateID int64, 
 			Name:        name,
 			Description: omitzero(description),
 		},
+	}
+	if len(opts) > 0 && opts[0] != nil {
+		body.Project.StartDate = omitzero(opts[0].StartDate)
 	}
 
 	resp, err := s.client.parent.gen.CreateProjectFromTemplateWithResponse(ctx, s.client.accountID, templateID, body)

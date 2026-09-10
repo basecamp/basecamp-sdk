@@ -512,6 +512,17 @@ async function executeOperation(
         return { result: summarizeTemplateLibraryCopy(libraryCopy) };
       }
 
+      case "CreateProjectFromTemplate": {
+        const construction = await client.templates.createProject(Number(params.templateId), {
+          project: {
+            name: String(body.name),
+            description: typeof body.description === "string" ? body.description : undefined,
+            start_date: typeof body.start_date === "string" ? body.start_date : undefined,
+          },
+        });
+        return { result: { id: construction.id, status: construction.status } };
+      }
+
       case "GetTemplateLibraryCopy": {
         const libraryCopy = await client.templates.getLibraryCopy(Number(params.copyId));
         return { result: summarizeTemplateLibraryCopy(libraryCopy) };

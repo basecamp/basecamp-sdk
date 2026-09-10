@@ -69,6 +69,20 @@ class TemplatesServiceTest < Minitest::Test
     assert_equal "processing", result["status"]
   end
 
+  def test_create_project_with_start_date
+    response = { "id" => 598194962, "status" => "pending" }
+
+    stub_request(:post, "https://3.basecampapi.com/12345/templates/2085958507/project_constructions.json")
+      .with(body: { project: { name: "Marketing Campaign", description: "For Client: Xyz Corp Conference", start_date: "2026-09-01" } })
+      .to_return(status: 201, body: response.to_json, headers: { "Content-Type" => "application/json" })
+
+    result = @account.templates.create_project(
+      template_id: 2085958507,
+      project: { name: "Marketing Campaign", description: "For Client: Xyz Corp Conference", start_date: "2026-09-01" }
+    )
+    assert_equal "pending", result["status"]
+  end
+
   def test_get_construction
     response = { "id" => 1, "status" => "completed", "project" => { "id" => 100 } }
 

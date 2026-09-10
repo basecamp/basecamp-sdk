@@ -95,6 +95,35 @@ final class GeneratedServiceTests: XCTestCase {
         XCTAssertEqual(project["description"] as? String, "From template")
     }
 
+    func testCreateProjectFromTemplateSendsStartDateUnderProjectEnvelope() async throws {
+        let responseJSON: [String: Any] = ["id": 598194962, "status": "pending"]
+        let responseData = try JSONSerialization.data(withJSONObject: responseJSON)
+
+        let transport = MockTransport(statusCode: 201, data: responseData)
+        let account = makeTestAccountClient(transport: transport)
+
+        let req = CreateProjectFromTemplateRequest(
+            project: ProjectConstructionAttributes(
+                name: "Marketing Campaign",
+                description: "For Client: Xyz Corp Conference",
+                startDate: "2026-09-01")
+        )
+        _ = try await account.templates.createProject(templateId: 2085958507, req: req)
+
+        let sentBody = transport.lastRequest!.request.httpBody!
+        let sentJSON = try JSONSerialization.jsonObject(with: sentBody) as! [String: Any]
+        XCTAssertNil(sentJSON["start_date"], "start_date must not appear at the top level")
+        let project = sentJSON["project"] as! [String: Any]
+        XCTAssertEqual(project["start_date"] as? String, "2026-09-01")
+        XCTAssertEqual(project["name"] as? String, "Marketing Campaign")
+
+        let bare = CreateProjectFromTemplateRequest(project: ProjectConstructionAttributes(name: "Marketing Campaign"))
+        _ = try await account.templates.createProject(templateId: 2085958507, req: bare)
+        let bareJSON = try JSONSerialization.jsonObject(with: transport.lastRequest!.request.httpBody!) as! [String: Any]
+        let bareProject = bareJSON["project"] as! [String: Any]
+        XCTAssertNil(bareProject["start_date"], "start_date must be omitted, not null, when unset")
+    }
+
     // MARK: - requestVoid path (DELETE)
 
     func testListRecentProjectsDecodesBookmarkedOnlyProjection() async throws {

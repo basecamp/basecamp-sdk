@@ -501,6 +501,16 @@ def _summarize_template_library(library: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _compact_project_attributes(body: dict[str, Any]) -> dict[str, Any]:
+    """Nest the fixture's flat attributes under the project envelope, dropping the
+    ones the case did not set so an omitted start_date stays off the wire."""
+    return {key: body[key] for key in ("name", "description", "start_date") if key in body}
+
+
+def _summarize_project_construction(construction: dict[str, Any]) -> dict[str, Any]:
+    return {"id": construction["id"], "status": construction["status"]}
+
+
 def _summarize_template_library_copy(copy: dict[str, Any]) -> dict[str, Any]:
     """Expose copy state and its decoded destination list as portable scalars."""
     summary = {"id": copy["id"], "status": copy["status"]}
@@ -688,6 +698,13 @@ class OperationMapper:
                         template_recording_id=body["template_recording_id"],
                         destination_parent_id=body["destination_parent_id"],
                         adding_people_confirmed=body.get("adding_people_confirmed"),
+                    )
+                )
+            case "CreateProjectFromTemplate":
+                return _summarize_project_construction(
+                    self._account.templates.create_project(
+                        template_id=path_params["templateId"],
+                        project=_compact_project_attributes(body),
                     )
                 )
             case "GetTemplateLibraryCopy":

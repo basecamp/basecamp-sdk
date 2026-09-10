@@ -2468,6 +2468,13 @@ type ProjectConstruction struct {
 type ProjectConstructionAttributes struct {
 	Description *string `json:"description,omitempty"`
 	Name        string  `json:"name"`
+
+	// StartDate Date the new project starts on. Template dates are relative to the start
+	// of the template's first week, and template weeks start on a Sunday, so
+	// the project's dates are anchored to the Sunday on or before this date.
+	// Omitted, they are anchored to the week in which the construction is
+	// processed.
+	StartDate *string `json:"start_date,omitempty"`
 }
 
 // ProjectLimitErrorResponseContent The account has reached its project limit. Raised by CreateProject and by

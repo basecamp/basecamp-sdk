@@ -194,6 +194,42 @@ describe("TemplatesService", () => {
       expect(construction.status).toBe("pending");
     });
 
+    it("sends start_date under the project envelope", async () => {
+      const templateId = 2085958507;
+      let sentBody: unknown;
+
+      server.use(
+        http.post(
+          `${BASE_URL}/templates/${templateId}/project_constructions.json`,
+          async ({ request }) => {
+            sentBody = await request.json();
+            return HttpResponse.json(
+              { id: 598194962, status: "pending", url: "https://basecamp.com/constructions/598194962" },
+              { status: 201 }
+            );
+          }
+        )
+      );
+
+      await client.templates.createProject(templateId, {
+        project: {
+          name: "Marketing Campaign",
+          description: "For Client: Xyz Corp Conference",
+          start_date: "2026-09-01",
+        },
+      });
+      expect(sentBody).toEqual({
+        project: {
+          name: "Marketing Campaign",
+          description: "For Client: Xyz Corp Conference",
+          start_date: "2026-09-01",
+        },
+      });
+
+      await client.templates.createProject(templateId, { project: { name: "Marketing Campaign" } });
+      expect(sentBody).toEqual({ project: { name: "Marketing Campaign" } });
+    });
+
     // Client-side validation short-circuits before any HTTP call. No MSW handler
     // is registered here, so a leaked request fails via onUnhandledRequest: "error".
     it("rejects a missing project", async () => {
