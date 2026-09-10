@@ -1091,3 +1091,381 @@ async fn an_account_id_is_one_path_segment_or_a_usage_error() {
         "a path-shaped id stays one segment"
     );
 }
+
+/// Every service maps a rejected call the same way: the error path per service AGENTS.md
+/// asks for, driven through the same call as its happy case.
+macro_rules! error_case {
+    ($name:ident, $call:expr) => {
+        #[tokio::test]
+        async fn $name() {
+            let server = MockServer::start().await;
+            Mock::given(wiremock::matchers::any())
+                .respond_with(
+                    ResponseTemplate::new(422)
+                        .insert_header("x-request-id", "req-422")
+                        .set_body_json(serde_json::json!({"error": "Validation failed"})),
+                )
+                .expect(1)
+                .mount(&server)
+                .await;
+            let error = ($call)(account(&server)).await.unwrap_err();
+            assert_eq!(error.code(), basecamp_sdk::ErrorCode::Validation);
+            assert_eq!(error.http_status(), Some(422));
+            assert_eq!(error.request_id(), Some("req-422"));
+            assert!(error.message().contains("Validation failed"), "{}", error.message());
+        }
+    };
+}
+
+error_case!(
+    account_account_maps_a_rejection,
+    |account: basecamp_sdk::AccountClient| async move { account.account().account().await }
+);
+
+error_case!(
+    attachments_create_maps_a_rejection,
+    |account: basecamp_sdk::AccountClient| async move {
+        account
+            .attachments()
+            .create(
+                "q",
+                "application/octet-stream",
+                bytes::Bytes::from_static(b"x"),
+            )
+            .await
+    }
+);
+
+error_case!(
+    automation_list_lineup_markers_maps_a_rejection,
+    |account: basecamp_sdk::AccountClient| async move {
+        account.automation().list_lineup_markers().await
+    }
+);
+
+error_case!(
+    bookmarks_list_my_bookmarks_maps_a_rejection,
+    |account: basecamp_sdk::AccountClient| async move {
+        account
+            .bookmarks()
+            .list_my_bookmarks(&Default::default())
+            .await
+    }
+);
+
+error_case!(
+    boosts_get_maps_a_rejection,
+    |account: basecamp_sdk::AccountClient| async move { account.boosts().get(100).await }
+);
+
+error_case!(
+    bubble_ups_delete_bubble_up_maps_a_rejection,
+    |account: basecamp_sdk::AccountClient| async move {
+        account.bubble_ups().delete_bubble_up(100).await
+    }
+);
+
+error_case!(
+    calendars_get_calendar_maps_a_rejection,
+    |account: basecamp_sdk::AccountClient| async move { account.calendars().get_calendar(100).await }
+);
+
+error_case!(
+    campfires_list_chatbots_maps_a_rejection,
+    |account: basecamp_sdk::AccountClient| async move {
+        account.campfires().list_chatbots(100, 101).await
+    }
+);
+
+error_case!(
+    card_columns_get_maps_a_rejection,
+    |account: basecamp_sdk::AccountClient| async move { account.card_columns().get(100).await }
+);
+
+error_case!(
+    card_steps_get_maps_a_rejection,
+    |account: basecamp_sdk::AccountClient| async move { account.card_steps().get(100).await }
+);
+
+error_case!(
+    card_tables_get_maps_a_rejection,
+    |account: basecamp_sdk::AccountClient| async move { account.card_tables().get(100).await }
+);
+
+error_case!(
+    cards_get_maps_a_rejection,
+    |account: basecamp_sdk::AccountClient| async move { account.cards().get(100).await }
+);
+
+error_case!(
+    checkins_reminders_maps_a_rejection,
+    |account: basecamp_sdk::AccountClient| async move {
+        account.checkins().reminders(&Default::default()).await
+    }
+);
+
+error_case!(
+    client_approvals_list_maps_a_rejection,
+    |account: basecamp_sdk::AccountClient| async move {
+        account
+            .client_approvals()
+            .list(100, &Default::default())
+            .await
+    }
+);
+
+error_case!(
+    client_correspondences_list_maps_a_rejection,
+    |account: basecamp_sdk::AccountClient| async move {
+        account
+            .client_correspondences()
+            .list(100, &Default::default())
+            .await
+    }
+);
+
+error_case!(
+    client_replies_list_maps_a_rejection,
+    |account: basecamp_sdk::AccountClient| async move {
+        account
+            .client_replies()
+            .list(100, 101, &Default::default())
+            .await
+    }
+);
+
+error_case!(
+    client_visibility_set_visibility_maps_a_rejection,
+    |account: basecamp_sdk::AccountClient| async move {
+        account
+            .client_visibility()
+            .set_visibility(100, &Default::default())
+            .await
+    }
+);
+
+error_case!(
+    cloud_files_cloud_file_maps_a_rejection,
+    |account: basecamp_sdk::AccountClient| async move { account.cloud_files().cloud_file(100).await }
+);
+
+error_case!(
+    comments_get_maps_a_rejection,
+    |account: basecamp_sdk::AccountClient| async move { account.comments().get(100).await }
+);
+
+error_case!(
+    documents_get_maps_a_rejection,
+    |account: basecamp_sdk::AccountClient| async move { account.documents().get(100).await }
+);
+
+error_case!(
+    drafts_list_my_drafts_maps_a_rejection,
+    |account: basecamp_sdk::AccountClient| async move {
+        account.drafts().list_my_drafts(&Default::default()).await
+    }
+);
+
+error_case!(
+    events_list_maps_a_rejection,
+    |account: basecamp_sdk::AccountClient| async move {
+        account.events().list(100, &Default::default()).await
+    }
+);
+
+error_case!(
+    everything_everything_completed_cards_maps_a_rejection,
+    |account: basecamp_sdk::AccountClient| async move {
+        account
+            .everything()
+            .everything_completed_cards(&Default::default())
+            .await
+    }
+);
+
+error_case!(
+    folders_list_folders_maps_a_rejection,
+    |account: basecamp_sdk::AccountClient| async move { account.folders().list_folders().await }
+);
+
+error_case!(
+    forwards_get_maps_a_rejection,
+    |account: basecamp_sdk::AccountClient| async move { account.forwards().get(100).await }
+);
+
+error_case!(
+    gauges_gauge_needle_maps_a_rejection,
+    |account: basecamp_sdk::AccountClient| async move { account.gauges().gauge_needle(100).await }
+);
+
+error_case!(
+    google_documents_google_document_maps_a_rejection,
+    |account: basecamp_sdk::AccountClient| async move {
+        account.google_documents().google_document(100).await
+    }
+);
+
+error_case!(
+    hill_charts_get_maps_a_rejection,
+    |account: basecamp_sdk::AccountClient| async move { account.hill_charts().get(100).await }
+);
+
+error_case!(
+    lineup_delete_maps_a_rejection,
+    |account: basecamp_sdk::AccountClient| async move { account.lineup().delete(100).await }
+);
+
+error_case!(
+    message_boards_get_maps_a_rejection,
+    |account: basecamp_sdk::AccountClient| async move { account.message_boards().get(100).await }
+);
+
+error_case!(
+    message_types_list_maps_a_rejection,
+    |account: basecamp_sdk::AccountClient| async move { account.message_types().list(100).await }
+);
+
+error_case!(
+    messages_list_maps_a_rejection,
+    |account: basecamp_sdk::AccountClient| async move {
+        account.messages().list(100, &Default::default()).await
+    }
+);
+
+error_case!(
+    my_assignments_my_assignments_maps_a_rejection,
+    |account: basecamp_sdk::AccountClient| async move {
+        account.my_assignments().my_assignments().await
+    }
+);
+
+error_case!(
+    my_notes_get_my_note_maps_a_rejection,
+    |account: basecamp_sdk::AccountClient| async move { account.my_notes().get_my_note().await }
+);
+
+error_case!(
+    my_notifications_my_notifications_maps_a_rejection,
+    |account: basecamp_sdk::AccountClient| async move {
+        account
+            .my_notifications()
+            .my_notifications(&Default::default())
+            .await
+    }
+);
+
+error_case!(
+    people_list_pingable_maps_a_rejection,
+    |account: basecamp_sdk::AccountClient| async move { account.people().list_pingable().await }
+);
+
+error_case!(
+    projects_list_recent_projects_maps_a_rejection,
+    |account: basecamp_sdk::AccountClient| async move {
+        account.projects().list_recent_projects().await
+    }
+);
+
+error_case!(
+    recordings_unspotlight_maps_a_rejection,
+    |account: basecamp_sdk::AccountClient| async move { account.recordings().unspotlight(100).await }
+);
+
+error_case!(
+    reports_progress_maps_a_rejection,
+    |account: basecamp_sdk::AccountClient| async move {
+        account.reports().progress(&Default::default()).await
+    }
+);
+
+error_case!(
+    schedules_get_entry_maps_a_rejection,
+    |account: basecamp_sdk::AccountClient| async move { account.schedules().get_entry(100).await }
+);
+
+error_case!(
+    search_metadata_maps_a_rejection,
+    |account: basecamp_sdk::AccountClient| async move { account.search().metadata().await }
+);
+
+error_case!(
+    subscriptions_get_maps_a_rejection,
+    |account: basecamp_sdk::AccountClient| async move { account.subscriptions().get(100).await }
+);
+
+error_case!(
+    templates_get_library_maps_a_rejection,
+    |account: basecamp_sdk::AccountClient| async move { account.templates().get_library().await }
+);
+
+error_case!(
+    timeline_project_timeline_maps_a_rejection,
+    |account: basecamp_sdk::AccountClient| async move {
+        account
+            .timeline()
+            .project_timeline(100, &Default::default())
+            .await
+    }
+);
+
+error_case!(
+    timesheets_for_project_maps_a_rejection,
+    |account: basecamp_sdk::AccountClient| async move {
+        account
+            .timesheets()
+            .for_project(100, &Default::default())
+            .await
+    }
+);
+
+error_case!(
+    todolist_groups_list_maps_a_rejection,
+    |account: basecamp_sdk::AccountClient| async move {
+        account
+            .todolist_groups()
+            .list(100, &Default::default())
+            .await
+    }
+);
+
+error_case!(
+    todolists_get_maps_a_rejection,
+    |account: basecamp_sdk::AccountClient| async move { account.todolists().get(100).await }
+);
+
+error_case!(
+    todos_list_maps_a_rejection,
+    |account: basecamp_sdk::AccountClient| async move {
+        account.todos().list(100, &Default::default()).await
+    }
+);
+
+error_case!(
+    todosets_get_maps_a_rejection,
+    |account: basecamp_sdk::AccountClient| async move { account.todosets().get(100).await }
+);
+
+error_case!(
+    tools_get_maps_a_rejection,
+    |account: basecamp_sdk::AccountClient| async move { account.tools().get(100).await }
+);
+
+error_case!(
+    uploads_get_maps_a_rejection,
+    |account: basecamp_sdk::AccountClient| async move { account.uploads().get(100).await }
+);
+
+error_case!(
+    vaults_get_maps_a_rejection,
+    |account: basecamp_sdk::AccountClient| async move { account.vaults().get(100).await }
+);
+
+error_case!(
+    webhooks_list_maps_a_rejection,
+    |account: basecamp_sdk::AccountClient| async move { account.webhooks().list(100).await }
+);
+
+error_case!(
+    wormholes_delete_maps_a_rejection,
+    |account: basecamp_sdk::AccountClient| async move { account.wormholes().delete(100, 101).await }
+);

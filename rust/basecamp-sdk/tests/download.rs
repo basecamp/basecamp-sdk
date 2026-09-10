@@ -129,7 +129,7 @@ async fn hop_one_retries_on_503_and_network_errors_but_not_500() {
 #[tokio::test(start_paused = true)]
 async fn hop_one_honours_retry_after_and_a_zero_cap_sends_once() {
     let script = Scripted::new(vec![
-        Answer::Status(429, vec![("retry-after", "1")], ""),
+        Answer::Status(429, vec![("retry-after", "7")], ""),
         Answer::Status(302, vec![("location", "/signed/logo.png")], ""),
         Answer::Status(200, vec![("content-type", "image/png")], "pixels"),
     ]);
@@ -139,7 +139,11 @@ async fn hop_one_honours_retry_after_and_a_zero_cap_sends_once() {
         .await
         .unwrap();
     assert_eq!(script.sent_count(), 3);
-    assert!(started.elapsed() >= Duration::from_secs(1));
+    assert_eq!(
+        started.elapsed(),
+        Duration::from_secs(7),
+        "Retry-After replaces the 1 s curve, with nothing added"
+    );
 
     let script = Scripted::new(vec![Answer::Status(
         503,

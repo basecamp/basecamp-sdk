@@ -145,7 +145,7 @@ fn verify(target: &Path, files: &BTreeMap<PathBuf, String>) -> Result<(), String
         Ok(())
     } else {
         Err(format!(
-            "{} is out of date. Run `make rs-generate`. Stale files:\n  {}",
+            "{} is out of date. Run `make rs-generate-services`. Stale files:\n  {}",
             target.display(),
             stale.join("\n  ")
         ))

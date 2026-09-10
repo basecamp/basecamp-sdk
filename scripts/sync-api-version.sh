@@ -55,7 +55,7 @@ sedi "s/^API_VERSION = \".*\"/API_VERSION = \"$API_VERSION\"/" \
   python/src/basecamp/_version.py
 
 # Rust — the generator emits this constant from the same openapi.json, so this
-# rewrite is idempotent after `make rs-generate`; it exists so a spec bump that
+# rewrite is idempotent after `make rs-generate-services`; it exists so a spec bump that
 # skips regeneration still leaves the constant true.
 sedi "s/^pub const API_VERSION: &str = \".*\";/pub const API_VERSION: \&str = \"$API_VERSION\";/" \
   rust/basecamp-sdk/src/generated/mod.rs

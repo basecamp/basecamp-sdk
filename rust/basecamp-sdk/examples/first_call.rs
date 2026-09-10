@@ -1,7 +1,7 @@
 //! The first call: list the projects of one account.
 //!
 //! ```sh
-//! BASECAMP_TOKEN=… BASECAMP_ACCOUNT=999 cargo run --example first_call
+//! BASECAMP_TOKEN=… BASECAMP_ACCOUNT_ID=999 cargo run --example first_call
 //! ```
 
 #![allow(clippy::unwrap_used, clippy::expect_used)] // an example stops on a missing environment variable
@@ -11,7 +11,7 @@ use basecamp_sdk::{Client, Config};
 #[tokio::main]
 async fn main() -> Result<(), basecamp_sdk::Error> {
     let token = std::env::var("BASECAMP_TOKEN").expect("BASECAMP_TOKEN");
-    let account_id = std::env::var("BASECAMP_ACCOUNT").expect("BASECAMP_ACCOUNT");
+    let account_id = std::env::var("BASECAMP_ACCOUNT_ID").expect("BASECAMP_ACCOUNT_ID");
 
     let client = Client::builder(Config::default())
         .access_token(token)

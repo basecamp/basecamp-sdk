@@ -29,7 +29,7 @@ use serde_json::{Value, json};
 
 use crate::fixtures::{
     Params, TestCase, int64_param, optional_bool_param, optional_int64_list_param,
-    optional_string_list_param, optional_string_param, string_param,
+    optional_string_list_param, optional_string_param, string_param, string_param_or,
 };
 use crate::transport::ScriptedTransport;
 
@@ -226,10 +226,7 @@ async fn dispatch(account: &AccountClient, case: &TestCase) -> Result<Outcome, E
                 .await,
         ),
         "CreateProject" => {
-            let mut name = string_param(body, "name");
-            if name.is_empty() {
-                name = "Conformance Test".to_string();
-            }
+            let name = string_param_or(body, "name", "Conformance Test");
             let request = CreateProjectRequestContent {
                 name,
                 ..Default::default()
@@ -237,10 +234,7 @@ async fn dispatch(account: &AccountClient, case: &TestCase) -> Result<Outcome, E
             unit(account.projects().create(&request).await)
         }
         "UpdateProject" => {
-            let mut name = string_param(body, "name");
-            if name.is_empty() {
-                name = "Conformance Test".to_string();
-            }
+            let name = string_param_or(body, "name", "Conformance Test");
             let request = UpdateProjectRequestContent {
                 name,
                 ..Default::default()
@@ -299,10 +293,7 @@ async fn dispatch(account: &AccountClient, case: &TestCase) -> Result<Outcome, E
         }
         "GetTodo" => unit(account.todos().get(id("todoId")).await),
         "CreateTodo" => {
-            let mut content = string_param(body, "content");
-            if content.is_empty() {
-                content = "Conformance Test".to_string();
-            }
+            let content = string_param_or(body, "content", "Conformance Test");
             let request = CreateTodoRequestContent {
                 content,
                 ..Default::default()
@@ -310,10 +301,7 @@ async fn dispatch(account: &AccountClient, case: &TestCase) -> Result<Outcome, E
             unit(account.todos().create(id("todolistId"), &request).await)
         }
         "CreateTodosetTodo" => {
-            let mut content = string_param(body, "content");
-            if content.is_empty() {
-                content = "Conformance Test".to_string();
-            }
+            let content = string_param_or(body, "content", "Conformance Test");
             let request = CreateTodosetTodoRequestContent {
                 content,
                 ..Default::default()

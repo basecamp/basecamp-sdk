@@ -13,7 +13,8 @@ use url::{Url, form_urlencoded};
 use super::discovery::ServerMetadata;
 use super::token::{Token, parse_token_response, whole_seconds};
 use super::transport::{
-    BodyFailure, TransportFailure, form_post, oauth_error_fields, read_within, send_within,
+    BodyFailure, TransportFailure, form_post, network_failure, oauth_error_fields, read_within,
+    send_within,
 };
 use super::{OAuthClient, is_blank};
 use crate::error::{Error, ErrorCode};
@@ -139,9 +140,10 @@ impl fmt::Display for DeviceFlowReason {
 
 /// The typed reason behind a device flow's end, found on the [`Error`]'s source chain:
 /// [`DeviceFlowError::of`] reads it back.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug)]
 pub struct DeviceFlowError {
     reason: DeviceFlowReason,
+    cause: Option<Error>,
 }
 
 impl DeviceFlowError {
@@ -150,20 +152,30 @@ impl DeviceFlowError {
         self.reason
     }
 
+    /// The error underneath, when the reason has one — the transport failure that ended
+    /// the flow.
+    pub fn cause(&self) -> Option<&Error> {
+        self.cause.as_ref()
+    }
+
     /// The device flow reason `error` carries, when it carries one.
     pub fn of(error: &Error) -> Option<&DeviceFlowError> {
         std::error::Error::source(error).and_then(|source| source.downcast_ref())
     }
 
     /// An [`Error`] for `reason`, coded from it; a transport failure is retryable.
-    pub(super) fn into_error(reason: DeviceFlowReason, detail: Option<String>) -> Error {
+    pub(super) fn into_error(
+        reason: DeviceFlowReason,
+        detail: Option<String>,
+        cause: Option<Error>,
+    ) -> Error {
         let message = match detail {
             Some(detail) => format!("{}: {detail}", reason.message()),
             None => reason.message().to_string(),
         };
         Error::new(reason.error_code(), message)
             .retryable(reason == DeviceFlowReason::Transport)
-            .with_source(DeviceFlowError { reason })
+            .with_source(DeviceFlowError { reason, cause })
     }
 }
 
@@ -173,7 +185,13 @@ impl fmt::Display for DeviceFlowError {
     }
 }
 
-impl std::error::Error for DeviceFlowError {}
+impl std::error::Error for DeviceFlowError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        self.cause
+            .as_ref()
+            .map(|cause| cause as &(dyn std::error::Error + 'static))
+    }
+}
 
 /// One poll of the token endpoint, classified.
 enum Poll {
@@ -231,10 +249,11 @@ impl OAuthClient {
         let request = form_post(&url, form)?;
         let deadline = Instant::now() + self.request_timeout;
 
-        let transport = |_: &TransportFailure| {
+        let transport = |failure: &TransportFailure| {
             DeviceFlowError::into_error(
                 DeviceFlowReason::Transport,
                 Some(format!("contacting {}", origin_of(url.as_str()))),
+                Some(network_failure(&url, failure)),
             )
         };
         let response = send_within(self.http(), deadline, request)
@@ -327,6 +346,7 @@ impl OAuthClient {
                 return Err(DeviceFlowError::into_error(
                     DeviceFlowReason::Unavailable,
                     None,
+                    None,
                 ));
             }
         };
@@ -337,7 +357,11 @@ impl OAuthClient {
         let deadline = clock.now() + Duration::from_secs(authorization.expires_in);
         crate::hooks::guarded(|| display(&authorization));
         if clock.now() >= deadline {
-            return Err(DeviceFlowError::into_error(DeviceFlowReason::Expired, None));
+            return Err(DeviceFlowError::into_error(
+                DeviceFlowReason::Expired,
+                None,
+                None,
+            ));
         }
         self.poll_until(
             &config.token_endpoint,
@@ -379,7 +403,11 @@ impl OAuthClient {
         loop {
             let now = clock.now();
             if now >= deadline {
-                return Err(DeviceFlowError::into_error(DeviceFlowReason::Expired, None));
+                return Err(DeviceFlowError::into_error(
+                    DeviceFlowReason::Expired,
+                    None,
+                    None,
+                ));
             }
             let remaining = deadline - now;
             let wait = Duration::from_secs(interval.max(backoff).max(next_wait_override));
@@ -388,7 +416,11 @@ impl OAuthClient {
 
             let now = clock.now();
             if now >= deadline {
-                return Err(DeviceFlowError::into_error(DeviceFlowReason::Expired, None));
+                return Err(DeviceFlowError::into_error(
+                    DeviceFlowReason::Expired,
+                    None,
+                    None,
+                ));
             }
             let budget = self.request_timeout.min(deadline - now);
             match self.post_device_token(&url, form.clone(), budget).await {
@@ -411,11 +443,13 @@ impl OAuthClient {
                             return Err(DeviceFlowError::into_error(
                                 DeviceFlowReason::AccessDenied,
                                 None,
+                                None,
                             ));
                         }
                         "expired_token" => {
                             return Err(DeviceFlowError::into_error(
                                 DeviceFlowReason::Expired,
+                                None,
                                 None,
                             ));
                         }
@@ -444,16 +478,17 @@ impl OAuthClient {
             Err(error) => return Poll::Failed(error),
         };
         let deadline = Instant::now() + budget;
-        let transport = || {
+        let transport = |failure: &TransportFailure| {
             Poll::Failed(DeviceFlowError::into_error(
                 DeviceFlowReason::Transport,
                 Some(format!("contacting {}", origin_of(url.as_str()))),
+                Some(network_failure(url, failure)),
             ))
         };
         let response = match send_within(self.http(), deadline, request).await {
             Ok(response) => response,
             Err(TransportFailure::TimedOut) => return Poll::TimedOut,
-            Err(TransportFailure::Failed(_)) => return transport(),
+            Err(failure @ TransportFailure::Failed(_)) => return transport(&failure),
         };
         let status = response.status();
         if status.is_redirection() {
@@ -485,7 +520,7 @@ impl OAuthClient {
             Ok(body) => body,
             Err(BodyFailure::TooLarge(error)) => return Poll::Failed(error),
             Err(BodyFailure::TimedOut) => return Poll::TimedOut,
-            Err(BodyFailure::Failed(_)) => return transport(),
+            Err(BodyFailure::Failed(error)) => return transport(&TransportFailure::Failed(error)),
         };
         if status == StatusCode::OK {
             return match parse_token_response(&body, status, Utc::now()) {

@@ -13,7 +13,7 @@ use crate::http::{HeaderMap, StatusCode};
 pub const MAX_ERROR_MESSAGE_LENGTH: usize = 500;
 /// The most of a failure's body an error keeps.
 pub const MAX_ERROR_BODY_BYTES: usize = 1_048_576;
-/// The ceiling both `Retry-After` forms saturate at, in seconds (SPEC §6 / Appendix A).
+/// The ceiling both `Retry-After` forms saturate at, in seconds (SPEC §7's Rust row).
 pub const MAX_RETRY_AFTER_SECONDS: u32 = 2_147_483_647;
 
 /// Machine-readable error categories, shared with every Basecamp SDK.

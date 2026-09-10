@@ -20,6 +20,20 @@ where
     F: FnOnce(AccountClient) -> Fut,
     Fut: Future<Output = Result<T, Error>>,
 {
+    run_recording(fixture, name, call).await.0
+}
+
+/// [`run`], also handing back every request the call made, for assertions the fixture
+/// does not state.
+pub async fn run_recording<F, Fut, T>(
+    fixture: &str,
+    name: &str,
+    call: F,
+) -> (Result<T, Error>, Vec<Request>)
+where
+    F: FnOnce(AccountClient) -> Fut,
+    Fut: Future<Output = Result<T, Error>>,
+{
     let case = load(fixture, name);
     let server = MockServer::start().await;
     let mocks = case["mockResponses"]
@@ -39,7 +53,7 @@ where
     for assertion in assertions {
         check(assertion, &requests, outcome.as_ref().err());
     }
-    outcome
+    (outcome, requests)
 }
 
 fn load(fixture: &str, name: &str) -> Value {

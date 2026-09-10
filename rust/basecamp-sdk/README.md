@@ -18,36 +18,38 @@ tokio = { version = "1", features = ["full"] }
 ```rust,no_run
 use basecamp_sdk::{Client, Config};
 
-# async fn run() -> Result<(), basecamp_sdk::Error> {
-let client = Client::builder(Config::default())
-    .access_token(std::env::var("BASECAMP_TOKEN").expect("BASECAMP_TOKEN"))
-    .build()?;
-let account = client.for_account("999");
+#[tokio::main]
+async fn main() -> Result<(), basecamp_sdk::Error> {
+    let client = Client::builder(Config::default())
+        .access_token(std::env::var("BASECAMP_TOKEN").expect("BASECAMP_TOKEN"))
+        .build()?;
+    let account =
+        client.for_account(std::env::var("BASECAMP_ACCOUNT_ID").expect("BASECAMP_ACCOUNT_ID"));
 
-for project in account.projects().list(&Default::default()).await?.iter() {
-    println!("{} ({})", project.name, project.id);
+    for project in account.projects().list(&Default::default()).await?.iter() {
+        println!("{} ({})", project.name, project.id);
+    }
+    Ok(())
 }
-# Ok(())
-# }
 ```
 
-Services hang off an [`AccountClient`](crate::AccountClient): `account.projects()`,
+Services hang off an [`AccountClient`]: `account.projects()`,
 `account.todos()`, `account.cards()` and so on, one per Basecamp service. Every method maps
 to one operation of the model; the routes themselves are public data under
-[`routes`](crate::routes).
+[`routes`].
 
 ## Pagination
 
-A paginated read answers a [`Page`](crate::Page): the first page's items plus the cursor
+A paginated read answers a [`Page`]: the first page's items plus the cursor
 Basecamp handed out. Follow it a page at a time with
-[`AccountClient::next_page`](crate::AccountClient::next_page), or collect the whole
-collection with [`AccountClient::collect_all`](crate::AccountClient::collect_all), which
+[`AccountClient::next_page`], or collect the whole
+collection with [`AccountClient::collect_all`], which
 stops at the client's page cap and says so in [`ListMeta::truncated`](crate::ListMeta).
-[`AccountClient::pages`](crate::AccountClient::pages) and
-[`AccountClient::items`](crate::AccountClient::items) walk lazily as streams; the item
+[`AccountClient::pages`] and
+[`AccountClient::items`] walk lazily as streams; the item
 stream ends with a `usage` error when the cap leaves a page unread. A read whose page is
 an envelope around the collection gathers the same way: its generated shape implements
-[`PageItems`](crate::pagination::PageItems). A `Link` header pointing off the API origin
+[`PageItems`]. A `Link` header pointing off the API origin
 is refused, never followed.
 
 ## Errors
@@ -67,23 +69,23 @@ replayed once after the token provider refreshes, spending an attempt.
 
 ## Bring your own HTTP client
 
-The SDK sends on one [`HttpClient`](crate::HttpClient). The `reqwest` feature (on by default)
+The SDK sends on one [`HttpClient`]. The `reqwest` feature (on by default)
 ships one over rustls; with `--no-default-features` an application supplies its own.
 
 ## Features
 
 | Feature | Default | What it adds |
 |---|---|---|
-| `reqwest` | yes | The shipped [`HttpClient`](crate::HttpClient) |
+| `reqwest` | yes | The shipped [`HttpClient`] |
 | `rustls-tls` | yes | rustls for the shipped client |
 | `native-tls` | no | The platform TLS stack for the shipped client (additive) |
-| `oauth` | yes | [`oauth`](crate::oauth): PKCE, device grant, token exchange and refresh |
+| `oauth` | yes | [`oauth`]: PKCE, device grant, token exchange and refresh |
 | `tracing` | yes | One `tracing` span per operation |
 | `event-feed` | no | Reserved for the SPEC §23 connector |
 
 ## Environment variables
 
-Only [`Config::from_env`](crate::Config::from_env) reads the environment; a `Config` built
+Only [`Config::from_env`] reads the environment; a `Config` built
 literally reads no variable at all.
 
 | Variable | Meaning | Only when |

@@ -29,7 +29,7 @@ trap 'rm -rf "$TMP_OUT"' EXIT
 
 echo "==> Regenerating Rust SDK into a temp directory..."
 # The generator is a workspace member of rust/; run it from there (like
-# `make rs-generate`). It reads openapi.json, behavior-model.json and its
+# `make rs-generate-services`). It reads openapi.json, behavior-model.json and its
 # names.toml relative to --root, and --output sends the tree to the temp path
 # so the committed one is untouched. --locked: drift detection must not be the
 # thing that rewrites the lockfile.
@@ -40,7 +40,7 @@ echo "==> Regenerating Rust SDK into a temp directory..."
 
 echo "==> Diffing against committed rust/basecamp-sdk/src/generated/ ..."
 if ! diff -rq "$GENERATED_DIR" "$TMP_OUT" > /dev/null; then
-  echo "ERROR: Generated Rust is out of date. Run 'make rs-generate'"
+  echo "ERROR: Generated Rust is out of date. Run 'make rs-generate-services'"
   diff -rq "$GENERATED_DIR" "$TMP_OUT" || true
   exit 1
 fi

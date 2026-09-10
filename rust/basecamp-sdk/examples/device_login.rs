@@ -2,7 +2,7 @@
 //! token that refreshes itself.
 //!
 //! ```sh
-//! BASECAMP_ACCOUNT=999 cargo run --example device_login
+//! BASECAMP_ACCOUNT_ID=999 cargo run --example device_login
 //! ```
 
 #![allow(clippy::unwrap_used, clippy::expect_used)] // an example stops on a missing environment variable
@@ -14,7 +14,7 @@ const CLIENT_ID: &str = "basecamp-cli";
 
 #[tokio::main]
 async fn main() -> Result<(), basecamp_sdk::Error> {
-    let account_id = std::env::var("BASECAMP_ACCOUNT").expect("BASECAMP_ACCOUNT");
+    let account_id = std::env::var("BASECAMP_ACCOUNT_ID").expect("BASECAMP_ACCOUNT_ID");
     let oauth = OAuthClient::shipped()?;
 
     // Resource-first discovery: ask the API host which authorization server it trusts.

@@ -10,7 +10,9 @@
 //! the model adds to one of them is therefore a source break, accepted as a `0.MINOR`
 //! release under the pre-1.0 policy. Response models and open enumerations (`ErrorCode`,
 //! the model's own string enums) are `#[non_exhaustive]`: a field or variant the API grows
-//! is not a break. Types with private fields ([`Error`], [`Client`]) need neither.
+//! is not a break. A shape that requests and responses share (`QuestionSchedule`) is a
+//! request shape, and stays literal-constructible. Types with private fields ([`Error`],
+//! [`Client`]) need neither.
 //!
 //! # Re-exported dependencies
 //!
@@ -67,7 +69,7 @@ pub use oauth::{
     RefreshingTokenProvider, SelectionError, SelectionFailure, ServerMetadata, Token,
 };
 pub use operation::Operation;
-pub use pagination::{ListMeta, ListResult, Page};
+pub use pagination::{ListMeta, ListResult, Page, PageItems};
 pub use types::{AuthRoutableUrl, Date, DateTime, FlexibleTime, SensitiveString};
 pub use version::{API_VERSION, VERSION};
 

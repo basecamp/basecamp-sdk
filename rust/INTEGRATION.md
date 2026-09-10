@@ -15,7 +15,7 @@ Add a `rs-*` block modelled on the Swift block, delegating to `rust/Makefile`:
 # Rust SDK targets
 #------------------------------------------------------------------------------
 
-.PHONY: rs-build rs-test rs-lint rs-doc rs-deny rs-generate rs-check-drift rs-publish-check rs-check rs-clean
+.PHONY: rs-build rs-test rs-lint rs-doc rs-deny rs-generate-services rs-check-drift rs-publish-check rs-check rs-clean
 
 rs-build:
 	@echo "==> Building Rust SDK..."
@@ -35,7 +35,7 @@ rs-deny:
 	$(MAKE) -C rust deny
 
 # Regenerate rust/basecamp-sdk/src/generated from openapi.json + behavior-model.json
-rs-generate:
+rs-generate-services:
 	@echo "==> Generating Rust SDK..."
 	$(MAKE) -C rust generate
 
@@ -52,7 +52,7 @@ rs-clean:
 	$(MAKE) -C rust clean
 ```
 
-- `generate:` — add `@$(MAKE) rs-generate` **before** the `sync-api-version` lines (the
+- `generate:` — add `@$(MAKE) rs-generate-services` **before** the `sync-api-version` lines (the
   generated `rust/basecamp-sdk/src/generated/mod.rs` carries `API_VERSION`, which
   `sync-api-version.sh` also rewrites; see §5).
 - `check-targets` — add `rs-check-drift rs-check`.
@@ -97,7 +97,7 @@ echo "==> Regenerating Rust SDK into a temp directory..."
 
 echo "==> Diffing against committed rust/basecamp-sdk/src/generated/ ..."
 if ! diff -rq "$GENERATED_DIR" "$TMP_OUT" > /dev/null; then
-  echo "ERROR: Generated Rust is out of date. Run 'make rs-generate'"
+  echo "ERROR: Generated Rust is out of date. Run 'make rs-generate-services'"
   diff -rq "$GENERATED_DIR" "$TMP_OUT" || true
   exit 1
 fi
@@ -263,10 +263,10 @@ README sentence about which SDKs read no env vars is unaffected (Rust reads thre
 
 - Crate README: `rust/basecamp-sdk/README.md` (crates.io landing page; `#![doc = include_str!]` in `lib.rs`, so every fence is a doctest — keep `rust,no_run` on network snippets).
 - Root README rows: language `Rust` → `rust/`, package `basecamp-sdk` (crates.io; publish is gated on the Trusted Publishing bootstrap), docs `https://docs.rs/basecamp-sdk`; install line `cargo add basecamp-sdk`; MSRV 1.88; feature matrix column: retries ✓, pagination ✓, ETag cache ✗ (follow-up card), hooks ✓, OAuth ✓ (device flow with `login_hint`), webhooks ✓ (signature verify), download ✓, event feed ✗ (§23 deferred).
-- SPEC.md rows: §7 caps — client cap `max_retries` (total attempts, `0` legal), per-op ceiling honoured, backoff overflow: log-domain saturating (`retry.rs`); §8 page param — `XParams.page`, pinned page never followed (following is explicit via `next_page`/`collect_all`); §9 header table — `basecamp-sdk-rust/{VERSION} (api:{API_VERSION})`; §10 integer width — `i64` ids, `Person.id` via `flexible_i64`, `FlexInt` dimensions via `flex_int`; §9 truncation unit — characters; §16 OAuth applicability — device flow, PKCE, exchange, refresh, discovery (see the oauth module report); §21 gate table — `rs-check`, runner `conformance/runner/rust`; Appendix F — §17 ETag cache not shipped, §23 event feed not shipped (feature `event-feed` reserved), `on_paginate` hook omitted (allowed).
+- SPEC.md rows: §7 caps — client cap `max_retries` (total attempts, `0` legal), per-op ceiling honoured, backoff overflow: log-domain saturating (`retry.rs`); §8 page param — `XParams.page`, pinned page never followed (following is explicit via `next_page`/`collect_all`); §9 header table — `basecamp-sdk-rust/{VERSION} (api:{API_VERSION})`; §10 integer width — `i64` ids, `Person.id` via `flexible_i64`, `FlexInt` dimensions via `flex_int`; §9 truncation unit — bytes, cut back to a char boundary; §16 OAuth applicability — device flow, PKCE, exchange, refresh, discovery (see the oauth module report); §21 gate table — `rs-check`, runner `conformance/runner/rust`; Appendix F — §17 ETag cache not shipped, §23 event feed not shipped (feature `event-feed` reserved), `on_paginate` hook omitted (allowed).
 - SECURITY.md: "all seven implementations"; `### Rust` — rustls by default (`native-tls` additive opt-in), PKCE S256, HTTPS enforced with the localhost carve-out, sensitive headers redacted, signed download URLs never rendered (origin only), 401 refresh row: "at most once per request, budget-gated before `refresh()`, concurrent 401s coalesce into one refresh".
 - AGENTS.md: architecture row `Rust | reqwest via HttpClient trait | rust/basecamp-sdk/src/generated/services/*.rs`; infra rows (`client.rs`/`retry.rs`/`pagination.rs`/`hooks.rs`; OAuth `rust/basecamp-sdk/src/oauth/`; composites `rust/basecamp-sdk/src/services/{todos,todolists,documents,schedules,cards,uploads}.rs`); Hard Rule 2's TAG_TO_SERVICE list gains `rust/generator/names.toml`; "all 7 workflows" → 8.
-- CONTRIBUTING.md: prerequisites row `Rust | 1.88+ (MSRV), rust-toolchain.toml pins the dev toolchain; cargo-deny`; build block `cd rust && make check`; generator line `rust/generator` (`make rs-generate`).
+- CONTRIBUTING.md: prerequisites row `Rust | 1.88+ (MSRV), rust-toolchain.toml pins the dev toolchain; cargo-deny`; build block `cd rust && make check`; generator line `rust/generator` (`make rs-generate-services`).
 - MIGRATING.md `# Unreleased`: `### Rust: new SDK`.
 
 ## 8. Local deviations from `rustD-devex-standard.md` (decided by the plan, recorded here)

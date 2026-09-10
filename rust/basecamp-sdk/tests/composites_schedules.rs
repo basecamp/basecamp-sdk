@@ -10,7 +10,7 @@ mod composites_support;
 use basecamp_sdk::FlexibleTime;
 use basecamp_sdk::models::{CreateScheduleEntryRequestContent, ReplaceScheduleEntryRequestContent};
 use basecamp_sdk::services::schedules::UpdateScheduleEntryRequest;
-use composites_support::run;
+use composites_support::{run, run_recording};
 
 const FIXTURE: &str = "schedule_entries_write";
 const ENTRY: i64 = 1_069_479_523;
@@ -313,7 +313,7 @@ async fn create_all_day_bare_date_a_bare_date_reaches_the_wire_on_create_matchin
 /// dates survive a summary-only edit unparsed and unrendered.
 #[tokio::test]
 async fn edit_round_trips_bare_date_bounds_verbatim() {
-    let entry = run(
+    let (entry, requests) = run_recording(
         FIXTURE,
         "edit-untouched-carve-outs: a block that never assigns them leaves them off the wire",
         |account| async move {
@@ -329,7 +329,15 @@ async fn edit_round_trips_bare_date_bounds_verbatim() {
                 .await
         },
     )
-    .await
-    .expect("edited");
+    .await;
+    let entry = entry.expect("edited");
     assert_eq!(entry.summary, "Team Sync");
+    let put = requests
+        .iter()
+        .find(|request| request.method == "PUT")
+        .expect("the edit is a PUT");
+    let body: serde_json::Value = serde_json::from_slice(&put.body).expect("a JSON body");
+    assert_eq!(body["starts_at"], "2026-06-01");
+    assert_eq!(body["ends_at"], "2026-06-02");
+    assert_eq!(body["all_day"], true);
 }

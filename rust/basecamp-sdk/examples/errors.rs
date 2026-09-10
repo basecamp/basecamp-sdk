@@ -5,14 +5,17 @@
 //! BASECAMP_TOKEN=... BASECAMP_ACCOUNT_ID=... cargo run --example errors
 //! ```
 
+#![allow(clippy::unwrap_used, clippy::expect_used)] // an example stops on a missing environment variable
+
 use basecamp_sdk::{Client, Config, ErrorCode};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = Client::builder(Config::default())
-        .access_token(std::env::var("BASECAMP_TOKEN")?)
+        .access_token(std::env::var("BASECAMP_TOKEN").expect("BASECAMP_TOKEN"))
         .build()?;
-    let account = client.for_account(std::env::var("BASECAMP_ACCOUNT_ID")?);
+    let account =
+        client.for_account(std::env::var("BASECAMP_ACCOUNT_ID").expect("BASECAMP_ACCOUNT_ID"));
 
     match account.projects().get(1).await {
         Ok(project) => println!("found {}", project.name),

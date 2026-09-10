@@ -624,7 +624,7 @@ py-clean:
 # tripping assert-lockfiles-unchanged after the fact.
 RS_CRATE := basecamp-sdk
 
-.PHONY: rs-build rs-test rs-lint rs-doc rs-deny rs-generate rs-check-drift rs-publish-check rs-check rs-clean rs-fmt
+.PHONY: rs-build rs-test rs-lint rs-doc rs-deny rs-generate-services rs-check-drift rs-publish-check rs-check rs-clean rs-fmt
 
 rs-build:
 	@echo "==> Building Rust SDK..."
@@ -672,7 +672,7 @@ rs-deny:
 # The generator resolves openapi.json, behavior-model.json and its own names.toml
 # from the repository root (`--root`, defaulting to the workspace's parent) and
 # writes rust/basecamp-sdk/src/generated unless `--output` says otherwise.
-rs-generate:
+rs-generate-services:
 	@echo "==> Generating Rust SDK from OpenAPI..."
 	cd rust && cargo run -q --locked -p $(RS_CRATE)-generator
 
@@ -990,6 +990,8 @@ conformance-python-replay:
 # Run Rust conformance tests. The runner is its own Cargo workspace with a
 # path dep on rust/basecamp-sdk; --locked for the reason every other Rust
 # recipe has it.
+# A debug build: the runner answers from a scripted transport, so the release
+# build the devex standard names buys nothing here but compile time.
 conformance-rust:
 	@echo "==> Running Rust conformance tests..."
 	cd conformance/runner/rust && cargo run --locked -q
@@ -1679,7 +1681,7 @@ generate:
 	         py-generate \
 	         kt-generate-services \
 	         swift-generate \
-	         rs-generate
+	         rs-generate-services
 	@$(MAKE) -C go generate
 	@$(MAKE) sync-api-version
 	@echo "==> Generation complete"
@@ -1824,7 +1826,7 @@ help:
 	@echo "  py-clean             Remove Python build artifacts"
 	@echo ""
 	@echo "Rust SDK:"
-	@echo "  rs-generate          Regenerate src/generated from OpenAPI + behavior model"
+	@echo "  rs-generate-services          Regenerate src/generated from OpenAPI + behavior model"
 	@echo "  rs-build             Build Rust SDK workspace"
 	@echo "  rs-test              Run Rust tests (feature matrix + examples)"
 	@echo "  rs-lint              rustfmt --check + clippy -D warnings"

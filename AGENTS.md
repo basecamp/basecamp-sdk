@@ -286,7 +286,7 @@ Use `make sync-status` to see upstream diffs since last sync.
 2. Update `spec/overlays/tags.smithy` — tag new operations
 3. Update service generator `TAG_TO_SERVICE` mappings if adding new service groups
 4. Run full generation pipeline
-5. Wire new services into clients (`typescript/src/client.ts`, `typescript/src/index.ts`, `ruby/lib/basecamp/client.rb`, `python/src/basecamp/client.py`, `python/src/basecamp/async_client.py`). Rust needs no wiring: `rust/basecamp-sdk/src/generated/accessors.rs` is generated, so `make rs-generate` already emitted the accessor
+5. Wire new services into clients (`typescript/src/client.ts`, `typescript/src/index.ts`, `ruby/lib/basecamp/client.rb`, `python/src/basecamp/client.py`, `python/src/basecamp/async_client.py`). Rust needs no wiring: `rust/basecamp-sdk/src/generated/accessors.rs` is generated, so `make rs-generate-services` already emitted the accessor
 6. Write tests for ALL new operations (see Completeness Bar below)
 7. Update tests for any changed paths/signatures
 8. Update provenance, run `make provenance-sync`
@@ -311,7 +311,7 @@ Use `make sync-status` to see upstream diffs since last sync.
 5. **TypeScript test** — in `typescript/tests/services/<service>.test.ts` (happy path + error case)
 6. **Ruby test** — in `ruby/test/basecamp/services/<service>_service_test.rb` (same coverage)
 7. **Python test** — in `python/tests/services/test_<service>_service.py` (same coverage)
-8. **Rust test** — in `rust/basecamp-sdk/tests/services/<service>.rs` or the service's `#[cfg(test)]` module (same coverage)
+8. **Rust test** — in `rust/basecamp-sdk/tests/services.rs` (one happy-path and one error case per service; the generated methods share one template, pinned by the generator's golden fixture and the conformance runner) or the service's `#[cfg(test)]` module
 9. **Regeneration** — all generated artifacts freshly regenerated, not stale
 
 ### Every Changed Field/Path Requires

@@ -95,6 +95,12 @@ pub fn string_param(params: &Params, key: &str) -> String {
         .to_string()
 }
 
+/// The value when the key is present — an explicit empty string included, so a validation
+/// case that sends `""` sends `""` — and `fallback` only when it is absent.
+pub fn string_param_or(params: &Params, key: &str, fallback: &str) -> String {
+    optional_string_param(params, key).unwrap_or_else(|| fallback.to_string())
+}
+
 /// The value only when the key is PRESENT, so "explicitly set to empty" stays distinct
 /// from "not set" — the distinction every merge-safe composite case turns on.
 pub fn optional_string_param(params: &Params, key: &str) -> Option<String> {

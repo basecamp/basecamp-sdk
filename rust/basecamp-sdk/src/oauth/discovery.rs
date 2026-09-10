@@ -406,9 +406,10 @@ impl OAuthClient {
                 }
             }
         } else {
+            let mut seen = std::collections::HashSet::new();
             let mut candidates: Vec<&String> = Vec::new();
             for issuer in &advertised {
-                if !self.is_launchpad_issuer(issuer) && !candidates.contains(&issuer) {
+                if !self.is_launchpad_issuer(issuer) && seen.insert(issuer) {
                     candidates.push(issuer);
                 }
             }

@@ -8,7 +8,7 @@ use basecamp_sdk::{Client, Config};
 #[tokio::main]
 async fn main() -> Result<(), basecamp_sdk::Error> {
     let token = std::env::var("BASECAMP_TOKEN").expect("BASECAMP_TOKEN");
-    let account_id = std::env::var("BASECAMP_ACCOUNT").expect("BASECAMP_ACCOUNT");
+    let account_id = std::env::var("BASECAMP_ACCOUNT_ID").expect("BASECAMP_ACCOUNT_ID");
     let todolist_id: i64 = std::env::var("BASECAMP_TODOLIST")
         .expect("BASECAMP_TODOLIST")
         .parse()

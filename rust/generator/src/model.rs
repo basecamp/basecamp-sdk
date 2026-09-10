@@ -328,15 +328,27 @@ fn deprecation_of(value: &Value) -> Option<String> {
     }
 }
 
-/// The non-null member of an `OpenAPI` 3.1 `["T", "null"]` union, or the scalar `type`.
-fn scalar_type(property: &Value) -> Option<&str> {
+/// The non-null member of an `OpenAPI` 3.1 `["T", "null"]` union, or the scalar `type`. A
+/// union of two non-null types has no Rust shape and is refused rather than guessed at.
+fn scalar_type<'a>(name: &str, property: &'a Value) -> Result<Option<&'a str>, String> {
     match &property["type"] {
-        Value::String(t) => Some(t.as_str()),
-        Value::Array(types) => types
-            .iter()
-            .filter_map(Value::as_str)
-            .find(|t| *t != "null"),
-        _ => None,
+        Value::String(t) => Ok(Some(t.as_str())),
+        Value::Array(types) => {
+            let members: Vec<&str> = types
+                .iter()
+                .filter_map(Value::as_str)
+                .filter(|t| *t != "null")
+                .collect();
+            match members.as_slice() {
+                [] => Ok(None),
+                [only] => Ok(Some(only)),
+                many => Err(format!(
+                    "{name}: a union of {} has no Rust type",
+                    many.join(" and ")
+                )),
+            }
+        }
+        _ => Ok(None),
     }
 }
 
@@ -359,9 +371,14 @@ fn field_type(name: &str, property: &Value, naming: &Naming) -> Result<FieldType
             )),
         };
     }
+    for composition in ["oneOf", "allOf"] {
+        if property.get(composition).is_some() {
+            return Err(format!("{name}: {composition} has no Rust shape"));
+        }
+    }
     let go_type = property["x-go-type"].as_str();
     let format = property["format"].as_str();
-    match scalar_type(property) {
+    match scalar_type(name, property)? {
         Some("string") => Ok(string_type(property, go_type, format)),
         Some("boolean") => Ok(FieldType::Bool),
         Some("integer") => Ok(match (go_type, format) {
@@ -371,11 +388,16 @@ fn field_type(name: &str, property: &Value, naming: &Naming) -> Result<FieldType
             _ => FieldType::Int64,
         }),
         Some("number") => Ok(FieldType::Float),
-        Some("array") => Ok(FieldType::List(Box::new(field_type(
-            name,
-            &property["items"],
-            naming,
-        )?))),
+        Some("array") => {
+            if is_nullable(&property["items"]) {
+                return Err(format!("{name}: nullable array items have no Rust shape"));
+            }
+            Ok(FieldType::List(Box::new(field_type(
+                name,
+                &property["items"],
+                naming,
+            )?)))
+        }
         Some("object") => {
             if let Some(values) = property.get("additionalProperties") {
                 Ok(FieldType::Map(Box::new(field_type(name, values, naming)?)))
@@ -441,6 +463,7 @@ fn build_services(
                 .strip_prefix("/{accountId}")
                 .ok_or(format!("{path} is not account-scoped"))?
                 .to_string();
+            let path_params = path_params(operation, &sdk_path)?;
             let operation = Operation {
                 id: id.to_string(),
                 service: service.clone(),
@@ -449,7 +472,7 @@ fn build_services(
                 http_method: http_method.to_uppercase(),
                 path: sdk_path,
                 resource_type: naming.resource_type_for(id),
-                path_params: path_params(operation)?,
+                path_params,
                 query_params: query_params(operation)?,
                 body: body_of(operation, naming)?,
                 response: response_of(operation, naming)?,
@@ -485,7 +508,10 @@ fn build_services(
     Ok(result)
 }
 
-fn path_params(operation: &Value) -> Result<Vec<PathParam>, String> {
+/// The path parameters in the order the template names them — the order of the generated
+/// method's arguments — each bound to exactly one placeholder.
+fn path_params(operation: &Value, path: &str) -> Result<Vec<PathParam>, String> {
+    let id = operation["operationId"].as_str().unwrap_or("operation");
     let mut params = Vec::new();
     for parameter in parameters_in(operation, "path") {
         let wire_name = parameter["name"]
@@ -495,12 +521,26 @@ fn path_params(operation: &Value) -> Result<Vec<PathParam>, String> {
         if wire_name == "accountId" {
             continue;
         }
-        params.push(PathParam {
-            wire_name,
-            kind: param_kind(parameter)?,
-        });
+        let position = path
+            .find(&format!("{{{wire_name}}}"))
+            .ok_or(format!("{id}: path parameter {wire_name} is not in {path}"))?;
+        params.push((
+            position,
+            PathParam {
+                wire_name,
+                kind: param_kind(parameter)?,
+            },
+        ));
     }
-    Ok(params)
+    params.sort_by_key(|(position, _)| *position);
+    let placeholders = path.matches('{').count();
+    if placeholders != params.len() {
+        return Err(format!(
+            "{id}: {path} names {placeholders} placeholder(s) but {} path parameter(s) are declared",
+            params.len()
+        ));
+    }
+    Ok(params.into_iter().map(|(_, param)| param).collect())
 }
 
 fn query_params(operation: &Value) -> Result<Vec<QueryParam>, String> {
@@ -598,6 +638,20 @@ fn response_of(operation: &Value, naming: &Naming) -> Result<Response, String> {
     let responses = operation["responses"]
         .as_object()
         .ok_or("operation has no responses")?;
+    let successes: Vec<&Value> = responses
+        .iter()
+        .filter(|(status, _)| status.starts_with('2'))
+        .map(|(_, response)| response)
+        .collect();
+    if successes
+        .iter()
+        .any(|response| response["content"] != successes[0]["content"])
+    {
+        return Err(format!(
+            "{}: its 2xx responses disagree on the body",
+            operation["operationId"].as_str().unwrap_or("operation")
+        ));
+    }
     for (status, response) in responses {
         if status.starts_with('2') {
             return match response["content"].as_object() {

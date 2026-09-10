@@ -50,7 +50,7 @@ impl Hooks for Printing {
 #[tokio::main]
 async fn main() -> Result<(), Error> {
     let token = std::env::var("BASECAMP_TOKEN").expect("BASECAMP_TOKEN");
-    let account_id = std::env::var("BASECAMP_ACCOUNT").expect("BASECAMP_ACCOUNT");
+    let account_id = std::env::var("BASECAMP_ACCOUNT_ID").expect("BASECAMP_ACCOUNT_ID");
 
     let transport = Arc::new(Counting {
         inner: ReqwestClient::with_timeout(Duration::from_secs(10))?,

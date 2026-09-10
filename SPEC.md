@@ -1447,7 +1447,7 @@ MAX_RESPONSE_BODY_BYTES = 52,428,800  (50 MiB, i.e., 50 × 1024 × 1024)
 MAX_ERROR_BODY_BYTES    = 1,048,576   (1 MiB)
 ```
 
-Go, Ruby, and Rust enforce this limit (Rust in `rust/basecamp-sdk/src/security.rs`). TypeScript, Kotlin, and Swift do not currently enforce it — they rely on the HTTP library's native limits. New implementations should enforce it. `[static]`
+Go, Ruby, and Rust enforce this limit (Rust in `rust/basecamp-sdk/src/config.rs`). TypeScript, Kotlin, and Swift do not currently enforce it — they rely on the HTTP library's native limits. New implementations should enforce it. `[static]`
 
 ### Error Message Truncation `[static]`
 
@@ -1722,11 +1722,11 @@ END
 
 ```
 RECORD RequestResult
-  status_code : Integer?   -- HTTP status code; language adaptation: Ruby uses null for network errors, TS/Swift/Kotlin/Go/Rust use 0
+  status_code : Integer?   -- HTTP status code; language adaptation: Ruby and Rust use null for network errors, TS/Swift/Kotlin/Go use 0
   duration    : Duration   -- request duration; language adaptation: ms Integer in TS/Swift, Float seconds in Ruby, native Duration in Go/Kotlin/Rust
   from_cache  : Boolean    -- whether response was served from ETag cache
   error       : Error?     -- error if the request failed (Swift omits this field; network failures reported via status_code: 0)
-  retry_after : Integer?   -- Retry-After value in seconds if present (Ruby and Go; other SDKs omit this field)
+  retry_after : Integer?   -- Retry-After value in seconds if present (Ruby, Go and Rust; other SDKs omit this field)
 END
 ```
 
@@ -4056,8 +4056,8 @@ Only `API_VERSION` is gated (`<!-- @api-version -->`, checked by `make doc-const
 
 | Constant | Value | Unit | Source |
 |----------|-------|------|--------|
-| `MAX_RESPONSE_BODY_BYTES` | 52,428,800 (50 MiB) | bytes | `go/pkg/basecamp/security.go`, `ruby/lib/basecamp/security.rb`, `rust/basecamp-sdk/src/security.rs`; Go/Ruby/Rust enforce; TS/Kotlin/Swift do not |
-| `MAX_ERROR_BODY_BYTES` | 1,048,576 (1 MiB) | bytes | `go/pkg/basecamp/security.go`, `ruby/lib/basecamp/security.rb`, `rust/basecamp-sdk/src/security.rs` |
+| `MAX_RESPONSE_BODY_BYTES` | 52,428,800 (50 MiB) | bytes | `go/pkg/basecamp/security.go`, `ruby/lib/basecamp/security.rb`, `rust/basecamp-sdk/src/config.rs`; Go/Ruby/Rust enforce; TS/Kotlin/Swift do not |
+| `MAX_ERROR_BODY_BYTES` | 1,048,576 (1 MiB) | bytes | `go/pkg/basecamp/security.go`, `ruby/lib/basecamp/security.rb`, `rust/basecamp-sdk/src/error.rs` |
 | `MAX_ERROR_MESSAGE_LENGTH` | 500 | bytes (Go/Ruby/Python/Rust) or code units (TS/Swift/Kotlin) | All seven SDKs |
 | `DEFAULT_BASE_URL` | `https://3.basecampapi.com` | — | All seven SDKs |
 | `DEFAULT_TIMEOUT` | 30 | seconds | All seven SDKs |
@@ -4417,7 +4417,7 @@ See the Gate 3 consumption table in §7 above.
 | Go | Typed `*XxxListResult` with `Meta ListMeta` | yes | yes |
 | Python | `ListResult(list)` with `meta ListMeta` | yes | yes |
 | Ruby | Lazy `ListEnumerator` (Enumerator subclass) with `meta ListMeta` | yes | yes (final after enumeration completes) |
-| Rust | `Page<T>` with `meta` (`total_count`, `truncated`, `next_url`) | yes | yes |
+| Rust | `ListResult<T>` with `meta: ListMeta` (`total_count`, `truncated`, `next_url`); the per-page cursor on `Page<T>` | yes | yes |
 
 ### Error Message Truncation Unit (§9)
 

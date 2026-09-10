@@ -201,3 +201,104 @@ fn a_pagination_key_that_is_not_a_required_array_fails_generation() {
         "{stderr}"
     );
 }
+
+#[test]
+fn shapes_the_generator_cannot_spell_are_refused() {
+    let stderr = refusal(|openapi, _| {
+        openapi["components"]["schemas"]["Widget"]["properties"]["width"]["type"] =
+            serde_json::json!(["integer", "string"]);
+    });
+    assert!(
+        stderr.contains("width: a union of integer and string has no Rust type"),
+        "{stderr}"
+    );
+    let stderr = refusal(|openapi, _| {
+        openapi["components"]["schemas"]["Widget"]["properties"]["parent"] = serde_json::json!({"oneOf": [{"$ref": "#/components/schemas/Owner"}, {"type": "string"}]});
+    });
+    assert!(
+        stderr.contains("parent: oneOf has no Rust shape"),
+        "{stderr}"
+    );
+    let stderr = refusal(|openapi, _| {
+        openapi["components"]["schemas"]["Widget"]["properties"]["labels"] = serde_json::json!({
+            "type": "array",
+            "items": {"type": ["string", "null"]}
+        });
+    });
+    assert!(
+        stderr.contains("labels: nullable array items have no Rust shape"),
+        "{stderr}"
+    );
+    let stderr = refusal(|openapi, _| {
+        openapi["paths"]["/{accountId}/widgets.json"]["get"]["responses"]["201"] = serde_json::json!({"description": "also ok", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Widget"}}}});
+    });
+    assert!(
+        stderr.contains("ListWidgets: its 2xx responses disagree on the body"),
+        "{stderr}"
+    );
+}
+
+#[test]
+fn path_parameters_follow_the_template_and_must_all_be_bound() {
+    let stderr = refusal(|openapi, _| {
+        openapi["paths"]["/{accountId}/buckets/{bucketId}/widgets/{widgetId}"]["put"]["parameters"]
+            .as_array_mut()
+            .unwrap()
+            .retain(|parameter| parameter["name"] != "widgetId");
+    });
+    assert!(
+        stderr.contains("ReplaceWidget: /buckets/{bucketId}/widgets/{widgetId} names 2 placeholder(s) but 1 path parameter(s) are declared"),
+        "{stderr}"
+    );
+    let stderr = refusal(|openapi, _| {
+        openapi["paths"]["/{accountId}/buckets/{bucketId}/widgets/{widgetId}"]["put"]["parameters"]
+            [2]["name"] = serde_json::json!("gadgetId");
+    });
+    assert!(
+        stderr.contains("ReplaceWidget: path parameter gadgetId is not in /buckets/{bucketId}/widgets/{widgetId}"),
+        "{stderr}"
+    );
+
+    // The declared order is not the argument order: the template's is.
+    let root = std::env::temp_dir().join(format!(
+        "basecamp-sdk-generator-order-{}",
+        std::process::id()
+    ));
+    let _ = fs::remove_dir_all(&root);
+    fs::create_dir_all(root.join("rust/generator")).unwrap();
+    let mini = fixtures().join("mini");
+    let mut openapi: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(mini.join("openapi.json")).unwrap()).unwrap();
+    let parameters = openapi["paths"]["/{accountId}/buckets/{bucketId}/widgets/{widgetId}"]["put"]
+        ["parameters"]
+        .as_array_mut()
+        .unwrap();
+    parameters.swap(1, 2);
+    fs::write(
+        root.join("openapi.json"),
+        serde_json::to_string(&openapi).unwrap(),
+    )
+    .unwrap();
+    fs::copy(
+        mini.join("behavior-model.json"),
+        root.join("behavior-model.json"),
+    )
+    .unwrap();
+    fs::copy(
+        mini.join("rust/generator/names.toml"),
+        root.join("rust/generator/names.toml"),
+    )
+    .unwrap();
+    let output = generate(&root, &root.join("out"));
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let rendered = fs::read_to_string(root.join("out/services/widgets.rs")).unwrap();
+    assert!(
+        rendered.contains("pub async fn replace_widget(\n        &self,\n        bucket_id: i64,\n        widget_id: i64,"),
+        "{rendered}"
+    );
+    let _ = fs::remove_dir_all(&root);
+}
