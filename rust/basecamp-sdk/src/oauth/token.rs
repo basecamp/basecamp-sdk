@@ -218,6 +218,9 @@ impl OAuthClient {
         let response = send_within(self.http(), deadline, request)
             .await
             .map_err(|failure| network_failure(&url, &failure))?;
+        // The token's lifetime runs from when the server answered, not from when its body
+        // finished arriving.
+        let received = Utc::now();
         let status = response.status();
         let headers = response.headers().clone();
         if status.is_redirection() {
@@ -247,7 +250,7 @@ impl OAuthClient {
             }
         };
         if status == StatusCode::OK {
-            parse_token_response(&body, status, Utc::now())
+            parse_token_response(&body, status, received)
         } else {
             Err(token_endpoint_error(status, &headers, &body))
         }
@@ -779,6 +782,7 @@ mod tests {
         let error = client.refresh_token(&refresh(&server)).await.unwrap_err();
         assert_eq!(error.code(), ErrorCode::Network);
         assert!(error.is_retryable());
+        assert!(error.is_timeout(), "{error:?}");
         assert_eq!(
             error.message(),
             format!("Network error contacting {}", server.uri())

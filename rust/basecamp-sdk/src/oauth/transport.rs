@@ -111,11 +111,12 @@ pub(super) fn json_get(url: &str) -> Result<Request<Bytes>, Error> {
 }
 
 /// The transport failure an OAuth POST reports: the origin alone, the transport's own
-/// account of it discarded, since that account could render the request (SPEC §9).
+/// account of it discarded, since that account could render the request (SPEC §9); a
+/// timeout keeps its marker.
 pub(super) fn network_failure(url: &Url, failure: &TransportFailure) -> Error {
     let error = Error::network_at(&origin_of(url.as_str()));
     match failure {
-        TransportFailure::TimedOut => error.with_hint("the request timed out"),
+        TransportFailure::TimedOut => error.with_hint("the request timed out").timed_out(),
         TransportFailure::Failed(_) => error,
     }
 }

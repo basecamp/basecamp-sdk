@@ -490,6 +490,7 @@ impl OAuthClient {
             Err(TransportFailure::TimedOut) => return Poll::TimedOut,
             Err(failure @ TransportFailure::Failed(_)) => return transport(&failure),
         };
+        let received = Utc::now();
         let status = response.status();
         if status.is_redirection() {
             return Poll::Failed(
@@ -523,7 +524,7 @@ impl OAuthClient {
             Err(BodyFailure::Failed(error)) => return transport(&TransportFailure::Failed(error)),
         };
         if status == StatusCode::OK {
-            return match parse_token_response(&body, status, Utc::now()) {
+            return match parse_token_response(&body, status, received) {
                 Ok(token) => Poll::Token(token),
                 Err(error) => Poll::Failed(error),
             };
