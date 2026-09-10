@@ -356,6 +356,140 @@ jobs:
         working-directory: .
         run: ./scripts/assert-lockfiles-unchanged --verify-clean
 
+  trivy-rust:
+    name: Trivy (Rust SDK)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Full-severity SARIF for Security-tab visibility; the gate step below enforces policy.
+      # (In SARIF mode the action reports all severities unless limit-severities-for-sarif is set.)
+      # Trivy reads Cargo.lock; the crate workspace and the conformance runner's
+      # are two lockfiles in two directories, so each is scanned on its own.
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: 'fs'
+          scan-ref: './rust'
+          ignore-unfixed: true
+          format: 'sarif'
+          output: 'trivy-rust-results.sarif'
+
+      - name: Run Trivy vulnerability scanner (conformance runner)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        env:
+          TRIVY_SKIP_DB_UPDATE: true
+        with:
+          scan-type: 'fs'
+          scan-ref: './conformance/runner/rust'
+          ignore-unfixed: true
+          format: 'sarif'
+          output: 'trivy-rust-runner-results.sarif'
+          skip-setup-trivy: true
+          cache: 'false'
+
+      - name: Upload runner scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
+        if: always()
+        continue-on-error: true  # Requires GitHub Advanced Security
+        with:
+          sarif_file: 'trivy-rust-runner-results.sarif'
+          category: 'trivy-rust-runner'
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
+        if: always()
+        continue-on-error: true  # Requires GitHub Advanced Security
+        with:
+          sarif_file: 'trivy-rust-results.sarif'
+          category: 'trivy-rust'
+
+      # Table mode passes the severity filter through, so this gates on HIGH/CRITICAL only.
+      - name: Fail on HIGH/CRITICAL vulnerabilities
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        env:
+          TRIVY_SKIP_DB_UPDATE: true
+        with:
+          scan-type: 'fs'
+          scan-ref: './rust'
+          severity: 'HIGH,CRITICAL'
+          exit-code: '1'
+          ignore-unfixed: true
+          format: 'table'
+          skip-setup-trivy: true
+          cache: 'false'
+
+      - name: Fail on HIGH/CRITICAL vulnerabilities (conformance runner)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        env:
+          TRIVY_SKIP_DB_UPDATE: true
+        with:
+          scan-type: 'fs'
+          scan-ref: './conformance/runner/rust'
+          severity: 'HIGH,CRITICAL'
+          exit-code: '1'
+          ignore-unfixed: true
+          format: 'table'
+          skip-setup-trivy: true
+          cache: 'false'
+
+      # Ground truth, and the authoritative check: the static parser predicts
+      # that nothing writes a lockfile, this observes whether anything did. A CI
+      # checkout starts pristine, so the committed tree is the baseline. Catches
+      # a manifest that was modified AND one CREATED where none was tracked, and
+      # runs on failure too, so a job cannot fail and hide what it dirtied.
+      - name: Dependency manifests unchanged by this job
+        if: always()
+        working-directory: .
+        run: ./scripts/assert-lockfiles-unchanged --verify-clean
+
+  # The Rust advisory gate proper: RustSec advisories, licenses, bans and
+  # sources for BOTH Cargo workspaces, from the checked-in rust/deny.toml.
+  # test.yml runs the same check on every PR; this is the weekly re-scan
+  # against a moved advisory database. cargo-audit is deliberately not run
+  # beside it — same RustSec database, one tool.
+  cargo-deny:
+    name: cargo deny (Rust SDK)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # v1
+        with:
+          toolchain: '1.98.1'
+
+      - name: Install cargo-deny
+        uses: taiki-e/install-action@c3ec0de9ae7f1019cea21aa96aa0a895b9552063 # v2.87.9
+        with:
+          tool: cargo-deny@0.20.2
+
+      - name: cargo deny check (both workspaces)
+        run: |
+          cargo deny --manifest-path rust/Cargo.toml --locked check
+          cargo deny --manifest-path conformance/runner/rust/Cargo.toml --config rust/deny.toml --locked check
+
+      # Ground truth, and the authoritative check: the static parser predicts
+      # that nothing writes a lockfile, this observes whether anything did. A CI
+      # checkout starts pristine, so the committed tree is the baseline. Catches
+      # a manifest that was modified AND one CREATED where none was tracked, and
+      # runs on failure too, so a job cannot fail and hide what it dirtied.
+      - name: Dependency manifests unchanged by this job
+        if: always()
+        working-directory: .
+        run: ./scripts/assert-lockfiles-unchanged --verify-clean
+
   bundler-audit:
     name: Bundler Audit (Ruby SDK)
     runs-on: ubuntu-latest

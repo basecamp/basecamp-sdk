@@ -1,0 +1,40 @@
+# The Rust conformance runner: its own workspace, consuming the crate by path
+# the way the Ruby, Python and TypeScript runners consume theirs. Own
+# Cargo.lock, tracked; every invocation passes --locked.
+[workspace]
+
+[package]
+name = "basecamp-conformance"
+version = "0.0.0"
+edition = "2024"
+rust-version = "1.88"
+license = "MIT"
+publish = false
+
+[[bin]]
+name = "basecamp-conformance"
+path = "src/main.rs"
+
+[dependencies]
+async-trait = "0.1"
+basecamp-sdk = { path = "../../../rust/basecamp-sdk", default-features = false, features = ["oauth"] }
+bytes = "1"
+http = "1"
+httpdate = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["arbitrary_precision", "preserve_order"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "sync", "time"] }
+url = "2"
+
+[lints.rust]
+unsafe_code = "forbid"
+[lints.clippy]
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+module_name_repetitions = "allow"
+too_many_lines = "allow"          # the dispatch match is one long function by design
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+wildcard_imports = "allow"          # the dispatch names hundreds of generated model types
+default_trait_access = "allow"      # `&Default::default()` for a params struct the arm never names
+needless_update = "allow"           # `..Default::default()` keeps an arm compiling when a request type grows

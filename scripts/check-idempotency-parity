@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # check-idempotency-parity — assert idempotency classification is identical
-# across all six SDKs and matches the source of truth.
+# across all seven SDKs and matches the source of truth.
 #
 # The source of truth is behavior-model.json:
 #   * idempotent == true            → the naturally-idempotent mutations
@@ -97,7 +97,7 @@ compare() {
     fi
 }
 
-echo "==> Checking idempotency-classification parity across six SDKs"
+echo "==> Checking idempotency-classification parity across seven SDKs"
 
 # ---- Source of truth (behavior-model.json) -----------------------------------
 BM=behavior-model.json
@@ -173,6 +173,21 @@ awk '/idempotentOperations: Set<String> = \[/{f=1; next} /^[[:space:]]*\]/{f=0} 
     swift/Sources/Basecamp/Generated/Metadata.swift \
     | grep -oE '"[[:alnum:]]+"' | tr -d '"' | sort > "$WORK/swift"
 compare "Swift idempotent set == $expected_idempotent" "$WORK/idempotentSet" "$WORK/swift"
+
+# ---- Rust (metadata.rs, one labelled `OperationMetadata { … }` static per op) --
+# Each static is one line: `pub static X: OperationMetadata = OperationMetadata {
+# operation: "X", idempotent: true, readonly: false, retry: RetryConfig { … } };`.
+# The op name is read off the same line as its `idempotent: true`, anchored on
+# `pub static` so the doc line above it (/// `X`.) cannot match. `idempotent:`
+# is the behavior-model natural flag only — Rust's runtime, like TypeScript's,
+# gates retry on that flag and treats readonly as a separate axis, so the set
+# compares to the natural set. A missing file prints grep's own error and lands
+# here as an empty set, which `compare` refuses.
+grep -E '^pub static [[:alnum:]_]+: OperationMetadata = .*idempotent: true,' \
+    rust/basecamp-sdk/src/generated/metadata.rs \
+    | grep -oE 'operation: "[[:alnum:]]+"' | sed -E 's/operation: "([[:alnum:]]+)"/\1/' \
+    | sort > "$WORK/rust"
+compare "Rust idempotent set == $expected_idempotent" "$WORK/idempotentSet" "$WORK/rust"
 
 # ---- TypeScript (metadata.ts, multiline JSON-style `const metadata` object) --
 # Extract the object literal and parse with jq — a single-line grep can't read

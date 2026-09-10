@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 #
-# check-deprecation-parity — assert @deprecated propagation across all six SDKs.
+# check-deprecation-parity — assert @deprecated propagation across all seven SDKs.
 #
 # The five deprecated source sites (see #406) must each carry the
 # language-appropriate marker, in the right signal class:
-#   * Kotlin   — compiler warning  (@Deprecated at property read sites)
+#   * Kotlin / Rust — compiler warning (@Deprecated / #[deprecated] at read sites)
 #   * TS / Go  — editor / static   (@deprecated JSDoc / // Deprecated: godoc)
 #   * Swift/Ruby/Python — documentation only (/// , YARD, docstring/comment)
 #
@@ -13,11 +13,16 @@
 # must stay unmarked, and no emitter may produce a doubled "Deprecated:
 # Deprecated:" marker.
 #
+# Env seams (the tracked tree is never written to):
+#   DEPRECATION_PARITY_ROOT  repository root the generated trees are resolved
+#                            against; defaults to this checkout
+#
 # Exit non-zero on any violation. Wired into `make check`.
 set -uo pipefail
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-cd "$ROOT"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT="${DEPRECATION_PARITY_ROOT:-$(cd "$SCRIPT_DIR/.." && pwd)}"
+cd "$ROOT" || exit 2
 
 fail=0
 pass=0
@@ -58,7 +63,21 @@ assert_count() {
     fi
 }
 
-echo "==> Checking deprecation parity across six SDKs"
+# assert_tree_count <dir> <fixed-string> <expected-n> <description>: lines
+# matching across every file under <dir>. A missing directory counts zero and
+# fails, the same way a missing file does above.
+assert_tree_count() {
+    local n
+    n=$(grep -rIF -- "$2" "$1" 2>/dev/null | wc -l | tr -d ' ')
+    if [[ "$n" == "$3" ]]; then
+        pass=$((pass + 1))
+    else
+        echo "  FAIL: $4 (expected $3 line(s) containing '$2' under $1, got $n)"
+        fail=$((fail + 1))
+    fi
+}
+
+echo "==> Checking deprecation parity across seven SDKs"
 
 # ---- Go (editor/static: // Deprecated: godoc) --------------------------------
 GO=go/pkg/generated/client.gen.go
@@ -107,6 +126,28 @@ assert_contains kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/serv
 # Control: the search function itself is not deprecated (only suppressed).
 assert_absent kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/search.kt "@Deprecated(" "Kotlin: search function is not itself deprecated"
 
+# ---- Rust (compiler warning: #[deprecated(note = "…")]) ----------------------
+RS_GEN=rust/basecamp-sdk/src/generated
+RS_TYPES=$RS_GEN/types.rs
+RS_SEARCH=$RS_GEN/services/search.rs
+# The Search params struct lives beside its service, so the three param markers
+# are pinned to search.rs. They are single-line there; the two ClientSide
+# markers in types.rs are rustfmt'd across lines, so those are counted on the
+# `note = …` line rather than the attribute opener.
+assert_contains "$RS_SEARCH" '#[deprecated(note = "prefer type_names[].")]' "Rust: search 'type' param marker"
+assert_contains "$RS_SEARCH" '#[deprecated(note = "prefer bucket_ids[].")]' "Rust: search 'bucket_id' param marker"
+assert_contains "$RS_SEARCH" '#[deprecated(note = "prefer creator_ids[].")]' "Rust: search 'creator_id' param marker"
+assert_count "$RS_SEARCH" '#\[deprecated\(' 3 "Rust: exactly three param markers in search.rs (controls clean)"
+assert_count "$RS_TYPES" 'note = "This shape is deprecated since 2024-01: Use Client Visibility feature instead"' 2 "Rust: ClientSide type + clientside field markers"
+# Exactly 5 in the whole generated tree: 3 params + ClientSide type + clientside
+# field. A control item gaining a marker anywhere would bump this count.
+assert_tree_count "$RS_GEN" '#[deprecated(' 5 "Rust: exactly five deprecation markers (controls clean)"
+# Zero-warning suppressions where the deprecated items are read or constructed:
+# `#[allow(deprecated)]` on the search method, and types.rs's crate-style inner
+# `#![allow(deprecated, …)]` — hence the bare `allow(deprecated` token.
+assert_contains "$RS_SEARCH" 'allow(deprecated' "Rust: search service allow(deprecated) for deprecated-param reads"
+assert_contains "$RS_TYPES" 'allow(deprecated' "Rust: types.rs allow(deprecated) for the deprecated-type reference"
+
 # ---- Ruby (documentation only: YARD) -----------------------------------------
 RB_SVC=ruby/lib/basecamp/generated/services/search_service.rb
 assert_contains "$RB_SVC" "@param type [String, nil] Deprecated: prefer type_names[]." "Ruby: search 'type' param doc"
@@ -150,6 +191,36 @@ assert_field_undeprecated "$KT_TYPES" "val creatorIds:" "Kotlin control: creator
 assert_field_undeprecated "$KT_TYPES" "val fileType:" "Kotlin control: unrelated field (fileType) is unmarked"
 assert_field_undeprecated "$SW_SVC" "public var typeNames:" "Swift control: typeNames replacement is present and unmarked"
 
+# assert_rust_item_undeprecated <file> <item-decl-regex> <description>: the
+# declaring line must exist and the contiguous run of attributes and doc
+# comments immediately above it must carry no #[deprecated. Rust stacks
+# attributes (#[deprecated(…)] then #[serde(…)] then the field), so "the line
+# before" is not enough here; the run is walked instead. A blank line ends the
+# run, which the generator never puts between an attribute and its item.
+assert_rust_item_undeprecated() {
+    if awk -v pat="$2" '
+        /^[[:space:]]*#\[deprecated/ { dep = 1; next }
+        /^[[:space:]]*(#\[|\/\/\/)/ { next }
+        $0 ~ pat {
+            found = 1
+            if (dep) { bad = 1 }
+        }
+        { dep = 0 }
+        END { exit (found && !bad) ? 0 : 1 }
+    ' "$1" 2>/dev/null; then
+        pass=$((pass + 1))
+    else
+        echo "  FAIL: $3 (item missing, or marked deprecated, in $1)"
+        fail=$((fail + 1))
+    fi
+}
+assert_rust_item_undeprecated "$RS_SEARCH" "^[[:space:]]*pub type_names:" "Rust control: type_names replacement is present and unmarked"
+assert_rust_item_undeprecated "$RS_SEARCH" "^[[:space:]]*pub bucket_ids:" "Rust control: bucket_ids replacement is present and unmarked"
+assert_rust_item_undeprecated "$RS_SEARCH" "^[[:space:]]*pub creator_ids:" "Rust control: creator_ids replacement is present and unmarked"
+assert_rust_item_undeprecated "$RS_SEARCH" "^[[:space:]]*pub file_type:" "Rust control: unrelated field (file_type) is unmarked"
+# Control: the search method itself is not deprecated (only suppressed).
+assert_rust_item_undeprecated "$RS_SEARCH" "^[[:space:]]*pub (async )?fn search[<(]" "Rust control: search method is not itself deprecated"
+
 # ---- No doubled markers ------------------------------------------------------
 # Capture into a variable rather than piping grep into `grep -q`: under
 # `set -o pipefail`, `grep -q` closing the pipe early can SIGPIPE the recursive
@@ -158,6 +229,7 @@ assert_field_undeprecated "$SW_SVC" "public var typeNames:" "Swift control: type
 doubled=$(grep -rIn "Deprecated: Deprecated:" \
         go/pkg/generated typescript/src/generated swift/Sources/Basecamp/Generated \
         ruby/lib/basecamp/generated python/src/basecamp/generated kotlin/sdk/src/commonMain \
+        rust/basecamp-sdk/src/generated \
         2>/dev/null || true)
 if [[ -n "$doubled" ]]; then
     echo "  FAIL: doubled 'Deprecated: Deprecated:' marker found:"
@@ -172,7 +244,7 @@ fi
 # clientside attribute and the ClientSide class (a text grep can't prove the
 # grouped-attr_accessor @!attribute directive bound correctly).
 if command -v ruby >/dev/null 2>&1; then
-    if (cd ruby && bundle exec ruby "$ROOT/scripts/check-ruby-deprecation-yard.rb"); then
+    if (cd ruby && bundle exec ruby "$SCRIPT_DIR/check-ruby-deprecation-yard.rb"); then
         pass=$((pass + 1))
     else
         echo "  FAIL: Ruby YARD registry check"

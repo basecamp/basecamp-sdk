@@ -236,6 +236,70 @@ updates:
       semver-minor-days: 3
       semver-patch-days: 2
 
+  # Rust SDK dependencies (workspace: basecamp-sdk + generator)
+  - package-ecosystem: cargo
+    directory: "/rust"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/Chicago
+    open-pull-requests-limit: 10
+    groups:
+      tokio-ecosystem:
+        patterns:
+          - "tokio*"
+          - "hyper*"
+          - "tower*"
+          - "reqwest"
+      serde:
+        patterns:
+          - "serde*"
+      cargo-dependencies:
+        patterns:
+          - "*"
+        exclude-patterns:
+          - "tokio*"
+          - "hyper*"
+          - "tower*"
+          - "reqwest"
+          - "serde*"
+    commit-message:
+      prefix: "deps(rust):"
+    labels:
+      - "dependencies"
+      - "rust"
+    cooldown:
+      default-days: 10
+      semver-major-days: 7
+      semver-minor-days: 3
+      semver-patch-days: 2
+
+  # Conformance runner — Rust
+  - package-ecosystem: cargo
+    directory: "/conformance/runner/rust"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/Chicago
+    open-pull-requests-limit: 5
+    groups:
+      conformance-cargo-dependencies:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: "deps(conformance-rust):"
+    labels:
+      - "dependencies"
+      - "rust"
+      - "conformance"
+    cooldown:
+      default-days: 10
+      semver-major-days: 7
+      semver-minor-days: 3
+      semver-patch-days: 2
+
   # Smithy bare-arrays spec (standalone Gradle project)
   - package-ecosystem: gradle
     directory: "/spec/smithy-bare-arrays"

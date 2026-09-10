@@ -1,0 +1,72 @@
+[package]
+name = "basecamp-sdk"
+version = "0.18.0"
+description = "Official Basecamp API client, generated from the Smithy model in spec/"
+readme = "README.md"
+homepage = "https://github.com/basecamp/basecamp-sdk"
+documentation = "https://docs.rs/basecamp-sdk"
+keywords = ["basecamp", "37signals", "api", "sdk"]
+categories = ["api-bindings", "web-programming::http-client"]
+include = ["src/**", "examples/**", "README.md"]
+publish = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[lib]
+name = "basecamp_sdk"
+path = "src/lib.rs"
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[features]
+default = ["reqwest", "rustls-tls", "oauth", "tracing"]
+# The HTTP client the SDK ships. Off, an application supplies its own `http::HttpClient`.
+reqwest = ["dep:reqwest"]
+# TLS backends for the shipped client. Additive: both may be enabled at once.
+rustls-tls = ["reqwest", "reqwest/rustls"]
+native-tls = ["reqwest", "reqwest/native-tls"]
+# OAuth utilities (SPEC §16): PKCE, device grant, token exchange and refresh.
+oauth = ["dep:base64"]
+# One `tracing` span per operation.
+tracing = ["dep:tracing"]
+# SPEC §23 Event Feed connector. Deferred; the feature exists so enabling it later is additive.
+event-feed = []
+
+[dependencies]
+async-trait = "0.1"
+base64 = { version = "0.23", optional = true }
+bytes = "1"
+chrono = { version = "0.4", default-features = false, features = ["clock", "serde", "std"] }
+futures-util = { version = "0.3", default-features = false, features = ["std"] }
+hmac = "0.13"
+http = "1"
+percent-encoding = "2"
+rand = "0.10"
+reqwest = { version = "0.13", default-features = false, features = ["http2"], optional = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+sha2 = "0.11"
+thiserror = "2"
+tokio = { version = "1", features = ["sync", "time"] }
+tracing = { version = "0.1", optional = true }
+url = "2"
+
+[dev-dependencies]
+reqwest = { version = "0.13", default-features = false }
+tokio = { version = "1", features = ["macros", "net", "rt-multi-thread", "time", "sync", "test-util"] }
+wiremock = "0.6"
+
+[lints]
+workspace = true
+
+[[example]]
+name = "custom_http_client"
+required-features = ["reqwest"]
+
+[[example]]
+name = "device_login"
+required-features = ["reqwest", "oauth"]
