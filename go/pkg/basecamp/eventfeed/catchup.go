@@ -434,6 +434,11 @@ type deferredFrame struct {
 type pollResult struct {
 	page PollPage
 	err  error
+	// panicked carries a panic the seam raised on the call's goroutine, to
+	// be re-raised on the state machine's (seamPanic). A call abandoned at
+	// the grace deadline has no receiver left for it: its attempt is already
+	// torn down, and there is no consumer context to propagate into.
+	panicked *seamPanic
 }
 
 // pollAttempt is one poll-page attempt as the walk sees it: the page the seam
@@ -505,13 +510,19 @@ func (l *loop) pollPage(at *attempt, cursor Cursor) pollAttempt {
 		// way in: the seam is host code, and handing it the connector's own
 		// backing arrays would let an adapter that sorts or dedupes in place
 		// repoint the subscription's lineage from under a live feed.
-		p, perr := l.cfg.polls.Poll(at.ctx, cursor, l.cfg.filters.clone())
-		done <- pollResult{page: p, err: perr}
+		var r pollResult
+		r.panicked = capturePanic(func() {
+			r.page, r.err = l.cfg.polls.Poll(at.ctx, cursor, l.cfg.filters.clone())
+		})
+		done <- r
 	}()
 	for {
 		staleTimer, staleGen := at.lc.stale.current()
 		select {
 		case r := <-done:
+			if r.panicked != nil {
+				panic(r.panicked.value)
+			}
 			// The socket's verdict outranks the poll's: both can be ready,
 			// and returning a FAILED result unchecked lets recoverPoll's
 			// disposal discard the fired expiry — an unauthorized verdict
@@ -666,6 +677,9 @@ func (l *loop) awaitSupersededPoll(at *attempt, done <-chan pollResult, deadline
 		staleTimer, _ := at.lc.stale.current()
 		select {
 		case r := <-done:
+			if r.panicked != nil {
+				panic(r.panicked.value)
+			}
 			return pollAttempt{page: r.page, err: r.err}
 		case <-l.runCtx.Done():
 			return pollAttempt{superseded: true}
