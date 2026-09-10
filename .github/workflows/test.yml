@@ -926,6 +926,7 @@ jobs:
             rust
             conformance/runner/rust
           key: ${{ matrix.role }}
+          save-if: ${{ github.ref == 'refs/heads/main' }}
 
       # --- MSRV lane: the library on exactly rust-version, locked ---
       - name: Build and test the library on the MSRV (locked)
