@@ -542,6 +542,10 @@ module Basecamp
           status: response.status,
           headers: response.headers
         )
+      rescue Faraday::TimeoutError => e
+        # Faraday::TimeoutError < Faraday::ServerError: named before the status
+        # clause, or a stalled read classifies as a status-less api_error.
+        severed = transport_failure(e, info: info, start_time: start_time, download: download)
       rescue Faraday::ServerError, Faraday::ClientError => e
         duration = Process.clock_gettime(Process::CLOCK_MONOTONIC) - start_time
         error = handle_error(e, refresh_on_401: refresh_replay)
@@ -571,19 +575,33 @@ module Basecamp
 
         severed = error
       rescue Faraday::Error => e
-        duration = Process.clock_gettime(Process::CLOCK_MONOTONIC) - start_time
-        # SPEC §9: on a download hop 1 the Faraday error can render the URL it
-        # failed on, so it is neither the cause nor the hint, and it is raised
-        # below — outside this rescue, with cause: nil — so MRI's implicit
-        # cause is severed too. Every other request keeps its diagnostic.
-        error = download ? Basecamp::NetworkError.new : Basecamp::NetworkError.new("Connection failed", cause: e)
-        @hooks.on_request_end(info, RequestResult.new(duration: duration, error: error))
-        raise error unless download
-
-        severed = error
+        severed = transport_failure(e, info: info, start_time: start_time, download: download)
       end
 
       severed ? raise(severed, cause: nil) : result
+    end
+
+    # A transport failure — no HTTP response, so no status to map — as the
+    # network error the caller and on_request_end both see: a timeout by name,
+    # anything else as a connection failure, both retryable (SPEC §6).
+    # download: on hop 1 the Faraday error can render the URL it failed on, so
+    # it is neither the cause nor the hint (SPEC §9), and the error is returned
+    # for the caller to raise outside its rescue with cause: nil, so MRI's
+    # implicit cause is severed too. Every other request keeps its diagnostic
+    # and raises here.
+    def transport_failure(exception, info:, start_time:, download: false)
+      duration = Process.clock_gettime(Process::CLOCK_MONOTONIC) - start_time
+      error = if download
+        Basecamp::NetworkError.new
+      else
+        Basecamp::NetworkError.new(transport_failure_message(exception), cause: exception)
+      end
+      @hooks.on_request_end(info, RequestResult.new(duration: duration, error: error))
+      download ? error : raise(error)
+    end
+
+    def transport_failure_message(exception)
+      exception.is_a?(Faraday::TimeoutError) ? "Request timed out" : "Connection failed"
     end
 
     # accept: nil is the binary-download carve-out (SPEC §14): hop 1 sends
@@ -616,6 +634,8 @@ module Basecamp
           status: response.status,
           headers: response.headers
         )
+      rescue Faraday::TimeoutError => e
+        transport_failure(e, info: info, start_time: start_time)
       rescue Faraday::ServerError, Faraday::ClientError => e
         duration = Process.clock_gettime(Process::CLOCK_MONOTONIC) - start_time
         error = handle_error(e)
@@ -628,11 +648,7 @@ module Basecamp
         @hooks.on_request_end(info, result)
         raise error
       rescue Faraday::Error => e
-        duration = Process.clock_gettime(Process::CLOCK_MONOTONIC) - start_time
-        error = Basecamp::NetworkError.new("Connection failed", cause: e)
-        result = RequestResult.new(duration: duration, error: error)
-        @hooks.on_request_end(info, result)
-        raise error
+        transport_failure(e, info: info, start_time: start_time)
       end
     end
 

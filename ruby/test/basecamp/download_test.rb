@@ -508,6 +508,26 @@ class DownloadTest < Minitest::Test
   end
 
   # Ordinary API requests keep their transport diagnostic: the projection is
+  # A read timeout on hop 1 is the same transport failure as a refused dial:
+  # Faraday::TimeoutError < Faraday::ServerError, and the status path would
+  # otherwise classify it as a status-less api_error.
+  def test_download_url_hop1_read_timeout_is_a_severed_network_error
+    account = create_account_client(config: fast_download_config(max_retries: 1))
+
+    stub_request(:get, "#{base_url}/12345/download?verifier=SECRET")
+      .to_raise(Faraday::TimeoutError.new("read on #{base_url}/12345/download?verifier=SECRET timed out"))
+
+    error = assert_raises(Basecamp::NetworkError) do
+      account.download_url("https://3.basecampapi.com/12345/download?verifier=SECRET")
+    end
+
+    assert_equal "Network error", error.message
+    assert error.retryable?
+    assert_no_match(/SECRET/, "#{error.message} #{error.hint}")
+    assert_nil error.cause
+    assert_nil Exception.instance_method(:cause).bind(error).call
+  end
+
   # gated on the download flow.
   def test_api_network_failure_still_carries_its_cause
     http = Basecamp::Http.new(config: fast_download_config(max_retries: 1),
