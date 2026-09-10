@@ -19,7 +19,12 @@ type Clock interface {
 	// only for deltas, never persisted.
 	Now() time.Time
 	// NewTimer arms a one-shot named timer. Firing removes it from the
-	// registry.
+	// registry. It is called under the connector's own locks — on every
+	// state transition, on every inbound frame, and during teardown, where
+	// the pump's last hand-off can re-arm staleness a moment before the
+	// holder is stopped — so it must return promptly: a NewTimer that blocks
+	// stalls the transition that called it, and a teardown that stalls holds
+	// the iteration and Wait open after Close.
 	NewTimer(d time.Duration, name string) Timer
 	// Outstanding returns the names of live (unfired, unstopped) timers, in
 	// creation order.
