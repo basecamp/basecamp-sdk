@@ -831,7 +831,7 @@ func (l *loop) emitTerminal(term *TerminalError) {
 
 func (l *loop) runCycle(delay time.Duration) cycleOutcome {
 	at := &attempt{}
-	at.ctx, at.cancel = context.WithCancel(l.runCtx)
+	at.ctx, at.cancel = context.WithCancel(l.runCtx) //nolint:gosec // G118: deferred on the next line; the field is what disposeAttempt cancels early
 	defer at.cancel()
 	// Host code — observers, the signal handler, the checkpoint store, and
 	// the consumer's own range body — runs on this goroutine, and any of it
