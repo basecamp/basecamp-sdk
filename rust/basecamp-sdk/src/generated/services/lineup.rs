@@ -32,7 +32,7 @@ impl<'a> LineupService<'a> {
 
     /// Create a new lineup marker
     ///
-    /// `POST /lineup/markers.json` — not idempotent, never retried.
+    /// `POST /lineup/markers.json` — not idempotent, sent exactly once.
     pub async fn create(&self, body: &CreateLineupMarkerRequestContent) -> Result<(), Error> {
         let mut operation = self.client.operation(&routes::CREATE_LINEUP_MARKER, &[]);
         operation.json(body)?;

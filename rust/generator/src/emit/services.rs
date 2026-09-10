@@ -137,12 +137,12 @@ fn render_method(out: &mut String, operation: &Operation) {
     if operation.description.is_some() {
         out.push_str("    ///\n");
     }
-    let retry_eligible = operation.idempotent
+    let eligible = operation.idempotent
         || matches!(
             operation.http_method.as_str(),
             "GET" | "HEAD" | "PUT" | "DELETE"
         );
-    if retry_eligible {
+    if eligible {
         writeln!(
             out,
             "    /// `{} {}` — idempotent; retries up to {} attempt(s) on {}.",
@@ -159,11 +159,9 @@ fn render_method(out: &mut String, operation: &Operation) {
         )
         .unwrap();
     } else {
-        // The model's retry block is inert on a non-idempotent POST (SPEC §7 Gate 2);
-        // quoting a budget here would document a retry that never happens.
         writeln!(
             out,
-            "    /// `{} {}` — not idempotent, never retried.",
+            "    /// `{} {}` — not idempotent, sent exactly once.",
             operation.http_method, operation.path
         )
         .unwrap();

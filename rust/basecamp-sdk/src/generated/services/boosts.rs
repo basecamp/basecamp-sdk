@@ -47,7 +47,7 @@ impl<'a> BoostsService<'a> {
 
     /// Create a boost on a specific event within a recording
     ///
-    /// `POST /recordings/{recordingId}/events/{eventId}/boosts.json` — not idempotent, never retried.
+    /// `POST /recordings/{recordingId}/events/{eventId}/boosts.json` — not idempotent, sent exactly once.
     pub async fn create_for_event(
         &self,
         recording_id: i64,
@@ -63,7 +63,7 @@ impl<'a> BoostsService<'a> {
 
     /// Create a boost on a recording
     ///
-    /// `POST /recordings/{recordingId}/boosts.json` — not idempotent, never retried.
+    /// `POST /recordings/{recordingId}/boosts.json` — not idempotent, sent exactly once.
     pub async fn create_for_recording(
         &self,
         recording_id: i64,

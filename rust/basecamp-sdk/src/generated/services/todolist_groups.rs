@@ -40,7 +40,7 @@ impl<'a> TodolistGroupsService<'a> {
 
     /// Create a new group in a todolist
     ///
-    /// `POST /todolists/{todolistId}/groups.json` — not idempotent, never retried.
+    /// `POST /todolists/{todolistId}/groups.json` — not idempotent, sent exactly once.
     pub async fn create(
         &self,
         todolist_id: i64,

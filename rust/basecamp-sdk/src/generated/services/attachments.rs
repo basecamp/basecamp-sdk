@@ -34,7 +34,7 @@ impl<'a> AttachmentsService<'a> {
 
     /// Create an attachment (upload a file for embedding)
     ///
-    /// `POST /attachments.json` — not idempotent, never retried.
+    /// `POST /attachments.json` — not idempotent, sent exactly once.
     pub async fn create(
         &self,
         name: &str,

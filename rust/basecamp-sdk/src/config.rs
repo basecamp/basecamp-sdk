@@ -12,8 +12,6 @@ pub const DEFAULT_TIMEOUT: Duration = Duration::from_secs(30);
 /// The client-wide attempt cap: total attempts, the initial request included. Each
 /// operation's own `max_attempts` is a ceiling under it.
 pub const DEFAULT_MAX_RETRIES: u32 = 3;
-/// The base of the local backoff curve.
-pub const DEFAULT_BASE_DELAY: Duration = Duration::from_millis(1000);
 /// The most jitter added to a locally computed backoff.
 pub const DEFAULT_MAX_JITTER: Duration = Duration::from_millis(100);
 /// How many pages an auto-paginating read follows before it stops and says so.
@@ -31,7 +29,9 @@ pub struct Config {
     /// How long the shipped HTTP client gives one attempt.
     pub timeout: Duration,
     /// Total attempts per request, the initial one included; `0` is one attempt and no
-    /// retries. Each operation's own ceiling applies under it.
+    /// retries. Each operation's own ceiling applies under it. The backoff curve itself is
+    /// each operation's own (`base_delay_ms` and `backoff` from the model), not a client
+    /// setting.
     pub max_retries: u32,
     /// The most jitter added to a locally computed backoff.
     pub max_jitter: Duration,

@@ -326,6 +326,13 @@ mod tests {
             Some(1024)
         );
         assert!(serde_json::from_str::<Dimensions>(r#"{"width": 2.5}"#).is_err());
+        assert_eq!(
+            serde_json::from_str::<Dimensions>(r#"{"width": 2147483647.0}"#)
+                .unwrap()
+                .width,
+            Some(i32::MAX)
+        );
+        assert!(serde_json::from_str::<Dimensions>(r#"{"width": 2147483648.0}"#).is_err());
     }
 
     #[test]

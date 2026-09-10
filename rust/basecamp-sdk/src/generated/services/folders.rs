@@ -38,7 +38,7 @@ impl<'a> FoldersService<'a> {
     /// trashed, or an invitation-only project the user is not on, the whole request
     /// fails with 404 and nothing is created — there is no partial success.
     ///
-    /// `POST /stacks.json` — not idempotent, never retried.
+    /// `POST /stacks.json` — not idempotent, sent exactly once.
     pub async fn create_folder(
         &self,
         body: &CreateFolderRequestContent,

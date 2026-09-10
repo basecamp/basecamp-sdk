@@ -40,7 +40,7 @@ impl<'a> VaultsService<'a> {
 
     /// Create a new vault (subfolder) in a vault
     ///
-    /// `POST /vaults/{vaultId}/vaults.json` — not idempotent, never retried.
+    /// `POST /vaults/{vaultId}/vaults.json` — not idempotent, sent exactly once.
     pub async fn create(
         &self,
         vault_id: i64,

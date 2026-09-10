@@ -52,7 +52,7 @@ impl<'a> TodosService<'a> {
 
     /// Create a new todo in a todolist
     ///
-    /// `POST /todolists/{todolistId}/todos.json` — not idempotent, never retried.
+    /// `POST /todolists/{todolistId}/todos.json` — not idempotent, sent exactly once.
     pub async fn create(
         &self,
         todolist_id: i64,
@@ -68,7 +68,7 @@ impl<'a> TodosService<'a> {
     /// and response match the to-do-list create. Find a project's to-do set id via
     /// GetTodoset.
     ///
-    /// `POST /buckets/{bucketId}/todosets/{todosetId}/todos.json` — not idempotent, never retried.
+    /// `POST /buckets/{bucketId}/todosets/{todosetId}/todos.json` — not idempotent, sent exactly once.
     pub async fn create_todoset_todo(
         &self,
         bucket_id: i64,

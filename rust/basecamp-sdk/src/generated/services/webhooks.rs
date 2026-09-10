@@ -33,7 +33,7 @@ impl<'a> WebhooksService<'a> {
 
     /// Create a new webhook for a project
     ///
-    /// `POST /buckets/{bucketId}/webhooks.json` — not idempotent, never retried.
+    /// `POST /buckets/{bucketId}/webhooks.json` — not idempotent, sent exactly once.
     pub async fn create(
         &self,
         bucket_id: i64,

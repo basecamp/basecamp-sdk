@@ -96,7 +96,7 @@ impl<'a> CheckinsService<'a> {
 
     /// Create a new answer for a question
     ///
-    /// `POST /questions/{questionId}/answers.json` — not idempotent, never retried.
+    /// `POST /questions/{questionId}/answers.json` — not idempotent, sent exactly once.
     pub async fn create_answer(
         &self,
         question_id: i64,
@@ -111,7 +111,7 @@ impl<'a> CheckinsService<'a> {
 
     /// Create a new question in a questionnaire
     ///
-    /// `POST /questionnaires/{questionnaireId}/questions.json` — not idempotent, never retried.
+    /// `POST /questionnaires/{questionnaireId}/questions.json` — not idempotent, sent exactly once.
     pub async fn create_question(
         &self,
         questionnaire_id: i64,

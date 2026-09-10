@@ -42,7 +42,7 @@ impl<'a> SchedulesService<'a> {
 
     /// Create a new schedule entry
     ///
-    /// `POST /schedules/{scheduleId}/entries.json` — not idempotent, never retried.
+    /// `POST /schedules/{scheduleId}/entries.json` — not idempotent, sent exactly once.
     pub async fn create_entry(
         &self,
         schedule_id: i64,

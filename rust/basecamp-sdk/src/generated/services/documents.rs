@@ -40,7 +40,7 @@ impl<'a> DocumentsService<'a> {
 
     /// Create a new document in a vault
     ///
-    /// `POST /vaults/{vaultId}/documents.json` — not idempotent, never retried.
+    /// `POST /vaults/{vaultId}/documents.json` — not idempotent, sent exactly once.
     pub async fn create(
         &self,
         vault_id: i64,

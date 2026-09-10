@@ -70,7 +70,7 @@ impl<'a> TimesheetsService<'a> {
 
     /// Create a timesheet entry on a recording
     ///
-    /// `POST /recordings/{recordingId}/timesheet/entries.json` — not idempotent, never retried.
+    /// `POST /recordings/{recordingId}/timesheet/entries.json` — not idempotent, sent exactly once.
     pub async fn create(
         &self,
         recording_id: i64,
