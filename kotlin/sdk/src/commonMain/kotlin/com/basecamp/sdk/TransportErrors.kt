@@ -36,8 +36,10 @@ internal fun redactTransportError(
     }
     return when (e) {
         is HttpRequestTimeoutException -> HttpRequestTimeoutException(shown, timeoutMillis)
-        is ConnectTimeoutException -> ConnectTimeoutException("Connect timeout has expired [url=$shown]")
-        is SocketTimeoutException -> SocketTimeoutException("Socket timeout has expired [url=$shown]")
+        is ConnectTimeoutException ->
+            ConnectTimeoutException("Connect timeout has expired [url=$shown, connect_timeout=${timeoutMillis ?: "unknown"} ms]")
+        is SocketTimeoutException ->
+            SocketTimeoutException("Socket timeout has expired [url=$shown, socket_timeout=${timeoutMillis ?: "unknown"} ms]")
         else -> e
     }
 }

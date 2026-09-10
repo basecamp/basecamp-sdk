@@ -258,7 +258,7 @@ suspend fun requestDeviceAuthorization(
     } catch (e: BasecampException) {
         throw e
     } catch (e: Throwable) {
-        val projected = redactTransportError(e, deviceAuthorizationEndpoint)
+        val projected = redactTransportError(e, deviceAuthorizationEndpoint, timeoutMillis = DEVICE_REQUEST_TIMEOUT_MS)
         throw BasecampException.DeviceFlow(
             BasecampException.DEVICE_TRANSPORT,
             "Device authorization request failed: ${projected.message ?: projected::class.simpleName}",
@@ -399,17 +399,13 @@ suspend fun pollDeviceToken(
                 throw BasecampException.DeviceFlow(BasecampException.DEVICE_EXPIRED)
             }
 
+            // Bound the request by the REMAINING code lifetime as well as the
+            // per-request timeout: near expiry, a stalled token POST must not
+            // hold the flow past the monotonic deadline for the full request
+            // budget.
+            val pollTimeoutMillis = minOf(DEVICE_REQUEST_TIMEOUT_MS, postRemaining.inWholeMilliseconds.coerceAtLeast(1))
             val result = try {
-                // Bound the request by the REMAINING code lifetime as well as
-                // the per-request timeout: near expiry, a stalled token POST
-                // must not hold the flow past the monotonic deadline for the
-                // full request budget.
-                postDeviceTokenPoll(
-                    httpClient,
-                    tokenEndpoint,
-                    params,
-                    minOf(DEVICE_REQUEST_TIMEOUT_MS, postRemaining.inWholeMilliseconds.coerceAtLeast(1)),
-                )
+                postDeviceTokenPoll(httpClient, tokenEndpoint, params, pollTimeoutMillis)
             } catch (e: CancellationException) {
                 // Cooperative coroutine cancellation — propagate, never wrap.
                 throw e
@@ -422,7 +418,7 @@ suspend fun pollDeviceToken(
                     continue
                 }
                 // Any other transport failure ends the flow.
-                val projected = redactTransportError(e, tokenEndpoint)
+                val projected = redactTransportError(e, tokenEndpoint, timeoutMillis = pollTimeoutMillis)
                 throw BasecampException.DeviceFlow(
                     BasecampException.DEVICE_TRANSPORT,
                     "Device token poll failed: ${projected.message ?: projected::class.simpleName}",

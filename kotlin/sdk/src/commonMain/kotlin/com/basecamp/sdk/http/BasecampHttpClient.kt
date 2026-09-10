@@ -24,6 +24,12 @@ internal class BasecampHttpClient(
     private val config: BasecampConfig,
     private val hooks: BasecampHooks,
     internal val json: Json,
+    /**
+     * The per-attempt budget the SDK's own HttpTimeout enforces, rendered
+     * beside a projected timeout; null when the caller supplied the
+     * [HttpClient], whose budget the SDK does not know.
+     */
+    private val requestTimeoutMillis: Long? = null,
 ) {
     /**
      * Executes an HTTP request with authentication, returning the raw [HttpResponse].
@@ -318,10 +324,6 @@ internal class BasecampHttpClient(
      * Localhost is carved out for dev/test. Mirrors the same-origin guard used
      * for pagination Link headers.
      */
-    /** The per-attempt budget HttpTimeout enforces, rendered into a projected timeout. */
-    private val requestTimeoutMillis: Long? =
-        config.timeout.takeIf { it.isFinite() }?.inWholeMilliseconds
-
     private fun requireSameOrigin(url: String) {
         if (!isLocalhost(url) && !isSameOrigin(url, config.baseUrl)) {
             throw BasecampException.Usage(
