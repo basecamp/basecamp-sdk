@@ -473,3 +473,91 @@ async fn a_connection_that_breaks_during_the_body_is_retried_like_one_that_never
     assert_eq!(error.code(), ErrorCode::Network);
     assert_eq!(script.sent_count(), 1);
 }
+
+#[tokio::test(start_paused = true)]
+async fn a_declined_refresh_reads_the_401_body_under_the_deadline() {
+    use basecamp_sdk::TokenProvider;
+    struct Declining;
+    #[async_trait::async_trait]
+    impl TokenProvider for Declining {
+        async fn access_token(&self) -> Result<String, basecamp_sdk::Error> {
+            Ok("stale".to_string())
+        }
+        fn refreshable(&self) -> bool {
+            true
+        }
+        async fn refresh(&self) -> Result<bool, basecamp_sdk::Error> {
+            Ok(false)
+        }
+    }
+    let script = Scripted::new(vec![Answer::StalledBody(401)]);
+    let config = Config {
+        operation_deadline: Some(Duration::from_secs(2)),
+        ..no_jitter().with_base_url("https://3.basecampapi.com")
+    };
+    let started = tokio::time::Instant::now();
+    let error = basecamp_sdk::Client::builder(config)
+        .token_provider(Declining)
+        .http_client(script.clone())
+        .build()
+        .unwrap()
+        .for_account("999")
+        .projects()
+        .get(12345)
+        .await
+        .unwrap_err();
+    assert!(error.is_deadline_exceeded(), "{error:?}");
+    assert_eq!(started.elapsed(), Duration::from_secs(2));
+}
+
+#[tokio::test(start_paused = true)]
+async fn the_401_replay_stays_under_the_operation_ceiling() {
+    use basecamp_sdk::TokenProvider;
+    struct Rotating;
+    #[async_trait::async_trait]
+    impl TokenProvider for Rotating {
+        async fn access_token(&self) -> Result<String, basecamp_sdk::Error> {
+            Ok("t".to_string())
+        }
+        fn refreshable(&self) -> bool {
+            true
+        }
+        async fn refresh(&self) -> Result<bool, basecamp_sdk::Error> {
+            Ok(true)
+        }
+    }
+    // RemoveAccountLogo declares two attempts: a 503 spends the second, so the 401 that
+    // answers it has no attempt left to replay into.
+    let script = Scripted::new(vec![
+        Answer::Status(503, vec![], ""),
+        Answer::Status(401, vec![], ""),
+        Answer::Status(204, vec![], ""),
+    ]);
+    let error =
+        basecamp_sdk::Client::builder(no_jitter().with_base_url("https://3.basecampapi.com"))
+            .token_provider(Rotating)
+            .http_client(script.clone())
+            .build()
+            .unwrap()
+            .for_account("999")
+            .account()
+            .remove_account_logo()
+            .await
+            .unwrap_err();
+    assert_eq!(error.code(), ErrorCode::AuthRequired);
+    assert_eq!(script.sent_count(), 2);
+}
+
+#[tokio::test]
+async fn an_unrepresentable_deadline_is_no_deadline() {
+    let script = Scripted::new(vec![Answer::Status(200, vec![], PROJECT)]);
+    let config = Config {
+        operation_deadline: Some(Duration::MAX),
+        ..no_jitter()
+    };
+    scripted_account(script, config)
+        .projects()
+        .get(12345)
+        .await
+        .unwrap();
+}

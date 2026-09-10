@@ -302,3 +302,38 @@ fn path_parameters_follow_the_template_and_must_all_be_bound() {
     );
     let _ = fs::remove_dir_all(&root);
 }
+
+#[test]
+fn two_operations_sharing_an_envelope_must_agree_on_its_collection() {
+    let stderr = refusal(|openapi, behavior| {
+        let mut twin =
+            openapi["paths"]["/{accountId}/widgets/{widgetId}/progress.json"]["get"].clone();
+        twin["operationId"] = serde_json::json!("GetWidgetHistory");
+        twin["x-basecamp-pagination"]["key"] = serde_json::json!("owner");
+        openapi["components"]["schemas"]["GetWidgetProgressResponseContent"]["properties"]["owner"] =
+            serde_json::json!({"type": "array", "items": {"$ref": "#/components/schemas/Owner"}});
+        openapi["paths"]["/{accountId}/widgets/{widgetId}/history.json"] =
+            serde_json::json!({"get": twin});
+        behavior["operations"]["GetWidgetHistory"] =
+            behavior["operations"]["GetWidgetProgress"].clone();
+    });
+    assert!(
+        stderr.contains("paginates GetWidgetProgressResponseContent over `owner`, but another operation paginates it over `events`")
+            || stderr.contains("paginates GetWidgetProgressResponseContent over `events`, but another operation paginates it over `owner`"),
+        "{stderr}"
+    );
+}
+
+#[test]
+fn an_operation_without_a_tag_or_a_split_entry_fails_generation() {
+    let stderr = refusal(|openapi, _| {
+        openapi["paths"]["/{accountId}/widgets.json"]["get"]
+            .as_object_mut()
+            .unwrap()
+            .remove("tags");
+    });
+    assert!(
+        stderr.contains("ListWidgets has no tag and no [operation_services] entry in names.toml"),
+        "{stderr}"
+    );
+}

@@ -1,5 +1,8 @@
 use std::fmt::Write;
 
+use crate::emit::types::rust_type;
+use crate::model::{FieldType, Model, Operation, Response, Shape};
+
 pub(crate) mod accessors;
 pub(crate) mod metadata;
 pub(crate) mod routes;
@@ -45,4 +48,41 @@ pub(crate) fn doc_comment(description: Option<&str>, indent: &str) -> String {
 
 pub(crate) fn string_literal(value: &str) -> String {
     format!("{value:?}")
+}
+
+/// The member of a paginated envelope that holds the collection, when the model names one
+/// (`x-basecamp-pagination.key`): its field and element type.
+pub(crate) fn wrapped_items<'m>(
+    operation: &Operation,
+    model: &'m Model,
+) -> Result<Option<(&'m str, String)>, String> {
+    let (Some(pagination), Response::Json(response)) = (&operation.pagination, &operation.response)
+    else {
+        return Ok(None);
+    };
+    let Some(key) = &pagination.key else {
+        return Ok(None);
+    };
+    let refuse = |what: &str| {
+        Err(format!(
+            "{} paginates over `{key}`, which {what}",
+            operation.id
+        ))
+    };
+    let Some(schema) = model.schemas.iter().find(|schema| &schema.name == response) else {
+        return refuse(&format!("is not a member of {response}"));
+    };
+    let Shape::Struct(fields) = &schema.shape else {
+        return refuse(&format!("is not a member of {response}"));
+    };
+    let Some(field) = fields.iter().find(|field| &field.wire_name == key) else {
+        return refuse(&format!("is not a member of {response}"));
+    };
+    match &field.kind {
+        FieldType::List(inner) if field.required && !field.nullable => {
+            Ok(Some((field.wire_name.as_str(), rust_type(inner, false))))
+        }
+        FieldType::List(_) => refuse("is optional on the wire"),
+        _ => refuse("is not an array"),
+    }
 }

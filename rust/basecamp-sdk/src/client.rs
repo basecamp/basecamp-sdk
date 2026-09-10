@@ -12,7 +12,7 @@ use crate::auth::{AuthStrategy, BearerAuth, StaticTokenProvider, TokenProvider};
 use crate::config::Config;
 use crate::deadline::Deadline;
 use crate::error::{Error, ErrorCode, parse_retry_after_header};
-use crate::hooks::{Hooks, NoopHooks, OperationResult, RequestInfo, RequestResult};
+use crate::hooks::{Hooks, NoopHooks, OperationInfo, OperationResult, RequestInfo, RequestResult};
 use crate::http::header::{ACCEPT, CONTENT_TYPE, USER_AGENT};
 use crate::http::{
     Body, HeaderMap, HeaderValue, HttpClient, Request, Response as HttpResponse, StatusCode,
@@ -318,19 +318,25 @@ impl AccountClient {
     /// The follow-on read for a `Link` target: the same route and hook identity as the
     /// page it follows, the target checked against the origin the walk started on
     /// (SPEC §8).
-    #[allow(clippy::unused_self)]
     pub(crate) fn follow_up<T>(&self, page: &Page<T>, next: &Url) -> Result<Operation, Error> {
-        if !is_same_origin(next, page.origin()) {
+        self.follow_up_at(page.route(), page.info(), page.origin(), next)
+    }
+
+    #[allow(clippy::unused_self)]
+    pub(crate) fn follow_up_at(
+        &self,
+        route: &'static Route,
+        info: &OperationInfo,
+        origin: &Url,
+        next: &Url,
+    ) -> Result<Operation, Error> {
+        if !is_same_origin(next, origin) {
             return Err(Error::usage(format!(
                 "pagination Link header points to a different origin: {}",
                 crate::security::redact_url(next)
             )));
         }
-        Ok(Operation::at(
-            page.route(),
-            page.info().clone(),
-            next.clone(),
-        ))
+        Ok(Operation::at(route, info.clone(), next.clone()))
     }
 
     /// Sends an operation: applies credentials and account scope, retries transient
@@ -398,14 +404,19 @@ impl AccountClient {
         let route = operation.route;
         let retry = &route.metadata.retry;
         let eligible = route.retry_eligible();
-        // The caller's total-attempt budget (SPEC §4), and under it the transient-retry
-        // ceiling (SPEC §7): a route the gates make single-attempt still has the caller's
-        // budget for the replay after a refreshed 401.
-        let budget = effective_attempts(self.shared.config.max_retries, u32::MAX);
+        // The transient-retry ceiling (SPEC §7), and the budget the replay after a
+        // refreshed 401 draws on (SPEC §4): the same ceiling on a retry-eligible route, the
+        // caller's cap alone on one the gates make single-attempt, which otherwise could
+        // never replay.
         let attempts = if eligible {
             effective_attempts(self.shared.config.max_retries, retry.max_attempts)
         } else {
             1
+        };
+        let budget = if eligible {
+            attempts
+        } else {
+            effective_attempts(self.shared.config.max_retries, u32::MAX)
         };
         let url = self.url_for(operation)?;
         let hooks = &self.shared.hooks;
@@ -451,9 +462,8 @@ impl AccountClient {
                     {
                         let delay =
                             backoff_with_jitter(retry, retry_index, self.shared.config.max_jitter);
-                        deadline.admits(delay)?;
                         crate::hooks::guarded(|| hooks.on_retry(&info, attempt + 1, &error, delay));
-                        tokio::time::sleep(delay).await;
+                        deadline.wait(delay).await?;
                         retry_index += 1;
                         attempt += 1;
                     } else {
@@ -514,7 +524,7 @@ impl AccountClient {
                             attempt += 1;
                             continue;
                         }
-                        return Err(self.finish_failure(operation, response).await);
+                        return Err(self.finish_failure(operation, response, deadline).await);
                     }
                     if eligible && attempt < attempts && retry.retry_on.contains(&status.as_u16()) {
                         let cause = Error::from_response(status, response.headers(), &[]);
@@ -537,9 +547,8 @@ impl AccountClient {
                                 self.shared.config.max_jitter,
                             ),
                         };
-                        deadline.admits(delay)?;
                         crate::hooks::guarded(|| hooks.on_retry(&info, attempt + 1, &cause, delay));
-                        tokio::time::sleep(delay).await;
+                        deadline.wait(delay).await?;
                         retry_index += 1;
                         attempt += 1;
                         continue;
@@ -574,11 +583,10 @@ impl AccountClient {
                                 retry_index,
                                 self.shared.config.max_jitter,
                             );
-                            deadline.admits(delay)?;
                             crate::hooks::guarded(|| {
                                 hooks.on_retry(&info, attempt + 1, &error, delay);
                             });
-                            tokio::time::sleep(delay).await;
+                            deadline.wait(delay).await?;
                             retry_index += 1;
                             attempt += 1;
                         }
@@ -637,10 +645,7 @@ impl AccountClient {
     ) -> Result<Response, Error> {
         let status = response.status();
         if !status.is_success() {
-            let failure = async { Ok(self.finish_failure(operation, response).await) };
-            return Err(match deadline.bound(failure).await {
-                Ok(error) | Err(error) => error,
-            });
+            return Err(self.finish_failure(operation, response, deadline).await);
         }
         let headers = response.headers().clone();
         let limit = self.shared.config.max_response_body_bytes;
@@ -669,17 +674,27 @@ impl AccountClient {
         })
     }
 
-    async fn finish_failure(&self, _operation: &Operation, response: HttpResponse<Body>) -> Error {
+    /// The error a non-2xx response maps to, its body read under the deadline: a body
+    /// that stalls past it is the deadline error, and one that fails to read is the
+    /// status alone.
+    async fn finish_failure(
+        &self,
+        _operation: &Operation,
+        response: HttpResponse<Body>,
+        deadline: &Deadline,
+    ) -> Error {
         let status = response.status();
         let headers = response.headers().clone();
-        let body = response
+        let read = response
             .into_body()
             .collect(crate::error::MAX_ERROR_BODY_BYTES, || {
                 Error::response_too_large(crate::error::MAX_ERROR_BODY_BYTES)
-            })
-            .await
-            .unwrap_or_default();
-        Error::from_response(status, &headers, &body)
+            });
+        match deadline.bound(read).await {
+            Ok(body) => Error::from_response(status, &headers, &body),
+            Err(error) if error.is_deadline_exceeded() => error,
+            Err(_) => Error::from_response(status, &headers, &[]),
+        }
     }
 }
 

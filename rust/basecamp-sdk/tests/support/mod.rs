@@ -51,6 +51,8 @@ pub enum Answer {
     Hang,
     /// A status and headers arrive, then the connection breaks while the body streams.
     BrokenBody(u16),
+    /// A status and headers arrive, then the body never does.
+    StalledBody(u16),
 }
 
 impl Scripted {
@@ -94,6 +96,12 @@ impl HttpClient for Scripted {
                 "operation timed out",
             ))),
             Answer::Hang => std::future::pending().await,
+            Answer::StalledBody(status) => {
+                let mut response =
+                    Response::new(Body::from_stream(futures_util::stream::pending(), None));
+                *response.status_mut() = StatusCode::from_u16(status).unwrap();
+                Ok(response)
+            }
             Answer::BrokenBody(status) => {
                 let chunks = futures_util::stream::iter([
                     Ok(Bytes::from_static(b"{\"id\": 1")),

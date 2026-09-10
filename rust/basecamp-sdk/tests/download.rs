@@ -273,3 +273,51 @@ async fn a_deadline_that_cuts_hop_one_short_still_closes_its_hooks() {
     assert!(error.is_deadline_exceeded());
     assert_eq!(log.lines(), ["req start 1", "req end 1 None network"]);
 }
+
+#[tokio::test(start_paused = true)]
+async fn a_direct_download_whose_body_breaks_is_retried() {
+    let script = Scripted::new(vec![
+        Answer::BrokenBody(200),
+        Answer::Status(200, vec![("content-type", "image/png")], "pixels"),
+    ]);
+    let result = scripted_account(script.clone(), no_jitter())
+        .download_url("https://3.basecampapi.com/999999999/blobs/abcd1234/download/logo.png")
+        .await
+        .unwrap();
+    assert_eq!(result.body, "pixels");
+    assert_eq!(script.sent_count(), 2);
+}
+
+#[tokio::test(start_paused = true)]
+async fn a_deadline_during_the_hop_one_refresh_is_the_deadline() {
+    use basecamp_sdk::TokenProvider;
+    struct Slow;
+    #[async_trait::async_trait]
+    impl TokenProvider for Slow {
+        async fn access_token(&self) -> Result<String, basecamp_sdk::Error> {
+            Ok("stale".to_string())
+        }
+        fn refreshable(&self) -> bool {
+            true
+        }
+        async fn refresh(&self) -> Result<bool, basecamp_sdk::Error> {
+            tokio::time::sleep(Duration::from_secs(60)).await;
+            Ok(true)
+        }
+    }
+    let script = Scripted::new(vec![Answer::Status(401, vec![], "")]);
+    let config = Config {
+        operation_deadline: Some(Duration::from_secs(2)),
+        ..no_jitter().with_base_url("https://3.basecampapi.com")
+    };
+    let error = basecamp_sdk::Client::builder(config)
+        .token_provider(Slow)
+        .http_client(script)
+        .build()
+        .unwrap()
+        .for_account("999")
+        .download_url("https://3.basecampapi.com/999999999/blobs/abcd1234/download/logo.png")
+        .await
+        .unwrap_err();
+    assert!(error.is_deadline_exceeded(), "{error:?}");
+}

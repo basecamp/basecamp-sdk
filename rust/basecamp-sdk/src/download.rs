@@ -35,6 +35,12 @@ pub struct DownloadResult {
 
 const REDIRECTS: &[u16] = &[301, 302, 303, 307, 308];
 
+/// What hop 1 ended with: the file itself, or the redirect hop 2 follows.
+enum HopOne {
+    Downloaded(DownloadResult),
+    Redirected(Response<Body>),
+}
+
 impl AccountClient {
     /// Downloads an `x-basecamp-auth-routable-url` — an upload's `download_url`, an
     /// attachment's — through the two-hop flow.
@@ -71,7 +77,10 @@ impl AccountClient {
         url.set_fragment(None);
         let filename = filename_of(&given);
 
-        let response = self.download_hop_one(&url, deadline).await?;
+        let response = match self.download_hop_one(&url, &filename, deadline).await? {
+            HopOne::Downloaded(result) => return Ok(result),
+            HopOne::Redirected(response) => response,
+        };
         let status = response.status();
         if REDIRECTS.contains(&status.as_u16()) {
             let location = response
@@ -94,9 +103,6 @@ impl AccountClient {
             })?;
             return self.download_hop_two(&target, filename, deadline).await;
         }
-        if status.is_success() {
-            return self.read_download(&url, filename, response, deadline).await;
-        }
         Err(self.download_failure(response, deadline).await)
     }
 
@@ -104,8 +110,9 @@ impl AccountClient {
     async fn download_hop_one(
         &self,
         url: &Url,
+        filename: &str,
         deadline: &Deadline,
-    ) -> Result<Response<Body>, Error> {
+    ) -> Result<HopOne, Error> {
         let config = self.config();
         let attempts = effective_attempts(config.max_retries, u32::MAX);
         let shown = Url::parse(&redact_url(url)).unwrap_or_else(|_| url.clone());
@@ -186,16 +193,53 @@ impl AccountClient {
             });
 
             let Some(cause) = failure else {
-                return sent.map_err(|_| Error::network_at(&origin_of(url.as_str())));
+                let response = sent.map_err(|_| Error::network_at(&origin_of(url.as_str())))?;
+                if REDIRECTS.contains(&response.status().as_u16()) {
+                    return Ok(HopOne::Redirected(response));
+                }
+                // A direct answer's body is read inside the attempt, so a connection that
+                // breaks while it streams is retried like one that never answered.
+                match self
+                    .read_download(url, filename.to_string(), response, deadline)
+                    .await
+                {
+                    Ok(result) => return Ok(HopOne::Downloaded(result)),
+                    Err(error)
+                        if attempt < attempts
+                            && error.code() == ErrorCode::Network
+                            && !error.is_timeout()
+                            && !error.is_deadline_exceeded() =>
+                    {
+                        let delay = backoff_with_jitter(
+                            &DEFAULT_RETRY_CONFIG,
+                            attempt - 1,
+                            config.max_jitter,
+                        );
+                        crate::hooks::guarded(|| hooks.on_retry(&info, attempt + 1, &error, delay));
+                        deadline.wait(delay).await?;
+                        attempt += 1;
+                        continue;
+                    }
+                    Err(error) => return Err(error),
+                }
             };
             if status == Some(crate::http::StatusCode::UNAUTHORIZED) {
                 if !refreshed && attempt < attempts && self.shared().auth.refreshable() {
                     refreshed = true;
-                    if deadline
-                        .bound(self.shared().auth.refresh(generation))
-                        .await
-                        .unwrap_or(false)
+                    let renewed = match deadline.bound(self.shared().auth.refresh(generation)).await
                     {
+                        Ok(renewed) => renewed,
+                        Err(cause) if cause.is_deadline_exceeded() => return Err(cause),
+                        Err(cause) => {
+                            return Err(Error::new(
+                                ErrorCode::AuthRequired,
+                                "credentials could not be refreshed",
+                            )
+                            .with_status(401)
+                            .with_source(cause));
+                        }
+                    };
+                    if renewed {
                         crate::hooks::guarded(|| {
                             hooks.on_retry(&info, attempt + 1, &cause, Duration::ZERO);
                         });
@@ -218,9 +262,8 @@ impl AccountClient {
                         backoff_with_jitter(&DEFAULT_RETRY_CONFIG, attempt - 1, config.max_jitter)
                     }
                 };
-                deadline.admits(delay)?;
                 crate::hooks::guarded(|| hooks.on_retry(&info, attempt + 1, &cause, delay));
-                tokio::time::sleep(delay).await;
+                deadline.wait(delay).await?;
                 attempt += 1;
                 continue;
             }
@@ -322,17 +365,16 @@ impl AccountClient {
     async fn download_failure(&self, response: Response<Body>, deadline: &Deadline) -> Error {
         let status = response.status();
         let headers = response.headers().clone();
-        let body = deadline
-            .bound(
-                response
-                    .into_body()
-                    .collect(crate::error::MAX_ERROR_BODY_BYTES, || {
-                        Error::response_too_large(crate::error::MAX_ERROR_BODY_BYTES)
-                    }),
-            )
-            .await
-            .unwrap_or_default();
-        Error::from_response(status, &headers, &body)
+        let read = response
+            .into_body()
+            .collect(crate::error::MAX_ERROR_BODY_BYTES, || {
+                Error::response_too_large(crate::error::MAX_ERROR_BODY_BYTES)
+            });
+        match deadline.bound(read).await {
+            Ok(body) => Error::from_response(status, &headers, &body),
+            Err(error) if error.is_deadline_exceeded() => error,
+            Err(_) => Error::from_response(status, &headers, &[]),
+        }
     }
 }
 

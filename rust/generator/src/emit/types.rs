@@ -1,10 +1,40 @@
 use std::fmt::Write;
 
-use crate::emit::{HEADER, doc_comment, string_literal};
-use crate::model::{Field, FieldType, Model, Role, Schema, Shape};
+use std::collections::BTreeMap;
+
+use crate::emit::{HEADER, doc_comment, string_literal, wrapped_items};
+use crate::model::{Field, FieldType, Model, Response, Role, Schema, Shape};
 use crate::naming::{field_ident, variant_name};
 
-pub(crate) fn render(model: &Model) -> String {
+/// The envelopes that paginated reads gather over, by response type: the member that holds
+/// the collection and its element type. Two operations may share an envelope only if they
+/// agree on the member.
+fn envelopes(model: &Model) -> Result<BTreeMap<String, (String, String)>, String> {
+    let mut envelopes: BTreeMap<String, (String, String)> = BTreeMap::new();
+    for operation in model.operations() {
+        let Some((key, item)) = wrapped_items(operation, model)? else {
+            continue;
+        };
+        let Response::Json(response) = &operation.response else {
+            continue;
+        };
+        match envelopes.get(response) {
+            Some((known, _)) if known != key => {
+                return Err(format!(
+                    "{}: paginates {response} over `{key}`, but another operation paginates it over `{known}`",
+                    operation.id
+                ));
+            }
+            _ => {
+                envelopes.insert(response.clone(), (key.to_string(), item));
+            }
+        }
+    }
+    Ok(envelopes)
+}
+
+pub(crate) fn render(model: &Model) -> Result<String, String> {
+    let envelopes = envelopes(model)?;
     let mut out = String::from(HEADER);
     out.push_str("//! The request and response shapes the Basecamp API speaks.\n\n");
     // A field of a deprecated type warns at its declaration; the field carries its own
@@ -17,8 +47,17 @@ pub(crate) fn render(model: &Model) -> String {
     );
     for schema in &model.schemas {
         render_schema(&mut out, schema);
+        if let Some((key, item)) = envelopes.get(&schema.name) {
+            writeln!(
+                out,
+                "impl crate::pagination::PageItems for {} {{\n    type Item = {item};\n\n    fn into_items(self) -> Vec<{item}> {{\n        self.{}\n    }}\n}}\n",
+                schema.name,
+                field_ident(key)
+            )
+            .unwrap();
+        }
     }
-    out
+    Ok(out)
 }
 
 fn render_schema(out: &mut String, schema: &Schema) {

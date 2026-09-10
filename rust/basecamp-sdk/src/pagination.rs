@@ -204,26 +204,27 @@ impl AccountClient {
         let mut page = first;
         let mut pages = 1;
         let mut items = Vec::new();
+        let route = page.route();
+        let info = page.info().clone();
+        let origin = page.origin().clone();
         loop {
+            // The successor is validated only once it is about to be fetched: a page the
+            // caps end the walk on may name one the walk never needs.
             let next_url = page.next_target().transpose()?;
-            let operation = match &next_url {
-                Some(next) => Some(self.follow_up(&page, next)?),
-                None => None,
-            };
             let more = page.has_next();
             let named = page.next_url().cloned();
             items.extend(page.into_inner().into_items());
             if let Some(cap) = max_items
                 && items.len() >= cap
             {
-                let truncated = next_url.is_some() || items.len() > cap;
+                let truncated = more || items.len() > cap;
                 items.truncate(cap);
                 return Ok(ListResult {
                     items,
                     meta: ListMeta {
                         total_count,
                         truncated,
-                        next_url,
+                        next_url: named,
                     },
                 });
             }
@@ -247,10 +248,8 @@ impl AccountClient {
                     },
                 });
             }
-            page = match operation {
-                Some(operation) => self.send_page(operation).await?,
-                None => unreachable!("a next target always has a follow-up"),
-            };
+            let operation = self.follow_up_at(route, &info, &origin, &next)?;
+            page = self.send_page(operation).await?;
             pages += 1;
         }
     }

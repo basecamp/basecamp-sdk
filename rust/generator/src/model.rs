@@ -454,8 +454,7 @@ fn build_services(
             let id = operation["operationId"]
                 .as_str()
                 .ok_or(format!("{http_method} {path} has no operationId"))?;
-            let tag = operation["tags"][0].as_str().unwrap_or("Untagged");
-            let service = naming.service_for(id, tag);
+            let service = naming.service_for(id, operation["tags"][0].as_str())?;
             let semantics = behaviors
                 .get(id)
                 .ok_or(format!("{id} is missing from behavior-model.json"))?;
@@ -643,9 +642,12 @@ fn response_of(operation: &Value, naming: &Naming) -> Result<Response, String> {
         .filter(|(status, _)| status.starts_with('2'))
         .map(|(_, response)| response)
         .collect();
+    let Some(first_success) = successes.first() else {
+        return Err(format!("{} has no 2xx response", operation["operationId"]));
+    };
     if successes
         .iter()
-        .any(|response| response["content"] != successes[0]["content"])
+        .any(|response| response["content"] != first_success["content"])
     {
         return Err(format!(
             "{}: its 2xx responses disagree on the body",

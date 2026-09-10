@@ -594,3 +594,68 @@ async fn a_wrapped_collection_is_gathered_across_pages_from_its_envelope() {
     assert_eq!(streamed.len(), 3);
     assert!(streamed.iter().all(Result::is_ok));
 }
+
+#[tokio::test]
+async fn a_pinned_page_under_an_item_cap_still_reports_its_successor() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/999/projects.json"))
+        .and(query_param("page", "2"))
+        .respond_with(page(
+            &[3, 4],
+            Some("</projects.json?page=3>; rel=\"next\""),
+            None,
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+    let client = account(&server);
+    let params = ListProjectsParams {
+        page: Some(2),
+        ..Default::default()
+    };
+    let pinned = client.projects().list(&params).await.unwrap();
+    let all = client.collect_all(pinned, Some(2)).await.unwrap();
+    assert_eq!(all.items.len(), 2);
+    assert!(
+        all.meta.truncated,
+        "the cap was met exactly, but a page was left"
+    );
+    assert_eq!(all.meta.next_url.unwrap().query(), Some("page=3"));
+}
+
+#[tokio::test]
+async fn a_successor_the_caps_never_reach_is_not_validated() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/999/projects.json"))
+        .respond_with(page(
+            &[1, 2],
+            Some("<https://evil.example.com/projects.json?page=2>; rel=\"next\""),
+            None,
+        ))
+        .mount(&server)
+        .await;
+    let client = account_with(
+        &server,
+        Config {
+            max_pages: 1,
+            ..Config::default()
+        },
+    );
+    let first = client
+        .projects()
+        .list(&ListProjectsParams::default())
+        .await
+        .unwrap();
+    let all = client.collect_all(first, None).await.unwrap();
+    assert_eq!(all.items.len(), 2);
+    assert!(all.meta.truncated);
+    let first = client
+        .projects()
+        .list(&ListProjectsParams::default())
+        .await
+        .unwrap();
+    let capped = client.collect_all(first, Some(2)).await.unwrap();
+    assert!(capped.meta.truncated);
+}

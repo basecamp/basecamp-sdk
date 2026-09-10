@@ -36,14 +36,6 @@ pub struct GetWidgetProgressParams {
     pub page: Option<i32>,
 }
 
-impl crate::pagination::PageItems for GetWidgetProgressResponseContent {
-    type Item = Widget;
-
-    fn into_items(self) -> Vec<Widget> {
-        self.events
-    }
-}
-
 /// `Widgets` operations, sent through one [`AccountClient`].
 #[derive(Debug, Clone, Copy)]
 pub struct WidgetsService<'a> {

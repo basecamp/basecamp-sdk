@@ -2762,6 +2762,14 @@ pub struct GetPersonProgressResponseContent {
     pub events: Vec<TimelineEvent>,
 }
 
+impl crate::pagination::PageItems for GetPersonProgressResponseContent {
+    type Item = TimelineEvent;
+
+    fn into_items(self) -> Vec<TimelineEvent> {
+        self.events
+    }
+}
+
 /// `GetPersonResponseContent`.
 pub type GetPersonResponseContent = Person;
 

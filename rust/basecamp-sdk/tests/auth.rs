@@ -363,6 +363,10 @@ async fn a_refresh_outlives_the_request_that_started_it() {
     );
     assert!(outcomes.last().unwrap().is_ok(), "{outcomes:?}");
     assert!(
+        outcomes.len() > 1 && outcomes[0] == Err(true),
+        "the first request must have been cut short while the refresh ran: {outcomes:?}"
+    );
+    assert!(
         outcomes[..outcomes.len() - 1]
             .iter()
             .all(|outcome| *outcome == Err(true)),

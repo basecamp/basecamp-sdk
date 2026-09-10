@@ -39,6 +39,14 @@ pub struct GetWidgetProgressResponseContent {
     pub events: Vec<Widget>,
 }
 
+impl crate::pagination::PageItems for GetWidgetProgressResponseContent {
+    type Item = Widget;
+
+    fn into_items(self) -> Vec<Widget> {
+        self.events
+    }
+}
+
 /// `ListWidgetsResponseContent`.
 pub type ListWidgetsResponseContent = Vec<Widget>;
 

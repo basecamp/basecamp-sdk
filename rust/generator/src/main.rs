@@ -82,7 +82,7 @@ fn run() -> Result<(), String> {
 fn render(model: &Model) -> Result<BTreeMap<PathBuf, String>, String> {
     let mut files = BTreeMap::new();
     files.insert(PathBuf::from("mod.rs"), render_mod(model));
-    files.insert(PathBuf::from("types.rs"), emit::types::render(model));
+    files.insert(PathBuf::from("types.rs"), emit::types::render(model)?);
     files.insert(PathBuf::from("routes.rs"), emit::routes::render(model));
     files.insert(PathBuf::from("metadata.rs"), emit::metadata::render(model));
     files.insert(

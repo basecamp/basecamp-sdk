@@ -1,8 +1,7 @@
 use std::fmt::Write;
 
-use crate::emit::types::rust_type;
-use crate::emit::{HEADER, doc_comment, string_literal};
-use crate::model::{Body, FieldType, Model, Operation, ParamKind, Response, Service, Shape};
+use crate::emit::{HEADER, doc_comment, string_literal, wrapped_items};
+use crate::model::{Body, Model, Operation, ParamKind, Response, Service};
 use crate::naming::{constant_name, field_ident};
 
 pub(crate) fn render_mod(model: &Model) -> String {
@@ -46,10 +45,6 @@ pub(crate) fn render_service(service: &Service, model: &Model) -> Result<String,
     for operation in &service.operations {
         render_params(&mut out, operation);
     }
-    for operation in &service.operations {
-        render_page_items(&mut out, operation, model)?;
-    }
-
     writeln!(
         out,
         "/// `{}` operations, sent through one [`AccountClient`].",
@@ -70,61 +65,6 @@ pub(crate) fn render_service(service: &Service, model: &Model) -> Result<String,
     }
     out.push_str("}\n");
     Ok(out)
-}
-
-/// The member of a paginated envelope that holds the collection, when the model names one
-/// (`x-basecamp-pagination.key`): its field and element type.
-fn wrapped_items<'m>(
-    operation: &Operation,
-    model: &'m Model,
-) -> Result<Option<(&'m str, String)>, String> {
-    let (Some(pagination), Response::Json(response)) = (&operation.pagination, &operation.response)
-    else {
-        return Ok(None);
-    };
-    let Some(key) = &pagination.key else {
-        return Ok(None);
-    };
-    let refuse = |what: &str| {
-        Err(format!(
-            "{} paginates over `{key}`, which {what}",
-            operation.id
-        ))
-    };
-    let Some(schema) = model.schemas.iter().find(|schema| &schema.name == response) else {
-        return refuse(&format!("is not a member of {response}"));
-    };
-    let Shape::Struct(fields) = &schema.shape else {
-        return refuse(&format!("is not a member of {response}"));
-    };
-    let Some(field) = fields.iter().find(|field| &field.wire_name == key) else {
-        return refuse(&format!("is not a member of {response}"));
-    };
-    match &field.kind {
-        FieldType::List(inner) if field.required && !field.nullable => {
-            Ok(Some((field.wire_name.as_str(), rust_type(inner, false))))
-        }
-        FieldType::List(_) => refuse("is optional on the wire"),
-        _ => refuse("is not an array"),
-    }
-}
-
-/// The envelope of a wrapped paginated read implements `PageItems`, so `collect_all` and
-/// `items` gather its collection the way they gather a bare array.
-fn render_page_items(out: &mut String, operation: &Operation, model: &Model) -> Result<(), String> {
-    let Some((key, item)) = wrapped_items(operation, model)? else {
-        return Ok(());
-    };
-    let Response::Json(response) = &operation.response else {
-        return Ok(());
-    };
-    writeln!(
-        out,
-        "impl crate::pagination::PageItems for {response} {{\n    type Item = {item};\n\n    fn into_items(self) -> Vec<{item}> {{\n        self.{}\n    }}\n}}\n",
-        field_ident(key)
-    )
-    .unwrap();
-    Ok(())
 }
 
 fn render_params(out: &mut String, operation: &Operation) {

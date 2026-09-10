@@ -146,15 +146,27 @@ impl Naming {
     }
 
     /// The service an operation belongs to, `PascalCase` (`CardTables`): the split table
-    /// first, then the tag table, then the tag with its spaces removed.
-    pub(crate) fn service_for(&self, operation_id: &str, tag: &str) -> String {
+    /// first, then the tag table, then the tag with its spaces removed. An operation with
+    /// no tag and no split-table entry belongs nowhere, and is refused rather than filed
+    /// under a service the other SDKs would not know.
+    pub(crate) fn service_for(
+        &self,
+        operation_id: &str,
+        tag: Option<&str>,
+    ) -> Result<String, String> {
         if let Some(service) = self.operation_services.get(operation_id) {
-            service.clone()
-        } else if let Some(service) = self.services.get(tag) {
-            service.clone()
-        } else {
-            tag.replace(' ', "")
+            return Ok(service.clone());
         }
+        let Some(tag) = tag.filter(|tag| !tag.is_empty()) else {
+            return Err(format!(
+                "{operation_id} has no tag and no [operation_services] entry in names.toml"
+            ));
+        };
+        Ok(self
+            .services
+            .get(tag)
+            .cloned()
+            .unwrap_or_else(|| tag.replace(' ', "")))
     }
 
     /// SPEC §18's method-naming algorithm, then `snake_case`d.
@@ -336,12 +348,22 @@ mod tests {
             "[services]\n\"Card Tables\" = \"CardTables\"\n[operation_services]\nGetCard = \"Cards\"\n",
         )
         .unwrap();
-        assert_eq!(naming.service_for("GetCard", "Card Tables"), "Cards");
         assert_eq!(
-            naming.service_for("GetCardTable", "Card Tables"),
+            naming.service_for("GetCard", Some("Card Tables")).unwrap(),
+            "Cards"
+        );
+        assert_eq!(
+            naming
+                .service_for("GetCardTable", Some("Card Tables"))
+                .unwrap(),
             "CardTables"
         );
-        assert_eq!(naming.service_for("ListFolders", "Folders"), "Folders");
+        assert_eq!(
+            naming.service_for("ListFolders", Some("Folders")).unwrap(),
+            "Folders"
+        );
+        assert_eq!(naming.service_for("GetCard", None).unwrap(), "Cards");
+        assert!(naming.service_for("GetFolder", None).is_err());
         assert_eq!(module_name("CardTables"), "card_tables");
         assert_eq!(struct_name("CardTables"), "CardTablesService");
     }

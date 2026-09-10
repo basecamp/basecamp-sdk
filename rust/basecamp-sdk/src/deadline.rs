@@ -17,9 +17,10 @@ pub(crate) struct Deadline {
 impl Deadline {
     /// The configured bound, counted from now; `None` bounds nothing.
     pub(crate) fn starting_now(configured: Option<Duration>) -> Deadline {
+        // A bound the clock cannot represent is no bound.
         Deadline {
             configured,
-            at: configured.map(|after| Instant::now() + after),
+            at: configured.and_then(|after| Instant::now().checked_add(after)),
         }
     }
 
@@ -37,14 +38,21 @@ impl Deadline {
         }
     }
 
-    /// Whether a wait of `delay` ends before the deadline. A resend that could not go out
-    /// in time is not begun: the deadline is exceeded now rather than after the wait.
-    pub(crate) fn admits(&self, delay: Duration) -> Result<(), Error> {
+    /// Waits `delay` before a resend, unless the deadline would pass first: a resend that
+    /// could not go out in time is not begun, and the deadline is exceeded now rather than
+    /// after the wait — and a wait that was admitted still ends at the deadline.
+    pub(crate) async fn wait(&self, delay: Duration) -> Result<(), Error> {
         match self.at {
             Some(at) if at.saturating_duration_since(Instant::now()) < delay => {
                 Err(self.exceeded())
             }
-            _ => Ok(()),
+            _ => {
+                self.bound(async {
+                    tokio::time::sleep(delay).await;
+                    Ok(())
+                })
+                .await
+            }
         }
     }
 

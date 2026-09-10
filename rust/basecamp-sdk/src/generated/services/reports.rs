@@ -36,14 +36,6 @@ pub struct GetProgressReportParams {
     pub page: Option<i32>,
 }
 
-impl crate::pagination::PageItems for GetPersonProgressResponseContent {
-    type Item = TimelineEvent;
-
-    fn into_items(self) -> Vec<TimelineEvent> {
-        self.events
-    }
-}
-
 /// `Reports` operations, sent through one [`AccountClient`].
 #[derive(Debug, Clone, Copy)]
 pub struct ReportsService<'a> {
