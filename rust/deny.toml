@@ -26,6 +26,10 @@ confidence-threshold = 0.9
 [bans]
 multiple-versions = "warn"
 wildcards = "deny"
+# The conformance runner is private and consumes the crate by path with no version,
+# which is a wildcard to cargo-deny; a version there would be one more file every bump
+# must stamp, for a crate nobody publishes.
+allow-wildcard-paths = true
 
 [sources]
 unknown-registry = "deny"
