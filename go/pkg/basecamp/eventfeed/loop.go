@@ -1092,10 +1092,17 @@ func (l *loop) classifyMintFailure(err error) cycleOutcome {
 		// connection-level counter's terminal — at the 3rd consecutive.
 		l.authFailures++
 		if l.authFailures >= authFailureThreshold {
+			// The cause is rebuilt WITHOUT the generated error, as the poll
+			// lane's threshold terminal rebuilds its own: §23's terminal table
+			// attaches the generated error to mint_failed and poll_failed
+			// only, and authorization_failed's contract is its counter
+			// message alone. A generated error renders the request and the
+			// response's own text, neither of which this terminal is
+			// entitled to hand the consumer.
 			return cycleOutcome{kind: outcomeTerminal, term: &TerminalError{
 				Reason: ReasonAuthorizationFailed,
 				Msg:    fmt.Sprintf("%d consecutive connection-level authorization failures", l.authFailures),
-				Err:    err,
+				Err:    &MintError{Kind: MintUnauthorized},
 			}}
 		}
 		// No retryAfter: SPEC pins `unauthorized` as "a kind carrying no
