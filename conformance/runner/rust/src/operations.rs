@@ -12,10 +12,16 @@ use std::collections::BTreeMap;
 use std::time::Duration;
 
 use basecamp_sdk::models::*;
+use basecamp_sdk::services::cards::UpdateCardRequest;
+use basecamp_sdk::services::documents::UpdateDocumentRequest;
+use basecamp_sdk::services::schedules::UpdateScheduleEntryRequest;
+use basecamp_sdk::services::todolists::UpdateTodolistRequest;
+use basecamp_sdk::services::todos::UpdateTodoRequest;
 use basecamp_sdk::services::{
-    bookmarks, drafts, projects, reports, search, timeline, timesheets, todolist_groups, todos,
+    DateChange, bookmarks, drafts, projects, reports, search, timeline, timesheets,
+    todolist_groups, todos,
 };
-use basecamp_sdk::{AccountClient, Client, Config, Date, Error, ListResult, Page};
+use basecamp_sdk::{AccountClient, Client, Config, Date, Error, FlexibleTime, ListResult, Page};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use serde_json::{Value, json};
@@ -204,12 +210,6 @@ async fn list_with<T: DeserializeOwned>(
 
 fn harness(message: impl std::fmt::Display) -> Error {
     Error::usage(format!("harness: {message}"))
-}
-
-fn not_wired(operation: &str) -> Error {
-    harness(format!(
-        "{operation}: this runner has no dispatch arm for it yet (composite pending integration)"
-    ))
 }
 
 async fn dispatch(account: &AccountClient, case: &TestCase) -> Result<Outcome, Error> {
@@ -403,16 +403,196 @@ async fn dispatch(account: &AccountClient, case: &TestCase) -> Result<Outcome, E
                     .await,
             )
         }
-        "UpdateTodo"
-        | "EditTodo"
-        | "UpdateTodolist"
-        | "EditTodolist"
-        | "UpdateDocument"
-        | "EditDocument"
-        | "UpdateScheduleEntry"
-        | "EditScheduleEntry"
-        | "UpdateCard"
-        | "UploadsDownload" => Err(not_wired(&case.operation)),
+        // --- SPEC section 18 composites (hand-written, over generated get + replace) -----
+        "UpdateTodo" => {
+            let request = UpdateTodoRequest {
+                content: optional_string_param(body, "content"),
+                description: optional_string_param(body, "description"),
+                assignee_ids: optional_int64_list_param(body, "assignee_ids"),
+                completion_subscriber_ids: optional_int64_list_param(
+                    body,
+                    "completion_subscriber_ids",
+                ),
+                due_on: date_change_param(body, "due_on")?,
+                starts_on: date_change_param(body, "starts_on")?,
+                notify: optional_bool_param(body, "notify"),
+            };
+            unit(account.todos().update(id("todoId"), &request).await)
+        }
+        "EditTodo" => {
+            // The edit closure assigns each fixture key onto the same-named member; absence
+            // stays absence, so an untouched field keeps its fetched value.
+            let content = optional_string_param(body, "content");
+            let description = optional_string_param(body, "description");
+            let assignee_ids = optional_int64_list_param(body, "assignee_ids");
+            let completion_subscriber_ids =
+                optional_int64_list_param(body, "completion_subscriber_ids");
+            let due_on = date_change_param(body, "due_on")?;
+            let starts_on = date_change_param(body, "starts_on")?;
+            let notify = optional_bool_param(body, "notify");
+            unit(
+                account
+                    .todos()
+                    .edit(id("todoId"), |fields| {
+                        if let Some(content) = content {
+                            fields.content = content;
+                        }
+                        if let Some(description) = description {
+                            fields.description = description;
+                        }
+                        if let Some(ids) = assignee_ids {
+                            fields.assignee_ids = ids;
+                        }
+                        if let Some(ids) = completion_subscriber_ids {
+                            fields.completion_subscriber_ids = ids;
+                        }
+                        if let Some(change) = due_on {
+                            fields.due_on = match change {
+                                DateChange::On(date) => Some(date),
+                                DateChange::Clear => None,
+                            };
+                        }
+                        if let Some(change) = starts_on {
+                            fields.starts_on = match change {
+                                DateChange::On(date) => Some(date),
+                                DateChange::Clear => None,
+                            };
+                        }
+                        if let Some(notify) = notify {
+                            fields.notify = notify;
+                        }
+                        Ok(())
+                    })
+                    .await,
+            )
+        }
+        "UpdateTodolist" => {
+            let request = UpdateTodolistRequest {
+                name: optional_string_param(body, "name"),
+                description: optional_string_param(body, "description"),
+            };
+            unit(account.todolists().update(id("id"), &request).await)
+        }
+        "EditTodolist" => {
+            let name = optional_string_param(body, "name");
+            let description = optional_string_param(body, "description");
+            unit(
+                account
+                    .todolists()
+                    .edit(id("id"), |fields| {
+                        if let Some(name) = name {
+                            fields.name = name;
+                        }
+                        if let Some(description) = description {
+                            fields.description = description;
+                        }
+                        Ok(())
+                    })
+                    .await,
+            )
+        }
+        "UpdateDocument" => {
+            let request = UpdateDocumentRequest {
+                title: optional_string_param(body, "title"),
+                content: optional_string_param(body, "content"),
+            };
+            unit(account.documents().update(id("documentId"), &request).await)
+        }
+        "EditDocument" => {
+            let title = optional_string_param(body, "title");
+            let content = optional_string_param(body, "content");
+            unit(
+                account
+                    .documents()
+                    .edit(id("documentId"), |fields| {
+                        if let Some(title) = title {
+                            fields.title = title;
+                        }
+                        if let Some(content) = content {
+                            fields.content = content;
+                        }
+                        Ok(())
+                    })
+                    .await,
+            )
+        }
+        "UpdateScheduleEntry" => {
+            let request = UpdateScheduleEntryRequest {
+                summary: optional_string_param(body, "summary"),
+                description: optional_string_param(body, "description"),
+                all_day: optional_bool_param(body, "all_day"),
+                starts_at: optional_string_param(body, "starts_at").map(FlexibleTime::from),
+                ends_at: optional_string_param(body, "ends_at").map(FlexibleTime::from),
+                participant_ids: optional_int64_list_param(body, "participant_ids"),
+                url: optional_string_param(body, "url"),
+                highlighted: optional_bool_param(body, "highlighted"),
+                notify: optional_bool_param(body, "notify"),
+            };
+            unit(
+                account
+                    .schedules()
+                    .update_entry(id("entryId"), &request)
+                    .await,
+            )
+        }
+        "EditScheduleEntry" => {
+            // The carve-outs go through setters because assignment, not value, is what
+            // marks them addressed: assigning exactly what the GET returned still sends them.
+            let summary = optional_string_param(body, "summary");
+            let description = optional_string_param(body, "description");
+            let all_day = optional_bool_param(body, "all_day");
+            let starts_at = optional_string_param(body, "starts_at");
+            let ends_at = optional_string_param(body, "ends_at");
+            let participant_ids = optional_int64_list_param(body, "participant_ids");
+            let url = optional_string_param(body, "url");
+            let highlighted = optional_bool_param(body, "highlighted");
+            let notify = optional_bool_param(body, "notify");
+            unit(
+                account
+                    .schedules()
+                    .edit_entry(id("entryId"), |fields| {
+                        if let Some(summary) = summary {
+                            fields.summary = summary;
+                        }
+                        if let Some(description) = description {
+                            fields.description = description;
+                        }
+                        if let Some(all_day) = all_day {
+                            fields.all_day = all_day;
+                        }
+                        if let Some(starts_at) = starts_at {
+                            fields.starts_at = FlexibleTime::from(starts_at);
+                        }
+                        if let Some(ends_at) = ends_at {
+                            fields.ends_at = FlexibleTime::from(ends_at);
+                        }
+                        if let Some(ids) = participant_ids {
+                            fields.set_participant_ids(ids);
+                        }
+                        if let Some(url) = url {
+                            fields.set_url(url);
+                        }
+                        if let Some(highlighted) = highlighted {
+                            fields.set_highlighted(highlighted);
+                        }
+                        if let Some(notify) = notify {
+                            fields.set_notify(notify);
+                        }
+                        Ok(())
+                    })
+                    .await,
+            )
+        }
+        "UpdateCard" => {
+            let request = UpdateCardRequest {
+                title: optional_string_param(body, "title"),
+                content: optional_string_param(body, "content"),
+                due_on: date_change_param(body, "due_on")?,
+                assignee_ids: optional_int64_list_param(body, "assignee_ids"),
+            };
+            unit(account.cards().update(id("cardId"), &request).await)
+        }
+        "UploadsDownload" => unit(account.uploads().download(id("uploadId")).await),
         "DownloadURL" => {
             // An absolute URL the SDK accepts: it rewrites scheme and host to the configured
             // origin (SPEC §14), so only the case's path matters.
@@ -1061,6 +1241,19 @@ fn date_param(params: &Params, key: &str) -> Result<Option<Date>, Error> {
         .transpose()
 }
 
+/// A date the fixture carries for a merge-safe composite: `""` is the clear, anything else
+/// a date the request sets.
+fn date_change_param(params: &Params, key: &str) -> Result<Option<DateChange>, Error> {
+    optional_string_param(params, key)
+        .map(|text| {
+            if text.is_empty() {
+                Ok(DateChange::Clear)
+            } else {
+                Date::parse(&text).map(DateChange::On)
+            }
+        })
+        .transpose()
+}
 /// A required integer read without rounding: a fixture id past 2^53 must survive.
 fn exact_int64(params: &Params, key: &str) -> Result<i64, Error> {
     match params.get(key) {

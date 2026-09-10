@@ -93,8 +93,7 @@ reads them; the SDK never looks either up.
 ## Examples
 
 `examples/` holds one compiled program per README section — `first_call`, `pagination`,
-`errors` and `custom_transport` (a scripted `HttpClient` plus `Hooks`, so it runs without a
-network). `cargo run --example custom_transport` needs no token.
+`errors` and `custom_http_client` — and `rs-test` builds them all.
 
 ## Versioning
 
