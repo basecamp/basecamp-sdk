@@ -418,10 +418,11 @@ func evaluateAssertions(
             case "code": conformanceCode(caughtError)
             case "message": caughtError.message
             case "requestId": caughtError.requestId
+            case "retryAfter": caughtError.retryAfterSeconds
             case "confirmationPeople.0.id": caughtError.confirmationPeople?.first?.id
             default: nil
             }
-            if actual == nil, !["httpStatus", "retryable", "code", "message", "requestId", "confirmationPeople.0.id"].contains(fieldPath) {
+            if actual == nil, !["httpStatus", "retryable", "code", "message", "requestId", "retryAfter", "confirmationPeople.0.id"].contains(fieldPath) {
                 return .fail("Unknown error field: \(fieldPath)")
             }
             if let failure = compareValue("error.\(fieldPath)", assertion.expected, actual) {

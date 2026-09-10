@@ -201,6 +201,53 @@
     ]
   },
   {
+    "name": "503 carries its Retry-After on the surfaced api_error",
+    "description": "SPEC §6 \"HTTP Status Mapping Algorithm\": retry_after is populated at every status the header parses at, not only on the 429 arm, so an error the caller ends up holding reports the wait the origin named. CreateProject is a non-idempotent POST, so the 503 surfaces on the first attempt and nothing sleeps — the case pins the field, not the loop (the loop's honouring is retry.json's job). Before this case only Python carried the value off a 503; Go, TypeScript and Ruby dropped it in every non-429 arm, and Kotlin's Api and Swift's .api had no slot for it at all.",
+    "operation": "CreateProject",
+    "method": "POST",
+    "path": "/projects.json",
+    "requestBody": {
+      "name": "New Project"
+    },
+    "mockResponses": [
+      {
+        "status": 503,
+        "headers": {
+          "Retry-After": "7"
+        },
+        "body": {
+          "error": "Service Unavailable"
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "errorCode",
+        "expected": "api_error"
+      },
+      {
+        "type": "errorField",
+        "path": "httpStatus",
+        "expected": 503
+      },
+      {
+        "type": "errorField",
+        "path": "retryAfter",
+        "expected": 7
+      }
+    ],
+    "tags": [
+      "error-mapping",
+      "503",
+      "retry-after",
+      "structured-error"
+    ]
+  },
+  {
     "name": "422 field-keyed errors flatten into the validation message",
     "description": "Verifies that a field-keyed 422 body ({\"errors\": {field: [messages]}} \u2014 the Rails RecordInvalid rendering, e.g. UpdateCalendar rejecting an unknown color) is flattened into the error message",
     "operation": "UpdateCalendar",

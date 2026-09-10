@@ -590,8 +590,9 @@ status mapped by hand elsewhere carries it only where that site parses the heade
 download hops do (#855); Go's hop-2 errors and its hop-1 500, Python's download errors on both the sync
 and async paths, and TypeScript's hop-2 errors build their `api_error` without the header, so a
 `Retry-After` on those responses is dropped — owed by the sweep (#857), where routing them through this
-mapper or parsing the header at the site is the change. Kotlin's `Api` and Swift's `.api` carry no slot
-for it yet — adding one is a source-breaking change to Swift's enum, tracked in #775.]`
+mapper or parsing the header at the site is the change. Kotlin and Swift carry it on their rate-limit and `api_error` shapes — every status a retry
+loop reaches, and every 5xx — but not on the 401/403/404/400/422/507 shapes, whose classes have no
+slot; `error-mapping.json` pins the `api_error` arm and `retry.json` the 429 arm.]`
 
 ### Statusless `api_error` for a malformed 2xx body `[manual]`
 
@@ -4230,6 +4231,7 @@ what `make doc-constants-check` asserts — not a case-by-case index.
 | `error-mapping.json` | 503 → api_error (retryable) | §6 |
 | `error-mapping.json` | 504 → api_error (retryable) | §6 |
 | `error-mapping.json` | X-Request-Id extracted | §6 |
+| `error-mapping.json` | Retry-After surfaces as `retry_after` on a 503 api_error | §6 |
 | `idempotency.json` | PUT retries on 503 | §7 (Gate 1) |
 | `idempotency.json` | DELETE retries on 503 | §7 (Gate 1) |
 | `idempotency.json` | POST does NOT retry | §7 (Gate 2) |
