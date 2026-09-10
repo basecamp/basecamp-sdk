@@ -1,6 +1,6 @@
 # Security Guarantees
 
-This document describes the security invariants maintained by the Basecamp SDK across all six implementations (Go, TypeScript, Ruby, Swift, Kotlin, Python).
+This document describes the security invariants maintained by the Basecamp SDK across all seven implementations (Go, TypeScript, Ruby, Swift, Kotlin, Python, Rust).
 
 ## Transport Security
 
@@ -93,13 +93,18 @@ All SDK clients are safe for concurrent use after construction. Thread/goroutine
 - Service accessors are protected by per-AccountClient `threading.Lock`
 - Configuration is immutable (frozen `dataclass`)
 
+### Rust
+- `Client` and `AccountClient` are `Clone + Send + Sync` (the inner state is behind an `Arc`), so one client can be shared across tasks
+- Token refresh is coalesced under a `tokio::sync::Mutex`, so concurrent 401s trigger one refresh
+- Configuration is immutable after `build()`; the builder is consumed and nothing on the client is settable afterwards
+
 **Important**: Do not modify configuration after creating a client. Configuration is captured at construction time.
 
 **Breaking Change (Go)**: `Client.Config()` now returns `Config` by value instead of `*Config` pointer. This prevents post-construction modification but may require code changes if callers expected pointer semantics.
 
 ## PKCE Support
 
-Go, TypeScript, Ruby, Kotlin, and Python SDKs provide helper utilities for OAuth 2.0 PKCE (Proof Key for Code Exchange):
+Go, TypeScript, Ruby, Kotlin, Python, and Rust SDKs provide helper utilities for OAuth 2.0 PKCE (Proof Key for Code Exchange):
 
 ```go
 // Go
@@ -143,15 +148,23 @@ pkce = generate_pkce()
 state = generate_state()
 ```
 
+```rust
+// Rust
+let pkce = basecamp_sdk::oauth::Pkce::generate()?;
+// pkce.verifier, pkce.challenge
+
+let state = basecamp_sdk::oauth::generate_state()?;
+```
+
 **Security properties**:
 - Verifiers are 43 characters (32 random bytes, base64url-encoded)
 - Challenges are SHA256 hashes of verifiers (use `code_challenge_method=S256`)
-- State parameters are 22 characters (16 random bytes) in Go/TypeScript/Ruby/Kotlin, 43 characters (32 random bytes) in Python
+- State parameters are 22 characters (16 random bytes) in Go/TypeScript/Ruby/Kotlin/Rust, 43 characters (32 random bytes) in Python
 - All use cryptographically secure random number generators
 
 ## Header Redaction
 
-Go, TypeScript, Ruby, and Python SDKs provide utilities to safely log HTTP requests without exposing credentials:
+Go, TypeScript, Ruby, Python, and Rust SDKs provide utilities to safely log HTTP requests without exposing credentials:
 
 ```go
 // Go
@@ -179,6 +192,12 @@ safe = redact_headers(headers)
 print(f"Headers: {safe}")
 ```
 
+```rust
+// Rust
+let safe = basecamp_sdk::security::redact_headers(response.headers());
+tracing::info!(?safe, "response headers");
+```
+
 **Redacted headers**: `Authorization`, `Cookie`, `Set-Cookie`, `X-CSRF-Token`
 
 ## Retry Behavior
@@ -192,7 +211,7 @@ three-gate algorithm and the per-SDK divergences.
 
 - **Reads (GET)**: retried with exponential backoff on 429/503 in every SDK. (HEAD is idempotent by method too, but Ruby's transport gates on `method == :get` specifically, so a HEAD would not retry there. The API surface has no HEAD operations today, so this is theoretical.)
 - **Naturally-idempotent mutations (PUT/DELETE) and the 11 flagged POSTs**: *are* retried on 429/503
-  by Go (generated operation path), Python, TypeScript, Kotlin, and Swift. Retrying these cannot
+  by Go (generated operation path), Python, TypeScript, Kotlin, Swift, and Rust. Retrying these cannot
   duplicate a resource, which is why the gate is idempotency rather than "is it a mutation".
   One PUT narrows its own set: `UpdateProjectClientAccess` declares `retry_on: [503]`, because its
   429 is the account seat-limit verdict rather than throttling, so that 429 surfaces on the first
@@ -204,7 +223,7 @@ three-gate algorithm and the per-SDK divergences.
 
 ### 401 handling is not uniform
 
-Reactive token refresh — refresh on a 401, then retry the request once — exists in only three
+Reactive token refresh — refresh on a 401, then retry the request once — exists in only four
 transports. Everywhere else the 401 is surfaced to the caller:
 
 | SDK | 401 behavior |
@@ -213,6 +232,7 @@ transports. Everywhere else the 401 is surfaced to the caller:
 | Go — generated `pkg/generated` operations | **No reactive refresh.** `AuthTransport` obtains a token proactively per request via `TokenProvider.AccessToken`. A 401 is **not** returned as an error by the `*WithResponse` variants: they populate `response.JSON401` and return `(response, nil)`, so a caller checking only `err` would read the request as successful. Check `JSON401` (or the status code) explicitly. The `ParseHTTPError` helper is what maps a 401 to `AuthError` |
 | Ruby | Refresh, then a single retry (`http.rb`) — **except** the raw upload path: `single_request_raw` (used by `post_raw`/`put_raw` for attachments and campfire uploads) raises without replaying |
 | Python (sync **and** async) | Refresh, then a single retry (`_http.py`, `_async_http.py`) |
+| Rust | Refresh, then a single replay, when the token provider is refreshable (`RefreshableTokenProvider`); the replay spends an attempt and is skipped when the attempt budget is exhausted |
 | TypeScript | No refresh. Generated **service wrappers** convert a 401 into a thrown `BasecampError`; the **raw client** does not — `BasecampClient` extends `RawClient`, so `client.GET(...)` resolves with `{ data: undefined, error }` and never throws. A caller using the raw API with `try`/`catch` alone will miss authentication failures |
 | Kotlin | No refresh; raised as `BasecampException.Auth` |
 | Swift | No refresh; raised as `BasecampError.auth`. The transport re-runs its auth strategy before each *retry*, but 401 is not a retryable status, so that path is never reached for a 401 |

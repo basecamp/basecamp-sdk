@@ -24,6 +24,15 @@ interface of your own that names the old signature — both must add the
 variadic parameter. The other five SDKs take the project attributes as a
 struct or map and gain the optional field with no signature change.
 
+### Rust: new SDK
+
+A seventh SDK, not a breaking change for anyone. The `basecamp-sdk` crate on
+crates.io (library name `basecamp_sdk`, MSRV 1.88, Tokio async, pre-1.0 semver
+with `0.MINOR` for breaking and `0.x.PATCH` for additive) ships the generated
+service surface, retry, pagination, hooks, structured errors, OAuth, and
+webhook verification; ETag caching and the §23 Event Feed connector are
+follow-ups. See [`rust/basecamp-sdk/README.md`](rust/basecamp-sdk/README.md).
+
 ---
 
 # v0.17.0

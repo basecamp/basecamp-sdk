@@ -14,6 +14,7 @@ Thank you for your interest in contributing to the Basecamp SDK. This document p
 | Swift | Swift 6.0+, Xcode 16+ |
 | Kotlin | JDK 17+, Kotlin 2.0+ |
 | Python | Python 3.11+, [uv](https://docs.astral.sh/uv/) |
+| Rust | Rust 1.88+ (MSRV; CI pins 1.98.1 via `rust/rust-toolchain.toml`), [cargo-deny](https://embarkstudios.github.io/cargo-deny/) |
 
 Shared tooling: `jq`, and bash >= 4.4 on `PATH` for the pairwise-canary
 scripts that `make check` runs (macOS ships bash 3.2 at `/bin/bash` —
@@ -73,9 +74,15 @@ A Basecamp account is optional (for integration testing only).
    make py-check   # tests, types, lint, format, drift
    ```
 
+   **Rust:**
+   ```bash
+   make rs-test
+   make rs-check   # fmt, clippy, tests, docs, deny, drift, publish dry-run
+   ```
+
 3. Run all SDKs at once from the repo root:
    ```bash
-   make check        # all 6 SDK test suites
+   make check        # all 7 SDK test suites
    make conformance  # cross-SDK conformance tests
    ```
 
@@ -243,7 +250,7 @@ test(cards): add coverage for move operations
 
 1. **Run all checks locally:**
    ```bash
-   make check  # runs all 6 SDK test suites from repo root
+   make check  # runs all 7 SDK test suites from repo root
    ```
 
 2. **Ensure conformance tests pass:**
@@ -290,7 +297,7 @@ All SDKs are generated from a single Smithy specification. When adding support f
    make generate
    ```
 
-   This runs Smithy build, behavior model, URL routes, provenance sync, the per-language generators (TypeScript, Ruby, Python, Kotlin, Swift, Go), and finally a constants sync — which has to come last, because some marked doc constants are derived from the generated accessors those generators produce. Read the `generate` target for the exact order rather than reproducing it.
+   This runs Smithy build, behavior model, URL routes, provenance sync, the per-language generators (TypeScript, Ruby, Python, Kotlin, Swift, Go, Rust), and finally a constants sync — which has to come last, because some marked doc constants are derived from the generated accessors those generators produce. Read the `generate` target for the exact order rather than reproducing it.
 
 3. **Run per-SDK generators individually** if you only need one:
    - **Go:** `make go-check-drift` — Go services are hand-written wrappers around the generated client; the drift check verifies all generated operations are covered
@@ -299,6 +306,7 @@ All SDKs are generated from a single Smithy specification. When adding support f
    - **Swift:** `make swift-generate`
    - **Kotlin:** `make kt-generate-services`
    - **Python:** `make py-generate`
+   - **Rust:** `make rs-generate`
 
 4. **Add tests** for each SDK
 
@@ -585,6 +593,43 @@ For routes that should *not* warrant an entry (transient nav state, internal
 endpoints, duplicates of a route already covered elsewhere), add a record
 to [`spec/api-gaps/allowlist.yml`](spec/api-gaps/allowlist.yml) with a
 justification.
+
+## Releasing the Rust crate for the first time
+
+`release-rust.yml` publishes to crates.io through Trusted Publishing (OIDC via
+`rust-lang/crates-io-auth-action`, on the `release-crates` environment), and
+Trusted Publishing can only be configured on a crate that already exists. The
+first version is therefore pushed by hand, once, by a maintainer with crates.io
+access; every later release is `make release` like the other SDKs. Until step 5
+below is done, the workflow's publish job rehearses with `--dry-run` and exits
+green, so a tag pushed early does no harm and publishes nothing.
+
+1. On `main`, with a clean tree and `make check` green.
+2. Mint a crates.io API token scoped to `publish-new` and `change-owners`, with a
+   one-day expiry.
+3. Publish from the workspace, reproducibly:
+   ```bash
+   cd rust && SOURCE_DATE_EPOCH=$(git log -1 --format=%ct) cargo publish -p basecamp-sdk --locked
+   ```
+4. Hand ownership to the team: `cargo owner --add github:basecamp:cli basecamp-sdk`.
+5. On the crate's settings page, configure Trusted Publishing: owner `basecamp`,
+   repository `basecamp-sdk`, workflow `release-rust.yml`, environment
+   `release-crates`.
+6. Revoke the token from step 2.
+7. `make release VERSION=…` from the same SHA, so the tag and the published
+   crate agree.
+
+`make bump` writes the `[package] version` in `rust/basecamp-sdk/Cargo.toml` and
+refreshes `rust/Cargo.lock` and `conformance/runner/rust/Cargo.lock`; `make
+release` reads the version back through `cargo metadata` and runs `cargo
+publish --dry-run --locked` before it tags. The workflow publishes only when
+crates.io answers 404 for that version and fails closed on any other answer.
+
+**Recovery after a partial publish.** Re-run the failed jobs with `gh run rerun
+<run-id> --failed`; the already-published check is idempotent, so a version that
+did land is skipped rather than re-pushed. Never delete the tag — crates.io
+versions are permanent, and the tag is the only thing that ties the published
+bytes back to a commit.
 
 ## Reporting Issues
 

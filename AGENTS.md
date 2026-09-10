@@ -1,6 +1,6 @@
 # Basecamp SDK Agent Guidelines
 
-All six SDKs (Go, TypeScript, Ruby, Swift, Kotlin, Python) share one architecture:
+All seven SDKs (Go, TypeScript, Ruby, Swift, Kotlin, Python, Rust) share one architecture:
 **Smithy spec -> OpenAPI -> generated services.** Every wire operation is generated. The
 only hand-written runtime API methods are sanctioned composites calling generated wire
 methods exclusively -- see SPEC.md §18 "Hand-Written Composite Methods" -- plus one
@@ -25,19 +25,20 @@ Paths are from the repository root, since that is where you will be working.
 | **Swift** | `URLSession` via `Transport` protocol | `swift/Sources/Basecamp/Generated/Services/*.swift` |
 | **Kotlin** | Ktor via `BaseService` | `kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/*.kt` |
 | **Python** | httpx via `HttpClient` | `python/src/basecamp/generated/services/*.py` |
+| **Rust** | reqwest via `HttpClient` trait | `rust/basecamp-sdk/src/generated/services/*.rs` |
 
 All `262` operations across the ~50-service per-SDK layer are generated. Hand-written code is limited to infrastructure: <!-- @operation-count -->
 
 | Purpose | Location |
 |---------|----------|
-| HTTP helpers, pagination, hooks | `typescript/src/services/base.ts`, `ruby/lib/basecamp/generated/services/base_service.rb`, `swift/Sources/Basecamp/Services/BaseService.swift`, `kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/services/BaseService.kt`, `python/src/basecamp/generated/services/_base.py` |
-| OAuth flows (not in OpenAPI spec) | `typescript/src/services/authorization.ts`, `ruby/lib/basecamp/services/authorization_service.rb`, `kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/oauth/`, `python/src/basecamp/services/authorization.py` (no Swift equivalent) |
-| Merge-safe Todos composites (update/edit over generated get+replace; SPEC.md §18) | `typescript/src/services/todos-extensions.ts`, `ruby/lib/basecamp/services/todos_extensions.rb`, `swift/Sources/Basecamp/TodosServiceExtensions.swift`, `kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/services/TodosService.kt`, `python/src/basecamp/services/todos.py` |
-| Merge-safe Cards composite (update over generated get+updateVerbatim; SPEC.md §18) | `typescript/src/services/cards-extensions.ts`, `ruby/lib/basecamp/services/cards_extensions.rb`, `swift/Sources/Basecamp/CardsServiceExtensions.swift`, `kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/services/CardsService.kt`, `python/src/basecamp/services/cards.py` |
-| Merge-safe Todolists composites (update/edit over generated get+replace; SPEC.md §18) | `typescript/src/services/todolists-extensions.ts`, `ruby/lib/basecamp/services/todolists_extensions.rb`, `swift/Sources/Basecamp/TodolistsServiceExtensions.swift`, `kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/services/TodolistsService.kt`, `python/src/basecamp/services/todolists.py` |
-| Merge-safe Documents composites (update/edit over generated get+replace; SPEC.md §18) | `typescript/src/services/documents-extensions.ts`, `ruby/lib/basecamp/services/documents_extensions.rb`, `swift/Sources/Basecamp/DocumentsServiceExtensions.swift`, `kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/services/DocumentsService.kt`, `python/src/basecamp/services/documents.py`, `go/pkg/basecamp/documents.go` |
-| Carve-out-aware Schedule entry composites (updateEntry/editEntry over generated getEntry+replaceEntry; SPEC.md §5, §18) | `typescript/src/services/schedules-extensions.ts`, `ruby/lib/basecamp/services/schedules_extensions.rb`, `swift/Sources/Basecamp/SchedulesServiceExtensions.swift`, `kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/services/SchedulesService.kt`, `python/src/basecamp/services/schedules.py`, `go/pkg/basecamp/schedules.go` |
-| Merge-safe response guards shared by those composites (#576) | `typescript/src/services/merge-safe.ts`, `ruby/lib/basecamp/services/merge_safe.rb`, `python/src/basecamp/services/_merge_safe.py` |
+| HTTP helpers, pagination, hooks | `typescript/src/services/base.ts`, `ruby/lib/basecamp/generated/services/base_service.rb`, `swift/Sources/Basecamp/Services/BaseService.swift`, `kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/services/BaseService.kt`, `python/src/basecamp/generated/services/_base.py`, `rust/basecamp-sdk/src/http/` |
+| OAuth flows (not in OpenAPI spec) | `typescript/src/services/authorization.ts`, `ruby/lib/basecamp/services/authorization_service.rb`, `kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/oauth/`, `python/src/basecamp/services/authorization.py`, `rust/basecamp-sdk/src/oauth/` (no Swift equivalent) |
+| Merge-safe Todos composites (update/edit over generated get+replace; SPEC.md §18) | `typescript/src/services/todos-extensions.ts`, `ruby/lib/basecamp/services/todos_extensions.rb`, `swift/Sources/Basecamp/TodosServiceExtensions.swift`, `kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/services/TodosService.kt`, `python/src/basecamp/services/todos.py`, `rust/basecamp-sdk/src/services/todos.rs` |
+| Merge-safe Cards composite (update over generated get+updateVerbatim; SPEC.md §18) | `typescript/src/services/cards-extensions.ts`, `ruby/lib/basecamp/services/cards_extensions.rb`, `swift/Sources/Basecamp/CardsServiceExtensions.swift`, `kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/services/CardsService.kt`, `python/src/basecamp/services/cards.py`, `rust/basecamp-sdk/src/services/cards.rs` |
+| Merge-safe Todolists composites (update/edit over generated get+replace; SPEC.md §18) | `typescript/src/services/todolists-extensions.ts`, `ruby/lib/basecamp/services/todolists_extensions.rb`, `swift/Sources/Basecamp/TodolistsServiceExtensions.swift`, `kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/services/TodolistsService.kt`, `python/src/basecamp/services/todolists.py`, `rust/basecamp-sdk/src/services/todolists.rs` |
+| Merge-safe Documents composites (update/edit over generated get+replace; SPEC.md §18) | `typescript/src/services/documents-extensions.ts`, `ruby/lib/basecamp/services/documents_extensions.rb`, `swift/Sources/Basecamp/DocumentsServiceExtensions.swift`, `kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/services/DocumentsService.kt`, `python/src/basecamp/services/documents.py`, `go/pkg/basecamp/documents.go`, `rust/basecamp-sdk/src/services/documents.rs` |
+| Carve-out-aware Schedule entry composites (updateEntry/editEntry over generated getEntry+replaceEntry; SPEC.md §5, §18) | `typescript/src/services/schedules-extensions.ts`, `ruby/lib/basecamp/services/schedules_extensions.rb`, `swift/Sources/Basecamp/SchedulesServiceExtensions.swift`, `kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/services/SchedulesService.kt`, `python/src/basecamp/services/schedules.py`, `go/pkg/basecamp/schedules.go`, `rust/basecamp-sdk/src/services/schedules.rs` |
+| Merge-safe response guards shared by those composites (#576) | `typescript/src/services/merge-safe.ts`, `ruby/lib/basecamp/services/merge_safe.rb`, `python/src/basecamp/services/_merge_safe.py`, `rust/basecamp-sdk/src/services/merge_safe.rs` |
 
 Hand-written service files in `typescript/src/services/` and `ruby/lib/basecamp/services/` beyond the table above are NOT loaded at runtime. They exist only as reference implementations.
 
@@ -134,7 +135,7 @@ Never assume "I'll regenerate later" — regenerate now, or the drift compounds.
 ### Invariants
 
 1. **`openapi.json` must always reflect the current Smithy spec.** Run `make smithy-build` after any change to `spec/basecamp.smithy` or `spec/overlays/*.smithy`.
-2. **Service generator mappings must stay current.** `typescript/scripts/generate-services.ts`, `ruby/scripts/generate-services.rb`, `kotlin/generator/src/main/kotlin/com/basecamp/sdk/generator/Config.kt`, and `python/scripts/generate_services.py` all have hardcoded `TAG_TO_SERVICE` mappings. Update them for new/renamed/removed operations. Treat unmapped-operation warnings as errors.
+2. **Service generator mappings must stay current.** `typescript/scripts/generate-services.ts`, `ruby/scripts/generate-services.rb`, `kotlin/generator/src/main/kotlin/com/basecamp/sdk/generator/Config.kt`, `python/scripts/generate_services.py`, and `rust/generator/names.toml` all have hardcoded `TAG_TO_SERVICE` mappings. Update them for new/renamed/removed operations. Treat unmapped-operation warnings as errors.
 3. **Tags in `spec/overlays/tags.smithy` control service grouping.** Every new operation needs a tag or it won't appear in any generated service.
 4. **Hand-written Go service methods must use generated client types.** Field names, method signatures, and request/response body types come from `go/pkg/generated/client.gen.go`. One carve-out (SPEC.md §18 "Hand-Written Composite Methods"): where the wire contract is inexpressible through the generated request type — concretely the `""` date clear, which `*types.Date` cannot spell, and the `""` `category_id` clear on `MessagesService.Update`, which `*int64` cannot spell; an empty string or list behind a pointer member is expressible and does not qualify — a method may marshal an explicit body map through the operation's generated `*WithBody` variant, with keys matching the generated request schema.
 
@@ -146,10 +147,10 @@ When reviewing a PR that touches `spec/basecamp.smithy`, verify that `openapi.js
 
 ## Release Procedure
 
-Two commands cut a release. `make release` handles pushing `main`, tagging, and triggering all 7 workflows (Go, TypeScript, Ruby, Swift, Kotlin, Python, GitHub Release).
+Two commands cut a release. `make release` handles pushing `main`, tagging, and triggering all 8 workflows (Go, TypeScript, Ruby, Swift, Kotlin, Python, Rust, GitHub Release).
 
 ```bash
-make bump VERSION=x.y.z   # updates 10 version files + lockfiles
+make bump VERSION=x.y.z   # updates 11 version files + lockfiles
 # commit the bump
 make release VERSION=x.y.z  # pushes main, tags, pushes tag
 ```
@@ -171,10 +172,10 @@ make release VERSION=x.y.z  # pushes main, tags, pushes tag
 
 ### Verification
 
-After releasing, monitor all 7 workflows in GitHub Actions. The "Create GitHub Release" workflow waits for the 6 SDK workflows to succeed before creating the release.
+After releasing, monitor all 8 workflows in GitHub Actions. The "Create GitHub Release" workflow waits for the 7 SDK workflows to succeed before creating the release.
 
 ```bash
-gh run list --repo basecamp/basecamp-sdk --limit 7 --json name,status,conclusion
+gh run list --repo basecamp/basecamp-sdk --limit 8 --json name,status,conclusion
 ```
 
 ---
@@ -285,7 +286,7 @@ Use `make sync-status` to see upstream diffs since last sync.
 2. Update `spec/overlays/tags.smithy` — tag new operations
 3. Update service generator `TAG_TO_SERVICE` mappings if adding new service groups
 4. Run full generation pipeline
-5. Wire new services into clients (`typescript/src/client.ts`, `typescript/src/index.ts`, `ruby/lib/basecamp/client.rb`, `python/src/basecamp/client.py`, `python/src/basecamp/async_client.py`)
+5. Wire new services into clients (`typescript/src/client.ts`, `typescript/src/index.ts`, `ruby/lib/basecamp/client.rb`, `python/src/basecamp/client.py`, `python/src/basecamp/async_client.py`). Rust needs no wiring: `rust/basecamp-sdk/src/generated/accessors.rs` is generated, so `make rs-generate` already emitted the accessor
 6. Write tests for ALL new operations (see Completeness Bar below)
 7. Update tests for any changed paths/signatures
 8. Update provenance, run `make provenance-sync`
@@ -310,7 +311,8 @@ Use `make sync-status` to see upstream diffs since last sync.
 5. **TypeScript test** — in `typescript/tests/services/<service>.test.ts` (happy path + error case)
 6. **Ruby test** — in `ruby/test/basecamp/services/<service>_service_test.rb` (same coverage)
 7. **Python test** — in `python/tests/services/test_<service>_service.py` (same coverage)
-8. **Regeneration** — all generated artifacts freshly regenerated, not stale
+8. **Rust test** — in `rust/basecamp-sdk/tests/services/<service>.rs` or the service's `#[cfg(test)]` module (same coverage)
+9. **Regeneration** — all generated artifacts freshly regenerated, not stale
 
 ### Every Changed Field/Path Requires
 
@@ -332,7 +334,7 @@ Use `make sync-status` to see upstream diffs since last sync.
 
 ### Pre-Merge Verification
 
-Run `make go-check-drift`, `make kt-check-drift`, and `make py-check-drift` (all included in `make check`) and verify:
+Run `make go-check-drift`, `make kt-check-drift`, `make py-check-drift`, and `make rs-check-drift` (all included in `make check`) and verify:
 - No new UNWRAPPED operations unless intentionally deferred (document why in PR)
 - No MISSING operations (service layer calling non-existent generated methods)
 
