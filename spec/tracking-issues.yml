@@ -123,6 +123,10 @@ prose_tracking_issues:
     file: "MIGRATING.md"
     site: "MIGRATING.md — the generated copy of the parse is untouched pending #798"
     mentions: 0
+  - issue: 818
+    file: "SPEC.md"
+    site: "SPEC.md Appendix F — OAuth endpoint address enforcement beyond Go (§16 req 5–6) is pending #818's umbrella"
+    mentions: 2
   - issue: 819
     file: "SPEC.md"
     site: "SPEC.md §23 zero-egress paragraph — the Layer-1 302 test's adapters are pending #819"
