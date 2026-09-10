@@ -53,7 +53,7 @@ impl ReqwestClient {
 #[async_trait]
 impl HttpClient for ReqwestClient {
     async fn send(&self, request: Request<Bytes>) -> Result<Response<Body>, Error> {
-        let request = reqwest::Request::try_from(request).map_err(Error::network)?;
+        let request = reqwest::Request::try_from(request).map_err(classify)?;
         let answered = self.http.execute(request).await.map_err(classify)?;
 
         let status = answered.status();
@@ -79,7 +79,11 @@ fn chunks(response: reqwest::Response) -> impl stream::Stream<Item = Result<Byte
     })
 }
 
+/// A transport failure as the SDK's network error, less the URL reqwest writes into its
+/// own message: the failure ends up in hints and logs, and a signed URL carries its
+/// credential in the query (SPEC §9).
 fn classify(error: reqwest::Error) -> Error {
+    let error = error.without_url();
     if error.is_timeout() {
         Error::network_timeout(error)
     } else {
