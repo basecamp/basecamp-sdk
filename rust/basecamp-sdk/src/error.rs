@@ -219,7 +219,7 @@ impl Error {
                     .as_ref()
                     .and_then(|value| value.get("message").and_then(Value::as_str))
             })
-            .map(str::to_string);
+            .map(truncate);
         let mut message = scalar
             .clone()
             .unwrap_or_else(|| format!("Request failed (HTTP {status_code})"));
@@ -252,7 +252,7 @@ impl Error {
         error.inner.request_id = headers
             .get("x-request-id")
             .and_then(|value| value.to_str().ok())
-            .map(str::to_string);
+            .map(truncate);
         error.inner.field_errors = field_errors;
         error.inner.confirmation_people = confirmation_people;
         if !body.is_empty() {
@@ -706,6 +706,20 @@ mod tests {
             assert_eq!(error.request_id(), Some("req-1"));
             assert_eq!(error.message(), format!("Request failed (HTTP {status})"));
         }
+    }
+
+    #[test]
+    fn request_id_read_off_a_response_is_bounded_like_the_setter() {
+        let long = "r".repeat(MAX_ERROR_MESSAGE_LENGTH + 1);
+        let error = Error::from_response(
+            StatusCode::BAD_GATEWAY,
+            &headers(&[("x-request-id", &long)]),
+            b"",
+        );
+        let expected = Error::usage("x").with_request_id(&long);
+        assert_eq!(error.request_id(), expected.request_id());
+        assert_eq!(error.request_id().unwrap().len(), MAX_ERROR_MESSAGE_LENGTH);
+        assert!(error.request_id().unwrap().ends_with("..."));
     }
 
     #[test]
