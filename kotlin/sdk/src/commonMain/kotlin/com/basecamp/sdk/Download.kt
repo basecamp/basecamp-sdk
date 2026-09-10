@@ -92,7 +92,7 @@ fun filenameFromURL(rawURL: String): String {
  *
  * The first hop retries under the SPEC §14 policy — network errors plus
  * {429, 502, 503, 504}, never 500 — with exponential backoff (Retry-After
- * honored on 429) under the public maxRetries total-attempt cap coerced to at
+ * honored at every status in the set) under the public maxRetries total-attempt cap coerced to at
  * least one; `enableRetry = false` collapses it to exactly one attempt. The
  * second hop is exempt: no retry, no auth.
  *
@@ -263,7 +263,7 @@ suspend fun AccountClient.downloadURL(rawURL: String): DownloadResult {
 /**
  * Runs the download's authenticated hop 1 under the SPEC §14 retry policy:
  * network errors plus [DOWNLOAD_RETRY_ON] — never 500 — retried with
- * exponential backoff (Retry-After honored on 429) while attempts remain.
+ * exponential backoff (Retry-After honored at every status in the set) while attempts remain.
  * DownloadURL is deliberately absent from the behavior model, so the policy
  * lives here rather than being looked up by operation.
  *
@@ -365,8 +365,10 @@ private suspend fun AccountClient.downloadHop1(
             return response
         }
 
+        // Honoured at every status in DOWNLOAD_RETRY_ON, not at 429 alone
+        // (SPEC §14 "Hop-1 Retry").
         val retryAfter = parseRetryAfter(response.headers["Retry-After"])
-        val delayMs = if (status == 429 && retryAfter != null) {
+        val delayMs = if (retryAfter != null) {
             retryAfter.toLong() * 1000
         } else {
             BasecampHttpClient.calculateBackoffDelay(baseDelayMs, attempt)

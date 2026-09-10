@@ -538,6 +538,46 @@ class RetryTest {
         client.close()
     }
 
+    /**
+     * SPEC §6 "Retry-After Honouring": the header governs the wait at every
+     * status in the declared retry set. A `status == 429` gate left a 503
+     * carrying `Retry-After: 2` on the ~1s backoff curve (#775).
+     */
+    @Test
+    fun retryAfterHonouredAt503() = runTest {
+        var requestCount = 0
+        val requestTimestamps = mutableListOf<Long>()
+        val engine = MockEngine { _ ->
+            requestCount++
+            requestTimestamps.add(testScheduler.currentTime)
+            if (requestCount == 1) {
+                respond(
+                    content = "",
+                    status = HttpStatusCode.ServiceUnavailable,
+                    headers = headersOf("Retry-After", "2"),
+                )
+            } else {
+                respondOk("""{"id": 1}""")
+            }
+        }
+
+        val client = testBasecampClient {
+            accessToken("test-token")
+            baseUrl = "http://localhost:3000"
+            this.engine = engine
+        }
+
+        val account = client.forAccount("12345")
+        val url = "${client.config.baseUrl}/12345/projects.json"
+        val response = account.httpClient.requestWithRetry(HttpMethod.Get, url)
+
+        assertEquals(200, response.status.value)
+        assertEquals(2, requestCount)
+        val elapsed = requestTimestamps[1] - requestTimestamps[0]
+        assertTrue(elapsed >= 2000, "Expected delay >= 2000ms from Retry-After: 2 on a 503, got $elapsed")
+        client.close()
+    }
+
     @Test
     fun enableRetryFalseDisablesRetry() = runTest {
         var requestCount = 0
