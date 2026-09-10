@@ -20,12 +20,17 @@ pub fn verify_signature(payload: &[u8], signature: &str, secret: &str) -> bool {
 }
 
 fn decode_hex(text: &str) -> Option<Vec<u8>> {
-    if !text.len().is_multiple_of(2) {
+    let bytes = text.as_bytes();
+    if !bytes.len().is_multiple_of(2) {
         return None;
     }
-    (0..text.len())
-        .step_by(2)
-        .map(|i| u8::from_str_radix(&text[i..i + 2], 16).ok())
+    bytes
+        .chunks(2)
+        .map(|pair| {
+            let high = (pair[0] as char).to_digit(16)?;
+            let low = (pair[1] as char).to_digit(16)?;
+            u8::try_from(high * 16 + low).ok()
+        })
         .collect()
 }
 
@@ -47,5 +52,7 @@ mod tests {
         assert!(!verify_signature(b"other", &digest, "secret"));
         assert!(!verify_signature(b"payload", "", "secret"));
         assert!(!verify_signature(b"payload", &digest, ""));
+        assert!(!verify_signature(b"payload", "€a", "secret"));
+        assert!(!verify_signature(b"payload", "zz", "secret"));
     }
 }

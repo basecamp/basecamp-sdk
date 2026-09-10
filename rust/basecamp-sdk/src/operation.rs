@@ -32,18 +32,27 @@ pub(crate) struct Body {
 }
 
 impl Operation {
+    /// What the hooks are told about a route, before any path parameter is known.
+    pub(crate) fn info_for(route: &'static Route) -> OperationInfo {
+        OperationInfo {
+            service: route.service,
+            operation: route.id,
+            resource_type: route.resource_type,
+            is_mutation: route.method != Method::GET,
+            project_id: None,
+            resource_id: None,
+        }
+    }
+
     pub(crate) fn for_route(route: &'static Route, params: &[&dyn Display]) -> Operation {
         let path = route.fill(params);
         let (project_id, resource_id) = ids_of(route, params);
         Operation {
             route,
             info: OperationInfo {
-                service: route.service,
-                operation: route.id,
-                resource_type: route.resource_type,
-                is_mutation: route.method != Method::GET,
                 project_id,
                 resource_id,
+                ..Operation::info_for(route)
             },
             method: route.method.clone(),
             path,

@@ -1,5 +1,7 @@
 //! SPEC §14 wire-level cases, from `conformance/tests/downloads.json`.
 
+#![cfg(feature = "reqwest")]
+
 mod support;
 
 use std::time::Duration;

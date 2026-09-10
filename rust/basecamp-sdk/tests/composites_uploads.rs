@@ -1,5 +1,7 @@
 //! SPEC §18 `uploads.download`, from `conformance/tests/uploads_download.json`.
 
+#![cfg(feature = "reqwest")]
+
 mod composites_support;
 
 use basecamp_sdk::ErrorCode;

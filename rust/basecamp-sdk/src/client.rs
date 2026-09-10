@@ -261,12 +261,12 @@ impl AccountClient {
 
     /// Sends an operation and decodes its JSON body.
     pub async fn send<T: DeserializeOwned>(&self, operation: Operation) -> Result<T, Error> {
-        self.execute(operation).await?.json()
+        self.run(operation, |response| response.json()).await
     }
 
     /// Sends an operation whose answer carries no body worth reading.
     pub async fn send_unit(&self, operation: Operation) -> Result<(), Error> {
-        self.execute(operation).await.map(|_| ())
+        self.run(operation, |_| Ok(())).await
     }
 
     /// Sends a paginated read and keeps the cursor Basecamp answered with.
@@ -275,8 +275,23 @@ impl AccountClient {
         operation: Operation,
     ) -> Result<Page<T>, Error> {
         let route = operation.route;
-        let response = self.execute(operation).await?;
-        Ok(Page::new(response.json()?, &response, route))
+        self.run(operation, |response| {
+            Ok(Page::new(response.json()?, &response, route))
+        })
+        .await
+    }
+
+    /// Sends an operation and reads its answer with `decode`, so a body that does not decode
+    /// ends the operation as a failure in the hooks' eyes too (SPEC §12).
+    pub async fn run<T>(
+        &self,
+        operation: Operation,
+        decode: impl FnOnce(Response) -> Result<T, Error>,
+    ) -> Result<T, Error> {
+        self.observe(&operation, async {
+            self.dispatch(&operation).await.and_then(decode)
+        })
+        .await
     }
 
     /// The follow-on read for a `Link` target: the same route and identity, the target
@@ -294,19 +309,29 @@ impl AccountClient {
                 crate::security::redact_url(next)
             )));
         }
-        let mut info = Operation::for_route(route, &[]).info;
-        info.is_mutation = false;
-        Ok(Operation::at(route, info, next.clone()))
+        Ok(Operation::at(
+            route,
+            Operation::info_for(route),
+            next.clone(),
+        ))
     }
 
     /// Sends an operation: applies credentials and account scope, retries transient
     /// failures under SPEC §7's three gates, resends once after a refreshed 401, and maps
     /// every non-2xx status onto an [`Error`].
     pub async fn execute(&self, operation: Operation) -> Result<Response, Error> {
+        self.observe(&operation, self.dispatch(&operation)).await
+    }
+
+    /// Runs `work` inside the operation hook lifecycle and the operation deadline.
+    pub(crate) async fn observe<T>(
+        &self,
+        operation: &Operation,
+        work: impl std::future::Future<Output = Result<T, Error>>,
+    ) -> Result<T, Error> {
         let started = Instant::now();
         let hooks = self.shared.hooks.clone();
         crate::hooks::guarded(|| hooks.on_operation_start(&operation.info));
-        let work = self.dispatch(&operation);
         let outcome = match self.shared.config.operation_deadline {
             None => work.await,
             Some(deadline) => match tokio::time::timeout(deadline, work).await {
@@ -358,8 +383,10 @@ impl AccountClient {
         let mut retry_index: u32 = 0;
 
         loop {
-            let generation = self.shared.auth.generation();
             let request = self.prepare(operation, &url).await?;
+            // Read after authenticating: a stamp older than the credentials only costs an
+            // extra refresh, a stamp newer than them would replay a rejected token.
+            let generation = self.shared.auth.generation();
             let info = RequestInfo {
                 method: operation.method.clone(),
                 url: url.clone(),
@@ -428,7 +455,18 @@ impl AccountClient {
                             );
                         });
                         refreshed = true;
-                        if self.shared.auth.refresh(generation).await? {
+                        let renewed = match self.shared.auth.refresh(generation).await {
+                            Ok(renewed) => renewed,
+                            Err(cause) => {
+                                return Err(Error::new(
+                                    ErrorCode::AuthRequired,
+                                    "credentials could not be refreshed",
+                                )
+                                .with_status(401)
+                                .with_source(cause));
+                            }
+                        };
+                        if renewed {
                             crate::hooks::guarded(|| {
                                 hooks.on_retry(&info, attempt + 1, &cause, Duration::ZERO);
                             });
@@ -539,7 +577,11 @@ impl AccountClient {
             && body.is_empty()
             && status != StatusCode::NO_CONTENT
         {
-            return Err(Error::malformed_response("empty body").with_status(status.as_u16()));
+            let mut error = Error::malformed_response("empty body");
+            if let Some(id) = headers.get("x-request-id").and_then(|v| v.to_str().ok()) {
+                error = error.with_request_id(id);
+            }
+            return Err(error);
         }
         Ok(Response {
             status,

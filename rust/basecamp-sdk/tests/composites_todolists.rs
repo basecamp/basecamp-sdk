@@ -1,6 +1,8 @@
 //! SPEC §5 "Merge-Safe Write Surface (Todolists)", from
 //! `conformance/tests/todolists_write.json`.
 
+#![cfg(feature = "reqwest")]
+
 mod composites_support;
 
 use basecamp_sdk::models::UpdateTodolistOrGroupRequestContent;

@@ -46,14 +46,19 @@ impl AccountClient {
     /// bare — no credentials, no retry, no redirect. Hop-2 errors name only the storage
     /// origin: the signed URL is itself a credential (SPEC §9).
     pub async fn download_url(&self, raw_url: &str) -> Result<DownloadResult, Error> {
-        // An unparseable input may itself be a signed URL, so the error names only what
-        // SPEC §9's projection allows: the origin, or the fixed `unparsable` token.
-        let given = Url::parse(raw_url).map_err(|_| {
-            Error::usage(format!(
-                "download URL is not absolute ({})",
-                crate::security::origin_of(raw_url)
-            ))
-        })?;
+        let work = self.download_within(raw_url);
+        match self.config().operation_deadline {
+            None => work.await,
+            Some(deadline) => match tokio::time::timeout(deadline, work).await {
+                Ok(outcome) => outcome,
+                Err(_) => Err(Error::deadline_exceeded(deadline)),
+            },
+        }
+    }
+
+    async fn download_within(&self, raw_url: &str) -> Result<DownloadResult, Error> {
+        let given = Url::parse(raw_url)
+            .map_err(|_| Error::usage("download URL is not an absolute http(s) URL"))?;
         if !matches!(given.scheme(), "http" | "https") {
             return Err(Error::usage(format!(
                 "download URL must be http(s): {}",
@@ -94,12 +99,14 @@ impl AccountClient {
         Err(self.download_failure(response).await)
     }
 
+    #[allow(clippy::too_many_lines)]
     async fn download_hop_one(&self, url: &Url) -> Result<Response<Body>, Error> {
         let config = self.config();
         let attempts = effective_attempts(config.max_retries, u32::MAX);
         let shown = Url::parse(&redact_url(url)).unwrap_or_else(|_| url.clone());
         let hooks = self.shared().hooks.clone();
         let mut attempt = 1;
+        let mut refreshed = false;
         loop {
             let mut request = Request::builder()
                 .method(crate::http::Method::GET)
@@ -110,6 +117,7 @@ impl AccountClient {
                 .headers_mut()
                 .insert(USER_AGENT, header_value(&self.shared().user_agent)?);
             self.shared().auth.authenticate(&mut request).await?;
+            let generation = self.shared().auth.generation();
             let info = RequestInfo {
                 method: crate::http::Method::GET,
                 url: shown.clone(),
@@ -132,6 +140,42 @@ impl AccountClient {
                 Ok(_) => (None, None),
             };
             let status = sent.as_ref().ok().map(Response::status);
+            if status == Some(crate::http::StatusCode::UNAUTHORIZED)
+                && !refreshed
+                && attempt < attempts
+                && self.shared().auth.refreshable()
+            {
+                let cause = Error::from_response(
+                    crate::http::StatusCode::UNAUTHORIZED,
+                    &crate::http::HeaderMap::new(),
+                    &[],
+                );
+                crate::hooks::guarded(|| {
+                    hooks.on_request_end(
+                        &info,
+                        &RequestResult {
+                            status,
+                            duration,
+                            error: Some(&cause),
+                            retry_after: None,
+                        },
+                    );
+                });
+                refreshed = true;
+                if self
+                    .shared()
+                    .auth
+                    .refresh(generation)
+                    .await
+                    .unwrap_or(false)
+                {
+                    crate::hooks::guarded(|| {
+                        hooks.on_retry(&info, attempt + 1, &cause, Duration::ZERO);
+                    });
+                    attempt += 1;
+                    continue;
+                }
+            }
             crate::hooks::guarded(|| {
                 hooks.on_request_end(
                     &info,
@@ -211,10 +255,20 @@ impl AccountClient {
             .to_string();
         let declared = response.body().content_length();
         let limit = self.config().max_response_body_bytes;
+        let origin = origin_of(url.as_str());
         let body = response
             .into_body()
             .collect(limit, || Error::response_too_large(limit))
-            .await?;
+            .await
+            .map_err(|error| {
+                // A transport's account of a failing read may render the URL it was
+                // reading, which on hop 2 is a credential (SPEC §9): only the origin survives.
+                if error.code() == ErrorCode::Network {
+                    Error::network_at(&origin)
+                } else {
+                    error
+                }
+            })?;
         let content_length = match declared {
             Some(length) => i64::try_from(length).unwrap_or(-1),
             None => i64::try_from(body.len()).unwrap_or(-1),

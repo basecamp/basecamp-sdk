@@ -1,5 +1,7 @@
 //! SPEC §8 wire-level cases, from `conformance/tests/pagination.json`.
 
+#![cfg(feature = "reqwest")]
+
 mod support;
 
 use basecamp_sdk::services::projects::ListProjectsParams;
@@ -270,5 +272,107 @@ async fn follow_on_pages_carry_the_operation_retry_policy() {
     assert_eq!(
         sent[1].uri().to_string(),
         "https://3.basecampapi.com/999/projects.json?page=2"
+    );
+}
+
+#[tokio::test]
+async fn follow_ups_work_on_routes_with_path_parameters() {
+    use basecamp_sdk::services::todos::ListTodosParams;
+    let todo = serde_json::json!({"id": 1, "status": "active", "visible_to_clients": false, "created_at": "2025-01-01T00:00:00Z", "updated_at": "2025-01-01T00:00:00Z", "title": "x", "inherits_status": true, "type": "Todo", "url": "https://x/1.json", "app_url": "https://x/1", "bucket": {"id": 1, "name": "b", "type": "Project"}, "creator": {"id": 1, "name": "n", "email_address": "e", "personable_type": "User", "created_at": "2025-01-01T00:00:00Z", "updated_at": "2025-01-01T00:00:00Z", "admin": false, "owner": false, "client": false, "employee": false, "time_zone": "UTC", "avatar_url": "https://x/a.png"}, "parent": {"id": 2, "title": "l", "type": "Todolist", "url": "https://x/2.json", "app_url": "https://x/2"}, "content": "x", "description": "", "description_attachments": [], "completed": false, "assignees": [], "completion_subscribers": [], "completion_url": "https://x/c.json", "comments_count": 0, "comments_url": "https://x/comments.json", "bookmark_url": "https://x/b", "subscription_url": "https://x/s.json", "position": 1});
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/todolists/67890/todos.json"))
+        .and(query_param("page", "2"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(vec![todo.clone()]))
+        .mount(&server)
+        .await;
+    Mock::given(method("GET"))
+        .and(path("/999/todolists/67890/todos.json"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_json(vec![todo])
+                .insert_header("Link", "</todolists/67890/todos.json?page=2>; rel=\"next\""),
+        )
+        .mount(&server)
+        .await;
+    let client = account(&server);
+    let first = client
+        .todos()
+        .list(67890, &ListTodosParams::default())
+        .await
+        .unwrap();
+    let second = client
+        .next_page(&first)
+        .await
+        .unwrap()
+        .expect("a second page");
+    assert_eq!(second.len(), 1);
+    assert!(!second.has_next());
+    let all = client
+        .collect_all(
+            client
+                .todos()
+                .list(67890, &ListTodosParams::default())
+                .await
+                .unwrap(),
+            None,
+        )
+        .await
+        .unwrap();
+    assert_eq!(all.items.len(), 2);
+}
+
+#[tokio::test]
+async fn an_unresolvable_next_target_is_an_error_not_the_end() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/999/projects.json"))
+        .respond_with(page(&[1], Some("<http://[>; rel=\"next\""), None))
+        .mount(&server)
+        .await;
+    let client = account(&server);
+    let first = client
+        .projects()
+        .list(&ListProjectsParams::default())
+        .await
+        .unwrap();
+    assert!(first.has_next());
+    assert!(first.next_url().is_none());
+    assert_eq!(
+        client.next_page(&first).await.unwrap_err().code(),
+        ErrorCode::Usage
+    );
+}
+
+#[tokio::test]
+async fn the_page_stream_is_lazy() {
+    use futures_util::StreamExt;
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/999/projects.json"))
+        .respond_with(page(
+            &[1],
+            Some("</projects.json?page=2>; rel=\"next\""),
+            None,
+        ))
+        .mount(&server)
+        .await;
+    let client = account(&server);
+    let first = client
+        .projects()
+        .list(&ListProjectsParams::default())
+        .await
+        .unwrap();
+    let mut pages = std::pin::pin!(client.pages(first));
+    let page = pages.next().await.unwrap().unwrap();
+    assert_eq!(page.len(), 1);
+    assert_eq!(
+        server.received_requests().await.unwrap().len(),
+        1,
+        "the successor is not fetched until asked for"
+    );
+    assert!(
+        pages.next().await.unwrap().is_err(),
+        "no mock answers page 2"
     );
 }

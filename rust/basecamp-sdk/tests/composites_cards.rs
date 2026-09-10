@@ -1,5 +1,7 @@
 //! SPEC §5 "Merge-Safe Write Surface (Cards)", from `conformance/tests/cards_write.json`.
 
+#![cfg(feature = "reqwest")]
+
 mod composites_support;
 
 use basecamp_sdk::Date;
