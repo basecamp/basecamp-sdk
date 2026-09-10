@@ -426,6 +426,11 @@ def error_from_response(status: int, body: str | bytes | None, headers: dict[str
 MAX_RETRY_AFTER_SECONDS = 2_147_483_647
 _DELAY_SECONDS = re.compile(r"[0-9]+")
 _MAX_RETRY_AFTER_DIGITS = len(str(MAX_RETRY_AFTER_SECONDS))
+# RFC 7231 asctime-date: `day-name SP month SP ( 2DIGIT / SP 1DIGIT ) SP
+# time-of-day SP year`. The one HTTP-date form with no zone, and so the one
+# naive result parsedate_to_datetime may hand back that SPEC section 6 reads
+# as UTC; every other zoneless spelling it accepts is outside the table.
+_ASCTIME = re.compile(r"[A-Z][a-z]{2} [A-Z][a-z]{2} (?:[0-9]{2}| [0-9]) [0-9]{2}:[0-9]{2}:[0-9]{2} [0-9]{4}")
 
 
 def _parse_retry_after(value: str | None, *, now: datetime | None = None) -> int | None:
@@ -455,8 +460,14 @@ def _parse_retry_after(value: str | None, *, now: datetime | None = None) -> int
     try:
         date = parsedate_to_datetime(value)
         # asctime carries no zone, and parsedate_to_datetime hands it back
-        # naive; RFC 7231 reads every HTTP-date as UTC.
+        # naive; RFC 7231 reads every HTTP-date as UTC. The parser is RFC 5322's
+        # and hands back naive for other spellings too — a bare `1 Jan 2099
+        # 00:00:00`, an IMF-fixdate with an unknown zone — and those are not
+        # HTTP-dates: only the asctime shape earns the zone, the rest fall
+        # through to the backoff curve.
         if date.tzinfo is None:
+            if not _ASCTIME.fullmatch(value):
+                return None
             date = date.replace(tzinfo=UTC)
         # Rounded UP (SPEC section 6 step 2): truncating a sub-second remainder
         # toward zero turned a date 400ms out into 0, which reads as "no usable
