@@ -123,6 +123,15 @@
         "index": 0
       },
       {
+        "type": "requestBody",
+        "expected": {
+          "summary": "Team Meeting",
+          "starts_at": "2026-06-05T06:00:00Z",
+          "ends_at": "2026-06-05T08:30:00Z"
+        },
+        "index": 0
+      },
+      {
         "type": "noError"
       }
     ],

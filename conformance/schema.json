@@ -115,7 +115,7 @@
       "items": {
         "type": "object",
         "required": ["type"],
-        "$comment": "errorRaised is the inverse of noError and takes no `expected`: the dispatch must fail SOMEHOW, without pinning which canonical code. It exists for the malformed-response family (#576), where the six SDKs refuse the same body by six different mechanisms — a hand-written guard in TypeScript/Python/Ruby, and the model decoder in Go/Kotlin/Swift — so no single errorType is assertable. A fixture declaring it also tells the Kotlin and Swift runners that a decoder rejection is the POINT of the case rather than a malformed-fixture bug.",
+        "$comment": "errorRaised is the inverse of noError and takes no `expected`: the dispatch must fail SOMEHOW, without pinning which canonical code. It exists for the malformed-response family (#576), where the six SDKs refuse the same body by six different mechanisms — a hand-written guard in TypeScript/Python/Ruby, and the model decoder in Go/Kotlin/Swift — so no single errorType is assertable. A fixture declaring it also tells the Kotlin and Swift runners that a decoder rejection is the POINT of the case rather than a malformed-fixture bug. The allOf below requires `path` on every path-taking type except requestBody: an absent key, header or field cannot be named without one, and no runner implements a path-less form of those, so requiring it fails the fixture at conformance-fixtures-check with a message naming the field instead of six different crashes downstream (#587). requestBody is the exception because its path-less form IS defined — whole-body equality.",
         "properties": {
           "type": {
             "type": "string",
@@ -157,13 +157,39 @@
           },
           "path": {
             "type": "string",
-            "description": "JSONPath or dot-notation path for nested value assertions. For requestBody / requestBodyAbsent, the key (dot-notation) inside the captured request body."
+            "minLength": 1,
+            "description": "JSONPath or dot-notation path for nested value assertions. For requestBody / requestBodyAbsent, the key (dot-notation) inside the captured request body. Optional for requestBody alone: omitted, `expected` is the WHOLE captured body and must equal it exactly, so a key the SDK added fails rather than passing unseen. Every other path-taking type requires it (the allOf below), so a path-less fixture is rejected here instead of reaching a runner that cannot execute it. Never empty: three runners treat \"\" as an absent path and three as a lookup of the empty key, so minLength keeps that disagreement out of any schema-valid fixture."
           },
           "index": {
             "type": "integer",
             "description": "Request index for per-request assertions: headerPresent / headerAbsent / headerInjected / requestPath / requestMethod / requestBody / requestBodyAbsent (0-based; negative values index from the end, e.g. -1 = last request). Default 0. For delayBetweenRequests it selects a single inter-request GAP (gap i is between request i and i+1); omit it to require the minimum on every gap. A delayBetweenRequests assertion never passes vacuously: a named gap the run did not produce FAILS, an omitted index on a run with no gaps FAILS, and a negative gap index is rejected rather than wrapping to the end — a timing pin exists to catch a dropped backoff, and a dropped backoff is exactly what removes the gap."
           }
-        }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "type": {
+                  "enum": [
+                    "errorField",
+                    "headerAbsent",
+                    "headerInjected",
+                    "headerPresent",
+                    "headerValue",
+                    "requestBodyAbsent",
+                    "responseBody",
+                    "responseMeta"
+                  ]
+                }
+              }
+            },
+            "then": { "required": ["path"] }
+          },
+          {
+            "if": { "properties": { "type": { "const": "requestBody" } } },
+            "then": { "required": ["expected"] }
+          }
+        ]
       }
     },
     "configOverrides": {

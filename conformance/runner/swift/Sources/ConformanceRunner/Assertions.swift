@@ -312,17 +312,29 @@ func evaluateAssertions(
             }
 
         case "requestBody":
+            // `path` names one key; empty, `expected` is the WHOLE body,
+            // compared exactly, so a key the SDK added fails rather than
+            // slipping past.
             let key = assertion.fieldPath
+            let label = key.isEmpty
+                ? "requestBody[\(assertion.requestIndex)]"
+                : "requestBody.\(key)[\(assertion.requestIndex)]"
             guard let idx = resolveRequestIndex(assertion.requestIndex, requestCount) else {
-                return .fail("requestBody.\(key)[\(assertion.requestIndex)]: no request recorded at that index (\(requestCount) requests)")
+                return .fail("\(label): no request recorded at that index (\(requestCount) requests)")
             }
             guard let body = captured[idx].bodyJSON else {
-                return .fail("requestBody.\(key)[\(assertion.requestIndex)]: request has no JSON body")
+                return .fail("\(label): request has no JSON body")
             }
-            guard let actual = body.navigate(key) else {
-                return .fail("requestBody.\(key)[\(assertion.requestIndex)]: key not present in request body")
+            let actual: JSON
+            if key.isEmpty {
+                actual = body
+            } else {
+                guard let navigated = body.navigate(key) else {
+                    return .fail("\(label): key not present in request body")
+                }
+                actual = navigated
             }
-            if let failure = compareJSON("requestBody.\(key)[\(assertion.requestIndex)]", assertion.expected, actual) {
+            if let failure = compareJSON(label, assertion.expected, actual) {
                 return .fail(failure)
             }
 
