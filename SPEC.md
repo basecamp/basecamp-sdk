@@ -747,8 +747,10 @@ status set into the steps above.
 `[CONFLICT: the table is the contract; the SDKs converge on it in two steps. The status gate, the
 rounding rule and the added-jitter defect are converged; the ceiling row is implemented in Go
 (both parsers) and in Rust, and owed by the other five — each still refuses or raises above its own integer width —
-and the sign row is owed by TypeScript, Ruby, Python, Kotlin and Swift. Per-parser inventory and call
-sites in #799 and #775.]`
+and the sign row is owed by TypeScript, Ruby, Python, Kotlin and Swift — Python's by more than the sign:
+its `int()` also admits `_` digit separators and surrounding whitespace, so what it owes is the whole
+`1*DIGIT` gate, and until then `1_000` is honoured as a thousand-second wait rather than falling through
+to backoff. Per-parser inventory and call sites in #799 and #775.]`
 
 ### Retry-After Honouring `[CONFLICT]`
 
