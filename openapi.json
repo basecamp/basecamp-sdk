@@ -9146,7 +9146,8 @@
                 "$ref": "#/components/schemas/UpdateGaugeNeedleRequestContent"
               }
             }
-          }
+          },
+          "required": true
         },
         "parameters": [
           {
@@ -14250,6 +14251,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NotFoundError 404 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundErrorResponseContent"
                 }
               }
             }
@@ -30008,7 +30019,7 @@
           },
           "notify": {
             "type": "string",
-            "description": "Who to notify: \"everyone\", \"working_on\", \"custom\", or omit for nobody"
+            "description": "Who to notify: \"everyone\", \"default\" (the project's existing\nsubscribers), or \"custom\" (the people in `subscriptions`). Omit for\nnobody: bc3 defaults `notify` to \"custom\", which with no `subscriptions`\nnotifies no one, and any unrecognized value (`Subscribers#find_subscribers`\naccepts exactly these three) falls through to nobody as well."
           },
           "subscriptions": {
             "type": "array",
@@ -31637,7 +31648,9 @@
           },
           "previous_needle_position": {
             "type": "integer",
-            "format": "int32"
+            "description": "Emitted alongside the other needle keys (so optional, like them), and\nJSON `null` for a gauge whose only needle is its first — there is no\nprevious position yet. The enhance pass layers `nullable: true` onto the\nOpenAPI so the static SDKs type the value as nullable rather than\nflattening the first needle's null into a real 0.",
+            "format": "int32",
+            "nullable": true
           }
         },
         "required": [
@@ -31732,9 +31745,15 @@
           "position": {
             "type": "integer",
             "format": "int32"
+          },
+          "comment_count": {
+            "type": "integer",
+            "description": "Comment count of the needle: the singular branch-partial key that\ngauges/needles/_needle.json.jbuilder emits unconditionally, distinct from\nthe envelope's plural `comments_count`, which a needle also carries. The\nsame pair SearchResult models.",
+            "format": "int32"
           }
         },
         "required": [
+          "comment_count",
           "created_at",
           "description_attachments",
           "id",
@@ -31767,9 +31786,12 @@
         "properties": {
           "description": {
             "type": "string",
-            "description": "Rich text (HTML) description"
+            "description": "Rich text (HTML) description. Required: it is the only member bc3's\nupdate accepts (`needle_params.except(:color, :position)`), and\n`params.require(:gauge_needle)` rejects an empty wrapper as missing, so a\npayload without it is the same 400 as no wrapper at all."
           }
-        }
+        },
+        "required": [
+          "description"
+        ]
       },
       "GaugeTogglePayload": {
         "type": "object",
@@ -37071,7 +37093,10 @@
           "gauge_needle": {
             "$ref": "#/components/schemas/GaugeNeedleUpdatePayload"
           }
-        }
+        },
+        "required": [
+          "gauge_needle"
+        ]
       },
       "UpdateGaugeNeedleResponseContent": {
         "$ref": "#/components/schemas/GaugeNeedle"

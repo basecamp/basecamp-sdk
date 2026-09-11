@@ -2175,14 +2175,15 @@ module Basecamp
     # GaugeNeedle
     class GaugeNeedle
       include TypeHelpers
-      attr_accessor :created_at, :description_attachments, :id, :updated_at, :app_url, :bookmark_url, :boosts_count, :boosts_url, :bucket, :color, :comments_count, :comments_url, :creator, :description, :inherits_status, :parent, :position, :status, :subscription_url, :title, :type, :url, :visible_to_clients
+      attr_accessor :comment_count, :created_at, :description_attachments, :id, :updated_at, :app_url, :bookmark_url, :boosts_count, :boosts_url, :bucket, :color, :comments_count, :comments_url, :creator, :description, :inherits_status, :parent, :position, :status, :subscription_url, :title, :type, :url, :visible_to_clients
 
       # @return [Array<Symbol>]
       def self.required_fields
-        %i[created_at description_attachments id updated_at].freeze
+        %i[comment_count created_at description_attachments id updated_at].freeze
       end
 
       def initialize(data = {})
+        @comment_count = parse_integer(data["comment_count"])
         @created_at = parse_datetime(data["created_at"])
         @description_attachments = parse_array(data["description_attachments"], "RichTextAttachment")
         @id = parse_integer(data["id"])
@@ -2210,6 +2211,7 @@ module Basecamp
 
       def to_h
         {
+          "comment_count" => @comment_count,
           "created_at" => @created_at,
           "description_attachments" => @description_attachments,
           "id" => @id,
@@ -2274,6 +2276,11 @@ module Basecamp
     class GaugeNeedleUpdatePayload
       include TypeHelpers
       attr_accessor :description
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[description].freeze
+      end
 
       def initialize(data = {})
         @description = data["description"]

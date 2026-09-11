@@ -1,28 +1,15 @@
 {
-  "id": 1069479850,
+  "id": 1069479800,
   "status": "active",
   "visible_to_clients": false,
-  "created_at": "2022-11-28T14:12:00.000Z",
+  "created_at": "2022-11-22T08:40:00.000Z",
   "updated_at": "2022-11-28T14:12:00.000Z",
-  "title": "Moved the needle",
+  "title": "How far along are we?",
   "inherits_status": true,
-  "type": "Gauge::Needle",
-  "url": "https://3.basecampapi.com/999999999/projects/2085958500/gauge/needles/1069479850.json",
-  "app_url": "https://3.basecamp.com/999999999/projects/2085958500/gauge/needles/1069479850",
-  "bookmark_url": "https://3.basecampapi.com/999999999/my/bookmarks/BAh7CEkiCGdpZAY6BkVUSSIuZ2lkOi8vYmMzL1JlY29yZGluZy8xMDY5NDc5ODUwP2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg1yZWFkYWJsZQY7AFRJIg9leHBpcmVzX2F0BjsAVDA=--abcd1234.json",
-  "subscription_url": "https://3.basecampapi.com/999999999/buckets/2085958500/recordings/1069479850/subscription.json",
-  "comments_count": 2,
-  "comment_count": 2,
-  "comments_url": "https://3.basecampapi.com/999999999/buckets/2085958500/recordings/1069479850/comments.json",
-  "boosts_count": 3,
-  "boosts_url": "https://3.basecampapi.com/999999999/buckets/2085958500/recordings/1069479850/boosts.json",
-  "parent": {
-    "id": 1069479800,
-    "title": "How far along are we?",
-    "type": "Gauge",
-    "url": "https://3.basecampapi.com/999999999/projects/2085958500/gauge.json",
-    "app_url": "https://3.basecamp.com/999999999/projects/2085958500/gauge"
-  },
+  "type": "Gauge",
+  "url": "https://3.basecampapi.com/999999999/projects/2085958500/gauge.json",
+  "app_url": "https://3.basecamp.com/999999999/projects/2085958500/gauge",
+  "bookmark_url": "https://3.basecampapi.com/999999999/my/bookmarks/BAh7CEkiCGdpZAY6BkVUSSIuZ2lkOi8vYmMzL1JlY29yZGluZy8xMDY5NDc5ODAwP2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg1yZWFkYWJsZQY7AFRJIg9leHBpcmVzX2F0BjsAVDA=--abcd1234.json",
   "bucket": {
     "id": 2085958500,
     "name": "The Leto Laptop",
@@ -77,6 +64,8 @@
       "thumbnail_url": "https://3.basecampapi.com/999999999/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDA0MQY6BkVU--gauge002/thumbnails/retro-notes.pdf"
     }
   ],
-  "color": "green",
-  "position": 72
+  "enabled": true,
+  "last_needle_color": "green",
+  "last_needle_position": 72,
+  "previous_needle_position": null
 }

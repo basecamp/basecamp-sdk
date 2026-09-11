@@ -24,7 +24,7 @@ class GaugesService(BaseService):
             operation="GetGaugeNeedle",
         )
 
-    def update_gauge_needle(self, *, needle_id: int, gauge_needle: dict | None = None) -> dict[str, Any]:
+    def update_gauge_needle(self, *, needle_id: int, gauge_needle: dict) -> dict[str, Any]:
         """Update a gauge needle's description. Position and color are immutable.
 
         Args:
@@ -96,7 +96,11 @@ class GaugesService(BaseService):
         Args:
             project_id: The project id.
             gauge_needle: The gauge needle.
-            notify: Who to notify: "everyone", "working_on", "custom", or omit for nobody
+            notify: Who to notify: "everyone", "default" (the project's existing subscribers), or
+                "custom" (the people in `subscriptions`). Omit for nobody: bc3 defaults `notify` to
+                "custom", which with no `subscriptions` notifies no one, and any unrecognized value
+                (`Subscribers#find_subscribers` accepts exactly these three) falls through to nobody
+                as well.
             subscriptions: Array of people IDs to notify (only used when notify is "custom")
         """
         return self._request(
@@ -145,7 +149,7 @@ class AsyncGaugesService(AsyncBaseService):
             operation="GetGaugeNeedle",
         )
 
-    async def update_gauge_needle(self, *, needle_id: int, gauge_needle: dict | None = None) -> dict[str, Any]:
+    async def update_gauge_needle(self, *, needle_id: int, gauge_needle: dict) -> dict[str, Any]:
         """Update a gauge needle's description. Position and color are immutable.
 
         Args:
@@ -217,7 +221,11 @@ class AsyncGaugesService(AsyncBaseService):
         Args:
             project_id: The project id.
             gauge_needle: The gauge needle.
-            notify: Who to notify: "everyone", "working_on", "custom", or omit for nobody
+            notify: Who to notify: "everyone", "default" (the project's existing subscribers), or
+                "custom" (the people in `subscriptions`). Omit for nobody: bc3 defaults `notify` to
+                "custom", which with no `subscriptions` notifies no one, and any unrecognized value
+                (`Subscribers#find_subscribers` accepts exactly these three) falls through to nobody
+                as well.
             subscriptions: Array of people IDs to notify (only used when notify is "custom")
         """
         return await self._request(

@@ -2,6 +2,7 @@
 import Foundation
 
 public struct GaugeNeedle: Codable, Sendable {
+    public let commentCount: Int32
     public let createdAt: String
     public let descriptionAttachments: [RichTextAttachment]
     public let id: Int
@@ -27,6 +28,7 @@ public struct GaugeNeedle: Codable, Sendable {
     public var visibleToClients: Bool?
 
     public init(
+        commentCount: Int32,
         createdAt: String,
         descriptionAttachments: [RichTextAttachment],
         id: Int,
@@ -51,6 +53,7 @@ public struct GaugeNeedle: Codable, Sendable {
         url: String? = nil,
         visibleToClients: Bool? = nil
     ) {
+        self.commentCount = commentCount
         self.createdAt = createdAt
         self.descriptionAttachments = descriptionAttachments
         self.id = id

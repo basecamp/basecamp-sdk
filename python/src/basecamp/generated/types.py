@@ -902,7 +902,7 @@ class Gauge(TypedDict):
     inherits_status: NotRequired[bool]
     last_needle_color: NotRequired[str]
     last_needle_position: NotRequired[int]
-    previous_needle_position: NotRequired[int]
+    previous_needle_position: NotRequired[Optional[int]]
     status: NotRequired[str]
     title: NotRequired[str]
     type: NotRequired[str]
@@ -918,6 +918,7 @@ class GaugeNeedle(TypedDict):
     boosts_url: NotRequired[str]
     bucket: NotRequired[RecordingBucket]
     color: NotRequired[str]
+    comment_count: int
     comments_count: NotRequired[int]
     comments_url: NotRequired[str]
     created_at: str
@@ -944,7 +945,7 @@ class GaugeNeedlePayload(TypedDict):
 
 
 class GaugeNeedleUpdatePayload(TypedDict):
-    description: NotRequired[str]
+    description: str
 
 
 class GaugeTogglePayload(TypedDict):
@@ -2122,7 +2123,7 @@ class UpdateFolderRequestContent(TypedDict):
 
 
 class UpdateGaugeNeedleRequestContent(TypedDict):
-    gauge_needle: NotRequired[GaugeNeedleUpdatePayload]
+    gauge_needle: GaugeNeedleUpdatePayload
 
 
 class UpdateGoogleDocumentRequestContent(TypedDict):

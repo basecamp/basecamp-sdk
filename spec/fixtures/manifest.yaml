@@ -321,16 +321,22 @@ targets:
     fixture: gauges/get.json
     pointer: ""
     schema: Gauge
+  # The first-needle variant: the same has-needles partial, with
+  # previous_needle_position JSON null because there is no earlier needle to
+  # have moved from (doc/api/sections/gauges.md shows it). Pins that the
+  # member is nullable-when-present in the projection.
+  - id: gauge-get-first-needle
+    fixture: gauges/get_first_needle.json
+    pointer: ""
+    schema: Gauge
   # gauges/needles/_needle.json.jbuilder renders the base partial WITH
   # commentable + boostable, then rich text, color, and position. `url`/`app_url`
   # are the project_gauge_needle route (Gauge::Needle#route) while the envelope's
   # subscription/comments/boosts URLs stay bucket_recording_*-scoped, and `title`
   # is the model's fixed "Moved the needle".
-  # KNOWN INCOMPLETE: bc3 also emits a singular `comment_count` unconditionally
-  # (_needle.json.jbuilder:8), distinct from the envelope's `comments_count`.
-  # GaugeNeedle does not model it — SearchResult already does — so the fixture
-  # cannot carry it until the spec does. Tracked in the follow-up issue filed
-  # alongside this manifest note.
+  # bc3 also emits a singular `comment_count` unconditionally
+  # (_needle.json.jbuilder:8), distinct from the envelope's `comments_count`;
+  # the fixture carries both, as a needle does.
   - id: gauge-needle-get
     fixture: gauges/needle_get.json
     pointer: ""

@@ -607,7 +607,7 @@ data class ListForwardsOptions(
 
 /** Request body for UpdateGaugeNeedle. */
 data class UpdateGaugeNeedleBody(
-    val gaugeNeedle: JsonObject? = null
+    val gaugeNeedle: JsonObject
 )
 
 /** Request body for ToggleGauge. */

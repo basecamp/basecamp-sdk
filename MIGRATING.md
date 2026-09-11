@@ -22,6 +22,70 @@ service surface, retry, pagination, hooks, structured errors, OAuth, and
 webhook verification; ETag caching and the §23 Event Feed connector are
 follow-ups. See [`rust/basecamp-sdk/README.md`](rust/basecamp-sdk/README.md).
 
+### Gauges: `UpdateGaugeNeedle` requires its payload, `GaugeNeedle` gains a required `comment_count`, and Go's `Gauge.PreviousNeedlePosition` is a pointer (#731)
+
+Five drifts between the gauges spec and what bc3 serves, in one PR. Three
+are source-breaking.
+
+- **`gauge_needle`, and its `description`, are required on
+  `UpdateGaugeNeedle`.** bc3's `needle_params` opens with
+  `params.require(:gauge_needle)`, which rejects a missing wrapper and an
+  empty one alike, and `description` is the only member the update accepts —
+  so a body without either was always a 400, never a no-op; the spec just
+  let you send one. What changes per SDK:
+  - TypeScript: `updateGaugeNeedle(id, { gaugeNeedle: { description } })`
+    types both members required, and a missing `gaugeNeedle` is refused
+    before the wire as a `validation` error.
+  - Python and Ruby: `update_gauge_needle(needle_id=, gauge_needle=)` /
+    `update_gauge_needle(needle_id:, gauge_needle:)` drop the `None` / `nil`
+    default, so an **omitted** argument is a signature error. An explicit
+    `None` / `nil` is still compacted off the body and gets the server's 400,
+    as before; the dict-shaped SDKs do no runtime validation of the payload.
+  - Kotlin: `UpdateGaugeNeedleBody(gaugeNeedle)` takes a non-null
+    `JsonObject`.
+  - Swift: `UpdateGaugeNeedleRequest(gaugeNeedle:)` takes a non-optional
+    `GaugeNeedleUpdatePayload`, whose initializer is now
+    `init(description:)` with no default.
+  - Go: `UpdateGaugeNeedleRequest.Description` stays `*string`, but `nil` is
+    refused before the request as a usage error; it never left the
+    description untouched, it produced the 400.
+  - Rust: `UpdateGaugeNeedleRequestContent { gauge_needle }` (re-exported
+    from the crate's `types` module) takes a
+    `GaugeNeedleUpdatePayload` rather than an `Option`, and its
+    `description` is a `String` rather than an `Option<String>`.
+- **`GaugeNeedle.comment_count` is required.** bc3 emits the singular key
+  unconditionally (distinct from the envelope's plural `comments_count`), so
+  the spec models it `@required`: Swift's public `GaugeNeedle` initializer
+  gains a required `commentCount:` parameter, TypeScript's and Python's
+  model types gain a required member, Go's `GaugeNeedle` gains
+  `CommentCount int32`, and Rust's gains `comment_count: i32`. Code that
+  constructs these values by hand has to supply it; code that decodes them
+  from the wire gets it for free.
+- **Go: `Gauge.PreviousNeedlePosition` is `*int32`, not `int32`.** bc3 emits
+  the key as JSON `null` for a gauge whose only needle is its first, and the
+  value type decoded that to `0` — the same value as a genuine move from
+  position 0. `nil` now means "no previous position". Value-receiver methods
+  do not help here; dereference after a nil check:
+
+  ```go
+  // Before
+  moved := g.PreviousNeedlePosition != g.LastNeedlePosition
+
+  // After
+  moved := g.PreviousNeedlePosition != nil && *g.PreviousNeedlePosition != g.LastNeedlePosition
+  ```
+
+  The OpenAPI member is `nullable: true` now, so TypeScript types it
+  `number | null | undefined` and Python's `Gauge` TypedDict types it
+  `NotRequired[Optional[int]]` — a key-presence check no longer narrows it to
+  `int`, so check for `None` too. Kotlin, Swift and Rust already typed it
+  optional.
+
+Not breaking, in the same PR: `ToggleGauge` declares `NotFoundError` for an
+unknown project, and the `notify` documentation on `CreateGaugeNeedle`
+names the values bc3 actually accepts — `everyone`, `default`, `custom` —
+where it used to name a `working_on` that silently notified nobody.
+
 ---
 
 # v0.18.0

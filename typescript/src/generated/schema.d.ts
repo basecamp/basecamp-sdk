@@ -4288,7 +4288,13 @@ export interface components {
         CreateFolderResponseContent: components["schemas"]["FolderWithProjects"];
         CreateGaugeNeedleRequestContent: {
             gauge_needle: components["schemas"]["GaugeNeedlePayload"];
-            /** @description Who to notify: "everyone", "working_on", "custom", or omit for nobody */
+            /**
+             * @description Who to notify: "everyone", "default" (the project's existing
+             *     subscribers), or "custom" (the people in `subscriptions`). Omit for
+             *     nobody: bc3 defaults `notify` to "custom", which with no `subscriptions`
+             *     notifies no one, and any unrecognized value (`Subscribers#find_subscribers`
+             *     accepts exactly these three) falls through to nobody as well.
+             */
             notify?: string;
             /** @description Array of people IDs to notify (only used when notify is "custom") */
             subscriptions?: number[];
@@ -4903,8 +4909,15 @@ export interface components {
             last_needle_color?: string;
             /** Format: int32 */
             last_needle_position?: number;
-            /** Format: int32 */
-            previous_needle_position?: number;
+            /**
+             * Format: int32
+             * @description Emitted alongside the other needle keys (so optional, like them), and
+             *     JSON `null` for a gauge whose only needle is its first — there is no
+             *     previous position yet. The enhance pass layers `nullable: true` onto the
+             *     OpenAPI so the static SDKs type the value as nullable rather than
+             *     flattening the first needle's null into a real 0.
+             */
+            previous_needle_position?: number | null;
         };
         GaugeNeedle: {
             /** Format: int64 */
@@ -4934,6 +4947,14 @@ export interface components {
             color?: string;
             /** Format: int32 */
             position?: number;
+            /**
+             * Format: int32
+             * @description Comment count of the needle: the singular branch-partial key that
+             *     gauges/needles/_needle.json.jbuilder emits unconditionally, distinct from
+             *     the envelope's plural `comments_count`, which a needle also carries. The
+             *     same pair SearchResult models.
+             */
+            comment_count: number;
         };
         GaugeNeedlePayload: {
             /**
@@ -4947,8 +4968,13 @@ export interface components {
             description?: string;
         };
         GaugeNeedleUpdatePayload: {
-            /** @description Rich text (HTML) description */
-            description?: string;
+            /**
+             * @description Rich text (HTML) description. Required: it is the only member bc3's
+             *     update accepts (`needle_params.except(:color, :position)`), and
+             *     `params.require(:gauge_needle)` rejects an empty wrapper as missing, so a
+             *     payload without it is the same 400 as no wrapper at all.
+             */
+            description: string;
         };
         GaugeTogglePayload: {
             enabled: boolean;
@@ -7220,7 +7246,7 @@ export interface components {
         };
         UpdateFolderResponseContent: components["schemas"]["FolderWithProjects"];
         UpdateGaugeNeedleRequestContent: {
-            gauge_needle?: components["schemas"]["GaugeNeedleUpdatePayload"];
+            gauge_needle: components["schemas"]["GaugeNeedleUpdatePayload"];
         };
         UpdateGaugeNeedleResponseContent: components["schemas"]["GaugeNeedle"];
         UpdateGoogleDocumentRequestContent: {
@@ -13107,7 +13133,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: {
+        requestBody: {
             content: {
                 "application/json": components["schemas"]["UpdateGaugeNeedleRequestContent"];
             };
@@ -16306,6 +16332,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
                 };
             };
             /** @description RateLimitError 429 response */

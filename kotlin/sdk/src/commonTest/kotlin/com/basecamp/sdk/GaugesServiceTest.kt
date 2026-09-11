@@ -122,6 +122,7 @@ class GaugesServiceTest {
         "bookmark_url": "https://3.basecampapi.com/$accountId/my/bookmarks/BAh7CEkiCGdpZAY6BkVU--abcd1234.json",
         "subscription_url": "https://3.basecampapi.com/$accountId/buckets/$projectId/recordings/$id/subscription.json",
         "comments_count": 2,
+        "comment_count": 2,
         "comments_url": "https://3.basecampapi.com/$accountId/buckets/$projectId/recordings/$id/comments.json",
         "boosts_count": 3,
         "boosts_url": "https://3.basecampapi.com/$accountId/buckets/$projectId/recordings/$id/boosts.json",
@@ -650,27 +651,6 @@ class GaugesServiceTest {
         assertEquals("<div>Revised note</div>", wrapped["description"]!!.jsonPrimitive.content)
 
         assertEquals(needleId, needle["id"]!!.jsonPrimitive.content.toLong())
-
-        client.close()
-    }
-
-    @Test
-    fun updateGaugeNeedleOmitsTheWrapperEntirelyWhenNoAttributesAreGiven() = runTest {
-        var capturedBody: String? = null
-
-        val client = mockClient { request ->
-            capturedBody = request.body.toByteArray().decodeToString()
-            respond(
-                content = needleJson(),
-                status = HttpStatusCode.OK,
-                headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
-            )
-        }
-
-        client.forAccount(accountId).gauges.updateGaugeNeedle(needleId, UpdateGaugeNeedleBody())
-
-        val body = json.parseToJsonElement(capturedBody!!).jsonObject
-        assertTrue(body.isEmpty(), "a null gaugeNeedle sends no wrapper at all; got $capturedBody")
 
         client.close()
     }

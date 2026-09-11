@@ -144,42 +144,44 @@ func TestUpdateHillChartSettings_NilOmitsAndEmptyTransmits(t *testing.T) {
 	}
 }
 
-// UpdateNeedle's Description is tri-state: nil leaves it alone, a pointer to
-// "" clears it. A plain string could not express the clear.
-func TestUpdateGaugeNeedle_DescriptionIsTriState(t *testing.T) {
-	capture := func(desc *string) (map[string]any, bool) {
-		t.Helper()
-		var got map[string]any
-		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			_ = json.NewDecoder(r.Body).Decode(&got)
-			w.Header().Set("Content-Type", "application/json")
-			_, _ = w.Write([]byte(`{"id":1,"type":"Gauge::Needle"}`))
-		}))
-		t.Cleanup(srv.Close)
+// UpdateNeedle's Description is required: bc3 rejects an empty gauge_needle
+// wrapper as missing, and description is the only member the update accepts,
+// so nil is refused before the request rather than sent as the 400 it always
+// was. A pointer to "" is a real value and clears the description.
+func TestUpdateGaugeNeedle_DescriptionIsRequired(t *testing.T) {
+	requests := 0
+	var got map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests++
+		_ = json.NewDecoder(r.Body).Decode(&got)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"id":1,"type":"Gauge::Needle","description_attachments":[],"comment_count":0}`))
+	}))
+	t.Cleanup(srv.Close)
 
-		cfg := DefaultConfig()
-		cfg.BaseURL = srv.URL
-		svc := NewClient(cfg, &StaticTokenProvider{Token: "test-token"}).ForAccount("99999").Gauges()
-		if _, err := svc.UpdateNeedle(context.Background(), 1, &UpdateGaugeNeedleRequest{Description: desc}); err != nil {
-			t.Fatalf("UpdateNeedle: %v", err)
-		}
-		needle, _ := got["gauge_needle"].(map[string]any)
-		v, present := needle["description"]
-		if !present {
-			return nil, false
-		}
-		return map[string]any{"description": v}, true
+	cfg := DefaultConfig()
+	cfg.BaseURL = srv.URL
+	svc := NewClient(cfg, &StaticTokenProvider{Token: "test-token"}).ForAccount("99999").Gauges()
+
+	_, err := svc.UpdateNeedle(context.Background(), 1, &UpdateGaugeNeedleRequest{Description: nil})
+	var sdkErr *Error
+	if !errors.As(err, &sdkErr) || sdkErr.Code != CodeUsage {
+		t.Fatalf("expected a usage error for a nil Description, got %v", err)
+	}
+	if requests != 0 {
+		t.Fatalf("a nil Description must be refused before the wire; %d request(s) were made", requests)
 	}
 
-	if _, present := capture(nil); present {
-		t.Error("nil Description must be omitted (no change)")
+	if _, err := svc.UpdateNeedle(context.Background(), 1, &UpdateGaugeNeedleRequest{Description: ptr("")}); err != nil {
+		t.Fatalf("UpdateNeedle: %v", err)
 	}
-	body, present := capture(ptr(""))
+	needle, _ := got["gauge_needle"].(map[string]any)
+	v, present := needle["description"]
 	if !present {
 		t.Fatal(`Description: ptr("") must reach the wire to clear the description`)
 	}
-	if body["description"] != "" {
-		t.Errorf(`expected an explicit empty string, got %#v`, body["description"])
+	if v != "" {
+		t.Errorf(`expected an explicit empty string, got %#v`, v)
 	}
 }
 
