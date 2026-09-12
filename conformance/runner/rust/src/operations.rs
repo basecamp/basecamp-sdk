@@ -257,6 +257,42 @@ async fn dispatch(account: &AccountClient, case: &TestCase) -> Result<Outcome, E
             let card_table = account.templates().create_library_card_table(&request).await?;
             Ok(Outcome::Json(summarize_card_table(&card_table)))
         }
+        "CreateTemplateLibraryTodolist" => {
+            let request = CreateTemplateLibraryTodolistRequestContent {
+                name: string_param(body, "name"),
+                description: optional_string_param(body, "description"),
+            };
+            let todolist = account.templates().create_library_todolist(&request).await?;
+            Ok(Outcome::Json(summarize_todolist(&todolist)))
+        }
+        "CreateTemplatification" => {
+            let request = CreateTemplatificationRequestContent {
+                template_name: optional_string_param(body, "template_name"),
+                copy_comments: optional_bool_param(body, "copy_comments"),
+                copy_assignments: optional_bool_param(body, "copy_assignments"),
+                move_cards_to_triage: optional_bool_param(body, "move_cards_to_triage"),
+            };
+            let templatification = account
+                .templates()
+                .create_templatification(
+                    exact_int64(path, "bucketId")?,
+                    exact_int64(path, "recordingId")?,
+                    &request,
+                )
+                .await?;
+            Ok(Outcome::Json(summarize_templatification(&templatification)))
+        }
+        "GetTemplatification" => {
+            let templatification = account
+                .templates()
+                .get_templatification(
+                    exact_int64(path, "bucketId")?,
+                    exact_int64(path, "recordingId")?,
+                    exact_int64(path, "templatificationId")?,
+                )
+                .await?;
+            Ok(Outcome::Json(summarize_templatification(&templatification)))
+        }
         "CreateTemplateLibraryCopy" => {
             let request = CreateTemplateLibraryCopyRequestContent {
                 template_recording_id: exact_int64(body, "template_recording_id")?,
@@ -1322,6 +1358,21 @@ fn summarize_template_library_copy(copy: &TemplateLibraryCopy) -> Value {
         summary["destination_card_table_id"] = json!(card_table.id);
     }
     summary
+}
+
+fn summarize_templatification(templatification: &Templatification) -> Value {
+    let mut summary = json!({ "id": templatification.id, "status": templatification.status });
+    if let Some(todolist) = &templatification.destination_todolist {
+        summary["destination_todolist_id"] = json!(todolist.id);
+    }
+    if let Some(card_table) = &templatification.destination_card_table {
+        summary["destination_card_table_id"] = json!(card_table.id);
+    }
+    summary
+}
+
+fn summarize_todolist(todolist: &Todolist) -> Value {
+    json!({ "id": todolist.id, "title": todolist.title })
 }
 
 fn summarize_upcoming(result: &GetUpcomingScheduleResponseContent) -> Value {
