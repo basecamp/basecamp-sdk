@@ -348,6 +348,52 @@
       }
     },
     {
+      "pattern": "/{accountId}/buckets/{bucketId}/recordings/{recordingId}/templatifications",
+      "resource": "Templates",
+      "operations": {
+        "POST": "CreateTemplatification"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "bucketId": {
+          "role": "parent",
+          "type": "int64"
+        },
+        "recordingId": {
+          "role": "parent",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/buckets/{bucketId}/recordings/{recordingId}/templatifications/{templatificationId}",
+      "resource": "Templates",
+      "operations": {
+        "GET": "GetTemplatification"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "bucketId": {
+          "role": "parent",
+          "type": "int64"
+        },
+        "recordingId": {
+          "role": "parent",
+          "type": "int64"
+        },
+        "templatificationId": {
+          "role": "recording",
+          "type": "int64"
+        }
+      }
+    },
+    {
       "pattern": "/{accountId}/buckets/{bucketId}/todosets/{todosetId}/todos",
       "resource": "Todos",
       "operations": {
@@ -2573,7 +2619,8 @@
       "pattern": "/{accountId}/template_library/todolists",
       "resource": "Templates",
       "operations": {
-        "GET": "GetTemplateLibraryTodolists"
+        "GET": "GetTemplateLibraryTodolists",
+        "POST": "CreateTemplateLibraryTodolist"
       },
       "params": {
         "accountId": {

@@ -1034,6 +1034,14 @@ data class RepositionSubtaskBody(
     val position: Int
 )
 
+/** Request body for CreateTemplatification. */
+data class CreateTemplatificationBody(
+    val templateName: String? = null,
+    val copyComments: Boolean? = null,
+    val copyAssignments: Boolean? = null,
+    val moveCardsToTriage: Boolean? = null
+)
+
 /** Request body for CreateTemplateLibraryCardTable. */
 data class CreateTemplateLibraryCardTableBody(
     val name: String
@@ -1045,6 +1053,12 @@ data class CreateTemplateLibraryCopyBody(
     val destinationProjectId: Long? = null,
     val destinationParentId: Long? = null,
     val addingPeopleConfirmed: Boolean? = null
+)
+
+/** Request body for CreateTemplateLibraryTodolist. */
+data class CreateTemplateLibraryTodolistBody(
+    val name: String,
+    val description: String? = null
 )
 
 /** Options for ListTemplates. */

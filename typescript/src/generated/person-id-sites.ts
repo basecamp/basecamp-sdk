@@ -86,6 +86,17 @@ export const PERSON_ID_SITES: Readonly<Record<string, readonly string[]>> = {
     "destination_card_table.wormholes.[].creator",
     "destination_todolist.creator"
   ],
+  "CreateTemplateLibraryTodolist": [
+    "creator"
+  ],
+  "CreateTemplatification": [
+    "destination_card_table.creator",
+    "destination_card_table.lists.[].creator",
+    "destination_card_table.lists.[].subscribers.[]",
+    "destination_card_table.subscribers.[]",
+    "destination_card_table.wormholes.[].creator",
+    "destination_todolist.creator"
+  ],
   "CreateTimesheetEntry": [
     "creator",
     "person"
@@ -449,6 +460,14 @@ export const PERSON_ID_SITES: Readonly<Record<string, readonly string[]>> = {
   ],
   "GetTemplateLibraryTodolists": [
     "todolists.[].creator"
+  ],
+  "GetTemplatification": [
+    "destination_card_table.creator",
+    "destination_card_table.lists.[].creator",
+    "destination_card_table.lists.[].subscribers.[]",
+    "destination_card_table.subscribers.[]",
+    "destination_card_table.wormholes.[].creator",
+    "destination_todolist.creator"
   ],
   "GetTimesheetEntry": [
     "creator",

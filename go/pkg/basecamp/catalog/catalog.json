@@ -1963,6 +1963,126 @@
       "bodyRequired": true
     },
     {
+      "operationId": "CreateTemplateLibraryTodolist",
+      "tag": "Templates",
+      "method": "POST",
+      "path": "/{accountId}/template_library/todolists.json",
+      "doc": "Create an empty to-do list template",
+      "readonly": false,
+      "idempotent": false,
+      "retry": {
+        "max": 2,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      },
+      "params": [
+        {
+          "name": "accountId",
+          "in": "path",
+          "required": true,
+          "description": "Basecamp account ID (numeric string)",
+          "schema": {
+            "description": "Basecamp account ID (numeric string)",
+            "pattern": "^[0-9]+$",
+            "type": "string"
+          }
+        }
+      ],
+      "body": {
+        "properties": {
+          "description": {
+            "description": "Rich text describing the template.",
+            "type": "string"
+          },
+          "name": {
+            "description": "What to call the template.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "type": "object"
+      },
+      "bodyRequired": true
+    },
+    {
+      "operationId": "CreateTemplatification",
+      "tag": "Templates",
+      "method": "POST",
+      "path": "/{accountId}/buckets/{bucketId}/recordings/{recordingId}/templatifications.json",
+      "doc": "Templatify a to-do list or card table",
+      "readonly": false,
+      "idempotent": false,
+      "retry": {
+        "max": 2,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      },
+      "params": [
+        {
+          "name": "accountId",
+          "in": "path",
+          "required": true,
+          "description": "Basecamp account ID (numeric string)",
+          "schema": {
+            "description": "Basecamp account ID (numeric string)",
+            "pattern": "^[0-9]+$",
+            "type": "string"
+          }
+        },
+        {
+          "name": "bucketId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        {
+          "name": "recordingId",
+          "in": "path",
+          "required": true,
+          "description": "The to-do list or card table to templatify. Anything else is a 403.",
+          "schema": {
+            "description": "The to-do list or card table to templatify. Anything else is a 403.",
+            "format": "int64",
+            "type": "integer"
+          }
+        }
+      ],
+      "body": {
+        "properties": {
+          "copy_assignments": {
+            "description": "Carry assignees and the people involved across, adding them to the library\nif they are not already there.",
+            "type": "boolean"
+          },
+          "copy_comments": {
+            "description": "Carry the comments across.",
+            "type": "boolean"
+          },
+          "move_cards_to_triage": {
+            "description": "Gather the cards into Triage. Card tables only, and ignored otherwise.",
+            "type": "boolean"
+          },
+          "template_name": {
+            "description": "What to call the template. Defaults to the source recording's own title.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    {
       "operationId": "CreateTimesheetEntry",
       "tag": "Schedule",
       "method": "POST",
@@ -7266,6 +7386,64 @@
             "description": "Basecamp account ID (numeric string)",
             "pattern": "^[0-9]+$",
             "type": "string"
+          }
+        }
+      ]
+    },
+    {
+      "operationId": "GetTemplatification",
+      "tag": "Templates",
+      "method": "GET",
+      "path": "/{accountId}/buckets/{bucketId}/recordings/{recordingId}/templatifications/{templatificationId}",
+      "doc": "Get a templatification",
+      "readonly": true,
+      "idempotent": false,
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      },
+      "params": [
+        {
+          "name": "accountId",
+          "in": "path",
+          "required": true,
+          "description": "Basecamp account ID (numeric string)",
+          "schema": {
+            "description": "Basecamp account ID (numeric string)",
+            "pattern": "^[0-9]+$",
+            "type": "string"
+          }
+        },
+        {
+          "name": "bucketId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        {
+          "name": "recordingId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        {
+          "name": "templatificationId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "format": "int64",
+            "type": "integer"
           }
         }
       ]

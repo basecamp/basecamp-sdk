@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-09-30T15:25:05Z
+# Generated: 2026-09-30T15:30:19Z
 
 require "json"
 require "time"
@@ -4637,6 +4637,41 @@ module Basecamp
           "bucket" => @bucket,
           "todolists" => @todolists,
           "todoset" => @todoset,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # Templatification
+    class Templatification
+      include TypeHelpers
+      attr_accessor :id, :source_recording_id, :status, :url, :destination_card_table, :destination_todolist
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[id source_recording_id status url].freeze
+      end
+
+      def initialize(data = {})
+        @id = parse_integer(data["id"])
+        @source_recording_id = parse_integer(data["source_recording_id"])
+        @status = data["status"]
+        @url = data["url"]
+        @destination_card_table = parse_type(data["destination_card_table"], "CardTable")
+        @destination_todolist = parse_type(data["destination_todolist"], "Todolist")
+      end
+
+      def to_h
+        {
+          "id" => @id,
+          "source_recording_id" => @source_recording_id,
+          "status" => @status,
+          "url" => @url,
+          "destination_card_table" => @destination_card_table,
+          "destination_todolist" => @destination_todolist,
         }.compact
       end
 

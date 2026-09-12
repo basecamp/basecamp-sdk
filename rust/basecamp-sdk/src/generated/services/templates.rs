@@ -80,6 +80,20 @@ impl<'a> TemplatesService<'a> {
         self.client.send(operation).await
     }
 
+    /// Create an empty to-do list template
+    ///
+    /// `POST /template_library/todolists.json` — not idempotent, sent exactly once.
+    pub async fn create_library_todolist(
+        &self,
+        body: &CreateTemplateLibraryTodolistRequestContent,
+    ) -> Result<CreateTemplateLibraryTodolistResponseContent, Error> {
+        let mut operation = self
+            .client
+            .operation(&routes::CREATE_TEMPLATE_LIBRARY_TODOLIST, &[]);
+        operation.json(body)?;
+        self.client.send(operation).await
+    }
+
     /// Create a project from a template (asynchronous)
     ///
     /// `POST /templates/{templateId}/project_constructions.json` — not idempotent, sent exactly once.
@@ -91,6 +105,23 @@ impl<'a> TemplatesService<'a> {
         let mut operation = self
             .client
             .operation(&routes::CREATE_PROJECT_FROM_TEMPLATE, &[&template_id]);
+        operation.json(body)?;
+        self.client.send(operation).await
+    }
+
+    /// Templatify a to-do list or card table
+    ///
+    /// `POST /buckets/{bucketId}/recordings/{recordingId}/templatifications.json` — not idempotent, sent exactly once.
+    pub async fn create_templatification(
+        &self,
+        bucket_id: i64,
+        recording_id: i64,
+        body: &CreateTemplatificationRequestContent,
+    ) -> Result<CreateTemplatificationResponseContent, Error> {
+        let mut operation = self.client.operation(
+            &routes::CREATE_TEMPLATIFICATION,
+            &[&bucket_id, &recording_id],
+        );
         operation.json(body)?;
         self.client.send(operation).await
     }
@@ -164,6 +195,22 @@ impl<'a> TemplatesService<'a> {
         let operation = self
             .client
             .operation(&routes::GET_TEMPLATE_LIBRARY_TODOLISTS, &[]);
+        self.client.send(operation).await
+    }
+
+    /// Get a templatification
+    ///
+    /// `GET /buckets/{bucketId}/recordings/{recordingId}/templatifications/{templatificationId}` — idempotent; retries up to 3 attempt(s) on 429, 503.
+    pub async fn get_templatification(
+        &self,
+        bucket_id: i64,
+        recording_id: i64,
+        templatification_id: i64,
+    ) -> Result<GetTemplatificationResponseContent, Error> {
+        let operation = self.client.operation(
+            &routes::GET_TEMPLATIFICATION,
+            &[&bucket_id, &recording_id, &templatification_id],
+        );
         self.client.send(operation).await
     }
 

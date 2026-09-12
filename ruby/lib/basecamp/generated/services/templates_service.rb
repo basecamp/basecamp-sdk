@@ -7,6 +7,32 @@ module Basecamp
     # @generated from OpenAPI spec
     class TemplatesService < BaseService
 
+      # Templatify a to-do list or card table
+      # @param bucket_id [Integer] bucket id ID
+      # @param recording_id [Integer] The to-do list or card table to templatify. Anything else is a 403.
+      # @param template_name [String, nil] What to call the template. Defaults to the source recording's own title.
+      # @param copy_comments [Boolean, nil] Carry the comments across.
+      # @param copy_assignments [Boolean, nil] Carry assignees and the people involved across, adding them to the library
+      #   if they are not already there.
+      # @param move_cards_to_triage [Boolean, nil] Gather the cards into Triage. Card tables only, and ignored otherwise.
+      # @return [Hash] response data
+      def create_templatification(bucket_id:, recording_id:, template_name: nil, copy_comments: nil, copy_assignments: nil, move_cards_to_triage: nil)
+        with_operation(service: "templates", operation: "create_templatification", is_mutation: true, project_id: bucket_id, resource_id: recording_id) do
+          http_post("/buckets/#{bucket_id}/recordings/#{recording_id}/templatifications.json", body: compact_params(template_name: template_name, copy_comments: copy_comments, copy_assignments: copy_assignments, move_cards_to_triage: move_cards_to_triage)).json(operation: "CreateTemplatification")
+        end
+      end
+
+      # Get a templatification
+      # @param bucket_id [Integer] bucket id ID
+      # @param recording_id [Integer] recording id ID
+      # @param templatification_id [Integer] templatification id ID
+      # @return [Hash] response data
+      def get_templatification(bucket_id:, recording_id:, templatification_id:)
+        with_operation(service: "templates", operation: "get_templatification", is_mutation: false, project_id: bucket_id, resource_id: templatification_id) do
+          http_get("/buckets/#{bucket_id}/recordings/#{recording_id}/templatifications/#{templatification_id}", operation: "GetTemplatification").json(operation: "GetTemplatification")
+        end
+      end
+
       # Get the account's card table templates
       # @return [Hash] response data
       def get_library_card_tables()
@@ -55,6 +81,16 @@ module Basecamp
       def get_library_todolists()
         with_operation(service: "templates", operation: "get_library_todolists", is_mutation: false) do
           http_get("/template_library/todolists.json", operation: "GetTemplateLibraryTodolists").json(operation: "GetTemplateLibraryTodolists")
+        end
+      end
+
+      # Create an empty to-do list template
+      # @param name [String] What to call the template.
+      # @param description [String, nil] Rich text describing the template.
+      # @return [Hash] response data
+      def create_library_todolist(name:, description: nil)
+        with_operation(service: "templates", operation: "create_library_todolist", is_mutation: true) do
+          http_post("/template_library/todolists.json", body: compact_params(name: name, description: description)).json(operation: "CreateTemplateLibraryTodolist")
         end
       end
 

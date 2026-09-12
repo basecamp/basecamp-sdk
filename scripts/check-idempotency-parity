@@ -134,6 +134,9 @@ jq -r '.operations | to_entries[] | select(.value.idempotent == true or .value.r
 # Template Library absorption (+5 ops): GetTemplateLibraryTodolists,
 # GetTemplateLibraryCardTables and GetTemplateLibraryCopy are readonly (+3 union
 # only); CreateTemplateLibraryCardTable and CreateTemplateLibraryCopy are neither.
+# Saving work as a template (+3 ops): GetTemplatification is readonly (+1 union
+# only); CreateTemplateLibraryTodolist and CreateTemplatification each create on
+# every call, so neither is naturally idempotent.
 # Project client users absorption (+3 ops): UpdateProjectClientAccess is a
 # naturally idempotent PUT (all-or-nothing; a replay re-asks the same question),
 # and EnableProjectClients' POST and DisableProjectClients' DELETE toggle a
@@ -148,7 +151,7 @@ jq -r '.operations | to_entries[] | select(.value.idempotent == true or .value.r
 # UpdateSubtask, RepositionSubtask, UncompleteSubtask and DeleteSubtask are PUT/DELETE
 # and CompleteSubtask is a naturally idempotent POST (+5 each).
 expected_idempotent=97
-expected_union=230
+expected_union=231
 nIdempotent=$(wc -l < "$WORK/idempotentSet" | tr -d ' ')
 nUnion=$(wc -l < "$WORK/unionSet" | tr -d ' ')
 echo "    source of truth: $nIdempotent idempotent, $nUnion idempotent∪readonly"

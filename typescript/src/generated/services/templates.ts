@@ -16,8 +16,25 @@ import { Errors } from "../../errors.js";
 
 /** CardTable entity from the Basecamp API. */
 export type CardTable = components["schemas"]["CardTable"];
+/** Todolist entity from the Basecamp API. */
+export type Todolist = components["schemas"]["Todolist"];
 /** Template entity from the Basecamp API. */
 export type Template = components["schemas"]["Template"];
+
+/**
+ * Request parameters for createTemplatification.
+ */
+export interface CreateTemplatificationTemplateRequest {
+  /** What to call the template. Defaults to the source recording's own title. */
+  templateName?: string;
+  /** Carry the comments across. */
+  copyComments?: boolean;
+  /** Carry assignees and the people involved across, adding them to the library
+if they are not already there. */
+  copyAssignments?: boolean;
+  /** Gather the cards into Triage. Card tables only, and ignored otherwise. */
+  moveCardsToTriage?: boolean;
+}
 
 /**
  * Request parameters for createLibraryCardTable.
@@ -44,6 +61,16 @@ table. A caller who may not edit it gets 404, not 403. */
   destinationParentId?: number;
   /** Confirm granting destination-project access to people referenced by the template. */
   addingPeopleConfirmed?: boolean;
+}
+
+/**
+ * Request parameters for createLibraryTodolist.
+ */
+export interface CreateLibraryTodolistTemplateRequest {
+  /** What to call the template. */
+  name: string;
+  /** Rich text describing the template. */
+  description?: string;
 }
 
 /**
@@ -93,6 +120,78 @@ export interface CreateProjectTemplateRequest {
  * Service for Templates operations.
  */
 export class TemplatesService extends BaseService {
+
+  /**
+   * Templatify a to-do list or card table
+   * @param bucketId - The bucket ID
+   * @param recordingId - The to-do list or card table to templatify. Anything else is a 403.
+   * @param req - Templatification creation parameters
+   * @returns The templatification
+   * @throws {BasecampError} If required fields are missing or invalid
+   *
+   * @example
+   * ```ts
+   * const result = await client.templates.createTemplatification(123, 123, { });
+   * ```
+   */
+  async createTemplatification(bucketId: number, recordingId: number, req: CreateTemplatificationTemplateRequest): Promise<components["schemas"]["CreateTemplatificationResponseContent"]> {
+    const response = await this.request(
+      {
+        service: "Templates",
+        operation: "CreateTemplatification",
+        resourceType: "templatification",
+        isMutation: true,
+        projectId: bucketId,
+        resourceId: recordingId,
+      },
+      () =>
+        this.client.POST("/buckets/{bucketId}/recordings/{recordingId}/templatifications.json", {
+          params: {
+            path: { bucketId, recordingId },
+          },
+          body: {
+            template_name: req.templateName,
+            copy_comments: req.copyComments,
+            copy_assignments: req.copyAssignments,
+            move_cards_to_triage: req.moveCardsToTriage,
+          },
+        })
+    );
+    return response;
+  }
+
+  /**
+   * Get a templatification
+   * @param bucketId - The bucket ID
+   * @param recordingId - The recording ID
+   * @param templatificationId - The templatification ID
+   * @returns The templatification
+   * @throws {BasecampError} If the resource is not found
+   *
+   * @example
+   * ```ts
+   * const result = await client.templates.getTemplatification(123, 123, 123);
+   * ```
+   */
+  async getTemplatification(bucketId: number, recordingId: number, templatificationId: number): Promise<components["schemas"]["GetTemplatificationResponseContent"]> {
+    const response = await this.request(
+      {
+        service: "Templates",
+        operation: "GetTemplatification",
+        resourceType: "templatification",
+        isMutation: false,
+        projectId: bucketId,
+        resourceId: templatificationId,
+      },
+      () =>
+        this.client.GET("/buckets/{bucketId}/recordings/{recordingId}/templatifications/{templatificationId}", {
+          params: {
+            path: { bucketId, recordingId, templatificationId },
+          },
+        })
+    );
+    return response;
+  }
 
   /**
    * Get the account's card table templates
@@ -233,6 +332,39 @@ export class TemplatesService extends BaseService {
       },
       () =>
         this.client.GET("/template_library/todolists.json", {
+        })
+    );
+    return response;
+  }
+
+  /**
+   * Create an empty to-do list template
+   * @param req - Template_library_todolist creation parameters
+   * @returns The Todolist
+   * @throws {BasecampError} If required fields are missing or invalid
+   *
+   * @example
+   * ```ts
+   * const result = await client.templates.createLibraryTodolist({ name: "My example" });
+   * ```
+   */
+  async createLibraryTodolist(req: CreateLibraryTodolistTemplateRequest): Promise<Todolist> {
+    if (!req.name) {
+      throw Errors.validation("Name is required");
+    }
+    const response = await this.request(
+      {
+        service: "Templates",
+        operation: "CreateTemplateLibraryTodolist",
+        resourceType: "template_library_todolist",
+        isMutation: true,
+      },
+      () =>
+        this.client.POST("/template_library/todolists.json", {
+          body: {
+            name: req.name,
+            description: req.description,
+          },
         })
     );
     return response;

@@ -57,6 +57,26 @@ public final class TemplatesService: BaseService, @unchecked Sendable {
         )
     }
 
+    public func createLibraryTodolist(req: CreateTemplateLibraryTodolistRequest) async throws -> Todolist {
+        return try await request(
+            OperationInfo(service: "Templates", operation: "CreateTemplateLibraryTodolist", resourceType: "template_library_todolist", isMutation: true),
+            method: "POST",
+            path: "/template_library/todolists.json",
+            body: req,
+            retryConfig: Metadata.retryConfig(for: "CreateTemplateLibraryTodolist")
+        )
+    }
+
+    public func createTemplatification(bucketId: Int, recordingId: Int, req: CreateTemplatificationRequest) async throws -> Templatification {
+        return try await request(
+            OperationInfo(service: "Templates", operation: "CreateTemplatification", resourceType: "templatification", isMutation: true, projectId: bucketId, resourceId: recordingId),
+            method: "POST",
+            path: "/buckets/\(bucketId)/recordings/\(recordingId)/templatifications.json",
+            body: req,
+            retryConfig: Metadata.retryConfig(for: "CreateTemplatification")
+        )
+    }
+
     public func delete(templateId: Int) async throws {
         try await requestVoid(
             OperationInfo(service: "Templates", operation: "DeleteTemplate", resourceType: "template", isMutation: true, resourceId: templateId),
@@ -108,6 +128,15 @@ public final class TemplatesService: BaseService, @unchecked Sendable {
             method: "GET",
             path: "/template_library/todolists.json",
             retryConfig: Metadata.retryConfig(for: "GetTemplateLibraryTodolists")
+        )
+    }
+
+    public func getTemplatification(bucketId: Int, recordingId: Int, templatificationId: Int) async throws -> Templatification {
+        return try await request(
+            OperationInfo(service: "Templates", operation: "GetTemplatification", resourceType: "templatification", isMutation: false, projectId: bucketId, resourceId: templatificationId),
+            method: "GET",
+            path: "/buckets/\(bucketId)/recordings/\(recordingId)/templatifications/\(templatificationId)",
+            retryConfig: Metadata.retryConfig(for: "GetTemplatification")
         )
     }
 

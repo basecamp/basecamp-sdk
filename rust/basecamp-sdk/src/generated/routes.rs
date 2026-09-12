@@ -689,6 +689,49 @@ pub static CREATE_TEMPLATE_LIBRARY_COPY: Route = Route {
     metadata: &metadata::CREATE_TEMPLATE_LIBRARY_COPY,
 };
 
+/// `POST /template_library/todolists.json`.
+pub static CREATE_TEMPLATE_LIBRARY_TODOLIST: Route = Route {
+    id: "CreateTemplateLibraryTodolist",
+    service: "Templates",
+    method: Method::POST,
+    path: "/template_library/todolists.json",
+    pattern: "/template_library/todolists",
+    resource_type: "template_library_todolist",
+    params: &[],
+    body: BodyKind::Json,
+    response: Representation::Json,
+    pagination: Pagination::None,
+    write: None,
+    deprecated: false,
+    metadata: &metadata::CREATE_TEMPLATE_LIBRARY_TODOLIST,
+};
+
+/// `POST /buckets/{bucketId}/recordings/{recordingId}/templatifications.json`.
+pub static CREATE_TEMPLATIFICATION: Route = Route {
+    id: "CreateTemplatification",
+    service: "Templates",
+    method: Method::POST,
+    path: "/buckets/{bucketId}/recordings/{recordingId}/templatifications.json",
+    pattern: "/buckets/{bucketId}/recordings/{recordingId}/templatifications",
+    resource_type: "templatification",
+    params: &[
+        RouteParam {
+            name: "bucketId",
+            kind: ParamKind::Int64,
+        },
+        RouteParam {
+            name: "recordingId",
+            kind: ParamKind::Int64,
+        },
+    ],
+    body: BodyKind::Json,
+    response: Representation::Json,
+    pagination: Pagination::None,
+    write: None,
+    deprecated: false,
+    metadata: &metadata::CREATE_TEMPLATIFICATION,
+};
+
 /// `POST /recordings/{recordingId}/timesheet/entries.json`.
 pub static CREATE_TIMESHEET_ENTRY: Route = Route {
     id: "CreateTimesheetEntry",
@@ -3008,6 +3051,36 @@ pub static GET_TEMPLATE_LIBRARY_TODOLISTS: Route = Route {
     write: None,
     deprecated: false,
     metadata: &metadata::GET_TEMPLATE_LIBRARY_TODOLISTS,
+};
+
+/// `GET /buckets/{bucketId}/recordings/{recordingId}/templatifications/{templatificationId}`.
+pub static GET_TEMPLATIFICATION: Route = Route {
+    id: "GetTemplatification",
+    service: "Templates",
+    method: Method::GET,
+    path: "/buckets/{bucketId}/recordings/{recordingId}/templatifications/{templatificationId}",
+    pattern: "/buckets/{bucketId}/recordings/{recordingId}/templatifications/{templatificationId}",
+    resource_type: "templatification",
+    params: &[
+        RouteParam {
+            name: "bucketId",
+            kind: ParamKind::Int64,
+        },
+        RouteParam {
+            name: "recordingId",
+            kind: ParamKind::Int64,
+        },
+        RouteParam {
+            name: "templatificationId",
+            kind: ParamKind::Int64,
+        },
+    ],
+    body: BodyKind::None,
+    response: Representation::Json,
+    pagination: Pagination::None,
+    write: None,
+    deprecated: false,
+    metadata: &metadata::GET_TEMPLATIFICATION,
 };
 
 /// `GET /timesheet_entries/{entryId}`.
@@ -5737,6 +5810,8 @@ pub static ROUTES: &[&Route] = &[
     &CREATE_TEMPLATE,
     &CREATE_TEMPLATE_LIBRARY_CARD_TABLE,
     &CREATE_TEMPLATE_LIBRARY_COPY,
+    &CREATE_TEMPLATE_LIBRARY_TODOLIST,
+    &CREATE_TEMPLATIFICATION,
     &CREATE_TIMESHEET_ENTRY,
     &CREATE_TODO,
     &CREATE_TODOLIST,
@@ -5849,6 +5924,7 @@ pub static ROUTES: &[&Route] = &[
     &GET_TEMPLATE_LIBRARY_CARD_TABLES,
     &GET_TEMPLATE_LIBRARY_COPY,
     &GET_TEMPLATE_LIBRARY_TODOLISTS,
+    &GET_TEMPLATIFICATION,
     &GET_TIMESHEET_ENTRY,
     &GET_TIMESHEET_REPORT,
     &GET_TODO,

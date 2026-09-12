@@ -63,6 +63,15 @@ PERSON_ID_SITES: dict[str, tuple[tuple[str, ...], ...]] = {
         ("destination_card_table", "wormholes", "[]", "creator"),
         ("destination_todolist", "creator"),
     ),
+    "CreateTemplateLibraryTodolist": (("creator",),),
+    "CreateTemplatification": (
+        ("destination_card_table", "creator"),
+        ("destination_card_table", "lists", "[]", "creator"),
+        ("destination_card_table", "lists", "[]", "subscribers", "[]"),
+        ("destination_card_table", "subscribers", "[]"),
+        ("destination_card_table", "wormholes", "[]", "creator"),
+        ("destination_todolist", "creator"),
+    ),
     "CreateTimesheetEntry": (
         ("creator",),
         ("person",),
@@ -351,6 +360,14 @@ PERSON_ID_SITES: dict[str, tuple[tuple[str, ...], ...]] = {
         ("destination_todolist", "creator"),
     ),
     "GetTemplateLibraryTodolists": (("todolists", "[]", "creator"),),
+    "GetTemplatification": (
+        ("destination_card_table", "creator"),
+        ("destination_card_table", "lists", "[]", "creator"),
+        ("destination_card_table", "lists", "[]", "subscribers", "[]"),
+        ("destination_card_table", "subscribers", "[]"),
+        ("destination_card_table", "wormholes", "[]", "creator"),
+        ("destination_todolist", "creator"),
+    ),
     "GetTimesheetEntry": (
         ("creator",),
         ("person",),
