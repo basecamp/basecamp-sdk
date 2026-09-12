@@ -2804,6 +2804,7 @@ the category slug is the filename (basename, `_` written as `-`).
 | security | `security.json` | §9 Security |
 | status-codes | `status-codes.json` | §11 Response Semantics |
 | template-library | `template_library.json` | §3 Client Architecture (account path construction), §6 Error Taxonomy, §10 Type Fidelity, §11 Response Semantics |
+| templatifications | `templatifications.json` | §3 Client Architecture (account path construction), §10 Type Fidelity (every attribute optional, so an unaddressed one stays off the wire rather than being sent as a default), §11 Response Semantics |
 | todolists-read | `todolists_read.json` | §5 Merge-Safe Write Surface (Todolists) — the flat read shape the composites read through |
 | todolists-write | `todolists_write.json` | §5 Merge-Safe Write Surface (Todolists), §18 Hand-Written Composite Methods |
 | todos-write | `todos_write.json` | §5 Merge-Safe Write Surface (Todos), §18 Hand-Written Composite Methods |
@@ -4249,6 +4250,7 @@ what `make doc-constants-check` asserts — not a case-by-case index.
 | `upcoming_schedule.json` | The reduced calendar projection: entry, recurring occurrence, assignable, empty envelope (4 cases) | §10 (Type Fidelity) |
 | `search.json` | The polymorphic search projection: the generic recording envelope plus all four special branches, and the file-attachment branch in isolation (2 cases) | §10 (Type Fidelity) |
 | `template_library.json` | Per-kind library reads, card table template creation, copy creation, completed-copy decoding for both kinds, and people-confirmation validation (8 cases) | §3, §6, §10, §11 |
+| `templatifications.json` | Templatifying a recording into the library: the synchronous to-do list template create, the asynchronous templatification, its unaddressed-body wire shape, and the completed result (4 cases) | §3, §10, §11 |
 | `project_constructions.json` | Project construction from a template: attributes nested under the `project` envelope, `start_date` carried when given and absent when omitted (2 cases) | §3, §10, §11 |
 | `live-my-surface.json` | Live schema validation, 31 read-surface cases (opt-in via `BASECAMP_LIVE`) | External governance (CONTRIBUTING.md, live canary) |
 <!-- @fixture-section-map:end -->

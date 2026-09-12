@@ -551,6 +551,20 @@ def _summarize_template_library_copy(copy: dict[str, Any]) -> dict[str, Any]:
     return summary
 
 
+def _summarize_templatification(templatification: dict[str, Any]) -> dict[str, Any]:
+    summary = {"id": templatification["id"], "status": templatification["status"]}
+    if templatification.get("destination_todolist") is not None:
+        summary["destination_todolist_id"] = templatification["destination_todolist"]["id"]
+    if templatification.get("destination_card_table") is not None:
+        summary["destination_card_table_id"] = templatification["destination_card_table"]["id"]
+    return summary
+
+
+def _summarize_todolist(todolist: dict[str, Any]) -> dict[str, Any]:
+    """Expose a decoded to-do list as portable scalars."""
+    return {"id": todolist["id"], "title": todolist["title"]}
+
+
 def _summarize_projects(result: Any) -> dict[str, Any]:
     """Flatten an accumulated project list into top-level scalars.
 
@@ -733,6 +747,32 @@ class OperationMapper:
             case "CreateTemplateLibraryCardTable":
                 return _summarize_card_table(
                     self._account.templates.create_library_card_table(name=body["name"])
+                )
+            case "CreateTemplateLibraryTodolist":
+                return _summarize_todolist(
+                    self._account.templates.create_library_todolist(
+                        name=body["name"],
+                        description=body.get("description"),
+                    )
+                )
+            case "CreateTemplatification":
+                return _summarize_templatification(
+                    self._account.templates.create_templatification(
+                        bucket_id=path_params["bucketId"],
+                        recording_id=path_params["recordingId"],
+                        template_name=body.get("template_name"),
+                        copy_comments=body.get("copy_comments"),
+                        copy_assignments=body.get("copy_assignments"),
+                        move_cards_to_triage=body.get("move_cards_to_triage"),
+                    )
+                )
+            case "GetTemplatification":
+                return _summarize_templatification(
+                    self._account.templates.get_templatification(
+                        bucket_id=path_params["bucketId"],
+                        recording_id=path_params["recordingId"],
+                        templatification_id=path_params["templatificationId"],
+                    )
                 )
             case "CreateTemplateLibraryCopy":
                 return _summarize_template_library_copy(

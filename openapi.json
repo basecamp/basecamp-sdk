@@ -3072,6 +3072,258 @@
         }
       }
     },
+    "/{accountId}/buckets/{bucketId}/recordings/{recordingId}/templatifications.json": {
+      "post": {
+        "description": "Templatify a to-do list or card table",
+        "operationId": "CreateTemplatification",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTemplatificationRequestContent"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
+          {
+            "name": "bucketId",
+            "in": "path",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "required": true
+          },
+          {
+            "name": "recordingId",
+            "in": "path",
+            "description": "The to-do list or card table to templatify. Anything else is a 403.",
+            "schema": {
+              "type": "integer",
+              "description": "The to-do list or card table to templatify. Anything else is a 403.",
+              "format": "int64"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "CreateTemplatification 201 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateTemplatificationResponseContent"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UnauthorizedError 401 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ForbiddenError 403 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NotFoundError 404 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundErrorResponseContent"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "FieldValidationError 422 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FieldValidationErrorResponseContent"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RateLimitError 429 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitErrorResponseContent"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError 500 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Automation"
+        ],
+        "x-basecamp-retry": {
+          "maxAttempts": 2,
+          "baseDelayMs": 1000,
+          "backoff": "exponential",
+          "retryOn": [
+            429,
+            503
+          ]
+        }
+      }
+    },
+    "/{accountId}/buckets/{bucketId}/recordings/{recordingId}/templatifications/{templatificationId}": {
+      "get": {
+        "description": "Get a templatification",
+        "operationId": "GetTemplatification",
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
+          {
+            "name": "bucketId",
+            "in": "path",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "required": true
+          },
+          {
+            "name": "recordingId",
+            "in": "path",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "required": true
+          },
+          {
+            "name": "templatificationId",
+            "in": "path",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "GetTemplatification 200 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetTemplatificationResponseContent"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UnauthorizedError 401 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ForbiddenError 403 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NotFoundError 404 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundErrorResponseContent"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RateLimitError 429 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitErrorResponseContent"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError 500 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Automation"
+        ],
+        "x-basecamp-retry": {
+          "maxAttempts": 3,
+          "baseDelayMs": 1000,
+          "backoff": "exponential",
+          "retryOn": [
+            429,
+            503
+          ]
+        }
+      }
+    },
     "/{accountId}/buckets/{bucketId}/todosets/{todosetId}/todos.json": {
       "post": {
         "description": "Create a to-do directly under a project's to-do set, outside any to-do list.\nThis form exists only project-scoped (no account-scoped variant); parameters\nand response match the to-do-list create. Find a project's to-do set id via\nGetTodoset.",
@@ -22976,6 +23228,107 @@
             503
           ]
         }
+      },
+      "post": {
+        "description": "Create an empty to-do list template",
+        "operationId": "CreateTemplateLibraryTodolist",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTemplateLibraryTodolistRequestContent"
+              }
+            }
+          },
+          "required": true
+        },
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "CreateTemplateLibraryTodolist 201 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateTemplateLibraryTodolistResponseContent"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UnauthorizedError 401 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ForbiddenError 403 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "ValidationError 422 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorResponseContent"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RateLimitError 429 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitErrorResponseContent"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError 500 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Automation"
+        ],
+        "x-basecamp-retry": {
+          "maxAttempts": 2,
+          "baseDelayMs": 1000,
+          "backoff": "exponential",
+          "retryOn": [
+            429,
+            503
+          ]
+        }
       }
     },
     "/{accountId}/templates.json": {
@@ -30540,6 +30893,25 @@
       "CreateTemplateLibraryCopyResponseContent": {
         "$ref": "#/components/schemas/TemplateLibraryCopy"
       },
+      "CreateTemplateLibraryTodolistRequestContent": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "What to call the template."
+          },
+          "description": {
+            "type": "string",
+            "description": "Rich text describing the template."
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "CreateTemplateLibraryTodolistResponseContent": {
+        "$ref": "#/components/schemas/Todolist"
+      },
       "CreateTemplateRequestContent": {
         "type": "object",
         "properties": {
@@ -30556,6 +30928,30 @@
       },
       "CreateTemplateResponseContent": {
         "$ref": "#/components/schemas/Template"
+      },
+      "CreateTemplatificationRequestContent": {
+        "type": "object",
+        "properties": {
+          "template_name": {
+            "type": "string",
+            "description": "What to call the template. Defaults to the source recording's own title."
+          },
+          "copy_comments": {
+            "type": "boolean",
+            "description": "Carry the comments across."
+          },
+          "copy_assignments": {
+            "type": "boolean",
+            "description": "Carry assignees and the people involved across, adding them to the library\nif they are not already there."
+          },
+          "move_cards_to_triage": {
+            "type": "boolean",
+            "description": "Gather the cards into Triage. Card tables only, and ignored otherwise."
+          }
+        }
+      },
+      "CreateTemplatificationResponseContent": {
+        "$ref": "#/components/schemas/Templatification"
       },
       "CreateTimesheetEntryRequestContent": {
         "type": "object",
@@ -32453,6 +32849,9 @@
       },
       "GetTemplateResponseContent": {
         "$ref": "#/components/schemas/Template"
+      },
+      "GetTemplatificationResponseContent": {
+        "$ref": "#/components/schemas/Templatification"
       },
       "GetTimesheetEntryResponseContent": {
         "$ref": "#/components/schemas/TimesheetEntry"
@@ -35954,6 +36353,39 @@
           "bucket",
           "todolists",
           "todoset"
+        ]
+      },
+      "Templatification": {
+        "type": "object",
+        "description": "The record of templatifying a recording into the library. Carries no\ndestination parent, unlike a copy: the destination is always the library.",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "status": {
+            "type": "string",
+            "description": "pending|processing|completed|failed"
+          },
+          "source_recording_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "url": {
+            "type": "string"
+          },
+          "destination_todolist": {
+            "$ref": "#/components/schemas/Todolist"
+          },
+          "destination_card_table": {
+            "$ref": "#/components/schemas/CardTable"
+          }
+        },
+        "required": [
+          "id",
+          "source_recording_id",
+          "status",
+          "url"
         ]
       },
       "TimelineAttachment": {

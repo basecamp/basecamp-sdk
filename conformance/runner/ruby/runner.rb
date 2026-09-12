@@ -426,6 +426,32 @@ class OperationMapper
       summarize_template_library_card_tables(@account.templates.get_library_card_tables)
     when "CreateTemplateLibraryCardTable"
       summarize_card_table(@account.templates.create_library_card_table(name: body["name"]))
+    when "CreateTemplateLibraryTodolist"
+      summarize_todolist(
+        @account.templates.create_library_todolist(
+          name: body["name"],
+          description: body["description"]
+        )
+      )
+    when "CreateTemplatification"
+      summarize_templatification(
+        @account.templates.create_templatification(
+          bucket_id: path_params["bucketId"],
+          recording_id: path_params["recordingId"],
+          template_name: body["template_name"],
+          copy_comments: body["copy_comments"],
+          copy_assignments: body["copy_assignments"],
+          move_cards_to_triage: body["move_cards_to_triage"]
+        )
+      )
+    when "GetTemplatification"
+      summarize_templatification(
+        @account.templates.get_templatification(
+          bucket_id: path_params["bucketId"],
+          recording_id: path_params["recordingId"],
+          templatification_id: path_params["templatificationId"]
+        )
+      )
     when "CreateTemplateLibraryCopy"
       summarize_template_library_copy(
         @account.templates.create_library_copy(
@@ -855,6 +881,19 @@ class OperationMapper
     card_table = copy["destination_card_table"]
     summary["destination_card_table_id"] = card_table["id"] if card_table
     summary
+  end
+
+  def summarize_templatification(templatification)
+    summary = { "id" => templatification["id"], "status" => templatification["status"] }
+    destination = templatification["destination_todolist"]
+    summary["destination_todolist_id"] = destination["id"] if destination
+    card_table = templatification["destination_card_table"]
+    summary["destination_card_table_id"] = card_table["id"] if card_table
+    summary
+  end
+
+  def summarize_todolist(todolist)
+    { "id" => todolist["id"], "title" => todolist["title"] }
   end
 
   # Flatten a search result list into top-level scalars, one group per branch of

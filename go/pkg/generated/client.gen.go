@@ -970,6 +970,37 @@ type CreateTemplateLibraryCopyRequestContent struct {
 // CreateTemplateLibraryCopyResponseContent defines model for CreateTemplateLibraryCopyResponseContent.
 type CreateTemplateLibraryCopyResponseContent = TemplateLibraryCopy
 
+// CreateTemplateLibraryTodolistRequestContent defines model for CreateTemplateLibraryTodolistRequestContent.
+type CreateTemplateLibraryTodolistRequestContent struct {
+	// Description Rich text describing the template.
+	Description *string `json:"description,omitempty"`
+
+	// Name What to call the template.
+	Name string `json:"name"`
+}
+
+// CreateTemplateLibraryTodolistResponseContent A to-do list, or a group inside one. There is only this shape.
+//
+// BC3 has no group model: a "group" is a `Todolist` whose parent is another
+// `Todolist` (`Todolist.group?`), there is no `Todolist::Group` class, and
+// `todolists/groups/index.json.jbuilder` and `show.json.jbuilder` both render
+// `todolists/_todolist.json.jbuilder` — the same partial the list routes use.
+// So a group reports `"type": "Todolist"` (the shared recording partial emits
+// `recordable_type`) and carries `description`/`description_attachments` like
+// any other list. Every operation that returns a list or a group returns this
+// structure: the polymorphic GET/PUT, the todoset-scoped list, and the
+// group list, group create and group get.
+//
+// Discriminate STRUCTURALLY, never on `type` — which reads `"Todolist"` for
+// both variants. `_todolist.json.jbuilder` branches on `recording.parent.todoset?`
+// and emits exactly one of:
+//
+// - `groups_url` — a to-do list; its `parent` is a Todoset.
+// - `group_position_url` — a group; its `parent` is a Todolist.
+//
+// The two are mutually exclusive and exactly one is always present.
+type CreateTemplateLibraryTodolistResponseContent = Todolist
+
 // CreateTemplateRequestContent defines model for CreateTemplateRequestContent.
 type CreateTemplateRequestContent struct {
 	Description *string `json:"description,omitempty"`
@@ -978,6 +1009,26 @@ type CreateTemplateRequestContent struct {
 
 // CreateTemplateResponseContent defines model for CreateTemplateResponseContent.
 type CreateTemplateResponseContent = Template
+
+// CreateTemplatificationRequestContent defines model for CreateTemplatificationRequestContent.
+type CreateTemplatificationRequestContent struct {
+	// CopyAssignments Carry assignees and the people involved across, adding them to the library
+	// if they are not already there.
+	CopyAssignments *bool `json:"copy_assignments,omitempty"`
+
+	// CopyComments Carry the comments across.
+	CopyComments *bool `json:"copy_comments,omitempty"`
+
+	// MoveCardsToTriage Gather the cards into Triage. Card tables only, and ignored otherwise.
+	MoveCardsToTriage *bool `json:"move_cards_to_triage,omitempty"`
+
+	// TemplateName What to call the template. Defaults to the source recording's own title.
+	TemplateName *string `json:"template_name,omitempty"`
+}
+
+// CreateTemplatificationResponseContent The record of templatifying a recording into the library. Carries no
+// destination parent, unlike a copy: the destination is always the library.
+type CreateTemplatificationResponseContent = Templatification
 
 // CreateTimesheetEntryRequestContent defines model for CreateTimesheetEntryRequestContent.
 type CreateTimesheetEntryRequestContent struct {
@@ -1851,6 +1902,10 @@ type GetTemplateLibraryTodolistsResponseContent = TemplateLibraryTodolists
 
 // GetTemplateResponseContent defines model for GetTemplateResponseContent.
 type GetTemplateResponseContent = Template
+
+// GetTemplatificationResponseContent The record of templatifying a recording into the library. Carries no
+// destination parent, unlike a copy: the destination is always the library.
+type GetTemplatificationResponseContent = Templatification
 
 // GetTimesheetEntryResponseContent defines model for GetTimesheetEntryResponseContent.
 type GetTimesheetEntryResponseContent = TimesheetEntry
@@ -3416,6 +3471,40 @@ type TemplateLibraryTodolists struct {
 	Bucket    RecordingBucket `json:"bucket"`
 	Todolists []Todolist      `json:"todolists"`
 	Todoset   RecordingParent `json:"todoset"`
+}
+
+// Templatification The record of templatifying a recording into the library. Carries no
+// destination parent, unlike a copy: the destination is always the library.
+type Templatification struct {
+	DestinationCardTable *CardTable `json:"destination_card_table,omitempty"`
+
+	// DestinationTodolist A to-do list, or a group inside one. There is only this shape.
+	//
+	// BC3 has no group model: a "group" is a `Todolist` whose parent is another
+	// `Todolist` (`Todolist.group?`), there is no `Todolist::Group` class, and
+	// `todolists/groups/index.json.jbuilder` and `show.json.jbuilder` both render
+	// `todolists/_todolist.json.jbuilder` — the same partial the list routes use.
+	// So a group reports `"type": "Todolist"` (the shared recording partial emits
+	// `recordable_type`) and carries `description`/`description_attachments` like
+	// any other list. Every operation that returns a list or a group returns this
+	// structure: the polymorphic GET/PUT, the todoset-scoped list, and the
+	// group list, group create and group get.
+	//
+	// Discriminate STRUCTURALLY, never on `type` — which reads `"Todolist"` for
+	// both variants. `_todolist.json.jbuilder` branches on `recording.parent.todoset?`
+	// and emits exactly one of:
+	//
+	// - `groups_url` — a to-do list; its `parent` is a Todoset.
+	// - `group_position_url` — a group; its `parent` is a Todolist.
+	//
+	// The two are mutually exclusive and exactly one is always present.
+	DestinationTodolist *Todolist `json:"destination_todolist,omitempty"`
+	Id                  int64     `json:"id"`
+	SourceRecordingId   int64     `json:"source_recording_id"`
+
+	// Status pending|processing|completed|failed
+	Status string `json:"status"`
+	Url    string `json:"url"`
 }
 
 // TimelineAttachment A single timeline-event attachment. This is an optional-field superset over
@@ -5345,6 +5434,9 @@ type UpdateChatbotJSONRequestBody = UpdateChatbotRequestContent
 // CreateToolJSONRequestBody defines body for CreateTool for application/json ContentType.
 type CreateToolJSONRequestBody = CreateToolRequestContent
 
+// CreateTemplatificationJSONRequestBody defines body for CreateTemplatification for application/json ContentType.
+type CreateTemplatificationJSONRequestBody = CreateTemplatificationRequestContent
+
 // CreateTodosetTodoJSONRequestBody defines body for CreateTodosetTodo for application/json ContentType.
 type CreateTodosetTodoJSONRequestBody = CreateTodosetTodoRequestContent
 
@@ -5524,6 +5616,9 @@ type CreateTemplateLibraryCardTableJSONRequestBody = CreateTemplateLibraryCardTa
 
 // CreateTemplateLibraryCopyJSONRequestBody defines body for CreateTemplateLibraryCopy for application/json ContentType.
 type CreateTemplateLibraryCopyJSONRequestBody = CreateTemplateLibraryCopyRequestContent
+
+// CreateTemplateLibraryTodolistJSONRequestBody defines body for CreateTemplateLibraryTodolist for application/json ContentType.
+type CreateTemplateLibraryTodolistJSONRequestBody = CreateTemplateLibraryTodolistRequestContent
 
 // CreateTemplateJSONRequestBody defines body for CreateTemplate for application/json ContentType.
 type CreateTemplateJSONRequestBody = CreateTemplateRequestContent
@@ -6164,6 +6259,14 @@ type ClientInterface interface {
 	CreateToolWithBody(ctx context.Context, accountId string, bucketId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	CreateTool(ctx context.Context, accountId string, bucketId int64, body CreateToolJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateTemplatificationWithBody request with any body
+	CreateTemplatificationWithBody(ctx context.Context, accountId string, bucketId int64, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	CreateTemplatification(ctx context.Context, accountId string, bucketId int64, recordingId int64, body CreateTemplatificationJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetTemplatification request
+	GetTemplatification(ctx context.Context, accountId string, bucketId int64, recordingId int64, templatificationId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateTodosetTodoWithBody request with any body
 	CreateTodosetTodoWithBody(ctx context.Context, accountId string, bucketId int64, todosetId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -6849,6 +6952,11 @@ type ClientInterface interface {
 	// GetTemplateLibraryTodolists request
 	GetTemplateLibraryTodolists(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// CreateTemplateLibraryTodolistWithBody request with any body
+	CreateTemplateLibraryTodolistWithBody(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	CreateTemplateLibraryTodolist(ctx context.Context, accountId string, body CreateTemplateLibraryTodolistJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ListTemplates request
 	ListTemplates(ctx context.Context, accountId string, params *ListTemplatesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -7437,6 +7545,46 @@ func (c *Client) CreateTool(ctx context.Context, accountId string, bucketId int6
 		return nil, err
 	}
 	return c.Client.Do(req)
+
+}
+
+// CreateTemplatificationWithBody executes the CreateTemplatification operation.
+
+func (c *Client) CreateTemplatificationWithBody(ctx context.Context, accountId string, bucketId int64, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	req, err := NewCreateTemplatificationRequestWithBody(c.Server, accountId, bucketId, recordingId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+
+}
+
+func (c *Client) CreateTemplatification(ctx context.Context, accountId string, bucketId int64, recordingId int64, body CreateTemplatificationJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	req, err := NewCreateTemplatificationRequest(c.Server, accountId, bucketId, recordingId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+
+}
+
+// GetTemplatification is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) GetTemplatification(ctx context.Context, accountId string, bucketId int64, recordingId int64, templatificationId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetTemplatificationRequest(c.Server, accountId, bucketId, recordingId, templatificationId)
+	}, true, "GetTemplatification", reqEditors...)
 
 }
 
@@ -10142,6 +10290,36 @@ func (c *Client) GetTemplateLibraryTodolists(ctx context.Context, accountId stri
 
 }
 
+// CreateTemplateLibraryTodolistWithBody executes the CreateTemplateLibraryTodolist operation.
+
+func (c *Client) CreateTemplateLibraryTodolistWithBody(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	req, err := NewCreateTemplateLibraryTodolistRequestWithBody(c.Server, accountId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+
+}
+
+func (c *Client) CreateTemplateLibraryTodolist(ctx context.Context, accountId string, body CreateTemplateLibraryTodolistJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	req, err := NewCreateTemplateLibraryTodolistRequest(c.Server, accountId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+
+}
+
 // ListTemplates is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) ListTemplates(ctx context.Context, accountId string, params *ListTemplatesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -12408,6 +12586,122 @@ func NewCreateToolRequestWithBody(server string, accountId string, bucketId int6
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewCreateTemplatificationRequest calls the generic CreateTemplatification builder with application/json body
+func NewCreateTemplatificationRequest(server string, accountId string, bucketId int64, recordingId int64, body CreateTemplatificationJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateTemplatificationRequestWithBody(server, accountId, bucketId, recordingId, "application/json", bodyReader)
+}
+
+// NewCreateTemplatificationRequestWithBody generates requests for CreateTemplatification with any type of body
+func NewCreateTemplatificationRequestWithBody(server string, accountId string, bucketId int64, recordingId int64, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "bucketId", runtime.ParamLocationPath, bucketId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "recordingId", runtime.ParamLocationPath, recordingId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/buckets/%s/recordings/%s/templatifications.json", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetTemplatificationRequest generates requests for GetTemplatification
+func NewGetTemplatificationRequest(server string, accountId string, bucketId int64, recordingId int64, templatificationId int64) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "bucketId", runtime.ParamLocationPath, bucketId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "recordingId", runtime.ParamLocationPath, recordingId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam3 string
+
+	pathParam3, err = runtime.StyleParamWithLocation("simple", false, "templatificationId", runtime.ParamLocationPath, templatificationId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/buckets/%s/recordings/%s/templatifications/%s", pathParam0, pathParam1, pathParam2, pathParam3)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -22458,6 +22752,53 @@ func NewGetTemplateLibraryTodolistsRequest(server string, accountId string) (*ht
 	return req, nil
 }
 
+// NewCreateTemplateLibraryTodolistRequest calls the generic CreateTemplateLibraryTodolist builder with application/json body
+func NewCreateTemplateLibraryTodolistRequest(server string, accountId string, body CreateTemplateLibraryTodolistJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateTemplateLibraryTodolistRequestWithBody(server, accountId, "application/json", bodyReader)
+}
+
+// NewCreateTemplateLibraryTodolistRequestWithBody generates requests for CreateTemplateLibraryTodolist with any type of body
+func NewCreateTemplateLibraryTodolistRequestWithBody(server string, accountId string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/template_library/todolists.json", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewListTemplatesRequest generates requests for ListTemplates
 func NewListTemplatesRequest(server string, accountId string, params *ListTemplatesParams) (*http.Request, error) {
 	var err error
@@ -25170,6 +25511,8 @@ var operationMetadata = map[string]OperationMetadata{
 	"ListClientReplies":                  {Idempotent: true, HasSensitiveParams: false},
 	"GetClientReply":                     {Idempotent: true, HasSensitiveParams: false},
 	"CreateTool":                         {Idempotent: false, HasSensitiveParams: false},
+	"CreateTemplatification":             {Idempotent: false, HasSensitiveParams: false},
+	"GetTemplatification":                {Idempotent: true, HasSensitiveParams: false},
 	"CreateTodosetTodo":                  {Idempotent: false, HasSensitiveParams: false},
 	"CreateCloudFile":                    {Idempotent: false, HasSensitiveParams: false},
 	"CreateGoogleDocument":               {Idempotent: false, HasSensitiveParams: false},
@@ -25358,6 +25701,7 @@ var operationMetadata = map[string]OperationMetadata{
 	"CreateTemplateLibraryCopy":          {Idempotent: false, HasSensitiveParams: false},
 	"GetTemplateLibraryCopy":             {Idempotent: true, HasSensitiveParams: false},
 	"GetTemplateLibraryTodolists":        {Idempotent: true, HasSensitiveParams: false},
+	"CreateTemplateLibraryTodolist":      {Idempotent: false, HasSensitiveParams: false},
 	"ListTemplates":                      {Idempotent: true, HasSensitiveParams: false},
 	"CreateTemplate":                     {Idempotent: false, HasSensitiveParams: false},
 	"DeleteTemplate":                     {Idempotent: true, HasSensitiveParams: false},
@@ -25443,6 +25787,8 @@ var operationRetryMax = map[string]int{
 	"ListClientReplies":                  3,
 	"GetClientReply":                     3,
 	"CreateTool":                         2,
+	"CreateTemplatification":             2,
+	"GetTemplatification":                3,
 	"CreateTodosetTodo":                  3,
 	"CreateCloudFile":                    2,
 	"CreateGoogleDocument":               2,
@@ -25631,6 +25977,7 @@ var operationRetryMax = map[string]int{
 	"CreateTemplateLibraryCopy":          2,
 	"GetTemplateLibraryCopy":             3,
 	"GetTemplateLibraryTodolists":        3,
+	"CreateTemplateLibraryTodolist":      2,
 	"ListTemplates":                      3,
 	"CreateTemplate":                     2,
 	"DeleteTemplate":                     3,
@@ -25714,6 +26061,8 @@ var operationRetryOn = map[string][]int{
 	"ListClientReplies":                  {429, 503},
 	"GetClientReply":                     {429, 503},
 	"CreateTool":                         {429, 503},
+	"CreateTemplatification":             {429, 503},
+	"GetTemplatification":                {429, 503},
 	"CreateTodosetTodo":                  {429, 503},
 	"CreateCloudFile":                    {429, 503},
 	"CreateGoogleDocument":               {429, 503},
@@ -25902,6 +26251,7 @@ var operationRetryOn = map[string][]int{
 	"CreateTemplateLibraryCopy":          {429, 503},
 	"GetTemplateLibraryCopy":             {429, 503},
 	"GetTemplateLibraryTodolists":        {429, 503},
+	"CreateTemplateLibraryTodolist":      {429, 503},
 	"ListTemplates":                      {429, 503},
 	"CreateTemplate":                     {429, 503},
 	"DeleteTemplate":                     {429, 503},
@@ -26619,6 +26969,18 @@ func (c *Client) Campfires() *CampfiresService { return &CampfiresService{client
 
 // Generate service methods by delegating to client methods
 
+func (s *TemplatesService) CreateTemplatificationWithBody(ctx context.Context, accountId string, bucketId int64, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.CreateTemplatificationWithBody(ctx, accountId, bucketId, recordingId, contentType, body, reqEditors...)
+}
+
+func (s *TemplatesService) CreateTemplatification(ctx context.Context, accountId string, bucketId int64, recordingId int64, body CreateTemplatificationJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.CreateTemplatification(ctx, accountId, bucketId, recordingId, body, reqEditors...)
+}
+
+func (s *TemplatesService) GetTemplatification(ctx context.Context, accountId string, bucketId int64, recordingId int64, templatificationId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.GetTemplatification(ctx, accountId, bucketId, recordingId, templatificationId, reqEditors...)
+}
+
 func (s *WebhooksService) List(ctx context.Context, accountId string, bucketId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	return s.client.ListWebhooks(ctx, accountId, bucketId, reqEditors...)
 }
@@ -26869,6 +27231,14 @@ func (s *TemplatesService) GetLibraryCopy(ctx context.Context, accountId string,
 
 func (s *TemplatesService) GetLibraryTodolists(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	return s.client.GetTemplateLibraryTodolists(ctx, accountId, reqEditors...)
+}
+
+func (s *TemplatesService) CreateLibraryTodolistWithBody(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.CreateTemplateLibraryTodolistWithBody(ctx, accountId, contentType, body, reqEditors...)
+}
+
+func (s *TemplatesService) CreateLibraryTodolist(ctx context.Context, accountId string, body CreateTemplateLibraryTodolistJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.CreateTemplateLibraryTodolist(ctx, accountId, body, reqEditors...)
 }
 
 func (s *TemplatesService) List(ctx context.Context, accountId string, params *ListTemplatesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -27137,6 +27507,14 @@ type ClientWithResponsesInterface interface {
 	CreateToolWithBodyWithResponse(ctx context.Context, accountId string, bucketId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateToolResponse, error)
 
 	CreateToolWithResponse(ctx context.Context, accountId string, bucketId int64, body CreateToolJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateToolResponse, error)
+
+	// CreateTemplatificationWithBodyWithResponse request with any body
+	CreateTemplatificationWithBodyWithResponse(ctx context.Context, accountId string, bucketId int64, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTemplatificationResponse, error)
+
+	CreateTemplatificationWithResponse(ctx context.Context, accountId string, bucketId int64, recordingId int64, body CreateTemplatificationJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTemplatificationResponse, error)
+
+	// GetTemplatificationWithResponse request
+	GetTemplatificationWithResponse(ctx context.Context, accountId string, bucketId int64, recordingId int64, templatificationId int64, reqEditors ...RequestEditorFn) (*GetTemplatificationResponse, error)
 
 	// CreateTodosetTodoWithBodyWithResponse request with any body
 	CreateTodosetTodoWithBodyWithResponse(ctx context.Context, accountId string, bucketId int64, todosetId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTodosetTodoResponse, error)
@@ -27821,6 +28199,11 @@ type ClientWithResponsesInterface interface {
 
 	// GetTemplateLibraryTodolistsWithResponse request
 	GetTemplateLibraryTodolistsWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*GetTemplateLibraryTodolistsResponse, error)
+
+	// CreateTemplateLibraryTodolistWithBodyWithResponse request with any body
+	CreateTemplateLibraryTodolistWithBodyWithResponse(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTemplateLibraryTodolistResponse, error)
+
+	CreateTemplateLibraryTodolistWithResponse(ctx context.Context, accountId string, body CreateTemplateLibraryTodolistJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTemplateLibraryTodolistResponse, error)
 
 	// ListTemplatesWithResponse request
 	ListTemplatesWithResponse(ctx context.Context, accountId string, params *ListTemplatesParams, reqEditors ...RequestEditorFn) (*ListTemplatesResponse, error)
@@ -28962,6 +29345,77 @@ func (r CreateToolResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r CreateToolResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateTemplatificationResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON201      *CreateTemplatificationResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON422      *FieldValidationErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateTemplatificationResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateTemplatificationResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateTemplatificationResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetTemplatificationResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *GetTemplatificationResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r GetTemplatificationResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetTemplatificationResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetTemplatificationResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -35419,6 +35873,41 @@ func (r GetTemplateLibraryTodolistsResponse) ContentType() string {
 	return ""
 }
 
+type CreateTemplateLibraryTodolistResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON201      *CreateTemplateLibraryTodolistResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON422      *ValidationErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateTemplateLibraryTodolistResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateTemplateLibraryTodolistResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateTemplateLibraryTodolistResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ListTemplatesResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -37391,6 +37880,32 @@ func (c *ClientWithResponses) CreateToolWithResponse(ctx context.Context, accoun
 		return nil, err
 	}
 	return ParseCreateToolResponse(rsp)
+}
+
+// CreateTemplatificationWithBodyWithResponse request with arbitrary body returning *CreateTemplatificationResponse
+func (c *ClientWithResponses) CreateTemplatificationWithBodyWithResponse(ctx context.Context, accountId string, bucketId int64, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTemplatificationResponse, error) {
+	rsp, err := c.CreateTemplatificationWithBody(ctx, accountId, bucketId, recordingId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateTemplatificationResponse(rsp)
+}
+
+func (c *ClientWithResponses) CreateTemplatificationWithResponse(ctx context.Context, accountId string, bucketId int64, recordingId int64, body CreateTemplatificationJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTemplatificationResponse, error) {
+	rsp, err := c.CreateTemplatification(ctx, accountId, bucketId, recordingId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateTemplatificationResponse(rsp)
+}
+
+// GetTemplatificationWithResponse request returning *GetTemplatificationResponse
+func (c *ClientWithResponses) GetTemplatificationWithResponse(ctx context.Context, accountId string, bucketId int64, recordingId int64, templatificationId int64, reqEditors ...RequestEditorFn) (*GetTemplatificationResponse, error) {
+	rsp, err := c.GetTemplatification(ctx, accountId, bucketId, recordingId, templatificationId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetTemplatificationResponse(rsp)
 }
 
 // CreateTodosetTodoWithBodyWithResponse request with arbitrary body returning *CreateTodosetTodoResponse
@@ -39565,6 +40080,23 @@ func (c *ClientWithResponses) GetTemplateLibraryTodolistsWithResponse(ctx contex
 	return ParseGetTemplateLibraryTodolistsResponse(rsp)
 }
 
+// CreateTemplateLibraryTodolistWithBodyWithResponse request with arbitrary body returning *CreateTemplateLibraryTodolistResponse
+func (c *ClientWithResponses) CreateTemplateLibraryTodolistWithBodyWithResponse(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTemplateLibraryTodolistResponse, error) {
+	rsp, err := c.CreateTemplateLibraryTodolistWithBody(ctx, accountId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateTemplateLibraryTodolistResponse(rsp)
+}
+
+func (c *ClientWithResponses) CreateTemplateLibraryTodolistWithResponse(ctx context.Context, accountId string, body CreateTemplateLibraryTodolistJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTemplateLibraryTodolistResponse, error) {
+	rsp, err := c.CreateTemplateLibraryTodolist(ctx, accountId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateTemplateLibraryTodolistResponse(rsp)
+}
+
 // ListTemplatesWithResponse request returning *ListTemplatesResponse
 func (c *ClientWithResponses) ListTemplatesWithResponse(ctx context.Context, accountId string, params *ListTemplatesParams, reqEditors ...RequestEditorFn) (*ListTemplatesResponse, error) {
 	rsp, err := c.ListTemplates(ctx, accountId, params, reqEditors...)
@@ -41604,6 +42136,124 @@ func ParseCreateToolResponse(rsp *http.Response) (*CreateToolResponse, error) {
 		var dest ValidationErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
 			response.JSON422 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON429 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON500 = &dest
+		}
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateTemplatificationResponse parses an HTTP response from a CreateTemplatificationWithResponse call
+func ParseCreateTemplatificationResponse(rsp *http.Response) (*CreateTemplatificationResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateTemplatificationResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest CreateTemplatificationResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON401 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON403 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON404 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest FieldValidationErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON422 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON429 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON500 = &dest
+		}
+
+	}
+
+	return response, nil
+}
+
+// ParseGetTemplatificationResponse parses an HTTP response from a GetTemplatificationWithResponse call
+func ParseGetTemplatificationResponse(rsp *http.Response) (*GetTemplatificationResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetTemplatificationResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GetTemplatificationResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON401 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON403 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON404 = &dest
 		}
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
@@ -51437,6 +52087,62 @@ func ParseGetTemplateLibraryTodolistsResponse(rsp *http.Response) (*GetTemplateL
 		var dest ForbiddenErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
 			response.JSON403 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON429 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON500 = &dest
+		}
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateTemplateLibraryTodolistResponse parses an HTTP response from a CreateTemplateLibraryTodolistWithResponse call
+func ParseCreateTemplateLibraryTodolistResponse(rsp *http.Response) (*CreateTemplateLibraryTodolistResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateTemplateLibraryTodolistResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest CreateTemplateLibraryTodolistResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON401 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON403 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON422 = &dest
 		}
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:

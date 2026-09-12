@@ -339,6 +339,34 @@ function summarizeTemplateLibraryCopy(copy: {
   };
 }
 
+function summarizeTemplatification(templatification: {
+  id: number;
+  status: string;
+  destination_todolist?: { id: number };
+  destination_card_table?: { id: number };
+}): Record<string, unknown> {
+  return {
+    id: templatification.id,
+    status: templatification.status,
+    ...(templatification.destination_todolist
+      ? { destination_todolist_id: templatification.destination_todolist.id }
+      : {}),
+    ...(templatification.destination_card_table
+      ? {
+          destination_card_table_id:
+            templatification.destination_card_table.id,
+        }
+      : {}),
+  };
+}
+
+function summarizeTodolist(todolist: {
+  id: number;
+  title: string;
+}): Record<string, unknown> {
+  return { id: todolist.id, title: todolist.title };
+}
+
 /**
  * Flattens an accumulated project list into top-level scalars.
  *
@@ -546,6 +574,50 @@ async function executeOperation(
           name: String(body.name),
         });
         return { result: summarizeCardTable(cardTable) };
+      }
+
+      case "CreateTemplateLibraryTodolist": {
+        const todolist = await client.templates.createLibraryTodolist({
+          name: String(body.name),
+          description:
+            typeof body.description === "string" ? body.description : undefined,
+        });
+        return { result: summarizeTodolist(todolist) };
+      }
+
+      case "CreateTemplatification": {
+        const templatification = await client.templates.createTemplatification(
+          Number(params.bucketId),
+          Number(params.recordingId),
+          {
+            templateName:
+              typeof body.template_name === "string"
+                ? body.template_name
+                : undefined,
+            copyComments:
+              typeof body.copy_comments === "boolean"
+                ? body.copy_comments
+                : undefined,
+            copyAssignments:
+              typeof body.copy_assignments === "boolean"
+                ? body.copy_assignments
+                : undefined,
+            moveCardsToTriage:
+              typeof body.move_cards_to_triage === "boolean"
+                ? body.move_cards_to_triage
+                : undefined,
+          },
+        );
+        return { result: summarizeTemplatification(templatification) };
+      }
+
+      case "GetTemplatification": {
+        const templatification = await client.templates.getTemplatification(
+          Number(params.bucketId),
+          Number(params.recordingId),
+          Number(params.templatificationId),
+        );
+        return { result: summarizeTemplatification(templatification) };
       }
 
       case "CreateTemplateLibraryCopy": {

@@ -570,6 +570,21 @@ func summarizeTemplateLibraryCopy(copy *basecamp.TemplateLibraryCopy) map[string
 // summarizeTemplatification exposes a templatification as portable
 // scalars. It carries no destination parent, unlike a copy: the destination is
 // always the library.
+func summarizeTemplatification(templatification *basecamp.Templatification) map[string]interface{} {
+	result := map[string]interface{}{"id": templatification.ID, "status": templatification.Status}
+	if templatification.DestinationTodolist != nil {
+		result["destination_todolist_id"] = templatification.DestinationTodolist.ID
+	}
+	if templatification.DestinationCardTable != nil {
+		result["destination_card_table_id"] = templatification.DestinationCardTable.ID
+	}
+	return result
+}
+
+func summarizeTodolist(todolist *basecamp.Todolist) map[string]interface{} {
+	return map[string]interface{}{"id": todolist.ID, "title": todolist.Title}
+}
+
 // summarizeProjects flattens an accumulated project list into top-level
 // scalars.
 //
@@ -824,6 +839,41 @@ func executeOperation(ctx context.Context, account *basecamp.AccountClient, tc T
 			return operationResult{err: err}
 		}
 		return operationResult{result: summarizeCardTable(cardTable)}
+
+	case "CreateTemplateLibraryTodolist":
+		todolist, err := account.Templates().CreateLibraryTodolist(ctx, &basecamp.CreateTemplateLibraryTodolistRequest{
+			Name:        getStringParam(tc.RequestBody, "name"),
+			Description: getStringParam(tc.RequestBody, "description"),
+		})
+		if err != nil {
+			return operationResult{err: err}
+		}
+		return operationResult{result: summarizeTodolist(todolist)}
+
+	case "CreateTemplatification":
+		bucketID := getInt64Param(tc.PathParams, "bucketId")
+		recordingID := getInt64Param(tc.PathParams, "recordingId")
+		templatification, err := account.Templates().CreateTemplatification(ctx, bucketID, recordingID,
+			&basecamp.CreateTemplatificationRequest{
+				TemplateName:      getStringParam(tc.RequestBody, "template_name"),
+				CopyComments:      getBoolParam(tc.RequestBody, "copy_comments"),
+				CopyAssignments:   getBoolParam(tc.RequestBody, "copy_assignments"),
+				MoveCardsToTriage: getBoolParam(tc.RequestBody, "move_cards_to_triage"),
+			})
+		if err != nil {
+			return operationResult{err: err}
+		}
+		return operationResult{result: summarizeTemplatification(templatification)}
+
+	case "GetTemplatification":
+		bucketID := getInt64Param(tc.PathParams, "bucketId")
+		recordingID := getInt64Param(tc.PathParams, "recordingId")
+		templatificationID := getInt64Param(tc.PathParams, "templatificationId")
+		templatification, err := account.Templates().GetTemplatification(ctx, bucketID, recordingID, templatificationID)
+		if err != nil {
+			return operationResult{err: err}
+		}
+		return operationResult{result: summarizeTemplatification(templatification)}
 
 	case "CreateTemplateLibraryCopy":
 		templateRecordingID, parseErr := getExactInt64Param(tc.RequestBody, "template_recording_id")

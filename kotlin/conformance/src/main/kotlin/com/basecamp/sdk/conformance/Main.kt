@@ -121,6 +121,22 @@ private fun summarizeTemplateLibraryCopy(copy: TemplateLibraryCopy): JsonElement
  * templatification operations answer with a JsonElement, the way
  * CreateProjectFromTemplate does.
  */
+private fun summarizeTemplatification(templatification: JsonObject): JsonElement = buildJsonObject {
+    put("id", templatification.getValue("id"))
+    put("status", templatification.getValue("status"))
+    templatification["destination_todolist"]?.jsonObject?.let {
+        put("destination_todolist_id", it.getValue("id"))
+    }
+    templatification["destination_card_table"]?.jsonObject?.let {
+        put("destination_card_table_id", it.getValue("id"))
+    }
+}
+
+private fun summarizeTodolist(todolist: Todolist): JsonElement = buildJsonObject {
+    put("id", todolist.id)
+    put("title", todolist.title)
+}
+
 /**
  * Flattens an accumulated project list into top-level scalars.
  *
@@ -1065,6 +1081,41 @@ private suspend fun dispatchOperation(tc: TestCase, account: AccountClient): Dis
                 CreateTemplateLibraryCardTableBody(name = rb.stringParam("name")),
             )
             DispatchResult(resultJson = summarizeCardTable(cardTable))
+        }
+
+        "CreateTemplateLibraryTodolist" -> {
+            val rb = tc.requestBody
+            val todolist = account.templates.createLibraryTodolist(
+                CreateTemplateLibraryTodolistBody(
+                    name = rb.stringParam("name"),
+                    description = rb?.get("description")?.jsonPrimitive?.contentOrNull,
+                ),
+            )
+            DispatchResult(resultJson = summarizeTodolist(todolist))
+        }
+
+        "CreateTemplatification" -> {
+            val rb = tc.requestBody
+            val templatification = account.templates.createTemplatification(
+                tc.pathParams.longParam("bucketId"),
+                tc.pathParams.longParam("recordingId"),
+                CreateTemplatificationBody(
+                    templateName = rb?.get("template_name")?.jsonPrimitive?.contentOrNull,
+                    copyComments = rb?.get("copy_comments")?.jsonPrimitive?.booleanOrNull,
+                    copyAssignments = rb?.get("copy_assignments")?.jsonPrimitive?.booleanOrNull,
+                    moveCardsToTriage = rb?.get("move_cards_to_triage")?.jsonPrimitive?.booleanOrNull,
+                ),
+            ).jsonObject
+            DispatchResult(resultJson = summarizeTemplatification(templatification))
+        }
+
+        "GetTemplatification" -> {
+            val templatification = account.templates.getTemplatification(
+                tc.pathParams.longParam("bucketId"),
+                tc.pathParams.longParam("recordingId"),
+                tc.pathParams.longParam("templatificationId"),
+            ).jsonObject
+            DispatchResult(resultJson = summarizeTemplatification(templatification))
         }
 
         "CreateTemplateLibraryCopy" -> {

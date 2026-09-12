@@ -65,8 +65,8 @@ let serviceSplits: [String: [String: [String]]] = [
             "ListTemplates", "CreateTemplate", "GetTemplate", "UpdateTemplate",
             "DeleteTemplate", "CreateProjectFromTemplate", "GetProjectConstruction",
             "GetTemplateLibraryTodolists", "GetTemplateLibraryCardTables",
-            "CreateTemplateLibraryCardTable",
-            "CreateTemplateLibraryCopy",
+            "CreateTemplateLibraryTodolist", "CreateTemplateLibraryCardTable",
+            "CreateTemplatification", "GetTemplatification", "CreateTemplateLibraryCopy",
             "GetTemplateLibraryCopy",
         ],
         "Checkins": [

@@ -1928,6 +1928,30 @@ func (s *TemplatesService) CreateLibraryCardTable{{.Suffix}}(ctx context.Context
 	return s.client.{{$opid}}{{.Suffix}}(ctx{{genParamNames $pathParams}}{{if $hasParams}}, params{{end}}, body, reqEditors...)
 }
 {{end}}{{end}}
+{{else if eq $opid "CreateTemplateLibraryTodolist"}}
+func (s *TemplatesService) CreateLibraryTodolistWithBody(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, contentType string, body io.Reader, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}WithBody(ctx{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}, contentType, body, reqEditors...)
+}
+{{range .Bodies}}{{if .IsSupportedByClient}}
+func (s *TemplatesService) CreateLibraryTodolist{{.Suffix}}(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, body {{$opid}}{{.NameTag}}RequestBody, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}{{.Suffix}}(ctx{{genParamNames $pathParams}}{{if $hasParams}}, params{{end}}, body, reqEditors...)
+}
+{{end}}{{end}}
+{{else if eq $opid "CreateTemplatification"}}
+func (s *TemplatesService) CreateTemplatificationWithBody(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, contentType string, body io.Reader, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}WithBody(ctx{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}, contentType, body, reqEditors...)
+}
+{{range .Bodies}}{{if .IsSupportedByClient}}
+func (s *TemplatesService) CreateTemplatification{{.Suffix}}(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, body {{$opid}}{{.NameTag}}RequestBody, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}{{.Suffix}}(ctx{{genParamNames $pathParams}}{{if $hasParams}}, params{{end}}, body, reqEditors...)
+}
+{{end}}{{end}}
+{{else if eq $opid "GetTemplatification"}}
+func (s *TemplatesService) GetTemplatification(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, reqEditors... RequestEditorFn) (*http.Response, error) {
+	return s.client.{{$opid}}(ctx{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}, reqEditors...)
+}
+
+{{/* Events operations */}}
 {{else if eq $opid "ListEvents"}}
 func (s *EventsService) List(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, reqEditors... RequestEditorFn) (*http.Response, error) {
 	return s.client.{{$opid}}(ctx{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}, reqEditors...)

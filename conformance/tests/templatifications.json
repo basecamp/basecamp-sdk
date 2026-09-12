@@ -1,0 +1,321 @@
+[
+  {
+    "name": "to-do list template creation returns the empty template",
+    "description": "Verifies the synchronous create path: unlike a copy or a templatification, it answers 201 with the template itself and there is nothing to poll.",
+    "operation": "CreateTemplateLibraryTodolist",
+    "method": "POST",
+    "path": "/template_library/todolists.json",
+    "requestBody": {
+      "name": "New hire setup"
+    },
+    "mockResponses": [
+      {
+        "status": 201,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 30,
+          "status": "active",
+          "visible_to_clients": false,
+          "created_at": "2026-09-11T12:00:00Z",
+          "updated_at": "2026-09-11T12:00:00Z",
+          "title": "New hire setup",
+          "inherits_status": true,
+          "type": "Todolist",
+          "url": "https://3.basecampapi.com/999/todolists/30.json",
+          "app_url": "https://3.basecamp.com/999/todolists/30",
+          "bubble_up_url": "https://3.basecampapi.com/999/recordings/30/bubble_up.json",
+          "parent": {
+            "id": 5,
+            "title": "To-do List Templates",
+            "type": "Todoset",
+            "url": "https://3.basecampapi.com/999/todosets/5.json",
+            "app_url": "https://3.basecamp.com/999/todosets/5"
+          },
+          "bucket": {
+            "id": 1,
+            "name": "To-do List Templates",
+            "type": "TemplateLibrary"
+          },
+          "creator": {
+            "id": 4,
+            "name": "Victor"
+          },
+          "description": "",
+          "description_attachments": [],
+          "name": "New hire setup",
+          "color": null,
+          "comments_app_url": "https://3.basecamp.com/999/recordings/30/comments"
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "noError"
+      },
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "requestMethod",
+        "expected": "POST"
+      },
+      {
+        "type": "requestPath",
+        "expected": "/999/template_library/todolists.json"
+      },
+      {
+        "type": "requestBody",
+        "path": "name",
+        "expected": "New hire setup"
+      },
+      {
+        "type": "responseBody",
+        "path": "id",
+        "expected": 30
+      },
+      {
+        "type": "responseBody",
+        "path": "title",
+        "expected": "New hire setup"
+      }
+    ],
+    "tags": [
+      "templates",
+      "template-library",
+      "write"
+    ]
+  },
+  {
+    "name": "templatifying a recording reports a pending record with no destination parent",
+    "description": "Verifies the templatify path and that the record omits destination_parent_id, which is what distinguishes it from a copy: the destination is always the library and the caller never names it.",
+    "operation": "CreateTemplatification",
+    "method": "POST",
+    "path": "/buckets/{bucketId}/recordings/{recordingId}/templatifications.json",
+    "pathParams": {
+      "bucketId": 8,
+      "recordingId": 40
+    },
+    "requestBody": {
+      "template_name": "Client onboarding",
+      "copy_assignments": true
+    },
+    "mockResponses": [
+      {
+        "status": 201,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 2,
+          "status": "pending",
+          "source_recording_id": 40,
+          "url": "https://3.basecampapi.com/999/buckets/8/recordings/40/templatifications/2.json"
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "noError"
+      },
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "requestMethod",
+        "expected": "POST"
+      },
+      {
+        "type": "requestPath",
+        "expected": "/999/buckets/8/recordings/40/templatifications.json"
+      },
+      {
+        "type": "requestBody",
+        "path": "template_name",
+        "expected": "Client onboarding"
+      },
+      {
+        "type": "requestBody",
+        "path": "copy_assignments",
+        "expected": true
+      },
+      {
+        "type": "responseBody",
+        "path": "id",
+        "expected": 2
+      },
+      {
+        "type": "responseBody",
+        "path": "status",
+        "expected": "pending"
+      }
+    ],
+    "tags": [
+      "templates",
+      "templatification",
+      "write"
+    ]
+  },
+  {
+    "name": "an unaddressed templatification sends no attributes at all",
+    "description": "Every templatification attribute is optional and a bodyless request is valid, so an unaddressed one must leave each key off the wire rather than sending a default. template_name in particular: sending an empty one would name the template empty instead of letting bc3 fall back to the source recording's own title.",
+    "operation": "CreateTemplatification",
+    "method": "POST",
+    "path": "/buckets/{bucketId}/recordings/{recordingId}/templatifications.json",
+    "pathParams": {
+      "bucketId": 8,
+      "recordingId": 40
+    },
+    "requestBody": {},
+    "mockResponses": [
+      {
+        "status": 201,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 3,
+          "status": "pending",
+          "source_recording_id": 40,
+          "url": "https://3.basecampapi.com/999/buckets/8/recordings/40/templatifications/3.json"
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "noError"
+      },
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "requestBodyAbsent",
+        "path": "template_name"
+      },
+      {
+        "type": "requestBodyAbsent",
+        "path": "copy_comments"
+      },
+      {
+        "type": "requestBodyAbsent",
+        "path": "copy_assignments"
+      },
+      {
+        "type": "requestBodyAbsent",
+        "path": "move_cards_to_triage"
+      },
+      {
+        "type": "responseBody",
+        "path": "status",
+        "expected": "pending"
+      }
+    ],
+    "tags": [
+      "templates",
+      "templatification",
+      "write",
+      "unaddressed"
+    ]
+  },
+  {
+    "name": "a completed templatification carries the to-do list template it made",
+    "description": "Verifies the nested templatification status resource and the completed projection. The result keys are shared with a template copy because bc3 renders both through one partial.",
+    "operation": "GetTemplatification",
+    "method": "GET",
+    "path": "/buckets/{bucketId}/recordings/{recordingId}/templatifications/{templatificationId}",
+    "pathParams": {
+      "bucketId": 8,
+      "recordingId": 40,
+      "templatificationId": 2
+    },
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 2,
+          "status": "completed",
+          "source_recording_id": 40,
+          "url": "https://3.basecampapi.com/999/buckets/8/recordings/40/templatifications/2.json",
+          "destination_todolist": {
+            "id": 30,
+            "status": "active",
+            "visible_to_clients": false,
+            "created_at": "2026-09-11T12:00:00Z",
+            "updated_at": "2026-09-11T12:00:00Z",
+            "title": "New hire setup",
+            "inherits_status": true,
+            "type": "Todolist",
+            "url": "https://3.basecampapi.com/999/todolists/30.json",
+            "app_url": "https://3.basecamp.com/999/todolists/30",
+            "bubble_up_url": "https://3.basecampapi.com/999/recordings/30/bubble_up.json",
+            "parent": {
+              "id": 5,
+              "title": "To-do List Templates",
+              "type": "Todoset",
+              "url": "https://3.basecampapi.com/999/todosets/5.json",
+              "app_url": "https://3.basecamp.com/999/todosets/5"
+            },
+            "bucket": {
+              "id": 1,
+              "name": "To-do List Templates",
+              "type": "TemplateLibrary"
+            },
+            "creator": {
+              "id": 4,
+              "name": "Victor"
+            },
+            "description": "",
+            "description_attachments": [],
+            "name": "New hire setup",
+            "color": null,
+            "comments_app_url": "https://3.basecamp.com/999/recordings/30/comments"
+          }
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "noError"
+      },
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "requestMethod",
+        "expected": "GET"
+      },
+      {
+        "type": "requestPath",
+        "expected": "/999/buckets/8/recordings/40/templatifications/2"
+      },
+      {
+        "type": "responseBody",
+        "path": "id",
+        "expected": 2
+      },
+      {
+        "type": "responseBody",
+        "path": "status",
+        "expected": "completed"
+      },
+      {
+        "type": "responseBody",
+        "path": "destination_todolist_id",
+        "expected": 30
+      }
+    ],
+    "tags": [
+      "templates",
+      "templatification",
+      "decode"
+    ]
+  }
+]

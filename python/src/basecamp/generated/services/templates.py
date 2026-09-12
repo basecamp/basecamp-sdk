@@ -11,6 +11,68 @@ from basecamp.hooks import OperationInfo
 
 
 class TemplatesService(BaseService):
+    def create_templatification(
+        self,
+        *,
+        bucket_id: int,
+        recording_id: int,
+        template_name: str | None = None,
+        copy_comments: bool | None = None,
+        copy_assignments: bool | None = None,
+        move_cards_to_triage: bool | None = None,
+    ) -> dict[str, Any]:
+        """Templatify a to-do list or card table.
+
+        Args:
+            bucket_id: The bucket id.
+            recording_id: The to-do list or card table to templatify. Anything else is a 403.
+            template_name: What to call the template. Defaults to the source recording's own title.
+            copy_comments: Carry the comments across.
+            copy_assignments: Carry assignees and the people involved across, adding them to the
+                library if they are not already there.
+            move_cards_to_triage: Gather the cards into Triage. Card tables only, and ignored
+                otherwise.
+        """
+        return self._request(
+            OperationInfo(
+                service="templates",
+                operation="create_templatification",
+                is_mutation=True,
+                project_id=bucket_id,
+                resource_id=recording_id,
+            ),
+            "POST",
+            f"/buckets/{bucket_id}/recordings/{recording_id}/templatifications.json",
+            json_body=self._compact(
+                template_name=template_name,
+                copy_comments=copy_comments,
+                copy_assignments=copy_assignments,
+                move_cards_to_triage=move_cards_to_triage,
+            ),
+            operation="CreateTemplatification",
+        )
+
+    def get_templatification(self, *, bucket_id: int, recording_id: int, templatification_id: int) -> dict[str, Any]:
+        """Get a templatification.
+
+        Args:
+            bucket_id: The bucket id.
+            recording_id: The recording id.
+            templatification_id: The templatification id.
+        """
+        return self._request(
+            OperationInfo(
+                service="templates",
+                operation="get_templatification",
+                is_mutation=False,
+                project_id=bucket_id,
+                resource_id=templatification_id,
+            ),
+            "GET",
+            f"/buckets/{bucket_id}/recordings/{recording_id}/templatifications/{templatification_id}",
+            operation="GetTemplatification",
+        )
+
     def get_library_card_tables(self) -> dict[str, Any]:
         """Get the account's card table templates."""
         return self._request(
@@ -89,6 +151,21 @@ class TemplatesService(BaseService):
             "GET",
             "/template_library/todolists.json",
             operation="GetTemplateLibraryTodolists",
+        )
+
+    def create_library_todolist(self, *, name: str, description: str | None = None) -> dict[str, Any]:
+        """Create an empty to-do list template.
+
+        Args:
+            name: What to call the template.
+            description: Rich text describing the template.
+        """
+        return self._request(
+            OperationInfo(service="templates", operation="create_library_todolist", is_mutation=True),
+            "POST",
+            "/template_library/todolists.json",
+            json_body=self._compact(name=name, description=description),
+            operation="CreateTemplateLibraryTodolist",
         )
 
     def list(self, *, status: str | None = None, page: int | None = None, max_items: int | None = None) -> ListResult:
@@ -200,6 +277,70 @@ class TemplatesService(BaseService):
 
 
 class AsyncTemplatesService(AsyncBaseService):
+    async def create_templatification(
+        self,
+        *,
+        bucket_id: int,
+        recording_id: int,
+        template_name: str | None = None,
+        copy_comments: bool | None = None,
+        copy_assignments: bool | None = None,
+        move_cards_to_triage: bool | None = None,
+    ) -> dict[str, Any]:
+        """Templatify a to-do list or card table.
+
+        Args:
+            bucket_id: The bucket id.
+            recording_id: The to-do list or card table to templatify. Anything else is a 403.
+            template_name: What to call the template. Defaults to the source recording's own title.
+            copy_comments: Carry the comments across.
+            copy_assignments: Carry assignees and the people involved across, adding them to the
+                library if they are not already there.
+            move_cards_to_triage: Gather the cards into Triage. Card tables only, and ignored
+                otherwise.
+        """
+        return await self._request(
+            OperationInfo(
+                service="templates",
+                operation="create_templatification",
+                is_mutation=True,
+                project_id=bucket_id,
+                resource_id=recording_id,
+            ),
+            "POST",
+            f"/buckets/{bucket_id}/recordings/{recording_id}/templatifications.json",
+            json_body=self._compact(
+                template_name=template_name,
+                copy_comments=copy_comments,
+                copy_assignments=copy_assignments,
+                move_cards_to_triage=move_cards_to_triage,
+            ),
+            operation="CreateTemplatification",
+        )
+
+    async def get_templatification(
+        self, *, bucket_id: int, recording_id: int, templatification_id: int
+    ) -> dict[str, Any]:
+        """Get a templatification.
+
+        Args:
+            bucket_id: The bucket id.
+            recording_id: The recording id.
+            templatification_id: The templatification id.
+        """
+        return await self._request(
+            OperationInfo(
+                service="templates",
+                operation="get_templatification",
+                is_mutation=False,
+                project_id=bucket_id,
+                resource_id=templatification_id,
+            ),
+            "GET",
+            f"/buckets/{bucket_id}/recordings/{recording_id}/templatifications/{templatification_id}",
+            operation="GetTemplatification",
+        )
+
     async def get_library_card_tables(self) -> dict[str, Any]:
         """Get the account's card table templates."""
         return await self._request(
@@ -278,6 +419,21 @@ class AsyncTemplatesService(AsyncBaseService):
             "GET",
             "/template_library/todolists.json",
             operation="GetTemplateLibraryTodolists",
+        )
+
+    async def create_library_todolist(self, *, name: str, description: str | None = None) -> dict[str, Any]:
+        """Create an empty to-do list template.
+
+        Args:
+            name: What to call the template.
+            description: Rich text describing the template.
+        """
+        return await self._request(
+            OperationInfo(service="templates", operation="create_library_todolist", is_mutation=True),
+            "POST",
+            "/template_library/todolists.json",
+            json_body=self._compact(name=name, description=description),
+            operation="CreateTemplateLibraryTodolist",
         )
 
     async def list(

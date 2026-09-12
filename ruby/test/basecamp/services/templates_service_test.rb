@@ -153,6 +153,32 @@ class TemplatesServiceTest < Minitest::Test
     assert_equal 2, result.dig("parent", "id")
   end
 
+  def test_create_library_todolist
+    response = {
+      "id" => 3, "name" => "Project kickoff", "type" => "Todolist",
+      "description" => "<div>Everything to open a project</div>"
+    }
+
+    stub_request(:post, "https://3.basecampapi.com/12345/template_library/todolists.json")
+      .with(body: { name: "Project kickoff", description: "<div>Everything to open a project</div>" }.to_json)
+      .to_return(status: 201, body: response.to_json, headers: { "Content-Type" => "application/json" })
+
+    result = @account.templates.create_library_todolist(
+      name: "Project kickoff",
+      description: "<div>Everything to open a project</div>"
+    )
+    assert_equal 3, result["id"]
+    assert_equal "Project kickoff", result["name"]
+  end
+
+  def test_create_library_todolist_raises_validation_error
+    stub_request(:post, "https://3.basecampapi.com/12345/template_library/todolists.json")
+      .to_return(status: 422, body: { error: "Name can't be blank" }.to_json, headers: { "Content-Type" => "application/json" })
+
+    error = assert_raises(Basecamp::ValidationError) { @account.templates.create_library_todolist(name: "Project kickoff") }
+    assert_equal 422, error.http_status
+  end
+
   def test_get_library_card_tables_raises_forbidden_error
     stub_request(:get, "https://3.basecampapi.com/12345/template_library/card_tables.json")
       .to_return(status: 403, body: { error: "Forbidden" }.to_json, headers: { "Content-Type" => "application/json" })
@@ -241,4 +267,105 @@ class TemplatesServiceTest < Minitest::Test
     assert_equal "Victor", error.people.first.name
   end
 
+  def test_create_templatification_sends_no_optional_keys_when_unset
+    response = {
+      "id" => 7,
+      "status" => "pending",
+      "source_recording_id" => 2,
+      "url" => "https://3.basecampapi.com/12345/buckets/1/recordings/2/templatifications/7.json"
+    }
+
+    stub_request(:post, "https://3.basecampapi.com/12345/buckets/1/recordings/2/templatifications.json")
+      .with { |request| JSON.parse(request.body.to_s.empty? ? "{}" : request.body) == {} }
+      .to_return(status: 201, body: response.to_json, headers: { "Content-Type" => "application/json" })
+
+    result = @account.templates.create_templatification(bucket_id: 1, recording_id: 2)
+    assert_equal "pending", result["status"]
+    assert_equal 2, result["source_recording_id"]
+    assert_not result.key?("destination_parent_id")
+  end
+
+  def test_create_templatification_sends_the_optional_save_settings
+    response = {
+      "id" => 7,
+      "status" => "pending",
+      "source_recording_id" => 2,
+      "url" => "https://3.basecampapi.com/12345/buckets/1/recordings/2/templatifications/7.json"
+    }
+
+    stub_request(:post, "https://3.basecampapi.com/12345/buckets/1/recordings/2/templatifications.json")
+      .with(body: {
+        template_name: "Client onboarding",
+        copy_comments: true,
+        copy_assignments: false,
+        move_cards_to_triage: true
+      }.to_json)
+      .to_return(status: 201, body: response.to_json, headers: { "Content-Type" => "application/json" })
+
+    result = @account.templates.create_templatification(
+      bucket_id: 1,
+      recording_id: 2,
+      template_name: "Client onboarding",
+      copy_comments: true,
+      copy_assignments: false,
+      move_cards_to_triage: true
+    )
+    assert_equal 7, result["id"]
+  end
+
+  def test_create_templatification_raises_forbidden_error
+    stub_request(:post, "https://3.basecampapi.com/12345/buckets/1/recordings/2/templatifications.json")
+      .to_return(status: 403, body: { error: "Forbidden" }.to_json, headers: { "Content-Type" => "application/json" })
+
+    error = assert_raises(Basecamp::ForbiddenError) do
+      @account.templates.create_templatification(bucket_id: 1, recording_id: 2)
+    end
+    assert_equal 403, error.http_status
+  end
+
+  def test_get_completed_templatification_with_destination_todolist
+    response = {
+      "id" => 7,
+      "status" => "completed",
+      "source_recording_id" => 2,
+      "url" => "https://3.basecampapi.com/12345/buckets/1/recordings/2/templatifications/7.json",
+      "destination_todolist" => { "id" => 10, "name" => "Project kickoff" }
+    }
+
+    stub_request(:get, "https://3.basecampapi.com/12345/buckets/1/recordings/2/templatifications/7")
+      .to_return(status: 200, body: response.to_json, headers: { "Content-Type" => "application/json" })
+
+    result = @account.templates.get_templatification(bucket_id: 1, recording_id: 2, templatification_id: 7)
+    assert_equal "completed", result["status"]
+    assert_equal 10, result.dig("destination_todolist", "id")
+    assert_not result.key?("destination_card_table")
+    assert_not result.key?("destination_parent_id")
+  end
+
+  def test_get_completed_templatification_with_destination_card_table
+    response = {
+      "id" => 8,
+      "status" => "completed",
+      "source_recording_id" => 2,
+      "url" => "https://3.basecampapi.com/12345/buckets/1/recordings/2/templatifications/8.json",
+      "destination_card_table" => { "id" => 11, "title" => "Client onboarding", "type" => "Kanban::Board" }
+    }
+
+    stub_request(:get, "https://3.basecampapi.com/12345/buckets/1/recordings/2/templatifications/8")
+      .to_return(status: 200, body: response.to_json, headers: { "Content-Type" => "application/json" })
+
+    result = @account.templates.get_templatification(bucket_id: 1, recording_id: 2, templatification_id: 8)
+    assert_equal 11, result.dig("destination_card_table", "id")
+    assert_not result.key?("destination_todolist")
+  end
+
+  def test_get_templatification_raises_not_found_error
+    stub_request(:get, "https://3.basecampapi.com/12345/buckets/1/recordings/2/templatifications/404")
+      .to_return(status: 404, body: { error: "Not found" }.to_json, headers: { "Content-Type" => "application/json" })
+
+    error = assert_raises(Basecamp::NotFoundError) do
+      @account.templates.get_templatification(bucket_id: 1, recording_id: 2, templatification_id: 404)
+    end
+    assert_equal 404, error.http_status
+  end
 end
