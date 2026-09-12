@@ -670,7 +670,7 @@ class ServiceGenerator
     op[:path_params].each do |p|
       ruby_name = to_snake_case(p[:name])
       type = p[:type] || 'Integer'
-      desc = p[:description] || "#{ruby_name.gsub('_', ' ')} ID"
+      desc = yard_param_description(p[:description] || "#{ruby_name.gsub('_', ' ')} ID")
       lines << "      # @param #{ruby_name} [#{type}] #{desc}"
     end
 
