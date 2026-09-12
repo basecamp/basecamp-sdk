@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-09-10T03:48:29Z
+# Generated: 2026-09-12T03:34:43Z
 
 require "json"
 require "time"
@@ -833,7 +833,7 @@ module Basecamp
     # CardTable
     class CardTable
       include TypeHelpers
-      attr_accessor :app_url, :bucket, :created_at, :creator, :id, :inherits_status, :status, :title, :type, :updated_at, :url, :visible_to_clients, :bookmark_url, :lists, :subscribers, :subscription_url, :wormholes
+      attr_accessor :app_url, :bucket, :created_at, :creator, :id, :inherits_status, :status, :title, :type, :updated_at, :url, :visible_to_clients, :bookmark_url, :lists, :parent, :position, :public_link_url, :subscribers, :subscription_url, :wormholes
 
       # @return [Array<Symbol>]
       def self.required_fields
@@ -855,6 +855,9 @@ module Basecamp
         @visible_to_clients = parse_boolean(data["visible_to_clients"])
         @bookmark_url = data["bookmark_url"]
         @lists = parse_array(data["lists"], "CardColumn")
+        @parent = parse_type(data["parent"], "RecordingParent")
+        @position = parse_integer(data["position"])
+        @public_link_url = data["public_link_url"]
         @subscribers = parse_array(data["subscribers"], "Person")
         @subscription_url = data["subscription_url"]
         @wormholes = parse_array(data["wormholes"], "Wormhole")
@@ -876,6 +879,9 @@ module Basecamp
           "visible_to_clients" => @visible_to_clients,
           "bookmark_url" => @bookmark_url,
           "lists" => @lists,
+          "parent" => @parent,
+          "position" => @position,
+          "public_link_url" => @public_link_url,
           "subscribers" => @subscribers,
           "subscription_url" => @subscription_url,
           "wormholes" => @wormholes,
