@@ -93,26 +93,79 @@ class TemplatesServiceTest < Minitest::Test
     assert_equal "completed", result["status"]
   end
 
-  def test_get_library
+  def test_get_library_todolists
     response = {
       "bucket" => { "id" => 1, "name" => "To-do List Templates", "type" => "TemplateLibrary" },
       "todoset" => { "id" => 2, "title" => "To-do List Templates", "type" => "Todoset" },
       "todolists" => [ { "id" => 3, "name" => "Project kickoff" } ]
     }
 
-    stub_request(:get, "https://3.basecampapi.com/12345/template_library.json")
+    stub_request(:get, "https://3.basecampapi.com/12345/template_library/todolists.json")
       .to_return(status: 200, body: response.to_json, headers: { "Content-Type" => "application/json" })
 
-    result = @account.templates.get_library
+    result = @account.templates.get_library_todolists
     assert_equal "TemplateLibrary", result.dig("bucket", "type")
     assert_equal "Project kickoff", result.dig("todolists", 0, "name")
   end
 
-  def test_get_library_raises_forbidden_error
-    stub_request(:get, "https://3.basecampapi.com/12345/template_library.json")
+  def test_get_library_card_tables
+    response = {
+      "bucket" => { "id" => 1, "name" => "To-do List Templates", "type" => "TemplateLibrary" },
+      "kanban_boardset" => { "id" => 2, "title" => "Card Table Templates", "type" => "Kanban::Boardset" },
+      "card_tables" => [ { "id" => 3, "title" => "Client onboarding", "type" => "Kanban::Board" } ]
+    }
+
+    stub_request(:get, "https://3.basecampapi.com/12345/template_library/card_tables.json")
+      .to_return(status: 200, body: response.to_json, headers: { "Content-Type" => "application/json" })
+
+    result = @account.templates.get_library_card_tables
+    assert_equal 2, result.dig("kanban_boardset", "id")
+    assert_equal "Client onboarding", result.dig("card_tables", 0, "title")
+  end
+
+  def test_get_library_card_tables_without_a_container
+    response = {
+      "bucket" => { "id" => 1, "name" => "To-do List Templates", "type" => "TemplateLibrary" },
+      "kanban_boardset" => nil,
+      "card_tables" => []
+    }
+
+    stub_request(:get, "https://3.basecampapi.com/12345/template_library/card_tables.json")
+      .to_return(status: 200, body: response.to_json, headers: { "Content-Type" => "application/json" })
+
+    result = @account.templates.get_library_card_tables
+    assert_nil result["kanban_boardset"]
+    assert_empty result["card_tables"]
+  end
+
+  def test_create_library_card_table
+    response = {
+      "id" => 3, "title" => "Client onboarding", "type" => "Kanban::Board",
+      "parent" => { "id" => 2, "title" => "Card Table Templates", "type" => "Kanban::Boardset" }
+    }
+
+    stub_request(:post, "https://3.basecampapi.com/12345/template_library/card_tables.json")
+      .with(body: { name: "Client onboarding" }.to_json)
+      .to_return(status: 201, body: response.to_json, headers: { "Content-Type" => "application/json" })
+
+    result = @account.templates.create_library_card_table(name: "Client onboarding")
+    assert_equal "Client onboarding", result["title"]
+    assert_equal 2, result.dig("parent", "id")
+  end
+
+  def test_get_library_card_tables_raises_forbidden_error
+    stub_request(:get, "https://3.basecampapi.com/12345/template_library/card_tables.json")
       .to_return(status: 403, body: { error: "Forbidden" }.to_json, headers: { "Content-Type" => "application/json" })
 
-    error = assert_raises(Basecamp::ForbiddenError) { @account.templates.get_library }
+    error = assert_raises(Basecamp::ForbiddenError) { @account.templates.get_library_card_tables }
+    assert_equal 403, error.http_status
+  end
+
+  def test_get_library_todolists_raises_forbidden_error
+    stub_request(:get, "https://3.basecampapi.com/12345/template_library/todolists.json")
+      .to_return(status: 403, body: { error: "Forbidden" }.to_json, headers: { "Content-Type" => "application/json" })
+
+    error = assert_raises(Basecamp::ForbiddenError) { @account.templates.get_library_todolists }
     assert_equal 403, error.http_status
   end
 
@@ -187,4 +240,5 @@ class TemplatesServiceTest < Minitest::Test
     assert_equal 4, error.people.first.id
     assert_equal "Victor", error.people.first.name
   end
+
 end

@@ -6,13 +6,13 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 
 /**
- * TemplateLibrary entity from the Basecamp API.
+ * TemplateLibraryCardTables entity from the Basecamp API.
  *
  * @generated from OpenAPI spec — do not edit directly
  */
 @Serializable
-data class TemplateLibrary(
+data class TemplateLibraryCardTables(
     val bucket: RecordingBucket,
-    val todoset: RecordingParent,
-    val todolists: List<Todolist>
+    @SerialName("kanban_boardset") val kanbanBoardset: RecordingParent?,
+    @SerialName("card_tables") val cardTables: List<Recording>
 )
