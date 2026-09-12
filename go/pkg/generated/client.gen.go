@@ -338,23 +338,32 @@ type CardStep struct {
 
 // CardTable defines model for CardTable.
 type CardTable struct {
-	AppUrl           string       `json:"app_url"`
-	BookmarkUrl      *string      `json:"bookmark_url,omitempty"`
-	Bucket           TodoBucket   `json:"bucket"`
-	CreatedAt        time.Time    `json:"created_at"`
-	Creator          Person       `json:"creator"`
-	Id               int64        `json:"id"`
-	InheritsStatus   bool         `json:"inherits_status"`
-	Lists            []CardColumn `json:"lists,omitempty"`
-	Status           string       `json:"status"`
-	Subscribers      []Person     `json:"subscribers,omitempty"`
-	SubscriptionUrl  *string      `json:"subscription_url,omitempty"`
-	Title            string       `json:"title"`
-	Type             string       `json:"type"`
-	UpdatedAt        time.Time    `json:"updated_at"`
-	Url              string       `json:"url"`
-	VisibleToClients bool         `json:"visible_to_clients"`
-	Wormholes        []Wormhole   `json:"wormholes,omitempty"`
+	AppUrl         string           `json:"app_url"`
+	BookmarkUrl    *string          `json:"bookmark_url,omitempty"`
+	Bucket         TodoBucket       `json:"bucket"`
+	CreatedAt      time.Time        `json:"created_at"`
+	Creator        Person           `json:"creator"`
+	Id             int64            `json:"id"`
+	InheritsStatus bool             `json:"inherits_status"`
+	Lists          []CardColumn     `json:"lists,omitempty"`
+	Parent         *RecordingParent `json:"parent,omitempty"`
+
+	// Position Position on the project dock. Absent on a card table template, which the
+	// library orders by title instead.
+	Position *int32 `json:"position,omitempty"`
+
+	// PublicLinkUrl Public sharing URL. Absent for callers who may not share publicly, so the
+	// same card table can carry it for one person and not another.
+	PublicLinkUrl    *string    `json:"public_link_url,omitempty"`
+	Status           string     `json:"status"`
+	Subscribers      []Person   `json:"subscribers,omitempty"`
+	SubscriptionUrl  *string    `json:"subscription_url,omitempty"`
+	Title            string     `json:"title"`
+	Type             string     `json:"type"`
+	UpdatedAt        time.Time  `json:"updated_at"`
+	Url              string     `json:"url"`
+	VisibleToClients bool       `json:"visible_to_clients"`
+	Wormholes        []Wormhole `json:"wormholes,omitempty"`
 }
 
 // Chatbot defines model for Chatbot.

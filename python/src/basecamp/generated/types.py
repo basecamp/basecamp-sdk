@@ -258,6 +258,9 @@ class CardTable(TypedDict):
     id: int
     inherits_status: bool
     lists: NotRequired[list[CardColumn]]
+    parent: NotRequired[RecordingParent]
+    position: NotRequired[int]
+    public_link_url: NotRequired[str]
     status: str
     subscribers: NotRequired[list[Person]]
     subscription_url: NotRequired[str]

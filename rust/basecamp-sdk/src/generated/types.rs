@@ -613,6 +613,17 @@ pub struct CardTable {
     /// `subscription_url`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub subscription_url: Option<String>,
+    /// Position on the project dock. Absent on a card table template, which the
+    /// library orders by title instead.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub position: Option<i32>,
+    /// `parent`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub parent: Option<RecordingParent>,
+    /// Public sharing URL. Absent for callers who may not share publicly, so the
+    /// same card table can carry it for one person and not another.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub public_link_url: Option<String>,
     /// `bucket`.
     pub bucket: TodoBucket,
     /// `creator`.

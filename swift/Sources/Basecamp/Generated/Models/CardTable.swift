@@ -16,6 +16,9 @@ public struct CardTable: Codable, Sendable {
     public let visibleToClients: Bool
     public var bookmarkUrl: String?
     public var lists: [CardColumn]?
+    public var parent: RecordingParent?
+    public var position: Int32?
+    public var publicLinkUrl: String?
     public var subscribers: [Person]?
     public var subscriptionUrl: String?
     public var wormholes: [Wormhole]?
@@ -35,6 +38,9 @@ public struct CardTable: Codable, Sendable {
         visibleToClients: Bool,
         bookmarkUrl: String? = nil,
         lists: [CardColumn]? = nil,
+        parent: RecordingParent? = nil,
+        position: Int32? = nil,
+        publicLinkUrl: String? = nil,
         subscribers: [Person]? = nil,
         subscriptionUrl: String? = nil,
         wormholes: [Wormhole]? = nil
@@ -53,6 +59,9 @@ public struct CardTable: Codable, Sendable {
         self.visibleToClients = visibleToClients
         self.bookmarkUrl = bookmarkUrl
         self.lists = lists
+        self.parent = parent
+        self.position = position
+        self.publicLinkUrl = publicLinkUrl
         self.subscribers = subscribers
         self.subscriptionUrl = subscriptionUrl
         self.wormholes = wormholes

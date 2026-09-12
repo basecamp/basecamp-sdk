@@ -5960,6 +5960,18 @@ structure CardTable {
   app_url: String
   bookmark_url: String
   subscription_url: String
+
+  /// Position on the project dock. Absent on a card table template, which the
+  /// library orders by title instead.
+  position: Integer
+
+  /// Containing recording. The mirror of `position`: present on a card table
+  /// template, absent on one sitting directly on a project dock.
+  parent: RecordingParent
+
+  /// Public sharing URL. Absent for callers who may not share publicly, so the
+  /// same card table can carry it for one person and not another.
+  public_link_url: String
   @required
   bucket: TodoBucket
   @required
