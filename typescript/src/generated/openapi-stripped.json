@@ -26002,6 +26002,18 @@
           "subscription_url": {
             "type": "string"
           },
+          "position": {
+            "type": "integer",
+            "description": "Position on the project dock. Absent on a card table template, which the\nlibrary orders by title instead.",
+            "format": "int32"
+          },
+          "parent": {
+            "$ref": "#/components/schemas/RecordingParent"
+          },
+          "public_link_url": {
+            "type": "string",
+            "description": "Public sharing URL. Absent for callers who may not share publicly, so the\nsame card table can carry it for one person and not another."
+          },
           "bucket": {
             "$ref": "#/components/schemas/TodoBucket"
           },

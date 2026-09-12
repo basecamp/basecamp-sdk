@@ -37,7 +37,7 @@ export interface MetadataOutput {
 const metadata: MetadataOutput = {
   "$schema": "https://basecamp.com/schemas/sdk-metadata.json",
   "version": "1.0.0",
-  "generated": "2026-09-10T03:48:28.545Z",
+  "generated": "2026-09-12T03:34:42.403Z",
   "operations": {
     "GetAccount": {
       "retry": {

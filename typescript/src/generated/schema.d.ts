@@ -3950,6 +3950,18 @@ export interface components {
             app_url: string;
             bookmark_url?: string;
             subscription_url?: string;
+            /**
+             * Format: int32
+             * @description Position on the project dock. Absent on a card table template, which the
+             *     library orders by title instead.
+             */
+            position?: number;
+            parent?: components["schemas"]["RecordingParent"];
+            /**
+             * @description Public sharing URL. Absent for callers who may not share publicly, so the
+             *     same card table can carry it for one person and not another.
+             */
+            public_link_url?: string;
             bucket: components["schemas"]["TodoBucket"];
             creator: components["schemas"]["Person"];
             subscribers?: components["schemas"]["Person"][];
