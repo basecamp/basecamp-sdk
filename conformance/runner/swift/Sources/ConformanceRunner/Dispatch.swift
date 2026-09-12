@@ -297,6 +297,27 @@ private func summarizeTemplateLibraryCopy(_ copy: TemplateLibraryCopy) -> JSON {
     return .object(summary)
 }
 
+private func summarizeTemplatification(_ templatification: Templatification) -> JSON {
+    var summary: [String: JSON] = [
+        "id": .int(Int64(templatification.id)),
+        "status": .string(templatification.status),
+    ]
+    if let destination = templatification.destinationTodolist {
+        summary["destination_todolist_id"] = .int(Int64(destination.id))
+    }
+    if let cardTable = templatification.destinationCardTable {
+        summary["destination_card_table_id"] = .int(Int64(cardTable.id))
+    }
+    return .object(summary)
+}
+
+private func summarizeTodolist(_ todolist: Todolist) -> JSON {
+    .object([
+        "id": .int(Int64(todolist.id)),
+        "title": .string(todolist.title),
+    ])
+}
+
 /// Flattens an accumulated project list into top-level scalars.
 ///
 /// Flat and scalar because that is the only path form every runner can resolve:
@@ -393,6 +414,31 @@ func dispatchOperation(_ tc: TestCase, _ account: AccountClient) async throws ->
         let cardTable = try await account.templates.createLibraryCardTable(
             req: CreateTemplateLibraryCardTableRequest(name: rb.stringParam("name")))
         return DispatchResult(resultJSON: summarizeCardTable(cardTable))
+
+    case "CreateTemplateLibraryTodolist":
+        let todolist = try await account.templates.createLibraryTodolist(
+            req: CreateTemplateLibraryTodolistRequest(
+                description: rb.optString("description"),
+                name: rb.stringParam("name")))
+        return DispatchResult(resultJSON: summarizeTodolist(todolist))
+
+    case "CreateTemplatification":
+        let templatification = try await account.templates.createTemplatification(
+            bucketId: pathParams.longParam("bucketId"),
+            recordingId: pathParams.longParam("recordingId"),
+            req: CreateTemplatificationRequest(
+                copyAssignments: rb.optBool("copy_assignments"),
+                copyComments: rb.optBool("copy_comments"),
+                moveCardsToTriage: rb.optBool("move_cards_to_triage"),
+                templateName: rb.optString("template_name")))
+        return DispatchResult(resultJSON: summarizeTemplatification(templatification))
+
+    case "GetTemplatification":
+        let templatification = try await account.templates.getTemplatification(
+            bucketId: pathParams.longParam("bucketId"),
+            recordingId: pathParams.longParam("recordingId"),
+            templatificationId: pathParams.longParam("templatificationId"))
+        return DispatchResult(resultJSON: summarizeTemplatification(templatification))
 
     case "CreateTemplateLibraryCopy":
         let libraryCopy = try await account.templates.createLibraryCopy(

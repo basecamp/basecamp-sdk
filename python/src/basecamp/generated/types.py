@@ -606,9 +606,21 @@ class CreateTemplateLibraryCopyRequestContent(TypedDict):
     template_recording_id: int
 
 
+class CreateTemplateLibraryTodolistRequestContent(TypedDict):
+    description: NotRequired[str]
+    name: str
+
+
 class CreateTemplateRequestContent(TypedDict):
     description: NotRequired[str]
     name: str
+
+
+class CreateTemplatificationRequestContent(TypedDict):
+    copy_assignments: NotRequired[bool]
+    copy_comments: NotRequired[bool]
+    move_cards_to_triage: NotRequired[bool]
+    template_name: NotRequired[str]
 
 
 class CreateTimesheetEntryRequestContent(TypedDict):
@@ -1801,6 +1813,15 @@ class TemplateLibraryTodolists(TypedDict):
     bucket: RecordingBucket
     todolists: list[Todolist]
     todoset: RecordingParent
+
+
+class Templatification(TypedDict):
+    destination_card_table: NotRequired[CardTable]
+    destination_todolist: NotRequired[Todolist]
+    id: int
+    source_recording_id: int
+    status: str
+    url: str
 
 
 class TimelineAttachment(TypedDict):

@@ -257,7 +257,10 @@ service Basecamp {
     GetProjectConstruction,
     GetTemplateLibraryTodolists,
     GetTemplateLibraryCardTables,
+    CreateTemplateLibraryTodolist,
     CreateTemplateLibraryCardTable,
+    CreateTemplatification,
+    GetTemplatification,
     CreateTemplateLibraryCopy,
     GetTemplateLibraryCopy,
     GetTool,
@@ -8771,6 +8774,107 @@ structure CreateTemplateLibraryCardTableOutput {
   card_table: CardTable
 }
 
+/// Create an empty to-do list template
+@basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@http(method: "POST", uri: "/{accountId}/template_library/todolists.json", code: 201)
+operation CreateTemplateLibraryTodolist {
+  input: CreateTemplateLibraryTodolistInput
+  output: CreateTemplateLibraryTodolistOutput
+  errors: [ValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure CreateTemplateLibraryTodolistInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  /// What to call the template.
+  @required
+  name: String
+
+  /// Rich text describing the template.
+  description: String
+}
+
+structure CreateTemplateLibraryTodolistOutput {
+  todolist: Todolist
+}
+
+// ===== Templatification Operations =====
+
+/// Templatify a to-do list or card table
+@basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@http(method: "POST", uri: "/{accountId}/buckets/{bucketId}/recordings/{recordingId}/templatifications.json", code: 201)
+operation CreateTemplatification {
+  input: CreateTemplatificationInput
+  output: CreateTemplatificationOutput
+  errors: [FieldValidationError, NotFoundError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure CreateTemplatificationInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  bucketId: ProjectId
+
+  /// The to-do list or card table to templatify. Anything else is a 403.
+  @required
+  @httpLabel
+  recordingId: RecordingId
+
+  /// What to call the template. Defaults to the source recording's own title.
+  template_name: String
+
+  /// Carry the comments across.
+  copy_comments: Boolean
+
+  /// Carry assignees and the people involved across, adding them to the library
+  /// if they are not already there.
+  copy_assignments: Boolean
+
+  /// Gather the cards into Triage. Card tables only, and ignored otherwise.
+  move_cards_to_triage: Boolean
+}
+
+structure CreateTemplatificationOutput {
+  templatification: Templatification
+}
+
+/// Get a templatification
+@readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@http(method: "GET", uri: "/{accountId}/buckets/{bucketId}/recordings/{recordingId}/templatifications/{templatificationId}")
+operation GetTemplatification {
+  input: GetTemplatificationInput
+  output: GetTemplatificationOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure GetTemplatificationInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  bucketId: ProjectId
+
+  @required
+  @httpLabel
+  recordingId: RecordingId
+
+  @required
+  @httpLabel
+  templatificationId: TemplatificationId
+}
+
+structure GetTemplatificationOutput {
+  templatification: Templatification
+}
+
 /// Start copying a to-do list or card table template into a project
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "POST", uri: "/{accountId}/template_library/copies.json", code: 201)
@@ -10157,6 +10261,30 @@ structure PeopleConfirmationRequiredError {
 
   @required
   people: TemplateLibraryConfirmationPersonList
+}
+
+long TemplatificationId
+
+/// The record of templatifying a recording into the library. Carries no
+/// destination parent, unlike a copy: the destination is always the library.
+structure Templatification {
+  @required
+  id: TemplatificationId
+
+  @required
+  status: TemplateLibraryCopyStatus
+
+  @required
+  source_recording_id: RecordingId
+
+  @required
+  url: String
+
+  /// Exactly one destination is present once the save completes, according to
+  /// the kind saved, and neither before.
+  destination_todolist: Todolist
+
+  destination_card_table: CardTable
 }
 
 // ===== Tool Shapes =====
