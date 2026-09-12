@@ -420,13 +420,44 @@ class OperationMapper
       @account.projects.list_recent_projects
     when "RecordProjectVisit"
       @account.projects.record_project_visit(project_id: path_params["projectId"])
-    when "GetTemplateLibrary"
-      summarize_template_library(@account.templates.get_library)
+    when "GetTemplateLibraryTodolists"
+      summarize_template_library_todolists(@account.templates.get_library_todolists)
+    when "GetTemplateLibraryCardTables"
+      summarize_template_library_card_tables(@account.templates.get_library_card_tables)
+    when "CreateTemplateLibraryCardTable"
+      summarize_card_table(@account.templates.create_library_card_table(name: body["name"]))
+    when "CreateTemplateLibraryTodolist"
+      summarize_todolist(
+        @account.templates.create_library_todolist(
+          name: body["name"],
+          description: body["description"]
+        )
+      )
+    when "CreateTemplatification"
+      summarize_templatification(
+        @account.templates.create_templatification(
+          bucket_id: path_params["bucketId"],
+          recording_id: path_params["recordingId"],
+          template_name: body["template_name"],
+          copy_comments: body["copy_comments"],
+          copy_assignments: body["copy_assignments"],
+          move_cards_to_triage: body["move_cards_to_triage"]
+        )
+      )
+    when "GetTemplatification"
+      summarize_templatification(
+        @account.templates.get_templatification(
+          bucket_id: path_params["bucketId"],
+          recording_id: path_params["recordingId"],
+          templatification_id: path_params["templatificationId"]
+        )
+      )
     when "CreateTemplateLibraryCopy"
       summarize_template_library_copy(
         @account.templates.create_library_copy(
           template_recording_id: body["template_recording_id"],
           destination_parent_id: body["destination_parent_id"],
+          destination_project_id: body["destination_project_id"],
           adding_people_confirmed: body["adding_people_confirmed"]
         )
       )
@@ -806,12 +837,37 @@ class OperationMapper
   SEARCH_QUERY = "Leto"
 
   # Exposes representative decoded template-library fields as portable scalars.
-  def summarize_template_library(library)
+  def summarize_template_library_todolists(library)
     {
       "bucket_id" => library.dig("bucket", "id"),
       "todoset_id" => library.dig("todoset", "id"),
       "first_todolist_id" => library.dig("todolists", 0, "id"),
     }
+  end
+
+  def summarize_template_library_card_tables(library)
+    boardset = library["kanban_boardset"]
+    card_tables = library["card_tables"] || []
+    summary = {
+      "bucket_id" => library.dig("bucket", "id"),
+      "has_kanban_boardset" => !boardset.nil?,
+      "card_tables_count" => card_tables.length,
+    }
+    summary["kanban_boardset_id"] = boardset["id"] if boardset
+    summary["first_card_table_id"] = card_tables[0]["id"] unless card_tables.empty?
+    summary
+  end
+
+  def summarize_card_table(card_table)
+    summary = {
+      "id" => card_table["id"],
+      "title" => card_table["title"],
+      "lists_count" => (card_table["lists"] || []).length,
+    }
+    parent = card_table["parent"]
+    summary["parent_id"] = parent["id"] if parent
+    summary["position"] = card_table["position"] unless card_table["position"].nil?
+    summary
   end
 
   def summarize_project_construction(construction)
@@ -822,7 +878,22 @@ class OperationMapper
     summary = { "id" => copy["id"], "status" => copy["status"] }
     destination = copy["destination_todolist"]
     summary["destination_todolist_id"] = destination["id"] if destination
+    card_table = copy["destination_card_table"]
+    summary["destination_card_table_id"] = card_table["id"] if card_table
     summary
+  end
+
+  def summarize_templatification(templatification)
+    summary = { "id" => templatification["id"], "status" => templatification["status"] }
+    destination = templatification["destination_todolist"]
+    summary["destination_todolist_id"] = destination["id"] if destination
+    card_table = templatification["destination_card_table"]
+    summary["destination_card_table_id"] = card_table["id"] if card_table
+    summary
+  end
+
+  def summarize_todolist(todolist)
+    { "id" => todolist["id"], "title" => todolist["title"] }
   end
 
   # Flatten a search result list into top-level scalars, one group per branch of

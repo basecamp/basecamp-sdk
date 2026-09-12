@@ -27,7 +27,7 @@ Paths are from the repository root, since that is where you will be working.
 | **Python** | httpx via `HttpClient` | `python/src/basecamp/generated/services/*.py` |
 | **Rust** | reqwest via `HttpClient` trait | `rust/basecamp-sdk/src/generated/services/*.rs` |
 
-All `262` operations across the ~50-service per-SDK layer are generated. Hand-written code is limited to infrastructure: <!-- @operation-count -->
+All `267` operations across the ~50-service per-SDK layer are generated. Hand-written code is limited to infrastructure: <!-- @operation-count -->
 
 | Purpose | Location |
 |---------|----------|
@@ -92,7 +92,7 @@ Pull the andon cord when you see:
 
 All new API coverage starts in `spec/basecamp.smithy`. Before writing SDK code, add operations and shapes to the spec.
 
-`spec/basecamp.smithy` holds `262` worked operations. <!-- @operation-count --> Copy the nearest one rather than
+`spec/basecamp.smithy` holds `267` worked operations. <!-- @operation-count --> Copy the nearest one rather than
 working from a skeleton here: it shows the live conventions for naming, `@http` URIs,
 pagination traits and shape reuse, and it cannot drift from itself.
 

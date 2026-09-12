@@ -2760,6 +2760,236 @@
         }
       }
     },
+    "/buckets/{bucketId}/recordings/{recordingId}/templatifications.json": {
+      "post": {
+        "description": "Templatify a to-do list or card table",
+        "operationId": "CreateTemplatification",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTemplatificationRequestContent"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "bucketId",
+            "in": "path",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "required": true
+          },
+          {
+            "name": "recordingId",
+            "in": "path",
+            "description": "The to-do list or card table to templatify. Anything else is a 403.",
+            "schema": {
+              "type": "integer",
+              "description": "The to-do list or card table to templatify. Anything else is a 403.",
+              "format": "int64"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "CreateTemplatification 201 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateTemplatificationResponseContent"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UnauthorizedError 401 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ForbiddenError 403 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NotFoundError 404 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundErrorResponseContent"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "FieldValidationError 422 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FieldValidationErrorResponseContent"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RateLimitError 429 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitErrorResponseContent"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError 500 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Automation"
+        ],
+        "x-basecamp-retry": {
+          "maxAttempts": 2,
+          "baseDelayMs": 1000,
+          "backoff": "exponential",
+          "retryOn": [
+            429,
+            503
+          ]
+        }
+      }
+    },
+    "/buckets/{bucketId}/recordings/{recordingId}/templatifications/{templatificationId}": {
+      "get": {
+        "description": "Get a templatification",
+        "operationId": "GetTemplatification",
+        "parameters": [
+          {
+            "name": "bucketId",
+            "in": "path",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "required": true
+          },
+          {
+            "name": "recordingId",
+            "in": "path",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "required": true
+          },
+          {
+            "name": "templatificationId",
+            "in": "path",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "GetTemplatification 200 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetTemplatificationResponseContent"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UnauthorizedError 401 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ForbiddenError 403 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NotFoundError 404 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundErrorResponseContent"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RateLimitError 429 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitErrorResponseContent"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError 500 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Automation"
+        ],
+        "x-basecamp-retry": {
+          "maxAttempts": 3,
+          "baseDelayMs": 1000,
+          "backoff": "exponential",
+          "retryOn": [
+            429,
+            503
+          ]
+        }
+      }
+    },
     "/buckets/{bucketId}/todosets/{todosetId}/todos.json": {
       "post": {
         "description": "Create a to-do directly under a project's to-do set, outside any to-do list.\nThis form exists only project-scoped (no account-scoped variant); parameters\nand response match the to-do-list create. Find a project's to-do set id via\nGetTodoset.",
@@ -20085,18 +20315,18 @@
         }
       }
     },
-    "/template_library.json": {
+    "/template_library/card_tables.json": {
       "get": {
-        "description": "Get the account's to-do list template library",
-        "operationId": "GetTemplateLibrary",
+        "description": "Get the account's card table templates",
+        "operationId": "GetTemplateLibraryCardTables",
         "parameters": [],
         "responses": {
           "200": {
-            "description": "GetTemplateLibrary 200 response",
+            "description": "GetTemplateLibraryCardTables 200 response",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/GetTemplateLibraryResponseContent"
+                  "$ref": "#/components/schemas/GetTemplateLibraryCardTablesResponseContent"
                 }
               }
             }
@@ -20154,11 +20384,100 @@
             503
           ]
         }
+      },
+      "post": {
+        "description": "Create a card table template with the default columns",
+        "operationId": "CreateTemplateLibraryCardTable",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTemplateLibraryCardTableRequestContent"
+              }
+            }
+          },
+          "required": true
+        },
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "CreateTemplateLibraryCardTable 201 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateTemplateLibraryCardTableResponseContent"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UnauthorizedError 401 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ForbiddenError 403 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "ValidationError 422 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorResponseContent"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RateLimitError 429 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitErrorResponseContent"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError 500 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Automation"
+        ],
+        "x-basecamp-retry": {
+          "maxAttempts": 2,
+          "baseDelayMs": 1000,
+          "backoff": "exponential",
+          "retryOn": [
+            429,
+            503
+          ]
+        }
       }
     },
     "/template_library/copies.json": {
       "post": {
-        "description": "Start copying a to-do list template into a project",
+        "description": "Start copying a to-do list or card table template into a project",
         "operationId": "CreateTemplateLibraryCopy",
         "requestBody": {
           "content": {
@@ -20339,6 +20658,166 @@
         ],
         "x-basecamp-retry": {
           "maxAttempts": 3,
+          "baseDelayMs": 1000,
+          "backoff": "exponential",
+          "retryOn": [
+            429,
+            503
+          ]
+        }
+      }
+    },
+    "/template_library/todolists.json": {
+      "get": {
+        "description": "Get the account's to-do list templates",
+        "operationId": "GetTemplateLibraryTodolists",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "GetTemplateLibraryTodolists 200 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetTemplateLibraryTodolistsResponseContent"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UnauthorizedError 401 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ForbiddenError 403 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RateLimitError 429 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitErrorResponseContent"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError 500 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Automation"
+        ],
+        "x-basecamp-retry": {
+          "maxAttempts": 3,
+          "baseDelayMs": 1000,
+          "backoff": "exponential",
+          "retryOn": [
+            429,
+            503
+          ]
+        }
+      },
+      "post": {
+        "description": "Create an empty to-do list template",
+        "operationId": "CreateTemplateLibraryTodolist",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTemplateLibraryTodolistRequestContent"
+              }
+            }
+          },
+          "required": true
+        },
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "CreateTemplateLibraryTodolist 201 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateTemplateLibraryTodolistResponseContent"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UnauthorizedError 401 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ForbiddenError 403 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "ValidationError 422 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorResponseContent"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RateLimitError 429 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitErrorResponseContent"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError 500 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Automation"
+        ],
+        "x-basecamp-retry": {
+          "maxAttempts": 2,
           "baseDelayMs": 1000,
           "backoff": "exponential",
           "retryOn": [
@@ -26002,6 +26481,18 @@
           "subscription_url": {
             "type": "string"
           },
+          "position": {
+            "type": "integer",
+            "description": "Position on the project dock. Absent on a card table template, which the\nlibrary orders by title instead.",
+            "format": "int32"
+          },
+          "parent": {
+            "$ref": "#/components/schemas/RecordingParent"
+          },
+          "public_link_url": {
+            "type": "string",
+            "description": "Public sharing URL. Absent for callers who may not share publicly, so the\nsame card table can carry it for one person and not another."
+          },
           "bucket": {
             "$ref": "#/components/schemas/TodoBucket"
           },
@@ -27312,15 +27803,37 @@
       "CreateScheduleEntryResponseContent": {
         "$ref": "#/components/schemas/ScheduleEntry"
       },
+      "CreateTemplateLibraryCardTableRequestContent": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The template's name. Write-only: the response carries it as `title`."
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "CreateTemplateLibraryCardTableResponseContent": {
+        "$ref": "#/components/schemas/CardTable"
+      },
       "CreateTemplateLibraryCopyRequestContent": {
         "type": "object",
         "properties": {
           "template_recording_id": {
             "type": "integer",
+            "description": "The to-do list or card table in the library to copy.",
+            "format": "int64"
+          },
+          "destination_project_id": {
+            "type": "integer",
+            "description": "The destination project. Basecamp resolves the container from the\ntemplate's kind, so a caller naming a project needs to know nothing about\ndocks or to-do sets. Supply this or destination_parent_id; if both are\nsent, destination_parent_id wins.",
             "format": "int64"
           },
           "destination_parent_id": {
             "type": "integer",
+            "description": "The container to copy into, for a caller that already holds one: the\nproject's to-do set for a to-do list template, or its dock for a card\ntable. A caller who may not edit it gets 404, not 403.",
             "format": "int64"
           },
           "adding_people_confirmed": {
@@ -27329,12 +27842,30 @@
           }
         },
         "required": [
-          "destination_parent_id",
           "template_recording_id"
         ]
       },
       "CreateTemplateLibraryCopyResponseContent": {
         "$ref": "#/components/schemas/TemplateLibraryCopy"
+      },
+      "CreateTemplateLibraryTodolistRequestContent": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "What to call the template."
+          },
+          "description": {
+            "type": "string",
+            "description": "Rich text describing the template."
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "CreateTemplateLibraryTodolistResponseContent": {
+        "$ref": "#/components/schemas/Todolist"
       },
       "CreateTemplateRequestContent": {
         "type": "object",
@@ -27352,6 +27883,30 @@
       },
       "CreateTemplateResponseContent": {
         "$ref": "#/components/schemas/Template"
+      },
+      "CreateTemplatificationRequestContent": {
+        "type": "object",
+        "properties": {
+          "template_name": {
+            "type": "string",
+            "description": "What to call the template. Defaults to the source recording's own title."
+          },
+          "copy_comments": {
+            "type": "boolean",
+            "description": "Carry the comments across."
+          },
+          "copy_assignments": {
+            "type": "boolean",
+            "description": "Carry assignees and the people involved across, adding them to the library\nif they are not already there."
+          },
+          "move_cards_to_triage": {
+            "type": "boolean",
+            "description": "Gather the cards into Triage. Card tables only, and ignored otherwise."
+          }
+        }
+      },
+      "CreateTemplatificationResponseContent": {
+        "$ref": "#/components/schemas/Templatification"
       },
       "CreateTimesheetEntryRequestContent": {
         "type": "object",
@@ -29238,14 +29793,20 @@
       "GetSubscriptionResponseContent": {
         "$ref": "#/components/schemas/Subscription"
       },
+      "GetTemplateLibraryCardTablesResponseContent": {
+        "$ref": "#/components/schemas/TemplateLibraryCardTables"
+      },
       "GetTemplateLibraryCopyResponseContent": {
         "$ref": "#/components/schemas/TemplateLibraryCopy"
       },
-      "GetTemplateLibraryResponseContent": {
-        "$ref": "#/components/schemas/TemplateLibrary"
+      "GetTemplateLibraryTodolistsResponseContent": {
+        "$ref": "#/components/schemas/TemplateLibraryTodolists"
       },
       "GetTemplateResponseContent": {
         "$ref": "#/components/schemas/Template"
+      },
+      "GetTemplatificationResponseContent": {
+        "$ref": "#/components/schemas/Templatification"
       },
       "GetTimesheetEntryResponseContent": {
         "$ref": "#/components/schemas/TimesheetEntry"
@@ -32629,26 +33190,35 @@
           "updated_at"
         ]
       },
-      "TemplateLibrary": {
+      "TemplateLibraryCardTables": {
         "type": "object",
         "properties": {
           "bucket": {
             "$ref": "#/components/schemas/RecordingBucket"
           },
-          "todoset": {
-            "$ref": "#/components/schemas/RecordingParent"
+          "kanban_boardset": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RecordingParent"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "x-go-type": "RecordingParent"
           },
-          "todolists": {
+          "card_tables": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/Todolist"
-            }
+              "$ref": "#/components/schemas/Recording"
+            },
+            "description": "Active templates in title order, as recording projections: read one through\nGetCardTable to see its columns."
           }
         },
         "required": [
           "bucket",
-          "todolists",
-          "todoset"
+          "card_tables",
+          "kanban_boardset"
         ]
       },
       "TemplateLibraryConfirmationPerson": {
@@ -32705,10 +33275,68 @@
           },
           "destination_todolist": {
             "$ref": "#/components/schemas/Todolist"
+          },
+          "destination_card_table": {
+            "$ref": "#/components/schemas/CardTable"
           }
         },
         "required": [
           "destination_parent_id",
+          "id",
+          "source_recording_id",
+          "status",
+          "url"
+        ]
+      },
+      "TemplateLibraryTodolists": {
+        "type": "object",
+        "properties": {
+          "bucket": {
+            "$ref": "#/components/schemas/RecordingBucket"
+          },
+          "todoset": {
+            "$ref": "#/components/schemas/RecordingParent"
+          },
+          "todolists": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Todolist"
+            }
+          }
+        },
+        "required": [
+          "bucket",
+          "todolists",
+          "todoset"
+        ]
+      },
+      "Templatification": {
+        "type": "object",
+        "description": "The record of templatifying a recording into the library. Carries no\ndestination parent, unlike a copy: the destination is always the library.",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "status": {
+            "type": "string",
+            "description": "pending|processing|completed|failed"
+          },
+          "source_recording_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "url": {
+            "type": "string"
+          },
+          "destination_todolist": {
+            "$ref": "#/components/schemas/Todolist"
+          },
+          "destination_card_table": {
+            "$ref": "#/components/schemas/CardTable"
+          }
+        },
+        "required": [
           "id",
           "source_recording_id",
           "status",

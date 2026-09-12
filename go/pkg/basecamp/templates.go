@@ -48,11 +48,19 @@ type CreateProjectOptions struct {
 	StartDate string
 }
 
-// TemplateLibrary contains the account's to-do list templates and their parent resources.
-type TemplateLibrary struct {
+// TemplateLibraryTodolists contains the account's to-do list templates.
+type TemplateLibraryTodolists struct {
 	Bucket    Bucket     `json:"bucket"`
 	Todoset   Parent     `json:"todoset"`
 	Todolists []Todolist `json:"todolists"`
+}
+
+// TemplateLibraryCardTables contains the account's card table templates.
+type TemplateLibraryCardTables struct {
+	Bucket Bucket `json:"bucket"`
+	// Nil until the first card table template is created.
+	KanbanBoardset *Parent     `json:"kanban_boardset"`
+	CardTables     []Recording `json:"card_tables"`
 }
 
 // TemplateLibraryConfirmationPerson identifies a person whose project access requires confirmation.
@@ -64,18 +72,66 @@ type TemplateLibraryConfirmationPerson struct {
 
 // TemplateLibraryCopy represents the current state of an asynchronous template copy.
 type TemplateLibraryCopy struct {
-	ID                  int64     `json:"id"`
-	Status              string    `json:"status"`
-	SourceRecordingID   int64     `json:"source_recording_id"`
-	DestinationParentID int64     `json:"destination_parent_id"`
-	URL                 string    `json:"url"`
-	DestinationTodolist *Todolist `json:"destination_todolist,omitempty"`
+	ID                  int64  `json:"id"`
+	Status              string `json:"status"`
+	SourceRecordingID   int64  `json:"source_recording_id"`
+	DestinationParentID int64  `json:"destination_parent_id"`
+	URL                 string `json:"url"`
+	// Exactly one destination is set once the copy completes, and neither before.
+	DestinationTodolist  *Todolist  `json:"destination_todolist,omitempty"`
+	DestinationCardTable *CardTable `json:"destination_card_table,omitempty"`
 }
 
-// CreateTemplateLibraryCopyRequest specifies where to copy a to-do list template.
+// Templatification is the record of templatifying a recording into the template
+// library. It carries no destination parent, unlike a template copy: the
+// destination is always the account's library and the caller never names it.
+type Templatification struct {
+	ID                int64  `json:"id"`
+	Status            string `json:"status"`
+	SourceRecordingID int64  `json:"source_recording_id"`
+	URL               string `json:"url"`
+	// DestinationTodolist is the template that was made, set when the templatification
+	// completed and the source was a to-do list.
+	DestinationTodolist *Todolist `json:"destination_todolist,omitempty"`
+	// DestinationCardTable is the template that was made, set when the templatification
+	// completed and the source was a card table. Exactly one of the two is set on
+	// a completed templatification, and neither before it finishes.
+	DestinationCardTable *CardTable `json:"destination_card_table,omitempty"`
+}
+
+// CreateTemplatificationRequest specifies how to templatify a recording. Every
+// field is optional, and a zero-valued request is a complete request: an unnamed
+// template takes the name of the recording it was made from.
+type CreateTemplatificationRequest struct {
+	// TemplateName is what to call the template. Empty takes the source's title.
+	TemplateName string `json:"template_name,omitempty"`
+	// CopyComments carries the comments across.
+	CopyComments bool `json:"copy_comments,omitempty"`
+	// CopyAssignments carries assignees and the people involved across, adding
+	// them to the library if they are not already there.
+	CopyAssignments bool `json:"copy_assignments,omitempty"`
+	// MoveCardsToTriage gathers the cards into the Triage column instead of
+	// leaving them where they sit. Card tables only: bc3 accepts it on any
+	// recording but never reads it for a to-do list.
+	MoveCardsToTriage bool `json:"move_cards_to_triage,omitempty"`
+}
+
+// CreateTemplateLibraryTodolistRequest specifies the new to-do list template.
+type CreateTemplateLibraryTodolistRequest struct {
+	// Name is what to call the template (required).
+	Name string `json:"name"`
+	// Description is optional rich text describing the template.
+	Description string `json:"description,omitempty"`
+}
+
+// CreateTemplateLibraryCopyRequest specifies where to copy a template.
 type CreateTemplateLibraryCopyRequest struct {
-	TemplateRecordingID   int64 `json:"template_recording_id"`
-	DestinationParentID   int64 `json:"destination_parent_id"`
+	TemplateRecordingID int64 `json:"template_recording_id"`
+	// DestinationProjectID lets Basecamp resolve the container from the template's
+	// kind. Supply this or DestinationParentID, not both.
+	DestinationProjectID int64 `json:"destination_project_id,omitempty"`
+	// DestinationParentID names the container directly, for a caller holding one.
+	DestinationParentID   int64 `json:"destination_parent_id,omitempty"`
 	AddingPeopleConfirmed bool  `json:"adding_people_confirmed,omitempty"`
 }
 
@@ -437,10 +493,10 @@ func (s *TemplatesService) GetConstruction(ctx context.Context, templateID, cons
 	return &construction, nil
 }
 
-// GetLibrary returns the account's to-do list template library.
-func (s *TemplatesService) GetLibrary(ctx context.Context) (result *TemplateLibrary, err error) {
+// GetLibraryTodolists returns the account's to-do list templates.
+func (s *TemplatesService) GetLibraryTodolists(ctx context.Context) (result *TemplateLibraryTodolists, err error) {
 	op := OperationInfo{
-		Service: "Templates", Operation: "GetLibrary",
+		Service: "Templates", Operation: "GetLibraryTodolists",
 		ResourceType: "template_library", IsMutation: false,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
@@ -452,7 +508,7 @@ func (s *TemplatesService) GetLibrary(ctx context.Context) (result *TemplateLibr
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.GetTemplateLibraryWithResponse(ctx, s.client.accountID)
+	resp, err := s.client.parent.gen.GetTemplateLibraryTodolistsWithResponse(ctx, s.client.accountID)
 	if err != nil {
 		return nil, err
 	}
@@ -463,8 +519,195 @@ func (s *TemplatesService) GetLibrary(ctx context.Context) (result *TemplateLibr
 		return nil, fmt.Errorf("unexpected empty response")
 	}
 
-	library := templateLibraryFromGenerated(*resp.JSON200)
+	library := templateLibraryTodolistsFromGenerated(*resp.JSON200)
 	return &library, nil
+}
+
+// GetLibraryCardTables returns the account's card table templates.
+func (s *TemplatesService) GetLibraryCardTables(ctx context.Context) (result *TemplateLibraryCardTables, err error) {
+	op := OperationInfo{
+		Service: "Templates", Operation: "GetLibraryCardTables",
+		ResourceType: "template_library", IsMutation: false,
+	}
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
+	start := time.Now()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	resp, err := s.client.parent.gen.GetTemplateLibraryCardTablesWithResponse(ctx, s.client.accountID)
+	if err != nil {
+		return nil, err
+	}
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
+	}
+
+	library := templateLibraryCardTablesFromGenerated(*resp.JSON200)
+	return &library, nil
+}
+
+// CreateLibraryCardTable creates a card table template with the default columns.
+// name is write-only: the returned CardTable carries it as Title.
+func (s *TemplatesService) CreateLibraryCardTable(ctx context.Context, name string) (result *CardTable, err error) {
+	op := OperationInfo{
+		Service: "Templates", Operation: "CreateLibraryCardTable",
+		ResourceType: "template_library_card_table", IsMutation: true,
+	}
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
+	start := time.Now()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if name == "" {
+		err = ErrUsage("card table template name is required")
+		return nil, err
+	}
+
+	body := generated.CreateTemplateLibraryCardTableJSONRequestBody{Name: name}
+	resp, err := s.client.parent.gen.CreateTemplateLibraryCardTableWithResponse(ctx, s.client.accountID, body)
+	if err != nil {
+		return nil, err
+	}
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
+		return nil, err
+	}
+	if resp.JSON201 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
+	}
+
+	cardTable := cardTableFromGenerated(*resp.JSON201)
+	return &cardTable, nil
+}
+
+// CreateLibraryTodolist creates an empty to-do list template.
+//
+// Fill it in with the Todos service, using the returned ID. To start from work
+// that already exists in a project, use CreateTemplatification instead.
+func (s *TemplatesService) CreateLibraryTodolist(ctx context.Context, req *CreateTemplateLibraryTodolistRequest) (result *Todolist, err error) {
+	op := OperationInfo{
+		Service: "Templates", Operation: "CreateLibraryTodolist",
+		ResourceType: "template_library_todolist", IsMutation: true,
+	}
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
+	start := time.Now()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if req == nil || req.Name == "" {
+		err = ErrUsage("to-do list template name is required")
+		return nil, err
+	}
+
+	body := generated.CreateTemplateLibraryTodolistJSONRequestBody{
+		Name:        req.Name,
+		Description: omitzero(req.Description),
+	}
+	resp, err := s.client.parent.gen.CreateTemplateLibraryTodolistWithResponse(ctx, s.client.accountID, body)
+	if err != nil {
+		return nil, err
+	}
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
+		return nil, err
+	}
+	if resp.JSON201 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
+	}
+
+	todolist := todolistFromGenerated(*resp.JSON201)
+	return &todolist, nil
+}
+
+// CreateTemplatification templatifies a to-do list or card table into the
+// template library.
+//
+// It runs in the background: poll GetTemplatification with the returned ID
+// until the status leaves pending and processing. A nil request is valid, and
+// names the template after the recording it was made from.
+func (s *TemplatesService) CreateTemplatification(ctx context.Context, bucketID, recordingID int64, req *CreateTemplatificationRequest) (result *Templatification, err error) {
+	op := OperationInfo{
+		Service: "Templates", Operation: "CreateTemplatification",
+		ResourceType: "templatification", IsMutation: true,
+		ProjectID: bucketID, ResourceID: recordingID,
+	}
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
+	start := time.Now()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if req == nil {
+		req = &CreateTemplatificationRequest{}
+	}
+	body := generated.CreateTemplatificationJSONRequestBody{
+		TemplateName:      omitzero(req.TemplateName),
+		CopyComments:      omitzero(req.CopyComments),
+		CopyAssignments:   omitzero(req.CopyAssignments),
+		MoveCardsToTriage: omitzero(req.MoveCardsToTriage),
+	}
+	resp, err := s.client.parent.gen.CreateTemplatificationWithResponse(ctx, s.client.accountID, bucketID, recordingID, body)
+	if err != nil {
+		return nil, err
+	}
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
+		return nil, err
+	}
+	if resp.JSON201 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
+	}
+
+	templatification := templatificationFromGenerated(*resp.JSON201)
+	return &templatification, nil
+}
+
+// GetTemplatification returns the current state of a templatification. Only the
+// person who started it can read it; anyone else gets a
+// not-found error.
+func (s *TemplatesService) GetTemplatification(ctx context.Context, bucketID, recordingID, templatificationID int64) (result *Templatification, err error) {
+	op := OperationInfo{
+		Service: "Templates", Operation: "GetTemplatification",
+		ResourceType: "templatification", IsMutation: false,
+		ProjectID: bucketID, ResourceID: templatificationID,
+	}
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
+	start := time.Now()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	resp, err := s.client.parent.gen.GetTemplatificationWithResponse(ctx, s.client.accountID, bucketID, recordingID, templatificationID)
+	if err != nil {
+		return nil, err
+	}
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("unexpected empty response")
+	}
+
+	templatification := templatificationFromGenerated(*resp.JSON200)
+	return &templatification, nil
 }
 
 // CreateLibraryCopy starts copying a to-do list template into a project.
@@ -489,7 +732,8 @@ func (s *TemplatesService) CreateLibraryCopy(ctx context.Context, req *CreateTem
 
 	body := generated.CreateTemplateLibraryCopyJSONRequestBody{
 		TemplateRecordingId:   req.TemplateRecordingID,
-		DestinationParentId:   req.DestinationParentID,
+		DestinationProjectId:  omitzero(req.DestinationProjectID),
+		DestinationParentId:   omitzero(req.DestinationParentID),
 		AddingPeopleConfirmed: omitzero(req.AddingPeopleConfirmed),
 	}
 	resp, err := s.client.parent.gen.CreateTemplateLibraryCopyWithResponse(ctx, s.client.accountID, body)
@@ -583,8 +827,8 @@ func projectConstructionFromGenerated(gc generated.ProjectConstruction) ProjectC
 	return c
 }
 
-func templateLibraryFromGenerated(gl generated.TemplateLibrary) TemplateLibrary {
-	library := TemplateLibrary{
+func templateLibraryTodolistsFromGenerated(gl generated.TemplateLibraryTodolists) TemplateLibraryTodolists {
+	library := TemplateLibraryTodolists{
 		Bucket: Bucket{
 			ID:   gl.Bucket.Id,
 			Name: gl.Bucket.Name,
@@ -605,6 +849,50 @@ func templateLibraryFromGenerated(gl generated.TemplateLibrary) TemplateLibrary 
 	return library
 }
 
+func templateLibraryCardTablesFromGenerated(gl generated.TemplateLibraryCardTables) TemplateLibraryCardTables {
+	library := TemplateLibraryCardTables{
+		Bucket: Bucket{
+			ID:   gl.Bucket.Id,
+			Name: gl.Bucket.Name,
+			Type: gl.Bucket.Type,
+		},
+		CardTables: make([]Recording, 0, len(gl.CardTables)),
+	}
+
+	if gl.KanbanBoardset != nil {
+		library.KanbanBoardset = &Parent{
+			ID:     gl.KanbanBoardset.Id,
+			Title:  gl.KanbanBoardset.Title,
+			Type:   gl.KanbanBoardset.Type,
+			URL:    gl.KanbanBoardset.Url,
+			AppURL: gl.KanbanBoardset.AppUrl,
+		}
+	}
+
+	for _, cardTable := range gl.CardTables {
+		library.CardTables = append(library.CardTables, recordingFromGenerated(cardTable))
+	}
+	return library
+}
+
+func templatificationFromGenerated(gt generated.Templatification) Templatification {
+	templatification := Templatification{
+		ID:                gt.Id,
+		Status:            gt.Status,
+		SourceRecordingID: gt.SourceRecordingId,
+		URL:               gt.Url,
+	}
+	if gt.DestinationTodolist != nil {
+		todolist := todolistFromGenerated(*gt.DestinationTodolist)
+		templatification.DestinationTodolist = &todolist
+	}
+	if gt.DestinationCardTable != nil {
+		cardTable := cardTableFromGenerated(*gt.DestinationCardTable)
+		templatification.DestinationCardTable = &cardTable
+	}
+	return templatification
+}
+
 func templateLibraryCopyFromGenerated(gc generated.TemplateLibraryCopy) TemplateLibraryCopy {
 	templateCopy := TemplateLibraryCopy{
 		ID:                  gc.Id,
@@ -616,6 +904,10 @@ func templateLibraryCopyFromGenerated(gc generated.TemplateLibraryCopy) Template
 	if gc.DestinationTodolist != nil {
 		todolist := todolistFromGenerated(*gc.DestinationTodolist)
 		templateCopy.DestinationTodolist = &todolist
+	}
+	if gc.DestinationCardTable != nil {
+		cardTable := cardTableFromGenerated(*gc.DestinationCardTable)
+		templateCopy.DestinationCardTable = &cardTable
 	}
 	return templateCopy
 }

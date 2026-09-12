@@ -277,7 +277,7 @@ function summarizeUpcoming(
 }
 
 /** Exposes representative decoded template-library fields as portable scalars. */
-function summarizeTemplateLibrary(library: {
+function summarizeTemplateLibraryTodolists(library: {
   bucket: { id: number };
   todoset: { id: number };
   todolists: Array<{ id: number }>;
@@ -289,10 +289,43 @@ function summarizeTemplateLibrary(library: {
   };
 }
 
+function summarizeTemplateLibraryCardTables(library: {
+  bucket: { id: number };
+  kanban_boardset: { id: number } | null;
+  card_tables: Array<{ id: number }>;
+}): Record<string, unknown> {
+  return {
+    bucket_id: library.bucket.id,
+    has_kanban_boardset: library.kanban_boardset != null,
+    ...(library.kanban_boardset
+      ? { kanban_boardset_id: library.kanban_boardset.id }
+      : {}),
+    card_tables_count: library.card_tables.length,
+    first_card_table_id: library.card_tables[0]?.id,
+  };
+}
+
+function summarizeCardTable(cardTable: {
+  id: number;
+  title: string;
+  parent?: { id: number } | null;
+  position?: number | null;
+  lists?: Array<unknown> | null;
+}): Record<string, unknown> {
+  return {
+    id: cardTable.id,
+    title: cardTable.title,
+    lists_count: cardTable.lists?.length ?? 0,
+    ...(cardTable.parent ? { parent_id: cardTable.parent.id } : {}),
+    ...(cardTable.position != null ? { position: cardTable.position } : {}),
+  };
+}
+
 function summarizeTemplateLibraryCopy(copy: {
   id: number;
   status: string;
   destination_todolist?: { id: number };
+  destination_card_table?: { id: number };
 }): Record<string, unknown> {
   return {
     id: copy.id,
@@ -300,7 +333,38 @@ function summarizeTemplateLibraryCopy(copy: {
     ...(copy.destination_todolist
       ? { destination_todolist_id: copy.destination_todolist.id }
       : {}),
+    ...(copy.destination_card_table
+      ? { destination_card_table_id: copy.destination_card_table.id }
+      : {}),
   };
+}
+
+function summarizeTemplatification(templatification: {
+  id: number;
+  status: string;
+  destination_todolist?: { id: number };
+  destination_card_table?: { id: number };
+}): Record<string, unknown> {
+  return {
+    id: templatification.id,
+    status: templatification.status,
+    ...(templatification.destination_todolist
+      ? { destination_todolist_id: templatification.destination_todolist.id }
+      : {}),
+    ...(templatification.destination_card_table
+      ? {
+          destination_card_table_id:
+            templatification.destination_card_table.id,
+        }
+      : {}),
+  };
+}
+
+function summarizeTodolist(todolist: {
+  id: number;
+  title: string;
+}): Record<string, unknown> {
+  return { id: todolist.id, title: todolist.title };
 }
 
 /**
@@ -495,15 +559,78 @@ async function executeOperation(
         await client.projects.recordProjectVisit(Number(params.projectId));
         break;
 
-      case "GetTemplateLibrary": {
-        const library = await client.templates.getLibrary();
-        return { result: summarizeTemplateLibrary(library) };
+      case "GetTemplateLibraryTodolists": {
+        const library = await client.templates.getLibraryTodolists();
+        return { result: summarizeTemplateLibraryTodolists(library) };
+      }
+
+      case "GetTemplateLibraryCardTables": {
+        const library = await client.templates.getLibraryCardTables();
+        return { result: summarizeTemplateLibraryCardTables(library) };
+      }
+
+      case "CreateTemplateLibraryCardTable": {
+        const cardTable = await client.templates.createLibraryCardTable({
+          name: String(body.name),
+        });
+        return { result: summarizeCardTable(cardTable) };
+      }
+
+      case "CreateTemplateLibraryTodolist": {
+        const todolist = await client.templates.createLibraryTodolist({
+          name: String(body.name),
+          description:
+            typeof body.description === "string" ? body.description : undefined,
+        });
+        return { result: summarizeTodolist(todolist) };
+      }
+
+      case "CreateTemplatification": {
+        const templatification = await client.templates.createTemplatification(
+          Number(params.bucketId),
+          Number(params.recordingId),
+          {
+            templateName:
+              typeof body.template_name === "string"
+                ? body.template_name
+                : undefined,
+            copyComments:
+              typeof body.copy_comments === "boolean"
+                ? body.copy_comments
+                : undefined,
+            copyAssignments:
+              typeof body.copy_assignments === "boolean"
+                ? body.copy_assignments
+                : undefined,
+            moveCardsToTriage:
+              typeof body.move_cards_to_triage === "boolean"
+                ? body.move_cards_to_triage
+                : undefined,
+          },
+        );
+        return { result: summarizeTemplatification(templatification) };
+      }
+
+      case "GetTemplatification": {
+        const templatification = await client.templates.getTemplatification(
+          Number(params.bucketId),
+          Number(params.recordingId),
+          Number(params.templatificationId),
+        );
+        return { result: summarizeTemplatification(templatification) };
       }
 
       case "CreateTemplateLibraryCopy": {
         const libraryCopy = await client.templates.createLibraryCopy({
           templateRecordingId: Number(body.template_recording_id),
-          destinationParentId: Number(body.destination_parent_id),
+          destinationParentId:
+            body.destination_parent_id === undefined
+              ? undefined
+              : Number(body.destination_parent_id),
+          destinationProjectId:
+            body.destination_project_id === undefined
+              ? undefined
+              : Number(body.destination_project_id),
           addingPeopleConfirmed:
             typeof body.adding_people_confirmed === "boolean"
               ? body.adding_people_confirmed

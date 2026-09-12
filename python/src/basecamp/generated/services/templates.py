@@ -11,23 +11,110 @@ from basecamp.hooks import OperationInfo
 
 
 class TemplatesService(BaseService):
-    def get_library(self) -> dict[str, Any]:
-        """Get the account's to-do list template library."""
+    def create_templatification(
+        self,
+        *,
+        bucket_id: int,
+        recording_id: int,
+        template_name: str | None = None,
+        copy_comments: bool | None = None,
+        copy_assignments: bool | None = None,
+        move_cards_to_triage: bool | None = None,
+    ) -> dict[str, Any]:
+        """Templatify a to-do list or card table.
+
+        Args:
+            bucket_id: The bucket id.
+            recording_id: The to-do list or card table to templatify. Anything else is a 403.
+            template_name: What to call the template. Defaults to the source recording's own title.
+            copy_comments: Carry the comments across.
+            copy_assignments: Carry assignees and the people involved across, adding them to the
+                library if they are not already there.
+            move_cards_to_triage: Gather the cards into Triage. Card tables only, and ignored
+                otherwise.
+        """
         return self._request(
-            OperationInfo(service="templates", operation="get_library", is_mutation=False),
+            OperationInfo(
+                service="templates",
+                operation="create_templatification",
+                is_mutation=True,
+                project_id=bucket_id,
+                resource_id=recording_id,
+            ),
+            "POST",
+            f"/buckets/{bucket_id}/recordings/{recording_id}/templatifications.json",
+            json_body=self._compact(
+                template_name=template_name,
+                copy_comments=copy_comments,
+                copy_assignments=copy_assignments,
+                move_cards_to_triage=move_cards_to_triage,
+            ),
+            operation="CreateTemplatification",
+        )
+
+    def get_templatification(self, *, bucket_id: int, recording_id: int, templatification_id: int) -> dict[str, Any]:
+        """Get a templatification.
+
+        Args:
+            bucket_id: The bucket id.
+            recording_id: The recording id.
+            templatification_id: The templatification id.
+        """
+        return self._request(
+            OperationInfo(
+                service="templates",
+                operation="get_templatification",
+                is_mutation=False,
+                project_id=bucket_id,
+                resource_id=templatification_id,
+            ),
             "GET",
-            "/template_library.json",
-            operation="GetTemplateLibrary",
+            f"/buckets/{bucket_id}/recordings/{recording_id}/templatifications/{templatification_id}",
+            operation="GetTemplatification",
+        )
+
+    def get_library_card_tables(self) -> dict[str, Any]:
+        """Get the account's card table templates."""
+        return self._request(
+            OperationInfo(service="templates", operation="get_library_card_tables", is_mutation=False),
+            "GET",
+            "/template_library/card_tables.json",
+            operation="GetTemplateLibraryCardTables",
+        )
+
+    def create_library_card_table(self, *, name: str) -> dict[str, Any]:
+        """Create a card table template with the default columns.
+
+        Args:
+            name: The template's name. Write-only: the response carries it as `title`.
+        """
+        return self._request(
+            OperationInfo(service="templates", operation="create_library_card_table", is_mutation=True),
+            "POST",
+            "/template_library/card_tables.json",
+            json_body=self._compact(name=name),
+            operation="CreateTemplateLibraryCardTable",
         )
 
     def create_library_copy(
-        self, *, template_recording_id: int, destination_parent_id: int, adding_people_confirmed: bool | None = None
+        self,
+        *,
+        template_recording_id: int,
+        destination_project_id: int | None = None,
+        destination_parent_id: int | None = None,
+        adding_people_confirmed: bool | None = None,
     ) -> dict[str, Any]:
-        """Start copying a to-do list template into a project.
+        """Start copying a to-do list or card table template into a project.
 
         Args:
-            template_recording_id: The template recording id.
-            destination_parent_id: The destination parent id.
+            template_recording_id: The to-do list or card table in the library to copy.
+            destination_project_id: The destination project. Basecamp resolves the container from
+                the template's kind, so a caller naming a project needs to know nothing about docks
+                or to-do sets. Supply this or destination_parent_id; if both are sent,
+                destination_parent_id wins.
+            destination_parent_id: The container to copy into, for a caller that already holds one:
+                the project's to-do set for a to-do list template, or its dock for a card table. A
+                caller who may not edit it gets 404, not 403.
             adding_people_confirmed: Confirm granting destination-project access to people
                 referenced by the template.
         """
@@ -37,6 +124,7 @@ class TemplatesService(BaseService):
             "/template_library/copies.json",
             json_body=self._compact(
                 template_recording_id=template_recording_id,
+                destination_project_id=destination_project_id,
                 destination_parent_id=destination_parent_id,
                 adding_people_confirmed=adding_people_confirmed,
             ),
@@ -54,6 +142,30 @@ class TemplatesService(BaseService):
             "GET",
             f"/template_library/copies/{copy_id}",
             operation="GetTemplateLibraryCopy",
+        )
+
+    def get_library_todolists(self) -> dict[str, Any]:
+        """Get the account's to-do list templates."""
+        return self._request(
+            OperationInfo(service="templates", operation="get_library_todolists", is_mutation=False),
+            "GET",
+            "/template_library/todolists.json",
+            operation="GetTemplateLibraryTodolists",
+        )
+
+    def create_library_todolist(self, *, name: str, description: str | None = None) -> dict[str, Any]:
+        """Create an empty to-do list template.
+
+        Args:
+            name: What to call the template.
+            description: Rich text describing the template.
+        """
+        return self._request(
+            OperationInfo(service="templates", operation="create_library_todolist", is_mutation=True),
+            "POST",
+            "/template_library/todolists.json",
+            json_body=self._compact(name=name, description=description),
+            operation="CreateTemplateLibraryTodolist",
         )
 
     def list(self, *, status: str | None = None, page: int | None = None, max_items: int | None = None) -> ListResult:
@@ -165,23 +277,112 @@ class TemplatesService(BaseService):
 
 
 class AsyncTemplatesService(AsyncBaseService):
-    async def get_library(self) -> dict[str, Any]:
-        """Get the account's to-do list template library."""
+    async def create_templatification(
+        self,
+        *,
+        bucket_id: int,
+        recording_id: int,
+        template_name: str | None = None,
+        copy_comments: bool | None = None,
+        copy_assignments: bool | None = None,
+        move_cards_to_triage: bool | None = None,
+    ) -> dict[str, Any]:
+        """Templatify a to-do list or card table.
+
+        Args:
+            bucket_id: The bucket id.
+            recording_id: The to-do list or card table to templatify. Anything else is a 403.
+            template_name: What to call the template. Defaults to the source recording's own title.
+            copy_comments: Carry the comments across.
+            copy_assignments: Carry assignees and the people involved across, adding them to the
+                library if they are not already there.
+            move_cards_to_triage: Gather the cards into Triage. Card tables only, and ignored
+                otherwise.
+        """
         return await self._request(
-            OperationInfo(service="templates", operation="get_library", is_mutation=False),
+            OperationInfo(
+                service="templates",
+                operation="create_templatification",
+                is_mutation=True,
+                project_id=bucket_id,
+                resource_id=recording_id,
+            ),
+            "POST",
+            f"/buckets/{bucket_id}/recordings/{recording_id}/templatifications.json",
+            json_body=self._compact(
+                template_name=template_name,
+                copy_comments=copy_comments,
+                copy_assignments=copy_assignments,
+                move_cards_to_triage=move_cards_to_triage,
+            ),
+            operation="CreateTemplatification",
+        )
+
+    async def get_templatification(
+        self, *, bucket_id: int, recording_id: int, templatification_id: int
+    ) -> dict[str, Any]:
+        """Get a templatification.
+
+        Args:
+            bucket_id: The bucket id.
+            recording_id: The recording id.
+            templatification_id: The templatification id.
+        """
+        return await self._request(
+            OperationInfo(
+                service="templates",
+                operation="get_templatification",
+                is_mutation=False,
+                project_id=bucket_id,
+                resource_id=templatification_id,
+            ),
             "GET",
-            "/template_library.json",
-            operation="GetTemplateLibrary",
+            f"/buckets/{bucket_id}/recordings/{recording_id}/templatifications/{templatification_id}",
+            operation="GetTemplatification",
+        )
+
+    async def get_library_card_tables(self) -> dict[str, Any]:
+        """Get the account's card table templates."""
+        return await self._request(
+            OperationInfo(service="templates", operation="get_library_card_tables", is_mutation=False),
+            "GET",
+            "/template_library/card_tables.json",
+            operation="GetTemplateLibraryCardTables",
+        )
+
+    async def create_library_card_table(self, *, name: str) -> dict[str, Any]:
+        """Create a card table template with the default columns.
+
+        Args:
+            name: The template's name. Write-only: the response carries it as `title`.
+        """
+        return await self._request(
+            OperationInfo(service="templates", operation="create_library_card_table", is_mutation=True),
+            "POST",
+            "/template_library/card_tables.json",
+            json_body=self._compact(name=name),
+            operation="CreateTemplateLibraryCardTable",
         )
 
     async def create_library_copy(
-        self, *, template_recording_id: int, destination_parent_id: int, adding_people_confirmed: bool | None = None
+        self,
+        *,
+        template_recording_id: int,
+        destination_project_id: int | None = None,
+        destination_parent_id: int | None = None,
+        adding_people_confirmed: bool | None = None,
     ) -> dict[str, Any]:
-        """Start copying a to-do list template into a project.
+        """Start copying a to-do list or card table template into a project.
 
         Args:
-            template_recording_id: The template recording id.
-            destination_parent_id: The destination parent id.
+            template_recording_id: The to-do list or card table in the library to copy.
+            destination_project_id: The destination project. Basecamp resolves the container from
+                the template's kind, so a caller naming a project needs to know nothing about docks
+                or to-do sets. Supply this or destination_parent_id; if both are sent,
+                destination_parent_id wins.
+            destination_parent_id: The container to copy into, for a caller that already holds one:
+                the project's to-do set for a to-do list template, or its dock for a card table. A
+                caller who may not edit it gets 404, not 403.
             adding_people_confirmed: Confirm granting destination-project access to people
                 referenced by the template.
         """
@@ -191,6 +392,7 @@ class AsyncTemplatesService(AsyncBaseService):
             "/template_library/copies.json",
             json_body=self._compact(
                 template_recording_id=template_recording_id,
+                destination_project_id=destination_project_id,
                 destination_parent_id=destination_parent_id,
                 adding_people_confirmed=adding_people_confirmed,
             ),
@@ -208,6 +410,30 @@ class AsyncTemplatesService(AsyncBaseService):
             "GET",
             f"/template_library/copies/{copy_id}",
             operation="GetTemplateLibraryCopy",
+        )
+
+    async def get_library_todolists(self) -> dict[str, Any]:
+        """Get the account's to-do list templates."""
+        return await self._request(
+            OperationInfo(service="templates", operation="get_library_todolists", is_mutation=False),
+            "GET",
+            "/template_library/todolists.json",
+            operation="GetTemplateLibraryTodolists",
+        )
+
+    async def create_library_todolist(self, *, name: str, description: str | None = None) -> dict[str, Any]:
+        """Create an empty to-do list template.
+
+        Args:
+            name: What to call the template.
+            description: Rich text describing the template.
+        """
+        return await self._request(
+            OperationInfo(service="templates", operation="create_library_todolist", is_mutation=True),
+            "POST",
+            "/template_library/todolists.json",
+            json_body=self._compact(name=name, description=description),
+            operation="CreateTemplateLibraryTodolist",
         )
 
     async def list(

@@ -242,14 +242,62 @@ async fn dispatch(account: &AccountClient, case: &TestCase) -> Result<Outcome, E
             unit(account.projects().update(id("projectId"), &request).await)
         }
         "TrashProject" => unit(account.projects().trash(id("projectId")).await),
-        "GetTemplateLibrary" => {
-            let library = account.templates().get_library().await?;
-            Ok(Outcome::Json(summarize_template_library(&library)))
+        "GetTemplateLibraryTodolists" => {
+            let library = account.templates().get_library_todolists().await?;
+            Ok(Outcome::Json(summarize_template_library_todolists(&library)))
+        }
+        "GetTemplateLibraryCardTables" => {
+            let library = account.templates().get_library_card_tables().await?;
+            Ok(Outcome::Json(summarize_template_library_card_tables(&library)))
+        }
+        "CreateTemplateLibraryCardTable" => {
+            let request = CreateTemplateLibraryCardTableRequestContent {
+                name: string_param(body, "name"),
+            };
+            let card_table = account.templates().create_library_card_table(&request).await?;
+            Ok(Outcome::Json(summarize_card_table(&card_table)))
+        }
+        "CreateTemplateLibraryTodolist" => {
+            let request = CreateTemplateLibraryTodolistRequestContent {
+                name: string_param(body, "name"),
+                description: optional_string_param(body, "description"),
+            };
+            let todolist = account.templates().create_library_todolist(&request).await?;
+            Ok(Outcome::Json(summarize_todolist(&todolist)))
+        }
+        "CreateTemplatification" => {
+            let request = CreateTemplatificationRequestContent {
+                template_name: optional_string_param(body, "template_name"),
+                copy_comments: optional_bool_param(body, "copy_comments"),
+                copy_assignments: optional_bool_param(body, "copy_assignments"),
+                move_cards_to_triage: optional_bool_param(body, "move_cards_to_triage"),
+            };
+            let templatification = account
+                .templates()
+                .create_templatification(
+                    exact_int64(path, "bucketId")?,
+                    exact_int64(path, "recordingId")?,
+                    &request,
+                )
+                .await?;
+            Ok(Outcome::Json(summarize_templatification(&templatification)))
+        }
+        "GetTemplatification" => {
+            let templatification = account
+                .templates()
+                .get_templatification(
+                    exact_int64(path, "bucketId")?,
+                    exact_int64(path, "recordingId")?,
+                    exact_int64(path, "templatificationId")?,
+                )
+                .await?;
+            Ok(Outcome::Json(summarize_templatification(&templatification)))
         }
         "CreateTemplateLibraryCopy" => {
             let request = CreateTemplateLibraryCopyRequestContent {
                 template_recording_id: exact_int64(body, "template_recording_id")?,
-                destination_parent_id: exact_int64(body, "destination_parent_id")?,
+                destination_parent_id: optional_exact_int64(body, "destination_parent_id")?,
+                destination_project_id: optional_exact_int64(body, "destination_project_id")?,
                 adding_people_confirmed: optional_bool_param(body, "adding_people_confirmed"),
             };
             let copy = account.templates().create_library_copy(&request).await?;
@@ -1239,6 +1287,17 @@ fn exact_int64(params: &Params, key: &str) -> Result<i64, Error> {
     }
 }
 
+/// Absent answers `None`; present-but-not-an-integer is still an error.
+fn optional_exact_int64(params: &Params, key: &str) -> Result<Option<i64>, Error> {
+    match params.get(key) {
+        None => Ok(None),
+        Some(value) => value
+            .as_i64()
+            .map(Some)
+            .ok_or_else(|| harness(format!("{key} must be an integer"))),
+    }
+}
+
 // --- summaries ---------------------------------------------------------------------------
 
 fn summarize_projects(projects: &[Project]) -> Value {
@@ -1249,7 +1308,7 @@ fn summarize_projects(projects: &[Project]) -> Value {
     })
 }
 
-fn summarize_template_library(library: &TemplateLibrary) -> Value {
+fn summarize_template_library_todolists(library: &TemplateLibraryTodolists) -> Value {
     let mut summary = json!({
         "bucket_id": library.bucket.id,
         "todoset_id": library.todoset.id,
@@ -1260,12 +1319,60 @@ fn summarize_template_library(library: &TemplateLibrary) -> Value {
     summary
 }
 
+fn summarize_template_library_card_tables(library: &TemplateLibraryCardTables) -> Value {
+    let mut summary = json!({
+        "bucket_id": library.bucket.id,
+        "has_kanban_boardset": library.kanban_boardset.is_some(),
+        "card_tables_count": library.card_tables.len(),
+    });
+    if let Some(boardset) = &library.kanban_boardset {
+        summary["kanban_boardset_id"] = json!(boardset.id);
+    }
+    if let Some(first) = library.card_tables.first() {
+        summary["first_card_table_id"] = json!(first.id);
+    }
+    summary
+}
+
+fn summarize_card_table(card_table: &CardTable) -> Value {
+    let mut summary = json!({
+        "id": card_table.id,
+        "title": card_table.title,
+        "lists_count": card_table.lists.as_ref().map_or(0, |lists| lists.len()),
+    });
+    if let Some(parent) = &card_table.parent {
+        summary["parent_id"] = json!(parent.id);
+    }
+    if let Some(position) = card_table.position {
+        summary["position"] = json!(position);
+    }
+    summary
+}
+
 fn summarize_template_library_copy(copy: &TemplateLibraryCopy) -> Value {
     let mut summary = json!({ "id": copy.id, "status": copy.status });
     if let Some(todolist) = &copy.destination_todolist {
         summary["destination_todolist_id"] = json!(todolist.id);
     }
+    if let Some(card_table) = &copy.destination_card_table {
+        summary["destination_card_table_id"] = json!(card_table.id);
+    }
     summary
+}
+
+fn summarize_templatification(templatification: &Templatification) -> Value {
+    let mut summary = json!({ "id": templatification.id, "status": templatification.status });
+    if let Some(todolist) = &templatification.destination_todolist {
+        summary["destination_todolist_id"] = json!(todolist.id);
+    }
+    if let Some(card_table) = &templatification.destination_card_table {
+        summary["destination_card_table_id"] = json!(card_table.id);
+    }
+    summary
+}
+
+fn summarize_todolist(todolist: &Todolist) -> Value {
+    json!({ "id": todolist.id, "title": todolist.title })
 }
 
 fn summarize_upcoming(result: &GetUpcomingScheduleResponseContent) -> Value {

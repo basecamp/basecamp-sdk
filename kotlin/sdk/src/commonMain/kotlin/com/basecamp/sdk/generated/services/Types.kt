@@ -970,11 +970,31 @@ data class UpdateSubscriptionBody(
     val unsubscriptions: List<Long>? = null
 )
 
+/** Request body for CreateTemplatification. */
+data class CreateTemplatificationBody(
+    val templateName: String? = null,
+    val copyComments: Boolean? = null,
+    val copyAssignments: Boolean? = null,
+    val moveCardsToTriage: Boolean? = null
+)
+
+/** Request body for CreateTemplateLibraryCardTable. */
+data class CreateTemplateLibraryCardTableBody(
+    val name: String
+)
+
 /** Request body for CreateTemplateLibraryCopy. */
 data class CreateTemplateLibraryCopyBody(
     val templateRecordingId: Long,
-    val destinationParentId: Long,
+    val destinationProjectId: Long? = null,
+    val destinationParentId: Long? = null,
     val addingPeopleConfirmed: Boolean? = null
+)
+
+/** Request body for CreateTemplateLibraryTodolist. */
+data class CreateTemplateLibraryTodolistBody(
+    val name: String,
+    val description: String? = null
 )
 
 /** Options for ListTemplates. */

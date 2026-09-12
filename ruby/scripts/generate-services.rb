@@ -81,7 +81,10 @@ class ServiceGenerator
       'Templates' => %w[
         ListTemplates CreateTemplate GetTemplate UpdateTemplate
         DeleteTemplate CreateProjectFromTemplate GetProjectConstruction
-        GetTemplateLibrary CreateTemplateLibraryCopy GetTemplateLibraryCopy
+        GetTemplateLibraryTodolists GetTemplateLibraryCardTables
+        CreateTemplateLibraryTodolist CreateTemplateLibraryCardTable
+        CreateTemplatification GetTemplatification CreateTemplateLibraryCopy
+        GetTemplateLibraryCopy
       ],
       'Checkins' => %w[
         GetQuestionnaire ListQuestions CreateQuestion GetQuestion
@@ -178,7 +181,10 @@ class ServiceGenerator
     'Search' => 'search',
     'CreateProjectFromTemplate' => 'create_project',
     'GetProjectConstruction' => 'get_construction',
-    'GetTemplateLibrary' => 'get_library',
+    'GetTemplateLibraryTodolists' => 'get_library_todolists',
+    'GetTemplateLibraryCardTables' => 'get_library_card_tables',
+    'CreateTemplateLibraryCardTable' => 'create_library_card_table',
+    'CreateTemplateLibraryTodolist' => 'create_library_todolist',
     'CreateTemplateLibraryCopy' => 'create_library_copy',
     'GetTemplateLibraryCopy' => 'get_library_copy',
     'GetRecordingTimesheet' => 'for_recording',
@@ -666,11 +672,13 @@ class ServiceGenerator
     # YARD documentation
     lines << "      # #{op[:description]}"
 
+    # Documentation-only: Ruby has no compiler to warn, so the YARD tag is the
+    # signal a reader and a doc build both see. See scripts/check-deprecation-parity.
     # Add @param tags for path params
     op[:path_params].each do |p|
       ruby_name = to_snake_case(p[:name])
       type = p[:type] || 'Integer'
-      desc = p[:description] || "#{ruby_name.gsub('_', ' ')} ID"
+      desc = yard_param_description(p[:description] || "#{ruby_name.gsub('_', ' ')} ID")
       lines << "      # @param #{ruby_name} [#{type}] #{desc}"
     end
 

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-09-10T03:48:29Z
+# Generated: 2026-09-12T06:20:36Z
 
 require "json"
 require "time"
@@ -833,7 +833,7 @@ module Basecamp
     # CardTable
     class CardTable
       include TypeHelpers
-      attr_accessor :app_url, :bucket, :created_at, :creator, :id, :inherits_status, :status, :title, :type, :updated_at, :url, :visible_to_clients, :bookmark_url, :lists, :subscribers, :subscription_url, :wormholes
+      attr_accessor :app_url, :bucket, :created_at, :creator, :id, :inherits_status, :status, :title, :type, :updated_at, :url, :visible_to_clients, :bookmark_url, :lists, :parent, :position, :public_link_url, :subscribers, :subscription_url, :wormholes
 
       # @return [Array<Symbol>]
       def self.required_fields
@@ -855,6 +855,9 @@ module Basecamp
         @visible_to_clients = parse_boolean(data["visible_to_clients"])
         @bookmark_url = data["bookmark_url"]
         @lists = parse_array(data["lists"], "CardColumn")
+        @parent = parse_type(data["parent"], "RecordingParent")
+        @position = parse_integer(data["position"])
+        @public_link_url = data["public_link_url"]
         @subscribers = parse_array(data["subscribers"], "Person")
         @subscription_url = data["subscription_url"]
         @wormholes = parse_array(data["wormholes"], "Wormhole")
@@ -876,6 +879,9 @@ module Basecamp
           "visible_to_clients" => @visible_to_clients,
           "bookmark_url" => @bookmark_url,
           "lists" => @lists,
+          "parent" => @parent,
+          "position" => @position,
+          "public_link_url" => @public_link_url,
           "subscribers" => @subscribers,
           "subscription_url" => @subscription_url,
           "wormholes" => @wormholes,
@@ -4410,27 +4416,27 @@ module Basecamp
       end
     end
 
-    # TemplateLibrary
-    class TemplateLibrary
+    # TemplateLibraryCardTables
+    class TemplateLibraryCardTables
       include TypeHelpers
-      attr_accessor :bucket, :todolists, :todoset
+      attr_accessor :bucket, :card_tables, :kanban_boardset
 
       # @return [Array<Symbol>]
       def self.required_fields
-        %i[bucket todolists todoset].freeze
+        %i[bucket card_tables kanban_boardset].freeze
       end
 
       def initialize(data = {})
         @bucket = parse_type(data["bucket"], "RecordingBucket")
-        @todolists = parse_array(data["todolists"], "Todolist")
-        @todoset = parse_type(data["todoset"], "RecordingParent")
+        @card_tables = parse_array(data["card_tables"], "Recording")
+        @kanban_boardset = data["kanban_boardset"]
       end
 
       def to_h
         {
           "bucket" => @bucket,
-          "todolists" => @todolists,
-          "todoset" => @todoset,
+          "card_tables" => @card_tables,
+          "kanban_boardset" => @kanban_boardset,
         }.compact
       end
 
@@ -4471,7 +4477,7 @@ module Basecamp
     # TemplateLibraryCopy
     class TemplateLibraryCopy
       include TypeHelpers
-      attr_accessor :destination_parent_id, :id, :source_recording_id, :status, :url, :destination_todolist
+      attr_accessor :destination_parent_id, :id, :source_recording_id, :status, :url, :destination_card_table, :destination_todolist
 
       # @return [Array<Symbol>]
       def self.required_fields
@@ -4484,6 +4490,7 @@ module Basecamp
         @source_recording_id = parse_integer(data["source_recording_id"])
         @status = data["status"]
         @url = data["url"]
+        @destination_card_table = parse_type(data["destination_card_table"], "CardTable")
         @destination_todolist = parse_type(data["destination_todolist"], "Todolist")
       end
 
@@ -4494,6 +4501,71 @@ module Basecamp
           "source_recording_id" => @source_recording_id,
           "status" => @status,
           "url" => @url,
+          "destination_card_table" => @destination_card_table,
+          "destination_todolist" => @destination_todolist,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # TemplateLibraryTodolists
+    class TemplateLibraryTodolists
+      include TypeHelpers
+      attr_accessor :bucket, :todolists, :todoset
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[bucket todolists todoset].freeze
+      end
+
+      def initialize(data = {})
+        @bucket = parse_type(data["bucket"], "RecordingBucket")
+        @todolists = parse_array(data["todolists"], "Todolist")
+        @todoset = parse_type(data["todoset"], "RecordingParent")
+      end
+
+      def to_h
+        {
+          "bucket" => @bucket,
+          "todolists" => @todolists,
+          "todoset" => @todoset,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # Templatification
+    class Templatification
+      include TypeHelpers
+      attr_accessor :id, :source_recording_id, :status, :url, :destination_card_table, :destination_todolist
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[id source_recording_id status url].freeze
+      end
+
+      def initialize(data = {})
+        @id = parse_integer(data["id"])
+        @source_recording_id = parse_integer(data["source_recording_id"])
+        @status = data["status"]
+        @url = data["url"]
+        @destination_card_table = parse_type(data["destination_card_table"], "CardTable")
+        @destination_todolist = parse_type(data["destination_todolist"], "Todolist")
+      end
+
+      def to_h
+        {
+          "id" => @id,
+          "source_recording_id" => @source_recording_id,
+          "status" => @status,
+          "url" => @url,
+          "destination_card_table" => @destination_card_table,
           "destination_todolist" => @destination_todolist,
         }.compact
       end
