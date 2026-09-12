@@ -13,6 +13,42 @@ what wrong behaviour you get if you ignore one. This file is that half.
 
 # Unreleased
 
+### Template library: `GetTemplateLibrary` is renamed, and card table templates arrive
+
+The account's template library holds three kinds of template, but its only
+address dated from when to-do lists were the only thing in it. Basecamp now
+makes the kind explicit in the URL and serves card table templates alongside.
+
+Two source-breaking changes, both mechanical:
+
+- **`GetTemplateLibrary` is now `GetTemplateLibraryTodolists`**, reading
+  `/template_library/todolists.json`. The method renames with it:
+  `templates.getLibrary` becomes `templates.getLibraryTodolists`
+  (`get_library` becomes `get_library_todolists` in Python and Ruby, `GetLibrary`
+  becomes `GetLibraryTodolists` in Go). The response is unchanged. The old
+  address still answers with a redirect, but it is no longer modelled, in line
+  with every previous rename here shipping without an alias.
+
+- **`TemplateLibrary` is now `TemplateLibraryTodolists`**, since it now has a
+  sibling in `TemplateLibraryCardTables`. Members are unchanged. Rename the type
+  where you name it: Go's `basecamp.TemplateLibrary`, Rust's (re-exported from
+  the crate's `models` module), Kotlin's and Swift's, and TypeScript's
+  `components["schemas"]["TemplateLibrary"]`. Python and Ruby return dicts and
+  hashes, so nothing changes for them.
+
+Everything else is additive. `TemplatesService` gains `getLibraryCardTables`,
+`createLibraryCardTable` and `createLibraryTodolist`, plus
+`createTemplatification` and `getTemplatification` for templatifying a to-do
+list or card table that already exists in a project. A completed `TemplateLibraryCopy` carries
+`destination_card_table` beside `destination_todolist`, exactly one of which is
+present once the copy completes. `CardTable` gains `position`, `parent` and
+`public_link_url`, all optional and all already served by Basecamp. The copy
+request's `template_recording_id` and `destination_parent_id` widen off the
+to-do-list-specific id aliases, which changes no signature. The copy request also
+gains an optional `destination_project_id`: name the destination project and
+Basecamp resolves the container from the template's kind, so a caller needs to
+know nothing about docks or to-do sets. Supply that or `destination_parent_id`.
+
 ### Rust: new SDK
 
 A seventh SDK, not a breaking change for anyone. The `basecamp-sdk` crate on
