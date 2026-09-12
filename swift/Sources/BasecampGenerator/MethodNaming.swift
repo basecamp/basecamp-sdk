@@ -86,6 +86,8 @@ let methodNameOverrides: [String: String] = [
     "GetTemplateLibraryTodolists": "getLibraryTodolists",
     "GetTemplateLibraryCardTables": "getLibraryCardTables",
     "CreateTemplateLibraryCardTable": "createLibraryCardTable",
+    "CreateTemplateLibraryTodolist": "createLibraryTodolist",
+    "GetTemplatification": "getTemplatification",
     "CreateTemplateLibraryCopy": "createLibraryCopy",
     "GetTemplateLibraryCopy": "getLibraryCopy",
     "GetRecordingTimesheet": "forRecording",
