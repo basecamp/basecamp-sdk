@@ -53,6 +53,7 @@
             "/components/schemas/Draft/properties/parent": {"anyOf": [{"$ref": "#/components/schemas/DraftParent"}, {"type": "null"}], "x-go-type": "DraftParent"},
             "/components/schemas/Draft/properties/scheduled_posting_at/type": ["string", "null"],
             "/components/schemas/Draft/properties/scheduled_posting_at/x-go-type": "time.Time",
+            "/components/schemas/TemplateLibraryCardTables/properties/kanban_boardset": {"anyOf": [{"$ref": "#/components/schemas/RecordingParent"}, {"type": "null"}], "x-go-type": "RecordingParent"},
             "/components/schemas/Wormhole/properties/destination_url/type": ["string", "null"],
             "/components/schemas/Wormhole/properties/destination_url/x-go-type": "string",
             "/components/schemas/Wormhole/properties/color/type": ["string", "null"],

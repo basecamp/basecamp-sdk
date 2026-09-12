@@ -34,6 +34,8 @@ export const PATH_TO_OPERATION: Record<string, string> = {
   "GET:/{accountId}/buckets/{bucketId}/client/recordings/{recordingId}/replies.json": "ListClientReplies",
   "GET:/{accountId}/buckets/{bucketId}/client/recordings/{recordingId}/replies/{replyId}": "GetClientReply",
   "POST:/{accountId}/buckets/{bucketId}/dock/tools.json": "CreateTool",
+  "POST:/{accountId}/buckets/{bucketId}/recordings/{recordingId}/templatifications.json": "CreateTemplatification",
+  "GET:/{accountId}/buckets/{bucketId}/recordings/{recordingId}/templatifications/{templatificationId}": "GetTemplatification",
   "POST:/{accountId}/buckets/{bucketId}/todosets/{todosetId}/todos.json": "CreateTodosetTodo",
   "POST:/{accountId}/buckets/{bucketId}/vaults/{vaultId}/cloud_files.json": "CreateCloudFile",
   "POST:/{accountId}/buckets/{bucketId}/vaults/{vaultId}/google_documents.json": "CreateGoogleDocument",
@@ -273,9 +275,12 @@ export const PATH_TO_OPERATION: Record<string, string> = {
   "GET:/{accountId}/searches/metadata.json": "GetSearchMetadata",
 
   // Templates
-  "GET:/{accountId}/template_library.json": "GetTemplateLibrary",
+  "GET:/{accountId}/template_library/card_tables.json": "GetTemplateLibraryCardTables",
+  "POST:/{accountId}/template_library/card_tables.json": "CreateTemplateLibraryCardTable",
   "POST:/{accountId}/template_library/copies.json": "CreateTemplateLibraryCopy",
   "GET:/{accountId}/template_library/copies/{copyId}": "GetTemplateLibraryCopy",
+  "GET:/{accountId}/template_library/todolists.json": "GetTemplateLibraryTodolists",
+  "POST:/{accountId}/template_library/todolists.json": "CreateTemplateLibraryTodolist",
   "GET:/{accountId}/templates.json": "ListTemplates",
   "POST:/{accountId}/templates.json": "CreateTemplate",
   "DELETE:/{accountId}/templates/{templateId}": "DeleteTemplate",

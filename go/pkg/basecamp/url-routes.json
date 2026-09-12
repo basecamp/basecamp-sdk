@@ -348,6 +348,52 @@
       }
     },
     {
+      "pattern": "/{accountId}/buckets/{bucketId}/recordings/{recordingId}/templatifications",
+      "resource": "Automation",
+      "operations": {
+        "POST": "CreateTemplatification"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "bucketId": {
+          "role": "parent",
+          "type": "int64"
+        },
+        "recordingId": {
+          "role": "parent",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/buckets/{bucketId}/recordings/{recordingId}/templatifications/{templatificationId}",
+      "resource": "Automation",
+      "operations": {
+        "GET": "GetTemplatification"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "bucketId": {
+          "role": "parent",
+          "type": "int64"
+        },
+        "recordingId": {
+          "role": "parent",
+          "type": "int64"
+        },
+        "templatificationId": {
+          "role": "recording",
+          "type": "int64"
+        }
+      }
+    },
+    {
       "pattern": "/{accountId}/buckets/{bucketId}/todosets/{todosetId}/todos",
       "resource": "Todos",
       "operations": {
@@ -2415,10 +2461,11 @@
       }
     },
     {
-      "pattern": "/{accountId}/template_library",
+      "pattern": "/{accountId}/template_library/card_tables",
       "resource": "Automation",
       "operations": {
-        "GET": "GetTemplateLibrary"
+        "GET": "GetTemplateLibraryCardTables",
+        "POST": "CreateTemplateLibraryCardTable"
       },
       "params": {
         "accountId": {
@@ -2454,6 +2501,20 @@
         "copyId": {
           "role": "recording",
           "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/template_library/todolists",
+      "resource": "Automation",
+      "operations": {
+        "GET": "GetTemplateLibraryTodolists",
+        "POST": "CreateTemplateLibraryTodolist"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
         }
       }
     },
