@@ -80,18 +80,47 @@ private fun summarizeUpcoming(envelope: UpcomingScheduleResult): JsonElement = b
 }
 
 /** Exposes representative decoded template-library fields as portable scalars. */
-private fun summarizeTemplateLibrary(library: TemplateLibrary): JsonElement = buildJsonObject {
+private fun summarizeTemplateLibraryTodolists(library: TemplateLibraryTodolists): JsonElement = buildJsonObject {
     put("bucket_id", library.bucket.id)
     put("todoset_id", library.todoset.id)
     library.todolists.firstOrNull()?.let { put("first_todolist_id", it.id) }
+}
+
+/**
+ * has_kanban_boardset is a boolean rather than a null id because the runners
+ * disagree on how an absent versus null member surfaces.
+ */
+private fun summarizeTemplateLibraryCardTables(library: TemplateLibraryCardTables): JsonElement = buildJsonObject {
+    put("bucket_id", library.bucket.id)
+    put("has_kanban_boardset", library.kanbanBoardset != null)
+    put("card_tables_count", library.cardTables.size)
+    library.kanbanBoardset?.let { put("kanban_boardset_id", it.id) }
+    library.cardTables.firstOrNull()?.let { put("first_card_table_id", it.id) }
+}
+
+private fun summarizeCardTable(cardTable: CardTable): JsonElement = buildJsonObject {
+    put("id", cardTable.id)
+    put("title", cardTable.title)
+    put("lists_count", cardTable.lists?.size ?: 0)
+    cardTable.parent?.let { put("parent_id", it.id) }
+    cardTable.position?.let { put("position", it) }
 }
 
 private fun summarizeTemplateLibraryCopy(copy: TemplateLibraryCopy): JsonElement = buildJsonObject {
     put("id", copy.id)
     put("status", copy.status)
     copy.destinationTodolist?.let { put("destination_todolist_id", it.id) }
+    copy.destinationCardTable?.let { put("destination_card_table_id", it.id) }
 }
 
+/**
+ * A templatification carries no destination parent, unlike a copy: the
+ * destination is always the library and the caller never names it.
+ *
+ * Reads the decoded JSON rather than a model because the generated Kotlin
+ * templatification operations answer with a JsonElement, the way
+ * CreateProjectFromTemplate does.
+ */
 /**
  * Flattens an accumulated project list into top-level scalars.
  *
@@ -1022,8 +1051,20 @@ private suspend fun dispatchOperation(tc: TestCase, account: AccountClient): Dis
             DispatchResult()
         }
 
-        "GetTemplateLibrary" -> {
-            DispatchResult(resultJson = summarizeTemplateLibrary(account.templates.getLibrary()))
+        "GetTemplateLibraryTodolists" -> {
+            DispatchResult(resultJson = summarizeTemplateLibraryTodolists(account.templates.getLibraryTodolists()))
+        }
+
+        "GetTemplateLibraryCardTables" -> {
+            DispatchResult(resultJson = summarizeTemplateLibraryCardTables(account.templates.getLibraryCardTables()))
+        }
+
+        "CreateTemplateLibraryCardTable" -> {
+            val rb = tc.requestBody
+            val cardTable = account.templates.createLibraryCardTable(
+                CreateTemplateLibraryCardTableBody(name = rb.stringParam("name")),
+            )
+            DispatchResult(resultJson = summarizeCardTable(cardTable))
         }
 
         "CreateTemplateLibraryCopy" -> {
@@ -1031,7 +1072,8 @@ private suspend fun dispatchOperation(tc: TestCase, account: AccountClient): Dis
             val libraryCopy = account.templates.createLibraryCopy(
                 CreateTemplateLibraryCopyBody(
                     templateRecordingId = rb.longParam("template_recording_id"),
-                    destinationParentId = rb.longParam("destination_parent_id"),
+                    destinationParentId = rb?.get("destination_parent_id")?.jsonPrimitive?.longOrNull,
+                    destinationProjectId = rb?.get("destination_project_id")?.jsonPrimitive?.longOrNull,
                     addingPeopleConfirmed = rb?.get("adding_people_confirmed")?.jsonPrimitive?.booleanOrNull,
                 ),
             )

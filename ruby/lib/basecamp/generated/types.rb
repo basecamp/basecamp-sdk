@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-09-12T03:34:43Z
+# Generated: 2026-09-12T06:20:36Z
 
 require "json"
 require "time"
@@ -4416,27 +4416,27 @@ module Basecamp
       end
     end
 
-    # TemplateLibrary
-    class TemplateLibrary
+    # TemplateLibraryCardTables
+    class TemplateLibraryCardTables
       include TypeHelpers
-      attr_accessor :bucket, :todolists, :todoset
+      attr_accessor :bucket, :card_tables, :kanban_boardset
 
       # @return [Array<Symbol>]
       def self.required_fields
-        %i[bucket todolists todoset].freeze
+        %i[bucket card_tables kanban_boardset].freeze
       end
 
       def initialize(data = {})
         @bucket = parse_type(data["bucket"], "RecordingBucket")
-        @todolists = parse_array(data["todolists"], "Todolist")
-        @todoset = parse_type(data["todoset"], "RecordingParent")
+        @card_tables = parse_array(data["card_tables"], "Recording")
+        @kanban_boardset = data["kanban_boardset"]
       end
 
       def to_h
         {
           "bucket" => @bucket,
-          "todolists" => @todolists,
-          "todoset" => @todoset,
+          "card_tables" => @card_tables,
+          "kanban_boardset" => @kanban_boardset,
         }.compact
       end
 
@@ -4477,7 +4477,7 @@ module Basecamp
     # TemplateLibraryCopy
     class TemplateLibraryCopy
       include TypeHelpers
-      attr_accessor :destination_parent_id, :id, :source_recording_id, :status, :url, :destination_todolist
+      attr_accessor :destination_parent_id, :id, :source_recording_id, :status, :url, :destination_card_table, :destination_todolist
 
       # @return [Array<Symbol>]
       def self.required_fields
@@ -4490,6 +4490,7 @@ module Basecamp
         @source_recording_id = parse_integer(data["source_recording_id"])
         @status = data["status"]
         @url = data["url"]
+        @destination_card_table = parse_type(data["destination_card_table"], "CardTable")
         @destination_todolist = parse_type(data["destination_todolist"], "Todolist")
       end
 
@@ -4500,6 +4501,71 @@ module Basecamp
           "source_recording_id" => @source_recording_id,
           "status" => @status,
           "url" => @url,
+          "destination_card_table" => @destination_card_table,
+          "destination_todolist" => @destination_todolist,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # TemplateLibraryTodolists
+    class TemplateLibraryTodolists
+      include TypeHelpers
+      attr_accessor :bucket, :todolists, :todoset
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[bucket todolists todoset].freeze
+      end
+
+      def initialize(data = {})
+        @bucket = parse_type(data["bucket"], "RecordingBucket")
+        @todolists = parse_array(data["todolists"], "Todolist")
+        @todoset = parse_type(data["todoset"], "RecordingParent")
+      end
+
+      def to_h
+        {
+          "bucket" => @bucket,
+          "todolists" => @todolists,
+          "todoset" => @todoset,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # Templatification
+    class Templatification
+      include TypeHelpers
+      attr_accessor :id, :source_recording_id, :status, :url, :destination_card_table, :destination_todolist
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[id source_recording_id status url].freeze
+      end
+
+      def initialize(data = {})
+        @id = parse_integer(data["id"])
+        @source_recording_id = parse_integer(data["source_recording_id"])
+        @status = data["status"]
+        @url = data["url"]
+        @destination_card_table = parse_type(data["destination_card_table"], "CardTable")
+        @destination_todolist = parse_type(data["destination_todolist"], "Todolist")
+      end
+
+      def to_h
+        {
+          "id" => @id,
+          "source_recording_id" => @source_recording_id,
+          "status" => @status,
+          "url" => @url,
+          "destination_card_table" => @destination_card_table,
           "destination_todolist" => @destination_todolist,
         }.compact
       end

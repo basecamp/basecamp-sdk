@@ -22496,10 +22496,10 @@
         }
       }
     },
-    "/{accountId}/template_library.json": {
+    "/{accountId}/template_library/card_tables.json": {
       "get": {
-        "description": "Get the account's to-do list template library",
-        "operationId": "GetTemplateLibrary",
+        "description": "Get the account's card table templates",
+        "operationId": "GetTemplateLibraryCardTables",
         "parameters": [
           {
             "name": "accountId",
@@ -22515,11 +22515,11 @@
         ],
         "responses": {
           "200": {
-            "description": "GetTemplateLibrary 200 response",
+            "description": "GetTemplateLibraryCardTables 200 response",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/GetTemplateLibraryResponseContent"
+                  "$ref": "#/components/schemas/GetTemplateLibraryCardTablesResponseContent"
                 }
               }
             }
@@ -22577,11 +22577,112 @@
             503
           ]
         }
+      },
+      "post": {
+        "description": "Create a card table template with the default columns",
+        "operationId": "CreateTemplateLibraryCardTable",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTemplateLibraryCardTableRequestContent"
+              }
+            }
+          },
+          "required": true
+        },
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "CreateTemplateLibraryCardTable 201 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateTemplateLibraryCardTableResponseContent"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UnauthorizedError 401 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ForbiddenError 403 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "ValidationError 422 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorResponseContent"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RateLimitError 429 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitErrorResponseContent"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError 500 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Automation"
+        ],
+        "x-basecamp-retry": {
+          "maxAttempts": 2,
+          "baseDelayMs": 1000,
+          "backoff": "exponential",
+          "retryOn": [
+            429,
+            503
+          ]
+        }
       }
     },
     "/{accountId}/template_library/copies.json": {
       "post": {
-        "description": "Start copying a to-do list template into a project",
+        "description": "Start copying a to-do list or card table template into a project",
         "operationId": "CreateTemplateLibraryCopy",
         "requestBody": {
           "content": {
@@ -22755,6 +22856,89 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/NotFoundErrorResponseContent"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RateLimitError 429 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitErrorResponseContent"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError 500 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Automation"
+        ],
+        "x-basecamp-retry": {
+          "maxAttempts": 3,
+          "baseDelayMs": 1000,
+          "backoff": "exponential",
+          "retryOn": [
+            429,
+            503
+          ]
+        }
+      }
+    },
+    "/{accountId}/template_library/todolists.json": {
+      "get": {
+        "description": "Get the account's to-do list templates",
+        "operationId": "GetTemplateLibraryTodolists",
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "GetTemplateLibraryTodolists 200 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetTemplateLibraryTodolistsResponseContent"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UnauthorizedError 401 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ForbiddenError 403 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
                 }
               }
             }
@@ -30311,15 +30495,37 @@
       "CreateScheduleEntryResponseContent": {
         "$ref": "#/components/schemas/ScheduleEntry"
       },
+      "CreateTemplateLibraryCardTableRequestContent": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The template's name. Write-only: the response carries it as `title`."
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "CreateTemplateLibraryCardTableResponseContent": {
+        "$ref": "#/components/schemas/CardTable"
+      },
       "CreateTemplateLibraryCopyRequestContent": {
         "type": "object",
         "properties": {
           "template_recording_id": {
             "type": "integer",
+            "description": "The to-do list or card table in the library to copy.",
+            "format": "int64"
+          },
+          "destination_project_id": {
+            "type": "integer",
+            "description": "The destination project. Basecamp resolves the container from the\ntemplate's kind, so a caller naming a project needs to know nothing about\ndocks or to-do sets. Supply this or destination_parent_id; if both are\nsent, destination_parent_id wins.",
             "format": "int64"
           },
           "destination_parent_id": {
             "type": "integer",
+            "description": "The container to copy into, for a caller that already holds one: the\nproject's to-do set for a to-do list template, or its dock for a card\ntable. A caller who may not edit it gets 404, not 403.",
             "format": "int64"
           },
           "adding_people_confirmed": {
@@ -30328,7 +30534,6 @@
           }
         },
         "required": [
-          "destination_parent_id",
           "template_recording_id"
         ]
       },
@@ -32237,11 +32442,14 @@
       "GetSubscriptionResponseContent": {
         "$ref": "#/components/schemas/Subscription"
       },
+      "GetTemplateLibraryCardTablesResponseContent": {
+        "$ref": "#/components/schemas/TemplateLibraryCardTables"
+      },
       "GetTemplateLibraryCopyResponseContent": {
         "$ref": "#/components/schemas/TemplateLibraryCopy"
       },
-      "GetTemplateLibraryResponseContent": {
-        "$ref": "#/components/schemas/TemplateLibrary"
+      "GetTemplateLibraryTodolistsResponseContent": {
+        "$ref": "#/components/schemas/TemplateLibraryTodolists"
       },
       "GetTemplateResponseContent": {
         "$ref": "#/components/schemas/Template"
@@ -35628,26 +35836,35 @@
           "updated_at"
         ]
       },
-      "TemplateLibrary": {
+      "TemplateLibraryCardTables": {
         "type": "object",
         "properties": {
           "bucket": {
             "$ref": "#/components/schemas/RecordingBucket"
           },
-          "todoset": {
-            "$ref": "#/components/schemas/RecordingParent"
+          "kanban_boardset": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RecordingParent"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "x-go-type": "RecordingParent"
           },
-          "todolists": {
+          "card_tables": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/Todolist"
-            }
+              "$ref": "#/components/schemas/Recording"
+            },
+            "description": "Active templates in title order, as recording projections: read one through\nGetCardTable to see its columns."
           }
         },
         "required": [
           "bucket",
-          "todolists",
-          "todoset"
+          "card_tables",
+          "kanban_boardset"
         ]
       },
       "TemplateLibraryConfirmationPerson": {
@@ -35704,6 +35921,9 @@
           },
           "destination_todolist": {
             "$ref": "#/components/schemas/Todolist"
+          },
+          "destination_card_table": {
+            "$ref": "#/components/schemas/CardTable"
           }
         },
         "required": [
@@ -35712,6 +35932,28 @@
           "source_recording_id",
           "status",
           "url"
+        ]
+      },
+      "TemplateLibraryTodolists": {
+        "type": "object",
+        "properties": {
+          "bucket": {
+            "$ref": "#/components/schemas/RecordingBucket"
+          },
+          "todoset": {
+            "$ref": "#/components/schemas/RecordingParent"
+          },
+          "todolists": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Todolist"
+            }
+          }
+        },
+        "required": [
+          "bucket",
+          "todolists",
+          "todoset"
         ]
       },
       "TimelineAttachment": {

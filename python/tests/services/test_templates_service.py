@@ -9,7 +9,12 @@ import pytest
 import respx
 
 from basecamp import AsyncClient, Client
-from basecamp.errors import ForbiddenError, NotFoundError, PeopleConfirmationRequiredError
+from basecamp.errors import (
+    ForbiddenError,
+    NotFoundError,
+    PeopleConfirmationRequiredError,
+    ValidationError,
+)
 
 
 def _construction() -> dict:
@@ -18,6 +23,15 @@ def _construction() -> dict:
         "status": "completed",
         "created_at": "2024-01-01T00:00:00Z",
         "updated_at": "2024-01-01T00:00:00Z",
+    }
+
+
+def _templatification() -> dict:
+    return {
+        "id": 7,
+        "status": "pending",
+        "source_recording_id": 2,
+        "url": "https://3.basecampapi.com/12345/buckets/1/recordings/2/templatifications/7.json",
     }
 
 
@@ -69,8 +83,8 @@ class TestSyncTemplates:
         assert "start_date" not in body
 
     @respx.mock
-    def test_get_library(self):
-        route = respx.get("https://3.basecampapi.com/12345/template_library.json").mock(
+    def test_get_library_todolists(self):
+        route = respx.get("https://3.basecampapi.com/12345/template_library/todolists.json").mock(
             return_value=httpx.Response(
                 200,
                 json={
@@ -82,21 +96,101 @@ class TestSyncTemplates:
         )
 
         account = Client(access_token="test-token").for_account("12345")
-        result = account.templates.get_library()
+        result = account.templates.get_library_todolists()
 
         assert route.called
         assert result["bucket"]["type"] == "TemplateLibrary"
         assert result["todolists"][0]["name"] == "Project kickoff"
 
     @respx.mock
-    def test_get_library_forbidden(self):
-        respx.get("https://3.basecampapi.com/12345/template_library.json").mock(
+    def test_get_library_card_tables(self):
+        route = respx.get("https://3.basecampapi.com/12345/template_library/card_tables.json").mock(
+            return_value=httpx.Response(
+                200,
+                json={
+                    "bucket": {"id": 1, "name": "To-do List Templates", "type": "TemplateLibrary"},
+                    "kanban_boardset": {
+                        "id": 2,
+                        "title": "Card Table Templates",
+                        "type": "Kanban::Boardset",
+                    },
+                    "card_tables": [{"id": 3, "title": "Client onboarding", "type": "Kanban::Board"}],
+                },
+            )
+        )
+
+        account = Client(access_token="test-token").for_account("12345")
+        result = account.templates.get_library_card_tables()
+
+        assert route.called
+        assert result["kanban_boardset"]["id"] == 2
+        assert result["card_tables"][0]["title"] == "Client onboarding"
+
+    @respx.mock
+    def test_get_library_card_tables_without_a_container(self):
+        respx.get("https://3.basecampapi.com/12345/template_library/card_tables.json").mock(
+            return_value=httpx.Response(
+                200,
+                json={
+                    "bucket": {"id": 1, "name": "To-do List Templates", "type": "TemplateLibrary"},
+                    "kanban_boardset": None,
+                    "card_tables": [],
+                },
+            )
+        )
+
+        account = Client(access_token="test-token").for_account("12345")
+        result = account.templates.get_library_card_tables()
+
+        assert result["kanban_boardset"] is None
+        assert result["card_tables"] == []
+
+    @respx.mock
+    def test_create_library_card_table(self):
+        route = respx.post("https://3.basecampapi.com/12345/template_library/card_tables.json").mock(
+            return_value=httpx.Response(
+                201,
+                json={
+                    "id": 3,
+                    "title": "Client onboarding",
+                    "type": "Kanban::Board",
+                    "parent": {
+                        "id": 2,
+                        "title": "Card Table Templates",
+                        "type": "Kanban::Boardset",
+                    },
+                },
+            )
+        )
+
+        account = Client(access_token="test-token").for_account("12345")
+        result = account.templates.create_library_card_table(name="Client onboarding")
+
+        assert json.loads(route.calls[0].request.content) == {"name": "Client onboarding"}
+        assert result["title"] == "Client onboarding"
+        assert result["parent"]["id"] == 2
+
+    @respx.mock
+    def test_get_library_todolists_forbidden(self):
+        respx.get("https://3.basecampapi.com/12345/template_library/todolists.json").mock(
             return_value=httpx.Response(403, json={"error": "Forbidden"})
         )
 
         account = Client(access_token="test-token").for_account("12345")
         with pytest.raises(ForbiddenError) as excinfo:
-            account.templates.get_library()
+            account.templates.get_library_todolists()
+
+        assert excinfo.value.http_status == 403
+
+    @respx.mock
+    def test_get_library_card_tables_forbidden(self):
+        respx.get("https://3.basecampapi.com/12345/template_library/card_tables.json").mock(
+            return_value=httpx.Response(403, json={"error": "Forbidden"})
+        )
+
+        account = Client(access_token="test-token").for_account("12345")
+        with pytest.raises(ForbiddenError) as excinfo:
+            account.templates.get_library_card_tables()
 
         assert excinfo.value.http_status == 403
 
@@ -186,7 +280,7 @@ class TestSyncTemplates:
         assert str(excinfo.value) == "Adding people requires confirmation"
         assert excinfo.value.people == [{"id": 4, "name": "Victor", "avatar_url": "https://example.test/avatar.png"}]
 
-
+    @respx.mock
 class TestAsyncTemplates:
     @pytest.mark.asyncio
     @respx.mock

@@ -224,7 +224,10 @@ const SERVICE_SPLITS: Record<string, Record<string, string[]>> = {
     Templates: [
       "ListTemplates", "CreateTemplate", "GetTemplate", "UpdateTemplate",
       "DeleteTemplate", "CreateProjectFromTemplate", "GetProjectConstruction",
-      "GetTemplateLibrary", "CreateTemplateLibraryCopy", "GetTemplateLibraryCopy",
+      "GetTemplateLibraryTodolists", "GetTemplateLibraryCardTables",
+      "CreateTemplateLibraryCardTable",
+      "CreateTemplateLibraryCopy",
+      "GetTemplateLibraryCopy",
     ],
     Checkins: [
       "GetQuestionnaire", "ListQuestions", "CreateQuestion", "GetQuestion",
@@ -390,7 +393,9 @@ const METHOD_NAME_OVERRIDES: Record<string, string> = {
   Search: "search",
   CreateProjectFromTemplate: "createProject",
   GetProjectConstruction: "getConstruction",
-  GetTemplateLibrary: "getLibrary",
+  GetTemplateLibraryTodolists: "getLibraryTodolists",
+  GetTemplateLibraryCardTables: "getLibraryCardTables",
+  CreateTemplateLibraryCardTable: "createLibraryCardTable",
   CreateTemplateLibraryCopy: "createLibraryCopy",
   GetTemplateLibraryCopy: "getLibraryCopy",
   GetRecordingTimesheet: "forRecording",

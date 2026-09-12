@@ -7,22 +7,63 @@ module Basecamp
     # @generated from OpenAPI spec
     class TemplatesService < BaseService
 
-      # Get the account's to-do list template library
+      # Templatify a to-do list or card table
+      # @param bucket_id [Integer] bucket id ID
+      # @param recording_id [Integer] The to-do list or card table to templatify. Anything else is a 403.
+      # @param template_name [String, nil] What to call the template. Defaults to the source recording's own title.
+      # @param copy_comments [Boolean, nil] Carry the comments across.
+      # @param copy_assignments [Boolean, nil] Carry assignees and the people involved across, adding them to the library
+      #   if they are not already there.
+      # @param move_cards_to_triage [Boolean, nil] Gather the cards into Triage. Card tables only, and ignored otherwise.
       # @return [Hash] response data
-      def get_library()
-        with_operation(service: "templates", operation: "get_library", is_mutation: false) do
-          http_get("/template_library.json", operation: "GetTemplateLibrary").json
+      def create_templatification(bucket_id:, recording_id:, template_name: nil, copy_comments: nil, copy_assignments: nil, move_cards_to_triage: nil)
+        with_operation(service: "templates", operation: "create_templatification", is_mutation: true, project_id: bucket_id, resource_id: recording_id) do
+          http_post("/buckets/#{bucket_id}/recordings/#{recording_id}/templatifications.json", body: compact_params(template_name: template_name, copy_comments: copy_comments, copy_assignments: copy_assignments, move_cards_to_triage: move_cards_to_triage)).json
         end
       end
 
-      # Start copying a to-do list template into a project
-      # @param template_recording_id [Integer] template recording id
-      # @param destination_parent_id [Integer] destination parent id
+      # Get a templatification
+      # @param bucket_id [Integer] bucket id ID
+      # @param recording_id [Integer] recording id ID
+      # @param templatification_id [Integer] templatification id ID
+      # @return [Hash] response data
+      def get_templatification(bucket_id:, recording_id:, templatification_id:)
+        with_operation(service: "templates", operation: "get_templatification", is_mutation: false, project_id: bucket_id, resource_id: templatification_id) do
+          http_get("/buckets/#{bucket_id}/recordings/#{recording_id}/templatifications/#{templatification_id}", operation: "GetTemplatification").json
+        end
+      end
+
+      # Get the account's card table templates
+      # @return [Hash] response data
+      def get_library_card_tables()
+        with_operation(service: "templates", operation: "get_library_card_tables", is_mutation: false) do
+          http_get("/template_library/card_tables.json", operation: "GetTemplateLibraryCardTables").json
+        end
+      end
+
+      # Create a card table template with the default columns
+      # @param name [String] The template's name. Write-only: the response carries it as `title`.
+      # @return [Hash] response data
+      def create_library_card_table(name:)
+        with_operation(service: "templates", operation: "create_library_card_table", is_mutation: true) do
+          http_post("/template_library/card_tables.json", body: compact_params(name: name)).json
+        end
+      end
+
+      # Start copying a to-do list or card table template into a project
+      # @param template_recording_id [Integer] The to-do list or card table in the library to copy.
+      # @param destination_project_id [Integer, nil] The destination project. Basecamp resolves the container from the
+      #   template's kind, so a caller naming a project needs to know nothing about
+      #   docks or to-do sets. Supply this or destination_parent_id; if both are
+      #   sent, destination_parent_id wins.
+      # @param destination_parent_id [Integer, nil] The container to copy into, for a caller that already holds one: the
+      #   project's to-do set for a to-do list template, or its dock for a card
+      #   table. A caller who may not edit it gets 404, not 403.
       # @param adding_people_confirmed [Boolean, nil] Confirm granting destination-project access to people referenced by the template.
       # @return [Hash] response data
-      def create_library_copy(template_recording_id:, destination_parent_id:, adding_people_confirmed: nil)
+      def create_library_copy(template_recording_id:, destination_project_id: nil, destination_parent_id: nil, adding_people_confirmed: nil)
         with_operation(service: "templates", operation: "create_library_copy", is_mutation: true) do
-          http_post("/template_library/copies.json", body: compact_params(template_recording_id: template_recording_id, destination_parent_id: destination_parent_id, adding_people_confirmed: adding_people_confirmed)).json
+          http_post("/template_library/copies.json", body: compact_params(template_recording_id: template_recording_id, destination_project_id: destination_project_id, destination_parent_id: destination_parent_id, adding_people_confirmed: adding_people_confirmed)).json
         end
       end
 
@@ -32,6 +73,24 @@ module Basecamp
       def get_library_copy(copy_id:)
         with_operation(service: "templates", operation: "get_library_copy", is_mutation: false, resource_id: copy_id) do
           http_get("/template_library/copies/#{copy_id}", operation: "GetTemplateLibraryCopy").json
+        end
+      end
+
+      # Get the account's to-do list templates
+      # @return [Hash] response data
+      def get_library_todolists()
+        with_operation(service: "templates", operation: "get_library_todolists", is_mutation: false) do
+          http_get("/template_library/todolists.json", operation: "GetTemplateLibraryTodolists").json
+        end
+      end
+
+      # Create an empty to-do list template
+      # @param name [String] What to call the template.
+      # @param description [String, nil] Rich text describing the template.
+      # @return [Hash] response data
+      def create_library_todolist(name:, description: nil)
+        with_operation(service: "templates", operation: "create_library_todolist", is_mutation: true) do
+          http_post("/template_library/todolists.json", body: compact_params(name: name, description: description)).json
         end
       end
 

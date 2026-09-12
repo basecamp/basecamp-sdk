@@ -509,14 +509,45 @@ func runTest(tc TestCase) TestResult {
 	}
 }
 
-// summarizeTemplateLibrary exposes representative decoded fields as portable scalars.
-func summarizeTemplateLibrary(library *basecamp.TemplateLibrary) map[string]interface{} {
+// summarizeTemplateLibraryTodolists exposes representative decoded fields as portable scalars.
+func summarizeTemplateLibraryTodolists(library *basecamp.TemplateLibraryTodolists) map[string]interface{} {
 	result := map[string]interface{}{
 		"bucket_id":  library.Bucket.ID,
 		"todoset_id": library.Todoset.ID,
 	}
 	if len(library.Todolists) > 0 {
 		result["first_todolist_id"] = library.Todolists[0].ID
+	}
+	return result
+}
+
+// summarizeTemplateLibraryCardTables exposes the card table library as portable
+func summarizeTemplateLibraryCardTables(library *basecamp.TemplateLibraryCardTables) map[string]interface{} {
+	result := map[string]interface{}{
+		"bucket_id":           library.Bucket.ID,
+		"has_kanban_boardset": library.KanbanBoardset != nil,
+		"card_tables_count":   len(library.CardTables),
+	}
+	if library.KanbanBoardset != nil {
+		result["kanban_boardset_id"] = library.KanbanBoardset.ID
+	}
+	if len(library.CardTables) > 0 {
+		result["first_card_table_id"] = library.CardTables[0].ID
+	}
+	return result
+}
+
+func summarizeCardTable(cardTable *basecamp.CardTable) map[string]interface{} {
+	result := map[string]interface{}{
+		"id":          cardTable.ID,
+		"title":       cardTable.Title,
+		"lists_count": len(cardTable.Lists),
+	}
+	if cardTable.Parent != nil {
+		result["parent_id"] = cardTable.Parent.ID
+	}
+	if cardTable.Position != nil {
+		result["position"] = *cardTable.Position
 	}
 	return result
 }
@@ -530,9 +561,15 @@ func summarizeTemplateLibraryCopy(copy *basecamp.TemplateLibraryCopy) map[string
 	if copy.DestinationTodolist != nil {
 		result["destination_todolist_id"] = copy.DestinationTodolist.ID
 	}
+	if copy.DestinationCardTable != nil {
+		result["destination_card_table_id"] = copy.DestinationCardTable.ID
+	}
 	return result
 }
 
+// summarizeTemplatification exposes a templatification as portable
+// scalars. It carries no destination parent, unlike a copy: the destination is
+// always the library.
 // summarizeProjects flattens an accumulated project list into top-level
 // scalars.
 //
@@ -767,27 +804,51 @@ func executeOperation(ctx context.Context, account *basecamp.AccountClient, tc T
 		err := account.Projects().RecordVisit(ctx, projectID)
 		return operationResult{err: err}
 
-	case "GetTemplateLibrary":
-		library, err := account.Templates().GetLibrary(ctx)
+	case "GetTemplateLibraryTodolists":
+		library, err := account.Templates().GetLibraryTodolists(ctx)
 		if err != nil {
 			return operationResult{err: err}
 		}
-		return operationResult{result: summarizeTemplateLibrary(library)}
+		return operationResult{result: summarizeTemplateLibraryTodolists(library)}
+
+	case "GetTemplateLibraryCardTables":
+		library, err := account.Templates().GetLibraryCardTables(ctx)
+		if err != nil {
+			return operationResult{err: err}
+		}
+		return operationResult{result: summarizeTemplateLibraryCardTables(library)}
+
+	case "CreateTemplateLibraryCardTable":
+		cardTable, err := account.Templates().CreateLibraryCardTable(ctx, getStringParam(tc.RequestBody, "name"))
+		if err != nil {
+			return operationResult{err: err}
+		}
+		return operationResult{result: summarizeCardTable(cardTable)}
 
 	case "CreateTemplateLibraryCopy":
 		templateRecordingID, parseErr := getExactInt64Param(tc.RequestBody, "template_recording_id")
 		if parseErr != nil {
 			return operationResult{err: basecamp.ErrUsage(parseErr.Error())}
 		}
-		destinationParentID, parseErr := getExactInt64Param(tc.RequestBody, "destination_parent_id")
-		if parseErr != nil {
-			return operationResult{err: basecamp.ErrUsage(parseErr.Error())}
-		}
-		libraryCopy, err := account.Templates().CreateLibraryCopy(ctx, &basecamp.CreateTemplateLibraryCopyRequest{
+		copyRequest := basecamp.CreateTemplateLibraryCopyRequest{
 			TemplateRecordingID:   templateRecordingID,
-			DestinationParentID:   destinationParentID,
 			AddingPeopleConfirmed: getBoolParam(tc.RequestBody, "adding_people_confirmed"),
-		})
+		}
+		if _, ok := tc.RequestBody["destination_parent_id"]; ok {
+			destinationParentID, parseErr := getExactInt64Param(tc.RequestBody, "destination_parent_id")
+			if parseErr != nil {
+				return operationResult{err: basecamp.ErrUsage(parseErr.Error())}
+			}
+			copyRequest.DestinationParentID = destinationParentID
+		}
+		if _, ok := tc.RequestBody["destination_project_id"]; ok {
+			destinationProjectID, parseErr := getExactInt64Param(tc.RequestBody, "destination_project_id")
+			if parseErr != nil {
+				return operationResult{err: basecamp.ErrUsage(parseErr.Error())}
+			}
+			copyRequest.DestinationProjectID = destinationProjectID
+		}
+		libraryCopy, err := account.Templates().CreateLibraryCopy(ctx, &copyRequest)
 		if err != nil {
 			return operationResult{err: err}
 		}

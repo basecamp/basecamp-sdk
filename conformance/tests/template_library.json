@@ -1,16 +1,22 @@
 [
   {
-    "name": "template library read uses the account-scoped library path",
-    "description": "Verifies that the Templates service reads the account's template library and decodes its parent resources and to-do lists.",
-    "operation": "GetTemplateLibrary",
+    "name": "to-do list template index uses the per-kind library path",
+    "description": "Verifies that the Templates service reads the account's to-do list templates at the kind-explicit path and decodes its parent resources and to-do lists.",
+    "operation": "GetTemplateLibraryTodolists",
     "method": "GET",
-    "path": "/template_library.json",
+    "path": "/template_library/todolists.json",
     "mockResponses": [
       {
         "status": 200,
-        "headers": { "Content-Type": "application/json" },
+        "headers": {
+          "Content-Type": "application/json"
+        },
         "body": {
-          "bucket": { "id": 1, "name": "To-do List Templates", "type": "TemplateLibrary" },
+          "bucket": {
+            "id": 1,
+            "name": "To-do List Templates",
+            "type": "TemplateLibrary"
+          },
           "todoset": {
             "id": 2,
             "title": "To-do List Templates",
@@ -38,8 +44,15 @@
                 "url": "https://3.basecampapi.com/999/todosets/2.json",
                 "app_url": "https://3.basecamp.com/999/todosets/2"
               },
-              "bucket": { "id": 1, "name": "To-do List Templates", "type": "TemplateLibrary" },
-              "creator": { "id": 4, "name": "Victor" },
+              "bucket": {
+                "id": 1,
+                "name": "To-do List Templates",
+                "type": "TemplateLibrary"
+              },
+              "creator": {
+                "id": 4,
+                "name": "Victor"
+              },
               "description": "",
               "description_attachments": [],
               "name": "Project kickoff",
@@ -51,15 +64,331 @@
       }
     ],
     "assertions": [
-      { "type": "noError" },
-      { "type": "requestCount", "expected": 1 },
-      { "type": "requestMethod", "expected": "GET" },
-      { "type": "requestPath", "expected": "/999/template_library.json" },
-      { "type": "responseBody", "path": "bucket_id", "expected": 1 },
-      { "type": "responseBody", "path": "todoset_id", "expected": 2 },
-      { "type": "responseBody", "path": "first_todolist_id", "expected": 3 }
+      {
+        "type": "noError"
+      },
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "requestMethod",
+        "expected": "GET"
+      },
+      {
+        "type": "requestPath",
+        "expected": "/999/template_library/todolists.json"
+      },
+      {
+        "type": "responseBody",
+        "path": "bucket_id",
+        "expected": 1
+      },
+      {
+        "type": "responseBody",
+        "path": "todoset_id",
+        "expected": 2
+      },
+      {
+        "type": "responseBody",
+        "path": "first_todolist_id",
+        "expected": 3
+      }
     ],
-    "tags": ["templates", "template-library", "decode"]
+    "tags": [
+      "templates",
+      "template-library",
+      "decode"
+    ]
+  },
+  {
+    "name": "card table template index decodes its container and templates",
+    "description": "Verifies the card-table library path and that the boardset container plus the recording-projected templates decode.",
+    "operation": "GetTemplateLibraryCardTables",
+    "method": "GET",
+    "path": "/template_library/card_tables.json",
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "bucket": {
+            "id": 1,
+            "name": "To-do List Templates",
+            "type": "TemplateLibrary"
+          },
+          "kanban_boardset": {
+            "id": 2,
+            "title": "Card Table Templates",
+            "type": "Kanban::Boardset",
+            "url": "https://3.basecampapi.com/999/boardsets/2.json",
+            "app_url": "https://3.basecamp.com/999/boardsets/2"
+          },
+          "card_tables": [
+            {
+              "id": 3,
+              "status": "active",
+              "visible_to_clients": false,
+              "created_at": "2026-09-09T01:52:46Z",
+              "updated_at": "2026-09-09T01:52:46Z",
+              "title": "Client onboarding",
+              "inherits_status": true,
+              "type": "Kanban::Board",
+              "url": "https://3.basecampapi.com/999/card_tables/3.json",
+              "app_url": "https://3.basecamp.com/999/card_tables/3",
+              "parent": {
+                "id": 2,
+                "title": "Card Table Templates",
+                "type": "Kanban::Boardset",
+                "url": "https://3.basecampapi.com/999/boardsets/2.json",
+                "app_url": "https://3.basecamp.com/999/boardsets/2"
+              },
+              "bucket": {
+                "id": 1,
+                "name": "To-do List Templates",
+                "type": "TemplateLibrary"
+              },
+              "creator": {
+                "id": 4,
+                "name": "Victor"
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "noError"
+      },
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "requestMethod",
+        "expected": "GET"
+      },
+      {
+        "type": "requestPath",
+        "expected": "/999/template_library/card_tables.json"
+      },
+      {
+        "type": "responseBody",
+        "path": "bucket_id",
+        "expected": 1
+      },
+      {
+        "type": "responseBody",
+        "path": "has_kanban_boardset",
+        "expected": true
+      },
+      {
+        "type": "responseBody",
+        "path": "kanban_boardset_id",
+        "expected": 2
+      },
+      {
+        "type": "responseBody",
+        "path": "card_tables_count",
+        "expected": 1
+      },
+      {
+        "type": "responseBody",
+        "path": "first_card_table_id",
+        "expected": 3
+      }
+    ],
+    "tags": [
+      "templates",
+      "template-library",
+      "card-tables",
+      "decode"
+    ]
+  },
+  {
+    "name": "card table template index tolerates a library with no container yet",
+    "description": "Verifies the documented null kanban_boardset for a library that has never held a card table template, which must decode rather than fail in the strictly-typed SDKs. Asserted through a boolean because the runners disagree on how an absent versus null member surfaces.",
+    "operation": "GetTemplateLibraryCardTables",
+    "method": "GET",
+    "path": "/template_library/card_tables.json",
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "bucket": {
+            "id": 1,
+            "name": "To-do List Templates",
+            "type": "TemplateLibrary"
+          },
+          "kanban_boardset": null,
+          "card_tables": []
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "noError"
+      },
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "responseBody",
+        "path": "bucket_id",
+        "expected": 1
+      },
+      {
+        "type": "responseBody",
+        "path": "has_kanban_boardset",
+        "expected": false
+      },
+      {
+        "type": "responseBody",
+        "path": "card_tables_count",
+        "expected": 0
+      }
+    ],
+    "tags": [
+      "templates",
+      "template-library",
+      "card-tables",
+      "decode",
+      "nullability"
+    ]
+  },
+  {
+    "name": "card table template creation sends a flat name and decodes the new table",
+    "description": "Verifies the create path, that name is sent flat (bc3 wraps it into kanban_board server-side), the 201 response, and that a template carries a parent and no position.",
+    "operation": "CreateTemplateLibraryCardTable",
+    "method": "POST",
+    "path": "/template_library/card_tables.json",
+    "requestBody": {
+      "name": "Client onboarding"
+    },
+    "mockResponses": [
+      {
+        "status": 201,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 3,
+          "status": "active",
+          "visible_to_clients": false,
+          "created_at": "2026-09-09T01:52:46Z",
+          "updated_at": "2026-09-09T01:52:46Z",
+          "title": "Client onboarding",
+          "inherits_status": true,
+          "type": "Kanban::Board",
+          "url": "https://3.basecampapi.com/999/card_tables/3.json",
+          "app_url": "https://3.basecamp.com/999/card_tables/3",
+          "parent": {
+            "id": 2,
+            "title": "Card Table Templates",
+            "type": "Kanban::Boardset",
+            "url": "https://3.basecampapi.com/999/boardsets/2.json",
+            "app_url": "https://3.basecamp.com/999/boardsets/2"
+          },
+          "bucket": {
+            "id": 1,
+            "name": "To-do List Templates",
+            "type": "TemplateLibrary"
+          },
+          "creator": {
+            "id": 4,
+            "name": "Victor"
+          },
+          "subscribers": [],
+          "public_link_url": "https://3.basecampapi.com/999/recordings/3/publication",
+          "lists": [
+            {
+              "id": 10,
+              "status": "active",
+              "visible_to_clients": false,
+              "created_at": "2026-09-09T01:52:46Z",
+              "updated_at": "2026-09-09T01:52:46Z",
+              "title": "Triage",
+              "inherits_status": true,
+              "type": "Kanban::Triage",
+              "url": "https://3.basecampapi.com/999/card_tables/columns/10.json",
+              "app_url": "https://3.basecamp.com/999/card_tables/columns/10",
+              "parent": {
+                "id": 3,
+                "title": "Client onboarding",
+                "type": "Kanban::Board",
+                "url": "https://3.basecampapi.com/999/card_tables/3.json",
+                "app_url": "https://3.basecamp.com/999/card_tables/3"
+              },
+              "bucket": {
+                "id": 1,
+                "name": "To-do List Templates",
+                "type": "TemplateLibrary"
+              },
+              "creator": {
+                "id": 4,
+                "name": "Victor"
+              }
+            }
+          ],
+          "wormholes": []
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "noError"
+      },
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "requestMethod",
+        "expected": "POST"
+      },
+      {
+        "type": "requestPath",
+        "expected": "/999/template_library/card_tables.json"
+      },
+      {
+        "type": "requestBody",
+        "path": "name",
+        "expected": "Client onboarding"
+      },
+      {
+        "type": "responseBody",
+        "path": "id",
+        "expected": 3
+      },
+      {
+        "type": "responseBody",
+        "path": "title",
+        "expected": "Client onboarding"
+      },
+      {
+        "type": "responseBody",
+        "path": "parent_id",
+        "expected": 2
+      },
+      {
+        "type": "responseBody",
+        "path": "lists_count",
+        "expected": 1
+      }
+    ],
+    "tags": [
+      "templates",
+      "template-library",
+      "card-tables",
+      "write"
+    ]
   },
   {
     "name": "template library copy creation sends destination and confirmation",
@@ -75,7 +404,9 @@
     "mockResponses": [
       {
         "status": 201,
-        "headers": { "Content-Type": "application/json" },
+        "headers": {
+          "Content-Type": "application/json"
+        },
         "body": {
           "id": 5,
           "status": "pending",
@@ -86,17 +417,119 @@
       }
     ],
     "assertions": [
-      { "type": "noError" },
-      { "type": "requestCount", "expected": 1 },
-      { "type": "requestMethod", "expected": "POST" },
-      { "type": "requestPath", "expected": "/999/template_library/copies.json" },
-      { "type": "requestBody", "path": "template_recording_id", "expected": 3 },
-      { "type": "requestBody", "path": "destination_parent_id", "expected": 9 },
-      { "type": "requestBody", "path": "adding_people_confirmed", "expected": true },
-      { "type": "responseBody", "path": "id", "expected": 5 },
-      { "type": "responseBody", "path": "status", "expected": "pending" }
+      {
+        "type": "noError"
+      },
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "requestMethod",
+        "expected": "POST"
+      },
+      {
+        "type": "requestPath",
+        "expected": "/999/template_library/copies.json"
+      },
+      {
+        "type": "requestBody",
+        "path": "template_recording_id",
+        "expected": 3
+      },
+      {
+        "type": "requestBody",
+        "path": "destination_parent_id",
+        "expected": 9
+      },
+      {
+        "type": "requestBody",
+        "path": "adding_people_confirmed",
+        "expected": true
+      },
+      {
+        "type": "responseBody",
+        "path": "id",
+        "expected": 5
+      },
+      {
+        "type": "responseBody",
+        "path": "status",
+        "expected": "pending"
+      }
     ],
-    "tags": ["templates", "template-library", "write"]
+    "tags": [
+      "templates",
+      "template-library",
+      "write"
+    ]
+  },
+  {
+    "name": "a copy can name the destination project instead of a container",
+    "description": "Verifies that destination_project_id reaches the wire and destination_parent_id stays off it. Basecamp resolves the container from the template's kind, so a caller naming a project needs to know nothing about docks or to-do sets.",
+    "operation": "CreateTemplateLibraryCopy",
+    "method": "POST",
+    "path": "/template_library/copies.json",
+    "requestBody": {
+      "template_recording_id": 3,
+      "destination_project_id": 8
+    },
+    "mockResponses": [
+      {
+        "status": 201,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 5,
+          "status": "pending",
+          "source_recording_id": 3,
+          "destination_parent_id": 9,
+          "url": "https://3.basecampapi.com/999/template_library/copies/5.json"
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "noError"
+      },
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "requestMethod",
+        "expected": "POST"
+      },
+      {
+        "type": "requestPath",
+        "expected": "/999/template_library/copies.json"
+      },
+      {
+        "type": "requestBody",
+        "path": "template_recording_id",
+        "expected": 3
+      },
+      {
+        "type": "requestBody",
+        "path": "destination_project_id",
+        "expected": 8
+      },
+      {
+        "type": "requestBodyAbsent",
+        "path": "destination_parent_id"
+      },
+      {
+        "type": "responseBody",
+        "path": "status",
+        "expected": "pending"
+      }
+    ],
+    "tags": [
+      "templates",
+      "template-library",
+      "write"
+    ]
   },
   {
     "name": "completed template library copy includes its destination to-do list",
@@ -104,11 +537,15 @@
     "operation": "GetTemplateLibraryCopy",
     "method": "GET",
     "path": "/template_library/copies/{copyId}",
-    "pathParams": { "copyId": 5 },
+    "pathParams": {
+      "copyId": 5
+    },
     "mockResponses": [
       {
         "status": 200,
-        "headers": { "Content-Type": "application/json" },
+        "headers": {
+          "Content-Type": "application/json"
+        },
         "body": {
           "id": 5,
           "status": "completed",
@@ -134,8 +571,15 @@
               "url": "https://3.basecampapi.com/999/todosets/9.json",
               "app_url": "https://3.basecamp.com/999/todosets/9"
             },
-            "bucket": { "id": 8, "name": "Project", "type": "Project" },
-            "creator": { "id": 4, "name": "Victor" },
+            "bucket": {
+              "id": 8,
+              "name": "Project",
+              "type": "Project"
+            },
+            "creator": {
+              "id": 4,
+              "name": "Victor"
+            },
             "description": "",
             "description_attachments": [],
             "name": "Project kickoff",
@@ -146,15 +590,160 @@
       }
     ],
     "assertions": [
-      { "type": "noError" },
-      { "type": "requestCount", "expected": 1 },
-      { "type": "requestMethod", "expected": "GET" },
-      { "type": "requestPath", "expected": "/999/template_library/copies/5" },
-      { "type": "responseBody", "path": "id", "expected": 5 },
-      { "type": "responseBody", "path": "status", "expected": "completed" },
-      { "type": "responseBody", "path": "destination_todolist_id", "expected": 10 }
+      {
+        "type": "noError"
+      },
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "requestMethod",
+        "expected": "GET"
+      },
+      {
+        "type": "requestPath",
+        "expected": "/999/template_library/copies/5"
+      },
+      {
+        "type": "responseBody",
+        "path": "id",
+        "expected": 5
+      },
+      {
+        "type": "responseBody",
+        "path": "status",
+        "expected": "completed"
+      },
+      {
+        "type": "responseBody",
+        "path": "destination_todolist_id",
+        "expected": 10
+      }
     ],
-    "tags": ["templates", "template-library", "decode"]
+    "tags": [
+      "templates",
+      "template-library",
+      "decode"
+    ]
+  },
+  {
+    "name": "completed card table copy reports its destination card table",
+    "description": "Verifies that a completed copy of a card table template decodes destination_card_table, the sibling of destination_todolist that distinguishes the two template kinds behind one endpoint.",
+    "operation": "GetTemplateLibraryCopy",
+    "method": "GET",
+    "path": "/template_library/copies/{copyId}",
+    "pathParams": {
+      "copyId": 6
+    },
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 6,
+          "status": "completed",
+          "source_recording_id": 12,
+          "destination_parent_id": 15,
+          "url": "https://3.basecampapi.com/999/template_library/copies/6.json",
+          "destination_card_table": {
+            "id": 20,
+            "status": "active",
+            "visible_to_clients": false,
+            "created_at": "2026-09-09T01:52:46Z",
+            "updated_at": "2026-09-09T01:52:46Z",
+            "title": "Client onboarding",
+            "inherits_status": true,
+            "type": "Kanban::Board",
+            "url": "https://3.basecampapi.com/999/card_tables/20.json",
+            "app_url": "https://3.basecamp.com/999/card_tables/20",
+            "position": 8,
+            "bucket": {
+              "id": 8,
+              "name": "Project",
+              "type": "Project"
+            },
+            "creator": {
+              "id": 4,
+              "name": "Victor"
+            },
+            "subscribers": [],
+            "public_link_url": "https://3.basecampapi.com/999/recordings/20/publication",
+            "lists": [
+              {
+                "id": 21,
+                "status": "active",
+                "visible_to_clients": false,
+                "created_at": "2026-09-09T01:52:46Z",
+                "updated_at": "2026-09-09T01:52:46Z",
+                "title": "Triage",
+                "inherits_status": true,
+                "type": "Kanban::Triage",
+                "url": "https://3.basecampapi.com/999/card_tables/columns/21.json",
+                "app_url": "https://3.basecamp.com/999/card_tables/columns/21",
+                "parent": {
+                  "id": 20,
+                  "title": "Client onboarding",
+                  "type": "Kanban::Board",
+                  "url": "https://3.basecampapi.com/999/card_tables/20.json",
+                  "app_url": "https://3.basecamp.com/999/card_tables/20"
+                },
+                "bucket": {
+                  "id": 8,
+                  "name": "Project",
+                  "type": "Project"
+                },
+                "creator": {
+                  "id": 4,
+                  "name": "Victor"
+                }
+              }
+            ],
+            "wormholes": []
+          }
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "noError"
+      },
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "requestMethod",
+        "expected": "GET"
+      },
+      {
+        "type": "requestPath",
+        "expected": "/999/template_library/copies/6"
+      },
+      {
+        "type": "responseBody",
+        "path": "id",
+        "expected": 6
+      },
+      {
+        "type": "responseBody",
+        "path": "status",
+        "expected": "completed"
+      },
+      {
+        "type": "responseBody",
+        "path": "destination_card_table_id",
+        "expected": 20
+      }
+    ],
+    "tags": [
+      "templates",
+      "template-library",
+      "card-tables",
+      "decode"
+    ]
   },
   {
     "name": "template library copy reports people confirmation as a validation error",
@@ -169,22 +758,50 @@
     "mockResponses": [
       {
         "status": 422,
-        "headers": { "Content-Type": "application/json" },
+        "headers": {
+          "Content-Type": "application/json"
+        },
         "body": {
           "error": "Adding people requires confirmation",
           "people": [
-            { "id": 4, "name": "Victor", "avatar_url": "https://3.basecamp.com/avatars/4.png" }
+            {
+              "id": 4,
+              "name": "Victor",
+              "avatar_url": "https://3.basecamp.com/avatars/4.png"
+            }
           ]
         }
       }
     ],
     "assertions": [
-      { "type": "requestBodyAbsent", "path": "adding_people_confirmed" },
-      { "type": "errorCode", "expected": "validation" },
-      { "type": "errorField", "path": "httpStatus", "expected": 422 },
-      { "type": "errorField", "path": "confirmationPeople.0.id", "expected": 4 },
-      { "type": "errorMessage", "expected": "Adding people requires confirmation" }
+      {
+        "type": "requestBodyAbsent",
+        "path": "adding_people_confirmed"
+      },
+      {
+        "type": "errorCode",
+        "expected": "validation"
+      },
+      {
+        "type": "errorField",
+        "path": "httpStatus",
+        "expected": 422
+      },
+      {
+        "type": "errorField",
+        "path": "confirmationPeople.0.id",
+        "expected": 4
+      },
+      {
+        "type": "errorMessage",
+        "expected": "Adding people requires confirmation"
+      }
     ],
-    "tags": ["templates", "template-library", "error-mapping", "validation"]
+    "tags": [
+      "templates",
+      "template-library",
+      "error-mapping",
+      "validation"
+    ]
   }
 ]

@@ -492,13 +492,43 @@ def _project_id(item: Any) -> Any:
     return item.get("id", 0) if isinstance(item, dict) else 0
 
 
-def _summarize_template_library(library: dict[str, Any]) -> dict[str, Any]:
+def _summarize_template_library_todolists(library: dict[str, Any]) -> dict[str, Any]:
     """Expose representative decoded template-library fields as portable scalars."""
     return {
         "bucket_id": library["bucket"]["id"],
         "todoset_id": library["todoset"]["id"],
         "first_todolist_id": library["todolists"][0]["id"],
     }
+
+
+def _summarize_template_library_card_tables(library: dict[str, Any]) -> dict[str, Any]:
+    boardset = library.get("kanban_boardset")
+    card_tables = library.get("card_tables") or []
+    summary: dict[str, Any] = {
+        "bucket_id": library["bucket"]["id"],
+        "has_kanban_boardset": boardset is not None,
+        "card_tables_count": len(card_tables),
+    }
+    if boardset is not None:
+        summary["kanban_boardset_id"] = boardset["id"]
+    if card_tables:
+        summary["first_card_table_id"] = card_tables[0]["id"]
+    return summary
+
+
+def _summarize_card_table(card_table: dict[str, Any]) -> dict[str, Any]:
+    """Expose a decoded card table as portable scalars."""
+    summary: dict[str, Any] = {
+        "id": card_table["id"],
+        "title": card_table["title"],
+        "lists_count": len(card_table.get("lists") or []),
+    }
+    parent = card_table.get("parent")
+    if parent is not None:
+        summary["parent_id"] = parent["id"]
+    if card_table.get("position") is not None:
+        summary["position"] = card_table["position"]
+    return summary
 
 
 def _compact_project_attributes(body: dict[str, Any]) -> dict[str, Any]:
@@ -516,6 +546,8 @@ def _summarize_template_library_copy(copy: dict[str, Any]) -> dict[str, Any]:
     summary = {"id": copy["id"], "status": copy["status"]}
     if copy.get("destination_todolist") is not None:
         summary["destination_todolist_id"] = copy["destination_todolist"]["id"]
+    if copy.get("destination_card_table") is not None:
+        summary["destination_card_table_id"] = copy["destination_card_table"]["id"]
     return summary
 
 
@@ -690,13 +722,24 @@ class OperationMapper:
                 return self._account.projects.list_recent_projects()
             case "RecordProjectVisit":
                 return self._account.projects.record_project_visit(project_id=path_params["projectId"])
-            case "GetTemplateLibrary":
-                return _summarize_template_library(self._account.templates.get_library())
+            case "GetTemplateLibraryTodolists":
+                return _summarize_template_library_todolists(
+                    self._account.templates.get_library_todolists()
+                )
+            case "GetTemplateLibraryCardTables":
+                return _summarize_template_library_card_tables(
+                    self._account.templates.get_library_card_tables()
+                )
+            case "CreateTemplateLibraryCardTable":
+                return _summarize_card_table(
+                    self._account.templates.create_library_card_table(name=body["name"])
+                )
             case "CreateTemplateLibraryCopy":
                 return _summarize_template_library_copy(
                     self._account.templates.create_library_copy(
                         template_recording_id=body["template_recording_id"],
-                        destination_parent_id=body["destination_parent_id"],
+                        destination_parent_id=body.get("destination_parent_id"),
+                        destination_project_id=body.get("destination_project_id"),
                         adding_people_confirmed=body.get("adding_people_confirmed"),
                     )
                 )

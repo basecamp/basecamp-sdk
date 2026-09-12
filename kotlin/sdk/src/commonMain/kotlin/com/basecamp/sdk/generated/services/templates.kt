@@ -13,26 +13,97 @@ import kotlinx.serialization.json.JsonElement
 class TemplatesService(client: AccountClient) : BaseService(client) {
 
     /**
-     * Get the account's to-do list template library
+     * Templatify a to-do list or card table
+     * @param bucketId The bucket ID
+     * @param recordingId The to-do list or card table to templatify. Anything else is a 403.
+     * @param body Request body
      */
-    suspend fun getLibrary(): TemplateLibrary {
+    suspend fun createTemplatification(bucketId: Long, recordingId: Long, body: CreateTemplatificationBody): JsonElement {
         val info = OperationInfo(
             service = "Templates",
-            operation = "GetTemplateLibrary",
-            resourceType = "template_library",
+            operation = "CreateTemplatification",
+            resourceType = "templatification",
+            isMutation = true,
+            projectId = bucketId,
+            resourceId = recordingId,
+        )
+        return request(info, {
+            httpPost("/buckets/${bucketId}/recordings/${recordingId}/templatifications.json", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
+                body.templateName?.let { put("template_name", kotlinx.serialization.json.JsonPrimitive(it)) }
+                body.copyComments?.let { put("copy_comments", kotlinx.serialization.json.JsonPrimitive(it)) }
+                body.copyAssignments?.let { put("copy_assignments", kotlinx.serialization.json.JsonPrimitive(it)) }
+                body.moveCardsToTriage?.let { put("move_cards_to_triage", kotlinx.serialization.json.JsonPrimitive(it)) }
+            }), operationName = info.operation)
+        }) { body ->
+            json.decodeFromString<JsonElement>(body)
+        }
+    }
+
+    /**
+     * Get a templatification
+     * @param bucketId The bucket ID
+     * @param recordingId The recording ID
+     * @param templatificationId The templatification ID
+     */
+    suspend fun getTemplatification(bucketId: Long, recordingId: Long, templatificationId: Long): JsonElement {
+        val info = OperationInfo(
+            service = "Templates",
+            operation = "GetTemplatification",
+            resourceType = "templatification",
+            isMutation = false,
+            projectId = bucketId,
+            resourceId = templatificationId,
+        )
+        return request(info, {
+            httpGet("/buckets/${bucketId}/recordings/${recordingId}/templatifications/${templatificationId}", operationName = info.operation)
+        }) { body ->
+            json.decodeFromString<JsonElement>(body)
+        }
+    }
+
+    /**
+     * Get the account's card table templates
+     */
+    suspend fun getLibraryCardTables(): TemplateLibraryCardTables {
+        val info = OperationInfo(
+            service = "Templates",
+            operation = "GetTemplateLibraryCardTables",
+            resourceType = "template_library_card_table",
             isMutation = false,
             projectId = null,
             resourceId = null,
         )
         return request(info, {
-            httpGet("/template_library.json", operationName = info.operation)
+            httpGet("/template_library/card_tables.json", operationName = info.operation)
         }) { body ->
-            json.decodeFromString<TemplateLibrary>(body)
+            json.decodeFromString<TemplateLibraryCardTables>(body)
         }
     }
 
     /**
-     * Start copying a to-do list template into a project
+     * Create a card table template with the default columns
+     * @param body Request body
+     */
+    suspend fun createLibraryCardTable(body: CreateTemplateLibraryCardTableBody): CardTable {
+        val info = OperationInfo(
+            service = "Templates",
+            operation = "CreateTemplateLibraryCardTable",
+            resourceType = "template_library_card_table",
+            isMutation = true,
+            projectId = null,
+            resourceId = null,
+        )
+        return request(info, {
+            httpPost("/template_library/card_tables.json", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
+                put("name", kotlinx.serialization.json.JsonPrimitive(body.name))
+            }), operationName = info.operation)
+        }) { body ->
+            json.decodeFromString<CardTable>(body)
+        }
+    }
+
+    /**
+     * Start copying a to-do list or card table template into a project
      * @param body Request body
      */
     suspend fun createLibraryCopy(body: CreateTemplateLibraryCopyBody): TemplateLibraryCopy {
@@ -47,7 +118,8 @@ class TemplatesService(client: AccountClient) : BaseService(client) {
         return request(info, {
             httpPost("/template_library/copies.json", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
                 put("template_recording_id", kotlinx.serialization.json.JsonPrimitive(body.templateRecordingId))
-                put("destination_parent_id", kotlinx.serialization.json.JsonPrimitive(body.destinationParentId))
+                body.destinationProjectId?.let { put("destination_project_id", kotlinx.serialization.json.JsonPrimitive(it)) }
+                body.destinationParentId?.let { put("destination_parent_id", kotlinx.serialization.json.JsonPrimitive(it)) }
                 body.addingPeopleConfirmed?.let { put("adding_people_confirmed", kotlinx.serialization.json.JsonPrimitive(it)) }
             }), operationName = info.operation)
         }) { body ->
@@ -72,6 +144,48 @@ class TemplatesService(client: AccountClient) : BaseService(client) {
             httpGet("/template_library/copies/${copyId}", operationName = info.operation)
         }) { body ->
             json.decodeFromString<TemplateLibraryCopy>(body)
+        }
+    }
+
+    /**
+     * Get the account's to-do list templates
+     */
+    suspend fun getLibraryTodolists(): TemplateLibraryTodolists {
+        val info = OperationInfo(
+            service = "Templates",
+            operation = "GetTemplateLibraryTodolists",
+            resourceType = "template_library_todolist",
+            isMutation = false,
+            projectId = null,
+            resourceId = null,
+        )
+        return request(info, {
+            httpGet("/template_library/todolists.json", operationName = info.operation)
+        }) { body ->
+            json.decodeFromString<TemplateLibraryTodolists>(body)
+        }
+    }
+
+    /**
+     * Create an empty to-do list template
+     * @param body Request body
+     */
+    suspend fun createLibraryTodolist(body: CreateTemplateLibraryTodolistBody): Todolist {
+        val info = OperationInfo(
+            service = "Templates",
+            operation = "CreateTemplateLibraryTodolist",
+            resourceType = "template_library_todolist",
+            isMutation = true,
+            projectId = null,
+            resourceId = null,
+        )
+        return request(info, {
+            httpPost("/template_library/todolists.json", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
+                put("name", kotlinx.serialization.json.JsonPrimitive(body.name))
+                body.description?.let { put("description", kotlinx.serialization.json.JsonPrimitive(it)) }
+            }), operationName = info.operation)
+        }) { body ->
+            json.decodeFromString<Todolist>(body)
         }
     }
 

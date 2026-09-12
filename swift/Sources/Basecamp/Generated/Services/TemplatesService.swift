@@ -37,6 +37,16 @@ public final class TemplatesService: BaseService, @unchecked Sendable {
         )
     }
 
+    public func createLibraryCardTable(req: CreateTemplateLibraryCardTableRequest) async throws -> CardTable {
+        return try await request(
+            OperationInfo(service: "Templates", operation: "CreateTemplateLibraryCardTable", resourceType: "template_library_card_table", isMutation: true),
+            method: "POST",
+            path: "/template_library/card_tables.json",
+            body: req,
+            retryConfig: Metadata.retryConfig(for: "CreateTemplateLibraryCardTable")
+        )
+    }
+
     public func createLibraryCopy(req: CreateTemplateLibraryCopyRequest) async throws -> TemplateLibraryCopy {
         return try await request(
             OperationInfo(service: "Templates", operation: "CreateTemplateLibraryCopy", resourceType: "template_library_copy", isMutation: true),
@@ -44,6 +54,26 @@ public final class TemplatesService: BaseService, @unchecked Sendable {
             path: "/template_library/copies.json",
             body: req,
             retryConfig: Metadata.retryConfig(for: "CreateTemplateLibraryCopy")
+        )
+    }
+
+    public func createLibraryTodolist(req: CreateTemplateLibraryTodolistRequest) async throws -> Todolist {
+        return try await request(
+            OperationInfo(service: "Templates", operation: "CreateTemplateLibraryTodolist", resourceType: "template_library_todolist", isMutation: true),
+            method: "POST",
+            path: "/template_library/todolists.json",
+            body: req,
+            retryConfig: Metadata.retryConfig(for: "CreateTemplateLibraryTodolist")
+        )
+    }
+
+    public func createTemplatification(bucketId: Int, recordingId: Int, req: CreateTemplatificationRequest) async throws -> Templatification {
+        return try await request(
+            OperationInfo(service: "Templates", operation: "CreateTemplatification", resourceType: "templatification", isMutation: true, projectId: bucketId, resourceId: recordingId),
+            method: "POST",
+            path: "/buckets/\(bucketId)/recordings/\(recordingId)/templatifications.json",
+            body: req,
+            retryConfig: Metadata.retryConfig(for: "CreateTemplatification")
         )
     }
 
@@ -74,12 +104,12 @@ public final class TemplatesService: BaseService, @unchecked Sendable {
         )
     }
 
-    public func getLibrary() async throws -> TemplateLibrary {
+    public func getLibraryCardTables() async throws -> TemplateLibraryCardTables {
         return try await request(
-            OperationInfo(service: "Templates", operation: "GetTemplateLibrary", resourceType: "template_library", isMutation: false),
+            OperationInfo(service: "Templates", operation: "GetTemplateLibraryCardTables", resourceType: "template_library_card_table", isMutation: false),
             method: "GET",
-            path: "/template_library.json",
-            retryConfig: Metadata.retryConfig(for: "GetTemplateLibrary")
+            path: "/template_library/card_tables.json",
+            retryConfig: Metadata.retryConfig(for: "GetTemplateLibraryCardTables")
         )
     }
 
@@ -89,6 +119,24 @@ public final class TemplatesService: BaseService, @unchecked Sendable {
             method: "GET",
             path: "/template_library/copies/\(copyId)",
             retryConfig: Metadata.retryConfig(for: "GetTemplateLibraryCopy")
+        )
+    }
+
+    public func getLibraryTodolists() async throws -> TemplateLibraryTodolists {
+        return try await request(
+            OperationInfo(service: "Templates", operation: "GetTemplateLibraryTodolists", resourceType: "template_library_todolist", isMutation: false),
+            method: "GET",
+            path: "/template_library/todolists.json",
+            retryConfig: Metadata.retryConfig(for: "GetTemplateLibraryTodolists")
+        )
+    }
+
+    public func getTemplatification(bucketId: Int, recordingId: Int, templatificationId: Int) async throws -> Templatification {
+        return try await request(
+            OperationInfo(service: "Templates", operation: "GetTemplatification", resourceType: "templatification", isMutation: false, projectId: bucketId, resourceId: templatificationId),
+            method: "GET",
+            path: "/buckets/\(bucketId)/recordings/\(recordingId)/templatifications/\(templatificationId)",
+            retryConfig: Metadata.retryConfig(for: "GetTemplatification")
         )
     }
 

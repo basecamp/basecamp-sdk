@@ -938,12 +938,33 @@ type CreateScheduleEntryRequestContent struct {
 // CreateScheduleEntryResponseContent defines model for CreateScheduleEntryResponseContent.
 type CreateScheduleEntryResponseContent = ScheduleEntry
 
+// CreateTemplateLibraryCardTableRequestContent defines model for CreateTemplateLibraryCardTableRequestContent.
+type CreateTemplateLibraryCardTableRequestContent struct {
+	// Name The template's name. Write-only: the response carries it as `title`.
+	Name string `json:"name"`
+}
+
+// CreateTemplateLibraryCardTableResponseContent defines model for CreateTemplateLibraryCardTableResponseContent.
+type CreateTemplateLibraryCardTableResponseContent = CardTable
+
 // CreateTemplateLibraryCopyRequestContent defines model for CreateTemplateLibraryCopyRequestContent.
 type CreateTemplateLibraryCopyRequestContent struct {
 	// AddingPeopleConfirmed Confirm granting destination-project access to people referenced by the template.
 	AddingPeopleConfirmed *bool `json:"adding_people_confirmed,omitempty"`
-	DestinationParentId   int64 `json:"destination_parent_id"`
-	TemplateRecordingId   int64 `json:"template_recording_id"`
+
+	// DestinationParentId The container to copy into, for a caller that already holds one: the
+	// project's to-do set for a to-do list template, or its dock for a card
+	// table. A caller who may not edit it gets 404, not 403.
+	DestinationParentId *int64 `json:"destination_parent_id,omitempty"`
+
+	// DestinationProjectId The destination project. Basecamp resolves the container from the
+	// template's kind, so a caller naming a project needs to know nothing about
+	// docks or to-do sets. Supply this or destination_parent_id; if both are
+	// sent, destination_parent_id wins.
+	DestinationProjectId *int64 `json:"destination_project_id,omitempty"`
+
+	// TemplateRecordingId The to-do list or card table in the library to copy.
+	TemplateRecordingId int64 `json:"template_recording_id"`
 }
 
 // CreateTemplateLibraryCopyResponseContent defines model for CreateTemplateLibraryCopyResponseContent.
@@ -1819,11 +1840,14 @@ type GetSearchMetadataResponseContent = SearchMetadata
 // GetSubscriptionResponseContent defines model for GetSubscriptionResponseContent.
 type GetSubscriptionResponseContent = Subscription
 
+// GetTemplateLibraryCardTablesResponseContent defines model for GetTemplateLibraryCardTablesResponseContent.
+type GetTemplateLibraryCardTablesResponseContent = TemplateLibraryCardTables
+
 // GetTemplateLibraryCopyResponseContent defines model for GetTemplateLibraryCopyResponseContent.
 type GetTemplateLibraryCopyResponseContent = TemplateLibraryCopy
 
-// GetTemplateLibraryResponseContent defines model for GetTemplateLibraryResponseContent.
-type GetTemplateLibraryResponseContent = TemplateLibrary
+// GetTemplateLibraryTodolistsResponseContent defines model for GetTemplateLibraryTodolistsResponseContent.
+type GetTemplateLibraryTodolistsResponseContent = TemplateLibraryTodolists
 
 // GetTemplateResponseContent defines model for GetTemplateResponseContent.
 type GetTemplateResponseContent = Template
@@ -3336,11 +3360,14 @@ type Template struct {
 	Url         *string    `json:"url,omitempty"`
 }
 
-// TemplateLibrary defines model for TemplateLibrary.
-type TemplateLibrary struct {
-	Bucket    RecordingBucket `json:"bucket"`
-	Todolists []Todolist      `json:"todolists"`
-	Todoset   RecordingParent `json:"todoset"`
+// TemplateLibraryCardTables defines model for TemplateLibraryCardTables.
+type TemplateLibraryCardTables struct {
+	Bucket RecordingBucket `json:"bucket"`
+
+	// CardTables Active templates in title order, as recording projections: read one through
+	// GetCardTable to see its columns.
+	CardTables     []Recording      `json:"card_tables"`
+	KanbanBoardset *RecordingParent `json:"kanban_boardset"`
 }
 
 // TemplateLibraryConfirmationPerson defines model for TemplateLibraryConfirmationPerson.
@@ -3352,7 +3379,8 @@ type TemplateLibraryConfirmationPerson struct {
 
 // TemplateLibraryCopy defines model for TemplateLibraryCopy.
 type TemplateLibraryCopy struct {
-	DestinationParentId int64 `json:"destination_parent_id"`
+	DestinationCardTable *CardTable `json:"destination_card_table,omitempty"`
+	DestinationParentId  int64      `json:"destination_parent_id"`
 
 	// DestinationTodolist A to-do list, or a group inside one. There is only this shape.
 	//
@@ -3381,6 +3409,13 @@ type TemplateLibraryCopy struct {
 	// Status pending|processing|completed|failed
 	Status string `json:"status"`
 	Url    string `json:"url"`
+}
+
+// TemplateLibraryTodolists defines model for TemplateLibraryTodolists.
+type TemplateLibraryTodolists struct {
+	Bucket    RecordingBucket `json:"bucket"`
+	Todolists []Todolist      `json:"todolists"`
+	Todoset   RecordingParent `json:"todoset"`
 }
 
 // TimelineAttachment A single timeline-event attachment. This is an optional-field superset over
@@ -5484,6 +5519,9 @@ type CreateFolderJSONRequestBody = CreateFolderRequestContent
 // UpdateFolderJSONRequestBody defines body for UpdateFolder for application/json ContentType.
 type UpdateFolderJSONRequestBody = UpdateFolderRequestContent
 
+// CreateTemplateLibraryCardTableJSONRequestBody defines body for CreateTemplateLibraryCardTable for application/json ContentType.
+type CreateTemplateLibraryCardTableJSONRequestBody = CreateTemplateLibraryCardTableRequestContent
+
 // CreateTemplateLibraryCopyJSONRequestBody defines body for CreateTemplateLibraryCopy for application/json ContentType.
 type CreateTemplateLibraryCopyJSONRequestBody = CreateTemplateLibraryCopyRequestContent
 
@@ -6792,8 +6830,13 @@ type ClientInterface interface {
 
 	UpdateFolder(ctx context.Context, accountId string, folderId int64, body UpdateFolderJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// GetTemplateLibrary request
-	GetTemplateLibrary(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// GetTemplateLibraryCardTables request
+	GetTemplateLibraryCardTables(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateTemplateLibraryCardTableWithBody request with any body
+	CreateTemplateLibraryCardTableWithBody(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	CreateTemplateLibraryCardTable(ctx context.Context, accountId string, body CreateTemplateLibraryCardTableJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateTemplateLibraryCopyWithBody request with any body
 	CreateTemplateLibraryCopyWithBody(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -6802,6 +6845,9 @@ type ClientInterface interface {
 
 	// GetTemplateLibraryCopy request
 	GetTemplateLibraryCopy(ctx context.Context, accountId string, copyId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetTemplateLibraryTodolists request
+	GetTemplateLibraryTodolists(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListTemplates request
 	ListTemplates(ctx context.Context, accountId string, params *ListTemplatesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -10006,13 +10052,43 @@ func (c *Client) UpdateFolder(ctx context.Context, accountId string, folderId in
 
 }
 
-// GetTemplateLibrary is marked as idempotent and will be retried on transient failures.
+// GetTemplateLibraryCardTables is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetTemplateLibrary(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetTemplateLibraryCardTables(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewGetTemplateLibraryRequest(c.Server, accountId)
-	}, true, "GetTemplateLibrary", reqEditors...)
+		return NewGetTemplateLibraryCardTablesRequest(c.Server, accountId)
+	}, true, "GetTemplateLibraryCardTables", reqEditors...)
+
+}
+
+// CreateTemplateLibraryCardTableWithBody executes the CreateTemplateLibraryCardTable operation.
+
+func (c *Client) CreateTemplateLibraryCardTableWithBody(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	req, err := NewCreateTemplateLibraryCardTableRequestWithBody(c.Server, accountId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+
+}
+
+func (c *Client) CreateTemplateLibraryCardTable(ctx context.Context, accountId string, body CreateTemplateLibraryCardTableJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	req, err := NewCreateTemplateLibraryCardTableRequest(c.Server, accountId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
 
 }
 
@@ -10053,6 +10129,16 @@ func (c *Client) GetTemplateLibraryCopy(ctx context.Context, accountId string, c
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewGetTemplateLibraryCopyRequest(c.Server, accountId, copyId)
 	}, true, "GetTemplateLibraryCopy", reqEditors...)
+
+}
+
+// GetTemplateLibraryTodolists is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) GetTemplateLibraryTodolists(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetTemplateLibraryTodolistsRequest(c.Server, accountId)
+	}, true, "GetTemplateLibraryTodolists", reqEditors...)
 
 }
 
@@ -22169,8 +22255,8 @@ func NewUpdateFolderRequestWithBody(server string, accountId string, folderId in
 	return req, nil
 }
 
-// NewGetTemplateLibraryRequest generates requests for GetTemplateLibrary
-func NewGetTemplateLibraryRequest(server string, accountId string) (*http.Request, error) {
+// NewGetTemplateLibraryCardTablesRequest generates requests for GetTemplateLibraryCardTables
+func NewGetTemplateLibraryCardTablesRequest(server string, accountId string) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -22185,7 +22271,7 @@ func NewGetTemplateLibraryRequest(server string, accountId string) (*http.Reques
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/%s/template_library.json", pathParam0)
+	operationPath := fmt.Sprintf("/%s/template_library/card_tables.json", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -22199,6 +22285,53 @@ func NewGetTemplateLibraryRequest(server string, accountId string) (*http.Reques
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewCreateTemplateLibraryCardTableRequest calls the generic CreateTemplateLibraryCardTable builder with application/json body
+func NewCreateTemplateLibraryCardTableRequest(server string, accountId string, body CreateTemplateLibraryCardTableJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateTemplateLibraryCardTableRequestWithBody(server, accountId, "application/json", bodyReader)
+}
+
+// NewCreateTemplateLibraryCardTableRequestWithBody generates requests for CreateTemplateLibraryCardTable with any type of body
+func NewCreateTemplateLibraryCardTableRequestWithBody(server string, accountId string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/template_library/card_tables.json", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -22274,6 +22407,40 @@ func NewGetTemplateLibraryCopyRequest(server string, accountId string, copyId in
 	}
 
 	operationPath := fmt.Sprintf("/%s/template_library/copies/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetTemplateLibraryTodolistsRequest generates requests for GetTemplateLibraryTodolists
+func NewGetTemplateLibraryTodolistsRequest(server string, accountId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/template_library/todolists.json", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -25186,9 +25353,11 @@ var operationMetadata = map[string]OperationMetadata{
 	"DeleteFolder":                       {Idempotent: true, HasSensitiveParams: false},
 	"GetFolder":                          {Idempotent: true, HasSensitiveParams: false},
 	"UpdateFolder":                       {Idempotent: true, HasSensitiveParams: false},
-	"GetTemplateLibrary":                 {Idempotent: true, HasSensitiveParams: false},
+	"GetTemplateLibraryCardTables":       {Idempotent: true, HasSensitiveParams: false},
+	"CreateTemplateLibraryCardTable":     {Idempotent: false, HasSensitiveParams: false},
 	"CreateTemplateLibraryCopy":          {Idempotent: false, HasSensitiveParams: false},
 	"GetTemplateLibraryCopy":             {Idempotent: true, HasSensitiveParams: false},
+	"GetTemplateLibraryTodolists":        {Idempotent: true, HasSensitiveParams: false},
 	"ListTemplates":                      {Idempotent: true, HasSensitiveParams: false},
 	"CreateTemplate":                     {Idempotent: false, HasSensitiveParams: false},
 	"DeleteTemplate":                     {Idempotent: true, HasSensitiveParams: false},
@@ -25457,9 +25626,11 @@ var operationRetryMax = map[string]int{
 	"DeleteFolder":                       3,
 	"GetFolder":                          3,
 	"UpdateFolder":                       3,
-	"GetTemplateLibrary":                 3,
+	"GetTemplateLibraryCardTables":       3,
+	"CreateTemplateLibraryCardTable":     2,
 	"CreateTemplateLibraryCopy":          2,
 	"GetTemplateLibraryCopy":             3,
+	"GetTemplateLibraryTodolists":        3,
 	"ListTemplates":                      3,
 	"CreateTemplate":                     2,
 	"DeleteTemplate":                     3,
@@ -25726,9 +25897,11 @@ var operationRetryOn = map[string][]int{
 	"DeleteFolder":                       {429, 503},
 	"GetFolder":                          {429, 503},
 	"UpdateFolder":                       {429, 503},
-	"GetTemplateLibrary":                 {429, 503},
+	"GetTemplateLibraryCardTables":       {429, 503},
+	"CreateTemplateLibraryCardTable":     {429, 503},
 	"CreateTemplateLibraryCopy":          {429, 503},
 	"GetTemplateLibraryCopy":             {429, 503},
+	"GetTemplateLibraryTodolists":        {429, 503},
 	"ListTemplates":                      {429, 503},
 	"CreateTemplate":                     {429, 503},
 	"DeleteTemplate":                     {429, 503},
@@ -26670,8 +26843,16 @@ func (s *SchedulesService) CreateEntry(ctx context.Context, accountId string, sc
 	return s.client.CreateScheduleEntry(ctx, accountId, scheduleId, body, reqEditors...)
 }
 
-func (s *TemplatesService) GetLibrary(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.GetTemplateLibrary(ctx, accountId, reqEditors...)
+func (s *TemplatesService) GetLibraryCardTables(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.GetTemplateLibraryCardTables(ctx, accountId, reqEditors...)
+}
+
+func (s *TemplatesService) CreateLibraryCardTableWithBody(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.CreateTemplateLibraryCardTableWithBody(ctx, accountId, contentType, body, reqEditors...)
+}
+
+func (s *TemplatesService) CreateLibraryCardTable(ctx context.Context, accountId string, body CreateTemplateLibraryCardTableJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.CreateTemplateLibraryCardTable(ctx, accountId, body, reqEditors...)
 }
 
 func (s *TemplatesService) CreateLibraryCopyWithBody(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -26684,6 +26865,10 @@ func (s *TemplatesService) CreateLibraryCopy(ctx context.Context, accountId stri
 
 func (s *TemplatesService) GetLibraryCopy(ctx context.Context, accountId string, copyId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	return s.client.GetTemplateLibraryCopy(ctx, accountId, copyId, reqEditors...)
+}
+
+func (s *TemplatesService) GetLibraryTodolists(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.GetTemplateLibraryTodolists(ctx, accountId, reqEditors...)
 }
 
 func (s *TemplatesService) List(ctx context.Context, accountId string, params *ListTemplatesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -27618,8 +27803,13 @@ type ClientWithResponsesInterface interface {
 
 	UpdateFolderWithResponse(ctx context.Context, accountId string, folderId int64, body UpdateFolderJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateFolderResponse, error)
 
-	// GetTemplateLibraryWithResponse request
-	GetTemplateLibraryWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*GetTemplateLibraryResponse, error)
+	// GetTemplateLibraryCardTablesWithResponse request
+	GetTemplateLibraryCardTablesWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*GetTemplateLibraryCardTablesResponse, error)
+
+	// CreateTemplateLibraryCardTableWithBodyWithResponse request with any body
+	CreateTemplateLibraryCardTableWithBodyWithResponse(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTemplateLibraryCardTableResponse, error)
+
+	CreateTemplateLibraryCardTableWithResponse(ctx context.Context, accountId string, body CreateTemplateLibraryCardTableJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTemplateLibraryCardTableResponse, error)
 
 	// CreateTemplateLibraryCopyWithBodyWithResponse request with any body
 	CreateTemplateLibraryCopyWithBodyWithResponse(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTemplateLibraryCopyResponse, error)
@@ -27628,6 +27818,9 @@ type ClientWithResponsesInterface interface {
 
 	// GetTemplateLibraryCopyWithResponse request
 	GetTemplateLibraryCopyWithResponse(ctx context.Context, accountId string, copyId int64, reqEditors ...RequestEditorFn) (*GetTemplateLibraryCopyResponse, error)
+
+	// GetTemplateLibraryTodolistsWithResponse request
+	GetTemplateLibraryTodolistsWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*GetTemplateLibraryTodolistsResponse, error)
 
 	// ListTemplatesWithResponse request
 	ListTemplatesWithResponse(ctx context.Context, accountId string, params *ListTemplatesParams, reqEditors ...RequestEditorFn) (*ListTemplatesResponse, error)
@@ -35052,10 +35245,10 @@ func (r UpdateFolderResponse) ContentType() string {
 	return ""
 }
 
-type GetTemplateLibraryResponse struct {
+type GetTemplateLibraryCardTablesResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *GetTemplateLibraryResponseContent
+	JSON200      *GetTemplateLibraryCardTablesResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
 	JSON429      *RateLimitErrorResponseContent
@@ -35063,7 +35256,7 @@ type GetTemplateLibraryResponse struct {
 }
 
 // Status returns HTTPResponse.Status
-func (r GetTemplateLibraryResponse) Status() string {
+func (r GetTemplateLibraryCardTablesResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -35071,7 +35264,7 @@ func (r GetTemplateLibraryResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r GetTemplateLibraryResponse) StatusCode() int {
+func (r GetTemplateLibraryCardTablesResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -35079,7 +35272,42 @@ func (r GetTemplateLibraryResponse) StatusCode() int {
 }
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r GetTemplateLibraryResponse) ContentType() string {
+func (r GetTemplateLibraryCardTablesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateTemplateLibraryCardTableResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON201      *CreateTemplateLibraryCardTableResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON422      *ValidationErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateTemplateLibraryCardTableResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateTemplateLibraryCardTableResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateTemplateLibraryCardTableResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -35151,6 +35379,40 @@ func (r GetTemplateLibraryCopyResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r GetTemplateLibraryCopyResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetTemplateLibraryTodolistsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *GetTemplateLibraryTodolistsResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r GetTemplateLibraryTodolistsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetTemplateLibraryTodolistsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetTemplateLibraryTodolistsResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -39242,13 +39504,30 @@ func (c *ClientWithResponses) UpdateFolderWithResponse(ctx context.Context, acco
 	return ParseUpdateFolderResponse(rsp)
 }
 
-// GetTemplateLibraryWithResponse request returning *GetTemplateLibraryResponse
-func (c *ClientWithResponses) GetTemplateLibraryWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*GetTemplateLibraryResponse, error) {
-	rsp, err := c.GetTemplateLibrary(ctx, accountId, reqEditors...)
+// GetTemplateLibraryCardTablesWithResponse request returning *GetTemplateLibraryCardTablesResponse
+func (c *ClientWithResponses) GetTemplateLibraryCardTablesWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*GetTemplateLibraryCardTablesResponse, error) {
+	rsp, err := c.GetTemplateLibraryCardTables(ctx, accountId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseGetTemplateLibraryResponse(rsp)
+	return ParseGetTemplateLibraryCardTablesResponse(rsp)
+}
+
+// CreateTemplateLibraryCardTableWithBodyWithResponse request with arbitrary body returning *CreateTemplateLibraryCardTableResponse
+func (c *ClientWithResponses) CreateTemplateLibraryCardTableWithBodyWithResponse(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTemplateLibraryCardTableResponse, error) {
+	rsp, err := c.CreateTemplateLibraryCardTableWithBody(ctx, accountId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateTemplateLibraryCardTableResponse(rsp)
+}
+
+func (c *ClientWithResponses) CreateTemplateLibraryCardTableWithResponse(ctx context.Context, accountId string, body CreateTemplateLibraryCardTableJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTemplateLibraryCardTableResponse, error) {
+	rsp, err := c.CreateTemplateLibraryCardTable(ctx, accountId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateTemplateLibraryCardTableResponse(rsp)
 }
 
 // CreateTemplateLibraryCopyWithBodyWithResponse request with arbitrary body returning *CreateTemplateLibraryCopyResponse
@@ -39275,6 +39554,15 @@ func (c *ClientWithResponses) GetTemplateLibraryCopyWithResponse(ctx context.Con
 		return nil, err
 	}
 	return ParseGetTemplateLibraryCopyResponse(rsp)
+}
+
+// GetTemplateLibraryTodolistsWithResponse request returning *GetTemplateLibraryTodolistsResponse
+func (c *ClientWithResponses) GetTemplateLibraryTodolistsWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*GetTemplateLibraryTodolistsResponse, error) {
+	rsp, err := c.GetTemplateLibraryTodolists(ctx, accountId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetTemplateLibraryTodolistsResponse(rsp)
 }
 
 // ListTemplatesWithResponse request returning *ListTemplatesResponse
@@ -50894,22 +51182,22 @@ func ParseUpdateFolderResponse(rsp *http.Response) (*UpdateFolderResponse, error
 	return response, nil
 }
 
-// ParseGetTemplateLibraryResponse parses an HTTP response from a GetTemplateLibraryWithResponse call
-func ParseGetTemplateLibraryResponse(rsp *http.Response) (*GetTemplateLibraryResponse, error) {
+// ParseGetTemplateLibraryCardTablesResponse parses an HTTP response from a GetTemplateLibraryCardTablesWithResponse call
+func ParseGetTemplateLibraryCardTablesResponse(rsp *http.Response) (*GetTemplateLibraryCardTablesResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &GetTemplateLibraryResponse{
+	response := &GetTemplateLibraryCardTablesResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest GetTemplateLibraryResponseContent
+		var dest GetTemplateLibraryCardTablesResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -50925,6 +51213,62 @@ func ParseGetTemplateLibraryResponse(rsp *http.Response) (*GetTemplateLibraryRes
 		var dest ForbiddenErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
 			response.JSON403 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON429 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON500 = &dest
+		}
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateTemplateLibraryCardTableResponse parses an HTTP response from a CreateTemplateLibraryCardTableWithResponse call
+func ParseCreateTemplateLibraryCardTableResponse(rsp *http.Response) (*CreateTemplateLibraryCardTableResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateTemplateLibraryCardTableResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest CreateTemplateLibraryCardTableResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON401 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON403 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON422 = &dest
 		}
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
@@ -51043,6 +51387,56 @@ func ParseGetTemplateLibraryCopyResponse(rsp *http.Response) (*GetTemplateLibrar
 		var dest NotFoundErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
 			response.JSON404 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON429 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON500 = &dest
+		}
+
+	}
+
+	return response, nil
+}
+
+// ParseGetTemplateLibraryTodolistsResponse parses an HTTP response from a GetTemplateLibraryTodolistsWithResponse call
+func ParseGetTemplateLibraryTodolistsResponse(rsp *http.Response) (*GetTemplateLibraryTodolistsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetTemplateLibraryTodolistsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GetTemplateLibraryTodolistsResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON401 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON403 = &dest
 		}
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:

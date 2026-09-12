@@ -37,7 +37,7 @@ export interface MetadataOutput {
 const metadata: MetadataOutput = {
   "$schema": "https://basecamp.com/schemas/sdk-metadata.json",
   "version": "1.0.0",
-  "generated": "2026-09-12T03:34:42.403Z",
+  "generated": "2026-09-12T06:20:36.245Z",
   "operations": {
     "GetAccount": {
       "retry": {
@@ -403,6 +403,28 @@ const metadata: MetadataOutput = {
     "CreateTool": {
       "retry": {
         "maxAttempts": 2,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      }
+    },
+    "CreateTemplatification": {
+      "retry": {
+        "maxAttempts": 2,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      }
+    },
+    "GetTemplatification": {
+      "retry": {
+        "maxAttempts": 3,
         "baseDelayMs": 1000,
         "backoff": "exponential",
         "retryOn": [
@@ -2827,9 +2849,20 @@ const metadata: MetadataOutput = {
         "natural": true
       }
     },
-    "GetTemplateLibrary": {
+    "GetTemplateLibraryCardTables": {
       "retry": {
         "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      }
+    },
+    "CreateTemplateLibraryCardTable": {
+      "retry": {
+        "maxAttempts": 2,
         "baseDelayMs": 1000,
         "backoff": "exponential",
         "retryOn": [
@@ -2852,6 +2885,28 @@ const metadata: MetadataOutput = {
     "GetTemplateLibraryCopy": {
       "retry": {
         "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      }
+    },
+    "GetTemplateLibraryTodolists": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      }
+    },
+    "CreateTemplateLibraryTodolist": {
+      "retry": {
+        "maxAttempts": 2,
         "baseDelayMs": 1000,
         "backoff": "exponential",
         "retryOn": [

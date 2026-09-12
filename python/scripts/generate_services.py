@@ -84,7 +84,10 @@ SERVICE_SPLITS: dict[str, dict[str, list[str]]] = {
         "Templates": [
             "ListTemplates", "CreateTemplate", "GetTemplate", "UpdateTemplate",
             "DeleteTemplate", "CreateProjectFromTemplate", "GetProjectConstruction",
-            "GetTemplateLibrary", "CreateTemplateLibraryCopy", "GetTemplateLibraryCopy",
+            "GetTemplateLibraryTodolists", "GetTemplateLibraryCardTables",
+            "CreateTemplateLibraryCardTable",
+            "CreateTemplateLibraryCopy",
+            "GetTemplateLibraryCopy",
         ],
         "Checkins": [
             "GetQuestionnaire", "ListQuestions", "CreateQuestion", "GetQuestion",
@@ -186,7 +189,9 @@ METHOD_NAME_OVERRIDES = {
     "Search": "search",
     "CreateProjectFromTemplate": "create_project",
     "GetProjectConstruction": "get_construction",
-    "GetTemplateLibrary": "get_library",
+    "GetTemplateLibraryTodolists": "get_library_todolists",
+    "GetTemplateLibraryCardTables": "get_library_card_tables",
+    "CreateTemplateLibraryCardTable": "create_library_card_table",
     "CreateTemplateLibraryCopy": "create_library_copy",
     "GetTemplateLibraryCopy": "get_library_copy",
     "GetRecordingTimesheet": "for_recording",
@@ -680,13 +685,18 @@ def _wrap_args_entry(python_name: str, description: str) -> list[str]:
 
 
 def _deprecation_section(op: dict) -> list[str]:
-    """Docstring section flagging deprecated query params.
+    """Docstring section flagging a deprecated operation and deprecated query params.
 
     Documentation-only (see #406): a TypedDict/kwarg has no per-parameter
     deprecation directive, and an RST ``.. deprecated::`` inside a ``:param:``
     is malformed, so this is real prose listing each deprecated parameter and
     its replacement. Emitted only when the operation has at least one
     deprecated param, keyed on that flag rather than a specific method name.
+
+    The whole method carries the same class of marker. ``.. deprecated::``
+    needs a version argument this generator has no value for, so the note is
+    the same "Deprecated:" prose every other Python site uses, which keeps the
+    resolver rule in scripts/check-deprecation-parity uniform.
     """
     deprecated = [q for q in op["query_params"] if q.get("deprecated")]
     if not deprecated:
@@ -714,6 +724,12 @@ def method_docstring(op: dict, params: list[dict]) -> list[str]:
     paragraphs = _split_paragraphs(description)
     if op["has_pagination"]:
         paragraphs = [p for p in paragraphs if not p.lstrip().startswith("**Pagination**")]
+    # The deprecation paragraph is where the reason text comes FROM (the
+    # OpenAPI carries no @deprecated message, so the enhancer reads it back out
+    # of the description). _deprecation_section re-emits it below, so keeping it
+    # here too would double the marker.
+    if op.get("deprecated"):
+        paragraphs = [p for p in paragraphs if not p.lstrip().lower().startswith("deprecated:")]
 
     summary = paragraphs[0] if paragraphs else f"{op['operation_id']} operation."
     if summary[-1] not in ".!?":
