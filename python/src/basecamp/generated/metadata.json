@@ -358,6 +358,17 @@
       ]
     }
   },
+  "CreateTemplateLibraryCardTable": {
+    "retry": {
+      "backoff": "exponential",
+      "base_delay_ms": 1000,
+      "max": 2,
+      "retry_on": [
+        429,
+        503
+      ]
+    }
+  },
   "CreateTemplateLibraryCopy": {
     "retry": {
       "backoff": "exponential",
@@ -1590,7 +1601,7 @@
       ]
     }
   },
-  "GetTemplateLibrary": {
+  "GetTemplateLibraryCardTables": {
     "retry": {
       "backoff": "exponential",
       "base_delay_ms": 1000,
@@ -1602,6 +1613,17 @@
     }
   },
   "GetTemplateLibraryCopy": {
+    "retry": {
+      "backoff": "exponential",
+      "base_delay_ms": 1000,
+      "max": 3,
+      "retry_on": [
+        429,
+        503
+      ]
+    }
+  },
+  "GetTemplateLibraryTodolists": {
     "retry": {
       "backoff": "exponential",
       "base_delay_ms": 1000,

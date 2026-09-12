@@ -71,7 +71,19 @@ export const PERSON_ID_SITES: Readonly<Record<string, readonly string[]>> = {
     "completer",
     "creator"
   ],
+  "CreateTemplateLibraryCardTable": [
+    "creator",
+    "lists.[].creator",
+    "lists.[].subscribers.[]",
+    "subscribers.[]",
+    "wormholes.[].creator"
+  ],
   "CreateTemplateLibraryCopy": [
+    "destination_card_table.creator",
+    "destination_card_table.lists.[].creator",
+    "destination_card_table.lists.[].subscribers.[]",
+    "destination_card_table.subscribers.[]",
+    "destination_card_table.wormholes.[].creator",
     "destination_todolist.creator"
   ],
   "CreateTimesheetEntry": [
@@ -424,11 +436,19 @@ export const PERSON_ID_SITES: Readonly<Record<string, readonly string[]>> = {
     "completer",
     "creator"
   ],
-  "GetTemplateLibrary": [
-    "todolists.[].creator"
+  "GetTemplateLibraryCardTables": [
+    "card_tables.[].creator"
   ],
   "GetTemplateLibraryCopy": [
+    "destination_card_table.creator",
+    "destination_card_table.lists.[].creator",
+    "destination_card_table.lists.[].subscribers.[]",
+    "destination_card_table.subscribers.[]",
+    "destination_card_table.wormholes.[].creator",
     "destination_todolist.creator"
+  ],
+  "GetTemplateLibraryTodolists": [
+    "todolists.[].creator"
   ],
   "GetTimesheetEntry": [
     "creator",

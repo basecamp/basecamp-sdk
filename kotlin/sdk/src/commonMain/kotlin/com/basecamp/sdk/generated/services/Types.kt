@@ -1034,10 +1034,16 @@ data class RepositionSubtaskBody(
     val position: Int
 )
 
+/** Request body for CreateTemplateLibraryCardTable. */
+data class CreateTemplateLibraryCardTableBody(
+    val name: String
+)
+
 /** Request body for CreateTemplateLibraryCopy. */
 data class CreateTemplateLibraryCopyBody(
     val templateRecordingId: Long,
-    val destinationParentId: Long,
+    val destinationProjectId: Long? = null,
+    val destinationParentId: Long? = null,
     val addingPeopleConfirmed: Boolean? = null
 )
 

@@ -13,26 +13,48 @@ import kotlinx.serialization.json.JsonElement
 class TemplatesService(client: AccountClient) : BaseService(client) {
 
     /**
-     * Get the account's to-do list template library
+     * Get the account's card table templates
      */
-    suspend fun getLibrary(): TemplateLibrary {
+    suspend fun getLibraryCardTables(): TemplateLibraryCardTables {
         val info = OperationInfo(
             service = "Templates",
-            operation = "GetTemplateLibrary",
-            resourceType = "template_library",
+            operation = "GetTemplateLibraryCardTables",
+            resourceType = "template_library_card_table",
             isMutation = false,
             projectId = null,
             resourceId = null,
         )
         return request(info, {
-            httpGet("/template_library.json", operationName = info.operation)
+            httpGet("/template_library/card_tables.json", operationName = info.operation)
         }) { body ->
-            json.decodeFromString<TemplateLibrary>(body)
+            json.decodeFromString<TemplateLibraryCardTables>(body)
         }
     }
 
     /**
-     * Start copying a to-do list template into a project
+     * Create a card table template with the default columns
+     * @param body Request body
+     */
+    suspend fun createLibraryCardTable(body: CreateTemplateLibraryCardTableBody): CardTable {
+        val info = OperationInfo(
+            service = "Templates",
+            operation = "CreateTemplateLibraryCardTable",
+            resourceType = "template_library_card_table",
+            isMutation = true,
+            projectId = null,
+            resourceId = null,
+        )
+        return request(info, {
+            httpPost("/template_library/card_tables.json", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
+                put("name", kotlinx.serialization.json.JsonPrimitive(body.name))
+            }), operationName = info.operation)
+        }) { body ->
+            json.decodeFromString<CardTable>(body)
+        }
+    }
+
+    /**
+     * Start copying a to-do list or card table template into a project
      * @param body Request body
      */
     suspend fun createLibraryCopy(body: CreateTemplateLibraryCopyBody): TemplateLibraryCopy {
@@ -47,7 +69,8 @@ class TemplatesService(client: AccountClient) : BaseService(client) {
         return request(info, {
             httpPost("/template_library/copies.json", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
                 put("template_recording_id", kotlinx.serialization.json.JsonPrimitive(body.templateRecordingId))
-                put("destination_parent_id", kotlinx.serialization.json.JsonPrimitive(body.destinationParentId))
+                body.destinationProjectId?.let { put("destination_project_id", kotlinx.serialization.json.JsonPrimitive(it)) }
+                body.destinationParentId?.let { put("destination_parent_id", kotlinx.serialization.json.JsonPrimitive(it)) }
                 body.addingPeopleConfirmed?.let { put("adding_people_confirmed", kotlinx.serialization.json.JsonPrimitive(it)) }
             }), operationName = info.operation)
         }) { body ->
@@ -72,6 +95,25 @@ class TemplatesService(client: AccountClient) : BaseService(client) {
             httpGet("/template_library/copies/${copyId}", operationName = info.operation)
         }) { body ->
             json.decodeFromString<TemplateLibraryCopy>(body)
+        }
+    }
+
+    /**
+     * Get the account's to-do list templates
+     */
+    suspend fun getLibraryTodolists(): TemplateLibraryTodolists {
+        val info = OperationInfo(
+            service = "Templates",
+            operation = "GetTemplateLibraryTodolists",
+            resourceType = "template_library_todolist",
+            isMutation = false,
+            projectId = null,
+            resourceId = null,
+        )
+        return request(info, {
+            httpGet("/template_library/todolists.json", operationName = info.operation)
+        }) { body ->
+            json.decodeFromString<TemplateLibraryTodolists>(body)
         }
     }
 

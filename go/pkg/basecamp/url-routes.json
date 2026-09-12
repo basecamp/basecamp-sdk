@@ -2526,10 +2526,11 @@
       }
     },
     {
-      "pattern": "/{accountId}/template_library",
+      "pattern": "/{accountId}/template_library/card_tables",
       "resource": "Templates",
       "operations": {
-        "GET": "GetTemplateLibrary"
+        "GET": "GetTemplateLibraryCardTables",
+        "POST": "CreateTemplateLibraryCardTable"
       },
       "params": {
         "accountId": {
@@ -2565,6 +2566,19 @@
         "copyId": {
           "role": "recording",
           "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/template_library/todolists",
+      "resource": "Templates",
+      "operations": {
+        "GET": "GetTemplateLibraryTodolists"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
         }
       }
     },

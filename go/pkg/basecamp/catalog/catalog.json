@@ -1860,11 +1860,55 @@
       "bodyRequired": true
     },
     {
+      "operationId": "CreateTemplateLibraryCardTable",
+      "tag": "Templates",
+      "method": "POST",
+      "path": "/{accountId}/template_library/card_tables.json",
+      "doc": "Create a card table template with the default columns",
+      "readonly": false,
+      "idempotent": false,
+      "retry": {
+        "max": 2,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      },
+      "params": [
+        {
+          "name": "accountId",
+          "in": "path",
+          "required": true,
+          "description": "Basecamp account ID (numeric string)",
+          "schema": {
+            "description": "Basecamp account ID (numeric string)",
+            "pattern": "^[0-9]+$",
+            "type": "string"
+          }
+        }
+      ],
+      "body": {
+        "properties": {
+          "name": {
+            "description": "The template's name. Write-only: the response carries it as `title`.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "type": "object"
+      },
+      "bodyRequired": true
+    },
+    {
       "operationId": "CreateTemplateLibraryCopy",
       "tag": "Templates",
       "method": "POST",
       "path": "/{accountId}/template_library/copies.json",
-      "doc": "Start copying a to-do list template into a project",
+      "doc": "Start copying a to-do list or card table template into a project",
       "readonly": false,
       "idempotent": false,
       "retry": {
@@ -1896,16 +1940,22 @@
             "type": "boolean"
           },
           "destination_parent_id": {
+            "description": "The container to copy into, for a caller that already holds one: the\nproject's to-do set for a to-do list template, or its dock for a card\ntable. A caller who may not edit it gets 404, not 403.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "destination_project_id": {
+            "description": "The destination project. Basecamp resolves the container from the\ntemplate's kind, so a caller naming a project needs to know nothing about\ndocks or to-do sets. Supply this or destination_parent_id; if both are\nsent, destination_parent_id wins.",
             "format": "int64",
             "type": "integer"
           },
           "template_recording_id": {
+            "description": "The to-do list or card table in the library to copy.",
             "format": "int64",
             "type": "integer"
           }
         },
         "required": [
-          "destination_parent_id",
           "template_recording_id"
         ],
         "type": "object"
@@ -7119,11 +7169,11 @@
       ]
     },
     {
-      "operationId": "GetTemplateLibrary",
+      "operationId": "GetTemplateLibraryCardTables",
       "tag": "Templates",
       "method": "GET",
-      "path": "/{accountId}/template_library.json",
-      "doc": "Get the account's to-do list template library",
+      "path": "/{accountId}/template_library/card_tables.json",
+      "doc": "Get the account's card table templates",
       "readonly": true,
       "idempotent": false,
       "retry": {
@@ -7185,6 +7235,37 @@
           "schema": {
             "format": "int64",
             "type": "integer"
+          }
+        }
+      ]
+    },
+    {
+      "operationId": "GetTemplateLibraryTodolists",
+      "tag": "Templates",
+      "method": "GET",
+      "path": "/{accountId}/template_library/todolists.json",
+      "doc": "Get the account's to-do list templates",
+      "readonly": true,
+      "idempotent": false,
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      },
+      "params": [
+        {
+          "name": "accountId",
+          "in": "path",
+          "required": true,
+          "description": "Basecamp account ID (numeric string)",
+          "schema": {
+            "description": "Basecamp account ID (numeric string)",
+            "pattern": "^[0-9]+$",
+            "type": "string"
           }
         }
       ]

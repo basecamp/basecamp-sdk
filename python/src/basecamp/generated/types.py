@@ -610,9 +610,14 @@ class CreateSubtaskRequestContent(TypedDict):
     title: str
 
 
+class CreateTemplateLibraryCardTableRequestContent(TypedDict):
+    name: str
+
+
 class CreateTemplateLibraryCopyRequestContent(TypedDict):
     adding_people_confirmed: NotRequired[bool]
-    destination_parent_id: int
+    destination_parent_id: NotRequired[int]
+    destination_project_id: NotRequired[int]
     template_recording_id: int
 
 
@@ -1847,10 +1852,10 @@ class Template(TypedDict):
     url: NotRequired[str]
 
 
-class TemplateLibrary(TypedDict):
+class TemplateLibraryCardTables(TypedDict):
     bucket: RecordingBucket
-    todolists: list[Todolist]
-    todoset: RecordingParent
+    card_tables: list[Recording]
+    kanban_boardset: RecordingParent | None
 
 
 class TemplateLibraryConfirmationPerson(TypedDict):
@@ -1860,12 +1865,19 @@ class TemplateLibraryConfirmationPerson(TypedDict):
 
 
 class TemplateLibraryCopy(TypedDict):
+    destination_card_table: NotRequired[CardTable]
     destination_parent_id: int
     destination_todolist: NotRequired[Todolist]
     id: int
     source_recording_id: int
     status: str
     url: str
+
+
+class TemplateLibraryTodolists(TypedDict):
+    bucket: RecordingBucket
+    todolists: list[Todolist]
+    todoset: RecordingParent
 
 
 class TimelineAttachment(TypedDict):

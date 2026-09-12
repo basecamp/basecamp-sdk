@@ -1580,13 +1580,32 @@ pub struct CreateSubtaskRequestContent {
 /// `CreateSubtaskResponseContent`.
 pub type CreateSubtaskResponseContent = CardStep;
 
+/// The `CreateTemplateLibraryCardTableRequestContent` shape of the Basecamp API.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct CreateTemplateLibraryCardTableRequestContent {
+    /// The template's name. Write-only: the response carries it as `title`.
+    pub name: String,
+}
+
+/// `CreateTemplateLibraryCardTableResponseContent`.
+pub type CreateTemplateLibraryCardTableResponseContent = CardTable;
+
 /// The `CreateTemplateLibraryCopyRequestContent` shape of the Basecamp API.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct CreateTemplateLibraryCopyRequestContent {
-    /// `template_recording_id`.
+    /// The to-do list or card table in the library to copy.
     pub template_recording_id: i64,
-    /// `destination_parent_id`.
-    pub destination_parent_id: i64,
+    /// The destination project. Basecamp resolves the container from the
+    /// template's kind, so a caller naming a project needs to know nothing about
+    /// docks or to-do sets. Supply this or destination_parent_id; if both are
+    /// sent, destination_parent_id wins.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub destination_project_id: Option<i64>,
+    /// The container to copy into, for a caller that already holds one: the
+    /// project's to-do set for a to-do list template, or its dock for a card
+    /// table. A caller who may not edit it gets 404, not 403.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub destination_parent_id: Option<i64>,
     /// Confirm granting destination-project access to people referenced by the template.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub adding_people_confirmed: Option<bool>,
@@ -3013,11 +3032,14 @@ pub type GetSubscriptionResponseContent = Subscription;
 /// `GetSubtaskResponseContent`.
 pub type GetSubtaskResponseContent = CardStep;
 
+/// `GetTemplateLibraryCardTablesResponseContent`.
+pub type GetTemplateLibraryCardTablesResponseContent = TemplateLibraryCardTables;
+
 /// `GetTemplateLibraryCopyResponseContent`.
 pub type GetTemplateLibraryCopyResponseContent = TemplateLibraryCopy;
 
-/// `GetTemplateLibraryResponseContent`.
-pub type GetTemplateLibraryResponseContent = TemplateLibrary;
+/// `GetTemplateLibraryTodolistsResponseContent`.
+pub type GetTemplateLibraryTodolistsResponseContent = TemplateLibraryTodolists;
 
 /// `GetTemplateResponseContent`.
 pub type GetTemplateResponseContent = Template;
@@ -5402,16 +5424,18 @@ pub struct Template {
     pub dock: Option<Vec<DockItem>>,
 }
 
-/// The `TemplateLibrary` shape of the Basecamp API.
+/// The `TemplateLibraryCardTables` shape of the Basecamp API.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
-pub struct TemplateLibrary {
+pub struct TemplateLibraryCardTables {
     /// `bucket`.
     pub bucket: RecordingBucket,
-    /// `todoset`.
-    pub todoset: RecordingParent,
-    /// `todolists`.
-    pub todolists: Vec<Todolist>,
+    /// `kanban_boardset`.
+    #[serde(deserialize_with = "serde::Deserialize::deserialize")]
+    pub kanban_boardset: Option<RecordingParent>,
+    /// Active templates in title order, as recording projections: read one through
+    /// GetCardTable to see its columns.
+    pub card_tables: Vec<Recording>,
 }
 
 /// The `TemplateLibraryConfirmationPerson` shape of the Basecamp API.
@@ -5443,6 +5467,21 @@ pub struct TemplateLibraryCopy {
     /// `destination_todolist`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub destination_todolist: Option<Todolist>,
+    /// `destination_card_table`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub destination_card_table: Option<CardTable>,
+}
+
+/// The `TemplateLibraryTodolists` shape of the Basecamp API.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct TemplateLibraryTodolists {
+    /// `bucket`.
+    pub bucket: RecordingBucket,
+    /// `todoset`.
+    pub todoset: RecordingParent,
+    /// `todolists`.
+    pub todolists: Vec<Todolist>,
 }
 
 /// A single timeline-event attachment. This is an optional-field superset over

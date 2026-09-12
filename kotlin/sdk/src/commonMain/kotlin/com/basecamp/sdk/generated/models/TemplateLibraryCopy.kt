@@ -17,5 +17,6 @@ data class TemplateLibraryCopy(
     @SerialName("source_recording_id") val sourceRecordingId: Long,
     @SerialName("destination_parent_id") val destinationParentId: Long,
     val url: String,
-    @SerialName("destination_todolist") val destinationTodolist: Todolist? = null
+    @SerialName("destination_todolist") val destinationTodolist: Todolist? = null,
+    @SerialName("destination_card_table") val destinationCardTable: CardTable? = null
 )

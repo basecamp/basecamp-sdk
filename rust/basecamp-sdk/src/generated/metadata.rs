@@ -101,6 +101,9 @@ pub static CREATE_SUBTASK: OperationMetadata = OperationMetadata { operation: "C
 /// `CreateTemplate`.
 #[rustfmt::skip]
 pub static CREATE_TEMPLATE: OperationMetadata = OperationMetadata { operation: "CreateTemplate", idempotent: false, readonly: false, retry: RetryConfig { max_attempts: 2, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
+/// `CreateTemplateLibraryCardTable`.
+#[rustfmt::skip]
+pub static CREATE_TEMPLATE_LIBRARY_CARD_TABLE: OperationMetadata = OperationMetadata { operation: "CreateTemplateLibraryCardTable", idempotent: false, readonly: false, retry: RetryConfig { max_attempts: 2, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
 /// `CreateTemplateLibraryCopy`.
 #[rustfmt::skip]
 pub static CREATE_TEMPLATE_LIBRARY_COPY: OperationMetadata = OperationMetadata { operation: "CreateTemplateLibraryCopy", idempotent: false, readonly: false, retry: RetryConfig { max_attempts: 2, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
@@ -431,12 +434,15 @@ pub static GET_SUBTASK: OperationMetadata = OperationMetadata { operation: "GetS
 /// `GetTemplate`.
 #[rustfmt::skip]
 pub static GET_TEMPLATE: OperationMetadata = OperationMetadata { operation: "GetTemplate", idempotent: false, readonly: true, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
-/// `GetTemplateLibrary`.
+/// `GetTemplateLibraryCardTables`.
 #[rustfmt::skip]
-pub static GET_TEMPLATE_LIBRARY: OperationMetadata = OperationMetadata { operation: "GetTemplateLibrary", idempotent: false, readonly: true, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
+pub static GET_TEMPLATE_LIBRARY_CARD_TABLES: OperationMetadata = OperationMetadata { operation: "GetTemplateLibraryCardTables", idempotent: false, readonly: true, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
 /// `GetTemplateLibraryCopy`.
 #[rustfmt::skip]
 pub static GET_TEMPLATE_LIBRARY_COPY: OperationMetadata = OperationMetadata { operation: "GetTemplateLibraryCopy", idempotent: false, readonly: true, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
+/// `GetTemplateLibraryTodolists`.
+#[rustfmt::skip]
+pub static GET_TEMPLATE_LIBRARY_TODOLISTS: OperationMetadata = OperationMetadata { operation: "GetTemplateLibraryTodolists", idempotent: false, readonly: true, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
 /// `GetTimesheetEntry`.
 #[rustfmt::skip]
 pub static GET_TIMESHEET_ENTRY: OperationMetadata = OperationMetadata { operation: "GetTimesheetEntry", idempotent: false, readonly: true, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
@@ -859,6 +865,7 @@ pub static OPERATIONS: &[&OperationMetadata] = &[
     &CREATE_STREAM_TICKET,
     &CREATE_SUBTASK,
     &CREATE_TEMPLATE,
+    &CREATE_TEMPLATE_LIBRARY_CARD_TABLE,
     &CREATE_TEMPLATE_LIBRARY_COPY,
     &CREATE_TIMESHEET_ENTRY,
     &CREATE_TODO,
@@ -969,8 +976,9 @@ pub static OPERATIONS: &[&OperationMetadata] = &[
     &GET_SUBSCRIPTION,
     &GET_SUBTASK,
     &GET_TEMPLATE,
-    &GET_TEMPLATE_LIBRARY,
+    &GET_TEMPLATE_LIBRARY_CARD_TABLES,
     &GET_TEMPLATE_LIBRARY_COPY,
+    &GET_TEMPLATE_LIBRARY_TODOLISTS,
     &GET_TIMESHEET_ENTRY,
     &GET_TIMESHEET_REPORT,
     &GET_TODO,

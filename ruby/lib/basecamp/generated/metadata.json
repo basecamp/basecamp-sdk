@@ -1,7 +1,7 @@
 {
   "$schema": "https://basecamp.com/schemas/sdk-metadata.json",
   "version": "1.0.0",
-  "generated": "2026-09-30T15:14:20Z",
+  "generated": "2026-09-30T15:25:05Z",
   "operations": {
     "GetAccount": {
       "retry": {
@@ -2942,9 +2942,20 @@
         "natural": true
       }
     },
-    "GetTemplateLibrary": {
+    "GetTemplateLibraryCardTables": {
       "retry": {
         "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      }
+    },
+    "CreateTemplateLibraryCardTable": {
+      "retry": {
+        "maxAttempts": 2,
         "baseDelayMs": 1000,
         "backoff": "exponential",
         "retryOn": [
@@ -2965,6 +2976,17 @@
       }
     },
     "GetTemplateLibraryCopy": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      }
+    },
+    "GetTemplateLibraryTodolists": {
       "retry": {
         "maxAttempts": 3,
         "baseDelayMs": 1000,
@@ -3679,7 +3701,19 @@
       "completer",
       "creator"
     ],
+    "CreateTemplateLibraryCardTable": [
+      "creator",
+      "lists.[].creator",
+      "lists.[].subscribers.[]",
+      "subscribers.[]",
+      "wormholes.[].creator"
+    ],
     "CreateTemplateLibraryCopy": [
+      "destination_card_table.creator",
+      "destination_card_table.lists.[].creator",
+      "destination_card_table.lists.[].subscribers.[]",
+      "destination_card_table.subscribers.[]",
+      "destination_card_table.wormholes.[].creator",
       "destination_todolist.creator"
     ],
     "CreateTimesheetEntry": [
@@ -4032,11 +4066,19 @@
       "completer",
       "creator"
     ],
-    "GetTemplateLibrary": [
-      "todolists.[].creator"
+    "GetTemplateLibraryCardTables": [
+      "card_tables.[].creator"
     ],
     "GetTemplateLibraryCopy": [
+      "destination_card_table.creator",
+      "destination_card_table.lists.[].creator",
+      "destination_card_table.lists.[].subscribers.[]",
+      "destination_card_table.subscribers.[]",
+      "destination_card_table.wormholes.[].creator",
       "destination_todolist.creator"
+    ],
+    "GetTemplateLibraryTodolists": [
+      "todolists.[].creator"
     ],
     "GetTimesheetEntry": [
       "creator",

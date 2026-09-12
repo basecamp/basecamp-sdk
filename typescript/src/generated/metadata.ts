@@ -36,7 +36,7 @@ export interface MetadataOutput {
 const metadata: MetadataOutput = {
   "$schema": "https://basecamp.com/schemas/sdk-metadata.json",
   "version": "1.0.0",
-  "generated": "2026-09-30T15:14:20.250Z",
+  "generated": "2026-09-30T15:25:04.692Z",
   "operations": {
     "GetAccount": {
       "retry": {
@@ -2980,9 +2980,20 @@ const metadata: MetadataOutput = {
         "natural": true
       }
     },
-    "GetTemplateLibrary": {
+    "GetTemplateLibraryCardTables": {
       "retry": {
         "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      }
+    },
+    "CreateTemplateLibraryCardTable": {
+      "retry": {
+        "maxAttempts": 2,
         "baseDelayMs": 1000,
         "backoff": "exponential",
         "retryOn": [
@@ -3003,6 +3014,17 @@ const metadata: MetadataOutput = {
       }
     },
     "GetTemplateLibraryCopy": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      }
+    },
+    "GetTemplateLibraryTodolists": {
       "retry": {
         "maxAttempts": 3,
         "baseDelayMs": 1000,

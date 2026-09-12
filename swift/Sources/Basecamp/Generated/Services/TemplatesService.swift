@@ -37,6 +37,16 @@ public final class TemplatesService: BaseService, @unchecked Sendable {
         )
     }
 
+    public func createLibraryCardTable(req: CreateTemplateLibraryCardTableRequest) async throws -> CardTable {
+        return try await request(
+            OperationInfo(service: "Templates", operation: "CreateTemplateLibraryCardTable", resourceType: "template_library_card_table", isMutation: true),
+            method: "POST",
+            path: "/template_library/card_tables.json",
+            body: req,
+            retryConfig: Metadata.retryConfig(for: "CreateTemplateLibraryCardTable")
+        )
+    }
+
     public func createLibraryCopy(req: CreateTemplateLibraryCopyRequest) async throws -> TemplateLibraryCopy {
         return try await request(
             OperationInfo(service: "Templates", operation: "CreateTemplateLibraryCopy", resourceType: "template_library_copy", isMutation: true),
@@ -74,12 +84,12 @@ public final class TemplatesService: BaseService, @unchecked Sendable {
         )
     }
 
-    public func getLibrary() async throws -> TemplateLibrary {
+    public func getLibraryCardTables() async throws -> TemplateLibraryCardTables {
         return try await request(
-            OperationInfo(service: "Templates", operation: "GetTemplateLibrary", resourceType: "template_library", isMutation: false),
+            OperationInfo(service: "Templates", operation: "GetTemplateLibraryCardTables", resourceType: "template_library_card_table", isMutation: false),
             method: "GET",
-            path: "/template_library.json",
-            retryConfig: Metadata.retryConfig(for: "GetTemplateLibrary")
+            path: "/template_library/card_tables.json",
+            retryConfig: Metadata.retryConfig(for: "GetTemplateLibraryCardTables")
         )
     }
 
@@ -89,6 +99,15 @@ public final class TemplatesService: BaseService, @unchecked Sendable {
             method: "GET",
             path: "/template_library/copies/\(copyId)",
             retryConfig: Metadata.retryConfig(for: "GetTemplateLibraryCopy")
+        )
+    }
+
+    public func getLibraryTodolists() async throws -> TemplateLibraryTodolists {
+        return try await request(
+            OperationInfo(service: "Templates", operation: "GetTemplateLibraryTodolists", resourceType: "template_library_todolist", isMutation: false),
+            method: "GET",
+            path: "/template_library/todolists.json",
+            retryConfig: Metadata.retryConfig(for: "GetTemplateLibraryTodolists")
         )
     }
 
