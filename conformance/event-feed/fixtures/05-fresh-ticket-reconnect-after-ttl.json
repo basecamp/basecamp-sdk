@@ -64,6 +64,14 @@
       }
     },
     {
+      "expectTimers": {
+        "exact": {
+          "staleness": 1,
+          "repair-poll": 1
+        }
+      }
+    },
+    {
       "advance": {
         "ms": 121000
       }

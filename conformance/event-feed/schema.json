@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://basecamp.com/schemas/event-feed-scenario.json",
   "title": "Event Feed Connector Tier-2 Scenario",
-  "description": "One strictly-ordered interleaved script driving the SPEC §23 connector over its five seams: HTTP exchanges (mint/poll), cable frames, time directives, and observations, in one `steps` array. Strict-matched actions (mint, connect, poll, outbound frame, client close, checkpoint save) must each match their expect step under the per-action-class rules in this family's README ('Strictness semantics, per action class': saves and outbound frames are arrival-strict; mint/poll seam calls are parked and matched in order); observation directives (delivered, buffered, timers, state, signals, handler invocations) are rendezvous assertions evaluated cumulatively under a small wall-clock watchdog while virtual time is frozen. All counts (mintCount, connectCount) count SEAM CALLS — one fully-governed generated call each, with SPEC §7 retries inside — never wire attempts. Time flows only through the injected Clock seam; the virtual-advance algorithm and the ownership-cut/dequeued-frames semantics are normative prose in this family's README and SPEC §23. Validated by `make event-feed-fixtures-check`.",
+  "description": "One strictly-ordered interleaved script driving the SPEC §23 connector over its five seams. NUMERIC LITERALS: schema keywords judge mathematical value (1e3 and 1000.0 are integer instances) and drivers judge integrality and range on the literal's exact value — but a driver MAY refuse any numeric literal longer than 100000 characters regardless of value: a sanctioned resource bound on pathological spellings, not a value constraint. Continuing: HTTP exchanges (mint/poll), cable frames, time directives, and observations, in one `steps` array. Strict-matched actions (mint, connect, poll, outbound frame, client close, checkpoint save) must each match their expect step under the per-action-class rules in this family's README ('Strictness semantics, per action class': saves and outbound frames are arrival-strict; mint/poll seam calls are parked and matched in order); observation directives (delivered, buffered, timers, state, signals, handler invocations) are rendezvous assertions evaluated cumulatively under a small wall-clock watchdog while virtual time is frozen. All counts (mintCount, connectCount) count SEAM CALLS — one fully-governed generated call each, with SPEC §7 retries inside — never wire attempts. Time flows only through the injected Clock seam; the virtual-advance algorithm and the ownership-cut/dequeued-frames semantics are normative prose in this family's README and SPEC §23. Validated by `make event-feed-fixtures-check`.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -283,26 +283,31 @@
         "confirmationDeadlineMs": {
           "type": "integer",
           "minimum": 1,
+          "maximum": 315576000000,
           "description": "Default 10000."
         },
         "repairPollBaseMs": {
           "type": "integer",
           "minimum": 1,
+          "maximum": 315576000000,
           "description": "Repair interval base. Default 60000, ±20% jitter per cycle. Override large to keep repair-poll out of an advance window."
         },
         "backoffBaseMs": {
           "type": "integer",
           "minimum": 1,
+          "maximum": 315576000000,
           "description": "Reconnect/poll-retry full-jitter base. Default 1000."
         },
         "backoffCapMs": {
           "type": "integer",
           "minimum": 1,
+          "maximum": 315576000000,
           "description": "Local jitter-draw cap. Default 60000. Server-directed Retry-After is exempt per §7."
         },
         "stalenessMs": {
           "type": "integer",
           "minimum": 1,
+          "maximum": 315576000000,
           "description": "Default 7500. Override large when a scenario advances virtual time without scripting frames."
         },
         "liveBufferCapacity": {
@@ -903,7 +908,7 @@
             "status",
             "headers"
           ],
-          "description": "Redirect on a continuation (fixture 30): the seam suppresses automatic following; a cross-origin/downgraded Location is Terminal(invalid_continuation) with zero egress. Harness obligation: the fixture's foreign origin is bound to a sentinel listener — any request reaching it fails the scenario.",
+          "description": "Redirect on a continuation (fixture 30): the seam suppresses automatic following; a cross-origin/downgraded Location is Terminal(invalid_continuation). At tier 2 the poll lane is a SEAM, so the driver forms the redirect-refused verdict and the connector never sees a Location header: this pins the fault class above the seam (mishandling the verdict — retrying it or misclassifying it), not redirect-following itself, which lives below the seam, is unreachable at tier 2, and is ASSIGNED to the Layer-1 adapter's 302 test — a recorded obligation, not an existing proof: those adapters are still pending (tracked in #819). Redaction is not pinned here: the driver reduces the Location to its origin before the connector runs, so no path or query text reaches it. No sentinel-listener obligation is imposed on the harness: the foreign origin is unreachable by construction of the harness, so a silent sentinel would be a statement about the driver rather than about the connector. See the row-15 note in README.md.",
           "properties": {
             "status": {
               "const": 302
@@ -1205,11 +1210,13 @@
       "required": [
         "ms"
       ],
-      "description": "Advance virtual now by ms, firing due timers in deadline order per the normative virtual-advance algorithm (README): re-evaluate after each fire; timers scheduled during the advance whose deadlines land inside the window also fire; ties break by creation order.",
+      "description": "Advance virtual now by ms. The normative virtual-advance algorithm (README) fires due timers in deadline order, re-evaluating after each fire, with timers scheduled during the advance whose deadlines land inside the window also firing and ties breaking by creation order. That reentrant clause is UNSCRIPTABLE wherever the connector runs concurrently with the driver, so no fixture may rely on it: every driver MUST REJECT an advance whose window would fire ANY timer, naming fireTimer as the deterministic alternative. The test is what would FIRE, decided from the clock's state before time moves — not what gets armed, which happens on the connector's schedule and can only be sampled. An advance that fires nothing never wakes anything, so it cannot cause an arm; that is what makes the check complete rather than probabilistic. A firing that replaces nothing is rejected too. And an advance is deterministic only from a scripted rendezvous point: an action's completion can precede the timer arms its transition causes, so every advance must be the scenario's first step or immediately follow a TWO-STEP rendezvous: expectState, then expectTimers, enforced at load (an empty expectTimers set is rejected with it — it orders nothing). Neither step alone settles: a set match can coincide with a transient mid-surgery set (the welcome transition stops handshake-deadline and arms confirmation-deadline in separate clock acquisitions), and an announcement can precede a tail arm. Together they do: the announcement bounds the surgery, and any timer still unarmed at the announcement is exactly what the exact-set match then waits for. Both block under the watchdog, so wrong authorship fails on every schedule where the stale pair no longer holds \u2014 a pair naming the PRE-action state can pass on the schedule where the action is not yet processed, so a wrong script is at worst flaky, never stably green; the settled guarantee belongs to correctly authored pairs. A transition that announces no state change — or only rearms a timer of the same kind and count — is invisible to this rendezvous, and a script that would advance behind one uses fireTimer instead.",
       "properties": {
         "ms": {
           "type": "integer",
-          "minimum": 1
+          "minimum": 1,
+          "maximum": 315576000000,
+          "description": "Every ms field in this schema shares this maximum: 10 virtual years, a DOMAIN bound (scripts age tickets by minutes to days) chosen over the representation-derived 9223372036854 because the schema states what a script can mean, not one language's integer layout. It sits ~29× under the int64-nanosecond overflow line, so no conforming driver's duration representation can overflow — one past that line, a naive ms-to-duration multiply goes negative and an accepted advance would silently REWIND virtual time. Drivers enforce the range at load."
         }
       }
     },
@@ -1235,11 +1242,13 @@
           "properties": {
             "min": {
               "type": "integer",
-              "minimum": 0
+              "minimum": 0,
+              "maximum": 315576000000
             },
             "max": {
               "type": "integer",
-              "minimum": 0
+              "minimum": 0,
+              "maximum": 315576000000
             }
           }
         }
