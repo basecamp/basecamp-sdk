@@ -186,6 +186,67 @@ func TestConn_WritesFailOnceAReadHasKilledTheConnection(t *testing.T) {
 	}
 }
 
+// TestConn_StalledWriteWakesWhenAReadKillsTheConnection: a write already
+// blocked under StallWrites returns the read-side death the moment ReadFrame
+// surfaces it, for both deaths — a peer close and an oversize violation. A
+// real socket's blocked write fails when the connection dies under it; a fake
+// that held the write until cancellation would steer connector tests down the
+// deadline path instead of socket-failure recovery. The writer is started
+// before the death is surfaced and the test never waits for it to reach the
+// stall: whether it is parked in Wait or has yet to test the condition, the
+// latched death is what it returns.
+func TestConn_StalledWriteWakesWhenAReadKillsTheConnection(t *testing.T) {
+	deaths := []struct {
+		name  string
+		max   int64
+		serve func(c *Conn)
+		want  func(t *testing.T, readErr, writeErr error)
+	}{
+		{"peer close", 1 << 20, func(c *Conn) { c.ServeClose(1006, "abnormal closure") },
+			func(t *testing.T, readErr, writeErr error) {
+				var ce *eventfeed.CloseError
+				if !errors.As(readErr, &ce) {
+					t.Fatalf("read = %v, want *eventfeed.CloseError", readErr)
+				}
+				if !errors.Is(writeErr, readErr) {
+					t.Fatalf("stalled write = %v, want the surfaced close itself", writeErr)
+				}
+			}},
+		{"oversize violation", 8, func(c *Conn) { c.Serve([]byte(`{"type":"welcome"}`)) },
+			func(t *testing.T, readErr, writeErr error) {
+				if !errors.Is(readErr, eventfeed.ErrFrameOversize) {
+					t.Fatalf("read = %v, want the oversize sentinel", readErr)
+				}
+				if !errors.Is(writeErr, eventfeed.ErrFrameOversize) {
+					t.Fatalf("stalled write = %v, want the oversize sentinel", writeErr)
+				}
+			}},
+	}
+	for _, death := range deaths {
+		t.Run(death.name, func(t *testing.T) {
+			tr := NewTransport()
+			conn, _ := tr.Dial(context.Background(), "wss://a/cable", death.max)
+			c := tr.LastConn()
+			c.StallWrites()
+			wrote := make(chan error, 1)
+			go func() { wrote <- conn.WriteFrame(context.Background(), []byte(`stalled`)) }()
+
+			death.serve(c)
+			_, readErr := conn.ReadFrame(context.Background())
+
+			select {
+			case writeErr := <-wrote:
+				death.want(t, readErr, writeErr)
+			case <-time.After(2 * time.Second):
+				t.Fatal("the read-side death did not wake the stalled write")
+			}
+			if got := c.Writes(); len(got) != 0 {
+				t.Fatalf("writes = %q, want none recorded after the death", got)
+			}
+		})
+	}
+}
+
 func TestConn_WritesRecordedVerbatimAndCopied(t *testing.T) {
 	tr := NewTransport()
 	conn, _ := tr.Dial(context.Background(), "wss://a/cable", 1<<20)
