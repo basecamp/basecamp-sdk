@@ -292,6 +292,41 @@ class DownloadTest < Minitest::Test
     assert_match(/download failed with status 304/, error.message)
   end
 
+  # SPEC §6: retry_after is populated at every status the header parses at.
+  # Hop 2 maps its own response rather than going through Http#handle_error,
+  # so it has to carry the header itself.
+  def test_download_url_hop2_failure_carries_retry_after
+    stub_request(:get, "#{base_url}/12345/attachments/abc/download/file.txt")
+      .with(headers: { "Authorization" => "Bearer #{access_token}" })
+      .to_return(status: 302, headers: { "Location" => "https://s3.amazonaws.com/bucket/file" })
+
+    stub_request(:get, "https://s3.amazonaws.com/bucket/file")
+      .to_return(status: 503, headers: { "Retry-After" => "7" })
+
+    error = assert_raises(Basecamp::ApiError) do
+      @account.download_url("https://3.basecampapi.com/12345/attachments/abc/download/file.txt")
+    end
+
+    assert_equal 503, error.http_status
+    assert_equal 7, error.retry_after
+  end
+
+  def test_download_url_hop2_refused_redirect_carries_retry_after
+    stub_request(:get, "#{base_url}/12345/attachments/abc/download/file.txt")
+      .with(headers: { "Authorization" => "Bearer #{access_token}" })
+      .to_return(status: 302, headers: { "Location" => "https://s3.amazonaws.com/bucket/file" })
+
+    stub_request(:get, "https://s3.amazonaws.com/bucket/file")
+      .to_return(status: 307, headers: { "Location" => "https://elsewhere.example.com/final/file", "Retry-After" => "3" })
+
+    error = assert_raises(Basecamp::ApiError) do
+      @account.download_url("https://3.basecampapi.com/12345/attachments/abc/download/file.txt")
+    end
+
+    assert_equal 307, error.http_status
+    assert_equal 3, error.retry_after
+  end
+
   # -- Auth header tests --
 
   def test_download_url_auth_on_api_not_on_s3

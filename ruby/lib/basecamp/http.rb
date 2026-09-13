@@ -230,6 +230,16 @@ module Basecamp
       wrapper.merge(key => events)
     end
 
+    # The parsed Retry-After for a response some other path is mapping itself
+    # (the download hops in Client), so its error carries the same value the
+    # retry loop reads here — populated at every status (SPEC §6).
+    #
+    # @param value [String, nil] the raw Retry-After header value
+    # @return [Integer, nil] seconds, or nil when absent or malformed
+    def parse_retry_after_header(value)
+      parse_retry_after(value)
+    end
+
     private
 
     # Shared paginator core behind paginate/paginate_key/paginate_wrapped.

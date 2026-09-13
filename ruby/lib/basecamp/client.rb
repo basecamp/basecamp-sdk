@@ -311,8 +311,12 @@ module Basecamp
 
         else
           # This shouldn't happen because Faraday's raise_error middleware
-          # handles 4xx/5xx, but handle it defensively
-          raise Basecamp.error_from_response(response.status, response.body)
+          # handles 4xx/5xx, but handle it defensively — carrying the parsed
+          # Retry-After as every other mapping does (SPEC §6).
+          raise Basecamp.error_from_response(
+            response.status, response.body,
+            retry_after: http.parse_retry_after_header(response.headers["Retry-After"] || response.headers["retry-after"])
+          )
         end
       rescue => e
         duration = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - start) * 1000).round
@@ -674,14 +678,22 @@ module Basecamp
         raise NetworkError.new("Download failed"), cause: nil
       end
 
+      # Hop 2 is never retried, but its error still carries the parsed
+      # Retry-After like every other mapped status (SPEC §6): a caller
+      # rescheduling the download themselves reads it off whatever came back.
+      retry_after = http.parse_retry_after_header(response["Retry-After"])
+
       # The exact set hop 1 dispatches on, not Net::HTTPRedirection — that
       # class also covers 304, which is a cache answer, not a redirect.
       if [ 301, 302, 303, 307, 308 ].include?(response.code.to_i)
-        raise ApiError.new("redirect #{response.code} on the signed download hop is not followed", http_status: response.code.to_i)
+        raise ApiError.new(
+          "redirect #{response.code} on the signed download hop is not followed",
+          http_status: response.code.to_i, retry_after: retry_after
+        )
       end
 
       unless response.is_a?(Net::HTTPSuccess)
-        raise ApiError.new("download failed with status #{response.code}", http_status: response.code.to_i)
+        raise ApiError.new("download failed with status #{response.code}", http_status: response.code.to_i, retry_after: retry_after)
       end
 
       response
