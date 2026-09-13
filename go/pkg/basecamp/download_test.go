@@ -858,6 +858,79 @@ func TestDownloadURL_AuthHopRetriesOn429WithRetryAfter(t *testing.T) {
 	}
 }
 
+// retryAfterHooks records the error each OnRetry call carries.
+type retryAfterHooks struct {
+	NoopHooks
+	errs []error
+}
+
+func (h *retryAfterHooks) OnRetry(_ context.Context, _ RequestInfo, _ int, err error) {
+	h.errs = append(h.errs, err)
+}
+
+// TestDownloadURL_AuthHopSleepsTheRetryAfterItMaps pins SPEC §6's one-parse
+// rule on the download loop: the value checkResponse mapped onto the error is
+// the value the loop sleeps, and the OnRetry hook sees that same error. The
+// loop used to parse the header a second time for its own sleep, which agreed
+// with the mapped value for delay-seconds and could disagree by one for an
+// HTTP-date read across a whole-second boundary — a case no test can make
+// happen on demand, so this asserts the path (one value, on the error the
+// hook receives, at a newly covered 503) rather than the boundary itself.
+func TestDownloadURL_AuthHopSleepsTheRetryAfterItMaps(t *testing.T) {
+	var attempts atomic.Int32
+	s3Server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("ok"))
+	}))
+	defer s3Server.Close()
+	apiServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		if attempts.Add(1) == 1 {
+			w.Header().Set("Retry-After", "1")
+			w.WriteHeader(http.StatusServiceUnavailable)
+			return
+		}
+		w.Header().Set("Location", s3Server.URL+"/bucket/file.pdf")
+		w.WriteHeader(http.StatusFound)
+	}))
+	defer apiServer.Close()
+
+	hooks := &retryAfterHooks{}
+	cfg := DefaultConfig()
+	cfg.BaseURL = apiServer.URL
+	client := NewClient(cfg, &StaticTokenProvider{Token: "test-token"},
+		WithMaxRetries(3),
+		WithBaseDelay(10*time.Millisecond),
+		WithMaxJitter(time.Millisecond),
+		WithTransport(http.DefaultTransport),
+		WithHooks(hooks),
+	)
+	ac := client.ForAccount("12345")
+
+	start := time.Now()
+	result, err := ac.DownloadURL(context.Background(),
+		"https://storage.3.basecamp.com/999/blobs/abc/download/doc.pdf")
+	elapsed := time.Since(start)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	defer result.Body.Close()
+
+	if len(hooks.errs) != 1 {
+		t.Fatalf("OnRetry called %d times, want 1", len(hooks.errs))
+	}
+	var mapped *Error
+	if !errors.As(hooks.errs[0], &mapped) {
+		t.Fatalf("OnRetry received %T, want *Error", hooks.errs[0])
+	}
+	if mapped.HTTPStatus != 503 || mapped.RetryAfter != 1 {
+		t.Errorf("OnRetry error = status %d retryAfter %d, want 503 with the mapped Retry-After of 1",
+			mapped.HTTPStatus, mapped.RetryAfter)
+	}
+	if elapsed < time.Second {
+		t.Errorf("slept %v, want at least the 1s the mapped error carries", elapsed)
+	}
+}
+
 // TestDownloadURL_RetryWaitChecksCancellationBeforeTheTimer is the download
 // loop's copy of TestClient_RetryWaitChecksCancellationBeforeTheTimer: the same
 // select, the same fire-OnRetry-then-wait order, and so the same coin flip when

@@ -114,7 +114,7 @@ func (ac *AccountClient) DownloadURL(ctx context.Context, rawURL string) (result
 // The authenticated hop is wrapped in the SDK-standard GET retry loop.
 // Retry scope matches Client.singleRequest's @retryable set: network errors
 // and 429/502/503/504 responses are retried up to MaxRetries with exponential
-// backoff, honoring Retry-After on 429. Non-retried statuses (including 500)
+// backoff, honoring Retry-After at every status in that set. Non-retried statuses (including 500)
 // are surfaced via the dispatch switch — 500 is mapped to a non-retryable
 // Error that mirrors singleRequest's ErrAPI(500, ...); other statuses go
 // through checkResponse. Retries stop once the response enters 2xx/3xx
@@ -212,8 +212,15 @@ func (c *Client) fetchAPIDownload(ctx context.Context, rawURL string) (*Download
 			_, _ = io.Copy(io.Discard, io.LimitReader(r.Body, MaxErrorBodyBytes))
 			_ = r.Body.Close()
 			lastErr = checkResponse(r, bodyForErr)
-			if r.StatusCode == http.StatusTooManyRequests {
-				retryAfter = parseRetryAfter(r.Header.Get("Retry-After"))
+			// Honoured at every status in the hop-1 set, not at 429 alone
+			// (SPEC §14 "Hop-1 Retry"), and read off the mapped error rather
+			// than parsed again: one parse feeds both the sleep and the
+			// error's field (SPEC §6), so the OnRetry hook sees the delay the
+			// loop takes. A second parse of an HTTP-date could cross a
+			// whole-second boundary and report one second less.
+			var mapped *Error
+			if errors.As(lastErr, &mapped) {
+				retryAfter = mapped.RetryAfter
 			}
 		default:
 			resp = r

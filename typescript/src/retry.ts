@@ -8,7 +8,7 @@
  */
 
 // errors.ts imports nothing, so this edge introduces no cycle.
-import { parseRetryAfter } from "./errors.js";
+import { errorFromParsedBody, parseRetryAfter } from "./errors.js";
 
 /**
  * Retry configuration matching x-basecamp-retry extension schema.
@@ -114,7 +114,8 @@ export class TerminalRetryError extends Error {
  *
  * `config.maxAttempts` is a total attempt count — the caller passes the
  * effective budget (e.g. 1 when retry is disabled). Status retry is gated on
- * the declared `retryOn` set; 429 honors Retry-After. Transport errors retry
+ * the declared `retryOn` set, honoring Retry-After at every status in it.
+ * Transport errors retry
  * on the same budget, except aborts, which are terminal no matter what the
  * budget says: a caller cancellation must not re-send, and a request-timeout
  * budget is shared by every attempt and backoff — once it fires, a retry
@@ -179,22 +180,33 @@ export async function executeWithRetry(
       return response;
     }
 
-    // For 429, respect Retry-After; otherwise back off. The header goes through
-    // errors.ts's parseRetryAfter — the single SPEC §6 implementation — rather
-    // than a local parseInt: 0, a negative value and an unparseable one all
-    // come back undefined and fall through to backoff, where the local copy
-    // this replaced turned them into a zero or negative sleep.
-    const retryAfterSeconds =
-      response.status === 429
-        ? parseRetryAfter(response.headers.get("Retry-After"))
-        : undefined;
+    // A Retry-After the origin sent replaces the backoff at EVERY status this
+    // branch reaches — the status already passed the declared retryOn gate,
+    // and SPEC §6 "Retry-After Honouring" derives honouring from retry
+    // eligibility rather than from a status list (a 429-only gate here left a
+    // 503 carrying `Retry-After: 120` backing off ~1s). The header goes
+    // through errors.ts's parseRetryAfter — the single SPEC §6 implementation
+    // — rather than a local parseInt: 0, a negative value and an unparseable
+    // one all come back undefined and fall through to backoff, where the local
+    // copy this replaced turned them into a zero or negative sleep.
+    const retryAfterSeconds = parseRetryAfter(response.headers.get("Retry-After"));
     const delay =
       retryAfterSeconds !== undefined
         ? timerSafeDelayMs(retryAfterSeconds)
         : calculateBackoffDelay(config, attempt - 1);
 
-    const statusError = new Error(
-      `HTTP ${response.status}: ${response.statusText || "Request failed"}`,
+    // SPEC §7 step 3i: the error handed to onRetry is the status-mapped
+    // BasecampError, so a hook sees the same httpStatus and retryAfter the
+    // terminal error would carry — the parsed value that governs this very
+    // sleep, handed over rather than parsed again, so an HTTP-date crossing
+    // a second boundary between the two cannot make the hook's number
+    // differ from the wait. Built from the status and headers alone: the
+    // body is being discarded below, and the mapper needs none of it.
+    const statusError = errorFromParsedBody(
+      response,
+      null,
+      response.headers.get("X-Request-Id") ?? undefined,
+      retryAfterSeconds,
     );
 
     // End the failed attempt before sleeping, so a slow backoff cannot leave

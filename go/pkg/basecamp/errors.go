@@ -64,10 +64,10 @@ type Error struct {
 	FieldErrors map[string][]string
 	HTTPStatus  int
 	Retryable   bool
-	// RetryAfter is the server-specified delay in seconds from a 429's
+	// RetryAfter is the server-specified delay in seconds from the response's
 	// Retry-After header, resolved from either wire form (delta-seconds or
-	// HTTP-date). Zero when the server named no delay, which is every status
-	// but 429 today. The GET retry loop sleeps this instead of its backoff
+	// HTTP-date) and carried at every status (SPEC §6). Zero when the server
+	// named no delay. The GET retry loop sleeps this instead of its backoff
 	// curve when it is positive; callers that give up and reschedule the work
 	// themselves read it off the returned error.
 	//
@@ -116,6 +116,21 @@ func (e *Error) withRequestID(requestID string) *Error {
 	}
 	errCopy := *e
 	errCopy.RequestID = requestID
+	return &errCopy
+}
+
+// withRetryAfter returns a copy carrying the delay a Retry-After header names,
+// parsed per SPEC §6. Every status-mapped error carries it (SPEC §6 "HTTP
+// Status Mapping Algorithm"), not only the ones a retry loop reads it off, so
+// a caller rescheduling the work themselves sees what the origin said whatever
+// the status. A header that names no delay leaves the error untouched.
+func (e *Error) withRetryAfter(header string) *Error {
+	retryAfter := parseRetryAfter(header)
+	if e == nil || retryAfter == 0 {
+		return e
+	}
+	errCopy := *e
+	errCopy.RetryAfter = retryAfter
 	return &errCopy
 }
 

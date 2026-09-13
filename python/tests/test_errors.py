@@ -261,6 +261,22 @@ class TestParseRetryAfter:
         value = format_datetime(past)
         assert _parse_retry_after(value) is None
 
+    def test_http_date_sub_second_remainder_rounds_up(self):
+        # SPEC section 6 step 2: 2.75s out is 3 seconds, never 2. Truncation
+        # retried up to a second before the moment the server named, and turned
+        # a remainder under a second into 0 -- read as "no usable value".
+        now = datetime(2021, 6, 9, 10, 18, 14, 250_000, tzinfo=UTC)
+        assert _parse_retry_after("Wed, 09 Jun 2021 10:18:17 GMT", now=now) == 3
+        assert _parse_retry_after("Wed, 09 Jun 2021 10:18:15 GMT", now=now) == 1
+        assert _parse_retry_after("Wed, 09 Jun 2021 10:18:14 GMT", now=now) is None
+
+    def test_retry_after_carried_on_every_status(self):
+        # SPEC section 6 "HTTP Status Mapping Algorithm": one parse feeds both
+        # the retry loop's sleep and the error's field, at 503 as at 429.
+        err = error_from_response(503, None, {"Retry-After": "7"})
+        assert isinstance(err, ApiError)
+        assert err.retry_after == 7
+
 
 class TestBareFieldMap:
     """SPEC section 6 step 2.

@@ -339,10 +339,15 @@ export async function errorFromResponse(
 export function errorFromParsedBody(
   response: Response,
   body: unknown,
-  requestId?: string
+  requestId?: string,
+  // The parsed Retry-After, when the caller already holds it: a retry loop
+  // hands over the value that governs the sleep it is about to take, so the
+  // error §7 step 3i gives on_retry carries that number and not a second
+  // parse of an HTTP-date, which can round to one second less across a
+  // whole-second boundary. Absent, the header is parsed here.
+  retryAfter: number | undefined = parseRetryAfter(response.headers.get("Retry-After"))
 ): BasecampError {
   const httpStatus = response.status;
-  const retryAfter = parseRetryAfter(response.headers.get("Retry-After"));
 
   // Try to extract error message from the parsed body. The fallback is the
   // fixed code-bearing phrase (SPEC §6 step 5), never response.statusText —
@@ -384,11 +389,11 @@ export function errorFromParsedBody(
 
   switch (httpStatus) {
     case 401:
-      return new BasecampError("auth_required", message, { httpStatus, hint, requestId });
+      return new BasecampError("auth_required", message, { httpStatus, hint, requestId, retryAfter });
     case 403:
-      return new BasecampError("forbidden", message, { httpStatus, hint, requestId });
+      return new BasecampError("forbidden", message, { httpStatus, hint, requestId, retryAfter });
     case 404:
-      return new BasecampError("not_found", message, { httpStatus, hint, requestId });
+      return new BasecampError("not_found", message, { httpStatus, hint, requestId, retryAfter });
     case 429:
       return new BasecampError("rate_limit", message, {
         httpStatus,
@@ -398,7 +403,7 @@ export function errorFromParsedBody(
         requestId,
       });
     case 400:
-      return new BasecampError("validation", message, { httpStatus, hint, requestId, fieldErrors });
+      return new BasecampError("validation", message, { httpStatus, hint, requestId, fieldErrors, retryAfter });
     case 422:
       if (confirmationPeople) {
         return new PeopleConfirmationRequiredError(message, confirmationPeople, {
@@ -406,9 +411,10 @@ export function errorFromParsedBody(
           hint,
           requestId,
           fieldErrors,
+          retryAfter,
         });
       }
-      return new BasecampError("validation", message, { httpStatus, hint, requestId, fieldErrors });
+      return new BasecampError("validation", message, { httpStatus, hint, requestId, fieldErrors, retryAfter });
     case 507:
       // A 5xx status carrying a client fact: the account is out of storage, or
       // at its webhook ceiling. Retrying cannot satisfy it, so this must be
@@ -418,15 +424,20 @@ export function errorFromParsedBody(
         retryable: false,
         hint,
         requestId,
+        retryAfter,
       });
     default:
       // 5xx errors are retryable
       const retryable = httpStatus >= 500 && httpStatus < 600;
+      // retryAfter rides along at every status (SPEC §6 "HTTP Status Mapping
+      // Algorithm"): one parse feeds both the retry loop's sleep and this
+      // field, so an exhausted 503 reports the wait the origin named.
       return new BasecampError("api_error", message, {
         httpStatus,
         retryable,
         hint,
         requestId,
+        retryAfter,
       });
   }
 }

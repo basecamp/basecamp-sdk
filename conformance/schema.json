@@ -94,7 +94,7 @@
           },
           "headers": {
             "type": "object",
-            "description": "Response headers",
+            "description": "Response headers. A value may be the token `{{httpdate+Ns}}` (N = one to nine digits, so every runner resolves it in exact integer arithmetic and every date formatter is inside its range), which the runner resolves AT THE MOMENT IT SERVES THE RESPONSE to the IMF-fixdate of floor(now) + N + 1 seconds — the first whole second strictly more than N seconds after the second the response is served in. It exists for SPEC §6's positive HTTP-date branch, which a literal date cannot pin: a past date only exercises the fall-through, and a far-future one makes a compliant SDK sleep for years. A compliant parser (rounding up) computes at least N whole seconds for any serve-to-parse latency under a second, so pair it with `delayBetweenRequests` `min: N*1000`. Any other `{{...}}` token is a runner error, never served literally.",
             "additionalProperties": {
               "type": "string"
             }

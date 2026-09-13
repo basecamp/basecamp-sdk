@@ -124,7 +124,7 @@ module Basecamp
     server_message = parse_error_message(body)
     message = server_message || "Request failed"
 
-    case status
+    err = case status
     when 400, 422
       field_errors = parse_field_errors(body)
       message = Security.truncate(compose_validation_message(server_message, field_errors) || "Request failed")
@@ -149,12 +149,19 @@ module Basecamp
       # transient server failure, and no retry can satisfy it.
       LimitExceededError.new(Security.truncate(message), hint: hint)
     when 500
-      ApiError.new("Server error (500)", http_status: 500, retryable: true, hint: hint)
+      ApiError.new("Server error (500)", http_status: 500, retryable: true, hint: hint, retry_after: retry_after)
     when 502, 503, 504
-      ApiError.new("Gateway error (#{status})", http_status: status, retryable: true, hint: hint)
+      ApiError.new("Gateway error (#{status})", http_status: status, retryable: true, hint: hint, retry_after: retry_after)
     else
-      ApiError.from_status(status, server_message, hint: hint)
+      ApiError.from_status(status, server_message, hint: hint, retry_after: retry_after)
     end
+
+    # Every status carries the parsed Retry-After (SPEC §6 "HTTP Status Mapping
+    # Algorithm"), including the arms whose error classes take no such
+    # argument — the same back-fill Http#handle_error applies, so this public
+    # mapper and the private one answer alike.
+    err.instance_variable_set(:@retry_after, retry_after) if retry_after && err.retry_after.nil?
+    err
   end
 
   # Extracts a filename from the last path segment of a URL.

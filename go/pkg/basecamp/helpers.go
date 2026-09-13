@@ -63,29 +63,33 @@ func checkResponse(resp *http.Response, body []byte) error {
 
 	requestID := resp.Header.Get(requestIDHeader)
 	serverMsg, serverHint, fieldErrors := parseErrorBody(body)
+	// Parsed once and carried on every arm (SPEC §6 "HTTP Status Mapping
+	// Algorithm"): the retry loops read it off a 429 or 503, and a caller
+	// rescheduling the work themselves reads it off whatever came back.
+	retryAfter := parseRetryAfter(resp.Header.Get("Retry-After"))
 
 	switch resp.StatusCode {
 	case http.StatusBadRequest, http.StatusUnprocessableEntity:
-		return validationErrorFromBody(serverMsg, serverHint, fieldErrors, resp.StatusCode, requestID, body)
+		return validationErrorFromBody(serverMsg, serverHint, fieldErrors, resp.StatusCode, requestID, retryAfter, body)
 	case http.StatusUnauthorized:
-		return &Error{Code: CodeAuth, Message: msgOrDefault(serverMsg, "authentication required"), Hint: serverHint, HTTPStatus: 401, RequestID: requestID}
+		return &Error{Code: CodeAuth, Message: msgOrDefault(serverMsg, "authentication required"), Hint: serverHint, HTTPStatus: 401, RetryAfter: retryAfter, RequestID: requestID}
 	case http.StatusForbidden:
-		return &Error{Code: CodeForbidden, Message: msgOrDefault(serverMsg, "access denied"), Hint: serverHint, HTTPStatus: 403, RequestID: requestID}
+		return &Error{Code: CodeForbidden, Message: msgOrDefault(serverMsg, "access denied"), Hint: serverHint, HTTPStatus: 403, RetryAfter: retryAfter, RequestID: requestID}
 	case http.StatusNotFound:
-		return &Error{Code: CodeNotFound, Message: msgOrDefault(serverMsg, "resource not found"), Hint: serverHint, HTTPStatus: 404, RequestID: requestID}
+		return &Error{Code: CodeNotFound, Message: msgOrDefault(serverMsg, "resource not found"), Hint: serverHint, HTTPStatus: 404, RetryAfter: retryAfter, RequestID: requestID}
 	case http.StatusTooManyRequests:
-		return &Error{Code: CodeRateLimit, Message: msgOrDefault(serverMsg, "rate limited - try again later"), Hint: serverHint, HTTPStatus: 429, Retryable: true, RetryAfter: parseRetryAfter(resp.Header.Get("Retry-After")), RequestID: requestID}
+		return &Error{Code: CodeRateLimit, Message: msgOrDefault(serverMsg, "rate limited - try again later"), Hint: serverHint, HTTPStatus: 429, Retryable: true, RetryAfter: retryAfter, RequestID: requestID}
 	case http.StatusInsufficientStorage:
 		// A 5xx status carrying a client fact: the account is out of storage, or
 		// at its webhook ceiling. Retrying cannot satisfy it, so this must be
 		// decided before the 5xx catch-all below.
-		return &Error{Code: CodeLimitExceeded, Message: msgOrDefault(serverMsg, "account limit reached"), Hint: serverHint, HTTPStatus: 507, Retryable: false, RequestID: requestID}
+		return &Error{Code: CodeLimitExceeded, Message: msgOrDefault(serverMsg, "account limit reached"), Hint: serverHint, HTTPStatus: 507, Retryable: false, RetryAfter: retryAfter, RequestID: requestID}
 	default:
 		retryable := resp.StatusCode >= 500 && resp.StatusCode < 600
 		// SPEC §6 step 5: the fixed code-bearing phrase, never resp.Status —
 		// the wire reason phrase does not exist under HTTP/2 and a platform's
 		// table is empty for an unregistered code.
-		return &Error{Code: CodeAPI, Message: msgOrDefault(serverMsg, fmt.Sprintf("Request failed (HTTP %d)", resp.StatusCode)), Hint: serverHint, HTTPStatus: resp.StatusCode, Retryable: retryable, RequestID: requestID}
+		return &Error{Code: CodeAPI, Message: msgOrDefault(serverMsg, fmt.Sprintf("Request failed (HTTP %d)", resp.StatusCode)), Hint: serverHint, HTTPStatus: resp.StatusCode, Retryable: retryable, RetryAfter: retryAfter, RequestID: requestID}
 	}
 }
 
@@ -336,8 +340,9 @@ func validationError(serverMsg, serverHint string, fieldErrors map[string][]stri
 	}
 }
 
-func validationErrorFromBody(serverMsg, serverHint string, fieldErrors map[string][]string, status int, requestID string, body []byte) error {
+func validationErrorFromBody(serverMsg, serverHint string, fieldErrors map[string][]string, status int, requestID string, retryAfter int, body []byte) error {
 	validation := validationError(serverMsg, serverHint, fieldErrors, status, requestID)
+	validation.RetryAfter = retryAfter
 	if status != http.StatusUnprocessableEntity {
 		return validation
 	}
