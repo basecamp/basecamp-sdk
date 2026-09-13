@@ -163,8 +163,11 @@ suspend fun AccountClient.downloadURL(rawURL: String): DownloadResult {
                     // Redirect — extract Location, proceed to hop 2
                     val location = response.headers[HttpHeaders.Location]
                     if (location.isNullOrEmpty()) {
+                        // A hop-1 response, so its Retry-After rides on the
+                        // error like any other status's (SPEC §6 Status Mapping).
                         throw BasecampException.Api(
-                            "redirect $status with no Location header", status
+                            "redirect $status with no Location header", status,
+                            retryAfterSeconds = parseRetryAfter(response.headers[HttpHeaders.RetryAfter])
                         )
                     }
 
@@ -373,7 +376,9 @@ private suspend fun AccountClient.downloadHop1(
         } else {
             BasecampHttpClient.calculateBackoffDelay(baseDelayMs, attempt)
         }
-        parent.hooks.safeOnRetry(requestInfo, attempt + 1, BasecampException.Api("HTTP $status", status), delayMs)
+        parent.hooks.safeOnRetry(
+            requestInfo, attempt + 1, BasecampException.Api("HTTP $status", status, retryAfterSeconds = retryAfter), delayMs,
+        )
         delay(delayMs)
         attempt += 1
     }

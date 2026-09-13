@@ -19,7 +19,7 @@
  */
 import { describe, it, expect } from "vitest";
 import { executeWithRetry, timerSafeDelayMs, type RetryConfig, type RetryEmit } from "../src/retry.js";
-import { errorFromParsedBody, parseRetryAfter } from "../src/errors.js";
+import { errorFromParsedBody, parseRetryAfter, MAX_RETRY_AFTER_SECONDS } from "../src/errors.js";
 
 const CONFIG: RetryConfig = {
   maxAttempts: 3,
@@ -120,28 +120,34 @@ describe("Retry-After parsing", () => {
   });
 
   /**
-   * A leading sign is not junk: `Atoi`, `int()`, `Integer()`, `Int()` and
-   * `toIntOrNull()` all consume one, so `+120` is 120 everywhere and `-120` is
-   * a negative that step 1 then rejects for not being > 0. Surrounding
-   * whitespace is likewise tolerated, which is what `parseInt` already did.
+   * RFC 9110 spells delay-seconds as `1*DIGIT` — no sign — so `+120` is not a
+   * delay (SPEC §6's parsing table), even though every stdlib integer parse
+   * would read it as 120; an earlier revision accepted it on exactly that
+   * precedent. Surrounding whitespace is still tolerated, which is what the
+   * transport strips anyway.
    */
-  it("accepts a leading sign and surrounding whitespace, as the other five do", () => {
-    expect(parseRetryAfter("+120")).toBe(120);
+  it("rejects a leading sign and tolerates surrounding whitespace", () => {
+    expect(parseRetryAfter("+120")).toBeUndefined();
     expect(parseRetryAfter(" 120 ")).toBe(120);
     expect(parseRetryAfter("-120")).toBeUndefined();
   });
 
   /**
-   * A digit string too large for a JS number became `Infinity`, and
-   * `setTimeout(Infinity)` does not sleep forever — it CLAMPS TO 1ms, turning
-   * the longest possible instruction into a tight retry loop against a server
-   * already answering 429. That is the failure SPEC §7's backoff ceiling exists
-   * to prevent, and `oauth/device.ts` already guards its own copy against it.
-   * Go, Kotlin and Swift reject an out-of-range value outright; this does too.
+   * Over-range saturates at SPEC §6's MAX_RETRY_AFTER_SECONDS rather than being
+   * refused: `1*DIGIT` has no upper bound, so no digit string is malformed for
+   * its length, and reading "wait a very long time" as "no delay" would drop
+   * the request onto the ~1s curve against a server that asked for the
+   * opposite. The width is tested before conversion, so a 400-digit value
+   * never becomes `Infinity` on its way to the comparison — which is what
+   * made an earlier revision refuse it instead.
    */
-  it("rejects a value too large to represent rather than yielding Infinity", () => {
-    expect(parseRetryAfter("9".repeat(400))).toBeUndefined();
-    expect(parseRetryAfter("99999999999999999999")).toBeUndefined();
+  it("saturates an over-range value at the shared ceiling", () => {
+    expect(parseRetryAfter("9".repeat(400))).toBe(MAX_RETRY_AFTER_SECONDS);
+    expect(parseRetryAfter("99999999999999999999")).toBe(MAX_RETRY_AFTER_SECONDS);
+    expect(parseRetryAfter("2147483648")).toBe(MAX_RETRY_AFTER_SECONDS);
+    expect(parseRetryAfter("0002147483648")).toBe(MAX_RETRY_AFTER_SECONDS);
+    expect(parseRetryAfter("2147483647")).toBe(MAX_RETRY_AFTER_SECONDS);
+    expect(parseRetryAfter("Fri, 31 Dec 9999 23:59:59 GMT")).toBe(MAX_RETRY_AFTER_SECONDS);
   });
 
   /**
@@ -221,7 +227,7 @@ describe("the shared retry loop honours the parsed value", () => {
   });
 
   it("falls through to backoff for a zero, a negative and an unparseable value", async () => {
-    for (const header of ["0", "-5", "whenever", "120junk", "2099-01-01", "9".repeat(400)]) {
+    for (const header of ["0", "-5", "whenever", "120junk", "2099-01-01", "+5"]) {
       const delay = await delayChosenFor(header);
       // Before #564: 0ms for "0" and -5000ms for "-5", both of which retry with
       // no wait at all — the backoff collapsed rather than being replaced.
@@ -246,6 +252,10 @@ describe("the shared retry loop honours the parsed value", () => {
     const cases: Array<[string, string | (() => string)]> = [
       ["2147484", "2147484"],
       ["999999999", "999999999"],
+      // Saturated by the parser at the shared ceiling (SPEC §6), which is
+      // itself above what setTimeout can serve, so the timer clamp still has
+      // work to do here.
+      ["a 400-digit value", "9".repeat(400)],
       // Generated for the same reason as above: a literal 2035 stops being
       // over the ceiling in December 2034 and stops being a date at all in
       // January 2035, at which point this silently tests something else and

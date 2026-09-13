@@ -48,14 +48,14 @@ final class ErrorTests: XCTestCase {
     }
 
     func testApiErrorProperties() {
-        let error = BasecampError.api(message: "Server error", httpStatus: 500, hint: nil, requestId: nil, decodeFailure: nil)
+        let error = BasecampError.api(message: "Server error", httpStatus: 500, hint: nil, requestId: nil, decodeFailure: nil, retryAfterSeconds: nil)
         XCTAssertEqual(error.httpStatusCode, 500)
         XCTAssertEqual(error.exitCode, 7)
         XCTAssertTrue(error.isRetryable)
     }
 
     func testApiError4xxNotRetryable() {
-        let error = BasecampError.api(message: "Bad", httpStatus: 418, hint: nil, requestId: nil, decodeFailure: nil)
+        let error = BasecampError.api(message: "Bad", httpStatus: 418, hint: nil, requestId: nil, decodeFailure: nil, retryAfterSeconds: nil)
         XCTAssertFalse(error.isRetryable)
     }
 
@@ -120,7 +120,7 @@ final class ErrorTests: XCTestCase {
     // localized and empty of meaning for an unregistered code like 599.
     func testFromHTTPResponseEmptyBodyRendersFixedPhrase() {
         let error = BasecampError.fromHTTPResponse(status: 599, data: nil, headers: [:], requestId: nil)
-        if case .api(let message, let status, _, _, _) = error {
+        if case .api(let message, let status, _, _, _, _) = error {
             XCTAssertEqual(message, "Request failed (HTTP 599)")
             XCTAssertEqual(status, 599)
         } else {
@@ -132,7 +132,7 @@ final class ErrorTests: XCTestCase {
         let error = BasecampError.fromHTTPResponse(
             status: 418, data: Data("not json".utf8), headers: [:], requestId: nil
         )
-        if case .api(let message, _, _, _, _) = error {
+        if case .api(let message, _, _, _, _, _) = error {
             XCTAssertEqual(message, "Request failed (HTTP 418)")
         } else {
             XCTFail("Expected .api, got \(error)")
@@ -314,7 +314,7 @@ final class ErrorTests: XCTestCase {
 
     func testFromHTTPResponse500() {
         let error = BasecampError.fromHTTPResponse(status: 500, data: nil, headers: [:], requestId: nil)
-        if case .api(_, let status, _, _, _) = error {
+        if case .api(_, let status, _, _, _, _) = error {
             XCTAssertEqual(status, 500)
         } else {
             XCTFail("Expected .api")
@@ -337,6 +337,73 @@ final class ErrorTests: XCTestCase {
 
     func testParseRetryAfterZero() {
         XCTAssertNil(BasecampError.parseRetryAfter("0"))
+    }
+
+    /// SPEC §6's parsing table: `1*DIGIT` has no sign, so `+5` is not a delay
+    /// even though `Int(_:)` reads one; and no digit string is malformed for
+    /// its width — over the ceiling saturates, where `Int(_:)` used to return
+    /// nil and drop the request onto the backoff curve.
+    func testParseRetryAfterRejectsSignAndSaturatesOverRange() {
+        XCTAssertNil(BasecampError.parseRetryAfter("+5"))
+        XCTAssertNil(BasecampError.parseRetryAfter("-5"))
+        XCTAssertEqual(BasecampError.parseRetryAfter("0120"), 120)
+        XCTAssertEqual(BasecampError.parseRetryAfter("2147483647"), BasecampError.maxRetryAfterSeconds)
+        XCTAssertEqual(BasecampError.parseRetryAfter("2147483648"), BasecampError.maxRetryAfterSeconds)
+        XCTAssertEqual(BasecampError.parseRetryAfter("9223372036854775808"), BasecampError.maxRetryAfterSeconds)
+        XCTAssertEqual(BasecampError.parseRetryAfter("99999999999999999999"), BasecampError.maxRetryAfterSeconds)
+        XCTAssertEqual(BasecampError.parseRetryAfter("Fri, 31 Dec 9999 23:59:59 GMT"), BasecampError.maxRetryAfterSeconds)
+    }
+
+    /// SPEC §6 "Date forms": IMF-fixdate parses, and a value that is not an
+    /// HTTP-date does not — `DateFormatter`'s `zzz` used to read any zone
+    /// name it knew, so a far-future date in `PST` saturated the delay.
+    func testParseRetryAfterOnlyTheImfFixdateShapeParses() {
+        XCTAssertEqual(BasecampError.parseRetryAfter("Thu, 31 Dec 2099 23:59:59 GMT"), BasecampError.maxRetryAfterSeconds)
+        XCTAssertNil(BasecampError.parseRetryAfter("Wed, 09 Jun 2021 10:18:14 GMT"))  // past
+        for value in [
+            "Thu, 31 Dec 2099 23:59:59 PST",
+            "Thu, 31 Dec 2099 23:59:59 UTC",
+            "Thu, 31 Dec 2099 23:59:59 +0000",
+            "Thu, 31 Dec 2099 23:59:59 -0000",
+            "Thu, 31 Dec 2099 23:59:59",
+            "Thu, 9 Jan 2099 23:59:59 GMT",
+            "Thursday, 31-Dec-99 23:59:59 GMT",
+            "Thu Dec 31 23:59:59 2099",
+            "2099-12-31T23:59:59Z",
+            "Dec 31 2099",
+        ] {
+            XCTAssertNil(BasecampError.parseRetryAfter(value), value)
+        }
+        // A bare year is `1*DIGIT`, so it is step 1's delay-seconds, not a date.
+        XCTAssertEqual(BasecampError.parseRetryAfter("2099"), 2099)
+    }
+
+    /// SPEC §6 "HTTP Status Mapping Algorithm": the field rides on the
+    /// api_error shape, not only on .rateLimit.
+    func testApiErrorCarriesRetryAfter() {
+        let error = BasecampError.fromHTTPResponse(status: 503, data: nil, headers: ["Retry-After": "7"], requestId: nil)
+        XCTAssertEqual(error.retryAfterSeconds, 7)
+        let rateLimited = BasecampError.fromHTTPResponse(status: 429, data: nil, headers: ["Retry-After": "3"], requestId: nil)
+        XCTAssertEqual(rateLimited.retryAfterSeconds, 3)
+        XCTAssertNil(BasecampError.fromHTTPResponse(status: 503, data: nil, headers: [:], requestId: nil).retryAfterSeconds)
+    }
+
+    /// SPEC §7 step 3i: the error onRetry receives carries the retryAfter that
+    /// governs the sleep. The loop parses the header once and hands that value
+    /// to the mapper; a mapper that parsed again could round an HTTP-date to
+    /// one second less (or nil near expiry) across a whole-second boundary.
+    func testFromHTTPResponseCarriesTheCallersParsedRetryAfter() {
+        let handed = BasecampError.fromHTTPResponse(
+            status: 503, data: nil, headers: ["Retry-After": "3"], requestId: nil, retryAfter: 7)
+        XCTAssertEqual(handed.retryAfterSeconds, 7)
+        let rateLimited = BasecampError.fromHTTPResponse(
+            status: 429, data: nil, headers: ["Retry-After": "3"], requestId: nil, retryAfter: 7)
+        XCTAssertEqual(rateLimited.retryAfterSeconds, 7)
+        XCTAssertEqual(rateLimited.hint, "Retry after 7 seconds")
+        // Absent, the header is parsed here, as before.
+        XCTAssertEqual(
+            BasecampError.fromHTTPResponse(status: 503, data: nil, headers: ["Retry-After": "3"], requestId: nil).retryAfterSeconds,
+            3)
     }
 
     // MARK: - LocalizedError

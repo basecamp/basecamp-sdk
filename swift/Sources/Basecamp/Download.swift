@@ -101,9 +101,13 @@ extension AccountClient {
                 // Redirect — extract Location, proceed to hop 2
                 guard let location = httpResponse.value(forHTTPHeaderField: "Location"),
                       !location.isEmpty else {
+                    // A hop-1 response, so its Retry-After rides on the error
+                    // like any other status's (SPEC §6 Status Mapping).
                     throw BasecampError.api(
                         message: "redirect \(statusCode) with no Location header",
-                        httpStatus: statusCode, hint: nil, requestId: nil, decodeFailure: nil
+                        httpStatus: statusCode, hint: nil, requestId: nil, decodeFailure: nil,
+                        retryAfterSeconds: BasecampError.parseRetryAfter(
+                            httpResponse.value(forHTTPHeaderField: "Retry-After"))
                     )
                 }
 
@@ -119,14 +123,14 @@ extension AccountClient {
                 if [301, 302, 303, 307, 308].contains(signedResponse.statusCode) {
                     throw BasecampError.api(
                         message: "redirect \(signedResponse.statusCode) on the signed download hop is not followed",
-                        httpStatus: signedResponse.statusCode, hint: nil, requestId: nil, decodeFailure: nil
+                        httpStatus: signedResponse.statusCode, hint: nil, requestId: nil, decodeFailure: nil, retryAfterSeconds: nil
                     )
                 }
 
                 guard signedResponse.statusCode >= 200 && signedResponse.statusCode < 300 else {
                     throw BasecampError.api(
                         message: "download failed with status \(signedResponse.statusCode)",
-                        httpStatus: signedResponse.statusCode, hint: nil, requestId: nil, decodeFailure: nil
+                        httpStatus: signedResponse.statusCode, hint: nil, requestId: nil, decodeFailure: nil, retryAfterSeconds: nil
                     )
                 }
 

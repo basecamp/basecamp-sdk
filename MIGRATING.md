@@ -22,6 +22,33 @@ service surface, retry, pagination, hooks, structured errors, OAuth, and
 webhook verification; ETag caching and the §23 Event Feed connector are
 follow-ups. See [`rust/basecamp-sdk/README.md`](rust/basecamp-sdk/README.md).
 
+### Swift: `BasecampError.api` gains a sixth associated value (#775)
+
+`.api(message:httpStatus:hint:requestId:decodeFailure:)` is now
+`.api(message:httpStatus:hint:requestId:decodeFailure:retryAfterSeconds:)`, carrying
+the response's parsed `Retry-After` at every `api_error` status so an exhausted 503
+reports the wait the origin named (SPEC §6). Every `case .api(...)` pattern needs one
+more `_`, and every constructor call one more argument (`retryAfterSeconds: nil` where
+no response is involved). Read it through the new `retryAfterSeconds` property, which
+also covers `.rateLimit`, rather than by matching the case. Swift also drops the
+86,400-second clamp on a server-directed sleep: the parser now saturates at
+`BasecampError.maxRetryAfterSeconds` (2,147,483,647), so a `Retry-After` between a day
+and that ceiling is waited in full — cancel the `Task` to abandon it.
+
+### All SDKs: `Retry-After` parsing converges on SPEC §6's table (#799)
+
+A signed value (`+5`) is malformed and falls through to the local backoff in every
+SDK (Ruby, Python, Kotlin and Swift used to honour it as 5). A value above
+2,147,483,647 seconds saturates there instead of being refused (TypeScript, Kotlin,
+Swift) or raising on the retry path (Python's `OverflowError`, Ruby's `RangeError`).
+Kotlin's `BasecampException` gains a base-class `retryAfterSeconds`, populated on
+`Api` and `RateLimit`. `Api`'s six-argument constructor is unchanged; a second
+overload takes `retryAfterSeconds: Int?` as a required seventh parameter (name it
+from Kotlin). Every existing call compiles unchanged, in Kotlin and Java. What
+does not: an untyped constructor reference — `::Api`, `BasecampException::Api` —
+which used to resolve to the sole public constructor and is now ambiguous between
+the two; give it an expected function type, or wrap the call in a lambda.
+
 ### Gauges: `UpdateGaugeNeedle` requires its payload, `GaugeNeedle` gains a required `comment_count`, and Go's `Gauge.PreviousNeedlePosition` is a pointer (#731)
 
 Five drifts between the gauges spec and what bc3 serves, in one PR. Three

@@ -79,7 +79,10 @@ class ApiConstructorSurfaceTest {
      * The control for the assertion above: it must be passing because the
      * marker constructor is gone, not because reflection found nothing to
      * inspect. The public constructor's shape is also the thing #751 promised
-     * to keep byte-identical, so a change to it should be deliberate.
+     * to keep byte-identical, so a change to it should be deliberate. The one
+     * addition since is a second overload carrying `retryAfterSeconds: Int?`
+     * (#775); the six-argument descriptor itself is unchanged, which is what
+     * keeps a compiled or Java caller from #751's day working.
      *
      * `cause: Throwable` is intentionally still here — a Java caller may pass a
      * `SerializationException` AS the cause, and that is fine. It classifies
@@ -92,9 +95,12 @@ class ApiConstructorSurfaceTest {
             .map { it.parameterTypes.map { p -> p.simpleName } }
 
         assertEquals(
-            listOf(listOf("String", "Integer", "String", "boolean", "String", "Throwable")),
-            signatures,
-            "exactly one Java-selectable constructor is expected, unchanged since #751",
+            listOf(
+                listOf("String", "Integer", "String", "boolean", "String", "Throwable"),
+                listOf("String", "Integer", "String", "boolean", "String", "Throwable", "Integer"),
+            ),
+            signatures.sortedBy { it.size },
+            "two Java-selectable constructors are expected: #751's six-argument shape, unchanged, plus the retryAfterSeconds overload",
         )
     }
 

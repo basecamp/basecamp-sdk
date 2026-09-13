@@ -85,6 +85,19 @@ class HTTPRetryExtendedTest < Minitest::Test
     assert_equal 7, error.retry_after
   end
 
+  def test_parse_retry_after_rejects_a_sign_and_saturates_over_range
+    # RFC 9110's 1*DIGIT has no sign (Integer() would have read +5 as 5), and
+    # no digit string is malformed for its width: before the ceiling the
+    # bignum reached sleep on the retry path and raised RangeError.
+    assert_nil @http.send(:parse_retry_after, "+5")
+    assert_nil @http.send(:parse_retry_after, "-5")
+    assert_equal 120, @http.send(:parse_retry_after, "0120")
+    assert_equal Basecamp::Http::MAX_RETRY_AFTER_SECONDS, @http.send(:parse_retry_after, "2147483648")
+    assert_equal Basecamp::Http::MAX_RETRY_AFTER_SECONDS, @http.send(:parse_retry_after, "9" * 400)
+    assert_equal Basecamp::Http::MAX_RETRY_AFTER_SECONDS,
+      @http.send(:parse_retry_after, "Fri, 31 Dec 9999 23:59:59 GMT")
+  end
+
   def test_parse_retry_after_rounds_a_sub_second_remainder_up
     # SPEC §6 step 2: 2.75s out is 3 seconds, never 2. Truncation retried up
     # to a second before the moment the server named, and turned a remainder

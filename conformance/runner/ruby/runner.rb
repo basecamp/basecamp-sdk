@@ -1595,6 +1595,8 @@ class TestRunner
                    error.respond_to?(:retryable) ? error.retryable : nil
                  when "requestId"
                    error.respond_to?(:request_id) ? error.request_id : nil
+                 when "retryAfter"
+                   error.respond_to?(:retry_after) ? error.retry_after : nil
                  when "code"
                    error.respond_to?(:code) ? error.code : nil
                  when "message"

@@ -180,9 +180,38 @@ internal fun parseRetryAfter(value: String?): Int? {
     val trimmed = value?.trim()
     return if (trimmed.isNullOrEmpty()) {
         null
+    } else if (trimmed.all { it in '0'..'9' }) {
+        delaySeconds(trimmed)
     } else {
-        val seconds = trimmed.toIntOrNull()
-        if (seconds != null) seconds.takeIf { it > 0 } else httpDateDelaySeconds(trimmed)
+        httpDateDelaySeconds(trimmed)
+    }
+}
+
+/**
+ * SPEC §6 `MAX_RETRY_AFTER_SECONDS`: the value a parsed Retry-After saturates
+ * at, in both wire forms — `Int.MAX_VALUE` is that number, which is no
+ * coincidence: the ceiling is the narrowest `retry_after` integer any SDK
+ * ships, and this is one of the two.
+ */
+internal const val MAX_RETRY_AFTER_SECONDS: Int = Int.MAX_VALUE
+
+/**
+ * SPEC §6 step 1. The digits are checked by the caller rather than left to
+ * `toIntOrNull`, which accepts a leading sign: RFC 9110 spells delay-seconds
+ * as `1*DIGIT`, so `+5` is not a delay. A value over the ceiling saturates
+ * whatever its width — `1*DIGIT` has no upper bound, so no digit string is
+ * malformed for its length, and reading "wait a very long time" as "no delay"
+ * hammers a peer that just asked to be left alone. Width is tested before the
+ * conversion so nothing can overflow on the way to the comparison.
+ */
+private fun delaySeconds(digits: String): Int? {
+    val significant = digits.trimStart('0')
+    if (significant.length > MAX_RETRY_AFTER_SECONDS.toString().length) return MAX_RETRY_AFTER_SECONDS
+    val seconds = significant.toLongOrNull() ?: return null
+    return when {
+        seconds <= 0 -> null
+        seconds > MAX_RETRY_AFTER_SECONDS -> MAX_RETRY_AFTER_SECONDS
+        else -> seconds.toInt()
     }
 }
 
@@ -207,6 +236,6 @@ private fun httpDateDelaySeconds(value: String): Int? {
         val secondsUntil = if (remainingMs > 0) (remainingMs + 999) / 1000 else 0L
         // Saturate rather than wrap. A date centuries out exceeds Int seconds,
         // and a bare toInt() would hand the caller a negative delay.
-        secondsUntil.takeIf { s -> s > 0 }?.coerceAtMost(Int.MAX_VALUE.toLong())?.toInt()
+        secondsUntil.takeIf { s -> s > 0 }?.coerceAtMost(MAX_RETRY_AFTER_SECONDS.toLong())?.toInt()
     }
 }

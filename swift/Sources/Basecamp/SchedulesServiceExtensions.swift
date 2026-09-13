@@ -162,7 +162,7 @@ public struct ScheduleEntryFields: Sendable {
                     + "blank value would overwrite the current one. Use "
                     + "replaceEntry(entryId:req:) to write the record deliberately.",
                 requestId: nil,
-                decodeFailure: nil
+                decodeFailure: nil, retryAfterSeconds: nil
             )
         }
         return value
@@ -303,7 +303,7 @@ extension SchedulesService {
                     + "so a malformed response cannot be written back safely. Use "
                     + "replaceEntry(entryId:req:) to write the record deliberately.",
                 requestId: nil,
-                decodeFailure: decodeFailure
+                decodeFailure: decodeFailure, retryAfterSeconds: nil
             )
         }
     }

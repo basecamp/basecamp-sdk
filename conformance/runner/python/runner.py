@@ -1597,6 +1597,8 @@ def _get_error_field(error: Exception, field_path: str) -> Any:
             return getattr(error, "retryable", None)
         case "requestId":
             return getattr(error, "request_id", None)
+        case "retryAfter":
+            return getattr(error, "retry_after", None)
         case "code":
             return getattr(error, "code", None)
         case "message":

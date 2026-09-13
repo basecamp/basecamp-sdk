@@ -585,8 +585,9 @@ parses at, not only in step 4. One parse feeds both the retry loop's sleep and t
 an exhausted 503 that was slept on for the value the origin named surfaces that value to the caller,
 and so does the error §7 step 3i hands to `on_retry`. Step 4 spells it out only because 429 is where
 the `hint` is derived from it. `[CONFLICT: Go, TypeScript, Ruby, Python and Rust populate it at every
-status; Kotlin's `Api` and Swift's `.api` carry no slot for it yet — adding one is a source-breaking
-change to Swift's enum, tracked in #775.]`
+status. Kotlin and Swift carry it on their rate-limit and `api_error` shapes — every status a retry
+loop reaches, and every 5xx — but not on the 401/403/404/400/422/507 shapes, whose classes have no
+slot; `error-mapping.json` pins the `api_error` arm and `retry.json` the 429 arm.]`
 
 ### Statusless `api_error` for a malformed 2xx body `[manual]`
 
@@ -738,21 +739,16 @@ timestamp or a bare year from being read as a date. An SDK whose stdlib parser t
 keeps them; an SDK whose parser takes a wider family of HTTP-date-shaped variants (Kotlin's ktor list)
 is inside the MAY, because every member is an HTTP-date shape. What this rules out is the accidental
 state that preceded it — two permissive by inheritance, four strict by inheritance, and the contract
-silent on which.
+silent on which. Shape is the template, not the alphabet of its tokens: a value in one of the three forms whose day-name is not one of the seven, or whose month is misspelt, is still an HTTP-date shape, and what the SDK honours is the date fields, which name the instant on their own. An SDK MAY enumerate the names (Swift's gate does); one that does not is not accepting a foreign shape, so no SDK needs a per-token regex for it.
 
 This algorithm defines **parsing** only — how a header value becomes a number of seconds. Which
 statuses honour the result, and what bounds the sleep it buys, is the next section; do not read a
 status set into the steps above.
 
-`[CONFLICT: the table is the contract; the SDKs converge on it in two steps. The status gate, the
-rounding rule and the added-jitter defect are converged; the ceiling row is implemented in Go
-(both parsers) and in Rust, and owed by the other five — each still refuses or raises above its own integer width —
-and the sign row is owed by TypeScript, Ruby, Python, Kotlin and Swift. The two that delegate to a
-stdlib integer parse owe more than the sign, since they inherit everything that parse admits: Python's
-`int()` takes `_` digit separators and surrounding whitespace, so `1_000` is honoured as a thousand-second
-wait rather than falling through to backoff; Ruby's `Integer()` without a base takes `_` and the `0x`,
-`0b` and `0o` prefixes, and reads a leading zero as octal, so `010` sleeps 8 seconds and `09` is malformed.
-What each owes is the whole `1*DIGIT` gate. Per-parser inventory and call sites in #799 and #775.]`
+All eight parsers — Go's two, Rust, TypeScript, Ruby, Python, Kotlin and Swift — implement this table: the
+status gate, the rounding rule, the sign row and the ceiling row alike. The obsolete date forms
+remain a MAY, and each parser's answer to them is whatever its standard library gives (#775 keeps
+the per-parser inventory).
 
 ### Retry-After Honouring `[CONFLICT]`
 
@@ -951,15 +947,10 @@ hammer a peer that just asked to be left alone. TypeScript's `setTimeout` bound 
 is the worked example: the parser's result stays the public `retryAfter`, and only what reaches the
 timer is clamped. Every other host can schedule the full ceiling — 2,147,483,647 s is inside `sleep`,
 `time.sleep`, `float`, `Duration`, coroutine `delay` and `Task.sleep`'s nanosecond `UInt64` alike — so
-no second bound is needed elsewhere, and none is permitted: Swift's 86,400 s clamp is a policy cap by
-its own comment ("no SDK retry is worth sleeping longer"), five orders of magnitude below the trap it
-cites, and is recorded as a conflict below.
-
-`[CONFLICT: Ruby and Python parse arbitrary-precision integers and raise at the scheduler above their
-own ceilings (`RangeError` from `sleep`, `OverflowError` from `float`); TypeScript, Kotlin and Swift
-refuse above their integer width instead of saturating. All five owe the parser ceiling — the exact
-sites are in the Parsing Algorithm's conflict note. Go implements it in both parsers as of #796 and
-the template change that closed #798; Rust shipped with it (#859).]`
+no second bound is needed elsewhere, and none is permitted. Swift's sleep used to clamp at 86,400 s —
+a policy cap by its own comment ("no SDK retry is worth sleeping longer"), five orders of magnitude
+below the trap it cited — and now bounds only at the ceiling the parser already applied, which is
+representability and nothing else.
 
 **The exemption is conditioned on the escape, not on a number.** There is deliberately no policy cap;
 in its place, **an honoured `Retry-After` delay MUST be awaited through the platform's cancellation
@@ -990,9 +981,8 @@ and the requirement above is about the handle, not about whether the platform ca
 per-SDK inventory, which changes as work lands and belongs in #775: the status gate is converged in
 all seven loops (§7 and §14 hop 1 alike, `retry.json` and `downloads.json` pin it); the added-jitter
 term is gone; `retry_after` is on the error at every status except in Kotlin and Swift (Status
-Mapping Algorithm); the parser ceiling and the sign row are held by Go's two parsers and Rust's and
-owed by the other five (Parsing Algorithm); the policy cap is Swift's alone; and the cancellation
-handle is owed by the four paths above.
+Mapping Algorithm); every parser implements the table, ceiling and sign row included (Parsing
+Algorithm); no policy cap remains; and the cancellation handle is owed by the four paths above.
 
 ---
 
@@ -1201,9 +1191,9 @@ Requirements:
    `MAX_RETRY_AFTER_SECONDS`, applied in the parser (§6 "Retry-After Parsing Algorithm"),
    plus whatever a host's timer cannot schedule below that — TypeScript's clamp to the
    2,147,483,647 ms `setTimeout` accepts — applied at the sleep. A **policy** cap is a
-   different thing and is not permitted: Swift's 86,400 s clamp is one (the `UInt64`
-   nanosecond trap it cites sits five orders of magnitude higher, and the parser ceiling
-   already keeps the product inside `UInt64`), and §6 records it as a conflict. The
+   different thing and is not permitted: Swift's former 86,400 s clamp was one (the
+   `UInt64` nanosecond trap it cited sits five orders of magnitude higher, and the parser
+   ceiling already keeps the product inside `UInt64`), and is gone. The
    exemption is not unconditional: §6 requires the honoured delay to be awaited through
    the caller's cancellation primitive, and that requirement — not a number — is what
    stands in for a policy cap here.
@@ -4099,7 +4089,7 @@ consumption) are recorded in Appendix F with their compensating tier-3 tests.
 
 All magic numbers in one place, derived from shipping SDK code (not `rubric-audit.json`).
 
-Only `API_VERSION` is gated (`<!-- @api-version -->`, checked by `make doc-constants-check`). The other 15 pre-§23 rows are hand-maintained: 13 were read against their cited sources on 2026-08-03 — all 13 matched — `MAX_BACKOFF_DELAY` joined with #592 under that PR's own six-SDK verification (the sentence previously said 13 rows while the table carried 14), and `MAX_RETRY_AFTER_SECONDS` joined with the Retry-After convergence, verified in Go's two parsers and Rust's and owed by the other five (§6). The `EVENT_FEED_*` block below them is different in kind and marked so: those rows are contract-first — their source is §23's normative text, connector code ships in later PRs, and the two server-owned values are provisional until bc3's merge-time gate; when the connector lands, they join the read-against-source discipline. They are not gated because each is asserted of several SDKs at once in a different spelling per language (Go `1 * time.Second`, Python `1.0`, Ruby `1.0`, Kotlin `30.seconds`, Swift `1_000`), so a checker would need a per-row, per-language extraction rule rather than the one-value-one-source substitution the marker convention is built on. The name in the table is the concept, not a symbol to grep: `MAX_ERROR_MESSAGE_LENGTH` is `MaxErrorMessageBytes` in Go and `MAX_ERROR_MESSAGE_BYTES` in Ruby, and `TOKEN_REFRESH_BUFFER` is the literal `300` in `creds.ExpiresAt-300` (`go/pkg/basecamp/auth.go`) rather than a named constant at all. If one of these starts moving, gate that row rather than the appendix.
+Only `API_VERSION` is gated (`<!-- @api-version -->`, checked by `make doc-constants-check`). The other 15 pre-§23 rows are hand-maintained: 13 were read against their cited sources on 2026-08-03 — all 13 matched — `MAX_BACKOFF_DELAY` joined with #592 under that PR's own six-SDK verification (the sentence previously said 13 rows while the table carried 14), and `MAX_RETRY_AFTER_SECONDS` joined with the Retry-After convergence, read against all seven parsers as that work landed. The `EVENT_FEED_*` block below them is different in kind and marked so: those rows are contract-first — their source is §23's normative text, connector code ships in later PRs, and the two server-owned values are provisional until bc3's merge-time gate; when the connector lands, they join the read-against-source discipline. They are not gated because each is asserted of several SDKs at once in a different spelling per language (Go `1 * time.Second`, Python `1.0`, Ruby `1.0`, Kotlin `30.seconds`, Swift `1_000`), so a checker would need a per-row, per-language extraction rule rather than the one-value-one-source substitution the marker convention is built on. The name in the table is the concept, not a symbol to grep: `MAX_ERROR_MESSAGE_LENGTH` is `MaxErrorMessageBytes` in Go and `MAX_ERROR_MESSAGE_BYTES` in Ruby, and `TOKEN_REFRESH_BUFFER` is the literal `300` in `creds.ExpiresAt-300` (`go/pkg/basecamp/auth.go`) rather than a named constant at all. If one of these starts moving, gate that row rather than the appendix.
 
 | Constant | Value | Unit | Source |
 |----------|-------|------|--------|
@@ -4113,7 +4103,7 @@ Only `API_VERSION` is gated (`<!-- @api-version -->`, checked by `make doc-const
 | `DEFAULT_BASE_DELAY` | 1000 | milliseconds | All seven SDKs |
 | `DEFAULT_MAX_JITTER` | 100 | milliseconds | All seven SDKs |
 | `MAX_BACKOFF_DELAY` | 30,000 (30s) | milliseconds | All seven SDKs; ceiling on the §7 backoff term, jitter added on top. Was Go's generated `RetryConfig.MaxDelay` before #577 generalized it |
-| `MAX_RETRY_AFTER_SECONDS` | 2,147,483,647 | seconds | §6 Retry-After Parsing Algorithm — the value a parsed `Retry-After` saturates at, in both wire forms; a representability bound (the narrowest `retry_after` integer any SDK ships, and §16's shared ceiling), not a policy cap. `go/pkg/basecamp/client.go` (`maxRetryAfterSeconds`), `go/templates/client.tmpl`, `rust/basecamp-sdk/src/error.rs` (`MAX_RETRY_AFTER_SECONDS`); owed by the other five (§6) |
+| `MAX_RETRY_AFTER_SECONDS` | 2,147,483,647 | seconds | §6 Retry-After Parsing Algorithm — the value a parsed `Retry-After` saturates at, in both wire forms; a representability bound (the narrowest `retry_after` integer any SDK ships, and §16's shared ceiling), not a policy cap. All seven SDKs — `maxRetryAfterSeconds` (Go hand-written and generated, Swift), `MAX_RETRY_AFTER_SECONDS` (TypeScript, Python, Ruby, Kotlin, Rust) |
 | `DEFAULT_MAX_PAGES` | 10,000 | — | All seven SDKs |
 | `MAX_CACHE_ENTRIES` | 1000 | entries | `typescript/src/client.ts` |
 | `MAX_TOKEN_HASH_ENTRIES` | 100 | entries | `typescript/src/client.ts` |
@@ -4225,6 +4215,7 @@ what `make doc-constants-check` asserts — not a case-by-case index.
 | `error-mapping.json` | 503 → api_error (retryable) | §6 |
 | `error-mapping.json` | 504 → api_error (retryable) | §6 |
 | `error-mapping.json` | X-Request-Id extracted | §6 |
+| `error-mapping.json` | Retry-After surfaces as `retry_after` on a 503 api_error | §6 |
 | `idempotency.json` | PUT retries on 503 | §7 (Gate 1) |
 | `idempotency.json` | DELETE retries on 503 | §7 (Gate 1) |
 | `idempotency.json` | POST does NOT retry | §7 (Gate 2) |
