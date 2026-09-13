@@ -263,11 +263,15 @@ func (c *Conn) ReadFrame(ctx context.Context) ([]byte, error) {
 				c.violation = fmt.Errorf("feedtest: inbound frame of %d bytes exceeds max frame bytes %d: %w",
 					len(frame), c.maxFrameBytes, eventfeed.ErrFrameOversize)
 				c.dead = c.violation
+				// A write already stalled under StallWrites wakes on this,
+				// as a real socket's would: the connection died under it.
+				c.cond.Broadcast()
 				return nil, c.violation
 			}
 			return frame, nil
 		case c.finalErr != nil:
 			c.dead = c.finalErr
+			c.cond.Broadcast()
 			return nil, c.finalErr
 		default:
 			c.cond.Wait()
@@ -281,7 +285,9 @@ func (c *Conn) ReadFrame(ctx context.Context) ([]byte, error) {
 // real WebSocket is dead after any of them, so a write the connector orders
 // afterwards must fail the way production's would rather than be recorded
 // as sent), and a scripted write failure each fail the write instead; a
-// scripted stall blocks until one of the first two happens.
+// scripted stall blocks until one of the first THREE happens — a stalled
+// write is woken by the read side surfacing the death, as a real socket's
+// blocked write is, rather than waiting on cancellation or a local close.
 func (c *Conn) WriteFrame(ctx context.Context, data []byte) error {
 	if err := ctx.Err(); err != nil {
 		return err
@@ -294,7 +300,7 @@ func (c *Conn) WriteFrame(ctx context.Context, data []byte) error {
 	defer stop()
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	for c.stallWrites && ctx.Err() == nil && !c.closed {
+	for c.stallWrites && ctx.Err() == nil && !c.closed && c.dead == nil {
 		c.cond.Wait()
 	}
 	if err := ctx.Err(); err != nil {
