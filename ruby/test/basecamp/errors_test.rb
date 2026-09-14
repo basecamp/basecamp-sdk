@@ -348,6 +348,16 @@ class ErrorsTest < Minitest::Test
     assert_equal 60, error.retry_after
   end
 
+  def test_error_from_response_carries_retry_after_at_every_status
+    # SPEC §6: retry_after is populated at every status the header parses at,
+    # not only at 429 — the public mapper must answer as Http#handle_error does.
+    [ 400, 401, 403, 404, 422, 429, 500, 502, 503, 504, 507, 418 ].each do |status|
+      error = Basecamp.error_from_response(status, nil, retry_after: 7)
+
+      assert_equal 7, error.retry_after, "status #{status} dropped retry_after"
+    end
+  end
+
   def test_error_from_response_500
     error = Basecamp.error_from_response(500, nil)
 

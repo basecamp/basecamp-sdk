@@ -196,15 +196,6 @@ func TestClient_RetryAfterAbsentOrUnusableKeepsBackoff(t *testing.T) {
 		{"zero", "0"},
 		{"negative", "-5"},
 		{"http-date in the past", "Wed, 09 Jun 2021 10:18:14 GMT"},
-		// Too large for the parser's own int64, so Go treats it as malformed
-		// rather than over-range, and it falls through here rather than
-		// saturating — the first of the two tiers #793 states in SPEC §6
-		// "Retry-After Honouring"; the cross-SDK convergence is #799. One past
-		// the largest int64 and a 20-digit value are the same case; both are
-		// pinned so the boundary cannot drift into the saturating table by
-		// accident.
-		{"one past the largest int64", "9223372036854775808"},
-		{"digits beyond int64 range", "99999999999999999999"},
 		// RFC 9110's delay-seconds is `1*DIGIT`, so a sign is not a delay, and
 		// strconv accepts one — without the digits-only guard ParseInt would
 		// honour this as 5 (review follow-up, Codex). This row is the one that
@@ -241,13 +232,47 @@ func TestClient_RetryAfterAbsentOrUnusableKeepsBackoff(t *testing.T) {
 // The delay is asserted, not the elapsed time — a clamped wait is ~68 years,
 // which is precisely why nothing here may sleep it.
 //
-// This is the SECOND of the two tiers #793 states in SPEC §6 "Retry-After
-// Honouring": a value the parser holds but the host cannot schedule. The first
-// — a value the parser's own int64 cannot hold at all — Go treats as malformed,
-// and it belongs in the backoff table above, which is where
-// `9223372036854775808` and the 20-digit case are pinned.
+// SPEC §6 "Retry-After Parsing Algorithm" has ONE ceiling, MAX_RETRY_AFTER_SECONDS,
+// and `1*DIGIT` has no upper bound, so no digit string is malformed for its
+// width: one past the largest int64 and a 20-digit value saturate exactly as a
+// value the parser can hold does. An earlier revision treated those two as
+// malformed and fell through to the backoff curve, which made the honoured
+// wait depend on the parser's word size.
 func TestClient_RetryAfterSaturatesAtTheHonouredCeiling(t *testing.T) {
-	assertSaturatedRetryAfter(t, "9223372036854775807")
+	for _, tc := range []struct{ name, header string }{
+		{"largest int64", "9223372036854775807"},
+		{"one past the largest int64", "9223372036854775808"},
+		{"digits beyond int64 range", "99999999999999999999"},
+		{"one past the ceiling", "2147483648"},
+		{"leading zeros past the ceiling", "0002147483648"},
+	} {
+		t.Run(tc.name, func(t *testing.T) { assertSaturatedRetryAfter(t, tc.header) })
+	}
+}
+
+func serviceUnavailable(retryAfter string) http.HandlerFunc {
+	return func(w http.ResponseWriter, _ *http.Request) {
+		if retryAfter != "" {
+			w.Header().Set("Retry-After", retryAfter)
+		}
+		w.WriteHeader(http.StatusServiceUnavailable)
+	}
+}
+
+// TestClient_RetryAfterHonouredAt503 pins SPEC §6 "Retry-After Honouring" on
+// the raw GET loop: the header governs the wait at every status the loop
+// retries, and 503 is the one RFC 9110 gives explicit Retry-After semantics.
+// Before singleRequest's gateway arm carried RetryAfter, this observed the
+// ~1ms backoff curve and failed.
+func TestClient_RetryAfterHonouredAt503(t *testing.T) {
+	delays, err := retryAfterProbe(t, serviceUnavailable("2"))
+
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("Get returned %v, want context.Canceled", err)
+	}
+	if len(delays) != 1 || delays[0] != 2*time.Second {
+		t.Errorf("loop computed %v, want exactly [2s] — a 503's Retry-After replaces the backoff curve", delays)
+	}
 }
 
 func assertSaturatedRetryAfter(t *testing.T, header string) {

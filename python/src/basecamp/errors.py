@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import json
-from datetime import UTC
+import math
+from datetime import UTC, datetime
 from enum import IntEnum, StrEnum
 from typing import Any
 
@@ -415,7 +416,12 @@ def error_from_response(status: int, body: str | bytes | None, headers: dict[str
     return err
 
 
-def _parse_retry_after(value: str | None) -> int | None:
+def _parse_retry_after(value: str | None, *, now: datetime | None = None) -> int | None:
+    """SPEC section 6 "Retry-After Parsing Algorithm".
+
+    ``now`` is a seam for tests: the HTTP-date branch is one second wide at its
+    boundary, so its rounding is only pinnable against a frozen clock.
+    """
     if not value:
         return None
     try:
@@ -424,12 +430,15 @@ def _parse_retry_after(value: str | None) -> int | None:
     except ValueError:
         pass
     # Try HTTP-date
-    from datetime import datetime
     from email.utils import parsedate_to_datetime
 
     try:
         date = parsedate_to_datetime(value)
-        diff = int((date - datetime.now(UTC)).total_seconds())
+        # Rounded UP (SPEC section 6 step 2): truncating a sub-second remainder
+        # toward zero turned a date 400ms out into 0, which reads as "no usable
+        # value" and drops onto the backoff curve, and retried up to a second
+        # before the moment the server named.
+        diff = math.ceil((date - (now or datetime.now(UTC))).total_seconds())
         return diff if diff > 0 else None
     except (ValueError, TypeError):
         pass

@@ -37,6 +37,24 @@
     "tags": ["retry", "429", "rate-limit"]
   },
   {
+    "name": "GET operation retries on 503 with Retry-After",
+    "description": "SPEC §6 \"Retry-After Honouring\": a parsed Retry-After is honoured at every status a retry is already going to happen at, and 503 is in every operation's declared retryOn. RFC 9110 §10.2.3 gives 503 the one case with explicit Retry-After semantics (how long the service expects to be unavailable), so this is the canonical use of the header — and until this case existed it was the one five of six SDKs ignored: Kotlin, Swift, TypeScript and Ruby gated the sleep on `status == 429`, and the generated Go client did the same, so a 503 carrying `Retry-After: 120` backed off ~1s instead. The 429 sibling above could not see that, because 429 was the one status every loop already honoured. `requestCount` cannot see it either — a loop that ignores the header still retries and still succeeds — so `delayBetweenRequests` is the whole assertion, and its floor (2000ms) sits above the longest first backoff (1000ms base + 100ms jitter).",
+    "operation": "GetProject",
+    "method": "GET",
+    "path": "/projects/{projectId}",
+    "pathParams": {"projectId": 12345},
+    "mockResponses": [
+      {"status": 503, "headers": {"Retry-After": "2"}},
+      {"status": 200, "body": {"id": 12345, "name": "Test Project", "status": "active", "created_at": "2025-01-01T00:00:00Z", "updated_at": "2025-01-01T00:00:00Z", "url": "https://3.basecampapi.com/999/projects/12345.json", "app_url": "https://3.basecamp.com/999/projects/12345"}}
+    ],
+    "assertions": [
+      {"type": "requestCount", "expected": 2},
+      {"type": "delayBetweenRequests", "min": 2000},
+      {"type": "noError"}
+    ],
+    "tags": ["retry", "503", "retry-after-honoured"]
+  },
+  {
     "name": "POST operation does NOT retry (not idempotent)",
     "description": "Verifies that POST operations do NOT retry since they are not idempotent",
     "operation": "CreateProject",
@@ -70,7 +88,7 @@
   },
   {
     "name": "Retry-After HTTP-date in the past falls through to backoff",
-    "description": "SPEC §6 step 2 honours an HTTP-date only when `date - now()` is positive. A past date yields a non-positive value, so the algorithm must fall through to step 3 — the backoff formula — and the pin is `delayBetweenRequests`, not the retry itself.\n\nThis replaces a case that asserted only `requestCount: 2` and `noError` against the same past date. Those two assertions are satisfied identically by a parser that never looks at dates at all: it fails the integer parse, backs off, and retries. That is why Kotlin's missing HTTP-date branch (#564) survived a green conformance suite for the SDK's entire life — measured against un-fixed Kotlin and un-fixed TypeScript, the old case passed in ~1.0s, which is precisely the backoff it was meant to be distinguishing the date from. The delay pin gives the case something to fail on: a parser that returns the negative difference, or clamps it to 0 and honours that, retries with no wait — the shape TypeScript's `retry.ts` had before #564.\n\nWhat this case still cannot see is the POSITIVE half of step 2, which needs a date a few seconds ahead of the run's own clock. A fixture is a static JSON literal and the harness has no clock: a date far enough ahead to stay future-dated would make a compliant SDK sleep for the rest of the decade — Retry-After is exempt from SPEC §7's backoff ceiling, so the only bound left is each platform's own timer, and those bounds are absurd rather than helpful here (TypeScript's is ~24.85 days, the largest delay a 32-bit millisecond timer can serve) — and a date near enough to assert a small delay against is past-dated within seconds of being written. The positive branch is therefore pinned by per-SDK unit tests — Kotlin's `parseRetryAfterParsesFutureHttpDate`, TypeScript's `errors.test.ts` — and #780 tracks giving the harness a clock so this fixture can cover it.",
+    "description": "SPEC §6 step 2 honours an HTTP-date only when `date - now()` is positive. A past date yields a non-positive value, so the algorithm must fall through to step 3 — the backoff formula — and the pin is `delayBetweenRequests`, not the retry itself.\n\nThis replaces a case that asserted only `requestCount: 2` and `noError` against the same past date. Those two assertions are satisfied identically by a parser that never looks at dates at all: it fails the integer parse, backs off, and retries. That is why Kotlin's missing HTTP-date branch (#564) survived a green conformance suite for the SDK's entire life — measured against un-fixed Kotlin and un-fixed TypeScript, the old case passed in ~1.0s, which is precisely the backoff it was meant to be distinguishing the date from. The delay pin gives the case something to fail on: a parser that returns the negative difference, or clamps it to 0 and honours that, retries with no wait — the shape TypeScript's `retry.ts` had before #564.\n\nWhat this case still cannot see is the POSITIVE half of step 2, which needs a date a few seconds ahead of the run's own clock. A fixture is a static JSON literal and the harness has no clock: a date far enough ahead to stay future-dated would make a compliant SDK sleep for the rest of the decade — Retry-After is exempt from SPEC §7's backoff ceiling, so the only bound left is each platform's own timer, and those bounds are absurd rather than helpful here (TypeScript's is ~24.85 days, the largest delay a 32-bit millisecond timer can serve) — and a date near enough to assert a small delay against is past-dated within seconds of being written. The positive branch is pinned by the sibling case below, which serves a near-future date through the `{{httpdate+Ns}}` token (#780) — and by per-SDK unit tests against a frozen clock, where the rounding rule is pinned deterministically.",
     "operation": "GetProject",
     "method": "GET",
     "path": "/projects/{projectId}",
@@ -85,6 +103,24 @@
       {"type": "noError"}
     ],
     "tags": ["retry", "429", "retry-after-date"]
+  },
+  {
+    "name": "Retry-After HTTP-date in the future is honoured",
+    "description": "The positive half of SPEC §6 step 2, which the past-date case above says it cannot see: a fixture is a static literal and the harness had no clock, so until #780 the only date this file could serve was one already past, and that half of the branch was pinned by per-SDK unit tests alone — which is how Kotlin's missing date branch (#564) survived a green suite for the SDK's whole life. The header value is the `{{httpdate+2s}}` token (conformance/schema.json, SPEC §19), which every runner resolves as it serves the response to the IMF-fixdate of floor(now) + 3 seconds. A compliant parser sees a remainder in (2 − latency, 3] and, rounding up per step 2, computes at least 2 whole seconds — so the 2000ms floor holds for any serve-to-parse latency under a second — while a parser that drops the date form falls onto the ~1s backoff curve and fails. The token is deliberately near rather than an absolute far-future date: past the ceiling one host saturates, one clamps and four run long, so a far date would assert six different things.\n\nThe floor is one-sided by design (SPEC §6 \"Rounding\"): the true remainder is a fraction of a second under 3, so an equality assertion would be flaky by exactly the width of the rounding rule. A truncating parser computes 2 here on most runs and 1 only when the serve and the parse straddle a second boundary — that regression is pinned deterministically by the per-SDK unit tests against a frozen clock, not by this case.",
+    "operation": "GetProject",
+    "method": "GET",
+    "path": "/projects/{projectId}",
+    "pathParams": {"projectId": 12345},
+    "mockResponses": [
+      {"status": 429, "headers": {"Retry-After": "{{httpdate+2s}}"}},
+      {"status": 200, "body": {"id": 12345, "name": "Test Project", "status": "active", "created_at": "2025-01-01T00:00:00Z", "updated_at": "2025-01-01T00:00:00Z", "url": "https://3.basecampapi.com/999/projects/12345.json", "app_url": "https://3.basecamp.com/999/projects/12345"}}
+    ],
+    "assertions": [
+      {"type": "requestCount", "expected": 2},
+      {"type": "delayBetweenRequests", "min": 2000},
+      {"type": "noError"}
+    ],
+    "tags": ["retry", "429", "retry-after-date", "retry-after-honoured"]
   },
   {
     "name": "Retry-After of 0 is rejected and falls through to backoff",

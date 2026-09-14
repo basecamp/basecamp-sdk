@@ -12,6 +12,7 @@ require "webmock"
 require "json"
 require "set"
 require "fileutils"
+require "time"
 
 WebMock.enable!
 WebMock.disable_net_connect!
@@ -235,6 +236,41 @@ end
 
 # The delayBetweenRequests assertion contract, kept apart from the runner so
 # its bounds branches are unit-testable (delay_gaps_test.rb).
+# The one token a fixture header value may carry, `{{httpdate+Ns}}` (SPEC §19,
+# conformance/schema.json), resolved at the moment the response is served to
+# the IMF-fixdate of floor(now) + N + 1 seconds: the first whole second strictly
+# more than N seconds after the second the response is served in. A compliant
+# SPEC §6 parser sees a remainder in (N - latency, N + 1] and, rounding up,
+# computes at least N whole seconds, so the fixture pairs it with a
+# `delayBetweenRequests` floor of N × 1000 ms. It exists because a static
+# fixture has no clock: a literal past date pins only the fall-through, and a
+# far-future one is differently behaved per host.
+#
+# N is one to nine digits, so the arithmetic is exact everywhere and every
+# runner's date formatter stays in range; a longer N is an unrecognised token.
+#
+# An unrecognised `{{…}}` is an error rather than a literal: a typo'd token
+# served verbatim would be an unparseable header, which the SDK answers with its
+# ordinary backoff — the exact outcome the case exists to distinguish from.
+# Every other value passes through untouched.
+module HeaderTokens
+  TOKEN = /\A\{\{(.*)\}\}\z/
+  HTTPDATE = /\Ahttpdate\+(\d{1,9})s\z/
+
+  def self.resolve(value, now)
+    token = TOKEN.match(value)
+    return value unless token
+
+    inner = HTTPDATE.match(token[1])
+    unless inner
+      raise ArgumentError,
+        "unrecognised header token #{value.inspect}: only {{httpdate+Ns}} is defined (conformance/schema.json)"
+    end
+
+    Time.at(now.to_i + inner[1].to_i + 1).utc.httpdate
+  end
+end
+
 module DelayGaps
   # Validates one assertion against the recorded inter-request gaps, returning
   # nil when it holds and a failure message otherwise.
@@ -1259,7 +1295,11 @@ class TestRunner
         # unlike a blanket stub .to_raise.
         raise Faraday::ConnectionFailed, "simulated network error" if resp[:network_error]
 
-        resp
+        # Header values are resolved HERE, inside the to_return block, and not
+        # when the queue was built above: a `{{httpdate+Ns}}` token is relative
+        # to the moment the response is served, and the queue is built eagerly
+        # before any request arrives.
+        resp.merge(headers: resp[:headers].transform_values { |v| HeaderTokens.resolve(v, Time.now) })
       elsif paginates
         # Beyond defined responses for paginated ops: empty 200 terminates pagination
         call_count += 1

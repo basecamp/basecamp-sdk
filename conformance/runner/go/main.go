@@ -405,9 +405,16 @@ func runTest(tc TestCase) TestResult {
 		// WithResponse parsing requires it for JSON body detection).
 		w.Header().Set("Content-Type", "application/json")
 
-		// Set response headers (may override Content-Type)
+		// Set response headers (may override Content-Type). Resolved at serve
+		// time: a `{{httpdate+Ns}}` value is relative to NOW, not to when the
+		// fixture was loaded.
 		for k, v := range resp.Headers {
-			w.Header().Set(k, v)
+			resolved, err := resolveHeaderValue(v, time.Now())
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "fixture error: %v\n", err)
+				os.Exit(1)
+			}
+			w.Header().Set(k, resolved)
 		}
 
 		w.WriteHeader(resp.Status)

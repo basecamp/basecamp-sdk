@@ -1,4 +1,5 @@
 import Basecamp
+import ConformanceSupport
 import Foundation
 
 /// One outbound request captured by the scripted transport.
@@ -120,8 +121,10 @@ final class ScriptedTransport: Transport, @unchecked Sendable {
         }
 
         var headerFields = ["Content-Type": "application/json"]
+        // Resolved at serve time: a `{{httpdate+Ns}}` value is relative to
+        // NOW, not to when the fixture was loaded.
         for (key, value) in mock.allHeaders {
-            headerFields[key] = value
+            headerFields[key] = try resolveHeaderValue(value, now: Date())
         }
 
         let body: Data

@@ -5710,6 +5710,80 @@ func isRetryableStatus(statusCode int, operationId string) bool {
 	return false
 }
 
+// maxRetryAfterSeconds is SPEC §6's MAX_RETRY_AFTER_SECONDS: the value a parsed
+// Retry-After saturates at, in both wire forms. A representability bound (the
+// narrowest `retry_after` integer any SDK ships — this package's own `int` on a
+// 32-bit target — and the same 2147483647 §16 names as the shared ceiling),
+// not a policy cap. Spelled as a literal rather than math.MaxInt32 so the
+// generated file needs no extra import and the number reads as the contract.
+const maxRetryAfterSeconds = 2147483647
+
+// parseRetryAfter reads a Retry-After header per SPEC §6 "Retry-After Parsing
+// Algorithm": RFC 9110 delay-seconds (`1*DIGIT`, honoured when > 0) or an RFC
+// 7231 HTTP-date (the seconds remaining, rounded up, honoured when > 0), either
+// saturated at maxRetryAfterSeconds. Returns 0 for an absent, malformed, zero or
+// past value, which every caller reads as "no server-directed delay".
+//
+// This is the generated package's copy of go/pkg/basecamp's parseRetryAfter;
+// the two cannot share code in that direction because this package is the
+// dependency. Before this helper the loop below did a bare strconv.Atoi: no
+// HTTP-date at all (every date fell through to the backoff curve on every
+// generated operation), an unchecked range error, and a seconds×time.Second
+// product that wrapped negative for `Retry-After: 9223372036854775807` — an
+// already-expired timer, so the loop burned its whole attempt budget back to
+// back against an origin that had asked it to wait (#798).
+func parseRetryAfter(header string) int {
+	if header == "" {
+		return 0
+	}
+	if isDelaySeconds(header) {
+		digits := strings.TrimLeft(header, "0")
+		// Width first, so the answer never depends on a conversion that can
+		// itself overflow; then value.
+		if len(digits) > len("2147483647") {
+			return maxRetryAfterSeconds
+		}
+		seconds, err := strconv.ParseInt(digits, 10, 64)
+		if err != nil || seconds <= 0 {
+			return 0
+		}
+		if seconds > maxRetryAfterSeconds {
+			return maxRetryAfterSeconds
+		}
+		return int(seconds)
+	}
+	if t, err := http.ParseTime(header); err == nil {
+		remaining := time.Until(t)
+		if remaining <= 0 {
+			return 0
+		}
+		seconds := int64(remaining / time.Second)
+		if remaining%time.Second != 0 {
+			seconds++
+		}
+		if seconds > maxRetryAfterSeconds {
+			return maxRetryAfterSeconds
+		}
+		return int(seconds)
+	}
+	return 0
+}
+
+// isDelaySeconds reports whether the value is RFC 9110's `1*DIGIT` and nothing
+// else: no sign, no space, no separator, no decimal point. strconv would accept
+// a leading `+` or `-`, and `+5` is not a delay.
+func isDelaySeconds(value string) bool {
+	if value == "" {
+		return false
+	}
+	for _, r := range value {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
+}
+
 // captureReplayBody inspects the finalized first-attempt request and returns a
 // closure that reproduces its body on later attempts, plus the ContentLength to
 // restore each attempt. When retriable is false the body cannot be safely
@@ -5987,20 +6061,25 @@ func (c *Client) doWithRetry(ctx context.Context, buildRequest func() (*http.Req
 		// Close body before retry
 		_ = resp.Body.Close()
 
-		// For 429 responses, respect Retry-After header if present
-		retryDelay := delay
-		if resp.StatusCode == http.StatusTooManyRequests {
-			if retryAfter := resp.Header.Get("Retry-After"); retryAfter != "" {
-				if seconds, err := strconv.Atoi(retryAfter); err == nil && seconds > 0 {
-					retryDelay = time.Duration(seconds) * time.Second
-				}
-			}
+		// A Retry-After the origin sent replaces the backoff at EVERY status
+		// this branch reaches — the status already passed isRetryableStatus,
+		// and SPEC §6 "Retry-After Honouring" derives honouring from retry
+		// eligibility rather than from a status list (a 429-only gate here
+		// left a 503 carrying `Retry-After: 120` backing off ~1s). It is
+		// waited EXACTLY: the jitter term decorrelates delays this client
+		// chose, and a delay the origin named is already the origin's choice,
+		// so it is added to the local curve alone (SPEC §7 "Backoff Formula").
+		var wait time.Duration
+		if seconds := parseRetryAfter(resp.Header.Get("Retry-After")); seconds > 0 {
+			wait = time.Duration(seconds) * time.Second
+		} else {
+			wait = delay + time.Duration(rand.Int63n(int64(100*time.Millisecond)))
 		}
 
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()
-		case <-time.After(retryDelay + time.Duration(rand.Int63n(int64(100*time.Millisecond)))):
+		case <-time.After(wait):
 		}
 		delay = time.Duration(float64(delay) * c.RetryConfig.Multiplier)
 		if delay > c.RetryConfig.MaxDelay {
@@ -26320,11 +26399,7 @@ func ParseHTTPError(resp *http.Response) *APIError {
 	case http.StatusNotFound:
 		return NewNotFoundError("Resource", resp.Request.URL.Path)
 	case http.StatusTooManyRequests:
-		retryAfter := 0
-		if ra := resp.Header.Get("Retry-After"); ra != "" {
-			retryAfter, _ = strconv.Atoi(ra)
-		}
-		return NewRateLimitError(retryAfter)
+		return NewRateLimitError(parseRetryAfter(resp.Header.Get("Retry-After")))
 	case http.StatusInternalServerError, http.StatusBadGateway,
 		http.StatusServiceUnavailable, http.StatusGatewayTimeout:
 		return &APIError{

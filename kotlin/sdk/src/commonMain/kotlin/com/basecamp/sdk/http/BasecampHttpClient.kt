@@ -210,8 +210,13 @@ internal class BasecampHttpClient(
         }
 
         if (shouldRetry && attempt < maxAttempts) {
+            // A Retry-After replaces the backoff at EVERY status this branch
+            // reaches — it already passed the declared retryOn gate, and SPEC §6
+            // "Retry-After Honouring" derives honouring from retry eligibility,
+            // not from a status list. A `status == 429` gate here left a 503
+            // carrying `Retry-After: 120` backing off ~1s.
             val retryAfter = parseRetryAfter(response.headers["Retry-After"])
-            val delayMs = if (status == 429 && retryAfter != null) {
+            val delayMs = if (retryAfter != null) {
                 retryAfter.toLong() * 1000
             } else {
                 calculateBackoffDelay(baseDelayMs, attempt)
