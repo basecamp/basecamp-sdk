@@ -585,8 +585,13 @@ parses at, not only in step 4. One parse feeds both the retry loop's sleep and t
 an exhausted 503 that was slept on for the value the origin named surfaces that value to the caller,
 and so does the error §7 step 3i hands to `on_retry`. Step 4 spells it out only because 429 is where
 the `hint` is derived from it. `[CONFLICT: Go, TypeScript, Ruby, Python and Rust populate it at every
-status; Kotlin's `Api` and Swift's `.api` carry no slot for it yet — adding one is a source-breaking
-change to Swift's enum, tracked in #775.]`
+status THIS ALGORITHM MAPS — the shared mapper each retry loop and operation path returns through; a
+status mapped by hand elsewhere carries it only where that site parses the header itself. Ruby's two
+download hops do (#855); Go's hop-2 errors and its hop-1 500, Python's download errors on both the sync
+and async paths, and TypeScript's hop-2 errors build their `api_error` without the header, so a
+`Retry-After` on those responses is dropped — owed by the sweep (#857), where routing them through this
+mapper or parsing the header at the site is the change. Kotlin's `Api` and Swift's `.api` carry no slot
+for it yet — adding one is a source-breaking change to Swift's enum, tracked in #775.]`
 
 ### Statusless `api_error` for a malformed 2xx body `[manual]`
 
