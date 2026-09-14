@@ -5,6 +5,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 
 from basecamp.errors import (
+    MAX_RETRY_AFTER_SECONDS,
     AmbiguousError,
     ApiError,
     AuthError,
@@ -242,6 +243,50 @@ class TestParseRetryAfter:
     def test_negative_returns_none(self):
         assert _parse_retry_after("-5") is None
 
+    def test_sign_is_not_a_delay(self):
+        # RFC 9110's 1*DIGIT has no sign; int() would have read +5 as 5.
+        assert _parse_retry_after("+5") is None
+
+    def test_over_range_saturates_at_the_ceiling(self):
+        # No digit string is malformed for its width; before the ceiling the
+        # arbitrary-precision int reached float() on the retry path and raised.
+        assert _parse_retry_after("0120") == 120
+        assert _parse_retry_after("2147483647") == MAX_RETRY_AFTER_SECONDS
+        assert _parse_retry_after("2147483648") == MAX_RETRY_AFTER_SECONDS
+        assert _parse_retry_after("9" * 400) == MAX_RETRY_AFTER_SECONDS
+        # Past int()'s own digit limit (sys.int_info.str_digits_check_threshold and up).
+        assert _parse_retry_after("9" * 5000) == MAX_RETRY_AFTER_SECONDS
+        assert _parse_retry_after("0" * 5000) is None
+        assert _parse_retry_after("Fri, 31 Dec 9999 23:59:59 GMT") == MAX_RETRY_AFTER_SECONDS
+
+    def test_asctime_form_is_read_as_utc(self):
+        # parsedate_to_datetime hands the zoneless asctime form back naive;
+        # subtracting an aware now used to raise TypeError, swallowed into None.
+        now = datetime(2021, 6, 9, 10, 18, 14, tzinfo=UTC)
+        assert _parse_retry_after("Wed Jun  9 10:18:17 2021", now=now) == 3
+        assert _parse_retry_after("Wed Jun 19 10:18:17 2021", now=now) == 864003
+
+    def test_only_the_three_http_date_shapes_parse(self):
+        # parsedate_to_datetime is RFC 5322's parser and reads far more than
+        # RFC 7231's three forms: a bare date, a numeric or unknown zone. Each
+        # of those used to become a saturated delay (naive ones once the
+        # asctime branch read naive as UTC; aware ones outright); SPEC section
+        # 6's table says they are not dates, so the shape is gated before the
+        # parser sees the value and they fall through to backoff.
+        now = datetime(2021, 6, 9, 10, 18, 14, tzinfo=UTC)
+        assert _parse_retry_after("Wed, 09 Jun 2021 10:18:17 GMT", now=now) == 3
+        assert _parse_retry_after("Wednesday, 09-Jun-21 10:18:17 GMT", now=now) == 3
+        assert _parse_retry_after("Wed Jun  9 10:18:17 2021", now=now) == 3
+        for value in (
+            "1 Jan 2099 00:00:00",
+            "Wed, 09 Jun 2021 10:18:17 XYZ",
+            "Wed, 09 Jun 2021 10:18:17 -0000",
+            "Thu, 31 Dec 2099 23:59:59 +0000",
+            "Thu, 31 Dec 2099 23:59:59 UTC",
+            "Wed, 9 Jun 2021 10:18:17 GMT",
+        ):
+            assert _parse_retry_after(value, now=now) is None, value
+
     def test_none(self):
         assert _parse_retry_after(None) is None
 
@@ -249,7 +294,7 @@ class TestParseRetryAfter:
         from email.utils import format_datetime
 
         future = datetime.now(UTC) + timedelta(seconds=30)
-        value = format_datetime(future)
+        value = format_datetime(future, usegmt=True)  # IMF-fixdate ends in GMT
         result = _parse_retry_after(value)
         assert result is not None
         assert 25 <= result <= 35  # allow some clock drift
@@ -258,7 +303,7 @@ class TestParseRetryAfter:
         from email.utils import format_datetime
 
         past = datetime.now(UTC) - timedelta(seconds=30)
-        value = format_datetime(past)
+        value = format_datetime(past, usegmt=True)
         assert _parse_retry_after(value) is None
 
     def test_http_date_sub_second_remainder_rounds_up(self):

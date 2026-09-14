@@ -346,7 +346,7 @@ final class SchedulesServiceExtensionsTests: XCTestCase {
                 entryId: 1069479523, req: UpdateScheduleEntryRequest(summary: "never written"))
             XCTFail("expected the call to fail, but it succeeded", file: file, line: line)
         } catch let error as BasecampError {
-            guard case .api(_, let httpStatus, let hint, _, _) = error else {
+            guard case .api(_, let httpStatus, let hint, _, _, _) = error else {
                 return XCTFail("expected .api, got \(error)", file: file, line: line)
             }
             XCTAssertNil(httpStatus, "a malformed 2xx body carries no status", file: file, line: line)

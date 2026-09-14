@@ -206,10 +206,12 @@ final class DownloadTests: XCTestCase {
     }
 
     func testDownloadURL_redirectNoLocation() async throws {
+        // A hop-1 response, so its Retry-After rides on the error like any
+        // other status's (SPEC §6 Status Mapping) rather than being dropped.
         let transport = MockTransport { request in
             (
                 Data(),
-                makeHTTPResponse(url: request.url!.absoluteString, statusCode: 302, headers: [:])
+                makeHTTPResponse(url: request.url!.absoluteString, statusCode: 302, headers: ["Retry-After": "12"])
             )
         }
         let account = makeTestAccountClient(transport: transport)
@@ -222,6 +224,7 @@ final class DownloadTests: XCTestCase {
                 XCTFail("Expected api error, got \(error)")
                 return
             }
+            XCTAssertEqual(error.retryAfterSeconds, 12)
         }
     }
 
@@ -328,7 +331,7 @@ final class DownloadTests: XCTestCase {
             _ = try await account.downloadURL("https://3.basecampapi.com/999999999/attachments/abc/download/file.txt")
             XCTFail("Expected the signed hop's redirect to be refused")
         } catch let error as BasecampError {
-            guard case .api(let message, let httpStatus, _, _, _) = error else {
+            guard case .api(let message, let httpStatus, _, _, _, _) = error else {
                 XCTFail("Expected api error, got \(error)")
                 return
             }

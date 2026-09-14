@@ -842,6 +842,7 @@ private fun runTest(tc: TestCase): TestResult {
                     "code" -> caughtException.code
                     "message" -> caughtException.message
                     "requestId" -> caughtException.requestId
+                    "retryAfter" -> caughtException.retryAfterSeconds
                     "confirmationPeople.0.id" ->
                         (caughtException as? BasecampException.PeopleConfirmationRequired)?.people?.firstOrNull()?.id
                     else -> return TestResult(false, "Unknown error field: $fieldPath")

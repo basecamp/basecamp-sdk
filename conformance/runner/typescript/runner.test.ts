@@ -1717,6 +1717,7 @@ function checkAssertions(
           case "httpStatus": actual = err.httpStatus; break;
           case "retryable": actual = err.retryable; break;
           case "requestId": actual = err.requestId; break;
+          case "retryAfter": actual = err.retryAfter; break;
           case "code": actual = err.code; break;
           case "message": actual = err.message; break;
           case "confirmationPeople.0.id":

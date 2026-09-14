@@ -43,7 +43,7 @@ final class DecodeIsolationTests: XCTestCase {
             _ = try await account.projects.get(projectId: 1)
             XCTFail("expected a malformed body to fail")
         } catch let error as BasecampError {
-            guard case .api(let message, let httpStatus, _, _, _) = error else {
+            guard case .api(let message, let httpStatus, _, _, _, _) = error else {
                 return XCTFail("expected .api for a malformed body, got \(error)")
             }
             XCTAssertNil(httpStatus, "the transport succeeded, so no status describes this")
@@ -68,7 +68,7 @@ final class DecodeIsolationTests: XCTestCase {
             _ = try await account.projects.list()
             XCTFail("expected a malformed page to fail")
         } catch let error as BasecampError {
-            guard case .api(let message, let httpStatus, _, _, _) = error else {
+            guard case .api(let message, let httpStatus, _, _, _, _) = error else {
                 return XCTFail("expected .api, got \(error)")
             }
             XCTAssertNil(httpStatus)
@@ -112,7 +112,7 @@ final class DecodeIsolationTests: XCTestCase {
             _ = try await account.projects.list()
             XCTFail("expected the malformed second page to fail")
         } catch let error as BasecampError {
-            guard case .api(_, let httpStatus, _, _, _) = error else {
+            guard case .api(_, let httpStatus, _, _, _, _) = error else {
                 return XCTFail("expected .api, got \(error)")
             }
             XCTAssertEqual(pages.count, 2, "the second page must actually have been fetched")
@@ -133,7 +133,7 @@ final class DecodeIsolationTests: XCTestCase {
             _ = try await account.reports.personProgress(personId: 7)
             XCTFail("expected a body that is not JSON to fail")
         } catch let error as BasecampError {
-            guard case .api(let message, let httpStatus, _, _, _) = error else {
+            guard case .api(let message, let httpStatus, _, _, _, _) = error else {
                 return XCTFail("expected .api, got \(error)")
             }
             XCTAssertNil(httpStatus)
@@ -323,7 +323,7 @@ final class DecodeIsolationTests: XCTestCase {
             XCTFail("expected a malformed wrapper to fail", file: file, line: line)
             return ""
         } catch let error as BasecampError {
-            guard case .api(let message, let httpStatus, _, _, let decodeFailure) = error else {
+            guard case .api(let message, let httpStatus, _, _, let decodeFailure, _) = error else {
                 XCTFail("expected .api, got \(error)", file: file, line: line)
                 return ""
             }
