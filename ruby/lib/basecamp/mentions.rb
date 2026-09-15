@@ -86,6 +86,24 @@ module Basecamp
     # its own name and never compares equal to "bc-attachment".
     SPACE_CHARS = [ " ", "\t", "\n", "\r", "\f" ].freeze
 
+    # A percent-escape in the authority that names an ASCII byte, which the
+    # reference refuses — "%25" excepted, since it names the percent itself.
+    # Above ASCII an escape is accepted by both.
+    #
+    # MEASURED, not derived from the reference's parser: every printable byte
+    # was planted mid-host and swept, which is also what showed that the rule
+    # has an exception at all. Without this, 95 hosts resolved here that the
+    # reference refuses — the accepting direction, and on the write side the
+    # only authenticity-adjacent check is whether an sgid names the person it
+    # is given.
+    #
+    # The residue runs the other way and is stated rather than fixed: Ruby's URI
+    # parser refuses a raw non-ASCII byte in the authority, and the four
+    # printable bytes <tt>" < > ]</tt>, where the reference returns a usable id.
+    # That is six shapes out of 208 swept, all in the direction that reports
+    # FEWER mentions, and none of them is a host BC3 mints.
+    HOST_ASCII_ESCAPE = /%(?!25)[0-7][0-9A-Fa-f]/n
+
     # The largest person id an sgid may name, matching the 64-bit bound the
     # reference implementation's ParseInt applies. One definition, shared with
     # the id argument check.
@@ -253,6 +271,7 @@ module Basecamp
         return nil
       end
       return nil unless uri.scheme == "gid" && !uri.host.to_s.empty?
+      return nil if uri.host.b.match?(HOST_ASCII_ESCAPE)
 
       # A GlobalID path is exactly "/<Model>/<id>": no more, no less. The path is
       # unescaped first, as Go's url.Parse hands it over unescaped — so the two
