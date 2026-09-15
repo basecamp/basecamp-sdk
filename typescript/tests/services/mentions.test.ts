@@ -216,15 +216,15 @@ describe("personIdFromSGID", () => {
     expect(mentionedPersonIds(withAttr("sgid"))).toEqual([VICTOR]);
     expect(mentionedPersonIds(withAttr("SGID"))).toEqual([VICTOR]);
     expect(mentionedPersonIds(withAttr("\u017Fgid"))).toEqual([VICTOR]);
-    // The table's other half, U+212A KELVIN SIGN onto `k`, is unobservable at
-    // all three call sites — none of `sgid`, `bc-attachment`, `<p` or `<div`
-    // contains a `k` — so it is asserted through the helper's own rule rather
-    // than through a tag, and named here so nobody reads the tag rows as
-    // covering it. (The row this replaces was `"SGI\u0044"`, which is the
-    // string "SGID": byte-identical to the line above it and discriminating
-    // nothing.)
-    expect(mentionedPersonIds(withAttr("s\u212Aid"))).toEqual([]);
-    expect(mentionedPersonIds(`<div><bc-atta\u212Ahment sgid="${sgid}"></bc-attachment></div>`)).toEqual([]);
+    // The table's other half, U+212A KELVIN SIGN onto `k`, is asserted by
+    // NOTHING here, and that is the honest state rather than an oversight: no
+    // literal at any of the three call sites contains a `k`, so deleting that
+    // entry is behaviour-neutral and the guard-checking harness records it as a
+    // labelled control. The first attempt at covering it — `s\u212Aid` and
+    // `bc-atta\u212Ahment` — were theorems: they differ from the target at a
+    // position where Kelvin cannot fold whatever the table says, so every
+    // implementation returns []. The entry is kept because the rule it states
+    // is the reference's, and the next literal to contain a `k` inherits it.
 
     // And nothing else folds onto it: a Cyrillic ѕ, a sharp s, a full-width s
     // are all different letters to EqualFold, so the tag names nobody.

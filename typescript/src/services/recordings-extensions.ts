@@ -852,8 +852,9 @@ class CampfireIndex {
         // c.Bucket.ID == 0` and then `byBucket[c.Bucket.ID]` — a map key and a
         // comparand. Only `c.ID` below is ever put in a URL, so only it carries
         // the safe-integer clause. Routing this one through `numericId` failed
-        // a listing Go reads: an account whose bucket id is past 2^53 lost
-        // every Campfire in it, including the healthy entries beside it.
+        // the whole listing over one entry in ANOTHER bucket, which is worse
+        // than what happens now: such an entry is skipped, and the healthy ones
+        // beside it are kept.
         const listedBucketId = wireInteger(bucket.id, "campfire listing bucket");
         if (listedBucketId === 0) continue;
         // Unreachable while `summarize` refuses a caller `bucketId` past 2^53:
@@ -974,35 +975,43 @@ function recordingBody<T>(value: T): T {
  * a non-object was read for fields it does not have and dropped in silence, and
  * a `null` threw a raw TypeError out of the SDK on a body Go reads happily.
  */
-function sourceObject(value: unknown, what: string): Record<string, unknown> {
+function sourceObject(value: unknown, what: string, hint = DISCOVERY_HINT): Record<string, unknown> {
   if (value === null || value === undefined) return {};
   if (typeof value !== "object" || Array.isArray(value)) {
     throw Errors.apiError(
       truncateErrorMessage(`${what} is ${describeWireValue(value)} rather than an object`),
       undefined,
-      {
-        retryable: false,
-        hint: "the discovery source's response is malformed; no Campfire can be read from it",
-      },
+      { retryable: false, hint },
     );
   }
   return value as Record<string, unknown>;
 }
 
+/**
+ * The hints these helpers carry. Two, because the same shape check runs on two
+ * different reads: a Campfire discovery source, and the recording itself. The
+ * projection borrowed the discovery wording for a while, so a malformed
+ * `assignees` on a to-do read advised the caller about Campfires.
+ */
+const DISCOVERY_HINT = "the discovery source's response is malformed; no Campfire can be read from it";
+const RECORDING_HINT = "the response is malformed; the recording cannot be summarized from it";
+
+/** {@link sourceItems}, for a list read off the recording rather than a source. */
+function wireItems(value: unknown, what: string): Record<string, unknown>[] {
+  return sourceItems(value, what, RECORDING_HINT);
+}
+
 /** The same, for a list of them: absent is empty, a non-array is a failed read. */
-function sourceItems(value: unknown, what: string): Record<string, unknown>[] {
+function sourceItems(value: unknown, what: string, hint = DISCOVERY_HINT): Record<string, unknown>[] {
   if (value === null || value === undefined) return [];
   if (!Array.isArray(value)) {
     throw Errors.apiError(
       truncateErrorMessage(`${what} is ${describeWireValue(value)} rather than a list`),
       undefined,
-      {
-        retryable: false,
-        hint: "the discovery source's response is malformed; no Campfire can be read from it",
-      },
+      { retryable: false, hint },
     );
   }
-  return value.map((item) => sourceObject(item, `${what} entry`));
+  return value.map((item) => sourceObject(item, `${what} entry`, hint));
 }
 
 /**
@@ -1213,14 +1222,27 @@ export class RecordingsService extends GeneratedRecordingsService {
    * ```
    */
   async summarize(ref: RecordingRef): Promise<RecordingSummary> {
-    // `isSafeInteger`, not `isInteger`: every rule downstream of this — the
-    // listing's bucket filter, the cross-project check — decides by comparing
-    // this number to one that arrived through JSON.parse, and a caller id past
-    // 2^53 has already been rounded before it reaches here. Two int64 buckets
-    // can round onto one double, so the comparisons would be answering about a
-    // value neither side actually holds. Refusing it is the honest end of SPEC
-    // waiver 1B.6, and it is a usage error because the caller, not the server,
-    // supplied it.
+    // `isSafeInteger`, not `isInteger`, and for two different reasons — one per
+    // id, both worth stating because a reader checking only the first would
+    // think the second was along for the ride.
+    //
+    // `bucketId` is COMPARED: the listing's bucket filter and the cross-project
+    // check both weigh it against a number that arrived through JSON.parse.
+    // Two int64 buckets can round onto one double, so past 2^53 those
+    // comparisons answer about a value neither side holds — which is how a
+    // recording from another project passed as a match.
+    //
+    // `recordingId` is ADDRESSED: it is interpolated into every read this
+    // composite makes, so a rounded value fetches a DIFFERENT recording and
+    // reports it as the one asked for. That is the same rule `numericId`
+    // applies to a Campfire id, at the other end of the same URL.
+    //
+    // Go accepts both — its ids are int64 — so this is a refusal the reference
+    // does not make, and it is this port's, not a reading of SPEC waiver 1B.6:
+    // the waiver is about decoding ids the API sends, and says nothing about
+    // caller input. A `usage` error because the caller supplied the value, and
+    // a refusal rather than a silent rounding because the alternative is
+    // answering about a recording nobody asked for.
     if (
       !Number.isSafeInteger(ref.bucketId) ||
       ref.bucketId <= 0 ||
@@ -1270,11 +1292,14 @@ export class RecordingsService extends GeneratedRecordingsService {
     // a value rule of exactly "not zero, not the one asked for". `wireInteger`,
     // not `numericId`: the safe-integer clause belongs to the sites that BUILD
     // A URL from the id, where a rounded value addresses a different Campfire.
-    // Nothing is addressed here; the id is only compared, and `ref.bucketId` is
-    // a `number` that JSON.parse rounds identically, so a value past 2^53 still
-    // compares meaningfully (waiver 1B.6). Refusing it would turn a limitation
-    // the SDK documents into a failed read, and would be this port's policy
-    // wearing the reference's shape.
+    // Nothing is addressed here; the id is only compared.
+    //
+    // This paragraph used to continue "and `ref.bucketId` rounds identically,
+    // so a value past 2^53 still compares meaningfully". That was wrong, it is
+    // deleted rather than softened, and the deletion is the point: it argued
+    // for the behaviour two lines below it, and a reader comparing the two
+    // would have believed the prose. What replaced it lives in `summarize`,
+    // which refuses a caller id this runtime cannot hold exactly.
     const readBucketId = wireInteger(summary.bucket?.id, "the recording read's bucket");
     // `!Number.isSafeInteger` is a MISMATCH, not a pass — and, like the listing
     // filter, unreachable while `ref.bucketId` must itself be a safe integer,
@@ -1700,11 +1725,14 @@ function projectRecording(
   // `assignees` is a LIST of them: Go refuses a non-array and a non-object
   // element, and takes null as the nil slice. Go's own `omitempty` is why an
   // empty list is dropped rather than emitted.
-  const assignees = (nested.assignees as unknown) === undefined || nested.assignees === null
-    ? []
-    : sourceItems(nested.assignees, "a recording assignees list").map(
-        (assignee) => nestedIdentity(assignee, "a recording assignee") as NonNullable<typeof nested.assignees>[number],
-      );
+  // `wireItems` does the whole job: absent and null are the empty list, a
+  // non-array fails the read, and each element goes through the same object
+  // check the other three identities use. An earlier spelling wrapped every
+  // element in `nestedIdentity` as well and credited the elementwise refusal to
+  // it — that call could refuse nothing, having been handed an object already.
+  const assignees = wireItems(nested.assignees, "a recording assignees list") as NonNullable<
+    typeof nested.assignees
+  >;
   if (assignees.length > 0) summary.assignees = assignees;
   return summary;
 }
@@ -1740,11 +1768,16 @@ function firstNonEmpty(what: string, ...values: (string | undefined)[]): string 
  */
 /** Go's zero `time.Time`, which is what it marshals for an absent instant. */
 const ZERO_INSTANT = "0001-01-01T00:00:00Z";
-// Measured against Go's decoder rather than read off RFC 3339: the fraction may
-// be separated by a COMMA as well as a dot (`…05,5Z` decodes, and re-marshals
-// as `.5`), and the offset's own range is wider than a clock — hour 00 to 24
-// and minute 00 to 60 are all accepted, 25 and 61 are not.
-const RFC3339 = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:[.,]\d+)?(?:Z|([+-])(\d{2}):(\d{2}))$/;
+// Measured against Go's decoder rather than read off RFC 3339, in three places
+// where it is wider than the grammar suggests: the fraction may be separated by
+// a COMMA as well as a dot (`…05,5Z` decodes, and re-marshals as `.5`); the
+// offset's range is wider than a clock, hour 00 to 24 and minute 00 to 60, with
+// 25 and 61 refused; and the HOUR is the one field Go parses at variable width
+// (`stdHour` calls `getnum` with `fixed=false`), so `T3:04:05Z` decodes and
+// re-marshals as `T03:04:05Z`. Measured alongside it: a single-digit month,
+// day, minute, second or offset component is refused, so `\d{1,2}` belongs to
+// the hour alone.
+const RFC3339 = /^(\d{4})-(\d{2})-(\d{2})T(\d{1,2}):(\d{2}):(\d{2})(?:[.,]\d+)?(?:Z|[+-](\d{2}):(\d{2}))$/;
 
 /**
  * The instant a routed read carries, refused when it is not one.
@@ -1759,9 +1792,16 @@ const RFC3339 = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:[.,]\d+)?(?:
  * plausible timestamp instead of a visibly empty one.
  *
  * What this does not model is the re-rendering: Go parses and re-marshals, so
- * `2024-01-02T03:04:05.000Z` comes back as `…:05Z` there and verbatim here.
- * The conformance runner compares instants rather than strings, and a
- * caller reading `updated_at` gets the same instant either way.
+ * `2024-01-02T03:04:05.000Z` comes back as `…:05Z` there and verbatim here, and
+ * `T3:04:05Z` as `T03:04:05Z`. The conformance runner compares instants rather
+ * than strings, so that difference is invisible to it — with two exceptions
+ * worth stating rather than discovering: `,5` and an offset of `+24:00` are
+ * accepted by Go's DECODER and are not values a JS `Date` can parse, so a
+ * consumer doing date arithmetic on them gets `NaN` where one reading Go's
+ * re-rendered output would not. (`+24:00` cannot even be marshalled back by Go
+ * — its own encoder rejects an offset hour outside [0,23].) Accepting them is
+ * still right: refusing a body the reference reads would be the worse error,
+ * and this composite reports what the API served.
  */
 function recordingInstant(value: unknown): string {
   if (value === undefined || value === null) return ZERO_INSTANT;
@@ -1774,8 +1814,8 @@ function recordingInstant(value: unknown): string {
     const hour = Number(parts[4]);
     const minute = Number(parts[5]);
     const second = Number(parts[6]);
-    const offsetHour = parts[8] === undefined ? 0 : Number(parts[8]);
-    const offsetMinute = parts[9] === undefined ? 0 : Number(parts[9]);
+    const offsetHour = parts[7] === undefined ? 0 : Number(parts[7]);
+    const offsetMinute = parts[8] === undefined ? 0 : Number(parts[8]);
     // The shape is not enough: 2024-02-30 and 25:04 match it and Go refuses
     // them. A UTC round-trip is what rejects a date the calendar does not have
     // — with `setUTCFullYear` after it, because `Date.UTC(1, …)` means 1901,

@@ -498,6 +498,52 @@ describe("recordings.summarize", () => {
       expect(summary.id).toBe(9007199254740992); // rounded by JSON.parse, per waiver 1B.6
     });
 
+    it("refuses a caller id it could only address after rounding, per id and per reason", async () => {
+      // Two ids, two different reasons, and only one of them was covered: the
+      // comment argued the comparison sites, which read `bucketId`, while
+      // `recordingId` is INTERPOLATED into every read — a rounded value fetches
+      // a different recording and reports it as the one asked for. Reverting
+      // that half to `isInteger` left the whole suite green.
+      const paths = trackRequests();
+      for (const ref of [
+        { bucketId: BUCKET, recordingId: 9007199254740993, recordingType: "Comment" as const },
+        { bucketId: 9007199254740993, recordingId: 1, recordingType: "Comment" as const },
+      ]) {
+        const fresh = createBasecampClient({ accountId: "12345", accessToken: "t", enableRetry: false });
+        const err = await fresh.recordings.summarize(ref).catch((e: unknown) => e);
+        expect(err, JSON.stringify(ref)).toBeInstanceOf(BasecampError);
+        expect((err as BasecampError).code, JSON.stringify(ref)).toBe("usage");
+      }
+      // And nothing was read under a rounded id — an exception-only assertion
+      // passes in the world where the request went out anyway.
+      expect(paths).toEqual([]);
+    });
+
+    it("pins the int64 window where nothing else masks it", async () => {
+      // `wireInteger`'s window is masked at the three id sites, because
+      // `numericId`'s safe-integer clause refuses an out-of-range value first;
+      // the row added for it could not tell the two apart. The bucket
+      // cross-check is the one site that calls `wireInteger` alone, so it is
+      // where the window can be pinned: 9223372036854775808 is a decode error
+      // in Go and JSON.parse holds it as exactly 2^63.
+      server.use(
+        http.get(`${BASE_URL}/comments/1`, () =>
+          HttpResponse.text(
+            `{"id":1,"title":"t","content":"c","bucket":{"id":9223372036854775808,"name":"B","type":"Project"}}`,
+            { headers: { "content-type": "application/json" } },
+          ),
+        ),
+      );
+
+      const err = await client.recordings
+        .summarize({ bucketId: BUCKET, recordingId: 1, recordingType: "Comment" })
+        .catch((e: unknown) => e);
+
+      expect(err).toBeInstanceOf(BasecampError);
+      expect((err as BasecampError).code).toBe("api_error");
+      expect(err).not.toBeInstanceOf(BucketMismatchError);
+    });
+
     it("does not let rounding pass a recording from another project as a match", async () => {
       // The defect this replaces was argued for in a comment: two ids "round
       // identically", so comparing the rounded values was said to still mean
@@ -584,6 +630,12 @@ describe("recordings.summarize", () => {
           .catch((e: unknown) => e);
         expect(err, value).toBeInstanceOf(BasecampError);
         expect((err as BasecampError).code, value).toBe("api_error");
+        // The hint belongs to the read that failed. These helpers are shared
+        // with Campfire discovery, and for a while a malformed `assignees` on a
+        // to-do advised the caller about Campfires — the same "sends a reader
+        // hunting for the wrong thing" the value vocabulary was fixed for.
+        expect((err as BasecampError).hint, value).not.toContain("Campfire");
+        expect((err as BasecampError).hint, value).toContain("recording");
       }
 
       // And null in any of them is Go's zero value: the key is omitted, not
@@ -626,7 +678,15 @@ describe("recordings.summarize", () => {
                              // the last of which nothing held before.
                              '"2024-01-02T03:04:05+25:00"', '"2024-01-02T03:04:05+00:61"',
                              '"10000-01-01T00:00:00Z"', '"2023-02-29T03:04:05Z"',
-                             '"2024-01-02T03:04:05"', '"2024-01-02T03:04:05.5,5Z"']) {
+                             '"2024-01-02T03:04:05"', '"2024-01-02T03:04:05.5,5Z"',
+                             // And the hour is the ONLY variable-width field:
+                             // a single-digit month, day, minute, second or
+                             // offset component is refused, so `\d{1,2}`
+                             // belongs there and nowhere else.
+                             '"2024-1-02T03:04:05Z"', '"2024-01-2T03:04:05Z"',
+                             '"2024-01-02T03:4:05Z"', '"2024-01-02T03:04:5Z"',
+                             '"2024-01-02T03:04:05+5:30"', '"2024-01-02T03:04:05+05:3"',
+                             '"2024-01-02T003:04:05Z"']) {
         const fresh = createBasecampClient({ accountId: "12345", accessToken: "t", enableRetry: false });
         server.use(
           http.get(`${BASE_URL}/comments/1`, () =>
@@ -662,6 +722,12 @@ describe("recordings.summarize", () => {
         ['"2024-01-02T03:04:05+00:60"', "2024-01-02T03:04:05+00:60"],
         ['"9999-12-31T23:59:59Z"', "9999-12-31T23:59:59Z"],
         ['"2024-02-29T03:04:05Z"', "2024-02-29T03:04:05Z"],
+        // The HOUR is the one field Go parses at variable width (`stdHour`
+        // calls `getnum` with fixed=false), so this decodes there and
+        // re-marshals as T03. Refusing it was the same defect as refusing the
+        // comma, found by the sweep that was supposed to have covered it.
+        ['"2024-01-02T3:04:05Z"', "2024-01-02T3:04:05Z"],
+        ['"2024-01-02T3:04:05+05:30"', "2024-01-02T3:04:05+05:30"],
         ['"2024-01-02T03:04:05Z"', "2024-01-02T03:04:05Z"],
         ['"2024-01-02T03:04:05.123456789Z"', "2024-01-02T03:04:05.123456789Z"],
         ['"2024-01-02T03:04:05-07:00"', "2024-01-02T03:04:05-07:00"],
@@ -1379,18 +1445,15 @@ describe("recordings.summarize", () => {
       // project read with them. (`null` is the one that decodes, to 0, and the
       // test above covers it.) A fraction reaching the search would have issued
       // GET /chats/1.5/lines/{id}; a `true` reaching it, GET /chats/true/....
-      // ±2^63 is in this list for the int64 window, whose two ends are not
-      // symmetric after rounding: 9223372036854775808 rounds to exactly 2^63
-      // and is caught, while -9223372036854775809 rounds to exactly -2^63,
-      // which is a legal value, and cannot be told from it here. The first is
-      // pinned; the second is stated in the helper rather than asserted, since
-      // no assertion could distinguish it.
       // 2^63 is in this list for the int64 window, whose two ends are not
       // symmetric after rounding: 9223372036854775808 rounds to exactly 2^63
       // and is caught, while -9223372036854775809 rounds to exactly -2^63,
-      // which is a legal value and cannot be told from it here. The first is
-      // pinned; the second is stated in the helper rather than asserted,
-      // because no assertion could distinguish it.
+      // which is a legal value and cannot be told from it here. Neither end is
+      // PINNED at this call site, and the reason is the mask: `numericId`'s
+      // safe-integer clause refuses both before `wireInteger`'s window sees
+      // them, so a revert of the window alone is invisible here. The row that
+      // does pin it feeds a bucket id — the one site that calls `wireInteger`
+      // without `numericId` in front of it.
       for (const badId of [true, false, "77", 1.5, 1e20, [1], {}, 9223372036854775808]) {
         const fresh = createBasecampClient({ accountId: "12345", accessToken: "t", enableRetry: false });
         server.use(
