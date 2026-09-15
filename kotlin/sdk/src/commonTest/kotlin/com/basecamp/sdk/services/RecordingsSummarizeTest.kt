@@ -653,4 +653,35 @@ class RecordingsSummarizeTest {
         assertEquals(fetchesAfterFirst, listingFetches, "a consulted source is not re-read with the budget spent")
         client.close()
     }
+
+    @Test
+    fun anUntypedRecordingWithAWrongTypedScalarIsRefusedNotProjectedEmpty() = runTest {
+        // A present value of the wrong type is a malformed body, not an absent
+        // field. Reading the projection key by key coerced one into "" and
+        // produced a successful summary with a blank title; the typed reads and
+        // the Go reference both refuse such a body, and the whole point of
+        // decoding this one through a declared shape is that it refuses it too.
+        //
+        // `coerceInputValues` is on for this client, so this is measured rather
+        // than assumed: it rescues an explicit null for a non-nullable member
+        // with a default, and does NOT rescue a type mismatch.
+        for (field in listOf("title", "status", "app_url", "updated_at", "description")) {
+            val client = client {
+                ok(
+                    """{"id": 7, "type": "CloudFile", "$field": 42,
+                        "app_url": "https://3.basecamp.com/999/x", "updated_at": "2022-11-22T08:30:00.000Z"}"""
+                        .replace("\"app_url\": \"https", if (field == "app_url") "\"_unused\": \"https" else "\"app_url\": \"https")
+                        .replace("\"updated_at\": \"2022", if (field == "updated_at") "\"_unused2\": \"2022" else "\"updated_at\": \"2022"),
+                )
+            }
+            val failure = assertFailsWith<BasecampException.Api>("$field: a wrong-typed scalar must be refused") {
+                client.forAccount("999").recordings.summarize(
+                    RecordingRef(BUCKET, 7, recordingType = "CloudFile"),
+                )
+            }
+            assertNull(failure.httpStatus, "$field: the request succeeded, so no status describes this")
+            assertNotNull(failure.decodeFailure, "$field: carries the decoder's own refusal")
+            client.close()
+        }
+    }
 }
