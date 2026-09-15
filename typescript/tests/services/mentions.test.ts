@@ -13,6 +13,7 @@ import {
   mentionMarkup,
   withMentions,
 } from "../../src/index.js";
+import { namedEntityNames } from "../../src/services/mentions.js";
 import { BasecampError } from "../../src/errors.js";
 import type { Person } from "../../src/generated/services/people.js";
 import { jsonSGID, legacySGID, personSGID, railsSGID } from "../helpers/sgid.js";
@@ -248,6 +249,47 @@ describe("mentionedPersonIds", () => {
     expect(named(`&#9${sgid}`)).toEqual([]);
     expect(named(`&#x9${sgid}`)).toEqual([]);
     expect(named(`&#${sgid}`)).toEqual([]);
+  });
+
+  it("keeps the entity table to the shape the search bound assumes", () => {
+    // unescapeEntity bounds its search by the run of name characters present,
+    // which is only sound while every key is `[A-Za-z0-9]+` with an optional
+    // `;`. A row that broke that — a name carrying a hyphen, say — would
+    // silently stop being findable rather than fail to compile, so the
+    // assumption is asserted rather than trusted.
+    const names = namedEntityNames();
+    expect(names.length).toBeGreaterThan(20);
+    for (const name of names) {
+      expect(name).toMatch(/^[A-Za-z0-9]+;?$/);
+    }
+  });
+
+  it("scans a run of ampersands linearly", () => {
+    // A ratio, not a wall clock: an absolute threshold measures the machine,
+    // and this ran on CI. Quadratic would be near 16x for 4x the input; linear
+    // is near 4x. The floor keeps a fast machine from making it vacuous by
+    // timing two runs that both round to nothing.
+    //
+    // What this CANNOT catch is a regression to searching every table length
+    // per "&" — that is linear too, just with a constant about 1.7x larger.
+    // The bound itself is pinned by the table-shape test above.
+    const scan = (n: number): number => {
+      const input = `<bc-attachment sgid="${"&".repeat(n)}"></bc-attachment>`;
+      for (let i = 0; i < 3; i++) mentionedPersonIds(input);
+      let best = Infinity;
+      for (let r = 0; r < 5; r++) {
+        const start = performance.now();
+        mentionedPersonIds(input);
+        best = Math.min(best, performance.now() - start);
+      }
+      return best;
+    };
+
+    const small = scan(50_000);
+    const large = scan(200_000);
+    // Only meaningful once the smaller run is measurable at all.
+    if (small < 0.5) return;
+    expect(large / small).toBeLessThan(8);
   });
 
   it("stops at an unterminated comment or tag rather than guessing", () => {
