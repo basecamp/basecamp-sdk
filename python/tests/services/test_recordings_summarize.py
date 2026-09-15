@@ -402,6 +402,47 @@ class TestChatLineDiscovery:
         assert len(raised.value.campfire_ids) == MAX_CAMPFIRE_CANDIDATES
 
     @respx.mock
+    def test_a_listing_failure_that_is_not_an_overflow_passes_through(self):
+        # Only a listing OVER ITS CAP is a settled verdict about where the line
+        # is. A 403 says nothing about that, so it is raised as itself rather
+        # than becoming "discovery incomplete". Named after Go's
+        # TestSummarize_ChatLineListingFailurePassesThrough.
+        respx.get(f"{BASE}/projects/{BUCKET}").mock(return_value=_not_found())
+        respx.get(f"{BASE}/chats.json").mock(return_value=httpx.Response(403, json={"error": "Denied"}))
+
+        with pytest.raises(ForbiddenError):
+            _account().recordings.summarize(bucket_id=BUCKET, recording_id=LINE_ID, event_type="chat.line.created")
+
+    @respx.mock
+    def test_the_dock_refresh_gets_its_say_before_the_listing_is_fetched(self):
+        # A listing that is down must never stand between a project's line and
+        # the one project read that finds it. Named after Go's
+        # TestSummarize_ChatLineDockRefreshIsNotBlockedByTheListing.
+        clock = [0.0]
+        respx.get(f"{BASE}/projects/{BUCKET}").mock(
+            side_effect=[httpx.Response(200, json=_project(1)), httpx.Response(200, json=_project(1, 2))]
+        )
+        respx.get(url__regex=rf"{BASE}/chats/1/lines/\d+").mock(return_value=_not_found())
+        respx.get(url__regex=rf"{BASE}/chats/2/lines/\d+").mock(return_value=httpx.Response(200, json=_line(2)))
+        listing = respx.get(f"{BASE}/chats.json").mock(
+            side_effect=[httpx.Response(200, json=[]), httpx.Response(500, json={"error": "boom"})]
+        )
+        account = _account(now=lambda: clock[0])
+
+        # Prime both caches; the line is under neither source yet.
+        with pytest.raises(RecordingUnresolvedError):
+            account.recordings.summarize(bucket_id=BUCKET, recording_id=LINE_ID, event_type="chat.line.created")
+        assert listing.call_count == 1
+
+        # The Campfire now exists. The dock refresh finds it, and the listing —
+        # which would answer 500 — is never consulted again.
+        clock[0] = _campfire_index.CAMPFIRE_INDEX_MIN_REFRESH + 1
+        summary = account.recordings.summarize(bucket_id=BUCKET, recording_id=LINE_ID, event_type="chat.line.created")
+
+        assert summary["campfire_id"] == 2
+        assert listing.call_count == 1, "a failing listing must not block the dock's refresh"
+
+    @respx.mock
     def test_a_listing_entry_missing_an_id_is_skipped_not_a_crash(self):
         # This runs inside a cache loader whose failure is shared with every
         # waiter on the key, and a bare KeyError would escape the SDK's error

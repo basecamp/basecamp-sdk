@@ -141,6 +141,17 @@ class TestPersonIDFromSGID:
         # BC3 never wrote.
         assert person_id_from_sgid(json_sgid("gid://bc3/Person/١٢")) is None
 
+    def test_a_negative_ivar_count_does_not_slip_an_envelope_through(self):
+        # Marshal's packed integers are signed, so an "I" object's ivar count
+        # can be written negative; the reader must refuse it rather than skip
+        # the ivar loop and accept the object. Named after Go's
+        # TestPersonIDFromSGID_HostileMarshal subtest.
+        import base64 as b64
+
+        # 0x04 0x08 "I" '"' <len 4> "gid:" ... with an ivar count of -1.
+        payload = b'\x04\x08I"\x09gid://bc3/Person/77\xfa'
+        assert person_id_from_sgid(b64.urlsafe_b64encode(payload).decode().rstrip("=")) is None
+
     @pytest.mark.parametrize("sgid", ["", "   ", "not base64!!", "--", "e30", "eyJhIjoxfQ"])
     def test_refuses_undecodable_input(self, sgid):
         assert person_id_from_sgid(sgid) is None
@@ -317,6 +328,13 @@ class TestPersonIDFromSGID:
             ("&#4294967361;", "A"),
             ("&#0000004294967361;", "A"),
             ("&#x100000041;", "A"),
+            # These exceed 2**32, so they need the MASK and not merely the
+            # signed conversion. Without them the table passed with the mask
+            # deleted — a row that named the wrap and did not test it.
+            ("&#8589934657;", "A"),
+            ("&#12884901953;", "A"),
+            ("&#18446744073709551681;", "A"),
+            ("&#x200000041;", "A"),
             # Leading zeros are an ordinary spelling and must not be capped
             # away, which is what a digit-count limit would do.
             ("&#00000000065;", "A"),
@@ -524,6 +542,13 @@ class TestWithMentions:
         assert with_mentions(content, [person(VICTOR_ID, VICTOR_SGID)]) == (
             f'<p class="x" data-a="b>c">{mention(VICTOR_SGID)} On it.</p>'
         )
+
+    @pytest.mark.parametrize("opening", ["<paragraph>", "<divx>", "<pre>", "<b>", "<p_>"])
+    def test_a_tag_that_only_starts_like_a_block_is_a_bare_prefix(self, opening):
+        # "<p" and "<div" match only when the NAME ends there. Named after Go's
+        # WithMentions subtest of the same description.
+        content = f"{opening}On it.</x>"
+        assert with_mentions(content, [person(VICTOR_ID, VICTOR_SGID)]) == f"{mention(VICTOR_SGID)} {content}"
 
     def test_prefixes_content_that_does_not_open_with_a_block(self):
         assert with_mentions("On it.", [person(VICTOR_ID, VICTOR_SGID)]) == f"{mention(VICTOR_SGID)} On it."

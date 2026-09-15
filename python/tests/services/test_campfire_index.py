@@ -252,6 +252,54 @@ class TestBound:
         assert cache.peek(1).value == 1
         assert cache.peek(3).value == 3
 
+    def test_eviction_tie_breaks_by_publication_order(self):
+        # Equal fetch times must not leave the choice to dict iteration order.
+        # Named after Go's TestTTLCache_EvictionTieBreaksByPublicationOrder.
+        clock = Clock()
+        cache = _cache(clock, max_items=2)
+        cache.get("first", refresh=False, load=lambda: "1")
+        cache.get("second", refresh=False, load=lambda: "2")
+        cache.get("third", refresh=False, load=lambda: "3")
+
+        assert cache.peek("first") is None, "published first, evicted first"
+        assert cache.peek("second").value == "2"
+        assert cache.peek("third").value == "3"
+
+    def test_a_waiter_keeps_its_value_across_eviction(self):
+        # The waiter reads off the LOAD record, so a sweep or the bound
+        # dropping the entry in the meantime cannot take it. Named after Go's
+        # TestTTLCache_WaiterKeepsItsValueAcrossEviction.
+        clock = Clock()
+        cache = _cache(clock, max_items=1)
+        started = threading.Event()
+        release = threading.Event()
+        value = []
+
+        def slow():
+            started.set()
+            release.wait(5)
+            return "mine"
+
+        waiter_result = []
+
+        def wait_for_it():
+            waiter_result.append(cache.get("k", refresh=False, load=slow).value)
+
+        owner = threading.Thread(target=wait_for_it)
+        owner.start()
+        assert started.wait(5)
+        waiter = threading.Thread(target=wait_for_it)
+        waiter.start()
+        release.set()
+        owner.join(5)
+        waiter.join(5)
+        # Evict it out from under them.
+        cache.get("other", refresh=False, load=lambda: "x")
+
+        assert waiter_result == ["mine", "mine"]
+        assert cache.peek("k") is None
+        del value
+
     def test_an_overwrite_takes_no_new_room(self):
         clock = Clock()
         cache = _cache(clock, max_items=2, floor=0.0)
@@ -599,6 +647,59 @@ class TestAsyncCache:
         await cache._publish("k", _AsyncLoad(), "v", None)
 
         assert cache._inflight.get("k") is successor, "a successor's slot must survive"
+
+    async def test_an_owner_cancelled_after_a_genuine_failure_is_not_retried(self):
+        # Go's condition is `err != nil && callerDone && errors.Is(err, ctxErr)`
+        # — BOTH halves. A 403 that happens to surface while the owner is being
+        # cancelled is still the load's own failure and is shared, not re-run
+        # once per waiter. Named after Go's
+        # TestTTLCache_OwnerCancelledAfterAGenuineFailureDoesNotRetryIt.
+        from basecamp.errors import ForbiddenError
+        from basecamp.services._campfire_index import _owner_cancellation
+
+        task = asyncio.current_task()
+        assert task is not None
+        task.cancel()
+        try:
+            assert _owner_cancellation(ForbiddenError("Denied")) is False
+            assert _owner_cancellation(asyncio.CancelledError()) is True
+        finally:
+            task.uncancel()
+
+    async def test_waiters_behind_a_cancelled_owner_reload_once_between_them(self):
+        # The reacquire is "one load, not a stampede": the first waiter to go
+        # round takes the slot and the rest queue behind IT. Go bounds the same
+        # thing with `!reacquired`, which is per-caller — so the property worth
+        # pinning is the total, not the flag. Named after Go's
+        # TestTTLCache_ReacquireIsBounded.
+        clock = Clock()
+        cache = _async_cache(clock)
+        loads = []
+        started = asyncio.Event()
+        gate = asyncio.Event()
+
+        async def blocking_load():
+            loads.append("owner")
+            started.set()
+            await gate.wait()
+            return "v"
+
+        async def waiter_load():
+            loads.append("waiter")
+            return "v"
+
+        owner = asyncio.create_task(cache.get("k", refresh=False, load=blocking_load))
+        await started.wait()
+        waiters = [asyncio.create_task(cache.get("k", refresh=False, load=waiter_load)) for _ in range(4)]
+        await asyncio.sleep(0)
+        owner.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await owner
+
+        hits = await asyncio.gather(*waiters)
+
+        assert [hit.value for hit in hits] == ["v"] * 4
+        assert loads.count("waiter") == 1, "four waiters, one reload between them"
 
     async def test_a_waiter_is_never_handed_a_bare_base_exception(self):
         # The protection is keyed on the CLASS, not on who was cancelled:
