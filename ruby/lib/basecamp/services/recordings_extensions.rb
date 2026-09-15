@@ -272,8 +272,17 @@ module Basecamp
       # Encoding::CompatibilityError straight out of the public method for both
       # arguments. The tables are ASCII, and an ASCII-only binary string is
       # eql? to its text twin, so the lookups are unaffected.
+      #
+      # Trimmed by {Basecamp::Text}, not by String#strip, and the difference is
+      # a routing decision rather than a nicety. strip removes a leading or
+      # trailing NUL where the reference's TrimSpace does not, so "Comment\0"
+      # and "comment.created\0" SELECTED A REAL TYPE here and were
+      # unknown_recording_type there — a malformed key reaching a live read, in
+      # the accepting direction. strip on a byte string also leaves the nineteen
+      # multi-byte spaces the reference trims. Measured: one byte of 256
+      # diverges one way and nineteen characters the other.
       def route_recording(event_type:, recording_type:)
-        type = recording_type.to_s.b.strip
+        type = Text.trim_space(recording_type.to_s)
         unless type.empty?
           return :chat_line if type.start_with?(CHAT_LINE_TYPE_PREFIX)
 
@@ -283,7 +292,7 @@ module Basecamp
           raise RecordingRoutingError.unknown_recording_type(type)
         end
 
-        subject_type = event_type.to_s.b.strip
+        subject_type = Text.trim_space(event_type.to_s)
         raise RecordingRoutingError.unknown_recording_type(subject_type) if subject_type.empty?
 
         # A feed type is "<subject>.<action>"; the subject names the recording
