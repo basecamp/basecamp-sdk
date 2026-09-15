@@ -145,7 +145,7 @@ module Basecamp
         # A malformed "bucket" member is read as absent rather than raising:
         # Hash#dig through a non-Hash is a TypeError, and a bad projection must
         # not turn into an exception class no caller expects.
-        read_bucket_id = summary["bucket"].is_a?(Hash) ? summary["bucket"]["id"].to_i : 0
+        read_bucket_id = summary["bucket"].is_a?(Hash) ? Ids.from_wire(summary["bucket"]["id"]) : 0
         if read_bucket_id.positive? && read_bucket_id != bucket_id
           raise BucketMismatchError.new(
             bucket_id: bucket_id, actual_bucket_id: read_bucket_id, recording_id: recording_id
@@ -504,7 +504,7 @@ module Basecamp
         dock.filter_map do |item|
           next unless item.is_a?(Hash) && item["name"] == "chat"
 
-          id = item["id"].to_i
+          id = Ids.from_wire(item["id"])
           id.positive? ? id : nil
         end
       end
@@ -524,13 +524,13 @@ module Basecamp
           bucket = campfire["bucket"]
           next unless bucket.is_a?(Hash)
 
-          bucket_id = bucket["id"].to_i
+          bucket_id = Ids.from_wire(bucket["id"])
           next unless bucket_id.positive?
 
           # Normalized exactly as the dock's ids are. Otherwise a listing id
           # that arrived as a string could never match a dock-sourced integer in
           # the search's "already tried" set, and would spend budget twice.
-          campfire_id = campfire["id"].to_i
+          campfire_id = Ids.from_wire(campfire["id"])
           next unless campfire_id.positive?
 
           (by_bucket[bucket_id] ||= []) << campfire_id
