@@ -1060,6 +1060,33 @@ func dispatchOperation(_ tc: TestCase, _ account: AccountClient) async throws ->
             replyId: pathParams.longParam("replyId"))
         return DispatchResult()
 
+    // The §18 composites from SPEC Appendix F ("Recording Summaries and Mention
+    // Helpers"). Both are synthetic scenario keys, not wire operations: each is
+    // a multi-call orchestration over generated reads, and what the fixture pins
+    // is the request SEQUENCE and the projection, not one endpoint.
+    //
+    // `eventType` and `recordingType` are optional by contract — a pointer
+    // carries one or the other — so they read through `optString`, which still
+    // refuses a wrong-typed value. The two ids stay required.
+    case "RecordingsSummarize":
+        let summary = try await account.recordings.summarize(
+            RecordingRef(
+                bucketId: pathParams.longParam("bucketId"),
+                recordingId: pathParams.longParam("recordingId"),
+                eventType: pathParams.optString("eventType"),
+                recordingType: pathParams.optString("recordingType")))
+        return DispatchResult(resultJSON: try resultJSON(summary))
+
+    // `mentions` defaults to empty rather than throwing when absent: the
+    // composite is defined for a comment with no mentions, and the fixture that
+    // exercises it names the key.
+    case "CommentsCreateWithMentions":
+        let comment = try await account.comments.createWithMentions(
+            recordingId: pathParams.longParam("recordingId"),
+            content: rb.stringParam("content"),
+            mentions: rb.intArray("mentions") ?? [])
+        return DispatchResult(resultJSON: try resultJSON(comment))
+
     // Pins the `todolists/groups` segment: a group repositions through its own
     // collection, not through `/todolists/{id}`. 204-shaped (requestVoid), so
     // there is no result to report.

@@ -82,6 +82,47 @@ public enum PublicAPIConsumer {
         return client.forAccount(accountId)
     }
 
+    // MARK: - The SPEC Appendix F composites
+
+    /// A consumer resolving an event-feed pointer. The point of writing it here
+    /// is access control, not behaviour: `RecordingRef`, `RecordingSummary` and
+    /// the error identity must all be reachable through a plain `import
+    /// Basecamp`, or the composite ships unusable in exactly the way #735
+    /// shipped 35 models unconstructible.
+    public static func summarizeAnEventFeedPointer(
+        account: AccountClient, bucketId: Int, recordingId: Int, eventType: String
+    ) async throws -> (type: String, mentions: [Int], campfireId: Int?) {
+        do {
+            let summary = try await account.recordings.summarize(
+                RecordingRef(
+                    bucketId: bucketId, recordingId: recordingId, eventType: eventType))
+            return (summary.type, summary.mentionedPersonIds, summary.campfireId)
+        } catch RecordingSummaryError.recordingUnresolved(let unresolved) {
+            // The identity a consumer has to be able to match: not a read
+            // failure, so the record is marked blocked and retried on its own
+            // schedule rather than treated as gone.
+            throw RecordingSummaryError.recordingUnresolved(unresolved)
+        }
+    }
+
+    /// The write side, plus the pure helper underneath it.
+    public static func commentMentioning(
+        account: AccountClient, recordingId: Int, content: String, personIds: [Int]
+    ) async throws -> [Int] {
+        let comment = try await account.comments.createWithMentions(
+            recordingId: recordingId, content: content, mentions: personIds)
+        return Mentions.personIds(in: comment.content)
+    }
+
+    /// The routing contract a consumer can enumerate rather than guess at.
+    public static func summarizableSurface() -> (types: [String], events: [String], ttl: Double) {
+        (
+            RecordingsService.summarizableRecordingTypes,
+            RecordingsService.summarizableEventTypes,
+            RecordingsService.campfireIndexTTL
+        )
+    }
+
     // MARK: - Every all-optional model, constructed from outside the module
 
     /// The full roster of generated models that carry no required member, each

@@ -106,12 +106,27 @@ indirect enum JSON: Codable, Equatable, Sendable {
         try? JSONDecoder().decode(JSON.self, from: data)
     }
 
-    /// Navigates a dot-separated key path through nested objects.
+    /// Navigates a dot-separated key path through nested objects and arrays.
+    ///
+    /// A segment that names a key descends an object; one that reads as a
+    /// non-negative integer indexes an array (`assignees.0.id`). That is the Go
+    /// runner's `digPath` exactly, and it has to be: the fixtures are shared, and
+    /// `recording_summary.json` pins a projection's first assignee that way.
+    /// Anything the path cannot resolve stays nil, which the caller reports as a
+    /// failed assertion rather than a silent pass.
     func navigate(_ path: String) -> JSON? {
         var current = self
         for key in path.split(separator: ".") {
-            guard let next = current.objectValue?[String(key)] else { return nil }
-            current = next
+            switch current {
+            case .object(let members):
+                guard let next = members[String(key)] else { return nil }
+                current = next
+            case .array(let elements):
+                guard let index = Int(key), index >= 0, index < elements.count else { return nil }
+                current = elements[index]
+            default:
+                return nil
+            }
         }
         return current
     }

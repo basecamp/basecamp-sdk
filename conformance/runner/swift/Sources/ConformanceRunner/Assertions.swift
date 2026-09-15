@@ -40,6 +40,102 @@ func conformanceCode(_ error: BasecampError) -> String {
     }
 }
 
+/// The hops a multi-request composite is allowed to make, for the operations
+/// whose hops address DIFFERENT resources and so cannot all be described by the
+/// fixture's single `path` field.
+///
+/// This is not an exemption. A later hop with no indexed `requestPath` assertion
+/// is checked here instead of against the fixture path: it must be one of the
+/// shapes the composite is defined to make, AND it must carry the ids the
+/// fixture named. A dispatch that read the wrong project, listed Campfires it
+/// had no business listing, or looked for some other line still fails — which is
+/// what the implicit invariant is for, and what a blanket `continue` would have
+/// thrown away for the two cases that assert only a request count and an error
+/// type.
+///
+/// Returns nil when the operation makes no such hops, which is every operation
+/// but these two; the read-modify-write composites GET and PUT one resource and
+/// stay under the fixture-path rule.
+private func compositeHopIsOnContract(
+    _ tc: TestCase, path: String, accountID: String
+) -> Bool? {
+    // Answer "not my business" BEFORE anything else: every other operation is
+    // governed by the fixture-path rule, and a `false` here would put a download
+    // hop, a pagination follow or a redirect under a contract written for two
+    // composites.
+    switch tc.operation {
+    case "RecordingsSummarize", "CommentsCreateWithMentions": break
+    default: return nil
+    }
+
+    let segments = path.split(separator: "/").map(String.init)
+    guard segments.first == accountID else { return false }
+    let hop = Array(segments.dropFirst())
+
+    func id(_ key: String) -> String? {
+        tc.pathParams?[key].flatMap { $0.intValue.map(String.init) ?? $0.stringValue }
+    }
+
+    switch tc.operation {
+    case "RecordingsSummarize":
+        // The bucket's project dock, the account-wide Campfire listing, and a
+        // line read under one candidate Campfire — the two-hop discovery, in the
+        // only shapes it has.
+        if hop.count == 2, hop[0] == "projects" { return hop[1] == id("bucketId") }
+        if hop == ["chats.json"] { return true }
+        if hop.count == 4, hop[0] == "chats", hop[2] == "lines", Int(hop[1]) != nil {
+            return hop[3] == id("recordingId")
+        }
+        return false
+    case "CommentsCreateWithMentions":
+        // One read per mentioned person, then the comment write.
+        if hop.count == 2, hop[0] == "people" {
+            let mentioned = tc.requestBody?["mentions"]?.arrayValue?
+                .compactMap { $0.intValue.map(String.init) } ?? []
+            return mentioned.contains(hop[1])
+        }
+        if hop.count == 3, hop[0] == "recordings", hop[2] == "comments.json" {
+            return hop[1] == id("recordingId")
+        }
+        return false
+    default:
+        // Unreachable: the switch at the top already returned for these.
+        return nil
+    }
+}
+
+/// A §18 composite's own error identity, in the vocabulary the fixtures use.
+///
+/// The composites' failures are not HTTP failures: "this chat line is under no
+/// Campfire you can currently see" is neither a read that failed nor discovery
+/// that could not finish, and the message text cannot carry that distinction in
+/// a way a fixture can assert. Every runner names them the same way — see the Go
+/// runner's `semanticErrorType` — and each SDK maps its own error kinds onto the
+/// shared names.
+struct SemanticError {
+    let type: String
+    let message: String
+}
+
+/// Maps the Swift SDK's composite error onto that shared vocabulary.
+func semanticErrorType(_ error: RecordingSummaryError) -> String {
+    switch error {
+    case .recordingUnresolved: "recording_unresolved"
+    case .campfireDiscoveryIncomplete: "campfire_discovery_incomplete"
+    case .noRecordingType: "no_recording_type"
+    case .unknownRecordingType: "unknown_recording_type"
+    case .bucketMismatch: "bucket_mismatch"
+    }
+}
+
+/// The vocabulary `semanticErrorType` can produce. Same contract as
+/// `knownErrorTypes` below: a name missing here can never be asserted, so the
+/// guard meant to catch a typo'd identity would forbid a real one instead.
+private let knownSemanticErrorTypes: Set<String> = [
+    "recording_unresolved", "campfire_discovery_incomplete", "no_recording_type",
+    "unknown_recording_type", "bucket_mismatch",
+]
+
 /// The vocabulary `conformanceCode` can produce. It must stay in sync with that
 /// mapping: a member missing here can never be asserted, so the guard meant to
 /// catch a typo'd error type silently forbids a real one instead.
@@ -93,6 +189,10 @@ func evaluateAssertions(
     _ tc: TestCase,
     transport: ScriptedTransport,
     caughtError: BasecampError?,
+    // No default either: a composite failure that reached no call site would
+    // read as "the call succeeded", which is the same fail-open shape the
+    // comment below rejects for `dispatchFailed`.
+    semanticError: SemanticError?,
     // No default. The one call site is required to say whether the dispatch
     // failed, because a defaulted `false` fails CLOSED: a future call site that
     // omitted it would report "the call succeeded" on a call that did not, and
@@ -184,6 +284,21 @@ func evaluateAssertions(
             for (i, request) in captured.enumerated() {
                 if linkFollowers.contains(i) { continue }
                 if explicitAssertionCovers("requestPath", request: i) { continue }
+                // A composite whose hops address DIFFERENT resources has no one
+                // path for the fixture's `path` field to name, so that field
+                // names the first hop and the rest are held to the composite's
+                // own contract instead — same strictness, different rule. The
+                // read-modify-write composites are untouched: they GET and PUT
+                // the same resource, so every hop of theirs is still checked
+                // against the fixture path, which is the regression the
+                // invariant was written for.
+                if i > 0, let onContract = compositeHopIsOnContract(
+                    tc, path: request.path, accountID: testAccountID)
+                {
+                    if onContract { continue }
+                    return .fail(
+                        "Expected request \(i) to be one of \(tc.operation)'s hops against the resources the fixture named, got \(request.path)")
+                }
                 if !requestPathMatches(request.path, fixturePath: expected, accountID: testAccountID) {
                     let want = expectedRequestPath(expected, accountID: testAccountID)
                     return .fail("Expected request \(i) at path \(want), got \(request.path)")
@@ -273,6 +388,9 @@ func evaluateAssertions(
         case "noError":
             if let caughtError {
                 return .fail("Expected no error, got: \(caughtError.message)")
+            }
+            if let semanticError {
+                return .fail("Expected no error, got: \(semanticError.message)")
             }
 
         // The inverse of noError, and deliberately code-agnostic. See
@@ -385,6 +503,21 @@ func evaluateAssertions(
             guard let expected = assertion.expected?.stringValue else {
                 return .fail("\(assertion.type) assertion missing expected value")
             }
+            // A composite identity answers `errorType` only. `errorCode` stays
+            // the HTTP-shaped vocabulary, so a fixture cannot accidentally
+            // satisfy a canonical code with a semantic one.
+            if let semanticError, assertion.type == "errorType" {
+                guard knownSemanticErrorTypes.contains(expected)
+                    || knownErrorTypes.contains(expected)
+                else {
+                    return .fail("Unknown conformance error type \"\(expected)\"")
+                }
+                if semanticError.type != expected {
+                    return .fail(
+                        "Expected error type \"\(expected)\", got \"\(semanticError.type)\" (\(semanticError.message))")
+                }
+                break
+            }
             guard let caughtError else {
                 return .fail("Expected error \(assertion.type == "errorType" ? "type" : "code") \"\(expected)\", but got no error")
             }
@@ -400,16 +533,23 @@ func evaluateAssertions(
             guard let expected = assertion.expected?.stringValue else {
                 return .fail("errorMessage assertion missing expected value")
             }
-            guard let caughtError else {
+            guard let actual = caughtError?.message ?? semanticError?.message else {
                 return .fail("Expected error message containing \"\(expected)\", but got no error")
             }
-            if !caughtError.message.contains(expected) {
-                return .fail("Expected error message containing \"\(expected)\", got \"\(caughtError.message)\"")
+            if !actual.contains(expected) {
+                return .fail("Expected error message containing \"\(expected)\", got \"\(actual)\"")
             }
 
         case "errorField":
             let fieldPath = assertion.fieldPath
             guard let caughtError else {
+                // Deliberately not answered from `semanticError`: every field
+                // below is an HTTP-shaped property a composite identity does not
+                // have, and inventing one would be worse than saying so.
+                if semanticError != nil {
+                    return .fail(
+                        "Expected error field \(fieldPath), but the failure was a composite identity with no HTTP shape")
+                }
                 return .fail("Expected error field \(fieldPath), but got no error")
             }
             let actual: Any? = switch fieldPath {
