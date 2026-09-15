@@ -164,11 +164,15 @@ struct CampfireListingOverflow: Error, CustomStringConvertible {
 ///     holds the load task to cancel it, and neither the publish nor the
 ///     release suspends.
 ///
-///     What bounds a load that never settles is the transport, not this cache:
-///     every request carries `BasecampConfig.timeoutInterval` (30 s by default)
-///     as its `URLRequest.timeoutInterval`, so the load ends and the key is
-///     released whatever the origin does. A waiter that will not wait that long
-///     cancels, which is the next point.
+///     What bounds a load that never settles is mostly the transport: every
+///     request carries `BasecampConfig.timeoutInterval` (30 s by default) as
+///     its `URLRequest.timeoutInterval`. That is not the whole story, though,
+///     and the gap is worth naming — a token provider is awaited BEFORE the
+///     request is built, so a provider that blocks is outside that timeout, as
+///     is a custom transport that ignores it. Go's loader inherits the owning
+///     caller's context and dies with it; here the load is abandoned when the
+///     last waiter leaves, which is the same guarantee reached the other way
+///     round. Both still depend on the loader observing cancellation at all.
 ///
 ///   * A cancelled caller still stops waiting *at once*, which is the half that
 ///     does not come for free: `await someTask.value` is not interrupted by the
@@ -197,6 +201,21 @@ actor TTLCache<Key: Hashable & Sendable, Value: Sendable> {
         let sequence: UInt64
     }
 
+    /// One claimed key: the callers waiting on it, and the load running behind
+    /// them.
+    ///
+    /// The task is held so the claim can be ABANDONED when the last waiter
+    /// leaves. Without that, a load nobody is waiting for keeps the key claimed
+    /// until it returns, and every later caller joins it rather than starting a
+    /// load of their own — so a load that never settles (a token provider that
+    /// blocks, a transport that ignores the request timeout) parks that key for
+    /// the life of the client. Go reaches the same place from the other side:
+    /// its loader runs under the owning caller's context and dies with it.
+    private final class Claim: @unchecked Sendable {
+        var waiters: [Waiter] = []
+        var task: Task<Void, Never>?
+    }
+
     /// One suspended caller.
     ///
     /// A reference type so that the cancellation handler and the registration
@@ -223,7 +242,7 @@ actor TTLCache<Key: Hashable & Sendable, Value: Sendable> {
     /// Keys with a load in progress, and the callers waiting on each. A waiter
     /// is a continuation rather than an `await` on the load task, so cancelling
     /// one caller does not mean waiting out the read (see the type comment).
-    private var waiting: [Key: [Waiter]] = [:]
+    private var waiting: [Key: Claim] = [:]
     private var sequence: UInt64 = 0
 
     init(
@@ -289,16 +308,23 @@ actor TTLCache<Key: Hashable & Sendable, Value: Sendable> {
         }
         waiter.continuation = continuation
 
-        let startsTheLoad = waiting[key] == nil
-        if startsTheLoad { waiting[key] = [] }
-        waiting[key]?.append(waiter)
-        guard startsTheLoad else { return }
+        let claim: Claim
+        if let existing = waiting[key] {
+            claim = existing
+        } else {
+            claim = Claim()
+            waiting[key] = claim
+        }
+        claim.waiters.append(waiter)
+        guard claim.task == nil else { return }
 
-        // Unstructured on purpose: the load must outlive any one caller.
+        // Unstructured on purpose: the load must outlive any ONE caller — but
+        // not all of them, which is what `stopWaiting` cancels it for.
         // `Task.init` inherits this actor's isolation, so `publish` and `finish`
         // run under the actor without a second hop; awaiting the loader suspends
-        // the task, not the actor.
-        Task {
+        // the task, not the actor. Nothing between the load returning and the
+        // key being released suspends, so a cancellation cannot land in it.
+        claim.task = Task {
             do {
                 let hit = self.publish(key, try await load())
                 self.finish(key, .success(hit))
@@ -316,13 +342,21 @@ actor TTLCache<Key: Hashable & Sendable, Value: Sendable> {
         // resumed it (nothing left to cancel).
         guard let continuation = waiter.continuation else { return }
         waiter.continuation = nil
-        waiting[key]?.removeAll { $0 === waiter }
+        if let claim = waiting[key] {
+            claim.waiters.removeAll { $0 === waiter }
+            // Nobody is waiting for this load any more, so it is abandoned. The
+            // key stays claimed until the cancelled load returns and `finish`
+            // releases it, which is as prompt as cancellation can be — and is
+            // the same dependence on a cooperative loader that Go's
+            // context-bound load has.
+            if claim.waiters.isEmpty { claim.task?.cancel() }
+        }
         continuation.resume(throwing: CancellationError())
     }
 
     /// Hands one load's outcome to everyone waiting on it, and releases the key.
     private func finish(_ key: Key, _ outcome: Result<Hit, any Error>) {
-        for waiter in waiting.removeValue(forKey: key) ?? [] {
+        for waiter in waiting.removeValue(forKey: key)?.waiters ?? [] {
             guard let continuation = waiter.continuation else { continue }
             waiter.continuation = nil
             continuation.resume(with: outcome)
@@ -342,7 +376,11 @@ actor TTLCache<Key: Hashable & Sendable, Value: Sendable> {
     /// Callers currently suspended on a load of `key`. Test seam: it is what
     /// lets a single-flight test wait for both callers to have ARRIVED rather
     /// than guess at it with a sleep.
-    func waiterCount(for key: Key) -> Int { waiting[key]?.count ?? 0 }
+    func waiterCount(for key: Key) -> Int { waiting[key]?.waiters.count ?? 0 }
+
+    /// Whether `key` is claimed at all — a load is running behind it, waiters or
+    /// no waiters. Test seam for the abandonment path.
+    func isClaimed(_ key: Key) -> Bool { waiting[key] != nil }
 
     private func publish(_ key: Key, _ value: Value) -> Hit {
         sweep()

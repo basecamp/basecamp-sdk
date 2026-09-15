@@ -154,6 +154,77 @@ final class CampfireIndexTests: XCTestCase {
         XCTAssertEqual(stored?.value, 1, "and it published, so the next caller pays nothing")
     }
 
+    /// A load nobody is waiting for is abandoned, so the key becomes reloadable.
+    ///
+    /// Without this, a load that never settles — a token provider that blocks,
+    /// which is awaited BEFORE the request timeout applies, or a custom
+    /// transport that ignores it — keeps the key claimed for the life of the
+    /// client, and every later caller joins it instead of loading. Go reaches
+    /// the same place from the other side: its loader runs under the owning
+    /// caller's context and dies with it.
+    func testALoadNobodyIsWaitingForIsAbandoned() async throws {
+        let clock = TestClock()
+        let loads = LoadCounter()
+        let cache = makeCache(clock: clock)
+        let started = Expectation()
+
+        let leaver = Task {
+            try await cache.value(for: "k", refresh: false) {
+                await started.wait()
+                // A cooperative loader, which is what abandonment needs on both
+                // sides: cancellation only helps a loader that looks.
+                try Task.checkCancellation()
+                return loads.increment()
+            }
+        }
+        while await cache.waiterCount(for: "k") < 1 { await Task.yield() }
+        leaver.cancel()
+        do {
+            _ = try await leaver.value
+            XCTFail("a cancelled waiter must stop waiting")
+        } catch is CancellationError {}
+
+        // Releasing the gate lets the abandoned load reach its cancellation
+        // check, throw, and release the key.
+        await started.fulfill()
+        var claimed = await cache.isClaimed("k")
+        while claimed {
+            await Task.yield()
+            claimed = await cache.isClaimed("k")
+        }
+
+        let after = try await cache.value(for: "k", refresh: false) { loads.increment() }
+        XCTAssertEqual(after.value, 1, "the key reloaded rather than joining a dead load")
+    }
+
+    /// The other half of the same rule: one caller leaving does NOT abandon a
+    /// load someone else is still waiting for.
+    func testALoadIsKeptWhileAnyoneIsStillWaiting() async throws {
+        let clock = TestClock()
+        let loads = LoadCounter()
+        let cache = makeCache(clock: clock)
+        let started = Expectation()
+
+        async let keeper = cache.value(for: "k", refresh: false) {
+            await started.wait()
+            try Task.checkCancellation()
+            return loads.increment()
+        }
+        while await cache.waiterCount(for: "k") < 1 { await Task.yield() }
+
+        let leaver = Task { try await cache.value(for: "k", refresh: false) { loads.increment() } }
+        while await cache.waiterCount(for: "k") < 2 { await Task.yield() }
+        leaver.cancel()
+        do {
+            _ = try await leaver.value
+            XCTFail("the leaver must stop waiting")
+        } catch is CancellationError {}
+
+        await started.fulfill()
+        let kept = try await keeper
+        XCTAssertEqual(kept.value, 1, "the load was not cancelled out from under the caller left")
+    }
+
     func testAFailedLoadLeavesThePreviousValueInPlace() async throws {
         let clock = TestClock()
         let loads = LoadCounter()

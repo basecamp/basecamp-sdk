@@ -95,6 +95,66 @@ final class MentionsTests: XCTestCase {
             9_223_372_036_854_775_807)
     }
 
+    /// Go's `url.Parse` refuses an empty host behind userinfo and a bad percent
+    /// escape in the authority. A split that only looks for the first slash
+    /// accepts both — the PERMISSIVE direction, and the one that matters: a gid
+    /// Go refuses must not name a person here, or the write side renders a tag
+    /// Go would not write.
+    func testRefusesAMalformedAuthority() {
+        XCTAssertNil(Mentions.personId(fromGlobalId: "gid://@/Person/1"))
+        XCTAssertNil(Mentions.personId(fromGlobalId: "gid://bad%zz/Person/1"))
+        XCTAssertNil(Mentions.personId(fromGlobalId: "gid://a b/Person/1"))
+        XCTAssertEqual(Mentions.personId(fromGlobalId: "gid://bc3/Person/1"), 1)
+    }
+
+    /// Go decodes a numeric character reference whether or not it carries the
+    /// terminating semicolon, and a numeric reference can spell a letter — which
+    /// is in the base64 alphabet. Leaving it encoded loses a real mention, and
+    /// on the write side makes the authoritative tag look absent.
+    func testDecodesNumericReferencesWithAndWithoutTheirSemicolon() {
+        let tail = String(railsJSONSgid.dropFirst())  // the payload minus its leading "e"
+        for spelling in ["&#101;", "&#101", "&#x65;", "&#x65"] {
+            let content = "<bc-attachment sgid=\"\(spelling)\(tail)\"></bc-attachment>"
+            XCTAssertEqual(
+                Mentions.personIds(in: content), [42],
+                "\(spelling) spells \"e\", which is base64")
+        }
+    }
+
+    /// The named references that matter are the ones producing a character the
+    /// base64 alphabet contains; anything else fails the envelope decode on both
+    /// sides whether it was decoded or not.
+    func testDecodesTheNamedReferencesThatSpellBase64Characters() {
+        XCTAssertEqual(
+            Mentions.attachmentSgids(
+                in: "<bc-attachment sgid=\"a&plus;b&sol;c&equals;\"></bc-attachment>"),
+            ["a+b/c="])
+        XCTAssertEqual(
+            Mentions.attachmentSgids(
+                in: "<bc-attachment sgid=\"a&lowbar;b&hyphen;c\"></bc-attachment>"),
+            ["a_b-c"])
+    }
+
+    /// Go trims the trailing `=` BEFORE decoding, and its decoder then refuses
+    /// an `=` anywhere. Stripping newlines first instead turns `<payload>=\n`
+    /// into `<payload>=`, trims that `=` as trailing, and accepts an envelope Go
+    /// rejects — and Foundation's decoder cannot be leaned on either, since it
+    /// accepts an interior `=`.
+    func testBase64NormalizationHappensInGosOrder() {
+        let json = #"{"_rails":{"data":"gid://bc3/Person/42","pur":"attachable"},"x":"y"}"#
+        let padded = Data(json.utf8).base64EncodedString()
+        XCTAssertTrue(padded.hasSuffix("="), "precondition: this payload is padded")
+
+        XCTAssertEqual(Mentions.envelopeGlobalId(padded), "gid://bc3/Person/42")
+        XCTAssertNil(
+            Mentions.envelopeGlobalId(padded + "\n"),
+            "the padding is no longer trailing, so it stays — and an interior = is illegal")
+        XCTAssertEqual(
+            Mentions.envelopeGlobalId(String(padded.dropLast()) + "\n="),
+            "gid://bc3/Person/42",
+            "here the = IS trailing, so it is trimmed and the newline ignored")
+    }
+
     func testRefusesAMalformedGlobalIdPath() {
         XCTAssertNil(Mentions.personId(fromGlobalId: "gid://bc3/Person"))
         XCTAssertNil(Mentions.personId(fromGlobalId: "gid://bc3/Person/"))
@@ -310,6 +370,25 @@ final class MentionsTests: XCTestCase {
         let existing = "<div><bc-attachment sgid=\"\(railsJSONSgid)\"></bc-attachment> hi</div>"
         let content = try Mentions.adding([person(42, railsJSONSgid)], to: existing)
         XCTAssertEqual(content, existing, "the person is already mentioned with that exact sgid")
+    }
+
+    /// "Exact attachable_sgid" is a BYTE rule. Swift string equality is
+    /// canonical equivalence, so a combining sequence and its precomposed form
+    /// compare equal — and a dedupe keyed on `String` would skip a mention Go
+    /// adds, because Go compares map keys byte for byte.
+    func testDedupeComparesBytesRatherThanCanonicalEquivalence() throws {
+        let decomposed = railsJSONSgid + "--e\u{0301}"
+        let precomposed = railsJSONSgid + "--\u{00E9}"
+        XCTAssertEqual(decomposed, precomposed, "precondition: Swift calls these equal")
+        XCTAssertNotEqual(Array(decomposed.utf8), Array(precomposed.utf8))
+
+        let existing = "<div><bc-attachment sgid=\"\(decomposed)\"></bc-attachment></div>"
+        let content = try Mentions.adding(
+            [Person(id: 42, name: "Victor", attachableSgid: precomposed)], to: existing)
+
+        XCTAssertEqual(
+            Mentions.attachmentSgids(in: content).count, 2,
+            "different bytes are different sgids, whatever Unicode says about them")
     }
 
     /// The trust boundary, stated as a test: dedupe is on the sgid STRING, never

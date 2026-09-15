@@ -153,7 +153,12 @@ public enum Mentions {
     /// resolves ids to people first and is the entry point that carries that
     /// guarantee.
     public static func adding(_ people: [Person], to content: String) throws -> String {
-        var present = Set(attachmentSgids(in: content))
+        // Keyed on UTF-8 bytes, not on `String`. Swift string equality is
+        // canonical equivalence, so two sgids that differ byte for byte — a
+        // combining sequence against its precomposed form — compare EQUAL, and
+        // the dedupe would skip a mention Go adds. "Exact attachable_sgid" is a
+        // byte rule; this is what makes it one.
+        var present = Set(attachmentSgids(in: content).map { Array($0.utf8) })
         var tags: [String] = []
         for person in people {
             // Rendered before the dedupe check, not after: a person the content
@@ -161,7 +166,7 @@ public enum Mentions {
             // so a caller cannot be told "nothing to do" about a broken Person.
             let tag = try markup(for: person)
             let sgid = person.attachableSgid ?? ""
-            guard present.insert(sgid).inserted else { continue }
+            guard present.insert(Array(sgid.utf8)).inserted else { continue }
             tags.append(tag)
         }
         if tags.isEmpty { return content }
@@ -373,27 +378,33 @@ extension Mentions {
         // Both decode through the standard alphabet once the two symbols are
         // mapped, and stripping the padding lets a truncated-but-valid payload
         // through.
-        // Go's `base64.RawStdEncoding.DecodeString` ignores CR and LF, and
-        // Foundation's decoder refuses them unless asked not to, so an sgid a
-        // serializer wrapped across lines decodes there and not here — a mention
-        // that silently vanishes. Strip exactly those two, alongside the
-        // alphabet normalization this already does by hand.
+        // Decoded the way Go decodes it, in Go's order, because the order is
+        // load-bearing: it maps the alphabet, then trims trailing `=`, then
+        // hands the rest to `RawStdEncoding`, which ignores CR and LF and
+        // refuses everything else — `=` included, wherever it sits.
         //
-        // Exactly those two, and not "whitespace": Go refuses a space or a tab
-        // inside base64 (verified against `RawStdEncoding`), so stripping them
-        // would make this the LENIENT side and let a payload through that Go
-        // rejects. The rule is parity in both directions, not leniency. Trailing
-        // bits need no handling: Go ignores a non-zero final group and so does
-        // Foundation — `QR` decodes to `A` in both.
-        // Byte-level, because a CRLF is ONE Swift `Character` and a
-        // Character-level filter for "\r" or "\n" walks straight past the pair a
-        // line-wrapping serializer actually emits.
-        let unwrapped = String(
-            decoding: payload.utf8.filter { $0 != 0x0D && $0 != 0x0A }, as: UTF8.self)
-        var normalized = unwrapped.replacingOccurrences(of: "-", with: "+")
+        // Doing it in any other order diverges. Stripping the newlines FIRST
+        // turns `<payload>=\n` into `<payload>=`, trims the `=` as trailing, and
+        // accepts an envelope Go rejects. And Foundation's decoder is not a
+        // stand-in for `RawStdEncoding` either: it accepts an interior `=`
+        // (`QQ=Q` decodes to two bytes there and is illegal in Go), so that is
+        // refused explicitly rather than left to it.
+        //
+        // Exactly CR and LF are ignored, and nothing else: Go refuses a space or
+        // a tab inside base64, so stripping whitespace generally would make this
+        // the LENIENT side. Trailing bits need no handling — Go ignores a
+        // non-zero final group and so does Foundation.
+        var normalized = payload.replacingOccurrences(of: "-", with: "+")
             .replacingOccurrences(of: "_", with: "/")
         while normalized.hasSuffix("=") { normalized.removeLast() }
-        guard let raw = decodeUnpaddedBase64(normalized), !raw.isEmpty,
+        // Byte-level: a CRLF is ONE Swift `Character`, so a Character-level
+        // filter for "\r" or "\n" walks straight past the pair a line-wrapping
+        // serializer emits.
+        let stripped = String(
+            decoding: normalized.utf8.filter { $0 != 0x0D && $0 != 0x0A }, as: UTF8.self)
+        guard !stripped.utf8.contains(UInt8(ascii: "=")) else { return nil }
+
+        guard let raw = decodeUnpaddedBase64(stripped), !raw.isEmpty,
             raw.count <= maxSgidPayloadBytes
         else { return nil }
 
@@ -460,6 +471,14 @@ extension Mentions {
         // Drop the query and fragment a URL parser would keep out of the path.
         if let cut = rest.firstIndex(where: { $0 == "?" || $0 == "#" }) { rest = rest[..<cut] }
         guard let hostEnd = rest.firstIndex(of: "/"), hostEnd != rest.startIndex else { return nil }
+        // The authority is checked, not merely required to be non-empty. Go
+        // parses it with `net/url`, which refuses an empty host behind userinfo
+        // (`gid://@/Person/1`) and a bad percent escape (`gid://bad%zz/…`); a
+        // split that only looks for the first slash accepts both, which is the
+        // PERMISSIVE direction and the one that matters — a gid Go refuses must
+        // not name a person here, or the write side renders a tag Go would not.
+        // BC3 mints `bc3`, so the set below is deliberately narrow.
+        guard rest[..<hostEnd].allSatisfy({ isGlobalIdHostCharacter($0) }) else { return nil }
 
         let path = rest[rest.index(after: hostEnd)...]
         guard let modelEnd = path.firstIndex(of: "/") else { return nil }
@@ -538,11 +557,19 @@ private func decodeUnpaddedBase64(_ value: String) -> Data? {
 
 /// Decodes the HTML character references that can appear in an attribute value.
 ///
-/// Deliberately narrower than a full HTML5 named-reference table: the value this
-/// is applied to is an `attachable_sgid`, which is base64url plus `--` plus hex.
-/// The five named references below are the ones a serializer actually emits, and
-/// the numeric forms cover the rest. An unrecognized `&…;` is left verbatim,
-/// which is also what a browser does with one.
+/// Narrower than Go's `html.UnescapeString`, and narrow along a line that cannot
+/// change an outcome. The value this is applied to is an `attachable_sgid`,
+/// which is base64 plus `--` plus a digest, so the only references that can
+/// matter are the ones producing a character in that alphabet:
+/// `[A-Za-z0-9+/=_-]`. A reference for anything else decodes in Go and is left
+/// verbatim here, and the envelope then fails the base64 decode on BOTH sides —
+/// same answer, reached differently.
+///
+/// What that line requires, and what an earlier cut of this got wrong: the
+/// NUMERIC forms have to be decoded whether or not they carry the terminating
+/// semicolon, because `&#101` is a letter, and a letter is in the alphabet. Go
+/// decodes it; leaving it encoded loses a real mention and, on the write side,
+/// makes the authoritative tag look absent and adds a duplicate.
 private func unescapeEntities(_ value: String) -> String {
     guard value.contains("&") else { return value }
 
@@ -552,42 +579,72 @@ private func unescapeEntities(_ value: String) -> String {
     while let amp = rest.firstIndex(of: "&") {
         out += rest[..<amp]
         let after = rest.index(after: amp)
-        guard let semicolon = rest[after...].firstIndex(of: ";"),
-            rest.distance(from: after, to: semicolon) <= 8
-        else {
+        guard let (replacement, end) = entityAt(rest, from: after) else {
             out.append("&")
             rest = rest[after...]
             continue
         }
-        let body = rest[after..<semicolon]
-        if let replacement = entityReplacement(String(body)) {
-            out.append(replacement)
-        } else {
-            out += "&\(body);"
-        }
-        rest = rest[rest.index(after: semicolon)...]
+        out.append(replacement)
+        rest = rest[end...]
     }
     out += rest
     return out
 }
 
-private func entityReplacement(_ body: String) -> Character? {
-    switch body {
-    case "amp": return "&"
-    case "lt": return "<"
-    case "gt": return ">"
-    case "quot": return "\""
-    case "apos": return "'"
-    default: break
+/// Reads one character reference starting just after its `&`, returning the
+/// character and the index after it. Nil when there is no reference there.
+private func entityAt(_ text: Substring, from start: Substring.Index) -> (Character, Substring.Index)? {
+    // Numeric: `&#101;`, `&#101`, `&#x65;`, `&#x65`. Bounded so a stray `&#`
+    // followed by a long run of digits costs nothing.
+    if start < text.endIndex, text[start] == "#" {
+        var cursor = text.index(after: start)
+        var radix = 10
+        if cursor < text.endIndex, text[cursor] == "x" || text[cursor] == "X" {
+            radix = 16
+            cursor = text.index(after: cursor)
+        }
+        let digitsStart = cursor
+        while cursor < text.endIndex, text[cursor].isHexDigit,
+            text.distance(from: digitsStart, to: cursor) < 8
+        {
+            if radix == 10, !text[cursor].isNumber { break }
+            cursor = text.index(after: cursor)
+        }
+        guard digitsStart < cursor, let value = UInt32(text[digitsStart..<cursor], radix: radix),
+            let scalar = Unicode.Scalar(value)
+        else { return nil }
+        // The semicolon is consumed when present and not required when absent,
+        // which is what Go's decoder does with the numeric forms.
+        let end =
+            (cursor < text.endIndex && text[cursor] == ";") ? text.index(after: cursor) : cursor
+        return (Character(scalar), end)
     }
-    guard body.hasPrefix("#") else { return nil }
-    let digits = body.dropFirst()
-    let value: UInt32?
-    if digits.first == "x" || digits.first == "X" {
-        value = UInt32(digits.dropFirst(), radix: 16)
-    } else {
-        value = UInt32(digits, radix: 10)
+
+    // Named. Every one of these needs its semicolon in HTML5, and every one
+    // produces a character the base64 alphabet contains — except the five XML
+    // ones, which are here because a serializer emits them and because leaving
+    // them encoded would change what the tag walk reports.
+    var cursor = start
+    while cursor < text.endIndex, text[cursor].isLetter,
+        text.distance(from: start, to: cursor) < 8
+    {
+        cursor = text.index(after: cursor)
     }
-    guard let value, let scalar = Unicode.Scalar(value) else { return nil }
-    return Character(scalar)
+    guard start < cursor, cursor < text.endIndex, text[cursor] == ";",
+        let replacement = namedEntities[String(text[start..<cursor])]
+    else { return nil }
+    return (replacement, text.index(after: cursor))
+}
+
+private let namedEntities: [String: Character] = [
+    "amp": "&", "lt": "<", "gt": ">", "quot": "\"", "apos": "'",
+    // The base64 alphabet's punctuation, each spelled as HTML5 names it.
+    "plus": "+", "sol": "/", "equals": "=", "lowbar": "_", "hyphen": "-", "dash": "-",
+]
+
+/// The characters a GlobalID authority may contain. Narrow on purpose: BC3
+/// mints `bc3`, and everything outside this set is something Go's URL parser
+/// either refuses or reads differently.
+private func isGlobalIdHostCharacter(_ c: Character) -> Bool {
+    c.isASCII && (c.isLetter || c.isNumber || c == "." || c == "-" || c == "_" || c == "~")
 }
