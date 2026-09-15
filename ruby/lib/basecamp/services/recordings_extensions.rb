@@ -444,13 +444,28 @@ module Basecamp
       # (they decide which Campfires get searched), and "assignees" (it decides
       # whether the key appears at all).
       #
-      # PASSED THROUGH — "id", "parent", "bucket", "creator", and "updated_at".
-      # The first four are where reproducing the decoder would actually begin:
-      # an id is an integer and the other three are nested objects, so checking
-      # them means writing the type the generated layer deliberately does not
-      # have. "updated_at" is a deliberate divergence rather than a gap — the
+      # Also typed: "id", which the reference holds as a plain 64-bit integer.
+      # An earlier version of this paragraph listed it as passed through and
+      # called it the place where reproducing the decoder begins. That was
+      # wrong twice over — ten shapes reached the projection verbatim that the
+      # reference refuses, and the check was already written, four times, on the
+      # sibling id fields in this same file.
+      #
+      # PASSED THROUGH — "parent", "bucket" and "creator", which are nested
+      # objects, and "updated_at". The three objects are where reproducing the
+      # decoder would actually begin: validating them means writing the type the
+      # generated layer deliberately does not have. What IS honoured for them is
+      # the reference's emptiness rule — it builds each only when it has an id
+      # or a name, so an empty object leaves the key out rather than appearing
+      # as "{}". "updated_at" is a deliberate divergence rather than a gap: the
       # reference parses an instant and every port here keeps the API's own
       # string, which Appendix F records.
+      #
+      # "bucket" appears in both lists above for a reason worth stating rather
+      # than tidying: its OBJECT is passed through to the caller, and its ID is
+      # read by the cross-bucket check. It is the one member that is both
+      # reported and interpreted, which is exactly why it has been the source of
+      # four separate defects on this branch.
       #
       # The rule that produced three rounds of findings, stated so the next
       # person does not rediscover it: when a change makes this composite READ a
@@ -479,7 +494,7 @@ module Basecamp
         title = read_text(title, "title")
 
         summary = {
-          "id" => record["id"],
+          "id" => read_id(record["id"]),
           "status" => read_text(record["status"], "status"),
           # Typed, not passed through, because the chat-line route READS this to
           # decide whether a line's content can carry a mention. The reference
@@ -497,9 +512,15 @@ module Basecamp
           "content" => content,
           "updated_at" => record["updated_at"]
         }
-        summary.delete("parent") if parent.nil?
-        summary.delete("bucket") if summary["bucket"].nil?
-        summary.delete("creator") if summary["creator"].nil?
+        # EMPTY, not merely absent. The reference builds each of these only when
+        # it has something in it — `if Id != 0 || Name != ""` for a bucket, the
+        # same shape for a parent and a creator — so a `{}` in the response
+        # leaves the field nil there and `omitempty` drops the key. Ruby emitted
+        # the empty object, so a caller testing `summary.key?("bucket")` got a
+        # different answer from the contract's.
+        summary.delete("parent") unless keep_member?(parent)
+        summary.delete("bucket") unless keep_member?(summary["bucket"])
+        summary.delete("creator") unless keep_member?(summary["creator"])
         # Absent or empty is genuinely nothing to report — the reference's
         # +omitempty+ leaves an empty slice out of its summary too, so the key
         # goes. Anything else that is not an array of objects is a decode
@@ -530,11 +551,16 @@ module Basecamp
           raise malformed_response("the recording's \"assignees\" is #{MergeSafe.describe(assignees)}, not an array")
         end
 
-        assignees.each do |assignee|
-          # nil is the zero Person the reference decodes a null member into,
-          # and this member is reported rather than interpreted, so it travels
-          # as it arrived — see the boundary stated on #project.
-          next if assignee.nil? || assignee.is_a?(Hash)
+        assignees = assignees.map do |assignee|
+          # A null member is the ZERO PERSON there, and the reference emits it
+          # as an object — so passing nil through handed a consumer something
+          # that crashes on `assignee["id"]` where the contract gives 0. An
+          # empty hash is the nearest thing this tier has to a zero Person: the
+          # member is still present and still indexable. The residual difference
+          # is that its id reads as nil rather than 0, which is the same
+          # nested-object limit stated on #project.
+          next {} if assignee.nil?
+          next assignee if assignee.is_a?(Hash)
 
           raise malformed_response("an assignee is #{MergeSafe.describe(assignee)}, not an object")
         end
@@ -551,6 +577,39 @@ module Basecamp
       # Each candidate is type-checked rather than coerced, for the reason
       # read_text gives: these feed the title and the content, and a to_s here
       # would have hidden exactly what that check exists to catch.
+      # The recording's own id.
+      #
+      # The reference types this as a plain 64-bit integer, so a string, a
+      # float, a boolean, an array or an object is a decode failure there — ten
+      # shapes that reached the projection verbatim while the boundary comment
+      # claimed this field was where reproducing the decoder would begin. It is
+      # not: the check is the same one already applied to four sibling id fields
+      # in this file. Absent is 0, as its zero value is.
+      def read_id(value)
+        id = Ids.from_wire(value)
+        return id unless id.nil?
+
+        raise malformed_response("the recording's id is #{MergeSafe.describe(value)}, not an integer")
+      end
+
+      # Whether a nested member belongs in the projection.
+      #
+      # The reference builds a bucket, parent or creator only when it has an id
+      # or a name, so an EMPTY object leaves the key out of its summary where
+      # this port emitted `{}`.
+      #
+      # A member that is not an object at all is KEPT on purpose, so that the
+      # reader which refuses it still sees it. Dropping it here instead removed
+      # a malformed bucket before the cross-bucket check could object — which
+      # is the check this composite exists to protect, and which an existing
+      # test caught within a minute of the rule being written the other way.
+      def keep_member?(member)
+        return false if member.nil?
+        return true unless member.is_a?(Hash)
+
+        member.any? { |_, value| !value.nil? && value != "" && value != 0 }
+      end
+
       def first_non_empty(*values)
         values.each do |value|
           text = read_text(value, "title or content")
