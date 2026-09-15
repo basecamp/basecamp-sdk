@@ -268,7 +268,7 @@ internal class TtlCache<K, V>(
      */
     private suspend fun publishSuccess(key: K, load: Load<V>, value: V) = withContext(NonCancellable) {
         mutex.withLock {
-            inflight.remove(key)
+            releaseLocked(key, load)
             load.fetched = now()
             sweepLocked()
             makeRoomLocked(key)
@@ -281,8 +281,30 @@ internal class TtlCache<K, V>(
     private suspend fun publishFailure(key: K, load: Load<V>, cause: Throwable) = withContext(NonCancellable) {
         // The key is released so a later caller can load again; the previous
         // value, if any, stays in place.
-        mutex.withLock { inflight.remove(key) }
+        mutex.withLock { releaseLocked(key, load) }
         load.done.completeExceptionally(cause)
+    }
+
+    /**
+     * Releases the key BY IDENTITY: the slot is cleared only when the record
+     * sitting in it is the one being published.
+     *
+     * A publisher that removed whatever it found would drop a LATER caller's
+     * single-flight guarantee while that caller was still loading — two
+     * concurrent loads for one key, and the listing's key is the bare account
+     * id, so that is an account-wide duplicate rather than a bucket's.
+     *
+     * That is not reachable as this cache is written today: a second caller
+     * finding the slot occupied becomes a waiter rather than a registrant, and
+     * every publish clears the slot BEFORE completing the deferred, so no waiter
+     * can wake and re-register ahead of its own publisher. The guard is here
+     * anyway because that argument is global and this one is local — it holds by
+     * reading four lines rather than by reasoning about every path that could
+     * ever publish. Re-introduce an abandonment path and the invariant still
+     * stands instead of silently going with it.
+     */
+    private fun releaseLocked(key: K, load: Load<V>) {
+        if (inflight[key] === load) inflight.remove(key)
     }
 
     /**
