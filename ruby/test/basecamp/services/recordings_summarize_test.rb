@@ -467,6 +467,66 @@ class RecordingsSummarizeTest < Minitest::Test
     assert_equal [ 7, 3 ], assignees.map { |a| a["id"] }
   end
 
+  # Every position a JSON null can occupy in a projected recording, against the
+  # rule the reference's decoder actually implements.
+  #
+  # The rule has exactly two forms, each measured against the reference twice:
+  # a field whose Go type carries its own UnmarshalJSON treats null as a DECODE
+  # ERROR, and every other field treats null as the zero value, identical to
+  # absent. In the whole generated model exactly one field is the first kind —
+  # Person.Id, typed types.FlexibleInt64 — so a person id refuses and nothing
+  # else does.
+  #
+  # This exists because the null rule was found at five separate sites across
+  # five review rounds, each time at a site the previous fix had created or not
+  # reached. A table is the only honest way to say "applied uniformly" rather
+  # than "no more found yet": the positions are enumerated, so a new read that
+  # does not handle null shows up as a row nobody added.
+  NULL_POSITIONS = {
+    "id" => :passes, "status" => :passes, "type" => :passes, "title" => :passes,
+    "app_url" => :passes, "content" => :passes, "updated_at" => :passes,
+    "bucket" => :passes, "parent" => :passes, "creator" => :passes
+  }.freeze
+
+  NULL_NESTED = {
+    [ "bucket", "id" ] => :passes, [ "bucket", "name" ] => :passes,
+    [ "parent", "id" ] => :passes, [ "parent", "title" ] => :passes,
+    [ "creator", "name" ] => :passes,
+    [ "creator", "id" ] => :refuses
+  }.freeze
+
+  def test_a_null_is_the_zero_value_everywhere_except_a_person_id
+    NULL_POSITIONS.each do |field, expected|
+      assert_null_position(recording(field => nil), expected, field)
+    end
+
+    NULL_NESTED.each do |(outer, inner), expected|
+      body = recording(outer => recording[outer].merge(inner => nil))
+      assert_null_position(body, expected, "#{outer}.#{inner}")
+    end
+
+    # The body itself, and the two assignee levels.
+    assert_null_position("null", :passes, "the body")
+  end
+
+  def test_a_null_assignee_position_follows_the_same_rule
+    { nil => :passes, [ nil ] => :passes,
+      [ { "id" => 3, "name" => nil } ] => :passes,
+      [ { "id" => nil, "name" => "a" } ] => :refuses }.each do |value, expected|
+      stub_get("/12345/todos/1", response_body: recording("type" => "Todo", "assignees" => value))
+      result = begin
+        summarize(event_type: "todo.created")
+        :passes
+      rescue Basecamp::ApiError
+        :refuses
+      end
+
+      assert_equal expected, result, "assignees of #{value.inspect}"
+      @account = create_account_client(account_id: "12345")
+      WebMock.reset!
+    end
+  end
+
   def test_a_null_person_id_fails_the_read_where_an_absent_one_does_not
     # The one field where absent and null differ: the flexible decoder's own
     # UnmarshalJSON runs for a null and fails, while a missing key is the zero
@@ -813,6 +873,22 @@ class RecordingsSummarizeTest < Minitest::Test
   end
 
   # --- chat line discovery -------------------------------------------------
+
+  # One null position: does the read pass or refuse, as the field's Go type says?
+  def assert_null_position(body, expected, label)
+    stub_get("/12345/comments/1", response_body: body)
+    result = begin
+      summarize(event_type: "comment.created")
+      :passes
+    rescue Basecamp::ApiError
+      :refuses
+    end
+
+    assert_equal expected, result, "a null at #{label}"
+  ensure
+    @account = create_account_client(account_id: "12345")
+    WebMock.reset!
+  end
 
   # The listing refuses this body, with an empty dock so discovery reaches it.
   def assert_listing_refused(listing, message)
