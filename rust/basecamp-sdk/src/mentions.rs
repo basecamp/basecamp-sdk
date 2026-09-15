@@ -498,9 +498,26 @@ fn parse_global_id(gid: &str) -> Option<(&str, &str)> {
     Some((model, raw_id))
 }
 
-/// Decodes standard-alphabet base64 without padding. Rails' payloads are small and this
-/// keeps the read side free of an encoder dependency the crate only enables under the
-/// `oauth` feature.
+/// Decodes standard-alphabet base64 without padding, matching Go's `RawStdEncoding` — the
+/// decoder the reference implementation reads sgids with — in both directions.
+///
+/// Matching it EXACTLY is the requirement, not being strict and not being lenient. This is
+/// the read side of a mention: a payload BC3 minted that Go decodes and this refuses does
+/// not surface as an error anywhere, it makes a real mention silently vanish. So two
+/// deliberate leniencies are copied from Go rather than tightened:
+///
+/// - Line breaks are SKIPPED, and only line breaks. Go's `decodeQuantum` steps over `\r`
+///   and `\n` wherever they appear; a space is still an error there and here.
+/// - The final group's unused bits are NOT required to be zero. Go's non-strict decoder
+///   ignores them (`RawStdEncoding.DecodeString("QR")` is `[65]`, not an error), and only
+///   `.Strict()` would reject them.
+///
+/// What Go does reject is copied too: a final group of six leftover bits is a corrupt
+/// payload, not a truncated byte.
+///
+/// Rolling this by hand keeps the read side free of a dependency the crate only enables
+/// under the `oauth` feature — and, more to the point, free of an engine whose defaults are
+/// strict on exactly these two axes.
 fn base64_decode(input: &str) -> Option<Vec<u8>> {
     let mut out = Vec::with_capacity(input.len() / 4 * 3);
     let mut accumulator: u32 = 0;
@@ -512,6 +529,7 @@ fn base64_decode(input: &str) -> Option<Vec<u8>> {
             b'0'..=b'9' => byte - b'0' + 52,
             b'+' => 62,
             b'/' => 63,
+            b'\n' | b'\r' => continue,
             _ => return None,
         };
         accumulator = (accumulator << 6) | u32::from(value);
@@ -521,12 +539,7 @@ fn base64_decode(input: &str) -> Option<Vec<u8>> {
             out.push(u8::try_from((accumulator >> bits) & 0xff).ok()?);
         }
     }
-    // A trailing group of 6 leftover bits is not a truncated byte, it is a malformed
-    // payload; any leftover must be zero, as a valid unpadded encoding leaves it.
-    if bits >= 6 || accumulator & ((1 << bits) - 1) != 0 {
-        return None;
-    }
-    Some(out)
+    (bits < 6).then_some(out)
 }
 
 /// Bounds nesting in a payload; an envelope is two deep.
@@ -894,11 +907,46 @@ mod tests {
         assert!(unmarshal_ruby(b"\"\x7f").is_err()); // a count past the data
     }
 
+    /// Pinned against what `base64.RawStdEncoding.DecodeString` actually answers, measured
+    /// rather than remembered. A divergence in EITHER direction is a bug: stricter than Go
+    /// makes a real mention vanish, looser names a person Go does not.
     #[test]
-    fn base64_refuses_what_it_cannot_decode() {
-        assert_eq!(base64_decode("A"), None); // six leftover bits
-        assert_eq!(base64_decode("QQ"), Some(vec![b'A']));
-        assert_eq!(base64_decode("~~~~"), None);
+    fn base64_matches_go_raw_std_encoding_in_both_directions() {
+        let go = [
+            ("QQ", Some(vec![b'A'])),
+            // Non-zero trailing bits: Go's non-strict decoder ignores them.
+            ("QR", Some(vec![b'A'])),
+            ("QUJD", Some(vec![b'A', b'B', b'C'])),
+            ("QUJ", Some(vec![b'A', b'B'])),
+            ("QUK", Some(vec![b'A', b'B'])),
+            // Line breaks are stepped over wherever they appear.
+            ("QU\nJD", Some(vec![b'A', b'B', b'C'])),
+            ("QU\r\nJD", Some(vec![b'A', b'B', b'C'])),
+            // A six-bit leftover group is corrupt, and a space is not whitespace Go skips.
+            ("QUJDR", None),
+            ("A", None),
+            ("QU JD", None),
+            ("~~~~", None),
+        ];
+        for (input, expected) in go {
+            assert_eq!(base64_decode(input), expected, "{input:?}");
+        }
+    }
+
+    /// Both halves measured against the Go helper, not assumed.
+    #[test]
+    fn a_line_wrapped_sgid_decodes_exactly_where_go_decodes_it() {
+        // A break INSIDE the payload: Go steps over it and names the person, so this must
+        // too — refusing would raise no error anywhere, it would drop a real mention.
+        let split = format!("{}\n{}", &ANNIE_SGID[..20], &ANNIE_SGID[20..]);
+        assert_eq!(person_id_from_sgid(&split), Some(1_049_715_915));
+
+        // A break immediately BEFORE the digest separator names nobody, in Go too: the
+        // padding trim is a right-trim, so a payload ending `MA==\n` keeps its `=`, and a
+        // raw (unpadded) decoder rejects that. Pinned because the two rules interact — a
+        // decoder that skipped `=` as well would quietly diverge here and nowhere else.
+        let before_digest = ANNIE_SGID.replacen("--", "\n--", 1);
+        assert_eq!(person_id_from_sgid(&before_digest), None);
     }
 
     /// An unsigned JSON envelope, in the base64url spelling Rails emits.

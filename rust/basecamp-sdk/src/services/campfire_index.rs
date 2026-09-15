@@ -153,96 +153,83 @@ where
         F: FnOnce() -> Fut,
         Fut: Future<Output = Result<V, Error>> + Send + 'static,
     {
-        let mut load = Some(load);
-        let mut reacquired = false;
-        loop {
-            let (pending, started_here) = {
-                let mut state = self.lock();
-                if let Some(entry) = state.entries.get(key) {
-                    let age = (self.clock)().saturating_duration_since(entry.fetched);
-                    if age < self.ttl && (!refresh || age < self.floor) {
-                        return Ok(Hit {
-                            value: Arc::clone(&entry.value),
-                            fetched: entry.fetched,
-                            cached: true,
-                        });
-                    }
-                }
-                if let Some(pending) = state.inflight.get(key) {
-                    (pending.clone(), false)
-                } else {
-                    // Only the first trip round has a loader to spend. A second trip is the
-                    // bounded retry below, and it only happens when this call waited on
-                    // somebody else's load — so the key is free and the loader is unspent.
-                    let Some(load) = load.take() else {
-                        return Err(Error::new(
-                            ErrorCode::ApiError,
-                            "campfire discovery source could not be re-read",
-                        ));
-                    };
-                    Self::sweep_inflight_locked(&mut state);
-                    // WEAK, not strong: the map holds the future and the future reaches back
-                    // for the map, so an owning handle would close a reference cycle that
-                    // keeps this cache — and the client behind it — alive for the life of
-                    // the process.
-                    let cache = Arc::downgrade(self);
-                    let owned = key.clone();
-                    let loading = load();
-                    let pending = async move {
-                        // A loader that panics — a hook, a token provider — still releases
-                        // the key and wakes its waiters with an error; without that the key
-                        // would stay in flight forever and every later caller would wait
-                        // on it.
-                        let outcome = match AssertUnwindSafe(loading).catch_unwind().await {
-                            Ok(result) => result.map_err(Arc::new),
-                            Err(_) => Err(Arc::new(Error::new(
-                                ErrorCode::ApiError,
-                                "campfire discovery source panicked while loading",
-                            ))),
-                        };
-                        // The cache outliving the load is the ordinary case; a load
-                        // outliving the cache answers its waiters and caches nothing.
-                        match cache.upgrade() {
-                            Some(cache) => cache.publish(&owned, outcome),
-                            None => outcome.map(|value| (Arc::new(value), Instant::now())),
-                        }
-                    }
-                    .boxed()
-                    .shared();
-                    state.inflight.insert(key.clone(), pending.clone());
-                    (pending, true)
-                }
-            };
-            match pending.await {
-                // The load this call waited on is this call's load: its value is fresh, not
-                // something that predated the call — and it is read off the load's own
-                // result, so a sweep or the bound evicting the entry in the meantime cannot
-                // take it from this waiter.
-                Ok((value, fetched)) => {
+        let pending = {
+            let mut state = self.lock();
+            if let Some(entry) = state.entries.get(key) {
+                let age = (self.clock)().saturating_duration_since(entry.fetched);
+                if age < self.ttl && (!refresh || age < self.floor) {
                     return Ok(Hit {
-                        value,
-                        fetched,
-                        cached: false,
+                        value: Arc::clone(&entry.value),
+                        fetched: entry.fetched,
+                        cached: true,
                     });
                 }
-                Err(error) => {
-                    // A load runs under the deadline of whoever started it. When that
-                    // deadline is what ended it, the failure belongs to that caller and not
-                    // to this one: a waiter that had time left goes round again and loads
-                    // for itself. Once only — a second owner-attributed failure is returned
-                    // rather than chased, so a run of expiring owners cannot become a queue
-                    // of sequential loads behind one waiter. Every other failure, a
-                    // transport timeout included, is the load's own and is shared, so N
-                    // waiters never re-run one failed load N times.
-                    if !started_here && !reacquired && error.is_deadline_exceeded() {
-                        reacquired = true;
-                        continue;
-                    }
-                    // The projection carries everything a caller classifies on — code, hint,
-                    // status, the flags — with the shared original chained as the cause.
-                    return Err(project(&error));
-                }
             }
+            if let Some(pending) = state.inflight.get(key) {
+                pending.clone()
+            } else {
+                Self::sweep_inflight_locked(&mut state);
+                // WEAK, not strong: the map holds the future and the future reaches back
+                // for the map, so an owning handle would close a reference cycle that keeps
+                // this cache — and the client behind it — alive for the life of the process.
+                let cache = Arc::downgrade(self);
+                let owned = key.clone();
+                let loading = load();
+                let pending = async move {
+                    // A loader that panics — a hook, a token provider — is turned into a
+                    // failure rather than allowed to escape, so publication still runs and
+                    // the key is still released. Without that the key would stay in flight
+                    // and the shared future would be poisoned for everyone holding it.
+                    let outcome = match AssertUnwindSafe(loading).catch_unwind().await {
+                        Ok(result) => result.map_err(Arc::new),
+                        Err(_) => Err(Arc::new(Error::new(
+                            ErrorCode::ApiError,
+                            "campfire discovery source panicked while loading",
+                        ))),
+                    };
+                    // The cache outliving the load is the ordinary case; a load outliving
+                    // the cache answers its waiters and caches nothing.
+                    match cache.upgrade() {
+                        Some(cache) => cache.publish(&owned, outcome),
+                        None => outcome.map(|value| (Arc::new(value), Instant::now())),
+                    }
+                }
+                .boxed()
+                .shared();
+                state.inflight.insert(key.clone(), pending.clone());
+                pending
+            }
+        };
+        match pending.await {
+            // The load this call waited on is this call's load: its value is fresh, not
+            // something that predated the call — and it is read off the load's own result,
+            // so a sweep or the bound evicting the entry in the meantime cannot take it
+            // from this waiter.
+            Ok((value, fetched)) => Ok(Hit {
+                value,
+                fetched,
+                cached: false,
+            }),
+            // EVERY failure here is the load's own, and is shared: N waiters never re-run
+            // one failed load N times.
+            //
+            // Go re-loads for a waiter in one case — a load that failed under the LOADING
+            // caller's own cancelled context — and that case does not exist here. Nothing
+            // caller-scoped reaches into this load: it captures a cloned `AccountClient`,
+            // and the operation deadline is created inside `send`, when the load runs. So a
+            // `deadline_exceeded` out of a discovery read is the load's own deadline,
+            // started when the load started, exactly as much "the load's own failure" as a
+            // transport timeout is — and retrying it per waiter would be request
+            // amplification wearing recovery's clothes.
+            //
+            // The condition Go's `callerDone` is really about — the starting caller going
+            // away — is not a failure in Rust at all: dropping a future suspends the load
+            // rather than killing it, and the next holder to poll the shared future resumes
+            // it. There is nothing to recover from, which is why there is nothing here.
+            //
+            // The projection carries everything a caller classifies on — code, hint, status,
+            // the flags — with the shared original chained as the cause.
+            Err(error) => Err(project(&error)),
         }
     }
 
@@ -808,13 +795,16 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn a_waiter_reloads_once_when_the_load_died_of_the_starters_deadline() {
+    async fn a_deadline_that_ended_the_load_is_shared_and_never_re_run_per_waiter() {
         let clock = TestClock::new();
         let cache = cache::<i64>(&clock, 16);
         let loads = Arc::new(AtomicU64::new(0));
         let (release, held) = tokio::sync::oneshot::channel::<()>();
-        // The load runs under the deadline of whoever started it. The waiter had time left,
-        // so the starter's deadline is not its answer.
+        // Nothing caller-scoped reaches into a load here: it captures a cloned client, and
+        // the operation deadline is created inside `send`, when the load runs. So a
+        // deadline that ends a discovery read is the LOAD's, exactly as much its own
+        // failure as a transport timeout — and re-running it per waiter would be request
+        // amplification, not recovery.
         let starter = {
             let counter = Arc::clone(&loads);
             cache.get(&1, false, move || async move {
@@ -823,37 +813,38 @@ mod tests {
                 Err(Error::deadline_exceeded(Duration::from_millis(1)))
             })
         };
-        let waiter = {
-            let counter = Arc::clone(&loads);
-            cache.get(&1, false, move || async move {
-                counter.fetch_add(1, Ordering::SeqCst);
-                Ok(7)
+        let waiters: Vec<_> = (0..3)
+            .map(|_| {
+                let counter = Arc::clone(&loads);
+                cache.get(&1, false, move || async move {
+                    counter.fetch_add(1, Ordering::SeqCst);
+                    Ok(7)
+                })
             })
-        };
+            .collect();
         let releaser = async {
             tokio::task::yield_now().await;
             let _ = release.send(());
         };
-        let (starter, waiter, ()) = futures_util::join!(starter, waiter, releaser);
-        // The starter keeps its own deadline; the waiter goes round again and loads.
-        assert!(
-            starter
-                .err()
-                .expect("the starter kept its deadline")
-                .is_deadline_exceeded()
+        let (starter, waiters, ()) =
+            futures_util::join!(starter, futures_util::future::join_all(waiters), releaser);
+        for outcome in std::iter::once(starter).chain(waiters) {
+            let error = outcome.err().expect("the shared load failed");
+            assert!(error.is_deadline_exceeded(), "{error}");
+        }
+        assert_eq!(
+            loads.load(Ordering::SeqCst),
+            1,
+            "one load, one failure, four callers"
         );
-        assert_eq!(*waiter.unwrap().value, 7);
-        assert_eq!(loads.load(Ordering::SeqCst), 2);
     }
 
     #[tokio::test]
-    async fn a_waiter_reloads_at_most_once_and_shares_every_other_failure() {
+    async fn a_transport_timeout_is_shared_too_and_never_re_run_per_waiter() {
         let clock = TestClock::new();
         let cache = cache::<i64>(&clock, 16);
         let loads = Arc::new(AtomicU64::new(0));
         let (release, held) = tokio::sync::oneshot::channel::<()>();
-        // A transport timeout is the LOAD's own failure, not the starting caller's, so it
-        // is shared: N waiters must never re-run one failed load N times.
         let starter = {
             let counter = Arc::clone(&loads);
             cache.get(&1, false, move || async move {
@@ -880,6 +871,75 @@ mod tests {
         assert!(starter.err().expect("the load timed out").is_timeout());
         assert!(waiter.err().expect("the waiter shares it").is_timeout());
         assert_eq!(loads.load(Ordering::SeqCst), 1, "one load, one failure");
+    }
+
+    #[tokio::test]
+    async fn a_load_that_panics_releases_its_key_and_the_next_caller_is_served() {
+        let clock = TestClock::new();
+        let cache = cache::<i64>(&clock, 16);
+        // Expect a panic backtrace on stderr: it is caught, and that is the point.
+        let panicked = cache
+            .get(&1, false, || async { panic!("a hook exploded") })
+            .await;
+        let error = panicked
+            .err()
+            .expect("a panicking loader is a failure, not a hang");
+        assert_eq!(error.code(), ErrorCode::ApiError);
+        assert!(
+            cache.lock().inflight.is_empty(),
+            "publication still ran, so the key is free"
+        );
+        // The next caller is served rather than parked behind a dead loader forever.
+        let after = cache.get(&1, false, || async { Ok(5) }).await.unwrap();
+        assert_eq!(*after.value, 5);
+    }
+
+    #[tokio::test]
+    async fn a_later_caller_drives_a_load_its_starter_abandoned() {
+        let clock = TestClock::new();
+        let cache = cache::<i64>(&clock, 16);
+        let loads = Arc::new(AtomicU64::new(0));
+        let (release, held) = tokio::sync::oneshot::channel::<()>();
+        let counter = Arc::clone(&loads);
+        // Polled once — long enough to take the key and start the load — then dropped.
+        let abandoned = cache.get(&1, false, move || async move {
+            counter.fetch_add(1, Ordering::SeqCst);
+            let _ = held.await;
+            Ok(11)
+        });
+        assert!(abandoned.now_or_never().is_none());
+        assert_eq!(
+            cache.lock().inflight.len(),
+            1,
+            "the slot outlived its starter"
+        );
+        let _ = release.send(()); // the load could finish now, but nothing is polling it
+
+        // This is the case Go's deferred release exists for, and where the two languages
+        // part company. In Go the loader goroutine is gone and waiters are parked on a
+        // channel only it could close — a permanent hang for that key. A shared future has
+        // no designated driver: the next caller polls it and finishes the load itself.
+        let counter = Arc::clone(&loads);
+        let later = cache
+            .get(&1, false, move || async move {
+                counter.fetch_add(1, Ordering::SeqCst);
+                Ok(99)
+            })
+            .await
+            .unwrap();
+        assert_eq!(
+            *later.value, 11,
+            "it drove the abandoned load to completion"
+        );
+        assert_eq!(
+            loads.load(Ordering::SeqCst),
+            1,
+            "and started no second load"
+        );
+        assert!(
+            cache.lock().inflight.is_empty(),
+            "completing it published, which released the slot"
+        );
     }
 
     #[test]
