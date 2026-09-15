@@ -333,9 +333,39 @@ sealed class BasecampException(
      *   ever reported absent.
      * - [RECORDING_BUCKET_MISMATCH] — the recording the read returned lives in a
      *   different bucket from the one the pointer named.
+     *
+     * [reason] is the identity to branch on; the parent [code] (and so
+     * [exitCode]) is DERIVED from it, exactly as [DeviceFlow] and
+     * [DiscoverySelection] derive theirs. SPEC §6's code table is a CLOSED
+     * taxonomy of HTTP-shaped outcomes, so none of these tokens can be a member
+     * of it — putting one in that slot would let a fixture satisfy a canonical
+     * `errorCode` with a composite identity, and would hand a caller switching
+     * on [code] a value the taxonomy does not contain.
+     *
+     * | reason                          | code        | why |
+     * |---------------------------------|-------------|-----|
+     * | `no_recording_type`             | `usage`     | refused from the caller's own arguments, before any request |
+     * | `unknown_recording_type`        | `usage`     | same |
+     * | `bucket_mismatch`               | `usage`     | the pointer's bucket and the recording's disagree |
+     * | `recording_unresolved`          | `not_found` | every visible candidate answered 404 |
+     * | `campfire_discovery_incomplete` | `usage`     | see below |
+     *
+     * The last row is the one that does not fit cleanly, and it is stated rather
+     * than smoothed: discovery stopping at its own bound is neither a server
+     * fault (`api_error` claims a 5xx), nor an absence (`not_found` claims the
+     * line is gone, which is exactly what this verdict refuses to say), nor
+     * multiple matches (`ambiguous`). `usage` is chosen because it is the one
+     * coarse code no read can ever produce, so it cannot be confused with a
+     * constituent read's own answer — which is the property that matters here.
+     * [reason] carries the precision either way.
      */
     class RecordingSummaryFailure internal constructor(
-        /** Typed failure token; also this exception's [code]. */
+        /**
+         * Typed failure token — the composite's own vocabulary, and the thing
+         * to branch on. It is NOT this exception's [code]: [code] is the closed
+         * SPEC §6 taxonomy, and none of these tokens is a member of it. See the
+         * derivation table above.
+         */
         val reason: String,
         message: String,
         hint: String? = null,
@@ -366,7 +396,7 @@ sealed class BasecampException(
          * Set only when [refreshed].
          */
         val staleCampfireIds: List<Long> = emptyList(),
-    ) : BasecampException(message, reason, hint)
+    ) : BasecampException(message, recordingSummaryCode(reason), hint)
 
     /**
      * Hard resource-first OAuth discovery selection/validation failure
@@ -459,6 +489,15 @@ sealed class BasecampException(
         const val DEVICE_CANCELLED = "cancelled"
 
         /** Derives a [DeviceFlow]'s parent error code from its reason. */
+        /** The coarse SPEC §6 code a [RecordingSummaryFailure] reports under. */
+        private fun recordingSummaryCode(reason: String): String = when (reason) {
+            RECORDING_UNRESOLVED -> CODE_NOT_FOUND
+            RECORDING_NO_TYPE, RECORDING_UNKNOWN_TYPE,
+            RECORDING_BUCKET_MISMATCH, CAMPFIRE_DISCOVERY_INCOMPLETE,
+            -> CODE_USAGE
+            else -> CODE_USAGE
+        }
+
         private fun deviceFlowCode(reason: String): String = when (reason) {
             DEVICE_ACCESS_DENIED, DEVICE_EXPIRED -> CODE_AUTH
             DEVICE_TRANSPORT -> CODE_NETWORK

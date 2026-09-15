@@ -15,6 +15,7 @@ import kotlinx.serialization.json.Json
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
+import kotlin.test.assertNotEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
@@ -122,7 +123,13 @@ class RecordingsSummarizeTest {
             )
         }
         assertEquals(BasecampException.RECORDING_NO_TYPE, failure.reason)
-        assertEquals(BasecampException.RECORDING_NO_TYPE, failure.code)
+        // The identity lives in `reason`. `code` is SPEC §6's closed taxonomy
+        // and carries the coarse classification, never the composite token —
+        // a caller switching on `code` must never see a value that table does
+        // not contain, and a fixture pinning a canonical `errorCode` must not
+        // be satisfiable by a composite identity.
+        assertEquals(BasecampException.CODE_USAGE, failure.code)
+        assertNotEquals(failure.reason, failure.code)
         assertTrue(recordedPaths.isEmpty(), "routing fails before any request")
         client.close()
     }
