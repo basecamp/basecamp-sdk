@@ -368,13 +368,13 @@ type SummaryKind =
  * `boost`, which names no recording type and is refused explicitly rather than
  * left to fall through as unknown.
  */
-const EVENT_SUBJECTS: Readonly<Record<string, SummaryKind>> = {
-  comment: "comment",
-  message: "message",
-  todo: "todo",
-  card: "card",
-  "chat.line": "chatLine",
-};
+const EVENT_SUBJECTS = new Map<string, SummaryKind>([
+  ["comment", "comment"],
+  ["message", "message"],
+  ["todo", "todo"],
+  ["card", "card"],
+  ["chat.line", "chatLine"],
+]);
 
 /**
  * Maps BC3's recording type strings to a read. It is the routing contract, and
@@ -392,34 +392,39 @@ const EVENT_SUBJECTS: Readonly<Record<string, SummaryKind>> = {
  * a product decision, not a gap: add the type here, its projection in
  * `readSummary`, and a case in `conformance/tests/recording_summary.json`, the
  * fixture every port implements.
+ *
+ * A `Map`, not an object literal: the key is an untrusted string off an event
+ * feed row or a webhook, and `{}["constructor"]` is a hit. A routing table that
+ * answers for every `Object.prototype` member would route those to something
+ * that is not a read at all.
  */
-const RECORDING_TYPES: Readonly<Record<string, SummaryKind>> = {
-  Comment: "comment",
-  Message: "message",
-  Todo: "todo",
-  "Kanban::Card": "card",
-  Document: "document",
-  Upload: "upload",
-  "Schedule::Entry": "scheduleEntry",
-  Question: "question",
-  "Question::Answer": "questionAnswer",
-  Todolist: "todolist",
-  Vault: "vault",
-  "Inbox::Forward": "forward",
-  "Client::Approval": "clientApproval",
-  "Client::Correspondence": "clientCorrespondence",
-  GoogleDocument: "googleDocument",
-  CloudFile: "cloudFile",
-  "Kanban::Step": "cardStep",
-  Questionnaire: "questionnaire",
-  Schedule: "schedule",
-  Todoset: "todoset",
-  "Message::Board": "messageBoard",
-  "Kanban::Board": "cardTable",
-  "Kanban::Column": "cardColumn",
-  Inbox: "inbox",
-  "Chat::Transcript": "campfire",
-};
+const RECORDING_TYPES = new Map<string, SummaryKind>([
+  ["Comment", "comment"],
+  ["Message", "message"],
+  ["Todo", "todo"],
+  ["Kanban::Card", "card"],
+  ["Document", "document"],
+  ["Upload", "upload"],
+  ["Schedule::Entry", "scheduleEntry"],
+  ["Question", "question"],
+  ["Question::Answer", "questionAnswer"],
+  ["Todolist", "todolist"],
+  ["Vault", "vault"],
+  ["Inbox::Forward", "forward"],
+  ["Client::Approval", "clientApproval"],
+  ["Client::Correspondence", "clientCorrespondence"],
+  ["GoogleDocument", "googleDocument"],
+  ["CloudFile", "cloudFile"],
+  ["Kanban::Step", "cardStep"],
+  ["Questionnaire", "questionnaire"],
+  ["Schedule", "schedule"],
+  ["Todoset", "todoset"],
+  ["Message::Board", "messageBoard"],
+  ["Kanban::Board", "cardTable"],
+  ["Kanban::Column", "cardColumn"],
+  ["Inbox", "inbox"],
+  ["Chat::Transcript", "campfire"],
+]);
 
 const CHAT_LINE_TYPE_PREFIX = "Chat::Lines::";
 
@@ -431,7 +436,7 @@ const CHAT_LINE_TYPE_PREFIX = "Chat::Lines::";
  * design.
  */
 export function summarizableRecordingTypes(): string[] {
-  return [...Object.keys(RECORDING_TYPES), `${CHAT_LINE_TYPE_PREFIX}*`].sort();
+  return [...RECORDING_TYPES.keys(), `${CHAT_LINE_TYPE_PREFIX}*`].sort();
 }
 
 /**
@@ -441,9 +446,7 @@ export function summarizableRecordingTypes(): string[] {
  * `no_recording_type`.
  */
 export function summarizableEventTypes(): string[] {
-  return Object.keys(EVENT_SUBJECTS)
-    .map((subject) => `${subject}.*`)
-    .sort();
+  return [...EVENT_SUBJECTS.keys()].map((subject) => `${subject}.*`).sort();
 }
 
 /**
@@ -463,7 +466,7 @@ function routeRecording(ref: RecordingRef): SummaryKind {
   const recordingType = ref.recordingType?.trim() ?? "";
   if (recordingType !== "") {
     if (recordingType.startsWith(CHAT_LINE_TYPE_PREFIX)) return "chatLine";
-    const kind = RECORDING_TYPES[recordingType];
+    const kind = RECORDING_TYPES.get(recordingType);
     if (kind !== undefined) return kind;
     throw new RecordingRoutingError(ref, "unknown_recording_type");
   }
@@ -480,7 +483,7 @@ function routeRecording(ref: RecordingRef): SummaryKind {
   const subject = eventType.slice(0, dot);
   if (subject === "boost") throw new RecordingRoutingError(ref, "no_recording_type");
 
-  const kind = EVENT_SUBJECTS[subject];
+  const kind = EVENT_SUBJECTS.get(subject);
   if (kind !== undefined) return kind;
   throw new RecordingRoutingError(ref, "unknown_recording_type");
 }
@@ -735,8 +738,11 @@ class CampfireIndex {
         if (isNotFound(err)) return [];
         throw err;
       }
+      // An item whose id the response omitted is not a candidate: reading a
+      // line under `undefined` would spend a candidate on a request that cannot
+      // answer, and a non-404 from it would abort the whole search.
       return (project.dock ?? [])
-        .filter((item) => item.name === "chat" && item.id !== 0)
+        .filter((item) => item.name === "chat" && typeof item.id === "number" && item.id !== 0)
         .map((item) => item.id);
     });
     return { ids: hit.value, fetchedAt: hit.fetchedAt, cached: hit.cached };
@@ -768,7 +774,8 @@ class CampfireIndex {
       const byBucket = new Map<number, number[]>();
       for (const campfire of list) {
         const bucket = campfire.bucket;
-        if (!bucket || bucket.id === 0) continue;
+        if (!bucket || typeof bucket.id !== "number" || bucket.id === 0) continue;
+        if (typeof campfire.id !== "number" || campfire.id === 0) continue;
         const ids = byBucket.get(bucket.id);
         if (ids === undefined) byBucket.set(bucket.id, [campfire.id]);
         else ids.push(campfire.id);
@@ -925,8 +932,11 @@ export class RecordingsService extends GeneratedRecordingsService {
     }
     const kind = routeRecording(ref);
     const summary = await this.#readSummary(ref, kind);
-    if (summary.bucket && summary.bucket.id !== 0 && summary.bucket.id !== ref.bucketId) {
-      throw new BucketMismatchError(ref, summary.bucket.id);
+    // A bucket the read did not identify is Go's zero value: there is nothing
+    // to disagree with, so the pointer stands rather than the call failing.
+    const readBucketId = summary.bucket?.id;
+    if (readBucketId !== undefined && readBucketId !== 0 && readBucketId !== ref.bucketId) {
+      throw new BucketMismatchError(ref, readBucketId);
     }
     return summary;
   }
@@ -1112,6 +1122,13 @@ export class RecordingsService extends GeneratedRecordingsService {
         const c = await reads.campfires.get(id);
         return projectRecording(c, c.title, "", { bucket: c.bucket, creator: c.creator });
       }
+      default:
+        // Unreachable for a routed kind — the switch is exhaustive over
+        // SummaryKind — and kept anyway, as Go keeps its trailing routing
+        // error. Without it a value that reached here outside the type system
+        // would fall out of the switch as `undefined` and be dereferenced as a
+        // summary, turning a routing failure into a TypeError.
+        throw new RecordingRoutingError(ref, "unknown_recording_type");
     }
   }
 

@@ -69,6 +69,24 @@ describe("personIdFromSGID", () => {
     expect(personIdFromSGID(legacySGID("gid://bc3/Person/90071992547409911"))).toBeUndefined();
   });
 
+  it("refuses a payload carrying whitespace the base64 alphabet does not", () => {
+    // `atob` ignores every ASCII whitespace character; Go's decoder ignores
+    // only CR and LF. Both sides must accept the same payloads, or a malformed
+    // sgid reports a mention in one SDK and not in another.
+    const sgid = personSGID(VICTOR);
+    const at = (fill: string) => sgid.slice(0, 8) + fill + sgid.slice(8);
+    expect(personIdFromSGID(at(" "))).toBeUndefined();
+    expect(personIdFromSGID(at("\t"))).toBeUndefined();
+    expect(personIdFromSGID(at("\n"))).toBe(VICTOR);
+    expect(personIdFromSGID(at("\r"))).toBe(VICTOR);
+  });
+
+  it("matches the gid scheme case-insensitively and refuses a host that cannot be one", () => {
+    expect(personIdFromSGID(legacySGID(`GID://bc3/Person/${VICTOR}`))).toBe(VICTOR);
+    expect(personIdFromSGID(legacySGID(`gid://b c3/Person/${VICTOR}`))).toBeUndefined();
+    expect(personIdFromSGID(legacySGID(`gid://bc3\u0000/Person/${VICTOR}`))).toBeUndefined();
+  });
+
   it("refuses what does not decode at all", () => {
     expect(personIdFromSGID("")).toBeUndefined();
     expect(personIdFromSGID("not base64 at all !!")).toBeUndefined();
@@ -165,6 +183,30 @@ describe("mentionMarkup", () => {
     expect(() =>
       mentionMarkup(person(VICTOR, legacySGID("gid://bc3/ActiveStorage::Blob/9"))),
     ).toThrow(/does not name that person/);
+  });
+
+  it("refuses an sgid that decodes to nobody, even for a person carrying no id", () => {
+    // The two halves of the check are separate: "names a different person"
+    // alone would pass an undecodable sgid when neither side is a number, and
+    // an unverifiable tag would be written.
+    expect(() => mentionMarkup(person(VICTOR, "not-a-real-sgid-at-all"))).toThrow(
+      /does not name that person/,
+    );
+    const anonymous = { name: "No id", attachable_sgid: "not-a-real-sgid-at-all" } as unknown as Person;
+    expect(() => mentionMarkup(anonymous)).toThrow(BasecampError);
+    expect(() => withMentions("<div>hi</div>", [anonymous])).toThrow(BasecampError);
+  });
+
+  it("refuses something that is not a person at all", () => {
+    expect(() => mentionMarkup(null as unknown as Person)).toThrow(BasecampError);
+    expect(() => mentionMarkup(undefined as unknown as Person)).toThrow(BasecampError);
+  });
+
+  it("leaves a character reference that names an Object.prototype member alone", () => {
+    // The entity table must not answer for `constructor`/`toString`: a lookup
+    // through Object.prototype would substitute a function into the value.
+    expect(mentionedPersonIds(`<bc-attachment sgid="&constructor;"></bc-attachment>`)).toEqual([]);
+    expect(mentionedPersonIds(`<bc-attachment sgid="&toString;"></bc-attachment>`)).toEqual([]);
   });
 
   it("refuses an sgid carrying markup characters", () => {

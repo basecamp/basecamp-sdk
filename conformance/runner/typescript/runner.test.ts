@@ -163,8 +163,12 @@ function digPath(root: unknown, dotted: string): { value: unknown; present: bool
   let current: unknown = root;
   for (const key of dotted.split(".")) {
     if (Array.isArray(current)) {
+      // Digits only, as Go's strconv.Atoi reads them: `Number("")` is 0 and
+      // `Number(" 1")` is 1, so a typo'd path would silently resolve to an
+      // element instead of reporting the field absent.
+      if (!/^(0|[1-9][0-9]*)$/.test(key)) return { value: undefined, present: false };
       const index = Number(key);
-      if (!Number.isInteger(index) || index < 0 || index >= current.length) {
+      if (index >= current.length) {
         return { value: undefined, present: false };
       }
       current = current[index];
@@ -1901,11 +1905,11 @@ function checkAssertions(
       case "responseStatus": {
         const expected = Number(assertion.expected);
         if (result.error) {
-          if (
-            result.error instanceof BasecampError &&
-            result.error.httpStatus !== undefined &&
-            result.error.httpStatus !== expected
-          ) {
+          // A statusless BasecampError is a failure of this assertion, not a
+          // pass: composite verdicts (SPEC §18) are BasecampErrors with no
+          // httpStatus by design, so skipping the comparison when the status is
+          // absent would make every such case vacuously green.
+          if (result.error instanceof BasecampError && result.error.httpStatus !== expected) {
             throw new Error(
               `[${tc.name}] expected response status ${expected}, got ${result.error.httpStatus}`,
             );
