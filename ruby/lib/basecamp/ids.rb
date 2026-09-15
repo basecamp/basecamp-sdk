@@ -21,8 +21,11 @@ module Basecamp
   # the caller did not ask for. The value is bounded like the API's own ids, so
   # a number too large to be one is refused rather than sent.
   module Ids
-    # The largest id the API can carry, matching a signed 64-bit integer.
+    # The range a signed 64-bit id can carry, which is what the API's own ids
+    # are. Shared with {Basecamp::Mentions}, which bounds a person id decoded
+    # out of an sgid the same way.
     MAX = (2**63) - 1
+    MIN = -(2**63)
 
     module_function
 
@@ -32,9 +35,12 @@ module Basecamp
     # @raise [Basecamp::UsageError] when the value is not an integer id
     def integer(value, name)
       id = value if value.is_a?(Integer)
-      id ||= value.to_i if value.is_a?(String) && value.match?(/\A\d+\z/)
+      # Matched on BYTES: a String carrying invalid UTF-8 makes the regexp
+      # engine raise ArgumentError, and an id that is not a number is a usage
+      # error naming the argument, not an exception out of a public method.
+      id ||= value.b.to_i if value.is_a?(String) && value.b.match?(/\A\d+\z/n)
       raise UsageError.new("#{name} must be an integer, got #{value.inspect}") if id.nil?
-      raise UsageError.new("#{name} is out of range: #{value.inspect}") if id.abs > MAX
+      raise UsageError.new("#{name} is out of range: #{value.inspect}") unless id.between?(MIN, MAX)
 
       id
     end

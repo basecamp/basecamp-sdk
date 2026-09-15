@@ -118,10 +118,16 @@ module Basecamp
     end
 
     # A per-key cache with single-flight loading: concurrent callers for one key
-    # wait on the one load in progress rather than loading again, a failed load
-    # leaves the previous value in place (and its error is shared with the
-    # waiters, so N callers never re-run one failed load N times), and a refresh
+    # wait on the one load in progress rather than loading again, and a refresh
     # is honoured only once the value is older than a floor.
+    #
+    # A load that FAILS leaves the previous value in place and its error is
+    # shared with the waiters, so N callers never re-run one failed load N
+    # times. A load that was ABANDONED — the loading thread killed, or unwound
+    # by something that is not a StandardError — is the one exception: a waiter
+    # goes round once and loads for itself, because that outcome says nothing
+    # about whether the waiter's own call can succeed. See {LoaderAbandoned},
+    # which explains why the two can be told apart here.
     class TTLCache
       # Raised when a load left without publishing an outcome of its own — the
       # loading thread was killed, or unwound by something that is not a
@@ -157,6 +163,10 @@ module Basecamp
 
       Entry = Struct.new(:value, :fetched, :seq, keyword_init: true)
 
+      # How many times one {#get} may try. Two: the call itself, plus the single
+      # re-run a waiter is allowed when the load it woke on was abandoned.
+      MAX_ATTEMPTS = 2
+
       # The clock is MONOTONIC, never wall time. A backwards step in wall time —
       # an NTP correction, a VM resume — would make an entry outlive its TTL,
       # decline a refresh that is genuinely due, and take the `refreshed` and
@@ -168,10 +178,17 @@ module Basecamp
       # @param floor [Float] seconds a refresh must wait before it is honoured
       # @param max_items [Integer] entry bound; 0 or less disables eviction
       # @param clock [#call, nil] monotonic seconds, injectable for tests
-      def initialize(ttl:, floor:, max_items:, clock: nil)
+      # @param on_wait [#call, nil] a test seam, called while the cache's lock
+      #   is held and immediately before a waiter releases it to wait. It is how
+      #   a test knows a waiter has REACHED the wait rather than guessing from
+      #   Thread#status, which reports a thread merely blocked on the lock as
+      #   sleeping too. The reference implementation carries the same seam, for
+      #   the same reason. Never set in production.
+      def initialize(ttl:, floor:, max_items:, clock: nil, on_wait: nil)
         @ttl = ttl
         @floor = floor
         @max_items = max_items
+        @on_wait = on_wait
         @clock = clock || -> { Process.clock_gettime(Process::CLOCK_MONOTONIC) }
         @mutex = Mutex.new
         @condition = ConditionVariable.new
@@ -188,9 +205,13 @@ module Basecamp
       # @yieldreturn [Object] the loaded value
       # @return [Hit]
       def get(key, refresh: false)
-        reloaded = false
-
-        loop do
+        # Two attempts, not a loop with a counter, and deliberately not
+        # Kernel#loop. The bound IS the retry rule — a waiter may load for
+        # itself once when the load it woke on was abandoned — so spelling it as
+        # the iteration count leaves nothing to drift. Kernel#loop would also
+        # rescue StopIteration out of the caller's loader and return its result
+        # in place of a Hit, turning a raise into a silently wrong answer.
+        MAX_ATTEMPTS.times do |attempt|
           owner = false
           pending = nil
           published = false
@@ -232,14 +253,14 @@ module Basecamp
               begin
                 return await(pending)
               rescue LoaderAbandoned
-                # The load did not fail, it was abandoned — see
-                # {LoaderAbandoned}. That says nothing about whether this
-                # caller's own call can succeed, so it goes round once and loads
-                # for itself. Once only, so a run of abandoned owners cannot
-                # become a queue of sequential loads behind one waiter.
-                raise if reloaded
-
-                reloaded = true
+                # DELIBERATE, and the one place a waiter does not simply take
+                # the outcome it woke on. The load did not fail, it was
+                # abandoned — see {LoaderAbandoned} for why Ruby can tell those
+                # apart where Go needed a two-part test — so this caller goes
+                # round and loads for itself. On the last attempt it is raised
+                # rather than chased, so a run of abandoned owners cannot become
+                # a queue of sequential loads behind one waiter.
+                raise if attempt == MAX_ATTEMPTS - 1
               end
               next
             end
@@ -256,6 +277,11 @@ module Basecamp
             publish(key, pending, nil, LoaderAbandoned.new) if owner && !published
           end
         end
+
+        # Unreachable: the last attempt either returns or raises. Stated so a
+        # future edit that breaks that cannot fall out of here with a value
+        # nobody meant.
+        raise LoaderAbandoned.new("cache load did not settle in #{MAX_ATTEMPTS} attempts")
       end
 
       # Returns the cached value for key when one is within the TTL, without
@@ -282,20 +308,19 @@ module Basecamp
       # as something that predated it, because it was.
       def await(pending)
         @mutex.synchronize do
-          @condition.wait(@mutex) until pending[:done]
+          until pending[:done]
+            # Signalled under the lock, so a test that has seen it knows this
+            # thread reaches the wait before any other thread can take the lock
+            # and publish.
+            @on_wait&.call
+            @condition.wait(@mutex)
+          end
         end
         raise pending[:error] if pending[:error]
 
         Hit.new(value: pending[:value], fetched: pending[:fetched], cached: false)
       end
 
-      # Whether this waiter should load for itself rather than take the outcome
-      # it just woke on. Only for a load that was abandoned rather than failed —
-      # see {LoaderAbandoned} — and only once per call, so a run of abandoned
-      # owners cannot become a queue of sequential loads behind one waiter.
-      def reload_after?(pending, reloaded)
-        !reloaded && pending[:error].is_a?(LoaderAbandoned)
-      end
 
       # Releases the key and wakes the waiters. A failed load publishes no entry,
       # so the previous value — if any — stays in place and keeps serving until
