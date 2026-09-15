@@ -232,6 +232,22 @@ class MentionsTest < Minitest::Test
     )
   end
 
+  def test_a_line_break_between_the_padding_and_the_separator_names_nobody
+    # The padding is right-trimmed off the payload as the reference trims it, so
+    # a break sitting between the "=" and the separator leaves the padding in
+    # place and the payload is refused. Dropping breaks BEFORE the trim would
+    # strip the padding and resolve a person the reference does not. (A break at
+    # the very end of the whole sgid is a different case: both trim that with
+    # the surrounding whitespace, so both resolve it.)
+    unsigned = person_sgid(10).split("--").first
+    padding = "=" * ((4 - (unsigned.length % 4)) % 4)
+
+    assert_not_empty padding, "this case needs a payload that pads"
+    assert_equal 10, Basecamp::Mentions.person_id_from_sgid("#{unsigned}#{padding}--abc123")
+    assert_nil Basecamp::Mentions.person_id_from_sgid("#{unsigned}#{padding}\n--abc123")
+    assert_equal 10, Basecamp::Mentions.person_id_from_sgid("#{unsigned}#{padding}--abc123\n")
+  end
+
   def test_a_final_group_with_non_zero_unused_bits_still_decodes
     # The reference decoder is NOT strict about the final group's unused bits,
     # and a stricter one here does not report an error — it makes a real mention

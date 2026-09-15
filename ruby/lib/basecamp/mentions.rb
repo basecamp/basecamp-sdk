@@ -522,12 +522,17 @@ module Basecamp
     def decode_payload(payload)
       return nil if payload.nil? || payload.empty? || payload.length > MAX_SGID_ENCODED_BYTES
 
-      # CR and LF are dropped before the alphabet check, because Go's
-      # base64.RawStdEncoding skips exactly those two — a newline-wrapped
-      # attribute value is legal HTML, and the two must not disagree on it.
-      normalized = payload.delete("\r\n").tr("-_", "+/").sub(/=+\z/, "")
-      return nil unless normalized.match?(%r{\A[A-Za-z0-9+/]+\z})
-      return nil if (normalized.length % 4) == 1
+      # CR and LF are tolerated, because the reference decoder skips exactly
+      # those two and a line-broken attribute value is legal HTML. They are
+      # dropped AFTER the padding is right-trimmed, not before: the reference
+      # trims the raw string, so "MA==\n" keeps its "=" and names nobody there.
+      # Deleting the break first would strip the padding and resolve a person
+      # the reference does not.
+      normalized = payload.tr("-_", "+/").sub(/=+\z/, "")
+      return nil unless normalized.match?(%r{\A[A-Za-z0-9+/\r\n]+\z})
+
+      normalized = normalized.delete("\r\n")
+      return nil if normalized.empty? || (normalized.length % 4) == 1
 
       # Decoded with the LENIENT unpack, deliberately. Go's RawStdEncoding is
       # non-strict: it does not require the final group's unused bits to be
