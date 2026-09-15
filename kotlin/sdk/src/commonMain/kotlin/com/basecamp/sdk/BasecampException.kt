@@ -310,8 +310,9 @@ sealed class BasecampException(
      * identity rather than one of its constituent reads' (SPEC.md §18,
      * Appendix F "Recording Summaries and Mention Helpers").
      *
-     * [reason] carries the typed token, and is also this exception's [code], so
-     * a consumer matches the identity rather than parsing the message:
+     * [reason] carries the typed token, and is the property to match on rather
+     * than parsing the message. It is NOT this exception's [code] — see the
+     * derivation table below:
      *
      * - [RECORDING_NO_TYPE] — an event type that names no recording type
      *   (`boost.created`, whose recording is the boost's target and whose type
@@ -472,8 +473,13 @@ sealed class BasecampException(
         /**
          * The [RecordingSummaryFailure] tokens. They are the composite's own
          * error identities, not HTTP statuses, and they are the vocabulary
-         * `conformance/tests/recording_summary.json` pins across every SDK —
-         * so the token, the [code], and the fixture all read the same.
+         * `conformance/tests/recording_summary.json` pins across every SDK.
+         *
+         * Three strings sit in this neighbourhood and only two of them are the
+         * same: a token here equals the fixture's `errorType`, and neither
+         * equals the exception's [code] or a fixture's `errorCode`, which are
+         * SPEC §6's closed taxonomy. [RecordingSummaryFailure] derives the one
+         * from the other.
          */
         const val RECORDING_NO_TYPE = "no_recording_type"
         const val RECORDING_UNKNOWN_TYPE = "unknown_recording_type"
@@ -488,16 +494,23 @@ sealed class BasecampException(
         const val DEVICE_UNAVAILABLE = "unavailable"
         const val DEVICE_CANCELLED = "cancelled"
 
-        /** Derives a [DeviceFlow]'s parent error code from its reason. */
-        /** The coarse SPEC §6 code a [RecordingSummaryFailure] reports under. */
+        /**
+         * The coarse SPEC §6 code a [RecordingSummaryFailure] reports under;
+         * see the derivation table on that class. The `else` is deliberate: a
+         * reason added without a row here reports `usage` rather than falling
+         * through to [exitCodeFor]'s `api_error`, so a new verdict can never
+         * announce itself as a server fault.
+         */
         private fun recordingSummaryCode(reason: String): String = when (reason) {
             RECORDING_UNRESOLVED -> CODE_NOT_FOUND
-            RECORDING_NO_TYPE, RECORDING_UNKNOWN_TYPE,
-            RECORDING_BUCKET_MISMATCH, CAMPFIRE_DISCOVERY_INCOMPLETE,
-            -> CODE_USAGE
+            RECORDING_NO_TYPE,
+            RECORDING_UNKNOWN_TYPE,
+            RECORDING_BUCKET_MISMATCH,
+            CAMPFIRE_DISCOVERY_INCOMPLETE -> CODE_USAGE
             else -> CODE_USAGE
         }
 
+        /** Derives a [DeviceFlow]'s parent error code from its reason. */
         private fun deviceFlowCode(reason: String): String = when (reason) {
             DEVICE_ACCESS_DENIED, DEVICE_EXPIRED -> CODE_AUTH
             DEVICE_TRANSPORT -> CODE_NETWORK
