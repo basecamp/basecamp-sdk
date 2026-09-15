@@ -1509,3 +1509,42 @@ func TestTTLCache_OwnerCancelledAfterAGenuineFailureDoesNotRetryIt(t *testing.T)
 		t.Fatalf("loads = %d, want 1: a genuine failure is not retried because its owner happened to be cancelled", n)
 	}
 }
+
+func TestTTLCache_SweepsExpiredEntriesOnLoad(t *testing.T) {
+	// A long-lived client sees many keys. Once past their TTL they are not
+	// kept for the client's lifetime: the next load on any key sweeps them.
+	now := time.Date(2026, 9, 15, 12, 0, 0, 0, time.UTC)
+	clock := &now
+	cache := newTTLCache[string, int](func() time.Time { return *clock }, time.Minute, time.Second)
+	one := func(context.Context) (int, error) { return 1, nil }
+	for _, k := range []string{"a", "b", "c"} {
+		if _, err := cache.get(context.Background(), k, false, one); err != nil {
+			t.Fatal(err)
+		}
+	}
+	*clock = clock.Add(30 * time.Second)
+	if _, err := cache.get(context.Background(), "d", false, one); err != nil { // d is fresh at +30s
+		t.Fatal(err)
+	}
+	count := func() int {
+		cache.mu.Lock()
+		defer cache.mu.Unlock()
+		return len(cache.entries)
+	}
+	if count() != 4 {
+		t.Fatalf("entries = %d before expiry, want 4", count())
+	}
+	*clock = clock.Add(31 * time.Second) // a, b, c are past the TTL; d is not
+	if hit, err := cache.get(context.Background(), "d", false, one); err != nil || !hit.cached {
+		t.Fatalf("d should still be served from cache: %+v %v", hit, err)
+	}
+	if count() != 4 {
+		t.Fatalf("entries = %d: a cache hit does no sweeping", count())
+	}
+	if _, err := cache.get(context.Background(), "e", false, one); err != nil { // a load: sweeps
+		t.Fatal(err)
+	}
+	if count() != 2 {
+		t.Fatalf("entries = %d after a load, want 2 (d and e)", count())
+	}
+}

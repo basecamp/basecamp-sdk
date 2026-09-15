@@ -64,12 +64,15 @@
 #
 #   source          Required. The runner file and skip constant, rendered
 #                   verbatim inside the parentheses of the heading. Kotlin's and
-#                   Swift's carry a clause rather than a constant name, because
-#                   their skip constants are EMPTY and their single entry
-#                   arrives from the `link-header` tag branch. That distinction
-#                   is load-bearing documentation: a reader who greps
-#                   `KOTLIN_SKIPS` finds nothing and must not conclude the
-#                   roster is stale.
+#                   Swift's carry a clause rather than a bare constant name,
+#                   because one of their entries does not come from the
+#                   constant at all: it arrives from the `link-header` tag
+#                   branch, which no name-keyed entry can express. That
+#                   distinction is load-bearing documentation: a reader who
+#                   greps `KOTLIN_SKIPS` for that case finds nothing and must
+#                   not conclude the roster is stale. (The constants themselves
+#                   hold the Go-first composite's six cases; a port empties
+#                   them again.)
 #
 #   classification  Optional. One word for why the skips exist at all
 #                   (`architectural`); omitted where the reasons carry it. A

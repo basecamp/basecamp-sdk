@@ -31,7 +31,12 @@ private fun decodeFailureMessage(e: SerializationException): String =
         "Mock body does not decode into the Kotlin model: ${e.message}"
     }
 
-/** Tests where the Kotlin runner's operation dispatcher has no implementation yet. */
+/**
+ * Tests where the Kotlin runner's operation dispatcher has no implementation yet: the six
+ * `recording_summary.json` cases of a Go-first composite (SPEC Appendix F, Recording
+ * Summaries and Mention Helpers); a port deletes them. Every entry here is rostered in
+ * `spec/zero-skip-roster.yml`.
+ */
 private val KOTLIN_SKIPS: Map<String, String> = mapOf(
     "RecordingsSummarize routes comment.created to the comment read and reads its mentions" to "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
     "RecordingsSummarize refuses boost.created before any request" to "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",

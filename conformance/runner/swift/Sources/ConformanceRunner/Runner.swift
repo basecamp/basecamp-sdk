@@ -20,11 +20,14 @@ private let operationsHonoringPage: Set<String> = ["ListProjects"]
 
 /// Temporary capability skips, keyed by exact test name.
 ///
-/// EMPTY, and meant to stay that way. Swift is three-gate (status, network and
-/// idempotent-POST retry) and since #563 retries the authenticated download hop
-/// too, so no fixture asks for a capability the SDK lacks. The one standing
-/// exclusion is architectural rather than a gap — the `link-header` tag branch
-/// in the run loop, which no name-keyed entry can express.
+/// Holds exactly the six `recording_summary.json` cases of a Go-first composite
+/// (SPEC Appendix F, Recording Summaries and Mention Helpers) this SDK has not
+/// ported; a port deletes them. Nothing else: Swift is three-gate (status,
+/// network and idempotent-POST retry) and since #563 retries the authenticated
+/// download hop too, so no other fixture asks for a capability the SDK lacks.
+/// The one standing exclusion beyond these is architectural rather than a gap
+/// — the `link-header` tag branch in the run loop, which no name-keyed entry
+/// can express.
 private let temporarySkips: [String: String] = [
     "RecordingsSummarize routes comment.created to the comment read and reads its mentions": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
     "RecordingsSummarize refuses boost.created before any request": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
@@ -36,9 +39,8 @@ private let temporarySkips: [String: String] = [
 
 /// The roster the run loop consults. `SWIFT_CONFORMANCE_NO_SKIPS=1` empties it,
 /// so a temporary skip can be proven genuine before it is added and proven
-/// ready to flip once the capability lands. With `temporarySkips` empty the
-/// switch is a no-op — it is the mechanism kept live, not a claim that anything
-/// is being skipped.
+/// ready to flip once the capability lands — running the Go-first composite's
+/// six cases against this SDK shows exactly what a port still owes.
 ///
 /// The value is compared exactly: an inherited empty or `=0` variable must not
 /// quietly change what the suite covers.

@@ -686,6 +686,20 @@ func (c *ttlCache[K, V]) peek(key K) (ttlHit[V], bool) {
 	return ttlHit[V]{value: entry.value, fetched: entry.fetched, cached: true}, true
 }
 
+// sweepLocked drops every entry past its TTL. It runs at each publication —
+// the one moment the cache does work proportional to a miss anyway — so a
+// long-lived Client that has seen many buckets keeps a snapshot for at most a
+// TTL past its last use plus the interval to the next load on any key, rather
+// than for its lifetime. Caller holds c.mu.
+func (c *ttlCache[K, V]) sweepLocked() {
+	now := c.now()
+	for key, entry := range c.entries {
+		if now.Sub(entry.fetched) >= c.ttl {
+			delete(c.entries, key)
+		}
+	}
+}
+
 // load runs one loader and publishes its outcome. Publication is deferred so
 // a loader that panics — a hook, a token provider — still releases the key
 // and wakes its waiters (with an error) before the panic continues; without
@@ -707,6 +721,7 @@ func (c *ttlCache[K, V]) publish(key K, pending *ttlLoad, loaded V, err error, c
 	callerDone := ctxErr != nil
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	c.sweepLocked()
 	delete(c.inflight, key)
 	pending.err = err
 	pending.callerDone = err != nil && callerDone && errors.Is(err, ctxErr)
@@ -720,7 +735,9 @@ func (c *ttlCache[K, V]) publish(key K, pending *ttlLoad, loaded V, err error, c
 // campfireIndex holds the two discovery sources. It lives on Client (shared
 // by every AccountClient the Client hands out); a Client is bound to one
 // credential, so entries are never shared across authorization contexts, and
-// every key carries the account id.
+// every key carries the account id. Expired snapshots are swept at each
+// load, so the index holds at most the buckets and accounts consulted within
+// the last TTL, not everything the Client has ever seen.
 type campfireIndex struct {
 	docks    *ttlCache[campfireBucketKey, []int64]
 	listings *ttlCache[string, map[int64][]int64]
