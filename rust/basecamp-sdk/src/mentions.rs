@@ -1175,6 +1175,25 @@ mod tests {
             ("gid://[::1/Person/77", None),
             ("gid://bc3[/Person/77", None),
             ("gid://a:1]/Person/77", None),
+            // A bracketed authority that PARSES but is not an address is its own shape,
+            // distinct from a malformed one: three ports have now accepted some form of
+            // bracketed text as an IPv6 host without parsing it.
+            ("gid://[not-an-ip]/Person/1", None),
+            ("gid://[abc]/Person/1", None),
+            ("gid://[1]/Person/1", None),
+            ("gid://[::1::2]/Person/1", None),
+            ("gid://[]/Person/1", None),
+            ("gid://[::ffff:192.0.2.1]/Person/1", Some(1)),
+            ("gid://[fe80::1%25eth0]:8080/Person/1", Some(1)),
+            ("gid://[::1]:/Person/1", Some(1)),
+            // An empty host stays empty after userinfo is stripped — but `u.Host` carries
+            // the port, so an empty NAME with a port is not an empty host.
+            ("gid://@/Person/1", None),
+            ("gid://:@/Person/1", None),
+            ("gid://%20@/Person/1", None),
+            ("gid:///Person/1", None),
+            ("gid://@:/Person/1", Some(1)),
+            ("gid://@:8080/Person/1", Some(1)),
             // The host is what `u.Host` holds, which INCLUDES the port — so an empty name
             // with a port is not an empty host.
             ("gid://:8080/Person/77", Some(77)),

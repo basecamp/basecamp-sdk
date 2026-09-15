@@ -165,10 +165,18 @@ fn check(run: &Run, assertion: &Assertion) -> Result<(), String> {
                     assertion.kind
                 ));
             };
-            // A composite's own reason is classified first: `recording_unresolved` is
-            // neither an API read failure nor incomplete discovery, and no taxonomy code
-            // can carry that identity. Everything else answers its canonical code.
-            let actual = semantic_error_type(error).unwrap_or_else(|| error.code().as_str());
+            // `errorType` and `errorCode` are different questions and the Go runner keeps
+            // them apart. `errorType` asks what KIND of failure it is, and a composite's
+            // own reason is classified first there: `recording_unresolved` is neither an
+            // API read failure nor incomplete discovery, and no taxonomy code can carry
+            // that identity. `errorCode` asks for the SDK's canonical `ErrorCode` and
+            // nothing else — answering a semantic name there would make the assertion
+            // unable to check the code it exists to check.
+            let actual = if assertion.kind == "errorType" {
+                semantic_error_type(error).unwrap_or_else(|| error.code().as_str())
+            } else {
+                error.code().as_str()
+            };
             if actual == expected {
                 Ok(())
             } else {
