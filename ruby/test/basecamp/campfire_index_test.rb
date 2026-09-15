@@ -273,45 +273,48 @@ class CampfireIndexTest < Minitest::Test
     # The same bound, observed from the waiter rather than from the key: two
     # abandonments in a row and the waiter gets the error instead of a third
     # load.
+    #
+    # Which of the two waiters wins the re-run is arbitrary, so the test does
+    # not assume it — the loader announces itself, and the OTHER one is the
+    # thread whose re-run is spent.
     cache, arrivals = cache_with_waiter_barrier
-    attempts = Queue.new
+    loaders = Queue.new
     held = Queue.new
+    abandoned = Basecamp::CampfireIndex::TTLCache::LoaderAbandoned
 
-    owner = Thread.new { cache.get(:k) { attempts << :first; held.pop } }
-    attempts.pop
-
-    waiter = Thread.new do
-      cache.get(:k) { attempts << :waiter_reload; held.pop }
-    rescue Basecamp::CampfireIndex::TTLCache::LoaderAbandoned => e
-      e
+    load_once = lambda do
+      Thread.new do
+        cache.get(:k) { loaders << Thread.current; held.pop }
+      rescue abandoned => e
+        e
+      end
     end
-    arrivals.pop
 
-    # A second waiter, which will wake on the FIRST abandonment, use its one
-    # re-run to queue behind the first waiter's load, and then wake on the
-    # SECOND abandonment with its re-run already spent.
-    second = Thread.new do
-      cache.get(:k) { attempts << :second_reload; held.pop }
-    rescue Basecamp::CampfireIndex::TTLCache::LoaderAbandoned => e
-      e
-    end
-    arrivals.pop
+    owner = load_once.call
+    loaders.pop
+    waiters = [ load_once.call, load_once.call ]
+    2.times { arrivals.pop }
 
     owner.kill
     owner.join
-    attempts.pop # the first waiter is now loading
-    arrivals.pop # the second waiter has queued behind it, re-run spent
-    await_parked([ waiter ])
-    waiter.kill
-    waiter.join
 
-    assert second.join(5), "the second waiter was left parked"
-    assert_kind_of Basecamp::CampfireIndex::TTLCache::LoaderAbandoned, second.value
+    # One waiter spent its re-run becoming the loader; the other spent its own
+    # queueing behind that load.
+    second_loader = loaders.pop
+    arrivals.pop
+    spent = (waiters - [ second_loader ]).first
+
+    await_parked([ second_loader ])
+    second_loader.kill
+    second_loader.join
+
+    assert spent.join(5), "the waiter with its re-run spent was left parked"
+    assert_kind_of abandoned, spent.value
     # The abandonment it woke on, propagated — not a substitute minted after the
     # attempts ran out. Those are different lines, and only this distinguishes
     # them.
-    assert_equal "cache loader did not complete", second.value.message
-    assert_empty attempts, "the second waiter loaded a third time instead of raising"
+    assert_equal "cache loader did not complete", spent.value.message
+    assert_empty loaders, "the waiter loaded a third time instead of raising"
   end
 
   def test_a_loader_that_raises_stop_iteration_still_raises
