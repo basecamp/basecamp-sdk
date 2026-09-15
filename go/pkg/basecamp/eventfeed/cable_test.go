@@ -705,3 +705,12 @@ func TestParseFrame_UnknownTypeIgnoresUnrelatedFields(t *testing.T) {
 		}
 	}
 }
+
+// A typed-nil *invalidFrameError reaching the reduction is the in-package
+// half of TestTypedNilSeamErrorsFailClosed: the match must not be read as
+// the value.
+func TestObservableSocketErrorTypedNilInvalidFrame(t *testing.T) {
+	if got := observableSocketError((*invalidFrameError)(nil)); got != errSocketFailed {
+		t.Fatalf("observable error = %v, want errSocketFailed by identity", got)
+	}
+}
