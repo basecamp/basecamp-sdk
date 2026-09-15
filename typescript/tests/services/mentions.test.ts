@@ -109,6 +109,33 @@ describe("personIdFromSGID", () => {
     expect(personIdFromSGID(mutated)).toBe(VICTOR);
   });
 
+  it("strips padding the way Go does — a right-trim, before the newlines", () => {
+    // Go right-trims `=` off the payload as written and only then decodes,
+    // ignoring CR and LF as it goes. So a line break sitting between the
+    // padding and the `--` separator names nobody in Go: the trim stops at the
+    // newline and leaves an `=` the raw alphabet refuses, and the whole-value
+    // fallback fails the same way. Stripping newlines before the trim would
+    // decode that one and be leniently wrong in a place nothing else looks.
+    //
+    // Probed against `base64.RawStdEncoding` and Go's own `globalIDFromSGID`
+    // rather than reasoned about: these five agree case for case.
+    const unsigned = legacySGID(`gid://bc3/Person/${VICTOR}?expires_in=x`, { unsigned: true });
+    const padding = "=".repeat((4 - (unsigned.length % 4)) % 4);
+    expect(padding).not.toBe("");
+    const digest = "--deadbeefdeadbeefdeadbeefdeadbeefdeadbeef";
+
+    expect(personIdFromSGID(unsigned + padding + digest)).toBe(VICTOR);
+    expect(personIdFromSGID(unsigned + padding + "\n" + digest)).toBeUndefined();
+    expect(personIdFromSGID(unsigned + padding + "\r" + digest)).toBeUndefined();
+    // A newline inside the payload is ignored, and the padding still trims.
+    expect(
+      personIdFromSGID(`${unsigned.slice(0, 4)}\n${unsigned.slice(4)}${padding}${digest}`),
+    ).toBe(VICTOR);
+    // Trailing whitespace on the whole sgid is trimmed before any of that, so
+    // it reaches the payload handling as if it had never been there.
+    expect(personIdFromSGID(unsigned + padding + "\n")).toBe(VICTOR);
+  });
+
   it("refuses a payload whose length cannot be a base64 group", () => {
     // Both decoders reject a final group of one character.
     const sgid = legacySGID(`gid://bc3/Person/${VICTOR}`, { unsigned: true });
