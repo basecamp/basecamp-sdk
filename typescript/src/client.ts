@@ -35,7 +35,7 @@ import { TodosetsService } from "./generated/services/todosets.js";
 import { HillChartsService } from "./generated/services/hill-charts.js";
 import { PeopleService } from "./generated/services/people.js";
 import { MessagesService } from "./generated/services/messages.js";
-import { CommentsService } from "./generated/services/comments.js";
+import { CommentsService } from "./services/comments-extensions.js";
 import { CampfiresService } from "./generated/services/campfires.js";
 import { CardTablesService } from "./generated/services/card-tables.js";
 import { CardsService } from "./services/cards-extensions.js";
@@ -65,7 +65,7 @@ import { CloudFilesService } from "./generated/services/cloud-files.js";
 import { GoogleDocumentsService } from "./generated/services/google-documents.js";
 import { SchedulesService } from "./services/schedules-extensions.js";
 import { EventsService } from "./generated/services/events.js";
-import { RecordingsService } from "./generated/services/recordings.js";
+import { RecordingsService } from "./services/recordings-extensions.js";
 import { SearchService } from "./generated/services/search.js";
 import { ReportsService } from "./generated/services/reports.js";
 import { TemplatesService } from "./generated/services/templates.js";
@@ -471,7 +471,11 @@ export function createBasecampClient(options: BasecampClientOptions): BasecampCl
   defineService("people", () => new PeopleService(client, hooks, fetchPage, maxPages));
   defineService("authorization", () => new AuthorizationService(client, hooks, authStrategy, userAgent));
   defineService("messages", () => new MessagesService(client, hooks, fetchPage, maxPages));
-  defineService("comments", () => new CommentsService(client, hooks, fetchPage, maxPages));
+  // The mention composites resolve person ids through the client's own people
+  // read; positional args mirror BaseService, with the source appended last.
+  defineService("comments", () =>
+    new CommentsService(client, hooks, fetchPage, maxPages, undefined, undefined, () => enhancedClient),
+  );
   defineService("campfires", () => new CampfiresService(client, hooks, fetchPage, maxPages));
   defineService("cardTables", () => new CardTablesService(client, hooks, fetchPage, maxPages));
   defineService("cards", () => new CardsService(client, hooks, fetchPage, maxPages));
@@ -508,7 +512,11 @@ export function createBasecampClient(options: BasecampClientOptions): BasecampCl
   );
   defineService("schedules", () => new SchedulesService(client, hooks, fetchPage, maxPages));
   defineService("events", () => new EventsService(client, hooks, fetchPage, maxPages));
-  defineService("recordings", () => new RecordingsService(client, hooks, fetchPage, maxPages));
+  // summarize() composes the other services' generated reads; the thunk is lazy
+  // so the accessors it reaches are the ones this client defines.
+  defineService("recordings", () =>
+    new RecordingsService(client, hooks, fetchPage, maxPages, undefined, undefined, () => enhancedClient),
+  );
   defineService("search", () => new SearchService(client, hooks, fetchPage, maxPages));
   defineService("reports", () => new ReportsService(client, hooks, fetchPage, maxPages));
   defineService("templates", () => new TemplatesService(client, hooks, fetchPage, maxPages));

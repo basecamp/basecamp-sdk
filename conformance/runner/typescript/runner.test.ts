@@ -14,10 +14,12 @@ import {
   createBasecampClient,
   BasecampError,
   PeopleConfirmationRequiredError,
+  RecordingSummaryError,
 } from "@37signals/basecamp";
 import type {
   BasecampClient,
   CreateEntryScheduleRequest,
+  RecordingRef,
   UpdateScheduleEntryRequest,
 } from "@37signals/basecamp";
 import * as fs from "node:fs";
@@ -103,95 +105,21 @@ const TEST_ACCOUNT_ID = "999";
 const TS_SDK_SKIPS: Record<string, string> = {
   "Large integer IDs preserved without precision loss":
     "JavaScript loses precision on integers > Number.MAX_SAFE_INTEGER (2^53)",
-  "RecordingsSummarize routes comment.created to the comment read and reads its mentions":
-    "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-  "RecordingsSummarize refuses boost.created before any request":
-    "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-  "RecordingsSummarize finds a chat line under the second visible Campfire":
-    "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-  "RecordingsSummarize reports a chat line under no visible Campfire as unresolved, not as a failed read":
-    "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-  "RecordingsSummarize returns a Campfire candidate's 403 as that read's error":
-    "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-  "CommentsCreateWithMentions resolves each person before posting and writes the mention from attachable_sgid":
-    "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-  "RecordingsSummarize routes message.created (event type) to one typed read and projects the recording":
-    "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-  "RecordingsSummarize routes todo.created (event type) to one typed read and projects the recording":
-    "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-  "RecordingsSummarize routes card.created (event type) to one typed read and projects the recording":
-    "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-  "RecordingsSummarize routes Document (recording type) to one typed read and projects the recording":
-    "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-  "RecordingsSummarize routes Upload (recording type) to one typed read and projects the recording":
-    "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-  "RecordingsSummarize routes Schedule::Entry (recording type) to one typed read and projects the recording":
-    "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-  "RecordingsSummarize routes Question (recording type) to one typed read and projects the recording":
-    "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-  "RecordingsSummarize routes Question::Answer (recording type) to one typed read and projects the recording":
-    "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-  "RecordingsSummarize routes Todolist (recording type) to one typed read and projects the recording":
-    "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-  "RecordingsSummarize routes Vault (recording type) to one typed read and projects the recording":
-    "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-  "RecordingsSummarize routes Inbox::Forward (recording type) to one typed read and projects the recording":
-    "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-  "RecordingsSummarize routes Client::Approval (recording type) to one typed read and projects the recording":
-    "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-  "RecordingsSummarize routes Client::Correspondence (recording type) to one typed read and projects the recording":
-    "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-  "RecordingsSummarize routes GoogleDocument (recording type) to one typed read and projects the recording":
-    "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-  "RecordingsSummarize routes CloudFile (recording type) to one typed read and projects the recording":
-    "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-  "RecordingsSummarize routes Kanban::Step (recording type) to one typed read and projects the recording":
-    "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-  "RecordingsSummarize routes Questionnaire (recording type) to one typed read and projects the recording":
-    "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-  "RecordingsSummarize routes Schedule (recording type) to one typed read and projects the recording":
-    "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-  "RecordingsSummarize routes Todoset (recording type) to one typed read and projects the recording":
-    "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-  "RecordingsSummarize routes Message::Board (recording type) to one typed read and projects the recording":
-    "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-  "RecordingsSummarize routes Kanban::Board (recording type) to one typed read and projects the recording":
-    "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-  "RecordingsSummarize routes Kanban::Column (recording type) to one typed read and projects the recording":
-    "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-  "RecordingsSummarize routes Inbox (recording type) to one typed read and projects the recording":
-    "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-  "RecordingsSummarize routes todo.completed (event type) to one typed read and projects the recording":
-    "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-  "RecordingsSummarize routes todo.assignment_changed (event type) to one typed read and projects the recording":
-    "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-  "RecordingsSummarize routes card.completed (event type) to one typed read and projects the recording":
-    "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-  "RecordingsSummarize routes card.assignment_changed (event type) to one typed read and projects the recording":
-    "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-  "RecordingsSummarize routes Comment (recording type) to one typed read and projects the recording":
-    "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-  "RecordingsSummarize routes Message (recording type) to one typed read and projects the recording":
-    "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-  "RecordingsSummarize routes Todo (recording type) to one typed read and projects the recording":
-    "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-  "RecordingsSummarize routes Kanban::Card (recording type) to one typed read and projects the recording":
-    "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-  "RecordingsSummarize routes Chat::Transcript (recording type) to one typed read and projects the recording":
-    "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-  "RecordingsSummarize routes card.moved (event type) to one typed read and projects the recording":
-    "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-  "RecordingsSummarize routes Chat::Lines::Text (recording type) through Campfire discovery and projects the line":
-    "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
 };
 
 /**
- * Operations whose fixtures describe multi-hop download flows: the fixture
- * `path` refers to the raw download URL (or a hop other than request 0), so
- * the generic first-request path invariant does not apply. DownloadURL keeps
- * its own stricter hop-1 invariant below.
+ * Operations whose fixture `path` names a hop other than request 0, so the
+ * generic first-request path invariant does not apply: the multi-hop download
+ * flows (the path is the raw download URL), and the mention composite, whose
+ * path is the comment write that follows the people read. DownloadURL keeps
+ * its own stricter hop-1 invariant below, and the mention composite pins both
+ * of its hops with explicit requestPath assertions.
  */
-const MULTI_HOP_OPERATIONS = new Set(["DownloadURL", "UploadsDownload"]);
+const MULTI_HOP_OPERATIONS = new Set([
+  "DownloadURL",
+  "UploadsDownload",
+  "CommentsCreateWithMentions",
+]);
 
 /**
  * Recognize a genuine transport-level failure (fetch rejection). The TS SDK
@@ -207,6 +135,63 @@ function isNetworkRejection(err: unknown): boolean {
   return /failed to fetch|fetch failed|network(?: request)? failed|socket|econn/i.test(
     err.message,
   );
+}
+
+/**
+ * Names a composite's own error identity for the `errorType` assertion, so a
+ * fixture can pin that "unresolved" is neither an API read failure nor
+ * incomplete discovery — an identity the message text cannot carry.
+ *
+ * The names are the fixture's vocabulary, shared with the Go runner's
+ * `semanticErrorType`; each port maps its own error kinds onto them. Here the
+ * mapping is the `kind` a `RecordingSummaryError` carries, which is exactly
+ * what a consumer matches on: nothing is parsed out of a message, and the
+ * error's `code` is still what the taxonomy says (`usage`, `not_found`,
+ * `api_error`) for every caller that only knows about that.
+ */
+function semanticErrorType(err: unknown): string | undefined {
+  return err instanceof RecordingSummaryError ? err.kind : undefined;
+}
+
+/**
+ * Resolves a dotted `responseBody` / `requestBody` path — `bucket.id`,
+ * `assignees.0.id` — the way the Go runner's `digPath` does: object keys and
+ * array indices, no wildcards. A path with no dot resolves as the plain
+ * top-level key it always did.
+ */
+function digPath(root: unknown, dotted: string): { value: unknown; present: boolean } {
+  let current: unknown = root;
+  for (const key of dotted.split(".")) {
+    if (Array.isArray(current)) {
+      const index = Number(key);
+      if (!Number.isInteger(index) || index < 0 || index >= current.length) {
+        return { value: undefined, present: false };
+      }
+      current = current[index];
+      continue;
+    }
+    if (typeof current !== "object" || current === null) return { value: undefined, present: false };
+    const record = current as Record<string, unknown>;
+    if (!(key in record)) return { value: undefined, present: false };
+    current = record[key];
+  }
+  return { value: current, present: true };
+}
+
+/**
+ * Whether two values disagree once RFC 3339 timestamps are compared as
+ * instants, so a fixture can pin a time without making any one language's
+ * rendering the contract: "2024-01-20T15:30:00.000-06:00" and
+ * "2024-01-20T21:30:00Z" agree. Mirrors the Go runner's `compareValues`.
+ */
+function sameInstant(expected: unknown, actual: unknown): boolean {
+  if (typeof expected !== "string" || typeof actual !== "string") return false;
+  // Anchored so a bare number or a prose string can never be read as a date.
+  const rfc3339 = /^\d{4}-\d{2}-\d{2}[Tt]\d{2}:\d{2}:\d{2}(\.\d+)?([Zz]|[+-]\d{2}:\d{2})$/;
+  if (!rfc3339.test(expected) || !rfc3339.test(actual)) return false;
+  const expectedAt = Date.parse(expected);
+  const actualAt = Date.parse(actual);
+  return Number.isFinite(expectedAt) && expectedAt === actualAt;
 }
 
 // =============================================================================
@@ -1210,6 +1195,33 @@ async function executeOperation(
         });
         break;
 
+      case "RecordingsSummarize": {
+        // The pointer is the whole input: bucket, recording, and whichever of
+        // the two type spellings the fixture carries. An absent one stays
+        // absent rather than becoming "", which the routing reads differently.
+        const ref: RecordingRef = {
+          bucketId: Number(params.bucketId),
+          recordingId: Number(params.recordingId),
+          ...(params.eventType !== undefined ? { eventType: String(params.eventType) } : {}),
+          ...(params.recordingType !== undefined
+            ? { recordingType: String(params.recordingType) }
+            : {}),
+        };
+        return { result: await client.recordings.summarize(ref) };
+      }
+
+      case "CommentsCreateWithMentions": {
+        const mentions = Array.isArray(body.mentions)
+          ? (body.mentions as unknown[]).map(Number)
+          : [];
+        const comment = await client.comments.createWithMentions(
+          Number(params.recordingId),
+          String(body.content ?? ""),
+          mentions,
+        );
+        return { result: comment };
+      }
+
       default:
       throw new Error(`Unknown operation: ${tc.operation}`);
     }
@@ -1739,7 +1751,12 @@ function checkAssertions(
         // failure (a TypeError / "Failed to fetch") — so recognize that as
         // "network". Anything else is unknown: fail rather than silently pass.
         let actualType: string;
-        if (result.error instanceof BasecampError) {
+        const semantic = semanticErrorType(result.error);
+        if (semantic !== undefined) {
+          // A composite's own identity (SPEC §18, Appendix F): what a consumer
+          // matches, never an HTTP status.
+          actualType = semantic;
+        } else if (result.error instanceof BasecampError) {
           actualType = result.error.code;
         } else if (isNetworkRejection(result.error)) {
           actualType = "network";
@@ -1894,7 +1911,11 @@ function checkAssertions(
         if (result.result === undefined || result.result === null) {
           throw new Error(`[${tc.name}] expected responseBody.${fieldPath}, but no result returned`);
         }
-        const actual = (result.result as Record<string, unknown>)[fieldPath];
+        const { value: actual, present } = digPath(result.result, fieldPath);
+        if (!present) {
+          throw new Error(`[${tc.name}] expected responseBody.${fieldPath}, but field not present`);
+        }
+        if (sameInstant(expected, actual)) break;
         expect(
           actual,
           `[${tc.name}] expected responseBody.${fieldPath} = ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`,

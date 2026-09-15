@@ -433,7 +433,7 @@ The SDK provides typed services for the complete Basecamp API:
 | `messages` | list, get, create, update, pin, unpin |
 | `messageBoards` | get |
 | `messageTypes` | list, get, create, update, delete |
-| `comments` | list, get, create, update |
+| `comments` | list, get, create, update, expandMentions, createWithMentions |
 | `campfires` | list, get, listLines, getLine, createLine, updateLine, deleteLine |
 
 ### Card Tables (Kanban)
@@ -470,7 +470,7 @@ The SDK provides typed services for the complete Basecamp API:
 | `webhooks` | list, get, create, update, delete |
 | `subscriptions` | get, subscribe, unsubscribe, update |
 | `events` | list, listForRecording |
-| `recordings` | archive, unarchive, trash |
+| `recordings` | archive, unarchive, trash, summarize |
 
 ### Search & Reports
 
@@ -495,6 +495,98 @@ The SDK provides typed services for the complete Basecamp API:
 | Service | Methods |
 |---------|---------|
 | `forwards` | list, get, listReplies, getReply |
+
+## Recording Summaries and Mentions
+
+### `recordings.summarize`
+
+An event feed row or a webhook gives you a pointer — a bucket, a recording id,
+and a type — not the recording. `summarize` turns that pointer into a compact
+projection through the one typed read the type names, so a consumer can decide
+what to do about a recording without fetching and reasoning over its whole
+payload.
+
+```ts
+const summary = await client.recordings.summarize({
+  bucketId: 2085958499,
+  recordingId: 1069479361,
+  eventType: "comment.created", // or recordingType: "Comment", which wins when both are given
+});
+
+summary.type;                  // "Comment"
+summary.title;                 // "Re: We won Leto!"
+summary.content;               // the rich text, in full
+summary.mentioned_person_ids;  // [1049715915] — always an array
+summary.bucket?.id;            // checked against the pointer's bucketId
+```
+
+`summarizableRecordingTypes()` and `summarizableEventTypes()` list what it
+routes. The set is deliberate rather than exhaustive: a type outside it fails
+with `unknown_recording_type` by design, and `boost.*` fails with
+`no_recording_type` — a boost row points at its target, whose type it does not
+carry.
+
+A chat line is the one type whose read needs an id the pointer does not carry,
+so `summarize` discovers its Campfire first: the bucket's project dock, then
+the account-wide Campfire listing filtered to that bucket, trying the line under
+each candidate until one answers. Both sources are cached for ten minutes on the
+client, so a burst of lines costs one project read and one listing.
+
+Failures that are the composite's own conclusion, rather than one read's HTTP
+answer, are `RecordingSummaryError`s carrying a `kind` you match on. They are
+statusless — no `httpStatus` — which is what tells `recording_unresolved` apart
+from a 404 a read actually returned:
+
+```ts
+try {
+  await client.recordings.summarize(ref);
+} catch (err) {
+  if (err instanceof UnresolvedRecordingError) {
+    // Every visible Campfire answered 404: the line is under none you can
+    // currently see. Not an outage — block the record and retry later.
+    err.campfireIds;       // the candidates tried, in order
+    err.staleCampfireIds;  // candidates a refresh no longer lists: visibility changed
+  }
+}
+```
+
+| `kind` | `code` | Meaning |
+|--------|--------|---------|
+| `no_recording_type` | `usage` | The event type names no recording type (`boost.*`). No request was made. |
+| `unknown_recording_type` | `usage` | Neither type spelling is in the routing table. No request was made. |
+| `recording_unresolved` | `not_found` | A chat line was found under no Campfire you can currently see. |
+| `campfire_discovery_incomplete` | `api_error` | Candidates were left unsearched, so nothing can be reported absent. |
+| `bucket_mismatch` | `api_error` | The read returned a recording from a different bucket than the pointer named. |
+
+Any other failure is the constituent read's own error, unchanged: a candidate
+Campfire answering 401, 403 or 5xx stops the search and surfaces as that error
+rather than being read as "not here".
+
+### Mentions
+
+A mention in Basecamp rich text is a `<bc-attachment>` carrying the mentioned
+person's `attachable_sgid`. `comments.createWithMentions` resolves each id
+through the people read first, so a failed lookup posts nothing:
+
+```ts
+await client.comments.createWithMentions(1069479351, "<div>On it.</div>", [1049715915]);
+// POSTs: <div><bc-attachment sgid="..."></bc-attachment> On it.</div>
+```
+
+`comments.expandMentions(content, personIds)` does the same expansion without
+posting — the markup is identical for a rich-text Campfire line.
+
+Four pure helpers are exported for reading and writing the markup directly:
+`mentionedPersonIds(richText)`, `personIdFromSGID(sgid)`, `mentionMarkup(person)`
+and `withMentions(content, people)`.
+
+**The read and write sides are not interchangeable.** An sgid's signature can
+only be verified by Basecamp, so `mentionedPersonIds` *describes* what a text
+says it mentions — report it, but never treat an id in it as proof that a valid
+mention exists. The write side therefore always performs the people read, and
+skips a person only when the content already carries the exact
+`attachable_sgid` that read returned. Deduplicating by person id instead would
+let a stale or forged tag suppress the real mention.
 
 ## Downloading Files
 
