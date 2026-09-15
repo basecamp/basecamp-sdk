@@ -1061,7 +1061,15 @@ func (s *RecordingsService) resolveChatLine(ctx context.Context, bucketID, lineI
 	// have populated or refreshed it in the meantime — so it always replaces
 	// the pass-1 one; "refreshed" is whether a source the conclusion had
 	// consulted is now newer than when it was consulted.
+	//
+	// Not when the budget is already spent: a re-read could return no
+	// candidate this call may try, so it would cost a request that cannot
+	// help — and a failure on it would replace the deterministic
+	// "incomplete" verdict with a transient error a consumer retries forever.
 	refreshed := false
+	if search.skipped {
+		return nil, 0, incomplete(fmt.Sprintf("more than %d visible campfires in the bucket", MaxCampfireCandidates))
+	}
 	if dock.cached {
 		again, err := index.dockCampfires(ctx, ac, bucketID, true)
 		if err != nil {
@@ -1074,6 +1082,9 @@ func (s *RecordingsService) resolveChatLine(ctx context.Context, bucketID, lineI
 		if line, id, err := search.try(ctx, dock.ids); err != nil || line != nil {
 			return line, id, err
 		}
+	}
+	if search.skipped {
+		return nil, 0, incomplete(fmt.Sprintf("more than %d visible campfires in the bucket", MaxCampfireCandidates))
 	}
 	again, err := index.listedCampfires(ctx, ac, bucketID, listCached)
 	if err != nil {

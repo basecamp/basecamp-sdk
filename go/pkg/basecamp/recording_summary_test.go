@@ -1750,3 +1750,40 @@ func TestSummarizableTypes_ReadmeMatchesTheRoutingTable(t *testing.T) {
 		}
 	}
 }
+
+func TestSummarize_ChatLineExhaustedBudgetIsIncompleteBeforeAnyRefresh(t *testing.T) {
+	// The cached listing alone exhausts the candidate budget. Past the refresh
+	// floor, with the listing now answering 503, discovery must return the
+	// deterministic incomplete verdict without spending a request a refresh
+	// could not have helped — not the 503, which a consumer would retry
+	// forever.
+	pairs := make([][2]int64, 0, MaxCampfireCandidates+5)
+	for i := int64(0); i < MaxCampfireCandidates+5; i++ {
+		pairs = append(pairs, [2]int64{7000 + i, letoLaptop})
+	}
+	fx := newChatFixture(t, 0, pairs...)
+	account, srv, clock := newSummaryClient(t, fx.route(t))
+	listings := func() int { return srv.count(listingRead) - srv.count(listingRead+"/") }
+	if _, err := account.Recordings().Summarize(context.Background(), lineRef()); !errors.Is(err, ErrCampfireDiscoveryIncomplete) {
+		t.Fatalf("priming: %v", err)
+	}
+	*clock = clock.Add(campfireIndexMinRefresh)
+	inner := fx.route(t)
+	srv.mu.Lock()
+	srv.route = func(w http.ResponseWriter, r *http.Request, path string) bool {
+		if path == listingRead {
+			writeJSON(w, http.StatusServiceUnavailable, []byte(`{"error":"down"}`))
+			return true
+		}
+		return inner(w, r, path)
+	}
+	srv.mu.Unlock()
+	before := listings()
+	_, err := account.Recordings().Summarize(context.Background(), lineRef())
+	if !errors.Is(err, ErrCampfireDiscoveryIncomplete) {
+		t.Fatalf("err = %v, want the deterministic incomplete verdict, not the refresh's failure", err)
+	}
+	if listings() != before {
+		t.Fatalf("a listing refresh was attempted with no budget left to try its candidates")
+	}
+}

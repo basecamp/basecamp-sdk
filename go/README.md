@@ -747,9 +747,14 @@ line, err := account.Campfires().CreateLine(ctx, campfireID, content,
 ```
 
 `MentionedPersonIDs` decodes the person id out of each sgid's envelope; it does
-not verify the signature, which only Basecamp can. A person already mentioned
-in the content is never mentioned twice, and `MentionMarkup` refuses an
-`attachable_sgid` that names anyone other than the person it is given.
+not verify the signature, which only Basecamp can — so it describes what the
+text says, and nothing on the write side trusts it. `ExpandMentions` reads
+every requested person and adds a mention unless the content already carries
+that person's exact `attachable_sgid`; a different sgid that merely decodes to
+the same id — stale, forged, or minted under another layout — does not count,
+because it cannot be verified and would let caller-supplied content suppress
+the real mention. `MentionMarkup` refuses an `attachable_sgid` that names
+anyone other than the person it is given.
 
 ## Working with Webhooks
 

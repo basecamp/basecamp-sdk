@@ -4705,7 +4705,13 @@ error reports which cached candidates the refreshed sources dropped); nothing
 left unsearched is ever reported absent; the mention reader counts every
 `<bc-attachment>` whose sgid's envelope names a Person, quoted or nested, and
 skips file blobs, gids that merely contain a Person gid, and undecodable
-sgids; and the writer never repeats a person the content already mentions.
+sgids; and the writer deduplicates on the exact `attachable_sgid` the people
+read returned — never on the person id an existing tag's sgid decodes to.
+That is deliberately narrower than "never repeats a person": an sgid's
+signature cannot be verified client-side, so an existing tag naming the
+right id proves nothing, and treating it as proof would let a forged or
+stale tag in caller-supplied content suppress the real mention. A port that
+deduplicates by person id reintroduces that defect.
 
 ### Retry Strategy (§7)
 
