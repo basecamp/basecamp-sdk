@@ -56,9 +56,9 @@ import threading
 import time
 from collections.abc import Awaitable, Callable, Hashable
 from dataclasses import dataclass, field
-from typing import Any, Generic, TypeVar
+from typing import Any, Generic, NoReturn, TypeVar
 
-from basecamp.errors import ApiError, NotFoundError
+from basecamp.errors import CampfireIndexLoadAbortedError, NotFoundError
 
 #: How long a cached discovery source -- a bucket's project dock, the account's
 #: Campfire listing -- is reused before it is read again.
@@ -198,22 +198,37 @@ def _owner_cancellation(error: BaseException) -> bool:
     An ``httpx`` timeout, or a ``CancelledError`` escaping a scope the load
     itself owns, is the load's own failure and is shared with the waiters,
     exactly as in Go.
+
+    It decides one thing only: whether a waiter RELOADS. It must never decide
+    whether a waiter is PROTECTED -- see :func:`_raise_to_waiter` -- because
+    this heuristic can read either way and being wrong about protection cancels
+    a task nobody cancelled.
     """
     if not isinstance(error, asyncio.CancelledError):
         return False
-    return _cancellation_pending()
-
-
-def _cancellation_pending() -> bool:
-    """Whether the current task has an undelivered cancellation.
-
-    A waiter must consult this before deciding to load for itself:
-    ``asyncio.Event.wait()`` returns WITHOUT suspending when the event is
-    already set, so a task cancelled while it was queued has no delivery point
-    and would otherwise go on to issue a live request.
-    """
     task = asyncio.current_task()
     return task is not None and task.cancelling() > 0
+
+
+def _raise_to_waiter(error: BaseException) -> NoReturn:
+    """Hand a finished load's failure to a caller that merely waited on it.
+
+    Go hands the waiter ``pending.err`` as a VALUE, so its goroutine is
+    untouched whatever the error was. Python has no such separation: raising
+    the owner's ``CancelledError`` into a waiter tells that task -- and any
+    enclosing ``TaskGroup`` -- that IT was cancelled, and the group then exits
+    cleanly with the waiter's work silently missing. A ``KeyboardInterrupt`` or
+    ``SystemExit`` from a loading thread is the same hazard in the sync twin.
+
+    So the rule is about the class, not about who was cancelled: an exception
+    that is not an ``Exception`` is the owning caller's own exit and is never
+    re-raised into someone else's task. Everything else -- a 403, a transport
+    timeout -- is the load's own failure and is shared verbatim, so N waiters
+    never re-run one failed load N times.
+    """
+    if isinstance(error, Exception):
+        raise error
+    raise CampfireIndexLoadAbortedError() from error
 
 
 class _Store(Generic[K, V]):
@@ -324,7 +339,7 @@ class TTLCache(Generic[K, V]):
         if not owns:
             pending.done.wait()
             if pending.error is not None:
-                raise pending.error
+                _raise_to_waiter(pending.error)
             # The load this call waited on is this call's load: its value is
             # fresh, not something that predated the call -- and it is read off
             # the load record, so a sweep or the bound evicting the entry in the
@@ -399,29 +414,17 @@ class AsyncTTLCache(Generic[K, V]):
             if not owns:
                 await pending.done.wait()
                 if pending.error is not None:
-                    if not pending.owner_cancelled:
-                        # The load's own failure -- a 403, a transport timeout.
-                        # Shared, so N waiters never re-run one failed load N
-                        # times.
-                        raise pending.error
-                    # The OWNER was cancelled. That says nothing about the
-                    # source, so a waiter whose own task is live goes round
-                    # again and loads for itself: the key is free, so it becomes
-                    # the loader and any other waiters queue behind it -- one
-                    # load, not a stampede. Once only; a second owner-cancelled
-                    # failure is reported rather than chased, so a run of
-                    # cancelled owners cannot become a queue of sequential loads
-                    # behind one waiter.
-                    if not reacquired and not _cancellation_pending():
+                    # The OWNER's cancellation says nothing about the source, so
+                    # a waiter goes round again and loads for itself: the key is
+                    # free, so it becomes the loader and any other waiters queue
+                    # behind it -- one load, not a stampede. Once only; a second
+                    # owner-cancelled failure is reported rather than chased, so
+                    # a run of cancelled owners cannot become a queue of
+                    # sequential loads behind one waiter.
+                    if pending.owner_cancelled and not reacquired:
                         reacquired = True
                         continue
-                    # Never re-raise the owner's CancelledError: this task was
-                    # not cancelled, and raising one would tell an enclosing
-                    # TaskGroup that it was.
-                    raise ApiError(
-                        "campfire index load was cancelled by the caller that owned it",
-                        retryable=True,
-                    ) from pending.error
+                    _raise_to_waiter(pending.error)
                 return _Hit(pending.value, pending.fetched, cached=False)
 
             try:

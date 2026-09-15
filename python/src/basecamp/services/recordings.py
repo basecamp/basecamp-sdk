@@ -35,7 +35,7 @@ from basecamp.errors import (
 )
 from basecamp.generated.services.recordings import AsyncRecordingsService as _GeneratedAsyncRecordingsService
 from basecamp.generated.services.recordings import RecordingsService as _GeneratedRecordingsService
-from basecamp.mentions import mentioned_person_ids
+from basecamp.mentions import go_trim_space, mentioned_person_ids
 from basecamp.services._campfire_index import (
     MAX_CAMPFIRE_CANDIDATES,
     MAX_CAMPFIRE_LISTING,
@@ -215,28 +215,35 @@ def summarizable_event_types() -> list[str]:
 
 def _route(event_type: str | None, recording_type: str | None) -> str:
     """Pick the read for a pointer. The recording type wins when set, being the more exact."""
-    exact = (recording_type or "").strip()
+    # Routing reads the trimmed value; a refusal REPORTS the value as given,
+    # the way Go's RecordingRoutingError names the field it was handed. The key
+    # is the recording type whenever the caller supplied one at all, even a
+    # blank that routing then falls through.
+    given = recording_type or ""
+    key = given or (event_type or "")
+
+    exact = go_trim_space(given)
     if exact:
         if exact.startswith(_CHAT_LINE_TYPE_PREFIX):
             return _CHAT_LINE
         if exact in _READS and exact != _CHAT_LINE:
             return exact
-        raise UnknownRecordingTypeError(exact)
+        raise UnknownRecordingTypeError(key)
 
-    subject_and_action = (event_type or "").strip()
+    subject_and_action = go_trim_space(event_type or "")
     if not subject_and_action:
-        raise UnknownRecordingTypeError(subject_and_action)
+        raise UnknownRecordingTypeError(key)
     # A feed type is "<subject>.<action>"; the subject names the recording type.
     # A string with no action is not a feed type and is not routed.
     separator = subject_and_action.rfind(".")
     if separator <= 0 or separator == len(subject_and_action) - 1:
-        raise UnknownRecordingTypeError(subject_and_action)
+        raise UnknownRecordingTypeError(key)
     subject = subject_and_action[:separator]
     if subject == "boost":
-        raise NoRecordingTypeError(subject_and_action)
+        raise NoRecordingTypeError(key)
     if subject in _EVENT_SUBJECTS:
         return _EVENT_SUBJECTS[subject]
-    raise UnknownRecordingTypeError(subject_and_action)
+    raise UnknownRecordingTypeError(key)
 
 
 def _text(record: dict[str, Any], keys: tuple[str, ...]) -> str:

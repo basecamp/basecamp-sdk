@@ -137,6 +137,29 @@ class TestExpandMentions:
         assert raised.value.http_status == 404
 
     @respx.mock
+    def test_annotating_a_failure_twice_does_not_repeat_the_prefix(self):
+        # Go builds a new error per wrap and cannot double-prefix. Rewriting
+        # args in place can — and the standard mock idiom is a `side_effect`
+        # holding one pre-built exception instance, re-raised on every call.
+        failure = NotFoundError("Not found", http_status=404)
+        respx.get(f"{BASE}/people/{VICTOR_ID}").mock(side_effect=failure)
+
+        for _ in range(2):
+            with pytest.raises(NotFoundError) as raised:
+                _comments().expand_mentions(content="<div>x</div>", person_ids=[VICTOR_ID])
+
+        assert str(raised.value).count("resolving mention for person") == 1
+
+    @respx.mock
+    def test_a_failure_with_no_message_still_says_which_mention(self):
+        respx.get(f"{BASE}/people/{VICTOR_ID}").mock(side_effect=ValueError())
+
+        with pytest.raises(ValueError) as raised:
+            _comments().expand_mentions(content="<div>x</div>", person_ids=[VICTOR_ID])
+
+        assert str(raised.value) == f"resolving mention for person {VICTOR_ID}"
+
+    @respx.mock
     def test_refuses_an_id_that_is_not_an_id(self):
         route = respx.route(host="3.basecampapi.com")
         for bad in (0, -1, "1049715915", None, True):

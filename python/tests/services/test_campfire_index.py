@@ -13,8 +13,18 @@ import threading
 
 import pytest
 
-from basecamp.errors import ApiError
+from basecamp.errors import CampfireIndexLoadAbortedError
 from basecamp.services._campfire_index import AsyncTTLCache, TTLCache
+
+
+class OwnerExit(BaseException):
+    """A BaseException that is not an Exception, with no interpreter special-casing.
+
+    ``SystemExit`` and ``KeyboardInterrupt`` are the real-world instances, but
+    asyncio deliberately refuses to capture those in ``gather`` and pytest
+    re-raises them out of worker threads, which makes them awkward to assert
+    on. The rule under test is about the class, not about those two.
+    """
 
 
 class Clock:
@@ -162,11 +172,43 @@ class TestFailures:
         cache = _cache(clock)
 
         def fatal():
-            raise KeyboardInterrupt
+            raise SystemExit(3)
 
-        with pytest.raises(KeyboardInterrupt):
+        with pytest.raises(SystemExit):
             cache.get("k", refresh=False, load=fatal)
         assert cache.get("k", refresh=False, load=lambda: "v").value == "v"
+
+    def test_a_waiting_thread_is_never_handed_the_loaders_own_exit(self):
+        # The sync twin of the async rule: a KeyboardInterrupt or SystemExit is
+        # the loading thread's exit, not a failure of the source, and raising
+        # it into every waiter would exit them too.
+        clock = Clock()
+        cache = _cache(clock)
+        started = threading.Event()
+        release = threading.Event()
+        outcomes = []
+
+        def fatal():
+            started.set()
+            release.wait(5)
+            raise SystemExit(3)
+
+        def call():
+            try:
+                cache.get("k", refresh=False, load=fatal)
+            except BaseException as error:  # noqa: BLE001 - the point is what reaches a waiter
+                outcomes.append(type(error).__name__)
+
+        owner = threading.Thread(target=call)
+        owner.start()
+        assert started.wait(5)
+        waiter = threading.Thread(target=call)
+        waiter.start()
+        release.set()
+        owner.join(5)
+        waiter.join(5)
+
+        assert sorted(outcomes) == ["CampfireIndexLoadAbortedError", "SystemExit"]
 
     def test_a_failed_load_releases_the_key(self):
         clock = Clock()
@@ -440,7 +482,7 @@ class TestAsyncCache:
         second.cancel()
         with pytest.raises(asyncio.CancelledError):
             await second
-        with pytest.raises(ApiError):
+        with pytest.raises(CampfireIndexLoadAbortedError):
             await asyncio.wait_for(third, timeout=5)
         assert not third.cancelled()
 
@@ -464,8 +506,19 @@ class TestAsyncCache:
         gate.set()
         outcomes = await asyncio.gather(*tasks, return_exceptions=True)
 
+        # Still ONE load — the failure is not re-run per waiter. But a waiter
+        # never receives the `CancelledError` itself: raising one into a task
+        # nobody cancelled makes an enclosing TaskGroup exit cleanly with that
+        # task's work silently missing. Go can hand the error over as a value;
+        # Python has to substitute.
         assert len(loads) == 1, "one load, shared — not one re-run per waiter"
-        assert all(isinstance(outcome, asyncio.CancelledError) for outcome in outcomes)
+        # The owner re-raises its own failure; the two waiters get the
+        # substitute, chained from it.
+        owner_outcomes = [o for o in outcomes if isinstance(o, asyncio.CancelledError)]
+        waiter_outcomes = [o for o in outcomes if isinstance(o, CampfireIndexLoadAbortedError)]
+        assert len(owner_outcomes) == 1
+        assert len(waiter_outcomes) == 2
+        assert all(isinstance(o.__cause__, asyncio.CancelledError) for o in waiter_outcomes)
 
     async def test_a_callers_deadline_is_the_callers_and_waiters_reload(self):
         # `asyncio.timeout` around get() is Go's caller-context deadline: the
@@ -522,6 +575,33 @@ class TestAsyncCache:
 
         assert len(loads) == 1, "one load, shared — not one re-run per waiter"
         assert all(isinstance(outcome, TimeoutError) for outcome in outcomes)
+
+    async def test_a_waiter_is_never_handed_a_bare_base_exception(self):
+        # The protection is keyed on the CLASS, not on who was cancelled:
+        # attribution decides whether a waiter RELOADS and is allowed to be
+        # wrong about that, but being wrong about protection cancels a task
+        # nobody cancelled.
+        clock = Clock()
+        cache = _async_cache(clock)
+        gate = asyncio.Event()
+
+        async def fatal():
+            await gate.wait()
+            raise OwnerExit
+
+        tasks = [asyncio.create_task(cache.get("k", refresh=False, load=fatal)) for _ in range(2)]
+        await asyncio.sleep(0)
+        gate.set()
+        outcomes = []
+        for task in tasks:
+            try:
+                await task
+            except BaseException as error:  # noqa: BLE001 - the point is what reaches a waiter
+                outcomes.append(error)
+
+        # The owner's own exit reaches the owner; the waiter gets a normal error.
+        assert any(isinstance(outcome, OwnerExit) for outcome in outcomes)
+        assert any(isinstance(outcome, CampfireIndexLoadAbortedError) for outcome in outcomes)
 
     async def test_a_waiter_with_a_pending_cancellation_does_not_reload(self):
         # asyncio.Event.wait() returns WITHOUT suspending when the event is

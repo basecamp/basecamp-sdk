@@ -59,9 +59,10 @@ from __future__ import annotations
 
 import base64
 import binascii
-import html
 import json
+import string
 from collections.abc import Iterable, Mapping
+from html.entities import html5
 from typing import Any
 from urllib.parse import unquote, urlparse
 
@@ -95,6 +96,83 @@ _MAX_SGID_ENCODED_BYTES = _MAX_SGID_PAYLOAD_BYTES // 3 * 4 + 4
 _RUBY_MARSHAL_MAX_DEPTH = 32
 
 _SPACE = " \t\n\r\f"
+
+#: Python's ``str.strip()`` also removes these four C0 separators; Go's
+#: ``unicode.IsSpace`` does not treat them as space. Trimming one off an sgid
+#: that Go would have kept turns an undecodable value into a decodable one --
+#: and the write side's only gate is whether the sgid names the person.
+_NOT_GO_SPACE = "\x1c\x1d\x1e\x1f"
+
+
+def go_trim_space(value: str) -> str:
+    """``strings.TrimSpace``: Python's ``strip()`` minus the four C0 separators.
+
+    Shared with the recording router, which trims its routing keys the same way
+    Go does.
+    """
+    start, end = 0, len(value)
+    while start < end and value[start].isspace() and value[start] not in _NOT_GO_SPACE:
+        start += 1
+    while end > start and value[end - 1].isspace() and value[end - 1] not in _NOT_GO_SPACE:
+        end -= 1
+    return value[start:end]
+
+
+#: What Go's url.Parse leaves unescaped in a host: the unreserved characters,
+#: the sub-delims, and the few it admits because a host cannot percent-encode
+#: an ASCII byte. Anything else makes Parse fail, where Python's urlparse hands
+#: the authority back unexamined.
+_HOST_ALLOWED_PUNCTUATION = "-._~!$&'()*+,;=:[]<>\""
+
+
+def _valid_authority(authority: str) -> bool:
+    """Whether Go's ``url.Parse`` would accept this authority.
+
+    Python's parser does not look: ``gid://bc 3/Person/1``, ``gid://b%zz/...``
+    and ``gid://bc3:xx/...`` all parse cleanly here and all fail there, so each
+    named a person in this SDK and nobody in Go. Same class as the
+    control-character refusal above, one dimension over, and it reaches the
+    write side: ``mention_markup`` would emit a tag Go refuses to build.
+    """
+    if not authority:
+        return False
+    host, port = _split_port(authority)
+    if port is not None and port != "" and not (port.isascii() and port.isdigit()):
+        return False
+    if host.startswith("[") and host.endswith("]"):
+        host = host[1:-1]
+    if not host:
+        return False
+    index = 0
+    while index < len(host):
+        character = host[index]
+        if character == "%":
+            # A host cannot carry a %-escape of an ASCII byte, but a malformed
+            # escape is refused outright, which is the case that matters.
+            escape = host[index + 1 : index + 3]
+            if len(escape) != 2 or not all(c in string.hexdigits for c in escape):
+                return False
+            index += 3
+            continue
+        if not character.isascii() or not (character.isalnum() or character in _HOST_ALLOWED_PUNCTUATION):
+            return False
+        index += 1
+    return True
+
+
+def _split_port(authority: str) -> tuple[str, str | None]:
+    """The authority's host and its optional port, split as Go splits them."""
+    if authority.startswith("["):
+        closing = authority.rfind("]")
+        if closing < 0:
+            return authority, None
+        rest = authority[closing + 1 :]
+        if rest.startswith(":"):
+            return authority[: closing + 1], rest[1:]
+        # Anything else after the bracket is not a port and not a host.
+        return authority, (rest or None)
+    host, separator, port = authority.rpartition(":")
+    return (host, port) if separator else (authority, None)
 
 
 def mentioned_person_ids(rich_text: str) -> list[int]:
@@ -149,7 +227,7 @@ def person_id_from_sgid(sgid: str) -> int | None:
         parsed = urlparse(gid)
     except ValueError:
         return None
-    if parsed.scheme != "gid" or not parsed.netloc:
+    if parsed.scheme != "gid" or not _valid_authority(parsed.netloc):
         return None
     # A GlobalID path is exactly "/<Model>/<id>": no more, no less, and read
     # DECODED -- "gid://bc3/Pers%6fn/123" names a Person, as Go's url.Path does.
@@ -182,12 +260,13 @@ def mention_markup(person: Mapping[str, Any]) -> str:
     """
     if person is None:
         raise UsageError("cannot mention a missing person")
+    # Go's order, so the diagnosis matches: absent sgid, then a malformed one,
+    # then one that names somebody else. Go reads a missing id as 0 and lets
+    # the last check report it; Python's dict can omit the key entirely, so the
+    # id is normalised here rather than checked in a rung of its own.
     person_id = person.get("id")
     if not isinstance(person_id, int) or isinstance(person_id, bool) or person_id <= 0:
-        raise UsageError(
-            "cannot mention a person carrying no id",
-            hint="read the person through people.get to obtain one",
-        )
+        person_id = 0
     sgid = person.get("attachable_sgid") or ""
     if not isinstance(sgid, str) or not sgid:
         raise UsageError(
@@ -360,7 +439,7 @@ def _parse_attributes(text: str, pos: int) -> tuple[str, int, bool]:
             continue
         if not sgid_seen and name.casefold() == "sgid":
             sgid_seen = True
-            sgid = html.unescape(value)
+            sgid = _unescape_like_go(value)
     return sgid, pos, False
 
 
@@ -387,6 +466,114 @@ def _leading_block_end(content: str) -> int:
     return -1
 
 
+# --- Entity decoding -------------------------------------------------------
+#
+# Go's `html.UnescapeString` and Python's `html.unescape` implement DIFFERENT
+# specifications, and the difference decides whether a mention is seen. Python
+# follows HTML5, which drops a numeric reference naming a C0 control or DEL to
+# the empty string; Go emits the character. That direction is the dangerous
+# one: an attacker-supplied `sgid="<real sgid>&#1;"` unescapes to the real sgid
+# under HTML5, matches what the people read returned, and makes the WRITER skip
+# the mention — the forged-tag suppression the whole design exists to prevent.
+# Go keeps the control character, the strings differ, and the mention is
+# written.
+#
+# So numeric references are decoded here, to Go's rules, read off a linked
+# `html.UnescapeString` oracle rather than off its source:
+#
+#   - decimal without a terminating ";" needs TWO digits ("&#9" is literal,
+#     "&#09" is a tab); hex without one needs only ONE ("&#x9" is a tab)
+#   - no digits at all decodes only as "&#x;" / "&#X;", to U+FFFD
+#   - 0, the surrogates and anything past U+10FFFF are U+FFFD
+#   - 0x80-0x9F map through the C1 table below
+#
+# NAMED references are Python's, because they were measured to agree across
+# every name in the table with and without a semicolon, including the
+# longest-match-against-the-table rule that a greedy name scan would get wrong
+# ("&nbspBAh7" is a non-breaking space followed by "BAh7" in both).
+
+#: The HTML5 C1 replacement table, as Go's `html` package applies it. Extracted
+#: from the oracle and pinned by a test, so a hand-transcription error cannot
+#: quietly change which character an sgid carries.
+_C1_REPLACEMENTS = (
+    "\u20ac\u0081\u201a\u0192\u201e\u2026\u2020\u2021"
+    "\u02c6\u2030\u0160\u2039\u0152\u008d\u017d\u008f"
+    "\u0090\u2018\u2019\u201c\u201d\u2022\u2013\u2014"
+    "\u02dc\u2122\u0161\u203a\u0153\u009d\u017e\u0178"
+)
+
+_MAX_ENTITY_NAME = max(len(name) for name in html5)
+
+
+def _unescape_like_go(value: str) -> str:
+    """Decode entity references the way Go's ``html.UnescapeString`` does."""
+    if "&" not in value:
+        return value
+    out: list[str] = []
+    index = 0
+    while index < len(value):
+        character = value[index]
+        if character != "&":
+            out.append(character)
+            index += 1
+            continue
+        consumed, text = _reference_at(value, index)
+        if consumed:
+            out.append(text)
+            index += consumed
+        else:
+            out.append("&")
+            index += 1
+    return "".join(out)
+
+
+def _reference_at(value: str, start: int) -> tuple[int, str]:
+    """One entity reference at ``start``: characters consumed, and what it means.
+
+    ``(0, "")`` when there is no reference there and the ``&`` is literal.
+    """
+    if value.startswith("&#", start):
+        return _numeric_reference_at(value, start)
+    # Longest match against the table, not the longest run of name characters:
+    # "&nbspBAh7" is "&nbsp" followed by "BAh7", which a greedy name scan reads
+    # as one unknown name and leaves undecoded.
+    for length in range(min(_MAX_ENTITY_NAME, len(value) - start - 1), 0, -1):
+        name = value[start + 1 : start + 1 + length]
+        replacement = html5.get(name)
+        if replacement is not None:
+            return length + 1, replacement
+    return 0, ""
+
+
+def _numeric_reference_at(value: str, start: int) -> tuple[int, str]:
+    cursor = start + 2
+    hex_form = cursor < len(value) and value[cursor] in "xX"
+    if hex_form:
+        cursor += 1
+    digits_start = cursor
+    allowed = string.hexdigits if hex_form else string.digits
+    while cursor < len(value) and value[cursor] in allowed:
+        cursor += 1
+    digits = value[digits_start:cursor]
+    terminated = cursor < len(value) and value[cursor] == ";"
+    if terminated:
+        cursor += 1
+    if not digits:
+        # "&#x;" is U+FFFD; "&#;", "&#xz;" and a bare "&#x" are literal.
+        return (cursor - start, "\ufffd") if hex_form and terminated else (0, "")
+    if not terminated and not hex_form and len(digits) < 2:
+        return 0, ""
+    return cursor - start, _go_rune(int(digits, 16 if hex_form else 10))
+
+
+def _go_rune(code: int) -> str:
+    if 0x80 <= code <= 0x9F:
+        return _C1_REPLACEMENTS[code - 0x80]
+    if code == 0 or 0xD800 <= code <= 0xDFFF or code > 0x10FFFF:
+        return "\ufffd"
+    return chr(code)
+
+
 # --- SignedGlobalID envelopes -----------------------------------------------
 
 
@@ -403,7 +590,7 @@ def _global_id_from_sgid(sgid: str) -> str | None:
     tried as a bare payload when that fails, which is what an unsigned envelope
     -- one that happens to contain ``--`` included -- needs.
     """
-    value = sgid.strip()
+    value = go_trim_space(sgid)
     separator = value.rfind("--")
     if separator > 0:
         gid = _envelope_gid(value[:separator])
@@ -449,8 +636,12 @@ def _envelope_gid(payload: str) -> str | None:
         except _MarshalError:
             return None
     elif raw[:1] == b"{":
+        # Decoded with replacement, because Go's encoding/json substitutes
+        # U+FFFD for invalid UTF-8 inside a string and carries on; passing the
+        # bytes straight to json.loads raises instead, so an envelope Go reads
+        # would name nobody here.
         try:
-            envelope = json.loads(raw)
+            envelope = json.loads(raw.decode("utf-8", "replace"))
         except ValueError:
             return None
     else:

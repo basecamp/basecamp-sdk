@@ -301,6 +301,26 @@ class CampfireDiscoveryIncompleteError(BasecampError):
         self.reason = reason
 
 
+class CampfireIndexLoadAbortedError(BasecampError):
+    """A Campfire discovery load this call waited on was abandoned by its owner.
+
+    Loads are single-flight: the first caller for a key fetches and the rest
+    wait on it. When that caller's own task or thread exits -- cancelled,
+    interrupted -- the load ends without having learned anything about the
+    source, and the failure belongs to the caller that left, not to the ones
+    still waiting. Re-raising its ``CancelledError`` (or ``KeyboardInterrupt``)
+    into them would tell tasks nobody cancelled that they were, which an
+    enclosing ``TaskGroup`` then treats as an orderly exit with the work
+    silently missing.
+
+    Retryable, and meant to be retried: nothing was learned, so the next
+    attempt loads for itself.
+    """
+
+    def __init__(self, message: str = "campfire index load was abandoned by the caller that owned it", **kwargs: Any):
+        super().__init__(message, code="campfire_index_load_aborted", retryable=True, **kwargs)
+
+
 class BucketMismatchError(BasecampError):
     """The recording a read returned lives in a different bucket from the pointer's."""
 

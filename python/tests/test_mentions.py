@@ -160,6 +160,79 @@ class TestPersonIDFromSGID:
         # never named. Go's net/url rejects any control character outright.
         assert person_id_from_sgid(json_sgid(f"gid://bc3/Person/104{control}9715915")) is None
 
+    @pytest.mark.parametrize(
+        ("authority", "accepted"),
+        [
+            ("bc3", True),
+            ("bc3:80", True),
+            ("bc3:", True),  # Go's validOptionalPort accepts an empty port
+            ("bc 3", False),
+            ("bc3|x", False),
+            ("bc3{", False),
+            ("bc3^", False),
+            ("bc3\\x", False),
+            ("bc3:xx", False),
+            ("b%zz", False),
+            ("b%41", True),
+        ],
+    )
+    def test_validates_the_authority_as_go_does(self, authority, accepted):
+        # Python's urlparse hands the authority back unexamined where Go's
+        # url.Parse refuses it, so each of these named a person here and nobody
+        # in Go — on the write side as well as the read side.
+        sgid = json_sgid(f"gid://{authority}/Person/77")
+        assert (person_id_from_sgid(sgid) == 77) is accepted
+
+    @pytest.mark.parametrize("separator", ["\x1c", "\x1d", "\x1e", "\x1f"])
+    def test_does_not_trim_the_c0_separators_python_strips(self, separator):
+        # `str.strip()` removes these four; Go's unicode.IsSpace does not, and
+        # trimming one turns an undecodable sgid into a decodable one.
+        assert person_id_from_sgid(separator + json_sgid("gid://bc3/Person/77")) is None
+
+    def test_reads_a_json_envelope_carrying_invalid_utf8(self):
+        # Go's encoding/json substitutes U+FFFD and carries on.
+        import base64
+
+        body = b'{"gid":"gid://bc3/Person/77","purpose":"attachable","x":"\xff\xfe"}'
+        assert person_id_from_sgid(base64.urlsafe_b64encode(body).decode().rstrip("=")) == 77
+
+    @pytest.mark.parametrize(
+        ("suffix", "resolves"),
+        [
+            # Python's html.unescape follows HTML5, which DROPS a numeric
+            # reference naming a C0 control; Go emits the character. Dropping
+            # is the dangerous direction — it makes a forged tag match the real
+            # sgid, and the writer then skips the mention it was asked for.
+            ("&#1;", False),
+            ("&#x1;", False),
+            ("&#127;", False),
+            ("&#0;", False),
+            # Decimal without a semicolon needs TWO digits to decode; hex needs
+            # one. "&#9" stays literal, so the "&" lands in the payload.
+            ("&#9", False),
+            ("&#09", True),
+            ("&#x9", True),
+            # A whitespace expansion decodes and is then erased by the trim, so
+            # these resolve — in both implementations.
+            ("&#160;", True),
+            ("&ensp;", True),
+        ],
+    )
+    def test_entity_references_decode_as_go_decodes_them(self, suffix, resolves):
+        payload = json_sgid("gid://bc3/Person/77", signed=False)
+        content = f'<bc-attachment sgid="{payload}{suffix}"></bc-attachment>'
+        assert (mentioned_person_ids(content) == [77]) is resolves
+
+    @pytest.mark.parametrize(("prefix", "resolves"), [("&nbsp", True), ("&nbsp;", True), ("&amp", False)])
+    def test_a_named_reference_matches_the_table_not_the_longest_name_run(self, prefix, resolves):
+        # "&nbspBAh7" is a non-breaking space followed by "BAh7" — the match is
+        # against the table, longest entry first, not the longest run of name
+        # characters. Reading it greedily leaves the whole value undecoded and
+        # loses the mention.
+        payload = json_sgid("gid://bc3/Person/77", signed=False)
+        content = f'<bc-attachment sgid="{prefix}{payload}"></bc-attachment>'
+        assert (mentioned_person_ids(content) == [77]) is resolves
+
     def test_refuses_a_percent_encoded_control_character(self):
         assert person_id_from_sgid(json_sgid("gid://bc3/Person/104%0A9715915")) is None
 
@@ -298,8 +371,16 @@ class TestMentionMarkup:
             mention_markup({"id": VICTOR_ID, "name": "Victor Cooper"})
 
     def test_refuses_a_person_with_no_id(self):
-        with pytest.raises(UsageError, match="no id"):
+        # Go reads a missing id as 0 and lets the sgid/id check report it, so
+        # the diagnosis is the same rung of the ladder rather than one of our
+        # own invention.
+        with pytest.raises(UsageError, match="does not name that person"):
             mention_markup({"attachable_sgid": VICTOR_SGID})
+
+    def test_refuses_a_person_with_neither_id_nor_sgid_on_the_sgid(self):
+        # The absent sgid is the earlier rung, and it wins, as in Go.
+        with pytest.raises(UsageError, match="no attachable_sgid"):
+            mention_markup({})
 
     def test_refuses_an_sgid_that_names_someone_else(self):
         with pytest.raises(UsageError, match="does not name that person"):

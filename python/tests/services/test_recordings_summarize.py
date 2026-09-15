@@ -157,6 +157,25 @@ class TestRoutingRefusals:
         assert raised.value.code == "unknown_recording_type"
 
     @respx.mock
+    def test_a_refusal_reports_the_routing_key_as_given(self):
+        # Go's RecordingRoutingError names the field it was handed, untrimmed.
+        with pytest.raises(UnknownRecordingTypeError) as raised:
+            _account().recordings.summarize(bucket_id=BUCKET, recording_id=1, recording_type="  Bogus  ")
+        assert "'  Bogus  '" in str(raised.value)
+
+        with pytest.raises(NoRecordingTypeError) as raised:
+            _account().recordings.summarize(bucket_id=BUCKET, recording_id=1, event_type=" boost.created ")
+        assert "' boost.created '" in str(raised.value)
+
+    @respx.mock
+    @pytest.mark.parametrize("separator", ["\x1c", "\x1d", "\x1e", "\x1f"])
+    def test_does_not_trim_the_c0_separators_python_strips(self, separator):
+        # `str.strip()` removes these four and Go's TrimSpace does not, so a
+        # routing key carrying one is unroutable in Go and must be here.
+        with pytest.raises(UnknownRecordingTypeError):
+            _account().recordings.summarize(bucket_id=BUCKET, recording_id=1, recording_type=f"{separator}Comment")
+
+    @respx.mock
     def test_the_recording_type_wins_over_the_event_type(self):
         # The recording type is the more exact of the two, so a row carrying
         # both routes on it.

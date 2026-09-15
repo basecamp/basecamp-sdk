@@ -1299,9 +1299,16 @@ class TestRunner:
         # request 0 specifically, not on "the fixture asserts some path
         # somewhere": todos_write.json pins index 1 alone, and a broader gate
         # would quietly stop checking its leading GET.
-        pins_first_path = any(
-            a["type"] == "requestPath" and a.get("index", 0) == 0 for a in self._test.get("assertions", [])
-        )
+        def _pins_request_zero(assertion: dict) -> bool:
+            if assertion.get("type") != "requestPath":
+                return False
+            index = assertion.get("index", 0)
+            # A negative index counts from the end, as _request_at resolves it,
+            # so "-2" on a two-request case IS request 0 and exempts it. The
+            # other runners resolve it; reading the literal would not.
+            return (index + self._tracker.request_count if index < 0 else index) == 0
+
+        pins_first_path = any(_pins_request_zero(a) for a in self._test.get("assertions", []))
         if self._test["operation"] != "DownloadURL" and not pins_first_path and self._test.get("path") and self._tracker.requests:
             expected_path = self._test["path"]
             for key, value in self._test.get("pathParams", {}).items():
@@ -1315,7 +1322,7 @@ class TestRunner:
         # queued response silently. When the fixture declares a method and
         # carries no explicit requestMethod assertions, the first request
         # must use the fixture method.
-        has_method_assertions = any(a["type"] == "requestMethod" for a in self._test.get("assertions", []))
+        has_method_assertions = any(a.get("type") == "requestMethod" for a in self._test.get("assertions", []))
         if self._test.get("method") and not has_method_assertions and self._tracker.requests:
             expected_method = self._test["method"].upper()
             actual_method = self._tracker.requests[0]["method"].upper()

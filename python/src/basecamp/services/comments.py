@@ -10,6 +10,7 @@ or picks a verb.
 
 from __future__ import annotations
 
+import contextlib
 from collections.abc import Iterable
 from typing import Any
 
@@ -63,6 +64,13 @@ def _checked_person_id(person_id: Any, seen: set[int]) -> int | None:
     return person_id
 
 
+#: Marks an exception this module has already annotated. Go builds a NEW error
+#: per wrap, so it cannot double-prefix; rewriting `args` in place can, and the
+#: standard mock idiom -- a ``side_effect`` holding one pre-built exception
+#: instance -- re-raises the same object on every call.
+_ANNOTATED = "_basecamp_mention_context"
+
+
 def _annotate(error: BaseException, person_id: int) -> None:
     """Say which mention failed, without replacing the error that says why.
 
@@ -72,11 +80,17 @@ def _annotate(error: BaseException, person_id: int) -> None:
     class, canonical code, HTTP status and retry hints exactly as the read
     produced them; raising a new instance would throw all of that away.
     """
+    if getattr(error, _ANNOTATED, False):
+        return
     context = f"resolving mention for person {person_id}"
     if error.args and isinstance(error.args[0], str):
         error.args = (f"{context}: {error.args[0]}", *error.args[1:])
     else:
-        error.add_note(context)
+        # An exception carrying no message still has to say which mention it
+        # was, and it has to say it in ``str(error)`` like the others.
+        error.args = (context, *error.args)
+    with contextlib.suppress(AttributeError):  # an exception with __slots__
+        setattr(error, _ANNOTATED, True)
 
 
 class CommentsService(_GeneratedCommentsService):
@@ -91,7 +105,7 @@ class CommentsService(_GeneratedCommentsService):
                 continue
             try:
                 people.append(self._client.people.get(person_id=person_id))
-            except Exception as error:
+            except BaseException as error:
                 _annotate(error, person_id)
                 raise
         if not people:
@@ -123,7 +137,7 @@ class AsyncCommentsService(_GeneratedAsyncCommentsService):
                 continue
             try:
                 people.append(await self._client.people.get(person_id=person_id))
-            except Exception as error:
+            except BaseException as error:
                 _annotate(error, person_id)
                 raise
         if not people:
