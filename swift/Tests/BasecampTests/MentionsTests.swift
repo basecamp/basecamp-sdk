@@ -95,6 +95,52 @@ final class MentionsTests: XCTestCase {
             9_223_372_036_854_775_807)
     }
 
+    /// Go puts no cap on a numeric reference's digit count, and a cap is the
+    /// obvious wrong optimisation: `&#00000000065;` is an ordinary way to write
+    /// `A`, so "anything longer is out of range anyway" is false. Measured
+    /// against `html.UnescapeString`, which gives "A" for all four of these.
+    func testLeadingZerosDoNotExhaustTheNumericScanner() {
+        for spelling in ["&#65;", "&#065;", "&#00000000065;", "&#x0000000000041;"] {
+            XCTAssertEqual(
+                Mentions.attachmentSgids(in: "<bc-attachment sgid=\"\(spelling)\"></bc-attachment>"),
+                ["A"], spelling)
+        }
+    }
+
+    /// The authority, against `net/url` in BOTH directions — measured over 1,824
+    /// generated shapes, because a charset that looked about right was wrong
+    /// each way, and a first fix that checked only the host was wrong again.
+    func testTheAuthorityMatchesWhatGoAccepts() {
+        // Refused there, so refused here. Userinfo leaves the host empty; a
+        // malformed escape, a space or a control refuses the gid wherever it
+        // sits; an escape naming an ASCII byte is not allowed in a HOST; and a
+        // port is digits or nothing.
+        for gid in [
+            "gid://user@/Person/1", "gid://@/Person/1", "gid:///Person/1",
+            "gid://bad%zz/Person/1", "gid://bad%zz@bc3/Person/1",
+            "gid://a%41b/Person/1", "gid://a b/Person/1", "gid://a b@bc3/Person/1",
+            "gid://us er@bc3/Person/1", "gid://user%zz:pw@bc3/Person/1",
+            "gid://bc3:notaport/Person/1", "gid://[::1]:x/Person/1",
+        ] {
+            XCTAssertNil(Mentions.personId(fromGlobalId: gid), gid)
+        }
+        // Accepted there, so accepted here — each one a mention Go reads that a
+        // conservative allowlist would have thrown away.
+        for gid in [
+            "gid://bc3/Person/1", "gid://b%C3%A9c3/Person/1", "gid://a%25b/Person/1",
+            "gid://a\"b/Person/1", "gid://a<b/Person/1", "gid://a>b/Person/1",
+            "gid://a]b/Person/1", "gid://a_b/Person/1",
+            "gid://bc3:8080/Person/1", "gid://bc3:/Person/1", "gid://bc3:0/Person/1",
+            "gid://bc3:99999999999/Person/1", "gid://bc3:80:80/Person/1",
+            // An escape naming an ASCII byte is fine in USERINFO, unlike a host.
+            "gid://a%41b@bc3/Person/1", "gid://user:pw@bc3/Person/1",
+            // Go's non-empty test is on the host WITH its port.
+            "gid://:8080/Person/1", "gid://user@:8080/Person/1",
+        ] {
+            XCTAssertEqual(Mentions.personId(fromGlobalId: gid), 1, gid)
+        }
+    }
+
     /// Go's `url.Parse` refuses an empty host behind userinfo and a bad percent
     /// escape in the authority. A split that only looks for the first slash
     /// accepts both — the PERMISSIVE direction, and the one that matters: a gid
@@ -142,39 +188,120 @@ final class MentionsTests: XCTestCase {
         }
     }
 
-    /// HTML character references, measured against `html.UnescapeString` through
-    /// the same end-to-end diff as the sgid table above — 4,000 fuzzed attribute
-    /// values as well as these, zero mismatches.
+    /// HTML character references, measured against Go and pinned on BOTH what
+    /// the decoder produces and what the projection reports.
     ///
-    /// The boundaries here are not guessable, which is why they are pinned
-    /// rather than reasoned about: `&#9` is literal while `&#x9` is a tab,
-    /// because the `x` counts toward the same index Go tests; `&#133;` is an
-    /// ellipsis rather than the NEL that would have been trimmed, because
-    /// 0x80–0x9F are remapped through Windows-1252; `&#8203;` survives the trim
-    /// because U+200B is whitespace to Foundation and not to Go; and `&nbspBAh…`
-    /// resolves because a name is matched against the table longest-first rather
-    /// than by consuming the longest run of name characters.
+    /// Both columns, because the id column alone cannot see this: every row whose
+    /// expectation is "no mention" is reached by a hundred routes, so a decoder
+    /// that did NOTHING satisfied eleven of the sixteen id-only rows this
+    /// replaces — including the row written to guard `&hyphen;`, which did not
+    /// fail when that exact regression was reintroduced. The decoded column
+    /// discriminates; the id column keeps the rows tied to the contract.
+    ///
+    /// Checked by mutation, and no row here is vacuous. Replacing the decoder
+    /// with the identity function flips 14 of the 18; each of the four that
+    /// survive states a rule an identity decoder happens to satisfy, and each is
+    /// caught by a mutation aimed at that rule — relaxing the "no characters
+    /// matched" guard flips `&#9x`, stopping the `x` counting toward the index
+    /// flips `&#x9x`, accepting a fullwidth digit flips its own row, and adding
+    /// a name to the table flips the unknown-name row. A survivor is not
+    /// evidence of a worthless row until a second mutation says so.
+    ///
+    /// The id column is `MentionedPersonIDs` from `go/pkg/basecamp`, run on
+    /// these exact inputs. The decoded column is this decoder's own output,
+    /// and it equals `html.UnescapeString` on every row but the two marked —
+    /// where this is deliberately narrower and the verdict is identical anyway,
+    /// because the character Go produces is neither base64 nor whitespace.
+    ///
+    /// The boundaries are not guessable, which is why they are pinned rather
+    /// than reasoned about: `&#9x` is literal while `&#x9x` is a tab, because
+    /// the `x` counts toward the same index Go tests; `&#133;` is an ellipsis
+    /// rather than the NEL that would have been trimmed; `&#8203;` survives the
+    /// trim because U+200B is whitespace to Foundation and not to Go; a
+    /// fullwidth digit is not a digit; and an overflowing reference wraps onto a
+    /// real character, because Go accumulates into an `int32` rune.
     func testEntityDecodingMatchesTheGoImplementationRowForRow() {
-        let cases: [(name: String, html: String, expected: [Int])] = [
-            ("a named reference matched longest-first, not by the longest run of name characters", "<div><bc-attachment sgid=\"&nbspeyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef\"></bc-attachment></div>", [42]),
-            ("the same with its semicolon", "<div><bc-attachment sgid=\"&nbsp;eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef\"></bc-attachment></div>", [42]),
-            ("one character after &# is not a reference", "<div><bc-attachment sgid=\"&#9eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef\"></bc-attachment></div>", []),
-            ("...but a semicolon makes it one", "<div><bc-attachment sgid=\"&#9;eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef\"></bc-attachment></div>", [42]),
-            ("...and in hex the x counts toward the same index", "<div><bc-attachment sgid=\"&#x9eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef\"></bc-attachment></div>", []),
-            ("0x80-0x9F is remapped through Windows-1252, so this is an ellipsis, not NEL", "<div><bc-attachment sgid=\"&#133;eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef\"></bc-attachment></div>", []),
-            ("U+200B is not whitespace to Go, so it is not trimmed", "<div><bc-attachment sgid=\"&#8203;eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef\"></bc-attachment></div>", []),
-            ("U+00A0 is", "<div><bc-attachment sgid=\"&#160;eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef\"></bc-attachment></div>", [42]),
-            ("a two-scalar expansion, all of it whitespace", "<div><bc-attachment sgid=\"&ThickSpace;eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef\"></bc-attachment></div>", [42]),
-            ("NUL becomes U+FFFD", "<div><bc-attachment sgid=\"&#0;eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef\"></bc-attachment></div>", []),
-            ("a surrogate becomes U+FFFD", "<div><bc-attachment sgid=\"&#xD800;eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef\"></bc-attachment></div>", []),
-            ("an unknown name is left verbatim", "<div><bc-attachment sgid=\"&notaname;eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef\"></bc-attachment></div>", []),
-            ("a legacy name expands without its semicolon", "<div><bc-attachment sgid=\"&ampeyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef\"></bc-attachment></div>", []),
-            ("UnderBar spells an underscore", "<div><bc-attachment sgid=\"eyJfcmFpbHMiOnsiZGF0&UnderBar;YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef\"></bc-attachment></div>", []),
-            ("hyphen does NOT spell a hyphen", "<div><bc-attachment sgid=\"eyJfcmFpbHMiOnsiZGF0&hyphen;YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef\"></bc-attachment></div>", []),
-            ("lowbar inside the payload", "<div><bc-attachment sgid=\"eyJfcmFpbHMiOnsiZGF0&lowbar;YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef\"></bc-attachment></div>", []),
+        let cases: [(name: String, html: String, decoded: String, ids: [Int])] = [
+            ("a named reference is matched longest-first, not by the longest run of name characters",
+             "&nbspeyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef",
+             "\u{A0}eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef",
+             [42]),
+            ("the same name with its semicolon",
+             "&nbsp;eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef",
+             "\u{A0}eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef",
+             [42]),
+            ("a single character after &# is not a reference",
+             "&#9xeyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef",
+             "&#9xeyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef",
+             []),
+            ("...but in hex the x counts toward the same index, so one digit is enough",
+             "&#x9xeyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef",
+             "\txeyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef",
+             []),
+            ("...and a semicolon makes the decimal one a reference too",
+             "&#9;eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef",
+             "\teyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef",
+             [42]),
+            ("0x80-0x9F is remapped through Windows-1252, so this is an ellipsis, not the NEL that would be trimmed",
+             "&#133;eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef",
+             "\u{2026}eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef",
+             []),
+            ("U+200B is not whitespace to Go, so it is not trimmed away",
+             "&#8203;eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef",
+             "\u{200B}eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef",
+             []),
+            ("U+00A0 is",
+             "&#160;eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef",
+             "\u{A0}eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef",
+             [42]),
+            ("a two-scalar expansion, all of it whitespace",
+             "&ThickSpace;eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef",
+             "\u{205F}\u{200A}eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef",
+             [42]),
+            ("NUL becomes U+FFFD",
+             "&#0;eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef",
+             "\u{FFFD}eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef",
+             []),
+            ("a surrogate becomes U+FFFD",
+             "&#xD800;eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef",
+             "\u{FFFD}eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef",
+             []),
+            ("a wrapped overflow lands back on a real character, as Go's int32 rune does",
+             "&#x100000042;yJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef",
+             "ByJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef",
+             []),
+            ("a fullwidth digit is not a digit",
+             "&#x\u{FF14}\u{FF12};yJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef",
+             "&#x\u{FF14}\u{FF12};yJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef",
+             []),
+            ("an unknown name is left verbatim",
+             "&notaname;eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef",
+             "&notaname;eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef",
+             []),  // narrower than Go here, verdict-identical
+            ("a legacy name expands without its semicolon",
+             "&ampeyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef",
+             "&eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef",
+             []),
+            ("UnderBar spells an underscore",
+             "eyJfcmFpbHMiOnsiZGF0&UnderBar;YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef",
+             "eyJfcmFpbHMiOnsiZGF0_YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef",
+             []),
+            ("hyphen does NOT spell a hyphen",
+             "eyJfcmFpbHMiOnsiZGF0&hyphen;YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef",
+             "eyJfcmFpbHMiOnsiZGF0&hyphen;YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef",
+             []),  // narrower than Go here, verdict-identical
+            ("lowbar inside the payload",
+             "eyJfcmFpbHMiOnsiZGF0&lowbar;YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef",
+             "eyJfcmFpbHMiOnsiZGF0_YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef",
+             []),
         ]
         for row in cases {
-            XCTAssertEqual(Mentions.personIds(in: row.html), row.expected, row.name)
+            let wrapped = "<div><bc-attachment sgid=\"\(row.html)\"></bc-attachment></div>"
+            XCTAssertEqual(
+                Mentions.attachmentSgids(in: wrapped), [row.decoded],
+                "decoded: \(row.name)")
+            XCTAssertEqual(
+                Mentions.personIds(in: wrapped), row.ids, "projected: \(row.name)")
         }
     }
 

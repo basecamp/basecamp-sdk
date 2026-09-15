@@ -471,14 +471,13 @@ extension Mentions {
         // Drop the query and fragment a URL parser would keep out of the path.
         if let cut = rest.firstIndex(where: { $0 == "?" || $0 == "#" }) { rest = rest[..<cut] }
         guard let hostEnd = rest.firstIndex(of: "/"), hostEnd != rest.startIndex else { return nil }
-        // The authority is checked, not merely required to be non-empty. Go
-        // parses it with `net/url`, which refuses an empty host behind userinfo
-        // (`gid://@/Person/1`) and a bad percent escape (`gid://bad%zz/…`); a
-        // split that only looks for the first slash accepts both, which is the
-        // PERMISSIVE direction and the one that matters — a gid Go refuses must
-        // not name a person here, or the write side renders a tag Go would not.
-        // BC3 mints `bc3`, so the set below is deliberately narrow.
-        guard rest[..<hostEnd].allSatisfy({ isGlobalIdHostCharacter($0) }) else { return nil }
+        // The authority is checked against what `net/url` accepts, which is the
+        // parser Go hands the gid to. Both directions matter and an allowlist
+        // gets one of them wrong: too loose and `gid://@/Person/1` names a
+        // person here that Go refuses — the write side would render a tag Go
+        // will not write; too strict and `gid://b%C3%A9c3/Person/1`, a host Go
+        // accepts, names nobody here and a real mention is lost.
+        guard isValidGlobalIdAuthority(rest[..<hostEnd]) else { return nil }
 
         let path = rest[rest.index(after: hostEnd)...]
         guard let modelEnd = path.firstIndex(of: "/") else { return nil }
@@ -538,9 +537,14 @@ private func firstRange(of needle: String, in bytes: [UInt8], from: Int) -> Int?
     let pattern = Array(needle.utf8)
     guard !pattern.isEmpty, from <= bytes.count - pattern.count else { return nil }
     var i = from
-    while i + pattern.count <= bytes.count {
-        if Array(bytes[i..<(i + pattern.count)]) == pattern { return i }
-        i += 1
+    // Compared byte by byte rather than by slicing into a fresh Array, which
+    // allocated once per byte scanned.
+    outer: while i + pattern.count <= bytes.count {
+        for (offset, expected) in pattern.enumerated() where bytes[i + offset] != expected {
+            i += 1
+            continue outer
+        }
+        return i
     }
     return nil
 }
@@ -604,6 +608,21 @@ private func entityAt(_ text: Substring, from start: Substring.Index) -> (String
     // value is not the character: 0x80–0x9F are remapped through Windows-1252
     // (`&#133;` is an ellipsis, NOT the NEL that would have been trimmed), and
     // NUL, the surrogates and anything past U+10FFFF become U+FFFD.
+    //
+    // A digit is an ASCII BYTE, tested the way Go tests it. `Character` has a
+    // `hexDigitValue`, and reaching for it is the obvious move and wrong: it
+    // accepts the fullwidth forms U+FF10–U+FF19 and U+FF21–U+FF26/U+FF41–U+FF46,
+    // which Go and HTML5 both refuse. That is not a curiosity — it re-opens the
+    // suppression attack, because `sgid="&#x４２;<rest of a real sgid>"` would
+    // decode HERE to the authoritative sgid and nowhere else, so the write-side
+    // dedupe would skip the real mention while BC3, parsing HTML5, sees only the
+    // decorated tag and mentions nobody.
+    //
+    // The accumulator is Int32 and it WRAPS, because Go's is a `rune` and Go's
+    // wraps: `&#x100000041;` is `A` there, not a refusal, and a wrap that lands
+    // back inside the valid range is a character Go writes. Latching to U+FFFD
+    // instead reported one mention fewer than the contract on 357 of 20,000
+    // fuzzed inputs.
     if start < text.endIndex, text[start] == "#" {
         var consumed = 2  // Go's `i`, counting the "&" and the "#"
         var cursor = text.index(after: start)
@@ -614,15 +633,13 @@ private func entityAt(_ text: Substring, from start: Substring.Index) -> (String
             consumed += 1
         }
 
-        var value: UInt32 = 0
-        var overflowed = false
+        var value: Int32 = 0
         while cursor < text.endIndex {
             let c = text[cursor]
             cursor = text.index(after: cursor)
             consumed += 1
-            if let digit = c.hexDigitValue, hex || c.isNumber, hex || digit < 10 {
-                let (scaled, didOverflow) = value.multipliedReportingOverflow(by: hex ? 16 : 10)
-                if didOverflow { overflowed = true } else { value = scaled &+ UInt32(digit) }
+            if let digit = asciiDigitValue(c, hex: hex) {
+                value = value &* (hex ? 16 : 10) &+ digit
                 continue
             }
             if c != ";" { consumed -= 1; cursor = text.index(before: cursor) }
@@ -630,15 +647,17 @@ private func entityAt(_ text: Substring, from start: Substring.Index) -> (String
         }
         guard consumed > 3 else { return nil }  // "No characters matched."
 
-        var scalarValue = overflowed ? 0x11_0000 : value
+        var scalarValue = value
         if scalarValue >= 0x80, scalarValue <= 0x9F {
             scalarValue = windows1252Replacements[Int(scalarValue - 0x80)]
         } else if scalarValue == 0 || (scalarValue >= 0xD800 && scalarValue <= 0xDFFF)
-            || scalarValue > 0x10_FFFF
+            || scalarValue > 0x10_FFFF || scalarValue < 0
         {
+            // The negative arm is Go's too: a wrapped-negative rune reaches
+            // `utf8.EncodeRune`, which writes U+FFFD for anything out of range.
             scalarValue = 0xFFFD
         }
-        guard let scalar = Unicode.Scalar(scalarValue) else { return nil }
+        guard let scalar = Unicode.Scalar(UInt32(scalarValue)) else { return nil }
         return (String(Character(scalar)), cursor)
     }
 
@@ -648,10 +667,14 @@ private func entityAt(_ text: Substring, from start: Substring.Index) -> (String
     // the whole of `&nbspBAh7…`: the run there is `nbspBAh`, which is not a
     // name, but `nbsp` is, and Go expands it.
     var cursor = start
-    while cursor < text.endIndex, text[cursor].isASCII, text[cursor].isLetter || text[cursor].isNumber,
-        text.distance(from: start, to: cursor) < maxEntityNameLength
+    var length = 0
+    // Counted, not re-measured: `String.distance` is O(k), so calling it in the
+    // loop condition makes a bounded scan quadratic in its own bound.
+    while cursor < text.endIndex, length < maxEntityNameLength, text[cursor].isASCII,
+        text[cursor].isLetter || text[cursor].isNumber
     {
         cursor = text.index(after: cursor)
+        length += 1
     }
     guard start < cursor else { return nil }
 
@@ -661,8 +684,16 @@ private func entityAt(_ text: Substring, from start: Substring.Index) -> (String
     {
         return (replacement, text.index(after: cursor))
     }
-    // Without one, only the legacy names allow it — longest first.
+    // Without one, only the legacy names allow it — longest first, and no
+    // longer than the longest legacy name. Go bounds the same descent with
+    // `longestEntityWithoutSemicolon`, so trying every prefix of a 24-character
+    // run would be 24 allocations and hashes per `&` where Go does at most six.
     var candidate = cursor
+    var candidateLength = length
+    while candidateLength > longestLegacyEntityName {
+        candidate = text.index(before: candidate)
+        candidateLength -= 1
+    }
     while candidate > start {
         if let replacement = legacyEntities[String(text[start..<candidate])] {
             return (replacement, candidate)
@@ -675,6 +706,10 @@ private func entityAt(_ text: Substring, from start: Substring.Index) -> (String
 /// Longer than any name in the table below, and short enough that a stray `&`
 /// before a long run of letters costs nothing to refuse.
 private let maxEntityNameLength = 24
+
+/// The longest name in ``legacyEntities``, which bounds the no-semicolon
+/// descent the way Go's `longestEntityWithoutSemicolon` bounds its own.
+private let longestLegacyEntityName = 4
 
 /// What Go's `unicode.IsSpace` calls whitespace — the set `strings.TrimSpace`
 /// uses, and so the set that decides whether a reference expanded at either end
@@ -695,8 +730,25 @@ private let goWhitespace: CharacterSet = {
     return set
 }()
 
+/// A numeric reference's digit, tested as an ASCII byte the way Go tests it.
+/// Nil for everything else — including the fullwidth digit forms that
+/// `Character.hexDigitValue` accepts and Go refuses.
+private func asciiDigitValue(_ c: Character, hex: Bool) -> Int32? {
+    guard let byte = c.asciiValue else { return nil }
+    switch byte {
+    case UInt8(ascii: "0")...UInt8(ascii: "9"):
+        return Int32(byte - UInt8(ascii: "0"))
+    case UInt8(ascii: "a")...UInt8(ascii: "f") where hex:
+        return Int32(byte - UInt8(ascii: "a")) + 10
+    case UInt8(ascii: "A")...UInt8(ascii: "F") where hex:
+        return Int32(byte - UInt8(ascii: "A")) + 10
+    default:
+        return nil
+    }
+}
+
 /// Go's `replacementTable`: what a numeric reference in 0x80–0x9F becomes.
-private let windows1252Replacements: [UInt32] = [
+private let windows1252Replacements: [Int32] = [
     0x20AC, 0x0081, 0x201A, 0x0192, 0x201E, 0x2026, 0x2020, 0x2021,
     0x02C6, 0x2030, 0x0160, 0x2039, 0x0152, 0x008D, 0x017D, 0x008F,
     0x0090, 0x2018, 0x2019, 0x201C, 0x201D, 0x2022, 0x2013, 0x2014,
@@ -747,9 +799,100 @@ private let legacyEntities: [String: String] = [
     "nbsp": "\u{A0}",
 ]
 
-/// The characters a GlobalID authority may contain. Narrow on purpose: BC3
-/// mints `bc3`, and everything outside this set is something Go's URL parser
-/// either refuses or reads differently.
-private func isGlobalIdHostCharacter(_ c: Character) -> Bool {
-    c.isASCII && (c.isLetter || c.isNumber || c == "." || c == "-" || c == "_" || c == "~")
+/// Whether `net/url` would accept this authority.
+///
+/// Ported from what Go's parser does rather than from a charset that looked
+/// about right, and the WHOLE authority is checked rather than just the host —
+/// both of those because both were measured wrong first. Each rule below is a
+/// row in `testTheAuthorityMatchesWhatGoAccepts`:
+///
+///   * **Userinfo** may carry an escape naming any byte, but a MALFORMED escape,
+///     a space or a control refuses the gid: `bad%zz@bc3` and `us er@bc3` name
+///     nobody in Go.
+///   * **The host** is what remains after any userinfo, and it may not be empty
+///     — which is why `gid://user@/Person/1` names nobody. The emptiness test is
+///     on the host WITH its port, as Go's is, so `gid://:8080/Person/1` is a
+///     host Go accepts.
+///   * **In the host** a percent escape is allowed only when it names a
+///     non-ASCII byte, `%25` excepted. `b%C3%A9c3` decodes to `béc3` and is a
+///     host Go ACCEPTS; `a%41b` is not. In userinfo the same escape is fine.
+///   * **A port** is a `:` and then digits, and nothing else: `bc3:8080`,
+///     `bc3:` and even `bc3:99999999999` are accepted, `bc3:notaport` is not.
+///     Go splits at the LAST colon, which is why `bc3:80:80` is a host as well.
+///   * **A bracketed literal** carries its port after the `]`.
+///
+/// Everything else — `"`, `<`, `>`, `]`, `_` — Go accepts, and so must this, or
+/// a gid Go reads as a mention names nobody here. The host is never read beyond
+/// this check; the only job is to agree with Go about which gids exist.
+private func isValidGlobalIdAuthority(_ authority: Substring) -> Bool {
+    var host = authority
+    if let at = authority.lastIndex(of: "@") {
+        guard isValidUserinfo(authority[..<at]) else { return false }
+        host = authority[authority.index(after: at)...]
+    }
+    guard !host.isEmpty else { return false }
+
+    if host.first == "[" {
+        // A bracketed IP literal carries its port outside the brackets.
+        guard let close = host.lastIndex(of: "]") else { return false }
+        guard isValidOptionalPort(host[host.index(after: close)...]) else { return false }
+        host = host[host.index(after: host.startIndex)..<close]
+    } else if let colon = host.lastIndex(of: ":") {
+        guard isValidOptionalPort(host[colon...]) else { return false }
+        host = host[..<colon]
+    }
+    // Deliberately NOT re-checked for emptiness: Go's non-empty test is on
+    // `u.Host`, which still carries the port, so `gid://:8080/Person/1` is a
+    // host Go accepts and names a person for.
+
+    var index = host.startIndex
+    while index < host.endIndex {
+        let c = host[index]
+        if let ascii = c.asciiValue, ascii <= 0x20 || ascii == 0x7F { return false }
+        guard c == "%" else {
+            index = host.index(after: index)
+            continue
+        }
+        guard let byte = percentEscapedByte(host, at: index) else { return false }
+        guard byte >= 0x80 || byte == 0x25 else { return false }
+        index = host.index(index, offsetBy: 3)
+    }
+    return true
+}
+
+/// Userinfo accepts an escape naming any byte; what it refuses is a malformed
+/// one, and a space or control character.
+private func isValidUserinfo(_ userinfo: Substring) -> Bool {
+    var index = userinfo.startIndex
+    while index < userinfo.endIndex {
+        let c = userinfo[index]
+        if let ascii = c.asciiValue, ascii <= 0x20 || ascii == 0x7F { return false }
+        guard c == "%" else {
+            index = userinfo.index(after: index)
+            continue
+        }
+        guard percentEscapedByte(userinfo, at: index) != nil else { return false }
+        index = userinfo.index(index, offsetBy: 3)
+    }
+    return true
+}
+
+/// The byte a `%XX` at `index` names, or nil when the escape is malformed.
+private func percentEscapedByte(_ text: Substring, at index: Substring.Index) -> Int? {
+    let first = text.index(after: index)
+    guard first < text.endIndex else { return nil }
+    let second = text.index(after: first)
+    guard second < text.endIndex else { return nil }
+    guard text[first].isASCII, text[second].isASCII,
+        let high = text[first].hexDigitValue, let low = text[second].hexDigitValue
+    else { return nil }
+    return high * 16 + low
+}
+
+/// Go's `validOptionalPort`: empty, or a colon followed by digits and nothing
+/// else. A bare colon is valid, and there is no range check.
+private func isValidOptionalPort(_ port: Substring) -> Bool {
+    guard !port.isEmpty else { return true }
+    guard port.first == ":" else { return false }
+    return port.dropFirst().allSatisfy { $0.isASCII && $0.isNumber }
 }
