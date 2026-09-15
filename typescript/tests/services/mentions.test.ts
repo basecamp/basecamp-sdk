@@ -469,41 +469,45 @@ describe("mentionedPersonIds", () => {
     }
   });
 
-  it("tries one table length per ampersand, not every length", () => {
-    // This replaces a wall-clock ratio, and the reason is worth keeping. That
-    // assertion compared a 4x input's time against a 4x budget: linear is near
-    // 4, quadratic near 16, and the threshold sat between them at 10. An
-    // adversarial re-measurement on a loaded box put the LINEAR ratio at 18.85
-    // in 2 of 80 trials — past the quadratic reference the test was discriminating
-    // against, so no threshold on that axis separates the two. A timing test
-    // that cannot fail for the reason it names is worse than no test.
+  it("consults the entity table once per ampersand, not once per table length", () => {
+    // Two rewrites, and the second is the one that measures the bound.
     //
-    // The bound is countable instead. The scan slices the text once per length
-    // it tries, so counting slices during one pass measures exactly the thing:
-    // bounded by the name characters present (one try per "&a"), or the whole
-    // table (LONGEST_ENTITY_NAME tries). No clock, no machine, no flake.
-    const native = String.prototype.slice;
-    let slices = 0;
-    String.prototype.slice = function (this: string, ...args: [number?, number?]) {
-      slices++;
-      return native.apply(this, args);
+    // It began as a wall-clock ratio. An adversarial re-measurement put the
+    // LINEAR ratio at 18.85 on a loaded box — past the quadratic reference the
+    // threshold was set against — so no cutoff on that axis separated them.
+    //
+    // It then counted `String.prototype.slice` calls, which was countable but
+    // not the thing: a reviewer showed the regression could be reintroduced
+    // alongside a `slice` → `substring` swap and the count would stay flat,
+    // while a second, incidental slice elsewhere in the scanner held the
+    // non-vacuity floor up on its own. A test that survives the defect it names
+    // is worse than the flaky one it replaced.
+    //
+    // The bound is a number of TABLE LOOKUPS, so the table is what to count.
+    // `NAMED_ENTITIES.get` is reached once per length tried, whatever string
+    // method slices the key, and nothing else in this path consults a Map.
+    const native = Map.prototype.get;
+    let lookups = 0;
+    Map.prototype.get = function <K, V>(this: Map<K, V>, key: K): V | undefined {
+      lookups++;
+      return native.call(this, key) as V | undefined;
     };
     let perAmpersand: number;
     try {
       const n = 20_000;
       mentionedPersonIds(`<bc-attachment sgid="${"&a".repeat(n)}"></bc-attachment>`);
-      perAmpersand = slices / n;
+      perAmpersand = lookups / n;
     } finally {
-      String.prototype.slice = native;
+      Map.prototype.get = native;
     }
 
-    // One try per "&a" costs one slice; searching every length costs
-    // LONGEST_ENTITY_NAME of them. The bound in between is loose on purpose —
-    // what it must never admit is a constant that grows with the TABLE.
-    expect(perAmpersand).toBeLessThan(4);
-    // And not vacuous: a scan that sliced nothing at all would pass the line
-    // above while measuring an implementation that no longer works this way.
-    expect(perAmpersand).toBeGreaterThan(0);
+    // "&a" offers one name character, so one length is tried and one lookup
+    // made. Searching every length instead costs LONGEST_ENTITY_NAME of them —
+    // the constant that grows with the TABLE, which is what must never return.
+    expect(perAmpersand).toBeLessThan(2);
+    // And not vacuous: a scan that consulted the table not at all would pass
+    // the bound above while measuring an implementation that cannot work.
+    expect(perAmpersand).toBeGreaterThanOrEqual(1);
   });
 
   it("stops at an unterminated comment or tag rather than guessing", () => {

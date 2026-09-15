@@ -186,6 +186,31 @@ describe("comments mention composites", () => {
       expect(comment.id).toBe(1069479370);
     });
 
+    it("refuses a content that is not a string, and posts nothing", async () => {
+      // The guard reads the value that goes out, not a coerced copy of it. `{}`
+      // and `[]` are truthy, so a plain-JavaScript caller could sail past a
+      // truthiness check into the mention walk — a raw TypeError with mentions
+      // requested, and with none, a POST body the reference cannot produce,
+      // since Go's signature takes a string. The second assertion is the one
+      // that matters: an exception-only test passes in the world where the
+      // write went out anyway.
+      const tracked = trackRequests();
+      server.use(
+        http.post(`${BASE_URL}/recordings/1069479351/comments.json`, () =>
+          HttpResponse.json(commentBody("<div>posted</div>"), { status: 201 }),
+        ),
+      );
+
+      for (const content of [{}, [], 42, true, null, undefined] as unknown[]) {
+        const err = await client.comments
+          .createWithMentions(1069479351, content as string, [])
+          .catch((e: unknown) => e);
+        expect(err, JSON.stringify(content ?? null)).toBeInstanceOf(BasecampError);
+        expect((err as BasecampError).code).toBe("usage");
+      }
+      expect(tracked.calls.some((call) => call.startsWith("POST"))).toBe(false);
+    });
+
     it("posts nothing when a mention lookup fails", async () => {
       const tracked = trackRequests();
       server.use(

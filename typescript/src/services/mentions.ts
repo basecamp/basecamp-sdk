@@ -6,13 +6,20 @@
  * "Inserting a mention"). BC3 renders the same tag back with
  * `content-type="application/vnd.basecamp.mention"` and an avatar figure inside
  * it, but the sgid is the only part of the markup that names the person on both
- * the write and the read side, so both helpers here work from it:
+ * the write and the read side, so every helper here works from it. The module
+ * exports four, not the two this list carried while it grew:
  *
  * - {@link mentionedPersonIds} reads the person ids a rich text names, by
  *   decoding the sgid of every `<bc-attachment>` and keeping the ones that
  *   point at a Person.
+ * - {@link personIdFromSGID} is the decode under it, for a single sgid.
  * - {@link mentionMarkup} writes the tag for a person, from their
  *   `attachable_sgid`.
+ * - {@link withMentions} places those tags inside a rich text's first block,
+ *   skipping a person the content already mentions by that exact sgid.
+ *
+ * {@link unescapeEntities} and {@link namedEntityNames} are exported for the
+ * differential tests and are not part of the SDK's surface.
  *
  * An `attachable_sgid` is a Rails SignedGlobalID: a base64 payload, then `--`,
  * then an HMAC only BC3 can verify. The payload is an envelope carrying the

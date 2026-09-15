@@ -805,7 +805,7 @@ class CampfireIndex {
       // discovery could go on to report the line unresolved, a composite
       // verdict standing in for a failed read.
       return sourceItems(sourceObject(project, "the project read").dock, "the project dock")
-        .filter((item) => item.name === "chat")
+        .filter((item) => recordingText(item.name, "a project dock item name") === "chat")
         .map((item) => numericId(item.id, "project dock item"))
         .filter((id) => id !== 0);
     });
@@ -848,7 +848,13 @@ class CampfireIndex {
         // campfireIds — so it is kept here too. Only a value Go's decoder would
         // have refused outright is refused.
         const campfireId = numericId(campfire.id, "campfire listing entry");
-        const listedBucketId = numericId(bucket.id, "campfire listing bucket");
+        // `wireInteger`, not `numericId`: Go's line here is `c.Bucket == nil ||
+        // c.Bucket.ID == 0` and then `byBucket[c.Bucket.ID]` — a map key and a
+        // comparand. Only `c.ID` below is ever put in a URL, so only it carries
+        // the safe-integer clause. Routing this one through `numericId` failed
+        // a listing Go reads: an account whose bucket id is past 2^53 lost
+        // every Campfire in it, including the healthy entries beside it.
+        const listedBucketId = wireInteger(bucket.id, "campfire listing bucket");
         if (listedBucketId === 0) continue;
         const ids = byBucket.get(listedBucketId);
         if (ids === undefined) byBucket.set(listedBucketId, [campfireId]);
@@ -929,7 +935,7 @@ function recordingBody<T>(value: T): T {
   if (value === null) return {} as T;
   if (typeof value !== "object" || Array.isArray(value)) {
     throw Errors.apiError(
-      truncateErrorMessage(`the recording read returned ${describeIdValue(value)} rather than a recording`),
+      truncateErrorMessage(`the recording read returned ${describeWireValue(value)} rather than a recording`),
       undefined,
       {
         retryable: false,
@@ -955,7 +961,7 @@ function sourceObject(value: unknown, what: string): Record<string, unknown> {
   if (value === null || value === undefined) return {};
   if (typeof value !== "object" || Array.isArray(value)) {
     throw Errors.apiError(
-      truncateErrorMessage(`${what} is ${describeIdValue(value)} rather than an object`),
+      truncateErrorMessage(`${what} is ${describeWireValue(value)} rather than an object`),
       undefined,
       {
         retryable: false,
@@ -971,7 +977,7 @@ function sourceItems(value: unknown, what: string): Record<string, unknown>[] {
   if (value === null || value === undefined) return [];
   if (!Array.isArray(value)) {
     throw Errors.apiError(
-      truncateErrorMessage(`${what} is ${describeIdValue(value)} rather than a list`),
+      truncateErrorMessage(`${what} is ${describeWireValue(value)} rather than a list`),
       undefined,
       {
         retryable: false,
@@ -992,9 +998,16 @@ function sourceItems(value: unknown, what: string): Record<string, unknown>[] {
  * like the reference's while applying one site's policy at another's. Each
  * caller spells its own value rule beside the Go line it mirrors.
  */
+const INT64_LIMIT = 2 ** 63;
+
 function wireInteger(value: unknown, what: string): number {
   if (value === undefined || value === null) return 0;
-  if (typeof value !== "number" || !Number.isInteger(value)) {
+  // The window is Go's int64, measured at both ends: 9223372036854775807 and
+  // -9223372036854775808 decode, and one past either is a decode error. An
+  // "any whole number" rule was wider than the reference at the top end, so a
+  // bucket id of 1e20 — a body Go refuses — came back as a bucket_mismatch
+  // naming a bucket that cannot exist.
+  if (typeof value !== "number" || !Number.isInteger(value) || value >= INT64_LIMIT || value < -INT64_LIMIT) {
     throw Errors.apiError(
       truncateErrorMessage(`${what} has an id that is not a usable whole number (${describeIdValue(value)})`),
       undefined,
@@ -1020,6 +1033,22 @@ function numericId(value: unknown, what: string): number {
     );
   }
   return id;
+}
+
+/**
+ * What a wire value IS, for a site that was not reading an id.
+ *
+ * `describeIdValue` speaks about ids — "out of safe integer range", "not whole"
+ * — and reusing it for containers and text produced messages that send a reader
+ * hunting for the wrong thing: "the project dock is out of safe integer range
+ * rather than a list" for `{"dock": 5}`.
+ */
+function describeWireValue(value: unknown): string {
+  if (value === null) return "null";
+  if (Array.isArray(value)) return "an array";
+  if (typeof value === "string") return JSON.stringify(value);
+  if (typeof value === "object") return "an object";
+  return `${typeof value} ${String(value)}`;
 }
 
 function describeIdValue(value: unknown): string {
@@ -1179,10 +1208,16 @@ export class RecordingsService extends GeneratedRecordingsService {
     // answer that lets a recording in another project pass as a match. Go fails
     // the read on that body (measured: a string and an array are both decode
     // errors into the bucket struct; a null is the zero value, hence absent).
+    // `"bucket" in summary`, not `!== undefined`: the projection assigns this
+    // key on truthiness, so `"bucket": 0`, `false` and `""` never became a key
+    // at all and slipped past a guard that asked whether the key was undefined.
+    // Each of them is a decode error in Go, and each read here as "no bucket
+    // identified" — the answer that lets a recording in another project pass as
+    // a match, arrived at through the one door the first guard left open.
     const readBucket = summary.bucket as unknown;
-    if (readBucket !== undefined && (typeof readBucket !== "object" || Array.isArray(readBucket))) {
+    if (readBucket !== undefined && (readBucket === null || typeof readBucket !== "object" || Array.isArray(readBucket))) {
       throw Errors.apiError(
-        truncateErrorMessage(`the recording read identified its bucket as ${describeIdValue(readBucket)}`),
+        truncateErrorMessage(`the recording read identified its bucket as ${describeWireValue(readBucket)}`),
         undefined,
         {
           retryable: false,
@@ -1240,7 +1275,7 @@ export class RecordingsService extends GeneratedRecordingsService {
       }
       case "message": {
         const m = recordingBody(await reads.messages.get(id));
-        return projectRecording(m, firstNonEmpty(m.title, m.subject), m.content, {
+        return projectRecording(m, firstNonEmpty("a message title", m.title, m.subject), m.content, {
           parent: m.parent,
           bucket: m.bucket,
           creator: m.creator,
@@ -1250,7 +1285,7 @@ export class RecordingsService extends GeneratedRecordingsService {
         // A to-do's content is its plain title; the rich text — where mentions
         // live — is the description.
         const t = recordingBody(await reads.todos.get(id));
-        return projectRecording(t, firstNonEmpty(t.title, t.content), t.description, {
+        return projectRecording(t, firstNonEmpty("a recording title", t.title, t.content), t.description, {
           parent: t.parent,
           bucket: t.bucket,
           creator: t.creator,
@@ -1259,7 +1294,7 @@ export class RecordingsService extends GeneratedRecordingsService {
       }
       case "card": {
         const c = recordingBody(await reads.cards.get(id));
-        return projectRecording(c, c.title, firstNonEmpty(c.content, c.description), {
+        return projectRecording(c, c.title, firstNonEmpty("a recording rich text", c.content, c.description), {
           parent: c.parent,
           bucket: c.bucket,
           creator: c.creator,
@@ -1293,7 +1328,7 @@ export class RecordingsService extends GeneratedRecordingsService {
       }
       case "upload": {
         const u = recordingBody(await reads.uploads.get(id));
-        return projectRecording(u, firstNonEmpty(u.title, u.filename), u.description, {
+        return projectRecording(u, firstNonEmpty("an upload title", u.title, u.filename), u.description, {
           parent: u.parent,
           bucket: u.bucket,
           creator: u.creator,
@@ -1301,7 +1336,7 @@ export class RecordingsService extends GeneratedRecordingsService {
       }
       case "scheduleEntry": {
         const e = recordingBody(await reads.schedules.getEntry(id));
-        return projectRecording(e, firstNonEmpty(e.title, e.summary), e.description, {
+        return projectRecording(e, firstNonEmpty("a recording title", e.title, e.summary), e.description, {
           parent: e.parent,
           bucket: e.bucket,
           creator: e.creator,
@@ -1317,7 +1352,7 @@ export class RecordingsService extends GeneratedRecordingsService {
       }
       case "todolist": {
         const l = recordingBody(await reads.todolists.get(id));
-        return projectRecording(l, firstNonEmpty(l.title, l.name), l.description, {
+        return projectRecording(l, firstNonEmpty("a recording title", l.title, l.name), l.description, {
           parent: l.parent,
           bucket: l.bucket,
           creator: l.creator,
@@ -1329,7 +1364,7 @@ export class RecordingsService extends GeneratedRecordingsService {
       }
       case "forward": {
         const f = recordingBody(await reads.forwards.get(id));
-        return projectRecording(f, firstNonEmpty(f.title, f.subject), f.content, {
+        return projectRecording(f, firstNonEmpty("a message title", f.title, f.subject), f.content, {
           parent: f.parent,
           bucket: f.bucket,
           creator: f.creator,
@@ -1337,7 +1372,7 @@ export class RecordingsService extends GeneratedRecordingsService {
       }
       case "clientApproval": {
         const a = recordingBody(await reads.clientApprovals.get(id));
-        return projectRecording(a, firstNonEmpty(a.title, a.subject), a.content, {
+        return projectRecording(a, firstNonEmpty("a message title", a.title, a.subject), a.content, {
           parent: a.parent,
           bucket: a.bucket,
           creator: a.creator,
@@ -1345,7 +1380,7 @@ export class RecordingsService extends GeneratedRecordingsService {
       }
       case "clientCorrespondence": {
         const c = recordingBody(await reads.clientCorrespondences.get(id));
-        return projectRecording(c, firstNonEmpty(c.title, c.subject), c.content, {
+        return projectRecording(c, firstNonEmpty("a message title", c.title, c.subject), c.content, {
           parent: c.parent,
           bucket: c.bucket,
           creator: c.creator,
@@ -1370,7 +1405,7 @@ export class RecordingsService extends GeneratedRecordingsService {
       }
       case "questionnaire": {
         const q = recordingBody(await reads.checkins.getQuestionnaire(id));
-        return projectRecording(q, firstNonEmpty(q.title, q.name), "", { bucket: q.bucket, creator: q.creator });
+        return projectRecording(q, firstNonEmpty("a recording title", q.title, q.name), "", { bucket: q.bucket, creator: q.creator });
       }
       case "schedule": {
         const s = recordingBody(await reads.schedules.get(id));
@@ -1378,7 +1413,7 @@ export class RecordingsService extends GeneratedRecordingsService {
       }
       case "todoset": {
         const t = recordingBody(await reads.todosets.get(id));
-        return projectRecording(t, firstNonEmpty(t.title, t.name), "", { bucket: t.bucket, creator: t.creator });
+        return projectRecording(t, firstNonEmpty("a recording title", t.title, t.name), "", { bucket: t.bucket, creator: t.creator });
       }
       case "messageBoard": {
         const b = recordingBody(await reads.messageBoards.get(id));
@@ -1587,7 +1622,12 @@ function projectRecording(
   const summary: RecordingSummary = {
     // `id` too, which the first pass at this missed even while the comment
     // above stated the rule: Go marshals a zero RecordingSummary as {"id":0,…}.
-    id: recording.id ?? 0,
+    // And through `wireInteger`, which the id sweep missed here while sweeping
+    // the three discovery sites and every string field around it: this was the
+    // one number field left on a bare `??`, so `{"id":"1"}` came back as the
+    // STRING "1" in a field typed `number`, a shape no other SDK can produce.
+    // `wireInteger`, not `numericId`: this id is emitted, never addressed.
+    id: wireInteger(recording.id, "the recording"),
     status: recordingText(recording.status, "a recording status"),
     type: recordingText(recording.type, "a recording type"),
     // The types that read `title` straight off the recording pass it through
@@ -1599,25 +1639,33 @@ function projectRecording(
     content: body,
     // Go's zero value here is a `time.Time`, not a string, and it marshals as
     // the zero instant rather than as "".
-    updated_at: recordingText(recording.updated_at, "a recording updated_at") || "0001-01-01T00:00:00Z",
+    updated_at: recordingInstant(recording.updated_at),
   };
   if (nested.parent) summary.parent = nested.parent;
-  if (nested.bucket) summary.bucket = nested.bucket;
+  // Assigned when PRESENT, not when truthy: a falsy non-object (0, false, "")
+  // is a decode error in Go, and dropping the key here hid it from the
+  // cross-project check, which then found nothing to disagree with.
+  if (nested.bucket !== undefined && nested.bucket !== null) summary.bucket = nested.bucket;
   if (nested.creator) summary.creator = nested.creator;
   if (nested.assignees && nested.assignees.length > 0) summary.assignees = nested.assignees;
   return summary;
 }
 
-function firstNonEmpty(...values: (string | undefined)[]): string {
-  for (const value of values) {
-    // `recordingText` first, so a JSON null reads as Go's zero value and falls
-    // THROUGH to the next candidate. Treating null as present is the quiet
-    // version of this defect: {"title":null,"subject":"S"} decodes in Go with
-    // an empty title and takes the subject, while here null passed the test,
-    // was returned, and the caller's `?? ""` turned it into "" — the fallback
-    // lost, and a message summarized under no title at all.
-    const text = recordingText(value, "a recording title");
-    if (text !== "") return text;
+function firstNonEmpty(what: string, ...values: (string | undefined)[]): string {
+  // EVERY candidate, not just the ones reached. Go's decoder refuses a
+  // wrong-typed field whether or not the projection goes on to use it, so
+  // `{"title":"T","subject":42}` fails the read there while a short-circuit
+  // here returned "T" and never looked at the subject. Validate first, choose
+  // after.
+  const texts = values.map((value) => recordingText(value, what));
+  for (const value of texts) {
+    // A JSON null reads as Go's zero value and falls THROUGH to the next
+    // candidate. Treating null as present is the quiet version of this defect:
+    // {"title":null,"subject":"S"} decodes in Go with an empty title and takes
+    // the subject, while here null passed the test, was returned, and the
+    // caller's `?? ""` turned it into "" — the fallback lost, and a message
+    // summarized under no title at all.
+    if (value !== "") return value;
   }
   return "";
 }
@@ -1632,11 +1680,59 @@ function firstNonEmpty(...values: (string | undefined)[]): string {
  * TypeError out of `summarize` — the same untyped-throw boundary the body and
  * container checks close, one level further in.
  */
+/** Go's zero `time.Time`, which is what it marshals for an absent instant. */
+const ZERO_INSTANT = "0001-01-01T00:00:00Z";
+const RFC3339 = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/;
+
+/**
+ * The instant a routed read carries, refused when it is not one.
+ *
+ * `updated_at` is the exception among the projected scalars, and treating it as
+ * one more string got it wrong in both directions. Its Go type is `time.Time`,
+ * whose `UnmarshalJSON` is stricter than a string's: a JSON null is the zero
+ * instant and no error, but `""`, `"not-a-date"`, `"2024-01-02 03:04:05"`,
+ * `"2024-02-30T…"` and a lowercase `t` or `z` are all decode errors. The
+ * previous spelling — the string rule, then `|| ZERO_INSTANT` — painted `""`
+ * with the zero instant, so a body the reference REFUSES came back carrying a
+ * plausible timestamp instead of a visibly empty one.
+ *
+ * What this does not model is the re-rendering: Go parses and re-marshals, so
+ * `2024-01-02T03:04:05.000Z` comes back as `…:05Z` there and verbatim here.
+ * The conformance runner compares instants rather than strings, and a
+ * caller reading `updated_at` gets the same instant either way.
+ */
+function recordingInstant(value: unknown): string {
+  if (value === undefined || value === null) return ZERO_INSTANT;
+  const text = recordingText(value, "a recording updated_at");
+  const parts = RFC3339.exec(text);
+  if (parts !== null) {
+    const [, year, month, day, hour, minute, second] = parts.map(Number) as number[];
+    // The shape is not enough: 2024-02-30 and 25:04 match it and Go refuses
+    // them. A UTC round-trip is what rejects a date the calendar does not have.
+    const at = new Date(Date.UTC(year!, month! - 1, day!, hour!, minute!, second!));
+    if (
+      at.getUTCFullYear() === year &&
+      at.getUTCMonth() === month! - 1 &&
+      at.getUTCDate() === day &&
+      at.getUTCHours() === hour &&
+      at.getUTCMinutes() === minute &&
+      at.getUTCSeconds() === second
+    ) {
+      return text;
+    }
+  }
+  throw Errors.apiError(
+    truncateErrorMessage(`a recording updated_at is ${describeWireValue(value)} rather than an RFC 3339 instant`),
+    undefined,
+    { retryable: false, hint: "the response is malformed; the recording cannot be summarized from it" },
+  );
+}
+
 function recordingText(value: unknown, what: string): string {
   if (value === undefined || value === null) return "";
   if (typeof value !== "string") {
     throw Errors.apiError(
-      truncateErrorMessage(`${what} is ${describeIdValue(value)} rather than text`),
+      truncateErrorMessage(`${what} is ${describeWireValue(value)} rather than text`),
       undefined,
       { retryable: false, hint: "the response is malformed; the recording cannot be summarized from it" },
     );

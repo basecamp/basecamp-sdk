@@ -4,9 +4,13 @@
  *
  * A mention is a `<bc-attachment>` carrying the person's `attachable_sgid`
  * (see `./mentions.ts`), and only a people read can supply one that BC3 will
- * honour. These two compose that read with the generated comment write; they
- * make no wire request of their own and mint no operation identity, so hooks
- * see `GetPerson` and `CreateComment` under their own names (SPEC §18 rule 3).
+ * honour. {@link CommentsService.expandMentions} is the read half alone — it
+ * resolves people and returns the expanded content, writing nothing, which is
+ * what makes it usable for a Campfire line as well;
+ * {@link CommentsService.createWithMentions} composes it with the generated
+ * comment write. Neither makes a wire request of its own or mints an operation
+ * identity, so hooks see `GetPerson` and `CreateComment` under their own names
+ * (SPEC §18 rule 3).
  * They live in `src/services/*-extensions.ts` and are wired in `client.ts`, the
  * placement §18 rule 5 designates for TypeScript.
  */
@@ -164,7 +168,18 @@ export class CommentsService extends GeneratedCommentsService {
     content: string,
     personIds: readonly number[] = [],
   ): Promise<Comment> {
-    if (!content) throw Errors.usage("comment content is required");
+    // The TYPE, not just the truthiness, and of the value that actually goes
+    // out. `!content` is false for `{}` and for `[]`, so a caller in plain
+    // JavaScript could pass an object, have it sail past the guard, and reach
+    // the mention walk — which does string work and throws a raw TypeError, or,
+    // with no mentions requested, posts a body the reference cannot produce:
+    // Go's signature takes a string, so neither shape exists there. Checking a
+    // coerced copy would be the same defect one step later, the guard answering
+    // a question about a value that never leaves the method.
+    if (typeof content !== "string") {
+      throw Errors.usage("comment content must be a string");
+    }
+    if (content === "") throw Errors.usage("comment content is required");
     const expanded = await this.expandMentions(content, personIds);
     return this.create(recordingId, { content: expanded });
   }
