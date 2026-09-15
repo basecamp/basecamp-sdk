@@ -114,7 +114,9 @@ class RecordingsSummarizeTest < Minitest::Test
     # Coercing would turn "12oops" and 12.9 into 12 and go and fetch THAT
     # recording — a wrong answer wearing the shape of a right one, and one whose
     # bucket can still match, so nothing downstream would catch it.
-    [ "12oops", 12.9, nil, "", [ 12 ] ].each do |malformed|
+    # "1_2" is Ruby's integer-literal grammar, not a string of digits, and
+    # Integer() would read it as 12 — the same wrong-record hazard in disguise.
+    [ "12oops", 12.9, nil, "", [ 12 ], "1_2", " 12 ", "+12", (2**70).to_s ].each do |malformed|
       assert_raises(Basecamp::UsageError) do
         @account.recordings.summarize(bucket_id: BUCKET, recording_id: malformed, event_type: "comment.created")
       end
@@ -181,6 +183,14 @@ class RecordingsSummarizeTest < Minitest::Test
 
     assert_equal "bucket_mismatch", error.kind
     assert_equal 999, error.actual_bucket_id
+  end
+
+  def test_a_malformed_assignees_member_is_read_as_absent
+    # Same reason a malformed bucket is: a bad projection must not become an
+    # exception class no caller expects.
+    stub_get("/12345/todos/1", response_body: recording("type" => "Todo", "assignees" => 5))
+
+    assert_not_includes summarize(event_type: "todo.created").keys, "assignees"
   end
 
   def test_a_read_with_no_bucket_is_not_a_mismatch

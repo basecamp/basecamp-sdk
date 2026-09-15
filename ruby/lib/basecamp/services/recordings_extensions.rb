@@ -349,7 +349,10 @@ module Basecamp
         summary.delete("parent") if parent.nil?
         summary.delete("bucket") if summary["bucket"].nil?
         summary.delete("creator") if summary["creator"].nil?
-        summary.delete("assignees") if assignees.nil? || assignees.empty?
+        # A malformed "assignees" member is read as absent for the same reason a
+        # malformed "bucket" is: a bad projection must not become an exception
+        # class no caller expects.
+        summary.delete("assignees") unless assignees.is_a?(Array) && !assignees.empty?
         summary
       end
 

@@ -214,23 +214,98 @@ class CampfireIndexTest < Minitest::Test
     assert_equal "recovered", later.value.value
   end
 
-  def test_waiters_on_an_abandoned_load_are_woken_with_an_error_not_left_parked
+  def test_a_waiter_loads_for_itself_when_the_owner_was_abandoned
+    # An abandoned load is not a failed one: the loading thread was killed, or
+    # unwound by something that is not a StandardError. That says nothing about
+    # whether this caller's own call can succeed, so it goes round once. Without
+    # it, one caller's Timeout.timeout fails every concurrent waiter on a key
+    # the whole account shares.
     cache = Basecamp::CampfireIndex::TTLCache.new(ttl: 100.0, floor: 1.0, max_items: 10, clock: -> { @now })
     started = Queue.new
     owner = Thread.new { cache.get(:k) { started << :loading; sleep } }
     started.pop
     await_parked([ owner ])
+    waiter = Thread.new { cache.get(:k) { "loaded by the waiter" } }
+    await_parked([ waiter ])
+    owner.kill
+    owner.join
+
+    assert waiter.join(5), "the waiter was left parked on an abandoned load"
+    assert_equal "loaded by the waiter", waiter.value.value
+  end
+
+  def test_a_waiter_re_runs_an_abandoned_load_only_once
+    # Bounded, so a run of abandoned owners cannot become a queue of sequential
+    # loads behind one waiter.
+    cache = Basecamp::CampfireIndex::TTLCache.new(ttl: 100.0, floor: 1.0, max_items: 10, clock: -> { @now })
+    started = Queue.new
+    owner = Thread.new { cache.get(:k) { started << :loading; sleep } }
+    started.pop
+    await_parked([ owner ])
+
+    second = Queue.new
     waiter = Thread.new do
-      cache.get(:k) { flunk "the waiter must not load while one is in flight" }
+      cache.get(:k) { second << :reloading; sleep }
     rescue Basecamp::CampfireIndex::TTLCache::LoaderAbandoned => e
       e
     end
     await_parked([ waiter ])
     owner.kill
     owner.join
+    # The waiter is now the owner, loading for itself. Abandon that one too.
+    second.pop
+    await_parked([ waiter ])
+    waiter.kill
+    waiter.join
 
-    assert waiter.join(5), "the waiter was left parked on an abandoned load"
-    assert_kind_of Basecamp::CampfireIndex::TTLCache::LoaderAbandoned, waiter.value
+    third = Thread.new do
+      cache.get(:k) { "third" }
+    end
+
+    assert third.join(5), "the key was never released"
+    assert_equal "third", third.value.value
+  end
+
+  def test_an_abandoned_load_is_a_basecamp_error
+    # A consumer's `rescue Basecamp::Error` around a composite has to catch it
+    # like everything else, rather than meeting an SDK-internal class with no
+    # code.
+    error = Basecamp::CampfireIndex::TTLCache::LoaderAbandoned.new
+
+    assert_kind_of Basecamp::Error, error
+    assert_equal Basecamp::ErrorCode::API, error.code
+    assert_predicate error, :retryable?
+  end
+
+  def test_an_abandonment_publish_never_evicts_another_threads_registration
+    # The interrupt window the ensure covers can publish a record that was never
+    # registered. Deleting the key blindly would drop the single-flight
+    # guarantee of whatever thread has since registered under it — and the
+    # listing's key is the bare account id, so that is process-wide.
+    cache = Basecamp::CampfireIndex::TTLCache.new(ttl: 100.0, floor: 1.0, max_items: 10, clock: -> { @now })
+    started = Queue.new
+    release = Queue.new
+    loads = 0
+    live = Thread.new do
+      cache.get(:k) do
+        loads += 1
+        started << :loading
+        release.pop
+        "the live load"
+      end
+    end
+    started.pop
+
+    ghost = { done: false, error: nil, value: nil, fetched: nil }
+    cache.send(:publish, :k, ghost, nil, Basecamp::CampfireIndex::TTLCache::LoaderAbandoned.new)
+
+    waiter = Thread.new { cache.get(:k) { flunk "the live registration was evicted" } }
+    await_parked([ waiter ])
+    release << :go
+
+    assert_equal "the live load", live.join.value.value
+    assert_equal "the live load", waiter.join.value.value
+    assert_equal 1, loads
   end
 
   # Blocks until every thread is parked, or fails the test rather than hanging.

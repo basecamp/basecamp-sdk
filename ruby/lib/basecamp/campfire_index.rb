@@ -123,9 +123,30 @@ module Basecamp
     # waiters, so N callers never re-run one failed load N times), and a refresh
     # is honoured only once the value is older than a floor.
     class TTLCache
-      # Handed to the waiters when a load left without publishing an outcome of
-      # its own — see the +ensure+ in {#get}.
-      class LoaderAbandoned < StandardError; end
+      # Raised when a load left without publishing an outcome of its own — the
+      # loading thread was killed, or unwound by something that is not a
+      # StandardError, +Timeout.timeout+ included (it raises
+      # +Timeout::ExitException+ INSIDE the block and only becomes a
+      # +Timeout::Error+ at its own frame, so no rescue here ever sees it).
+      #
+      # It is a {Basecamp::Error} so that +rescue Basecamp::Error+ around a
+      # composite catches it like everything else, with +api_error+ and
+      # +retryable+ — the load reached no verdict and the key is free, so the
+      # next call loads for itself.
+      #
+      # A waiter does not normally re-run another caller's failed load, but this
+      # one it does, once: the classification is unambiguous here in a way Go's
+      # two-part +callerDone+ had to work for. A transport failure is a
+      # StandardError and is shared as the load's own; only a genuinely
+      # non-local unwind of the LOADING thread reaches this, and that says
+      # nothing about whether the waiter's own call can succeed. Without the
+      # re-run, one caller's +Timeout.timeout+ fails every concurrent waiter on
+      # a key the whole account shares.
+      class LoaderAbandoned < Error
+        def initialize(message = "cache loader did not complete")
+          super(code: ErrorCode::API, message: message, retryable: true)
+        end
+      end
 
       # What a cache read hands back: the value, when it was fetched, and
       # whether it predated the call (as opposed to being loaded during it, by
@@ -167,55 +188,73 @@ module Basecamp
       # @yieldreturn [Object] the loaded value
       # @return [Hit]
       def get(key, refresh: false)
-        owner = false
-        pending = nil
-        published = false
+        reloaded = false
 
-        # The ensure encloses the REGISTRATION, not just the loader. A loader
-        # that leaves by anything the rescue below does not catch — Interrupt, a
-        # signal, NoMemoryError, a Thread#kill that raises nothing at all —
-        # would otherwise leave the key in flight forever, and since {#await}
-        # waits with no timeout, every later caller for that key would park on
-        # it permanently rather than erroring. The listing's key is the bare
-        # account id, so that is one killed thread wedging chat-line discovery
-        # for a whole account for the life of the process. Go publishes from a
-        # deferred recover for exactly this reason — and an ensure that began
-        # after the key was registered would leave the same hole a few
-        # instructions wide.
-        begin
-          @mutex.synchronize do
-            entry = @entries[key]
-            if entry
-              age = @clock.call - entry.fetched
-              if age < @ttl && (!refresh || age < @floor)
-                return Hit.new(value: entry.value, fetched: entry.fetched, cached: true)
+        loop do
+          owner = false
+          pending = nil
+          published = false
+
+          # The ensure encloses the REGISTRATION, not just the loader. A loader
+          # that leaves by anything the rescue below does not catch — Interrupt,
+          # a signal, NoMemoryError, a Thread#kill that raises nothing at all —
+          # would otherwise leave the key in flight forever, and since {#await}
+          # waits with no timeout, every later caller for that key would park on
+          # it permanently rather than erroring. The listing's key is the bare
+          # account id, so that is one killed thread wedging chat-line discovery
+          # for a whole account for the life of the process. Go publishes from a
+          # deferred recover for exactly this reason — and an ensure that began
+          # after the key was registered would leave the same hole a few
+          # instructions wide.
+          begin
+            @mutex.synchronize do
+              entry = @entries[key]
+              if entry
+                age = @clock.call - entry.fetched
+                if age < @ttl && (!refresh || age < @floor)
+                  return Hit.new(value: entry.value, fetched: entry.fetched, cached: true)
+                end
+              end
+
+              pending = @inflight[key]
+              if pending.nil?
+                pending = { done: false, error: nil, value: nil, fetched: nil }
+                # Ownership is claimed BEFORE the key is registered, so an
+                # interrupt between the two leaves the ensure publishing a
+                # record that was never registered — which {#publish} ignores,
+                # because it only ever evicts its own.
+                owner = true
+                @inflight[key] = pending
               end
             end
 
-            pending = @inflight[key]
-            if pending.nil?
-              pending = { done: false, error: nil, value: nil, fetched: nil }
-              # Ownership is claimed BEFORE the key is registered, so an
-              # interrupt between the two leaves the ensure publishing a record
-              # nothing is registered against — harmless — rather than a
-              # registration nothing will ever release.
-              owner = true
-              @inflight[key] = pending
+            unless owner
+              begin
+                return await(pending)
+              rescue LoaderAbandoned
+                # The load did not fail, it was abandoned — see
+                # {LoaderAbandoned}. That says nothing about whether this
+                # caller's own call can succeed, so it goes round once and loads
+                # for itself. Once only, so a run of abandoned owners cannot
+                # become a queue of sequential loads behind one waiter.
+                raise if reloaded
+
+                reloaded = true
+              end
+              next
             end
+
+            value = yield
+            publish(key, pending, value, nil)
+            published = true
+            return Hit.new(value: value, fetched: pending[:fetched], cached: false)
+          rescue StandardError => e
+            publish(key, pending, nil, e) if owner
+            published = true
+            raise
+          ensure
+            publish(key, pending, nil, LoaderAbandoned.new) if owner && !published
           end
-
-          return await(pending) unless owner
-
-          value = yield
-          publish(key, pending, value, nil)
-          published = true
-          Hit.new(value: value, fetched: pending[:fetched], cached: false)
-        rescue StandardError => e
-          publish(key, pending, nil, e) if owner
-          published = true
-          raise
-        ensure
-          publish(key, pending, nil, LoaderAbandoned.new("cache loader did not complete")) if owner && !published
         end
       end
 
@@ -250,6 +289,14 @@ module Basecamp
         Hit.new(value: pending[:value], fetched: pending[:fetched], cached: false)
       end
 
+      # Whether this waiter should load for itself rather than take the outcome
+      # it just woke on. Only for a load that was abandoned rather than failed —
+      # see {LoaderAbandoned} — and only once per call, so a run of abandoned
+      # owners cannot become a queue of sequential loads behind one waiter.
+      def reload_after?(pending, reloaded)
+        !reloaded && pending[:error].is_a?(LoaderAbandoned)
+      end
+
       # Releases the key and wakes the waiters. A failed load publishes no entry,
       # so the previous value — if any — stays in place and keeps serving until
       # its own TTL runs out.
@@ -271,7 +318,13 @@ module Basecamp
             return
           end
 
-          @inflight.delete(key)
+          # Only this call's own registration. An abandonment publish for a
+          # record that never made it into the map — the interrupt window the
+          # ensure covers — would otherwise delete whatever ANOTHER thread has
+          # since registered under the key, dropping its single-flight guarantee
+          # while it is still loading. The listing's key is the bare account id,
+          # so that is process-wide.
+          @inflight.delete(key) if @inflight[key].equal?(pending)
           pending[:error] = error
           if error.nil?
             pending[:value] = value
