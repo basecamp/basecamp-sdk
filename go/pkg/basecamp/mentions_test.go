@@ -30,6 +30,16 @@ const (
 	fixtureSGIDPerson = "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE1P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--919d2c8b11ff403eefcab9db42dd26846d0c3102"
 	// spec/fixtures/todos/get.json's file attachment, an ActiveStorage::Blob.
 	fixtureSGIDBlob = "BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAwMAY6BkVU--a1b2c3"
+	// Adversarial payloads, also Ruby-produced: a Person gid appearing inside
+	// another model's gid, and one appearing in the purpose field. Neither
+	// names a person.
+	rubySGIDPersonInsideDocument = "BAh7BkkiC19yYWlscwY6BkVUewdJIglkYXRhBjsAVEkiK2dpZDovL2JjMy9Eb2N1bWVudC9naWQ6Ly9iYzMvUGVyc29uLzEyBjsAVEkiCHB1cgY7AFRJIg9hdHRhY2hhYmxlBjsAVA==--00"
+	rubySGIDPersonInPurpose      = "BAh7CEkiCGdpZAY6BkVUSSIkZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvOQY7AFRJIgxwdXJwb3NlBjsAVEkiGGdpZDovL2JjMy9QZXJzb24vMTIGOwBUSSIPZXhwaXJlc19hdAY7AFQw--00"
+	// The current layout with an extra key holding an array of every other
+	// scalar the decoder supports.
+	rubySGIDPersonExtraKeys = "BAh7B0kiC19yYWlscwY6BkVUewdJIglkYXRhBjsAVEkiK2dpZDovL2JjMy9QZXJzb24vMTA0OTcxNTkxNT9leHBpcmVzX2luBjsAVEkiCHB1cgY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiCmV4dHJhBjsAVFsKaQZURjBJIgZzBjsAVA==--00"
+	// Rails' JSON message serializer spelling of the current layout.
+	jsonSGIDPerson = "eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vMTA0OTcxNTkxNT9leHBpcmVzX2luIiwicHVyIjoiYXR0YWNoYWJsZSJ9fQ==--00"
 )
 
 // renderedMention is what BC3 serves back for a mention: the sgid, the
@@ -42,6 +52,11 @@ func renderedMention(sgid string, personID int64, name string) string {
     ` + name + `
   </figcaption>
 </figure></bc-attachment>`
+}
+
+// jsonEnvelope wraps a gid in the JSON spelling of Rails' current layout.
+func jsonEnvelope(gid string) string {
+	return base64.StdEncoding.EncodeToString([]byte(`{"_rails":{"data":"`+gid+`","pur":"attachable"}}`)) + "--00"
 }
 
 func TestPersonIDFromSGID(t *testing.T) {
@@ -61,12 +76,26 @@ func TestPersonIDFromSGID(t *testing.T) {
 		{"empty", "", 0, false},
 		{"only a signature", "--abc", 0, false},
 		{"not base64", "!!not base64!!--abc", 0, false},
-		{"base64 of unrelated bytes", base64.StdEncoding.EncodeToString([]byte("gid://bc3/Todo/1?expires_in")) + "--abc", 0, false},
-		{"person gid with a longer path is not a person", base64.StdEncoding.EncodeToString([]byte("gid://bc3/Person/12/extra")) + "--abc", 0, false},
-		{"zero id", base64.StdEncoding.EncodeToString([]byte("gid://bc3/Person/0?expires_in")) + "--abc", 0, false},
-		{"id overflowing int64", base64.StdEncoding.EncodeToString([]byte("gid://bc3/Person/99999999999999999999?expires_in")) + "--abc", 0, false},
-		{"gid at end of payload", base64.StdEncoding.EncodeToString([]byte("gid://bc3/Person/77")) + "--abc", 77, true},
-		{"different app name", base64.StdEncoding.EncodeToString([]byte("gid://basecamp/Person/78?expires_in")) + "--abc", 78, true},
+		{"raw bytes are not an envelope", base64.StdEncoding.EncodeToString([]byte("gid://bc3/Person/1?expires_in")) + "--abc", 0, false},
+		{"another model", jsonEnvelope("gid://bc3/Todo/1?expires_in"), 0, false},
+		{"person gid with a longer path is not a person", jsonEnvelope("gid://bc3/Person/12/extra"), 0, false},
+		{"zero id", jsonEnvelope("gid://bc3/Person/0?expires_in"), 0, false},
+		{"id overflowing int64", jsonEnvelope("gid://bc3/Person/99999999999999999999?expires_in"), 0, false},
+		{"gid without a query", jsonEnvelope("gid://bc3/Person/77"), 77, true},
+		{"different app name", jsonEnvelope("gid://basecamp/Person/78?expires_in"), 78, true},
+		{"json envelope (ruby)", jsonSGIDPerson, 1049715915, true},
+		{"extra keys and scalars (ruby)", rubySGIDPersonExtraKeys, 1049715915, true},
+		{"person gid inside a document gid (ruby)", rubySGIDPersonInsideDocument, 0, false},
+		{"person gid in the purpose field (ruby)", rubySGIDPersonInPurpose, 0, false},
+		{"json: person gid inside another gid", jsonEnvelope("gid://bc3/Document/gid://bc3/Person/12"), 0, false},
+		{"json: gid under the wrong key", base64.StdEncoding.EncodeToString([]byte(`{"_rails":{"pur":"gid://bc3/Person/12"}}`)) + "--00", 0, false},
+		{"json: a bare gid string is not an envelope", base64.StdEncoding.EncodeToString([]byte(`"gid://bc3/Person/12"`)) + "--00", 0, false},
+		{"json: person gid with a query and fragment", jsonEnvelope("gid://bc3/Person/79?expires_in#x"), 79, true},
+		{"json: wrong scheme", jsonEnvelope("https://bc3/Person/79"), 0, false},
+		{"json: signed id", jsonEnvelope("gid://bc3/Person/abc"), 0, false},
+		{"json: negative id", jsonEnvelope("gid://bc3/Person/-5"), 0, false},
+		{"marshal: unsupported type is undecodable", "BAh" + base64.StdEncoding.EncodeToString([]byte{'o'}) + "--00", 0, false},
+		{"marshal: truncated", strings.SplitN(rubySGIDPerson, "--", 2)[0][:40], 0, false},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -104,6 +133,14 @@ func TestMentionedPersonIDs(t *testing.T) {
 		{"avatar id alone does not count", `<img data-avatar-for-person-id="1049715915" alt="x">`, nil},
 		{"tag name prefix does not match", `<bc-attachments sgid="` + rubySGIDPerson + `"></bc-attachments>`, nil},
 		{"a data-sgid attribute is not an sgid", `<bc-attachment data-sgid="` + rubySGIDPerson + `"></bc-attachment>`, nil},
+		{"a > inside another attribute does not end the tag", `<bc-attachment title="a > b" sgid="` + rubySGIDPerson + `"></bc-attachment>`, []int64{1049715915}},
+		{"an sgid= inside another attribute's value is not an attribute", `<bc-attachment caption='example sgid="` + rubySGIDBlob + `"' sgid="` + rubySGIDPerson + `"></bc-attachment>`, []int64{1049715915}},
+		{"entity-escaped attribute value", `<bc-attachment sgid="` + strings.ReplaceAll(rubySGIDPerson, "=", "&#61;") + `"></bc-attachment>`, []int64{1049715915}},
+		{"self-closing and unquoted", `<bc-attachment sgid=` + rubySGIDPerson + `/>`, []int64{1049715915}},
+		{"unterminated tag is skipped", `<bc-attachment sgid="` + rubySGIDPerson, nil},
+		{"unterminated quote is skipped", `<bc-attachment sgid="` + rubySGIDPerson + `></bc-attachment>`, nil},
+		{"empty sgid", `<bc-attachment sgid=""></bc-attachment>`, nil},
+		{"two attachments back to back", `<bc-attachment sgid="` + rubySGIDPersonWide + `"></bc-attachment><bc-attachment sgid="` + rubySGIDPerson + `"></bc-attachment>`, []int64{9007199254740993, 1049715915}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -134,6 +171,12 @@ func TestMentionMarkup(t *testing.T) {
 	if _, err := MentionMarkup(&Person{ID: 5, AttachableSGID: `x"><script>`}); err == nil {
 		t.Fatal("expected an error for an sgid carrying markup")
 	}
+	if _, err := MentionMarkup(&Person{ID: 5, AttachableSGID: rubySGIDBlob}); err == nil {
+		t.Fatal("expected an error for a file blob's sgid")
+	}
+	if _, err := MentionMarkup(&Person{ID: 5, AttachableSGID: fixtureSGIDPerson}); err == nil {
+		t.Fatal("expected an error for an sgid naming another person")
+	}
 }
 
 func TestWithMentions(t *testing.T) {
@@ -157,6 +200,24 @@ func TestWithMentions(t *testing.T) {
 			t.Fatal(err)
 		}
 		if want := "<div>" + victorTag + " " + wideTag + " on it</div>"; got != want {
+			t.Fatalf("got %q, want %q", got, want)
+		}
+	})
+	t.Run("a > inside the leading tag's attribute does not split it", func(t *testing.T) {
+		got, err := WithMentions(`<div title="1 > 0">on it</div>`, []Person{victor})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if want := `<div title="1 > 0">` + victorTag + ` on it</div>`; got != want {
+			t.Fatalf("got %q, want %q", got, want)
+		}
+	})
+	t.Run("a tag that only starts like a block is a bare prefix", func(t *testing.T) {
+		got, err := WithMentions(`<pre>code</pre>`, []Person{victor})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if want := victorTag + ` <pre>code</pre>`; got != want {
 			t.Fatalf("got %q, want %q", got, want)
 		}
 	})

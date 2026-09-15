@@ -1,0 +1,766 @@
+[
+  {
+    "name": "RecordingsSummarize routes comment.created to the comment read and reads its mentions",
+    "description": "The event type is the routing key: comment.created is one typed comment read, and the projection carries the recording's identity plus the person ids its rich text mentions, decoded from each bc-attachment's sgid.",
+    "operation": "RecordingsSummarize",
+    "method": "GET",
+    "path": "/comments/1069479361",
+    "pathParams": {
+      "bucketId": 2085958499,
+      "recordingId": 1069479361,
+      "eventType": "comment.created"
+    },
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 1069479361,
+          "status": "active",
+          "visible_to_clients": false,
+          "created_at": "2022-10-30T01:01:58.169Z",
+          "updated_at": "2022-10-30T01:01:58.169Z",
+          "title": "Re: We won Leto!",
+          "inherits_status": true,
+          "type": "Comment",
+          "url": "https://3.basecampapi.com/195539477/buckets/2085958499/comments/1069479361.json",
+          "app_url": "https://3.basecamp.com/195539477/buckets/2085958499/messages/1069479351#__recording_1069479361",
+          "bookmark_url": "https://3.basecampapi.com/195539477/my/bookmarks/BAh7CEkiCGdpZAY6BkVUSSIuZ2lkOi8vYmMzL1JlY29yZGluZy8xMDY5NDc5MzYxP2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg1yZWFkYWJsZQY7AFRJIg9leHBpcmVzX2F0BjsAVDA=--8b7691463c92f63fe45627584ed759b44fe7bdaa.json",
+          "parent": {
+            "id": 1069479351,
+            "title": "We won Leto!",
+            "type": "Message",
+            "url": "https://3.basecampapi.com/195539477/buckets/2085958499/messages/1069479351.json",
+            "app_url": "https://3.basecamp.com/195539477/buckets/2085958499/messages/1069479351"
+          },
+          "bucket": {
+            "id": 2085958499,
+            "name": "The Leto Laptop",
+            "type": "Project"
+          },
+          "creator": {
+            "id": 1049715915,
+            "attachable_sgid": "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE1P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--aeb392ebf54ffd820e45f27add22bae3a8c7da56",
+            "name": "Annie Bryan",
+            "email_address": "annie@honchodesign.com",
+            "personable_type": "User",
+            "title": "Central Markets Manager",
+            "bio": "To open a store is easy, to keep it open is an art",
+            "location": null,
+            "created_at": "2022-11-22T08:23:21.911Z",
+            "updated_at": "2022-11-22T08:23:21.911Z",
+            "admin": false,
+            "owner": false,
+            "client": false,
+            "employee": true,
+            "time_zone": "America/Chicago",
+            "avatar_url": "https://3.basecamp-static.com/195539477/people/BAhpBMtkkT4=--9927c47a4cbee30a7f9aea667882496aba799149/avatar?v=1",
+            "company": {
+              "id": 1033447817,
+              "name": "Honcho Design"
+            },
+            "can_manage_projects": true,
+            "can_manage_people": true
+          },
+          "content": "<div><bc-attachment sgid=\"BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE1P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--919d2c8b11ff403eefcab9db42dd26846d0c3102\" content-type=\"application/vnd.basecamp.mention\"><figure><img data-avatar-for-person-id=\"1049715915\" alt=\"Victor Cooper\" title=\"Victor Cooper\" class=\"avatar\" src=\"https://3.basecamp-static.com/195539477/people/BAhpBMpkkT4=--avatar\" width=\"20\" height=\"20\"><figcaption>Victor</figcaption></figure></bc-attachment> can you take this one?</div>",
+          "content_attachments": [
+            {
+              "id": 1069480010,
+              "sgid": "BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAxMAY6BkVU--c0mm3nt1",
+              "filename": "celebration.png",
+              "content_type": "image/png",
+              "byte_size": 284111,
+              "download_url": "https://3.basecampapi.com/195539477/buckets/2085958499/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAxMAY6BkVU--c0mm3nt1/download/celebration.png",
+              "width": 1024.0,
+              "height": 768,
+              "previewable": true,
+              "preview_url": "https://3.basecampapi.com/195539477/buckets/2085958499/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAxMAY6BkVU--c0mm3nt1/previews/celebration.png",
+              "thumbnail_url": "https://3.basecampapi.com/195539477/buckets/2085958499/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAxMAY6BkVU--c0mm3nt1/thumbnails/celebration.png"
+            },
+            {
+              "id": 1069480011,
+              "sgid": "BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAxMQY6BkVU--c0mm3nt2",
+              "filename": "notes.pdf",
+              "content_type": "application/pdf",
+              "byte_size": 1048576,
+              "download_url": "https://3.basecampapi.com/195539477/buckets/2085958499/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAxMQY6BkVU--c0mm3nt2/download/notes.pdf",
+              "width": null,
+              "height": null,
+              "previewable": false,
+              "preview_url": "https://3.basecampapi.com/195539477/buckets/2085958499/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAxMQY6BkVU--c0mm3nt2/previews/notes.pdf",
+              "thumbnail_url": "https://3.basecampapi.com/195539477/buckets/2085958499/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAxMQY6BkVU--c0mm3nt2/thumbnails/notes.pdf"
+            }
+          ]
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "noError"
+      },
+      {
+        "type": "requestPath",
+        "expected": "/999/comments/1069479361"
+      },
+      {
+        "type": "responseBody",
+        "path": "type",
+        "expected": "Comment"
+      },
+      {
+        "type": "responseBody",
+        "path": "id",
+        "expected": 1069479361
+      },
+      {
+        "type": "responseBody",
+        "path": "title",
+        "expected": "Re: We won Leto!"
+      },
+      {
+        "type": "responseBody",
+        "path": "mentioned_person_ids",
+        "expected": [
+          1049715915
+        ]
+      }
+    ],
+    "tags": [
+      "recording-summary",
+      "mentions"
+    ]
+  },
+  {
+    "name": "RecordingsSummarize refuses boost.created before any request",
+    "description": "boost.created names no recording type (the row points at the boost's target, whose type it does not carry), so the helper refuses it distinctly rather than reading something it is not. No request is made.",
+    "operation": "RecordingsSummarize",
+    "method": "GET",
+    "path": "/comments/1069479361",
+    "pathParams": {
+      "bucketId": 2085958499,
+      "recordingId": 1069479361,
+      "eventType": "boost.created"
+    },
+    "mockResponses": [],
+    "assertions": [
+      {
+        "type": "requestCount",
+        "expected": 0
+      },
+      {
+        "type": "errorMessage",
+        "expected": "names no recording type"
+      }
+    ],
+    "tags": [
+      "recording-summary",
+      "error"
+    ]
+  },
+  {
+    "name": "RecordingsSummarize finds a chat line under the second visible Campfire",
+    "description": "A chat line's read needs its Campfire, which the pointer does not carry. The bucket is not a project (its dock read 404s), so the candidates come from the account-wide Campfire listing filtered to the bucket; the line is tried under each in listing order until one answers, and the Campfire in the other bucket is never tried.",
+    "operation": "RecordingsSummarize",
+    "method": "GET",
+    "path": "/projects/2085958499",
+    "pathParams": {
+      "bucketId": 2085958499,
+      "recordingId": 1069479350,
+      "eventType": "chat.line.created"
+    },
+    "mockResponses": [
+      {
+        "status": 404,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "error": "Record not found"
+        }
+      },
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": [
+          {
+            "id": 1069479400,
+            "status": "active",
+            "visible_to_clients": false,
+            "created_at": "2022-10-28T15:25:00.000Z",
+            "updated_at": "2022-10-28T15:25:00.000Z",
+            "title": "Campfire",
+            "inherits_status": true,
+            "type": "Chat::Transcript",
+            "url": "https://3.basecampapi.com/999/buckets/2085958500/chats/1069479400.json",
+            "app_url": "https://3.basecamp.com/999/buckets/2085958500/chats/1069479400",
+            "lines_url": "https://3.basecampapi.com/999/buckets/2085958500/chats/1069479400/lines.json",
+            "bucket": {
+              "id": 2085958500,
+              "name": "Project 2085958500",
+              "type": "Project"
+            },
+            "creator": {
+              "id": 1049715914,
+              "name": "Victor Cooper"
+            }
+          },
+          {
+            "id": 1069479340,
+            "status": "active",
+            "visible_to_clients": false,
+            "created_at": "2022-10-28T15:25:00.000Z",
+            "updated_at": "2022-10-28T15:25:00.000Z",
+            "title": "Campfire",
+            "inherits_status": true,
+            "type": "Chat::Transcript",
+            "url": "https://3.basecampapi.com/999/buckets/2085958499/chats/1069479340.json",
+            "app_url": "https://3.basecamp.com/999/buckets/2085958499/chats/1069479340",
+            "lines_url": "https://3.basecampapi.com/999/buckets/2085958499/chats/1069479340/lines.json",
+            "bucket": {
+              "id": 2085958499,
+              "name": "Project 2085958499",
+              "type": "Project"
+            },
+            "creator": {
+              "id": 1049715914,
+              "name": "Victor Cooper"
+            }
+          },
+          {
+            "id": 1069479345,
+            "status": "active",
+            "visible_to_clients": false,
+            "created_at": "2022-10-28T15:25:00.000Z",
+            "updated_at": "2022-10-28T15:25:00.000Z",
+            "title": "Campfire",
+            "inherits_status": true,
+            "type": "Chat::Transcript",
+            "url": "https://3.basecampapi.com/999/buckets/2085958499/chats/1069479345.json",
+            "app_url": "https://3.basecamp.com/999/buckets/2085958499/chats/1069479345",
+            "lines_url": "https://3.basecampapi.com/999/buckets/2085958499/chats/1069479345/lines.json",
+            "bucket": {
+              "id": 2085958499,
+              "name": "Project 2085958499",
+              "type": "Project"
+            },
+            "creator": {
+              "id": 1049715914,
+              "name": "Victor Cooper"
+            }
+          }
+        ]
+      },
+      {
+        "status": 404,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "error": "Record not found"
+        }
+      },
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 1069479350,
+          "status": "active",
+          "visible_to_clients": false,
+          "created_at": "2022-10-28T15:25:00.000Z",
+          "updated_at": "2022-10-28T15:25:00.000Z",
+          "title": "Hello everyone!",
+          "inherits_status": true,
+          "type": "Chat::Lines::Text",
+          "url": "https://3.basecampapi.com/195539477/buckets/2085958499/chats/1069479345/lines/1069479350.json",
+          "app_url": "https://3.basecamp.com/195539477/buckets/2085958499/chats/1069479345#__recording_1069479350",
+          "content": "Hello everyone!",
+          "parent": {
+            "id": 1069479345,
+            "title": "Campfire",
+            "type": "Chat::Transcript",
+            "url": "https://3.basecampapi.com/195539477/buckets/2085958499/chats/1069479345.json",
+            "app_url": "https://3.basecamp.com/195539477/buckets/2085958499/chats/1069479345"
+          },
+          "bucket": {
+            "id": 2085958499,
+            "name": "The Leto Laptop",
+            "type": "Project"
+          },
+          "creator": {
+            "id": 1049715914,
+            "attachable_sgid": "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE0P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--aabbccdd",
+            "name": "Victor Cooper",
+            "email_address": "victor@honchodesign.com",
+            "personable_type": "User",
+            "title": "Chief Strategist",
+            "bio": "Don't let your dreams be dreams",
+            "location": "Chicago, IL",
+            "created_at": "2022-11-22T08:23:21.732Z",
+            "updated_at": "2022-11-22T08:23:21.732Z",
+            "admin": true,
+            "owner": true,
+            "client": false,
+            "employee": true,
+            "time_zone": "America/Chicago",
+            "avatar_url": "https://3.basecamp-static.com/195539477/people/BAhpBMpkkT4=--avatar",
+            "company": {
+              "id": 1033447817,
+              "name": "Honcho Design"
+            },
+            "can_manage_projects": true,
+            "can_manage_people": true
+          }
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestCount",
+        "expected": 4
+      },
+      {
+        "type": "noError"
+      },
+      {
+        "type": "requestPath",
+        "index": 0,
+        "expected": "/999/projects/2085958499"
+      },
+      {
+        "type": "requestPath",
+        "index": 1,
+        "expected": "/999/chats.json"
+      },
+      {
+        "type": "requestPath",
+        "index": 2,
+        "expected": "/999/chats/1069479340/lines/1069479350"
+      },
+      {
+        "type": "requestPath",
+        "index": 3,
+        "expected": "/999/chats/1069479345/lines/1069479350"
+      },
+      {
+        "type": "responseBody",
+        "path": "type",
+        "expected": "Chat::Lines::Text"
+      },
+      {
+        "type": "responseBody",
+        "path": "campfire_id",
+        "expected": 1069479345
+      }
+    ],
+    "tags": [
+      "recording-summary",
+      "chat"
+    ]
+  },
+  {
+    "name": "RecordingsSummarize reports a chat line under no visible Campfire as unresolved, not as a failed read",
+    "description": "Every candidate answered 404, so the line is under no Campfire the caller can see. That is its own error, distinct from a read that failed, so a consumer can block the record and retry later rather than treat it as an outage.",
+    "operation": "RecordingsSummarize",
+    "method": "GET",
+    "path": "/projects/2085958499",
+    "pathParams": {
+      "bucketId": 2085958499,
+      "recordingId": 1069479350,
+      "eventType": "chat.line.created"
+    },
+    "mockResponses": [
+      {
+        "status": 404,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "error": "Record not found"
+        }
+      },
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": [
+          {
+            "id": 1069479400,
+            "status": "active",
+            "visible_to_clients": false,
+            "created_at": "2022-10-28T15:25:00.000Z",
+            "updated_at": "2022-10-28T15:25:00.000Z",
+            "title": "Campfire",
+            "inherits_status": true,
+            "type": "Chat::Transcript",
+            "url": "https://3.basecampapi.com/999/buckets/2085958500/chats/1069479400.json",
+            "app_url": "https://3.basecamp.com/999/buckets/2085958500/chats/1069479400",
+            "lines_url": "https://3.basecampapi.com/999/buckets/2085958500/chats/1069479400/lines.json",
+            "bucket": {
+              "id": 2085958500,
+              "name": "Project 2085958500",
+              "type": "Project"
+            },
+            "creator": {
+              "id": 1049715914,
+              "name": "Victor Cooper"
+            }
+          },
+          {
+            "id": 1069479340,
+            "status": "active",
+            "visible_to_clients": false,
+            "created_at": "2022-10-28T15:25:00.000Z",
+            "updated_at": "2022-10-28T15:25:00.000Z",
+            "title": "Campfire",
+            "inherits_status": true,
+            "type": "Chat::Transcript",
+            "url": "https://3.basecampapi.com/999/buckets/2085958499/chats/1069479340.json",
+            "app_url": "https://3.basecamp.com/999/buckets/2085958499/chats/1069479340",
+            "lines_url": "https://3.basecampapi.com/999/buckets/2085958499/chats/1069479340/lines.json",
+            "bucket": {
+              "id": 2085958499,
+              "name": "Project 2085958499",
+              "type": "Project"
+            },
+            "creator": {
+              "id": 1049715914,
+              "name": "Victor Cooper"
+            }
+          },
+          {
+            "id": 1069479345,
+            "status": "active",
+            "visible_to_clients": false,
+            "created_at": "2022-10-28T15:25:00.000Z",
+            "updated_at": "2022-10-28T15:25:00.000Z",
+            "title": "Campfire",
+            "inherits_status": true,
+            "type": "Chat::Transcript",
+            "url": "https://3.basecampapi.com/999/buckets/2085958499/chats/1069479345.json",
+            "app_url": "https://3.basecamp.com/999/buckets/2085958499/chats/1069479345",
+            "lines_url": "https://3.basecampapi.com/999/buckets/2085958499/chats/1069479345/lines.json",
+            "bucket": {
+              "id": 2085958499,
+              "name": "Project 2085958499",
+              "type": "Project"
+            },
+            "creator": {
+              "id": 1049715914,
+              "name": "Victor Cooper"
+            }
+          }
+        ]
+      },
+      {
+        "status": 404,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "error": "Record not found"
+        }
+      },
+      {
+        "status": 404,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "error": "Record not found"
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestCount",
+        "expected": 4
+      },
+      {
+        "type": "errorMessage",
+        "expected": "found under no visible campfire"
+      }
+    ],
+    "tags": [
+      "recording-summary",
+      "chat",
+      "error"
+    ]
+  },
+  {
+    "name": "RecordingsSummarize returns a Campfire candidate's 403 as that read's error",
+    "description": "Any answer but 404 from a candidate stops the loop and is returned as that error: a permission failure never masquerades as \"not here\", and the next candidate is not tried.",
+    "operation": "RecordingsSummarize",
+    "method": "GET",
+    "path": "/projects/2085958499",
+    "pathParams": {
+      "bucketId": 2085958499,
+      "recordingId": 1069479350,
+      "eventType": "chat.line.created"
+    },
+    "mockResponses": [
+      {
+        "status": 404,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "error": "Record not found"
+        }
+      },
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": [
+          {
+            "id": 1069479400,
+            "status": "active",
+            "visible_to_clients": false,
+            "created_at": "2022-10-28T15:25:00.000Z",
+            "updated_at": "2022-10-28T15:25:00.000Z",
+            "title": "Campfire",
+            "inherits_status": true,
+            "type": "Chat::Transcript",
+            "url": "https://3.basecampapi.com/999/buckets/2085958500/chats/1069479400.json",
+            "app_url": "https://3.basecamp.com/999/buckets/2085958500/chats/1069479400",
+            "lines_url": "https://3.basecampapi.com/999/buckets/2085958500/chats/1069479400/lines.json",
+            "bucket": {
+              "id": 2085958500,
+              "name": "Project 2085958500",
+              "type": "Project"
+            },
+            "creator": {
+              "id": 1049715914,
+              "name": "Victor Cooper"
+            }
+          },
+          {
+            "id": 1069479340,
+            "status": "active",
+            "visible_to_clients": false,
+            "created_at": "2022-10-28T15:25:00.000Z",
+            "updated_at": "2022-10-28T15:25:00.000Z",
+            "title": "Campfire",
+            "inherits_status": true,
+            "type": "Chat::Transcript",
+            "url": "https://3.basecampapi.com/999/buckets/2085958499/chats/1069479340.json",
+            "app_url": "https://3.basecamp.com/999/buckets/2085958499/chats/1069479340",
+            "lines_url": "https://3.basecampapi.com/999/buckets/2085958499/chats/1069479340/lines.json",
+            "bucket": {
+              "id": 2085958499,
+              "name": "Project 2085958499",
+              "type": "Project"
+            },
+            "creator": {
+              "id": 1049715914,
+              "name": "Victor Cooper"
+            }
+          },
+          {
+            "id": 1069479345,
+            "status": "active",
+            "visible_to_clients": false,
+            "created_at": "2022-10-28T15:25:00.000Z",
+            "updated_at": "2022-10-28T15:25:00.000Z",
+            "title": "Campfire",
+            "inherits_status": true,
+            "type": "Chat::Transcript",
+            "url": "https://3.basecampapi.com/999/buckets/2085958499/chats/1069479345.json",
+            "app_url": "https://3.basecamp.com/999/buckets/2085958499/chats/1069479345",
+            "lines_url": "https://3.basecampapi.com/999/buckets/2085958499/chats/1069479345/lines.json",
+            "bucket": {
+              "id": 2085958499,
+              "name": "Project 2085958499",
+              "type": "Project"
+            },
+            "creator": {
+              "id": 1049715914,
+              "name": "Victor Cooper"
+            }
+          }
+        ]
+      },
+      {
+        "status": 403,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "error": "Access denied"
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestCount",
+        "expected": 3
+      },
+      {
+        "type": "errorType",
+        "expected": "forbidden"
+      }
+    ],
+    "tags": [
+      "recording-summary",
+      "chat",
+      "error"
+    ]
+  },
+  {
+    "name": "CommentsCreateWithMentions resolves each person before posting and writes the mention from attachable_sgid",
+    "description": "A mention is a bc-attachment whose sgid is the person's attachable_sgid. Each id is read through the people read first, so a failed lookup posts nothing; the tag is placed inside the content's first block.",
+    "operation": "CommentsCreateWithMentions",
+    "method": "POST",
+    "path": "/recordings/1069479351/comments.json",
+    "pathParams": {
+      "recordingId": 1069479351
+    },
+    "requestBody": {
+      "content": "<div>On it.</div>",
+      "mentions": [
+        1049715915
+      ]
+    },
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 1049715915,
+          "attachable_sgid": "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE1P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--919d2c8b11ff403eefcab9db42dd26846d0c3102",
+          "name": "Victor Cooper",
+          "email_address": "victor@honchodesign.com",
+          "personable_type": "User",
+          "title": "Chief Strategist",
+          "bio": "Don't let your dreams be dreams",
+          "location": "Chicago, IL",
+          "created_at": "2022-11-22T08:23:21.732Z",
+          "updated_at": "2022-11-22T08:23:21.904Z",
+          "admin": true,
+          "owner": true,
+          "client": false,
+          "employee": true,
+          "time_zone": "America/Chicago",
+          "avatar_url": "https://3.basecamp-static.com/195539477/people/BAhpBMtkkT4=--e609ef146e39f9ca5e4bb7571f0f7da68e5f6302/avatar?v=1",
+          "company": {
+            "id": 1033447817,
+            "name": "Honcho Design"
+          },
+          "can_manage_projects": true,
+          "can_manage_people": true
+        }
+      },
+      {
+        "status": 201,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 1069479370,
+          "status": "active",
+          "visible_to_clients": false,
+          "created_at": "2022-10-31T14:22:33.169Z",
+          "updated_at": "2022-10-31T14:22:33.169Z",
+          "title": "Re: We won Leto!",
+          "inherits_status": true,
+          "type": "Comment",
+          "url": "https://3.basecampapi.com/195539477/buckets/2085958499/comments/1069479370.json",
+          "app_url": "https://3.basecamp.com/195539477/buckets/2085958499/messages/1069479351#__recording_1069479370",
+          "bookmark_url": "https://3.basecampapi.com/195539477/my/bookmarks/BAh7CEkiCGdpZAY6BkVUSSIuZ2lkOi8vYmMzL1JlY29yZGluZy8xMDY5NDc5MzcwP2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg1yZWFkYWJsZQY7AFRJIg9leHBpcmVzX2F0BjsAVDA=--abcdef1234567890abcdef1234567890abcdef12.json",
+          "parent": {
+            "id": 1069479351,
+            "title": "We won Leto!",
+            "type": "Message",
+            "url": "https://3.basecampapi.com/195539477/buckets/2085958499/messages/1069479351.json",
+            "app_url": "https://3.basecamp.com/195539477/buckets/2085958499/messages/1069479351"
+          },
+          "bucket": {
+            "id": 2085958499,
+            "name": "The Leto Laptop",
+            "type": "Project"
+          },
+          "creator": {
+            "id": 1049715915,
+            "attachable_sgid": "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE1P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--aeb392ebf54ffd820e45f27add22bae3a8c7da56",
+            "name": "Annie Bryan",
+            "email_address": "annie@honchodesign.com",
+            "personable_type": "User",
+            "title": "Central Markets Manager",
+            "bio": "To open a store is easy, to keep it open is an art",
+            "location": null,
+            "created_at": "2022-11-22T08:23:21.911Z",
+            "updated_at": "2022-11-22T08:23:21.911Z",
+            "admin": false,
+            "owner": false,
+            "client": false,
+            "employee": true,
+            "time_zone": "America/Chicago",
+            "avatar_url": "https://3.basecamp-static.com/195539477/people/BAhpBMtkkT4=--9927c47a4cbee30a7f9aea667882496aba799149/avatar?v=1",
+            "company": {
+              "id": 1033447817,
+              "name": "Honcho Design"
+            },
+            "can_manage_projects": true,
+            "can_manage_people": true
+          },
+          "content": "<div><bc-attachment sgid=\"BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE1P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--919d2c8b11ff403eefcab9db42dd26846d0c3102\"></bc-attachment> On it.</div>",
+          "content_attachments": []
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestCount",
+        "expected": 2
+      },
+      {
+        "type": "noError"
+      },
+      {
+        "type": "requestPath",
+        "index": 0,
+        "expected": "/999/people/1049715915"
+      },
+      {
+        "type": "requestMethod",
+        "index": 0,
+        "expected": "GET"
+      },
+      {
+        "type": "requestPath",
+        "index": 1,
+        "expected": "/999/recordings/1069479351/comments.json"
+      },
+      {
+        "type": "requestMethod",
+        "index": 1,
+        "expected": "POST"
+      },
+      {
+        "type": "requestBody",
+        "index": 1,
+        "path": "content",
+        "expected": "<div><bc-attachment sgid=\"BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE1P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--919d2c8b11ff403eefcab9db42dd26846d0c3102\"></bc-attachment> On it.</div>"
+      }
+    ],
+    "tags": [
+      "recording-summary",
+      "mentions",
+      "write"
+    ]
+  }
+]
