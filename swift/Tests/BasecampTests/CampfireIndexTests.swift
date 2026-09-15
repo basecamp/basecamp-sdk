@@ -229,13 +229,15 @@ final class CampfireIndexTests: XCTestCase {
         XCTAssertEqual(kept.value, 1, "the load was not cancelled out from under the caller left")
     }
 
-    /// Eviction is by IDENTITY, never by key. A straggler from an abandoned
-    /// flight — its cancellation landing, or its load finally returning — must
-    /// not remove the claim that replaced it, because that claim is still
-    /// loading and its waiters would lose their single-flight guarantee. The
-    /// listing cache's key is a bare account id, so the blast radius of getting
-    /// this wrong is every bucket in the account.
-    func testAStragglerFromAnAbandonedFlightLeavesItsSuccessorAlone() async throws {
+    /// A straggler from an abandoned flight finishing underneath its successor
+    /// must not disturb it: the successor is still loading, and its waiters
+    /// would lose their single-flight guarantee. The listing cache is keyed on a
+    /// bare account id, so getting that wrong is account-wide, not per-bucket.
+    ///
+    /// This is the reachable half of the identity rule, and it goes through
+    /// `finish`. The guard in `stopWaiting` is the unreachable half — see the
+    /// comment there — so this test does NOT claim to exercise it.
+    func testAStragglerFinishingUnderItsSuccessorLeavesItAlone() async throws {
         let clock = TestClock()
         let loads = LoadCounter()
         let cache = makeCache(clock: clock)
@@ -263,19 +265,21 @@ final class CampfireIndexTests: XCTestCase {
         }
         while await cache.waiterCount(for: "k") < 1 { await Task.yield() }
 
-        // Now let the abandoned flight run to completion underneath it.
+        // Let the abandoned flight run to completion underneath it, and wait for
+        // an OBSERVABLE signal that it has — its loader incrementing — rather
+        // than for a number of scheduler yields, which guarantees nothing.
         await firstGate.fulfill()
-        await Task.yield()
-        await Task.yield()
+        while loads.count < 1 { await Task.yield() }
+        while await cache.cached("k") == nil { await Task.yield() }
+
         let stillClaimed = await cache.isClaimed("k")
-        XCTAssertTrue(
-            stillClaimed, "the successor's claim survives the straggler finishing")
+        XCTAssertTrue(stillClaimed, "the successor's claim survived the straggler finishing")
 
         await secondGate.fulfill()
         let kept = try await keeper
-        XCTAssertEqual(kept.cached, false)
+        XCTAssertEqual(kept.value, 2, "and the successor's own load is what answers it")
         let waiters = await cache.waiterCount(for: "k")
-        XCTAssertEqual(waiters, 0, "and it completes normally")
+        XCTAssertEqual(waiters, 0)
     }
 
     func testAFailedLoadLeavesThePreviousValueInPlace() async throws {

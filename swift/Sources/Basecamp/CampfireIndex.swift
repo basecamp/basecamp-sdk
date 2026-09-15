@@ -364,6 +364,18 @@ actor TTLCache<Key: Hashable & Sendable, Value: Sendable> {
                 // replaced this one — while that one was still loading — and
                 // the listing's key is a bare account id, so the blast radius
                 // would be every bucket in the account.
+                //
+                // Unreachable today, and deliberately kept: a claim in the table
+                // always has at least one waiter, because `register` appends
+                // before returning and this branch detaches the moment the last
+                // one leaves — so a waiter whose claim is no longer current has
+                // already been resumed and returns above. That is an invariant,
+                // not a structure, and it is the only thing standing between a
+                // future edit and an account-wide loss of single flight. No test
+                // can drive this line while the invariant holds, and none
+                // claims to; `finish` carries the same rule where it IS
+                // reachable, and `testAStragglerFinishingUnderItsSuccessorLeavesItAlone`
+                // drives that.
                 claim.task?.cancel()
                 if waiting[key] === claim { waiting.removeValue(forKey: key) }
             }
