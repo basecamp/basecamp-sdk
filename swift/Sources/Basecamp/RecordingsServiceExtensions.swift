@@ -736,31 +736,52 @@ extension RecordingsService {
         // candidate this call may try, so it would cost a request that cannot
         // help — and a failure on it would replace the deterministic "incomplete"
         // verdict with a transient error a consumer retries forever.
+        // No budget left means no re-read: a source already consulted cannot
+        // hand this call a candidate it may try, so its refresh is skipped and
+        // the conclusion stands on what was seen (`refreshed: false`). A source
+        // never consulted is different — candidates may exist there unsearched —
+        // so running out of budget before it makes the verdict incomplete.
+        //
+        // The budget is what this keys on, not `skipped`. `skipped` is set only
+        // when a candidate is OBSERVED and cannot be tried, so a dock holding
+        // exactly `maxCampfireCandidates` entries that all answer 404 leaves the
+        // budget at zero with `skipped` still false — and the old shape then
+        // fetched the account listing, a request that cannot help, where a
+        // failure would replace a settled "incomplete" with a transient error a
+        // consumer retries forever.
         var refreshed = false
-        if await search.skipped { throw incomplete(tooManyCandidates) }
+        var listed = cachedListing.map(\.ids) ?? []
 
-        if dock.cached {
+        if await search.budgetRemaining > 0, dock.cached {
             let again = try await index.dockCampfires(
                 account: account, bucketId: bucketId, refresh: true)
             if again.fetchedAt > dock.fetchedAt || !again.cached { refreshed = true }
             dock = again
             if let found = try await search.read(dock.ids) { return found }
         }
-        if await search.skipped { throw incomplete(tooManyCandidates) }
 
-        let againListed: CampfireIndex.SourceRead
-        do {
-            againListed = try await index.listedCampfires(
-                account: account, bucketId: bucketId, refresh: listingWasCached)
-        } catch let overflow as CampfireListingOverflow {
-            throw incomplete(overflow.description)
+        if await search.budgetRemaining <= 0 {
+            if !listingWasCached {
+                throw incomplete(
+                    "the candidate budget of \(Self.maxCampfireCandidates) was spent before the account listing was consulted"
+                )
+            }
+        } else {
+            let againListed: CampfireIndex.SourceRead
+            do {
+                againListed = try await index.listedCampfires(
+                    account: account, bucketId: bucketId, refresh: listingWasCached)
+            } catch let overflow as CampfireListingOverflow {
+                throw incomplete(overflow.description)
+            }
+            if let previous = cachedListing,
+                againListed.fetchedAt > previous.fetchedAt || !againListed.cached
+            {
+                refreshed = true
+            }
+            listed = againListed.ids
+            if let found = try await search.read(againListed.ids) { return found }
         }
-        if let previous = cachedListing,
-            againListed.fetchedAt > previous.fetchedAt || !againListed.cached
-        {
-            refreshed = true
-        }
-        if let found = try await search.read(againListed.ids) { return found }
 
         try Task.checkCancellation()
         if await search.skipped { throw incomplete(tooManyCandidates) }
@@ -768,7 +789,7 @@ extension RecordingsService {
         let tried = await search.tried
         let stale =
             refreshed
-            ? tried.filter { !dock.ids.contains($0) && !againListed.ids.contains($0) }
+            ? tried.filter { !dock.ids.contains($0) && !listed.contains($0) }
             : []
         throw RecordingSummaryError.recordingUnresolved(
             UnresolvedRecording(
@@ -786,8 +807,14 @@ private actor ChatLineSearch {
     /// Candidates that answered 404, in order.
     private(set) var tried: [Int] = []
     private var budget: Int
-    /// A candidate was left untried for want of budget.
+    /// A candidate was left untried for want of budget. Set only when one is
+    /// OBSERVED and cannot be tried — which is why the pass-2 gating reads
+    /// ``budgetRemaining`` instead: a source whose every candidate was tried
+    /// leaves the budget spent and this false.
     private(set) var skipped = false
+
+    /// Candidates this call may still try.
+    var budgetRemaining: Int { budget }
 
     init(service: RecordingsService, lineId: Int, budget: Int) {
         self.service = service
