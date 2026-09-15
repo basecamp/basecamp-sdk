@@ -223,6 +223,61 @@ class TestPersonIDFromSGID:
         content = f'<bc-attachment sgid="{payload}{suffix}"></bc-attachment>'
         assert (mentioned_person_ids(content) == [77]) is resolves
 
+    @pytest.mark.parametrize(
+        ("character", "entity", "payload"),
+        [
+            (
+                "fj",
+                "&fjlig;",
+                "eyJnaWQiOiAiZ2lkOi8vYmMzL1BlcnNvbi83NyIsICJwdXJwb3NlIjogImF0dGFjaGFibGUiLCAieCI6ICLfjMKixqnPuMqk1IHRs9KF04nes8i707EifQ",
+            ),
+            (
+                "+",
+                "&plus;",
+                "eyJnaWQiOiAiZ2lkOi8vYmMzL1BlcnNvbi83NyIsICJwdXJwb3NlIjogImF0dGFjaGFibGUiLCAieCI6ICLVr8WcyJHKks+nzZzdhN6e0qHKnSJ9",
+            ),
+            (
+                "/",
+                "&sol;",
+                "eyJnaWQiOiAiZ2lkOi8vYmMzL1BlcnNvbi83NyIsICJwdXJwb3NlIjogImF0dGFjaGFibGUiLCAieCI6ICLPgMWV0LHPlMSSyY/Pn8K31IXTlMuR1rbFnNez0pfMlt+3In0",
+            ),
+            (
+                "_",
+                "&lowbar;",
+                "eyJnaWQiOiAiZ2lkOi8vYmMzL1BlcnNvbi83NyIsICJwdXJwb3NlIjogImF0dGFjaGFibGUiLCAieCI6ICLOi8-_xavKrcuz06jQodyRz6zDkMis3o7Snt-YxpHOjdeA1pIifQ",
+            ),
+            (
+                "=",
+                "&equals;",
+                "eyJnaWQiOiAiZ2lkOi8vYmMzL1BlcnNvbi83NyIsICJwdXJwb3NlIjogImF0dGFjaGFibGUiLCAieCI6ICJwYWQifQ==",
+            ),
+        ],
+    )
+    def test_an_entity_respelling_a_real_payload_character_still_resolves(self, character, entity, payload):
+        """The case an INSERTION-style differential can never reach.
+
+        Inserting an entity into a payload breaks it on both sides, and both
+        answer "no mention" — a clean diff proving nothing. These respell a
+        character the payload legitimately contains, so a decoder that fails to
+        expand the entity gets a different answer from Go. ``&fjlig;`` is the
+        sharp one: it lives in Go's SECOND table, the two-rune one, and expands
+        to two base64 characters.
+
+        On the write side this decides deduplication — content already carrying
+        a mention in its escaped spelling must dedupe to one tag, not two.
+        """
+        assert mentioned_person_ids(f'<bc-attachment sgid="{payload}"></bc-attachment>') == [77]
+        respelled = payload.replace(character, entity, 1)
+        assert respelled != payload
+        assert mentioned_person_ids(f'<bc-attachment sgid="{respelled}"></bc-attachment>') == [77]
+
+    @pytest.mark.parametrize("name", ["nGt;", "nLt;"])
+    def test_a_name_absent_from_gos_table_is_left_literal(self, name):
+        # Python's table decodes these two and Go's does not. Measured across
+        # all 2231 names in four forms each; these are the only disagreements.
+        payload = json_sgid("gid://bc3/Person/77", signed=False)
+        assert mentioned_person_ids(f'<bc-attachment sgid="&{name}{payload}"></bc-attachment>') == []
+
     @pytest.mark.parametrize(("prefix", "resolves"), [("&nbsp", True), ("&nbsp;", True), ("&amp", False)])
     def test_a_named_reference_matches_the_table_not_the_longest_name_run(self, prefix, resolves):
         # "&nbspBAh7" is a non-breaking space followed by "BAh7" — the match is

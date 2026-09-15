@@ -502,6 +502,15 @@ _C1_REPLACEMENTS = (
     "\u02dc\u2122\u0161\u203a\u0153\u009d\u017e\u0178"
 )
 
+#: Names Python's table decodes and Go's does not. Measured, not assumed: the
+#: whole 2231-name table was run through a linked ``html.UnescapeString`` in
+#: four forms each, and these two are the only disagreements. Their expansions
+#: are neither whitespace nor base64 characters, so they cannot change which
+#: person an sgid names either way -- but "cannot matter" is the argument this
+#: port has already watched collapse twice, so they are excluded rather than
+#: reasoned about.
+_NOT_IN_GO_TABLE = frozenset({"nGt;", "nLt;"})
+
 _MAX_ENTITY_NAME = max(len(name) for name in html5)
 
 
@@ -539,6 +548,8 @@ def _reference_at(value: str, start: int) -> tuple[int, str]:
     # as one unknown name and leaves undecoded.
     for length in range(min(_MAX_ENTITY_NAME, len(value) - start - 1), 0, -1):
         name = value[start + 1 : start + 1 + length]
+        if name in _NOT_IN_GO_TABLE:
+            continue
         replacement = html5.get(name)
         if replacement is not None:
             return length + 1, replacement
