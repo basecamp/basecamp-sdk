@@ -133,8 +133,8 @@ module Basecamp
       # @raise [Basecamp::Error] the read's own error otherwise — a 404 is a
       #   {Basecamp::NotFoundError}, as from the typed read itself
       def summarize(bucket_id:, recording_id:, event_type: nil, recording_type: nil)
-        bucket_id = bucket_id.to_i
-        recording_id = recording_id.to_i
+        bucket_id = Ids.integer(bucket_id, "bucket id")
+        recording_id = Ids.integer(recording_id, "recording id")
         unless bucket_id.positive? && recording_id.positive?
           raise UsageError.new("bucket id and recording id are required")
         end

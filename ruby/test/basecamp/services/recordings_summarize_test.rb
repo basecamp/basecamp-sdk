@@ -110,6 +110,28 @@ class RecordingsSummarizeTest < Minitest::Test
     end
   end
 
+  def test_refuses_a_malformed_id_rather_than_reading_a_different_recording
+    # Coercing would turn "12oops" and 12.9 into 12 and go and fetch THAT
+    # recording — a wrong answer wearing the shape of a right one, and one whose
+    # bucket can still match, so nothing downstream would catch it.
+    [ "12oops", 12.9, nil, "", [ 12 ] ].each do |malformed|
+      assert_raises(Basecamp::UsageError) do
+        @account.recordings.summarize(bucket_id: BUCKET, recording_id: malformed, event_type: "comment.created")
+      end
+      assert_raises(Basecamp::UsageError) do
+        @account.recordings.summarize(bucket_id: malformed, recording_id: 1, event_type: "comment.created")
+      end
+    end
+    assert_not_requested(:any, %r{\A#{BASE_URL}})
+    # A string of digits is a reasonable thing to hold, and is accepted.
+    stub_get("/12345/comments/1", response_body: recording)
+    summary = @account.recordings.summarize(
+      bucket_id: BUCKET.to_s, recording_id: "1", event_type: "comment.created"
+    )
+
+    assert_equal 1, summary["id"]
+  end
+
   def test_the_documented_sets_match_the_routing_table
     types = @account.recordings.summarizable_recording_types
 

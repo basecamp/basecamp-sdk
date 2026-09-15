@@ -93,18 +93,17 @@ module Basecamp
     # The character references an attribute value is decoded through.
     #
     # DELIBERATELY not the whole HTML5 table the reference implementation
-    # carries. Only two kinds of expansion can change whether an sgid DECODES,
-    # and this covers both:
+    # carries. It is the five predefined references plus every named reference
+    # whose expansion can change whether an sgid DECODES: a character one of the
+    # base64 alphabets uses, or whitespace, which the trim erases at either end.
     #
-    # * a character one of the base64 alphabets or an sgid's separator uses, and
-    # * whitespace, which the trim in {global_id_from_sgid} erases at either end.
-    #
-    # Whitespace other than CR and LF is folded to a plain ASCII space. That is
-    # verdict-equivalent and keeps the decoded value a byte string: at either end
-    # both implementations trim it away, and in the interior both refuse it,
-    # since no base64 alphabet accepts a space any more than it accepts U+00A0.
-    # CR and LF are NOT folded — a base64 decoder skips those two wherever they
-    # sit, so they have to survive as themselves.
+    # Expansions are the TRUE code points, not stand-ins. An earlier version
+    # folded every whitespace expansion to a plain ASCII space, which is
+    # verdict-equivalent only while the base64 layer skips exactly CR and LF —
+    # an invariant living in another method — and it got "&#133;" wrong, which
+    # is a C1 byte that remaps to an ellipsis rather than staying the NEL the
+    # fold treated as whitespace. Keeping the code points and making the trim
+    # match is what the Rust and Kotlin ports do, and it rests on nothing.
     #
     # Every other named reference expands to something outside both alphabets
     # that no trim removes, so leaving it literal refuses the sgid exactly as
@@ -117,27 +116,32 @@ module Basecamp
       "amp" => "&", "lt" => "<", "gt" => ">", "quot" => '"', "apos" => "'",
       # Expansions inside a base64 alphabet.
       "plus" => "+", "sol" => "/", "equals" => "=", "lowbar" => "_", "UnderBar" => "_",
-      # The one whitespace expansion a base64 decoder skips wherever it sits.
-      "NewLine" => "\n",
-      # Expansions the trim erases, folded to a space.
-      "Tab" => " ", "nbsp" => " ", "NonBreakingSpace" => " ",
-      "ensp" => " ", "emsp" => " ", "emsp13" => " ", "emsp14" => " ",
-      "numsp" => " ", "puncsp" => " ",
-      "thinsp" => " ", "ThinSpace" => " ",
-      "hairsp" => " ", "VeryThinSpace" => " ",
-      "MediumSpace" => " ", "ThickSpace" => " "
+      # Expansions the trim erases, or that a base64 decoder skips.
+      "Tab" => "\t", "NewLine" => "\n",
+      "nbsp" => "\u00A0", "NonBreakingSpace" => "\u00A0",
+      "ensp" => "\u2002", "emsp" => "\u2003", "emsp13" => "\u2004", "emsp14" => "\u2005",
+      "numsp" => "\u2007", "puncsp" => "\u2008",
+      "thinsp" => "\u2009", "ThinSpace" => "\u2009",
+      "hairsp" => "\u200A", "VeryThinSpace" => "\u200A",
+      "MediumSpace" => "\u205F", "ThickSpace" => "\u205F\u200A"
     }.freeze
 
     # The references the HTML5 legacy list also accepts without their closing
     # semicolon, restricted to the ones above whose expansion can matter.
     SEMICOLONLESS_ENTITIES = %w[amp AMP lt LT gt GT quot QUOT nbsp].freeze
 
-    # The codepoints the trim treats as whitespace, matching the reference
-    # implementation's unicode.IsSpace. CR and LF are deliberately absent — they
-    # are handled as themselves, above.
-    WHITESPACE_CODEPOINTS = ([ 0x09, 0x0B, 0x0C, 0x20, 0x85, 0xA0, 0x1680,
-                               0x2028, 0x2029, 0x202F, 0x205F, 0x3000 ] +
-                             (0x2000..0x200A).to_a).freeze
+    # What a numeric reference in 0x80..0x9F expands to. Those are not code
+    # points in HTML: they are Windows-1252 bytes, and the reference
+    # implementation remaps them. It matters here because 0x85 is NEL, which IS
+    # whitespace, while its remapping is an ellipsis, which is not — so reading
+    # the number as a code point resolves a person the reference refuses. The
+    # table was read off the reference implementation, not off a spec.
+    C1_REPLACEMENTS = [
+      0x20AC, 0x0081, 0x201A, 0x0192, 0x201E, 0x2026, 0x2020, 0x2021,
+      0x02C6, 0x2030, 0x0160, 0x2039, 0x0152, 0x008D, 0x017D, 0x008F,
+      0x0090, 0x2018, 0x2019, 0x201C, 0x201D, 0x2022, 0x2013, 0x2014,
+      0x02DC, 0x2122, 0x0161, 0x203A, 0x0153, 0x009D, 0x017E, 0x0178
+    ].freeze
 
     # The names above, longest first, so a name is matched against the TABLE the
     # way the reference scanner matches it — longest entry that fits — rather
@@ -173,6 +177,9 @@ module Basecamp
     # it misses every non-ASCII space and removes NUL, which no trim there does.
     SGID_TRIM_PATTERN = /\A[[:space:]]+|[[:space:]]+\z/
 
+    # The same trim for bytes that are not valid UTF-8, where only the ASCII
+    # spaces can be recognized. Such a value cannot decode anyway.
+    BINARY_TRIM_PATTERN = /\A[ \t\n\v\f\r]+|[ \t\n\v\f\r]+\z/n
     module_function
 
     # Returns the ids of the people a rich text mentions: the Person named by
@@ -512,15 +519,21 @@ module Basecamp
       end
     end
 
-    # One numeric reference's expansion, or the literal reference when expanding
-    # it cannot change the verdict: above ASCII and not whitespace, the character
-    # is outside every alphabet and no trim removes it, so the literal refuses
-    # the sgid exactly as the character would — and it keeps the value a byte
-    # string, which is what the walker is scanning.
+    # One numeric reference's expansion, as the reference implementation spells
+    # it: a Windows-1252 remapping in 0x80..0x9F, the replacement character for
+    # zero, a surrogate or anything past the last code point, and otherwise the
+    # code point itself.
+    #
+    # The result is handed back as BYTES, so the walker can go on scanning a
+    # byte string whatever the expansion was.
     def codepoint_reference(codepoint, reference)
-      return " " if WHITESPACE_CODEPOINTS.include?(codepoint)
-      return codepoint.chr if codepoint.positive? && codepoint < 128
+      codepoint = C1_REPLACEMENTS[codepoint - 0x80] if codepoint.between?(0x80, 0x9F)
+      if codepoint.zero? || codepoint > 0x10FFFF || codepoint.between?(0xD800, 0xDFFF)
+        codepoint = 0xFFFD
+      end
 
+      [ codepoint ].pack("U").b
+    rescue RangeError
       reference
     end
 
@@ -535,13 +548,28 @@ module Basecamp
     # @param sgid [String, nil]
     # @return [String, nil]
     def global_id_from_sgid(sgid)
-      value = sgid.to_s.gsub(SGID_TRIM_PATTERN, "")
+      value = trim_sgid(sgid.to_s)
       separator = value.rindex("--")
       if separator && separator.positive?
         gid = envelope_gid(value[0, separator])
         return gid if gid
       end
       envelope_gid(value)
+    end
+
+    # Trims an sgid's surrounding whitespace, reading the bytes as UTF-8 when
+    # they are valid so the non-ASCII spaces are recognized too. The walker
+    # hands over a byte string and a caller may hand over text; both have to
+    # reach the same verdict.
+    def trim_sgid(value)
+      if value.encoding == Encoding::BINARY
+        text = value.dup.force_encoding(Encoding::UTF_8)
+        return text.gsub(SGID_TRIM_PATTERN, "").b if text.valid_encoding?
+
+        return value.gsub(BINARY_TRIM_PATTERN, "")
+      end
+
+      value.valid_encoding? ? value.gsub(SGID_TRIM_PATTERN, "") : value
     end
 
     # Decodes one base64 payload and returns the gid its envelope carries.
@@ -652,7 +680,7 @@ module Basecamp
     # and private so the module's documented surface is the four — plus
     # {bc_attachment_sgids}, which a caller deduplicating its own writes needs.
     private_class_method :parse_attributes, :leading_block_end, :global_id_from_sgid,
-                         :envelope_gid, :decode_payload, :unescape_attribute_value, :codepoint_reference,
+                         :envelope_gid, :decode_payload, :unescape_attribute_value, :codepoint_reference, :trim_sgid,
                          :field, :space?, :tag_name_char?, :tag_name_end?
 
     # A reader for the subset of Ruby's Marshal 4.8 format a SignedGlobalID

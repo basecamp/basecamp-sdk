@@ -79,6 +79,17 @@ class CommentsMentionsTest < Minitest::Test
     assert_equal already, @account.comments.expand_mentions(content: already, person_ids: [ 103 ])
   end
 
+  def test_expand_mentions_refuses_a_malformed_id_rather_than_mentioning_another_person
+    # Coercing would read person 7 for "7abc" and post a valid mention for the
+    # wrong person — the authoritative read would succeed and hide it.
+    [ "7abc", 7.9, nil, "" ].each do |malformed|
+      assert_raises(Basecamp::UsageError) do
+        @account.comments.expand_mentions(content: "<div>hi</div>", person_ids: [ malformed ])
+      end
+    end
+    assert_not_requested(:any, %r{\A#{BASE_URL}})
+  end
+
   def test_expand_mentions_refuses_a_non_positive_id_before_any_read
     assert_raises(Basecamp::UsageError) do
       @account.comments.expand_mentions(content: "<div>hi</div>", person_ids: [ 0 ])
