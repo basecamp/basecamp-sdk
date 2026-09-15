@@ -330,10 +330,22 @@ final class RecordingSummaryTests: XCTestCase {
         server.lineFoundUnder = nil
         let account = makeTestAccountClient(transport: server.makeTransport())
 
-        // First call populates both caches: an empty dock and the listing.
+        // First call populates both caches: an empty dock and the listing. It is
+        // itself the case a budget check placed AFTER the listing fetch would
+        // get wrong — the budget is spent by the time the listing's candidates
+        // have all been tried, but both sources were consulted, so the verdict
+        // is unresolved.
         await assertSummarizeFails(
             account, RecordingRef(bucketId: 1, recordingId: 7, eventType: "chat.line.created")
-        ) { _ in }
+        ) { error in
+            guard case .recordingUnresolved(let unresolved) = error else {
+                return XCTFail(
+                    "a freshly fetched listing whose candidates exhaust the budget is still fully consulted, got \(error)"
+                )
+            }
+            XCTAssertEqual(
+                unresolved.campfireIds.count, RecordingsService.maxCampfireCandidates)
+        }
         let afterFirst = server.paths.count
 
         // Second call: the dock is cached and empty, the listing is cached and
