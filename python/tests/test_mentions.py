@@ -54,6 +54,31 @@ def mention(sgid: str) -> str:
     return f'<bc-attachment sgid="{sgid}"></bc-attachment>'
 
 
+_BASE64_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
+
+
+def _with_dirty_trailing_bits(payload: str) -> str:
+    """The same payload with the final group's discarded bits set non-zero.
+
+    A group of two base64 characters carries one byte in twelve bits, four of
+    which are thrown away. Several characters therefore decode to the same
+    byte, and Go's non-strict decoder accepts all of them.
+    """
+    import base64
+
+    trimmed = payload.rstrip("=")
+    body = base64.b64decode(trimmed.replace("-", "+").replace("_", "/") + "=" * (-len(trimmed) % 4))
+    two_char_tail = base64.urlsafe_b64encode(body).decode().rstrip("=")
+    if len(two_char_tail) % 4 != 2:
+        two_char_tail = base64.urlsafe_b64encode(body + b" ").decode().rstrip("=")
+        body = body + b" "
+    for candidate in _BASE64_ALPHABET:
+        dirty = two_char_tail[:-1] + candidate
+        if candidate != two_char_tail[-1] and base64.urlsafe_b64decode(dirty + "==") == body:
+            return dirty
+    raise AssertionError("no dirty-trailing-bits variant exists for this payload")
+
+
 class TestPersonIDFromSGID:
     def test_reads_a_marshal_envelope(self):
         assert person_id_from_sgid(VICTOR_SGID) == VICTOR_ID
@@ -131,6 +156,26 @@ class TestPersonIDFromSGID:
         assert person_id_from_sgid(json_sgid("gid://bc3/Person/9223372036854775807")) == 2**63 - 1
         assert person_id_from_sgid(json_sgid("gid://bc3/Person/9223372036854775808")) is None
         assert person_id_from_sgid(json_sgid("gid://bc3/Person/99999999999999999999999")) is None
+
+    @pytest.mark.parametrize(
+        ("label", "mutate", "accepted"),
+        [
+            # Measured behaviour of Go's RawStdEncoding, probed rather than
+            # inferred. Note the shape: CR and LF are skipped, space and tab
+            # are not, so a decoder that lumps all whitespace together is wrong
+            # in one direction or the other whichever way it jumps.
+            ("embedded LF", lambda p: p[:8] + "\n" + p[8:], True),
+            ("embedded CR", lambda p: p[:8] + "\r" + p[8:], True),
+            ("embedded space", lambda p: p[:8] + " " + p[8:], False),
+            ("embedded tab", lambda p: p[:8] + "\t" + p[8:], False),
+            # Only Encoding.Strict() checks the final group's discarded bits.
+            ("non-zero trailing bits", lambda p: _with_dirty_trailing_bits(p), True),
+            ("length % 4 == 1", lambda p: p[: len(p) - ((len(p) - 1) % 4)], False),
+        ],
+    )
+    def test_base64_leniency_matches_go(self, label, mutate, accepted):
+        payload = json_sgid("gid://bc3/Person/77", signed=False)
+        assert (person_id_from_sgid(mutate(payload)) == 77) is accepted, label
 
     def test_reads_a_line_wrapped_payload_as_go_does(self):
         # Go's base64 decoder skips CR and LF mid-stream. It does NOT skip

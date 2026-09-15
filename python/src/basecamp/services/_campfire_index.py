@@ -36,6 +36,17 @@ is what changed.
 The index lives on the ``Client`` (shared by every account client the ``Client``
 hands out); a ``Client`` is bound to one credential, so entries are never shared
 across authorization contexts, and every key carries the account id.
+
+**What bounds a load.** The caches load under single flight, and a waiter waits
+on the load without a deadline of its own -- so what stops a load that never
+settles from parking every later caller for that key is the HTTP client
+underneath it. Every request a loader makes goes through the same ``Config``
+timeout (30 s by default, validated positive so it cannot be switched off) and,
+for the paginated listing, a bounded ``max_pages``. Go's waiters escape through
+their own ``ctx.Done()``; Python's escape because the load itself ends. That is
+a dependency worth stating rather than assuming: a transport that could block
+forever would turn this cache into a permanent hang, which is also why the
+slot's release covers every way a load can end.
 """
 
 from __future__ import annotations

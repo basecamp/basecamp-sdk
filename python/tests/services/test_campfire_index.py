@@ -254,6 +254,21 @@ class TestSingleFlight:
         assert len(loads) == 1
         assert results == ["v"] * 4
 
+    def test_the_slot_is_taken_before_the_load_runs(self):
+        # Go installs the in-flight record before invoking the loader, so a
+        # concurrent caller joins the load rather than starting a second one.
+        # A loader that could observe its own key free would be the bug.
+        clock = Clock()
+        cache = _cache(clock)
+        seen = []
+
+        def load():
+            seen.append(list(cache._inflight))
+            return "v"
+
+        cache.get("k", refresh=False, load=load)
+        assert seen == [["k"]]
+
     def test_a_failed_load_is_shared_with_its_waiters(self):
         # N waiters must never re-run one failed load N times.
         clock = Clock()
@@ -333,6 +348,18 @@ class TestAsyncCache:
 
         assert len(loads) == 1
         assert [hit.value for hit in hits] == ["v"] * 4
+
+    async def test_the_slot_is_taken_before_the_load_runs(self):
+        clock = Clock()
+        cache = _async_cache(clock)
+        seen = []
+
+        async def load():
+            seen.append(list(cache._inflight))
+            return "v"
+
+        await cache.get("k", refresh=False, load=load)
+        assert seen == [["k"]]
 
     async def test_a_failed_load_is_shared_with_its_waiters(self):
         clock = Clock()
