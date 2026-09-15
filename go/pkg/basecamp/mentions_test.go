@@ -41,6 +41,11 @@ const (
 	rubySGIDPersonExtraKeys = "BAh7B0kiC19yYWlscwY6BkVUewdJIglkYXRhBjsAVEkiK2dpZDovL2JjMy9QZXJzb24vMTA0OTcxNTkxNT9leHBpcmVzX2luBjsAVEkiCHB1cgY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiCmV4dHJhBjsAVFsKaQZURjBJIgZzBjsAVA==--00"
 	// Rails' JSON message serializer spelling of the current layout.
 	jsonSGIDPerson = "eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vMTA0OTcxNTkxNT9leHBpcmVzX2luIiwicHVyIjoiYXR0YWNoYWJsZSJ9fQ==--00"
+	// Ruby-produced: the same person, in an envelope carrying an extra binary
+	// value chosen so that its base64url form contains "--" — the signature
+	// separator — inside the payload. Rails reads the LAST separator; so must
+	// this decoder, in both the signed and the unsigned form.
+	rubySGIDPersonWithSeparatorInPayload = "BAh7B0kiC19yYWlscwY6BkVUewdJIglkYXRhBjsAVEkiK2dpZDovL2JjMy9QZXJzb24vMTA0OTcxNTkxNT9leHBpcmVzX2luBjsAVEkiCHB1cgY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiCHBhZAY7AFQiCnh4----"
 	// The same person, Ruby-produced, minted for another purpose in each
 	// layout: valid signed global ids, but not ones BC3 accepts in rich text.
 	rubySGIDPersonReadable      = "BAh7BkkiC19yYWlscwY6BkVUewdJIglkYXRhBjsAVEkiK2dpZDovL2JjMy9QZXJzb24vMTA0OTcxNTkxNT9leHBpcmVzX2luBjsAVEkiCHB1cgY7AFRJIg1yZWFkYWJsZQY7AFQ=--00"
@@ -89,6 +94,9 @@ func TestPersonIDFromSGID(t *testing.T) {
 		{"gid without a query", jsonEnvelope("gid://bc3/Person/77"), 77, true},
 		{"different app name", jsonEnvelope("gid://basecamp/Person/78?expires_in"), 78, true},
 		{"json envelope (ruby)", jsonSGIDPerson, 1049715915, true},
+		{"payload containing the separator, signed (ruby)", rubySGIDPersonWithSeparatorInPayload + "--0000000000000000000000000000000000000000", 1049715915, true},
+		{"payload containing the separator, unsigned (ruby)", rubySGIDPersonWithSeparatorInPayload, 1049715915, true},
+		{"payload ending in - before the separator", strings.TrimRight(rubySGIDPersonWithSeparatorInPayload, "=") + "--00", 1049715915, true},
 		{"extra keys and scalars (ruby)", rubySGIDPersonExtraKeys, 1049715915, true},
 		{"person gid inside a document gid (ruby)", rubySGIDPersonInsideDocument, 0, false},
 		{"person gid in the purpose field (ruby)", rubySGIDPersonInPurpose, 0, false},

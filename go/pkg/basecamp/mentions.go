@@ -262,8 +262,25 @@ func PersonIDFromSGID(sgid string) (int64, bool) {
 }
 
 // globalIDFromSGID returns the global id string an sgid's envelope carries.
+//
+// A signed sgid is "<payload>--<digest>", and "-" is a base64url character,
+// so the payload itself may contain "--". The separator is therefore the
+// LAST one, as Rails' own verifier reads it; the whole value is tried as a
+// bare payload when that fails, which is what an unsigned envelope — one
+// that happens to contain "--" included — needs.
 func globalIDFromSGID(sgid string) (string, bool) {
-	payload, _, _ := strings.Cut(strings.TrimSpace(sgid), "--")
+	value := strings.TrimSpace(sgid)
+	if i := strings.LastIndex(value, "--"); i > 0 {
+		if gid, ok := envelopeGID(value[:i]); ok {
+			return gid, true
+		}
+	}
+	return envelopeGID(value)
+}
+
+// envelopeGID decodes one base64 payload and returns the gid its envelope
+// carries.
+func envelopeGID(payload string) (string, bool) {
 	// The bound is applied to the encoded form first, so an oversized sgid
 	// costs nothing to refuse — no normalization, no decode buffer.
 	if payload == "" || len(payload) > maxSGIDEncodedBytes {
