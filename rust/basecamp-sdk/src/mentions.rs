@@ -477,11 +477,16 @@ fn envelope_gid(payload: &str) -> Option<String> {
 /// so `12x` is not read as `12`.
 fn parse_global_id(gid: &str) -> Option<(&str, &str)> {
     let after_scheme = gid.strip_prefix("gid://")?;
-    let (host, path) = after_scheme.split_once('/')?;
+    // The query and the fragment are cut FIRST, before the authority is split off, because
+    // that is where they begin: in `gid://bc3?x/Person/77` the `?` ends the host and
+    // everything after it is the query, so the URL has no path at all. Cutting them out of
+    // the path instead would read `bc3?x` as a host and `Person/77` as a path, and report a
+    // mention of someone a URL parser never finds there.
+    let authority_and_path = after_scheme.split(['?', '#']).next().unwrap_or_default();
+    let (host, path) = authority_and_path.split_once('/')?;
     if host.is_empty() {
         return None;
     }
-    let path = path.split(['?', '#']).next().unwrap_or_default();
     let (model, raw_id) = path.split_once('/')?;
     if model.is_empty()
         || raw_id.is_empty()
@@ -715,6 +720,24 @@ mod tests {
         assert_eq!(person_id_from_sgid(&readable), None);
         assert_eq!(person_id_from_sgid(&rails), None);
         assert_eq!(person_id_from_sgid(&none), None);
+    }
+
+    #[test]
+    fn a_query_or_fragment_never_smuggles_a_path_past_the_authority() {
+        // `gid://bc3?x/Person/77` has no path: a URL parser puts all of it in the query, so
+        // it names nobody. Reading `bc3?x` as a host would make it a mention of person 77.
+        for gid in [
+            "gid://bc3?x/Person/77",
+            "gid://bc3#x/Person/77",
+            "gid://?/Person/77",
+            "gid://bc3?/Person/77",
+        ] {
+            let sgid = json_sgid(&format!(r#"{{"gid":"{gid}","purpose":"attachable"}}"#));
+            assert_eq!(person_id_from_sgid(&sgid), None, "{gid}");
+        }
+        // The query BC3 itself mints, after a real path, still decodes.
+        let real = json_sgid(r#"{"gid":"gid://bc3/Person/77?expires_in","purpose":"attachable"}"#);
+        assert_eq!(person_id_from_sgid(&real), Some(77));
     }
 
     #[test]

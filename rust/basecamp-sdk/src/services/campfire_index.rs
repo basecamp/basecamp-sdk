@@ -153,66 +153,96 @@ where
         F: FnOnce() -> Fut,
         Fut: Future<Output = Result<V, Error>> + Send + 'static,
     {
-        let pending = {
-            let mut state = self.lock();
-            if let Some(entry) = state.entries.get(key) {
-                let age = (self.clock)().saturating_duration_since(entry.fetched);
-                if age < self.ttl && (!refresh || age < self.floor) {
-                    return Ok(Hit {
-                        value: Arc::clone(&entry.value),
-                        fetched: entry.fetched,
-                        cached: true,
-                    });
-                }
-            }
-            if let Some(pending) = state.inflight.get(key) {
-                pending.clone()
-            } else {
-                Self::sweep_inflight_locked(&mut state);
-                // WEAK, not strong: the map holds the future and the future reaches back for
-                // the map, so an owning handle would close a reference cycle that keeps this
-                // cache — and the client behind it — alive for as long as the process runs.
-                let cache = Arc::downgrade(self);
-                let owned = key.clone();
-                let loading = load();
-                let pending = async move {
-                    // A loader that panics — a hook, a token provider — still releases the
-                    // key and wakes its waiters with an error; without that the key would
-                    // stay in flight forever and every later caller would wait on it.
-                    let outcome = match AssertUnwindSafe(loading).catch_unwind().await {
-                        Ok(result) => result.map_err(Arc::new),
-                        Err(_) => Err(Arc::new(Error::new(
-                            ErrorCode::ApiError,
-                            "campfire discovery source panicked while loading",
-                        ))),
-                    };
-                    // The cache outliving the load is the ordinary case; a load outliving
-                    // the cache answers its waiters and caches nothing.
-                    match cache.upgrade() {
-                        Some(cache) => cache.publish(&owned, outcome),
-                        None => outcome.map(|value| (Arc::new(value), Instant::now())),
+        let mut load = Some(load);
+        let mut reacquired = false;
+        loop {
+            let (pending, started_here) = {
+                let mut state = self.lock();
+                if let Some(entry) = state.entries.get(key) {
+                    let age = (self.clock)().saturating_duration_since(entry.fetched);
+                    if age < self.ttl && (!refresh || age < self.floor) {
+                        return Ok(Hit {
+                            value: Arc::clone(&entry.value),
+                            fetched: entry.fetched,
+                            cached: true,
+                        });
                     }
                 }
-                .boxed()
-                .shared();
-                state.inflight.insert(key.clone(), pending.clone());
-                pending
+                if let Some(pending) = state.inflight.get(key) {
+                    (pending.clone(), false)
+                } else {
+                    // Only the first trip round has a loader to spend. A second trip is the
+                    // bounded retry below, and it only happens when this call waited on
+                    // somebody else's load — so the key is free and the loader is unspent.
+                    let Some(load) = load.take() else {
+                        return Err(Error::new(
+                            ErrorCode::ApiError,
+                            "campfire discovery source could not be re-read",
+                        ));
+                    };
+                    Self::sweep_inflight_locked(&mut state);
+                    // WEAK, not strong: the map holds the future and the future reaches back
+                    // for the map, so an owning handle would close a reference cycle that
+                    // keeps this cache — and the client behind it — alive for the life of
+                    // the process.
+                    let cache = Arc::downgrade(self);
+                    let owned = key.clone();
+                    let loading = load();
+                    let pending = async move {
+                        // A loader that panics — a hook, a token provider — still releases
+                        // the key and wakes its waiters with an error; without that the key
+                        // would stay in flight forever and every later caller would wait
+                        // on it.
+                        let outcome = match AssertUnwindSafe(loading).catch_unwind().await {
+                            Ok(result) => result.map_err(Arc::new),
+                            Err(_) => Err(Arc::new(Error::new(
+                                ErrorCode::ApiError,
+                                "campfire discovery source panicked while loading",
+                            ))),
+                        };
+                        // The cache outliving the load is the ordinary case; a load
+                        // outliving the cache answers its waiters and caches nothing.
+                        match cache.upgrade() {
+                            Some(cache) => cache.publish(&owned, outcome),
+                            None => outcome.map(|value| (Arc::new(value), Instant::now())),
+                        }
+                    }
+                    .boxed()
+                    .shared();
+                    state.inflight.insert(key.clone(), pending.clone());
+                    (pending, true)
+                }
+            };
+            match pending.await {
+                // The load this call waited on is this call's load: its value is fresh, not
+                // something that predated the call — and it is read off the load's own
+                // result, so a sweep or the bound evicting the entry in the meantime cannot
+                // take it from this waiter.
+                Ok((value, fetched)) => {
+                    return Ok(Hit {
+                        value,
+                        fetched,
+                        cached: false,
+                    });
+                }
+                Err(error) => {
+                    // A load runs under the deadline of whoever started it. When that
+                    // deadline is what ended it, the failure belongs to that caller and not
+                    // to this one: a waiter that had time left goes round again and loads
+                    // for itself. Once only — a second owner-attributed failure is returned
+                    // rather than chased, so a run of expiring owners cannot become a queue
+                    // of sequential loads behind one waiter. Every other failure, a
+                    // transport timeout included, is the load's own and is shared, so N
+                    // waiters never re-run one failed load N times.
+                    if !started_here && !reacquired && error.is_deadline_exceeded() {
+                        reacquired = true;
+                        continue;
+                    }
+                    // The projection carries everything a caller classifies on — code, hint,
+                    // status, the flags — with the shared original chained as the cause.
+                    return Err(project(&error));
+                }
             }
-        };
-        match pending.await {
-            // The load this call waited on is this call's load: its value is fresh, not
-            // something that predated the call — and it is read off the load's own result,
-            // so a sweep or the bound evicting the entry in the meantime cannot take it
-            // from this waiter.
-            Ok((value, fetched)) => Ok(Hit {
-                value,
-                fetched,
-                cached: false,
-            }),
-            // One failed load is one failure, shared: N waiters never re-run it N times.
-            // The projection carries everything a caller classifies on — code, hint,
-            // status, retryability — with the shared original chained as the cause.
-            Err(error) => Err(project(&error)),
         }
     }
 
@@ -447,10 +477,26 @@ impl CampfireIndex {
     }
 }
 
-/// The load error for a listing past its cap. The caller turns it into an incomplete
-/// discovery verdict; it is recognized by its hint rather than by a code, since the
-/// taxonomy (SPEC §6) has no member for "the SDK's own bound was reached".
-const LISTING_OVERFLOW_HINT: &str = "campfire listing exceeds MAX_CAMPFIRE_LISTING";
+/// The load error for a listing past its cap, which the caller turns into an incomplete
+/// discovery verdict. SPEC §6's taxonomy has no member for "the SDK's own bound was
+/// reached", so the identity rides as a cause.
+///
+/// It is a private TYPE on purpose. A marker in any string-valued member would be forgeable
+/// off the wire, and `hint` is both the tempting place and the worst one: a token endpoint
+/// fills it from its own `error_description` (see `oauth::token`), and a 401 inside the
+/// listing load triggers a refresh through exactly that path — so an authorization server
+/// that named this string could have its own failure reported as a campfire-discovery
+/// verdict, swallowing an auth error. Nothing off the wire can forge a Rust type.
+#[derive(Debug)]
+struct ListingOverflow;
+
+impl std::fmt::Display for ListingOverflow {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "campfire listing exceeds {MAX_CAMPFIRE_LISTING}")
+    }
+}
+
+impl std::error::Error for ListingOverflow {}
 
 /// One failed load, projected for each caller waiting on it. `Error` is not `Clone` — its
 /// cause is a boxed trait object — so the record is duplicated whole and the shared original
@@ -466,13 +512,14 @@ fn listing_overflow() -> Error {
         ErrorCode::ApiError,
         "campfire listing is too large to cache",
     )
-    .with_hint(LISTING_OVERFLOW_HINT)
+    .with_hint(ListingOverflow.to_string())
+    .with_source(ListingOverflow)
 }
 
 /// Whether an error is the listing-overflow marker, through however many wrappers the cache
 /// projected it into.
 pub(crate) fn is_listing_overflow(error: &Error) -> bool {
-    error.hint() == Some(LISTING_OVERFLOW_HINT)
+    error.find_source::<ListingOverflow>().is_some()
 }
 
 #[cfg(test)]
@@ -760,13 +807,97 @@ mod tests {
         }
     }
 
+    #[tokio::test]
+    async fn a_waiter_reloads_once_when_the_load_died_of_the_starters_deadline() {
+        let clock = TestClock::new();
+        let cache = cache::<i64>(&clock, 16);
+        let loads = Arc::new(AtomicU64::new(0));
+        let (release, held) = tokio::sync::oneshot::channel::<()>();
+        // The load runs under the deadline of whoever started it. The waiter had time left,
+        // so the starter's deadline is not its answer.
+        let starter = {
+            let counter = Arc::clone(&loads);
+            cache.get(&1, false, move || async move {
+                counter.fetch_add(1, Ordering::SeqCst);
+                let _ = held.await;
+                Err(Error::deadline_exceeded(Duration::from_millis(1)))
+            })
+        };
+        let waiter = {
+            let counter = Arc::clone(&loads);
+            cache.get(&1, false, move || async move {
+                counter.fetch_add(1, Ordering::SeqCst);
+                Ok(7)
+            })
+        };
+        let releaser = async {
+            tokio::task::yield_now().await;
+            let _ = release.send(());
+        };
+        let (starter, waiter, ()) = futures_util::join!(starter, waiter, releaser);
+        // The starter keeps its own deadline; the waiter goes round again and loads.
+        assert!(
+            starter
+                .err()
+                .expect("the starter kept its deadline")
+                .is_deadline_exceeded()
+        );
+        assert_eq!(*waiter.unwrap().value, 7);
+        assert_eq!(loads.load(Ordering::SeqCst), 2);
+    }
+
+    #[tokio::test]
+    async fn a_waiter_reloads_at_most_once_and_shares_every_other_failure() {
+        let clock = TestClock::new();
+        let cache = cache::<i64>(&clock, 16);
+        let loads = Arc::new(AtomicU64::new(0));
+        let (release, held) = tokio::sync::oneshot::channel::<()>();
+        // A transport timeout is the LOAD's own failure, not the starting caller's, so it
+        // is shared: N waiters must never re-run one failed load N times.
+        let starter = {
+            let counter = Arc::clone(&loads);
+            cache.get(&1, false, move || async move {
+                counter.fetch_add(1, Ordering::SeqCst);
+                let _ = held.await;
+                Err(Error::network_timeout(std::io::Error::new(
+                    std::io::ErrorKind::TimedOut,
+                    "stalled",
+                )))
+            })
+        };
+        let waiter = {
+            let counter = Arc::clone(&loads);
+            cache.get(&1, false, move || async move {
+                counter.fetch_add(1, Ordering::SeqCst);
+                Ok(7)
+            })
+        };
+        let releaser = async {
+            tokio::task::yield_now().await;
+            let _ = release.send(());
+        };
+        let (starter, waiter, ()) = futures_util::join!(starter, waiter, releaser);
+        assert!(starter.err().expect("the load timed out").is_timeout());
+        assert!(waiter.err().expect("the waiter shares it").is_timeout());
+        assert_eq!(loads.load(Ordering::SeqCst), 1, "one load, one failure");
+    }
+
     #[test]
     fn the_listing_overflow_marker_survives_the_cache_projection() {
-        let overflow = listing_overflow();
+        let overflow = Arc::new(listing_overflow());
         assert!(is_listing_overflow(&overflow));
-        let projected = Error::new(overflow.code(), overflow.message())
-            .with_hint(overflow.hint().unwrap_or_default());
-        assert!(is_listing_overflow(&projected));
+        assert!(is_listing_overflow(&project(&overflow)));
         assert!(!is_listing_overflow(&Error::usage("something else")));
+    }
+
+    #[test]
+    fn the_marker_cannot_be_forged_from_anything_the_wire_carries() {
+        // A token endpoint fills `hint` from its own error_description, and a refresh runs
+        // inside the listing load. A server that names the marker text must not be able to
+        // have its own failure reported as a discovery verdict.
+        let forged = Error::new(ErrorCode::AuthRequired, "invalid_grant")
+            .with_hint(ListingOverflow.to_string());
+        assert!(!is_listing_overflow(&forged));
+        assert!(!is_listing_overflow(&project(&Arc::new(forged))));
     }
 }

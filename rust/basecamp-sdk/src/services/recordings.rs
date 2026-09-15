@@ -256,8 +256,13 @@ impl RecordingSummaryError {
     /// The composite's own reason for an [`Error`], when it has one. A read that failed on
     /// its own terms — a 403, a 404, a transport error — answers `None`, and is classified
     /// by [`Error::code`] like any other SDK failure.
+    ///
+    /// The whole cause chain is searched, not just its first link, so the verdict survives
+    /// being re-wrapped on its way out — which is what Go's `errors.Is` gives the reference
+    /// implementation, and what makes this a contract a consumer can rely on rather than one
+    /// a single [`Error::with_source`] elsewhere would quietly break.
     pub fn of(error: &Error) -> Option<&RecordingSummaryError> {
-        std::error::Error::source(error)?.downcast_ref::<RecordingSummaryError>()
+        error.find_source::<RecordingSummaryError>()
     }
 
     /// The taxonomy member this reason is reported under.
@@ -1361,6 +1366,22 @@ mod tests {
     fn a_plain_read_failure_carries_no_composite_reason() {
         let forbidden = Error::new(ErrorCode::Forbidden, "nope").with_status(403);
         assert!(RecordingSummaryError::of(&forbidden).is_none());
+    }
+
+    #[test]
+    fn a_verdict_survives_being_wrapped_on_its_way_out() {
+        let verdict: Error = RecordingSummaryError::BucketMismatch {
+            bucket_id: 1,
+            recording_id: 2,
+            found_in: 9,
+        }
+        .into();
+        let wrapped = Error::new(ErrorCode::ApiError, "while admitting an event")
+            .with_source(std::sync::Arc::new(verdict));
+        assert!(matches!(
+            RecordingSummaryError::of(&wrapped),
+            Some(RecordingSummaryError::BucketMismatch { found_in: 9, .. })
+        ));
     }
 
     #[test]
