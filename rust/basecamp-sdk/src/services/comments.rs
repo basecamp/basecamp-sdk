@@ -1,10 +1,15 @@
 //! Comments: the generated wire methods plus the SPEC §18 mention composites —
 //! [`CommentsService::expand_mentions`] and [`CommentsService::create_with_mentions`].
 //!
-//! Both are composition over generated reads and writes: the people read resolves each
-//! requested id to its `attachable_sgid`, [`with_mentions`] renders the markup, and the
-//! generated comment create posts it. Nothing here touches the wire on its own, and hooks
-//! see `GetPerson` and `CreateComment` under their own names (SPEC §18 rule 3).
+//! [`CommentsService::expand_mentions`] READS only: it resolves each requested id to its
+//! `attachable_sgid` through the generated people read, then has [`with_mentions`] render
+//! the markup. It posts nothing, and is public so a caller can build content for a Campfire
+//! line or any other rich-text field rather than only a comment.
+//! [`CommentsService::create_with_mentions`] is that followed by the generated comment
+//! create.
+//!
+//! Nothing here touches the wire on its own, and hooks see `GetPerson` and `CreateComment`
+//! under their own names (SPEC §18 rule 3).
 
 pub use crate::generated::services::comments::{CommentsService, ListCommentsParams};
 

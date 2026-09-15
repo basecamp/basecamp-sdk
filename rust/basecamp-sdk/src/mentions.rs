@@ -5,11 +5,14 @@
 //! mention"). BC3 renders the same tag back with
 //! `content-type="application/vnd.basecamp.mention"` and an avatar figure inside it, but
 //! the sgid is the only part of the markup that names the person on both the write and the
-//! read side, so both helpers here work from it:
+//! read side, so all four helpers here work from it:
 //!
 //! - [`mentioned_person_ids`] reads the person ids a rich text names, by decoding the sgid
 //!   of every `<bc-attachment>` and keeping the ones that point at a Person.
+//! - [`person_id_from_sgid`] is that decode on its own, for one sgid.
 //! - [`mention_markup`] writes the tag for a person, from their `attachable_sgid`.
+//! - [`with_mentions`] places those tags in existing content, skipping anyone the content
+//!   already mentions.
 //!
 //! An `attachable_sgid` is a Rails `SignedGlobalID`: a base64 payload, then `--`, then an
 //! HMAC only BC3 can verify. The payload is an envelope carrying the global id —
@@ -351,11 +354,11 @@ fn parse_attributes(text: &[u8], mut pos: usize) -> Option<(Option<String>, usiz
 ///   where the needle allows one, so a fold match is structurally impossible there for ANY
 ///   needle — that agreement survives a rename, and calling this is tidiness, not safety.
 ///
-/// A byte that is not valid UTF-8 cannot match, because Go decodes it to U+FFFD, which
-/// folds to no ASCII. Nothing reachable through this crate's public API can present one:
-/// `&str` guarantees validity, and the one place a slice could cut a character is the
-/// fixed-length one above, which cannot fold regardless. The branch is kept because this
-/// function takes bytes and the guarantee is the caller's, not its own.
+/// A byte that is not valid UTF-8 cannot MATCH, because Go decodes it to U+FFFD, which
+/// folds to no ASCII. It can certainly ARRIVE, and an earlier version of this comment said
+/// otherwise: `leading_block_end` slices a fixed byte count and will cut a character in
+/// half, so `with_mentions("<ſx")` reaches here with `[3c, c5]`. What the caller guarantees
+/// is nothing; what this function guarantees is the answer.
 fn equal_fold(text: &[u8], ascii_needle: &[u8]) -> bool {
     const LONG_S: &[u8] = &[0xc5, 0xbf]; // U+017F, in the orbit of `s`
     const KELVIN: &[u8] = &[0xe2, 0x84, 0xaa]; // U+212A, in the orbit of `k`
@@ -1279,6 +1282,168 @@ mod tests {
         assert_eq!(person_id_from_sgid(&none), None);
     }
 
+    /// The table is a `const` rather than a local so the test body stays readable as it
+    /// grows: every row here was measured, so rows only ever get added.
+    const NET_URL_ANSWERS: &[(&str, Option<i64>)] = &[
+        // Userinfo before the last `@` is dropped; a URL parser accepts these.
+        ("gid://user@bc3/Person/77", Some(77)),
+        ("gid://user:pw@bc3/Person/77", Some(77)),
+        ("gid://a@b@bc3/Person/77", Some(77)),
+        ("gid://@bc3/Person/77", Some(77)),
+        // A port must be digits. `bc3:xx` is not a host with a funny name, it is a
+        // parse error; an empty port is fine.
+        ("gid://bc3:8080/Person/77", Some(77)),
+        ("gid://bc3:/Person/77", Some(77)),
+        ("gid://bc3:xx/Person/77", None),
+        ("gid://[::1]/Person/77", Some(77)),
+        // `net/url` refuses EVERY percent-escape in a host — measured, not assumed —
+        // so there is nothing to decode. Decoding first and validating after is the
+        // natural design and admits `b%63%33` as `bc3`, which Go refuses.
+        ("gid://b%63%33/Person/77", None),
+        ("gid://%20/Person/77", None),
+        // A control byte anywhere up to the fragment is refused; inside it is not.
+        // Written as the JSON escape the envelope actually carries, so the control
+        // byte reaches the parser rather than breaking the envelope around it.
+        (r"gid://bc3/Person/77?\u0001", None),
+        (r"gid://bc3/Person/77#\u0001", Some(77)),
+        // Userinfo is VALIDATED, not merely discarded: its own allowlist is wider than
+        // the host's, but a space, a non-ASCII byte or a malformed escape is a parse
+        // error rather than something to drop.
+        ("gid://user:pw@bc3/Person/77", Some(77)),
+        ("gid://%40@bc3/Person/77", Some(77)),
+        ("gid://u s@bc3/Person/77", None),
+        ("gid://u%s@bc3/Person/77", None),
+        // A bracketed literal must really be one: matched from the FRONT, parsed as an
+        // address, and refused if it is IPv4. A `[` anywhere else is not a literal.
+        ("gid://[::1]/Person/77", Some(77)),
+        ("gid://[::1]:80/Person/77", Some(77)),
+        ("gid://[::1%25eth0]/Person/77", Some(77)),
+        ("gid://[bad]/Person/77", None),
+        ("gid://[192.0.2.1]/Person/77", None),
+        ("gid://[::1/Person/77", None),
+        ("gid://bc3[/Person/77", None),
+        ("gid://a:1]/Person/77", None),
+        // A bracketed authority that PARSES but is not an address is its own shape,
+        // distinct from a malformed one: three ports have now accepted some form of
+        // bracketed text as an IPv6 host without parsing it.
+        ("gid://[not-an-ip]/Person/1", None),
+        ("gid://[abc]/Person/1", None),
+        ("gid://[1]/Person/1", None),
+        ("gid://[::1::2]/Person/1", None),
+        ("gid://[]/Person/1", None),
+        ("gid://[::ffff:192.0.2.1]/Person/1", Some(1)),
+        ("gid://[fe80::1%25eth0]:8080/Person/1", Some(1)),
+        ("gid://[::1]:/Person/1", Some(1)),
+        // A ZONE does not excuse the literal from being an address. These are the rows
+        // that separate "validated unconditionally" from "skipped when a zone is
+        // present"; `[::1%25eth0]` above cannot, because it parses either way. Every
+        // answer here is Go's, measured, not predicted — the accepting direction was a
+        // real defect on this line and the probe that was supposed to have caught it
+        // could only ever agree with the premise it came from.
+        ("gid://[not-an-address%25zone]/Person/77", None),
+        ("gid://[abc%25z]/Person/77", None),
+        ("gid://[1%25z]/Person/77", None),
+        ("gid://[bad%25x]/Person/77", None),
+        ("gid://[%25]/Person/77", None),
+        // An EMPTY zone is refused: `ParseAddr` will not take one.
+        ("gid://[::1%25]/Person/77", None),
+        // IPv4 in brackets stays refused with a zone on it, and the IPv4-mapped IPv6
+        // form stays accepted — the check is on what the address IS, not how it reads.
+        ("gid://[192.0.2.1%25eth0]/Person/77", None),
+        ("gid://[::ffff:192.0.2.1%25eth0]/Person/77", Some(77)),
+        // The zone's escape rule is its OWN, and admits escapes a host refuses: `%41`
+        // and `%20` both have a first hex digit below 8. Verifying that rule at the
+        // host position says nothing about this one.
+        ("gid://[::1%25%41]/Person/77", Some(77)),
+        ("gid://[::1%25a%20b]/Person/77", Some(77)),
+        // But not every escape: a zone still refuses one whose byte it could not have
+        // written directly.
+        ("gid://[::1%25a%2fb]/Person/77", None),
+        ("gid://[::1%25%01]/Person/77", None),
+        // IPvFuture is a real RFC 3986 production and `netip.ParseAddr` does not
+        // implement it, so Go refuses it. A port that checks whether the brackets LOOK
+        // like a literal instead of parsing one accepts these.
+        ("gid://[v7.x]/Person/77", None),
+        ("gid://[V7.x]/Person/77", None),
+        ("gid://[vz.x]/Person/77", None),
+        ("gid://[v1.fe80::a+en1]/Person/77", None),
+        // An empty host stays empty after userinfo is stripped — but `u.Host` carries
+        // the port, so an empty NAME with a port is not an empty host.
+        ("gid://@/Person/1", None),
+        ("gid://:@/Person/1", None),
+        ("gid://%20@/Person/1", None),
+        ("gid:///Person/1", None),
+        ("gid://@:/Person/1", Some(1)),
+        ("gid://@:8080/Person/1", Some(1)),
+        // The host is what `u.Host` holds, which INCLUDES the port — so an empty name
+        // with a port is not an empty host.
+        ("gid://:8080/Person/77", Some(77)),
+        ("gid://:/Person/77", Some(77)),
+        // An escape is refused only when its first hex digit is below 8 and the triple
+        // is not `%25`. A blanket refusal loses every one of these.
+        ("gid://%25/Person/77", Some(77)),
+        ("gid://bc%80/Person/77", Some(77)),
+        ("gid://%C3%A9/Person/77", Some(77)),
+        ("gid://%bc3/Person/77", Some(77)),
+        ("gid://b%63%33/Person/77", None),
+        ("gid://bc3%/Person/77", None),
+        // The id must be DIGITS, not merely something a parse accepts. `i64::from_str`
+        // takes a leading `+`; the reference walks the bytes and refuses anything
+        // outside `0..=9` before parsing at all. Without that explicit walk this port
+        // would name person 77 for `+77`, where Go names nobody — the accepting
+        // direction, on the read helper. An adversarial pass found the predicate
+        // load-bearing and held by nothing: deleting it left the whole crate green.
+        ("gid://bc3/Person/+77", None),
+        ("gid://bc3/Person/-77", None),
+        ("gid://bc3/Person/++77", None),
+        ("gid://bc3/Person/+0", None),
+        ("gid://bc3/Person/ 77", None),
+        ("gid://bc3/Person/77 ", None),
+        ("gid://bc3/Person/7_7", None),
+        ("gid://bc3/Person/0x4d", None),
+        // The FRAGMENT is discarded, but a URL parser unescapes it first, so a
+        // malformed escape there fails the whole parse — and nothing downstream can
+        // notice, which is why this went unnoticed in the accepting direction. The
+        // QUERY, cut in the same breath, is never unescaped and so is never checked.
+        // Three positions, three rules.
+        ("gid://bc3/Person/77#%zz", None),
+        ("gid://bc3/Person/77#%", None),
+        ("gid://bc3/Person/77#%2", None),
+        ("gid://bc3/Person/77#x%0gy", None),
+        ("gid://bc3/Person/77?ok#%zz", None),
+        ("gid://bc3/Person/77#a#%zz", None),
+        ("gid://bc3/Person/77#%41", Some(77)),
+        ("gid://bc3/Person/77#%ff", Some(77)),
+        ("gid://bc3/Person/77#ok", Some(77)),
+        ("gid://bc3/Person/77#", Some(77)),
+        ("gid://bc3/Person/77?%zz", Some(77)),
+        ("gid://bc3/Person/77?x=%zz", Some(77)),
+        ("gid://bc3/Person/77?%", Some(77)),
+        // The host's character set is an allowlist, and these four are on opposite
+        // sides of it from what a denylist would guess.
+        ("gid://b<3/Person/77", Some(77)),
+        ("gid://b;3/Person/77", Some(77)),
+        ("gid://b^3/Person/77", None),
+        ("gid://b|3/Person/77", None),
+        ("gid://bc3/Person/77", Some(77)),
+        // The path is percent-decoded before it is read.
+        ("gid://bc3/Person/%37%37", Some(77)),
+        ("gid://bc3/Pe%72son/77", Some(77)),
+        // The scheme is ASCII case-insensitive.
+        ("GID://bc3/Person/77", Some(77)),
+        ("Gid://bc3/Person/77", Some(77)),
+        // A space is illegal in a host, so this is not a URL at all. Splitting on the
+        // first `/` would read `" "` as the host and name a person Go names none for.
+        ("gid:// /Person/77", None),
+        ("gid://b c3/Person/77", None),
+        ("gid:///Person/77", None),
+        // A truncated or non-hex escape is not a path.
+        ("gid://bc3/Person/%3", None),
+        ("gid://bc3/Person/%zz", None),
+        ("gid://bc3/Person/77/extra", None),
+        ("gid://bc3/Person/12x", None),
+    ];
+
     /// Every row measured against `net/url` + the Go helper, not recalled.
     ///
     /// The authority rows are the ones worth keeping: a hand-rolled split gets userinfo, a
@@ -1286,152 +1451,7 @@ mod tests {
     /// them name a person Go names nobody for.
     #[test]
     fn the_gid_parse_answers_what_net_url_answers() {
-        let go: &[(&str, Option<i64>)] = &[
-            // Userinfo before the last `@` is dropped; a URL parser accepts these.
-            ("gid://user@bc3/Person/77", Some(77)),
-            ("gid://user:pw@bc3/Person/77", Some(77)),
-            ("gid://a@b@bc3/Person/77", Some(77)),
-            ("gid://@bc3/Person/77", Some(77)),
-            // A port must be digits. `bc3:xx` is not a host with a funny name, it is a
-            // parse error; an empty port is fine.
-            ("gid://bc3:8080/Person/77", Some(77)),
-            ("gid://bc3:/Person/77", Some(77)),
-            ("gid://bc3:xx/Person/77", None),
-            ("gid://[::1]/Person/77", Some(77)),
-            // `net/url` refuses EVERY percent-escape in a host — measured, not assumed —
-            // so there is nothing to decode. Decoding first and validating after is the
-            // natural design and admits `b%63%33` as `bc3`, which Go refuses.
-            ("gid://b%63%33/Person/77", None),
-            ("gid://%20/Person/77", None),
-            // A control byte anywhere up to the fragment is refused; inside it is not.
-            // Written as the JSON escape the envelope actually carries, so the control
-            // byte reaches the parser rather than breaking the envelope around it.
-            (r"gid://bc3/Person/77?\u0001", None),
-            (r"gid://bc3/Person/77#\u0001", Some(77)),
-            // Userinfo is VALIDATED, not merely discarded: its own allowlist is wider than
-            // the host's, but a space, a non-ASCII byte or a malformed escape is a parse
-            // error rather than something to drop.
-            ("gid://user:pw@bc3/Person/77", Some(77)),
-            ("gid://%40@bc3/Person/77", Some(77)),
-            ("gid://u s@bc3/Person/77", None),
-            ("gid://u%s@bc3/Person/77", None),
-            // A bracketed literal must really be one: matched from the FRONT, parsed as an
-            // address, and refused if it is IPv4. A `[` anywhere else is not a literal.
-            ("gid://[::1]/Person/77", Some(77)),
-            ("gid://[::1]:80/Person/77", Some(77)),
-            ("gid://[::1%25eth0]/Person/77", Some(77)),
-            ("gid://[bad]/Person/77", None),
-            ("gid://[192.0.2.1]/Person/77", None),
-            ("gid://[::1/Person/77", None),
-            ("gid://bc3[/Person/77", None),
-            ("gid://a:1]/Person/77", None),
-            // A bracketed authority that PARSES but is not an address is its own shape,
-            // distinct from a malformed one: three ports have now accepted some form of
-            // bracketed text as an IPv6 host without parsing it.
-            ("gid://[not-an-ip]/Person/1", None),
-            ("gid://[abc]/Person/1", None),
-            ("gid://[1]/Person/1", None),
-            ("gid://[::1::2]/Person/1", None),
-            ("gid://[]/Person/1", None),
-            ("gid://[::ffff:192.0.2.1]/Person/1", Some(1)),
-            ("gid://[fe80::1%25eth0]:8080/Person/1", Some(1)),
-            ("gid://[::1]:/Person/1", Some(1)),
-            // A ZONE does not excuse the literal from being an address. These are the rows
-            // that separate "validated unconditionally" from "skipped when a zone is
-            // present"; `[::1%25eth0]` above cannot, because it parses either way. Every
-            // answer here is Go's, measured, not predicted — the accepting direction was a
-            // real defect on this line and the probe that was supposed to have caught it
-            // could only ever agree with the premise it came from.
-            ("gid://[not-an-address%25zone]/Person/77", None),
-            ("gid://[abc%25z]/Person/77", None),
-            ("gid://[1%25z]/Person/77", None),
-            ("gid://[bad%25x]/Person/77", None),
-            ("gid://[%25]/Person/77", None),
-            // An EMPTY zone is refused: `ParseAddr` will not take one.
-            ("gid://[::1%25]/Person/77", None),
-            // IPv4 in brackets stays refused with a zone on it, and the IPv4-mapped IPv6
-            // form stays accepted — the check is on what the address IS, not how it reads.
-            ("gid://[192.0.2.1%25eth0]/Person/77", None),
-            ("gid://[::ffff:192.0.2.1%25eth0]/Person/77", Some(77)),
-            // The zone's escape rule is its OWN, and admits escapes a host refuses: `%41`
-            // and `%20` both have a first hex digit below 8. Verifying that rule at the
-            // host position says nothing about this one.
-            ("gid://[::1%25%41]/Person/77", Some(77)),
-            ("gid://[::1%25a%20b]/Person/77", Some(77)),
-            // But not every escape: a zone still refuses one whose byte it could not have
-            // written directly.
-            ("gid://[::1%25a%2fb]/Person/77", None),
-            ("gid://[::1%25%01]/Person/77", None),
-            // IPvFuture is a real RFC 3986 production and `netip.ParseAddr` does not
-            // implement it, so Go refuses it. A port that checks whether the brackets LOOK
-            // like a literal instead of parsing one accepts these.
-            ("gid://[v7.x]/Person/77", None),
-            ("gid://[V7.x]/Person/77", None),
-            ("gid://[vz.x]/Person/77", None),
-            ("gid://[v1.fe80::a+en1]/Person/77", None),
-            // An empty host stays empty after userinfo is stripped — but `u.Host` carries
-            // the port, so an empty NAME with a port is not an empty host.
-            ("gid://@/Person/1", None),
-            ("gid://:@/Person/1", None),
-            ("gid://%20@/Person/1", None),
-            ("gid:///Person/1", None),
-            ("gid://@:/Person/1", Some(1)),
-            ("gid://@:8080/Person/1", Some(1)),
-            // The host is what `u.Host` holds, which INCLUDES the port — so an empty name
-            // with a port is not an empty host.
-            ("gid://:8080/Person/77", Some(77)),
-            ("gid://:/Person/77", Some(77)),
-            // An escape is refused only when its first hex digit is below 8 and the triple
-            // is not `%25`. A blanket refusal loses every one of these.
-            ("gid://%25/Person/77", Some(77)),
-            ("gid://bc%80/Person/77", Some(77)),
-            ("gid://%C3%A9/Person/77", Some(77)),
-            ("gid://%bc3/Person/77", Some(77)),
-            ("gid://b%63%33/Person/77", None),
-            ("gid://bc3%/Person/77", None),
-            // The FRAGMENT is discarded, but a URL parser unescapes it first, so a
-            // malformed escape there fails the whole parse — and nothing downstream can
-            // notice, which is why this went unnoticed in the accepting direction. The
-            // QUERY, cut in the same breath, is never unescaped and so is never checked.
-            // Three positions, three rules.
-            ("gid://bc3/Person/77#%zz", None),
-            ("gid://bc3/Person/77#%", None),
-            ("gid://bc3/Person/77#%2", None),
-            ("gid://bc3/Person/77#x%0gy", None),
-            ("gid://bc3/Person/77?ok#%zz", None),
-            ("gid://bc3/Person/77#a#%zz", None),
-            ("gid://bc3/Person/77#%41", Some(77)),
-            ("gid://bc3/Person/77#%ff", Some(77)),
-            ("gid://bc3/Person/77#ok", Some(77)),
-            ("gid://bc3/Person/77#", Some(77)),
-            ("gid://bc3/Person/77?%zz", Some(77)),
-            ("gid://bc3/Person/77?x=%zz", Some(77)),
-            ("gid://bc3/Person/77?%", Some(77)),
-            // The host's character set is an allowlist, and these four are on opposite
-            // sides of it from what a denylist would guess.
-            ("gid://b<3/Person/77", Some(77)),
-            ("gid://b;3/Person/77", Some(77)),
-            ("gid://b^3/Person/77", None),
-            ("gid://b|3/Person/77", None),
-            ("gid://bc3/Person/77", Some(77)),
-            // The path is percent-decoded before it is read.
-            ("gid://bc3/Person/%37%37", Some(77)),
-            ("gid://bc3/Pe%72son/77", Some(77)),
-            // The scheme is ASCII case-insensitive.
-            ("GID://bc3/Person/77", Some(77)),
-            ("Gid://bc3/Person/77", Some(77)),
-            // A space is illegal in a host, so this is not a URL at all. Splitting on the
-            // first `/` would read `" "` as the host and name a person Go names none for.
-            ("gid:// /Person/77", None),
-            ("gid://b c3/Person/77", None),
-            ("gid:///Person/77", None),
-            // A truncated or non-hex escape is not a path.
-            ("gid://bc3/Person/%3", None),
-            ("gid://bc3/Person/%zz", None),
-            ("gid://bc3/Person/77/extra", None),
-            ("gid://bc3/Person/12x", None),
-        ];
-        for (gid, expected) in go {
+        for (gid, expected) in NET_URL_ANSWERS {
             let sgid = json_sgid(&format!(r#"{{"gid":"{gid}","purpose":"attachable"}}"#));
             assert_eq!(person_id_from_sgid(&sgid), *expected, "{gid}");
         }
@@ -1639,14 +1659,6 @@ mod tests {
         assert!(mentioned_person_ids(&near).is_empty());
     }
 
-    /// Names are compared by Unicode simple case folding, as the reference compares them,
-    /// and exactly two non-ASCII runes reach an ASCII letter: U+017F with `s` and U+212A
-    /// with `k`. So `ſgid` IS the sgid attribute. Measured against the Go function, which
-    /// names Annie for the first of these; an ASCII-only fold named nobody.
-    ///
-    /// The scheme is the counter-case in the same file: a URL parser's scheme grammar
-    /// admits only ASCII, so `gıd` is not `gid` however it folds. Getting one rule right is
-    /// not getting the other right, and the two live a few hundred lines apart.
     /// `equal_fold` is exercised directly because half of it cannot be reached through the
     /// public API: none of the four names this crate compares — `bc-attachment`, `sgid`,
     /// `<p`, `<div` — contains a `k`, so U+212A can never be consumed by any caller, and
@@ -1689,6 +1701,14 @@ mod tests {
         assert!(!equal_fold(&[0xe2, 0x84], b"k"));
     }
 
+    /// Names are compared by Unicode simple case folding, as the reference compares them,
+    /// and exactly two non-ASCII runes reach an ASCII letter: U+017F with `s` and U+212A
+    /// with `k`. So `ſgid` IS the sgid attribute. Measured against the Go function, which
+    /// names Annie for the first of these; an ASCII-only fold named nobody.
+    ///
+    /// The scheme is the counter-case in the same file: a URL parser's scheme grammar
+    /// admits only ASCII, so `gıd` is not `gid` however it folds. Getting one rule right is
+    /// not getting the other right, and the two live a few hundred lines apart.
     #[test]
     fn a_name_folds_the_way_the_reference_folds_it_and_the_scheme_does_not() {
         let long_s = format!("<bc-attachment \u{17f}gid=\"{ANNIE_SGID}\"></bc-attachment>");
@@ -1714,6 +1734,7 @@ mod tests {
             "\u{17f}gi\u{17f}",
             "\u{212a}gid",
             "sgi\u{212a}",
+            "\u{17f}\u{17f}gid",
         ] {
             let markup = format!("<bc-attachment {miss}=\"{ANNIE_SGID}\"></bc-attachment>");
             assert!(
@@ -1721,8 +1742,13 @@ mod tests {
                 "{miss} is not the sgid attribute"
             );
         }
-        // Length, not folding, is what refuses these — both runes here DO fold onto `s`.
-        for miss in ["\u{17f}\u{17f}gid", "sgi", "sgidd"] {
+        // Length, not folding, is what refuses these two. `ſſgid` is NOT one of them and was
+        // listed here in error: it never reaches the length check. It dies at the second
+        // rune, where the needle wants `g`, and `g` has no non-ASCII orbit member — so the
+        // guard above refuses it, four bytes short of the end. That both its runes fold onto
+        // `s` is true and irrelevant: only the one at position 0 sits where a fold is
+        // admitted. It now sits with the rows that test the guard.
+        for miss in ["sgi", "sgidd"] {
             let markup = format!("<bc-attachment {miss}=\"{ANNIE_SGID}\"></bc-attachment>");
             assert!(
                 mentioned_person_ids(&markup).is_empty(),
@@ -1853,13 +1879,20 @@ mod tests {
     /// A digit is an ASCII digit at every position that reads one. Another port shipped a
     /// fullwidth digit reaching a numeric parse and suppressing a real mention, so this
     /// sweeps the positions rather than the one predicate: the person id, both spellings of
-    /// a numeric character reference, the port, and a bracketed literal.
+    /// a numeric character reference, and the port. (An earlier version of this sentence
+    /// also claimed a bracketed literal and shapes "numeric to Unicode without being digits
+    /// at all"; neither had a row, and all four tables are pure `Nd`. Bracketed literals are
+    /// pinned against `net/url` in `the_gid_parse_answers_what_net_url_answers`.)
     ///
     /// Recorded honestly, because the measurement is weaker than it looks: 59 cases against
     /// the Go function diverge nowhere, but making either predicate Unicode-aware ALSO
     /// diverges nowhere. What actually refuses these is the ASCII-only `parse` and
-    /// `to_digit` downstream of both. The predicates are belt and braces, and this test
-    /// holds the composite behaviour so that removing either layer is still caught.
+    /// `to_digit` downstream of both. So this holds the COMPOSITE behaviour and nothing
+    /// weaker: removing either layer ALONE is not caught here, and the earlier claim that it
+    /// was is false. The `raw_id` predicate is load-bearing on exactly one input that this
+    /// sweep cannot reach — `+77`, which `i64::from_str` accepts and the reference's
+    /// explicit digit loop refuses — and that has its own row in
+    /// `the_gid_parse_answers_what_net_url_answers`.
     #[test]
     fn a_digit_is_an_ascii_digit_everywhere_a_digit_is_read() {
         // One representative from each of several scripts, plus the shapes that are
