@@ -283,6 +283,15 @@ module Basecamp
       gid = global_id_from_sgid(sgid)
       return nil if gid.nil?
 
+      # As BYTES, like every other scan in this file — and here for a second
+      # reason as well. The two envelope spellings hand the gid over in
+      # different encodings: the Marshal reader returns bytes, JSON.parse
+      # returns text. Unescaping a percent-escape that names a non-ASCII byte
+      # then produced a string that String#split refused, so the SAME gid
+      # resolved from one envelope and raised ArgumentError out of a public
+      # method from the other.
+      gid = gid.b
+
       uri = begin
         URI.parse(gid)
       rescue URI::Error
@@ -304,18 +313,16 @@ module Basecamp
       return nil if host_and_port.b.match?(HOST_ASCII_ESCAPE)
 
       # A GlobalID path is exactly "/<Model>/<id>": no more, no less. The path is
-      # unescaped first, as Go's url.Parse hands it over unescaped — so the two
-      # agree on a percent-encoded gid rather than one accepting what the other
-      # refuses. (One shape still differs: Ruby's URI parser refuses a non-ASCII
-      # authority outright where Go tolerates it. BC3 does not mint such a gid,
-      # and a mention is refused rather than misattributed, so it fails closed.)
+      # unescaped first, as the reference's parser hands it over unescaped, so
+      # the two agree on a percent-encoded gid rather than one accepting what
+      # the other refuses.
       path = begin
-        URI::RFC2396_PARSER.unescape(uri.path.to_s)
+        URI::RFC2396_PARSER.unescape(uri.path.to_s).b
       rescue ArgumentError
         return nil
       end
       model, raw_id = path.delete_prefix("/").split("/", 2)
-      return nil unless model == "Person" && raw_id.to_s.match?(/\A\d+\z/)
+      return nil unless model == "Person" && raw_id.to_s.match?(/\A\d+\z/n)
 
       # Bounded like Go's ParseInt(rawID, 10, 64): an id past that range is not
       # a Basecamp person id, and reporting a bignum as a mentioned person would

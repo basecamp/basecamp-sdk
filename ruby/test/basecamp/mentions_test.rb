@@ -510,6 +510,31 @@ class MentionsTest < Minitest::Test
     assert_nil Basecamp::Mentions.person_id_from_sgid(marshal_sgid("gid://bc3/Person/99999999999999999999999"))
   end
 
+  def test_both_envelope_spellings_read_the_same_gid
+    # The Marshal reader hands the gid over as bytes and JSON.parse hands it
+    # over as text. Unescaping a percent-escape that names a non-ASCII byte then
+    # produced a string String#split refused, so the SAME gid resolved from one
+    # envelope and raised ArgumentError out of a public method from the other.
+    [ "gid://bc3/Person/12", "gid://bc3/Person/%FF", "gid://bc3/Pers%FFon/12",
+      "gid://bc3/Pe%72son/12", "gid://bc3/Person/%C3%A9" ].each do |gid|
+      from_marshal = Basecamp::Mentions.person_id_from_sgid(marshal_sgid(gid))
+      from_json = Basecamp::Mentions.person_id_from_sgid(json_sgid(gid))
+
+      assert_equal from_marshal.inspect, from_json.inspect,
+        "#{gid} should read the same from either envelope"
+    end
+  end
+
+  def test_a_percent_escape_naming_a_non_ascii_byte_names_nobody
+    # And it does so by answering, not by raising — reached from the walker,
+    # which is how rich text gets here.
+    sgid = json_sgid("gid://bc3/Person/%FF")
+
+    assert_empty Basecamp::Mentions.mentioned_person_ids(
+      %(<bc-attachment sgid="#{sgid}"></bc-attachment>)
+    )
+  end
+
   def test_an_escape_naming_an_ascii_byte_in_the_authority_is_refused
     # Measured against the reference by planting every printable byte mid-host:
     # it refuses an escape that names an ASCII byte, excepting "%25" which names
