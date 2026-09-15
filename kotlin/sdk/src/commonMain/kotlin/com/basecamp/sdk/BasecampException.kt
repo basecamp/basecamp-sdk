@@ -355,12 +355,16 @@ sealed class BasecampException(
      * than smoothed. Discovery stopping at its own bound is not a server fault,
      * not an absence — `not_found` would say the line is not there, which is
      * exactly what this verdict refuses to say — and not multiple matches.
-     * `usage` is chosen because no HTTP RESPONSE maps to it: every code an
-     * answer from BC3 can carry is taken, so `usage` cannot be confused with a
-     * constituent read's own answer, which is the property that matters here.
-     * (SDK code does raise [Usage] elsewhere, for a bad argument or a URL it
-     * refuses; the claim is about what a response can become, not about where
-     * the code appears.) [reason] carries the precision either way.
+     * `usage` is chosen because no HTTP RESPONSE maps to it. `fromStatus` can
+     * produce `auth_required`, `forbidden`, `not_found`, `rate_limit`,
+     * `validation`, `limit_exceeded` and `api_error`, and never this one — so
+     * `usage` cannot be confused with a constituent read's own answer, which is
+     * the property that matters here. (`network` and `ambiguous` are equally
+     * unreachable from a response; `usage` is the one of those three that also
+     * describes a call the SDK declined to complete. And SDK code does raise
+     * [Usage] elsewhere, for a bad argument or a URL it refuses — the claim is
+     * about what a response can become, not about where the code appears.)
+     * [reason] carries the precision either way.
      */
     class RecordingSummaryFailure internal constructor(
         /**

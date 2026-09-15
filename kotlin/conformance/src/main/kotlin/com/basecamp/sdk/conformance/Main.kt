@@ -30,13 +30,13 @@ private val CANONICAL_ERROR_TYPES = mapOf(
     "api_error" to BasecampException.CODE_API,
     "usage" to BasecampException.CODE_USAGE,
     "network" to BasecampException.CODE_NETWORK,
-    // All ten of SPEC §6's codes, counted against the table rather than against
-    // what the fixtures happen to name — which today is four values in total,
-    // `forbidden` and `network` through `errorType` and the rest through
-    // `errorCode`. A set short of the table silently FORBIDS a real code rather
-    // than catching a typo'd one: `limit_exceeded` is already asserted by
-    // `uploads_write.json`, and spelling that same case as `errorType` would
-    // have failed as "unknown" while the map held eight.
+    // All ten of SPEC §6's codes, counted against that table rather than against
+    // what the fixtures happen to name: `errorType` names only `forbidden` and
+    // `network` from this vocabulary today, and a map sized to THAT would be
+    // worse still. A set short of the table silently FORBIDS a real code rather
+    // than catching a typo'd one — `limit_exceeded` is already asserted by
+    // `uploads_write.json` through `errorCode`, and spelling that same case as
+    // `errorType` would have failed as "unknown" while the map held eight.
     "ambiguous" to BasecampException.CODE_AMBIGUOUS,
     "limit_exceeded" to BasecampException.CODE_LIMIT_EXCEEDED,
 )
