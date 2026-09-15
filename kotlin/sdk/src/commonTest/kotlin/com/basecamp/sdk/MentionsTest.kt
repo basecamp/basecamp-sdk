@@ -340,6 +340,42 @@ class MentionsTest {
             "gid://bc%413/Person/7" to null,
             "gid://bc%253/Person/7" to 7L,
 
+            // A zone id may carry a raw `[`? No — a `[` past the first index is
+            // an invalid IP-literal wherever it sits, and the address parse
+            // never sees this one. Escaped, it is fine.
+            "gid://[::1%25a[b]/Person/7" to null,
+            "gid://[::1%25a%5Bb]/Person/7" to 7L,
+            // A zone may not ESCAPE a non-ASCII byte even though it may carry
+            // one raw, and may not escape a byte a host could not carry at all.
+            "gid://[::1%25%C3%A9]/Person/7" to null,
+            "gid://[::1%25\u00E9]/Person/7" to 7L,
+            "gid://[::1%25%5E]/Person/7" to null,
+            "gid://[::1%25%7E]/Person/7" to 7L,
+            "gid://[::1%25%20]/Person/7" to 7L,
+            // A `%` in the ADDRESS half, with a zone marker further along, is
+            // still judged by the host rules — the escape names an ASCII byte
+            // and the address then fails to parse.
+            "gid://[fe80::1%41%25eth0]/Person/9" to null,
+            "gid://[fe80::1%ab%25eth0]/Person/9" to null,
+            "gid://[fe80::1%25%25eth0]/Person/9" to 9L,
+
+            // The fragment is split off before anything else and judged by its
+            // own rules: its escapes must be well formed, but a raw control
+            // character is fine there and a parse error anywhere else. The query
+            // is the mirror image — kept raw, so a malformed escape is no error.
+            "gid://bc3/Person/7#frag" to 7L,
+            "gid://bc3/Person/7#" to 7L,
+            "gid://bc3/Person/7#a b" to 7L,
+            "gid://bc3/Person/7#a%41b" to 7L,
+            "gid://bc3/Person/7#\n" to 7L,
+            "gid://bc3/Person/7#%zz" to null,
+            "gid://bc3/Person/7#a%2" to null,
+            "gid://bc3/Person/7#\n#%zz" to null,
+            "gid://bc3/Person/7?q=1" to 7L,
+            "gid://bc3/Person/7?%zz" to 7L,
+            "gid://bc3/Person/7?\n" to null,
+            "gid://bc3\n/Person/7" to null,
+
             // The reference's "is there a host at all" test runs on the host
             // WITH its port, so a bare port is a host there. Stripping the port
             // first and demanding a non-empty remainder refuses these — the
@@ -350,14 +386,28 @@ class MentionsTest {
         )
         // Counted so a row lost to an editing slip shows up as a failure rather
         // than as a smaller sweep that still passes.
-        assertEquals(67, rows.size, "the swept rows")
+        assertEquals(89, rows.size, "the swept rows")
         for ((gid, expected) in rows) {
             assertEquals(expected, personIdFromSgid(jsonSgidFor(gid)), gid)
         }
     }
 
     private fun jsonSgidFor(gid: String): String {
-        val json = "{\"_rails\":{\"data\":\"$gid\",\"pur\":\"attachable\"}}"
+        // The envelope is JSON, so a control character in the gid has to be
+        // escaped to reach the decoder rather than breaking the envelope. A
+        // helper that could not carry one would have quietly excluded every row
+        // that needs one.
+        val escaped = buildString {
+            for (c in gid) {
+                when {
+                    c == '\\' -> append("\\\\")
+                    c == '"' -> append("\\\"")
+                    c.code < 0x20 || c.code == 0x7F -> append("\\u" + c.code.toString(16).padStart(4, '0'))
+                    else -> append(c)
+                }
+            }
+        }
+        val json = "{\"_rails\":{\"data\":\"$escaped\",\"pur\":\"attachable\"}}"
         val alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
         val bytes = json.encodeToByteArray()
         val out = StringBuilder()
