@@ -209,6 +209,39 @@ describe("recordings.summarize", () => {
       expect(rich.mentioned_person_ids).toEqual([VICTOR]);
     });
 
+    it("defaults a required scalar the read omitted to Go's zero value", async () => {
+      // Three mutants of these defaults survived the whole suite — including
+      // reverting updated_at to "", which is what it was before it was found to
+      // be wrong. A default nothing asserts is a silent-regression candidate,
+      // and this file has already lost one test that way.
+      server.use(
+        http.get(`${BASE_URL}/comments/1`, () =>
+          HttpResponse.json({
+            id: 1,
+            content: "hi",
+            bucket: { id: BUCKET, name: "B", type: "Project" },
+            creator: { id: VICTOR, name: "Victor Cooper" },
+          }),
+        ),
+      );
+
+      const summary = await client.recordings.summarize({
+        bucketId: BUCKET,
+        recordingId: 1,
+        recordingType: "Comment",
+      });
+
+      expect(summary.status).toBe("");
+      expect(summary.type).toBe("");
+      expect(summary.app_url).toBe("");
+      expect(summary.title).toBe("");
+      // Not "": the Go field is a time.Time, whose zero marshals as the zero
+      // instant.
+      expect(summary.updated_at).toBe("0001-01-01T00:00:00Z");
+      // And the key is present rather than dropped, which is the point.
+      expect(Object.keys(summary)).toEqual(expect.arrayContaining(["updated_at", "status", "type", "app_url"]));
+    });
+
     it("carries the assignees of an assignable type and omits them elsewhere", async () => {
       server.use(
         http.get(`${BASE_URL}/todos/1`, () =>
@@ -511,6 +544,27 @@ describe("recordings.summarize", () => {
       );
     });
 
+    it("passes a listing failure that is not an overflow through as that read's error", async () => {
+      // Only a listing OVER ITS CAP is incomplete. A 403 is not a settled
+      // verdict about where the line is, and turning it into one would tell a
+      // consumer that discovery finished when the source never answered. One
+      // widened catch is all it takes.
+      server.use(
+        http.get(`${BASE_URL}/projects/${BUCKET}`, () => notFound()),
+        http.get(`${BASE_URL}/chats.json`, () =>
+          HttpResponse.json({ error: "Access denied" }, { status: 403 }),
+        ),
+      );
+
+      const err = await client.recordings
+        .summarize({ bucketId: BUCKET, recordingId: 9, eventType: "chat.line.created" })
+        .catch((e: unknown) => e);
+
+      expect((err as BasecampError).code).toBe("forbidden");
+      expect(err).not.toBeInstanceOf(CampfireDiscoveryIncompleteError);
+      expect(err).not.toBeInstanceOf(UnresolvedRecordingError);
+    });
+
     it("reports a listing past its cap as incomplete, and does not cache it", async () => {
       const paths = trackRequests();
       const overflowing = Array.from({ length: MAX_CAMPFIRE_LISTING + 1 }, (_, i) => campfire(1000 + i, OTHER_BUCKET));
@@ -749,6 +803,55 @@ describe("recordings.summarize", () => {
       expect(refreshed.refreshed).toBe(true);
       expect(paths).toContain(`/12345/projects/${BUCKET}`);
       expect(paths).toContain("/12345/chats.json");
+    });
+
+    it("gives the dock's refresh its say before the listing is fetched", async () => {
+      // The ordering the reference argues for at length: a listing that is down
+      // must never stand between a project's line and the one project read that
+      // finds it. Here the refreshed dock holds the Campfire and the listing
+      // would fail — if the fetch came first, the call would surface a 500.
+      const clock = { ms: 0 };
+      const recordings = serviceWithClock(clock);
+      let dockIds: number[] = [];
+      server.use(
+        http.get(`${BASE_URL}/projects/${BUCKET}`, () =>
+          HttpResponse.json({
+            id: BUCKET,
+            dock: dockIds.map((id) => ({
+              id,
+              name: "chat",
+              title: "C",
+              enabled: true,
+              url: "",
+              app_url: "",
+            })),
+          }),
+        ),
+        http.get(`${BASE_URL}/chats.json`, () => HttpResponse.json({ error: "boom" }, { status: 500 })),
+        http.get(`${BASE_URL}/chats/77/lines/9`, () =>
+          HttpResponse.json(recording(9, "Chat::Lines::Text", { content: "hi" })),
+        ),
+      );
+
+      // First call: empty dock, listing down, so the line is not found and the
+      // listing's failure surfaces.
+      const first = await recordings
+        .summarize({ bucketId: BUCKET, recordingId: 9, eventType: "chat.line.created" })
+        .catch((e: unknown) => e);
+      expect((first as BasecampError).httpStatus).toBe(500);
+
+      // The Campfire appears, and the clock passes the refresh floor.
+      dockIds = [77];
+      clock.ms += 60_000;
+      const paths = trackRequests();
+      const summary = await recordings.summarize({
+        bucketId: BUCKET,
+        recordingId: 9,
+        eventType: "chat.line.created",
+      });
+
+      expect(summary.campfire_id).toBe(77);
+      expect(paths).not.toContain("/12345/chats.json");
     });
 
     it("names the candidates the refreshed sources no longer list", async () => {

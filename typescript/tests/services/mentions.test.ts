@@ -13,7 +13,7 @@ import {
   mentionMarkup,
   withMentions,
 } from "../../src/index.js";
-import { namedEntityNames } from "../../src/services/mentions.js";
+import { namedEntityNames, unescapeEntities } from "../../src/services/mentions.js";
 import { BasecampError } from "../../src/errors.js";
 import type { Person } from "../../src/generated/services/people.js";
 import { jsonSGID, legacySGID, personSGID, railsSGID } from "../helpers/sgid.js";
@@ -287,6 +287,71 @@ describe("mentionedPersonIds", () => {
     const sgid = personSGID(VICTOR);
     const escaped = sgid.replace(/-/g, "&#45;");
     expect(mentionedPersonIds(`<bc-attachment sgid="${escaped}"></bc-attachment>`)).toEqual([VICTOR]);
+  });
+
+  it("decodes each character reference to the string Go decodes it to", () => {
+    // Pins the DECODED STRING, not merely the verdict. A row asserting "names
+    // nobody" is satisfied by any failure that also names nobody — including a
+    // decoder that does nothing at all — so the rows guarding a specific
+    // expansion have to compare the expansion.
+    const expansions: [string, string][] = [
+      ["&amp;", "&"],
+      ["&amp", "&"],
+      ["&AMP;", "&"],
+      ["&nbsp;", "\u00a0"],
+      ["&nbsp", "\u00a0"],
+      ["&nbspBAh7", "\u00a0BAh7"],
+      ["&ensp;", "\u2002"],
+      ["&ThickSpace;", "\u205f\u200a"],
+      ["&fjlig;", "fj"],
+      ["&sol;", "/"],
+      ["&plus;", "+"],
+      ["&equals;", "="],
+      ["&lowbar;", "_"],
+      ["&Tab;", "\t"],
+      ["&NewLine;", "\n"],
+      // Not in the carried subset, and left exactly as written.
+      ["&eacute;", "&eacute;"],
+      ["&hyphen;", "&hyphen;"],
+      ["&constructor;", "&constructor;"],
+      ["&solb;", "&solb;"],
+      // Numeric boundaries.
+      ["&#65;", "A"],
+      ["&#65", "A"],
+      ["&#6;", "\u0006"],
+      ["&#6", "&#6"],
+      ["&#6B", "&#6B"],
+      ["&#66B", "BB"],
+      ["&#x4", "\u0004"],
+      ["&#x4B", "K"],
+      ["&#x;", "\ufffd"],
+      ["&#;", "&#;"],
+      ["&#", "&#"],
+      ["&#0;", "\ufffd"],
+      ["&#128;", "\u20ac"],
+      ["&#x9F;", "\u0178"],
+      ["&#00000000065;", "A"],
+      ["&#4294967361;", "A"],
+      ["&#2147483648;", "\ufffd"],
+      ["&#xD800;", "\ufffd"],
+      ["&", "&"],
+      ["&&&&", "&&&&"],
+      ["plain", "plain"],
+    ];
+    for (const [input, expected] of expansions) {
+      expect(unescapeEntities(input), `unescaping ${JSON.stringify(input)}`).toBe(expected);
+    }
+
+    // The one place the text deliberately differs from Go's, and it is the
+    // price of carrying 24 names instead of 2231. Go matches the longest name
+    // in its full table, so "&ltcc;" is U+2AA6; here the longest match is the
+    // semicolon-less "lt", giving "<cc;". Only the nine semicolon-less legacy
+    // names can shadow this way, every one of them expands to "&", "<", ">",
+    // '"' or NBSP, and none of those can appear in a decodable payload — so the
+    // strings differ and the verdict cannot. Asserted rather than omitted,
+    // because a silent difference is how this stops being true.
+    expect(unescapeEntities("&ltcc;")).toBe("<cc;");
+    expect(mentionedPersonIds(`<bc-attachment sgid="&ltcc;${personSGID(VICTOR)}"></bc-attachment>`)).toEqual([]);
   });
 
   it("decodes character references the way Go's scanner does", () => {

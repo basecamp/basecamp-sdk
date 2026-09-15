@@ -885,12 +885,22 @@ class CampfireListingOverflow extends Error {
  * Getting the first two wrong turned "skip this dock entry" into a failure of
  * the entire summarize; getting the last wrong let a fractional id through to
  * a request for `/chats/1.5/lines/{id}`.
+ *
+ * TWO GAPS, both stated rather than papered over. Go refuses the LITERAL — its
+ * decoder runs `strconv.ParseInt` over the raw token — so `1.0`, `1e2` and
+ * `7.7e1` are decode errors there. By the time this runs, `JSON.parse` has
+ * turned every one of those into the number 77, and the literal is gone: an
+ * exponent or trailing-zero spelling of a whole number is accepted here and
+ * refused there, and no check at this layer can tell. And the upper bound is
+ * 2^53, not int64, which is the same limit SPEC §19 waives for this SDK: an id
+ * past it cannot be held without rounding it into a different id, so refusing
+ * it is the honest answer even though Go decodes it.
  */
 function numericId(value: unknown, what: string): number {
   if (value === undefined || value === null) return 0;
-  if (typeof value !== "number" || !Number.isInteger(value) || !Number.isSafeInteger(value)) {
+  if (typeof value !== "number" || !Number.isSafeInteger(value)) {
     throw Errors.apiError(
-      truncateErrorMessage(`${what} has an id that is not a whole number (${describeIdValue(value)})`),
+      truncateErrorMessage(`${what} has an id that is not a usable whole number (${describeIdValue(value)})`),
       undefined,
       {
         retryable: false,
@@ -903,7 +913,11 @@ function numericId(value: unknown, what: string): number {
 
 function describeIdValue(value: unknown): string {
   if (typeof value === "string") return JSON.stringify(value);
-  if (typeof value === "number") return String(value);
+  // A number past 2^53 has already been rounded by JSON.parse, so report that
+  // it was out of range rather than quoting a value the response never carried.
+  if (typeof value === "number") {
+    return Number.isSafeInteger(value) ? String(value) : "out of safe integer range";
+  }
   return typeof value;
 }
 
@@ -1419,7 +1433,10 @@ function projectRecording(
     id: recording.id,
     status: recording.status ?? "",
     type: recording.type ?? "",
-    title,
+    // The types that read `title` straight off the recording pass it through
+    // undefined when the body omits it; the ones with a fallback already
+    // resolve to "" through firstNonEmpty.
+    title: title ?? "",
     app_url: recording.app_url ?? "",
     mentioned_person_ids: mentionedPersonIds(body),
     content: body,
