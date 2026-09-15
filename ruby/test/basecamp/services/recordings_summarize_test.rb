@@ -214,6 +214,48 @@ class RecordingsSummarizeTest < Minitest::Test
     end
   end
 
+  def test_a_routing_key_is_trimmed_as_the_reference_trims_it
+    # String#strip is NOT strings.TrimSpace, and the difference decides routing.
+    # strip removes a leading or trailing NUL where TrimSpace does not, so
+    # "Comment\0" SELECTED A REAL TYPE here and was unknown_recording_type
+    # there — a malformed key reaching a live read, in the accepting direction.
+    nul = 0.chr
+
+    [ "Comment#{nul}", "#{nul}Comment", "Comment#{nul}#{nul}" ].each do |type|
+      error = assert_raises(Basecamp::RecordingRoutingError, "a type of #{type.inspect}") do
+        summarize(recording_type: type)
+      end
+
+      assert_equal "unknown_recording_type", error.kind
+    end
+
+    # A LEADING nul pollutes the subject, which is compared, so it is refused.
+    error = assert_raises(Basecamp::RecordingRoutingError) { summarize(event_type: "#{nul}comment.created") }
+
+    assert_equal "unknown_recording_type", error.kind
+    assert_not_requested(:any, %r{\A#{Regexp.escape(BASE_URL)}})
+
+    # A TRAILING one does not, and this row is here because the review that
+    # found the defect claimed it did. The event path splits on the last "." and
+    # compares only the subject, so a nul in the ACTION is never looked at —
+    # measured, the reference routes this too. The nul matters exactly where a
+    # trimmed value is compared against a table, which is the recording-type
+    # path above and not this one.
+    stub_get("/12345/comments/1", response_body: recording)
+
+    assert_equal "Comment", summarize(event_type: "comment.created#{nul}")["type"]
+    WebMock.reset!
+
+    # And the spaces the reference DOES trim are still trimmed — ASCII, and the
+    # multi-byte ones a byte-wise strip would have left in place. Without these
+    # rows the rule above is satisfied by trimming nothing at all.
+    stub_get("/12345/comments/1", response_body: recording)
+
+    [ " Comment ", "\tComment\n", "\u00A0Comment\u00A0", "\u2003Comment\u3000", "\u0085Comment" ].each do |type|
+      assert_equal "Comment", summarize(recording_type: type)["type"], "a type of #{type.inspect}"
+    end
+  end
+
   def test_the_documented_sets_match_the_routing_table
     types = @account.recordings.summarizable_recording_types
 
