@@ -406,6 +406,12 @@ def mention_markup(person: Mapping[str, Any]) -> str:
     """
     if person is None:
         raise UsageError("cannot mention a missing person")
+    # A body that is not an object reaches here as a list, a string or a number.
+    # Go's typed decode refuses those before `MentionMarkup` ever sees one, and
+    # it must stay a refusal rather than an `AttributeError` off `person.get`:
+    # this is the write path, so the only safe outcome is that nothing posts.
+    if not isinstance(person, Mapping):
+        raise UsageError(f"cannot mention a person read as {type(person).__name__}")
     # Go's order, so the diagnosis matches: absent sgid, then a malformed one,
     # then one that names somebody else. Go reads a missing id as 0 and lets
     # the last check report it; Python's dict can omit the key entirely, so the

@@ -19,6 +19,7 @@ import respx
 
 from basecamp import AsyncClient, Client
 from basecamp.errors import (
+    ApiError,
     BucketMismatchError,
     CampfireDiscoveryIncompleteError,
     ForbiddenError,
@@ -258,6 +259,38 @@ class TestProjection:
             return_value=httpx.Response(200, json={"id": 1, "type": "Comment", "content": "", "bucket": bad})
         )
         with pytest.raises(BucketMismatchError):
+            _account().recordings.summarize(bucket_id=BUCKET, recording_id=1, event_type="comment.created")
+
+    @respx.mock
+    def test_a_null_body_is_a_zero_recording_not_a_failed_read(self):
+        # `json.Unmarshal` of `null` into a struct is a NO-OP at any depth: no
+        # error, the zero value left in place. So Go projects a null body into
+        # a recording with every field empty and returns it. Refusing it here
+        # would reject a body the contract accepts -- the converse of the hole
+        # the body guard was added to close.
+        respx.get(f"{BASE}/comments/1").mock(
+            return_value=httpx.Response(
+                200, content=b"null", headers={"Content-Type": "application/json; charset=utf-8"}
+            )
+        )
+        summary = _account().recordings.summarize(bucket_id=BUCKET, recording_id=1, event_type="comment.created")
+        assert summary["id"] == 0
+        assert summary["type"] == ""
+        assert summary["bucket"] is None
+        assert summary["mentioned_person_ids"] == []
+
+    @respx.mock
+    @pytest.mark.parametrize(("body", "shown"), [(b"[]", "list"), (b'"oops"', "str"), (b"7", "int")])
+    def test_a_body_that_is_not_an_object_is_a_failed_read(self, body, shown):
+        # The other half of the same asymmetry: every non-object that is not
+        # `null` IS a decode error in Go and the read never returns. Projecting
+        # one would build a summary out of something that is not a recording,
+        # and `"oops".get` raised a bare AttributeError from outside the
+        # taxonomy.
+        respx.get(f"{BASE}/comments/1").mock(
+            return_value=httpx.Response(200, content=body, headers={"Content-Type": "application/json; charset=utf-8"})
+        )
+        with pytest.raises(ApiError, match=f"not an object: {shown}"):
             _account().recordings.summarize(bucket_id=BUCKET, recording_id=1, event_type="comment.created")
 
     @respx.mock

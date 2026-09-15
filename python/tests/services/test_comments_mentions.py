@@ -174,6 +174,26 @@ class TestExpandMentions:
         assert f"resolving mention for person {VICTOR_ID}" in raised.value.__notes__
 
     @respx.mock
+    @pytest.mark.parametrize("body", [b"null", b"[]", b'"oops"'])
+    def test_a_person_read_that_is_not_a_person_posts_nothing(self, body):
+        # The write path's only safe failure is a refusal. Go's typed decode
+        # refuses these before MentionMarkup sees one; here they arrive as
+        # None, a list or a str, and `person.get` would have raised an
+        # AttributeError from outside the taxonomy. What must never happen is
+        # the mention being dropped and the comment posted without it.
+        respx.get(url__regex=rf"{BASE}/people/\d+").mock(
+            return_value=httpx.Response(200, content=body, headers={"Content-Type": "application/json; charset=utf-8"})
+        )
+        posted = respx.post(url__regex=rf"{BASE}/buckets/\d+/recordings/\d+/comments\.json").mock(
+            return_value=httpx.Response(201, json={"id": 9})
+        )
+
+        with pytest.raises(UsageError):
+            _comments().create_with_mentions(recording_id=2, content="<div>hi</div>", mentions=[VICTOR_ID])
+
+        assert not posted.called, "a comment must never post with its mention silently dropped"
+
+    @respx.mock
     def test_re_annotating_names_the_person_that_just_failed(self):
         # Go builds a new wrap each time and always names the id it just failed
         # on. A re-raised instance must not keep naming the first.

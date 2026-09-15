@@ -44,6 +44,32 @@ def _async_cache(clock: Clock, *, ttl: float = 100.0, floor: float = 10.0, max_i
     return AsyncTTLCache(ttl=ttl, floor=floor, max_items=max_items, now=clock)
 
 
+def _parked(cache, key, count):
+    """An Event set once ``count`` waiters have parked on the in-flight load.
+
+    Starting a waiter thread and releasing the owner in the next statement is a
+    race, not a sequence: if the owner finishes first it removes the slot, and
+    the late waiter becomes a SECOND OWNER and runs the load again. The tests
+    that depend on one-load-per-key would then fail intermittently, which is
+    worse than failing. Waiters park on ``pending.done``, so wrapping that
+    Event's ``wait`` is the registration barrier -- it fires after the waiter
+    has attached and before it blocks.
+    """
+    pending = cache._inflight[key]
+    attached = threading.Event()
+    joined = []
+    real_wait = pending.done.wait
+
+    def counting_wait(timeout=None):
+        joined.append(1)
+        if len(joined) >= count:
+            attached.set()
+        return real_wait(timeout)
+
+    pending.done.wait = counting_wait
+    return attached
+
+
 class TestClock:
     def test_both_caches_default_to_a_monotonic_clock(self):
         # A wall clock stepping backwards makes an entry outlive its TTL,
@@ -203,8 +229,10 @@ class TestFailures:
         owner = threading.Thread(target=call)
         owner.start()
         assert started.wait(5)
+        parked = _parked(cache, "k", 1)
         waiter = threading.Thread(target=call)
         waiter.start()
+        assert parked.wait(5), "the waiter must be parked before the owner is released"
         release.set()
         owner.join(5)
         waiter.join(5)
@@ -425,8 +453,10 @@ class TestSingleFlight:
         threads = [threading.Thread(target=call) for _ in range(3)]
         threads[0].start()
         assert started.wait(5)
+        parked = _parked(cache, "k", 2)
         for thread in threads[1:]:
             thread.start()
+        assert parked.wait(5), "both waiters must be parked before the owner is released"
         release.set()
         for thread in threads:
             thread.join(5)

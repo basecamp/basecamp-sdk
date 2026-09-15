@@ -25,6 +25,7 @@ from dataclasses import dataclass
 from typing import Any, TypedDict
 
 from basecamp.errors import (
+    ApiError,
     BucketMismatchError,
     CampfireDiscoveryIncompleteError,
     NoRecordingTypeError,
@@ -256,12 +257,35 @@ def _text(record: dict[str, Any], keys: tuple[str, ...]) -> str:
     return ""
 
 
+def _body(record: Any, what: str) -> dict[str, Any]:
+    """A read's body as an object, applying Go's asymmetry between `null` and junk.
+
+    `json.Unmarshal` of `null` into a struct is a NO-OP at any depth: no error,
+    the zero value left in place -- so a null body is a recording with every
+    field empty, not a failed read, and Go goes on to project it. Every OTHER
+    non-object (an array, a string, a number, a bool) IS a decode error there
+    and the read never returns.
+
+    Both halves matter. Refusing `null` would reject a body the contract
+    accepts; accepting the rest would build a summary out of something that is
+    not a recording. Nothing typed sits between a dict-based SDK and the wire,
+    so this is where the two are told apart -- and a bare `AttributeError` out
+    of `"oops".get` is outside the SDK's error taxonomy either way.
+    """
+    if record is None:
+        return {}
+    if not isinstance(record, dict):
+        raise ApiError(f"{what} was not an object: {type(record).__name__}")
+    return record
+
+
 def _id_or_zero(value: int | None) -> int:
     """The id, or 0 where the payload carried none -- Go's zero value."""
     return 0 if value is None else value
 
 
-def _project(record: dict[str, Any], read: _Read, *, campfire_id: int | None = None) -> RecordingSummary:
+def _project(record: Any, read: _Read, *, campfire_id: int | None = None) -> RecordingSummary:
+    record = _body(record, "the recording")
     content = _text(record, read.content)
     return RecordingSummary(
         # 0, not None, where the payload carries no id: `id` is declared `int`
@@ -285,7 +309,8 @@ def _project(record: dict[str, Any], read: _Read, *, campfire_id: int | None = N
     )
 
 
-def _project_chat_line(line: dict[str, Any], campfire_id: int) -> RecordingSummary:
+def _project_chat_line(line: Any, campfire_id: int) -> RecordingSummary:
+    line = _body(line, "the chat line")
     summary = _project(line, _READS[_CHAT_LINE], campfire_id=campfire_id)
     if line.get("type") not in _RICH_TEXT_CHAT_LINES:
         # A plain-text or code line's content is text BC3 never read as markup,
