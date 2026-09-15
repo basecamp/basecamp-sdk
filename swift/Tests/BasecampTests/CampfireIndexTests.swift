@@ -229,6 +229,55 @@ final class CampfireIndexTests: XCTestCase {
         XCTAssertEqual(kept.value, 1, "the load was not cancelled out from under the caller left")
     }
 
+    /// Eviction is by IDENTITY, never by key. A straggler from an abandoned
+    /// flight — its cancellation landing, or its load finally returning — must
+    /// not remove the claim that replaced it, because that claim is still
+    /// loading and its waiters would lose their single-flight guarantee. The
+    /// listing cache's key is a bare account id, so the blast radius of getting
+    /// this wrong is every bucket in the account.
+    func testAStragglerFromAnAbandonedFlightLeavesItsSuccessorAlone() async throws {
+        let clock = TestClock()
+        let loads = LoadCounter()
+        let cache = makeCache(clock: clock)
+        let firstGate = Expectation()
+        let secondGate = Expectation()
+
+        // Flight one, abandoned before it can finish.
+        let leaver = Task {
+            try await cache.value(for: "k", refresh: false) {
+                await firstGate.wait()
+                return loads.increment()
+            }
+        }
+        while await cache.waiterCount(for: "k") < 1 { await Task.yield() }
+        leaver.cancel()
+        do {
+            _ = try await leaver.value
+            XCTFail("the leaver must stop waiting")
+        } catch is CancellationError {}
+
+        // Flight two claims the same key and is still loading.
+        async let keeper = cache.value(for: "k", refresh: false) {
+            await secondGate.wait()
+            return loads.increment()
+        }
+        while await cache.waiterCount(for: "k") < 1 { await Task.yield() }
+
+        // Now let the abandoned flight run to completion underneath it.
+        await firstGate.fulfill()
+        await Task.yield()
+        await Task.yield()
+        let stillClaimed = await cache.isClaimed("k")
+        XCTAssertTrue(
+            stillClaimed, "the successor's claim survives the straggler finishing")
+
+        await secondGate.fulfill()
+        let kept = try await keeper
+        XCTAssertEqual(kept.cached, false)
+        let waiters = await cache.waiterCount(for: "k")
+        XCTAssertEqual(waiters, 0, "and it completes normally")
+    }
+
     func testAFailedLoadLeavesThePreviousValueInPlace() async throws {
         let clock = TestClock()
         let loads = LoadCounter()
