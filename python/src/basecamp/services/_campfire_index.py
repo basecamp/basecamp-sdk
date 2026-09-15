@@ -677,6 +677,19 @@ def _decoded_optional_string(value: Any, what: str) -> str | None:
     return value
 
 
+def _decoded_optional_bool(value: Any, what: str) -> bool | None:
+    """A `*bool` field: null stays None, a bool passes, anything else fails.
+
+    `1` does NOT pass. Python would read it as truthy; Go refuses a number for
+    a bool outright, and this is the read side of a payload nobody here wrote.
+    """
+    if value is None:
+        return None
+    if not isinstance(value, bool):
+        raise ApiError(f"{what} was not a bool: {type(value).__name__}")
+    return value
+
+
 def _decoded_int64(value: Any, what: str) -> int:
     """An ``int64`` field: 0 for null, the int itself, else a decode error.
 

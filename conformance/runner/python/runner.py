@@ -26,6 +26,7 @@ from basecamp import Client, Config, StaticTokenProvider
 from basecamp.auth import BearerAuth
 from basecamp.errors import (
     BasecampError,
+    ErrorCode,
     BucketMismatchError,
     CampfireDiscoveryIncompleteError,
     NoRecordingTypeError,
@@ -1425,16 +1426,12 @@ class TestRunner:
                         UnknownRecordingTypeError: "unknown_recording_type",
                         BucketMismatchError: "bucket_mismatch",
                     }
-                    canonical = {
-                        "not_found",
-                        "auth_required",
-                        "forbidden",
-                        "rate_limit",
-                        "validation",
-                        "network",
-                        "api_error",
-                        "usage",
-                    }
+                    # Derived from the enum, not transcribed from it: the
+                    # hand-written list had 8 of its 10 members, so a fixture
+                    # asserting `ambiguous` or `limit_exceeded` would have been
+                    # reported as an unknown conformance type here while the Go
+                    # runner -- which keeps no whitelist at all -- passed it.
+                    canonical = {member.value for member in ErrorCode}
                     actual_type = None
                     for error_class, identity in semantic.items():
                         if isinstance(error, error_class):

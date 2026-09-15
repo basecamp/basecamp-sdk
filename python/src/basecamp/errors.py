@@ -221,6 +221,13 @@ _COMPOSITE_CODE: dict[str, ErrorCode] = {
     # so a retry loop would re-run the same search forever. `DeviceFlowError`
     # overrides retryability from the reason for the same kind of reason.
     "campfire_discovery_incomplete": ErrorCode.API,
+    # The sixth identity, and the one the first pass of this table missed: it
+    # is named in the same SPEC row and sits in the same section, so leaving it
+    # out left one public error still carrying a name outside the enum and
+    # still reaching exit 7 through the `ValueError` fall-through this table
+    # exists to close. Retryable, unlike its neighbours -- the load it was
+    # waiting on was abandoned, and the next caller loads again.
+    "campfire_index_load_aborted": ErrorCode.API,
 }
 
 
@@ -316,6 +323,15 @@ class CampfireDiscoveryIncompleteError(BasecampError):
     """
 
     def __init__(self, *, bucket_id: int, recording_id: int, reason: str, **kwargs: Any):
+        # Overwrite -- never setdefault -- so a caller's `retryable` kwarg
+        # cannot flip the invariant, exactly as `DeviceFlowError` does it. The
+        # coarse code is `api_error`, whose table row is retryable; this is
+        # not, because both reasons are deterministic for the same account
+        # state and a retry loop would re-run the identical search forever.
+        # Claiming that override in a commit message without writing it here is
+        # how the invariant would have been lost at the first caller who passed
+        # the kwarg through.
+        kwargs["retryable"] = False
         super().__init__(
             f"campfire discovery incomplete: line {recording_id} in bucket {bucket_id}: {reason}",
             code=_COMPOSITE_CODE["campfire_discovery_incomplete"],
@@ -343,7 +359,7 @@ class CampfireIndexLoadAbortedError(BasecampError):
     """
 
     def __init__(self, message: str = "campfire index load was abandoned by the caller that owned it", **kwargs: Any):
-        super().__init__(message, code="campfire_index_load_aborted", retryable=True, **kwargs)
+        super().__init__(message, code=_COMPOSITE_CODE["campfire_index_load_aborted"], retryable=True, **kwargs)
 
 
 class BucketMismatchError(BasecampError):

@@ -46,6 +46,7 @@ from basecamp.services._campfire_index import (
     _decoded_array,
     _decoded_flexible_int64,
     _decoded_int64,
+    _decoded_optional_bool,
     _decoded_optional_object,
     _decoded_optional_string,
     _decoded_string,
@@ -116,6 +117,11 @@ class _Read:
     title: tuple[str, ...] = ("title",)
     content: tuple[str, ...] = ()
     parent: bool = True
+    #: Whether this type's parent is Go's `RecordingParent` (which carries a
+    #: typed `bucket`) or its `TodoParent` (which has no `bucket` field at all,
+    #: so Go drops an unknown one). Only `Todo` and `Todolist` are the latter --
+    #: checked against every `Parent` field in the generated models, not guessed.
+    parent_has_bucket: bool = True
     assignees: bool = False
 
 
@@ -154,7 +160,15 @@ _READS: dict[str, _Read] = {
     "Message": _Read("messages", "get", "message_id", title=("title", "subject"), content=("content",)),
     # A to-do's content is its plain title; the rich text -- where mentions live
     # -- is the description.
-    "Todo": _Read("todos", "get", "todo_id", title=("title", "content"), content=("description",), assignees=True),
+    "Todo": _Read(
+        "todos",
+        "get",
+        "todo_id",
+        title=("title", "content"),
+        content=("description",),
+        assignees=True,
+        parent_has_bucket=False,
+    ),
     "Kanban::Card": _Read("cards", "get", "card_id", content=("content", "description"), assignees=True),
     "Document": _Read("documents", "get", "document_id", content=("content",)),
     "Upload": _Read("uploads", "get", "upload_id", title=("title", "filename"), content=("description",)),
@@ -163,7 +177,9 @@ _READS: dict[str, _Read] = {
     ),
     "Question": _Read("checkins", "get_question", "question_id"),
     "Question::Answer": _Read("checkins", "get_answer", "answer_id", content=("content",)),
-    "Todolist": _Read("todolists", "get", "id", title=("title", "name"), content=("description",)),
+    "Todolist": _Read(
+        "todolists", "get", "id", title=("title", "name"), content=("description",), parent_has_bucket=False
+    ),
     "Vault": _Read("vaults", "get", "vault_id"),
     "Inbox::Forward": _Read("forwards", "get", "forward_id", title=("title", "subject"), content=("content",)),
     "Client::Approval": _Read(
@@ -294,15 +310,61 @@ def _body(record: Any, what: str) -> dict[str, Any]:
     return record
 
 
-def _decoded_person(value: Any, what: str) -> dict[str, Any] | None:
-    """A `Person`, validated on the field the summary's consumers key on.
+#: `generated.Person`, by JSON key and Go type. Transcribed from the struct --
+#: there was nothing to guess, and the docstring that said otherwise was wrong:
+#: every one of these is typed, so Go refuses `{"name": 7}` and this refused
+#: nothing. `id` is the odd one out, `FlexibleInt64` where its neighbours are
+#: plain, which is why it is not in this table.
+_PERSON_BOOLS = (
+    "admin",
+    "can_access_hill_charts",
+    "can_access_timesheet",
+    "can_manage_people",
+    "can_manage_projects",
+    "can_ping",
+    "client",
+    "employee",
+    "owner",
+)
+_PERSON_STRINGS = (
+    "attachable_sgid",
+    "avatar_url",
+    "bio",
+    "created_at",
+    "email_address",
+    "location",
+    "name",
+    "personable_type",
+    "tagline",
+    "time_zone",
+    "title",
+    "updated_at",
+)
 
-    Only `id` is decoded, and deliberately: `Person` carries a dozen fields and
-    guessing at the rest risks refusing a body Go accepts, which is the worse
-    direction. `id` is `FlexibleInt64` -- NOT the `int64` its neighbours use.
+
+def _decoded_person(value: Any, what: str) -> dict[str, Any] | None:
+    """A `generated.Person`, decoded field by field as Go's typed read does.
+
+    `id` is `FlexibleInt64` -- NOT the `int64` its neighbours use -- and Go
+    CONVERTS it, so the summary carries an int where the payload may have
+    carried a numeric string.
+
+    `created_at` / `updated_at` are `*time.Time` in Go, so a non-string fails
+    the read there; the string's own RFC 3339 validity is the same documented
+    residue as the recording's own `updated_at`.
     """
     person = _decoded_optional_object(value, what)
-    if person is None or "id" not in person:
+    if person is None:
+        return None
+    for field in _PERSON_STRINGS:
+        _decoded_optional_string(person.get(field), f"{what} {field}")
+    for field in _PERSON_BOOLS:
+        _decoded_optional_bool(person.get(field), f"{what} {field}")
+    company = _decoded_optional_object(person.get("company"), f"{what} company")
+    if company is not None:
+        _decoded_int64(company.get("id"), f"{what} company id")
+        _decoded_string(company.get("name"), f"{what} company name")
+    if "id" not in person:
         return person
     decoded = _decoded_flexible_int64(person["id"], f"{what} id")
     if decoded == person["id"] and not isinstance(person["id"], bool):
@@ -315,8 +377,15 @@ def _decoded_person(value: Any, what: str) -> dict[str, Any] | None:
     return {**person, "id": decoded}
 
 
-def _decoded_parent(value: Any, what: str) -> dict[str, Any] | None:
-    """A `RecordingParent`, whose whole shape is small enough to decode."""
+def _decoded_parent(value: Any, what: str, *, has_bucket: bool) -> dict[str, Any] | None:
+    """A parent, decoded as whichever of Go's TWO parent structs applies.
+
+    `Todo` and `Todolist` carry a `TodoParent`, which has NO `bucket` field, so
+    Go drops an unknown `bucket` key there silently. Everything else carries a
+    `RecordingParent`, whose `Bucket` is a fully typed `*RecordingBucket`.
+    Applying one shape to both refused `{"parent": {"bucket": 7}}` on a todo --
+    a body the reference ACCEPTS, which is the vanishing direction.
+    """
     parent = _decoded_optional_object(value, what)
     if parent is None:
         return None
@@ -326,7 +395,11 @@ def _decoded_parent(value: Any, what: str) -> dict[str, Any] | None:
     _decoded_int64(parent.get("id"), f"{what} id")
     for field in ("title", "type", "url", "app_url"):
         _decoded_string(parent.get(field), f"{what} {field}")
-    _decoded_optional_object(parent.get("bucket"), f"{what} bucket")
+    if has_bucket:
+        # `*RecordingBucket` is `{id int64, name string, type string}` -- the
+        # same shape as the top-level bucket, so it gets the same decoder
+        # rather than a second, laxer copy of it four lines away.
+        _decoded_bucket(parent.get("bucket"), f"{what} bucket")
     return parent
 
 
@@ -358,7 +431,11 @@ def _project(record: Any, read: _Read, *, campfire_id: int | None = None) -> Rec
         # `*Parent`, `*Bucket`, `*Person`: null stays None, an object stays an
         # object, anything else fails the read as it does one level up. The
         # guard was top-level only, so `{"parent": "oops"}` sailed through.
-        parent=_decoded_parent(record.get("parent"), "the recording parent") if read.parent else None,
+        parent=(
+            _decoded_parent(record.get("parent"), "the recording parent", has_bucket=read.parent_has_bucket)
+            if read.parent
+            else None
+        ),
         bucket=_decoded_bucket(record.get("bucket"), "the recording bucket"),
         creator=_decoded_person(record.get("creator"), "the recording creator"),
         # `[]Person`. `list("oops")` INVENTED four assignees out of a string

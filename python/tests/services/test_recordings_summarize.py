@@ -400,6 +400,73 @@ class TestProjection:
         with pytest.raises(ApiError, match=f"{bad_key} was not a string"):
             _account().recordings.summarize(bucket_id=BUCKET, recording_id=2, event_type=event)
 
+    # Go has TWO parent structs and the port had been applying one of them to
+    # both. `Todo` and `Todolist` carry a `TodoParent` with NO `bucket` field,
+    # so Go drops an unknown one; everything else carries a `RecordingParent`
+    # whose `Bucket` is fully typed. Every row is Go's own answer.
+    @respx.mock
+    @pytest.mark.parametrize("bucket", [7, "x", {"id": "7"}, [], True])
+    def test_a_todo_parent_has_no_bucket_so_anything_there_is_dropped(self, bucket):
+        respx.get(f"{BASE}/todos/9").mock(
+            return_value=httpx.Response(200, json={"id": 9, "type": "Todo", "parent": {"id": 1, "bucket": bucket}})
+        )
+        summary = _account().recordings.summarize(bucket_id=BUCKET, recording_id=9, event_type="todo.created")
+        assert summary["parent"] == {"id": 1, "bucket": bucket}, "Go accepts this; refusing it loses a read"
+
+    @respx.mock
+    @pytest.mark.parametrize(
+        ("bucket", "match"),
+        [
+            (7, "parent bucket was not an object"),
+            ("x", "parent bucket was not an object"),
+            ({"id": "7"}, "parent bucket id was not an int64"),
+            ({"name": 7}, "parent bucket name was not a string"),
+            ({"type": []}, "parent bucket type was not a string"),
+        ],
+    )
+    def test_a_recording_parent_bucket_is_fully_typed(self, bucket, match):
+        respx.get(f"{BASE}/comments/1").mock(
+            return_value=httpx.Response(200, json={"id": 1, "type": "Comment", "parent": {"id": 1, "bucket": bucket}})
+        )
+        with pytest.raises(ApiError, match=match):
+            _account().recordings.summarize(bucket_id=BUCKET, recording_id=1, event_type="comment.created")
+
+    @respx.mock
+    @pytest.mark.parametrize(
+        ("creator", "match"),
+        [
+            # `Person` is fully typed in Go, so "only `id` is knowable" was
+            # simply false: every one of these fails its read there and none
+            # of them failed here.
+            ({"name": 7}, "creator name was not a string"),
+            ({"attachable_sgid": []}, "creator attachable_sgid was not a string"),
+            ({"personable_type": 7}, "creator personable_type was not a string"),
+            ({"admin": "yes"}, "creator admin was not a bool"),
+            # `1` is not a bool: Python would read it as truthy, Go refuses it.
+            ({"admin": 1}, "creator admin was not a bool"),
+            ({"company": 7}, "creator company was not an object"),
+            ({"company": {"id": "7"}}, "creator company id was not an int64"),
+            ({"created_at": 7}, "creator created_at was not a string"),
+        ],
+    )
+    def test_a_creator_is_decoded_field_by_field(self, creator, match):
+        respx.get(f"{BASE}/comments/1").mock(
+            return_value=httpx.Response(200, json={"id": 1, "type": "Comment", "creator": creator})
+        )
+        with pytest.raises(ApiError, match=match):
+            _account().recordings.summarize(bucket_id=BUCKET, recording_id=1, event_type="comment.created")
+
+    @respx.mock
+    @pytest.mark.parametrize("creator", [{"admin": None}, {"admin": True}, {"name": "A"}])
+    def test_a_well_formed_creator_field_is_accepted(self, creator):
+        # The other direction, so the row above cannot be satisfied by refusing
+        # everything: null and a real bool are both fine in Go.
+        respx.get(f"{BASE}/comments/1").mock(
+            return_value=httpx.Response(200, json={"id": 1, "type": "Comment", "creator": creator})
+        )
+        summary = _account().recordings.summarize(bucket_id=BUCKET, recording_id=1, event_type="comment.created")
+        assert summary["creator"] == creator
+
     @respx.mock
     def test_an_assignee_id_is_converted_too_and_the_response_is_not_mutated(self):
         # The conversion applies to every Person the projection carries, and it
@@ -812,6 +879,57 @@ class TestChatLineDiscovery:
             _account().recordings.summarize(bucket_id=BUCKET, recording_id=LINE_ID, event_type="chat.line.created")
 
         assert not any_line.called, "a read that failed to decode issues no line reads at all"
+
+    # `null` is a no-op at every depth of the DISCOVERY reads too, not just the
+    # recording body: the zero value stays and the read continues. Nothing
+    # pinned these until the revert matrix reported the rule unmeasured --
+    # `_decoded_object`'s null branch had stopped being reachable from any
+    # test when the person decoder took over the assignees path.
+    @respx.mock
+    def test_a_null_project_body_proceeds_to_the_listing(self):
+        respx.get(f"{BASE}/projects/{BUCKET}").mock(
+            return_value=httpx.Response(
+                200, content=b"null", headers={"Content-Type": "application/json; charset=utf-8"}
+            )
+        )
+        listing = respx.get(f"{BASE}/chats.json").mock(return_value=httpx.Response(200, json=[_campfire(5)]))
+        respx.get(f"{BASE}/chats/5/lines/{LINE_ID}").mock(return_value=httpx.Response(200, json=_line(5)))
+
+        summary = _account().recordings.summarize(
+            bucket_id=BUCKET, recording_id=LINE_ID, event_type="chat.line.created"
+        )
+
+        assert summary["campfire_id"] == 5
+        assert listing.called, "a null project is an empty dock, not a failed read"
+
+    @respx.mock
+    def test_a_null_dock_and_a_null_dock_entry_are_empty_not_failures(self):
+        respx.get(f"{BASE}/projects/{BUCKET}").mock(
+            return_value=httpx.Response(200, json={"id": BUCKET, "dock": [None, {"id": 7, "name": "chat"}]})
+        )
+        respx.get(f"{BASE}/chats/7/lines/{LINE_ID}").mock(return_value=httpx.Response(200, json=_line(7)))
+
+        summary = _account().recordings.summarize(
+            bucket_id=BUCKET, recording_id=LINE_ID, event_type="chat.line.created"
+        )
+
+        assert summary["campfire_id"] == 7, "a null element is a zero DockItem, whose name is not 'chat'"
+
+    @respx.mock
+    def test_a_null_campfire_bucket_is_skipped_not_a_failure(self):
+        respx.get(f"{BASE}/projects/{BUCKET}").mock(return_value=_not_found())
+        respx.get(f"{BASE}/chats.json").mock(
+            return_value=httpx.Response(200, json=[{"id": 11, "bucket": None}, _campfire(5)])
+        )
+        elsewhere = respx.get(f"{BASE}/chats/11/lines/{LINE_ID}").mock(return_value=_not_found())
+        respx.get(f"{BASE}/chats/5/lines/{LINE_ID}").mock(return_value=httpx.Response(200, json=_line(5)))
+
+        summary = _account().recordings.summarize(
+            bucket_id=BUCKET, recording_id=LINE_ID, event_type="chat.line.created"
+        )
+
+        assert summary["campfire_id"] == 5
+        assert not elsewhere.called, "a null bucket decodes to id 0, which Go skips"
 
     @respx.mock
     @pytest.mark.parametrize("listed_id", [0, -1])
