@@ -169,10 +169,14 @@ module Basecamp
     # The QUERY belongs to this residue too, and is named separately because it
     # is a different rule rather than more of the same one: the reference never
     # unescapes a query, so a malformed escape there parses fine and resolves,
-    # while Ruby's parser refuses it. Measured at 2 of 64 across the three
-    # components. The FRAGMENT, which a sibling port got wrong in the accepting
-    # direction, is clean here at 0 of 64 — the reference unescapes it while
-    # parsing and so does Ruby, so a malformed escape fails both.
+    # while Ruby's parser refuses it. Measured at 2 of the 14 QUERY rows. The
+    # FRAGMENT, which a sibling port got wrong in the accepting direction, is
+    # clean — 0 of 27 fragment rows, and 0 of 13 more carrying a fragment
+    # alongside a query — because the reference unescapes a fragment while
+    # parsing and so does Ruby, so a malformed escape fails both. 64 rows in
+    # all, and the denominators are per-component on purpose: an earlier version
+    # of this paragraph reported both figures against the whole corpus, which
+    # made "0 of 64" read as a sweep of 64 fragments when 27 of them were.
     #
     # The residue is more reachable than the seven hand-built shapes suggest:
     # fuzzing 20,000 documents that corrupt one character of a real payload put
