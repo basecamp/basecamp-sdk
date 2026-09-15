@@ -87,6 +87,34 @@ describe("personIdFromSGID", () => {
     expect(personIdFromSGID(legacySGID(`gid://bc3\u0000/Person/${VICTOR}`))).toBeUndefined();
   });
 
+  it("accepts a final group whose unused bits are not zero, as Go's decoder does", () => {
+    // Go decodes with base64.RawStdEncoding, which does NOT require the last
+    // group's discarded bits to be zero — only Encoding.Strict() does. A
+    // decoder stricter than that on this axis would make real mentions
+    // disappear rather than error, so the leniency has to match in this
+    // direction too.
+    const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+    // One character longer than the usual gid, so the payload does not land on
+    // a whole group and there are discarded bits to set.
+    const sgid = legacySGID(`gid://bc3/Person/${VICTOR}?expires_in=x`, { unsigned: true });
+    const remainder = sgid.length % 4;
+    expect(remainder).not.toBe(0);
+    expect(personIdFromSGID(sgid)).toBe(VICTOR);
+
+    // Keep the bits the decoder retains, set one of the bits it discards.
+    const mask = remainder === 2 ? 0x0f : 0x03;
+    const index = ALPHABET.indexOf(sgid[sgid.length - 1]!);
+    const mutated = sgid.slice(0, -1) + ALPHABET[(index & ~mask) | 1]!;
+    expect(mutated).not.toBe(sgid);
+    expect(personIdFromSGID(mutated)).toBe(VICTOR);
+  });
+
+  it("refuses a payload whose length cannot be a base64 group", () => {
+    // Both decoders reject a final group of one character.
+    const sgid = legacySGID(`gid://bc3/Person/${VICTOR}`, { unsigned: true });
+    expect(personIdFromSGID(sgid + "A")).toBeUndefined();
+  });
+
   it("refuses what does not decode at all", () => {
     expect(personIdFromSGID("")).toBeUndefined();
     expect(personIdFromSGID("not base64 at all !!")).toBeUndefined();

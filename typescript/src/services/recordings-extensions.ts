@@ -616,8 +616,44 @@ class TtlCache<K, V> {
     const pending = this.#inflight.get(key);
     // The load this call waits on is this call's load: its value is handed over
     // as fresh, not as something that predated the call.
+    //
+    // A waiter shares the load's outcome unconditionally, success or failure,
+    // and nothing here reads the rejection to decide otherwise. That is what
+    // keeps one failed load from becoming one request per waiter, and it is
+    // also why the trap Go's `callerDone` exists to avoid cannot be sprung
+    // here: Go has to tell a load that failed on the LOADING caller's dead
+    // context from one that failed on its own, so a still-live waiter can load
+    // again, and it deliberately refuses to decide that from the error alone —
+    // an `http.Client.Timeout` satisfies `errors.Is(err,
+    // context.DeadlineExceeded)` with the owner still live. TypeScript has the
+    // same ambiguity in a sharper form, since an aborted `fetch` rejects with
+    // an `AbortError` whether a timeout or a caller fired the signal. There is
+    // nothing to attribute: the services take no per-call signal, so no caller
+    // can be dead while another is live, and no waiter ever re-runs a load.
     if (pending !== undefined) return pending;
 
+    // The order of these three statements is the release guarantee, and it is
+    // load-bearing. An `async` function never throws synchronously — a throw in
+    // its body becomes a rejection — so invoking the wrapper always yields a
+    // promise; `.finally` is attached to that promise; and only then is the key
+    // marked in flight. There is therefore no instant at which the slot is held
+    // without a release handler attached to the thing holding it, and every way
+    // the wrapper can end — `load()` throwing synchronously, its promise
+    // rejecting, `#publish` throwing — settles that promise and runs the
+    // `finally`. Go reaches the same guarantee the other way round, with a
+    // deferred publish that survives a panicking loader.
+    //
+    // The one exit this cannot cover is a `load()` that never settles, which
+    // would hold the slot and park every later caller for the life of the
+    // process. Go's waiters escape that through their own context; these have
+    // no signal to escape with. What closes it is one layer down: every request
+    // a loader makes carries the client's request timeout, so a load that is
+    // going nowhere rejects rather than hanging.
+    //
+    // A loader must not re-enter this cache for its own key. It would not join
+    // the load in progress — the slot is taken after `load()` is invoked, where
+    // Go takes it before — and would start a second one. Neither loader here
+    // does; both call a single generated read.
     const started = (async () => {
       const value = await load();
       return this.#publish(key, value);
