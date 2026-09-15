@@ -330,6 +330,41 @@ class MentionsTest < Minitest::Test
     assert_equal [ 32 ], mentions_in_tag("#{sgid[0, 10]}&NewLine;#{sgid[10..]}")
   end
 
+  def test_a_c1_reference_is_remapped_rather_than_read_as_a_code_point
+    # 0x80..0x9F are not code points in HTML, they are Windows-1252 bytes, and
+    # the reference implementation remaps them. It decides a verdict here: 0x85
+    # is NEL, which IS whitespace and would be trimmed away, while its
+    # remapping is an ellipsis, which is not. Reading the number as a code point
+    # resolves a person the reference refuses — the accepting direction.
+    sgid = person_sgid(33)
+
+    assert_empty mentions_in_tag("&#133;#{sgid}")
+    assert_empty mentions_in_tag("&#128;#{sgid}")
+    # The hex spelling of the same byte is remapped the same way.
+    assert_empty mentions_in_tag("&#x85;#{sgid}")
+    # And a code point that really is NEL, reached from above the remapped
+    # range, is whitespace and trims — so the assertions above are about the
+    # remapping and not about NEL being unrecognized.
+    assert_equal [ 33 ], mentions_in_tag("\u0085#{sgid}")
+  end
+
+  def test_a_control_reference_cannot_suppress_a_mention
+    # The write side deduplicates on the EXACT attachable_sgid, which is what
+    # makes this an attack: content whose unescape equalled the authoritative
+    # sgid would make the writer skip a mention it must write. A decoder that
+    # dropped C0 controls to nothing — as HTML5 says to — would do exactly that.
+    sgid = person_sgid(34)
+    person = { "id" => 34, "attachable_sgid" => sgid }
+
+    [ "&#1;", "&#8;", "&#0;", "&#x1;" ].each do |reference|
+      content = %(<div><bc-attachment sgid="#{sgid}#{reference}"></bc-attachment> hi</div>)
+      expanded = Basecamp::Mentions.with_mentions(content, [ person ])
+
+      assert_equal 2, Basecamp::Mentions.bc_attachment_sgids(expanded).length,
+        "#{reference} must not suppress the real mention"
+    end
+  end
+
   def test_a_reference_outside_the_table_can_only_lose_a_mention_never_add_one
     # The bound is one-directional by construction: a reference left literal
     # contributes "&" and ";", which no base64 alphabet accepts.

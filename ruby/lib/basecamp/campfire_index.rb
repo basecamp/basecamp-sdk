@@ -169,47 +169,53 @@ module Basecamp
       def get(key, refresh: false)
         owner = false
         pending = nil
+        published = false
 
-        @mutex.synchronize do
-          entry = @entries[key]
-          if entry
-            age = @clock.call - entry.fetched
-            if age < @ttl && (!refresh || age < @floor)
-              return Hit.new(value: entry.value, fetched: entry.fetched, cached: true)
+        # The ensure encloses the REGISTRATION, not just the loader. A loader
+        # that leaves by anything the rescue below does not catch — Interrupt, a
+        # signal, NoMemoryError, a Thread#kill that raises nothing at all —
+        # would otherwise leave the key in flight forever, and since {#await}
+        # waits with no timeout, every later caller for that key would park on
+        # it permanently rather than erroring. The listing's key is the bare
+        # account id, so that is one killed thread wedging chat-line discovery
+        # for a whole account for the life of the process. Go publishes from a
+        # deferred recover for exactly this reason — and an ensure that began
+        # after the key was registered would leave the same hole a few
+        # instructions wide.
+        begin
+          @mutex.synchronize do
+            entry = @entries[key]
+            if entry
+              age = @clock.call - entry.fetched
+              if age < @ttl && (!refresh || age < @floor)
+                return Hit.new(value: entry.value, fetched: entry.fetched, cached: true)
+              end
+            end
+
+            pending = @inflight[key]
+            if pending.nil?
+              pending = { done: false, error: nil, value: nil, fetched: nil }
+              # Ownership is claimed BEFORE the key is registered, so an
+              # interrupt between the two leaves the ensure publishing a record
+              # nothing is registered against — harmless — rather than a
+              # registration nothing will ever release.
+              owner = true
+              @inflight[key] = pending
             end
           end
 
-          pending = @inflight[key]
-          if pending.nil?
-            pending = { done: false, error: nil, value: nil, fetched: nil }
-            @inflight[key] = pending
-            owner = true
-          end
-        end
+          return await(pending) unless owner
 
-        return await(pending) unless owner
-
-        published = false
-        begin
           value = yield
           publish(key, pending, value, nil)
           published = true
           Hit.new(value: value, fetched: pending[:fetched], cached: false)
         rescue StandardError => e
-          publish(key, pending, nil, e)
+          publish(key, pending, nil, e) if owner
           published = true
           raise
         ensure
-          # Publication is guaranteed, not merely attempted on the two paths
-          # above. A loader that leaves by anything else — Interrupt, a signal,
-          # NoMemoryError, a Thread#kill that raises nothing at all — would
-          # otherwise leave the key in flight forever, and since {#await} waits
-          # with no timeout, every later caller for that key would park on it
-          # permanently rather than erroring. The listing's key is the bare
-          # account id, so that is one killed thread wedging chat-line discovery
-          # for a whole account for the life of the process. Go publishes from a
-          # deferred recover for exactly this reason.
-          publish(key, pending, nil, LoaderAbandoned.new("cache loader did not complete")) unless published
+          publish(key, pending, nil, LoaderAbandoned.new("cache loader did not complete")) if owner && !published
         end
       end
 
@@ -253,8 +259,17 @@ module Basecamp
           # exception landing between the load returning and this call
           # completing would otherwise let {#get}'s ensure publish a second time
           # and overwrite a good value with an abandonment error. Whichever
-          # publication lands first is the outcome; the rest are no-ops.
-          return if pending[:done]
+          # publication lands first is the outcome; the rest only wake the
+          # waiters again.
+          #
+          # The repeat still broadcasts, and that is the point of doing it here
+          # rather than returning bare: an interrupt landing between the flag
+          # below and its broadcast would otherwise leave a record marked done
+          # with everybody still parked on it.
+          if pending[:done]
+            @condition.broadcast
+            return
+          end
 
           @inflight.delete(key)
           pending[:error] = error

@@ -40,8 +40,8 @@ module Basecamp
 
         seen = {}
         people = person_ids.filter_map do |person_id|
-          id = person_id.to_i
-          raise UsageError.new("invalid mention person id #{person_id}") unless id.positive?
+          id = Ids.integer(person_id, "mention person id")
+          raise UsageError.new("invalid mention person id #{person_id.inspect}") unless id.positive?
           next if seen.key?(id)
 
           seen[id] = true

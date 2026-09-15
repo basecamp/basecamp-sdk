@@ -1407,8 +1407,13 @@ class TestRunner
     # CommentsCreateWithMentions, whose `path` names the POST while request 0 is
     # the people read — is the case that needs the carve-out, and pinning
     # request 0 explicitly is exactly how such a fixture states its sequence.
+    # Negative indices count from the end, as request_at resolves them, so a
+    # "-2" in a two-request case pins request 0 just as "0" does.
     pins_first_request_path = (@test["assertions"] || []).any? do |a|
-      a["type"] == "requestPath" && (a["index"] || 0).zero?
+      next false unless a["type"] == "requestPath"
+
+      index = a["index"] || 0
+      (index.negative? ? index + @tracker.request_count : index).zero?
     end
     if @test["operation"] != "DownloadURL" && !pins_first_request_path &&
        !@test["path"].to_s.empty? && @tracker.requests.any?
