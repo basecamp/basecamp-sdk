@@ -4,6 +4,8 @@ import com.basecamp.sdk.*
 import com.basecamp.sdk.generated.*
 import com.basecamp.sdk.generated.models.*
 import com.basecamp.sdk.generated.services.*
+import com.basecamp.sdk.services.RecordingRef
+import com.basecamp.sdk.services.RecordingSummary
 import io.ktor.client.engine.mock.*
 import io.ktor.http.*
 import io.ktor.http.content.*
@@ -14,6 +16,44 @@ import kotlinx.serialization.json.*
 import java.io.File
 import java.io.IOException
 import java.util.concurrent.atomic.AtomicInteger
+
+/**
+ * The SPEC §6 taxonomy an `errorType` or `errorCode` assertion can name. Closed:
+ * a composite's own verdict is not a member and must not be able to satisfy one.
+ */
+private val CANONICAL_ERROR_TYPES = mapOf(
+    "not_found" to BasecampException.CODE_NOT_FOUND,
+    "auth_required" to BasecampException.CODE_AUTH,
+    "forbidden" to BasecampException.CODE_FORBIDDEN,
+    "rate_limit" to BasecampException.CODE_RATE_LIMIT,
+    "validation" to BasecampException.CODE_VALIDATION,
+    "api_error" to BasecampException.CODE_API,
+    "usage" to BasecampException.CODE_USAGE,
+    "network" to BasecampException.CODE_NETWORK,
+    // All ten of SPEC §6's codes, counted against that table rather than against
+    // what the fixtures happen to name: `errorType` names only `forbidden` and
+    // `network` from this vocabulary today, and a map sized to THAT would be
+    // worse still. A set short of the table silently FORBIDS a real code rather
+    // than catching a typo'd one — `limit_exceeded` is already asserted by
+    // `uploads_write.json` through `errorCode`, and spelling that same case as
+    // `errorType` would have failed as "unknown" while the map held eight.
+    "ambiguous" to BasecampException.CODE_AMBIGUOUS,
+    "limit_exceeded" to BasecampException.CODE_LIMIT_EXCEEDED,
+)
+
+/**
+ * The SPEC §18 recording-summary composite's own identities. They answer
+ * `errorType` from `RecordingSummaryFailure.reason`, never from `code` — a
+ * fixture pins that "unresolved" is neither a read that failed nor discovery
+ * left unfinished, and that distinction lives in the reason.
+ */
+private val SEMANTIC_ERROR_TYPES = setOf(
+    BasecampException.RECORDING_NO_TYPE,
+    BasecampException.RECORDING_UNKNOWN_TYPE,
+    BasecampException.RECORDING_UNRESOLVED,
+    BasecampException.CAMPFIRE_DISCOVERY_INCOMPLETE,
+    BasecampException.RECORDING_BUCKET_MISMATCH,
+)
 
 /** Default account ID for conformance tests. */
 private const val TEST_ACCOUNT_ID = "999"
@@ -32,54 +72,18 @@ private fun decodeFailureMessage(e: SerializationException): String =
     }
 
 /**
- * Tests where the Kotlin runner's operation dispatcher has no implementation yet: the
- * `recording_summary.json` cases — every case in that fixture — of a Go-first composite
- * (SPEC Appendix F, Recording Summaries and Mention Helpers); the fixture is the contract a
- * port implements, and a port deletes them. Every entry here is rostered in
- * `spec/zero-skip-roster.yml`.
+ * Tests the Kotlin runner's operation dispatcher has no implementation for.
+ *
+ * Empty: the Go-first composite that filled it — every case in
+ * `recording_summary.json` — is ported (SPEC Appendix F, Recording Summaries and
+ * Mention Helpers), and the roster's own rule is that a port deletes its
+ * entries. The constant stays so the next gap has somewhere to go, and so the
+ * named-roster branch below keeps its only caller; the one skip this runner
+ * still reports comes from the `link-header` tag branch, not from here. Every
+ * entry added here must be rostered in `spec/zero-skip-roster.yml`.
  */
-private val KOTLIN_SKIPS: Map<String, String> = mapOf(
-    "RecordingsSummarize routes comment.created to the comment read and reads its mentions" to "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    "RecordingsSummarize refuses boost.created before any request" to "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    "RecordingsSummarize finds a chat line under the second visible Campfire" to "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    "RecordingsSummarize reports a chat line under no visible Campfire as unresolved, not as a failed read" to "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    "RecordingsSummarize returns a Campfire candidate's 403 as that read's error" to "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    "CommentsCreateWithMentions resolves each person before posting and writes the mention from attachable_sgid" to "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    "RecordingsSummarize routes message.created (event type) to one typed read and projects the recording" to "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    "RecordingsSummarize routes todo.created (event type) to one typed read and projects the recording" to "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    "RecordingsSummarize routes card.created (event type) to one typed read and projects the recording" to "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    "RecordingsSummarize routes Document (recording type) to one typed read and projects the recording" to "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    "RecordingsSummarize routes Upload (recording type) to one typed read and projects the recording" to "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    "RecordingsSummarize routes Schedule::Entry (recording type) to one typed read and projects the recording" to "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    "RecordingsSummarize routes Question (recording type) to one typed read and projects the recording" to "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    "RecordingsSummarize routes Question::Answer (recording type) to one typed read and projects the recording" to "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    "RecordingsSummarize routes Todolist (recording type) to one typed read and projects the recording" to "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    "RecordingsSummarize routes Vault (recording type) to one typed read and projects the recording" to "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    "RecordingsSummarize routes Inbox::Forward (recording type) to one typed read and projects the recording" to "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    "RecordingsSummarize routes Client::Approval (recording type) to one typed read and projects the recording" to "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    "RecordingsSummarize routes Client::Correspondence (recording type) to one typed read and projects the recording" to "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    "RecordingsSummarize routes GoogleDocument (recording type) to one typed read and projects the recording" to "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    "RecordingsSummarize routes CloudFile (recording type) to one typed read and projects the recording" to "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    "RecordingsSummarize routes Kanban::Step (recording type) to one typed read and projects the recording" to "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    "RecordingsSummarize routes Questionnaire (recording type) to one typed read and projects the recording" to "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    "RecordingsSummarize routes Schedule (recording type) to one typed read and projects the recording" to "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    "RecordingsSummarize routes Todoset (recording type) to one typed read and projects the recording" to "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    "RecordingsSummarize routes Message::Board (recording type) to one typed read and projects the recording" to "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    "RecordingsSummarize routes Kanban::Board (recording type) to one typed read and projects the recording" to "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    "RecordingsSummarize routes Kanban::Column (recording type) to one typed read and projects the recording" to "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    "RecordingsSummarize routes Inbox (recording type) to one typed read and projects the recording" to "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    "RecordingsSummarize routes todo.completed (event type) to one typed read and projects the recording" to "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    "RecordingsSummarize routes todo.assignment_changed (event type) to one typed read and projects the recording" to "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    "RecordingsSummarize routes card.completed (event type) to one typed read and projects the recording" to "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    "RecordingsSummarize routes card.assignment_changed (event type) to one typed read and projects the recording" to "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    "RecordingsSummarize routes Comment (recording type) to one typed read and projects the recording" to "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    "RecordingsSummarize routes Message (recording type) to one typed read and projects the recording" to "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    "RecordingsSummarize routes Todo (recording type) to one typed read and projects the recording" to "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    "RecordingsSummarize routes Kanban::Card (recording type) to one typed read and projects the recording" to "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    "RecordingsSummarize routes Chat::Transcript (recording type) to one typed read and projects the recording" to "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    "RecordingsSummarize routes card.moved (event type) to one typed read and projects the recording" to "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    "RecordingsSummarize routes Chat::Lines::Text (recording type) through Campfire discovery and projects the line" to "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-)
+private val KOTLIN_SKIPS: Map<String, String> = emptyMap()
+
 
 /**
  * The date window every GetUpcomingSchedule case is dispatched with. Fixed in
@@ -837,28 +841,56 @@ private fun runTest(tc: TestCase): TestResult {
                 if (caughtException == null) {
                     return TestResult(false, "Expected error type \"$expectedType\", but got no error")
                 }
-                val codeMap = mapOf(
-                    "not_found" to BasecampException.CODE_NOT_FOUND,
-                    "auth_required" to BasecampException.CODE_AUTH,
-                    "forbidden" to BasecampException.CODE_FORBIDDEN,
-                    "rate_limit" to BasecampException.CODE_RATE_LIMIT,
-                    "validation" to BasecampException.CODE_VALIDATION,
-                    "api_error" to BasecampException.CODE_API,
-                    "usage" to BasecampException.CODE_USAGE,
-                    "network" to BasecampException.CODE_NETWORK,
-                )
-                val expectedCode = codeMap[expectedType]
-                if (expectedCode == null) {
-                    return TestResult(false, "Unknown conformance error type \"$expectedType\" (add to codeMap)")
-                }
-                if (caughtException.code != expectedCode) {
-                    return TestResult(false, "Expected error code \"$expectedCode\", got \"${caughtException.code}\"")
+                // A composite identity answers `errorType` only, and it answers
+                // it from the typed `reason` rather than from `code`. `code` is
+                // SPEC §6's CLOSED taxonomy, so letting a composite token
+                // satisfy it would mean a fixture asserting a canonical
+                // `errorCode` could be satisfied by a semantic one. The Swift
+                // runner draws the same line; this is the Kotlin spelling of it.
+                if (expectedType in SEMANTIC_ERROR_TYPES) {
+                    val reason = (caughtException as? BasecampException.RecordingSummaryFailure)?.reason
+                        ?: return TestResult(
+                            false,
+                            "Expected composite error type \"$expectedType\", got a " +
+                                "${caughtException::class.simpleName} with code \"${caughtException.code}\"",
+                        )
+                    if (reason != expectedType) {
+                        return TestResult(false, "Expected error type \"$expectedType\", got \"$reason\"")
+                    }
+                } else {
+                    val expectedCode = CANONICAL_ERROR_TYPES[expectedType]
+                        ?: return TestResult(
+                            false,
+                            "Unknown conformance error type \"$expectedType\" (add to CANONICAL_ERROR_TYPES)",
+                        )
+                    if (caughtException.code != expectedCode) {
+                        return TestResult(
+                            false,
+                            "Expected error code \"$expectedCode\", got \"${caughtException.code}\"",
+                        )
+                    }
                 }
             }
 
             "errorCode" -> {
                 val expected = assertion.expected?.asString()
                     ?: return TestResult(false, "errorCode assertion missing expected value")
+                // The boundary is enforced HERE as well as by the SDK. Without
+                // this, the runner's half of the rule rests entirely on
+                // `RecordingSummaryFailure` not putting a token in `code` — so
+                // reverting that one constructor would quietly let a composite
+                // identity satisfy a canonical code again.
+                //
+                // It is a denylist of the five, not a canonical-membership
+                // check: a token in neither set still passes if it happens to
+                // equal the thrown code. Stated rather than implied, because
+                // the name above says "taxonomy" and this guard is narrower.
+                if (expected in SEMANTIC_ERROR_TYPES) {
+                    return TestResult(
+                        false,
+                        "\"$expected\" is a composite identity, not a SPEC §6 code: assert it as errorType",
+                    )
+                }
                 if (caughtException == null) {
                     return TestResult(false, "Expected error code \"$expected\", but got no error")
                 }
@@ -1794,6 +1826,32 @@ private suspend fun dispatchOperation(tc: TestCase, account: AccountClient): Dis
             DispatchResult()
         }
 
+        // The SPEC §18 recording-summary composite. The projection is serialized
+        // whole rather than flattened: every field the fixture asserts is a
+        // top-level key or one hop into a nested identity, and this runner's
+        // navigator resolves both, so nothing is lost by handing over the model.
+        "RecordingsSummarize" -> {
+            val summary = account.recordings.summarize(
+                RecordingRef(
+                    bucketId = tc.pathParams.longParam("bucketId"),
+                    recordingId = tc.pathParams.longParam("recordingId"),
+                    eventType = tc.pathParams.stringParam("eventType"),
+                    recordingType = tc.pathParams.stringParam("recordingType"),
+                ),
+            )
+            DispatchResult(resultJson = Json.encodeToJsonElement(RecordingSummary.serializer(), summary))
+        }
+
+        "CommentsCreateWithMentions" -> {
+            val rb = tc.requestBody
+            val comment = account.comments.createWithMentions(
+                tc.pathParams.longParam("recordingId"),
+                rb.stringParam("content"),
+                rb?.get("mentions")?.jsonArray?.map { it.jsonPrimitive.long }.orEmpty(),
+            )
+            DispatchResult(resultJson = Json.encodeToJsonElement(Comment.serializer(), comment))
+        }
+
         // Presence-bearing, like ReplaceScheduleEntry: a key the fixture omits
         // stays null and `?.let` keeps it off the wire, so an unaddressed
         // description carries forward while an explicit "" is sent and clears.
@@ -1972,8 +2030,12 @@ private fun parseRequestBody(body: io.ktor.http.content.OutgoingContent): JsonOb
 private fun JsonObject?.longParam(key: String): Long {
     if (this == null) return 0L
     val element = this[key] ?: return 0L
-    return when (element) {
-        is JsonPrimitive -> element.long
+    return when {
+        // `JsonPrimitive.long` does not look at `isString`, so a quoted
+        // "2085958499" would read as a number — the same conflation the
+        // assertion side already guards against. A path param is a number or it
+        // is not one.
+        element is JsonPrimitive && !element.isString -> element.long
         else -> 0L
     }
 }
@@ -1997,11 +2059,23 @@ private fun JsonElement.asString(): String? = when (this) {
     else -> null
 }
 
-/** Navigate a dot-separated path through a JsonElement. */
+/**
+ * Navigates a dot-separated path through a JsonElement: object keys, and arrays
+ * by numeric segment — `creator.id`, `assignees.0.id` — the way the Go, Ruby and
+ * Python runners' dig do, so a fixture can pin a nested identity rather than
+ * only a top-level scalar. A bare key still reads top-level.
+ */
 private fun navigateJsonPath(element: JsonElement, path: String): JsonElement? {
     var current = element
     for (key in path.split(".")) {
-        current = (current as? JsonObject)?.get(key) ?: return null
+        current = when (val node = current) {
+            is JsonObject -> node[key] ?: return null
+            is JsonArray -> {
+                val index = key.toIntOrNull() ?: return null
+                node.getOrNull(index) ?: return null
+            }
+            else -> return null
+        }
     }
     return current
 }
@@ -2010,14 +2084,38 @@ private fun navigateJsonPath(element: JsonElement, path: String): JsonElement? {
 private fun compareJsonValues(label: String, expected: JsonElement?, actual: JsonElement): TestResult? {
     if (expected == null) return TestResult(false, "$label: expected value is null in assertion")
     if (expected is JsonPrimitive && actual is JsonPrimitive) {
-        // Compare as long to preserve large integer precision
-        val expLong = expected.longOrNull
-        val actLong = actual.longOrNull
+        // Compare as long to preserve large integer precision. `longOrNull` does
+        // not look at `isString`, so the guard has to: without it the quoted
+        // "1069479345" and the bare 1069479345 compare equal, and a fixture
+        // pinning a string would be satisfied by a number (and the reverse). The
+        // Go runner cannot conflate them — it switches on the expected value's
+        // Go type — and this projection now carries both shapes side by side
+        // (`updated_at` a string, `campfire_id` a number).
+        val expLong = if (expected.isString) null else expected.longOrNull
+        val actLong = if (actual.isString) null else actual.longOrNull
         if (expLong != null && actLong != null) {
             if (expLong != actLong) {
                 return TestResult(false, "Expected $label = $expLong, got $actLong")
             }
             return null
+        }
+        // Two RFC 3339 timestamps compare as instants, so a fixture can pin a
+        // time without making any one language's rendering the contract:
+        // "2024-01-20T15:30:00.000-06:00" and "2024-01-20T21:30:00Z" agree. The
+        // Go runner does the same; a value that is not a timestamp falls through
+        // to the exact comparison below.
+        if (expected.isString && actual.isString) {
+            val expInstant = parseRfc3339(expected.content)
+            val actInstant = parseRfc3339(actual.content)
+            if (expInstant != null && actInstant != null) {
+                if (expInstant != actInstant) {
+                    return TestResult(
+                        false,
+                        "Expected $label = ${expected.content} (as an instant), got ${actual.content}",
+                    )
+                }
+                return null
+            }
         }
     }
     if (expected != actual) {
@@ -2025,3 +2123,11 @@ private fun compareJsonValues(label: String, expected: JsonElement?, actual: Jso
     }
     return null
 }
+
+/**
+ * Parses an RFC 3339 timestamp into the instant it names, or null when the
+ * string is not one. `java.time` is the parser because this runner is a JVM
+ * program; the SDK itself carries timestamps as strings and never needs one.
+ */
+private fun parseRfc3339(value: String): java.time.Instant? =
+    runCatching { java.time.OffsetDateTime.parse(value).toInstant() }.getOrNull()

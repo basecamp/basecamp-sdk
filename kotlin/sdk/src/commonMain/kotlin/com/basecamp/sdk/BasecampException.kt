@@ -306,6 +306,106 @@ sealed class BasecampException(
     ) : BasecampException(message, CODE_USAGE, hint)
 
     /**
+     * A `RecordingsService.summarize` failure that is the composite's OWN
+     * identity rather than one of its constituent reads' (SPEC.md §18,
+     * Appendix F "Recording Summaries and Mention Helpers").
+     *
+     * [reason] carries the typed token, and is the property to match on rather
+     * than parsing the message. It is NOT this exception's [code] — see the
+     * derivation table below:
+     *
+     * - [RECORDING_NO_TYPE] — an event type that names no recording type
+     *   (`boost.created`, whose recording is the boost's target and whose type
+     *   the feed row does not carry). Raised before any request.
+     * - [RECORDING_UNKNOWN_TYPE] — neither the event type nor the recording type
+     *   names a type in the routing table. Raised before any request.
+     * - [RECORDING_UNRESOLVED] — a chat line was found under NONE of the
+     *   Campfires the caller can currently see in its bucket. Distinct from a
+     *   failed read (any non-404 answer is raised as itself) and from
+     *   [CAMPFIRE_DISCOVERY_INCOMPLETE]: every candidate answered 404. It is not
+     *   distinct from lost visibility — BC3 answers 404 for a Campfire the
+     *   caller may not see, too — so a consumer marks the record blocked and
+     *   retries on its own schedule; [staleCampfireIds] reports the cached
+     *   candidates the refreshed sources no longer list, which is how visibility
+     *   change shows itself.
+     * - [CAMPFIRE_DISCOVERY_INCOMPLETE] — discovery could not be carried to a
+     *   conclusion (the listing overflowed its cap, or the bucket has more
+     *   visible Campfires than the candidate budget). Nothing left unsearched is
+     *   ever reported absent.
+     * - [RECORDING_BUCKET_MISMATCH] — the recording the read returned lives in a
+     *   different bucket from the one the pointer named.
+     *
+     * [reason] is the identity to branch on; the parent [code] (and so
+     * [exitCode]) is DERIVED from it, exactly as [DeviceFlow] and
+     * [DiscoverySelection] derive theirs. SPEC §6's code table is a CLOSED
+     * taxonomy of HTTP-shaped outcomes, so none of these tokens can be a member
+     * of it — putting one in that slot would let a fixture satisfy a canonical
+     * `errorCode` with a composite identity, and would hand a caller switching
+     * on [code] a value the taxonomy does not contain.
+     *
+     * | reason                          | code        | why |
+     * |---------------------------------|-------------|-----|
+     * | `no_recording_type`             | `usage`     | refused from the caller's own arguments, before any request |
+     * | `unknown_recording_type`        | `usage`     | same |
+     * | `bucket_mismatch`               | `usage`     | the pointer's bucket and the recording's disagree |
+     * | `recording_unresolved`          | `not_found` | every visible candidate answered 404 |
+     * | `campfire_discovery_incomplete` | `usage`     | see below |
+     *
+     * The last row is the one that does not fit cleanly, and it is stated rather
+     * than smoothed. Discovery stopping at its own bound is not a server fault,
+     * not an absence — `not_found` would say the line is not there, which is
+     * exactly what this verdict refuses to say — and not multiple matches.
+     * `usage` is chosen because no HTTP RESPONSE maps to it. [fromHttpStatus] can
+     * produce `auth_required`, `forbidden`, `not_found`, `rate_limit`,
+     * `validation`, `limit_exceeded` and `api_error`, and never this one — so
+     * `usage` cannot be confused with a constituent read's own answer, which is
+     * the property that matters here. (`network` and `ambiguous` are equally
+     * unreachable from a response; `usage` is the one of those three that also
+     * describes a call the SDK declined to complete. And SDK code does raise
+     * [Usage] elsewhere, for a bad argument or a URL it refuses — the claim is
+     * about what a response can become, not about where the code appears.)
+     * [reason] carries the precision either way.
+     */
+    class RecordingSummaryFailure internal constructor(
+        /**
+         * Typed failure token — the composite's own vocabulary, and the thing
+         * to branch on. It is NOT this exception's [code]: [code] is the closed
+         * SPEC §6 taxonomy, and none of these tokens is a member of it. See the
+         * derivation table above.
+         */
+        val reason: String,
+        message: String,
+        hint: String? = null,
+        /** The pointer's bucket, on the failures raised after routing. */
+        val bucketId: Long? = null,
+        /** The pointer's recording id, on the failures raised after routing. */
+        val recordingId: Long? = null,
+        /**
+         * The bucket the read actually returned, on
+         * [RECORDING_BUCKET_MISMATCH]. Both halves are carried, because the
+         * whole content of that failure is that they differ and [bucketId]
+         * alone cannot say which one it is.
+         */
+        val readBucketId: Long? = null,
+        /** The Campfire candidates tried, in order; empty when none were visible. */
+        val campfireIds: List<Long> = emptyList(),
+        /**
+         * Whether the cached discovery sources were re-read before concluding.
+         * False when every source had been read within the refresh floor, so a
+         * Campfire created in that window was not seen: the conclusion stands on
+         * data up to that old, and a retry after the floor sees the current
+         * sources.
+         */
+        val refreshed: Boolean = false,
+        /**
+         * Candidates from the cache that the refreshed sources no longer list —
+         * Campfires the caller could see when the cache filled and cannot now.
+         * Set only when [refreshed].
+         */
+        val staleCampfireIds: List<Long> = emptyList(),
+    ) : BasecampException(message, recordingSummaryCode(reason), hint)
+
+    /**
      * Hard resource-first OAuth discovery selection/validation failure
      * (SPEC.md §16). THROWN, never returned as a Launchpad fallback, so no
      * consumer can convert it into a Launchpad request. [reason] carries the
@@ -376,12 +476,47 @@ sealed class BasecampException(
         const val CODE_USAGE = "usage"
         const val CODE_LIMIT_EXCEEDED = "limit_exceeded"
 
+        /**
+         * The [RecordingSummaryFailure] tokens. They are the composite's own
+         * error identities, not HTTP statuses, and they are the vocabulary
+         * `conformance/tests/recording_summary.json` draws on — it asserts two
+         * of the five today (`no_recording_type` and `recording_unresolved`),
+         * and those two are pinned across every SDK.
+         *
+         * Three strings sit in this neighbourhood and only two of them are the
+         * same: a token here equals the fixture's `errorType`, and neither
+         * equals the exception's [code] or a fixture's `errorCode`, which are
+         * SPEC §6's closed taxonomy. [RecordingSummaryFailure] derives the one
+         * from the other.
+         */
+        const val RECORDING_NO_TYPE = "no_recording_type"
+        const val RECORDING_UNKNOWN_TYPE = "unknown_recording_type"
+        const val RECORDING_UNRESOLVED = "recording_unresolved"
+        const val CAMPFIRE_DISCOVERY_INCOMPLETE = "campfire_discovery_incomplete"
+        const val RECORDING_BUCKET_MISMATCH = "bucket_mismatch"
+
         // RFC 8628 device-flow reasons (see [DeviceFlow]).
         const val DEVICE_ACCESS_DENIED = "access_denied"
         const val DEVICE_EXPIRED = "expired"
         const val DEVICE_TRANSPORT = "transport"
         const val DEVICE_UNAVAILABLE = "unavailable"
         const val DEVICE_CANCELLED = "cancelled"
+
+        /**
+         * The coarse SPEC §6 code a [RecordingSummaryFailure] reports under;
+         * see the derivation table on that class. The `else` is deliberate: a
+         * reason added without a row here reports `usage` rather than reaching
+         * [exitCodeFor]'s `else`, which yields EXIT_API — so a new verdict can
+         * never announce itself with the exit code of a server fault.
+         */
+        private fun recordingSummaryCode(reason: String): String = when (reason) {
+            RECORDING_UNRESOLVED -> CODE_NOT_FOUND
+            RECORDING_NO_TYPE,
+            RECORDING_UNKNOWN_TYPE,
+            RECORDING_BUCKET_MISMATCH,
+            CAMPFIRE_DISCOVERY_INCOMPLETE -> CODE_USAGE
+            else -> CODE_USAGE
+        }
 
         /** Derives a [DeviceFlow]'s parent error code from its reason. */
         private fun deviceFlowCode(reason: String): String = when (reason) {

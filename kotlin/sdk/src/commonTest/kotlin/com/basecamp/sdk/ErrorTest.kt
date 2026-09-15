@@ -3,6 +3,7 @@ package com.basecamp.sdk
 import kotlinx.serialization.json.Json
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNull
@@ -195,6 +196,74 @@ class ErrorTest {
     }
 
     @Test
+    fun theCompositesReasonIsNotItsCanonicalCode() {
+        // SPEC §6's code table is a closed taxonomy, and none of the composite's
+        // own verdicts is a member of it. `reason` carries the identity, `code`
+        // the coarse classification derived from it — the shape DeviceFlow and
+        // DiscoverySelection already use here. Putting the token in `code` would
+        // hand every caller switching on `code` a value the taxonomy does not
+        // contain, give `exitCode` a valid but wrong answer (see below), and
+        // let a fixture asserting a canonical `errorCode` be satisfied by a
+        // semantic one.
+        // (reason, derived code, exit code). The exit code is spelled out
+        // rather than asserted positive: the bug this guards had every one of
+        // these falling through `exitCodeFor`'s `else` to EXIT_API — 7, the
+        // exit code of a server error — so `exitCode > 0` would have passed
+        // against it and proved nothing.
+        val derivations = listOf(
+            Triple(BasecampException.RECORDING_NO_TYPE, BasecampException.CODE_USAGE, 1),
+            Triple(BasecampException.RECORDING_UNKNOWN_TYPE, BasecampException.CODE_USAGE, 1),
+            Triple(BasecampException.RECORDING_BUCKET_MISMATCH, BasecampException.CODE_USAGE, 1),
+            Triple(BasecampException.CAMPFIRE_DISCOVERY_INCOMPLETE, BasecampException.CODE_USAGE, 1),
+            Triple(BasecampException.RECORDING_UNRESOLVED, BasecampException.CODE_NOT_FOUND, 2),
+        )
+        // Guards a row lost from THIS list to an editing slip. It cannot see a
+        // sixth reason added in production — nothing enumerates the tokens at
+        // runtime — which is why the fallback is pinned separately below.
+        assertEquals(5, derivations.size, "the rows this test claims to cover")
+        val canonical = setOf(
+            BasecampException.CODE_USAGE, BasecampException.CODE_NOT_FOUND,
+            BasecampException.CODE_AUTH, BasecampException.CODE_FORBIDDEN,
+            BasecampException.CODE_RATE_LIMIT, BasecampException.CODE_VALIDATION,
+            BasecampException.CODE_API, BasecampException.CODE_NETWORK,
+            BasecampException.CODE_AMBIGUOUS, BasecampException.CODE_LIMIT_EXCEEDED,
+        )
+        for ((reason, expectedCode, expectedExit) in derivations) {
+            val e = BasecampException.RecordingSummaryFailure(reason, "failed")
+            assertEquals(reason, e.reason, "the identity stays in reason")
+            assertEquals(expectedCode, e.code, "the derived code for $reason")
+            assertTrue(e.code in canonical, "$reason derives a code inside SPEC §6's table")
+            assertNotEquals(e.reason, e.code, "$reason must not BE its own code")
+            assertEquals(expectedExit, e.exitCode, "the exit code for $reason")
+        }
+        // A reason with no row still lands inside the taxonomy, and on `usage`
+        // rather than reaching `exitCodeFor`'s `else`: a verdict added later
+        // must not carry the exit code of a server fault.
+        val unmapped = BasecampException.RecordingSummaryFailure("a_reason_added_later", "failed")
+        assertEquals(BasecampException.CODE_USAGE, unmapped.code)
+        assertEquals(1, unmapped.exitCode)
+        // `reason != code` above is a real check rather than a theorem, and this
+        // is the input that shows it. There is no name matching in the
+        // derivation — `RecordingSummaryFailure("not_found", …)` reports
+        // `usage`, not `not_found` — so exactly ONE reason coincides with its
+        // own code, and it does so because `usage` IS the fallback the `else`
+        // arm returns. Without a row where the two sides can meet, an
+        // `assertNotEquals` between a value and a function of that value reads
+        // as something the derivation guarantees, and a reader cannot tell a
+        // guard from a tautology.
+        val collides = BasecampException.RecordingSummaryFailure(BasecampException.CODE_USAGE, "failed")
+        assertEquals(collides.reason, collides.code)
+        // recording_unresolved and a read's own 404 share a coarse code on
+        // purpose — both mean "not found" — and stay distinguishable by reason.
+        val unresolved = BasecampException.RecordingSummaryFailure(
+            BasecampException.RECORDING_UNRESOLVED,
+            "found under no visible campfire",
+        )
+        assertEquals(BasecampException.NotFound().code, unresolved.code)
+        assertEquals(BasecampException.RECORDING_UNRESOLVED, unresolved.reason)
+    }
+
+    @Test
     fun exhaustiveWhenMatching() {
         val errors: List<BasecampException> = listOf(
             BasecampException.Auth(),
@@ -207,6 +276,10 @@ class ErrorTest {
             BasecampException.Validation("invalid"),
             BasecampException.LimitExceeded(),
             BasecampException.Usage("bad arg"),
+            BasecampException.RecordingSummaryFailure(
+                BasecampException.RECORDING_UNRESOLVED,
+                "chat line found under no visible campfire",
+            ),
             BasecampException.DiscoverySelection("ambiguous_issuers", "ambiguous"),
             BasecampException.DeviceFlow(BasecampException.DEVICE_ACCESS_DENIED),
         )
@@ -224,6 +297,7 @@ class ErrorTest {
                 is BasecampException.Validation -> "validation"
                 is BasecampException.LimitExceeded -> "limit_exceeded"
                 is BasecampException.Usage -> "usage"
+                is BasecampException.RecordingSummaryFailure -> "recording_summary"
                 is BasecampException.DiscoverySelection -> "discovery_selection"
                 is BasecampException.DeviceFlow -> "device_flow"
             }

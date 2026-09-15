@@ -1,6 +1,7 @@
 package com.basecamp.sdk
 
 import com.basecamp.sdk.http.BasecampHttpClient
+import com.basecamp.sdk.services.CampfireIndex
 import io.ktor.client.*
 import io.ktor.client.engine.*
 import io.ktor.client.plugins.HttpTimeout
@@ -185,6 +186,18 @@ class BasecampClient internal constructor(
         json = json,
         requestTimeoutMillis = if (externalHttpClient == null) installedTimeoutMillis else null,
     )
+
+    /**
+     * The chat-line Campfire discovery caches (SPEC.md §18 composite; see
+     * [com.basecamp.sdk.services.RecordingsService.summarize]).
+     *
+     * It lives here rather than on an [AccountClient] because [forAccount] hands
+     * out a fresh account client per call, so a cache held there would never
+     * outlive one `summarize`. This client is bound to one credential, and every
+     * key carries the account id, so entries are never shared across
+     * authorization contexts.
+     */
+    internal val campfireIndex: CampfireIndex by lazy { CampfireIndex() }
 
     /** The HttpTimeout budget [configureClient] installs, if any. */
     private val installedTimeoutMillis: Long?
