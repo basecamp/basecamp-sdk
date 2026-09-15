@@ -508,3 +508,53 @@ class TestRowKeyedErrors:
         err = error_from_response(422, body)
         assert isinstance(err, ValidationError)
         assert err.field_errors is None
+
+
+class TestCompositeIdentities:
+    """Identity is the class; `code` is the canonical SPEC section 6 answer."""
+
+    def test_every_composite_code_is_inside_the_enum(self):
+        # Swept rather than listed: the first version of this table missed one
+        # of the six, and a hand-written list here would have missed it again.
+        from basecamp import errors as _errors
+
+        composites = [
+            value
+            for name, value in vars(_errors).items()
+            if isinstance(value, type)
+            and issubclass(value, _errors.BasecampError)
+            and name in _errors.__dict__
+            and name
+            in {
+                "NoRecordingTypeError",
+                "UnknownRecordingTypeError",
+                "RecordingUnresolvedError",
+                "CampfireDiscoveryIncompleteError",
+                "BucketMismatchError",
+                "CampfireIndexLoadAbortedError",
+            }
+        ]
+        assert len(composites) == 6, "all six identities must be covered"
+        built = [
+            _errors.NoRecordingTypeError(routing_key="boost.created"),
+            _errors.UnknownRecordingTypeError(routing_key="x.y"),
+            _errors.RecordingUnresolvedError(bucket_id=1, recording_id=2, campfire_ids=[], refreshed=False),
+            _errors.CampfireDiscoveryIncompleteError(bucket_id=1, recording_id=2, reason="r"),
+            _errors.BucketMismatchError(bucket_id=1, recording_id=2, requested_bucket_id=3),
+            _errors.CampfireIndexLoadAbortedError(),
+        ]
+        codes = {type(e).__name__: e.code for e in built}
+        outside = {n: c for n, c in codes.items() if c not in set(_errors.ErrorCode)}
+        assert not outside, f"a public error carrying a code outside the closed enum: {outside}"
+        # ...and none of them falls through to the catch-all exit code by
+        # accident, which is the harm the enum rule exists to prevent.
+        assert all(e.exit_code in {1, 2, 7} for e in built)
+
+    def test_discovery_incomplete_cannot_be_told_it_is_retryable(self):
+        # `DeviceFlowError` overwrites rather than setdefaults so a caller's
+        # kwarg cannot flip the invariant. Claiming that in prose without
+        # writing it is how it would be lost at the first caller who passes it.
+        from basecamp.errors import CampfireDiscoveryIncompleteError
+
+        error = CampfireDiscoveryIncompleteError(bucket_id=1, recording_id=2, reason="r", retryable=True)
+        assert error.retryable is False

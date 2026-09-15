@@ -541,6 +541,90 @@ result = account.download_url(url)          # sync
 result = await account.download_url(url)    # async
 ```
 
+## Recording Summaries and Mentions
+
+`account.recordings.summarize` turns the pointer an account event feed row or a
+webhook carries — a bucket id, a recording id, and the event type or recording
+type — into one compact projection, through the single typed read that type
+names. It is for deciding something about a recording without paying for its
+full payload.
+
+```python
+summary = account.recordings.summarize(
+    bucket_id=2085958499,
+    recording_id=1069479361,
+    event_type="comment.created",       # or recording_type="Comment"
+)
+
+summary["type"]                  # "Comment"
+summary["title"]                 # "Re: We won Leto!"
+summary["content"]               # the rich text, in full
+summary["mentioned_person_ids"]  # [1049715915]
+summary["campfire_id"]           # the Campfire a chat line was found under
+```
+
+`recording_type` is the recording's own type as BC3 spells it and wins over
+`event_type` when both are given. The routed set is deliberate rather than
+exhaustive — ask for it rather than hard-coding it:
+
+```python
+from basecamp import summarizable_event_types, summarizable_recording_types
+```
+
+Anything outside it raises `UnknownRecordingTypeError`, and `boost.*` raises
+`NoRecordingTypeError` (the feed row points at the boost's target and does not
+carry its type). Both refuse before any request is made.
+
+A chat line is the one type whose read needs an id the pointer does not carry,
+so its Campfire is discovered first: the bucket's project dock, then the
+account-wide Campfire listing filtered to the bucket, each cached ten minutes on
+the `Client`. Three outcomes are kept apart, because a consumer does different
+things with them:
+
+| Outcome | Meaning |
+|---------|---------|
+| any non-404 from a candidate | that read failed — raised as itself, and no further candidate is tried |
+| `RecordingUnresolvedError` | every visible candidate answered 404: the line is under no Campfire you can currently see |
+| `CampfireDiscoveryIncompleteError` | candidates were left unsearched, so nothing can be reported absent |
+
+BC3 answers 404 both for a line that is not there and for a Campfire you may no
+longer see, so "unresolved" means the second sentence above and nothing
+stronger; `error.stale_campfire_ids` names the candidates a refreshed dock or
+listing no longer shows.
+
+### Mentions
+
+A mention is a `<bc-attachment>` whose `sgid` is the person's
+`attachable_sgid`. To post one, name the people by id and let the SDK resolve
+them:
+
+```python
+comment = account.comments.create_with_mentions(
+    recording_id=1069479351,
+    content="<div>On it.</div>",
+    mentions=[1049715915],
+)
+
+# Or expand without posting — the same markup works in a rich-text Campfire line.
+content = account.comments.expand_mentions(content="<div>On it.</div>", person_ids=[1049715915])
+```
+
+Every id is read through `people.get` first, so a lookup that fails posts
+nothing. To read mentions back out of rich text:
+
+```python
+from basecamp import mentioned_person_ids
+
+mentioned_person_ids(summary["content"])  # [1049715915]
+```
+
+The two sides are deliberately asymmetric. Reading *describes* what a text says
+it mentions: an sgid's signature cannot be verified outside BC3, so the ids are
+reported, never treated as proof. Writing therefore never lets an sgid already
+in the content stand in for the authoritative people read — it deduplicates on
+the exact `attachable_sgid` that read returned, so a forged or stale tag naming
+the right person cannot suppress the real mention.
+
 ## Pagination
 
 Paginated methods return a `ListResult`, which is a `list` subclass with a `.meta` attribute:

@@ -1,9 +1,15 @@
 from basecamp.services.authorization import AsyncAuthorizationService, AuthorizationService
+from basecamp.services.comments import AsyncCommentsService, CommentsService
 from basecamp.services.documents import (
     AsyncDocumentEdit,
     AsyncDocumentsService,
     DocumentEdit,
     DocumentsService,
+)
+from basecamp.services.recordings import (
+    AsyncRecordingsService,
+    RecordingsService,
+    RecordingSummary,
 )
 from basecamp.services.schedules import (
     AsyncScheduleEntryEdit,
@@ -23,6 +29,11 @@ from basecamp.services.uploads import AsyncUploadsService, UploadsService
 __all__ = [
     "AuthorizationService",
     "AsyncAuthorizationService",
+    "CommentsService",
+    "AsyncCommentsService",
+    "RecordingsService",
+    "AsyncRecordingsService",
+    "RecordingSummary",
     "DocumentsService",
     "AsyncDocumentsService",
     "DocumentEdit",

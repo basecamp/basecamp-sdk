@@ -10,6 +10,7 @@ from basecamp.auth import AuthStrategy, BearerAuth, StaticTokenProvider, TokenPr
 from basecamp.config import Config
 from basecamp.download import DownloadResult, download_sync
 from basecamp.hooks import BasecampHooks, OperationInfo, OperationResult, safe_hook
+from basecamp.services._campfire_index import CampfireIndex
 from basecamp.services.authorization import AuthorizationService
 
 
@@ -56,6 +57,7 @@ class Client:
         )
         self._lock = threading.Lock()
         self._authorization: AuthorizationService | None = None
+        self._campfire_index: CampfireIndex | None = None
 
     @property
     def authorization(self) -> AuthorizationService:
@@ -79,6 +81,21 @@ class Client:
         if not account_id.isdigit():
             raise ValueError(f"account_id must be numeric, got: {account_id}")
         return AccountClient(parent=self, account_id=account_id)
+
+    @property
+    def campfire_index(self) -> CampfireIndex:
+        """The per-``Client`` Campfire discovery cache ``recordings.summarize`` uses.
+
+        It lives here, not on the account client, so a burst of chat-line
+        pointers across several accounts costs one project read per bucket and
+        one Campfire listing per account rather than one per call. A ``Client``
+        is bound to one credential, so nothing cached here is ever shared across
+        authorization contexts, and every key carries the account id besides.
+        """
+        with self._lock:
+            if self._campfire_index is None:
+                self._campfire_index = CampfireIndex()
+            return self._campfire_index
 
     def close(self) -> None:
         self._http.close()
@@ -143,6 +160,11 @@ class AccountClient:
             safe_hook(self.hooks.on_operation_end, op, OperationResult(duration_ms=duration_ms, error=e))
             raise
 
+    @property
+    def campfire_index(self) -> CampfireIndex:
+        """The owning client's Campfire discovery cache. See ``Client.campfire_index``."""
+        return self._parent.campfire_index
+
     def _service(self, name: str, factory):
         with self._lock:
             if name not in self._services:
@@ -202,7 +224,7 @@ class AccountClient:
 
     @property
     def comments(self):
-        from basecamp.generated.services.comments import CommentsService
+        from basecamp.services.comments import CommentsService
 
         return self._service("comments", lambda: CommentsService(self))
 
@@ -286,7 +308,7 @@ class AccountClient:
 
     @property
     def recordings(self):
-        from basecamp.generated.services.recordings import RecordingsService
+        from basecamp.services.recordings import RecordingsService
 
         return self._service("recordings", lambda: RecordingsService(self))
 
