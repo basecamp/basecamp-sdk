@@ -806,7 +806,7 @@ class CampfireIndex {
       // verdict standing in for a failed read.
       return (project.dock ?? [])
         .filter((item) => item.name === "chat")
-        .map((item) => requireNumericId(item.id, "project dock item"))
+        .map((item) => numericId(item.id, "project dock item"))
         .filter((id) => id !== 0);
     });
     return { ids: hit.value, fetchedAt: hit.fetchedAt, cached: hit.cached };
@@ -843,11 +843,11 @@ class CampfireIndex {
         // candidate there, spends budget, and lands in the unresolved verdict's
         // campfireIds — so it is kept here too. Only a value Go's decoder would
         // have refused outright is refused.
-        const campfireId = requireNumericId(campfire.id, "campfire listing entry");
-        const bucketId = requireNumericId(bucket.id, "campfire listing bucket");
-        if (bucketId === 0) continue;
-        const ids = byBucket.get(bucketId);
-        if (ids === undefined) byBucket.set(bucketId, [campfireId]);
+        const campfireId = numericId(campfire.id, "campfire listing entry");
+        const listedBucketId = numericId(bucket.id, "campfire listing bucket");
+        if (listedBucketId === 0) continue;
+        const ids = byBucket.get(listedBucketId);
+        if (ids === undefined) byBucket.set(listedBucketId, [campfireId]);
         else ids.push(campfireId);
       }
       return byBucket;
@@ -864,25 +864,33 @@ class CampfireIndex {
  */
 class CampfireListingOverflow extends Error {
   constructor() {
-    super(`campfire listing exceeds ${MAX_CAMPFIRE_LISTING}`);
+    // Go's sentinel carries the constant's NAME, not its value, and `reason`
+    // is a public field a consumer or a shared fixture can match on.
+    super("campfire listing exceeds MaxCampfireListing");
     this.name = "CampfireListingOverflow";
   }
 }
 
 /**
- * The id a discovery source carried, or the malformed-response error Go gets
- * from its decoder.
+ * The id a discovery source carried, read the way Go's decoder reads it.
  *
- * Both sources declare these ids as required numbers, so a value that is not
- * one came off the wire malformed. Go never reaches its filter in that case —
- * `json.Unmarshal` fails and the read's own error is what `summarize` raises —
- * and SPEC §6 spells this shape for a composite that cannot proceed with a 2xx
- * body: `api_error`, statusless, non-retryable.
+ * Three outcomes, and the first version of this had two of them wrong.
+ * `json.Unmarshal` into an `int64` treats an ABSENT key and a JSON `null` as
+ * the zero value and succeeds — Go then skips a zero id at its own filter — so
+ * neither is an error here either. A string, a fraction, or a number past
+ * int64 fails Go's decode outright and takes the whole read with it, which is
+ * the malformed-response shape SPEC §6 spells for a composite that cannot
+ * proceed with a 2xx body: `api_error`, statusless, non-retryable.
+ *
+ * Getting the first two wrong turned "skip this dock entry" into a failure of
+ * the entire summarize; getting the last wrong let a fractional id through to
+ * a request for `/chats/1.5/lines/{id}`.
  */
-function requireNumericId(value: unknown, what: string): number {
-  if (typeof value !== "number" || !Number.isFinite(value)) {
+function numericId(value: unknown, what: string): number {
+  if (value === undefined || value === null) return 0;
+  if (typeof value !== "number" || !Number.isInteger(value) || !Number.isSafeInteger(value)) {
     throw Errors.apiError(
-      truncateErrorMessage(`${what} has a non-numeric id (${describeIdValue(value)})`),
+      truncateErrorMessage(`${what} has an id that is not a whole number (${describeIdValue(value)})`),
       undefined,
       {
         retryable: false,
@@ -894,8 +902,8 @@ function requireNumericId(value: unknown, what: string): number {
 }
 
 function describeIdValue(value: unknown): string {
-  if (value === null) return "null";
   if (typeof value === "string") return JSON.stringify(value);
+  if (typeof value === "number") return String(value);
   return typeof value;
 }
 
@@ -1402,11 +1410,11 @@ function projectRecording(
   nested: SummarizableNested,
 ): RecordingSummary {
   const body = content ?? "";
-  // The scalars default to "" rather than carrying `undefined` through: they
-  // are required on every routed shape, so a body omitting one is malformed,
-  // and Go's zero value for a string is "" and is emitted. Left undefined,
-  // JSON.stringify would drop the key and a consumer would see a shape no other
-  // SDK produces.
+  // The scalars default rather than carrying `undefined` through: they are
+  // required on every routed shape, so a body omitting one is malformed, and
+  // Go emits its zero value. Left undefined, JSON.stringify would drop the key
+  // and a consumer would see a shape no other SDK produces. The three strings
+  // default to ""; updated_at does not, because its Go type is not a string.
   const summary: RecordingSummary = {
     id: recording.id,
     status: recording.status ?? "",
@@ -1415,7 +1423,9 @@ function projectRecording(
     app_url: recording.app_url ?? "",
     mentioned_person_ids: mentionedPersonIds(body),
     content: body,
-    updated_at: recording.updated_at ?? "",
+    // Go's zero value here is a `time.Time`, not a string, and it marshals as
+    // the zero instant rather than as "".
+    updated_at: recording.updated_at ?? "0001-01-01T00:00:00Z",
   };
   if (nested.parent) summary.parent = nested.parent;
   if (nested.bucket) summary.bucket = nested.bucket;

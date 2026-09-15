@@ -98,37 +98,87 @@ export function mentionedPersonIds(richText: string): number[] {
  * class, not an accident, hence the lint suppression.
  */
 // oxlint-disable-next-line no-control-regex
-const GID_URL = /^gid:\/\/([^/?#\s"<>\\^`{|}\u0000-\u001f\u007f]+)(\/[^?#]*)?(?:[?#][\s\S]*)?$/i;
+const GID_URL = /^gid:\/\/([^/?#]*)(\/[^?#]*)?(?:[?#][\s\S]*)?$/i;
+
+/**
+ * `url.Parse` refuses a URL containing any control byte, anywhere in the string
+ * — `stringContainsCTLByte`, checked before parsing — where a character class
+ * on the authority alone would let one through in the query.
+ */
+// oxlint-disable-next-line no-control-regex
+const CONTROL_BYTE = /[\u0000-\u001f\u007f]/;
 
 /**
  * Whether an authority is one `url.Parse` would accept.
  *
- * The character class in {@link GID_URL} models what may not APPEAR in a host;
- * this models the one structural rule on top of it, which a character class
- * cannot express: everything after the last `:` must be a port, meaning digits
- * or nothing. Without it `gid://bc3:abc/Person/1` names a person here and fails
- * to parse in Go — a regex imitating a parser being wrong in the place a
- * character class cannot see. An IPv6 literal is bracketed, and the port rule
- * applies to what follows the bracket, exactly as `net/url` reads it.
+ * Measured against `net/url` rather than inferred, because the earlier version
+ * got its central rule backwards: it refused every percent-escape in a host on
+ * the strength of a claim that `net/url` does. It does not.
+ * `unescape(…, encodeHost)` refuses an escape only when the first hex digit is
+ * below 8 — an escape of an ASCII byte — and exempts `%25`, so `b%C3%A9c3` is a
+ * host Go accepts and decodes.
+ *
+ * What it models: userinfo split at the last `@` and held to `validUserinfo`; a
+ * host that may not be empty; the optional-port rule; and the escape rule
+ * above. What it does NOT model is the validation of a bracketed IPv6 literal,
+ * which is intricate and Go-version-dependent — a bracketed authority is
+ * accepted here on the port rule alone, which is wider than current Go.
  */
 function isParsableHost(authority: string): boolean {
   // Userinfo comes off first, as `url.Parse` splits it at the LAST "@" before
   // looking at the host at all — otherwise the colon in "user:pass@bc3" reads
-  // as a port and the gid is refused, where Go accepts it. A percent-escape is
-  // legal in userinfo and not in the host, so the order matters twice over.
+  // as a port and the gid is refused, where Go accepts it.
   const at = authority.lastIndexOf("@");
+  if (at >= 0 && !isValidUserinfo(authority.slice(0, at))) return false;
   const host = at < 0 ? authority : authority.slice(at + 1);
 
-  // `net/url` refuses EVERY percent-escape in a host, valid or not: it is not a
-  // decode-then-validate, so "b%41c3" is an error there rather than "bAc3".
-  if (host.includes("%")) return false;
+  // Go refuses a URL whose Host is empty, which is what "gid://user@/Person/1"
+  // parses to. Without this the read side INVENTS a mention Go does not report
+  // — the direction the module comment calls out as the dangerous one.
+  if (host === "") return false;
 
   if (host.startsWith("[")) {
-    const close = host.indexOf("]");
+    const close = host.lastIndexOf("]");
     return close >= 0 && isOptionalPort(host.slice(close + 1));
   }
+  if (FORBIDDEN_IN_HOST.test(host)) return false;
   const colon = host.lastIndexOf(":");
-  return colon < 0 || isOptionalPort(host.slice(colon));
+  if (colon >= 0 && !isOptionalPort(host.slice(colon))) return false;
+  return hasParsableHostEscapes(colon < 0 ? host : host.slice(0, colon));
+}
+
+/**
+ * The characters `url.Parse` refuses in an unbracketed host, swept rather than
+ * derived: every printable ASCII was planted mid-host and the ones Go rejected
+ * are exactly these. `/`, `?` and `#` are already outside the authority group,
+ * and `:` is left to the port rule. Note what is NOT here — `"`, `<`, `>` and
+ * `]` are all accepted by Go, and an earlier version of this file refused them.
+ */
+const FORBIDDEN_IN_HOST = /[ [\\^`{|}]/;
+
+/**
+ * The escapes `unescape(…, encodeHost)` accepts: two hex digits, with the first
+ * at least 8 — an escape of a non-ASCII byte — and `%25` exempt.
+ */
+function hasParsableHostEscapes(host: string): boolean {
+  for (let i = host.indexOf("%"); i >= 0; i = host.indexOf("%", i + 1)) {
+    const high = hexDigit(host.charCodeAt(i + 1), true);
+    const low = hexDigit(host.charCodeAt(i + 2), true);
+    if (high < 0 || low < 0) return false;
+    if (high < 8 && !(high === 2 && low === 5)) return false;
+  }
+  return true;
+}
+
+/** Go's `validUserinfo`: the unreserved set, the sub-delims, and ":~%@". */
+function isValidUserinfo(userinfo: string): boolean {
+  if (!/^[A-Za-z0-9\-._:~!$&'()*+,;=%@]*$/.test(userinfo)) return false;
+  // An escape in userinfo is unescaped too, and a malformed one is an error.
+  for (let i = userinfo.indexOf("%"); i >= 0; i = userinfo.indexOf("%", i + 1)) {
+    if (hexDigit(userinfo.charCodeAt(i + 1), true) < 0) return false;
+    if (hexDigit(userinfo.charCodeAt(i + 2), true) < 0) return false;
+  }
+  return true;
 }
 
 /**
@@ -150,8 +200,14 @@ function percentDecodePath(path: string): string | undefined {
   for (let i = 0; i < path.length; ) {
     const code = path.charCodeAt(i);
     if (code !== 0x25 /* % */) {
-      for (const byte of encoder.encode(path[i]!)) bytes.push(byte);
-      i++;
+      // Encode the whole unescaped RUN at once. Per code unit, a surrogate pair
+      // becomes two lone halves — six replacement bytes instead of the
+      // character's four — which nothing downstream reads today and would be a
+      // real defect the moment something did.
+      let run = i;
+      while (run < path.length && path.charCodeAt(run) !== 0x25) run++;
+      for (const byte of encoder.encode(path.slice(i, run))) bytes.push(byte);
+      i = run;
       continue;
     }
     const high = hexDigit(path.charCodeAt(i + 1), true);
@@ -185,6 +241,7 @@ export function personIdFromSGID(sgid: string): number | undefined {
   // mints `gid://bc3/Person/1049715915?expires_in=`. The query and fragment are
   // stripped the way a URL parser strips them, and the path must then be
   // exactly `/<Model>/<id>`: no more, no less.
+  if (CONTROL_BYTE.test(gid)) return undefined;
   const parsed = GID_URL.exec(gid);
   if (parsed === null) return undefined;
   if (!isParsableHost(parsed[1] ?? "")) return undefined;
@@ -471,9 +528,6 @@ const WINDOWS_1252 = [
 
 const REPLACEMENT = "\ufffd";
 
-/** Bounds the digits a numeric reference may claim before it is out of range anyway. */
-const MAX_NUMERIC_DIGITS = 10;
-
 /**
  * Decodes the character reference at `start` (where the text has `&`), Go's
  * way, returning the replacement text and the index just past what it consumed.
@@ -519,12 +573,16 @@ function unescapeEntity(text: string, start: number): [string, number] {
   if (hex) pos++;
 
   const digitsStart = pos;
+  // Go accumulates into a `rune`, which is an int32 and WRAPS on overflow, and
+  // range-checks the wrapped result — so "&#4294967361;" is "A", 65 having gone
+  // once round. `| 0` is that same wrap. There is deliberately no cap on the
+  // digit count: capping one truncates a zero-padded reference, and
+  // "&#00000000065;" is an ordinary way to write "A", not a hostile input.
   let value = 0;
   while (pos < text.length) {
     const digit = hexDigit(text.charCodeAt(pos), hex);
     if (digit < 0) break;
-    if (pos - digitsStart < MAX_NUMERIC_DIGITS) value = value * (hex ? 16 : 10) + digit;
-    else value = 0x110000; // out of range, and stays out
+    value = (value * (hex ? 16 : 10) + digit) | 0;
     pos++;
   }
   const digits = pos - digitsStart;
