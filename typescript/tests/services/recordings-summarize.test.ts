@@ -1192,6 +1192,40 @@ describe("recordings.summarize", () => {
       expect(paths).toEqual([`/12345/projects/${BUCKET}`, "/12345/chats/77/lines/9"]);
     });
 
+    it("refuses a dock id it can only address after rounding, though Go decodes it", async () => {
+      // The one row that separates the two clauses. Everything else in the list
+      // above is refused by the int64 window, which arrived later and quietly
+      // took over the whole test — a revert of the SAFE-INTEGER clause left the
+      // suite green because 1e20 is past 2^63 and never reached it.
+      //
+      // 2^53+1 is the value that reaches it: JSON.parse rounds it to
+      // 9007199254740992, and Go decodes the literal and would read the line
+      // under 9007199254740993. A rounded id addresses a DIFFERENT Campfire, so
+      // this is the one place the port refuses a body the reference accepts,
+      // per SPEC waiver 1B.6 — and it says so rather than reading some other
+      // Campfire's line and calling it this one.
+      const fresh = createBasecampClient({ accountId: "12345", accessToken: "t", enableRetry: false });
+      const paths = trackRequests();
+      server.use(
+        http.get(`${BASE_URL}/projects/${BUCKET}`, () =>
+          HttpResponse.text(
+            `{"id":${BUCKET},"dock":[{"id":9007199254740993,"name":"chat","title":"C","enabled":true}]}`,
+            { headers: { "content-type": "application/json" } },
+          ),
+        ),
+      );
+
+      const err = await fresh.recordings
+        .summarize({ bucketId: BUCKET, recordingId: 9, eventType: "chat.line.created" })
+        .catch((e: unknown) => e);
+
+      expect(err).toBeInstanceOf(BasecampError);
+      expect((err as BasecampError).code).toBe("api_error");
+      expect((err as BasecampError).message).toContain("out of safe integer range");
+      // And nothing was read under the rounded id.
+      expect(paths.some((path) => path.includes("9007199254740992"))).toBe(false);
+    });
+
     it("refuses a dock item whose id is not a whole number, as Go's decoder does", async () => {
       // Go never reaches its `item.ID != 0` filter for a malformed id:
       // json.Unmarshal fails and the project read's own error is what surfaces.
