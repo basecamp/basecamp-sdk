@@ -142,6 +142,42 @@ final class MentionsTests: XCTestCase {
         }
     }
 
+    /// HTML character references, measured against `html.UnescapeString` through
+    /// the same end-to-end diff as the sgid table above — 4,000 fuzzed attribute
+    /// values as well as these, zero mismatches.
+    ///
+    /// The boundaries here are not guessable, which is why they are pinned
+    /// rather than reasoned about: `&#9` is literal while `&#x9` is a tab,
+    /// because the `x` counts toward the same index Go tests; `&#133;` is an
+    /// ellipsis rather than the NEL that would have been trimmed, because
+    /// 0x80–0x9F are remapped through Windows-1252; `&#8203;` survives the trim
+    /// because U+200B is whitespace to Foundation and not to Go; and `&nbspBAh…`
+    /// resolves because a name is matched against the table longest-first rather
+    /// than by consuming the longest run of name characters.
+    func testEntityDecodingMatchesTheGoImplementationRowForRow() {
+        let cases: [(name: String, html: String, expected: [Int])] = [
+            ("a named reference matched longest-first, not by the longest run of name characters", "<div><bc-attachment sgid=\"&nbspeyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef\"></bc-attachment></div>", [42]),
+            ("the same with its semicolon", "<div><bc-attachment sgid=\"&nbsp;eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef\"></bc-attachment></div>", [42]),
+            ("one character after &# is not a reference", "<div><bc-attachment sgid=\"&#9eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef\"></bc-attachment></div>", []),
+            ("...but a semicolon makes it one", "<div><bc-attachment sgid=\"&#9;eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef\"></bc-attachment></div>", [42]),
+            ("...and in hex the x counts toward the same index", "<div><bc-attachment sgid=\"&#x9eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef\"></bc-attachment></div>", []),
+            ("0x80-0x9F is remapped through Windows-1252, so this is an ellipsis, not NEL", "<div><bc-attachment sgid=\"&#133;eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef\"></bc-attachment></div>", []),
+            ("U+200B is not whitespace to Go, so it is not trimmed", "<div><bc-attachment sgid=\"&#8203;eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef\"></bc-attachment></div>", []),
+            ("U+00A0 is", "<div><bc-attachment sgid=\"&#160;eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef\"></bc-attachment></div>", [42]),
+            ("a two-scalar expansion, all of it whitespace", "<div><bc-attachment sgid=\"&ThickSpace;eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef\"></bc-attachment></div>", [42]),
+            ("NUL becomes U+FFFD", "<div><bc-attachment sgid=\"&#0;eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef\"></bc-attachment></div>", []),
+            ("a surrogate becomes U+FFFD", "<div><bc-attachment sgid=\"&#xD800;eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef\"></bc-attachment></div>", []),
+            ("an unknown name is left verbatim", "<div><bc-attachment sgid=\"&notaname;eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef\"></bc-attachment></div>", []),
+            ("a legacy name expands without its semicolon", "<div><bc-attachment sgid=\"&ampeyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef\"></bc-attachment></div>", []),
+            ("UnderBar spells an underscore", "<div><bc-attachment sgid=\"eyJfcmFpbHMiOnsiZGF0&UnderBar;YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef\"></bc-attachment></div>", []),
+            ("hyphen does NOT spell a hyphen", "<div><bc-attachment sgid=\"eyJfcmFpbHMiOnsiZGF0&hyphen;YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef\"></bc-attachment></div>", []),
+            ("lowbar inside the payload", "<div><bc-attachment sgid=\"eyJfcmFpbHMiOnsiZGF0&lowbar;YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef\"></bc-attachment></div>", []),
+        ]
+        for row in cases {
+            XCTAssertEqual(Mentions.personIds(in: row.html), row.expected, row.name)
+        }
+    }
+
     func testRefusesAMalformedAuthority() {
         XCTAssertNil(Mentions.personId(fromGlobalId: "gid://@/Person/1"))
         XCTAssertNil(Mentions.personId(fromGlobalId: "gid://bad%zz/Person/1"))

@@ -359,7 +359,7 @@ extension Mentions {
     /// bare payload when that fails, which is what an unsigned envelope — one
     /// that happens to contain `--` included — needs.
     static func globalId(fromSgid sgid: String) -> String? {
-        let value = sgid.trimmingCharacters(in: .whitespacesAndNewlines)
+        let value = sgid.trimmingCharacters(in: goWhitespace)
         if let separator = value.range(of: "--", options: .backwards),
             separator.lowerBound != value.startIndex,
             let gid = envelopeGlobalId(String(value[..<separator.lowerBound]))
@@ -558,18 +558,21 @@ private func decodeUnpaddedBase64(_ value: String) -> Data? {
 /// Decodes the HTML character references that can appear in an attribute value.
 ///
 /// Narrower than Go's `html.UnescapeString`, and narrow along a line that cannot
-/// change an outcome. The value this is applied to is an `attachable_sgid`,
-/// which is base64 plus `--` plus a digest, so the only references that can
-/// matter are the ones producing a character in that alphabet:
-/// `[A-Za-z0-9+/=_-]`. A reference for anything else decodes in Go and is left
-/// verbatim here, and the envelope then fails the base64 decode on BOTH sides —
-/// same answer, reached differently.
+/// change an outcome. The value this is applied to is an `attachable_sgid` — so
+/// after the decode it is trimmed, split on the last `--`, and base64-decoded.
+/// Only two kinds of reference can change what that produces:
 ///
-/// What that line requires, and what an earlier cut of this got wrong: the
-/// NUMERIC forms have to be decoded whether or not they carry the terminating
-/// semicolon, because `&#101` is a letter, and a letter is in the alphabet. Go
-/// decodes it; leaving it encoded loses a real mention and, on the write side,
-/// makes the authoritative tag look absent and adds a duplicate.
+///   * one that expands to a character the base64 alphabet contains, and
+///   * one that expands to WHITESPACE, because the trim then erases it — which
+///     is how `sgid="&nbspBAh7…"` names a person in Go and would name nobody
+///     under a table that did not know `&nbsp`.
+///
+/// Every other reference expands to something the alphabet does not contain, so
+/// the envelope fails to decode whether it was expanded or left verbatim: same
+/// answer, reached differently. The table below is exactly those two kinds, and
+/// every entry in it was read off `html.UnescapeString` rather than guessed —
+/// which is how `&hyphen;` and `&dash;` are absent (both name U+2010, not ASCII
+/// `-`) and how `&ThickSpace;` comes to be two scalars.
 private func unescapeEntities(_ value: String) -> String {
     guard value.contains("&") else { return value }
 
@@ -584,7 +587,7 @@ private func unescapeEntities(_ value: String) -> String {
             rest = rest[after...]
             continue
         }
-        out.append(replacement)
+        out += replacement
         rest = rest[end...]
     }
     out += rest
@@ -592,59 +595,147 @@ private func unescapeEntities(_ value: String) -> String {
 }
 
 /// Reads one character reference starting just after its `&`, returning the
-/// character and the index after it. Nil when there is no reference there.
-private func entityAt(_ text: Substring, from start: Substring.Index) -> (Character, Substring.Index)? {
-    // Numeric: `&#101;`, `&#101`, `&#x65;`, `&#x65`. Bounded so a stray `&#`
-    // followed by a long run of digits costs nothing.
+/// expansion and the index after it. Nil when there is no reference there.
+private func entityAt(_ text: Substring, from start: Substring.Index) -> (String, Substring.Index)? {
+    // Numeric, ported from Go's `unescapeEntity` rather than from a reading of
+    // what it ought to do — the boundary is not guessable. `&#9x` is LITERAL
+    // (only one character consumed after `&#`) while `&#10x` is a newline and
+    // `&#x9x` is a tab, because the `x` counts toward the same index. And the
+    // value is not the character: 0x80–0x9F are remapped through Windows-1252
+    // (`&#133;` is an ellipsis, NOT the NEL that would have been trimmed), and
+    // NUL, the surrogates and anything past U+10FFFF become U+FFFD.
     if start < text.endIndex, text[start] == "#" {
+        var consumed = 2  // Go's `i`, counting the "&" and the "#"
         var cursor = text.index(after: start)
-        var radix = 10
+        var hex = false
         if cursor < text.endIndex, text[cursor] == "x" || text[cursor] == "X" {
-            radix = 16
+            hex = true
             cursor = text.index(after: cursor)
+            consumed += 1
         }
-        let digitsStart = cursor
-        while cursor < text.endIndex, text[cursor].isHexDigit,
-            text.distance(from: digitsStart, to: cursor) < 8
+
+        var value: UInt32 = 0
+        var overflowed = false
+        while cursor < text.endIndex {
+            let c = text[cursor]
+            cursor = text.index(after: cursor)
+            consumed += 1
+            if let digit = c.hexDigitValue, hex || c.isNumber, hex || digit < 10 {
+                let (scaled, didOverflow) = value.multipliedReportingOverflow(by: hex ? 16 : 10)
+                if didOverflow { overflowed = true } else { value = scaled &+ UInt32(digit) }
+                continue
+            }
+            if c != ";" { consumed -= 1; cursor = text.index(before: cursor) }
+            break
+        }
+        guard consumed > 3 else { return nil }  // "No characters matched."
+
+        var scalarValue = overflowed ? 0x11_0000 : value
+        if scalarValue >= 0x80, scalarValue <= 0x9F {
+            scalarValue = windows1252Replacements[Int(scalarValue - 0x80)]
+        } else if scalarValue == 0 || (scalarValue >= 0xD800 && scalarValue <= 0xDFFF)
+            || scalarValue > 0x10_FFFF
         {
-            if radix == 10, !text[cursor].isNumber { break }
-            cursor = text.index(after: cursor)
+            scalarValue = 0xFFFD
         }
-        guard digitsStart < cursor, let value = UInt32(text[digitsStart..<cursor], radix: radix),
-            let scalar = Unicode.Scalar(value)
-        else { return nil }
-        // The semicolon is consumed when present and not required when absent,
-        // which is what Go's decoder does with the numeric forms.
-        let end =
-            (cursor < text.endIndex && text[cursor] == ";") ? text.index(after: cursor) : cursor
-        return (Character(scalar), end)
+        guard let scalar = Unicode.Scalar(scalarValue) else { return nil }
+        return (String(Character(scalar)), cursor)
     }
 
-    // Named. Every one of these needs its semicolon in HTML5, and every one
-    // produces a character the base64 alphabet contains — except the five XML
-    // ones, which are here because a serializer emits them and because leaving
-    // them encoded would change what the tag walk reports.
+    // Named. A name is alphanumeric — `emsp13` is one — and is matched against
+    // the TABLE, longest entry first, rather than by consuming the longest run
+    // of name characters and demanding a semicolon after it. That distinction is
+    // the whole of `&nbspBAh7…`: the run there is `nbspBAh`, which is not a
+    // name, but `nbsp` is, and Go expands it.
     var cursor = start
-    while cursor < text.endIndex, text[cursor].isLetter,
-        text.distance(from: start, to: cursor) < 8
+    while cursor < text.endIndex, text[cursor].isASCII, text[cursor].isLetter || text[cursor].isNumber,
+        text.distance(from: start, to: cursor) < maxEntityNameLength
     {
         cursor = text.index(after: cursor)
     }
-    guard start < cursor, cursor < text.endIndex, text[cursor] == ";",
+    guard start < cursor else { return nil }
+
+    // With its semicolon, any name in the table.
+    if cursor < text.endIndex, text[cursor] == ";",
         let replacement = namedEntities[String(text[start..<cursor])]
-    else { return nil }
-    return (replacement, text.index(after: cursor))
+    {
+        return (replacement, text.index(after: cursor))
+    }
+    // Without one, only the legacy names allow it — longest first.
+    var candidate = cursor
+    while candidate > start {
+        if let replacement = legacyEntities[String(text[start..<candidate])] {
+            return (replacement, candidate)
+        }
+        candidate = text.index(before: candidate)
+    }
+    return nil
 }
 
-/// Every entry is a character the base64 alphabet contains, plus the five XML
-/// ones a serializer emits. Each was checked against `html.UnescapeString`
-/// rather than guessed: `&hyphen;` and `&dash;` are NOT here because both name
-/// U+2010, not ASCII `-`, so decoding them to a hyphen would make this the
-/// lenient side and let an sgid through that Go decodes to something the
-/// alphabet does not contain. HTML5 has no named reference for U+002D at all.
-private let namedEntities: [String: Character] = [
+/// Longer than any name in the table below, and short enough that a stray `&`
+/// before a long run of letters costs nothing to refuse.
+private let maxEntityNameLength = 24
+
+/// What Go's `unicode.IsSpace` calls whitespace — the set `strings.TrimSpace`
+/// uses, and so the set that decides whether a reference expanded at either end
+/// of an sgid is erased before the decode.
+///
+/// Spelled out rather than taken from `CharacterSet.whitespacesAndNewlines`,
+/// which is not the same set: it contains U+200B ZERO WIDTH SPACE, which Go does
+/// not, so `&#8203;` before a payload was trimmed here and left in place there —
+/// an sgid that named a person here and nobody in Go.
+private let goWhitespace: CharacterSet = {
+    var set = CharacterSet()
+    for scalar in [0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x20, 0x85, 0xA0, 0x1680, 0x2028, 0x2029,
+        0x202F, 0x205F, 0x3000]
+    {
+        set.insert(Unicode.Scalar(UInt32(scalar))!)
+    }
+    set.insert(charactersIn: Unicode.Scalar(0x2000)!...Unicode.Scalar(0x200A)!)
+    return set
+}()
+
+/// Go's `replacementTable`: what a numeric reference in 0x80–0x9F becomes.
+private let windows1252Replacements: [UInt32] = [
+    0x20AC, 0x0081, 0x201A, 0x0192, 0x201E, 0x2026, 0x2020, 0x2021,
+    0x02C6, 0x2030, 0x0160, 0x2039, 0x0152, 0x008D, 0x017D, 0x008F,
+    0x0090, 0x2018, 0x2019, 0x201C, 0x201D, 0x2022, 0x2013, 0x2014,
+    0x02DC, 0x2122, 0x0161, 0x203A, 0x0153, 0x009D, 0x017E, 0x0178,
+]
+
+/// The references whose expansion is a base64-alphabet character or whitespace —
+/// the only two kinds that can change what an sgid decodes to.
+///
+/// Not assembled from memory: Go's table is 2,032 entries, and exactly twenty of
+/// them expand to something all-whitespace or containing a base64 character.
+/// Those twenty are here, each with the value `html.UnescapeString` gives it,
+/// plus the five XML ones the tag walk has to see through. `&hyphen;` and
+/// `&dash;` are absent because both name U+2010 rather than ASCII `-`, and
+/// `&ThickSpace;` is two scalars for the same measured reason.
+private let namedEntities: [String: String] = [
+    // The five a serializer emits, which the tag walk has to see through.
     "amp": "&", "lt": "<", "gt": ">", "quot": "\"", "apos": "'",
-    "plus": "+", "sol": "/", "equals": "=", "lowbar": "_",
+    "AMP": "&", "LT": "<", "GT": ">", "QUOT": "\"",
+    // Base64 punctuation. There is no named reference for ASCII `-`:
+    // `&hyphen;` and `&dash;` are U+2010.
+    "plus": "+", "sol": "/", "equals": "=", "lowbar": "_", "UnderBar": "_",
+    // Whitespace, which the trim erases at either end of the value.
+    "Tab": "\u{09}", "NewLine": "\u{0A}",
+    "nbsp": "\u{A0}", "NonBreakingSpace": "\u{A0}",
+    "ensp": "\u{2002}", "emsp": "\u{2003}", "emsp13": "\u{2004}", "emsp14": "\u{2005}",
+    "numsp": "\u{2007}", "puncsp": "\u{2008}",
+    "thinsp": "\u{2009}", "ThinSpace": "\u{2009}",
+    "hairsp": "\u{200A}", "VeryThinSpace": "\u{200A}",
+    "MediumSpace": "\u{205F}", "ThickSpace": "\u{205F}\u{200A}",
+]
+
+/// The subset Go expands without a terminating semicolon. HTML5's legacy list is
+/// longer; the rest expand to characters the alphabet does not contain and the
+/// trim does not remove, so including them could not change an answer.
+private let legacyEntities: [String: String] = [
+    "amp": "&", "lt": "<", "gt": ">", "quot": "\"",
+    "AMP": "&", "LT": "<", "GT": ">", "QUOT": "\"",
+    "nbsp": "\u{A0}",
 ]
 
 /// The characters a GlobalID authority may contain. Narrow on purpose: BC3
