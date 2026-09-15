@@ -100,6 +100,48 @@ final class MentionsTests: XCTestCase {
     /// accepts both — the PERMISSIVE direction, and the one that matters: a gid
     /// Go refuses must not name a person here, or the write side renders a tag
     /// Go would not write.
+    /// The ordering axis, measured against the real Go implementation rather
+    /// than reasoned about.
+    ///
+    /// Four ports got this wrong in two different directions, and neither the
+    /// fixture nor a leniency table about what the decoder SKIPS can see it: it
+    /// is about where the padding trim sits relative to the separator split and
+    /// the line-break strip. Go's order is trim the whole value, split on the
+    /// LAST `--`, right-trim the padding, then decode with a decoder that has no
+    /// padding character — so a `=` the trim could not reach is refused.
+    ///
+    /// Every expectation below was produced by running these exact inputs
+    /// through `basecamp.PersonIDFromSGID` in `go/pkg/basecamp`, not by reading
+    /// it. The CRLF rows are here because a CRLF is a single Swift `Character`,
+    /// so anything done over a `String` rather than UTF-8 bytes walks past the
+    /// pair a line-wrapping serializer emits.
+    func testSgidDecodingMatchesTheGoImplementationRowForRow() {
+        let cases: [(name: String, sgid: String, expected: Int?)] = [
+            ("01 unpadded + sig", "eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef", 42),
+            ("02 unpadded LF before sep", "eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19\n--deadbeef", 42),
+            ("03 unpadded CRLF before sep", "eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19\r\n--deadbeef", 42),
+            ("04 padded + sig", "eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn0sIngiOiIifQ==--deadbeef", 42),
+            ("05 padded LF between padding and sep", "eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn0sIngiOiIifQ==\n--deadbeef", nil),
+            ("06 padded CRLF between padding and sep", "eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn0sIngiOiIifQ==\r\n--deadbeef", nil),
+            ("07 break amid the padding", "eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn0sIngiOiIifQ=\n=--deadbeef", nil),
+            ("08 break amid the padding CRLF", "eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn0sIngiOiIifQ=\r\n=--deadbeef", nil),
+            ("09 leading break on whole value", "\neyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn0sIngiOiIifQ==--deadbeef", 42),
+            ("10 trailing break on whole value", "eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn0sIngiOiIifQ==--deadbeef\n", 42),
+            ("11 trailing space on whole value", "eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn0sIngiOiIifQ==--deadbeef ", 42),
+            ("12 leading space on whole value", " eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn0sIngiOiIifQ==--deadbeef", 42),
+            ("13 padded, no signature", "eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn0sIngiOiIifQ==", 42),
+            ("14 padded, no signature, trailing break", "eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn0sIngiOiIifQ==\n", 42),
+            ("15 unpadded, space inside", "eyJfcmFpbHMiOnsiZGF0 YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef", nil),
+            ("16 unpadded, tab inside", "eyJfcmFpbHMiOnsiZGF0\tYSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef", nil),
+            ("17 unpadded, LF inside", "eyJfcmFpbHMiOnsiZGF0\nYSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef", 42),
+            ("18 padded, interior = after trim", "eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn0sIngiOiIifQ=Q--deadbeef", nil),
+        ]
+        for row in cases {
+            XCTAssertEqual(
+                Mentions.personId(fromAttachableSgid: row.sgid), row.expected, row.name)
+        }
+    }
+
     func testRefusesAMalformedAuthority() {
         XCTAssertNil(Mentions.personId(fromGlobalId: "gid://@/Person/1"))
         XCTAssertNil(Mentions.personId(fromGlobalId: "gid://bad%zz/Person/1"))
