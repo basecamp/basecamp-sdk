@@ -431,6 +431,107 @@ async fn more_candidates_than_the_budget_is_incomplete_discovery_never_unresolve
     assert_eq!(error.code(), ErrorCode::ApiError);
 }
 
+/// The boundary the `skipped` flag cannot express: a dock holding EXACTLY the budget, every
+/// candidate answering 404. The budget is spent but nothing was ever passed over, so
+/// `skipped` is false — and the account listing has not been consulted, so candidates may
+/// exist there unsearched. That is `incomplete`, and it must not be a listing fetch: the
+/// fetch could admit no candidate, and a failure on it would replace a settled verdict with
+/// a transient error the consumer retries forever.
+#[tokio::test]
+async fn a_budget_spent_before_the_listing_is_incomplete_and_costs_no_listing_fetch() {
+    let server = MockServer::start().await;
+    let crowded: Vec<Value> = (0..MAX_CAMPFIRE_CANDIDATES)
+        .map(|index| {
+            json!({
+                "id": 9_000_000 + i64::try_from(index).unwrap(),
+                "title": "Campfire",
+                "name": "chat",
+                "enabled": true,
+                "url": "u",
+                "app_url": "a",
+            })
+        })
+        .collect();
+    let mut project = project_with_chat(SECOND_CAMPFIRE);
+    project["dock"] = json!(crowded);
+    mount(
+        &server,
+        "GET",
+        &format!("/999/projects/{BUCKET}"),
+        200,
+        &project,
+    )
+    .await;
+    // Every line read answers "not here".
+    Mock::given(method("GET"))
+        .respond_with(ResponseTemplate::new(404).set_body_json(not_found()))
+        .mount(&server)
+        .await;
+
+    let error = account(&server)
+        .recordings()
+        .summarize(&chat_line_ref())
+        .await
+        .unwrap_err();
+    let Some(RecordingSummaryError::CampfireDiscoveryIncomplete { reason, .. }) =
+        RecordingSummaryError::of(&error)
+    else {
+        panic!("expected incomplete discovery, got {error}");
+    };
+    assert!(
+        reason.contains("before the account listing was consulted"),
+        "the reason names the source that went unsearched: {reason}"
+    );
+    let paths = paths(&server).await;
+    assert_eq!(
+        paths.len(),
+        1 + MAX_CAMPFIRE_CANDIDATES,
+        "one dock read and the whole budget, and nothing else"
+    );
+    assert!(
+        !paths.iter().any(|path| path == "/999/chats.json"),
+        "a listing fetch that could admit no candidate was not paid for"
+    );
+}
+
+/// The other half of the same rule: both sources WERE consulted and the budget ran out, so
+/// nothing went unsearched and the answer is the settled `unresolved`, not `incomplete`. The
+/// re-reads are skipped — they could hand this call no candidate it may try — and the
+/// conclusion says so by reporting `refreshed` false.
+#[tokio::test]
+async fn a_budget_spent_after_both_sources_were_consulted_is_unresolved_not_incomplete() {
+    let server = discovery_server(404).await;
+    let account = account(&server);
+    // First call fills both caches and leaves the line unresolved.
+    account
+        .recordings()
+        .summarize(&chat_line_ref())
+        .await
+        .unwrap_err();
+    let after_first = paths(&server).await.len();
+
+    // Second call: both sources are cached, so both are consulted from cache in pass 1.
+    let error = account
+        .recordings()
+        .summarize(&chat_line_ref())
+        .await
+        .unwrap_err();
+    let Some(RecordingSummaryError::Unresolved(unresolved)) = RecordingSummaryError::of(&error)
+    else {
+        panic!("expected unresolved, got {error}");
+    };
+    assert!(!unresolved.refreshed);
+    assert_eq!(
+        unresolved.campfire_ids,
+        vec![FIRST_CAMPFIRE, SECOND_CAMPFIRE]
+    );
+    assert_eq!(
+        paths(&server).await.len() - after_first,
+        2,
+        "only the two line reads; neither source was re-read"
+    );
+}
+
 #[tokio::test]
 async fn a_listing_that_overflows_its_cap_is_incomplete_discovery_too() {
     let server = MockServer::start().await;

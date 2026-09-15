@@ -1136,36 +1136,23 @@ async fn resolve_chat_line(
     // meantime — so it always replaces the pass-1 one; "refreshed" is whether a source the
     // conclusion had consulted is now newer than when it was consulted.
     //
-    // Not when the budget is already spent: a re-read could return no candidate this call
-    // may try, so it would cost a request that cannot help — and a failure on it would
-    // replace the deterministic "incomplete" verdict with a transient error a consumer
-    // retries forever.
+    // A spent budget stops both, and the two sources part company on WHY. A source already
+    // consulted cannot hand this call a candidate it may try, so its refresh is skipped and
+    // the conclusion stands on what was seen (`refreshed` stays false) — paying for that
+    // request would buy nothing, and a failure on it would replace a settled `incomplete`
+    // with a transient error a consumer retries forever. A source NEVER consulted is a
+    // different verdict: candidates may exist there unsearched, so running out of budget
+    // before reaching it makes the answer incomplete rather than unresolved.
     //
-    // KNOWN GAP, shared with Go and deliberately left matching it. The gate below is
-    // `skipped`, which `try_candidates` sets only when it is about to try a candidate and
-    // finds the budget spent — and candidates already tried are filtered out before that
-    // check. So a bucket holding EXACTLY `MAX_CAMPFIRE_CANDIDATES` candidates, all of them
-    // 404, reaches here with the budget at zero and `skipped` false, and pays for a
-    // re-read that can admit nothing. Go does the same in pass 2 of its own
-    // `resolveChatLine`, so the prose above is what both implementations intend and
-    // neither quite does. Fixing it here alone would make this SDK the one that behaves
-    // differently, and the shared fixture pins neither shape; it belongs in the Go
-    // original first and then in every port at once.
-    //
-    // The obvious fix is itself a defect, which is why this note says more than "known
-    // gap": gating on `budget == 0` and concluding `incomplete` would report a bucket
-    // whose 50 candidates were ALL searched as incomplete, when nothing went unsearched.
-    // At the boundary the extra request is exactly what separates the two verdicts — a
-    // 51st candidate appearing means something was missed, nothing new appearing means the
-    // line is genuinely not there. The shape that works is to gate the RE-READS on the
-    // budget and fall through to the final `skipped` check below, plus a rule that a
-    // source never consulted because the budget ran out first yields `incomplete` rather
-    // than `unresolved`.
+    // `skipped` alone cannot express that, which is what the earlier shape got wrong. It is
+    // set only when a candidate is OBSERVED and cannot be tried, so a source holding
+    // exactly `MAX_CAMPFIRE_CANDIDATES` candidates that all answer 404 leaves the budget at
+    // zero with `skipped` still false. And concluding `incomplete` on a spent budget alone
+    // is equally wrong in the other direction: a bucket whose candidates were all searched
+    // is not incomplete. The budget gates the re-reads; `skipped` still decides the final
+    // verdict.
     let mut refreshed = false;
-    if search.skipped {
-        return Err(incomplete(over_budget()));
-    }
-    if dock.cached {
+    if search.budget > 0 && dock.cached {
         let again = index.dock_campfires(account, bucket_id, true).await?;
         if newer_than(&again, &dock) {
             refreshed = true;
@@ -1175,27 +1162,33 @@ async fn resolve_chat_line(
             return Ok(found);
         }
     }
-    if search.skipped {
-        return Err(incomplete(over_budget()));
-    }
-    let again = index
-        .listed_campfires(account, bucket_id, listed.is_some())
-        .await
-        .map_err(|error| {
-            if is_listing_overflow(&error) {
-                incomplete(error.to_string())
-            } else {
-                error
-            }
-        })?;
-    if let Some(previous) = &listed
-        && newer_than(&again, previous)
-    {
-        refreshed = true;
-    }
-    let listed_ids = again.ids;
-    if let Some(found) = search.try_candidates(&listed_ids).await? {
-        return Ok(found);
+    let mut listed_ids = Vec::new();
+    if search.budget == 0 {
+        if listed.is_none() {
+            return Err(incomplete(format!(
+                "the candidate budget of {MAX_CAMPFIRE_CANDIDATES} was spent before the account listing was consulted"
+            )));
+        }
+    } else {
+        let again = index
+            .listed_campfires(account, bucket_id, listed.is_some())
+            .await
+            .map_err(|error| {
+                if is_listing_overflow(&error) {
+                    incomplete(error.to_string())
+                } else {
+                    error
+                }
+            })?;
+        if let Some(previous) = &listed
+            && newer_than(&again, previous)
+        {
+            refreshed = true;
+        }
+        listed_ids = again.ids;
+        if let Some(found) = search.try_candidates(&listed_ids).await? {
+            return Ok(found);
+        }
     }
     if search.skipped {
         return Err(incomplete(over_budget()));
