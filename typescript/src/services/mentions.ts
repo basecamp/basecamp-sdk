@@ -1127,13 +1127,42 @@ export function mentionMarkup(person: Person): string {
   // "names a different person" would pass an undecodable sgid for a person
   // projection carrying no id, since neither side would be a number.
   const named = personIdFromSGID(sgid);
-  if (named === undefined || named !== person.id) {
+  if (named === undefined || named !== personIdValue(person.id)) {
     throw Errors.usage(
       `person ${person.id}'s attachable_sgid does not name that person`,
       "read the person through people.get to obtain their own",
     );
   }
   return `<bc-attachment sgid="${sgid}"></bc-attachment>`;
+}
+
+/**
+ * The id Go reads off a person the API served, for comparing against the one an
+ * sgid names.
+ *
+ * `Person.Id` is the single `FlexibleInt64` in the generated model, so a person
+ * id that arrives as a JSON STRING of digits *is* that number in Go — with or
+ * without `personable_type`, which is the gap this exists to close. The SDK's
+ * own `normalizePersonIds` rewrites a string id only when `personable_type` is
+ * present, so a body without it reaches here still carrying `"1049715914"`, and
+ * comparing that to the number the sgid names refused a person Go mentions.
+ *
+ * Measured against the reference, not inferred: `"1049715914"` and `"+7"` are
+ * their numbers (`strconv.ParseInt` takes the sign), `"basecamp"`, `" 7"` and
+ * `"7.0"` are all 0 — Go's non-numeric sentinel, which is what this returns for
+ * them because it is what Go reads. No sgid can match it: `PersonIDFromSGID`
+ * refuses a non-positive id, so every sentinel is a refusal by way of a zero
+ * that nothing equals. `"9223372036854775808"` is the one string that fails Go's decode
+ * outright and takes the people read with it; nothing at this layer can fail a
+ * read that already succeeded, so it reads as unreadable and the mention is
+ * refused — a refusal either way, by a different route.
+ */
+function personIdValue(value: unknown): number | undefined {
+  if (typeof value === "number") return value;
+  if (typeof value !== "string") return undefined;
+  if (!/^[+-]?\d+$/.test(value)) return 0;
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) ? parsed : undefined;
 }
 
 /**
