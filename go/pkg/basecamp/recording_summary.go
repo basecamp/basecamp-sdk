@@ -186,6 +186,13 @@ const (
 	kindGoogleDocument
 	kindCloudFile
 	kindCardStep
+	kindQuestionnaire
+	kindSchedule
+	kindTodoset
+	kindMessageBoard
+	kindCardTable
+	kindCardColumn
+	kindInbox
 )
 
 // eventSubjects maps the subject of an account event feed type — everything
@@ -200,14 +207,19 @@ var eventSubjects = map[string]summaryKind{
 	"chat.line": kindChatLine,
 }
 
-// recordingTypes maps BC3's recording type strings to a read. Chat lines
+// recordingTypes maps BC3's recording type strings to a read: every
+// recording type the Go SDK can read from the recording id alone. Chat lines
 // are matched by prefix (Chat::Lines::Text, ::RichText, ::Code, ::Upload,
 // ::Integration all read through the same route); everything else exactly.
+// The tool-shaped recordings — a project's questionnaire, schedule, to-do
+// set, message board, card table, columns, inbox — are here too: no feed
+// event points at them today, but they are recordings with id-only reads,
+// and a caller holding one of their ids gets the same projection.
 //
 // Absent on purpose, because their reads need a parent id the pointer does
-// not carry: Client::Reply (bucket + correspondence + reply), Forward::Reply
-// (forward + reply), Question::Answer's sibling Questionnaire, and Kanban
-// columns and tables, which are not recordings a feed row points at.
+// not carry: Client::Reply (bucket + correspondence + reply) and
+// Forward::Reply (forward + reply). Those two are the whole exception; a
+// RecordingType naming either is ErrUnknownRecordingType.
 var recordingTypes = map[string]summaryKind{
 	"Comment":                kindComment,
 	"Message":                kindMessage,
@@ -226,6 +238,13 @@ var recordingTypes = map[string]summaryKind{
 	"GoogleDocument":         kindGoogleDocument,
 	"CloudFile":              kindCloudFile,
 	"Kanban::Step":           kindCardStep,
+	"Questionnaire":          kindQuestionnaire,
+	"Schedule":               kindSchedule,
+	"Todoset":                kindTodoset,
+	"Message::Board":         kindMessageBoard,
+	"Kanban::Board":          kindCardTable,
+	"Kanban::Column":         kindCardColumn,
+	"Inbox":                  kindInbox,
 }
 
 const chatLineTypePrefix = "Chat::Lines::"
@@ -430,6 +449,48 @@ func (s *RecordingsService) readSummary(ctx context.Context, ref RecordingRef, k
 			return nil, err
 		}
 		return summarize(st.ID, st.Status, st.Type, st.Title, st.AppURL, st.Parent, st.Bucket, st.Creator, st.Assignees, "", st.UpdatedAt), nil
+	case kindQuestionnaire:
+		q, err := ac.Checkins().GetQuestionnaire(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		return summarize(q.ID, q.Status, q.Type, firstNonEmpty(q.Title, q.Name), q.AppURL, nil, q.Bucket, q.Creator, nil, "", q.UpdatedAt), nil
+	case kindSchedule:
+		sc, err := ac.Schedules().Get(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		return summarize(sc.ID, sc.Status, sc.Type, sc.Title, sc.AppURL, nil, sc.Bucket, sc.Creator, nil, "", sc.UpdatedAt), nil
+	case kindTodoset:
+		ts, err := ac.Todosets().Get(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		return summarize(ts.ID, ts.Status, ts.Type, firstNonEmpty(ts.Title, ts.Name), ts.AppURL, nil, ts.Bucket, ts.Creator, nil, "", ts.UpdatedAt), nil
+	case kindMessageBoard:
+		mb, err := ac.MessageBoards().Get(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		return summarize(mb.ID, mb.Status, mb.Type, mb.Title, mb.AppURL, nil, mb.Bucket, mb.Creator, nil, "", mb.UpdatedAt), nil
+	case kindCardTable:
+		ct, err := ac.CardTables().Get(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		return summarize(ct.ID, ct.Status, ct.Type, ct.Title, ct.AppURL, nil, ct.Bucket, ct.Creator, nil, "", ct.UpdatedAt), nil
+	case kindCardColumn:
+		col, err := ac.CardColumns().Get(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		return summarize(col.ID, col.Status, col.Type, col.Title, col.AppURL, col.Parent, col.Bucket, col.Creator, nil, col.Description, col.UpdatedAt), nil
+	case kindInbox:
+		in, err := ac.Forwards().GetInbox(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		return summarize(in.ID, in.Status, in.Type, in.Title, in.AppURL, nil, in.Bucket, in.Creator, nil, "", in.UpdatedAt), nil
 	case kindUnknown:
 		return nil, &RecordingRoutingError{Ref: ref, Err: ErrUnknownRecordingType}
 	}

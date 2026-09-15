@@ -185,6 +185,14 @@ func TestSummarize_RoutesEveryType(t *testing.T) {
 		{"GoogleDocument", RecordingRef{BucketID: letoLocator, RecordingID: 1069480366, RecordingType: "GoogleDocument"}, "/195539477/google_documents/1069480366", "google_documents/get.json", "GoogleDocument", "Roadmap (draft)", 1049715915, 0, true},
 		{"CloudFile", RecordingRef{BucketID: letoLocator, RecordingID: 1069480357, RecordingType: "CloudFile"}, "/195539477/cloud_files/1069480357", "cloud_files/get.json", "CloudFile", "Brand book draft", 1049715915, 0, true},
 		{"Kanban::Step", RecordingRef{BucketID: letoLaptop, RecordingID: 1069479360, RecordingType: "Kanban::Step"}, "/195539477/card_tables/steps/1069479360", "cards/step.json", "Kanban::Step", "Set up OAuth providers", 1049715914, 1, false},
+		// The tool-shaped recordings: id-only reads, no feed event points at them yet.
+		{"Questionnaire", RecordingRef{BucketID: letoLaptop, RecordingID: 1069479400, RecordingType: "Questionnaire"}, "/195539477/questionnaires/1069479400", "checkins/questionnaire.json", "Questionnaire", "Automatic Check-ins", 1049715914, 0, false},
+		{"Schedule", RecordingRef{BucketID: letoLaptop, RecordingID: 1069479342, RecordingType: "Schedule"}, "/195539477/schedules/1069479342", "schedules/get.json", "Schedule", "Schedule", 1049715914, 0, false},
+		{"Todoset", RecordingRef{BucketID: letoLocator, RecordingID: 1069479338, RecordingType: "Todoset"}, "/195539477/todosets/1069479338", "todosets/get.json", "Todoset", "To-dos", 1049715915, 0, false},
+		{"Message::Board", RecordingRef{BucketID: letoLaptop, RecordingID: 1069479338, RecordingType: "Message::Board"}, "/195539477/message_boards/1069479338", "message_boards/get.json", "Message::Board", "Message Board", 1049715914, 0, false},
+		{"Kanban::Board", RecordingRef{BucketID: letoLaptop, RecordingID: 1069479345, RecordingType: "Kanban::Board"}, "/195539477/card_tables/1069479345", "cards/card_table.json", "Kanban::Board", "Development Board", 1049715914, 0, false},
+		{"Kanban::Column", RecordingRef{BucketID: letoLaptop, RecordingID: 1069479347, RecordingType: "Kanban::Column"}, "/195539477/card_tables/columns/1069479347", "cards/column.json", "Kanban::Column", "In Progress", 1049715914, 0, true},
+		{"Inbox", RecordingRef{BucketID: letoLaptop, RecordingID: 1069479342, RecordingType: "Inbox"}, "/195539477/inboxes/1069479342", "forwards/inbox.json", "Inbox", "Email Forwards", 1049715914, 0, false},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -247,6 +255,7 @@ func TestSummarize_RefusesUnroutableTypesWithoutARequest(t *testing.T) {
 		{"unknown event type", RecordingRef{BucketID: 1, RecordingID: 2, EventType: "project.created"}, ErrUnknownRecordingType},
 		{"event type without an action", RecordingRef{BucketID: 1, RecordingID: 2, EventType: "comment"}, ErrUnknownRecordingType},
 		{"unknown recording type", RecordingRef{BucketID: 1, RecordingID: 2, RecordingType: "Client::Reply"}, ErrUnknownRecordingType},
+		{"a reply whose read needs its forward's id", RecordingRef{BucketID: 1, RecordingID: 2, RecordingType: "Forward::Reply"}, ErrUnknownRecordingType},
 		{"no type at all", RecordingRef{BucketID: 1, RecordingID: 2}, ErrUnknownRecordingType},
 	}
 	for _, tc := range cases {
