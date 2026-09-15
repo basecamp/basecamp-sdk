@@ -1045,7 +1045,7 @@ func TestTTLCache_LoaderPanicReleasesTheKey(t *testing.T) {
 	loaderDone := make(chan any, 1)
 	go func() {
 		defer func() { loaderDone <- recover() }()
-		_, _, _ = cache.get(context.Background(), "k", false, func(context.Context) (int, error) {
+		_, _ = cache.get(context.Background(), "k", false, func(context.Context) (int, error) {
 			close(started)
 			<-release
 			panic("hook exploded")
@@ -1056,7 +1056,7 @@ func TestTTLCache_LoaderPanicReleasesTheKey(t *testing.T) {
 	cache.onWait = func() { close(waiting) }
 	waiterDone := make(chan error, 1)
 	go func() {
-		_, _, err := cache.get(context.Background(), "k", false, func(context.Context) (int, error) { return 1, nil })
+		_, err := cache.get(context.Background(), "k", false, func(context.Context) (int, error) { return 1, nil })
 		waiterDone <- err
 	}()
 	<-waiting // the waiter is on the in-flight path before the loader is released
@@ -1074,13 +1074,13 @@ func TestTTLCache_LoaderPanicReleasesTheKey(t *testing.T) {
 		t.Fatal("the waiter hung on a key whose loader panicked")
 	}
 	// The key is free: the next load runs and caches.
-	v, cached, err := cache.get(context.Background(), "k", false, func(context.Context) (int, error) { return 7, nil })
-	if err != nil || v != 7 || cached {
-		t.Fatalf("after the panic: v=%d cached=%v err=%v", v, cached, err)
+	hit, err := cache.get(context.Background(), "k", false, func(context.Context) (int, error) { return 7, nil })
+	if err != nil || hit.value != 7 || hit.cached {
+		t.Fatalf("after the panic: %+v err=%v", hit, err)
 	}
-	v, cached, err = cache.get(context.Background(), "k", false, func(context.Context) (int, error) { return 8, nil })
-	if err != nil || v != 7 || !cached {
-		t.Fatalf("the recovered load did not cache: v=%d cached=%v err=%v", v, cached, err)
+	hit, err = cache.get(context.Background(), "k", false, func(context.Context) (int, error) { return 8, nil })
+	if err != nil || hit.value != 7 || !hit.cached {
+		t.Fatalf("the recovered load did not cache: %+v err=%v", hit, err)
 	}
 }
 
@@ -1090,7 +1090,7 @@ func TestTTLCache_WaiterGetsTheLoadItWaitedOnAsFresh(t *testing.T) {
 	started := make(chan struct{})
 	release := make(chan struct{})
 	go func() {
-		_, _, _ = cache.get(context.Background(), "k", false, func(context.Context) (int, error) {
+		_, _ = cache.get(context.Background(), "k", false, func(context.Context) (int, error) {
 			close(started)
 			<-release
 			return 42, nil
@@ -1106,8 +1106,8 @@ func TestTTLCache_WaiterGetsTheLoadItWaitedOnAsFresh(t *testing.T) {
 	cache.onWait = func() { close(waiting) }
 	done := make(chan outcome, 1)
 	go func() {
-		v, cached, err := cache.get(context.Background(), "k", false, func(context.Context) (int, error) { return -1, nil })
-		done <- outcome{v, cached, err}
+		hit, err := cache.get(context.Background(), "k", false, func(context.Context) (int, error) { return -1, nil })
+		done <- outcome{hit.value, hit.cached, err}
 	}()
 	<-waiting
 	close(release)
@@ -1154,5 +1154,75 @@ func TestSummarize_ChatLineMentionsOnlyOnRichTextSubtypes(t *testing.T) {
 				t.Fatalf("MentionedPersonIDs = %v, want %v", got.MentionedPersonIDs, tc.want)
 			}
 		})
+	}
+}
+
+func TestSummarize_ChatLineTakesTheListingAnotherCallerPopulated(t *testing.T) {
+	// Caller B's listing peek misses (the listing has expired) and B goes to
+	// re-read its dock. While that project read is in flight, caller A fetches
+	// the listing, which now holds Campfire X in B's bucket. B's own listing
+	// consultation then finds a fresh entry another caller populated; X answers
+	// 404. B must report X as tried and current — not stale — because the
+	// snapshot it concluded on is the one it was handed.
+	const bucketA, bucketB = letoLaptop, letoLocator
+	const campfireX = int64(1069479888)
+	fx := newChatFixture(t, 0, [2]int64{1069479345, bucketA})
+	fx.setDock(bucketA, 0)
+	fx.setDock(bucketB, 0)
+	account, srv, clock := newSummaryClient(t, fx.route(t))
+	refA := lineRef()
+	refB := RecordingRef{BucketID: bucketB, RecordingID: 1069479350, EventType: "chat.line.created"}
+
+	// T: prime A (dock A, listing). T+9:30: prime B's dock. T+10:30: the
+	// listing has expired; B's dock is a minute old.
+	_, _ = account.Recordings().Summarize(context.Background(), refA)
+	*clock = clock.Add(CampfireIndexTTL - 30*time.Second)
+	_, _ = account.Recordings().Summarize(context.Background(), refB)
+	*clock = clock.Add(time.Minute)
+	fx.setListing(t, [2]int64{1069479345, bucketA}, [2]int64{campfireX, bucketB})
+
+	// B's dock refresh (its second project read) blocks until A has finished.
+	aDone := make(chan struct{})
+	var projectReadsB atomic.Int32
+	inner := fx.route(t)
+	srv.mu.Lock()
+	srv.route = func(w http.ResponseWriter, r *http.Request, path string) bool {
+		if path == "/195539477/projects/"+itoa64(bucketB) && projectReadsB.Add(1) == 2 {
+			<-aDone
+		}
+		return inner(w, r, path)
+	}
+	srv.mu.Unlock()
+
+	bDone := make(chan error, 1)
+	go func() {
+		_, err := account.Recordings().Summarize(context.Background(), refB)
+		bDone <- err
+	}()
+	// Wait for B to be inside its dock refresh, then let A populate the listing.
+	deadline := time.Now().Add(5 * time.Second)
+	for projectReadsB.Load() < 2 && time.Now().Before(deadline) {
+		time.Sleep(time.Millisecond)
+	}
+	_, _ = account.Recordings().Summarize(context.Background(), refA) // fetches the listing
+	close(aDone)
+
+	var unresolved *UnresolvedRecordingError
+	select {
+	case err := <-bDone:
+		if !errors.As(err, &unresolved) {
+			t.Fatalf("B: %v, want unresolved", err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("B did not finish")
+	}
+	if !reflect.DeepEqual(unresolved.CampfireIDs, []int64{campfireX}) {
+		t.Fatalf("B tried %v, want [%d] from the listing A populated", unresolved.CampfireIDs, campfireX)
+	}
+	if !unresolved.Refreshed {
+		t.Fatal("B re-read its dock; Refreshed should say so")
+	}
+	if len(unresolved.StaleCampfireIDs) != 0 {
+		t.Fatalf("B reported %v stale although the listing it was handed holds them", unresolved.StaleCampfireIDs)
 	}
 }

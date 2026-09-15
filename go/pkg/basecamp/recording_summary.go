@@ -570,28 +570,38 @@ type ttlEntry[V any] struct {
 }
 
 type ttlLoad struct {
-	done chan struct{}
-	err  error
+	done    chan struct{}
+	err     error
+	fetched time.Time // set at publication, for the loader's own hit
 }
 
 func newTTLCache[K comparable, V any](now func() time.Time, ttl, floor time.Duration) *ttlCache[K, V] {
 	return &ttlCache[K, V]{now: now, ttl: ttl, floor: floor, entries: map[K]*ttlEntry[V]{}, inflight: map[K]*ttlLoad{}}
 }
 
+// ttlHit is what a cache read hands back: the value, when it was fetched,
+// and whether it predated the call (as opposed to being loaded during it, by
+// this caller or by one it waited on). The fetch time is what lets a caller
+// tell a snapshot it already consulted from a newer one, whoever loaded it.
+type ttlHit[V any] struct {
+	value   V
+	fetched time.Time
+	cached  bool
+}
+
 // get returns the value for key, loading it when absent or older than the
-// TTL — or, with refresh set, older than the floor. cached reports whether
-// the value predates this call.
-func (c *ttlCache[K, V]) get(ctx context.Context, key K, refresh bool, load func(context.Context) (V, error)) (value V, cached bool, err error) {
+// TTL — or, with refresh set, older than the floor.
+func (c *ttlCache[K, V]) get(ctx context.Context, key K, refresh bool, load func(context.Context) (V, error)) (ttlHit[V], error) {
 	for {
 		if err := ctx.Err(); err != nil {
-			return value, false, err
+			return ttlHit[V]{}, err
 		}
 		c.mu.Lock()
 		if entry := c.entries[key]; entry != nil {
 			age := c.now().Sub(entry.fetched)
 			if age < c.ttl && (!refresh || age < c.floor) {
 				c.mu.Unlock()
-				return entry.value, true, nil
+				return ttlHit[V]{value: entry.value, fetched: entry.fetched, cached: true}, nil
 			}
 		}
 		if pending := c.inflight[key]; pending != nil {
@@ -602,10 +612,10 @@ func (c *ttlCache[K, V]) get(ctx context.Context, key K, refresh bool, load func
 			select {
 			case <-pending.done:
 			case <-ctx.Done():
-				return value, false, ctx.Err()
+				return ttlHit[V]{}, ctx.Err()
 			}
 			if pending.err != nil {
-				return value, false, pending.err
+				return ttlHit[V]{}, pending.err
 			}
 			// The load this call waited on is this call's load: hand its
 			// value over as fresh, not as something that predated the call.
@@ -613,7 +623,7 @@ func (c *ttlCache[K, V]) get(ctx context.Context, key K, refresh bool, load func
 			entry := c.entries[key]
 			c.mu.Unlock()
 			if entry != nil {
-				return entry.value, false, nil
+				return ttlHit[V]{value: entry.value, fetched: entry.fetched}, nil
 			}
 			continue
 		}
@@ -623,23 +633,23 @@ func (c *ttlCache[K, V]) get(ctx context.Context, key K, refresh bool, load func
 
 		loaded, loadErr := c.load(ctx, key, pending, load)
 		if loadErr != nil {
-			return value, false, loadErr
+			return ttlHit[V]{}, loadErr
 		}
-		return loaded, false, nil
+		return ttlHit[V]{value: loaded, fetched: pending.fetched}, nil
 	}
 }
 
 // peek returns the cached value for key when one is within the TTL, without
 // loading. It lets a caller consult what a source already holds before
 // deciding whether to pay for a fetch of it.
-func (c *ttlCache[K, V]) peek(key K) (value V, ok bool) {
+func (c *ttlCache[K, V]) peek(key K) (ttlHit[V], bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	entry := c.entries[key]
 	if entry == nil || c.now().Sub(entry.fetched) >= c.ttl {
-		return value, false
+		return ttlHit[V]{}, false
 	}
-	return entry.value, true
+	return ttlHit[V]{value: entry.value, fetched: entry.fetched, cached: true}, true
 }
 
 // load runs one loader and publishes its outcome. Publication is deferred so
@@ -665,7 +675,8 @@ func (c *ttlCache[K, V]) publish(key K, pending *ttlLoad, loaded V, err error) {
 	delete(c.inflight, key)
 	pending.err = err
 	if err == nil {
-		c.entries[key] = &ttlEntry[V]{value: loaded, fetched: c.now()}
+		pending.fetched = c.now()
+		c.entries[key] = &ttlEntry[V]{value: loaded, fetched: pending.fetched}
 	}
 	close(pending.done)
 }
@@ -695,12 +706,21 @@ func newCampfireIndexAt(now func() time.Time) *campfireIndex {
 	}
 }
 
+// sourceRead is one consultation of a discovery source: the candidate ids
+// it holds for the bucket, when that snapshot was fetched, and whether it
+// predated the call.
+type sourceRead struct {
+	ids     []int64
+	fetched time.Time
+	cached  bool
+}
+
 // dockCampfires returns the Campfire ids a bucket's project dock names. A
 // bucket that is not a project (a 404 on the project read) has none; any
 // other failure of the read is returned.
-func (ix *campfireIndex) dockCampfires(ctx context.Context, ac *AccountClient, bucketID int64, refresh bool) ([]int64, bool, error) {
+func (ix *campfireIndex) dockCampfires(ctx context.Context, ac *AccountClient, bucketID int64, refresh bool) (sourceRead, error) {
 	key := campfireBucketKey{accountID: ac.accountID, bucketID: bucketID}
-	return ix.docks.get(ctx, key, refresh, func(ctx context.Context) ([]int64, error) {
+	hit, err := ix.docks.get(ctx, key, refresh, func(ctx context.Context) ([]int64, error) {
 		project, err := ac.Projects().Get(ctx, bucketID)
 		if err != nil {
 			if apiErr, ok := errors.AsType[*Error](err); ok && apiErr.Code == CodeNotFound {
@@ -716,24 +736,28 @@ func (ix *campfireIndex) dockCampfires(ctx context.Context, ac *AccountClient, b
 		}
 		return ids, nil
 	})
+	if err != nil {
+		return sourceRead{}, err
+	}
+	return sourceRead{ids: hit.value, fetched: hit.fetched, cached: hit.cached}, nil
 }
 
 // cachedListedCampfires returns the Campfire ids the cached account-wide
 // listing shows in a bucket, without fetching: false when the listing is not
 // cached or has expired.
-func (ix *campfireIndex) cachedListedCampfires(accountID string, bucketID int64) ([]int64, bool) {
-	byBucket, ok := ix.listings.peek(accountID)
+func (ix *campfireIndex) cachedListedCampfires(accountID string, bucketID int64) (sourceRead, bool) {
+	hit, ok := ix.listings.peek(accountID)
 	if !ok {
-		return nil, false
+		return sourceRead{}, false
 	}
-	return append([]int64(nil), byBucket[bucketID]...), true
+	return sourceRead{ids: append([]int64(nil), hit.value[bucketID]...), fetched: hit.fetched, cached: true}, true
 }
 
 // listedCampfires returns the Campfire ids the account-wide listing shows in
 // a bucket. A listing that overflows MaxCampfireListing is not cached and is
 // reported as ErrCampfireDiscoveryIncomplete by the caller.
-func (ix *campfireIndex) listedCampfires(ctx context.Context, ac *AccountClient, bucketID int64, refresh bool) ([]int64, bool, error) {
-	byBucket, cached, err := ix.listings.get(ctx, ac.accountID, refresh, func(ctx context.Context) (map[int64][]int64, error) {
+func (ix *campfireIndex) listedCampfires(ctx context.Context, ac *AccountClient, bucketID int64, refresh bool) (sourceRead, error) {
+	hit, err := ix.listings.get(ctx, ac.accountID, refresh, func(ctx context.Context) (map[int64][]int64, error) {
 		list, err := ac.Campfires().List(ctx, &CampfireListOptions{Limit: MaxCampfireListing})
 		if err != nil {
 			return nil, err
@@ -751,9 +775,9 @@ func (ix *campfireIndex) listedCampfires(ctx context.Context, ac *AccountClient,
 		return byBucket, nil
 	})
 	if err != nil {
-		return nil, false, err
+		return sourceRead{}, err
 	}
-	return append([]int64(nil), byBucket[bucketID]...), cached, nil
+	return sourceRead{ids: append([]int64(nil), hit.value[bucketID]...), fetched: hit.fetched, cached: hit.cached}, nil
 }
 
 // errCampfireListingOverflow is the load error for a listing past its cap;
@@ -815,51 +839,52 @@ func (s *RecordingsService) resolveChatLine(ctx context.Context, bucketID, lineI
 	// — has had its say, so a listing that is down, over its cap, or stalled
 	// on the context's deadline never stands between a project's line and
 	// the one project read that finds it.
-	refreshed := false
-	dock, dockCached, err := index.dockCampfires(ctx, ac, bucketID, false)
+	dock, err := index.dockCampfires(ctx, ac, bucketID, false)
 	if err != nil {
 		return nil, 0, err
 	}
-	if line, id, err := search.try(ctx, dock); err != nil || line != nil {
+	if line, id, err := search.try(ctx, dock.ids); err != nil || line != nil {
 		return line, id, err
 	}
 	listed, listCached := index.cachedListedCampfires(ac.accountID, bucketID)
 	if listCached {
-		if line, id, err := search.try(ctx, listed); err != nil || line != nil {
+		if line, id, err := search.try(ctx, listed.ids); err != nil || line != nil {
 			return line, id, err
 		}
 	}
 
 	// Pass 2: re-read the dock if it was served from cache (the floor may
-	// decline), then fetch or refresh the listing.
-	currentDock := dock
-	if dockCached {
-		again, stillCached, err := index.dockCampfires(ctx, ac, bucketID, true)
+	// decline), then fetch or refresh the listing. Whatever comes back is the
+	// current snapshot of that source, whoever loaded it — another caller may
+	// have populated or refreshed it in the meantime — so it always replaces
+	// the pass-1 one; "refreshed" is whether a source the conclusion had
+	// consulted is now newer than when it was consulted.
+	refreshed := false
+	if dock.cached {
+		again, err := index.dockCampfires(ctx, ac, bucketID, true)
 		if err != nil {
 			return nil, 0, err
 		}
-		if !stillCached {
-			refreshed, currentDock = true, again
+		if again.fetched.After(dock.fetched) || !again.cached {
+			refreshed = true
 		}
-		if line, id, err := search.try(ctx, again); err != nil || line != nil {
+		dock = again
+		if line, id, err := search.try(ctx, dock.ids); err != nil || line != nil {
 			return line, id, err
 		}
 	}
-	currentList := listed
-	again, stillCached, err := index.listedCampfires(ctx, ac, bucketID, listCached)
+	again, err := index.listedCampfires(ctx, ac, bucketID, listCached)
 	if err != nil {
 		if errors.Is(err, errCampfireListingOverflow) {
 			return nil, 0, incomplete(err.Error())
 		}
 		return nil, 0, err
 	}
-	if !stillCached {
-		currentList = again
-		if listCached {
-			refreshed = true // a re-read of a source the conclusion had relied on
-		}
+	if listCached && (again.fetched.After(listed.fetched) || !again.cached) {
+		refreshed = true
 	}
-	if line, id, err := search.try(ctx, again); err != nil || line != nil {
+	listed = again
+	if line, id, err := search.try(ctx, listed.ids); err != nil || line != nil {
 		return line, id, err
 	}
 	if err := ctx.Err(); err != nil {
@@ -871,7 +896,7 @@ func (s *RecordingsService) resolveChatLine(ctx context.Context, bucketID, lineI
 	unresolved := &UnresolvedRecordingError{BucketID: bucketID, RecordingID: lineID, CampfireIDs: search.tried, Refreshed: refreshed}
 	if refreshed {
 		for _, id := range search.tried {
-			if !containsID(currentDock, id) && !containsID(currentList, id) {
+			if !containsID(dock.ids, id) && !containsID(listed.ids, id) {
 				unresolved.StaleCampfireIDs = append(unresolved.StaleCampfireIDs, id)
 			}
 		}
