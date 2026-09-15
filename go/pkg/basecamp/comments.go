@@ -370,3 +370,54 @@ func commentFromGenerated(gc generated.Comment) Comment {
 
 	return c
 }
+
+// ExpandMentions returns content that mentions each of the given people, for
+// posting as a comment — or, since the markup is the same, as a rich-text
+// Campfire line. Every requested id is read through People().Get for its
+// attachable_sgid — one read per distinct id, always: an sgid already in the
+// content is unsigned and cannot prove the person is mentioned, so it never
+// stands in for the read — and the mentions are placed as WithMentions places
+// them, which adds nothing for a person whose exact attachable_sgid the
+// content already carries. A person read that fails — an id that is not a
+// person in this account, a 403 — fails the expansion; nothing is posted on a
+// partial mention list.
+//
+// The rendered mentions round-trip: MentionedPersonIDs on the returned content
+// reports every id passed here, and RecordingsService.Summarize reports them
+// on the comment once posted.
+func (s *CommentsService) ExpandMentions(ctx context.Context, content string, personIDs []int64) (string, error) {
+	if len(personIDs) == 0 {
+		return content, nil
+	}
+	people := make([]Person, 0, len(personIDs))
+	seen := map[int64]struct{}{}
+	for _, id := range personIDs {
+		if id <= 0 {
+			return "", ErrUsage(fmt.Sprintf("invalid mention person id %d", id))
+		}
+		if _, dup := seen[id]; dup {
+			continue
+		}
+		seen[id] = struct{}{}
+		person, err := s.client.People().Get(ctx, id)
+		if err != nil {
+			return "", fmt.Errorf("resolving mention for person %d: %w", id, err)
+		}
+		people = append(people, *person)
+	}
+	return WithMentions(content, people)
+}
+
+// CreateWithMentions creates a comment on a recording whose content mentions
+// the given people: ExpandMentions, then Create. The mention reads happen
+// before the write, so a failed lookup posts nothing.
+func (s *CommentsService) CreateWithMentions(ctx context.Context, recordingID int64, content string, personIDs []int64) (*Comment, error) {
+	if content == "" {
+		return nil, ErrUsage("comment content is required")
+	}
+	expanded, err := s.ExpandMentions(ctx, content, personIDs)
+	if err != nil {
+		return nil, err
+	}
+	return s.Create(ctx, recordingID, &CreateCommentRequest{Content: expanded})
+}

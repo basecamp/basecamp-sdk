@@ -540,7 +540,7 @@ for both.
 | `Messages()` | List, Get, Create, Update, Trash |
 | `MessageBoards()` | Get |
 | `MessageTypes()` | List, Get, Create, Update, Destroy |
-| `Comments()` | List, Get, Create, Update, Trash |
+| `Comments()` | List, Get, Create, Update, Trash, ExpandMentions, CreateWithMentions |
 | `Campfires()` | List, Get, ListLines, GetLine, CreateLine, UpdateLine, DeleteLine, Chatbot CRUD |
 | `Forwards()` | List, Get |
 
@@ -585,7 +585,7 @@ for both.
 |---------|---------|
 | `Webhooks()` | List, Get, Create, Update, Delete |
 | `Subscriptions()` | List, Subscribe, Unsubscribe, Update |
-| `Recordings()` | Archive, Unarchive, Trash |
+| `Recordings()` | Archive, Unarchive, Trash, Summarize |
 
 ### Client Portal
 
@@ -654,6 +654,111 @@ line, err := account.Campfires().CreateLine(ctx, campfireID, "Hello, team!")
 // List recent messages
 lines, err := account.Campfires().ListLines(ctx, campfireID, nil)
 ```
+
+## Working with recording summaries and mentions
+
+An account event feed row or a webhook points at a recording — bucket id,
+recording id, and an event type such as `comment.created` — without carrying
+its content. `Recordings().Summarize` resolves that pointer through the typed
+read the type names (the API has no untyped recording read, so the type is the
+routing key) into a compact projection: type, title, app URL, parent, bucket,
+creator, assignees, the person ids the content mentions, the content itself,
+and `updated_at`.
+
+```go
+summary, err := account.Recordings().Summarize(ctx, basecamp.RecordingRef{
+    BucketID:    bucketID,
+    RecordingID: recordingID,
+    EventType:   "comment.created", // or RecordingType: "Comment"
+})
+if err != nil {
+    switch {
+    case errors.Is(err, basecamp.ErrNoRecordingType):
+        // boost.created: the row names no recording type; resolve it elsewhere.
+    case errors.Is(err, basecamp.ErrUnknownRecordingType):
+        // Nothing to read for this type.
+    case errors.Is(err, basecamp.ErrRecordingUnresolved):
+        // A chat line found under none of the Campfires you can see in that
+        // bucket. Distinct from a failed read — retry on your own schedule.
+    case errors.Is(err, basecamp.ErrCampfireDiscoveryIncomplete):
+        // Candidates were left unsearched (too many Campfires); not absent.
+    }
+    return err
+}
+fmt.Println(summary.Type, summary.Title, summary.MentionedPersonIDs)
+```
+
+The routed set is deliberate, not exhaustive. By event type, any action on
+these subjects routes to the subject's read; by recording type, exactly these
+(the `Chat::Lines::*` subtypes share one route). `SummarizableEventTypes()`
+and `SummarizableRecordingTypes()` return the same lists at run time, and a
+test holds this block to them:
+
+<!-- summarizable-types:begin -->
+```
+event types:     card.* chat.line.* comment.* message.* todo.*
+recording types: Chat::Lines::* Chat::Transcript Client::Approval Client::Correspondence CloudFile Comment Document GoogleDocument Inbox Inbox::Forward Kanban::Board Kanban::Card Kanban::Column Kanban::Step Message Message::Board Question Question::Answer Questionnaire Schedule Schedule::Entry Todo Todolist Todoset Upload Vault
+```
+<!-- summarizable-types:end -->
+
+Anything else is `ErrUnknownRecordingType` by design — including types the
+SDK can read from an id (`Timesheet::Entry`, `Gauge::Needle`) and types it
+cannot (`Client::Reply`, `Forward::Reply`, whose reads need a parent id the
+pointer does not carry). `boost.created` is refused with `ErrNoRecordingType`
+rather than read as something it is not.
+
+Chat lines need discovery first: their read takes the Campfire id, which the
+pointer does not carry. `Summarize` reads the bucket's project dock, whose
+chat tool is the project's Campfire (one project read per bucket, cached ten
+minutes), and consults the account-wide Campfire listing filtered to the
+bucket (cached ten minutes per account) when the dock does not settle it —
+a bucket that is not a project, or a line the dock's Campfire answers 404 for,
+such as a ping listed under the same bucket. It tries the line under each
+candidate and reports `CampfireID` — the reply destination — on success. A candidate that answers anything but 404 stops the
+loop with that error, so a 401, 403 or 5xx never reads as "not here". When
+every candidate says 404 the cached sources are re-read (at most once per 30
+seconds) and only what is new is tried; if the line is still under no
+Campfire you can see, the result is `ErrRecordingUnresolved`, whose
+`UnresolvedRecordingError` says whether the sources were refreshed and which
+cached Campfires they no longer list. Discovery that could not finish — a
+bucket with more visible Campfires than `MaxCampfireCandidates`, a listing
+past `MaxCampfireListing` — is `ErrCampfireDiscoveryIncomplete`, never
+"unresolved": nothing unsearched is reported absent. One limit HTTP imposes:
+Basecamp answers 404 both for a line that is not in a Campfire and for a
+Campfire you may no longer see, so "unresolved" means "under no Campfire you
+can currently see", and is worth a retry.
+
+Mentions are `<bc-attachment>` tags whose `sgid` is a person's
+`attachable_sgid`. Two helpers read and write them:
+
+```go
+// Read: the people a rich text mentions.
+ids := basecamp.MentionedPersonIDs(comment.Content)
+
+// Write: post a comment that mentions people by id. Each id is resolved
+// through People().Get for its attachable_sgid before anything is posted.
+comment, err := account.Comments().CreateWithMentions(ctx, recordingID,
+    "<div>On it.</div>", []int64{personID})
+
+// Or expand first and post however you like — a Campfire line, say.
+content, err := account.Comments().ExpandMentions(ctx, "<div>On it.</div>", []int64{personID})
+line, err := account.Campfires().CreateLine(ctx, campfireID, content,
+    &basecamp.CreateLineOptions{ContentType: basecamp.LineContentTypeHTML})
+```
+
+`MentionedPersonIDs` decodes the person id out of each sgid's envelope; it does
+not verify the signature, which only Basecamp can — so it describes what the
+text says, and nothing on the write side trusts it. `ExpandMentions` reads
+every requested person and adds a mention unless the content already carries
+that person's exact `attachable_sgid`; a different sgid that merely decodes to
+the same id — stale, forged, or minted under another layout — does not count,
+because it cannot be verified and would let caller-supplied content suppress
+the real mention. The comparison is on the attribute's decoded value, so the
+decoder's fidelity matters: an HTML5 unescaper that drops a C0 control
+character would turn `sgid="<real sgid>&#1;"` into the real sgid and suppress
+the mention; this reader emits the character, so the value differs and the
+mention is written. `MentionMarkup` refuses an `attachable_sgid` that names
+anyone other than the person it is given.
 
 ## Working with Webhooks
 

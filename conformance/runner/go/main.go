@@ -22,6 +22,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -1621,6 +1622,40 @@ func executeOperation(ctx context.Context, account *basecamp.AccountClient, tc T
 		}
 		return operationResult{err: nil}
 
+	case "RecordingsSummarize":
+		ref := basecamp.RecordingRef{
+			BucketID:      getInt64Param(tc.PathParams, "bucketId"),
+			RecordingID:   getInt64Param(tc.PathParams, "recordingId"),
+			EventType:     getStringParam(tc.PathParams, "eventType"),
+			RecordingType: getStringParam(tc.PathParams, "recordingType"),
+		}
+		summary, err := account.Recordings().Summarize(ctx, ref)
+		if err != nil {
+			return operationResult{err: err}
+		}
+		return operationResult{result: summary}
+
+	case "CommentsCreateWithMentions":
+		recordingID := getInt64Param(tc.PathParams, "recordingId")
+		content, _ := tc.RequestBody["content"].(string)
+		var mentions []int64
+		if raw, ok := tc.RequestBody["mentions"].([]interface{}); ok {
+			for _, v := range raw {
+				switch n := v.(type) {
+				case json.Number:
+					id, _ := n.Int64()
+					mentions = append(mentions, id)
+				case float64:
+					mentions = append(mentions, int64(n))
+				}
+			}
+		}
+		comment, err := account.Comments().CreateWithMentions(ctx, recordingID, content, mentions)
+		if err != nil {
+			return operationResult{err: err}
+		}
+		return operationResult{result: comment}
+
 	case "GetEverythingMessages":
 		_, err := account.Everything().Messages(ctx, 0)
 		return operationResult{err: err}
@@ -1868,7 +1903,11 @@ func checkAssertion(
 		// than silently accept, so this assertion actually pins the class.
 		var actualType string
 		var sdkError *basecamp.Error
-		if errors.As(sdkErr, &sdkError) {
+		if kind, ok := semanticErrorType(sdkErr); ok {
+			// A composite's own sentinel (SPEC §18, Appendix F): an identity a
+			// consumer matches with errors.Is, never an HTTP status.
+			actualType = kind
+		} else if errors.As(sdkErr, &sdkError) {
 			actualType = sdkError.Code
 		} else if isNetworkError(sdkErr) {
 			actualType = basecamp.CodeNetwork
@@ -1925,7 +1964,7 @@ func checkAssertion(
 		if err := dec.Decode(&resultMap); err != nil {
 			return fail(tc, fmt.Sprintf("Failed to unmarshal result for responseBody assertion: %v", err))
 		}
-		actual, ok := resultMap[fieldPath]
+		actual, ok := digPath(resultMap, fieldPath)
 		if !ok {
 			return fail(tc, fmt.Sprintf("Expected responseBody.%s, but field not present", fieldPath))
 		}
@@ -2146,6 +2185,27 @@ func checkAssertion(
 
 // compareValues compares an expected JSON value against an actual Go value.
 // Handles json.Number (from UseNumber), float64, bool, and string.
+// semanticErrorType names the RecordingsSummarize sentinels for the errorType
+// assertion, so a fixture can pin that "unresolved" is neither an API read
+// failure nor incomplete discovery — an identity the message text cannot
+// carry. The names are the fixture's vocabulary; a port maps its own error
+// kinds onto them.
+func semanticErrorType(err error) (string, bool) {
+	switch {
+	case errors.Is(err, basecamp.ErrRecordingUnresolved):
+		return "recording_unresolved", true
+	case errors.Is(err, basecamp.ErrCampfireDiscoveryIncomplete):
+		return "campfire_discovery_incomplete", true
+	case errors.Is(err, basecamp.ErrNoRecordingType):
+		return "no_recording_type", true
+	case errors.Is(err, basecamp.ErrUnknownRecordingType):
+		return "unknown_recording_type", true
+	case errors.Is(err, basecamp.ErrBucketMismatch):
+		return "bucket_mismatch", true
+	}
+	return "", false
+}
+
 func compareValues(tc TestCase, label string, expected, actual interface{}) *TestResult {
 	switch exp := expected.(type) {
 	case json.Number:
@@ -2207,9 +2267,39 @@ func compareValues(tc TestCase, label string, expected, actual interface{}) *Tes
 			return fail(tc, fmt.Sprintf("Expected %s = %v, got %v", label, exp, actual))
 		}
 	case string:
+		// Two RFC 3339 timestamps compare as instants, so a fixture can pin
+		// a time without making any one language's rendering the contract:
+		// "2024-01-20T15:30:00.000-06:00" and "2024-01-20T21:30:00Z" agree.
+		if expT, err := time.Parse(time.RFC3339Nano, exp); err == nil {
+			if actS, ok := actual.(string); ok {
+				if actT, err := time.Parse(time.RFC3339Nano, actS); err == nil {
+					if !actT.Equal(expT) {
+						return fail(tc, fmt.Sprintf("Expected %s = %s (as an instant), got %s", label, exp, actS))
+					}
+					return nil
+				}
+			}
+		}
 		if fmt.Sprintf("%v", actual) != exp {
 			return fail(tc, fmt.Sprintf("Expected %s = %q, got %q", label, exp, actual))
 		}
+	case []interface{}:
+		// An array expectation compares element by element; a length mismatch
+		// fails rather than passing vacuously.
+		act, ok := actual.([]interface{})
+		if !ok {
+			return fail(tc, fmt.Sprintf("Expected %s to be an array of %d, got %v", label, len(exp), actual))
+		}
+		if len(act) != len(exp) {
+			return fail(tc, fmt.Sprintf("Expected %s to have %d elements, got %d (%v)", label, len(exp), len(act), act))
+		}
+		for i := range exp {
+			if result := compareValues(tc, fmt.Sprintf("%s[%d]", label, i), exp[i], act[i]); result != nil {
+				return result
+			}
+		}
+	default:
+		return fail(tc, fmt.Sprintf("Unsupported expected value for %s: %T", label, expected))
 	}
 	return nil
 }
@@ -2255,15 +2345,27 @@ func isNetworkError(err error) bool {
 }
 
 // digPath walks a dot-notation path through nested maps, reporting presence.
+// digPath resolves a dotted path through nested objects and, by numeric
+// segment, arrays — "creator.id", "assignees.0.id" — the way the Ruby and
+// Python runners' dig_path do, so a fixture can pin a nested identity rather
+// than only a top-level scalar. A bare key still reads top-level.
 func digPath(obj map[string]interface{}, path string) (interface{}, bool) {
 	var current interface{} = obj
 	for _, key := range strings.Split(path, ".") {
-		m, ok := current.(map[string]interface{})
-		if !ok {
-			return nil, false
-		}
-		current, ok = m[key]
-		if !ok {
+		switch node := current.(type) {
+		case map[string]interface{}:
+			next, ok := node[key]
+			if !ok {
+				return nil, false
+			}
+			current = next
+		case []interface{}:
+			idx, err := strconv.Atoi(key)
+			if err != nil || idx < 0 || idx >= len(node) {
+				return nil, false
+			}
+			current = node[idx]
+		default:
 			return nil, false
 		}
 	}

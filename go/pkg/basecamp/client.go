@@ -47,6 +47,17 @@ type Client struct {
 	// Authorization service (account-independent)
 	authMu        sync.Mutex
 	authorization *AuthorizationService
+
+	// Campfire discovery sources for RecordingsService.Summarize, shared by
+	// every AccountClient this Client hands out.
+	campfireOnce sync.Once
+	campfireIdx  *campfireIndex
+}
+
+// campfires returns the Client's Campfire index, creating it on first use.
+func (c *Client) campfires() *campfireIndex {
+	c.campfireOnce.Do(func() { c.campfireIdx = newCampfireIndex() })
+	return c.campfireIdx
 }
 
 // AccountClient is an HTTP client bound to a specific Basecamp account.
