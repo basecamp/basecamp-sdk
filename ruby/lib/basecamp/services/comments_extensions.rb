@@ -35,6 +35,7 @@ module Basecamp
       # @return [String] the content with the mentions placed
       # @raise [Basecamp::UsageError] on a non-positive person id
       def expand_mentions(content:, person_ids: nil)
+        content = require_content(content)
         person_ids = Array(person_ids)
         return content if person_ids.empty?
 
@@ -69,7 +70,16 @@ module Basecamp
       # @raise [Basecamp::UsageError] when the content is empty, or on a
       #   non-positive person id
       def create_with_mentions(recording_id:, content:, person_ids: nil)
-        raise UsageError.new("comment content is required") if content.to_s.empty?
+        # Checked as a STRING, not as `content.to_s.empty?`. That validated a
+        # coerced copy and then handed the ORIGINAL to create, so a Hash was
+        # posted as a JSON object when no mentions were requested and was
+        # rendered into Ruby text by with_mentions when they were — two
+        # different wire bodies for one argument, neither of them the documented
+        # String. The reference takes `content string`, so a non-string cannot
+        # reach it at all; this is the equivalent refusal in a tier that has to
+        # make it explicitly.
+        content = require_content(content)
+        raise UsageError.new("comment content is required") if content.empty?
 
         # Typed, not bounded. Ruby has no int64 to receive this in, so a value
         # that is not an id at all is refused here — but the reference validates
@@ -81,6 +91,14 @@ module Basecamp
       end
 
       private
+
+      # The comment's rich text, which has to be a String before anything is
+      # measured, written or posted.
+      def require_content(content)
+        return content if content.is_a?(String)
+
+        raise UsageError.new("comment content must be a string, got #{content.class}")
+      end
 
       # The people read's body, which has to be an object before a mention is
       # built from it.

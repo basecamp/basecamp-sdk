@@ -184,6 +184,33 @@ class CommentsMentionsTest < Minitest::Test
     assert_not_requested(:any, %r{\A#{Regexp.escape(BASE_URL)}})
   end
 
+  def test_content_that_is_not_a_string_is_refused_before_anything_is_posted
+    # `content.to_s.empty?` validated a coerced copy and then handed the
+    # ORIGINAL to create, so one argument produced two different wire bodies: a
+    # Hash was posted as a JSON object when no mentions were asked for, and was
+    # rendered into Ruby text by with_mentions when they were. The reference
+    # takes `content string`, so neither can happen there.
+    [ { "a" => 1 }, [ "x" ], 5, true, :sym, nil ].each do |content|
+      stub_comment_create
+      stub_person(108)
+
+      assert_raises(Basecamp::UsageError, "content of #{content.inspect} with no mentions") do
+        @account.comments.create_with_mentions(recording_id: RECORDING_ID, content: content)
+      end
+      assert_raises(Basecamp::UsageError, "content of #{content.inspect} with mentions") do
+        @account.comments.create_with_mentions(
+          recording_id: RECORDING_ID, content: content, person_ids: [ 108 ]
+        )
+      end
+      # Refused before the wire, both ways round.
+      assert_not_requested(:post, "#{BASE_URL}/12345/recordings/#{RECORDING_ID}/comments.json")
+      assert_raises(Basecamp::UsageError) do
+        @account.comments.expand_mentions(content: content, person_ids: [ 108 ])
+      end
+      WebMock.reset!
+    end
+  end
+
   def test_a_person_read_that_is_not_an_object_fails_the_whole_write
     # The single most dangerous fail-open in either composite, because it is a
     # WRITE and it was silent. The people reads were collected with filter_map,
