@@ -289,7 +289,11 @@ class TestChatLineDiscovery:
         # The listing is the expensive request; a project's own dock names its
         # Campfire, so it is never reached for one.
         project = respx.get(f"{BASE}/projects/{BUCKET}").mock(return_value=httpx.Response(200, json=_project(77)))
-        listing = respx.get(f"{BASE}/chats.json").mock(return_value=httpx.Response(200, json=[]))
+        # Mounted as a FAILURE, not an empty success: "not requested" proves
+        # only that the call did not NEED the listing, while a 503 proves the
+        # verdict does not DEPEND on it — the distinction matters precisely
+        # because a non-404 from a discovery source is meant to pass through.
+        listing = respx.get(f"{BASE}/chats.json").mock(return_value=httpx.Response(503, json={"error": "down"}))
         line = respx.get(f"{BASE}/chats/77/lines/{LINE_ID}").mock(return_value=httpx.Response(200, json=_line(77)))
 
         summary = _account().recordings.summarize(
@@ -631,7 +635,10 @@ class TestDiscoveryCache:
             return_value=httpx.Response(200, json=_project(*range(1, MAX_CAMPFIRE_CANDIDATES + 6)))
         )
         respx.get(url__regex=rf"{BASE}/chats/\d+/lines/{LINE_ID}").mock(return_value=_not_found())
-        listing = respx.get(f"{BASE}/chats.json").mock(return_value=httpx.Response(200, json=[]))
+        # A 503, so the assertion pins independence rather than absence: were
+        # the listing consulted, its failure would replace the deterministic
+        # "incomplete" verdict with a transient one.
+        listing = respx.get(f"{BASE}/chats.json").mock(return_value=httpx.Response(503, json={"error": "down"}))
 
         with pytest.raises(CampfireDiscoveryIncompleteError):
             _account().recordings.summarize(bucket_id=BUCKET, recording_id=LINE_ID, event_type="chat.line.created")
