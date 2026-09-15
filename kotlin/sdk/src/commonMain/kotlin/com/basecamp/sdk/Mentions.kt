@@ -322,34 +322,177 @@ private fun unescapeHtml(value: String): String {
             i++
             continue
         }
-        val end = value.indexOf(';', i + 1)
-        // A reference is at most "&#x10FFFF;"; anything longer is literal text.
-        if (end < 0 || end - i > 10) {
-            out.append(c)
-            i++
-            continue
-        }
-        val body = value.substring(i + 1, end)
-        val decoded = when {
-            body.equals("amp", ignoreCase = true) -> "&"
-            body.equals("lt", ignoreCase = true) -> "<"
-            body.equals("gt", ignoreCase = true) -> ">"
-            body.equals("quot", ignoreCase = true) -> "\""
-            body.equals("apos", ignoreCase = true) -> "'"
-            body.startsWith("#x", ignoreCase = true) -> body.substring(2).toIntOrNull(16)?.let { codePointOrNull(it) }
-            body.startsWith("#") -> body.substring(1).toIntOrNull()?.let { codePointOrNull(it) }
-            else -> null
-        }
-        if (decoded == null) {
-            out.append(c)
-            i++
+        val consumed = if (value.startsWith("&#", i)) {
+            numericReferenceAt(value, i, out)
         } else {
-            out.append(decoded)
-            i = end + 1
+            namedReferenceAt(value, i, out)
+        }
+        if (consumed > 0) {
+            i += consumed
+        } else {
+            out.append(c)
+            i++
         }
     }
     return out.toString()
 }
+
+/**
+ * Appends the expansion of a named reference at [i] and returns how many
+ * characters it consumed, or 0 when there is none.
+ *
+ * The name is matched AGAINST THE TABLE, not by consuming the longest run of
+ * name characters. That distinction is the whole finding: `&nbspBAh7…` is
+ * `&nbsp` followed by payload, and a greedy scan reads `nbspBAh7…` as one name,
+ * matches nothing, and loses a mention the reference implementation reports.
+ * `nbsp` is the one whitespace reference in the legacy semicolon-optional set.
+ */
+private fun namedReferenceAt(value: String, i: Int, out: StringBuilder): Int {
+    val semi = value.indexOf(';', i + 1)
+    if (semi > i + 1 && semi - i - 1 <= MAX_ENTITY_NAME) {
+        val expansion = namedExpansion(value.substring(i + 1, semi))
+        if (expansion != null) {
+            out.append(expansion)
+            return semi - i + 1
+        }
+    }
+    if (value.startsWith(NBSP_ENTITY, i + 1)) {
+        out.append(NBSP)
+        return 1 + NBSP_ENTITY.length
+    }
+    return 0
+}
+
+private fun namedExpansion(name: String): String? = when {
+    name.equals("amp", ignoreCase = true) -> "&"
+    name.equals("lt", ignoreCase = true) -> "<"
+    name.equals("gt", ignoreCase = true) -> ">"
+    name.equals("quot", ignoreCase = true) -> "\""
+    name.equals("apos", ignoreCase = true) -> "'"
+    else -> WHITESPACE_ENTITIES[name]
+}
+
+/**
+ * Appends the expansion of a numeric reference at [i] and returns how many
+ * characters it consumed, or 0 when there is none.
+ *
+ * The boundary rules are READ OFF the reference decoder, because they are not
+ * guessable: a decimal reference with no terminating `;` needs at least TWO
+ * digits (`&#9B` stays literal, `&#66B` is `BB`), a hex one needs only one
+ * (`&#x42B` is U+042B, the trailing letter taken as a digit), `&#x;` with no
+ * digits at all is the replacement character while `&#;` is literal, and values
+ * in 0x80..0x9F are remapped through Windows-1252 rather than taken at face
+ * value (`&#133;` is an ellipsis, not NEL — which is why it is NOT trimmed and
+ * the payload behind it does not decode).
+ */
+private fun numericReferenceAt(value: String, i: Int, out: StringBuilder): Int {
+    var p = i + 2
+    val hex = p < value.length && (value[p] == 'x' || value[p] == 'X')
+    if (hex) p++
+    val digitsStart = p
+    var code = 0L
+    while (p < value.length) {
+        val d = if (hex) hexDigitValue(value[p]) else decimalDigitValue(value[p])
+        if (d < 0) break
+        if (code <= 0x10FFFF) code = code * 10L.let { if (hex) 16L else 10L } + d
+        p++
+    }
+    val digits = p - digitsStart
+    val terminated = p < value.length && value[p] == ';'
+    if (digits == 0) {
+        // `&#x;` is the replacement character; `&#;`, `&#x` and `&#` are literal.
+        if (!hex || !terminated) return 0
+        out.append(REPLACEMENT)
+        return p - i + 1
+    }
+    if (!hex && digits < 2 && !terminated) return 0
+    out.append(referenceCodePoint(code))
+    return (p - i) + if (terminated) 1 else 0
+}
+
+private fun decimalDigitValue(c: Char): Int = if (c in '0'..'9') c - '0' else -1
+
+private fun hexDigitValue(c: Char): Int = when (c) {
+    in '0'..'9' -> c - '0'
+    in 'a'..'f' -> c - 'a' + 10
+    in 'A'..'F' -> c - 'A' + 10
+    else -> -1
+}
+
+/** The reference decoder's mapping from a numeric reference's value to text. */
+private fun referenceCodePoint(code: Long): String {
+    if (code in 0x80..0x9F) return WINDOWS_1252[(code - 0x80).toInt()].toString()
+    if (code == 0L || code > 0x10FFFF || code in 0xD800..0xDFFF) return REPLACEMENT
+    return codePointOrNull(code.toInt()) ?: REPLACEMENT
+}
+
+private const val REPLACEMENT = "\uFFFD"
+
+/**
+ * The replacements the reference decoder applies to numeric references in
+ * 0x80..0x9F, transcribed from its table and pinned by `MentionsTest`. Taking
+ * those values at face value instead would make `&#133;` a NEL — whitespace,
+ * therefore trimmed — and report a mention where the reference reports none.
+ */
+private val WINDOWS_1252 = charArrayOf(
+    '\u20AC', '\u0081', '\u201A', '\u0192', '\u201E', '\u2026', '\u2020', '\u2021',
+    '\u02C6', '\u2030', '\u0160', '\u2039', '\u0152', '\u008D', '\u017D', '\u008F',
+    '\u0090', '\u2018', '\u2019', '\u201C', '\u201D', '\u2022', '\u2013', '\u2014',
+    '\u02DC', '\u2122', '\u0161', '\u203A', '\u0153', '\u009D', '\u017E', '\u0178',
+)
+
+/** The longest name in the tables above, so a `;` far away is not a candidate. */
+private const val MAX_ENTITY_NAME = 16
+
+/**
+ * The code points the reference implementation's `TrimSpace` removes — its
+ * `unicode.IsSpace` set, enumerated from it rather than assumed.
+ *
+ * Kotlin's own `Char.isWhitespace()` is NOT that set: it misses U+0085 (NEL),
+ * which the reference trims. Leading, that one character is the difference
+ * between a payload that decodes and one that does not, so the set is spelled
+ * out here instead of delegated.
+ */
+private fun isReferenceSpace(c: Char): Boolean = when (c) {
+    '\u0009', '\u000A', '\u000B', '\u000C', '\u000D', '\u0020',
+    '\u0085', '\u00A0', '\u1680', '\u2028', '\u2029', '\u202F', '\u205F', '\u3000' -> true
+    else -> c in '\u2000'..'\u200A'
+}
+
+private const val NBSP = "\u00A0"
+private const val NBSP_ENTITY = "nbsp"
+
+/**
+ * The named character references that expand to WHITESPACE, with their exact
+ * expansions — read off `html.UnescapeString` rather than transcribed from a
+ * spec, and pinned by `MentionsTest`.
+ *
+ * Only this family can change an sgid's verdict. Every other reference expands
+ * to something outside the base64 alphabet, so a value carrying one fails to
+ * decode on both sides; a whitespace one LEADING the payload is trimmed away and
+ * the payload behind it decodes, which is a mention the reference implementation
+ * reports and a narrower decoder silently loses. `ZeroWidthSpace` and the
+ * `Negative*` names are deliberately absent: U+200B is not whitespace, so it is
+ * not trimmed there either.
+ */
+private val WHITESPACE_ENTITIES: Map<String, String> = mapOf(
+    "Tab" to "\u0009",
+    "NewLine" to "\u000A",
+    "nbsp" to NBSP,
+    "NonBreakingSpace" to NBSP,
+    "ensp" to "\u2002",
+    "emsp" to "\u2003",
+    "emsp13" to "\u2004",
+    "emsp14" to "\u2005",
+    "numsp" to "\u2007",
+    "puncsp" to "\u2008",
+    "thinsp" to "\u2009",
+    "ThinSpace" to "\u2009",
+    "hairsp" to "\u200A",
+    "VeryThinSpace" to "\u200A",
+    "MediumSpace" to "\u205F",
+    "ThickSpace" to "\u205F\u200A",
+)
 
 /** A numeric reference's string, or null when it names no scalar value. */
 private fun codePointOrNull(code: Int): String? {
@@ -417,7 +560,7 @@ private const val RUBY_MARSHAL_MAX_DEPTH = 32
  * contain `--` included — needs.
  */
 private fun globalIdFromSgid(sgid: String): String? {
-    val value = sgid.trim()
+    val value = sgid.trim { isReferenceSpace(it) }
     val i = value.lastIndexOf("--")
     if (i > 0) {
         envelopeGid(value.substring(0, i))?.let { return it }
