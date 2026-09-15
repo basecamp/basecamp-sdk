@@ -201,14 +201,15 @@ class ErrorTest {
         // own verdicts is a member of it. `reason` carries the identity, `code`
         // the coarse classification derived from it — the shape DeviceFlow and
         // DiscoverySelection already use here. Putting the token in `code` would
-        // hand `exitCode` and every caller switching on `code` a value the
-        // taxonomy does not contain, and would let a fixture asserting a
-        // canonical `errorCode` be satisfied by a semantic one.
+        // hand every caller switching on `code` a value the taxonomy does not
+        // contain, give `exitCode` a valid but wrong answer (see below), and
+        // let a fixture asserting a canonical `errorCode` be satisfied by a
+        // semantic one.
         // (reason, derived code, exit code). The exit code is spelled out
         // rather than asserted positive: the bug this guards had every one of
-        // these falling through `exitCodeFor`'s `else` to EXIT_API — 7, "server
-        // error" — so `exitCode > 0` would have passed against it and proved
-        // nothing.
+        // these falling through `exitCodeFor`'s `else` to EXIT_API — 7, the
+        // exit code of a server error — so `exitCode > 0` would have passed
+        // against it and proved nothing.
         val derivations = listOf(
             Triple(BasecampException.RECORDING_NO_TYPE, BasecampException.CODE_USAGE, 1),
             Triple(BasecampException.RECORDING_UNKNOWN_TYPE, BasecampException.CODE_USAGE, 1),
@@ -236,8 +237,8 @@ class ErrorTest {
             assertEquals(expectedExit, e.exitCode, "the exit code for $reason")
         }
         // A reason with no row still lands inside the taxonomy, and on `usage`
-        // rather than on `exitCodeFor`'s `api_error` fallback: a verdict added
-        // later must not announce itself as a server fault.
+        // rather than reaching `exitCodeFor`'s `else`: a verdict added later
+        // must not carry the exit code of a server fault.
         val unmapped = BasecampException.RecordingSummaryFailure("a_reason_added_later", "failed")
         assertEquals(BasecampException.CODE_USAGE, unmapped.code)
         assertEquals(1, unmapped.exitCode)

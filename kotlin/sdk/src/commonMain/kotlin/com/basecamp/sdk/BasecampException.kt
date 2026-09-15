@@ -352,13 +352,15 @@ sealed class BasecampException(
      * | `campfire_discovery_incomplete` | `usage`     | see below |
      *
      * The last row is the one that does not fit cleanly, and it is stated rather
-     * than smoothed: discovery stopping at its own bound is neither a server
-     * fault (`api_error` claims a 5xx), nor an absence (`not_found` claims the
-     * line is gone, which is exactly what this verdict refuses to say), nor
-     * multiple matches (`ambiguous`). `usage` is chosen because it is the one
-     * coarse code no read can ever produce, so it cannot be confused with a
-     * constituent read's own answer — which is the property that matters here.
-     * [reason] carries the precision either way.
+     * than smoothed. Discovery stopping at its own bound is not a server fault,
+     * not an absence — `not_found` would say the line is not there, which is
+     * exactly what this verdict refuses to say — and not multiple matches.
+     * `usage` is chosen because no HTTP RESPONSE maps to it: every code an
+     * answer from BC3 can carry is taken, so `usage` cannot be confused with a
+     * constituent read's own answer, which is the property that matters here.
+     * (SDK code does raise [Usage] elsewhere, for a bad argument or a URL it
+     * refuses; the claim is about what a response can become, not about where
+     * the code appears.) [reason] carries the precision either way.
      */
     class RecordingSummaryFailure internal constructor(
         /**
@@ -473,7 +475,9 @@ sealed class BasecampException(
         /**
          * The [RecordingSummaryFailure] tokens. They are the composite's own
          * error identities, not HTTP statuses, and they are the vocabulary
-         * `conformance/tests/recording_summary.json` pins across every SDK.
+         * `conformance/tests/recording_summary.json` draws on — it asserts two
+         * of the five today (`no_recording_type` and `recording_unresolved`),
+         * and those two are pinned across every SDK.
          *
          * Three strings sit in this neighbourhood and only two of them are the
          * same: a token here equals the fixture's `errorType`, and neither
@@ -497,9 +501,9 @@ sealed class BasecampException(
         /**
          * The coarse SPEC §6 code a [RecordingSummaryFailure] reports under;
          * see the derivation table on that class. The `else` is deliberate: a
-         * reason added without a row here reports `usage` rather than falling
-         * through to [exitCodeFor]'s `api_error`, so a new verdict can never
-         * announce itself as a server fault.
+         * reason added without a row here reports `usage` rather than reaching
+         * [exitCodeFor]'s `else`, which yields EXIT_API — so a new verdict can
+         * never announce itself with the exit code of a server fault.
          */
         private fun recordingSummaryCode(reason: String): String = when (reason) {
             RECORDING_UNRESOLVED -> CODE_NOT_FOUND
