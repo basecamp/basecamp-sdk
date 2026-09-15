@@ -179,10 +179,23 @@ function digPath(root: unknown, dotted: string): { value: unknown; present: bool
 }
 
 /**
- * Whether two values disagree once RFC 3339 timestamps are compared as
- * instants, so a fixture can pin a time without making any one language's
- * rendering the contract: "2024-01-20T15:30:00.000-06:00" and
- * "2024-01-20T21:30:00Z" agree. Mirrors the Go runner's `compareValues`.
+ * The sub-millisecond part of an RFC 3339 timestamp, as nanoseconds-worth of
+ * digits. `Date.parse` resolves only to the millisecond and truncates the rest,
+ * so ".0001Z" and ".0009Z" — different instants — parse to the same number;
+ * Go compares at nanosecond precision (`time.RFC3339Nano`) and must not be the
+ * stricter of the two runners. The offset shifts whole seconds only, so the
+ * fraction is comparable as written.
+ */
+function fractionalDigits(timestamp: string): string {
+  const fraction = /\.(\d+)/.exec(timestamp);
+  return (fraction?.[1] ?? "").padEnd(9, "0").slice(0, 9);
+}
+
+/**
+ * Whether two values agree once RFC 3339 timestamps are compared as instants,
+ * so a fixture can pin a time without making any one language's rendering the
+ * contract: "2024-01-20T15:30:00.000-06:00" and "2024-01-20T21:30:00Z" agree.
+ * Mirrors the Go runner's `compareValues`.
  */
 function sameInstant(expected: unknown, actual: unknown): boolean {
   if (typeof expected !== "string" || typeof actual !== "string") return false;
@@ -190,8 +203,8 @@ function sameInstant(expected: unknown, actual: unknown): boolean {
   const rfc3339 = /^\d{4}-\d{2}-\d{2}[Tt]\d{2}:\d{2}:\d{2}(\.\d+)?([Zz]|[+-]\d{2}:\d{2})$/;
   if (!rfc3339.test(expected) || !rfc3339.test(actual)) return false;
   const expectedAt = Date.parse(expected);
-  const actualAt = Date.parse(actual);
-  return Number.isFinite(expectedAt) && expectedAt === actualAt;
+  if (!Number.isFinite(expectedAt) || expectedAt !== Date.parse(actual)) return false;
+  return fractionalDigits(expected) === fractionalDigits(actual);
 }
 
 // =============================================================================

@@ -26,6 +26,7 @@ import {
   summarizableEventTypes,
   summarizableRecordingTypes,
 } from "../../src/index.js";
+import type { RecordingReadSources } from "../../src/index.js";
 import { personSGID } from "../helpers/sgid.js";
 
 const BASE_URL = "https://3.basecampapi.com/12345";
@@ -443,6 +444,39 @@ describe("recordings.summarize", () => {
         .summarize({ bucketId: BUCKET, recordingId: 9, eventType: "chat.line.created" })
         .catch(() => undefined);
       expect(paths).toContain("/12345/chats.json");
+    });
+
+    it("does not read a statusless not_found as \"the line is not in this Campfire\"", async () => {
+      // `not_found` is also the code an UnresolvedRecordingError carries, and
+      // that one is deliberately statusless. A verdict reaching discovery from
+      // a hook, a middleware or a caller-supplied read source must surface, not
+      // be counted as a candidate saying "not here" and end as unresolved.
+      const verdict = new BasecampError("not_found", "a composite's own conclusion");
+      const recordings = new RecordingsService(
+        client.raw,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        () =>
+          ({
+            ...client,
+            campfires: {
+              ...client.campfires,
+              getLine: () => Promise.reject(verdict),
+            },
+          }) as unknown as RecordingReadSources,
+      );
+      server.use(
+        http.get(`${BASE_URL}/projects/${BUCKET}`, () =>
+          HttpResponse.json({ id: BUCKET, dock: [{ id: 77, name: "chat", title: "C", enabled: true, url: "", app_url: "" }] }),
+        ),
+      );
+
+      await expect(
+        recordings.summarize({ bucketId: BUCKET, recordingId: 9, eventType: "chat.line.created" }),
+      ).rejects.toBe(verdict);
     });
 
     it("treats a bucket that is not a project as having no dock, and raises any other dock failure", async () => {
