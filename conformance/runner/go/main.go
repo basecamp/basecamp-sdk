@@ -22,6 +22,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -1963,7 +1964,7 @@ func checkAssertion(
 		if err := dec.Decode(&resultMap); err != nil {
 			return fail(tc, fmt.Sprintf("Failed to unmarshal result for responseBody assertion: %v", err))
 		}
-		actual, ok := resultMap[fieldPath]
+		actual, ok := digPath(resultMap, fieldPath)
 		if !ok {
 			return fail(tc, fmt.Sprintf("Expected responseBody.%s, but field not present", fieldPath))
 		}
@@ -2331,15 +2332,27 @@ func isNetworkError(err error) bool {
 }
 
 // digPath walks a dot-notation path through nested maps, reporting presence.
+// digPath resolves a dotted path through nested objects and, by numeric
+// segment, arrays — "creator.id", "assignees.0.id" — the way the Ruby and
+// Python runners' dig_path do, so a fixture can pin a nested identity rather
+// than only a top-level scalar. A bare key still reads top-level.
 func digPath(obj map[string]interface{}, path string) (interface{}, bool) {
 	var current interface{} = obj
 	for _, key := range strings.Split(path, ".") {
-		m, ok := current.(map[string]interface{})
-		if !ok {
-			return nil, false
-		}
-		current, ok = m[key]
-		if !ok {
+		switch node := current.(type) {
+		case map[string]interface{}:
+			next, ok := node[key]
+			if !ok {
+				return nil, false
+			}
+			current = next
+		case []interface{}:
+			idx, err := strconv.Atoi(key)
+			if err != nil || idx < 0 || idx >= len(node) {
+				return nil, false
+			}
+			current = node[idx]
+		default:
 			return nil, false
 		}
 	}

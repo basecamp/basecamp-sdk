@@ -193,6 +193,7 @@ func TestSummarize_RoutesEveryType(t *testing.T) {
 		{"Kanban::Board", RecordingRef{BucketID: letoLaptop, RecordingID: 1069479345, RecordingType: "Kanban::Board"}, "/195539477/card_tables/1069479345", "cards/card_table.json", "Kanban::Board", "Development Board", 1049715914, 0, false},
 		{"Kanban::Column", RecordingRef{BucketID: letoLaptop, RecordingID: 1069479347, RecordingType: "Kanban::Column"}, "/195539477/card_tables/columns/1069479347", "cards/column.json", "Kanban::Column", "In Progress", 1049715914, 0, true},
 		{"Inbox", RecordingRef{BucketID: letoLaptop, RecordingID: 1069479342, RecordingType: "Inbox"}, "/195539477/inboxes/1069479342", "forwards/inbox.json", "Inbox", "Email Forwards", 1049715914, 0, false},
+		{"Chat::Transcript", RecordingRef{BucketID: 2085958499, RecordingID: 1069479345, RecordingType: "Chat::Transcript"}, "/195539477/chats/1069479345", "campfires/get.json", "Chat::Transcript", "Campfire", 1049715914, 0, false},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

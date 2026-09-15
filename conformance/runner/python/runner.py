@@ -1641,6 +1641,15 @@ class ConformanceRunner:
         "RecordingsSummarize routes Kanban::Board (recording type) to one typed read and projects the recording",
         "RecordingsSummarize routes Kanban::Column (recording type) to one typed read and projects the recording",
         "RecordingsSummarize routes Inbox (recording type) to one typed read and projects the recording",
+        "RecordingsSummarize routes todo.completed (event type) to one typed read and projects the recording",
+        "RecordingsSummarize routes todo.assignment_changed (event type) to one typed read and projects the recording",
+        "RecordingsSummarize routes card.completed (event type) to one typed read and projects the recording",
+        "RecordingsSummarize routes card.assignment_changed (event type) to one typed read and projects the recording",
+        "RecordingsSummarize routes Comment (recording type) to one typed read and projects the recording",
+        "RecordingsSummarize routes Message (recording type) to one typed read and projects the recording",
+        "RecordingsSummarize routes Todo (recording type) to one typed read and projects the recording",
+        "RecordingsSummarize routes Kanban::Card (recording type) to one typed read and projects the recording",
+        "RecordingsSummarize routes Chat::Transcript (recording type) to one typed read and projects the recording",
     }
     SKIP_REASONS: dict[str, str] = {
         "RecordingsSummarize routes comment.created to the comment read and reads its mentions": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
@@ -1672,6 +1681,15 @@ class ConformanceRunner:
         "RecordingsSummarize routes Kanban::Board (recording type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
         "RecordingsSummarize routes Kanban::Column (recording type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
         "RecordingsSummarize routes Inbox (recording type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
+        "RecordingsSummarize routes todo.completed (event type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
+        "RecordingsSummarize routes todo.assignment_changed (event type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
+        "RecordingsSummarize routes card.completed (event type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
+        "RecordingsSummarize routes card.assignment_changed (event type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
+        "RecordingsSummarize routes Comment (recording type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
+        "RecordingsSummarize routes Message (recording type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
+        "RecordingsSummarize routes Todo (recording type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
+        "RecordingsSummarize routes Kanban::Card (recording type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
+        "RecordingsSummarize routes Chat::Transcript (recording type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
     }
 
     def __init__(self, tests_dir: str):

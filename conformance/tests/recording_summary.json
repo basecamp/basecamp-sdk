@@ -1,7 +1,7 @@
 [
   {
     "name": "RecordingsSummarize routes comment.created to the comment read and reads its mentions",
-    "description": "The event type is the routing key: comment.created is one typed comment read, and the projection carries the recording's identity plus the person ids its rich text mentions, decoded from each bc-attachment's sgid.",
+    "description": "The event type is the routing key: comment.created is one typed comment read, and the projection carries the recording's identity plus the person ids its rich text mentions, decoded from each bc-attachment's sgid. Nested identities — bucket, creator, and where the type has them parent and first assignee — are pinned by id.",
     "operation": "RecordingsSummarize",
     "method": "GET",
     "path": "/comments/1069479361",
@@ -129,6 +129,21 @@
         "expected": [
           1049715915
         ]
+      },
+      {
+        "type": "responseBody",
+        "path": "bucket.id",
+        "expected": 2085958499
+      },
+      {
+        "type": "responseBody",
+        "path": "creator.id",
+        "expected": 1049715915
+      },
+      {
+        "type": "responseBody",
+        "path": "parent.id",
+        "expected": 1069479351
       }
     ],
     "tags": [
@@ -138,7 +153,7 @@
   },
   {
     "name": "RecordingsSummarize routes message.created (event type) to one typed read and projects the recording",
-    "description": "The event type 'message.created' names exactly one typed read — /999/messages/1069479351 — and the projection carries the recording's type, id, status, title, app_url, its rich text as content, and the person ids that content mentions (none here). Part of the routing matrix a port must implement.",
+    "description": "The event type 'message.created' names exactly one typed read — /999/messages/1069479351 — and the projection carries the recording's type, id, status, title, app_url, its rich text as content, and the person ids that content mentions (none here). Part of the routing matrix a port must implement. Nested identities — bucket, creator, and where the type has them parent and first assignee — are pinned by id.",
     "operation": "RecordingsSummarize",
     "method": "GET",
     "path": "/messages/1069479351",
@@ -262,6 +277,21 @@
         "type": "responseBody",
         "path": "mentioned_person_ids",
         "expected": []
+      },
+      {
+        "type": "responseBody",
+        "path": "bucket.id",
+        "expected": 2085958499
+      },
+      {
+        "type": "responseBody",
+        "path": "creator.id",
+        "expected": 1049715914
+      },
+      {
+        "type": "responseBody",
+        "path": "parent.id",
+        "expected": 1069479338
       }
     ],
     "tags": [
@@ -271,7 +301,7 @@
   },
   {
     "name": "RecordingsSummarize routes todo.created (event type) to one typed read and projects the recording",
-    "description": "The event type 'todo.created' names exactly one typed read — /999/todos/1069479520 — and the projection carries the recording's type, id, status, title, app_url, its rich text as content, and the person ids that content mentions (none here). Part of the routing matrix a port must implement.",
+    "description": "The event type 'todo.created' names exactly one typed read — /999/todos/1069479520 — and the projection carries the recording's type, id, status, title, app_url, its rich text as content, and the person ids that content mentions (none here). Part of the routing matrix a port must implement. Nested identities — bucket, creator, and where the type has them parent and first assignee — are pinned by id.",
     "operation": "RecordingsSummarize",
     "method": "GET",
     "path": "/todos/1069479520",
@@ -444,6 +474,26 @@
         "type": "responseBody",
         "path": "mentioned_person_ids",
         "expected": []
+      },
+      {
+        "type": "responseBody",
+        "path": "bucket.id",
+        "expected": 2085958500
+      },
+      {
+        "type": "responseBody",
+        "path": "creator.id",
+        "expected": 1049715915
+      },
+      {
+        "type": "responseBody",
+        "path": "parent.id",
+        "expected": 1069479519
+      },
+      {
+        "type": "responseBody",
+        "path": "assignees.0.id",
+        "expected": 1049715920
       }
     ],
     "tags": [
@@ -453,7 +503,7 @@
   },
   {
     "name": "RecordingsSummarize routes card.created (event type) to one typed read and projects the recording",
-    "description": "The event type 'card.created' names exactly one typed read — /999/card_tables/cards/1069479350 — and the projection carries the recording's type, id, status, title, app_url, its rich text as content, and the person ids that content mentions (none here). Part of the routing matrix a port must implement.",
+    "description": "The event type 'card.created' names exactly one typed read — /999/card_tables/cards/1069479350 — and the projection carries the recording's type, id, status, title, app_url, its rich text as content, and the person ids that content mentions (none here). Part of the routing matrix a port must implement. Nested identities — bucket, creator, and where the type has them parent and first assignee — are pinned by id.",
     "operation": "RecordingsSummarize",
     "method": "GET",
     "path": "/card_tables/cards/1069479350",
@@ -661,6 +711,26 @@
         "type": "responseBody",
         "path": "mentioned_person_ids",
         "expected": []
+      },
+      {
+        "type": "responseBody",
+        "path": "bucket.id",
+        "expected": 2085958499
+      },
+      {
+        "type": "responseBody",
+        "path": "creator.id",
+        "expected": 1049715914
+      },
+      {
+        "type": "responseBody",
+        "path": "parent.id",
+        "expected": 1069479347
+      },
+      {
+        "type": "responseBody",
+        "path": "assignees.0.id",
+        "expected": 1049715915
       }
     ],
     "tags": [
@@ -670,7 +740,7 @@
   },
   {
     "name": "RecordingsSummarize routes Document (recording type) to one typed read and projects the recording",
-    "description": "The recording type 'Document' names exactly one typed read — /999/documents/1069479300 — and the projection carries the recording's type, id, status, title, app_url, its rich text as content, and the person ids that content mentions (none here). Part of the routing matrix a port must implement.",
+    "description": "The recording type 'Document' names exactly one typed read — /999/documents/1069479300 — and the projection carries the recording's type, id, status, title, app_url, its rich text as content, and the person ids that content mentions (none here). Part of the routing matrix a port must implement. Nested identities — bucket, creator, and where the type has them parent and first assignee — are pinned by id.",
     "operation": "RecordingsSummarize",
     "method": "GET",
     "path": "/documents/1069479300",
@@ -784,6 +854,21 @@
         "type": "responseBody",
         "path": "mentioned_person_ids",
         "expected": []
+      },
+      {
+        "type": "responseBody",
+        "path": "bucket.id",
+        "expected": 2085958500
+      },
+      {
+        "type": "responseBody",
+        "path": "creator.id",
+        "expected": 1049715915
+      },
+      {
+        "type": "responseBody",
+        "path": "parent.id",
+        "expected": 1069479098
       }
     ],
     "tags": [
@@ -793,7 +878,7 @@
   },
   {
     "name": "RecordingsSummarize routes Upload (recording type) to one typed read and projects the recording",
-    "description": "The recording type 'Upload' names exactly one typed read — /999/uploads/1069479400 — and the projection carries the recording's type, id, status, title, app_url, its rich text as content, and the person ids that content mentions (none here). Part of the routing matrix a port must implement.",
+    "description": "The recording type 'Upload' names exactly one typed read — /999/uploads/1069479400 — and the projection carries the recording's type, id, status, title, app_url, its rich text as content, and the person ids that content mentions (none here). Part of the routing matrix a port must implement. Nested identities — bucket, creator, and where the type has them parent and first assignee — are pinned by id.",
     "operation": "RecordingsSummarize",
     "method": "GET",
     "path": "/uploads/1069479400",
@@ -940,6 +1025,21 @@
         "type": "responseBody",
         "path": "mentioned_person_ids",
         "expected": []
+      },
+      {
+        "type": "responseBody",
+        "path": "bucket.id",
+        "expected": 2085958500
+      },
+      {
+        "type": "responseBody",
+        "path": "creator.id",
+        "expected": 1049715915
+      },
+      {
+        "type": "responseBody",
+        "path": "parent.id",
+        "expected": 1069479098
       }
     ],
     "tags": [
@@ -949,7 +1049,7 @@
   },
   {
     "name": "RecordingsSummarize routes Schedule::Entry (recording type) to one typed read and projects the recording",
-    "description": "The recording type 'Schedule::Entry' names exactly one typed read — /999/schedule_entries/1069479400 — and the projection carries the recording's type, id, status, title, app_url, its rich text as content, and the person ids that content mentions (none here). Part of the routing matrix a port must implement.",
+    "description": "The recording type 'Schedule::Entry' names exactly one typed read — /999/schedule_entries/1069479400 — and the projection carries the recording's type, id, status, title, app_url, its rich text as content, and the person ids that content mentions (none here). Part of the routing matrix a port must implement. Nested identities — bucket, creator, and where the type has them parent and first assignee — are pinned by id.",
     "operation": "RecordingsSummarize",
     "method": "GET",
     "path": "/schedule_entries/1069479400",
@@ -1110,6 +1210,21 @@
         "type": "responseBody",
         "path": "mentioned_person_ids",
         "expected": []
+      },
+      {
+        "type": "responseBody",
+        "path": "bucket.id",
+        "expected": 2085958499
+      },
+      {
+        "type": "responseBody",
+        "path": "creator.id",
+        "expected": 1049715914
+      },
+      {
+        "type": "responseBody",
+        "path": "parent.id",
+        "expected": 1069479342
       }
     ],
     "tags": [
@@ -1119,7 +1234,7 @@
   },
   {
     "name": "RecordingsSummarize routes Question (recording type) to one typed read and projects the recording",
-    "description": "The recording type 'Question' names exactly one typed read — /999/questions/1069479410 — and the projection carries the recording's type, id, status, title, app_url, an empty content (this type carries no rich text), and the person ids that content mentions (none here). Part of the routing matrix a port must implement.",
+    "description": "The recording type 'Question' names exactly one typed read — /999/questions/1069479410 — and the projection carries the recording's type, id, status, title, app_url, an empty content (this type carries no rich text), and the person ids that content mentions (none here). Part of the routing matrix a port must implement. Nested identities — bucket, creator, and where the type has them parent and first assignee — are pinned by id.",
     "operation": "RecordingsSummarize",
     "method": "GET",
     "path": "/questions/1069479410",
@@ -1248,6 +1363,21 @@
         "type": "responseBody",
         "path": "mentioned_person_ids",
         "expected": []
+      },
+      {
+        "type": "responseBody",
+        "path": "bucket.id",
+        "expected": 2085958499
+      },
+      {
+        "type": "responseBody",
+        "path": "creator.id",
+        "expected": 1049715914
+      },
+      {
+        "type": "responseBody",
+        "path": "parent.id",
+        "expected": 1069479400
       }
     ],
     "tags": [
@@ -1257,7 +1387,7 @@
   },
   {
     "name": "RecordingsSummarize routes Question::Answer (recording type) to one typed read and projects the recording",
-    "description": "The recording type 'Question::Answer' names exactly one typed read — /999/question_answers/1069479450 — and the projection carries the recording's type, id, status, title, app_url, its rich text as content, and the person ids that content mentions (none here). Part of the routing matrix a port must implement.",
+    "description": "The recording type 'Question::Answer' names exactly one typed read — /999/question_answers/1069479450 — and the projection carries the recording's type, id, status, title, app_url, its rich text as content, and the person ids that content mentions (none here). Part of the routing matrix a port must implement. Nested identities — bucket, creator, and where the type has them parent and first assignee — are pinned by id.",
     "operation": "RecordingsSummarize",
     "method": "GET",
     "path": "/question_answers/1069479450",
@@ -1371,6 +1501,21 @@
         "type": "responseBody",
         "path": "mentioned_person_ids",
         "expected": []
+      },
+      {
+        "type": "responseBody",
+        "path": "bucket.id",
+        "expected": 2085958499
+      },
+      {
+        "type": "responseBody",
+        "path": "creator.id",
+        "expected": 1049715914
+      },
+      {
+        "type": "responseBody",
+        "path": "parent.id",
+        "expected": 1069479410
       }
     ],
     "tags": [
@@ -1380,7 +1525,7 @@
   },
   {
     "name": "RecordingsSummarize routes Todolist (recording type) to one typed read and projects the recording",
-    "description": "The recording type 'Todolist' names exactly one typed read — /999/todolists/1069479519 — and the projection carries the recording's type, id, status, title, app_url, its rich text as content, and the person ids that content mentions (none here). Part of the routing matrix a port must implement.",
+    "description": "The recording type 'Todolist' names exactly one typed read — /999/todolists/1069479519 — and the projection carries the recording's type, id, status, title, app_url, its rich text as content, and the person ids that content mentions (none here). Part of the routing matrix a port must implement. Nested identities — bucket, creator, and where the type has them parent and first assignee — are pinned by id.",
     "operation": "RecordingsSummarize",
     "method": "GET",
     "path": "/todolists/1069479519",
@@ -1507,6 +1652,21 @@
         "type": "responseBody",
         "path": "mentioned_person_ids",
         "expected": []
+      },
+      {
+        "type": "responseBody",
+        "path": "bucket.id",
+        "expected": 2085958500
+      },
+      {
+        "type": "responseBody",
+        "path": "creator.id",
+        "expected": 1049715915
+      },
+      {
+        "type": "responseBody",
+        "path": "parent.id",
+        "expected": 1069479338
       }
     ],
     "tags": [
@@ -1516,7 +1676,7 @@
   },
   {
     "name": "RecordingsSummarize routes Vault (recording type) to one typed read and projects the recording",
-    "description": "The recording type 'Vault' names exactly one typed read — /999/vaults/1069479098 — and the projection carries the recording's type, id, status, title, app_url, an empty content (this type carries no rich text), and the person ids that content mentions (none here). Part of the routing matrix a port must implement.",
+    "description": "The recording type 'Vault' names exactly one typed read — /999/vaults/1069479098 — and the projection carries the recording's type, id, status, title, app_url, an empty content (this type carries no rich text), and the person ids that content mentions (none here). Part of the routing matrix a port must implement. Nested identities — bucket, creator, and where the type has them parent and first assignee — are pinned by id.",
     "operation": "RecordingsSummarize",
     "method": "GET",
     "path": "/vaults/1069479098",
@@ -1630,6 +1790,21 @@
         "type": "responseBody",
         "path": "mentioned_person_ids",
         "expected": []
+      },
+      {
+        "type": "responseBody",
+        "path": "bucket.id",
+        "expected": 2085958500
+      },
+      {
+        "type": "responseBody",
+        "path": "creator.id",
+        "expected": 1049715915
+      },
+      {
+        "type": "responseBody",
+        "path": "parent.id",
+        "expected": 2085958500
       }
     ],
     "tags": [
@@ -1639,7 +1814,7 @@
   },
   {
     "name": "RecordingsSummarize routes Inbox::Forward (recording type) to one typed read and projects the recording",
-    "description": "The recording type 'Inbox::Forward' names exactly one typed read — /999/inbox_forwards/1069479380 — and the projection carries the recording's type, id, status, title, app_url, its rich text as content, and the person ids that content mentions (none here). Part of the routing matrix a port must implement.",
+    "description": "The recording type 'Inbox::Forward' names exactly one typed read — /999/inbox_forwards/1069479380 — and the projection carries the recording's type, id, status, title, app_url, its rich text as content, and the person ids that content mentions (none here). Part of the routing matrix a port must implement. Nested identities — bucket, creator, and where the type has them parent and first assignee — are pinned by id.",
     "operation": "RecordingsSummarize",
     "method": "GET",
     "path": "/inbox_forwards/1069479380",
@@ -1748,6 +1923,21 @@
         "type": "responseBody",
         "path": "mentioned_person_ids",
         "expected": []
+      },
+      {
+        "type": "responseBody",
+        "path": "bucket.id",
+        "expected": 2085958499
+      },
+      {
+        "type": "responseBody",
+        "path": "creator.id",
+        "expected": 1049715914
+      },
+      {
+        "type": "responseBody",
+        "path": "parent.id",
+        "expected": 1069479342
       }
     ],
     "tags": [
@@ -1757,7 +1947,7 @@
   },
   {
     "name": "RecordingsSummarize routes Client::Approval (recording type) to one typed read and projects the recording",
-    "description": "The recording type 'Client::Approval' names exactly one typed read — /999/client/approvals/1069479651 — and the projection carries the recording's type, id, status, title, app_url, its rich text as content, and the person ids that content mentions (none here). Part of the routing matrix a port must implement.",
+    "description": "The recording type 'Client::Approval' names exactly one typed read — /999/client/approvals/1069479651 — and the projection carries the recording's type, id, status, title, app_url, its rich text as content, and the person ids that content mentions (none here). Part of the routing matrix a port must implement. Nested identities — bucket, creator, and where the type has them parent and first assignee — are pinned by id.",
     "operation": "RecordingsSummarize",
     "method": "GET",
     "path": "/client/approvals/1069479651",
@@ -1953,6 +2143,21 @@
         "type": "responseBody",
         "path": "mentioned_person_ids",
         "expected": []
+      },
+      {
+        "type": "responseBody",
+        "path": "bucket.id",
+        "expected": 2085958500
+      },
+      {
+        "type": "responseBody",
+        "path": "creator.id",
+        "expected": 1049715915
+      },
+      {
+        "type": "responseBody",
+        "path": "parent.id",
+        "expected": 1069479564
       }
     ],
     "tags": [
@@ -1962,7 +2167,7 @@
   },
   {
     "name": "RecordingsSummarize routes Client::Correspondence (recording type) to one typed read and projects the recording",
-    "description": "The recording type 'Client::Correspondence' names exactly one typed read — /999/client/correspondences/1069479566 — and the projection carries the recording's type, id, status, title, app_url, its rich text as content, and the person ids that content mentions (none here). Part of the routing matrix a port must implement.",
+    "description": "The recording type 'Client::Correspondence' names exactly one typed read — /999/client/correspondences/1069479566 — and the projection carries the recording's type, id, status, title, app_url, its rich text as content, and the person ids that content mentions (none here). Part of the routing matrix a port must implement. Nested identities — bucket, creator, and where the type has them parent and first assignee — are pinned by id.",
     "operation": "RecordingsSummarize",
     "method": "GET",
     "path": "/client/correspondences/1069479566",
@@ -2076,6 +2281,21 @@
         "type": "responseBody",
         "path": "mentioned_person_ids",
         "expected": []
+      },
+      {
+        "type": "responseBody",
+        "path": "bucket.id",
+        "expected": 2085958500
+      },
+      {
+        "type": "responseBody",
+        "path": "creator.id",
+        "expected": 1049715929
+      },
+      {
+        "type": "responseBody",
+        "path": "parent.id",
+        "expected": 1069479564
       }
     ],
     "tags": [
@@ -2085,7 +2305,7 @@
   },
   {
     "name": "RecordingsSummarize routes GoogleDocument (recording type) to one typed read and projects the recording",
-    "description": "The recording type 'GoogleDocument' names exactly one typed read — /999/google_documents/1069480366 — and the projection carries the recording's type, id, status, title, app_url, its rich text as content, and the person ids that content mentions (none here). Part of the routing matrix a port must implement.",
+    "description": "The recording type 'GoogleDocument' names exactly one typed read — /999/google_documents/1069480366 — and the projection carries the recording's type, id, status, title, app_url, its rich text as content, and the person ids that content mentions (none here). Part of the routing matrix a port must implement. Nested identities — bucket, creator, and where the type has them parent and first assignee — are pinned by id.",
     "operation": "RecordingsSummarize",
     "method": "GET",
     "path": "/google_documents/1069480366",
@@ -2202,6 +2422,21 @@
         "type": "responseBody",
         "path": "mentioned_person_ids",
         "expected": []
+      },
+      {
+        "type": "responseBody",
+        "path": "bucket.id",
+        "expected": 2085958500
+      },
+      {
+        "type": "responseBody",
+        "path": "creator.id",
+        "expected": 1049715915
+      },
+      {
+        "type": "responseBody",
+        "path": "parent.id",
+        "expected": 1069479098
       }
     ],
     "tags": [
@@ -2211,7 +2446,7 @@
   },
   {
     "name": "RecordingsSummarize routes CloudFile (recording type) to one typed read and projects the recording",
-    "description": "The recording type 'CloudFile' names exactly one typed read — /999/cloud_files/1069480357 — and the projection carries the recording's type, id, status, title, app_url, its rich text as content, and the person ids that content mentions (none here). Part of the routing matrix a port must implement.",
+    "description": "The recording type 'CloudFile' names exactly one typed read — /999/cloud_files/1069480357 — and the projection carries the recording's type, id, status, title, app_url, its rich text as content, and the person ids that content mentions (none here). Part of the routing matrix a port must implement. Nested identities — bucket, creator, and where the type has them parent and first assignee — are pinned by id.",
     "operation": "RecordingsSummarize",
     "method": "GET",
     "path": "/cloud_files/1069480357",
@@ -2336,6 +2571,21 @@
         "type": "responseBody",
         "path": "mentioned_person_ids",
         "expected": []
+      },
+      {
+        "type": "responseBody",
+        "path": "bucket.id",
+        "expected": 2085958500
+      },
+      {
+        "type": "responseBody",
+        "path": "creator.id",
+        "expected": 1049715915
+      },
+      {
+        "type": "responseBody",
+        "path": "parent.id",
+        "expected": 1069479098
       }
     ],
     "tags": [
@@ -2345,7 +2595,7 @@
   },
   {
     "name": "RecordingsSummarize routes Kanban::Step (recording type) to one typed read and projects the recording",
-    "description": "The recording type 'Kanban::Step' names exactly one typed read — /999/card_tables/steps/1069479360 — and the projection carries the recording's type, id, status, title, app_url, an empty content (this type carries no rich text), and the person ids that content mentions (none here). Part of the routing matrix a port must implement.",
+    "description": "The recording type 'Kanban::Step' names exactly one typed read — /999/card_tables/steps/1069479360 — and the projection carries the recording's type, id, status, title, app_url, an empty content (this type carries no rich text), and the person ids that content mentions (none here). Part of the routing matrix a port must implement. Nested identities — bucket, creator, and where the type has them parent and first assignee — are pinned by id.",
     "operation": "RecordingsSummarize",
     "method": "GET",
     "path": "/card_tables/steps/1069479360",
@@ -2458,6 +2708,26 @@
         "type": "responseBody",
         "path": "mentioned_person_ids",
         "expected": []
+      },
+      {
+        "type": "responseBody",
+        "path": "bucket.id",
+        "expected": 2085958499
+      },
+      {
+        "type": "responseBody",
+        "path": "creator.id",
+        "expected": 1049715914
+      },
+      {
+        "type": "responseBody",
+        "path": "parent.id",
+        "expected": 1069479350
+      },
+      {
+        "type": "responseBody",
+        "path": "assignees.0.id",
+        "expected": 1049715915
       }
     ],
     "tags": [
@@ -2467,7 +2737,7 @@
   },
   {
     "name": "RecordingsSummarize routes Questionnaire (recording type) to one typed read and projects the recording",
-    "description": "The recording type 'Questionnaire' names exactly one typed read — /999/questionnaires/1069479400 — and the projection carries the recording's type, id, status, title, app_url, an empty content (this type carries no rich text), and the person ids that content mentions (none here). Part of the routing matrix a port must implement.",
+    "description": "The recording type 'Questionnaire' names exactly one typed read — /999/questionnaires/1069479400 — and the projection carries the recording's type, id, status, title, app_url, an empty content (this type carries no rich text), and the person ids that content mentions (none here). Part of the routing matrix a port must implement. Nested identities — bucket and creator — are pinned by id.",
     "operation": "RecordingsSummarize",
     "method": "GET",
     "path": "/questionnaires/1069479400",
@@ -2571,6 +2841,16 @@
         "type": "responseBody",
         "path": "mentioned_person_ids",
         "expected": []
+      },
+      {
+        "type": "responseBody",
+        "path": "bucket.id",
+        "expected": 2085958499
+      },
+      {
+        "type": "responseBody",
+        "path": "creator.id",
+        "expected": 1049715914
       }
     ],
     "tags": [
@@ -2580,7 +2860,7 @@
   },
   {
     "name": "RecordingsSummarize routes Schedule (recording type) to one typed read and projects the recording",
-    "description": "The recording type 'Schedule' names exactly one typed read — /999/schedules/1069479342 — and the projection carries the recording's type, id, status, title, app_url, an empty content (this type carries no rich text), and the person ids that content mentions (none here). Part of the routing matrix a port must implement.",
+    "description": "The recording type 'Schedule' names exactly one typed read — /999/schedules/1069479342 — and the projection carries the recording's type, id, status, title, app_url, an empty content (this type carries no rich text), and the person ids that content mentions (none here). Part of the routing matrix a port must implement. Nested identities — bucket and creator — are pinned by id.",
     "operation": "RecordingsSummarize",
     "method": "GET",
     "path": "/schedules/1069479342",
@@ -2685,6 +2965,16 @@
         "type": "responseBody",
         "path": "mentioned_person_ids",
         "expected": []
+      },
+      {
+        "type": "responseBody",
+        "path": "bucket.id",
+        "expected": 2085958499
+      },
+      {
+        "type": "responseBody",
+        "path": "creator.id",
+        "expected": 1049715914
       }
     ],
     "tags": [
@@ -2694,7 +2984,7 @@
   },
   {
     "name": "RecordingsSummarize routes Todoset (recording type) to one typed read and projects the recording",
-    "description": "The recording type 'Todoset' names exactly one typed read — /999/todosets/1069479338 — and the projection carries the recording's type, id, status, title, app_url, an empty content (this type carries no rich text), and the person ids that content mentions (none here). Part of the routing matrix a port must implement.",
+    "description": "The recording type 'Todoset' names exactly one typed read — /999/todosets/1069479338 — and the projection carries the recording's type, id, status, title, app_url, an empty content (this type carries no rich text), and the person ids that content mentions (none here). Part of the routing matrix a port must implement. Nested identities — bucket and creator — are pinned by id.",
     "operation": "RecordingsSummarize",
     "method": "GET",
     "path": "/todosets/1069479338",
@@ -2806,6 +3096,16 @@
         "type": "responseBody",
         "path": "mentioned_person_ids",
         "expected": []
+      },
+      {
+        "type": "responseBody",
+        "path": "bucket.id",
+        "expected": 2085958500
+      },
+      {
+        "type": "responseBody",
+        "path": "creator.id",
+        "expected": 1049715915
       }
     ],
     "tags": [
@@ -2815,7 +3115,7 @@
   },
   {
     "name": "RecordingsSummarize routes Message::Board (recording type) to one typed read and projects the recording",
-    "description": "The recording type 'Message::Board' names exactly one typed read — /999/message_boards/1069479338 — and the projection carries the recording's type, id, status, title, app_url, an empty content (this type carries no rich text), and the person ids that content mentions (none here). Part of the routing matrix a port must implement.",
+    "description": "The recording type 'Message::Board' names exactly one typed read — /999/message_boards/1069479338 — and the projection carries the recording's type, id, status, title, app_url, an empty content (this type carries no rich text), and the person ids that content mentions (none here). Part of the routing matrix a port must implement. Nested identities — bucket and creator — are pinned by id.",
     "operation": "RecordingsSummarize",
     "method": "GET",
     "path": "/message_boards/1069479338",
@@ -2917,6 +3217,16 @@
         "type": "responseBody",
         "path": "mentioned_person_ids",
         "expected": []
+      },
+      {
+        "type": "responseBody",
+        "path": "bucket.id",
+        "expected": 2085958499
+      },
+      {
+        "type": "responseBody",
+        "path": "creator.id",
+        "expected": 1049715914
       }
     ],
     "tags": [
@@ -2926,7 +3236,7 @@
   },
   {
     "name": "RecordingsSummarize routes Kanban::Board (recording type) to one typed read and projects the recording",
-    "description": "The recording type 'Kanban::Board' names exactly one typed read — /999/card_tables/1069479345 — and the projection carries the recording's type, id, status, title, app_url, an empty content (this type carries no rich text), and the person ids that content mentions (none here). Part of the routing matrix a port must implement.",
+    "description": "The recording type 'Kanban::Board' names exactly one typed read — /999/card_tables/1069479345 — and the projection carries the recording's type, id, status, title, app_url, an empty content (this type carries no rich text), and the person ids that content mentions (none here). Part of the routing matrix a port must implement. Nested identities — bucket and creator — are pinned by id.",
     "operation": "RecordingsSummarize",
     "method": "GET",
     "path": "/card_tables/1069479345",
@@ -3246,6 +3556,16 @@
         "type": "responseBody",
         "path": "mentioned_person_ids",
         "expected": []
+      },
+      {
+        "type": "responseBody",
+        "path": "bucket.id",
+        "expected": 2085958499
+      },
+      {
+        "type": "responseBody",
+        "path": "creator.id",
+        "expected": 1049715914
       }
     ],
     "tags": [
@@ -3255,7 +3575,7 @@
   },
   {
     "name": "RecordingsSummarize routes Kanban::Column (recording type) to one typed read and projects the recording",
-    "description": "The recording type 'Kanban::Column' names exactly one typed read — /999/card_tables/columns/1069479347 — and the projection carries the recording's type, id, status, title, app_url, its rich text as content, and the person ids that content mentions (none here). Part of the routing matrix a port must implement.",
+    "description": "The recording type 'Kanban::Column' names exactly one typed read — /999/card_tables/columns/1069479347 — and the projection carries the recording's type, id, status, title, app_url, its rich text as content, and the person ids that content mentions (none here). Part of the routing matrix a port must implement. Nested identities — bucket, creator, and where the type has them parent and first assignee — are pinned by id.",
     "operation": "RecordingsSummarize",
     "method": "GET",
     "path": "/card_tables/columns/1069479347",
@@ -3379,6 +3699,21 @@
         "type": "responseBody",
         "path": "mentioned_person_ids",
         "expected": []
+      },
+      {
+        "type": "responseBody",
+        "path": "bucket.id",
+        "expected": 2085958499
+      },
+      {
+        "type": "responseBody",
+        "path": "creator.id",
+        "expected": 1049715914
+      },
+      {
+        "type": "responseBody",
+        "path": "parent.id",
+        "expected": 1069479345
       }
     ],
     "tags": [
@@ -3388,7 +3723,7 @@
   },
   {
     "name": "RecordingsSummarize routes Inbox (recording type) to one typed read and projects the recording",
-    "description": "The recording type 'Inbox' names exactly one typed read — /999/inboxes/1069479342 — and the projection carries the recording's type, id, status, title, app_url, an empty content (this type carries no rich text), and the person ids that content mentions (none here). Part of the routing matrix a port must implement.",
+    "description": "The recording type 'Inbox' names exactly one typed read — /999/inboxes/1069479342 — and the projection carries the recording's type, id, status, title, app_url, an empty content (this type carries no rich text), and the person ids that content mentions (none here). Part of the routing matrix a port must implement. Nested identities — bucket and creator — are pinned by id.",
     "operation": "RecordingsSummarize",
     "method": "GET",
     "path": "/inboxes/1069479342",
@@ -3484,6 +3819,1771 @@
         "type": "responseBody",
         "path": "mentioned_person_ids",
         "expected": []
+      },
+      {
+        "type": "responseBody",
+        "path": "bucket.id",
+        "expected": 2085958499
+      },
+      {
+        "type": "responseBody",
+        "path": "creator.id",
+        "expected": 1049715914
+      }
+    ],
+    "tags": [
+      "recording-summary",
+      "routing"
+    ]
+  },
+  {
+    "name": "RecordingsSummarize routes todo.completed (event type) to one typed read and projects the recording",
+    "description": "The event type 'todo.completed' names exactly one typed read — /999/todos/1069479520 — and the projection carries the recording's type, id, status, title, app_url, its rich text as content, the person ids that content mentions (none here), and the nested identities by id. An event type other than .created names the same read: the subject before the action is the routing key.",
+    "operation": "RecordingsSummarize",
+    "method": "GET",
+    "path": "/todos/1069479520",
+    "pathParams": {
+      "bucketId": 2085958500,
+      "recordingId": 1069479520,
+      "eventType": "todo.completed"
+    },
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 1069479520,
+          "status": "active",
+          "visible_to_clients": false,
+          "created_at": "2022-11-22T08:25:24.633Z",
+          "updated_at": "2022-11-22T17:56:27.363Z",
+          "title": "Program Leto locator  microcontroller unit",
+          "inherits_status": true,
+          "type": "Todo",
+          "url": "https://3.basecampapi.com/195539477/buckets/2085958500/todos/1069479520.json",
+          "app_url": "https://3.basecamp.com/195539477/buckets/2085958500/todos/1069479520",
+          "bookmark_url": "https://3.basecampapi.com/195539477/my/bookmarks/BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1JlY29yZGluZy8xMDY5NDc5NTIwP2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg1yZWFkYWJsZQY7AFRJIg9leHBpcmVzX2F0BjsAVDA=--08a58ac260879aa91f814a00c612093022b58a87.json",
+          "subscription_url": "https://3.basecampapi.com/195539477/buckets/2085958500/recordings/1069479520/subscription.json",
+          "comments_count": 0,
+          "comments_url": "https://3.basecampapi.com/195539477/buckets/2085958500/recordings/1069479520/comments.json",
+          "position": 1,
+          "parent": {
+            "id": 1069479519,
+            "title": "Hardware",
+            "type": "Todolist",
+            "url": "https://3.basecampapi.com/195539477/buckets/2085958500/todolists/1069479519.json",
+            "app_url": "https://3.basecamp.com/195539477/buckets/2085958500/todolists/1069479519"
+          },
+          "bucket": {
+            "id": 2085958500,
+            "name": "The Leto Locator",
+            "type": "Project"
+          },
+          "creator": {
+            "id": 1049715915,
+            "attachable_sgid": "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE1P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--919d2c8b11ff403eefcab9db42dd26846d0c3102",
+            "name": "Victor Cooper",
+            "email_address": "victor@honchodesign.com",
+            "personable_type": "User",
+            "title": "Chief Strategist",
+            "bio": "Don't let your dreams be dreams",
+            "location": "Chicago, IL",
+            "created_at": "2022-11-22T08:23:21.732Z",
+            "updated_at": "2022-11-22T08:23:21.904Z",
+            "admin": true,
+            "owner": true,
+            "client": false,
+            "employee": true,
+            "time_zone": "America/Chicago",
+            "avatar_url": "https://3.basecamp-static.com/195539477/people/BAhpBMtkkT4=--e609ef146e39f9ca5e4bb7571f0f7da68e5f6302/avatar?v=1",
+            "company": {
+              "id": 1033447817,
+              "name": "Honcho Design"
+            },
+            "can_manage_projects": true,
+            "can_manage_people": true
+          },
+          "description": "<div>Latest schematic and the full spec are attached.<br><bc-attachment sgid=\"BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAwMAY6BkVU--a1b2c3\" caption=\"Leto locator schematic\"></bc-attachment><bc-attachment sgid=\"BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAwMQY6BkVU--d4e5f6\"></bc-attachment></div>",
+          "completed": false,
+          "content": "Program Leto locator  microcontroller unit",
+          "starts_on": null,
+          "due_on": "2022-12-01",
+          "assignees": [
+            {
+              "id": 1049715920,
+              "attachable_sgid": "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTIwP2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--f0d48d2c54d09541d4fe79b0b4de328e89b4a0c0",
+              "name": "Steve Marsh",
+              "email_address": "steve@honchodesign.com",
+              "personable_type": "User",
+              "title": "Legacy Directives Strategist",
+              "bio": "You can do it!",
+              "location": "Chicago, IL",
+              "created_at": "2022-11-22T08:23:22.131Z",
+              "updated_at": "2022-11-22T08:23:22.131Z",
+              "admin": false,
+              "owner": false,
+              "client": false,
+              "employee": true,
+              "time_zone": "America/Chicago",
+              "avatar_url": "https://3.basecamp-static.com/195539477/people/BAhpBNBkkT4=--79c86665c9c218598d3cce24d5eb0eba8b38519a/avatar?v=1",
+              "can_manage_projects": true,
+              "can_manage_people": true
+            }
+          ],
+          "completion_subscribers": [],
+          "completion_url": "https://3.basecampapi.com/195539477/buckets/2085958500/todos/1069479520/completion.json",
+          "description_attachments": [
+            {
+              "id": 1069480000,
+              "sgid": "BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAwMAY6BkVU--a1b2c3",
+              "filename": "leto-schematic.png",
+              "content_type": "image/png",
+              "byte_size": 284111,
+              "download_url": "https://3.basecampapi.com/195539477/buckets/2085958500/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAwMAY6BkVU--a1b2c3/download/leto-schematic.png",
+              "width": 1024.0,
+              "height": 768,
+              "previewable": true,
+              "preview_url": "https://3.basecampapi.com/195539477/buckets/2085958500/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAwMAY6BkVU--a1b2c3/previews/leto-schematic.png",
+              "thumbnail_url": "https://3.basecampapi.com/195539477/buckets/2085958500/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAwMAY6BkVU--a1b2c3/thumbnails/leto-schematic.png"
+            },
+            {
+              "id": 1069480001,
+              "sgid": "BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAwMQY6BkVU--d4e5f6",
+              "filename": "leto-spec.pdf",
+              "content_type": "application/pdf",
+              "byte_size": 1048576,
+              "download_url": "https://3.basecampapi.com/195539477/buckets/2085958500/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAwMQY6BkVU--d4e5f6/download/leto-spec.pdf",
+              "width": null,
+              "height": null,
+              "previewable": false,
+              "preview_url": "https://3.basecampapi.com/195539477/buckets/2085958500/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAwMQY6BkVU--d4e5f6/previews/leto-spec.pdf",
+              "thumbnail_url": "https://3.basecampapi.com/195539477/buckets/2085958500/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAwMQY6BkVU--d4e5f6/thumbnails/leto-spec.pdf"
+            }
+          ]
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "noError"
+      },
+      {
+        "type": "requestPath",
+        "expected": "/999/todos/1069479520"
+      },
+      {
+        "type": "responseBody",
+        "path": "type",
+        "expected": "Todo"
+      },
+      {
+        "type": "responseBody",
+        "path": "id",
+        "expected": 1069479520
+      },
+      {
+        "type": "responseBody",
+        "path": "status",
+        "expected": "active"
+      },
+      {
+        "type": "responseBody",
+        "path": "title",
+        "expected": "Program Leto locator  microcontroller unit"
+      },
+      {
+        "type": "responseBody",
+        "path": "app_url",
+        "expected": "https://3.basecamp.com/195539477/buckets/2085958500/todos/1069479520"
+      },
+      {
+        "type": "responseBody",
+        "path": "content",
+        "expected": "<div>Latest schematic and the full spec are attached.<br><bc-attachment sgid=\"BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAwMAY6BkVU--a1b2c3\" caption=\"Leto locator schematic\"></bc-attachment><bc-attachment sgid=\"BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAwMQY6BkVU--d4e5f6\"></bc-attachment></div>"
+      },
+      {
+        "type": "responseBody",
+        "path": "mentioned_person_ids",
+        "expected": []
+      },
+      {
+        "type": "responseBody",
+        "path": "bucket.id",
+        "expected": 2085958500
+      },
+      {
+        "type": "responseBody",
+        "path": "creator.id",
+        "expected": 1049715915
+      },
+      {
+        "type": "responseBody",
+        "path": "parent.id",
+        "expected": 1069479519
+      },
+      {
+        "type": "responseBody",
+        "path": "assignees.0.id",
+        "expected": 1049715920
+      }
+    ],
+    "tags": [
+      "recording-summary",
+      "routing"
+    ]
+  },
+  {
+    "name": "RecordingsSummarize routes todo.assignment_changed (event type) to one typed read and projects the recording",
+    "description": "The event type 'todo.assignment_changed' names exactly one typed read — /999/todos/1069479520 — and the projection carries the recording's type, id, status, title, app_url, its rich text as content, the person ids that content mentions (none here), and the nested identities by id. An event type other than .created names the same read: the subject before the action is the routing key.",
+    "operation": "RecordingsSummarize",
+    "method": "GET",
+    "path": "/todos/1069479520",
+    "pathParams": {
+      "bucketId": 2085958500,
+      "recordingId": 1069479520,
+      "eventType": "todo.assignment_changed"
+    },
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 1069479520,
+          "status": "active",
+          "visible_to_clients": false,
+          "created_at": "2022-11-22T08:25:24.633Z",
+          "updated_at": "2022-11-22T17:56:27.363Z",
+          "title": "Program Leto locator  microcontroller unit",
+          "inherits_status": true,
+          "type": "Todo",
+          "url": "https://3.basecampapi.com/195539477/buckets/2085958500/todos/1069479520.json",
+          "app_url": "https://3.basecamp.com/195539477/buckets/2085958500/todos/1069479520",
+          "bookmark_url": "https://3.basecampapi.com/195539477/my/bookmarks/BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1JlY29yZGluZy8xMDY5NDc5NTIwP2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg1yZWFkYWJsZQY7AFRJIg9leHBpcmVzX2F0BjsAVDA=--08a58ac260879aa91f814a00c612093022b58a87.json",
+          "subscription_url": "https://3.basecampapi.com/195539477/buckets/2085958500/recordings/1069479520/subscription.json",
+          "comments_count": 0,
+          "comments_url": "https://3.basecampapi.com/195539477/buckets/2085958500/recordings/1069479520/comments.json",
+          "position": 1,
+          "parent": {
+            "id": 1069479519,
+            "title": "Hardware",
+            "type": "Todolist",
+            "url": "https://3.basecampapi.com/195539477/buckets/2085958500/todolists/1069479519.json",
+            "app_url": "https://3.basecamp.com/195539477/buckets/2085958500/todolists/1069479519"
+          },
+          "bucket": {
+            "id": 2085958500,
+            "name": "The Leto Locator",
+            "type": "Project"
+          },
+          "creator": {
+            "id": 1049715915,
+            "attachable_sgid": "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE1P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--919d2c8b11ff403eefcab9db42dd26846d0c3102",
+            "name": "Victor Cooper",
+            "email_address": "victor@honchodesign.com",
+            "personable_type": "User",
+            "title": "Chief Strategist",
+            "bio": "Don't let your dreams be dreams",
+            "location": "Chicago, IL",
+            "created_at": "2022-11-22T08:23:21.732Z",
+            "updated_at": "2022-11-22T08:23:21.904Z",
+            "admin": true,
+            "owner": true,
+            "client": false,
+            "employee": true,
+            "time_zone": "America/Chicago",
+            "avatar_url": "https://3.basecamp-static.com/195539477/people/BAhpBMtkkT4=--e609ef146e39f9ca5e4bb7571f0f7da68e5f6302/avatar?v=1",
+            "company": {
+              "id": 1033447817,
+              "name": "Honcho Design"
+            },
+            "can_manage_projects": true,
+            "can_manage_people": true
+          },
+          "description": "<div>Latest schematic and the full spec are attached.<br><bc-attachment sgid=\"BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAwMAY6BkVU--a1b2c3\" caption=\"Leto locator schematic\"></bc-attachment><bc-attachment sgid=\"BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAwMQY6BkVU--d4e5f6\"></bc-attachment></div>",
+          "completed": false,
+          "content": "Program Leto locator  microcontroller unit",
+          "starts_on": null,
+          "due_on": "2022-12-01",
+          "assignees": [
+            {
+              "id": 1049715920,
+              "attachable_sgid": "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTIwP2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--f0d48d2c54d09541d4fe79b0b4de328e89b4a0c0",
+              "name": "Steve Marsh",
+              "email_address": "steve@honchodesign.com",
+              "personable_type": "User",
+              "title": "Legacy Directives Strategist",
+              "bio": "You can do it!",
+              "location": "Chicago, IL",
+              "created_at": "2022-11-22T08:23:22.131Z",
+              "updated_at": "2022-11-22T08:23:22.131Z",
+              "admin": false,
+              "owner": false,
+              "client": false,
+              "employee": true,
+              "time_zone": "America/Chicago",
+              "avatar_url": "https://3.basecamp-static.com/195539477/people/BAhpBNBkkT4=--79c86665c9c218598d3cce24d5eb0eba8b38519a/avatar?v=1",
+              "can_manage_projects": true,
+              "can_manage_people": true
+            }
+          ],
+          "completion_subscribers": [],
+          "completion_url": "https://3.basecampapi.com/195539477/buckets/2085958500/todos/1069479520/completion.json",
+          "description_attachments": [
+            {
+              "id": 1069480000,
+              "sgid": "BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAwMAY6BkVU--a1b2c3",
+              "filename": "leto-schematic.png",
+              "content_type": "image/png",
+              "byte_size": 284111,
+              "download_url": "https://3.basecampapi.com/195539477/buckets/2085958500/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAwMAY6BkVU--a1b2c3/download/leto-schematic.png",
+              "width": 1024.0,
+              "height": 768,
+              "previewable": true,
+              "preview_url": "https://3.basecampapi.com/195539477/buckets/2085958500/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAwMAY6BkVU--a1b2c3/previews/leto-schematic.png",
+              "thumbnail_url": "https://3.basecampapi.com/195539477/buckets/2085958500/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAwMAY6BkVU--a1b2c3/thumbnails/leto-schematic.png"
+            },
+            {
+              "id": 1069480001,
+              "sgid": "BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAwMQY6BkVU--d4e5f6",
+              "filename": "leto-spec.pdf",
+              "content_type": "application/pdf",
+              "byte_size": 1048576,
+              "download_url": "https://3.basecampapi.com/195539477/buckets/2085958500/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAwMQY6BkVU--d4e5f6/download/leto-spec.pdf",
+              "width": null,
+              "height": null,
+              "previewable": false,
+              "preview_url": "https://3.basecampapi.com/195539477/buckets/2085958500/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAwMQY6BkVU--d4e5f6/previews/leto-spec.pdf",
+              "thumbnail_url": "https://3.basecampapi.com/195539477/buckets/2085958500/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAwMQY6BkVU--d4e5f6/thumbnails/leto-spec.pdf"
+            }
+          ]
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "noError"
+      },
+      {
+        "type": "requestPath",
+        "expected": "/999/todos/1069479520"
+      },
+      {
+        "type": "responseBody",
+        "path": "type",
+        "expected": "Todo"
+      },
+      {
+        "type": "responseBody",
+        "path": "id",
+        "expected": 1069479520
+      },
+      {
+        "type": "responseBody",
+        "path": "status",
+        "expected": "active"
+      },
+      {
+        "type": "responseBody",
+        "path": "title",
+        "expected": "Program Leto locator  microcontroller unit"
+      },
+      {
+        "type": "responseBody",
+        "path": "app_url",
+        "expected": "https://3.basecamp.com/195539477/buckets/2085958500/todos/1069479520"
+      },
+      {
+        "type": "responseBody",
+        "path": "content",
+        "expected": "<div>Latest schematic and the full spec are attached.<br><bc-attachment sgid=\"BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAwMAY6BkVU--a1b2c3\" caption=\"Leto locator schematic\"></bc-attachment><bc-attachment sgid=\"BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAwMQY6BkVU--d4e5f6\"></bc-attachment></div>"
+      },
+      {
+        "type": "responseBody",
+        "path": "mentioned_person_ids",
+        "expected": []
+      },
+      {
+        "type": "responseBody",
+        "path": "bucket.id",
+        "expected": 2085958500
+      },
+      {
+        "type": "responseBody",
+        "path": "creator.id",
+        "expected": 1049715915
+      },
+      {
+        "type": "responseBody",
+        "path": "parent.id",
+        "expected": 1069479519
+      },
+      {
+        "type": "responseBody",
+        "path": "assignees.0.id",
+        "expected": 1049715920
+      }
+    ],
+    "tags": [
+      "recording-summary",
+      "routing"
+    ]
+  },
+  {
+    "name": "RecordingsSummarize routes card.completed (event type) to one typed read and projects the recording",
+    "description": "The event type 'card.completed' names exactly one typed read — /999/card_tables/cards/1069479350 — and the projection carries the recording's type, id, status, title, app_url, its rich text as content, the person ids that content mentions (none here), and the nested identities by id. An event type other than .created names the same read: the subject before the action is the routing key.",
+    "operation": "RecordingsSummarize",
+    "method": "GET",
+    "path": "/card_tables/cards/1069479350",
+    "pathParams": {
+      "bucketId": 2085958499,
+      "recordingId": 1069479350,
+      "eventType": "card.completed"
+    },
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 1069479350,
+          "status": "active",
+          "visible_to_clients": false,
+          "created_at": "2024-01-16T10:00:00.000-06:00",
+          "updated_at": "2024-01-20T15:30:00.000-06:00",
+          "title": "Implement user authentication",
+          "inherits_status": true,
+          "type": "Kanban::Card",
+          "url": "https://3.basecampapi.com/195539477/buckets/2085958499/card_tables/cards/1069479350.json",
+          "app_url": "https://3.basecamp.com/195539477/buckets/2085958499/card_tables/cards/1069479350",
+          "bookmark_url": "https://3.basecampapi.com/195539477/my/bookmarks/card1.json",
+          "subscription_url": "https://3.basecampapi.com/195539477/buckets/2085958499/recordings/1069479350/subscription.json",
+          "position": 1,
+          "content": "<div>Add OAuth2 login flow with Google and GitHub providers</div>",
+          "description": "Add OAuth2 login flow with Google and GitHub providers",
+          "due_on": "2024-02-01",
+          "completed": false,
+          "comments_count": 2,
+          "comments_url": "https://3.basecampapi.com/195539477/buckets/2085958499/recordings/1069479350/comments.json",
+          "comment_count": 2,
+          "completion_url": "https://3.basecampapi.com/195539477/buckets/2085958499/card_tables/cards/1069479350/completion.json",
+          "parent": {
+            "id": 1069479347,
+            "title": "In Progress",
+            "type": "Kanban::Column",
+            "url": "https://3.basecampapi.com/195539477/buckets/2085958499/card_tables/columns/1069479347.json",
+            "app_url": "https://3.basecamp.com/195539477/buckets/2085958499/card_tables/columns/1069479347"
+          },
+          "bucket": {
+            "id": 2085958499,
+            "name": "The Leto Laptop",
+            "type": "Project"
+          },
+          "creator": {
+            "id": 1049715914,
+            "attachable_sgid": "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE0P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--xyz456",
+            "name": "Victor Cooper",
+            "email_address": "victor@honchodesign.com",
+            "personable_type": "User",
+            "title": "Chief Strategist",
+            "bio": "Leading product strategy",
+            "location": "Chicago, IL",
+            "created_at": "2024-01-01T08:00:00.000-06:00",
+            "updated_at": "2024-01-15T10:00:00.000-06:00",
+            "admin": true,
+            "owner": true,
+            "client": false,
+            "employee": true,
+            "time_zone": "America/Chicago",
+            "avatar_url": "https://3.basecamp-static.com/avatar/123.jpg",
+            "can_ping": true,
+            "can_manage_projects": true,
+            "can_manage_people": true
+          },
+          "assignees": [
+            {
+              "id": 1049715915,
+              "attachable_sgid": "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE1P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--abc789",
+              "name": "Annie Bryan",
+              "email_address": "annie@honchodesign.com",
+              "personable_type": "User",
+              "title": "Designer",
+              "admin": false,
+              "owner": false,
+              "client": false,
+              "employee": true,
+              "time_zone": "America/Chicago",
+              "avatar_url": "https://3.basecamp-static.com/avatar/456.jpg"
+            }
+          ],
+          "completion_subscribers": [],
+          "steps": [
+            {
+              "id": 1069479360,
+              "status": "active",
+              "visible_to_clients": false,
+              "created_at": "2024-01-16T10:05:00.000-06:00",
+              "updated_at": "2024-01-18T11:00:00.000-06:00",
+              "title": "Set up OAuth providers",
+              "inherits_status": true,
+              "type": "Kanban::Step",
+              "url": "https://3.basecampapi.com/195539477/buckets/2085958499/card_tables/steps/1069479360.json",
+              "app_url": "https://3.basecamp.com/195539477/buckets/2085958499/card_tables/steps/1069479360",
+              "bookmark_url": "https://3.basecampapi.com/195539477/my/bookmarks/step1.json",
+              "position": 1,
+              "completed": true,
+              "completed_at": "2024-01-18T11:00:00.000-06:00",
+              "parent": {
+                "id": 1069479350,
+                "title": "Implement user authentication",
+                "type": "Kanban::Card",
+                "url": "https://3.basecampapi.com/195539477/buckets/2085958499/card_tables/cards/1069479350.json",
+                "app_url": "https://3.basecamp.com/195539477/buckets/2085958499/card_tables/cards/1069479350"
+              },
+              "bucket": {
+                "id": 2085958499,
+                "name": "The Leto Laptop",
+                "type": "Project"
+              },
+              "creator": {
+                "id": 1049715914,
+                "name": "Victor Cooper"
+              },
+              "completer": {
+                "id": 1049715915,
+                "name": "Annie Bryan"
+              },
+              "assignees": []
+            },
+            {
+              "id": 1069479361,
+              "status": "active",
+              "visible_to_clients": false,
+              "created_at": "2024-01-16T10:06:00.000-06:00",
+              "updated_at": "2024-01-16T10:06:00.000-06:00",
+              "title": "Implement callback handlers",
+              "inherits_status": true,
+              "type": "Kanban::Step",
+              "url": "https://3.basecampapi.com/195539477/buckets/2085958499/card_tables/steps/1069479361.json",
+              "app_url": "https://3.basecamp.com/195539477/buckets/2085958499/card_tables/steps/1069479361",
+              "bookmark_url": "https://3.basecampapi.com/195539477/my/bookmarks/step2.json",
+              "position": 2,
+              "completed": false,
+              "parent": {
+                "id": 1069479350,
+                "title": "Implement user authentication",
+                "type": "Kanban::Card",
+                "url": "https://3.basecampapi.com/195539477/buckets/2085958499/card_tables/cards/1069479350.json",
+                "app_url": "https://3.basecamp.com/195539477/buckets/2085958499/card_tables/cards/1069479350"
+              },
+              "bucket": {
+                "id": 2085958499,
+                "name": "The Leto Laptop",
+                "type": "Project"
+              },
+              "creator": {
+                "id": 1049715914,
+                "name": "Victor Cooper"
+              },
+              "assignees": []
+            }
+          ],
+          "description_attachments": []
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "noError"
+      },
+      {
+        "type": "requestPath",
+        "expected": "/999/card_tables/cards/1069479350"
+      },
+      {
+        "type": "responseBody",
+        "path": "type",
+        "expected": "Kanban::Card"
+      },
+      {
+        "type": "responseBody",
+        "path": "id",
+        "expected": 1069479350
+      },
+      {
+        "type": "responseBody",
+        "path": "status",
+        "expected": "active"
+      },
+      {
+        "type": "responseBody",
+        "path": "title",
+        "expected": "Implement user authentication"
+      },
+      {
+        "type": "responseBody",
+        "path": "app_url",
+        "expected": "https://3.basecamp.com/195539477/buckets/2085958499/card_tables/cards/1069479350"
+      },
+      {
+        "type": "responseBody",
+        "path": "content",
+        "expected": "<div>Add OAuth2 login flow with Google and GitHub providers</div>"
+      },
+      {
+        "type": "responseBody",
+        "path": "mentioned_person_ids",
+        "expected": []
+      },
+      {
+        "type": "responseBody",
+        "path": "bucket.id",
+        "expected": 2085958499
+      },
+      {
+        "type": "responseBody",
+        "path": "creator.id",
+        "expected": 1049715914
+      },
+      {
+        "type": "responseBody",
+        "path": "parent.id",
+        "expected": 1069479347
+      },
+      {
+        "type": "responseBody",
+        "path": "assignees.0.id",
+        "expected": 1049715915
+      }
+    ],
+    "tags": [
+      "recording-summary",
+      "routing"
+    ]
+  },
+  {
+    "name": "RecordingsSummarize routes card.assignment_changed (event type) to one typed read and projects the recording",
+    "description": "The event type 'card.assignment_changed' names exactly one typed read — /999/card_tables/cards/1069479350 — and the projection carries the recording's type, id, status, title, app_url, its rich text as content, the person ids that content mentions (none here), and the nested identities by id. An event type other than .created names the same read: the subject before the action is the routing key.",
+    "operation": "RecordingsSummarize",
+    "method": "GET",
+    "path": "/card_tables/cards/1069479350",
+    "pathParams": {
+      "bucketId": 2085958499,
+      "recordingId": 1069479350,
+      "eventType": "card.assignment_changed"
+    },
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 1069479350,
+          "status": "active",
+          "visible_to_clients": false,
+          "created_at": "2024-01-16T10:00:00.000-06:00",
+          "updated_at": "2024-01-20T15:30:00.000-06:00",
+          "title": "Implement user authentication",
+          "inherits_status": true,
+          "type": "Kanban::Card",
+          "url": "https://3.basecampapi.com/195539477/buckets/2085958499/card_tables/cards/1069479350.json",
+          "app_url": "https://3.basecamp.com/195539477/buckets/2085958499/card_tables/cards/1069479350",
+          "bookmark_url": "https://3.basecampapi.com/195539477/my/bookmarks/card1.json",
+          "subscription_url": "https://3.basecampapi.com/195539477/buckets/2085958499/recordings/1069479350/subscription.json",
+          "position": 1,
+          "content": "<div>Add OAuth2 login flow with Google and GitHub providers</div>",
+          "description": "Add OAuth2 login flow with Google and GitHub providers",
+          "due_on": "2024-02-01",
+          "completed": false,
+          "comments_count": 2,
+          "comments_url": "https://3.basecampapi.com/195539477/buckets/2085958499/recordings/1069479350/comments.json",
+          "comment_count": 2,
+          "completion_url": "https://3.basecampapi.com/195539477/buckets/2085958499/card_tables/cards/1069479350/completion.json",
+          "parent": {
+            "id": 1069479347,
+            "title": "In Progress",
+            "type": "Kanban::Column",
+            "url": "https://3.basecampapi.com/195539477/buckets/2085958499/card_tables/columns/1069479347.json",
+            "app_url": "https://3.basecamp.com/195539477/buckets/2085958499/card_tables/columns/1069479347"
+          },
+          "bucket": {
+            "id": 2085958499,
+            "name": "The Leto Laptop",
+            "type": "Project"
+          },
+          "creator": {
+            "id": 1049715914,
+            "attachable_sgid": "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE0P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--xyz456",
+            "name": "Victor Cooper",
+            "email_address": "victor@honchodesign.com",
+            "personable_type": "User",
+            "title": "Chief Strategist",
+            "bio": "Leading product strategy",
+            "location": "Chicago, IL",
+            "created_at": "2024-01-01T08:00:00.000-06:00",
+            "updated_at": "2024-01-15T10:00:00.000-06:00",
+            "admin": true,
+            "owner": true,
+            "client": false,
+            "employee": true,
+            "time_zone": "America/Chicago",
+            "avatar_url": "https://3.basecamp-static.com/avatar/123.jpg",
+            "can_ping": true,
+            "can_manage_projects": true,
+            "can_manage_people": true
+          },
+          "assignees": [
+            {
+              "id": 1049715915,
+              "attachable_sgid": "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE1P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--abc789",
+              "name": "Annie Bryan",
+              "email_address": "annie@honchodesign.com",
+              "personable_type": "User",
+              "title": "Designer",
+              "admin": false,
+              "owner": false,
+              "client": false,
+              "employee": true,
+              "time_zone": "America/Chicago",
+              "avatar_url": "https://3.basecamp-static.com/avatar/456.jpg"
+            }
+          ],
+          "completion_subscribers": [],
+          "steps": [
+            {
+              "id": 1069479360,
+              "status": "active",
+              "visible_to_clients": false,
+              "created_at": "2024-01-16T10:05:00.000-06:00",
+              "updated_at": "2024-01-18T11:00:00.000-06:00",
+              "title": "Set up OAuth providers",
+              "inherits_status": true,
+              "type": "Kanban::Step",
+              "url": "https://3.basecampapi.com/195539477/buckets/2085958499/card_tables/steps/1069479360.json",
+              "app_url": "https://3.basecamp.com/195539477/buckets/2085958499/card_tables/steps/1069479360",
+              "bookmark_url": "https://3.basecampapi.com/195539477/my/bookmarks/step1.json",
+              "position": 1,
+              "completed": true,
+              "completed_at": "2024-01-18T11:00:00.000-06:00",
+              "parent": {
+                "id": 1069479350,
+                "title": "Implement user authentication",
+                "type": "Kanban::Card",
+                "url": "https://3.basecampapi.com/195539477/buckets/2085958499/card_tables/cards/1069479350.json",
+                "app_url": "https://3.basecamp.com/195539477/buckets/2085958499/card_tables/cards/1069479350"
+              },
+              "bucket": {
+                "id": 2085958499,
+                "name": "The Leto Laptop",
+                "type": "Project"
+              },
+              "creator": {
+                "id": 1049715914,
+                "name": "Victor Cooper"
+              },
+              "completer": {
+                "id": 1049715915,
+                "name": "Annie Bryan"
+              },
+              "assignees": []
+            },
+            {
+              "id": 1069479361,
+              "status": "active",
+              "visible_to_clients": false,
+              "created_at": "2024-01-16T10:06:00.000-06:00",
+              "updated_at": "2024-01-16T10:06:00.000-06:00",
+              "title": "Implement callback handlers",
+              "inherits_status": true,
+              "type": "Kanban::Step",
+              "url": "https://3.basecampapi.com/195539477/buckets/2085958499/card_tables/steps/1069479361.json",
+              "app_url": "https://3.basecamp.com/195539477/buckets/2085958499/card_tables/steps/1069479361",
+              "bookmark_url": "https://3.basecampapi.com/195539477/my/bookmarks/step2.json",
+              "position": 2,
+              "completed": false,
+              "parent": {
+                "id": 1069479350,
+                "title": "Implement user authentication",
+                "type": "Kanban::Card",
+                "url": "https://3.basecampapi.com/195539477/buckets/2085958499/card_tables/cards/1069479350.json",
+                "app_url": "https://3.basecamp.com/195539477/buckets/2085958499/card_tables/cards/1069479350"
+              },
+              "bucket": {
+                "id": 2085958499,
+                "name": "The Leto Laptop",
+                "type": "Project"
+              },
+              "creator": {
+                "id": 1049715914,
+                "name": "Victor Cooper"
+              },
+              "assignees": []
+            }
+          ],
+          "description_attachments": []
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "noError"
+      },
+      {
+        "type": "requestPath",
+        "expected": "/999/card_tables/cards/1069479350"
+      },
+      {
+        "type": "responseBody",
+        "path": "type",
+        "expected": "Kanban::Card"
+      },
+      {
+        "type": "responseBody",
+        "path": "id",
+        "expected": 1069479350
+      },
+      {
+        "type": "responseBody",
+        "path": "status",
+        "expected": "active"
+      },
+      {
+        "type": "responseBody",
+        "path": "title",
+        "expected": "Implement user authentication"
+      },
+      {
+        "type": "responseBody",
+        "path": "app_url",
+        "expected": "https://3.basecamp.com/195539477/buckets/2085958499/card_tables/cards/1069479350"
+      },
+      {
+        "type": "responseBody",
+        "path": "content",
+        "expected": "<div>Add OAuth2 login flow with Google and GitHub providers</div>"
+      },
+      {
+        "type": "responseBody",
+        "path": "mentioned_person_ids",
+        "expected": []
+      },
+      {
+        "type": "responseBody",
+        "path": "bucket.id",
+        "expected": 2085958499
+      },
+      {
+        "type": "responseBody",
+        "path": "creator.id",
+        "expected": 1049715914
+      },
+      {
+        "type": "responseBody",
+        "path": "parent.id",
+        "expected": 1069479347
+      },
+      {
+        "type": "responseBody",
+        "path": "assignees.0.id",
+        "expected": 1049715915
+      }
+    ],
+    "tags": [
+      "recording-summary",
+      "routing"
+    ]
+  },
+  {
+    "name": "RecordingsSummarize routes Comment (recording type) to one typed read and projects the recording",
+    "description": "The recording type 'Comment' names exactly one typed read — /999/comments/1069479361 — and the projection carries the recording's type, id, status, title, app_url, its rich text as content, the person ids that content mentions (none here), and the nested identities by id. The recording type spelling routes on its own, independent of any event.",
+    "operation": "RecordingsSummarize",
+    "method": "GET",
+    "path": "/comments/1069479361",
+    "pathParams": {
+      "bucketId": 2085958499,
+      "recordingId": 1069479361,
+      "recordingType": "Comment"
+    },
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 1069479361,
+          "status": "active",
+          "visible_to_clients": false,
+          "created_at": "2022-10-30T01:01:58.169Z",
+          "updated_at": "2022-10-30T01:01:58.169Z",
+          "title": "Re: We won Leto!",
+          "inherits_status": true,
+          "type": "Comment",
+          "url": "https://3.basecampapi.com/195539477/buckets/2085958499/comments/1069479361.json",
+          "app_url": "https://3.basecamp.com/195539477/buckets/2085958499/messages/1069479351#__recording_1069479361",
+          "bookmark_url": "https://3.basecampapi.com/195539477/my/bookmarks/BAh7CEkiCGdpZAY6BkVUSSIuZ2lkOi8vYmMzL1JlY29yZGluZy8xMDY5NDc5MzYxP2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg1yZWFkYWJsZQY7AFRJIg9leHBpcmVzX2F0BjsAVDA=--8b7691463c92f63fe45627584ed759b44fe7bdaa.json",
+          "parent": {
+            "id": 1069479351,
+            "title": "We won Leto!",
+            "type": "Message",
+            "url": "https://3.basecampapi.com/195539477/buckets/2085958499/messages/1069479351.json",
+            "app_url": "https://3.basecamp.com/195539477/buckets/2085958499/messages/1069479351"
+          },
+          "bucket": {
+            "id": 2085958499,
+            "name": "The Leto Laptop",
+            "type": "Project"
+          },
+          "creator": {
+            "id": 1049715915,
+            "attachable_sgid": "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE1P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--aeb392ebf54ffd820e45f27add22bae3a8c7da56",
+            "name": "Annie Bryan",
+            "email_address": "annie@honchodesign.com",
+            "personable_type": "User",
+            "title": "Central Markets Manager",
+            "bio": "To open a store is easy, to keep it open is an art",
+            "location": null,
+            "created_at": "2022-11-22T08:23:21.911Z",
+            "updated_at": "2022-11-22T08:23:21.911Z",
+            "admin": false,
+            "owner": false,
+            "client": false,
+            "employee": true,
+            "time_zone": "America/Chicago",
+            "avatar_url": "https://3.basecamp-static.com/195539477/people/BAhpBMtkkT4=--9927c47a4cbee30a7f9aea667882496aba799149/avatar?v=1",
+            "company": {
+              "id": 1033447817,
+              "name": "Honcho Design"
+            },
+            "can_manage_projects": true,
+            "can_manage_people": true
+          },
+          "content": "<div>I just want to echo what just about everyone already said. This is a big one for us, and I can't wait to get going. I'll be spinning up the project shortly!</div>",
+          "content_attachments": [
+            {
+              "id": 1069480010,
+              "sgid": "BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAxMAY6BkVU--c0mm3nt1",
+              "filename": "celebration.png",
+              "content_type": "image/png",
+              "byte_size": 284111,
+              "download_url": "https://3.basecampapi.com/195539477/buckets/2085958499/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAxMAY6BkVU--c0mm3nt1/download/celebration.png",
+              "width": 1024.0,
+              "height": 768,
+              "previewable": true,
+              "preview_url": "https://3.basecampapi.com/195539477/buckets/2085958499/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAxMAY6BkVU--c0mm3nt1/previews/celebration.png",
+              "thumbnail_url": "https://3.basecampapi.com/195539477/buckets/2085958499/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAxMAY6BkVU--c0mm3nt1/thumbnails/celebration.png"
+            },
+            {
+              "id": 1069480011,
+              "sgid": "BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAxMQY6BkVU--c0mm3nt2",
+              "filename": "notes.pdf",
+              "content_type": "application/pdf",
+              "byte_size": 1048576,
+              "download_url": "https://3.basecampapi.com/195539477/buckets/2085958499/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAxMQY6BkVU--c0mm3nt2/download/notes.pdf",
+              "width": null,
+              "height": null,
+              "previewable": false,
+              "preview_url": "https://3.basecampapi.com/195539477/buckets/2085958499/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAxMQY6BkVU--c0mm3nt2/previews/notes.pdf",
+              "thumbnail_url": "https://3.basecampapi.com/195539477/buckets/2085958499/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAxMQY6BkVU--c0mm3nt2/thumbnails/notes.pdf"
+            }
+          ]
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "noError"
+      },
+      {
+        "type": "requestPath",
+        "expected": "/999/comments/1069479361"
+      },
+      {
+        "type": "responseBody",
+        "path": "type",
+        "expected": "Comment"
+      },
+      {
+        "type": "responseBody",
+        "path": "id",
+        "expected": 1069479361
+      },
+      {
+        "type": "responseBody",
+        "path": "status",
+        "expected": "active"
+      },
+      {
+        "type": "responseBody",
+        "path": "title",
+        "expected": "Re: We won Leto!"
+      },
+      {
+        "type": "responseBody",
+        "path": "app_url",
+        "expected": "https://3.basecamp.com/195539477/buckets/2085958499/messages/1069479351#__recording_1069479361"
+      },
+      {
+        "type": "responseBody",
+        "path": "content",
+        "expected": "<div>I just want to echo what just about everyone already said. This is a big one for us, and I can't wait to get going. I'll be spinning up the project shortly!</div>"
+      },
+      {
+        "type": "responseBody",
+        "path": "mentioned_person_ids",
+        "expected": []
+      },
+      {
+        "type": "responseBody",
+        "path": "bucket.id",
+        "expected": 2085958499
+      },
+      {
+        "type": "responseBody",
+        "path": "creator.id",
+        "expected": 1049715915
+      },
+      {
+        "type": "responseBody",
+        "path": "parent.id",
+        "expected": 1069479351
+      }
+    ],
+    "tags": [
+      "recording-summary",
+      "routing"
+    ]
+  },
+  {
+    "name": "RecordingsSummarize routes Message (recording type) to one typed read and projects the recording",
+    "description": "The recording type 'Message' names exactly one typed read — /999/messages/1069479351 — and the projection carries the recording's type, id, status, title, app_url, its rich text as content, the person ids that content mentions (none here), and the nested identities by id. The recording type spelling routes on its own, independent of any event.",
+    "operation": "RecordingsSummarize",
+    "method": "GET",
+    "path": "/messages/1069479351",
+    "pathParams": {
+      "bucketId": 2085958499,
+      "recordingId": 1069479351,
+      "recordingType": "Message"
+    },
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 1069479351,
+          "status": "active",
+          "visible_to_clients": false,
+          "created_at": "2022-10-28T15:21:46.169Z",
+          "updated_at": "2022-10-28T15:21:46.169Z",
+          "title": "We won Leto!",
+          "inherits_status": true,
+          "type": "Message",
+          "url": "https://3.basecampapi.com/195539477/buckets/2085958499/messages/1069479351.json",
+          "app_url": "https://3.basecamp.com/195539477/buckets/2085958499/messages/1069479351",
+          "bookmark_url": "https://3.basecampapi.com/195539477/my/bookmarks/BAh7CEkiCGdpZAY6BkVUSSIuZ2lkOi8vYmMzL1JlY29yZGluZy8xMDY5NDc5MzUxP2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg1yZWFkYWJsZQY7AFRJIg9leHBpcmVzX2F0BjsAVDA=--aabbccdd.json",
+          "subject": "We won Leto!",
+          "content": "<div>Hello everyone! We got the Leto Laptop project! Time to get started.</div>",
+          "comments_count": 5,
+          "comments_url": "https://3.basecampapi.com/195539477/buckets/2085958499/recordings/1069479351/comments.json",
+          "parent": {
+            "id": 1069479338,
+            "title": "Message Board",
+            "type": "Message::Board",
+            "url": "https://3.basecampapi.com/195539477/buckets/2085958499/message_boards/1069479338.json",
+            "app_url": "https://3.basecamp.com/195539477/buckets/2085958499/message_boards/1069479338"
+          },
+          "bucket": {
+            "id": 2085958499,
+            "name": "The Leto Laptop",
+            "type": "Project"
+          },
+          "creator": {
+            "id": 1049715914,
+            "attachable_sgid": "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE0P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--aabbccdd",
+            "name": "Victor Cooper",
+            "email_address": "victor@honchodesign.com",
+            "personable_type": "User",
+            "title": "Chief Strategist",
+            "bio": "Don't let your dreams be dreams",
+            "location": "Chicago, IL",
+            "created_at": "2022-11-22T08:23:21.732Z",
+            "updated_at": "2022-11-22T08:23:21.732Z",
+            "admin": true,
+            "owner": true,
+            "client": false,
+            "employee": true,
+            "time_zone": "America/Chicago",
+            "avatar_url": "https://3.basecamp-static.com/195539477/people/BAhpBMpkkT4=--avatar",
+            "company": {
+              "id": 1033447817,
+              "name": "Honcho Design"
+            },
+            "can_manage_projects": true,
+            "can_manage_people": true
+          },
+          "category": {
+            "id": 1069479340,
+            "name": "Announcement",
+            "icon": "📢",
+            "created_at": "2022-10-28T15:00:00.000Z",
+            "updated_at": "2022-10-28T15:00:00.000Z"
+          },
+          "content_attachments": []
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "noError"
+      },
+      {
+        "type": "requestPath",
+        "expected": "/999/messages/1069479351"
+      },
+      {
+        "type": "responseBody",
+        "path": "type",
+        "expected": "Message"
+      },
+      {
+        "type": "responseBody",
+        "path": "id",
+        "expected": 1069479351
+      },
+      {
+        "type": "responseBody",
+        "path": "status",
+        "expected": "active"
+      },
+      {
+        "type": "responseBody",
+        "path": "title",
+        "expected": "We won Leto!"
+      },
+      {
+        "type": "responseBody",
+        "path": "app_url",
+        "expected": "https://3.basecamp.com/195539477/buckets/2085958499/messages/1069479351"
+      },
+      {
+        "type": "responseBody",
+        "path": "content",
+        "expected": "<div>Hello everyone! We got the Leto Laptop project! Time to get started.</div>"
+      },
+      {
+        "type": "responseBody",
+        "path": "mentioned_person_ids",
+        "expected": []
+      },
+      {
+        "type": "responseBody",
+        "path": "bucket.id",
+        "expected": 2085958499
+      },
+      {
+        "type": "responseBody",
+        "path": "creator.id",
+        "expected": 1049715914
+      },
+      {
+        "type": "responseBody",
+        "path": "parent.id",
+        "expected": 1069479338
+      }
+    ],
+    "tags": [
+      "recording-summary",
+      "routing"
+    ]
+  },
+  {
+    "name": "RecordingsSummarize routes Todo (recording type) to one typed read and projects the recording",
+    "description": "The recording type 'Todo' names exactly one typed read — /999/todos/1069479520 — and the projection carries the recording's type, id, status, title, app_url, its rich text as content, the person ids that content mentions (none here), and the nested identities by id. The recording type spelling routes on its own, independent of any event.",
+    "operation": "RecordingsSummarize",
+    "method": "GET",
+    "path": "/todos/1069479520",
+    "pathParams": {
+      "bucketId": 2085958500,
+      "recordingId": 1069479520,
+      "recordingType": "Todo"
+    },
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 1069479520,
+          "status": "active",
+          "visible_to_clients": false,
+          "created_at": "2022-11-22T08:25:24.633Z",
+          "updated_at": "2022-11-22T17:56:27.363Z",
+          "title": "Program Leto locator  microcontroller unit",
+          "inherits_status": true,
+          "type": "Todo",
+          "url": "https://3.basecampapi.com/195539477/buckets/2085958500/todos/1069479520.json",
+          "app_url": "https://3.basecamp.com/195539477/buckets/2085958500/todos/1069479520",
+          "bookmark_url": "https://3.basecampapi.com/195539477/my/bookmarks/BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1JlY29yZGluZy8xMDY5NDc5NTIwP2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg1yZWFkYWJsZQY7AFRJIg9leHBpcmVzX2F0BjsAVDA=--08a58ac260879aa91f814a00c612093022b58a87.json",
+          "subscription_url": "https://3.basecampapi.com/195539477/buckets/2085958500/recordings/1069479520/subscription.json",
+          "comments_count": 0,
+          "comments_url": "https://3.basecampapi.com/195539477/buckets/2085958500/recordings/1069479520/comments.json",
+          "position": 1,
+          "parent": {
+            "id": 1069479519,
+            "title": "Hardware",
+            "type": "Todolist",
+            "url": "https://3.basecampapi.com/195539477/buckets/2085958500/todolists/1069479519.json",
+            "app_url": "https://3.basecamp.com/195539477/buckets/2085958500/todolists/1069479519"
+          },
+          "bucket": {
+            "id": 2085958500,
+            "name": "The Leto Locator",
+            "type": "Project"
+          },
+          "creator": {
+            "id": 1049715915,
+            "attachable_sgid": "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE1P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--919d2c8b11ff403eefcab9db42dd26846d0c3102",
+            "name": "Victor Cooper",
+            "email_address": "victor@honchodesign.com",
+            "personable_type": "User",
+            "title": "Chief Strategist",
+            "bio": "Don't let your dreams be dreams",
+            "location": "Chicago, IL",
+            "created_at": "2022-11-22T08:23:21.732Z",
+            "updated_at": "2022-11-22T08:23:21.904Z",
+            "admin": true,
+            "owner": true,
+            "client": false,
+            "employee": true,
+            "time_zone": "America/Chicago",
+            "avatar_url": "https://3.basecamp-static.com/195539477/people/BAhpBMtkkT4=--e609ef146e39f9ca5e4bb7571f0f7da68e5f6302/avatar?v=1",
+            "company": {
+              "id": 1033447817,
+              "name": "Honcho Design"
+            },
+            "can_manage_projects": true,
+            "can_manage_people": true
+          },
+          "description": "<div>Latest schematic and the full spec are attached.<br><bc-attachment sgid=\"BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAwMAY6BkVU--a1b2c3\" caption=\"Leto locator schematic\"></bc-attachment><bc-attachment sgid=\"BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAwMQY6BkVU--d4e5f6\"></bc-attachment></div>",
+          "completed": false,
+          "content": "Program Leto locator  microcontroller unit",
+          "starts_on": null,
+          "due_on": "2022-12-01",
+          "assignees": [
+            {
+              "id": 1049715920,
+              "attachable_sgid": "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTIwP2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--f0d48d2c54d09541d4fe79b0b4de328e89b4a0c0",
+              "name": "Steve Marsh",
+              "email_address": "steve@honchodesign.com",
+              "personable_type": "User",
+              "title": "Legacy Directives Strategist",
+              "bio": "You can do it!",
+              "location": "Chicago, IL",
+              "created_at": "2022-11-22T08:23:22.131Z",
+              "updated_at": "2022-11-22T08:23:22.131Z",
+              "admin": false,
+              "owner": false,
+              "client": false,
+              "employee": true,
+              "time_zone": "America/Chicago",
+              "avatar_url": "https://3.basecamp-static.com/195539477/people/BAhpBNBkkT4=--79c86665c9c218598d3cce24d5eb0eba8b38519a/avatar?v=1",
+              "can_manage_projects": true,
+              "can_manage_people": true
+            }
+          ],
+          "completion_subscribers": [],
+          "completion_url": "https://3.basecampapi.com/195539477/buckets/2085958500/todos/1069479520/completion.json",
+          "description_attachments": [
+            {
+              "id": 1069480000,
+              "sgid": "BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAwMAY6BkVU--a1b2c3",
+              "filename": "leto-schematic.png",
+              "content_type": "image/png",
+              "byte_size": 284111,
+              "download_url": "https://3.basecampapi.com/195539477/buckets/2085958500/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAwMAY6BkVU--a1b2c3/download/leto-schematic.png",
+              "width": 1024.0,
+              "height": 768,
+              "previewable": true,
+              "preview_url": "https://3.basecampapi.com/195539477/buckets/2085958500/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAwMAY6BkVU--a1b2c3/previews/leto-schematic.png",
+              "thumbnail_url": "https://3.basecampapi.com/195539477/buckets/2085958500/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAwMAY6BkVU--a1b2c3/thumbnails/leto-schematic.png"
+            },
+            {
+              "id": 1069480001,
+              "sgid": "BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAwMQY6BkVU--d4e5f6",
+              "filename": "leto-spec.pdf",
+              "content_type": "application/pdf",
+              "byte_size": 1048576,
+              "download_url": "https://3.basecampapi.com/195539477/buckets/2085958500/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAwMQY6BkVU--d4e5f6/download/leto-spec.pdf",
+              "width": null,
+              "height": null,
+              "previewable": false,
+              "preview_url": "https://3.basecampapi.com/195539477/buckets/2085958500/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAwMQY6BkVU--d4e5f6/previews/leto-spec.pdf",
+              "thumbnail_url": "https://3.basecampapi.com/195539477/buckets/2085958500/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAwMQY6BkVU--d4e5f6/thumbnails/leto-spec.pdf"
+            }
+          ]
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "noError"
+      },
+      {
+        "type": "requestPath",
+        "expected": "/999/todos/1069479520"
+      },
+      {
+        "type": "responseBody",
+        "path": "type",
+        "expected": "Todo"
+      },
+      {
+        "type": "responseBody",
+        "path": "id",
+        "expected": 1069479520
+      },
+      {
+        "type": "responseBody",
+        "path": "status",
+        "expected": "active"
+      },
+      {
+        "type": "responseBody",
+        "path": "title",
+        "expected": "Program Leto locator  microcontroller unit"
+      },
+      {
+        "type": "responseBody",
+        "path": "app_url",
+        "expected": "https://3.basecamp.com/195539477/buckets/2085958500/todos/1069479520"
+      },
+      {
+        "type": "responseBody",
+        "path": "content",
+        "expected": "<div>Latest schematic and the full spec are attached.<br><bc-attachment sgid=\"BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAwMAY6BkVU--a1b2c3\" caption=\"Leto locator schematic\"></bc-attachment><bc-attachment sgid=\"BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAwMQY6BkVU--d4e5f6\"></bc-attachment></div>"
+      },
+      {
+        "type": "responseBody",
+        "path": "mentioned_person_ids",
+        "expected": []
+      },
+      {
+        "type": "responseBody",
+        "path": "bucket.id",
+        "expected": 2085958500
+      },
+      {
+        "type": "responseBody",
+        "path": "creator.id",
+        "expected": 1049715915
+      },
+      {
+        "type": "responseBody",
+        "path": "parent.id",
+        "expected": 1069479519
+      },
+      {
+        "type": "responseBody",
+        "path": "assignees.0.id",
+        "expected": 1049715920
+      }
+    ],
+    "tags": [
+      "recording-summary",
+      "routing"
+    ]
+  },
+  {
+    "name": "RecordingsSummarize routes Kanban::Card (recording type) to one typed read and projects the recording",
+    "description": "The recording type 'Kanban::Card' names exactly one typed read — /999/card_tables/cards/1069479350 — and the projection carries the recording's type, id, status, title, app_url, its rich text as content, the person ids that content mentions (none here), and the nested identities by id. The recording type spelling routes on its own, independent of any event.",
+    "operation": "RecordingsSummarize",
+    "method": "GET",
+    "path": "/card_tables/cards/1069479350",
+    "pathParams": {
+      "bucketId": 2085958499,
+      "recordingId": 1069479350,
+      "recordingType": "Kanban::Card"
+    },
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 1069479350,
+          "status": "active",
+          "visible_to_clients": false,
+          "created_at": "2024-01-16T10:00:00.000-06:00",
+          "updated_at": "2024-01-20T15:30:00.000-06:00",
+          "title": "Implement user authentication",
+          "inherits_status": true,
+          "type": "Kanban::Card",
+          "url": "https://3.basecampapi.com/195539477/buckets/2085958499/card_tables/cards/1069479350.json",
+          "app_url": "https://3.basecamp.com/195539477/buckets/2085958499/card_tables/cards/1069479350",
+          "bookmark_url": "https://3.basecampapi.com/195539477/my/bookmarks/card1.json",
+          "subscription_url": "https://3.basecampapi.com/195539477/buckets/2085958499/recordings/1069479350/subscription.json",
+          "position": 1,
+          "content": "<div>Add OAuth2 login flow with Google and GitHub providers</div>",
+          "description": "Add OAuth2 login flow with Google and GitHub providers",
+          "due_on": "2024-02-01",
+          "completed": false,
+          "comments_count": 2,
+          "comments_url": "https://3.basecampapi.com/195539477/buckets/2085958499/recordings/1069479350/comments.json",
+          "comment_count": 2,
+          "completion_url": "https://3.basecampapi.com/195539477/buckets/2085958499/card_tables/cards/1069479350/completion.json",
+          "parent": {
+            "id": 1069479347,
+            "title": "In Progress",
+            "type": "Kanban::Column",
+            "url": "https://3.basecampapi.com/195539477/buckets/2085958499/card_tables/columns/1069479347.json",
+            "app_url": "https://3.basecamp.com/195539477/buckets/2085958499/card_tables/columns/1069479347"
+          },
+          "bucket": {
+            "id": 2085958499,
+            "name": "The Leto Laptop",
+            "type": "Project"
+          },
+          "creator": {
+            "id": 1049715914,
+            "attachable_sgid": "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE0P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--xyz456",
+            "name": "Victor Cooper",
+            "email_address": "victor@honchodesign.com",
+            "personable_type": "User",
+            "title": "Chief Strategist",
+            "bio": "Leading product strategy",
+            "location": "Chicago, IL",
+            "created_at": "2024-01-01T08:00:00.000-06:00",
+            "updated_at": "2024-01-15T10:00:00.000-06:00",
+            "admin": true,
+            "owner": true,
+            "client": false,
+            "employee": true,
+            "time_zone": "America/Chicago",
+            "avatar_url": "https://3.basecamp-static.com/avatar/123.jpg",
+            "can_ping": true,
+            "can_manage_projects": true,
+            "can_manage_people": true
+          },
+          "assignees": [
+            {
+              "id": 1049715915,
+              "attachable_sgid": "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE1P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--abc789",
+              "name": "Annie Bryan",
+              "email_address": "annie@honchodesign.com",
+              "personable_type": "User",
+              "title": "Designer",
+              "admin": false,
+              "owner": false,
+              "client": false,
+              "employee": true,
+              "time_zone": "America/Chicago",
+              "avatar_url": "https://3.basecamp-static.com/avatar/456.jpg"
+            }
+          ],
+          "completion_subscribers": [],
+          "steps": [
+            {
+              "id": 1069479360,
+              "status": "active",
+              "visible_to_clients": false,
+              "created_at": "2024-01-16T10:05:00.000-06:00",
+              "updated_at": "2024-01-18T11:00:00.000-06:00",
+              "title": "Set up OAuth providers",
+              "inherits_status": true,
+              "type": "Kanban::Step",
+              "url": "https://3.basecampapi.com/195539477/buckets/2085958499/card_tables/steps/1069479360.json",
+              "app_url": "https://3.basecamp.com/195539477/buckets/2085958499/card_tables/steps/1069479360",
+              "bookmark_url": "https://3.basecampapi.com/195539477/my/bookmarks/step1.json",
+              "position": 1,
+              "completed": true,
+              "completed_at": "2024-01-18T11:00:00.000-06:00",
+              "parent": {
+                "id": 1069479350,
+                "title": "Implement user authentication",
+                "type": "Kanban::Card",
+                "url": "https://3.basecampapi.com/195539477/buckets/2085958499/card_tables/cards/1069479350.json",
+                "app_url": "https://3.basecamp.com/195539477/buckets/2085958499/card_tables/cards/1069479350"
+              },
+              "bucket": {
+                "id": 2085958499,
+                "name": "The Leto Laptop",
+                "type": "Project"
+              },
+              "creator": {
+                "id": 1049715914,
+                "name": "Victor Cooper"
+              },
+              "completer": {
+                "id": 1049715915,
+                "name": "Annie Bryan"
+              },
+              "assignees": []
+            },
+            {
+              "id": 1069479361,
+              "status": "active",
+              "visible_to_clients": false,
+              "created_at": "2024-01-16T10:06:00.000-06:00",
+              "updated_at": "2024-01-16T10:06:00.000-06:00",
+              "title": "Implement callback handlers",
+              "inherits_status": true,
+              "type": "Kanban::Step",
+              "url": "https://3.basecampapi.com/195539477/buckets/2085958499/card_tables/steps/1069479361.json",
+              "app_url": "https://3.basecamp.com/195539477/buckets/2085958499/card_tables/steps/1069479361",
+              "bookmark_url": "https://3.basecampapi.com/195539477/my/bookmarks/step2.json",
+              "position": 2,
+              "completed": false,
+              "parent": {
+                "id": 1069479350,
+                "title": "Implement user authentication",
+                "type": "Kanban::Card",
+                "url": "https://3.basecampapi.com/195539477/buckets/2085958499/card_tables/cards/1069479350.json",
+                "app_url": "https://3.basecamp.com/195539477/buckets/2085958499/card_tables/cards/1069479350"
+              },
+              "bucket": {
+                "id": 2085958499,
+                "name": "The Leto Laptop",
+                "type": "Project"
+              },
+              "creator": {
+                "id": 1049715914,
+                "name": "Victor Cooper"
+              },
+              "assignees": []
+            }
+          ],
+          "description_attachments": []
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "noError"
+      },
+      {
+        "type": "requestPath",
+        "expected": "/999/card_tables/cards/1069479350"
+      },
+      {
+        "type": "responseBody",
+        "path": "type",
+        "expected": "Kanban::Card"
+      },
+      {
+        "type": "responseBody",
+        "path": "id",
+        "expected": 1069479350
+      },
+      {
+        "type": "responseBody",
+        "path": "status",
+        "expected": "active"
+      },
+      {
+        "type": "responseBody",
+        "path": "title",
+        "expected": "Implement user authentication"
+      },
+      {
+        "type": "responseBody",
+        "path": "app_url",
+        "expected": "https://3.basecamp.com/195539477/buckets/2085958499/card_tables/cards/1069479350"
+      },
+      {
+        "type": "responseBody",
+        "path": "content",
+        "expected": "<div>Add OAuth2 login flow with Google and GitHub providers</div>"
+      },
+      {
+        "type": "responseBody",
+        "path": "mentioned_person_ids",
+        "expected": []
+      },
+      {
+        "type": "responseBody",
+        "path": "bucket.id",
+        "expected": 2085958499
+      },
+      {
+        "type": "responseBody",
+        "path": "creator.id",
+        "expected": 1049715914
+      },
+      {
+        "type": "responseBody",
+        "path": "parent.id",
+        "expected": 1069479347
+      },
+      {
+        "type": "responseBody",
+        "path": "assignees.0.id",
+        "expected": 1049715915
+      }
+    ],
+    "tags": [
+      "recording-summary",
+      "routing"
+    ]
+  },
+  {
+    "name": "RecordingsSummarize routes Chat::Transcript (recording type) to one typed read and projects the recording",
+    "description": "The recording type 'Chat::Transcript' names exactly one typed read — /999/chats/1069479345 — and the projection carries the recording's type, id, status, title, app_url, an empty content (this type carries no rich text), the person ids that content mentions (none here), and the nested identities by id. The recording type spelling routes on its own, independent of any event.",
+    "operation": "RecordingsSummarize",
+    "method": "GET",
+    "path": "/chats/1069479345",
+    "pathParams": {
+      "bucketId": 2085958499,
+      "recordingId": 1069479345,
+      "recordingType": "Chat::Transcript"
+    },
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 1069479345,
+          "status": "active",
+          "visible_to_clients": false,
+          "created_at": "2022-10-28T15:21:46.169Z",
+          "updated_at": "2022-10-28T15:21:46.169Z",
+          "title": "Campfire",
+          "inherits_status": true,
+          "type": "Chat::Transcript",
+          "url": "https://3.basecampapi.com/195539477/buckets/2085958499/chats/1069479345.json",
+          "app_url": "https://3.basecamp.com/195539477/buckets/2085958499/chats/1069479345",
+          "lines_url": "https://3.basecampapi.com/195539477/buckets/2085958499/chats/1069479345/lines.json",
+          "files_url": "https://3.basecampapi.com/195539477/buckets/2085958499/chats/1069479345/uploads.json",
+          "bucket": {
+            "id": 2085958499,
+            "name": "The Leto Laptop",
+            "type": "Project"
+          },
+          "creator": {
+            "id": 1049715914,
+            "attachable_sgid": "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE0P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--aabbccdd",
+            "name": "Victor Cooper",
+            "email_address": "victor@honchodesign.com",
+            "personable_type": "User",
+            "title": "Chief Strategist",
+            "bio": "Don't let your dreams be dreams",
+            "location": "Chicago, IL",
+            "created_at": "2022-11-22T08:23:21.732Z",
+            "updated_at": "2022-11-22T08:23:21.732Z",
+            "admin": true,
+            "owner": true,
+            "client": false,
+            "employee": true,
+            "time_zone": "America/Chicago",
+            "avatar_url": "https://3.basecamp-static.com/195539477/people/BAhpBMpkkT4=--avatar",
+            "company": {
+              "id": 1033447817,
+              "name": "Honcho Design"
+            },
+            "can_manage_projects": true,
+            "can_manage_people": true
+          }
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "noError"
+      },
+      {
+        "type": "requestPath",
+        "expected": "/999/chats/1069479345"
+      },
+      {
+        "type": "responseBody",
+        "path": "type",
+        "expected": "Chat::Transcript"
+      },
+      {
+        "type": "responseBody",
+        "path": "id",
+        "expected": 1069479345
+      },
+      {
+        "type": "responseBody",
+        "path": "status",
+        "expected": "active"
+      },
+      {
+        "type": "responseBody",
+        "path": "title",
+        "expected": "Campfire"
+      },
+      {
+        "type": "responseBody",
+        "path": "app_url",
+        "expected": "https://3.basecamp.com/195539477/buckets/2085958499/chats/1069479345"
+      },
+      {
+        "type": "responseBody",
+        "path": "content",
+        "expected": ""
+      },
+      {
+        "type": "responseBody",
+        "path": "mentioned_person_ids",
+        "expected": []
+      },
+      {
+        "type": "responseBody",
+        "path": "bucket.id",
+        "expected": 2085958499
+      },
+      {
+        "type": "responseBody",
+        "path": "creator.id",
+        "expected": 1049715914
       }
     ],
     "tags": [
@@ -3524,7 +5624,7 @@
   },
   {
     "name": "RecordingsSummarize finds a chat line under the second visible Campfire",
-    "description": "A chat line's read needs its Campfire, which the pointer does not carry. The bucket is not a project (its dock read 404s), so the candidates come from the account-wide Campfire listing filtered to the bucket; the line is tried under each in listing order until one answers, and the Campfire in the other bucket is never tried.",
+    "description": "A chat line's read needs its Campfire, which the pointer does not carry. The bucket is not a project (its dock read 404s), so the candidates come from the account-wide Campfire listing filtered to the bucket; the line is tried under each in listing order until one answers, and the Campfire in the other bucket is never tried. Nested identities — bucket, creator, and where the type has them parent and first assignee — are pinned by id.",
     "operation": "RecordingsSummarize",
     "method": "GET",
     "path": "/projects/2085958499",
@@ -3718,6 +5818,21 @@
       {
         "type": "responseBody",
         "path": "campfire_id",
+        "expected": 1069479345
+      },
+      {
+        "type": "responseBody",
+        "path": "bucket.id",
+        "expected": 2085958499
+      },
+      {
+        "type": "responseBody",
+        "path": "creator.id",
+        "expected": 1049715914
+      },
+      {
+        "type": "responseBody",
+        "path": "parent.id",
         "expected": 1069479345
       }
     ],

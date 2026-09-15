@@ -193,6 +193,7 @@ const (
 	kindCardTable
 	kindCardColumn
 	kindInbox
+	kindCampfire
 )
 
 // eventSubjects maps the subject of an account event feed type — everything
@@ -212,9 +213,9 @@ var eventSubjects = map[string]summaryKind{
 // are matched by prefix (Chat::Lines::Text, ::RichText, ::Code, ::Upload,
 // ::Integration all read through the same route); everything else exactly.
 // The tool-shaped recordings — a project's questionnaire, schedule, to-do
-// set, message board, card table, columns, inbox — are here too: no feed
-// event points at them today, but they are recordings with id-only reads,
-// and a caller holding one of their ids gets the same projection.
+// set, message board, card table, columns, inbox, Campfire — are here too:
+// no feed event points at them today, but they are recordings with id-only
+// reads, and a caller holding one of their ids gets the same projection.
 //
 // Absent on purpose, because their reads need a parent id the pointer does
 // not carry: Client::Reply (bucket + correspondence + reply) and
@@ -245,6 +246,7 @@ var recordingTypes = map[string]summaryKind{
 	"Kanban::Board":          kindCardTable,
 	"Kanban::Column":         kindCardColumn,
 	"Inbox":                  kindInbox,
+	"Chat::Transcript":       kindCampfire,
 }
 
 const chatLineTypePrefix = "Chat::Lines::"
@@ -491,6 +493,12 @@ func (s *RecordingsService) readSummary(ctx context.Context, ref RecordingRef, k
 			return nil, err
 		}
 		return summarize(in.ID, in.Status, in.Type, in.Title, in.AppURL, nil, in.Bucket, in.Creator, nil, "", in.UpdatedAt), nil
+	case kindCampfire:
+		cf, err := ac.Campfires().Get(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		return summarize(cf.ID, cf.Status, cf.Type, cf.Title, cf.AppURL, nil, cf.Bucket, cf.Creator, nil, "", cf.UpdatedAt), nil
 	case kindUnknown:
 		return nil, &RecordingRoutingError{Ref: ref, Err: ErrUnknownRecordingType}
 	}
