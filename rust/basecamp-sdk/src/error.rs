@@ -9,6 +9,9 @@ use serde_json::Value;
 use crate::generated::types::TemplateLibraryConfirmationPerson;
 use crate::http::{HeaderMap, StatusCode};
 
+/// How far [`Error::find_source`] walks a cause chain before giving up.
+const MAX_SOURCE_CHAIN_DEPTH: usize = 32;
+
 /// The most of a server's message an error carries; longer ones end in `...`.
 pub const MAX_ERROR_MESSAGE_LENGTH: usize = 500;
 /// The most of a failure's body an error keeps.
@@ -260,6 +263,63 @@ impl Error {
             error.inner.body = Some(Box::from(&body[..kept]));
         }
         error
+    }
+
+    /// The first cause of a given type anywhere in the error's chain.
+    ///
+    /// A cause is how this crate carries an identity the closed taxonomy of [`ErrorCode`]
+    /// has no member for — the recording-summary composite's own verdicts, the discovery
+    /// cache's listing-overflow marker. A single-level `downcast_ref` would lose that
+    /// identity the moment anything re-wrapped the error, and [`Error::with_source`] is
+    /// public, so the whole chain is walked. The depth bound is insurance against an
+    /// `Error` implementation whose `source` cycles; a real chain is two or three deep.
+    pub(crate) fn find_source<T: std::error::Error + 'static>(&self) -> Option<&T> {
+        let mut current = std::error::Error::source(self);
+        for _ in 0..MAX_SOURCE_CHAIN_DEPTH {
+            let error = current?;
+            if let Some(found) = error.downcast_ref::<T>() {
+                return Some(found);
+            }
+            current = error.source();
+        }
+        None
+    }
+
+    /// A full-fidelity copy of the record, without the cause.
+    ///
+    /// [`Error`] is not `Clone` — its cause is a boxed trait object — so a failure that must
+    /// reach more than one caller is copied here and the shared original chained back on as
+    /// the cause. Every member of the record travels, the classification flags included: an
+    /// error that loses `is_timeout` on the way to a second caller is an error that caller
+    /// would handle differently (SPEC §16).
+    pub(crate) fn duplicate(&self) -> Error {
+        Error {
+            inner: Box::new(Inner {
+                code: self.inner.code,
+                message: self.inner.message.clone(),
+                hint: self.inner.hint.clone(),
+                http_status: self.inner.http_status,
+                retryable: self.inner.retryable,
+                retry_after: self.inner.retry_after,
+                request_id: self.inner.request_id.clone(),
+                field_errors: self.inner.field_errors.clone(),
+                confirmation_people: self.inner.confirmation_people.clone(),
+                response_too_large: self.inner.response_too_large,
+                deadline_exceeded: self.inner.deadline_exceeded,
+                timeout: self.inner.timeout,
+                body: self.inner.body.clone(),
+            }),
+            source: None,
+        }
+    }
+
+    /// The same error, its message prefixed with what the caller was doing. Everything else
+    /// — code, status, hint, the classification flags, the cause — is left exactly as it
+    /// was, so adding context never costs a caller the accessors it classifies on. This is
+    /// the Rust spelling of Go's `fmt.Errorf("doing x: %w", err)`.
+    pub(crate) fn with_context(mut self, context: impl fmt::Display) -> Error {
+        self.inner.message = truncate(&format!("{context}: {}", self.inner.message));
+        self
     }
 
     /// The same error with a hint, cut to the message cap like the message itself: a

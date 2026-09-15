@@ -22,6 +22,7 @@ use crate::pagination::Page;
 use crate::retry::{backoff_with_jitter, effective_attempts};
 use crate::route::{Representation, Route};
 use crate::security::{is_same_origin, require_secure_endpoint};
+use crate::services::campfire_index::CampfireIndex;
 use crate::version::default_user_agent;
 
 /// A Basecamp client: one identity, one API origin. Derive an [`AccountClient`] with
@@ -47,6 +48,12 @@ pub(crate) struct Shared {
     pub(crate) auth: Arc<dyn AuthStrategy>,
     pub(crate) user_agent: String,
     pub(crate) hooks: Arc<dyn Hooks>,
+    /// The Campfire discovery caches the recording-summary composite reads chat lines
+    /// through (SPEC §18). It hangs here, beside the credential it is bound to, so every
+    /// [`AccountClient`] derived from one [`Client`] shares one index and a burst of chat
+    /// lines costs one listing rather than one per line — and so entries are never shared
+    /// across authorization contexts.
+    pub(crate) campfires: CampfireIndex,
 }
 
 /// What came back from Basecamp, before it is decoded. Its `Debug` form redacts the
@@ -102,6 +109,10 @@ pub struct ClientBuilder {
     user_agent: String,
     hooks: Arc<dyn Hooks>,
     auth_given: u8,
+    /// Test-only: the discovery index reads real time unless a test hands it a clock, and
+    /// the refresh floor cannot be crossed by waiting in a test.
+    #[cfg(all(test, feature = "reqwest"))]
+    campfire_clock: Option<crate::services::campfire_index::Clock>,
 }
 
 impl ClientBuilder {
@@ -114,7 +125,21 @@ impl ClientBuilder {
             user_agent: default_user_agent(),
             hooks: Arc::new(NoopHooks),
             auth_given: 0,
+            #[cfg(all(test, feature = "reqwest"))]
+            campfire_clock: None,
         }
+    }
+
+    /// The clock the Campfire discovery index ages its entries by. Test-only: nothing
+    /// outside this crate's own tests can move it, and the shipped client always reads
+    /// [`std::time::Instant::now`].
+    #[cfg(all(test, feature = "reqwest"))]
+    pub(crate) fn campfire_clock(
+        mut self,
+        clock: crate::services::campfire_index::Clock,
+    ) -> ClientBuilder {
+        self.campfire_clock = Some(clock);
+        self
     }
 
     /// A fixed bearer token — a personal access token, say.
@@ -179,6 +204,13 @@ impl ClientBuilder {
             Some(http) => http,
             None => shipped_http_client(self.config.timeout)?,
         };
+        #[cfg(all(test, feature = "reqwest"))]
+        let campfires = match self.campfire_clock {
+            Some(clock) => CampfireIndex::with_clock(clock),
+            None => CampfireIndex::new(),
+        };
+        #[cfg(not(all(test, feature = "reqwest")))]
+        let campfires = CampfireIndex::new();
         Ok(Client {
             shared: Arc::new(Shared {
                 config: self.config,
@@ -187,6 +219,7 @@ impl ClientBuilder {
                 auth,
                 user_agent: self.user_agent,
                 hooks: self.hooks,
+                campfires,
             }),
         })
     }
@@ -257,6 +290,12 @@ impl AccountClient {
 
     pub(crate) fn shared(&self) -> &Arc<Shared> {
         &self.shared
+    }
+
+    /// The Campfire discovery index, shared with every other account client derived from
+    /// the same [`Client`].
+    pub(crate) fn campfire_index(&self) -> &CampfireIndex {
+        &self.shared.campfires
     }
 
     /// The account-independent client this was derived from.
