@@ -409,6 +409,49 @@ class MentionsTest < Minitest::Test
     end
   end
 
+  def test_mixing_encodings_in_one_value_is_refused_rather_than_raised
+    # Every expansion reaches the byte string as bytes. A numeric reference
+    # beside a named one whose expansion is non-ASCII used to build one gsub
+    # result out of two encodings and raise Encoding::CompatibilityError out of
+    # a public method — on every summarize, over whatever BC3 served.
+    assert_empty Basecamp::Mentions.mentioned_person_ids(%q(<bc-attachment sgid="&#233;&nbsp;abc">))
+    assert_empty Basecamp::Mentions.mentioned_person_ids(%(<bc-attachment sgid="&ensp;é">))
+    assert_empty Basecamp::Mentions.mentioned_person_ids(%(<bc-attachment sgid="&nbsp;#{"\xC3(".b}">))
+  end
+
+  def test_an_extracted_sgid_is_always_bytes
+    # The dedupe set in with_mentions is keyed on this, and a UTF-8 sgid and its
+    # byte-identical binary twin are neither eql? nor hash-equal.
+    [ %q(<bc-attachment sgid="abc">), %q(<bc-attachment sgid="&nbsp;abc">),
+      %q(<bc-attachment sgid="&#233;abc">) ].each do |document|
+      sgid = Basecamp::Mentions.bc_attachment_sgids(document).first
+
+      assert_equal Encoding::BINARY, sgid.encoding, document
+    end
+  end
+
+  def test_a_non_ascii_sgid_is_not_mentioned_twice
+    # The person read hands back text and the walker hands back bytes. Keyed on
+    # anything but bytes, the same sgid splits the set and the mention is
+    # written a second time — a posted comment mentioning someone twice.
+    sgid = "\u00A0#{person_sgid(37)}"
+    person = { "id" => 37, "attachable_sgid" => sgid }
+    content = %(<p><bc-attachment sgid="#{sgid}"></bc-attachment> hi</p>)
+
+    assert_equal 1, Basecamp::Mentions.bc_attachment_sgids(
+      Basecamp::Mentions.with_mentions(content, [ person ])
+    ).length
+  end
+
+  def test_invalid_utf8_is_undecodable_rather_than_an_encoding_error
+    broken = "abc\xC3(def".b.force_encoding(Encoding::UTF_8)
+
+    assert_nil Basecamp::Mentions.person_id_from_sgid(broken)
+    assert_raises(Basecamp::UsageError) do
+      Basecamp::Mentions.mention_markup({ "id" => 7, "attachable_sgid" => broken })
+    end
+  end
+
   def test_a_reference_outside_the_table_can_only_lose_a_mention_never_add_one
     # The bound is one-directional by construction: a reference left literal
     # contributes "&" and ";", which no base64 alphabet accepts.

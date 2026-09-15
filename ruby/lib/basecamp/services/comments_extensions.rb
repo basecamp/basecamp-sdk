@@ -64,6 +64,7 @@ module Basecamp
       def create_with_mentions(recording_id:, content:, person_ids: nil)
         raise UsageError.new("comment content is required") if content.to_s.empty?
 
+        recording_id = Ids.integer(recording_id, "recording id")
         create(recording_id: recording_id, content: expand_mentions(content: content, person_ids: person_ids))
       end
     end

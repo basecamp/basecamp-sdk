@@ -326,15 +326,19 @@ module Basecamp
     # @raise [Basecamp::UsageError] when a person cannot be mentioned
     def with_mentions(content, people)
       content = content.to_s
+      # Keyed on BYTES. The walker hands back a byte string and a person read
+      # hands back text; the same sgid in two encodings is neither eql? nor
+      # hash-equal once it holds a non-ASCII byte, which would split the set and
+      # write the mention a second time.
       present = {}
-      bc_attachment_sgids(content).each { |sgid| present[sgid] = true }
+      bc_attachment_sgids(content).each { |sgid| present[sgid.b] = true }
 
       tags = []
       Array(people).each do |person|
         # Rendered before the dedupe check, so an unusable sgid is refused even
         # when the content already carries it.
         tag = mention_markup(person)
-        sgid = field(person, "attachable_sgid").to_s
+        sgid = field(person, "attachable_sgid").to_s.b
         next if present.key?(sgid)
 
         present[sgid] = true
@@ -508,14 +512,21 @@ module Basecamp
     def unescape_attribute_value(value)
       return value unless value.include?("&")
 
-      value.gsub(ENTITY_PATTERN) do |reference|
+      # Rewritten as bytes throughout, so an expansion can never be a different
+      # encoding from the value it lands in — and so an sgid comes back out of
+      # the walker as the byte string the rest of this file assumes.
+      value.b.gsub(ENTITY_PATTERN) do |reference|
         match = Regexp.last_match
         if match[:hex]
           codepoint_reference(match[:hex][1..].to_i(16), reference)
         elsif (digits = match[:decimal] || match[:lone_digit])
           codepoint_reference(digits.to_i, reference)
         elsif match[:name] && (match[:semicolon] || SEMICOLONLESS_ENTITIES.include?(match[:name]))
-          NAMED_ENTITIES.fetch(match[:name])
+          # As BYTES, like every other branch. The table is written as readable
+          # source literals, which are UTF-8, and the value being rewritten is a
+          # byte string: mixing the two in one gsub raises
+          # Encoding::CompatibilityError out of a public method.
+          NAMED_ENTITIES.fetch(match[:name]).b
         else
           reference
         end
@@ -572,7 +583,9 @@ module Basecamp
         return value.gsub(BINARY_TRIM_PATTERN, "")
       end
 
-      value.valid_encoding? ? value.gsub(SGID_TRIM_PATTERN, "") : value
+      return value.gsub(SGID_TRIM_PATTERN, "") if value.valid_encoding?
+
+      value.b.gsub(BINARY_TRIM_PATTERN, "")
     end
 
     # Decodes one base64 payload and returns the gid its envelope carries.
@@ -627,7 +640,12 @@ module Basecamp
     # @param payload [String]
     # @return [String, nil] binary-encoded bytes
     def decode_payload(payload)
-      return nil if payload.nil? || payload.empty? || payload.length > MAX_SGID_ENCODED_BYTES
+      return nil if payload.nil? || payload.empty? || payload.bytesize > MAX_SGID_ENCODED_BYTES
+
+      # As bytes: String#tr and the alphabet match both raise ArgumentError on
+      # invalid UTF-8, and an sgid whose encoding is broken is one that does not
+      # decode, not one that blows up in a public method.
+      payload = payload.b
 
       # CR and LF are tolerated, because the reference decoder skips exactly
       # those two and a line-broken attribute value is legal HTML. They are

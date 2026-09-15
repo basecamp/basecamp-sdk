@@ -82,7 +82,7 @@ class CommentsMentionsTest < Minitest::Test
   def test_expand_mentions_refuses_a_malformed_id_rather_than_mentioning_another_person
     # Coercing would read person 7 for "7abc" and post a valid mention for the
     # wrong person — the authoritative read would succeed and hide it.
-    [ "7abc", 7.9, nil, "" ].each do |malformed|
+    [ "7abc", 7.9, nil, "", "7_0", " 7 ", "+7" ].each do |malformed|
       assert_raises(Basecamp::UsageError) do
         @account.comments.expand_mentions(content: "<div>hi</div>", person_ids: [ malformed ])
       end
@@ -152,6 +152,15 @@ class CommentsMentionsTest < Minitest::Test
     assert_requested(:post, "#{BASE_URL}/12345/recordings/#{RECORDING_ID}/comments.json", times: 1) do |request|
       JSON.parse(request.body)["content"] == "<div>On it.</div>"
     end
+  end
+
+  def test_create_with_mentions_validates_the_recording_id_too
+    # It goes into the write path, so it gets the same treatment summarize gives
+    # its pointer rather than being interpolated as whatever it is.
+    assert_raises(Basecamp::UsageError) do
+      @account.comments.create_with_mentions(recording_id: "12oops", content: "<div>hi</div>")
+    end
+    assert_not_requested(:any, %r{\A#{BASE_URL}})
   end
 
   def test_create_with_mentions_requires_content
