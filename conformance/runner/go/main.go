@@ -2267,6 +2267,19 @@ func compareValues(tc TestCase, label string, expected, actual interface{}) *Tes
 			return fail(tc, fmt.Sprintf("Expected %s = %v, got %v", label, exp, actual))
 		}
 	case string:
+		// Two RFC 3339 timestamps compare as instants, so a fixture can pin
+		// a time without making any one language's rendering the contract:
+		// "2024-01-20T15:30:00.000-06:00" and "2024-01-20T21:30:00Z" agree.
+		if expT, err := time.Parse(time.RFC3339Nano, exp); err == nil {
+			if actS, ok := actual.(string); ok {
+				if actT, err := time.Parse(time.RFC3339Nano, actS); err == nil {
+					if !actT.Equal(expT) {
+						return fail(tc, fmt.Sprintf("Expected %s = %s (as an instant), got %s", label, exp, actS))
+					}
+					return nil
+				}
+			}
+		}
 		if fmt.Sprintf("%v", actual) != exp {
 			return fail(tc, fmt.Sprintf("Expected %s = %q, got %q", label, exp, actual))
 		}
