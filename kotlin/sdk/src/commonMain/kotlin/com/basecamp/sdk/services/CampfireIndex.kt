@@ -430,22 +430,26 @@ internal class CampfireIndex(now: () -> Long = ::monotonicMillis) {
             val listed = account.campfires.list(PaginationOptions(maxItems = MAX_CAMPFIRE_LISTING))
             if (listed.meta.truncated) throw CampfireListingOverflow()
             // The reference skips a listing entry with no bucket AND one whose
-            // bucket id is zero. Only the second is reachable here, and the
-            // difference is the decoder rather than this filter: `bucket` is
-            // `@required` in the spec, so the generated model types it non-null
-            // and an entry carrying `"bucket": null` — or omitting the key —
-            // fails the whole listing before this line runs. The reference
-            // cannot fail that way: its generated bucket is a value struct, an
-            // absent one decodes to the zero value, and its own projection
-            // turns that back into a nil pointer, which is what its nil branch
-            // is for. Measured: a three-entry listing with two bucket-less
-            // entries decodes there with no error and yields the third.
+            // bucket id is zero. Only the second is a shape BC3 can send, so
+            // only the second is filtered here. This is not an unhandled case:
+            // a Campfire with no bucket cannot leave BC3 at all. Its recording
+            // view emits `bucket` and `creator` unconditionally, and a nil
+            // association RAISES during render — the request 500s rather than
+            // serializing `"bucket": null`. That is a stronger guarantee than
+            // the `@required` in `spec/basecamp.smithy`, and the spec does not
+            // state it. Settled against the domain model in card 32; check it
+            // there rather than trusting this line.
             //
-            // Closing that gap means making `bucket` optional in
-            // `spec/basecamp.smithy`, which regenerates every SDK and
-            // contradicts the `@required` the spec asserts — and the same
-            // applies to `creator` and `parent` across roughly fifteen models.
-            // It is not a thing this composite can decide.
+            // Worth keeping anyway, because the reference's nil branch looks
+            // like evidence that the shape occurs and is not: its generated
+            // bucket is a value struct, so an absent one decodes to the zero
+            // value and its own projection turns that back into a nil pointer.
+            // The nil branch exists to undo its decoder. Measured on it: a
+            // three-entry listing with two bucket-less entries decodes with no
+            // error, both arrive nil, and the third is indexed under its
+            // bucket. The same body fails here before this line runs, since the
+            // generated model types `bucket` non-null — a real difference in
+            // strictness, over a payload neither SDK can receive.
             listed.filter { it.bucket.id != 0L }.groupBy({ it.bucket.id }, { it.id })
         }
         return SourceRead(hit.value[bucketId].orEmpty(), hit.fetched, hit.cached)
