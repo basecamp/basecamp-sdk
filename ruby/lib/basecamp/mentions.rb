@@ -128,6 +128,32 @@ module Basecamp
     # the parser with a hand-rolled one, which in a sibling port closed 4,167
     # divergences and opened 1,282 in the ACCEPTING direction on its first
     # attempt. That is the wrong trade for an authority the API does not emit.
+    #
+    # WHAT IS KNOWN ABOUT IT, so that whoever does close it does not start from
+    # scratch. The reference's rule was read off it directly, one raw byte at a
+    # time at each position:
+    #
+    # * host — refuses 0x00..0x20 and 0x5B <tt>[</tt>, 0x5C, 0x5E, 0x60,
+    #   0x7B..0x7D, 0x7F. Accepts every other byte INCLUDING 0x80 and above,
+    #   which is the whole of the raw-non-ASCII half of the residue, and
+    #   including <tt>" < > ]</tt>, which is the other half.
+    # * userinfo — alphanumerics and <tt>-._~!$&'()*+,;=%:@</tt> only; every
+    #   other byte, non-ASCII included, is refused.
+    # * port — digits only.
+    # * a percent escape is refused unless it names a byte at or above 0x80,
+    #   <tt>%25</tt> excepted. That rule is already ported, on {HOST_ASCII_ESCAPE}.
+    #
+    # The residue is more reachable than the seven hand-built shapes suggest:
+    # fuzzing 20,000 documents that corrupt one character of a real payload put
+    # it at 14, all of them the reference resolving where this refuses, because
+    # a corrupted payload decodes to an arbitrary host. Still one direction, and
+    # still closed.
+    #
+    # A sibling port has since closed this rather than documenting it, so the
+    # two now differ — worth a deliberate decision rather than drift, and worth
+    # doing as its own change with its own review rather than folded into one
+    # about something else. The IPv6 literal is separate again: bracketed hosts
+    # agree today except for the zone-id and the IPvFuture shape recorded below.
     HOST_ASCII_ESCAPE = /%(?!25)[0-7][0-9A-Fa-f]/n
 
     # The largest person id an sgid may name, matching the 64-bit bound the
@@ -630,14 +656,35 @@ module Basecamp
     # The result is handed back as BYTES, so the walker can go on scanning a
     # byte string whatever the expansion was.
     def codepoint_reference(codepoint, reference)
-      codepoint = C1_REPLACEMENTS[codepoint - 0x80] if codepoint.between?(0x80, 0x9F)
-      if codepoint.zero? || codepoint > 0x10FFFF || codepoint.between?(0xD800, 0xDFFF)
+      # WRAPPED first, into the signed 32-bit rune the reference accumulates
+      # into. Its scanner says in as many words that it does not check for
+      # overflow, so "&#x100000041;" is "A" there — and every test below runs on
+      # the wrapped value, not on the digits. Ruby's integers are unbounded, so
+      # this port latched anything past the last code point to U+FFFD and a wrap
+      # that lands back on a real character spoiled a payload the reference
+      # decodes. Measured: 6 of 54 overflow shapes, every one of them the
+      # reference reporting a mention and this reporting none.
+      #
+      # Found by reading a sibling port's fix rather than by a review of this
+      # one; the same defect was live in Swift and in this file, and nothing in
+      # nine corpora had reached it.
+      codepoint &= 0xFFFFFFFF
+      codepoint -= 0x100000000 if codepoint >= 0x80000000
+
+      if codepoint.between?(0x80, 0x9F)
+        # A Windows-1252 byte rather than a code point, and a wrap can land here
+        # too, which is why this stays the first test.
+        codepoint = C1_REPLACEMENTS[codepoint - 0x80]
+      elsif codepoint.zero? || codepoint > 0x10FFFF || codepoint.between?(0xD800, 0xDFFF)
+        codepoint = 0xFFFD
+      elsif codepoint.negative?
+        # The reference does not test for this: a wrapped-negative rune falls
+        # through its checks and reaches utf8.EncodeRune, which writes U+FFFD.
+        # Spelled out because pack("U") would raise instead.
         codepoint = 0xFFFD
       end
 
       [ codepoint ].pack("U").b
-    rescue RangeError
-      reference
     end
 
     # Returns the global id string an sgid's envelope carries, or nil.
