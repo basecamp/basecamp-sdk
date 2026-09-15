@@ -331,39 +331,41 @@ class TestProjection:
     # real generated types -- not derived from this implementation.
     @respx.mock
     @pytest.mark.parametrize(
-        ("creator_id", "fails"),
+        ("creator_id", "fails", "decoded"),
         [
             # `Person.Id` is FlexibleInt64, so a numeric STRING resolves and a
-            # non-numeric one is the system-actor 0 rather than a failure.
-            ("7", False),
-            ("basecamp", False),
-            ("", False),
-            ("007", False),
-            ("+7", False),
-            (7, False),
-            (-7, False),
+            # non-numeric one is the system-actor 0 rather than a failure --
+            # and Go's decode CONVERTS, so the id in the summary is the int,
+            # never the string it arrived as. `decoded` is Go's own value.
+            ("7", False, 7),
+            ("basecamp", False, 0),
+            ("", False, 0),
+            ("007", False, 7),
+            ("+7", False, 7),
+            (7, False, 7),
+            (-7, False, -7),
             # ...but `null` IS an error here, where a plain int64 field reads
             # it as 0. The two rules are neighbours and differ.
-            (None, True),
-            (True, True),
-            (7.0, True),
-            (2**63, True),
+            (None, True, None),
+            (True, True, None),
+            (7.0, True, None),
+            (2**63, True, None),
             # The magnitude check happens INSIDE Go's scan and against uint64,
             # so the first disqualifying thing wins. These three rows are the
             # whole point: a junk-free corpus never contains them, and "is it
             # all digits? then parse" gets the last one wrong -- answering the
             # system-actor 0 where Go fails the read.
-            ("9223372036854775807x", False),
-            ("18446744073709551615x", False),
-            ("18446744073709551616x", True),
-            ("9223372036854775808", True),
-            ("18446744073709551615", True),
-            ("-9223372036854775808", False),
-            ("-9223372036854775809", True),
-            ("-9223372036854775809x", False),
+            ("9223372036854775807x", False, 0),
+            ("18446744073709551615x", False, 0),
+            ("18446744073709551616x", True, None),
+            ("9223372036854775808", True, None),
+            ("18446744073709551615", True, None),
+            ("-9223372036854775808", False, -9223372036854775808),
+            ("-9223372036854775809", True, None),
+            ("-9223372036854775809x", False, 0),
         ],
     )
-    def test_a_creator_id_follows_the_flexible_int64_rule(self, creator_id, fails):
+    def test_a_creator_id_follows_the_flexible_int64_rule(self, creator_id, fails, decoded):
         respx.get(f"{BASE}/comments/1").mock(
             return_value=httpx.Response(200, json={"id": 1, "type": "Comment", "creator": {"id": creator_id}})
         )
@@ -372,7 +374,9 @@ class TestProjection:
                 _account().recordings.summarize(bucket_id=BUCKET, recording_id=1, event_type="comment.created")
         else:
             summary = _account().recordings.summarize(bucket_id=BUCKET, recording_id=1, event_type="comment.created")
-            assert summary["creator"] == {"id": creator_id}
+            assert summary["creator"] == {"id": decoded}, (
+                "Go's decode converts as well as validating; the summary carries the int"
+            )
 
     @respx.mock
     @pytest.mark.parametrize(
@@ -395,6 +399,29 @@ class TestProjection:
         respx.get(f"{BASE}/{path}").mock(return_value=httpx.Response(200, json=body))
         with pytest.raises(ApiError, match=f"{bad_key} was not a string"):
             _account().recordings.summarize(bucket_id=BUCKET, recording_id=2, event_type=event)
+
+    @respx.mock
+    def test_an_assignee_id_is_converted_too_and_the_response_is_not_mutated(self):
+        # The conversion applies to every Person the projection carries, and it
+        # COPIES: the response dict belongs to the caller, not to us.
+        body = {"id": 9, "type": "Todo", "assignees": [{"id": "7", "name": "A"}]}
+        respx.get(f"{BASE}/todos/9").mock(return_value=httpx.Response(200, json=body))
+        summary = _account().recordings.summarize(bucket_id=BUCKET, recording_id=9, event_type="todo.created")
+        assert summary["assignees"] == [{"id": 7, "name": "A"}]
+
+    @respx.mock
+    @pytest.mark.parametrize("too_big", [2**63, 2**64, 10**30])
+    def test_a_pointer_past_int64_is_refused_locally(self, too_big):
+        # These are `int64` on the wire and Go's caller cannot even express
+        # 2**63. Python's int can, so without the upper bound an impossible id
+        # reached a generated request and failed remotely, while every other
+        # malformed form was refused here.
+        route = respx.route(host="3.basecampapi.com")
+        with pytest.raises(UsageError, match="bucket id and recording id"):
+            _account().recordings.summarize(bucket_id=too_big, recording_id=1, event_type="comment.created")
+        with pytest.raises(UsageError, match="bucket id and recording id"):
+            _account().recordings.summarize(bucket_id=BUCKET, recording_id=too_big, event_type="comment.created")
+        assert not route.called, "an impossible id must never reach the wire"
 
     @respx.mock
     def test_a_parent_id_is_a_plain_int64_not_a_flexible_one(self):

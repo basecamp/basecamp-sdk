@@ -206,6 +206,16 @@ class TestExpandMentions:
         assert not posted.called, "a comment must never post with its mention silently dropped"
 
     @respx.mock
+    @pytest.mark.parametrize("too_big", [2**63, 2**64, 10**30])
+    def test_a_person_id_past_int64_is_refused_without_a_request(self, too_big):
+        # `int64` on the wire: a larger value cannot name anyone, so it is
+        # refused here rather than issued as an impossible request.
+        route = respx.route(host="3.basecampapi.com")
+        with pytest.raises(UsageError):
+            _comments().expand_mentions(content="<div>x</div>", person_ids=[too_big])
+        assert not route.called
+
+    @respx.mock
     def test_re_annotating_names_the_person_that_just_failed(self):
         # Go builds a new wrap each time and always names the id it just failed
         # on. A re-raised instance must not keep naming the first.

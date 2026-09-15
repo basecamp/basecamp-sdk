@@ -44,6 +44,11 @@ so a failed lookup posts nothing.
 """
 
 
+#: Largest person id the wire can carry: `int64` in the spec, so a larger
+#: value cannot name anyone and is refused here rather than requested.
+_MAX_PERSON_ID = 2**63 - 1
+
+
 def _checked_person_id(person_id: Any, seen: set[int]) -> int | None:
     """One requested id, checked; ``None`` when it is a repeat to skip.
 
@@ -57,7 +62,7 @@ def _checked_person_id(person_id: Any, seen: set[int]) -> int | None:
     1, and a string id would raise a bare `TypeError` from the comparison
     instead of the SDK's own usage error.
     """
-    if not isinstance(person_id, int) or isinstance(person_id, bool) or person_id <= 0:
+    if not isinstance(person_id, int) or isinstance(person_id, bool) or not (0 < person_id <= _MAX_PERSON_ID):
         raise UsageError(f"invalid mention person id {person_id!r}")
     if person_id in seen:
         return None

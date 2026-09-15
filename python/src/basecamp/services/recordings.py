@@ -302,9 +302,17 @@ def _decoded_person(value: Any, what: str) -> dict[str, Any] | None:
     direction. `id` is `FlexibleInt64` -- NOT the `int64` its neighbours use.
     """
     person = _decoded_optional_object(value, what)
-    if person is not None and "id" in person:
-        _decoded_flexible_int64(person["id"], f"{what} id")
-    return person
+    if person is None or "id" not in person:
+        return person
+    decoded = _decoded_flexible_int64(person["id"], f"{what} id")
+    if decoded == person["id"] and not isinstance(person["id"], bool):
+        return person
+    # Go's decode CONVERTS as well as validating -- `"7"` becomes 7 and a
+    # non-numeric system-actor id becomes 0 -- so the summary Go hands back
+    # carries an int here. Validating and then returning the raw string left
+    # the projection a different shape from the contract it claims to share.
+    # Copied rather than mutated: the caller's response dict is not ours.
+    return {**person, "id": decoded}
 
 
 def _decoded_parent(value: Any, what: str) -> dict[str, Any] | None:
@@ -385,6 +393,10 @@ def _project_chat_line(line: Any, campfire_id: int) -> RecordingSummary:
     return summary
 
 
+#: Largest id the wire can carry: these are `int64` in the spec.
+_MAX_ID = 2**63 - 1
+
+
 def _check_pointer(bucket_id: int, recording_id: int) -> None:
     """Refuse a pointer that names no recording, before anything is routed.
 
@@ -394,7 +406,11 @@ def _check_pointer(bucket_id: int, recording_id: int) -> None:
     usage error.
     """
     for value in (bucket_id, recording_id):
-        if not isinstance(value, int) or isinstance(value, bool) or value <= 0:
+        # The upper bound belongs here too: these are `int64` on the wire, and
+        # Go's caller cannot even express 2**63. Python's int can, so without
+        # this an impossible id reaches a generated request and fails remotely
+        # instead of locally, with every other malformed form refused here.
+        if not isinstance(value, int) or isinstance(value, bool) or not (0 < value <= _MAX_ID):
             raise UsageError("bucket id and recording id are required")
 
 
