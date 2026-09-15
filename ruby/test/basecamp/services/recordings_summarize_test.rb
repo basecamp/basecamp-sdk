@@ -899,7 +899,13 @@ class RecordingsSummarizeTest < Minitest::Test
     end
 
     assert_equal "campfire_discovery_incomplete", error.kind
-    assert_match(/exceeds #{Basecamp::CampfireIndex::MAX_LISTING}/, error.message)
+    # The reason names both bounds rather than asserting which one fired:
+    # meta.truncated? is set by the item cap AND by the client's max_pages
+    # limit, and the reference conflates them the same way, so claiming one
+    # reported a small two-page listing under max_pages: 1 as "exceeds 1000".
+    assert_match(/truncated before it was complete/, error.message)
+    assert_match(/#{Basecamp::CampfireIndex::MAX_LISTING}-item cap/, error.message)
+    assert_match(/max_pages/, error.message)
     # Not cached: the next call re-reads rather than remembering the overflow.
     assert_raises(Basecamp::CampfireDiscoveryIncompleteError) do
       account.recordings.summarize(bucket_id: BUCKET, recording_id: 1, event_type: "chat.line.created")
