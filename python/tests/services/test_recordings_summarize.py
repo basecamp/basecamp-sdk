@@ -235,30 +235,85 @@ class TestProjection:
     # iteration after the first answering with iteration one's body -- a loop
     # here tests its first value and nothing else.
     @respx.mock
-    @pytest.mark.parametrize("bad", [float(BUCKET), str(BUCKET), True])
-    def test_a_bucket_id_that_is_not_an_integer_fails_closed(self, bad):
-        # The dangerous shape is the FLOAT: `2085958499.0 == 2085958499` is
+    @pytest.mark.parametrize("bad", [float(BUCKET), str(BUCKET), True, 2**63])
+    def test_a_bucket_id_that_is_not_an_int64_fails_the_read(self, bad):
+        # The float is the dangerous shape: `2085958499.0 == 2085958499` is
         # True in Python, so an untyped id would wave a recording from another
-        # project straight through the one check that exists to stop it. Go
-        # refuses the whole read at decode, so it never answers "match"
-        # either; with no typed layer here, refusing is the half available.
+        # project straight through the one check that exists to stop it.
+        #
+        # It is a DECODE failure, not a mismatch. Reporting it as a
+        # BucketMismatchError named a bucket that does not exist and put a str
+        # or a float into a field declared `int`; Go fails the read, and a
+        # caller branching on `.bucket_id` was being told a number the payload
+        # never carried.
         respx.get(f"{BASE}/comments/1").mock(
             return_value=httpx.Response(200, json={"id": 1, "type": "Comment", "content": "", "bucket": {"id": bad}})
         )
-        with pytest.raises(BucketMismatchError):
+        with pytest.raises(ApiError, match="bucket id was not an int64"):
             _account().recordings.summarize(bucket_id=BUCKET, recording_id=1, event_type="comment.created")
 
     @respx.mock
     @pytest.mark.parametrize("bad", ["Elsewhere", [{"id": BUCKET}], 7])
-    def test_a_bucket_that_is_not_an_object_fails_closed(self, bad):
-        # Go's `*Bucket` refuses these at decode. Reading `.get` off them used
-        # to raise a bare AttributeError from inside the safety check, and
-        # skipping the check instead would wave the recording through -- the
-        # list row is the one that would otherwise LOOK like a bucket.
+    def test_a_bucket_that_is_not_an_object_fails_the_read(self, bad):
+        # `*Bucket` refuses these at decode. Reading `.get` off them raised a
+        # bare AttributeError from inside the safety check, and skipping the
+        # check instead would wave the recording through.
         respx.get(f"{BASE}/comments/1").mock(
             return_value=httpx.Response(200, json={"id": 1, "type": "Comment", "content": "", "bucket": bad})
         )
-        with pytest.raises(BucketMismatchError):
+        with pytest.raises(ApiError, match="bucket was not an object"):
+            _account().recordings.summarize(bucket_id=BUCKET, recording_id=1, event_type="comment.created")
+
+    @respx.mock
+    @pytest.mark.parametrize(
+        ("assignees", "expected"),
+        [
+            # `[]Person`. A STRING is the bad one: `list("oops")` invented four
+            # assignees out of it and put them in the returned summary, which
+            # is worse than any refusal. A number raised a bare TypeError.
+            (None, []),
+            ([], []),
+            ([None], [{}]),  # a null element is Go's zero Person, not None
+            ([{"id": 7}], [{"id": 7}]),
+        ],
+    )
+    def test_assignees_decode_as_a_person_list(self, assignees, expected):
+        respx.get(f"{BASE}/todos/9").mock(
+            return_value=httpx.Response(200, json={"id": 9, "type": "Todo", "assignees": assignees})
+        )
+        summary = _account().recordings.summarize(bucket_id=BUCKET, recording_id=9, event_type="todo.created")
+        assert summary["assignees"] == expected
+
+    @respx.mock
+    @pytest.mark.parametrize("assignees", ["oops", {"a": 1}, 7, True, [7], ["x"]])
+    def test_assignees_that_are_not_people_fail_the_read(self, assignees):
+        respx.get(f"{BASE}/todos/9").mock(
+            return_value=httpx.Response(200, json={"id": 9, "type": "Todo", "assignees": assignees})
+        )
+        with pytest.raises(ApiError, match="assignees was not an array|assignee was not an object"):
+            _account().recordings.summarize(bucket_id=BUCKET, recording_id=9, event_type="todo.created")
+
+    @respx.mock
+    @pytest.mark.parametrize(
+        ("field", "value", "match"),
+        [
+            # The body guard was TOP-LEVEL only, so junk one field down sailed
+            # through and landed in the summary verbatim.
+            ("parent", "oops", "parent was not an object"),
+            ("parent", [], "parent was not an object"),
+            ("creator", 7, "creator was not an object"),
+            ("creator", True, "creator was not an object"),
+            ("content", 7, "content was not a string"),
+            ("title", [], "title was not a string"),
+            ("status", 7, "status was not a string"),
+            ("app_url", {}, "app_url was not a string"),
+        ],
+    )
+    def test_a_nested_field_of_the_wrong_type_fails_the_read(self, field, value, match):
+        respx.get(f"{BASE}/comments/1").mock(
+            return_value=httpx.Response(200, json={"id": 1, "type": "Comment", field: value})
+        )
+        with pytest.raises(ApiError, match=match):
             _account().recordings.summarize(bucket_id=BUCKET, recording_id=1, event_type="comment.created")
 
     @respx.mock
@@ -554,10 +609,11 @@ class TestChatLineDiscovery:
         assert listing.call_count == 1, "a failing listing must not block the dock's refresh"
 
     @respx.mock
-    def test_a_listing_entry_missing_an_id_is_skipped_not_a_crash(self):
-        # This runs inside a cache loader whose failure is shared with every
-        # waiter on the key, and a bare KeyError would escape the SDK's error
-        # taxonomy entirely.
+    def test_a_listing_entry_missing_an_id_is_tried_as_zero(self):
+        # It is NOT skipped: an absent `id` decodes to the int64 zero value and
+        # Go's listing loop appends `c.ID` with no test, so the oracle shows
+        # `GET /chats/0/lines/N`. Skipping it spends none of the candidate
+        # budget Go spends, which moves the verdict and not merely the ids.
         respx.get(f"{BASE}/projects/{BUCKET}").mock(return_value=_not_found())
         respx.get(f"{BASE}/chats.json").mock(
             return_value=httpx.Response(
@@ -565,6 +621,7 @@ class TestChatLineDiscovery:
                 json=[{"type": "Chat::Transcript", "bucket": {"id": BUCKET}}, _campfire(5)],
             )
         )
+        zero = respx.get(f"{BASE}/chats/0/lines/{LINE_ID}").mock(return_value=_not_found())
         respx.get(f"{BASE}/chats/5/lines/{LINE_ID}").mock(return_value=httpx.Response(200, json=_line(5)))
 
         summary = _account().recordings.summarize(
@@ -572,6 +629,7 @@ class TestChatLineDiscovery:
         )
 
         assert summary["campfire_id"] == 5
+        assert zero.called, "Go issues this request, so the budget it spends must be spent here too"
 
     # The two halves of the id rule are separated on purpose. The TYPE half is
     # ours: nothing typed stands between the composite and the wire, so a
@@ -582,12 +640,14 @@ class TestChatLineDiscovery:
     # printing the request sequence, not from reading this implementation.
 
     @respx.mock
-    @pytest.mark.parametrize("bad_id", [True, False, "5", 5.0, None, {"id": 5}])
-    def test_a_listing_entry_whose_id_is_not_integer_typed_is_skipped(self, bad_id):
-        # Go decodes these into int64, so a JSON `true` or a string never
-        # reaches its discovery loop; a dict-based SDK has to say so itself.
-        # `bool` is an `int` in Python, so a truthiness test admits True and
-        # then builds a request path out of it.
+    @pytest.mark.parametrize("bad_id", [True, False, "5", 5.0, {"id": 5}, 2**63])
+    def test_a_listing_entry_whose_id_is_not_an_int64_fails_the_read(self, bad_id):
+        # Go decodes the listing into `[]Campfire` with an `int64` id, so each
+        # of these fails the WHOLE response and the read never returns -- it
+        # does not skip the entry. Skipping turned a read failure into a
+        # definitive "not there", which are the two answers this composite
+        # exists to keep apart. `2**63` is in the list because the RANGE is
+        # part of the type: Go refuses it exactly as it refuses a string.
         respx.get(f"{BASE}/projects/{BUCKET}").mock(return_value=_not_found())
         respx.get(f"{BASE}/chats.json").mock(
             return_value=httpx.Response(
@@ -595,16 +655,12 @@ class TestChatLineDiscovery:
                 json=[{"id": bad_id, "type": "Chat::Transcript", "bucket": {"id": BUCKET}}, _campfire(5)],
             )
         )
-        line = respx.get(f"{BASE}/chats/5/lines/{LINE_ID}").mock(return_value=httpx.Response(200, json=_line(5)))
-        bogus = respx.get(url__regex=rf"{BASE}/chats/(True|False|5\.0|None)/lines/\d+").mock(return_value=_not_found())
+        any_line = respx.get(url__regex=rf"{BASE}/chats/.+/lines/\d+").mock(return_value=_not_found())
 
-        summary = _account().recordings.summarize(
-            bucket_id=BUCKET, recording_id=LINE_ID, event_type="chat.line.created"
-        )
+        with pytest.raises(ApiError, match="was not an int64|was not an object"):
+            _account().recordings.summarize(bucket_id=BUCKET, recording_id=LINE_ID, event_type="chat.line.created")
 
-        assert summary["campfire_id"] == 5
-        assert line.called
-        assert not bogus.called, "a mistyped id must never become a request path"
+        assert not any_line.called, "a read that failed to decode issues no line reads at all"
 
     @respx.mock
     @pytest.mark.parametrize("listed_id", [0, -1])
@@ -631,24 +687,24 @@ class TestChatLineDiscovery:
         assert tried.called, "Go issues this request, so the budget it spends must be spent here too"
 
     @respx.mock
-    @pytest.mark.parametrize("bad_id", [True, "5", 5.0, None])
-    def test_a_dock_entry_whose_id_is_not_integer_typed_is_skipped(self, bad_id):
+    @pytest.mark.parametrize("bad_id", [True, "5", 5.0, 2**63])
+    def test_a_dock_entry_whose_id_is_not_an_int64_fails_the_read(self, bad_id):
+        # `Project.Dock` is `[]DockItem` with an `int64` id: the oracle shows
+        # the project read failing outright, with no line read attempted. A
+        # null or absent id is different and is covered separately -- that one
+        # decodes to 0 and is skipped by Go's own `item.ID != 0`.
         respx.get(f"{BASE}/projects/{BUCKET}").mock(
             return_value=httpx.Response(
                 200,
                 json={"id": BUCKET, "dock": [{"id": bad_id, "name": "chat"}, {"id": 7, "name": "chat"}]},
             )
         )
-        line = respx.get(f"{BASE}/chats/7/lines/{LINE_ID}").mock(return_value=httpx.Response(200, json=_line(7)))
-        bogus = respx.get(url__regex=rf"{BASE}/chats/(True|5\.0|None)/lines/\d+").mock(return_value=_not_found())
+        any_line = respx.get(url__regex=rf"{BASE}/chats/.+/lines/\d+").mock(return_value=_not_found())
 
-        summary = _account().recordings.summarize(
-            bucket_id=BUCKET, recording_id=LINE_ID, event_type="chat.line.created"
-        )
+        with pytest.raises(ApiError, match="was not an int64"):
+            _account().recordings.summarize(bucket_id=BUCKET, recording_id=LINE_ID, event_type="chat.line.created")
 
-        assert summary["campfire_id"] == 7
-        assert line.called
-        assert not bogus.called
+        assert not any_line.called
 
     @respx.mock
     def test_a_dock_entry_of_zero_is_skipped_and_a_negative_one_is_tried(self):

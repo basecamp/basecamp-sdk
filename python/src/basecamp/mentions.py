@@ -5,13 +5,19 @@ attribute is the mentioned person's ``attachable_sgid``
 (``doc/api/sections/rich_text.md``, "Inserting a mention"). BC3 renders the same
 tag back with ``content-type="application/vnd.basecamp.mention"`` and an avatar
 figure inside it, but the sgid is the only part of the markup that names the
-person on both the write and the read side, so both helpers here work from it:
+person on both the write and the read side, so every helper here works from it.
+Named rather than counted, so that adding one has somewhere to land instead of a
+number to bump -- the four this module exports are:
 
 * :func:`mentioned_person_ids` reads the person ids a rich text names, by
   decoding the sgid of every ``<bc-attachment>`` and keeping the ones that point
   at a Person.
-* :func:`mention_markup` writes the tag for a person, from their
+* :func:`person_id_from_sgid` is the single-sgid form of that read, and is what
+  the dedupe on the write side is deliberately NOT keyed on (see below).
+* :func:`mention_markup` writes the tag for one person, from their
   ``attachable_sgid``.
+* :func:`with_mentions` places those tags into a rich text, skipping anyone the
+  content already mentions.
 
 An ``attachable_sgid`` is a Rails SignedGlobalID: a base64 payload, then ``--``,
 then an HMAC only BC3 can verify. The payload is an envelope carrying the global

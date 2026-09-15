@@ -174,7 +174,19 @@ class TestExpandMentions:
         assert f"resolving mention for person {VICTOR_ID}" in raised.value.__notes__
 
     @respx.mock
-    @pytest.mark.parametrize("body", [b"null", b"[]", b'"oops"'])
+    @pytest.mark.parametrize(
+        "body",
+        [
+            # `null` is caught by the older `person is None` rung two lines
+            # above the Mapping guard, so on its own it cannot discriminate the
+            # guard this row exists for. It stays because the OUTCOME is the
+            # property under test, and the other two reach the new rung.
+            pytest.param(b"null", id="null-via-the-older-rung"),
+            b"[]",
+            b'"oops"',
+            b"7",
+        ],
+    )
     def test_a_person_read_that_is_not_a_person_posts_nothing(self, body):
         # The write path's only safe failure is a refusal. Go's typed decode
         # refuses these before MentionMarkup sees one; here they arrive as

@@ -426,6 +426,40 @@ class TestPersonIDFromSGID:
         assert (mentioned_person_ids(content) == [77]) is resolves
 
     @pytest.mark.parametrize(
+        ("authority", "resolves"),
+        [
+            # The port rule is PER SHAPE, which is the whole reason these rows
+            # exist: a reviewer reported that Go rejects `bc3:80:90`, another
+            # port measured that it accepts it, and both were right about
+            # different shapes. Measured against a linked `url.Parse`:
+            #
+            #   unbracketed -> the port is the segment after the LAST colon,
+            #   valid when empty or all digits; every earlier colon just stays
+            #   in the hostname, so `bc3:80:90` resolves (hostname "bc3:80").
+            #   bracketed   -> `[::1]:80:90` is an error.
+            #
+            # Refusing the extra colons, as suggested, would have lost mentions
+            # the reference resolves -- and on the write side would refuse tags
+            # the reference emits.
+            ("bc3:80:90", True),
+            ("bc3::80", True),
+            ("bc3:", True),
+            ("bc3:0", True),
+            ("bc3:80:", True),
+            ("bc3:x", False),
+            ("[::1]:80", True),
+            ("[::1]:80:90", False),
+            ("[::1]:", True),
+            ("[::1]:x", False),
+            ("[fe80::1%25eth0]:80", True),
+            ("[::1]", True),
+        ],
+    )
+    def test_the_port_rule_differs_between_bracketed_and_unbracketed_hosts(self, authority, resolves):
+        sgid = json_sgid(f"gid://{authority}/Person/77")
+        assert (person_id_from_sgid(sgid) == 77) is resolves
+
+    @pytest.mark.parametrize(
         ("suffix", "resolves"),
         [
             # Go cuts the fragment off BEFORE refusing control characters, so a

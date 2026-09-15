@@ -58,7 +58,7 @@ from collections.abc import Awaitable, Callable, Hashable
 from dataclasses import dataclass, field
 from typing import Any, Generic, NoReturn, TypeVar
 
-from basecamp.errors import CampfireIndexLoadAbortedError, NotFoundError
+from basecamp.errors import ApiError, CampfireIndexLoadAbortedError, NotFoundError
 
 #: How long a cached discovery source -- a bucket's project dock, the account's
 #: Campfire listing -- is reused before it is read again.
@@ -540,60 +540,117 @@ class AsyncTTLCache(Generic[K, V]):
             pending.done.set()
 
 
-def _recording_id(value: Any) -> int | None:
-    """An id from a payload when it is INTEGER-TYPED, else ``None``.
+# --- Reading a payload the way Go's typed decode reads it -------------------
+#
+# Go hands every one of these reads to `json.Unmarshal` against a struct, and
+# the port has to reproduce BOTH of its answers, because they are different
+# answers and the difference is load-bearing:
+#
+#   - `null` is a NO-OP at any depth. No error; the zero value stays. A null
+#     body, a null `dock`, a null element, a null `id` -- each is an empty
+#     thing the read goes on to use, not a failure.
+#   - Anything else of the wrong type is a DECODE ERROR, and the read never
+#     returns. An id of `true`, `"7"`, `7.0` or past int64 fails the whole
+#     response, not the one entry carrying it.
+#
+# Skipping the entry instead looks harmless and is not: a skipped candidate
+# spends none of the discovery budget, so the same payload reaches a different
+# VERDICT -- "found under no campfire you can see" where Go says "I could not
+# finish looking". Those are the two answers this composite exists to keep
+# apart. A bare AttributeError off `"oops".get` is no better: this runs inside
+# a cache loader whose failure is shared with every waiter on the key.
+_INT64_MIN = -(2**63)
+_INT64_MAX = 2**63 - 1
 
-    Type only -- no value test. Go decodes these fields into `int64`, so a JSON
-    `true`, a string or a float never reaches its discovery loop; a dict-based
-    SDK has to say so itself, and `bool` is an `int` in Python, so an
-    `if item["id"]` test admits `True` and then builds a request path from it.
 
-    What it deliberately does NOT do is judge the VALUE. Go applies a different
-    value rule at each site -- the dock skips a 0, the listing checks the
-    bucket id and lets the campfire id through untouched -- so each caller
-    spells its own out. A single `<= 0` here read as though it were Go's rule
-    and was not: it dropped candidates Go keeps, and a dropped candidate moves
-    the candidate budget, so it changed the VERDICT and not merely the ids.
-
-    One divergence is left and is not reachable from here: a wrong TYPE fails
-    Go's whole decode, where nothing typed stands between this and the wire.
-    See SPEC Appendix F.
-    """
-    if not isinstance(value, int) or isinstance(value, bool):
-        return None
+def _decoded_object(value: Any, what: str) -> dict[str, Any]:
+    """An object field: ``{}`` for null, the dict itself, else a decode error."""
+    if value is None:
+        return {}
+    if not isinstance(value, dict):
+        raise ApiError(f"{what} was not an object: {type(value).__name__}")
     return value
 
 
-def _dock_campfire_ids(project: dict[str, Any]) -> list[int]:
+def _decoded_optional_object(value: Any, what: str) -> dict[str, Any] | None:
+    """A pointer-to-struct field, where null stays ``None`` rather than ``{}``.
+
+    Go tells `*Bucket` nil from `&Bucket{}`, and the bucket check begins
+    `summary.Bucket != nil`, so the two cannot be collapsed here either.
+    """
+    if value is None:
+        return None
+    if not isinstance(value, dict):
+        raise ApiError(f"{what} was not an object: {type(value).__name__}")
+    return value
+
+
+def _decoded_array(value: Any, what: str) -> list[Any]:
+    """A slice field: ``[]`` for null, the list itself, else a decode error."""
+    if value is None:
+        return []
+    if not isinstance(value, list):
+        raise ApiError(f"{what} was not an array: {type(value).__name__}")
+    return value
+
+
+def _decoded_string(value: Any, what: str) -> str:
+    """A string field: ``""`` for null, the str itself, else a decode error."""
+    if value is None:
+        return ""
+    if not isinstance(value, str):
+        raise ApiError(f"{what} was not a string: {type(value).__name__}")
+    return value
+
+
+def _decoded_int64(value: Any, what: str) -> int:
+    """An ``int64`` field: 0 for null, the int itself, else a decode error.
+
+    `bool` is an `int` in Python, so `True` would otherwise become a request
+    path. The RANGE is part of the type: Go refuses 2**63 exactly as it refuses
+    a string, and this is the only place that fact is enforced -- there is no
+    ceiling downstream to catch it.
+    """
+    if value is None:
+        return 0
+    if not isinstance(value, int) or isinstance(value, bool) or not (_INT64_MIN <= value <= _INT64_MAX):
+        raise ApiError(f"{what} was not an int64: {value!r}")
+    return value
+
+
+def _dock_campfire_ids(project: Any) -> list[int]:
     """The Campfire ids a project's dock names."""
     ids: list[int] = []
-    for item in project.get("dock") or ():
-        if not isinstance(item, dict) or item.get("name") != "chat":
+    for item in _decoded_array(_decoded_object(project, "the project").get("dock"), "the project dock"):
+        entry = _decoded_object(item, "a dock item")
+        # Decoded BEFORE the name test, because Go decodes the whole body
+        # before its loop sees any of it: a malformed id fails the read even
+        # on an item this loop would go on to skip.
+        campfire_id = _decoded_int64(entry.get("id"), "a dock item id")
+        if _decoded_string(entry.get("name"), "a dock item name") != "chat":
             continue
-        campfire_id = _recording_id(item.get("id"))
         # Go's rule is `item.ID != 0`, and a missing or null id decodes to 0.
         # A NEGATIVE id IS a candidate there, so it is one here: it spends a
         # unit of the candidate budget and 404s, both of which are observable.
-        if campfire_id is not None and campfire_id != 0:
+        if campfire_id != 0:
             ids.append(campfire_id)
     return ids
 
 
-def _campfires_by_bucket(campfires: list[dict[str, Any]]) -> dict[int, list[int]]:
+def _campfires_by_bucket(campfires: Any) -> dict[int, list[int]]:
     by_bucket: dict[int, list[int]] = {}
-    for campfire in campfires:
-        if not isinstance(campfire, dict):
-            continue
-        bucket = campfire.get("bucket")
-        bucket_id = _recording_id(bucket.get("id")) if isinstance(bucket, dict) else None
-        campfire_id = _recording_id(campfire.get("id"))
+    for entry in _decoded_array(campfires, "the campfire listing"):
+        campfire = _decoded_object(entry, "a campfire")
         # Go checks the BUCKET id only -- `c.Bucket == nil || c.Bucket.ID == 0`
-        # -- and appends `c.ID` with no test whatever, so a campfire id of 0 or
-        # below is a candidate and gets its request. The id is still read
-        # through the type guard, because this runs inside a cache loader whose
-        # failure is shared with every waiter on the key: a request path built
-        # from a bool, or a bare KeyError, would escape the error taxonomy.
-        if bucket_id is None or bucket_id == 0 or campfire_id is None:
+        # -- and appends `c.ID` with NO test whatever. So a campfire id of 0 is
+        # a candidate and gets its request, and a null or absent `id` decodes
+        # to exactly that 0. Screening those out cost a request Go makes and a
+        # unit of the budget Go spends, which turned "I could not finish
+        # looking" into "it is not there" on the same payload.
+        campfire_id = _decoded_int64(campfire.get("id"), "a campfire id")
+        bucket = _decoded_object(campfire.get("bucket"), "a campfire bucket")
+        bucket_id = _decoded_int64(bucket.get("id"), "a campfire bucket id")
+        if bucket_id == 0:
             continue
         by_bucket.setdefault(bucket_id, []).append(campfire_id)
     return by_bucket

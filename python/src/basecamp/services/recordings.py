@@ -43,7 +43,11 @@ from basecamp.services._campfire_index import (
     CampfireListingOverflow,
     ChatLineSearch,
     SourceRead,
-    _recording_id,
+    _decoded_array,
+    _decoded_int64,
+    _decoded_object,
+    _decoded_optional_object,
+    _decoded_string,
 )
 
 __all__ = [
@@ -249,10 +253,15 @@ def _route(event_type: str | None, recording_type: str | None) -> str:
 
 
 def _text(record: dict[str, Any], keys: tuple[str, ...]) -> str:
-    """The first non-empty string among ``keys``; ``""`` when there is none."""
+    """The first non-empty string among ``keys``; ``""`` when there is none.
+
+    Each candidate is DECODED rather than tested: these are `string` fields in
+    Go, so a number or an object there fails the whole read. Skipping to the
+    next key instead would quietly answer with a different field's value.
+    """
     for key in keys:
-        value = record.get(key)
-        if isinstance(value, str) and value:
+        value = _decoded_string(record.get(key), f"the recording {key}")
+        if value:
             return value
     return ""
 
@@ -279,11 +288,6 @@ def _body(record: Any, what: str) -> dict[str, Any]:
     return record
 
 
-def _id_or_zero(value: int | None) -> int:
-    """The id, or 0 where the payload carried none -- Go's zero value."""
-    return 0 if value is None else value
-
-
 def _project(record: Any, read: _Read, *, campfire_id: int | None = None) -> RecordingSummary:
     record = _body(record, "the recording")
     content = _text(record, read.content)
@@ -293,15 +297,28 @@ def _project(record: Any, read: _Read, *, campfire_id: int | None = None) -> Rec
         # string, which its typed decode refuses and a dict does not. No VALUE
         # test: Go hands `cf.ID` to the summary untouched, so a negative id is
         # reported as itself rather than flattened to 0.
-        id=_id_or_zero(_recording_id(record.get("id"))),
+        id=_decoded_int64(record.get("id"), "the recording id"),
         status=_text(record, ("status",)),
         type=_text(record, ("type",)),
         title=_text(record, read.title),
         app_url=_text(record, ("app_url",)),
-        parent=record.get("parent") if read.parent else None,
-        bucket=record.get("bucket"),
-        creator=record.get("creator"),
-        assignees=list(record.get("assignees") or ()) if read.assignees else [],
+        # `*Parent`, `*Bucket`, `*Person`: null stays None, an object stays an
+        # object, anything else fails the read as it does one level up. The
+        # guard was top-level only, so `{"parent": "oops"}` sailed through.
+        parent=_decoded_optional_object(record.get("parent"), "the recording parent") if read.parent else None,
+        bucket=_decoded_optional_object(record.get("bucket"), "the recording bucket"),
+        creator=_decoded_optional_object(record.get("creator"), "the recording creator"),
+        # `[]Person`. `list("oops")` INVENTED four assignees out of a string
+        # and `list(7)` raised a bare TypeError; a null element is Go's zero
+        # Person, which is an empty object rather than None.
+        assignees=(
+            [
+                _decoded_object(person, "an assignee")
+                for person in _decoded_array(record.get("assignees"), "the recording assignees")
+            ]
+            if read.assignees
+            else []
+        ),
         mentioned_person_ids=mentioned_person_ids(content),
         content=content,
         updated_at=record.get("updated_at"),
@@ -339,35 +356,21 @@ def _check_bucket(summary: RecordingSummary, bucket_id: int, recording_id: int) 
     check is what keeps a pointer from one project from ever resolving to a
     recording in another.
     """
+    # `_project` already decoded this as a `*Bucket`, so it is a dict or None
+    # and an unreadable one failed the read rather than arriving here. Go's
+    # check begins `summary.Bucket != nil`: null or absent skips it.
     bucket = summary.get("bucket")
     if bucket is None:
-        # Go's `summary.Bucket` is a `*Bucket`, and its check begins
-        # `summary.Bucket != nil`: absent or null skips it there too.
         return
-    if not isinstance(bucket, dict):
-        # Anything else fails Go's decode and the read never returns. Here the
-        # payload is whatever was on the wire, so the choice is ours, and it
-        # has to be to REFUSE: skipping the check on an unreadable bucket is
-        # how a recording in another project gets waved through, which is the
-        # one outcome this function exists to prevent. (The previous spelling,
-        # `summary.get("bucket") or {}`, raised a bare AttributeError here --
-        # outside the SDK's error taxonomy.)
-        raise BucketMismatchError(bucket_id=0, recording_id=recording_id, requested_bucket_id=bucket_id)
-    found = bucket.get("id")
-    if found is None:
-        return
-    # Read through the type guard, then compare. `found` reaching the
-    # comparison as a float is the dangerous shape: `2085958499.0 == 2085958499`
-    # is True in Python, so an untyped id would WAVE THROUGH a recording from
-    # another project -- the one thing this check exists to stop. Go refuses
-    # the read instead, so neither answers "match"; failing closed is the half
-    # of Go's behaviour available here.
-    checked = _recording_id(found)
-    if checked is None:
-        raise BucketMismatchError(bucket_id=found, recording_id=recording_id, requested_bucket_id=bucket_id)
+    # `2085958499.0 == 2085958499` is True in Python, so an untyped id would
+    # WAVE THROUGH a recording from another project -- the one thing this check
+    # exists to stop. It is a decode failure, not a mismatch: reporting it as
+    # `BucketMismatchError(bucket_id=0)` named a bucket that does not exist and
+    # put a str or a float into a field declared `int`.
+    found = _decoded_int64(bucket.get("id"), "the recording bucket id")
     # Go: `summary.Bucket.ID != 0 && summary.Bucket.ID != ref.BucketID`.
-    if checked != 0 and checked != bucket_id:
-        raise BucketMismatchError(bucket_id=checked, recording_id=recording_id, requested_bucket_id=bucket_id)
+    if found != 0 and found != bucket_id:
+        raise BucketMismatchError(bucket_id=found, recording_id=recording_id, requested_bucket_id=bucket_id)
 
 
 def _too_many_candidates() -> str:

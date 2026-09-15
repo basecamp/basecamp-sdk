@@ -3,9 +3,10 @@
 ``expand_mentions`` turns a list of person ids into the ``<bc-attachment>``
 markup BC3 honours, and ``create_with_mentions`` posts a comment whose content
 carries it. Both are hand-written composition over generated operations
-(SPEC.md section 18): the people reads and the comment create are the generated
-service methods, under their own hook identities, and nothing here builds a path
-or picks a verb.
+(SPEC.md section 18), and nothing here builds a path or picks a verb -- but they
+do not compose the same ones: ``expand_mentions`` performs the people READS
+only and writes nothing, while ``create_with_mentions`` adds the comment create
+on top of it. Each generated call keeps its own hook identity.
 """
 
 from __future__ import annotations
