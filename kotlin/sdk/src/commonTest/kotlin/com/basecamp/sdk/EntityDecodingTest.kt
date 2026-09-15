@@ -141,15 +141,53 @@ class EntityDecodingTest {
                 "appending $suffix must not suppress the authorized mention: $out",
             )
         }
+        // The control, without which every row above would pass an
+        // implementation that never deduplicates at all: with NO suffix the
+        // content already carries the authoritative sgid exactly, and the tag
+        // must NOT be added a second time.
+        val exact = "<div><bc-attachment sgid=\"$good\"></bc-attachment> hi</div>"
+        assertEquals(exact, withMentions(exact, listOf(person)), "the dedupe still fires when it should")
     }
 
     @Test
-    fun aC0ControlReferenceKeepsItsCharacterRatherThanVanishing() {
-        // The mechanism behind the test above, pinned on its own so a later
-        // "simplification" of the decoder toward the HTML5 reading goes red here
-        // rather than silently in the write path.
-        assertNull(idFor("&#1;$good"), "a C0 control is emitted, so the payload does not decode")
-        assertNull(idFor("&#x1;$good"))
-        assertNull(idFor("&#127;$good"))
+    fun theTrimmedAndUntrimmedReferencesAreBothPinned() {
+        // Both halves of the boundary, each row taken from a run against the
+        // reference implementation rather than written by hand. Asserting only
+        // "a control character breaks the payload" would be confidently wrong
+        // about VT: U+000B IS in the reference's space set, so it is trimmed and
+        // the mention survives. A test that pins the convenient half is a
+        // tripwire aimed at the wrong thing — the next person to touch the
+        // decoder gets a red build for being right.
+        for (prefix in listOf("&#9;", "&#10;", "&#11;", "&#12;", "&#13;", "&#32;", "&#160;", "&nbsp;")) {
+            assertEquals(1049715915L, idFor(prefix + good), "$prefix expands to whitespace and is trimmed")
+        }
+        for (prefix in listOf(
+            "&#1;", "&#x1;", "&#0;", "&#x0;", "&#8;", "&#31;", "&#127;", "&#x7F;",
+            "&ZeroWidthSpace;", "&shy;", "&#8203;", "&#65279;",
+        )) {
+            assertNull(idFor(prefix + good), "$prefix is not whitespace, so the payload does not decode")
+        }
     }
+
+    @Test
+    fun anEntityExpandingToABase64CharacterIsResolvedBackIntoThePayload() {
+        // The second family that can change a verdict, and the one that hides:
+        // these sit INSIDE the payload rather than leading it. A real sgid's
+        // base64 can carry `+`, `/` or `=`, and written as `&plus;`, `&sol;` or
+        // `&equals;` the reference resolves them back and reads the mention,
+        // while a decoder that leaves them literal sees a `&` and finds nothing.
+        //
+        // The two seeds below are NOT arbitrary. A Marshal envelope is structured
+        // ASCII and essentially never reaches the sextets that encode `+` and
+        // `/`, so searching real payloads for one looks like a broken search —
+        // these were built with non-ASCII filler on purpose.
+        val plusSeed = "eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vMTA0OTcxNTkxNSIsInB1ciI6ImF0dGFjaGFibGUiLCJ4Ijoi77+9In19"
+        val solSeed = "eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vMTA0OTcxNTkxNSIsInB1ciI6ImF0dGFjaGFibGUiLCJ4Ijoi77+/In19"
+        assertEquals(1049715915L, idFor(plusSeed), "the seed itself decodes")
+        assertEquals(1049715915L, idFor(plusSeed.replace("+", "&plus;")))
+        assertEquals(1049715915L, idFor(solSeed.replace("/", "&sol;")))
+        // `=` is the one a REAL BC3 sgid reaches, since its payload is padded.
+        assertEquals(1049715915L, idFor(good.replace("=", "&equals;")))
+    }
+
 }

@@ -369,8 +369,27 @@ private fun namedExpansion(name: String): String? = when {
     name.equals("gt", ignoreCase = true) -> ">"
     name.equals("quot", ignoreCase = true) -> "\""
     name.equals("apos", ignoreCase = true) -> "'"
-    else -> WHITESPACE_ENTITIES[name]
+    else -> WHITESPACE_ENTITIES[name] ?: BASE64_ENTITIES[name]
 }
+
+/**
+ * The named references that expand to a character of the base64url alphabet —
+ * extracted from the reference decoder's own table, not guessed.
+ *
+ * The second family that can change an sgid's verdict, and the less obvious one:
+ * these appear INSIDE a payload rather than leading it. A real sgid's base64 can
+ * contain `+`, `/` or `=`, and written as `&plus;`, `&sol;` or `&equals;` the
+ * reference resolves them back into the payload and reads the mention, while a
+ * decoder that leaves them literal sees a `&` and finds nothing. `dash` and
+ * `hyphen` are deliberately absent: they expand to U+2010, not the ASCII hyphen.
+ */
+private val BASE64_ENTITIES: Map<String, String> = mapOf(
+    "plus" to "+",
+    "sol" to "/",
+    "equals" to "=",
+    "lowbar" to "_",
+    "UnderBar" to "_",
+)
 
 /**
  * Appends the expansion of a numeric reference at [i] and returns how many
