@@ -1902,7 +1902,11 @@ func checkAssertion(
 		// than silently accept, so this assertion actually pins the class.
 		var actualType string
 		var sdkError *basecamp.Error
-		if errors.As(sdkErr, &sdkError) {
+		if kind, ok := semanticErrorType(sdkErr); ok {
+			// A composite's own sentinel (SPEC §18, Appendix F): an identity a
+			// consumer matches with errors.Is, never an HTTP status.
+			actualType = kind
+		} else if errors.As(sdkErr, &sdkError) {
 			actualType = sdkError.Code
 		} else if isNetworkError(sdkErr) {
 			actualType = basecamp.CodeNetwork
@@ -2180,6 +2184,27 @@ func checkAssertion(
 
 // compareValues compares an expected JSON value against an actual Go value.
 // Handles json.Number (from UseNumber), float64, bool, and string.
+// semanticErrorType names the RecordingsSummarize sentinels for the errorType
+// assertion, so a fixture can pin that "unresolved" is neither an API read
+// failure nor incomplete discovery — an identity the message text cannot
+// carry. The names are the fixture's vocabulary; a port maps its own error
+// kinds onto them.
+func semanticErrorType(err error) (string, bool) {
+	switch {
+	case errors.Is(err, basecamp.ErrRecordingUnresolved):
+		return "recording_unresolved", true
+	case errors.Is(err, basecamp.ErrCampfireDiscoveryIncomplete):
+		return "campfire_discovery_incomplete", true
+	case errors.Is(err, basecamp.ErrNoRecordingType):
+		return "no_recording_type", true
+	case errors.Is(err, basecamp.ErrUnknownRecordingType):
+		return "unknown_recording_type", true
+	case errors.Is(err, basecamp.ErrBucketMismatch):
+		return "bucket_mismatch", true
+	}
+	return "", false
+}
+
 func compareValues(tc TestCase, label string, expected, actual interface{}) *TestResult {
 	switch exp := expected.(type) {
 	case json.Number:

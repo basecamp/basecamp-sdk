@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 )
 
 // SGID fixtures. Every one is synthetic — the demo account's people from
@@ -141,6 +142,19 @@ func TestMentionedPersonIDs(t *testing.T) {
 		{"unterminated quote is skipped", `<bc-attachment sgid="` + rubySGIDPerson + `></bc-attachment>`, nil},
 		{"empty sgid", `<bc-attachment sgid=""></bc-attachment>`, nil},
 		{"two attachments back to back", `<bc-attachment sgid="` + rubySGIDPersonWide + `"></bc-attachment><bc-attachment sgid="` + rubySGIDPerson + `"></bc-attachment>`, []int64{9007199254740993, 1049715915}},
+		{"inside an HTML comment is not an element", `<!-- <bc-attachment sgid="` + rubySGIDPerson + `"></bc-attachment> --><div>hi</div>`, nil},
+		{"inside another element's attribute is not an element", `<div title='<bc-attachment sgid="` + rubySGIDPerson + `">'>text</div>`, nil},
+		{"a real one after a commented one", `<!-- <bc-attachment sgid="` + rubySGIDPersonWide + `"> -->` + victor, []int64{1049715915}},
+		{"first sgid attribute wins, empty included", `<bc-attachment sgid="" sgid="` + rubySGIDPerson + `"></bc-attachment>`, nil},
+		{"first sgid attribute wins, valued", `<bc-attachment sgid="` + rubySGIDPerson + `" sgid="` + rubySGIDPersonWide + `"></bc-attachment>`, []int64{1049715915}},
+		{"bare self-closing tag", `<bc-attachment/>` + victor, []int64{1049715915}},
+		{"attribute without a value, then the sgid", `<bc-attachment hidden sgid="` + rubySGIDPerson + `"></bc-attachment>`, []int64{1049715915}},
+		{"equals with no value", `<bc-attachment caption= sgid="` + rubySGIDPerson + `"></bc-attachment>`, nil},
+		{"whitespace before the equals", `<bc-attachment sgid = "` + rubySGIDPerson + `"></bc-attachment>`, []int64{1049715915}},
+		{"tag at the very end of the text", `<div>hi</div><bc-attachment`, nil},
+		{"a > inside single quotes inside a double-quoted attribute", `<bc-attachment caption="it's a 'x > y' thing" sgid="` + rubySGIDPerson + `"></bc-attachment>`, []int64{1049715915}},
+		{"a bare < in text does not derail the walk", `<div>1 < 2 and ` + victor + `</div>`, []int64{1049715915}},
+		{"a closing tag and a doctype are skipped", `<!DOCTYPE html></p>` + victor, []int64{1049715915}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -150,6 +164,72 @@ func TestMentionedPersonIDs(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestPersonIDFromSGID_HostileMarshal checks that a payload lying about its
+// own size is refused for the price of its bytes: a chain of arrays each
+// claiming a million elements, a hash claiming more pairs than bytes remain,
+// a negative instance-variable count, and a payload over the size cap.
+func TestPersonIDFromSGID_HostileMarshal(t *testing.T) {
+	sgid := func(raw []byte) string { return base64.StdEncoding.EncodeToString(raw) + "--00" }
+	// Marshal packs 1048576 as 0x03 + three little-endian bytes.
+	million := []byte{0x03, 0x00, 0x00, 0x10}
+	var nested []byte
+	nested = append(nested, 0x04, 0x08)
+	for i := 0; i < 33; i++ {
+		nested = append(nested, '[')
+		nested = append(nested, million...)
+	}
+	nested = append(nested, make([]byte, 1024)...)
+	cases := map[string][]byte{
+		"nested arrays claiming a million elements each": nested,
+		"hash claiming more pairs than bytes":            {0x04, 0x08, '{', 0x03, 0x00, 0x00, 0x10, 'I', '"', 0x06, 'a'},
+		"negative ivar count on the envelope string":     {0x04, 0x08, 'I', '"', 0x06, 'x', 0xfa},
+		"string claiming past the end":                   {0x04, 0x08, '"', 0x20, 'a'},
+		"unsupported object type":                        {0x04, 0x08, 'o', ':', 0x06, 'X', 0x00},
+		"truncated after the version":                    {0x04, 0x08},
+	}
+	for name, raw := range cases {
+		t.Run(name, func(t *testing.T) {
+			done := make(chan struct{})
+			go func() {
+				defer close(done)
+				if id, ok := PersonIDFromSGID(sgid(raw)); ok {
+					t.Errorf("accepted as person %d", id)
+				}
+			}()
+			select {
+			case <-done:
+			case <-time.After(2 * time.Second):
+				t.Fatal("decoding did not finish promptly")
+			}
+		})
+	}
+	t.Run("payload over the size cap", func(t *testing.T) {
+		big := append([]byte{0x04, 0x08, '"'}, 0x02, 0x00, 0x20) // a string of 8192 bytes
+		big = append(big, make([]byte, 8192)...)
+		if _, ok := PersonIDFromSGID(sgid(big)); ok {
+			t.Fatal("accepted an oversized payload")
+		}
+	})
+	t.Run("a negative ivar count does not slip a valid envelope through", func(t *testing.T) {
+		// Ruby's own envelope, then its trailing ivar count byte (0x06 = 1)
+		// replaced by -1 (0xfa): the reader must refuse, not read zero ivars.
+		payload, _, _ := strings.Cut(rubySGIDPerson, "--")
+		raw, err := base64.StdEncoding.DecodeString(strings.NewReplacer("-", "+", "_", "/").Replace(payload))
+		if err != nil {
+			t.Fatal(err)
+		}
+		// The first ivar count follows the "_rails" key string: I " \x0b _rails <count>.
+		idx := strings.Index(string(raw), "_rails") + len("_rails")
+		if raw[idx] != 0x06 {
+			t.Fatalf("fixture layout changed: byte %d = %#x", idx, raw[idx])
+		}
+		raw[idx] = 0xfa
+		if id, ok := PersonIDFromSGID(sgid(raw)); ok {
+			t.Fatalf("accepted as person %d with a negative ivar count", id)
+		}
+	})
 }
 
 func TestMentionMarkup(t *testing.T) {

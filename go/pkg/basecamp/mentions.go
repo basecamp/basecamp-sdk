@@ -65,68 +65,91 @@ func MentionedPersonIDs(richText string) []int64 {
 	return ids
 }
 
-// bcAttachmentSGIDs returns the sgid attribute of every <bc-attachment> opening
-// tag in the text, in document order. It tokenizes the tag's attributes rather
-// than pattern-matching them, so a ">" inside a quoted attribute does not end
-// the tag, an "sgid=" inside another attribute's value is not an attribute,
-// either quote style works, attribute order and case are free, and entity
-// escapes in the value are decoded as a browser would.
+// bcAttachmentSGIDs returns the sgid attribute of every <bc-attachment> in the
+// text, in document order. It walks the markup as a stream of tags rather
+// than pattern-matching for one tag name, so a <bc-attachment> inside an HTML
+// comment or inside another element's quoted attribute is not an element; and
+// it tokenizes each tag's attributes rather than pattern-matching them, so a
+// ">" inside a quoted value does not end the tag, an "sgid=" inside another
+// attribute's value is not an attribute, either quote style works, attribute
+// order and case are free, the first sgid attribute wins as in HTML, and
+// entity escapes in the value are decoded as a browser would.
 func bcAttachmentSGIDs(text string) []string {
-	const tag = "<bc-attachment"
 	var sgids []string
 	for pos := 0; pos < len(text); {
-		i := indexFold(text[pos:], tag)
+		i := strings.IndexByte(text[pos:], '<')
 		if i < 0 {
 			break
 		}
-		start := pos + i + len(tag)
-		// The tag name must end here: "<bc-attachments" is another element.
-		if start < len(text) && !isTagNameEnd(text[start]) {
-			pos = start
+		pos += i + 1
+		rest := text[pos:]
+		switch {
+		case strings.HasPrefix(rest, "!--"):
+			stop := strings.Index(rest, "-->")
+			if stop < 0 {
+				return sgids // an unterminated comment swallows the rest
+			}
+			pos += stop + 3
+			continue
+		case strings.HasPrefix(rest, "!"), strings.HasPrefix(rest, "?"), strings.HasPrefix(rest, "/"):
+			stop := strings.IndexByte(rest, '>')
+			if stop < 0 {
+				return sgids
+			}
+			pos += stop + 1
 			continue
 		}
-		sgid, end, ok := parseAttributes(text, start)
-		if ok && sgid != "" {
-			sgids = append(sgids, sgid)
+		nameEnd := 0
+		for nameEnd < len(rest) && isTagNameChar(rest[nameEnd]) {
+			nameEnd++
+		}
+		if nameEnd == 0 {
+			continue // a bare "<" in text
+		}
+		attrs, end, ok := parseAttributes(text, pos+nameEnd)
+		if !ok {
+			return sgids // an unterminated tag: nothing after it is markup
+		}
+		if strings.EqualFold(rest[:nameEnd], "bc-attachment") && attrs.sgid != "" {
+			sgids = append(sgids, attrs.sgid)
 		}
 		pos = end
 	}
 	return sgids
 }
 
+func isTagNameChar(c byte) bool {
+	return c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9' || c == '-'
+}
+
 func isTagNameEnd(c byte) bool {
-	return c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\f' || c == '/' || c == '>'
+	return isSpace(c) || c == '/' || c == '>'
 }
 
 func isSpace(c byte) bool {
 	return c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\f'
 }
 
-// indexFold is strings.Index for ASCII, ignoring case.
-func indexFold(s, substr string) int {
-	n := len(substr)
-	for i := 0; i+n <= len(s); i++ {
-		if strings.EqualFold(s[i:i+n], substr) {
-			return i
-		}
-	}
-	return -1
+// tagAttributes is what parseAttributes reads off one opening tag.
+type tagAttributes struct {
+	sgid     string // the decoded value of the first sgid attribute
+	sgidSeen bool   // whether an sgid attribute was present at all
 }
 
 // parseAttributes walks the attributes of an opening tag from pos (just after
-// the tag name) to its closing ">", returning the decoded sgid attribute (the
-// first one, when repeated), the index after the ">", and whether the tag was
-// closed at all. An unterminated tag consumes the rest of the text.
-func parseAttributes(text string, pos int) (sgid string, end int, ok bool) {
+// the tag name) to its closing ">", returning what it found, the index after
+// the ">", and whether the tag was closed at all. The first sgid attribute
+// wins, present-but-empty included, as HTML resolves a repeated attribute.
+func parseAttributes(text string, pos int) (attrs tagAttributes, end int, ok bool) {
 	for pos < len(text) {
 		for pos < len(text) && (isSpace(text[pos]) || text[pos] == '/') {
 			pos++
 		}
 		if pos >= len(text) {
-			return sgid, pos, false
+			return attrs, pos, false
 		}
 		if text[pos] == '>' {
-			return sgid, pos + 1, true
+			return attrs, pos + 1, true
 		}
 		nameStart := pos
 		for pos < len(text) && !isSpace(text[pos]) && text[pos] != '=' && text[pos] != '>' && text[pos] != '/' {
@@ -147,7 +170,7 @@ func parseAttributes(text string, pos int) (sgid string, end int, ok bool) {
 				pos++
 				closing := strings.IndexByte(text[pos:], quote)
 				if closing < 0 {
-					return sgid, len(text), false
+					return attrs, len(text), false
 				}
 				value = text[pos : pos+closing]
 				pos += closing + 1
@@ -159,11 +182,17 @@ func parseAttributes(text string, pos int) (sgid string, end int, ok bool) {
 				value = text[valueStart:pos]
 			}
 		}
-		if sgid == "" && strings.EqualFold(name, "sgid") {
-			sgid = html.UnescapeString(value)
+		if name == "" {
+			// A stray "=" or quote where a name should be: step over it.
+			pos++
+			continue
+		}
+		if !attrs.sgidSeen && strings.EqualFold(name, "sgid") {
+			attrs.sgidSeen = true
+			attrs.sgid = html.UnescapeString(value)
 		}
 	}
-	return sgid, pos, false
+	return attrs, pos, false
 }
 
 // PersonIDFromSGID decodes the Person id an attachable_sgid names. The second
@@ -209,7 +238,7 @@ func globalIDFromSGID(sgid string) (string, bool) {
 	// and stripping the padding lets a truncated-but-valid payload through.
 	normalized := strings.NewReplacer("-", "+", "_", "/").Replace(payload)
 	raw, err := base64.RawStdEncoding.DecodeString(strings.TrimRight(normalized, "="))
-	if err != nil || len(raw) == 0 {
+	if err != nil || len(raw) == 0 || len(raw) > maxSGIDPayloadBytes {
 		return "", false
 	}
 	var envelope any
@@ -260,7 +289,14 @@ type rubyMarshalReader struct {
 	symbols []string
 }
 
-const rubyMarshalMaxDepth = 32
+const (
+	// rubyMarshalMaxDepth bounds nesting in a payload; an envelope is two deep.
+	rubyMarshalMaxDepth = 32
+	// maxSGIDPayloadBytes bounds the decoded sgid payload. A Person sgid's
+	// payload is under 200 bytes; the cap keeps a hostile one from costing
+	// more than its own size to reject.
+	maxSGIDPayloadBytes = 4096
+)
 
 func (r *rubyMarshalReader) byte() (byte, error) {
 	if r.pos >= len(r.data) {
@@ -319,6 +355,21 @@ func (r *rubyMarshalReader) int() (int64, error) {
 	}
 }
 
+// count reads an element, pair or ivar count and rejects one that cannot be
+// honest: negative, or more than the bytes left could encode (every element
+// takes at least one byte). Allocation follows what actually decodes, so a
+// hostile count costs its own bytes to refuse, never the capacity it claims.
+func (r *rubyMarshalReader) count() (int64, error) {
+	n, err := r.int()
+	if err != nil {
+		return 0, err
+	}
+	if n < 0 || n > int64(len(r.data)-r.pos) {
+		return 0, fmt.Errorf("marshal: bad count %d", n)
+	}
+	return n, nil
+}
+
 func (r *rubyMarshalReader) value(depth int) (any, error) {
 	if depth > rubyMarshalMaxDepth {
 		return nil, fmt.Errorf("marshal: nesting too deep")
@@ -373,7 +424,7 @@ func (r *rubyMarshalReader) value(depth int) (any, error) {
 		if err != nil {
 			return nil, err
 		}
-		n, err := r.int()
+		n, err := r.count()
 		if err != nil {
 			return nil, err
 		}
@@ -387,14 +438,11 @@ func (r *rubyMarshalReader) value(depth int) (any, error) {
 		}
 		return inner, nil
 	case '[':
-		n, err := r.int()
+		n, err := r.count()
 		if err != nil {
 			return nil, err
 		}
-		if n < 0 || n > int64(len(r.data)) {
-			return nil, fmt.Errorf("marshal: bad array length")
-		}
-		out := make([]any, 0, n)
+		var out []any //nolint:prealloc // grown as elements decode, never sized from the claim
 		for i := int64(0); i < n; i++ {
 			v, err := r.value(depth + 1)
 			if err != nil {
@@ -404,14 +452,11 @@ func (r *rubyMarshalReader) value(depth int) (any, error) {
 		}
 		return out, nil
 	case '{':
-		n, err := r.int()
+		n, err := r.count()
 		if err != nil {
 			return nil, err
 		}
-		if n < 0 || n > int64(len(r.data)) {
-			return nil, fmt.Errorf("marshal: bad hash length")
-		}
-		out := make(map[string]any, n)
+		out := map[string]any{}
 		for i := int64(0); i < n; i++ {
 			k, err := r.value(depth + 1)
 			if err != nil {
@@ -477,6 +522,7 @@ func leadingBlockEnd(content string) int {
 		if _, end, ok := parseAttributes(content, after); ok {
 			return end
 		}
+		return -1
 	}
 	return -1
 }

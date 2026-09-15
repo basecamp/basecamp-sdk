@@ -595,6 +595,8 @@ func TestSummarize_ChatLineUnresolvedIsDistinct(t *testing.T) {
 		t.Fatalf("CampfireID = %d, want the newly listed Campfire", got.CampfireID)
 	}
 	reqs := srv.requests()
+	// Both cached sources are tried first; then the dock is re-read, then the
+	// listing.
 	want := []string{lineRead(1069479340), lineRead(1069479345), projectRead, listingRead, lineRead(1069479399)}
 	if tail := reqs[len(reqs)-len(want):]; !reflect.DeepEqual(tail, want) {
 		t.Fatalf("requests = %v, want tail %v", reqs, want)
@@ -951,4 +953,119 @@ func strOrNil(p *string) string {
 		return "<nil>"
 	}
 	return *p
+}
+
+func TestSummarize_ChatLineDockRefreshIsNotBlockedByTheListing(t *testing.T) {
+	// The dock was cached without a chat tool (the project had none when the
+	// cache filled); now it has one, and the account listing is down. Past the
+	// refresh floor, the dock's one re-read finds the line before the listing
+	// is consulted at all.
+	fx := newChatFixture(t, 1069479341, [2]int64{1069479341, letoLaptop})
+	fx.docks[letoLaptop] = 0 // a project whose dock names no Campfire
+	account, srv, clock := newSummaryClient(t, fx.route(t))
+	if _, err := account.Recordings().Summarize(context.Background(), lineRef()); err != nil {
+		t.Fatalf("priming: %v", err) // found through the listing this time
+	}
+	*clock = clock.Add(campfireIndexMinRefresh)
+	fx.docks[letoLaptop] = 1069479341
+	listingWasUp := srv.count(listingRead) - srv.count(listingRead+"/")
+	inner := fx.route(t)
+	srv.mu.Lock()
+	srv.route = func(w http.ResponseWriter, r *http.Request, path string) bool {
+		if path == listingRead {
+			writeJSON(w, http.StatusServiceUnavailable, []byte(`{"error":"down"}`))
+			return true
+		}
+		return inner(w, r, path)
+	}
+	srv.mu.Unlock()
+	// Expire the listing so a fresh call would have to re-list — and cannot.
+	*clock = clock.Add(CampfireIndexTTL)
+	got, err := account.Recordings().Summarize(context.Background(), lineRef())
+	if err != nil {
+		t.Fatalf("Summarize: %v", err)
+	}
+	if got.CampfireID != 1069479341 {
+		t.Fatalf("CampfireID = %d, want the dock's Campfire", got.CampfireID)
+	}
+	if n := srv.count(listingRead) - srv.count(listingRead+"/"); n != listingWasUp {
+		t.Fatalf("the listing was consulted (%d listings) although the dock refresh found the line", n)
+	}
+}
+
+func TestTTLCache_LoaderPanicReleasesTheKey(t *testing.T) {
+	now := time.Date(2026, 9, 15, 12, 0, 0, 0, time.UTC)
+	cache := newTTLCache[string, int](func() time.Time { return now }, time.Minute, time.Second)
+	started := make(chan struct{})
+	release := make(chan struct{})
+
+	// The loader panics while a second caller waits on it.
+	loaderDone := make(chan any, 1)
+	go func() {
+		defer func() { loaderDone <- recover() }()
+		_, _, _ = cache.get(context.Background(), "k", false, func(context.Context) (int, error) {
+			close(started)
+			<-release
+			panic("hook exploded")
+		})
+	}()
+	<-started
+	waiterDone := make(chan error, 1)
+	go func() {
+		_, _, err := cache.get(context.Background(), "k", false, func(context.Context) (int, error) { return 1, nil })
+		waiterDone <- err
+	}()
+	time.Sleep(10 * time.Millisecond) // let the waiter reach the in-flight wait
+	close(release)
+	if r := <-loaderDone; r == nil {
+		t.Fatal("the panic did not propagate to the loading caller")
+	}
+	select {
+	case err := <-waiterDone:
+		if err == nil || !strings.Contains(err.Error(), "panicked") {
+			t.Fatalf("waiter err = %v, want the loader's panic as an error", err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("the waiter hung on a key whose loader panicked")
+	}
+	// The key is free: the next load runs and caches.
+	v, cached, err := cache.get(context.Background(), "k", false, func(context.Context) (int, error) { return 7, nil })
+	if err != nil || v != 7 || cached {
+		t.Fatalf("after the panic: v=%d cached=%v err=%v", v, cached, err)
+	}
+	v, cached, err = cache.get(context.Background(), "k", false, func(context.Context) (int, error) { return 8, nil })
+	if err != nil || v != 7 || !cached {
+		t.Fatalf("the recovered load did not cache: v=%d cached=%v err=%v", v, cached, err)
+	}
+}
+
+func TestTTLCache_WaiterGetsTheLoadItWaitedOnAsFresh(t *testing.T) {
+	now := time.Date(2026, 9, 15, 12, 0, 0, 0, time.UTC)
+	cache := newTTLCache[string, int](func() time.Time { return now }, time.Minute, time.Second)
+	started := make(chan struct{})
+	release := make(chan struct{})
+	go func() {
+		_, _, _ = cache.get(context.Background(), "k", false, func(context.Context) (int, error) {
+			close(started)
+			<-release
+			return 42, nil
+		})
+	}()
+	<-started
+	type outcome struct {
+		v      int
+		cached bool
+		err    error
+	}
+	done := make(chan outcome, 1)
+	go func() {
+		v, cached, err := cache.get(context.Background(), "k", false, func(context.Context) (int, error) { return -1, nil })
+		done <- outcome{v, cached, err}
+	}()
+	time.Sleep(10 * time.Millisecond)
+	close(release)
+	got := <-done
+	if got.err != nil || got.v != 42 || got.cached {
+		t.Fatalf("waiter got %+v, want the awaited load's value reported fresh (cached=false)", got)
+	}
 }

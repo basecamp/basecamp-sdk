@@ -581,27 +581,54 @@ func (c *ttlCache[K, V]) get(ctx context.Context, key K, refresh bool, load func
 			if pending.err != nil {
 				return value, false, pending.err
 			}
-			continue // the entry is now fresh; read it under the lock
+			// The load this call waited on is this call's load: hand its
+			// value over as fresh, not as something that predated the call.
+			c.mu.Lock()
+			entry := c.entries[key]
+			c.mu.Unlock()
+			if entry != nil {
+				return entry.value, false, nil
+			}
+			continue
 		}
 		pending := &ttlLoad{done: make(chan struct{})}
 		c.inflight[key] = pending
 		c.mu.Unlock()
 
-		loaded, loadErr := load(ctx)
-
-		c.mu.Lock()
-		delete(c.inflight, key)
-		pending.err = loadErr
-		if loadErr == nil {
-			c.entries[key] = &ttlEntry[V]{value: loaded, fetched: c.now()}
-		}
-		close(pending.done)
-		c.mu.Unlock()
+		loaded, loadErr := c.load(ctx, key, pending, load)
 		if loadErr != nil {
 			return value, false, loadErr
 		}
 		return loaded, false, nil
 	}
+}
+
+// load runs one loader and publishes its outcome. Publication is deferred so
+// a loader that panics — a hook, a token provider — still releases the key
+// and wakes its waiters (with an error) before the panic continues; without
+// that the key would stay in flight forever and every later caller would
+// wait on it.
+func (c *ttlCache[K, V]) load(ctx context.Context, key K, pending *ttlLoad, loader func(context.Context) (V, error)) (loaded V, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("basecamp: cache loader panicked: %v", r)
+			c.publish(key, pending, loaded, err)
+			panic(r)
+		}
+		c.publish(key, pending, loaded, err)
+	}()
+	return loader(ctx)
+}
+
+func (c *ttlCache[K, V]) publish(key K, pending *ttlLoad, loaded V, err error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	delete(c.inflight, key)
+	pending.err = err
+	if err == nil {
+		c.entries[key] = &ttlEntry[V]{value: loaded, fetched: c.now()}
+	}
+	close(pending.done)
 }
 
 // campfireIndex holds the two discovery sources. It lives on Client (shared
@@ -732,7 +759,8 @@ func (s *RecordingsService) resolveChatLine(ctx context.Context, bucketID, lineI
 		return &CampfireDiscoveryIncompleteError{BucketID: bucketID, RecordingID: lineID, Reason: reason}
 	}
 
-	// Pass 1: the project dock, then the account listing.
+	// Pass 1: what the sources hold now — the dock, then the listing.
+	refreshed := false
 	dock, dockCached, err := index.dockCampfires(ctx, ac, bucketID, false)
 	if err != nil {
 		return nil, 0, err
@@ -740,20 +768,18 @@ func (s *RecordingsService) resolveChatLine(ctx context.Context, bucketID, lineI
 	if line, id, err := search.try(ctx, dock); err != nil || line != nil {
 		return line, id, err
 	}
-	listed, listCached, err := index.listedCampfires(ctx, ac, bucketID, false)
-	if err != nil {
-		if errors.Is(err, errCampfireListingOverflow) {
-			return nil, 0, incomplete(err.Error())
+	listed, listCached, listErr := index.listedCampfires(ctx, ac, bucketID, false)
+	if listErr == nil {
+		if line, id, err := search.try(ctx, listed); err != nil || line != nil {
+			return line, id, err
 		}
-		return nil, 0, err
-	}
-	if line, id, err := search.try(ctx, listed); err != nil || line != nil {
-		return line, id, err
 	}
 
-	// Pass 2: every candidate said "not here". Re-read whichever source was
-	// served from cache (the floor may decline) and try only what is new.
-	refreshed := false
+	// Pass 2: re-read whichever source was served from cache (the floor may
+	// decline) and try only what is new. The dock goes first, and before a
+	// listing failure is surfaced: a listing that is down or over its cap
+	// must never stand between a project's line and the one project read
+	// that finds it.
 	currentDock, currentList := dock, listed
 	if dockCached {
 		again, stillCached, err := index.dockCampfires(ctx, ac, bucketID, true)
@@ -766,6 +792,12 @@ func (s *RecordingsService) resolveChatLine(ctx context.Context, bucketID, lineI
 		if line, id, err := search.try(ctx, again); err != nil || line != nil {
 			return line, id, err
 		}
+	}
+	if listErr != nil {
+		if errors.Is(listErr, errCampfireListingOverflow) {
+			return nil, 0, incomplete(listErr.Error())
+		}
+		return nil, 0, listErr
 	}
 	if listCached {
 		again, stillCached, err := index.listedCampfires(ctx, ac, bucketID, true)

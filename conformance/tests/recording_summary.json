@@ -138,7 +138,7 @@
   },
   {
     "name": "RecordingsSummarize refuses boost.created before any request",
-    "description": "boost.created names no recording type (the row points at the boost's target, whose type it does not carry), so the helper refuses it distinctly rather than reading something it is not. No request is made.",
+    "description": "boost.created names no recording type (the row points at the boost's target, whose type it does not carry), so the helper refuses it distinctly rather than reading something it is not. No request is made. The error is the composite's own identity (no_recording_type), which a consumer matches rather than parses.",
     "operation": "RecordingsSummarize",
     "method": "GET",
     "path": "/comments/1069479361",
@@ -156,6 +156,10 @@
       {
         "type": "errorMessage",
         "expected": "names no recording type"
+      },
+      {
+        "type": "errorType",
+        "expected": "no_recording_type"
       }
     ],
     "tags": [
@@ -369,7 +373,7 @@
   },
   {
     "name": "RecordingsSummarize reports a chat line under no visible Campfire as unresolved, not as a failed read",
-    "description": "Every candidate answered 404, so the line is under no Campfire the caller can see. That is its own error, distinct from a read that failed, so a consumer can block the record and retry later rather than treat it as an outage.",
+    "description": "Every candidate answered 404, so the line is under no Campfire the caller can see. That is its own error, distinct from a read that failed, so a consumer can block the record and retry later rather than treat it as an outage. errorType pins the identity: recording_unresolved, not a not_found or forbidden read and not campfire_discovery_incomplete.",
     "operation": "RecordingsSummarize",
     "method": "GET",
     "path": "/projects/2085958499",
@@ -489,6 +493,10 @@
       {
         "type": "errorMessage",
         "expected": "found under no visible campfire"
+      },
+      {
+        "type": "errorType",
+        "expected": "recording_unresolved"
       }
     ],
     "tags": [
