@@ -142,25 +142,57 @@ module Basecamp
         kind = route_recording(event_type: event_type, recording_type: recording_type)
         summary = read_summary(kind, bucket_id: bucket_id, recording_id: recording_id)
 
-        # A "bucket" member that is not an object has no id and is read as
-        # absent, as the reference does when its own is the zero value. An id
-        # that is PRESENT and unreadable is different: the reference fails the
-        # read on it, and letting it pass as absent would skip the comparison
-        # below — which is the one check standing between a pointer and a
-        # recording in another bucket.
-        read_bucket_id = summary["bucket"].is_a?(Hash) ? Ids.from_wire(summary["bucket"]["id"]) : 0
-        if read_bucket_id.nil?
-          raise BucketMismatchError.new(
-            bucket_id: bucket_id, actual_bucket_id: summary["bucket"]["id"], recording_id: recording_id
-          )
-        end
-        if read_bucket_id.positive? && read_bucket_id != bucket_id
+        read_bucket_id = read_bucket_id(summary)
+        # NON-ZERO, not positive. The reference compares whenever its bucket id
+        # is not the zero value, so a negative one is a mismatch there and was
+        # returned as a match here — this is the one check standing between a
+        # pointer and a recording in another project, and it was the only place
+        # the earlier sweep of this same defect did not reach.
+        if !read_bucket_id.zero? && read_bucket_id != bucket_id
           raise BucketMismatchError.new(
             bucket_id: bucket_id, actual_bucket_id: read_bucket_id, recording_id: recording_id
           )
         end
 
         summary
+      end
+
+      # The bucket the read came back in, or 0 when it carries none.
+      #
+      # An absent or null "bucket" is genuinely none: the reference holds a
+      # pointer there and reads its zero value. ANYTHING ELSE that is not an
+      # object — a number, a string, an array — is a decode failure in the
+      # reference, which fails the read rather than reaching the comparison, and
+      # so is a malformed response here. Reading it as "none" would skip the
+      # comparison, which is how a projection from another project would have
+      # been returned.
+      def read_bucket_id(summary)
+        bucket = summary["bucket"]
+        return 0 if bucket.nil?
+
+        unless bucket.is_a?(Hash)
+          raise malformed_response("the recording's \"bucket\" is #{MergeSafe.describe(bucket)}, not an object")
+        end
+
+        id = Ids.from_wire(bucket["id"])
+        return id unless id.nil?
+
+        raise malformed_response("the recording's bucket id is #{MergeSafe.describe(bucket["id"])}, not an integer")
+      end
+
+      # The error for a body this composite cannot read.
+      #
+      # ApiError and not UsageError, non-retryable, for the reason
+      # {Basecamp::Services::MergeSafe} gives: the value arrived in a successful
+      # response, nothing the caller passed is at fault, and re-requesting
+      # cannot repair it. The reference gets this refusal from its decoder; this
+      # tier has no decoder, so it is explicit.
+      def malformed_response(message)
+        MergeSafe.malformed(
+          message,
+          "The recording summary reads this field to decide what the recording is and which " \
+            "project it belongs to, so a value of the wrong type cannot be used."
+        )
       end
 
       # The recording types {#summarize} routes by +recording_type+, sorted, with
@@ -514,9 +546,12 @@ module Basecamp
 
           # Any NON-ZERO id, as the reference keeps, rather than any positive
           # one — a negative id is a candidate there and dropping it here would
-          # search one Campfire fewer.
+          # search one Campfire fewer. An id of the wrong type is a decode
+          # failure there, so it fails this read rather than skipping an entry.
           id = Ids.from_wire(item["id"])
-          id.nil? || id.zero? ? nil : id
+          raise malformed_response("a dock item's id is #{MergeSafe.describe(item["id"])}, not an integer") if id.nil?
+
+          id.zero? ? nil : id
         end
       end
 
@@ -536,13 +571,21 @@ module Basecamp
           next unless bucket.is_a?(Hash)
 
           bucket_id = Ids.from_wire(bucket["id"])
-          next unless bucket_id&.positive?
+          if bucket_id.nil?
+            raise malformed_response("a campfire's bucket id is #{MergeSafe.describe(bucket["id"])}, not an integer")
+          end
+          next if bucket_id.zero?
 
           # Normalized exactly as the dock's ids are. Otherwise a listing id
           # that arrived as a string could never match a dock-sourced integer in
           # the search's "already tried" set, and would spend budget twice.
+          # No id filter at all, which is what the reference applies here — its
+          # only guard on a listed Campfire is the BUCKET id above, so an id of
+          # zero is a candidate there too.
           campfire_id = Ids.from_wire(campfire["id"])
-          next if campfire_id.nil? || campfire_id.zero?
+          if campfire_id.nil?
+            raise malformed_response("a campfire's id is #{MergeSafe.describe(campfire["id"])}, not an integer")
+          end
 
           (by_bucket[bucket_id] ||= []) << campfire_id
         end
