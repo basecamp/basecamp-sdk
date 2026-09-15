@@ -998,9 +998,15 @@ mod tests {
         assert!(registered.is_some(), "the live load is registered");
 
         // A publication carrying somebody else's identity must not retire it. Evicting by
-        // key alone would drop this load's registration while it was still running, and
-        // the next caller would start a second load under the same key.
-        let stale = cache.publish(&1, 0, Ok(99));
+        // key alone would drop this load's registration while it was still running, and the
+        // next caller would start a second load under the same key.
+        //
+        // The identity used is one no load owns rather than a second live load's, because
+        // two live loads under one key are unreachable by construction: a caller only
+        // creates a load when `upgrade()` answers `None`, and a load with any surviving
+        // handle always upgrades and is joined instead. What the guard has to reject is
+        // therefore exactly this — a publication whose identity is not the registered one.
+        let stale = cache.publish(&1, registered.unwrap_or_default() + 1, Ok(99));
         assert!(stale.is_ok());
         assert_eq!(
             cache.lock().inflight.get(&1).map(|entry| entry.id),
