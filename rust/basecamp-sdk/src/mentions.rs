@@ -634,7 +634,12 @@ fn base64_decode(input: &str) -> Option<Vec<u8>> {
             b'\n' | b'\r' => continue,
             _ => return None,
         };
-        accumulator = (accumulator << 6) | u32::from(value);
+        // Only the bits not yet emitted are kept. Rust's `<<` discards what leaves the top
+        // and checks the shift AMOUNT rather than the value, so an unmasked accumulator
+        // would neither panic nor mis-decode — `>> bits & 0xff` reads only the sextets just
+        // added. Masking anyway, because "the high bits are stale but never read" is a
+        // property a reader has to reconstruct, and `bits` never exceeds 13 here.
+        accumulator = ((accumulator << 6) | u32::from(value)) & 0x3fff;
         bits += 6;
         if bits >= 8 {
             bits -= 8;
@@ -1125,6 +1130,31 @@ mod tests {
     }
 
     /// Both halves measured against the Go helper, not assumed.
+    /// A payload far longer than the accumulator is wide, decoded byte-exactly. Go reports
+    /// 109 bytes for this one, and a real `<bc-attachment>` carries exactly this shape, so
+    /// an accumulator that lost or mangled a bit past 32 would show here.
+    #[test]
+    fn a_long_payload_decodes_byte_for_byte_past_the_accumulator_width() {
+        let payload = ANNIE_SGID.split("--").next().unwrap();
+        let decoded = base64_decode(
+            &payload
+                .trim_end_matches('=')
+                .replace('-', "+")
+                .replace('_', "/"),
+        )
+        .expect("the payload decodes");
+        assert_eq!(decoded.len(), 109, "as Go's RawStdEncoding reports");
+        assert_eq!(&decoded[..2], &[0x04, 0x08], "a Marshal 4.8 header");
+        assert!(
+            String::from_utf8_lossy(&decoded).contains("gid://bc3/Person/1049715915"),
+            "the gid survives the whole decode"
+        );
+        // And the full read path over an attacker-sized value terminates without panicking:
+        // the bound refuses it, rather than the loop running away.
+        let oversized = "A".repeat(MAX_SGID_ENCODED_BYTES + 1);
+        assert_eq!(person_id_from_sgid(&oversized), None);
+    }
+
     #[test]
     fn a_line_wrapped_sgid_decodes_exactly_where_go_decodes_it() {
         // A break INSIDE the payload: Go steps over it and names the person, so this must
