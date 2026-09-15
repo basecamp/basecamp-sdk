@@ -674,7 +674,17 @@ class TtlCache<K, V> {
     })().finally(() => {
       // A failed load leaves the previous entry in place and caches nothing; the
       // key is released either way so the next caller can load again.
-      this.#inflight.delete(key);
+      //
+      // By IDENTITY, not by key. A blind `delete(key)` would drop whatever is
+      // registered there, and if that were ever a later caller's live load, the
+      // single-flight guarantee would go with it — two concurrent account-wide
+      // listings under one key, which is process-wide, since that key is a
+      // constant. The ordering above makes that unreachable today: a later
+      // caller can only register after this handler has vacated the slot,
+      // because until then it sees the pending promise and waits on it. The
+      // guard makes the property local anyway, so a second vacate path added
+      // later cannot quietly reintroduce it.
+      if (this.#inflight.get(key) === started) this.#inflight.delete(key);
     });
     this.#inflight.set(key, started);
     return started;
