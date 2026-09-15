@@ -216,8 +216,10 @@ describe("recordings.summarize", () => {
       // and this file has already lost one test that way.
       server.use(
         http.get(`${BASE_URL}/comments/1`, () =>
+          // No `id` either: it is a required scalar like the rest, and the
+          // first pass at these defaults left it out while the comment above
+          // them stated the rule.
           HttpResponse.json({
-            id: 1,
             content: "hi",
             bucket: { id: BUCKET, name: "B", type: "Project" },
             creator: { id: VICTOR, name: "Victor Cooper" },
@@ -231,6 +233,7 @@ describe("recordings.summarize", () => {
         recordingType: "Comment",
       });
 
+      expect(summary.id).toBe(0);
       expect(summary.status).toBe("");
       expect(summary.type).toBe("");
       expect(summary.app_url).toBe("");
@@ -239,7 +242,13 @@ describe("recordings.summarize", () => {
       // instant.
       expect(summary.updated_at).toBe("0001-01-01T00:00:00Z");
       // And the key is present rather than dropped, which is the point.
-      expect(Object.keys(summary)).toEqual(expect.arrayContaining(["updated_at", "status", "type", "app_url"]));
+      // Round-tripped through JSON, because the point is the shape a consumer
+      // sees: an undefined value still lists under Object.keys but vanishes
+      // from the serialized object, which is the failure this guards.
+      const serialized = JSON.parse(JSON.stringify(summary)) as Record<string, unknown>;
+      for (const key of ["id", "status", "type", "title", "app_url", "content", "updated_at"]) {
+        expect(Object.keys(serialized), `${key} survives serialization`).toContain(key);
+      }
     });
 
     it("carries the assignees of an assignable type and omits them elsewhere", async () => {
@@ -378,6 +387,35 @@ describe("recordings.summarize", () => {
       expect(summary.id).toBe(1);
     });
 
+    it("accepts a read whose bucket id is null or not a number, as Go's decode does", async () => {
+      // A revert test showed nothing held the `typeof` in place: the previous
+      // `!== undefined` still handled an absent id, so only null and a string
+      // distinguish them. A JSON null decodes to Go's zero and is skipped; a
+      // string fails Go's decode rather than becoming a mismatch, and inventing
+      // a mismatch out of a malformed value is the half worth avoiding.
+      // 1.5 is in the list because it is the shape `typeof` alone lets through:
+      // it is a number, so the first version compared it and reported the
+      // recording as living in bucket 1.5. Go's decoder refuses it outright.
+      for (const badBucketId of [null, "2085958499", true, false, [1], {}, 1.5]) {
+        const fresh = createBasecampClient({ accountId: "12345", accessToken: "t", enableRetry: false });
+        server.use(
+          http.get(`${BASE_URL}/comments/1`, () =>
+            HttpResponse.json({
+              ...recording(1, "Comment", { content: "" }),
+              bucket: { id: badBucketId, name: "B", type: "Project" },
+            }),
+          ),
+        );
+
+        const summary = await fresh.recordings.summarize({
+          bucketId: BUCKET,
+          recordingId: 1,
+          recordingType: "Comment",
+        });
+        expect(summary.id).toBe(1);
+      }
+    });
+
     it("explains itself when the service was built without the client's reads", async () => {
       const bare = new RecordingsService(client.raw);
       await expect(
@@ -439,6 +477,76 @@ describe("recordings.summarize", () => {
         "/12345/chats/70/lines/9",
       ]);
       expect(summary.campfire_id).toBe(70);
+    });
+
+    it("refuses a listing entry whose id or bucket id is not a whole number, as Go's decoder does", async () => {
+      // The second and third id-reading sites. A sibling port found the same
+      // defect shape in its own language and reported it as "a fix at one site
+      // and a miss at two others", which is exactly what this test is here to
+      // rule out: the dock had been enumerated and the listing had not. Both
+      // ids decode into an int64 in Go — Campfire.ID and its bucket's — so
+      // every shape below fails the campfires read there and takes the whole
+      // listing with it. A fraction reaching the search here would have issued
+      // GET /chats/1.5/lines/9.
+      for (const field of ["id", "bucket"] as const) {
+        for (const badId of [true, false, "60", 1.5, 1e20, [1], {}]) {
+          const fresh = createBasecampClient({ accountId: "12345", accessToken: "t", enableRetry: false });
+          const entry =
+            field === "id"
+              ? { ...campfire(60, BUCKET), id: badId }
+              : { ...campfire(60, BUCKET), bucket: { id: badId, name: "B", type: "Project" } };
+          server.use(
+            http.get(`${BASE_URL}/projects/${BUCKET}`, () => notFound()),
+            http.get(`${BASE_URL}/chats.json`, () => HttpResponse.json([entry])),
+          );
+
+          const err = await fresh.recordings
+            .summarize({ bucketId: BUCKET, recordingId: 9, eventType: "chat.line.created" })
+            .catch((e: unknown) => e);
+
+          expect(err, `${field} = ${JSON.stringify(badId)}`).toBeInstanceOf(BasecampError);
+          expect((err as BasecampError).code).toBe("api_error");
+          expect((err as BasecampError).httpStatus).toBeUndefined();
+          expect((err as BasecampError).retryable).toBe(false);
+        }
+      }
+    });
+
+    it("reads a listing entry's null ids the way Go's zero values read", async () => {
+      // The one shape that decodes rather than failing, and the two sides of it
+      // differ: a null BUCKET id is zero, matches no bucket, and the entry is
+      // dropped before it can become a candidate; a null CAMPFIRE id is zero
+      // too, and Go filters this source on the bucket alone — so the zero id
+      // stays a candidate, spends budget, and is read. Dropping it here would
+      // be a quieter search than the reference's.
+      const paths = trackRequests();
+      server.use(
+        http.get(`${BASE_URL}/projects/${BUCKET}`, () => notFound()),
+        http.get(`${BASE_URL}/chats.json`, () =>
+          HttpResponse.json([
+            { ...campfire(50, BUCKET), bucket: { id: null, name: "B", type: "Project" } },
+            { ...campfire(60, BUCKET), id: null },
+            campfire(70, BUCKET),
+          ]),
+        ),
+        http.get(`${BASE_URL}/chats/0/lines/9`, () => notFound()),
+        http.get(`${BASE_URL}/chats/70/lines/9`, () => HttpResponse.json(line(9))),
+      );
+
+      const summary = await client.recordings.summarize({
+        bucketId: BUCKET,
+        recordingId: 9,
+        eventType: "chat.line.created",
+      });
+
+      expect(summary.campfire_id).toBe(70);
+      // The entry with no bucket id is never tried; the one with no campfire id is.
+      expect(paths).toEqual([
+        `/12345/projects/${BUCKET}`,
+        "/12345/chats.json",
+        "/12345/chats/0/lines/9",
+        "/12345/chats/70/lines/9",
+      ]);
     });
 
     it("returns a candidate's non-404 answer as that read's error, and stops there", async () => {
@@ -628,10 +736,14 @@ describe("recordings.summarize", () => {
       // Dropping the item instead would let discovery go on and report the line
       // unresolved — a composite verdict standing in for a failed read, which is
       // the distinction this whole path exists to protect.
-      // A string, a fraction and a number past int64 all fail Go's decode and
-      // take the whole project read with them. A fraction reaching the search
-      // would have issued GET /chats/1.5/lines/{id}.
-      for (const badId of ["77", 1.5, 1e20]) {
+      // Every JSON shape but a whole number in range, measured against Go's own
+      // decoders rather than enumerated from what occurred to me: `true`,
+      // `false`, a string, a fraction, a number past int64, an array and an
+      // object all fail json.Unmarshal into DockItem.ID and take the whole
+      // project read with them. (`null` is the one that decodes, to 0, and the
+      // test above covers it.) A fraction reaching the search would have issued
+      // GET /chats/1.5/lines/{id}; a `true` reaching it, GET /chats/true/....
+      for (const badId of [true, false, "77", 1.5, 1e20, [1], {}]) {
         const fresh = createBasecampClient({ accountId: "12345", accessToken: "t", enableRetry: false });
         server.use(
           http.get(`${BASE_URL}/projects/${BUCKET}`, () =>

@@ -891,8 +891,9 @@ class CampfireListingOverflow extends Error {
  * `7.7e1` are decode errors there. By the time this runs, `JSON.parse` has
  * turned every one of those into the number 77, and the literal is gone: an
  * exponent or trailing-zero spelling of a whole number is accepted here and
- * refused there, and no check at this layer can tell. And the upper bound is
- * 2^53, not int64, which is the same limit SPEC §19 waives for this SDK: an id
+ * refused there — `1.0` arrives as 1, `1e2` as 100, `7.7e1` as 77 — and no
+ * check at this layer can tell any of them from the literal Go refuses. And
+ * the upper bound is 2^53, not int64, which is the same limit SPEC §19 waives for this SDK: an id
  * past it cannot be held without rounding it into a different id, so refusing
  * it is the honest answer even though Go decodes it.
  */
@@ -913,10 +914,14 @@ function numericId(value: unknown, what: string): number {
 
 function describeIdValue(value: unknown): string {
   if (typeof value === "string") return JSON.stringify(value);
-  // A number past 2^53 has already been rounded by JSON.parse, so report that
-  // it was out of range rather than quoting a value the response never carried.
   if (typeof value === "number") {
-    return Number.isSafeInteger(value) ? String(value) : "out of safe integer range";
+    // Two different complaints, and the first version made both of them the
+    // second: 1.5 is perfectly in range and was carried faithfully — what is
+    // wrong with it is that it is not whole. A value past 2^53 is the other
+    // case, and there the number has already been rounded by JSON.parse, so
+    // quoting it would report something the response never carried.
+    if (Number.isInteger(value)) return "out of safe integer range";
+    return `${value}, which is not whole`;
   }
   return typeof value;
 }
@@ -1057,12 +1062,26 @@ export class RecordingsService extends GeneratedRecordingsService {
     // A bucket the read did not identify is Go's zero value: there is nothing
     // to disagree with, so the pointer stands rather than the call failing.
     // `typeof`, not `!== undefined`: a JSON null decodes into Go's int64 as 0
-    // and is skipped there, and a string id fails Go's decode outright rather
-    // than becoming a mismatch. TypeScript has no decoder to refuse either, so
-    // both read as "no bucket id was identified" — the half of Go's behaviour
-    // that does not invent a disagreement out of a malformed value.
+    // and is skipped there, and a string, a boolean, an array or an object
+    // fails Go's decode outright rather than becoming a mismatch. TypeScript
+    // has no decoder to refuse either, so all of them read as "no bucket id was
+    // identified" — the half of Go's behaviour that does not invent a
+    // disagreement out of a malformed value. `isInteger` extends that rule to
+    // the one malformed shape `typeof` lets through: 1.5 is a number, so the
+    // first version of this compared it and reported the recording as living in
+    // bucket 1.5, a semantic verdict a consumer matches on, invented out of a
+    // value no bucket ever has. A large integer past 2^53 is *not* excluded —
+    // it is rounded by JSON.parse, but `ref.bucketId` is a `number` too and
+    // rounds identically, so the comparison still means something (waiver
+    // 1B.6); dropping it there would lose a real mismatch rather than avoid a
+    // fabricated one.
     const readBucketId = summary.bucket?.id;
-    if (typeof readBucketId === "number" && readBucketId !== 0 && readBucketId !== ref.bucketId) {
+    if (
+      typeof readBucketId === "number" &&
+      Number.isInteger(readBucketId) &&
+      readBucketId !== 0 &&
+      readBucketId !== ref.bucketId
+    ) {
       throw new BucketMismatchError(ref, readBucketId);
     }
     return summary;
@@ -1430,7 +1449,9 @@ function projectRecording(
   // and a consumer would see a shape no other SDK produces. The three strings
   // default to ""; updated_at does not, because its Go type is not a string.
   const summary: RecordingSummary = {
-    id: recording.id,
+    // `id` too, which the first pass at this missed even while the comment
+    // above stated the rule: Go marshals a zero RecordingSummary as {"id":0,…}.
+    id: recording.id ?? 0,
     status: recording.status ?? "",
     type: recording.type ?? "",
     // The types that read `title` straight off the recording pass it through
