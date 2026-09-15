@@ -446,7 +446,10 @@ describe("recordings.summarize", () => {
       expect(unresolved.httpStatus).toBeUndefined();
     });
 
-    it("reports a bucket with more visible Campfires than the budget as incomplete, never absent", async () => {
+    it("reports a budget spent before the listing was consulted as incomplete", async () => {
+      // The dock alone exhausts the budget, so the account listing is never
+      // reached: candidates may exist there unsearched, and nothing unsearched
+      // is ever reported absent.
       const ids = Array.from({ length: MAX_CAMPFIRE_CANDIDATES + 5 }, (_, i) => 100 + i);
       server.use(
         http.get(`${BASE_URL}/projects/${BUCKET}`, () => dock(...ids)),
@@ -459,7 +462,53 @@ describe("recordings.summarize", () => {
 
       expect(err).toBeInstanceOf(CampfireDiscoveryIncompleteError);
       expect((err as CampfireDiscoveryIncompleteError).kind).toBe("campfire_discovery_incomplete");
-      expect((err as CampfireDiscoveryIncompleteError).reason).toContain(String(MAX_CAMPFIRE_CANDIDATES));
+      expect((err as CampfireDiscoveryIncompleteError).reason).toBe(
+        `the candidate budget of ${MAX_CAMPFIRE_CANDIDATES} was spent before the account listing was consulted`,
+      );
+    });
+
+    it("does not fetch a listing that cannot help, so its failure cannot mask the verdict", async () => {
+      // The regression this boundary exists for. With the budget already spent,
+      // fetching the listing costs a request that can return no candidate this
+      // call may try — and a failure on it would replace a deterministic
+      // "incomplete" with a transient error a consumer retries forever.
+      const paths = trackRequests();
+      const ids = Array.from({ length: MAX_CAMPFIRE_CANDIDATES + 5 }, (_, i) => 100 + i);
+      server.use(
+        http.get(`${BASE_URL}/projects/${BUCKET}`, () => dock(...ids)),
+        http.get(`${BASE_URL}/chats.json`, () => HttpResponse.json({ error: "boom" }, { status: 500 })),
+        http.get(`${BASE_URL}/chats/:campfireId/lines/9`, () => notFound()),
+      );
+
+      const err = await client.recordings
+        .summarize({ bucketId: BUCKET, recordingId: 9, eventType: "chat.line.created" })
+        .catch((e: unknown) => e);
+
+      expect(err).toBeInstanceOf(CampfireDiscoveryIncompleteError);
+      expect(paths).not.toContain("/12345/chats.json");
+    });
+
+    it("reports a bucket with more visible Campfires than the budget as incomplete, never absent", async () => {
+      // The other side of the boundary: the listing WAS consulted, and ran out
+      // of budget partway through its candidates. The verdict is still
+      // incomplete, but for the other reason, and the messages say which.
+      const campfires = Array.from({ length: MAX_CAMPFIRE_CANDIDATES + 5 }, (_, i) =>
+        campfire(100 + i, BUCKET),
+      );
+      server.use(
+        http.get(`${BASE_URL}/projects/${BUCKET}`, () => notFound()),
+        http.get(`${BASE_URL}/chats.json`, () => HttpResponse.json(campfires)),
+        http.get(`${BASE_URL}/chats/:campfireId/lines/9`, () => notFound()),
+      );
+
+      const err = await client.recordings
+        .summarize({ bucketId: BUCKET, recordingId: 9, eventType: "chat.line.created" })
+        .catch((e: unknown) => e);
+
+      expect(err).toBeInstanceOf(CampfireDiscoveryIncompleteError);
+      expect((err as CampfireDiscoveryIncompleteError).reason).toBe(
+        `more than ${MAX_CAMPFIRE_CANDIDATES} visible campfires in the bucket`,
+      );
     });
 
     it("reports a listing past its cap as incomplete, and does not cache it", async () => {

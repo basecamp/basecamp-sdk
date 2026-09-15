@@ -1266,7 +1266,10 @@ export class RecordingsService extends GeneratedRecordingsService {
    * the cache filled is tried too. Discovery that could not be completed — a
    * listing cut off at its cap, a bucket with more candidates than the budget —
    * is {@link CampfireDiscoveryIncompleteError}, never "unresolved": nothing
-   * unsearched is ever reported absent.
+   * unsearched is ever reported absent — which is why a spent budget is read
+   * against WHICH sources it was spent before: one already consulted is simply
+   * not re-read, while one never reached leaves candidates unsearched and makes
+   * the verdict incomplete.
    *
    * What HTTP cannot tell apart: BC3 answers 404 both for a line that is not in
    * a Campfire and for a Campfire the caller may no longer see. "Unresolved"
@@ -1281,7 +1284,6 @@ export class RecordingsService extends GeneratedRecordingsService {
     const search = new ChatLineSearch(reads, lineId);
     const incomplete = (reason: string): CampfireDiscoveryIncompleteError =>
       new CampfireDiscoveryIncompleteError({ bucketId, recordingId: lineId, reason });
-    const overBudget = `more than ${MAX_CAMPFIRE_CANDIDATES} visible campfires in the bucket`;
 
     // Pass 1: what the sources already hold — the dock (read if it must be),
     // then the listing only if it is cached. A listing fetch is the expensive,
@@ -1311,9 +1313,19 @@ export class RecordingsService extends GeneratedRecordingsService {
     // failure on it would replace the deterministic "incomplete" verdict with a
     // transient error a consumer retries forever.
     let refreshed = false;
-    if (search.skipped) throw incomplete(overBudget);
-
-    if (dock.cached) {
+    // No budget left means no re-read: a source already consulted cannot hand
+    // this call a candidate it may try, so its refresh is skipped and the
+    // conclusion stands on what was seen (refreshed false). A source NEVER
+    // consulted is different — candidates may exist there unsearched — so
+    // running out of budget before reaching it makes the verdict incomplete.
+    //
+    // Concluding incomplete on a spent budget unconditionally would be the
+    // wrong fix: it would call a search that did examine both sources
+    // unfinished. Concluding nothing would be the other wrong fix, and is what
+    // this replaced — it fetched a listing that could not help, and a failure
+    // on that fetch replaced a deterministic "incomplete" with a transient
+    // error a consumer retries forever.
+    if (search.budget > 0 && dock.cached) {
       const again = await index.dockCampfires(reads, bucketId, true);
       if (again.fetchedAt > dock.fetchedAt || !again.cached) refreshed = true;
       dock = again;
@@ -1321,25 +1333,35 @@ export class RecordingsService extends GeneratedRecordingsService {
       if (fromRefreshedDock !== undefined) return fromRefreshedDock;
     }
 
-    if (search.skipped) throw incomplete(overBudget);
-
-    let again: SourceRead;
-    try {
-      again = await index.listedCampfires(reads, bucketId, listCached);
-    } catch (err) {
-      if (err instanceof CampfireListingOverflow) throw incomplete(err.message);
-      throw err;
+    if (search.budget <= 0) {
+      if (!listCached) {
+        throw incomplete(
+          `the candidate budget of ${MAX_CAMPFIRE_CANDIDATES} was spent before the account listing was consulted`,
+        );
+      }
+    } else {
+      let again: SourceRead;
+      try {
+        again = await index.listedCampfires(reads, bucketId, listCached);
+      } catch (err) {
+        if (err instanceof CampfireListingOverflow) throw incomplete(err.message);
+        throw err;
+      }
+      if (listed !== undefined && (again.fetchedAt > listed.fetchedAt || !again.cached)) {
+        refreshed = true;
+      }
+      listed = again;
+      const fromListing = await search.try(listed.ids);
+      if (fromListing !== undefined) return fromListing;
     }
-    if (listed !== undefined && (again.fetchedAt > listed.fetchedAt || !again.cached)) refreshed = true;
-    listed = again;
 
-    const fromListing = await search.try(listed.ids);
-    if (fromListing !== undefined) return fromListing;
+    if (search.skipped) {
+      throw incomplete(`more than ${MAX_CAMPFIRE_CANDIDATES} visible campfires in the bucket`);
+    }
 
-    if (search.skipped) throw incomplete(overBudget);
-
+    const listedIds = listed?.ids ?? [];
     const staleCampfireIds = refreshed
-      ? search.tried.filter((id) => !dock.ids.includes(id) && !listed.ids.includes(id))
+      ? search.tried.filter((id) => !dock.ids.includes(id) && !listedIds.includes(id))
       : [];
     throw new UnresolvedRecordingError({
       bucketId,
