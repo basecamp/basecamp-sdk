@@ -1621,6 +1621,40 @@ func executeOperation(ctx context.Context, account *basecamp.AccountClient, tc T
 		}
 		return operationResult{err: nil}
 
+	case "RecordingsSummarize":
+		ref := basecamp.RecordingRef{
+			BucketID:      getInt64Param(tc.PathParams, "bucketId"),
+			RecordingID:   getInt64Param(tc.PathParams, "recordingId"),
+			EventType:     getStringParam(tc.PathParams, "eventType"),
+			RecordingType: getStringParam(tc.PathParams, "recordingType"),
+		}
+		summary, err := account.Recordings().Summarize(ctx, ref)
+		if err != nil {
+			return operationResult{err: err}
+		}
+		return operationResult{result: summary}
+
+	case "CommentsCreateWithMentions":
+		recordingID := getInt64Param(tc.PathParams, "recordingId")
+		content, _ := tc.RequestBody["content"].(string)
+		var mentions []int64
+		if raw, ok := tc.RequestBody["mentions"].([]interface{}); ok {
+			for _, v := range raw {
+				switch n := v.(type) {
+				case json.Number:
+					id, _ := n.Int64()
+					mentions = append(mentions, id)
+				case float64:
+					mentions = append(mentions, int64(n))
+				}
+			}
+		}
+		comment, err := account.Comments().CreateWithMentions(ctx, recordingID, content, mentions)
+		if err != nil {
+			return operationResult{err: err}
+		}
+		return operationResult{result: comment}
+
 	case "GetEverythingMessages":
 		_, err := account.Everything().Messages(ctx, 0)
 		return operationResult{err: err}
@@ -2210,6 +2244,23 @@ func compareValues(tc TestCase, label string, expected, actual interface{}) *Tes
 		if fmt.Sprintf("%v", actual) != exp {
 			return fail(tc, fmt.Sprintf("Expected %s = %q, got %q", label, exp, actual))
 		}
+	case []interface{}:
+		// An array expectation compares element by element; a length mismatch
+		// fails rather than passing vacuously.
+		act, ok := actual.([]interface{})
+		if !ok {
+			return fail(tc, fmt.Sprintf("Expected %s to be an array of %d, got %v", label, len(exp), actual))
+		}
+		if len(act) != len(exp) {
+			return fail(tc, fmt.Sprintf("Expected %s to have %d elements, got %d (%v)", label, len(exp), len(act), act))
+		}
+		for i := range exp {
+			if result := compareValues(tc, fmt.Sprintf("%s[%d]", label, i), exp[i], act[i]); result != nil {
+				return result
+			}
+		}
+	default:
+		return fail(tc, fmt.Sprintf("Unsupported expected value for %s: %T", label, expected))
 	}
 	return nil
 }

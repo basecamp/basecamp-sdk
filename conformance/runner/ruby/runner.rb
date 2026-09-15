@@ -1153,9 +1153,21 @@ RUBY_SKIPS = Set.new([
   "PrioritizeAssignment POST retries when marked idempotent",
   "DeprioritizeAssignment DELETE retries when marked idempotent",
   "Network error on an idempotent POST is retried then succeeds",
+  "RecordingsSummarize routes comment.created to the comment read and reads its mentions",
+  "RecordingsSummarize refuses boost.created before any request",
+  "RecordingsSummarize finds a chat line under the second visible Campfire",
+  "RecordingsSummarize reports a chat line under no visible Campfire as unresolved, not as a failed read",
+  "RecordingsSummarize returns a Campfire candidate's 403 as that read's error",
+  "CommentsCreateWithMentions resolves each person before posting and writes the mention from attachable_sgid",
 ].freeze)
 
 RUBY_SKIP_REASONS = {
+  "RecordingsSummarize routes comment.created to the comment read and reads its mentions" => "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
+  "RecordingsSummarize refuses boost.created before any request" => "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
+  "RecordingsSummarize finds a chat line under the second visible Campfire" => "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
+  "RecordingsSummarize reports a chat line under no visible Campfire as unresolved, not as a failed read" => "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
+  "RecordingsSummarize returns a Campfire candidate's 403 as that read's error" => "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
+  "CommentsCreateWithMentions resolves each person before posting and writes the mention from attachable_sgid" => "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
   "PUT operation is naturally idempotent" => "Ruby SDK only retries GET",
   "DELETE operation is naturally idempotent" => "Ruby SDK only retries GET",
   "POST operation retries when marked idempotent" => "Ruby SDK only retries GET",

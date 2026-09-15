@@ -32,7 +32,14 @@ private fun decodeFailureMessage(e: SerializationException): String =
     }
 
 /** Tests where the Kotlin runner's operation dispatcher has no implementation yet. */
-private val KOTLIN_SKIPS: Map<String, String> = emptyMap()
+private val KOTLIN_SKIPS: Map<String, String> = mapOf(
+    "RecordingsSummarize routes comment.created to the comment read and reads its mentions" to "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
+    "RecordingsSummarize refuses boost.created before any request" to "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
+    "RecordingsSummarize finds a chat line under the second visible Campfire" to "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
+    "RecordingsSummarize reports a chat line under no visible Campfire as unresolved, not as a failed read" to "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
+    "RecordingsSummarize returns a Campfire candidate's 403 as that read's error" to "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
+    "CommentsCreateWithMentions resolves each person before posting and writes the mention from attachable_sgid" to "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
+)
 
 /**
  * The date window every GetUpcomingSchedule case is dispatched with. Fixed in

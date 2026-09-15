@@ -25,7 +25,32 @@ use manifest::{Exclusion, Manifest};
 /// runs with only its `requestCount` assertion suppressed (assertions.rs). Every entry
 /// added here must also be rostered in `spec/zero-skip-roster.yml`, or
 /// `make check-fixture-execution` fails.
-const RUST_SKIPS: &[(&str, &str)] = &[];
+const RUST_SKIPS: &[(&str, &str)] = &[
+    (
+        "RecordingsSummarize routes comment.created to the comment read and reads its mentions",
+        "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
+    ),
+    (
+        "RecordingsSummarize refuses boost.created before any request",
+        "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
+    ),
+    (
+        "RecordingsSummarize finds a chat line under the second visible Campfire",
+        "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
+    ),
+    (
+        "RecordingsSummarize reports a chat line under no visible Campfire as unresolved, not as a failed read",
+        "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
+    ),
+    (
+        "RecordingsSummarize returns a Campfire candidate's 403 as that read's error",
+        "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
+    ),
+    (
+        "CommentsCreateWithMentions resolves each person before posting and writes the mention from attachable_sgid",
+        "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
+    ),
+];
 
 #[tokio::main]
 async fn main() -> ExitCode {

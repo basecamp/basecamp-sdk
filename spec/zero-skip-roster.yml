@@ -120,14 +120,25 @@ runners:
       - case: "Bracketed IPv6 loopback origin stays on the mocked origin"
         reason: "same as above."
 
-  # Python's `SKIPS` is genuinely empty, and the note is the whole content of
-  # this section: the `link-header` fixture RUNS here — only its `requestCount`
-  # assertion is suppressed — so it is not a skip and must not be rostered as
-  # one.
+  # Python's `SKIPS` carries only the Go-first composite below; the
+  # `link-header` fixture RUNS here — only its `requestCount` assertion is
+  # suppressed — so it is not a skip and must not be rostered as one.
   python:
     source: "`conformance/runner/python/runner.py` `SKIPS`"
     note: "the `link-header` fixture above runs; only its `requestCount` assertion is suppressed"
-    skips: []
+    skips:
+      - case: "RecordingsSummarize routes comment.created to the comment read and reads its mentions"
+        reason: "Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet."
+      - case: "RecordingsSummarize refuses boost.created before any request"
+        reason: "Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet."
+      - case: "RecordingsSummarize finds a chat line under the second visible Campfire"
+        reason: "Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet."
+      - case: "RecordingsSummarize reports a chat line under no visible Campfire as unresolved, not as a failed read"
+        reason: "Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet."
+      - case: "RecordingsSummarize returns a Campfire candidate's 403 as that read's error"
+        reason: "Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet."
+      - case: "CommentsCreateWithMentions resolves each person before posting and writes the mention from attachable_sgid"
+        reason: "Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet."
 
   ruby:
     source: "`conformance/runner/ruby/runner.rb` `RUBY_SKIPS`"
@@ -170,32 +181,93 @@ runners:
         reason: "GET-only retry (waiver 2B.3)."
       - case: "Network error on an idempotent POST is retried then succeeds"
         reason: "GET-only network retry (waiver 2B.3)."
+      - case: "RecordingsSummarize routes comment.created to the comment read and reads its mentions"
+        reason: "Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet."
+      - case: "RecordingsSummarize refuses boost.created before any request"
+        reason: "Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet."
+      - case: "RecordingsSummarize finds a chat line under the second visible Campfire"
+        reason: "Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet."
+      - case: "RecordingsSummarize reports a chat line under no visible Campfire as unresolved, not as a failed read"
+        reason: "Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet."
+      - case: "RecordingsSummarize returns a Campfire candidate's 403 as that read's error"
+        reason: "Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet."
+      - case: "CommentsCreateWithMentions resolves each person before posting and writes the mention from attachable_sgid"
+        reason: "Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet."
 
   typescript:
     source: "`conformance/runner/typescript/runner.test.ts` `TS_SDK_SKIPS`"
     skips:
       - case: "Large integer IDs preserved without precision loss"
         reason: "`Number` is 53-bit (waiver 1B.6)."
+      - case: "RecordingsSummarize routes comment.created to the comment read and reads its mentions"
+        reason: "Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet."
+      - case: "RecordingsSummarize refuses boost.created before any request"
+        reason: "Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet."
+      - case: "RecordingsSummarize finds a chat line under the second visible Campfire"
+        reason: "Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet."
+      - case: "RecordingsSummarize reports a chat line under no visible Campfire as unresolved, not as a failed read"
+        reason: "Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet."
+      - case: "RecordingsSummarize returns a Campfire candidate's 403 as that read's error"
+        reason: "Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet."
+      - case: "CommentsCreateWithMentions resolves each person before posting and writes the mention from attachable_sgid"
+        reason: "Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet."
 
   kotlin:
-    source: "`kotlin/conformance/.../Main.kt` — `KOTLIN_SKIPS` is empty; the entry below comes from the `link-header` tag branch"
+    source: "`kotlin/conformance/.../Main.kt` — `KOTLIN_SKIPS` carries the Go-first composite; the first entry below comes from the `link-header` tag branch"
     classification: architectural
     skips:
       - case: "List operation returns first page with Link header"
         reason: "the SDK auto-paginates, and its status model reports the last consumed response, so a one-response queue yields \"no response\" (see the tag-branch discussion above)."
+      - case: "RecordingsSummarize routes comment.created to the comment read and reads its mentions"
+        reason: "Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet."
+      - case: "RecordingsSummarize refuses boost.created before any request"
+        reason: "Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet."
+      - case: "RecordingsSummarize finds a chat line under the second visible Campfire"
+        reason: "Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet."
+      - case: "RecordingsSummarize reports a chat line under no visible Campfire as unresolved, not as a failed read"
+        reason: "Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet."
+      - case: "RecordingsSummarize returns a Campfire candidate's 403 as that read's error"
+        reason: "Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet."
+      - case: "CommentsCreateWithMentions resolves each person before posting and writes the mention from attachable_sgid"
+        reason: "Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet."
 
   swift:
-    source: "`conformance/runner/swift/.../Runner.swift` — `temporarySkips` is empty; the entry below comes from the `link-header` tag branch"
+    source: "`conformance/runner/swift/.../Runner.swift` — `temporarySkips` carries the Go-first composite; the first entry below comes from the `link-header` tag branch"
     classification: architectural
     skips:
       - case: "List operation returns first page with Link header"
         reason: "same as Kotlin: auto-pagination plus a last-consumed-response status model."
+      - case: "RecordingsSummarize routes comment.created to the comment read and reads its mentions"
+        reason: "Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet."
+      - case: "RecordingsSummarize refuses boost.created before any request"
+        reason: "Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet."
+      - case: "RecordingsSummarize finds a chat line under the second visible Campfire"
+        reason: "Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet."
+      - case: "RecordingsSummarize reports a chat line under no visible Campfire as unresolved, not as a failed read"
+        reason: "Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet."
+      - case: "RecordingsSummarize returns a Campfire candidate's 403 as that read's error"
+        reason: "Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet."
+      - case: "CommentsCreateWithMentions resolves each person before posting and writes the mention from attachable_sgid"
+        reason: "Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet."
 
-  # Rust's `RUST_SKIPS` is genuinely empty, like Python's. Its runner drives
-  # the SDK through a scripted `HttpClient` rather than a socket, so the two
-  # origin-normalization cases Go cannot dial run here, and the `link-header`
-  # fixture RUNS with only its `requestCount` assertion suppressed.
+  # Rust's `RUST_SKIPS` carries only the Go-first composite below, like
+  # Python's. Its runner drives the SDK through a scripted `HttpClient` rather
+  # than a socket, so the two origin-normalization cases Go cannot dial run
+  # here, and the `link-header` fixture RUNS with only its `requestCount`
+  # assertion suppressed.
   rust:
     source: "`conformance/runner/rust/src/main.rs` `RUST_SKIPS`"
     note: "the `link-header` fixture above runs; only its `requestCount` assertion is suppressed"
-    skips: []
+    skips:
+      - case: "RecordingsSummarize routes comment.created to the comment read and reads its mentions"
+        reason: "Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet."
+      - case: "RecordingsSummarize refuses boost.created before any request"
+        reason: "Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet."
+      - case: "RecordingsSummarize finds a chat line under the second visible Campfire"
+        reason: "Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet."
+      - case: "RecordingsSummarize reports a chat line under no visible Campfire as unresolved, not as a failed read"
+        reason: "Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet."
+      - case: "RecordingsSummarize returns a Campfire candidate's 403 as that read's error"
+        reason: "Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet."
+      - case: "CommentsCreateWithMentions resolves each person before posting and writes the mention from attachable_sgid"
+        reason: "Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet."

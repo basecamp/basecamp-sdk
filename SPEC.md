@@ -2825,6 +2825,7 @@ the category slug is the filename (basename, `_` written as `-`).
 | pagination | `pagination.json` | §8 Pagination |
 | paths | `paths.json` | §3 Client Architecture (account path construction) |
 | project-constructions | `project_constructions.json` | §3 Client Architecture (account path construction), §10 Type Fidelity (an optional wire field sent when given and omitted, not nulled, when not), §11 Response Semantics |
+| recording-summary | `recording_summary.json` | §18 Hand-Written Composite Methods, Appendix F (Recording Summaries and Mention Helpers — a Go-first composite the six other runners roster) |
 | retry | `retry.json` | §7 Retry |
 | schedule-entries-write | `schedule_entries_write.json` | §5 Merge-Safe Write Surface (Schedule Entries), §18 Hand-Written Composite Methods, §10 Type Fidelity (explicit-empty vs. omitted wire semantics) |
 | search | `search.json` | §10 Type Fidelity — the polymorphic search projection, whose file-attachment branch is recognized by the ABSENCE of the recording envelope's `id`/`title`/`type`/`url`/`app_url` |
@@ -2958,7 +2959,13 @@ manifests rather than being checked on its own.
 - "Mixed-case host and explicit default port stay on the mocked origin" — Go runner dials `configOverrides.baseUrl` directly; its `httptest` mock owns its origin, so origin-interception normalization does not apply.
 - "Bracketed IPv6 loopback origin stays on the mocked origin" — same as above.
 
-**Python** (`conformance/runner/python/runner.py` `SKIPS`) — none; the `link-header` fixture above runs; only its `requestCount` assertion is suppressed.
+**Python** (`conformance/runner/python/runner.py` `SKIPS`) — the `link-header` fixture above runs; only its `requestCount` assertion is suppressed:
+- "RecordingsSummarize routes comment.created to the comment read and reads its mentions" — Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet.
+- "RecordingsSummarize refuses boost.created before any request" — Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet.
+- "RecordingsSummarize finds a chat line under the second visible Campfire" — Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet.
+- "RecordingsSummarize reports a chat line under no visible Campfire as unresolved, not as a failed read" — Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet.
+- "RecordingsSummarize returns a Campfire candidate's 403 as that read's error" — Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet.
+- "CommentsCreateWithMentions resolves each person before posting and writes the mention from attachable_sgid" — Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet.
 
 **Ruby** (`conformance/runner/ruby/runner.rb` `RUBY_SKIPS`):
 - "PUT operation is naturally idempotent" — GET-only retry (waiver 2B.3).
@@ -2980,17 +2987,47 @@ manifests rather than being checked on its own.
 - "PrioritizeAssignment POST retries when marked idempotent" — GET-only retry (waiver 2B.3).
 - "DeprioritizeAssignment DELETE retries when marked idempotent" — GET-only retry (waiver 2B.3).
 - "Network error on an idempotent POST is retried then succeeds" — GET-only network retry (waiver 2B.3).
+- "RecordingsSummarize routes comment.created to the comment read and reads its mentions" — Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet.
+- "RecordingsSummarize refuses boost.created before any request" — Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet.
+- "RecordingsSummarize finds a chat line under the second visible Campfire" — Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet.
+- "RecordingsSummarize reports a chat line under no visible Campfire as unresolved, not as a failed read" — Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet.
+- "RecordingsSummarize returns a Campfire candidate's 403 as that read's error" — Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet.
+- "CommentsCreateWithMentions resolves each person before posting and writes the mention from attachable_sgid" — Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet.
 
 **TypeScript** (`conformance/runner/typescript/runner.test.ts` `TS_SDK_SKIPS`):
 - "Large integer IDs preserved without precision loss" — `Number` is 53-bit (waiver 1B.6).
+- "RecordingsSummarize routes comment.created to the comment read and reads its mentions" — Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet.
+- "RecordingsSummarize refuses boost.created before any request" — Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet.
+- "RecordingsSummarize finds a chat line under the second visible Campfire" — Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet.
+- "RecordingsSummarize reports a chat line under no visible Campfire as unresolved, not as a failed read" — Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet.
+- "RecordingsSummarize returns a Campfire candidate's 403 as that read's error" — Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet.
+- "CommentsCreateWithMentions resolves each person before posting and writes the mention from attachable_sgid" — Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet.
 
-**Kotlin** (`kotlin/conformance/.../Main.kt` — `KOTLIN_SKIPS` is empty; the entry below comes from the `link-header` tag branch) — architectural:
+**Kotlin** (`kotlin/conformance/.../Main.kt` — `KOTLIN_SKIPS` carries the Go-first composite; the first entry below comes from the `link-header` tag branch) — architectural:
 - "List operation returns first page with Link header" — the SDK auto-paginates, and its status model reports the last consumed response, so a one-response queue yields "no response" (see the tag-branch discussion above).
+- "RecordingsSummarize routes comment.created to the comment read and reads its mentions" — Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet.
+- "RecordingsSummarize refuses boost.created before any request" — Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet.
+- "RecordingsSummarize finds a chat line under the second visible Campfire" — Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet.
+- "RecordingsSummarize reports a chat line under no visible Campfire as unresolved, not as a failed read" — Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet.
+- "RecordingsSummarize returns a Campfire candidate's 403 as that read's error" — Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet.
+- "CommentsCreateWithMentions resolves each person before posting and writes the mention from attachable_sgid" — Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet.
 
-**Swift** (`conformance/runner/swift/.../Runner.swift` — `temporarySkips` is empty; the entry below comes from the `link-header` tag branch) — architectural:
+**Swift** (`conformance/runner/swift/.../Runner.swift` — `temporarySkips` carries the Go-first composite; the first entry below comes from the `link-header` tag branch) — architectural:
 - "List operation returns first page with Link header" — same as Kotlin: auto-pagination plus a last-consumed-response status model.
+- "RecordingsSummarize routes comment.created to the comment read and reads its mentions" — Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet.
+- "RecordingsSummarize refuses boost.created before any request" — Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet.
+- "RecordingsSummarize finds a chat line under the second visible Campfire" — Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet.
+- "RecordingsSummarize reports a chat line under no visible Campfire as unresolved, not as a failed read" — Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet.
+- "RecordingsSummarize returns a Campfire candidate's 403 as that read's error" — Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet.
+- "CommentsCreateWithMentions resolves each person before posting and writes the mention from attachable_sgid" — Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet.
 
-**Rust** (`conformance/runner/rust/src/main.rs` `RUST_SKIPS`) — none; the `link-header` fixture above runs; only its `requestCount` assertion is suppressed.
+**Rust** (`conformance/runner/rust/src/main.rs` `RUST_SKIPS`) — the `link-header` fixture above runs; only its `requestCount` assertion is suppressed:
+- "RecordingsSummarize routes comment.created to the comment read and reads its mentions" — Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet.
+- "RecordingsSummarize refuses boost.created before any request" — Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet.
+- "RecordingsSummarize finds a chat line under the second visible Campfire" — Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet.
+- "RecordingsSummarize reports a chat line under no visible Campfire as unresolved, not as a failed read" — Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet.
+- "RecordingsSummarize returns a Campfire candidate's 403 as that read's error" — Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet.
+- "CommentsCreateWithMentions resolves each person before posting and writes the mention from attachable_sgid" — Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet.
 
 <!-- @zero-skip-roster:end -->
 
@@ -4268,6 +4305,8 @@ what `make doc-constants-check` asserts — not a case-by-case index.
 | `network-retry.json` | Network error on an idempotent POST is retried then succeeds | §7 (Gate 2) |
 | `uploads_download.json` | UploadsDownload delegates through DownloadURL primitive | §14, §18 |
 | `uploads_download.json` | UploadsDownload errors when upload has no download_url | §14, §18 |
+| `recording_summary.json` | RecordingsSummarize: comment.created routes to one typed read and reports mentioned person ids; boost.created refused with no request; a chat line found under the second visible Campfire after the dock 404s; "unresolved" distinct from a failed read; a candidate's 403 returned as itself (5 cases) | §18, Appendix F |
+| `recording_summary.json` | CommentsCreateWithMentions: people read before the POST, mention written from attachable_sgid inside the first block (1 case) | §18, Appendix F |
 | `uploads_write.json` | create-version presence states (unaddressed / clear / set) | §5 (Cards, Uploads), §18 |
 | `uploads_write.json` | update presence states (unaddressed / clear) | §5 (Cards, Uploads), §18 |
 | `uploads_write.json` | list-versions decodes the version payload | §10 (One Renderer, One Schema) |
@@ -4435,26 +4474,34 @@ read/write pair over `<bc-attachment>` sgids, are implemented in Go only:
 `CreateWithMentions`. They are hand-written composition over the Go service
 wrappers — every request is a generated operation under its own hook identity,
 no path is constructed, and no wire operation the spec lacks is introduced —
-and they are not §18 composites: none takes over a generated method name, and
-the chat line path is stateful (a per-account Campfire listing cached ten
-minutes, shared by every `AccountClient` a `Client` hands out) rather than a
-stateless read-overlay-write. This is a deliberate Go-first move, like the
-address policies above: the consumers are the Go agent connector and the two
-Go MCP servers, which must read one projection so they cannot disagree about
-its shape.
+and they are composites in §18's sense — multi-call orchestrations over
+generated operations — held to its rules: no hand-written wire I/O (1),
+composition only (2), native hook identities (3), fixture coverage (4), and
+placement in `go/pkg/basecamp/` (5), Go's designated hand-written layer;
+rule 6 does not arise, since no generated method name is taken over. What
+sets them apart from the merge-safe write composites is that they ship in
+Go first: the consumers are the Go agent connector and the two Go MCP
+servers, which must read one projection so they cannot disagree about its
+shape, and the chat line path carries state (per-bucket dock and per-account
+listing caches on the `Client`, ten minutes each) that the other composites
+do not.
 
 | SDK | Recording summary and mention helpers |
 |-----|---------------------------------------|
-| Go | `RecordingsService.Summarize(ctx, RecordingRef)` routes on the feed event type (`comment.*`, `message.*`, `todo.*`, `card.*`, `chat.line.*`) or the BC3 recording type to the one typed read that serves it; refuses `boost.*` with `ErrNoRecordingType`; discovers a chat line's Campfire from the cached listing and reports `ErrRecordingUnresolved` — distinct from any read failure — only when every visible candidate answered 404 after one refresh. Mentions are read by decoding the Person gid out of each sgid payload (unsigned; both Rails payload layouts) and written from `attachable_sgid`. Native Go tests only. |
-| TypeScript, Ruby, Python, Kotlin, Swift, Rust | Not implemented. The constituent reads exist in every SDK, so each could carry the same composition; a port is not conformance-covered today, since these helpers have no `conformance/tests/` fixture — adding one would put the case on six runners' skip rosters until each ports it. |
+| Go | `RecordingsService.Summarize(ctx, RecordingRef)` routes on the feed event type (`comment.*`, `message.*`, `todo.*`, `card.*`, `chat.line.*`) or the BC3 recording type to the one typed read that serves it; refuses `boost.*` with `ErrNoRecordingType`; discovers a chat line's Campfire from the bucket's project dock first and the account-wide listing second (each cached ten minutes, refreshed on a miss no more than once per 30 s), under one candidate budget, and reports `ErrRecordingUnresolved` — distinct from any read failure and from `ErrCampfireDiscoveryIncomplete` — only when every visible candidate answered 404. Mentions are read by decoding the sgid envelope structurally (Marshal or JSON, both Rails layouts; unsigned) and parsing the gid whole, and written from `attachable_sgid`. Conformance-covered per §18 rule 4: `conformance/tests/recording_summary.json` (`RecordingsSummarize`, `CommentsCreateWithMentions`), executed by the Go runner, with the projection's shape and the request sequence pinned there and the rest in native Go tests. |
+| TypeScript, Ruby, Python, Kotlin, Swift, Rust | Not implemented. The constituent reads exist in every SDK, so each can carry the same composition; the fixture is the contract a port implements, and until then each runner rosters the six cases in `spec/zero-skip-roster.yml` as unwaivered — tracked work, not an accepted divergence. A port deletes its own entries. |
 
 The behavioral contract worth restating across a port: the read for a type is
 exactly one generated operation and the pointer's bucket is checked against the
 read's (`ErrBucketMismatch`); the chat line loop stops at the first non-404
-and returns it, so a permission failure never masquerades as "not here"; the
-mention reader counts every `<bc-attachment>` whose sgid names a Person,
-quoted or nested, and skips file blobs and undecodable sgids; and the writer
-never repeats a person the content already mentions.
+and returns it, so a 401/403/5xx never masquerades as "not here" (a
+permission-denied 404 is by construction indistinguishable from absence, so
+"unresolved" means "under no Campfire the caller can currently see" and the
+error reports which cached candidates the refreshed sources dropped); nothing
+left unsearched is ever reported absent; the mention reader counts every
+`<bc-attachment>` whose sgid's envelope names a Person, quoted or nested, and
+skips file blobs, gids that merely contain a Person gid, and undecodable
+sgids; and the writer never repeats a person the content already mentions.
 
 ### Retry Strategy (§7)
 
