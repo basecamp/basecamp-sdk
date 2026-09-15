@@ -575,11 +575,17 @@ type ttlLoad struct {
 	done    chan struct{}
 	err     error
 	fetched time.Time // set at publication, for the loader's own hit
-	// callerDone records whether the loading caller's own context was done
-	// when the load ended. It is the only reliable sign that the failure was
-	// that caller's cancellation or deadline: an http.Client.Timeout also
-	// satisfies errors.Is(err, context.DeadlineExceeded) with the context
-	// still live, and that failure is the load's own, to be shared.
+	// callerDone records that the failure is attributable to the loading
+	// caller's own context: that context was done when the load ended AND
+	// the error is that context's own (its cancellation, its deadline). Both
+	// halves are needed. An http.Client.Timeout satisfies errors.Is(err,
+	// context.DeadlineExceeded) with the owner's context still live — the
+	// load's own failure, to be shared; and an owner cancelled by a deferred
+	// hook after the load returned a 403 has a done context but an error
+	// that is not its context's — also the load's own, also shared. The one
+	// overlap this cannot separate is a transport deadline firing in the same
+	// instant as the owner's own deadline; that reads as the owner's, and a
+	// live waiter loads once more, bounded below.
 	callerDone bool
 }
 
@@ -689,20 +695,21 @@ func (c *ttlCache[K, V]) load(ctx context.Context, key K, pending *ttlLoad, load
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("basecamp: cache loader panicked: %v", r)
-			c.publish(key, pending, loaded, err, ctx.Err() != nil)
+			c.publish(key, pending, loaded, err, ctx.Err())
 			panic(r)
 		}
-		c.publish(key, pending, loaded, err, ctx.Err() != nil)
+		c.publish(key, pending, loaded, err, ctx.Err())
 	}()
 	return loader(ctx)
 }
 
-func (c *ttlCache[K, V]) publish(key K, pending *ttlLoad, loaded V, err error, callerDone bool) {
+func (c *ttlCache[K, V]) publish(key K, pending *ttlLoad, loaded V, err error, ctxErr error) {
+	callerDone := ctxErr != nil
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	delete(c.inflight, key)
 	pending.err = err
-	pending.callerDone = err != nil && callerDone
+	pending.callerDone = err != nil && callerDone && errors.Is(err, ctxErr)
 	if err == nil {
 		pending.fetched = c.now()
 		c.entries[key] = &ttlEntry[V]{value: loaded, fetched: pending.fetched}

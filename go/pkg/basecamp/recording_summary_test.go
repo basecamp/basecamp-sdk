@@ -1413,14 +1413,20 @@ func TestTTLCache_ReacquireIsBounded(t *testing.T) {
 	var xCancel context.CancelFunc
 	var xDone chan error
 	xStarted := make(chan struct{})
+	var xOnce sync.Once
 	cache.onReacquire = func() {
 		// Between W's decision to re-acquire and its next lock, X arrives,
-		// takes the slot, and is cancelled once W is waiting on it.
-		xCancel, xDone = start()
-		for loads.Load() < 2 {
-			time.Sleep(time.Millisecond)
-		}
-		close(xStarted)
+		// takes the slot, and is cancelled once W is waiting on it. Only
+		// once: a W that re-acquires a second time (the bound removed) is
+		// left to load for itself under a context nobody cancels, and the
+		// test fails on W never finishing.
+		xOnce.Do(func() {
+			xCancel, xDone = start()
+			for loads.Load() < 2 {
+				time.Sleep(time.Millisecond)
+			}
+			close(xStarted)
+		})
 	}
 	wDone := make(chan error, 1)
 	go func() {
@@ -1448,5 +1454,58 @@ func TestTTLCache_ReacquireIsBounded(t *testing.T) {
 	}
 	if n := loads.Load(); n != 2 {
 		t.Fatalf("loads = %d, want 2 (owner 1 and X): W must not load a third time", n)
+	}
+}
+
+func TestTTLCache_OwnerCancelledAfterAGenuineFailureDoesNotRetryIt(t *testing.T) {
+	// The owner's load fails on its own — a 403 — and then the owner's
+	// context is cancelled (a deferred cancel, an operation-end hook) before
+	// the result is published. A done owner context is coincidence here, not
+	// cause: the failure is the load's own and every waiter shares it, with
+	// exactly one load made.
+	now := time.Date(2026, 9, 15, 12, 0, 0, 0, time.UTC)
+	cache := newTTLCache[string, int](func() time.Time { return now }, time.Minute, time.Second)
+	forbidden := &Error{Code: CodeForbidden, Message: "access denied", HTTPStatus: 403}
+	var loads atomic.Int32
+	started := make(chan struct{})
+	release := make(chan struct{})
+	ownerCtx, cancelOwner := context.WithCancel(context.Background())
+	load := func(context.Context) (int, error) {
+		if loads.Add(1) == 1 {
+			close(started)
+			<-release
+			cancelOwner() // the owner walks away as its own load fails
+		}
+		return 0, forbidden
+	}
+	ownerDone := make(chan error, 1)
+	go func() {
+		_, err := cache.get(ownerCtx, "k", false, load)
+		ownerDone <- err
+	}()
+	<-started
+	waiting := make(chan struct{})
+	cache.onWait = func() { close(waiting) }
+	waiterDone := make(chan error, 1)
+	go func() {
+		_, err := cache.get(context.Background(), "k", false, load)
+		waiterDone <- err
+	}()
+	<-waiting
+	cache.onWait = nil
+	close(release)
+	if err := <-ownerDone; !errors.Is(err, forbidden) {
+		t.Fatalf("owner: %v", err)
+	}
+	select {
+	case err := <-waiterDone:
+		if !errors.Is(err, forbidden) {
+			t.Fatalf("waiter: %v, want the shared 403", err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("the waiter never finished")
+	}
+	if n := loads.Load(); n != 1 {
+		t.Fatalf("loads = %d, want 1: a genuine failure is not retried because its owner happened to be cancelled", n)
 	}
 }
