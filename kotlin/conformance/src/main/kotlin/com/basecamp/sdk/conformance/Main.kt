@@ -32,9 +32,10 @@ private fun decodeFailureMessage(e: SerializationException): String =
     }
 
 /**
- * Tests where the Kotlin runner's operation dispatcher has no implementation yet: the six
- * `recording_summary.json` cases of a Go-first composite (SPEC Appendix F, Recording
- * Summaries and Mention Helpers); a port deletes them. Every entry here is rostered in
+ * Tests where the Kotlin runner's operation dispatcher has no implementation yet: the
+ * `recording_summary.json` cases — every case in that fixture — of a Go-first composite
+ * (SPEC Appendix F, Recording Summaries and Mention Helpers); the fixture is the contract a
+ * port implements, and a port deletes them. Every entry here is rostered in
  * `spec/zero-skip-roster.yml`.
  */
 private val KOTLIN_SKIPS: Map<String, String> = mapOf(

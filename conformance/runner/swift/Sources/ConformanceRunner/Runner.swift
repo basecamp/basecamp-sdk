@@ -20,9 +20,10 @@ private let operationsHonoringPage: Set<String> = ["ListProjects"]
 
 /// Temporary capability skips, keyed by exact test name.
 ///
-/// Holds exactly the six `recording_summary.json` cases of a Go-first composite
-/// (SPEC Appendix F, Recording Summaries and Mention Helpers) this SDK has not
-/// ported; a port deletes them. Nothing else: Swift is three-gate (status,
+/// Holds exactly the `recording_summary.json` cases — every case in that
+/// fixture — of a Go-first composite (SPEC Appendix F, Recording Summaries and
+/// Mention Helpers) this SDK has not ported; the fixture is the contract a port
+/// implements, and a port deletes them. Nothing else: Swift is three-gate (status,
 /// network and idempotent-POST retry) and since #563 retries the authenticated
 /// download hop too, so no other fixture asks for a capability the SDK lacks.
 /// The one standing exclusion beyond these is architectural rather than a gap
@@ -72,7 +73,7 @@ private let temporarySkips: [String: String] = [
 /// The roster the run loop consults. `SWIFT_CONFORMANCE_NO_SKIPS=1` empties it,
 /// so a temporary skip can be proven genuine before it is added and proven
 /// ready to flip once the capability lands — running the Go-first composite's
-/// six cases against this SDK shows exactly what a port still owes.
+/// fixture against this SDK shows exactly what a port still owes.
 ///
 /// The value is compared exactly: an inherited empty or `=0` variable must not
 /// quietly change what the suite covers.

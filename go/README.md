@@ -689,10 +689,15 @@ fmt.Println(summary.Type, summary.Title, summary.MentionedPersonIDs)
 ```
 
 Every catalogued feed type routes (`comment.*`, `message.*`, `todo.*`,
-`card.*`, `chat.line.*`), as do the recording types with a typed read of their
-own (`Document`, `Upload`, `Schedule::Entry`, `Question`, `Question::Answer`,
-`Todolist`, `Vault`, `Inbox::Forward`, `Client::Approval`,
-`Client::Correspondence`, `GoogleDocument`, `CloudFile`, `Kanban::Step`).
+`card.*`, `chat.line.*`), as does every recording type the SDK reads from its
+id alone: `Comment`, `Message`, `Todo`, `Kanban::Card`, the `Chat::Lines::*`
+subtypes, `Document`, `Upload`, `Schedule::Entry`, `Question`,
+`Question::Answer`, `Todolist`, `Vault`, `Inbox::Forward`, `Client::Approval`,
+`Client::Correspondence`, `GoogleDocument`, `CloudFile`, `Kanban::Step`, and
+the tool-shaped recordings `Questionnaire`, `Schedule`, `Todoset`,
+`Message::Board`, `Kanban::Board`, `Kanban::Column`, `Inbox` and
+`Chat::Transcript`. The only types refused are `Client::Reply` and
+`Forward::Reply`, whose reads need a parent id the pointer does not carry.
 `boost.created` is refused with `ErrNoRecordingType` rather than read as
 something it is not.
 

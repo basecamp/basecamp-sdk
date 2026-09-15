@@ -20,12 +20,13 @@ use std::process::ExitCode;
 use fixtures::TestCase;
 use manifest::{Exclusion, Manifest};
 
-/// Cases the Rust SDK deliberately does not execute. The only entries are the six
-/// `recording_summary.json` cases of a Go-first composite (SPEC Appendix F, Recording
-/// Summaries and Mention Helpers) this SDK has not ported; a port deletes them. Nothing
-/// else is skipped: the scripted transport lets the two origin-normalization cases Go
-/// cannot dial run here, and the `link-header` fixture runs with only its `requestCount`
-/// assertion suppressed (assertions.rs). Every entry added here must also be rostered in
+/// Cases the Rust SDK deliberately does not execute. The only entries are the
+/// `recording_summary.json` cases — every case in that fixture — of a Go-first composite
+/// (SPEC Appendix F, Recording Summaries and Mention Helpers) this SDK has not ported; the
+/// fixture is the contract a port implements, and a port deletes them. Nothing else is
+/// skipped: the scripted transport lets the two origin-normalization cases Go cannot dial
+/// run here, and the `link-header` fixture runs with only its `requestCount` assertion
+/// suppressed (assertions.rs). Every entry added here must also be rostered in
 /// `spec/zero-skip-roster.yml`, or `make check-fixture-execution` fails.
 const RUST_SKIPS: &[(&str, &str)] = &[
     (

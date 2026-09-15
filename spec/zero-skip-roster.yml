@@ -71,7 +71,8 @@
 #                   distinction is load-bearing documentation: a reader who
 #                   greps `KOTLIN_SKIPS` for that case finds nothing and must
 #                   not conclude the roster is stale. (The constants themselves
-#                   hold the Go-first composite's six cases; a port empties
+#                   hold the Go-first composite's cases — every case in
+#                   `conformance/tests/recording_summary.json`; a port empties
 #                   them again.)
 #
 #   classification  Optional. One word for why the skips exist at all
@@ -123,7 +124,7 @@ runners:
       - case: "Bracketed IPv6 loopback origin stays on the mocked origin"
         reason: "same as above."
 
-  # Python's `SKIPS` carries only the Go-first composite below; the
+  # Python's `SKIPS` carries only the Go-first composite's cases below; the
   # `link-header` fixture RUNS here — only its `requestCount` assertion is
   # suppressed — so it is not a skip and must not be rostered as one.
   python:
@@ -409,8 +410,9 @@ runners:
 
   # No section-level classification: the two kinds of entry below differ in
   # status and must not share a label. The `link-header` case is architectural
-  # and says so in its reason; the six Go-first composite cases are
-  # unwaivered tracked work (SPEC Appendix F), and their reasons say that.
+  # and says so in its reason; every `recording_summary.json` case — the
+  # Go-first composite's whole fixture — is unwaivered tracked work (SPEC
+  # Appendix F), and each reason says that.
   kotlin:
     source: "`kotlin/conformance/.../Main.kt` — `KOTLIN_SKIPS` carries the Go-first composite; the first entry below comes from the `link-header` tag branch"
     skips:
@@ -575,7 +577,7 @@ runners:
       - case: "RecordingsSummarize routes Chat::Transcript (recording type) to one typed read and projects the recording"
         reason: "unwaivered, tracked work: a Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet, and a port deletes this entry."
 
-  # Rust's `RUST_SKIPS` carries only the Go-first composite below, like
+  # Rust's `RUST_SKIPS` carries only the Go-first composite's cases below, like
   # Python's. Its runner drives the SDK through a scripted `HttpClient` rather
   # than a socket, so the two origin-normalization cases Go cannot dial run
   # here, and the `link-header` fixture RUNS with only its `requestCount`
