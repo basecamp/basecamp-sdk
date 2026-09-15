@@ -31,6 +31,12 @@ private val CANONICAL_ERROR_TYPES = mapOf(
     "api_error" to BasecampException.CODE_API,
     "usage" to BasecampException.CODE_USAGE,
     "network" to BasecampException.CODE_NETWORK,
+    // All ten, not the eight an `errorType` assertion happens to name today.
+    // A set short of the table silently forbids a real code: `limit_exceeded`
+    // is already asserted through `errorCode` by `uploads_write.json`, and
+    // spelling that same case as `errorType` would have failed as "unknown".
+    "ambiguous" to BasecampException.CODE_AMBIGUOUS,
+    "limit_exceeded" to BasecampException.CODE_LIMIT_EXCEEDED,
 )
 
 /**
@@ -866,6 +872,17 @@ private fun runTest(tc: TestCase): TestResult {
             "errorCode" -> {
                 val expected = assertion.expected?.asString()
                     ?: return TestResult(false, "errorCode assertion missing expected value")
+                // The boundary is enforced HERE as well as by the SDK. Without
+                // this, the runner's half of the rule rests entirely on
+                // `RecordingSummaryFailure` not putting a token in `code` — so
+                // reverting that one constructor would quietly let a composite
+                // identity satisfy a canonical code again.
+                if (expected in SEMANTIC_ERROR_TYPES) {
+                    return TestResult(
+                        false,
+                        "\"$expected\" is a composite identity, not a SPEC §6 code: assert it as errorType",
+                    )
+                }
                 if (caughtException == null) {
                     return TestResult(false, "Expected error code \"$expected\", but got no error")
                 }
