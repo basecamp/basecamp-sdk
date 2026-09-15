@@ -401,6 +401,34 @@ describe("withMentions", () => {
     }
   });
 
+  it("does not trim on the write side, where the read side does", () => {
+    // The two paths genuinely differ, and the difference is load-bearing.
+    //
+    // READ: globalIDFromSGID trims Go-space before decoding, so a whitespace
+    // reference around the value is erased and the person is still named.
+    // WRITE: the dedupe compares the unescaped attribute value with NO trim, so
+    // the same value is not the authoritative sgid and the tag is added.
+    //
+    // Measured against the reference's own WithMentions, not inferred. Applying
+    // the read side's trim here "for consistency" is precisely the suppression
+    // bug: it would let an appended whitespace reference collapse into the
+    // authoritative sgid and silently drop the mention.
+    const sgid = personSGID(VICTOR);
+    const author = person(VICTOR, sgid);
+    const tags = (content: string) => content.match(/<bc-attachment /g)?.length ?? 0;
+
+    for (const whitespace of ["&#11;", "&#9;", "&#32;", "&nbsp;", "\t", " "]) {
+      // Read side: erased by the trim, so the person is still named.
+      expect(mentionedPersonIds(attachment(whitespace + sgid))).toEqual([VICTOR]);
+      // Write side: not erased, so the tag is added rather than deduped away.
+      expect(tags(withMentions(attachment(sgid + whitespace), [author]))).toBe(2);
+    }
+
+    // And the control on the other side of it: with no whitespace at all the
+    // value IS the authoritative sgid, and the dedupe fires.
+    expect(tags(withMentions(attachment(sgid), [author]))).toBe(1);
+  });
+
   it("returns the content untouched when no people are given", () => {
     expect(withMentions("<div>On it.</div>", [])).toBe("<div>On it.</div>");
   });
