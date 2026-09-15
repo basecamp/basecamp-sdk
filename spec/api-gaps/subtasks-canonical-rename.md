@@ -1,11 +1,23 @@
 ---
 gap: subtasks-canonical-rename
-status: partial-coverage
+status: addressed-in-bc3-pr-12659
 detected: 2026-08-11
-sdk_demand: low
-bc3_pr: 12544
+sdk_demand: medium
+bc3_pr: 12659
 bc3_refs:
   introduced_in: "step-to-subtask (BC3 #12544, merged 49eca3df973)"
+  documented_in: "Add `Subtask` API (BC3 #12659, merged e8f0d765ba6)"
+  documented_routes:
+    - "GET /:account_id/recordings/:id/subtasks.json"
+    - "POST /:account_id/recordings/:id/subtasks.json"
+    - "GET /:account_id/subtasks/:id.json"
+    - "PUT /:account_id/subtasks/:id.json"
+    - "DELETE /:account_id/subtasks/:id.json"
+    - "POST /:account_id/subtasks/:id/completion.json"
+    - "DELETE /:account_id/subtasks/:id/completion.json"
+    - "PUT /:account_id/subtasks/:id/position.json"
+  sections:
+    - doc/api/sections/subtasks.md
   routes:
     - "GET /:account_id/card_tables/subtasks/:id.json (canonical; undocumented)"
     - "POST /:account_id/card_tables/cards/:card_id/subtasks.json (canonical; undocumented)"
@@ -22,7 +34,39 @@ bc3_refs:
     - RepositionCardStep
 ---
 
-# Subtasks — the canonical routes moved out from under the documented /steps spellings
+# Subtasks — bc3 documented the canonical surface, and it is wider than /steps
+
+## The thing this brief was watching for has happened
+
+BC3 **#12659** (`e8f0d765ba6`) adds `doc/api/sections/subtasks.md` and documents
+eight routes under a top-level `/subtasks` and `/recordings/:id/subtasks`. The
+"Why it matters" section below named this as the event that would turn a naming
+detail into a contract change, so read the rest of the brief as the background
+to it rather than as a live description of the gap.
+
+Two things about what shipped, both of which move the SDK's position:
+
+- **The documented spelling is neither of the two this brief tracked.** The
+  canonical declarations were `/card_tables/subtasks/:id`; the documented
+  aliases were `/card_tables/steps/:id`. What bc3 published is a *third*,
+  card-table-free surface hung off recordings — `GET /recordings/3/subtasks`,
+  `GET|PUT|DELETE /subtasks/:id`, `POST|DELETE /subtasks/:id/completion`,
+  `PUT /subtasks/:id/position`. Re-pointing the five existing `@http` URIs, which
+  is what the absorption plan below anticipated, is therefore *not* the change
+  to make.
+- **The surface generalised past card tables.** `subtasks.md` says a resource
+  accepts subtasks if it exposes `subtasks_count` and `subtasks_url`, "today
+  that means to-dos and cards". The SDK's five operations are card-step-shaped
+  (`GetCardStep`, `CreateCardStep`, …) and reach steps *on cards only*. Subtasks
+  on to-dos are reachable through the documented API and unreachable through
+  this SDK.
+
+The compatibility analysis below still holds exactly as written: the wire type
+is still `Kanban::Step` — `subtasks.md` states the historical reason in its own
+second paragraph — the `/steps` aliases are still permanent, and the five modeled
+operations still work. Nothing is broken. What changed is that the SDK now models
+a documented alias layer over a narrower slice of a documented resource, while
+the general resource has a published contract it does not reach.
 
 ## What's missing
 
@@ -63,29 +107,65 @@ and `Kanban::Steps::CompletionsController` without changing any documented
 path. `CardStep.type` and `Event.kind` already model strings, so the SDK contract
 remains current.
 
-What is missing is on the bc3 side: the canonical routes the code now
-declares are invisible to `doc/api`, so `spec/bc3-routes.json` cannot see
-them and the SDK has nothing documented to model. Documented spellings and
-canonical declarations have diverged — that combination is
-`partial-coverage`.
+That was the state through the 2026-09-02 pin: the canonical routes the code
+declared were invisible to `doc/api`, so `spec/bc3-routes.json` could not see
+them and the SDK had nothing documented to model — `partial-coverage`, with the
+gap on bc3's side.
+
+#12659 closed the bc3 side and opened an SDK-side one. The routes are documented
+now, `spec/bc3-routes.json` sees all eight, and what is missing is the modeling —
+hence `addressed-in-bc3-pr-12659`, and hence the eight `bc3_routes_not_modeled`
+entries in `spec/bc3-route-allowlist.yml` pointing here.
 
 ## Why it matters
 
-Low demand: the documented contract is fully served and the SDK's operations
-are unaffected. The brief exists so the divergence is on record before it
-compounds. bc3's docs now describe an alias layer, not the canonical routes;
-a future bc3 change that documents `/subtasks`, emits `/subtasks` URLs in
-payloads, renames the `json.steps` key, or changes the `"Kanban::Step"`
-discriminator turns this from a naming detail into a contract change. Whoever
-triages that range should start from this entry rather than rediscover the
-alias topology.
+Medium demand, raised from low when #12659 landed. Nothing is broken — the
+documented `/steps` contract is fully served and the five modeled operations
+are unaffected — so this is reach, not repair.
+
+What raises it is the generalisation rather than the rename. Subtasks on to-dos
+now have a published contract, and a caller holding a to-do with a non-zero
+`subtasks_count` can read them with curl but not with this SDK. That is the
+concrete gap; the spelling divergence recorded below is the history that
+explains how the SDK ended up on the narrow side of it.
+
+The paragraph this replaces predicted exactly this trigger — "a future bc3
+change that documents `/subtasks` … turns this from a naming detail into a
+contract change" — and it was right about the trigger while being wrong about
+the shape, having assumed the documented spelling would be the canonical
+`/card_tables/subtasks` one. Worth remembering when reading the confident parts
+of any brief in this directory, including this one.
 
 ## Suggested API shape
 
-None yet — the SDK deliberately models the documented `/steps` spellings and
-should keep doing so while they are the documented contract. If bc3
-re-documents the surface under `/subtasks`, the operations' `@http` URIs move
-(or gain modelled siblings) at that point, not before.
+A `Subtasks` service over the documented recording-scoped surface, sitting
+alongside the five card-step operations rather than replacing them:
+
+```
+ListRecordingSubtasks:  GET    /{accountId}/recordings/{recordingId}/subtasks.json
+CreateRecordingSubtask: POST   /{accountId}/recordings/{recordingId}/subtasks.json
+GetSubtask:             GET    /{accountId}/subtasks/{subtaskId}.json
+UpdateSubtask:          PUT    /{accountId}/subtasks/{subtaskId}.json
+DeleteSubtask:          DELETE /{accountId}/subtasks/{subtaskId}.json
+CompleteSubtask:        POST   /{accountId}/subtasks/{subtaskId}/completion.json
+UncompleteSubtask:      DELETE /{accountId}/subtasks/{subtaskId}/completion.json
+RepositionSubtask:      PUT    /{accountId}/subtasks/{subtaskId}/position.json
+```
+
+The payload is the shape `CardStep` already models — `subtasks.md`'s example
+response carries `id`, `status`, `title`, `type: "Kanban::Step"`, `position`,
+`url`, `app_url`, `bookmark_url`, `inherits_status` — so the existing structure
+is the starting point, not a new one.
+
+Deliberately additive. The `/steps` operations are documented, permanently
+aliased and in use; retiring them is a separate decision under the no-alias
+removal policy and should not ride along with adding reach to to-dos.
+
+Two questions to settle against bc3 before modeling, neither answerable from
+the docs alone: whether completion is genuinely `POST`/`DELETE` on a
+`completion` singular (the card-step spelling is `PUT .../completions`, plural),
+and whether `PUT /subtasks/:id/position` takes the same body as
+`RepositionCardStep`'s `POST /card_tables/cards/:card_id/positions`.
 
 ## Implementation notes for BC3
 
@@ -98,13 +178,24 @@ re-documents the surface under `/subtasks`, the operations' `@http` URIs move
 
 ## SDK absorption plan when this lands
 
-Nothing to absorb today. If bc3 documents the canonical `/subtasks` routes:
+It has landed upstream; what follows is the plan for the SDK PR that absorbs it.
 
-- Re-point the five operations' `@http` URIs (or add documented siblings) —
-  wire shapes are unchanged, so no structure work is expected.
-- Watch the payload keys: absorption is only mechanical while `json.steps`
-  and `"Kanban::Step"` survive on the wire; if either moves with the docs,
-  the `CardStep` structure and its consumers need a real pass.
-- [[step-top-level]] records how the `/steps` spellings were absorbed and
-  stays the historical record for them; this brief owns the canonical-rename
-  follow-through.
+- Add the eight operations above as a new `Subtasks` service group — new tag in
+  `spec/overlays/tags.smithy`, new `TAG_TO_SERVICE` entry in all five service
+  generators, accessor wiring in the TypeScript, Ruby and Python clients (Rust
+  and Kotlin generate theirs).
+- Do **not** re-point the five `CardStep` operations. That was this brief's
+  earlier advice and the documented surface turned out not to match it.
+- Reuse `CardStep`'s structure for the payload; the discriminator is still
+  `"Kanban::Step"` and `json.steps` still names the embedded array, so the
+  existing type work carries over. Confirm before assuming it: the compatibility
+  contract is pinned by `test/integration/route_aliases_test.rb` for routes, not
+  for this payload.
+- Resolve the two spelling questions above against `config/routes.rb` and the
+  bc3 API tests first — a wrong guess at `completion` vs `completions` is a live
+  404, which is the failure mode `spec/bc3-route-allowlist.yml` exists to prevent.
+- Cover the generalisation explicitly: a conformance case reading subtasks of a
+  **to-do**, not just a card, since reaching to-dos is the point of absorbing this.
+- Delete this file and its eight `bc3_routes_not_modeled` entries in that PR.
+- [[step-top-level]] records how the `/steps` spellings were absorbed and stays
+  the historical record for them; this brief owns the follow-through.
