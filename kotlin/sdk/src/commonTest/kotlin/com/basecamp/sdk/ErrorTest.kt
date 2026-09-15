@@ -3,6 +3,7 @@ package com.basecamp.sdk
 import kotlinx.serialization.json.Json
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNull
@@ -192,6 +193,50 @@ class ErrorTest {
     fun truncateMessagePreservesShortMessages() {
         val short = "Short message"
         assertEquals(short, BasecampException.truncateMessage(short))
+    }
+
+    @Test
+    fun theCompositesReasonIsNotItsCanonicalCode() {
+        // SPEC §6's code table is a closed taxonomy, and none of the composite's
+        // own verdicts is a member of it. `reason` carries the identity, `code`
+        // the coarse classification derived from it — the shape DeviceFlow and
+        // DiscoverySelection already use here. Putting the token in `code` would
+        // hand `exitCode` and every caller switching on `code` a value the
+        // taxonomy does not contain, and would let a fixture asserting a
+        // canonical `errorCode` be satisfied by a semantic one.
+        val derivations = listOf(
+            BasecampException.RECORDING_NO_TYPE to BasecampException.CODE_USAGE,
+            BasecampException.RECORDING_UNKNOWN_TYPE to BasecampException.CODE_USAGE,
+            BasecampException.RECORDING_BUCKET_MISMATCH to BasecampException.CODE_USAGE,
+            BasecampException.CAMPFIRE_DISCOVERY_INCOMPLETE to BasecampException.CODE_USAGE,
+            BasecampException.RECORDING_UNRESOLVED to BasecampException.CODE_NOT_FOUND,
+        )
+        assertEquals(5, derivations.size, "every reason the composite can raise")
+        val canonical = setOf(
+            BasecampException.CODE_USAGE, BasecampException.CODE_NOT_FOUND,
+            BasecampException.CODE_AUTH, BasecampException.CODE_FORBIDDEN,
+            BasecampException.CODE_RATE_LIMIT, BasecampException.CODE_VALIDATION,
+            BasecampException.CODE_API, BasecampException.CODE_NETWORK,
+            BasecampException.CODE_AMBIGUOUS, BasecampException.CODE_LIMIT_EXCEEDED,
+        )
+        for ((reason, expectedCode) in derivations) {
+            val e = BasecampException.RecordingSummaryFailure(reason, "failed")
+            assertEquals(reason, e.reason, "the identity stays in reason")
+            assertEquals(expectedCode, e.code, "the derived code for $reason")
+            assertTrue(e.code in canonical, "$reason derives a code inside SPEC §6's table")
+            assertNotEquals(e.reason, e.code, "$reason must not BE its own code")
+            // exitCode is derived from code, so it must be a taxonomy exit code
+            // rather than whatever an unknown token falls through to.
+            assertTrue(e.exitCode > 0, "$reason yields a real exit code")
+        }
+        // recording_unresolved and a read's own 404 share a coarse code on
+        // purpose — both mean "not found" — and stay distinguishable by reason.
+        val unresolved = BasecampException.RecordingSummaryFailure(
+            BasecampException.RECORDING_UNRESOLVED,
+            "found under no visible campfire",
+        )
+        assertEquals(BasecampException.NotFound().code, unresolved.code)
+        assertEquals(BasecampException.RECORDING_UNRESOLVED, unresolved.reason)
     }
 
     @Test

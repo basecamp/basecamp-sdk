@@ -18,6 +18,35 @@ import java.io.IOException
 import java.util.concurrent.atomic.AtomicInteger
 
 /** Default account ID for conformance tests. */
+/**
+ * The SPEC §6 taxonomy an `errorType` or `errorCode` assertion can name. Closed:
+ * a composite's own verdict is not a member and must not be able to satisfy one.
+ */
+private val CANONICAL_ERROR_TYPES = mapOf(
+    "not_found" to BasecampException.CODE_NOT_FOUND,
+    "auth_required" to BasecampException.CODE_AUTH,
+    "forbidden" to BasecampException.CODE_FORBIDDEN,
+    "rate_limit" to BasecampException.CODE_RATE_LIMIT,
+    "validation" to BasecampException.CODE_VALIDATION,
+    "api_error" to BasecampException.CODE_API,
+    "usage" to BasecampException.CODE_USAGE,
+    "network" to BasecampException.CODE_NETWORK,
+)
+
+/**
+ * The SPEC §18 recording-summary composite's own identities. They answer
+ * `errorType` from `RecordingSummaryFailure.reason`, never from `code` — a
+ * fixture pins that "unresolved" is neither a read that failed nor discovery
+ * left unfinished, and that distinction lives in the reason.
+ */
+private val SEMANTIC_ERROR_TYPES = setOf(
+    BasecampException.RECORDING_NO_TYPE,
+    BasecampException.RECORDING_UNKNOWN_TYPE,
+    BasecampException.RECORDING_UNRESOLVED,
+    BasecampException.CAMPFIRE_DISCOVERY_INCOMPLETE,
+    BasecampException.RECORDING_BUCKET_MISMATCH,
+)
+
 private const val TEST_ACCOUNT_ID = "999"
 
 /**
@@ -803,34 +832,34 @@ private fun runTest(tc: TestCase): TestResult {
                 if (caughtException == null) {
                     return TestResult(false, "Expected error type \"$expectedType\", but got no error")
                 }
-                val codeMap = mapOf(
-                    "not_found" to BasecampException.CODE_NOT_FOUND,
-                    "auth_required" to BasecampException.CODE_AUTH,
-                    "forbidden" to BasecampException.CODE_FORBIDDEN,
-                    "rate_limit" to BasecampException.CODE_RATE_LIMIT,
-                    "validation" to BasecampException.CODE_VALIDATION,
-                    "api_error" to BasecampException.CODE_API,
-                    "usage" to BasecampException.CODE_USAGE,
-                    "network" to BasecampException.CODE_NETWORK,
-                    // The SPEC §18 recording-summary composite's own error
-                    // identities. They are not HTTP statuses, which is the whole
-                    // point: a fixture pins that "unresolved" is neither a read
-                    // that failed nor discovery left unfinished. The SDK spells
-                    // them as the code on
-                    // BasecampException.RecordingSummaryFailure, so the fixture
-                    // vocabulary and the SDK's are the same strings.
-                    "no_recording_type" to BasecampException.RECORDING_NO_TYPE,
-                    "unknown_recording_type" to BasecampException.RECORDING_UNKNOWN_TYPE,
-                    "recording_unresolved" to BasecampException.RECORDING_UNRESOLVED,
-                    "campfire_discovery_incomplete" to BasecampException.CAMPFIRE_DISCOVERY_INCOMPLETE,
-                    "bucket_mismatch" to BasecampException.RECORDING_BUCKET_MISMATCH,
-                )
-                val expectedCode = codeMap[expectedType]
-                if (expectedCode == null) {
-                    return TestResult(false, "Unknown conformance error type \"$expectedType\" (add to codeMap)")
-                }
-                if (caughtException.code != expectedCode) {
-                    return TestResult(false, "Expected error code \"$expectedCode\", got \"${caughtException.code}\"")
+                // A composite identity answers `errorType` only, and it answers
+                // it from the typed `reason` rather than from `code`. `code` is
+                // SPEC §6's CLOSED taxonomy, so letting a composite token
+                // satisfy it would mean a fixture asserting a canonical
+                // `errorCode` could be satisfied by a semantic one. The Swift
+                // runner draws the same line; this is the Kotlin spelling of it.
+                if (expectedType in SEMANTIC_ERROR_TYPES) {
+                    val reason = (caughtException as? BasecampException.RecordingSummaryFailure)?.reason
+                        ?: return TestResult(
+                            false,
+                            "Expected composite error type \"$expectedType\", got a " +
+                                "${caughtException::class.simpleName} with code \"${caughtException.code}\"",
+                        )
+                    if (reason != expectedType) {
+                        return TestResult(false, "Expected error type \"$expectedType\", got \"$reason\"")
+                    }
+                } else {
+                    val expectedCode = CANONICAL_ERROR_TYPES[expectedType]
+                        ?: return TestResult(
+                            false,
+                            "Unknown conformance error type \"$expectedType\" (add to CANONICAL_ERROR_TYPES)",
+                        )
+                    if (caughtException.code != expectedCode) {
+                        return TestResult(
+                            false,
+                            "Expected error code \"$expectedCode\", got \"${caughtException.code}\"",
+                        )
+                    }
                 }
             }
 
