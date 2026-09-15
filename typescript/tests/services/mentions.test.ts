@@ -207,6 +207,49 @@ describe("mentionedPersonIds", () => {
     expect(mentionedPersonIds(`<bc-attachment sgid="${escaped}"></bc-attachment>`)).toEqual([VICTOR]);
   });
 
+  it("decodes character references the way Go's scanner does", () => {
+    // Boundary rules measured against html.UnescapeString, not inferred: a
+    // decimal reference needs two digits when no semicolon follows and one when
+    // it does; a hex reference needs one either way; `&#x;` with no digits is
+    // U+FFFD while `&#;` is literal; a trailing semicolon is consumed when
+    // present. Each case here wraps a real sgid so the assertion is on the
+    // verdict, which is what has to match.
+    const sgid = personSGID(VICTOR);
+    const named = (value: string) =>
+      mentionedPersonIds(`<bc-attachment sgid="${value}"></bc-attachment>`);
+
+    // Named references, semicolon-optional for the legacy set, and the
+    // whitespace expansions that a Go-space trim then removes.
+    expect(named(`&nbsp${sgid}`)).toEqual([VICTOR]);
+    expect(named(`&nbsp;${sgid}`)).toEqual([VICTOR]);
+    expect(named(`${sgid}&ThickSpace;`)).toEqual([VICTOR]);
+    expect(named(`&NonBreakingSpace;${sgid}`)).toEqual([VICTOR]);
+    expect(named(`&Tab;${sgid}&NewLine;`)).toEqual([VICTOR]);
+
+    // A reference that expands to something no payload can hold breaks it, as
+    // it does in Go — and one outside the carried subset is left literal, which
+    // breaks it the same way.
+    expect(named(`&amp;${sgid}`)).toEqual([]);
+    expect(named(`&eacute;${sgid}`)).toEqual([]);
+    expect(named(`&constructor;${sgid}`)).toEqual([]);
+
+    // Numeric boundaries. "&#66" is "B", so it extends the payload and breaks
+    // it; the point is that it is CONSUMED rather than left literal, which the
+    // one-digit forms are.
+    expect(named(`&#9;${sgid}`)).toEqual([VICTOR]);
+    expect(named(`&#10;${sgid}`)).toEqual([VICTOR]);
+    expect(named(`&#32;${sgid}`)).toEqual([VICTOR]);
+    expect(named(`&#x20;${sgid}`)).toEqual([VICTOR]);
+    expect(named(`&#x9;${sgid}`)).toEqual([VICTOR]);
+    // Unterminated forms break the payload, each for its own reason, and all
+    // three agree with Go: `&#9` is one decimal digit with no semicolon and
+    // stays literal; `&#x9` runs greedily on into the payload's own hex digits
+    // and eats them; `&#` has no digits at all.
+    expect(named(`&#9${sgid}`)).toEqual([]);
+    expect(named(`&#x9${sgid}`)).toEqual([]);
+    expect(named(`&#${sgid}`)).toEqual([]);
+  });
+
   it("stops at an unterminated comment or tag rather than guessing", () => {
     const sgid = personSGID(VICTOR);
     expect(mentionedPersonIds(`<div><!-- ${attachment(sgid)}`)).toEqual([]);
@@ -314,6 +357,48 @@ describe("withMentions", () => {
     expect(withMentions(`<div>${attachment(stale)} On it.</div>`, [person(VICTOR, real)])).toBe(
       `<div>${attachment(real)} ${attachment(stale)} On it.</div>`,
     );
+  });
+
+  it("never lets a character reference expand to nothing (the mechanism)", () => {
+    // A decoder that maps anything to the empty string is exactly what makes
+    // the write-side dedupe suppressible: unescape(<real sgid> + <suffix>) can
+    // only equal <real sgid> if the suffix decoded to nothing. HTML5 drops a
+    // numeric reference naming a C0 control to ""; Go emits the character, and
+    // so does this. Pinned at the decoder so a later simplification toward the
+    // HTML5 reading fails here rather than silently at the write side.
+    const sgid = personSGID(VICTOR);
+    expect(mentionedPersonIds(attachment(sgid))).toEqual([VICTOR]);
+    for (const reference of ["&#1;", "&#0;", "&#x1;", "&#8;", "&#31;", "&#127;", "&#x0;"]) {
+      // Prefixed, so the reference lands in the payload rather than the digest:
+      // if it expanded to nothing the payload would be untouched and the person
+      // would still be named.
+      expect(mentionedPersonIds(attachment(reference + sgid))).toEqual([]);
+    }
+    // The contrast, measured against Go: a reference naming WHITESPACE does
+    // leave the person named, because the trim then removes it. So "the
+    // reference survived" is being asserted above, not "any prefix breaks it".
+    for (const reference of ["&#9;", "&#10;", "&#11;", "&#12;", "&#13;", "&#32;"]) {
+      expect(mentionedPersonIds(attachment(reference + sgid))).toEqual([VICTOR]);
+    }
+  });
+
+  it("still writes a mention the content only appears to carry (the consequence)", () => {
+    // The same attack from the write side. The dedupe is deliberately an exact
+    // string match against the sgid the people read returned, so anything that
+    // unescapes to exactly that string suppresses the tag.
+    const sgid = personSGID(VICTOR);
+    const author = person(VICTOR, sgid);
+    const tags = (content: string) => content.match(/<bc-attachment /g)?.length ?? 0;
+
+    // The control row, without which this test would pass just as happily if
+    // the dedupe had been broken to never fire: here the content genuinely does
+    // carry the mention, and exactly one tag must come back.
+    expect(tags(withMentions(attachment(sgid), [author]))).toBe(1);
+
+    for (const reference of ["&#1;", "&#0;", "&#x1;", "&#127;"]) {
+      const disguised = attachment(sgid + reference);
+      expect(tags(withMentions(disguised, [author]))).toBe(2);
+    }
   });
 
   it("returns the content untouched when no people are given", () => {

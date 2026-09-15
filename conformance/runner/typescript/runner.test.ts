@@ -102,10 +102,15 @@ const TEST_ACCOUNT_ID = "999";
  * Tests the TS SDK cannot pass, each with its reason. Kept per-line in sync
  * with SPEC §19's zero-skip roster.
  */
-const TS_SDK_SKIPS: Record<string, string> = {
-  "Large integer IDs preserved without precision loss":
+// A Map, not an object literal: the key is a fixture case name, and
+// `{}["constructor"]` is a hit — a case named that would be silently skipped and
+// reported as waived with a function body as its reason.
+const TS_SDK_SKIPS = new Map<string, string>([
+  [
+    "Large integer IDs preserved without precision loss",
     "JavaScript loses precision on integers > Number.MAX_SAFE_INTEGER (2^53)",
-};
+  ],
+]);
 
 /**
  * Operations whose fixture `path` names a hop other than request 0, so the
@@ -166,7 +171,8 @@ function digPath(root: unknown, dotted: string): { value: unknown; present: bool
       // Digits only, as Go's strconv.Atoi reads them: `Number("")` is 0 and
       // `Number(" 1")` is 1, so a typo'd path would silently resolve to an
       // element instead of reporting the field absent.
-      if (!/^(0|[1-9][0-9]*)$/.test(key)) return { value: undefined, present: false };
+      // Leading zeros are allowed, because Atoi accepts them.
+      if (!/^[0-9]+$/.test(key)) return { value: undefined, present: false };
       const index = Number(key);
       if (index >= current.length) {
         return { value: undefined, present: false };
@@ -176,7 +182,13 @@ function digPath(root: unknown, dotted: string): { value: unknown; present: bool
     }
     if (typeof current !== "object" || current === null) return { value: undefined, present: false };
     const record = current as Record<string, unknown>;
-    if (!(key in record)) return { value: undefined, present: false };
+    // hasOwnProperty, not `in`: the result is a live SDK object rather than
+    // re-decoded JSON, so `in` reaches Object.prototype and reports
+    // "constructor" or "toString" as present. Go digs a map, which has no
+    // prototype to reach.
+    if (!Object.prototype.hasOwnProperty.call(record, key)) {
+      return { value: undefined, present: false };
+    }
     current = record[key];
   }
   return { value: current, present: true };
@@ -201,28 +213,41 @@ function fractionalDigits(timestamp: string): string {
  * contract: "2024-01-20T15:30:00.000-06:00" and "2024-01-20T21:30:00Z" agree.
  * Mirrors the Go runner's `compareValues`.
  */
-function isRealCalendarDate(timestamp: string): boolean {
-  // Date.parse rolls an out-of-range day over into the next month, so
-  // "2024-02-30T00:00:00Z" and "2024-03-01T00:00:00Z" parse to one instant.
-  // Go's time.Parse rejects the first outright ("day out of range"), and an
+function isRealTimestamp(timestamp: string): boolean {
+  // Date.parse rolls out-of-range fields over instead of refusing them, so
+  // "2024-02-30T00:00:00Z" and "2024-03-01T00:00:00Z" parse to one instant, as
+  // do "2024-01-20T24:00:00Z" and "2024-01-21T00:00:00Z". Go's time.Parse
+  // rejects both outright ("day out of range", "hour out of range"), and an
   // invalid timestamp must not be accepted here as equal to a valid one.
-  const parts = /^(\d{4})-(\d{2})-(\d{2})/.exec(timestamp);
+  const parts = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})/.exec(timestamp);
   if (parts === null) return false;
-  const year = Number(parts[1]);
-  const month = Number(parts[2]);
-  const day = Number(parts[3]);
+  const [year, month, day, hour, minute, second] = parts.slice(1).map(Number) as [
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+  ];
+  if (hour > 23 || minute > 59 || second > 59) return false;
+
   const at = new Date(Date.UTC(year, month - 1, day));
-  return (
-    at.getUTCFullYear() === year && at.getUTCMonth() === month - 1 && at.getUTCDate() === day
-  );
+  // Date.UTC maps years 0-99 into 1900-1999, so a four-digit year below 0100
+  // would never compare equal to itself without this.
+  if (year < 100) at.setUTCFullYear(year);
+  return at.getUTCFullYear() === year && at.getUTCMonth() === month - 1 && at.getUTCDate() === day;
 }
 
 function sameInstant(expected: unknown, actual: unknown): boolean {
   if (typeof expected !== "string" || typeof actual !== "string") return false;
   // Anchored so a bare number or a prose string can never be read as a date.
-  const rfc3339 = /^\d{4}-\d{2}-\d{2}[Tt]\d{2}:\d{2}:\d{2}(\.\d+)?([Zz]|[+-]\d{2}:\d{2})$/;
+  // Uppercase T and Z only: Go matches time.RFC3339Nano literally and refuses
+  // the lowercase spellings RFC 3339 permits, falling back to exact string
+  // comparison. Accepting them here would make this assertion looser than the
+  // one it mirrors.
+  const rfc3339 = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/;
   if (!rfc3339.test(expected) || !rfc3339.test(actual)) return false;
-  if (!isRealCalendarDate(expected) || !isRealCalendarDate(actual)) return false;
+  if (!isRealTimestamp(expected) || !isRealTimestamp(actual)) return false;
   const expectedAt = Date.parse(expected);
   if (!Number.isFinite(expectedAt) || expectedAt !== Date.parse(actual)) return false;
   return fractionalDigits(expected) === fractionalDigits(actual);
@@ -2032,7 +2057,7 @@ function loadTestSuites(): { filename: string; tests: TestCase[] }[] {
       // keeps that rounding from silently falsifying a future fixture.
       const all = JSON.parse(content) as TestCase[];
       for (const tc of all) {
-        if (!(tc.name in TS_SDK_SKIPS)) {
+        if (!TS_SDK_SKIPS.has(tc.name)) {
           assertNoUnsafeIntegers(tc, filename, `"${tc.name}"`);
         }
       }
@@ -2132,11 +2157,11 @@ describe("conformance case census", () => {
   it("writes its execution manifest", () => {
     const excluded = suites.flatMap((suite) =>
       suite.tests
-        .filter((tc) => tc.name in TS_SDK_SKIPS)
+        .filter((tc) => TS_SDK_SKIPS.has(tc.name))
         .map((tc) => ({
           file: suite.filename,
           name: tc.name,
-          reason: TS_SDK_SKIPS[tc.name],
+          reason: TS_SDK_SKIPS.get(tc.name)!,
         })),
     );
 
@@ -2153,8 +2178,8 @@ describe("conformance case census", () => {
 for (const { filename, tests } of suites) {
   describe(`conformance/${filename}`, () => {
     for (const tc of tests) {
-      if (tc.name in TS_SDK_SKIPS) {
-        it.skip(`${tc.name} (${TS_SDK_SKIPS[tc.name]})`, () => {});
+      if (TS_SDK_SKIPS.has(tc.name)) {
+        it.skip(`${tc.name} (${TS_SDK_SKIPS.get(tc.name)!})`, () => {});
         continue;
       }
 
