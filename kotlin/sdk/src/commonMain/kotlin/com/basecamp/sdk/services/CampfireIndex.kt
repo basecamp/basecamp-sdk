@@ -429,6 +429,23 @@ internal class CampfireIndex(now: () -> Long = ::monotonicMillis) {
         val hit = listings.get(account.accountId, refresh) {
             val listed = account.campfires.list(PaginationOptions(maxItems = MAX_CAMPFIRE_LISTING))
             if (listed.meta.truncated) throw CampfireListingOverflow()
+            // The reference skips a listing entry with no bucket AND one whose
+            // bucket id is zero. Only the second is reachable here, and the
+            // difference is the decoder rather than this filter: `bucket` is
+            // `@required` in the spec, so the generated model types it non-null
+            // and an entry carrying `"bucket": null` — or omitting the key —
+            // fails the whole listing before this line runs. The reference
+            // cannot fail that way: its generated bucket is a value struct, an
+            // absent one decodes to the zero value, and its own projection
+            // turns that back into a nil pointer, which is what its nil branch
+            // is for. Measured: a three-entry listing with two bucket-less
+            // entries decodes there with no error and yields the third.
+            //
+            // Closing that gap means making `bucket` optional in
+            // `spec/basecamp.smithy`, which regenerates every SDK and
+            // contradicts the `@required` the spec asserts — and the same
+            // applies to `creator` and `parent` across roughly fifteen models.
+            // It is not a thing this composite can decide.
             listed.filter { it.bucket.id != 0L }.groupBy({ it.bucket.id }, { it.id })
         }
         return SourceRead(hit.value[bucketId].orEmpty(), hit.fetched, hit.cached)
