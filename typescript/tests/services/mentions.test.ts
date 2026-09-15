@@ -203,6 +203,49 @@ describe("personIdFromSGID", () => {
     expect(personIdFromSGID(legacySGID("gid://bc3/Person/90071992547409911"))).toBeUndefined();
   });
 
+  it("folds an attribute name the way EqualFold does, not the way toLowerCase does", () => {
+    // `EqualFold("\u017Fgid", "sgid")` is TRUE — U+017F LATIN SMALL LETTER LONG S
+    // shares a fold orbit with `s` — so markup written with one IS a mention the
+    // reference reports, and `toLowerCase()` left it out: the vanishing
+    // direction, a mention dropped rather than invented. The table is measured,
+    // not recalled: sweeping every rune against the 26 ASCII letters and `-`
+    // gives exactly two that reach ASCII from outside it, U+017F onto `s` and
+    // U+212A KELVIN SIGN onto `k`.
+    const sgid = personSGID(VICTOR);
+    const withAttr = (name: string) => `<div><bc-attachment ${name}="${sgid}"></bc-attachment></div>`;
+    expect(mentionedPersonIds(withAttr("sgid"))).toEqual([VICTOR]);
+    expect(mentionedPersonIds(withAttr("SGID"))).toEqual([VICTOR]);
+    expect(mentionedPersonIds(withAttr("\u017Fgid"))).toEqual([VICTOR]);
+    expect(mentionedPersonIds(withAttr("SGI\u0044"))).toEqual([VICTOR]);
+
+    // And nothing else folds onto it: a Cyrillic ѕ, a sharp s, a full-width s
+    // are all different letters to EqualFold, so the tag names nobody.
+    //
+    // The dotless ı and the dotted İ are the rows that matter, because they are
+    // where a WIDER rule and the reference's part company: `"ı".toUpperCase()`
+    // is "I", so a comparison written as "same when upper-cased" would accept
+    // `sgıd`, and Go refuses it — measured. A guard that only refused
+    // lookalikes whose case mapping already differs would have been silent
+    // about that, which is how the first version of these rows passed against
+    // both the orbit table and a too-wide rule.
+    for (const lookalike of ["\u0455gid", "\u00dfgid", "\uff53gid", "\u1e69gid", "sg\u0131d", "sg\u0130d", "SG\u0130D"]) {
+      expect(mentionedPersonIds(withAttr(lookalike)), lookalike).toEqual([]);
+    }
+
+    // The same rule on the tag name, and on the leading block `withMentions`
+    // places a mention inside — all three sites use the reference's EqualFold.
+    expect(mentionedPersonIds(`<div><BC-ATTACHMENT sgid="${sgid}"></BC-ATTACHMENT></div>`)).toEqual([VICTOR]);
+    expect(withMentions("<DIV>hi</DIV>", [person(VICTOR, sgid)])).toBe(
+      `<DIV>${attachment(sgid)} hi</DIV>`,
+    );
+
+    // The gid SCHEME keeps the other rule, ASCII-only, because url.Parse has
+    // already excluded everything else by the time a scheme is read. One file,
+    // two rules; carrying either answer to the other site is wrong.
+    expect(personIdFromSGID(legacySGID(`GID://bc3/Person/${VICTOR}`))).toBe(VICTOR);
+    expect(personIdFromSGID(legacySGID(`\u0262id://bc3/Person/${VICTOR}`))).toBeUndefined();
+  });
+
   it("refuses a payload carrying whitespace the base64 alphabet does not", () => {
     // `atob` ignores every ASCII whitespace character; Go's decoder ignores
     // only CR and LF. Both sides must accept the same payloads, or a malformed

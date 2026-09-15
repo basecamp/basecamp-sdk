@@ -435,7 +435,7 @@ function bcAttachmentSGIDs(text: string): string[] {
 
     const attrs = parseAttributes(text, nameEnd);
     if (!attrs.closed) return sgids; // an unterminated tag: nothing after it is markup
-    if (text.slice(pos, nameEnd).toLowerCase() === "bc-attachment" && attrs.sgid !== "") {
+    if (equalsFolded(text.slice(pos, nameEnd), "bc-attachment") && attrs.sgid !== "") {
       sgids.push(attrs.sgid);
     }
     pos = attrs.end;
@@ -552,7 +552,7 @@ function parseAttributes(text: string, start: number): TagAttributes {
       pos++;
       continue;
     }
-    if (!sgidSeen && name.toLowerCase() === "sgid") {
+    if (!sgidSeen && equalsFolded(name, "sgid")) {
       sgidSeen = true;
       sgid = unescapeEntities(value);
     }
@@ -1194,6 +1194,55 @@ function personIdValue(value: unknown): number | undefined {
 }
 
 /**
+ * Whether `text` equals an ASCII `target` under Go's `strings.EqualFold`.
+ *
+ * `toLowerCase()` is not that rule, and the gap is a dropped mention rather
+ * than an invented one: `EqualFold("ſgid", "sgid")` is TRUE — U+017F LATIN
+ * SMALL LETTER LONG S shares an orbit with `s` — so BC3 markup written with one
+ * IS a mention the reference reports, and lowercasing left it out.
+ *
+ * The table is measured, not recalled: sweeping every rune in Unicode against
+ * the 26 ASCII letters and `-` gives exactly two that fold onto an ASCII letter
+ * from outside ASCII, U+017F onto `s` and U+212A KELVIN SIGN onto `k`. Both are
+ * single UTF-16 units, so a unit-by-unit comparison is exact here, and the
+ * target being ASCII is what keeps this from needing full case folding.
+ *
+ * This is the HTML half of the port's folding. The `gid` scheme is compared
+ * ASCII-only, because `url.Parse` has already excluded everything else by the
+ * time a scheme is read — one file, two rules, and carrying either answer to
+ * the other site is wrong.
+ *
+ * Two of the three call sites cannot observe the difference: neither
+ * `bc-attachment` nor `<p`/`<div` contains an `s` or a `k`, so `toLowerCase()`
+ * is exactly equivalent there and a revert of either reads as behaviour-neutral
+ * in the tests. They use this anyway, so the rule lives in one place and the
+ * next literal to gain an `s` does not have to be noticed.
+ *
+ * And it is deliberately no WIDER than the orbit table. "Same when upper-cased"
+ * would accept `sgıd` — `"ı".toUpperCase()` is "I" — which `EqualFold` refuses;
+ * that pair is pinned, because a too-wide fold invents mentions exactly where a
+ * too-narrow one drops them.
+ */
+const FOLDS_ONTO_ASCII = new Map<number, number>([
+  [0x017f, 0x73 /* s */],
+  [0x212a, 0x6b /* k */],
+]);
+
+function equalsFolded(text: string, target: string): boolean {
+  if (text.length !== target.length) return false;
+  for (let i = 0; i < target.length; i++) {
+    const want = target.charCodeAt(i);
+    const code = text.charCodeAt(i);
+    if (code === want) continue;
+    // ASCII case, then the two orbits that reach ASCII from outside it.
+    if (code >= 0x41 && code <= 0x5a && code + 0x20 === want) continue;
+    if (FOLDS_ONTO_ASCII.get(code) === want) continue;
+    return false;
+  }
+  return true;
+}
+
+/**
  * The index just past the opening `<p …>` or `<div …>` tag a rich text starts
  * with, or `-1` when it starts with anything else, so mentions can be placed
  * inside the first block rather than as a bare prefix in front of it. The tag's
@@ -1206,7 +1255,7 @@ function leadingBlockEnd(content: string): number {
 
   for (const name of ["<p", "<div"]) {
     if (content.length < i + name.length) continue;
-    if (content.slice(i, i + name.length).toLowerCase() !== name) continue;
+    if (!equalsFolded(content.slice(i, i + name.length), name)) continue;
     const after = i + name.length;
     if (after < content.length && !isTagNameEnd(content.charCodeAt(after))) continue;
     const attrs = parseAttributes(content, after);
