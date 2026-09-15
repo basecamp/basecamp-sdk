@@ -348,53 +348,110 @@ fn leading_block_end(content: &str) -> Option<usize> {
     None
 }
 
-/// The HTML escapes that can appear in an attribute value, decoded as a browser would.
+/// The longest entity this reads: `&` plus a name or numeric body plus `;`. Go's scanner is
+/// bounded the same way, by the longest name in its table. The bound is what keeps this
+/// LINEAR — without it, `"&".repeat(n) + ";"` makes every failed parse rescan to the same
+/// far semicolon and the walk is quadratic in an attribute an author controls.
+const MAX_ENTITY_LENGTH: usize = 34;
+
+/// Named references that produce a character an `attachable_sgid` can actually contain, plus
+/// the five a serializer emits. Measured against Go's `html.UnescapeString`, not recalled.
 ///
-/// A full entity table is deliberately not carried: an sgid is base64url plus `--` and a
-/// possible `=` padding, so the only escapes that can appear in a well-formed one are the
-/// five named ASCII entities and numeric character references. An entity outside this set
-/// is left verbatim, which fails to decode into a Person rather than naming the wrong one.
+/// The full HTML5 table is ~2200 entries and reproducing it would be its own liability. It
+/// is not needed, and the reason is worth stating because it is what makes this equivalent
+/// rather than merely smaller: an sgid is base64url plus `=` padding and the `--` separator,
+/// so its alphabet is `A-Za-z0-9+/=_-`. A reference that yields a character INSIDE that
+/// alphabet can change which person an sgid names, and every one of those is here. A
+/// reference that yields a character outside it cannot: Go decodes it and gets an sgid with
+/// a character no base64 payload may hold, which fails to decode and names nobody — and
+/// this leaves it verbatim, which fails to decode and names nobody. Same answer, both ways.
+///
+/// Letters and digits have no named references at all. `&hyphen;` and `&dash;` are U+2010,
+/// not ASCII `-`, so no named reference produces a hyphen — only a numeric one does.
+const NAMED_ENTITIES: &[(&str, char)] = &[
+    ("amp", '&'),
+    ("apos", '\''),
+    ("equals", '='),
+    ("gt", '>'),
+    ("lowbar", '_'),
+    ("lt", '<'),
+    ("plus", '+'),
+    ("quot", '"'),
+    ("sol", '/'),
+    ("UnderBar", '_'),
+];
+
+/// Decodes the character references in an attribute value the way a browser — and Go's
+/// `html.UnescapeString` — would.
+///
+/// Semicolon-less numeric references are decoded, because Go decodes them (`&#66` is `B`).
+/// Anything this does not recognize is passed through verbatim, which is also what Go does
+/// with an unknown entity.
 fn unescape(value: &str) -> String {
     if !value.contains('&') {
         return value.to_string();
     }
     let mut out = String::with_capacity(value.len());
-    let mut rest = value;
-    while let Some(start) = rest.find('&') {
-        out.push_str(&rest[..start]);
-        rest = &rest[start..];
-        let Some(end) = rest.find(';') else {
-            out.push_str(rest);
-            return out;
-        };
-        let entity = &rest[1..end];
-        let decoded = match entity {
-            "amp" => Some('&'),
-            "lt" => Some('<'),
-            "gt" => Some('>'),
-            "quot" => Some('"'),
-            "apos" => Some('\''),
-            _ => numeric_entity(entity),
-        };
-        if let Some(character) = decoded {
-            out.push(character);
-            rest = &rest[end + 1..];
+    let bytes = value.as_bytes();
+    let mut pos = 0usize;
+    while pos < bytes.len() {
+        if bytes[pos] != b'&' {
+            let next = bytes[pos..]
+                .iter()
+                .position(|byte| *byte == b'&')
+                .map_or(bytes.len(), |offset| pos + offset);
+            out.push_str(&value[pos..next]);
+            pos = next;
+            continue;
+        }
+        if let Some((decoded, length)) = entity_at(value, pos) {
+            out.push(decoded);
+            pos += length;
         } else {
             out.push('&');
-            rest = &rest[1..];
+            pos += 1;
         }
     }
-    out.push_str(rest);
     out
 }
 
-fn numeric_entity(entity: &str) -> Option<char> {
-    let digits = entity.strip_prefix('#')?;
-    let code = match digits.strip_prefix(['x', 'X']) {
-        Some(hex) => u32::from_str_radix(hex, 16).ok()?,
-        None => digits.parse().ok()?,
-    };
-    char::from_u32(code)
+/// The character reference beginning at `start` (which is an `&`), and how many bytes it
+/// occupies. The scan is bounded by [`MAX_ENTITY_LENGTH`], so a failure costs a constant.
+fn entity_at(value: &str, start: usize) -> Option<(char, usize)> {
+    let end = value.len().min(start + MAX_ENTITY_LENGTH);
+    let window = value.get(start..end)?;
+    let body = window.strip_prefix('&')?;
+    if let Some(digits) = body.strip_prefix('#') {
+        let (radix, digits) = match digits.strip_prefix(['x', 'X']) {
+            Some(hex) => (16, hex),
+            None => (10, digits),
+        };
+        // Greedy, then optionally a ";". Go accepts both spellings.
+        let taken = digits
+            .find(|character: char| !character.is_digit(radix))
+            .unwrap_or(digits.len());
+        if taken == 0 {
+            return None;
+        }
+        let code = u32::from_str_radix(&digits[..taken], radix).ok()?;
+        let decoded = char::from_u32(code)?;
+        let prefix = window.len() - body.len() + (body.len() - digits.len());
+        let semicolon = usize::from(digits[taken..].starts_with(';'));
+        return Some((decoded, prefix + taken + semicolon));
+    }
+    let name_end = body
+        .find(|character: char| !character.is_ascii_alphanumeric())
+        .unwrap_or(body.len());
+    let name = &body[..name_end];
+    let (_, decoded) = NAMED_ENTITIES
+        .iter()
+        .find(|(candidate, _)| *candidate == name)?;
+    // A named reference needs its semicolon. Go's semicolon-less forms are a legacy table
+    // whose every member yields a character outside an sgid's alphabet, so admitting them
+    // could not change which person an sgid names.
+    body[name_end..]
+        .starts_with(';')
+        .then(|| (*decoded, 1 + name_end + 1))
 }
 
 /// The global id string an sgid's envelope carries.
@@ -471,22 +528,31 @@ fn envelope_gid(payload: &str) -> Option<String> {
         .map(str::to_string)
 }
 
-/// A `GlobalID`'s model and raw id: the path of `gid://<app>/<Model>/<id>` is exactly
-/// `/<Model>/<id>`, no more and no less, and a query or fragment after it is ignored the
-/// way a URL parse ignores it. The id must be all digits — a check the parse itself makes,
-/// so `12x` is not read as `12`.
-fn parse_global_id(gid: &str) -> Option<(&str, &str)> {
-    let after_scheme = gid.strip_prefix("gid://")?;
-    // The query and the fragment are cut FIRST, before the authority is split off, because
-    // that is where they begin: in `gid://bc3?x/Person/77` the `?` ends the host and
-    // everything after it is the query, so the URL has no path at all. Cutting them out of
-    // the path instead would read `bc3?x` as a host and `Person/77` as a path, and report a
-    // mention of someone a URL parser never finds there.
+/// A `GlobalID`'s model and raw id, read the way `net/url` reads it — which is the parser
+/// the reference implementation uses, so its answers are the contract.
+///
+/// Three of its behaviours have to be reproduced deliberately, because a hand-rolled split
+/// gets each of them wrong in a way that matters:
+///
+/// - The scheme is ASCII case-insensitive (`GID://` parses).
+/// - The path is percent-DECODED before it is read, so `gid://bc3/Person/%37%37` names
+///   person 77.
+/// - The authority is validated. `gid:// /Person/77` is not a URL at all — a space is
+///   illegal in a host — and Go refuses it. Splitting on the first `/` instead would read
+///   `" "` as the host and name person 77 that Go names nobody for, which is the dangerous
+///   direction for a helper a connector admits events by.
+///
+/// The query and the fragment are cut FIRST, before the authority, because that is where
+/// they begin: in `gid://bc3?x/Person/77` the `?` ends the host and everything after it is
+/// the query, so the URL has no path at all.
+fn parse_global_id(gid: &str) -> Option<(String, String)> {
+    let after_scheme = strip_scheme(gid)?;
     let authority_and_path = after_scheme.split(['?', '#']).next().unwrap_or_default();
     let (host, path) = authority_and_path.split_once('/')?;
-    if host.is_empty() {
+    if host.is_empty() || !is_valid_host(host) {
         return None;
     }
+    let path = percent_decode(path)?;
     let (model, raw_id) = path.split_once('/')?;
     if model.is_empty()
         || raw_id.is_empty()
@@ -495,7 +561,43 @@ fn parse_global_id(gid: &str) -> Option<(&str, &str)> {
     {
         return None;
     }
-    Some((model, raw_id))
+    Some((model.to_string(), raw_id.to_string()))
+}
+
+/// What follows `gid://`, matching the scheme case-insensitively as a URL parser does.
+fn strip_scheme(gid: &str) -> Option<&str> {
+    let (scheme, rest) = gid.split_once("://")?;
+    scheme.eq_ignore_ascii_case("gid").then_some(rest)
+}
+
+/// Whether a host is one a URL parser would accept: no space, no control character, and
+/// none of the delimiters that would have ended the authority.
+fn is_valid_host(host: &str) -> bool {
+    !host.bytes().any(|byte| {
+        byte <= b' ' || byte == 0x7f || matches!(byte, b'/' | b'?' | b'#' | b'@' | b'\\')
+    })
+}
+
+/// Percent-decodes a URL path, refusing a truncated or non-hex escape as a parser would.
+/// The result must still be text; a decode that is not UTF-8 names nobody.
+fn percent_decode(path: &str) -> Option<String> {
+    if !path.contains('%') {
+        return Some(path.to_string());
+    }
+    let bytes = path.as_bytes();
+    let mut out = Vec::with_capacity(bytes.len());
+    let mut pos = 0usize;
+    while pos < bytes.len() {
+        if bytes[pos] == b'%' {
+            let hex = path.get(pos + 1..pos + 3)?;
+            out.push(u8::from_str_radix(hex, 16).ok()?);
+            pos += 3;
+        } else {
+            out.push(bytes[pos]);
+            pos += 1;
+        }
+    }
+    String::from_utf8(out).ok()
 }
 
 /// Decodes standard-alphabet base64 without padding, matching Go's `RawStdEncoding` — the
@@ -735,6 +837,95 @@ mod tests {
         assert_eq!(person_id_from_sgid(&none), None);
     }
 
+    /// Every row measured against `net/url` + the Go helper, not recalled.
+    #[test]
+    fn the_gid_parse_answers_what_net_url_answers() {
+        let go: &[(&str, Option<i64>)] = &[
+            ("gid://bc3/Person/77", Some(77)),
+            // The path is percent-decoded before it is read.
+            ("gid://bc3/Person/%37%37", Some(77)),
+            ("gid://bc3/Pe%72son/77", Some(77)),
+            // The scheme is ASCII case-insensitive.
+            ("GID://bc3/Person/77", Some(77)),
+            ("Gid://bc3/Person/77", Some(77)),
+            // A space is illegal in a host, so this is not a URL at all. Splitting on the
+            // first `/` would read `" "` as the host and name a person Go names none for.
+            ("gid:// /Person/77", None),
+            ("gid://b c3/Person/77", None),
+            ("gid:///Person/77", None),
+            // A truncated or non-hex escape is not a path.
+            ("gid://bc3/Person/%3", None),
+            ("gid://bc3/Person/%zz", None),
+            ("gid://bc3/Person/77/extra", None),
+            ("gid://bc3/Person/12x", None),
+        ];
+        for (gid, expected) in go {
+            let sgid = json_sgid(&format!(r#"{{"gid":"{gid}","purpose":"attachable"}}"#));
+            assert_eq!(person_id_from_sgid(&sgid), *expected, "{gid}");
+        }
+    }
+
+    /// Pinned against `html.UnescapeString`, measured. The rule is to agree with Go on every
+    /// character an sgid can hold, and to leave the rest alone exactly as Go leaves an
+    /// unknown entity alone.
+    #[test]
+    fn entities_decode_where_go_decodes_them() {
+        let go = [
+            ("&equals;", "="),
+            ("&sol;", "/"),
+            ("&plus;", "+"),
+            ("&lowbar;", "_"),
+            ("&UnderBar;", "_"),
+            ("&amp;", "&"),
+            ("&quot;", "\""),
+            ("&#66;", "B"),
+            // Go accepts a numeric reference without its semicolon.
+            ("&#66", "B"),
+            ("&#x42;", "B"),
+            ("&#x42", "B"),
+            // An unknown entity is left verbatim, in Go too.
+            ("&unknownthing;", "&unknownthing;"),
+            ("&", "&"),
+            ("&;", "&;"),
+            ("a&b", "a&b"),
+        ];
+        for (input, expected) in go {
+            assert_eq!(unescape(input), expected, "{input:?}");
+        }
+    }
+
+    #[test]
+    fn an_sgid_whose_base64_characters_are_escaped_still_names_its_person() {
+        // `=` padding written as `&equals;` decodes in Go, so it must here: a narrower
+        // reader would not error, it would drop the mention and — on the write side —
+        // add a duplicate tag for a person the content already mentions.
+        let escaped = ANNIE_SGID.replace('=', "&equals;");
+        let markup = format!(r#"<div><bc-attachment sgid="{escaped}"></bc-attachment></div>"#);
+        assert_eq!(mentioned_person_ids(&markup), vec![1_049_715_915_i64]);
+
+        // And the write side sees the same string the read side does, so the person the
+        // content already mentions is not mentioned twice. This is the half a narrower
+        // decoder got wrong in the other direction: not unescaping made the escaped
+        // spelling look like a DIFFERENT sgid, and a second tag went out for someone who
+        // was already there.
+        let annie = person(1_049_715_915, Some(ANNIE_SGID));
+        let expanded = with_mentions(&markup, std::slice::from_ref(&annie)).unwrap();
+        assert_eq!(expanded.matches("bc-attachment sgid=").count(), 1);
+    }
+
+    #[test]
+    fn a_hostile_run_of_ampersands_costs_only_its_own_length() {
+        // Quadratic here would be reachable from any attribute in content an author writes.
+        let hostile = format!("<p sgid=\"{}\">x</p>", "&".repeat(200_000) + ";");
+        let started = std::time::Instant::now();
+        assert!(mentioned_person_ids(&hostile).is_empty());
+        assert!(
+            started.elapsed() < std::time::Duration::from_secs(2),
+            "entity scanning is not linear: {:?}",
+            started.elapsed()
+        );
+    }
+
     #[test]
     fn a_query_or_fragment_never_smuggles_a_path_past_the_authority() {
         // `gid://bc3?x/Person/77` has no path: a URL parser puts all of it in the query, so
@@ -941,12 +1132,34 @@ mod tests {
         let split = format!("{}\n{}", &ANNIE_SGID[..20], &ANNIE_SGID[20..]);
         assert_eq!(person_id_from_sgid(&split), Some(1_049_715_915));
 
-        // A break immediately BEFORE the digest separator names nobody, in Go too: the
-        // padding trim is a right-trim, so a payload ending `MA==\n` keeps its `=`, and a
-        // raw (unpadded) decoder rejects that. Pinned because the two rules interact — a
-        // decoder that skipped `=` as well would quietly diverge here and nowhere else.
+        // A break immediately BEFORE the digest separator names nobody, in Go too, and it
+        // is the ONLY placement that does. The whole value is trimmed first, so a break at
+        // either end is gone before anything looks at it; this one is interior, where the
+        // trim cannot reach, and it leaves the payload ending `==` — which the padding
+        // strip, being a right-trim, then cannot reach either. A raw (unpadded) decoder
+        // rejects the surviving `=`. Two rules interacting, not either alone.
         let before_digest = ANNIE_SGID.replacen("--", "\n--", 1);
         assert_eq!(person_id_from_sgid(&before_digest), None);
+    }
+
+    /// The other half of the same rule, and the half a defensive port gets wrong: Go trims
+    /// the WHOLE sgid before parsing it, so whitespace at either end is not a reason to
+    /// refuse. Refusing here would raise no error — it would drop a real mention.
+    #[test]
+    fn whitespace_around_the_whole_sgid_is_trimmed_before_anything_reads_it() {
+        let unsigned = ANNIE_SGID.split("--").next().unwrap().to_string();
+        for (name, sgid) in [
+            ("trailing LF", format!("{ANNIE_SGID}\n")),
+            ("trailing CRLF", format!("{ANNIE_SGID}\r\n")),
+            ("trailing spaces", format!("{ANNIE_SGID}  ")),
+            ("leading LF", format!("\n{ANNIE_SGID}")),
+            ("surrounded", format!("  {ANNIE_SGID}\n")),
+            // The unsigned fallback takes the same path.
+            ("unsigned with a trailing LF", format!("{unsigned}\n")),
+            ("unsigned bare", unsigned.clone()),
+        ] {
+            assert_eq!(person_id_from_sgid(&sgid), Some(1_049_715_915), "{name}");
+        }
     }
 
     /// An unsigned JSON envelope, in the base64url spelling Rails emits.

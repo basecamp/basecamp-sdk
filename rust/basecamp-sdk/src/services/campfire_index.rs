@@ -28,7 +28,7 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use futures_util::FutureExt;
-use futures_util::future::{BoxFuture, Shared};
+use futures_util::future::{BoxFuture, WeakShared};
 
 use crate::client::AccountClient;
 use crate::error::{Error, ErrorCode};
@@ -93,12 +93,26 @@ struct Entry<V> {
 }
 
 type Loaded<V> = Result<(Arc<V>, Instant), Arc<Error>>;
-type Pending<V> = Shared<BoxFuture<'static, Loaded<V>>>;
+/// How the map REMEMBERS a load without owning it; see [`CacheState::inflight`]. The
+/// owning handle is the `Shared` each caller holds while it waits.
+type PendingSlot<V> = WeakShared<BoxFuture<'static, Loaded<V>>>;
 
 struct CacheState<K, V> {
     seq: u64,
     entries: HashMap<K, Entry<V>>,
-    inflight: HashMap<K, Pending<V>>,
+    /// The loads under way, held WEAKLY.
+    ///
+    /// A load captures the client it reads through, and that client owns this cache, so a
+    /// map that owned the load would close a cycle no `Weak` on the publication handle can
+    /// open: cache → slot → load → `AccountClient` → client → cache. Dropping every client
+    /// handle would then free nothing — not the credentials, not the connection pool, not
+    /// this index — for the life of the process, and no sweep would ever run again to
+    /// notice, because nothing is left to call in.
+    ///
+    /// Holding the load weakly means the callers own it and it lives exactly as long as
+    /// somebody is waiting on it. A slot whose load every caller dropped upgrades to
+    /// `None`, and the next caller starts a fresh one.
+    inflight: HashMap<K, PendingSlot<V>>,
 }
 
 /// A per-key cache with single-flight loading: concurrent callers for one key wait on the
@@ -165,8 +179,8 @@ where
                     });
                 }
             }
-            if let Some(pending) = state.inflight.get(key) {
-                pending.clone()
+            if let Some(pending) = state.inflight.get(key).and_then(WeakShared::upgrade) {
+                pending
             } else {
                 Self::sweep_inflight_locked(&mut state);
                 // WEAK, not strong: the map holds the future and the future reaches back
@@ -196,7 +210,11 @@ where
                 }
                 .boxed()
                 .shared();
-                state.inflight.insert(key.clone(), pending.clone());
+                // `downgrade` answers `None` only for a future that has already completed,
+                // which a freshly built one has not.
+                if let Some(slot) = pending.downgrade() {
+                    state.inflight.insert(key.clone(), slot);
+                }
                 pending
             }
         };
@@ -269,19 +287,16 @@ where
         Ok((value, fetched))
     }
 
-    /// Drops every in-flight load nobody is waiting on any more.
+    /// Reaps the slots whose load is gone.
     ///
-    /// A load runs as a shared future polled by its callers, so a load every caller dropped
-    /// — an operation deadline shorter than the listing's round trip — is a future nothing
-    /// will ever finish. Its slot is held only by this map, and the map's own bound counts
-    /// published entries rather than in-flight ones, so without this a run of cancelled
-    /// calls on distinct buckets would grow the map without limit. A slot with another
-    /// holder is a live load and is left alone; one whose future has already completed is
-    /// gone from the map before this runs, and is dropped here too if it somehow is not.
+    /// The map holds loads weakly, so a load every caller dropped is already destroyed and
+    /// its slot is an empty handle; a completed load's slot is empty too. Neither costs
+    /// anything but a map entry, and the map's own bound counts published entries rather
+    /// than in-flight ones — so without this a run of cancelled calls on distinct buckets
+    /// would grow it without limit. A slot that still upgrades is a live load somebody is
+    /// waiting on, and is left alone.
     fn sweep_inflight_locked(state: &mut CacheState<K, V>) {
-        state
-            .inflight
-            .retain(|_, pending| Shared::strong_count(pending).is_some_and(|holders| holders > 1));
+        state.inflight.retain(|_, slot| slot.upgrade().is_some());
     }
 
     /// Drops every entry past its TTL. It runs at each publication — the one moment the
@@ -895,7 +910,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn a_later_caller_drives_a_load_its_starter_abandoned() {
+    async fn a_load_every_caller_abandoned_is_dropped_and_the_next_caller_is_served() {
         let clock = TestClock::new();
         let cache = cache::<i64>(&clock, 16);
         let loads = Arc::new(AtomicU64::new(0));
@@ -908,38 +923,58 @@ mod tests {
             Ok(11)
         });
         assert!(abandoned.now_or_never().is_none());
-        assert_eq!(
-            cache.lock().inflight.len(),
-            1,
-            "the slot outlived its starter"
-        );
-        let _ = release.send(()); // the load could finish now, but nothing is polling it
+        let _ = release.send(());
 
-        // This is the case Go's deferred release exists for, and where the two languages
-        // part company. In Go the loader goroutine is gone and waiters are parked on a
-        // channel only it could close — a permanent hang for that key. A shared future has
-        // no designated driver: the next caller polls it and finishes the load itself.
-        let counter = Arc::clone(&loads);
-        let later = cache
-            .get(&1, false, move || async move {
-                counter.fetch_add(1, Ordering::SeqCst);
-                Ok(99)
-            })
-            .await
-            .unwrap();
-        assert_eq!(
-            *later.value, 11,
-            "it drove the abandoned load to completion"
+        // The map holds loads weakly, so the last caller leaving takes the load — and the
+        // client it captured — with it. This is the case Go's deferred release exists for,
+        // and the answers differ: Go's waiters would park forever on a channel only the
+        // dead loader could close, while here the slot is simply empty and the next caller
+        // starts a fresh load rather than waiting on anything.
+        assert!(
+            cache
+                .lock()
+                .inflight
+                .get(&1)
+                .and_then(WeakShared::upgrade)
+                .is_none(),
+            "the abandoned load was dropped, not left running"
         );
+        let later = cache.get(&1, false, || async { Ok(99) }).await.unwrap();
+        assert_eq!(*later.value, 99);
         assert_eq!(
             loads.load(Ordering::SeqCst),
             1,
-            "and started no second load"
+            "the abandoned load never finished"
         );
-        assert!(
-            cache.lock().inflight.is_empty(),
-            "completing it published, which released the slot"
-        );
+        assert!(cache.lock().inflight.is_empty());
+    }
+
+    #[tokio::test]
+    async fn a_caller_still_waiting_keeps_the_load_alive_when_its_starter_leaves() {
+        let clock = TestClock::new();
+        let cache = cache::<i64>(&clock, 16);
+        let loads = Arc::new(AtomicU64::new(0));
+        let (release, held) = tokio::sync::oneshot::channel::<()>();
+        let counter = Arc::clone(&loads);
+        let mut starter = Box::pin(cache.get(&1, false, move || async move {
+            counter.fetch_add(1, Ordering::SeqCst);
+            let _ = held.await;
+            Ok(11)
+        }));
+        assert!(futures_util::poll!(starter.as_mut()).is_pending());
+        let mut second = Box::pin(cache.get(&1, false, || async { Ok(99) }));
+        assert!(futures_util::poll!(second.as_mut()).is_pending());
+        drop(starter); // the caller that began the load goes away
+
+        // Weak in the map does not mean the load dies with its starter: the other caller
+        // owns a handle, so the load survives and is driven to the starter's value.
+        let releaser = async {
+            tokio::task::yield_now().await;
+            let _ = release.send(());
+        };
+        let (joined, ()) = futures_util::join!(second, releaser);
+        assert_eq!(*joined.unwrap().value, 11);
+        assert_eq!(loads.load(Ordering::SeqCst), 1, "no second load");
     }
 
     #[test]

@@ -1140,6 +1140,16 @@ async fn resolve_chat_line(
     // may try, so it would cost a request that cannot help — and a failure on it would
     // replace the deterministic "incomplete" verdict with a transient error a consumer
     // retries forever.
+    //
+    // KNOWN GAP, shared with Go and deliberately left matching it. The gate below is
+    // `skipped`, which is set only when a candidate was actually passed over for want of
+    // budget — so a bucket holding EXACTLY `MAX_CAMPFIRE_CANDIDATES` candidates, all of
+    // them 404, reaches here with the budget at zero and `skipped` false, and pays for a
+    // re-read that can admit nothing. Go does the same at recording_summary.go's pass 2,
+    // so the prose above is what both implementations intend and neither quite does.
+    // Fixing it here alone would make this SDK the one that behaves differently, and the
+    // shared fixture pins neither shape; it belongs in the Go original first and then in
+    // every port at once.
     let mut refreshed = false;
     if search.skipped {
         return Err(incomplete(over_budget()));
