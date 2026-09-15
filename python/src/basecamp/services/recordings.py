@@ -251,7 +251,9 @@ def _text(record: dict[str, Any], keys: tuple[str, ...]) -> str:
 def _project(record: dict[str, Any], read: _Read, *, campfire_id: int | None = None) -> RecordingSummary:
     content = _text(record, read.content)
     return RecordingSummary(
-        id=record.get("id"),  # type: ignore[typeddict-item]
+        # 0, not None, where the payload carries no id: `id` is declared `int`
+        # and Go cannot produce anything else.
+        id=record.get("id") or 0,
         status=_text(record, ("status",)),
         type=_text(record, ("type",)),
         title=_text(record, read.title),

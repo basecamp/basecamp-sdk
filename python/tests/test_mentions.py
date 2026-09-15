@@ -110,6 +110,36 @@ class TestPersonIDFromSGID:
     def test_refuses_an_oversized_payload_without_decoding_it(self):
         assert person_id_from_sgid("A" * 100_000) is None
 
+    @pytest.mark.parametrize("control", ["\n", "\r", "\t", "\x00", "\x7f"])
+    def test_refuses_a_control_character_in_the_gid(self, control):
+        # Python's URL parser STRIPS tab, CR and LF before parsing, so without
+        # an explicit refusal this would report a mention of somebody the API
+        # never named. Go's net/url rejects any control character outright.
+        assert person_id_from_sgid(json_sgid(f"gid://bc3/Person/104{control}9715915")) is None
+
+    def test_refuses_a_percent_encoded_control_character(self):
+        assert person_id_from_sgid(json_sgid("gid://bc3/Person/104%0A9715915")) is None
+
+    def test_reads_the_path_decoded(self):
+        # Go reads url.Path, which is the decoded form.
+        assert person_id_from_sgid(json_sgid("gid://bc3/Person/%31%32%33")) == 123
+        assert person_id_from_sgid(json_sgid("gid://bc3/Pers%6fn/123")) == 123
+
+    def test_refuses_an_id_wider_than_int64(self):
+        # Python's int is arbitrary-precision where BC3's id is not, and no
+        # other SDK in this repo could even produce the answer.
+        assert person_id_from_sgid(json_sgid("gid://bc3/Person/9223372036854775807")) == 2**63 - 1
+        assert person_id_from_sgid(json_sgid("gid://bc3/Person/9223372036854775808")) is None
+        assert person_id_from_sgid(json_sgid("gid://bc3/Person/99999999999999999999999")) is None
+
+    def test_reads_a_line_wrapped_payload_as_go_does(self):
+        # Go's base64 decoder skips CR and LF mid-stream. It does NOT skip
+        # spaces or tabs, and neither does this.
+        payload = json_sgid("gid://bc3/Person/77", signed=False)
+        assert person_id_from_sgid(payload[:8] + "\n" + payload[8:]) == 77
+        assert person_id_from_sgid(payload[:8] + "\r\n" + payload[8:]) == 77
+        assert person_id_from_sgid(payload[:8] + " " + payload[8:]) is None
+
 
 class TestMentionedPersonIDs:
     def test_reports_each_mention_once_in_document_order(self):

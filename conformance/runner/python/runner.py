@@ -1661,7 +1661,7 @@ class ConformanceRunner:
         self._tests_dir = Path(tests_dir)
         self._tracker = TestTracker()
 
-    def _mapper_for_test(self, test_case: dict) -> Any:
+    def _mapper_for_test(self, test_case: dict) -> tuple[Any, Client | None]:
         """A mapper over a client built for THIS case, as the Go runner does.
 
         One client per case, not one per run. A client is not stateless: the
@@ -1669,6 +1669,10 @@ class ConformanceRunner:
         minutes (SPEC section 18, Appendix F), so a shared client would let one
         case's project read answer the next case's and turn a fixture's
         requestCount into a function of file order.
+
+        The client comes back with the mapper so the caller can close it: one
+        per case means 274 connection pools over a run, and leaving them to the
+        garbage collector is how a suite starts emitting ResourceWarnings.
         """
         overrides = test_case.get("configOverrides") or {}
         try:
@@ -1681,9 +1685,9 @@ class ConformanceRunner:
                     config_opts[option] = overrides[key]
             config = Config(**config_opts)
             client = Client(config=config, access_token="conformance-test-token")
-            return OperationMapper(client.for_account("999"))
+            return OperationMapper(client.for_account("999")), client
         except Exception as e:
-            return ErrorMapper(e)
+            return ErrorMapper(e), None
 
     def run(self) -> int:
         # Case census (#602) — see count_non_live_cases. Taken up front, by its
@@ -1735,9 +1739,12 @@ class ConformanceRunner:
                     print(f"  SKIP: {name} ({reason})")
                     continue
 
-                mapper = self._mapper_for_test(test_case)
-                runner = TestRunner(test_case, self._tracker, mapper)
-                result = runner.run()
+                mapper, client = self._mapper_for_test(test_case)
+                try:
+                    result = TestRunner(test_case, self._tracker, mapper).run()
+                finally:
+                    if client is not None:
+                        client.close()
 
                 if result.passed:
                     passed += 1

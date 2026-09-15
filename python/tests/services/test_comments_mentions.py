@@ -108,7 +108,33 @@ class TestExpandMentions:
         # The canonical code survives: the failure is annotated with which
         # person it was, not replaced by a different error.
         assert raised.value.code == "not_found"
-        assert any(str(ANNIE_ID) in note for note in raised.value.__notes__)
+        assert f"resolving mention for person {ANNIE_ID}" in str(raised.value)
+
+    @respx.mock
+    def test_checks_each_id_where_go_checks_it(self):
+        # Go validates inside the resolve loop, so a bad id after a good one
+        # still costs the good one's read. The request sequence is exactly what
+        # a shared fixture pins, so it has to mean the same thing here.
+        victor = _person_route(VICTOR_ID, VICTOR_SGID)
+
+        with pytest.raises(UsageError, match="invalid mention person id"):
+            _comments().expand_mentions(content="<div>x</div>", person_ids=[VICTOR_ID, -1])
+
+        assert victor.call_count == 1
+
+    @respx.mock
+    def test_a_failed_read_says_which_mention_failed_in_the_message(self):
+        # Go wraps this, so the prefix is part of the message — and the
+        # conformance runners assert on message text. The error's class, code
+        # and status survive intact.
+        respx.get(f"{BASE}/people/{VICTOR_ID}").mock(return_value=httpx.Response(404, json={"error": "Not found"}))
+
+        with pytest.raises(NotFoundError) as raised:
+            _comments().expand_mentions(content="<div>x</div>", person_ids=[VICTOR_ID])
+
+        assert f"resolving mention for person {VICTOR_ID}" in str(raised.value)
+        assert raised.value.code == "not_found"
+        assert raised.value.http_status == 404
 
     @respx.mock
     def test_refuses_an_id_that_is_not_an_id(self):

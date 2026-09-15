@@ -13,6 +13,7 @@ import threading
 
 import pytest
 
+from basecamp.errors import ApiError
 from basecamp.services._campfire_index import AsyncTTLCache, TTLCache
 
 
@@ -30,6 +31,18 @@ def _cache(clock: Clock, *, ttl: float = 100.0, floor: float = 10.0, max_items: 
 
 def _async_cache(clock: Clock, *, ttl: float = 100.0, floor: float = 10.0, max_items: int = 8) -> AsyncTTLCache:
     return AsyncTTLCache(ttl=ttl, floor=floor, max_items=max_items, now=clock)
+
+
+class TestClock:
+    def test_both_caches_default_to_a_monotonic_clock(self):
+        # A wall clock stepping backwards makes an entry outlive its TTL,
+        # declines a refresh that is genuinely due, and silently loses the
+        # `refreshed` / stale-candidate signal.
+        import inspect
+        import time
+
+        for cache_type in (TTLCache, AsyncTTLCache):
+            assert inspect.signature(cache_type).parameters["now"].default is time.monotonic
 
 
 class TestLifetime:
@@ -98,6 +111,62 @@ class TestFailures:
             cache.get("k", refresh=True, load=boom)
 
         assert cache.peek("k").value == "first"
+
+    def test_a_publication_that_faults_still_releases_the_key(self):
+        # The slot must be released on EVERY way out of a load, not just return
+        # and raise. Waiters wait with no timeout, so a key left in flight
+        # parks every later caller for the life of the process.
+        clock = Clock()
+        cache = _cache(clock)
+        cache._store._now = lambda: (_ for _ in ()).throw(RuntimeError("clock is broken"))
+
+        with pytest.raises(RuntimeError):
+            cache.get("k", refresh=False, load=lambda: "v")
+
+        cache._store._now = clock
+        assert cache.get("k", refresh=False, load=lambda: "v2").value == "v2"
+
+    def test_a_faulted_publication_tells_its_waiters(self):
+        clock = Clock()
+        cache = _cache(clock)
+        started = threading.Event()
+        release = threading.Event()
+        outcomes = []
+
+        def load():
+            started.set()
+            release.wait(5)
+            return "v"
+
+        def call():
+            try:
+                outcomes.append(cache.get("k", refresh=False, load=load).value)
+            except BaseException as error:  # noqa: BLE001 - the point is what reaches a waiter
+                outcomes.append(type(error).__name__)
+
+        owner = threading.Thread(target=call)
+        owner.start()
+        assert started.wait(5)
+        waiter = threading.Thread(target=call)
+        waiter.start()
+        cache._store._now = lambda: (_ for _ in ()).throw(RuntimeError("clock is broken"))
+        release.set()
+        owner.join(5)
+        waiter.join(5)
+
+        # Never a bogus success: the waiter hears the publication's failure.
+        assert outcomes == ["RuntimeError", "RuntimeError"]
+
+    def test_a_load_that_raises_a_base_exception_still_releases_the_key(self):
+        clock = Clock()
+        cache = _cache(clock)
+
+        def fatal():
+            raise KeyboardInterrupt
+
+        with pytest.raises(KeyboardInterrupt):
+            cache.get("k", refresh=False, load=fatal)
+        assert cache.get("k", refresh=False, load=lambda: "v").value == "v"
 
     def test_a_failed_load_releases_the_key(self):
         clock = Clock()
@@ -311,6 +380,98 @@ class TestAsyncCache:
             await owner
         assert (await waiter).value == "v"
         assert len(loads) == 2
+
+    async def test_a_waiter_is_not_itself_marked_cancelled_by_the_owner(self):
+        # Go hands the waiter the owner's failure as a VALUE; its goroutine is
+        # untouched. Re-raising a foreign CancelledError here would tell an
+        # enclosing TaskGroup this task was cancelled when it was not.
+        clock = Clock()
+        cache = _async_cache(clock)
+        started = asyncio.Event()
+        gate = asyncio.Event()
+
+        async def blocking_load():
+            started.set()
+            await gate.wait()
+            return "v"
+
+        async def cancelled_load():
+            await asyncio.sleep(3600)
+
+        owner = asyncio.create_task(cache.get("k", refresh=False, load=blocking_load))
+        await started.wait()
+        second = asyncio.create_task(cache.get("k", refresh=False, load=cancelled_load))
+        third = asyncio.create_task(cache.get("k", refresh=False, load=cancelled_load))
+        await asyncio.sleep(0)
+        owner.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await owner
+
+        # `second` takes over and is cancelled; `third`, which nobody
+        # cancelled, must not end up looking cancelled.
+        await asyncio.sleep(0)
+        second.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await second
+        with pytest.raises(ApiError):
+            await asyncio.wait_for(third, timeout=5)
+        assert not third.cancelled()
+
+    async def test_a_transport_style_cancellation_from_the_load_is_shared(self):
+        # Attribution is decided by WHOSE cancellation ended the load, not by
+        # the exception's type: a CancelledError the load itself raised, with
+        # nobody having cancelled this task, is the load's own failure and must
+        # be shared rather than re-run by every waiter.
+        clock = Clock()
+        cache = _async_cache(clock)
+        loads = []
+        gate = asyncio.Event()
+
+        async def load():
+            loads.append(1)
+            await gate.wait()
+            raise asyncio.CancelledError
+
+        tasks = [asyncio.create_task(cache.get("k", refresh=False, load=load)) for _ in range(3)]
+        await asyncio.sleep(0)
+        gate.set()
+        outcomes = await asyncio.gather(*tasks, return_exceptions=True)
+
+        assert len(loads) == 1, "one load, shared — not one re-run per waiter"
+        assert all(isinstance(outcome, asyncio.CancelledError) for outcome in outcomes)
+
+    async def test_a_waiter_with_a_pending_cancellation_does_not_reload(self):
+        # asyncio.Event.wait() returns WITHOUT suspending when the event is
+        # already set, so a waiter cancelled while queued has no delivery point
+        # and would otherwise go on to issue a live request.
+        clock = Clock()
+        cache = _async_cache(clock)
+        loads = []
+        started = asyncio.Event()
+        gate = asyncio.Event()
+
+        async def blocking_load():
+            loads.append("owner")
+            started.set()
+            await gate.wait()
+            return "v"
+
+        async def waiter_load():
+            loads.append("waiter")
+            return "v"
+
+        owner = asyncio.create_task(cache.get("k", refresh=False, load=blocking_load))
+        await started.wait()
+        waiter = asyncio.create_task(cache.get("k", refresh=False, load=waiter_load))
+        await asyncio.sleep(0)
+        owner.cancel()
+        waiter.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await owner
+        with pytest.raises(asyncio.CancelledError):
+            await waiter
+
+        assert loads == ["owner"], "a cancelled waiter must not issue a request"
 
     async def test_the_waiters_of_a_cancelled_owner_are_not_left_parked(self):
         clock = Clock()

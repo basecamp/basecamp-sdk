@@ -42,38 +42,60 @@ so a failed lookup posts nothing.
 """
 
 
-def _distinct_person_ids(person_ids: Iterable[int]) -> list[int]:
-    """The requested ids, in order, without repeats. Refuses one that is not an id."""
-    seen: set[int] = set()
-    distinct: list[int] = []
-    for person_id in person_ids:
-        if not isinstance(person_id, int) or isinstance(person_id, bool) or person_id <= 0:
-            raise UsageError(f"invalid mention person id {person_id!r}")
-        if person_id in seen:
-            continue
-        seen.add(person_id)
-        distinct.append(person_id)
-    return distinct
+def _checked_person_id(person_id: Any, seen: set[int]) -> int | None:
+    """One requested id, checked; ``None`` when it is a repeat to skip.
+
+    Checked WHERE Go checks it -- inside the resolve loop, not in a pass of its
+    own beforehand. The difference is observable: with ids ``[5, -1]`` Go reads
+    person 5 and only then refuses, and a fixture pinning that request count
+    has to mean the same thing on every runner.
+
+    The type is checked as well as the value, which Go gets from `int64`: a
+    `bool` is an `int` in Python, so ``True`` would otherwise resolve as person
+    1, and a string id would raise a bare `TypeError` from the comparison
+    instead of the SDK's own usage error.
+    """
+    if not isinstance(person_id, int) or isinstance(person_id, bool) or person_id <= 0:
+        raise UsageError(f"invalid mention person id {person_id!r}")
+    if person_id in seen:
+        return None
+    seen.add(person_id)
+    return person_id
+
+
+def _annotate(error: BaseException, person_id: int) -> None:
+    """Say which mention failed, without replacing the error that says why.
+
+    Go wraps this with ``fmt.Errorf("resolving mention for person %d: %w", ...)``,
+    so the prefix is part of the message — and the conformance runners assert on
+    message text. Rewriting `args` keeps that text while leaving the error's
+    class, canonical code, HTTP status and retry hints exactly as the read
+    produced them; raising a new instance would throw all of that away.
+    """
+    context = f"resolving mention for person {person_id}"
+    if error.args and isinstance(error.args[0], str):
+        error.args = (f"{context}: {error.args[0]}", *error.args[1:])
+    else:
+        error.add_note(context)
 
 
 class CommentsService(_GeneratedCommentsService):
     """Sync comments service with the mention-expanding composites."""
 
     def expand_mentions(self, *, content: str, person_ids: Iterable[int] | None = None) -> str:
-        ids = _distinct_person_ids(person_ids or ())
-        if not ids:
-            return content
+        seen: set[int] = set()
         people = []
-        for person_id in ids:
+        for requested in person_ids or ():
+            person_id = _checked_person_id(requested, seen)
+            if person_id is None:
+                continue
             try:
                 people.append(self._client.people.get(person_id=person_id))
             except Exception as error:
-                # Annotated rather than re-raised as something else: which
-                # person failed is context, and replacing the error would throw
-                # away the canonical code, the HTTP status and the retry hints a
-                # caller classifies on.
-                error.add_note(f"resolving mention for person {person_id}")
+                _annotate(error, person_id)
                 raise
+        if not people:
+            return content
         return with_mentions(content, people)
 
     expand_mentions.__doc__ = _EXPAND_MENTIONS_DOC
@@ -93,16 +115,19 @@ class AsyncCommentsService(_GeneratedAsyncCommentsService):
     """Async comments service with the mention-expanding composites."""
 
     async def expand_mentions(self, *, content: str, person_ids: Iterable[int] | None = None) -> str:
-        ids = _distinct_person_ids(person_ids or ())
-        if not ids:
-            return content
+        seen: set[int] = set()
         people = []
-        for person_id in ids:
+        for requested in person_ids or ():
+            person_id = _checked_person_id(requested, seen)
+            if person_id is None:
+                continue
             try:
                 people.append(await self._client.people.get(person_id=person_id))
             except Exception as error:
-                error.add_note(f"resolving mention for person {person_id}")
+                _annotate(error, person_id)
                 raise
+        if not people:
+            return content
         return with_mentions(content, people)
 
     expand_mentions.__doc__ = _EXPAND_MENTIONS_DOC

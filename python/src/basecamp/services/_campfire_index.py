@@ -47,7 +47,7 @@ from collections.abc import Awaitable, Callable, Hashable
 from dataclasses import dataclass, field
 from typing import Any, Generic, TypeVar
 
-from basecamp.errors import NotFoundError
+from basecamp.errors import ApiError, NotFoundError
 
 #: How long a cached discovery source -- a bucket's project dock, the account's
 #: Campfire listing -- is reused before it is read again.
@@ -83,6 +83,13 @@ CAMPFIRE_INDEX_MAX_ITEMS = 1024
 
 K = TypeVar("K", bound=Hashable)
 V = TypeVar("V")
+
+
+#: The reason text a listing overflow reports. Go spells the CONSTANT rather
+#: than its value, and this is a public field on
+#: :class:`~basecamp.errors.CampfireDiscoveryIncompleteError` that a shared
+#: fixture can pin, so the two say the same thing.
+_LISTING_OVERFLOW_REASON = "campfire listing exceeds MaxCampfireListing"
 
 
 class CampfireListingOverflow(Exception):
@@ -132,6 +139,12 @@ class _Load(Generic[V]):
     value: Any = None
     error: BaseException | None = None
     fetched: float = 0.0
+    #: The load ended because the task that OWNED it was cancelled, as opposed
+    #: to failing on its own account. Decided from WHOSE cancellation ended the
+    #: load, never from the exception's type: a transport timeout can surface
+    #: as the same class as a caller's cancellation, and reading one as the
+    #: other makes every waiter re-run a load it should have shared.
+    owner_cancelled: bool = False
 
 
 @dataclass
@@ -144,17 +157,52 @@ class _AsyncLoad(_Load[V]):
     done: asyncio.Event = field(default_factory=asyncio.Event)
 
 
-def _record_outcome(pending: _Load[V], store: _Store[K, V], value: Any, error: BaseException | None) -> None:
+def _record_outcome(
+    pending: _Load[V],
+    store: _Store[K, V],
+    value: Any,
+    error: BaseException | None,
+    *,
+    owner_cancelled: bool = False,
+) -> None:
     """Write a finished load's outcome onto its record.
 
-    Everything a waiter reads lives here, and it is all set in one go with
-    nothing between that can suspend or raise, so a waiter woken at any later
-    point sees a complete answer rather than a half-written one.
+    Everything a waiter reads lives here. The error is set first, by a bare
+    assignment that cannot fail, so a waiter woken at any later point reads an
+    answer rather than a record that still says "succeeded, value None".
     """
     pending.error = error
+    pending.owner_cancelled = owner_cancelled
     if error is None:
         pending.value = value
         pending.fetched = store.now()
+
+
+def _owner_cancellation(error: BaseException) -> bool:
+    """Whether the CURRENT task's own cancellation is what ended a load.
+
+    Go asks two questions -- was the loading caller's context done, and is the
+    error that context's own -- and both halves matter. This is their Python
+    pair: the error is a cancellation AND this task actually has one pending.
+    An ``httpx`` timeout, or a ``CancelledError`` escaping a scope the load
+    itself owns, is the load's own failure and is shared with the waiters,
+    exactly as in Go.
+    """
+    if not isinstance(error, asyncio.CancelledError):
+        return False
+    return _cancellation_pending()
+
+
+def _cancellation_pending() -> bool:
+    """Whether the current task has an undelivered cancellation.
+
+    A waiter must consult this before deciding to load for itself:
+    ``asyncio.Event.wait()`` returns WITHOUT suspending when the event is
+    already set, so a task cancelled while it was queued has no delivery point
+    and would otherwise go on to issue a live request.
+    """
+    task = asyncio.current_task()
+    return task is not None and task.cancelling() > 0
 
 
 class _Store(Generic[K, V]):
@@ -281,14 +329,17 @@ class TTLCache(Generic[K, V]):
         return _Hit(value, pending.fetched, cached=False)
 
     def _publish(self, key: K, pending: _SyncLoad[V], value: Any, error: BaseException | None) -> None:
-        # Written before the lock, and released after it, for the reasons the
-        # async twin's _publish spells out — kept identical here so the two
-        # cannot drift into different failure behaviour.
-        _record_outcome(pending, self._store, value, error)
+        # Structured exactly like the async twin's, so the two cannot drift
+        # into different failure behaviour. See it for why.
         try:
+            _record_outcome(pending, self._store, value, error)
             with self._lock:
                 if error is None:
                     self._store.store(key, value, pending.fetched)
+        except BaseException as failure:
+            pending.error = failure
+            pending.value = None
+            raise
         finally:
             if self._inflight.get(key) is pending:
                 del self._inflight[key]
@@ -337,45 +388,76 @@ class AsyncTTLCache(Generic[K, V]):
             if not owns:
                 await pending.done.wait()
                 if pending.error is not None:
-                    # The load ran in the owning task. If that task was
-                    # cancelled, the failure is its, not this caller's: a waiter
-                    # whose own task is live goes round again and loads for
-                    # itself (the key is free, so it becomes the loader and any
-                    # other waiters queue behind it -- one load, not a
-                    # stampede). Any other error is the load's own and is
-                    # shared.
-                    if isinstance(pending.error, asyncio.CancelledError) and not reacquired:
+                    if not pending.owner_cancelled:
+                        # The load's own failure -- a 403, a transport timeout.
+                        # Shared, so N waiters never re-run one failed load N
+                        # times.
+                        raise pending.error
+                    # The OWNER was cancelled. That says nothing about the
+                    # source, so a waiter whose own task is live goes round
+                    # again and loads for itself: the key is free, so it becomes
+                    # the loader and any other waiters queue behind it -- one
+                    # load, not a stampede. Once only; a second owner-cancelled
+                    # failure is reported rather than chased, so a run of
+                    # cancelled owners cannot become a queue of sequential loads
+                    # behind one waiter.
+                    if not reacquired and not _cancellation_pending():
                         reacquired = True
                         continue
-                    raise pending.error
+                    # Never re-raise the owner's CancelledError: this task was
+                    # not cancelled, and raising one would tell an enclosing
+                    # TaskGroup that it was.
+                    raise ApiError(
+                        "campfire index load was cancelled by the caller that owned it",
+                        retryable=True,
+                    ) from pending.error
                 return _Hit(pending.value, pending.fetched, cached=False)
 
             try:
                 value = await load()
             except BaseException as error:
-                await self._publish(key, pending, None, error)
+                await self._publish(key, pending, None, error, owner_cancelled=_owner_cancellation(error))
                 raise
             await self._publish(key, pending, value, None)
             return _Hit(value, pending.fetched, cached=False)
 
-    async def _publish(self, key: K, pending: _AsyncLoad[V], value: Any, error: BaseException | None) -> None:
-        # The outcome is written onto the load record BEFORE anything that can
-        # suspend. A waiter reads it the instant the event is set, and this
-        # task can be cancelled at the lock: were the fields written after,
-        # an interrupted publication would wake every waiter onto a record
-        # saying "succeeded, value None".
-        _record_outcome(pending, self._store, value, error)
+    async def _publish(
+        self,
+        key: K,
+        pending: _AsyncLoad[V],
+        value: Any,
+        error: BaseException | None,
+        *,
+        owner_cancelled: bool = False,
+    ) -> None:
+        # The outcome is written before anything that can suspend: a waiter
+        # reads it the instant the event is set, and this task can be cancelled
+        # at the lock. Were the fields written after, an interrupted
+        # publication would wake every waiter onto a record saying "succeeded,
+        # value None".
         try:
+            _record_outcome(pending, self._store, value, error, owner_cancelled=owner_cancelled)
             async with self._lock:
                 if error is None:
                     self._store.store(key, value, pending.fetched)
+        except BaseException as failure:
+            # Publication itself failed -- a clock or a store that raised. The
+            # waiters hear about that rather than reading a half-written
+            # record; without this they would see "succeeded, value None".
+            pending.error = failure
+            pending.value = None
+            raise
         finally:
-            # Neither of these may be skipped, whatever happened above: a key
-            # left in flight behind a finished load parks every later caller on
-            # it forever, and an event nobody sets parks the current ones. Both
-            # are single statements with no suspension between them, so the
-            # lock the store needs is not needed here — and the identity check
-            # means a load that replaced this one can never be dropped by it.
+            # THE release point, and it covers every way control can leave the
+            # load -- return, raise, cancellation, a fault in publication
+            # itself. Waiters wait with no timeout and the listing's key is a
+            # bare account id, so a slot left in flight would park every later
+            # caller for that whole account for the life of the client.
+            #
+            # Nothing here can suspend or raise, which is what makes it
+            # uncancellable: two dict operations and an event. The lock the
+            # store needs is not needed for them, and the identity check means
+            # a load that replaced this one can never be dropped by it.
             if self._inflight.get(key) is pending:
                 del self._inflight[key]
             pending.done.set()
@@ -397,9 +479,14 @@ def _campfires_by_bucket(campfires: list[dict[str, Any]]) -> dict[int, list[int]
     for campfire in campfires:
         bucket = campfire.get("bucket") or {}
         bucket_id = bucket.get("id")
-        if not bucket_id:
+        campfire_id = campfire.get("id")
+        # Both ids are required, and an entry missing either is skipped rather
+        # than turned into a KeyError: this runs inside a cache loader whose
+        # failure is shared with every waiter on the key, and a bare KeyError
+        # would escape the SDK's error taxonomy entirely.
+        if not bucket_id or not campfire_id:
             continue
-        by_bucket.setdefault(bucket_id, []).append(campfire["id"])
+        by_bucket.setdefault(bucket_id, []).append(campfire_id)
     return by_bucket
 
 
@@ -457,7 +544,7 @@ class CampfireIndex:
         def load() -> dict[int, list[int]]:
             listing = account.campfires.list(max_items=MAX_CAMPFIRE_LISTING)
             if listing.meta.truncated:
-                raise CampfireListingOverflow(f"campfire listing exceeds {MAX_CAMPFIRE_LISTING}")
+                raise CampfireListingOverflow(_LISTING_OVERFLOW_REASON)
             return _campfires_by_bucket(list(listing))
 
         hit = self._listings.get(account.account_id, refresh=refresh, load=load)
@@ -502,7 +589,7 @@ class AsyncCampfireIndex:
         async def load() -> dict[int, list[int]]:
             listing = await account.campfires.list(max_items=MAX_CAMPFIRE_LISTING)
             if listing.meta.truncated:
-                raise CampfireListingOverflow(f"campfire listing exceeds {MAX_CAMPFIRE_LISTING}")
+                raise CampfireListingOverflow(_LISTING_OVERFLOW_REASON)
             return _campfires_by_bucket(list(listing))
 
         hit = await self._listings.get(account.account_id, refresh=refresh, load=load)

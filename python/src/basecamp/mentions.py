@@ -63,7 +63,7 @@ import html
 import json
 from collections.abc import Iterable, Mapping
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import unquote, urlparse
 
 from basecamp.errors import UsageError
 
@@ -79,6 +79,10 @@ __all__ = [
 #: purpose cases in ``tests/test_mentions.py``, so a rename upstream breaks a
 #: test here rather than silently turning every mention invisible.
 _SGID_PURPOSE_ATTACHABLE = "attachable"
+
+#: The largest id a Person gid may carry. BC3's ids are 64-bit signed, and
+#: Go's decoder refuses anything wider; Python's int would not.
+_MAX_PERSON_ID = 2**63 - 1
 
 #: Bounds the decoded sgid payload. A Person sgid's payload is under 200 bytes;
 #: the cap keeps a hostile one from costing more than its own size to reject.
@@ -134,22 +138,34 @@ def person_id_from_sgid(sgid: str) -> int | None:
     gid = _global_id_from_sgid(sgid)
     if gid is None:
         return None
+    # Refused BEFORE parsing, because Python's URL parser would not refuse it:
+    # `urlsplit` STRIPS tab, CR and LF from the input (the WHATWG rule), so
+    # "gid://bc3/Person/104\n9715915" would parse as a clean id and this helper
+    # would report a mention of somebody the API never named. Go's net/url
+    # rejects any ASCII control character outright, and so does this.
+    if any(character < " " or character == "\x7f" for character in gid):
+        return None
     try:
         parsed = urlparse(gid)
     except ValueError:
         return None
     if parsed.scheme != "gid" or not parsed.netloc:
         return None
-    # A GlobalID path is exactly "/<Model>/<id>": no more, no less.
-    model, separator, raw_id = parsed.path.removeprefix("/").partition("/")
+    # A GlobalID path is exactly "/<Model>/<id>": no more, no less, and read
+    # DECODED -- "gid://bc3/Pers%6fn/123" names a Person, as Go's url.Path does.
+    model, separator, raw_id = unquote(parsed.path).removeprefix("/").partition("/")
     if separator != "/" or model != "Person" or not raw_id:
         return None
     # `str.isdigit` is true for non-ASCII digits, which `int()` would then
-    # happily parse into an id BC3 never wrote.
+    # happily parse into an id BC3 never wrote. It is also what refuses a
+    # percent-encoded control character, now that the path is decoded.
     if not (raw_id.isascii() and raw_id.isdigit()):
         return None
     person_id = int(raw_id)
-    return person_id if person_id > 0 else None
+    # Python's int is arbitrary-precision where BC3's id is not: Go's
+    # ParseInt(..., 64) refuses anything past int64 rather than reporting a
+    # mention no other SDK in this repo could even produce.
+    return person_id if 0 < person_id <= _MAX_PERSON_ID else None
 
 
 def mention_markup(person: Mapping[str, Any]) -> str:
@@ -406,6 +422,11 @@ def _envelope_gid(payload: str) -> str | None:
     # decode through the standard alphabet once the two symbols are mapped, and
     # stripping the padding lets a truncated-but-valid payload through.
     normalized = payload.replace("-", "+").replace("_", "/").rstrip("=")
+    # Go's base64 decoder skips CR and LF mid-stream and `validate=True` does
+    # not, so a line-wrapped payload would decode there and not here. Rails
+    # emits it unwrapped; this only keeps the two readers agreeing on what
+    # counts as the same sgid.
+    normalized = normalized.replace("\r", "").replace("\n", "")
     try:
         raw = base64.b64decode(normalized + "=" * (-len(normalized) % 4), validate=True)
     except (binascii.Error, ValueError):

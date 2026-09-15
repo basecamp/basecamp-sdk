@@ -211,6 +211,13 @@ class TestProjection:
         assert summary["bucket"] is None
 
     @respx.mock
+    def test_a_payload_with_no_id_projects_zero_not_none(self):
+        # `id` is declared `int`, and Go cannot produce anything but 0 here.
+        respx.get(f"{BASE}/vaults/9").mock(return_value=httpx.Response(200, json={"type": "Vault"}))
+        summary = _account().recordings.summarize(bucket_id=BUCKET, recording_id=9, recording_type="Vault")
+        assert summary["id"] == 0
+
+    @respx.mock
     def test_absent_fields_project_as_empties_rather_than_missing_keys(self):
         respx.get(f"{BASE}/vaults/9").mock(return_value=httpx.Response(200, json={"id": 9, "type": "Vault"}))
         summary = _account().recordings.summarize(bucket_id=BUCKET, recording_id=9, recording_type="Vault")
@@ -335,6 +342,26 @@ class TestChatLineDiscovery:
         assert lines.call_count == MAX_CAMPFIRE_CANDIDATES
 
     @respx.mock
+    def test_a_listing_entry_missing_an_id_is_skipped_not_a_crash(self):
+        # This runs inside a cache loader whose failure is shared with every
+        # waiter on the key, and a bare KeyError would escape the SDK's error
+        # taxonomy entirely.
+        respx.get(f"{BASE}/projects/{BUCKET}").mock(return_value=_not_found())
+        respx.get(f"{BASE}/chats.json").mock(
+            return_value=httpx.Response(
+                200,
+                json=[{"type": "Chat::Transcript", "bucket": {"id": BUCKET}}, _campfire(5)],
+            )
+        )
+        respx.get(f"{BASE}/chats/5/lines/{LINE_ID}").mock(return_value=httpx.Response(200, json=_line(5)))
+
+        summary = _account().recordings.summarize(
+            bucket_id=BUCKET, recording_id=LINE_ID, event_type="chat.line.created"
+        )
+
+        assert summary["campfire_id"] == 5
+
+    @respx.mock
     def test_a_listing_over_its_cap_is_incomplete_and_is_not_cached(self):
         respx.get(f"{BASE}/projects/{BUCKET}").mock(return_value=_not_found())
         overflowing = [_campfire(i) for i in range(1, _campfire_index.MAX_CAMPFIRE_LISTING + 1)]
@@ -350,7 +377,10 @@ class TestChatLineDiscovery:
         for _ in range(2):
             with pytest.raises(CampfireDiscoveryIncompleteError) as raised:
                 account.recordings.summarize(bucket_id=BUCKET, recording_id=LINE_ID, event_type="chat.line.created")
-            assert "exceeds" in raised.value.reason
+            # The same text every runner reports: Go spells the constant,
+            # not its value, and `reason` is a public field a shared
+            # fixture can pin.
+            assert raised.value.reason == "campfire listing exceeds MaxCampfireListing"
 
         assert listing.call_count == 2, "a truncated listing must not be cached as if it were the whole set"
 
