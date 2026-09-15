@@ -213,4 +213,48 @@ class MentionsTest {
         if (bits > 0) out.append(alphabet[(buffer shl (6 - bits)) and 0x3F])
         return out.toString()
     }
+
+    @Test
+    fun aControlCharacterInTheGidNamesNobody() {
+        // The sharpest case across the ports: a WHATWG-conformant URL parser
+        // STRIPS tab, CR and LF before parsing, so an sgid carrying one decodes
+        // to a clean person id there and to nothing in Go, whose net/url rejects
+        // any control character. That asymmetry reaches the WRITE side —
+        // mentionMarkup's only authenticity-adjacent check is "does this sgid
+        // name this person", so a more forgiving parser renders and posts a tag
+        // Go refuses to write. Measured here rather than reasoned about.
+        for (injected in listOf("\n", "\r", "\t", "\u0000", "\u007F")) {
+            val gid = "gid://bc3/Person/104${injected}9715915"
+            assertNull(personIdFromSgid(jsonSgidFor(gid)), "a gid carrying ${injected.toCharArray()[0].code} names nobody")
+        }
+        // And the same person id, uninjected, still reads.
+        assertEquals(1049715915L, personIdFromSgid(jsonSgidFor("gid://bc3/Person/1049715915")))
+    }
+
+    @Test
+    fun theWriteSideRefusesAControlCharacterGidToo() {
+        val crafted = jsonSgidFor("gid://bc3/Person/104\n9715915")
+        val failure = assertFailsWith<BasecampException.Usage> {
+            mentionMarkup(Person(id = 1049715915, name = "Victor", attachableSgid = crafted))
+        }
+        assertTrue("does not name that person" in failure.message.orEmpty())
+    }
+
+    @Test
+    fun aPersonIdPastSixtyFourBitsNamesNobody() {
+        // Go's ParseInt(..., 64) bounds the id; a port whose conversion wraps or
+        // saturates would report a different person than the gid names.
+        assertNull(personIdFromSgid(jsonSgidFor("gid://bc3/Person/99999999999999999999")))
+        assertNull(personIdFromSgid(jsonSgidFor("gid://bc3/Person/0")))
+        assertNull(personIdFromSgid(jsonSgidFor("gid://bc3/Person/-1")))
+        assertEquals(Long.MAX_VALUE, personIdFromSgid(jsonSgidFor("gid://bc3/Person/${Long.MAX_VALUE}")))
+    }
+
+    @Test
+    fun theModelNameIsReadFromTheDecodedPath() {
+        // Go reads url.Path, which is percent-decoded, so %6f resolves inside the
+        // model name. A port comparing the raw path would miss this.
+        assertEquals(77L, personIdFromSgid(jsonSgidFor("gid://bc3/Pers%6fn/77")))
+        assertNull(personIdFromSgid(jsonSgidFor("gid://bc3/Vault/77")))
+    }
 }
