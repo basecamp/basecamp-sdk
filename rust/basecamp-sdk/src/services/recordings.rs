@@ -1162,7 +1162,14 @@ async fn resolve_chat_line(
             return Ok(found);
         }
     }
-    let mut listed_ids = Vec::new();
+    // Seeded from what pass 1 consulted, not empty: on the budget-spent path the listing is
+    // not re-read, and the stale filter below has to compare against the snapshot the
+    // conclusion actually used. Starting empty reports every listing-only candidate as one
+    // the caller has LOST VISIBILITY of, when nothing changed.
+    let mut listed_ids = listed
+        .as_ref()
+        .map(|listed| listed.ids.clone())
+        .unwrap_or_default();
     if search.budget == 0 {
         if listed.is_none() {
             return Err(incomplete(format!(

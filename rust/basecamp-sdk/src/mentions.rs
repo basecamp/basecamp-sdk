@@ -745,37 +745,64 @@ fn valid_userinfo(userinfo: &str) -> bool {
 }
 
 /// A host, with its optional port, validated and unescaped as `parseHost` does.
+///
+/// The bracketed branch validates the literal as an ADDRESS, and it does so whether or not
+/// the literal carries a zone. An earlier version returned early on a zone and skipped the
+/// check, on a premise its own comment stated and no probe had ever tested: `[::1%25eth0]`
+/// parses under both hypotheses, because it is a valid address carrying a valid zone. What
+/// distinguishes them is a zone on an INVALID body — `[not-an-address%25zone]` — which the
+/// early return accepted and Go refuses.
 fn parse_host(host: &str) -> Option<String> {
-    if let Some(rest) = host.strip_prefix('[') {
-        let close = host.rfind(']')?;
-        if !valid_optional_port(&host[close + 1..]) {
-            return None;
-        }
-        // RFC 6874: `%25` introduces a zone identifier, and the zone may escape freely — so
-        // a literal carrying one is not validated as an address at all, which is what Go
-        // does and is measurable (`[::1%25eth0]` parses).
-        if let Some(zone) = host[..close].find("%25") {
-            let head = unescape_host(&host[..zone])?;
-            let middle = unescape_host(&host[zone..close])?;
-            let tail = unescape_host(&host[close..])?;
-            return Some(format!("{head}{middle}{tail}"));
-        }
-        let literal = &rest[..close - 1];
-        let address: std::net::IpAddr = literal.parse().ok()?;
-        if address.is_ipv4() {
-            return None; // an IPv4 address in brackets is not an IP-literal
-        }
-    } else {
-        if host.contains('[') {
-            return None; // a bracket anywhere but the front is not a literal
-        }
+    let Some(open) = host.rfind('[') else {
+        // No literal: an optional port, then the host's own escape and character rules.
         if let Some(colon) = host.rfind(':')
             && !valid_optional_port(&host[colon..])
         {
             return None;
         }
+        return unescape_in(host, HostPart::Host);
+    };
+    if open > 0 {
+        return None; // a bracket anywhere but the front is not an IP-literal
     }
-    unescape_host(host)
+    let close = host.rfind(']')?;
+    let colon_port = &host[close + 1..];
+    if !valid_optional_port(colon_port) {
+        return None;
+    }
+    let unescaped_port = unescape_in(colon_port, HostPart::Host)?;
+    let hostname = &host[1..close];
+    // RFC 6874: `%25` introduces a zone identifier, and the zone's escape rule is its own —
+    // wider than the host's, because a zone may spell out bytes the host may not.
+    let unescaped = match hostname.find("%25") {
+        Some(zone) => {
+            let head = unescape_in(&hostname[..zone], HostPart::Host)?;
+            let tail = unescape_in(&hostname[zone..], HostPart::Zone)?;
+            format!("{head}{tail}")
+        }
+        None => unescape_in(hostname, HostPart::Host)?,
+    };
+    // Only a valid IPv6 address may be bracketed. The zone is split off first because the
+    // address parser here does not take one, and an empty zone is refused as it is there.
+    let (address, zone) = match unescaped.split_once('%') {
+        Some((address, zone)) => (address, Some(zone)),
+        None => (unescaped.as_str(), None),
+    };
+    if zone == Some("") {
+        return None;
+    }
+    let address: std::net::IpAddr = address.parse().ok()?;
+    if address.is_ipv4() {
+        return None; // an IPv4 address in brackets is not an IP-literal
+    }
+    Some(format!("[{unescaped}]{unescaped_port}"))
+}
+
+/// Which escape rule applies: a host's, or the zone identifier's inside an IP-literal.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum HostPart {
+    Host,
+    Zone,
 }
 
 /// `validOptionalPort`: empty, or a `:` followed by digits only.
@@ -786,13 +813,17 @@ fn valid_optional_port(port: &str) -> bool {
     }
 }
 
-/// Percent-unescapes a host and enforces its allowlist.
+/// Percent-unescapes a host or a zone identifier and enforces the allowlist.
 ///
-/// The escape rule is the surprising half, and the blanket refusal this replaces was built
-/// on too small a sample: an escape is refused only when its first hex digit is BELOW 8 and
-/// the triple is not `%25`. So `%63` is an error while `%80`, `%C3%A9` and `%25` are not —
-/// a host may percent-encode its non-ASCII bytes, and `%25` is how a literal `%` is written.
-fn unescape_host(host: &str) -> Option<String> {
+/// The two differ only in which escapes they admit, and the difference is not small. A HOST
+/// refuses an escape whose first hex digit is below 8 unless the triple is `%25` — so `%63`
+/// is an error while `%80`, `%C3%A9` and `%25` are not, because a host may percent-encode
+/// its non-ASCII bytes and `%25` is how a literal `%` is written. A ZONE instead admits any
+/// escape whose decoded byte it could have written directly, plus a space (RFC 6874 says
+/// anything goes; Go restricts it to host-valid bytes, and then Windows puts spaces there).
+/// So `%41`, `%20` and `%7E` are legal in a zone and illegal in a host — applying the host
+/// rule to a zone loses addresses Go keeps.
+fn unescape_in(host: &str, part: HostPart) -> Option<String> {
     let bytes = host.as_bytes();
     let mut out = Vec::with_capacity(bytes.len());
     let mut pos = 0usize;
@@ -805,7 +836,11 @@ fn unescape_host(host: &str) -> Option<String> {
                 if !hex.bytes().all(|byte| byte.is_ascii_hexdigit()) {
                     return None;
                 }
-                if unhex(bytes[pos + 1]) < 8 && triple != "%25" {
+                let refused = match part {
+                    HostPart::Host => unhex(bytes[pos + 1]) < 8 && triple != "%25",
+                    HostPart::Zone => triple != "%25" && value != b' ' && !allowed_in_host(value),
+                };
+                if refused {
                     return None;
                 }
                 out.push(value);
@@ -1095,6 +1130,10 @@ mod tests {
 
     /// `{"gid" => "gid://bc3/Person/1049715915?expires_in", "purpose" => "attachable",
     /// "expires_at" => nil}`, Marshal 4.8, as BC3 mints it.
+    /// Measured on rustc 1.98.0. The MSRV job builds on 1.88 and runs this too; if the two
+    /// toolchains ever decode differently, that job fails here.
+    const DECODE_DIGEST: u64 = 419_185_206_463_269_138;
+
     const ANNIE_SGID: &str = "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE1P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--aeb392ebf54ffd820e45f27add22bae3a8c7da56";
 
     fn person(id: i64, sgid: Option<&str>) -> Person {
@@ -1809,6 +1848,70 @@ mod tests {
             index += 1;
         }
         out
+    }
+
+    /// A DIGEST over a wide, deterministic input space, pinned to a constant.
+    ///
+    /// The differential corpora behind the tables above were all measured on one toolchain,
+    /// and this crate is built on two: `Rust msrv (1.88)` and `Rust stable`. A difference
+    /// between them in `char::to_digit`, in `str::trim`'s Unicode tables, or in anything
+    /// else these paths lean on would be invisible to a sweep taken on either one alone.
+    ///
+    /// This runs in both jobs and fails in whichever disagrees. It is deliberately a digest
+    /// rather than a table: the point is not to state what each of several thousand inputs
+    /// answers, which the tables above already do for the cases that carry meaning, but to
+    /// notice if ANY of them starts answering differently. The tables say what is right;
+    /// this says nothing changed.
+    #[test]
+    fn the_decode_is_identical_on_every_toolchain_that_builds_this() {
+        // FNV-1a over the answers, so the assertion is one number and needs no dependency.
+        let mut digest: u64 = 0xcbf2_9ce4_8422_2325;
+        let mut feed = |text: &str| {
+            for byte in text.as_bytes() {
+                digest ^= u64::from(*byte);
+                digest = digest.wrapping_mul(0x0000_0100_0000_01b3);
+            }
+            digest ^= 0xff;
+            digest = digest.wrapping_mul(0x0000_0100_0000_01b3);
+        };
+
+        // Numeric references across the interesting ranges, in six spellings each.
+        for code in (0u32..0x0300).chain([0xd7ff, 0xd800, 0xdfff, 0xe000, 0x0010_ffff, 0x0011_0000])
+        {
+            for spelling in [
+                format!("&#{code};"),
+                format!("&#{code}"),
+                format!("&#x{code:x};"),
+                format!("&#x{code:x}"),
+                format!("&#0{code};"),
+                format!("&#X{code:X};"),
+            ] {
+                feed(&unescape(&spelling));
+            }
+        }
+        // Every entity in the table, with and without its semicolon, and as a prefix.
+        for (name, _) in VERDICT_RELEVANT_ENTITIES {
+            feed(&unescape(&format!("&{name}")));
+            feed(&unescape(&format!("&{}", name.trim_end_matches(';'))));
+            feed(&unescape(&format!("&{name}tail")));
+        }
+        // The trim and the whole read, over every separator and near-separator.
+        for code in (0u32..0x3001).step_by(7) {
+            let Some(character) = char::from_u32(code) else {
+                continue;
+            };
+            let sgid = format!("{character}{ANNIE_SGID}{character}");
+            feed(match person_id_from_sgid(&sgid) {
+                Some(_) => "mention",
+                None => "none",
+            });
+        }
+
+        assert_eq!(
+            digest, DECODE_DIGEST,
+            "the decode differs on this toolchain; the pinned tables above say which rows are \
+             right, this only says something moved"
+        );
     }
 
     /// A non-ASCII space at one end and a stray character in the digest half — the shape

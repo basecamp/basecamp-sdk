@@ -510,11 +510,44 @@ async fn a_budget_spent_before_the_listing_is_incomplete_and_costs_no_listing_fe
 /// nothing went unsearched and the answer is the settled `unresolved`, not `incomplete`. The
 /// re-reads are skipped — they could hand this call no candidate it may try — and the
 /// conclusion says so by reporting `refreshed` false.
+///
+/// The bucket holds exactly `MAX_CAMPFIRE_CANDIDATES` campfires so the budget is genuinely
+/// spent. An earlier version of this test used a two-campfire bucket and finished with 48
+/// of the budget left: it passed because of the refresh floor, not because of the rule it
+/// claimed to pin, and the named property went untested.
 #[tokio::test]
 async fn a_budget_spent_after_both_sources_were_consulted_is_unresolved_not_incomplete() {
-    let server = discovery_server(404).await;
+    let server = MockServer::start().await;
+    let ids: Vec<i64> = (0..MAX_CAMPFIRE_CANDIDATES)
+        .map(|index| 9_000_000 + i64::try_from(index).unwrap())
+        .collect();
+    mount(
+        &server,
+        "GET",
+        &format!("/999/projects/{BUCKET}"),
+        404,
+        &not_found(),
+    )
+    .await;
+    mount(
+        &server,
+        "GET",
+        "/999/chats.json",
+        200,
+        &json!(
+            ids.iter()
+                .map(|id| campfire(*id, BUCKET))
+                .collect::<Vec<_>>()
+        ),
+    )
+    .await;
+    Mock::given(method("GET"))
+        .respond_with(ResponseTemplate::new(404).set_body_json(not_found()))
+        .mount(&server)
+        .await;
+
     let account = account(&server);
-    // First call fills both caches and leaves the line unresolved.
+    // First call fills both caches and spends the budget on the listing's candidates.
     account
         .recordings()
         .summarize(&chat_line_ref())
@@ -522,7 +555,8 @@ async fn a_budget_spent_after_both_sources_were_consulted_is_unresolved_not_inco
         .unwrap_err();
     let after_first = paths(&server).await.len();
 
-    // Second call: both sources are cached, so both are consulted from cache in pass 1.
+    // Second call: both sources are consulted from cache in pass 1 and the budget is spent
+    // there, so pass 2 re-reads neither and the verdict stands on what was seen.
     let error = account
         .recordings()
         .summarize(&chat_line_ref())
@@ -533,14 +567,15 @@ async fn a_budget_spent_after_both_sources_were_consulted_is_unresolved_not_inco
         panic!("expected unresolved, got {error}");
     };
     assert!(!unresolved.refreshed);
-    assert_eq!(
-        unresolved.campfire_ids,
-        vec![FIRST_CAMPFIRE, SECOND_CAMPFIRE]
+    assert_eq!(unresolved.campfire_ids, ids);
+    assert!(
+        unresolved.stale_campfire_ids.is_empty(),
+        "nothing changed, so nothing is stale"
     );
     assert_eq!(
         paths(&server).await.len() - after_first,
-        2,
-        "only the two line reads; neither source was re-read"
+        MAX_CAMPFIRE_CANDIDATES,
+        "the budget's worth of line reads; neither source was re-read"
     );
 }
 
