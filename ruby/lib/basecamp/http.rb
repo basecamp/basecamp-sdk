@@ -380,6 +380,13 @@ module Basecamp
         # because it silently paginated to zero items — a composite that reads
         # "no rows" as "nothing exists" then reports absent what it never
         # managed to read.
+        # A null body is an EMPTY page, not a malformed one. The reference
+        # decodes JSON `null` into a slice as the nil slice with no error, so a
+        # listing that comes back null is "no rows" there. Rejecting it turned
+        # that into an ApiError and, for Campfire discovery, into a failed read
+        # where the contract has an empty one.
+        return [] if data.nil?
+
         unless data.is_a?(Array)
           raise Basecamp::ApiError.new(
             "Paginated response (page #{page}) is #{Services::MergeSafe.describe(data)}, not a list",

@@ -433,9 +433,12 @@ module Basecamp
       # and passes through what it merely REPORTS. Refused — the body envelope,
       # the bucket and its id (they decide whether the recording is in the
       # caller's project), the dock and listing entries and their ids and names
-      # (they decide which Campfires get searched), and "assignees" (it decides
-      # whether the key appears at all). Passed through verbatim — "id",
-      # "status", "type", "app_url", "parent", "creator", "updated_at". A
+      # (they decide which Campfires get searched), "assignees" (it decides
+      # whether the key appears at all), "content" and "title" (content is
+      # scanned for mentions), and "type" (the chat-line route reads it to
+      # decide whether a line can carry a mention at all). Passed through
+      # verbatim — "id", "status", "app_url", "parent", "creator",
+      # "updated_at". A
       # malformed one of those reaches the caller as it arrived, where the
       # reference would have failed the read.
       #
@@ -461,7 +464,12 @@ module Basecamp
         summary = {
           "id" => record["id"],
           "status" => record["status"],
-          "type" => record["type"],
+          # Typed, not passed through, because the chat-line route READS this to
+          # decide whether a line's content can carry a mention. The reference
+          # holds a plain string, so an array or an object there is a decode
+          # failure — and without this a line whose type was an object came back
+          # successfully with its mentions silently cleared.
+          "type" => read_text(record["type"], "type"),
           "title" => title.to_s,
           "app_url" => record["app_url"].to_s,
           "parent" => parent,

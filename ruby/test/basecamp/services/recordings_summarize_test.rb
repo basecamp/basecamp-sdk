@@ -622,6 +622,38 @@ class RecordingsSummarizeTest < Minitest::Test
     assert_not_requested(:get, "#{BASE_URL}/12345/chats.json")
   end
 
+  def test_a_chat_line_type_that_is_not_a_string_fails_the_read
+    # The chat route READS the type to decide whether the line's content can
+    # carry a mention, so by this composite's own boundary it has to be a value
+    # it can trust. The reference holds a plain string there, so an array or an
+    # object is a decode failure — and without the check such a line came back
+    # SUCCESSFULLY with its mentions silently cleared, which is the worst of the
+    # available outcomes: a plausible answer that is missing data.
+    [ [ 1 ], { "a" => 1 }, 5, true ].each do |malformed|
+      stub_dock([ 500 ])
+      stub_line(500, body: {
+        "id" => 1, "type" => malformed, "bucket" => { "id" => BUCKET }, "content" => "hi"
+      })
+
+      assert_raises(Basecamp::ApiError, "a type of #{malformed.inspect}") do
+        summarize(event_type: "chat.line.created")
+      end
+      @account = create_account_client(account_id: "12345")
+      WebMock.reset!
+    end
+  end
+
+  def test_a_null_campfire_listing_is_no_candidates_rather_than_a_failed_read
+    # A bare list decodes JSON null as the nil slice with no error in the
+    # reference, so a null listing is "no rows" there. Rejecting it turned an
+    # empty read into a failed one — and for discovery that is the difference
+    # between "no visible Campfire" and an error the caller retries.
+    stub_dock([])
+    stub_get("/12345/chats.json", response_body: "null")
+
+    assert_raises(Basecamp::UnresolvedRecordingError) { summarize(event_type: "chat.line.created") }
+  end
+
   def test_a_null_chat_line_is_a_zero_valued_summary_like_every_other_route
     # project() normalizes a null body to a zero-valued summary, because the
     # reference decodes `null` as the zero value with no error — but the
