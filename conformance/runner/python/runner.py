@@ -24,7 +24,15 @@ import respx
 import basecamp
 from basecamp import Client, Config, StaticTokenProvider
 from basecamp.auth import BearerAuth
-from basecamp.errors import BasecampError
+from basecamp.errors import (
+    BasecampError,
+    ErrorCode,
+    BucketMismatchError,
+    CampfireDiscoveryIncompleteError,
+    NoRecordingTypeError,
+    RecordingUnresolvedError,
+    UnknownRecordingTypeError,
+)
 
 # Wire keys for todo write operations; identical to the Python kwarg /
 # edit-attribute names, so fixtures map onto the SDK surface directly.
@@ -1118,6 +1126,23 @@ class OperationMapper:
                 if not groups:
                     raise ValueError("ListTodolistGroups returned no groups; the first element is the case result")
                 return groups[0]
+            case "RecordingsSummarize":
+                # The composite's own projection is the case result: the
+                # responseBody paths read the summary the SDK built, not a
+                # payload the mock handed back. See SPEC section 18 and
+                # Appendix F.
+                return self._account.recordings.summarize(
+                    bucket_id=path_params["bucketId"],
+                    recording_id=path_params["recordingId"],
+                    event_type=path_params.get("eventType"),
+                    recording_type=path_params.get("recordingType"),
+                )
+            case "CommentsCreateWithMentions":
+                return self._account.comments.create_with_mentions(
+                    recording_id=path_params["recordingId"],
+                    content=body["content"],
+                    mentions=body.get("mentions"),
+                )
             case _:
                 raise ValueError(f"Unknown operation: {operation}")
 
@@ -1266,14 +1291,35 @@ class TestRunner:
         # Implicit invariants: the mock route is origin-wide, so a misroute
         # to a different path on the same origin would silently consume the
         # queue. For DownloadURL, hop 1 must hit the test case path exactly;
-        # for every other operation with a path, the first request must
-        # contain the pathParams-substituted fixture path.
+        # for every other operation with a path and no requestPath assertion
+        # on request 0, the first request must contain the pathParams-
+        # substituted fixture path.
         if self._test["operation"] == "DownloadURL" and self._tracker.requests:
             expected_path = self._test["path"]
             actual_path = urlparse(self._tracker.requests[0]["url"]).path
             if actual_path != expected_path:
                 failures.append(f"DownloadURL hop 1 expected path {expected_path!r}, got {actual_path!r}")
-        elif self._test.get("path") and self._tracker.requests:
+        # A fixture that pins request 0's path explicitly has already said
+        # something stricter than this backstop can, and the two disagree for a
+        # composite whose first request is a constituent read rather than the
+        # operation the fixture is named for (CommentsCreateWithMentions reads
+        # the mentioned people before it posts). The exemption is keyed on
+        # request 0 specifically, not on "the fixture asserts some path
+        # somewhere": todos_write.json pins index 1 alone, and a broader gate
+        # would quietly stop checking its leading GET.
+        def _pins_request_zero(assertion: dict) -> bool:
+            if assertion.get("type") != "requestPath":
+                return False
+            index = assertion.get("index", 0)
+            if not isinstance(index, int) or isinstance(index, bool):
+                return False
+            # A negative index counts from the end, as _request_at resolves it,
+            # so "-2" on a two-request case IS request 0 and exempts it. The
+            # other runners resolve it; reading the literal would not.
+            return (index + self._tracker.request_count if index < 0 else index) == 0
+
+        pins_first_path = any(_pins_request_zero(a) for a in self._test.get("assertions", []))
+        if self._test["operation"] != "DownloadURL" and not pins_first_path and self._test.get("path") and self._tracker.requests:
             expected_path = self._test["path"]
             for key, value in self._test.get("pathParams", {}).items():
                 expected_path = expected_path.replace(f"{{{key}}}", str(value))
@@ -1286,7 +1332,7 @@ class TestRunner:
         # queued response silently. When the fixture declares a method and
         # carries no explicit requestMethod assertions, the first request
         # must use the fixture method.
-        has_method_assertions = any(a["type"] == "requestMethod" for a in self._test.get("assertions", []))
+        has_method_assertions = any(a.get("type") == "requestMethod" for a in self._test.get("assertions", []))
         if self._test.get("method") and not has_method_assertions and self._tracker.requests:
             expected_method = self._test["method"].upper()
             actual_method = self._tracker.requests[0]["method"].upper()
@@ -1365,27 +1411,43 @@ class TestRunner:
                     if not error:
                         failures.append(f"Expected error type {expected_type!r}, but got no error")
                         continue
-                    code_map = {
-                        "not_found": "not_found",
-                        "auth_required": "auth_required",
-                        "forbidden": "forbidden",
-                        "rate_limit": "rate_limit",
-                        "validation": "validation",
-                        "network": "network",
+                    # A composite's identity is its CLASS, and it is classified
+                    # here rather than read off `.code` -- the same split Go's
+                    # runner makes, where `semanticErrorType` matches the
+                    # sentinel with `errors.Is` and only a mapped `*Error`
+                    # falls through to `.Code`. Reading `.code` for both made
+                    # the SDK's public error code load-bearing for conformance
+                    # in a way Go's never is, and SPEC section 6 declares that
+                    # field a CLOSED enum of HTTP answers; none of these is one.
+                    semantic = {
+                        RecordingUnresolvedError: "recording_unresolved",
+                        CampfireDiscoveryIncompleteError: "campfire_discovery_incomplete",
+                        NoRecordingTypeError: "no_recording_type",
+                        UnknownRecordingTypeError: "unknown_recording_type",
+                        BucketMismatchError: "bucket_mismatch",
                     }
-                    expected_code = code_map.get(expected_type)
-                    if expected_code is None:
+                    # Derived from the enum, not transcribed from it: the
+                    # hand-written list had 8 of its 10 members, so a fixture
+                    # asserting `ambiguous` or `limit_exceeded` would have been
+                    # reported as an unknown conformance type here while the Go
+                    # runner -- which keeps no whitelist at all -- passed it.
+                    canonical = {member.value for member in ErrorCode}
+                    actual_type = None
+                    for error_class, identity in semantic.items():
+                        if isinstance(error, error_class):
+                            actual_type = identity
+                            break
+                    if actual_type is None:
+                        actual_type = getattr(error, "code", None)
+                    if expected_type not in semantic.values() and expected_type not in canonical:
                         failures.append(f"Unknown conformance error type {expected_type!r}")
-                    else:
-                        # Require a canonical code that exists and matches — an
-                        # error carrying no .code must fail, not silently pass.
-                        actual_code = getattr(error, "code", None)
-                        if actual_code is None:
-                            failures.append(
-                                f"Expected error code {expected_code!r}, but {type(error).__name__} carries no code: {error}"
-                            )
-                        elif actual_code != expected_code:
-                            failures.append(f"Expected error code {expected_code!r}, got {actual_code!r}")
+                    elif actual_type is None:
+                        failures.append(
+                            f"Expected error type {expected_type!r}, but {type(error).__name__} is neither a "
+                            f"composite identity nor carries a code: {error}"
+                        )
+                    elif actual_type != expected_type:
+                        failures.append(f"Expected error type {expected_type!r}, got {actual_type!r}")
 
                 case "requestPath":
                     expected = assertion["expected"]
@@ -1611,126 +1673,43 @@ def _get_error_field(error: Exception, field_path: str) -> Any:
 
 
 class ConformanceRunner:
-    SKIPS: set[str] = {
-        "RecordingsSummarize routes comment.created to the comment read and reads its mentions",
-        "RecordingsSummarize refuses boost.created before any request",
-        "RecordingsSummarize finds a chat line under the second visible Campfire",
-        "RecordingsSummarize reports a chat line under no visible Campfire as unresolved, not as a failed read",
-        "RecordingsSummarize returns a Campfire candidate's 403 as that read's error",
-        "CommentsCreateWithMentions resolves each person before posting and writes the mention from attachable_sgid",
-        "RecordingsSummarize routes message.created (event type) to one typed read and projects the recording",
-        "RecordingsSummarize routes todo.created (event type) to one typed read and projects the recording",
-        "RecordingsSummarize routes card.created (event type) to one typed read and projects the recording",
-        "RecordingsSummarize routes Document (recording type) to one typed read and projects the recording",
-        "RecordingsSummarize routes Upload (recording type) to one typed read and projects the recording",
-        "RecordingsSummarize routes Schedule::Entry (recording type) to one typed read and projects the recording",
-        "RecordingsSummarize routes Question (recording type) to one typed read and projects the recording",
-        "RecordingsSummarize routes Question::Answer (recording type) to one typed read and projects the recording",
-        "RecordingsSummarize routes Todolist (recording type) to one typed read and projects the recording",
-        "RecordingsSummarize routes Vault (recording type) to one typed read and projects the recording",
-        "RecordingsSummarize routes Inbox::Forward (recording type) to one typed read and projects the recording",
-        "RecordingsSummarize routes Client::Approval (recording type) to one typed read and projects the recording",
-        "RecordingsSummarize routes Client::Correspondence (recording type) to one typed read and projects the recording",
-        "RecordingsSummarize routes GoogleDocument (recording type) to one typed read and projects the recording",
-        "RecordingsSummarize routes CloudFile (recording type) to one typed read and projects the recording",
-        "RecordingsSummarize routes Kanban::Step (recording type) to one typed read and projects the recording",
-        "RecordingsSummarize routes Questionnaire (recording type) to one typed read and projects the recording",
-        "RecordingsSummarize routes Schedule (recording type) to one typed read and projects the recording",
-        "RecordingsSummarize routes Todoset (recording type) to one typed read and projects the recording",
-        "RecordingsSummarize routes Message::Board (recording type) to one typed read and projects the recording",
-        "RecordingsSummarize routes Kanban::Board (recording type) to one typed read and projects the recording",
-        "RecordingsSummarize routes Kanban::Column (recording type) to one typed read and projects the recording",
-        "RecordingsSummarize routes Inbox (recording type) to one typed read and projects the recording",
-        "RecordingsSummarize routes todo.completed (event type) to one typed read and projects the recording",
-        "RecordingsSummarize routes todo.assignment_changed (event type) to one typed read and projects the recording",
-        "RecordingsSummarize routes card.completed (event type) to one typed read and projects the recording",
-        "RecordingsSummarize routes card.assignment_changed (event type) to one typed read and projects the recording",
-        "RecordingsSummarize routes Comment (recording type) to one typed read and projects the recording",
-        "RecordingsSummarize routes Message (recording type) to one typed read and projects the recording",
-        "RecordingsSummarize routes Todo (recording type) to one typed read and projects the recording",
-        "RecordingsSummarize routes Kanban::Card (recording type) to one typed read and projects the recording",
-        "RecordingsSummarize routes Chat::Transcript (recording type) to one typed read and projects the recording",
-        "RecordingsSummarize routes card.moved (event type) to one typed read and projects the recording",
-        "RecordingsSummarize routes Chat::Lines::Text (recording type) through Campfire discovery and projects the line",
-    }
-    SKIP_REASONS: dict[str, str] = {
-        "RecordingsSummarize routes comment.created to the comment read and reads its mentions": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-        "RecordingsSummarize refuses boost.created before any request": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-        "RecordingsSummarize finds a chat line under the second visible Campfire": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-        "RecordingsSummarize reports a chat line under no visible Campfire as unresolved, not as a failed read": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-        "RecordingsSummarize returns a Campfire candidate's 403 as that read's error": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-        "CommentsCreateWithMentions resolves each person before posting and writes the mention from attachable_sgid": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-        "RecordingsSummarize routes message.created (event type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-        "RecordingsSummarize routes todo.created (event type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-        "RecordingsSummarize routes card.created (event type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-        "RecordingsSummarize routes Document (recording type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-        "RecordingsSummarize routes Upload (recording type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-        "RecordingsSummarize routes Schedule::Entry (recording type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-        "RecordingsSummarize routes Question (recording type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-        "RecordingsSummarize routes Question::Answer (recording type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-        "RecordingsSummarize routes Todolist (recording type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-        "RecordingsSummarize routes Vault (recording type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-        "RecordingsSummarize routes Inbox::Forward (recording type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-        "RecordingsSummarize routes Client::Approval (recording type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-        "RecordingsSummarize routes Client::Correspondence (recording type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-        "RecordingsSummarize routes GoogleDocument (recording type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-        "RecordingsSummarize routes CloudFile (recording type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-        "RecordingsSummarize routes Kanban::Step (recording type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-        "RecordingsSummarize routes Questionnaire (recording type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-        "RecordingsSummarize routes Schedule (recording type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-        "RecordingsSummarize routes Todoset (recording type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-        "RecordingsSummarize routes Message::Board (recording type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-        "RecordingsSummarize routes Kanban::Board (recording type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-        "RecordingsSummarize routes Kanban::Column (recording type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-        "RecordingsSummarize routes Inbox (recording type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-        "RecordingsSummarize routes todo.completed (event type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-        "RecordingsSummarize routes todo.assignment_changed (event type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-        "RecordingsSummarize routes card.completed (event type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-        "RecordingsSummarize routes card.assignment_changed (event type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-        "RecordingsSummarize routes Comment (recording type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-        "RecordingsSummarize routes Message (recording type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-        "RecordingsSummarize routes Todo (recording type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-        "RecordingsSummarize routes Kanban::Card (recording type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-        "RecordingsSummarize routes Chat::Transcript (recording type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-        "RecordingsSummarize routes card.moved (event type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-        "RecordingsSummarize routes Chat::Lines::Text (recording type) through Campfire discovery and projects the line": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    }
+    # Empty, and it stays empty. Every case in every fixture runs here; a
+    # skip added back needs a matching entry in spec/zero-skip-roster.yml or
+    # `make check-fixture-execution` fails (SPEC section 19).
+    SKIPS: set[str] = set()
+    SKIP_REASONS: dict[str, str] = {}
 
     def __init__(self, tests_dir: str):
         self._tests_dir = Path(tests_dir)
         self._tracker = TestTracker()
 
-        config = Config(base_url="https://3.basecampapi.com")
-        client = Client(config=config, access_token="conformance-test-token")
-        self._account = client.for_account("999")
-        self._mapper = OperationMapper(self._account)
+    def _mapper_for_test(self, test_case: dict) -> tuple[Any, Client | None]:
+        """A mapper over a client built for THIS case, as the Go runner does.
 
-    def _mapper_for_test(self, test_case: dict) -> Any:
-        overrides = test_case.get("configOverrides")
-        if not overrides:
-            return self._mapper
+        One client per case, not one per run. A client is not stateless: the
+        RecordingsSummarize composite caches Campfire discovery on it for ten
+        minutes (SPEC section 18, Appendix F), so a shared client would let one
+        case's project read answer the next case's and turn a fixture's
+        requestCount into a function of file order.
 
-        has_base_url = "baseUrl" in overrides
-        has_max_pages = "maxPages" in overrides
-        # maxRetries has to be in this list or a case overriding ONLY the retry
-        # cap silently gets the shared default client and passes while testing
-        # nothing.
-        has_max_retries = "maxRetries" in overrides
-        if not has_base_url and not has_max_pages and not has_max_retries:
-            return self._mapper
-
+        The client comes back with the mapper so the caller can close it: one
+        per case means 274 connection pools over a run, and leaving them to the
+        garbage collector is how a suite starts emitting ResourceWarnings.
+        """
+        overrides = test_case.get("configOverrides") or {}
         try:
-            config_opts: dict[str, Any] = {"base_url": overrides["baseUrl"] if has_base_url else "https://3.basecampapi.com"}
-            if has_max_pages:
-                config_opts["max_pages"] = overrides["maxPages"]
-            if has_max_retries:
-                config_opts["max_retries"] = overrides["maxRetries"]
+            config_opts: dict[str, Any] = {"base_url": overrides.get("baseUrl", "https://3.basecampapi.com")}
+            # maxRetries has to be read here or a case overriding ONLY the retry
+            # cap silently gets the default client and passes while testing
+            # nothing.
+            for key, option in (("maxPages", "max_pages"), ("maxRetries", "max_retries")):
+                if key in overrides:
+                    config_opts[option] = overrides[key]
             config = Config(**config_opts)
             client = Client(config=config, access_token="conformance-test-token")
-            account = client.for_account("999")
-            return OperationMapper(account)
+            return OperationMapper(client.for_account("999")), client
         except Exception as e:
-            return ErrorMapper(e)
+            return ErrorMapper(e), None
 
     def run(self) -> int:
         # Case census (#602) — see count_non_live_cases. Taken up front, by its
@@ -1782,9 +1761,12 @@ class ConformanceRunner:
                     print(f"  SKIP: {name} ({reason})")
                     continue
 
-                mapper = self._mapper_for_test(test_case)
-                runner = TestRunner(test_case, self._tracker, mapper)
-                result = runner.run()
+                mapper, client = self._mapper_for_test(test_case)
+                try:
+                    result = TestRunner(test_case, self._tracker, mapper).run()
+                finally:
+                    if client is not None:
+                        client.close()
 
                 if result.passed:
                     passed += 1

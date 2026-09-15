@@ -187,6 +187,207 @@ class PeopleConfirmationRequiredError(ValidationError):
         self.people = people
 
 
+# --- Recording summary identities -------------------------------------------
+#
+# The errors ``RecordingsService.summarize`` raises for its own refusals, as
+# opposed to a read's. Identity and CLASSIFICATION are separate here, following
+# ``DeviceFlowError`` in ``oauth/errors.py``: that carries the precise outcome
+# in ``reason`` and DERIVES the coarse ``code`` from it, overriding retryability
+# from the reason rather than from the code. The same split applies, with the
+# exception CLASS as the identity a consumer matches -- the shape Go uses too,
+# where these are sentinel errors with no code slot at all and its conformance
+# runner matches them with ``errors.Is`` before falling through to ``.Code``.
+#
+# ``code`` therefore stays inside ``ErrorCode``. SPEC section 6 declares that
+# enum CLOSED, so a name outside it is a spec violation rather than an
+# extension -- and ``exit_code`` maps an unknown code to ``ExitCode.API``, so
+# every one of these reported "server-side error" (7), including the two that
+# are refused from the caller's own arguments before any request is made.
+#: The canonical SPEC section 6 code each composite identity classifies as.
+#: Identity is the class; this is the coarse answer a CLI turns into an exit
+#: code. Derived, never stored, so the two cannot drift apart.
+_COMPOSITE_CODE: dict[str, ErrorCode] = {
+    # Refused from the caller's own arguments, before any request.
+    "no_recording_type": ErrorCode.USAGE,
+    "unknown_recording_type": ErrorCode.USAGE,
+    # The pointer names a bucket the recording is not in -- also the caller's.
+    "bucket_mismatch": ErrorCode.USAGE,
+    # Every visible candidate answered 404: the recording is not there.
+    "recording_unresolved": ErrorCode.NOT_FOUND,
+    # Not an HTTP answer and not the caller's fault; no enum member fits, so it
+    # takes the residual one. Deliberately NOT retryable despite that code's
+    # usual meaning: both reasons -- too many visible campfires, and a budget
+    # spent before the listing -- are deterministic for the same account state,
+    # so a retry loop would re-run the same search forever. `DeviceFlowError`
+    # overrides retryability from the reason for the same kind of reason.
+    "campfire_discovery_incomplete": ErrorCode.API,
+    # The sixth identity, and the one the first pass of this table missed: it
+    # is named in the same SPEC row and sits in the same section, so leaving it
+    # out left one public error still carrying a name outside the enum and
+    # still reaching exit 7 through the `ValueError` fall-through this table
+    # exists to close. Retryable, unlike its neighbours -- the load it was
+    # waiting on was abandoned, and the next caller loads again.
+    "campfire_index_load_aborted": ErrorCode.API,
+}
+
+
+class RecordingRoutingError(BasecampError):
+    """A recording pointer ``summarize`` cannot route, refused before any request.
+
+    The base of the two routing refusals, so ``except RecordingRoutingError``
+    catches both without naming either.
+    """
+
+
+class NoRecordingTypeError(RecordingRoutingError):
+    """An event type that names no recording type.
+
+    ``boost.created``, whose recording is the boost's target and whose type the
+    feed row does not carry. A consumer resolves those from its own record of
+    what it posted, not through ``summarize``.
+    """
+
+    def __init__(self, routing_key: str, **kwargs: Any):
+        super().__init__(
+            f"event type names no recording type: {routing_key!r}",
+            code=_COMPOSITE_CODE["no_recording_type"],
+            **kwargs,
+        )
+        self.routing_key = routing_key
+
+
+class UnknownRecordingTypeError(RecordingRoutingError):
+    """Neither the event type nor the recording type names a routed read."""
+
+    def __init__(self, routing_key: str, **kwargs: Any):
+        super().__init__(
+            f"no typed read for recording type: {routing_key!r}",
+            code=_COMPOSITE_CODE["unknown_recording_type"],
+            **kwargs,
+        )
+        self.routing_key = routing_key
+
+
+class RecordingUnresolvedError(BasecampError):
+    """A chat line found under none of the Campfires the caller can currently see.
+
+    Distinct from a failed read (any non-404 answer is raised as itself) and
+    from :class:`CampfireDiscoveryIncompleteError` (candidates were left
+    unsearched): every candidate answered 404. It is NOT distinct from lost
+    visibility -- BC3 answers 404 for a Campfire the caller may not see, too --
+    so a consumer marks the record blocked and retries on its own schedule;
+    ``stale_campfire_ids`` says when visibility, rather than existence, is what
+    changed.
+    """
+
+    def __init__(
+        self,
+        *,
+        bucket_id: int,
+        recording_id: int,
+        campfire_ids: list[int],
+        refreshed: bool = False,
+        stale_campfire_ids: list[int] | None = None,
+        **kwargs: Any,
+    ):
+        super().__init__(
+            f"chat line found under no visible campfire: line {recording_id} "
+            f"in bucket {bucket_id} (tried {len(campfire_ids)} campfires)",
+            code=_COMPOSITE_CODE["recording_unresolved"],
+            **kwargs,
+        )
+        self.bucket_id = bucket_id
+        self.recording_id = recording_id
+        #: The candidates tried, in order; empty when the bucket has no visible
+        #: Campfire at all.
+        self.campfire_ids = campfire_ids
+        #: Whether the cached discovery sources were re-read before concluding.
+        #: False when every source had been read within the refresh floor, so a
+        #: Campfire created in that window was not seen: the conclusion stands
+        #: on data up to that old, and a retry after the floor sees the current
+        #: sources.
+        self.refreshed = refreshed
+        #: Candidates from the cache that the refreshed sources no longer list
+        #: -- Campfires the caller could see when the cache filled and cannot
+        #: now. Non-empty only when ``refreshed``.
+        self.stale_campfire_ids = stale_campfire_ids or []
+
+
+class CampfireDiscoveryIncompleteError(BasecampError):
+    """A chat line's Campfire discovery could not be carried to a conclusion.
+
+    The Campfire listing overflowed its cap, or a bucket has more visible
+    Campfires than one call may try. Distinct from
+    :class:`RecordingUnresolvedError`: candidates were left unsearched, so
+    nothing can be reported absent.
+    """
+
+    def __init__(self, *, bucket_id: int, recording_id: int, reason: str, **kwargs: Any):
+        # Overwrite -- never setdefault -- so a caller's `retryable` kwarg
+        # cannot flip the invariant, exactly as `DeviceFlowError` does it. The
+        # coarse code is `api_error`. That code is retryable only on the 5xx
+        # rows -- SPEC rule 13 and the malformed-body rule both make it
+        # non-retryable -- so this is not an exception to a single rule so
+        # much as the same answer those give. It is forced rather than left
+        # to the default because both reasons are deterministic for the same account
+        # state and a retry loop would re-run the identical search forever.
+        # Claiming that override in a commit message without writing it here is
+        # how the invariant would have been lost at the first caller who passed
+        # the kwarg through.
+        kwargs["retryable"] = False
+        super().__init__(
+            f"campfire discovery incomplete: line {recording_id} in bucket {bucket_id}: {reason}",
+            code=_COMPOSITE_CODE["campfire_discovery_incomplete"],
+            **kwargs,
+        )
+        self.bucket_id = bucket_id
+        self.recording_id = recording_id
+        self.reason = reason
+
+
+class CampfireIndexLoadAbortedError(BasecampError):
+    """A Campfire discovery load this call waited on was abandoned by its owner.
+
+    Loads are single-flight: the first caller for a key fetches and the rest
+    wait on it. When that caller's own task or thread exits -- cancelled,
+    interrupted -- the load ends without having learned anything about the
+    source, and the failure belongs to the caller that left, not to the ones
+    still waiting. Re-raising its ``CancelledError`` (or ``KeyboardInterrupt``)
+    into them would tell tasks nobody cancelled that they were, which an
+    enclosing ``TaskGroup`` then treats as an orderly exit with the work
+    silently missing.
+
+    Retryable, and meant to be retried: nothing was learned, so the next
+    attempt loads for itself.
+    """
+
+    def __init__(self, message: str = "campfire index load was abandoned by the caller that owned it", **kwargs: Any):
+        # Overwrite rather than pass positionally, for the same reason its
+        # sibling does: forwarding `**kwargs` alongside a fixed `retryable=`
+        # meant `CampfireIndexLoadAbortedError(retryable=False)` raised a bare
+        # TypeError about duplicate keyword arguments instead of an error from
+        # this SDK's own taxonomy. The invariant is the same either way -- the
+        # load was abandoned, so the next caller loads again -- but a caller
+        # passing the flag now gets the invariant, not a crash.
+        kwargs["retryable"] = True
+        super().__init__(message, code=_COMPOSITE_CODE["campfire_index_load_aborted"], **kwargs)
+
+
+class BucketMismatchError(BasecampError):
+    """The recording a read returned lives in a different bucket from the pointer's."""
+
+    def __init__(self, *, bucket_id: int, recording_id: int, requested_bucket_id: int, **kwargs: Any):
+        super().__init__(
+            f"recording is not in the requested bucket: recording {recording_id} "
+            f"is in bucket {bucket_id}, not {requested_bucket_id}",
+            code=_COMPOSITE_CODE["bucket_mismatch"],
+            **kwargs,
+        )
+        self.bucket_id = bucket_id
+        self.recording_id = recording_id
+        self.requested_bucket_id = requested_bucket_id
+
+
 def _error_body_object(body: str | bytes | None) -> dict[str, Any] | None:
     """The response body as a JSON object, or ``None`` when it is not one."""
     if not body:
