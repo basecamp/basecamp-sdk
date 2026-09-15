@@ -103,7 +103,19 @@ module Basecamp
     #   nil when the reference could not have decoded it
     def person_from_wire(value)
       return value if value.is_a?(Integer) && value.between?(MIN, MAX)
-      return 0 if value.nil?
+      # NULL IS NOT ABSENT here, and that is the one place these two readers
+      # differ on nil. encoding/json calls the flexible decoder's own
+      # UnmarshalJSON for a null, its number path leaves the buffer empty, and
+      # ParseInt("") fails — so {"id": null} FAILS THE READ while a missing
+      # "id" is the zero value with no error. A plain int64 field has no
+      # UnmarshalJSON, so json handles its null itself and both are 0, which is
+      # why {from_wire} may treat them alike and this may not. Measured through
+      # the real decode path; an earlier version of this method returned 0 here
+      # and a test pinned that, which made the wrong rule harder to see rather
+      # than easier.
+      #
+      # The caller distinguishes them: an absent key never reaches this.
+      return nil if value.nil?
       return nil unless value.is_a?(String)
 
       digits = value.b

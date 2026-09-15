@@ -162,9 +162,14 @@ module Basecamp
         kind = route_recording(event_type: event_type, recording_type: recording_type)
         summary = read_summary(kind, bucket_id: bucket_id, recording_id: recording_id)
 
-        # fetch, not [], so a summary built by some future route that bypasses
-        # #project raises here rather than reading as "no bucket" and silently
-        # skipping the comparison.
+        # UNREACHABLE TODAY, and deliberately kept. All 26 arms of #read_summary
+        # go through #project exactly once, so the memo is always present and
+        # this block never runs — a reviewer confirmed that by mutating it to
+        # `{ 0 }` and finding both suites green. It is here because the failure
+        # it guards is silent: a future route that builds a summary without
+        # #project would otherwise read "no bucket" and skip the comparison
+        # rather than fail. Stated as unreachable rather than tested, because a
+        # test for it could only be written by reaching around the design.
         read_bucket_id = summary.delete(BUCKET_ID_MEMO) { raise unvalidated_summary }
         # NON-ZERO, not positive. The reference compares whenever its bucket id
         # is not the zero value, so a negative one is a mismatch there and was
@@ -475,7 +480,13 @@ module Basecamp
       # sibling id fields in this same file.
       #
       # PASSED THROUGH — "parent", "bucket" and "creator", which are nested
-      # objects, and "updated_at". The three objects are where reproducing the
+      # objects, and "updated_at". Their ID is the exception and is decoded,
+      # because this composite reads it to decide whether the member appears at
+      # all, and reading a value one way while emitting it another is what made
+      # a caller see "007" where the contract gives 7. An ABSENT id is still not
+      # synthesised: the reference emits a whole typed struct with every field
+      # present, and inventing one of them while passing the rest through would
+      # be half a decode. The three objects are where reproducing the
       # decoder would actually begin: validating them means writing the type the
       # generated layer deliberately does not have. What IS honoured for them is
       # the reference's emptiness rule — it builds each only when it has an id
@@ -552,14 +563,18 @@ module Basecamp
         # what this now does in the same order.
         summary[BUCKET_ID_MEMO] = read_bucket_id(record)
 
-        summary.delete("parent") unless keep_member?(parent, "title")
-        summary.delete("bucket") unless keep_member?(summary["bucket"], "name")
+        parent_member = read_member(parent, "title")
+        parent_member.nil? ? summary.delete("parent") : summary["parent"] = parent_member
+
+        bucket_member = read_member(summary["bucket"], "name")
+        bucket_member.nil? ? summary.delete("bucket") : summary["bucket"] = bucket_member
         # A creator's id is decoded FLEXIBLY, because a creator is a Person and
         # that is the one id in the generated model typed that way. Reading it
         # with the strict decoder made {"id" => "basecamp"} — the sentinel the
         # API serves for system-generated entities — look malformed, so the
         # member was kept where the reference reads 0 and drops it.
-        summary.delete("creator") unless keep_member?(summary["creator"], "name", person: true)
+        creator_member = read_member(summary["creator"], "name", person: true)
+        creator_member.nil? ? summary.delete("creator") : summary["creator"] = creator_member
         # Absent or empty is genuinely nothing to report — the reference's
         # +omitempty+ leaves an empty slice out of its summary too, so the key
         # goes. Anything else that is not an array of objects is a decode
@@ -593,15 +608,22 @@ module Basecamp
         assignees = assignees.map do |assignee|
           # A null member is the ZERO PERSON there, and the reference emits it
           # as an object — so passing nil through handed a consumer something
-          # that crashes on `assignee["id"]` where the contract gives 0. An
-          # empty hash is the nearest thing this tier has to a zero Person: the
-          # member is still present and still indexable. The residual difference
-          # is that its id reads as nil rather than 0, which is the same
-          # nested-object limit stated on #project.
+          # that crashes on `assignee["id"]` where the contract gives 0.
           next {} if assignee.nil?
-          next assignee if assignee.is_a?(Hash)
 
-          raise malformed_response("an assignee is #{MergeSafe.describe(assignee)}, not an object")
+          unless assignee.is_a?(Hash)
+            raise malformed_response("an assignee is #{MergeSafe.describe(assignee)}, not an object")
+          end
+
+          # Every assignee is a Person, so its id takes the flexible decoder and
+          # is emitted decoded — the same rule as the creator, one level down,
+          # and the level the first version of that fix did not reach.
+          id = read_member_id(assignee, person: true)
+          if id.nil?
+            raise malformed_response("an assignee's id is #{MergeSafe.describe(assignee["id"])}, not a person id")
+          end
+
+          assignee.key?("id") ? assignee.merge("id" => id) : assignee
         end
 
         # Returned explicitly rather than leaning on #each handing back its
@@ -653,22 +675,54 @@ module Basecamp
       # instead kept <tt>{"type" => "Project"}</tt> and <tt>{"url" => "u"}</tt>,
       # which the reference drops. That is the per-site rule lesson again: the
       # shared part here is the shape of the test, not the field it reads.
-      def keep_member?(member, label, person: false)
-        return false if member.nil?
-        return true unless member.is_a?(Hash)
+      def read_member(member, label, person: false)
+        return nil if member.nil?
 
-        # The LABEL is a plain string in the reference, so a number or an object
-        # there is a decode failure — and `.to_s` rendered every one of them
-        # into something non-empty, which kept the member and let the read
-        # succeed. Kept rather than refused here for the same reason a non-object
-        # member is: the readers that report a malformed body have to see it.
+        unless member.is_a?(Hash)
+          raise malformed_response("the recording's #{label == "title" ? "parent" : label} is " \
+                                   "#{MergeSafe.describe(member)}, not an object")
+        end
+
+        # REFUSED, not kept. The reference holds a plain string for a name or a
+        # title and a typed integer for an id, so a value of another type is a
+        # whole-body decode failure there — and both earlier versions of this
+        # code kept the member instead, on a comment claiming that the reader
+        # which reports a malformed body had to see it. Only the BUCKET has such
+        # a reader; for a parent and a creator nothing else ever looked, so
+        # "kept for the reader" was under-refusal with a justification that did
+        # not apply at two of its three call sites.
         name = member[label]
-        return true unless name.nil? || name.is_a?(String)
+        unless name.nil? || name.is_a?(String)
+          raise malformed_response("a #{label} is #{MergeSafe.describe(name)}, not a string")
+        end
 
-        id = person ? Ids.person_from_wire(member["id"]) : Ids.from_wire(member["id"])
-        return true if id.nil?
+        id = read_member_id(member, person: person)
+        if id.nil?
+          raise malformed_response("an id is #{MergeSafe.describe(member["id"])}, not an id")
+        end
 
-        !id.zero? || !name.to_s.empty?
+        # The DECODED id is what travels, not the raw wire value. The reference
+        # decodes a person id flexibly and re-emits the integer — "007" comes
+        # back as 7 and the "basecamp" sentinel as 0 — so reading it only to
+        # decide whether to keep the member, while emitting the string, applied
+        # half of the rule and left a caller reading a different type from the
+        # contract's.
+        decoded = member.key?("id") ? member.merge("id" => id) : member
+
+        # Present only when it carries something, which is the emptiness rule
+        # the reference builds these under: `Id != 0 || Name != ""` for a bucket
+        # and a creator, `Id != 0 || Title != ""` for a parent.
+        (!id.zero? || !name.to_s.empty?) ? decoded : nil
+      end
+
+      # A nested member's id, by the decoder the reference types that field with.
+      def read_member_id(member, person: false)
+        return Ids.from_wire(member["id"]) unless person
+        # Absent is the zero value; a present null is a decode failure, which is
+        # the one place these two readers differ on nil.
+        return 0 unless member.key?("id")
+
+        Ids.person_from_wire(member["id"])
       end
 
       def first_non_empty(*values)

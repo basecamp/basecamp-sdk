@@ -89,14 +89,28 @@ class IdsTest < Minitest::Test
     assert_equal 7, Basecamp::Ids.person_from_wire("+7")
     assert_equal(-7, Basecamp::Ids.person_from_wire("-7"))
     assert_equal 7, Basecamp::Ids.person_from_wire("007")
-    assert_equal 0, Basecamp::Ids.person_from_wire(nil)
+  end
+
+  def test_a_null_person_id_fails_the_read_where_an_absent_one_is_zero
+    # THE one field where absent and null differ. encoding/json calls the
+    # flexible decoder's own UnmarshalJSON for a null, its number path leaves
+    # the buffer empty, and ParseInt("") fails — so {"id": null} fails the read
+    # while a missing "id" is the zero value. A plain int64 has no
+    # UnmarshalJSON, so json handles its null itself and both are 0.
+    #
+    # This row is here because the first version of this file asserted the
+    # opposite, which made the wrong rule harder to see rather than easier: a
+    # test is a claim with more authority than a comment, and it was wrong.
+    assert_nil Basecamp::Ids.person_from_wire(nil)
+    assert_equal 0, Basecamp::Ids.from_wire(nil)
   end
 
   def test_a_non_numeric_person_id_is_zero_rather_than_a_failure
     # "basecamp" is the sentinel the API serves for system-generated entities,
     # and the reference reads it as 0 with NO error. Treating it as malformed
     # kept a creator the reference drops.
-    [ "basecamp", "", "abc", "1_2", " 7", "7 ", "0x10", "７" ].each do |value|
+    [ "basecamp", "", "abc", "1_2", " 7", "7 ", "7\n", "\n7", "7\t", "0x10", "７", "+", "-",
+      "١٢" ].each do |value|
       assert_equal 0, Basecamp::Ids.person_from_wire(value), "a person id of #{value.inspect}"
     end
   end
@@ -128,10 +142,24 @@ class IdsTest < Minitest::Test
     assert_nil Basecamp::Ids.from_wire("basecamp")
     assert_equal 0, Basecamp::Ids.person_from_wire("basecamp")
 
-    # And they agree everywhere else that matters.
-    # Compared through inspect so a nil on both sides is an agreement rather
-    # than an assertion minitest refuses to make.
-    [ 7, nil, 7.0, true, [], {}, MAX + 1 ].each do |value|
+    # Every value where they DISAGREE, spelled out. The first version of this
+    # row listed mostly values that are nil on both sides, so five of its seven
+    # assertions were "nil" == "nil" — satisfied by any mutant breaking both
+    # readers identically, and exercising none of the disagreement its own name
+    # claims to check.
+    {
+      "7" => [ nil, 7 ], "007" => [ nil, 7 ], "+7" => [ nil, 7 ], "-7" => [ nil, -7 ],
+      "basecamp" => [ nil, 0 ], "" => [ nil, 0 ], "abc" => [ nil, 0 ],
+      MAX.to_s => [ nil, MAX ], nil => [ 0, nil ]
+    }.each do |value, (strict, flexible)|
+      assert_equal strict.inspect, Basecamp::Ids.from_wire(value).inspect, "from_wire(#{value.inspect})"
+      assert_equal flexible.inspect, Basecamp::Ids.person_from_wire(value).inspect,
+                   "person_from_wire(#{value.inspect})"
+      assert_not_equal strict.inspect, flexible.inspect, "#{value.inspect} must be a disagreement"
+    end
+
+    # And they agree on every value neither can read, which is the rest of it.
+    [ 7, 0, -5, 7.0, true, [], {}, MAX + 1, MIN - 1 ].each do |value|
       assert_equal Basecamp::Ids.from_wire(value).inspect,
                    Basecamp::Ids.person_from_wire(value).inspect,
                    "both readers on #{value.inspect}"

@@ -444,6 +444,76 @@ class RecordingsSummarizeTest < Minitest::Test
     assert_equal people, summarize(event_type: "todo.created")["assignees"]
   end
 
+  def test_a_person_id_is_emitted_decoded_rather_than_as_it_arrived
+    # The flexible decode was applied to the keep/drop decision and never to the
+    # value, so a caller read a different TYPE from the contract's: the
+    # reference re-emits the decoded integer, and "007" comes back as 7 while
+    # the "basecamp" sentinel comes back as 0.
+    { "7" => 7, "007" => 7, "+7" => 7, "-7" => -7,
+      "basecamp" => 0, "" => 0, " 7" => 0, "7\n" => 0, "0x10" => 0 }.each do |wire, decoded|
+      stub_get("/12345/comments/1", response_body: recording("creator" => { "id" => wire, "name" => "V" }))
+
+      assert_equal decoded, summarize(event_type: "comment.created")["creator"]["id"],
+        "a creator id of #{wire.inspect}"
+      WebMock.reset!
+    end
+
+    # And every assignee, which is the same field one level down.
+    stub_get("/12345/todos/1", response_body: recording(
+      "type" => "Todo", "assignees" => [ { "id" => "007", "name" => "A" }, { "id" => 3, "name" => "B" } ]
+    ))
+    assignees = summarize(event_type: "todo.created")["assignees"]
+
+    assert_equal [ 7, 3 ], assignees.map { |a| a["id"] }
+  end
+
+  def test_a_null_person_id_fails_the_read_where_an_absent_one_does_not
+    # The one field where absent and null differ: the flexible decoder's own
+    # UnmarshalJSON runs for a null and fails, while a missing key is the zero
+    # value. Reachable through the creator and through every assignee.
+    stub_get("/12345/comments/1", response_body: recording("creator" => { "id" => nil, "name" => "V" }))
+
+    assert_raises(Basecamp::ApiError) { summarize(event_type: "comment.created") }
+    WebMock.reset!
+
+    stub_get("/12345/todos/1", response_body: recording("type" => "Todo", "assignees" => [ { "id" => nil } ]))
+
+    assert_raises(Basecamp::ApiError) { summarize(event_type: "todo.created") }
+    WebMock.reset!
+
+    # An ABSENT id is the zero value for the keep/drop decision — this creator
+    # is kept on its name — but the key is NOT synthesised. The reference emits
+    # a whole typed struct here and this tier passes the object through, which
+    # is the boundary #project states: normalising one field of a struct whose
+    # other fields are passed through would be half a decode, and half a decode
+    # is what produced the divergence this test's sibling row covers.
+    stub_get("/12345/comments/1", response_body: recording("creator" => { "name" => "V" }))
+
+    creator = summarize(event_type: "comment.created")["creator"]
+
+    assert_equal({ "name" => "V" }, creator)
+    assert_not creator.key?("id"), "an absent id is not invented"
+  end
+
+  def test_a_malformed_nested_member_fails_the_read_rather_than_travelling
+    # "Kept so the reader that reports a malformed body sees it" was true only
+    # of the bucket: a parent and a creator have no such reader, so keeping them
+    # was under-refusal where the reference fails the whole decode.
+    [ [ "creator", { "id" => [], "name" => "V" } ],
+      [ "creator", { "id" => 1, "name" => 5 } ],
+      [ "parent", { "id" => 1, "title" => {} } ],
+      [ "parent", { "id" => 7.5 } ],
+      [ "creator", "scalar" ],
+      [ "parent", [ 1 ] ] ].each do |field, malformed|
+      stub_get("/12345/comments/1", response_body: recording(field => malformed))
+
+      assert_raises(Basecamp::ApiError, "#{field} of #{malformed.inspect}") do
+        summarize(event_type: "comment.created")
+      end
+      WebMock.reset!
+    end
+  end
+
   def test_a_null_assignee_is_an_object_rather_than_a_nil
     # The reference decodes a null member as the zero Person and emits it as an
     # OBJECT, so passing nil through handed a consumer something that crashes on
