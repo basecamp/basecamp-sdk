@@ -110,6 +110,10 @@ export class CommentsService extends GeneratedCommentsService {
     const people: Person[] = [];
     const seen = new Set<number>();
     for (const id of personIds) {
+      // Validated as the list is walked, not ahead of it, which is where the Go
+      // reference validates: a bad id after a good one costs the good one's read
+      // before it raises. The invariant that matters is unaffected — the reads
+      // all happen before the write, so a refused expansion posts nothing.
       if (!Number.isInteger(id) || id <= 0) {
         throw Errors.usage(`invalid mention person id ${id}`);
       }

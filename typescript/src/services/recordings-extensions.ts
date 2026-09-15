@@ -792,9 +792,21 @@ class CampfireListingOverflow extends Error {
   }
 }
 
-/** Whether an error is a read's 404 — the one answer discovery treats as "not here". */
+/**
+ * Whether an error is a read's own 404 — the one answer discovery treats as
+ * "not here".
+ *
+ * The status is required, not just the code. Go reaches this through a
+ * `*basecamp.Error` whose `CodeNotFound` can only have come from a 404
+ * response; here `not_found` is also the code {@link UnresolvedRecordingError}
+ * carries, deliberately statusless. Matching on the code alone would let a
+ * composite's own verdict — thrown by a hook, a middleware, or a caller-supplied
+ * read source — be read as "the line is not in this Campfire", and discovery
+ * would move on and eventually report the line unresolved instead of surfacing
+ * it. Every `not_found` the transport produces carries the status.
+ */
 function isNotFound(err: unknown): boolean {
-  return isBasecampError(err) && err.code === "not_found";
+  return isBasecampError(err) && err.code === "not_found" && err.httpStatus === 404;
 }
 
 /** What one candidate sweep found. */
