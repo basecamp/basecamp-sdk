@@ -10,6 +10,7 @@ from basecamp.async_auth import AsyncAuthStrategy, AsyncBearerAuth, AsyncStaticT
 from basecamp.config import Config
 from basecamp.download import DownloadResult, download_async
 from basecamp.hooks import BasecampHooks, OperationInfo, OperationResult, safe_hook
+from basecamp.services._campfire_index import AsyncCampfireIndex
 from basecamp.services.authorization import AsyncAuthorizationService
 
 
@@ -56,6 +57,7 @@ class AsyncClient:
         )
         self._lock = threading.Lock()
         self._authorization: AsyncAuthorizationService | None = None
+        self._campfire_index: AsyncCampfireIndex | None = None
 
     @property
     def authorization(self) -> AsyncAuthorizationService:
@@ -79,6 +81,21 @@ class AsyncClient:
         if not account_id.isdigit():
             raise ValueError(f"account_id must be numeric, got: {account_id}")
         return AsyncAccountClient(parent=self, account_id=account_id)
+
+    @property
+    def campfire_index(self) -> AsyncCampfireIndex:
+        """The per-``Client`` Campfire discovery cache ``recordings.summarize`` uses.
+
+        It lives here, not on the account client, so a burst of chat-line
+        pointers across several accounts costs one project read per bucket and
+        one Campfire listing per account rather than one per call. A ``Client``
+        is bound to one credential, so nothing cached here is ever shared across
+        authorization contexts, and every key carries the account id besides.
+        """
+        with self._lock:
+            if self._campfire_index is None:
+                self._campfire_index = AsyncCampfireIndex()
+            return self._campfire_index
 
     async def close(self) -> None:
         await self._http.close()
@@ -143,6 +160,11 @@ class AsyncAccountClient:
             safe_hook(self.hooks.on_operation_end, op, OperationResult(duration_ms=duration_ms, error=e))
             raise
 
+    @property
+    def campfire_index(self) -> AsyncCampfireIndex:
+        """The owning client's Campfire discovery cache. See ``AsyncClient.campfire_index``."""
+        return self._parent.campfire_index
+
     def _service(self, name: str, factory):
         with self._lock:
             if name not in self._services:
@@ -201,7 +223,7 @@ class AsyncAccountClient:
 
     @property
     def comments(self):
-        from basecamp.generated.services.comments import AsyncCommentsService
+        from basecamp.services.comments import AsyncCommentsService
 
         return self._service("comments", lambda: AsyncCommentsService(self))
 
@@ -285,7 +307,7 @@ class AsyncAccountClient:
 
     @property
     def recordings(self):
-        from basecamp.generated.services.recordings import AsyncRecordingsService
+        from basecamp.services.recordings import AsyncRecordingsService
 
         return self._service("recordings", lambda: AsyncRecordingsService(self))
 

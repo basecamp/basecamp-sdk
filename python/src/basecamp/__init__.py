@@ -17,18 +17,26 @@ from basecamp.errors import (
     ApiError,
     AuthError,
     BasecampError,
+    BucketMismatchError,
+    CampfireDiscoveryIncompleteError,
     ErrorCode,
     ExitCode,
     ForbiddenError,
     LimitExceededError,
     NetworkError,
+    NoRecordingTypeError,
     NotFoundError,
     PeopleConfirmationRequiredError,
     RateLimitError,
+    RecordingRoutingError,
+    RecordingUnresolvedError,
+    UnknownRecordingTypeError,
     UsageError,
     ValidationError,
 )
 from basecamp.hooks import BasecampHooks, OperationInfo, OperationResult, RequestInfo, RequestResult
+from basecamp.mentions import mention_markup, mentioned_person_ids, person_id_from_sgid, with_mentions
+from basecamp.services.recordings import RecordingSummary
 
 __all__ = [
     "Client",
@@ -48,6 +56,12 @@ __all__ = [
     "AmbiguousError",
     "LimitExceededError",
     "UsageError",
+    "RecordingRoutingError",
+    "NoRecordingTypeError",
+    "UnknownRecordingTypeError",
+    "RecordingUnresolvedError",
+    "CampfireDiscoveryIncompleteError",
+    "BucketMismatchError",
     "ErrorCode",
     "ExitCode",
     "BasecampHooks",
@@ -66,6 +80,11 @@ __all__ = [
     "ListResult",
     "ListMeta",
     "DownloadResult",
+    "RecordingSummary",
+    "mentioned_person_ids",
+    "person_id_from_sgid",
+    "mention_markup",
+    "with_mentions",
     "VERSION",
     "API_VERSION",
 ]

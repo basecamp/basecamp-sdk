@@ -187,6 +187,135 @@ class PeopleConfirmationRequiredError(ValidationError):
         self.people = people
 
 
+# --- Recording summary identities -------------------------------------------
+#
+# The errors ``RecordingsService.summarize`` raises for its own refusals, as
+# opposed to a read's. Their ``code`` values sit deliberately OUTSIDE
+# ``ErrorCode``: that enum is SPEC section 6's canonical mapping of HTTP answers
+# onto a taxonomy the CLI turns into exit codes, and none of these is an HTTP
+# answer. They are composite identities -- facts about the resolution, matched
+# with ``except`` rather than parsed out of a message -- so they carry their own
+# names and fall through ``exit_code`` to ``ExitCode.API`` like any other
+# unmapped code.
+
+
+class RecordingRoutingError(BasecampError):
+    """A recording pointer ``summarize`` cannot route, refused before any request.
+
+    The base of the two routing refusals, so ``except RecordingRoutingError``
+    catches both without naming either.
+    """
+
+
+class NoRecordingTypeError(RecordingRoutingError):
+    """An event type that names no recording type.
+
+    ``boost.created``, whose recording is the boost's target and whose type the
+    feed row does not carry. A consumer resolves those from its own record of
+    what it posted, not through ``summarize``.
+    """
+
+    def __init__(self, routing_key: str, **kwargs: Any):
+        super().__init__(
+            f"event type names no recording type: {routing_key!r}",
+            code="no_recording_type",
+            **kwargs,
+        )
+        self.routing_key = routing_key
+
+
+class UnknownRecordingTypeError(RecordingRoutingError):
+    """Neither the event type nor the recording type names a routed read."""
+
+    def __init__(self, routing_key: str, **kwargs: Any):
+        super().__init__(
+            f"no typed read for recording type: {routing_key!r}",
+            code="unknown_recording_type",
+            **kwargs,
+        )
+        self.routing_key = routing_key
+
+
+class RecordingUnresolvedError(BasecampError):
+    """A chat line found under none of the Campfires the caller can currently see.
+
+    Distinct from a failed read (any non-404 answer is raised as itself) and
+    from :class:`CampfireDiscoveryIncompleteError` (candidates were left
+    unsearched): every candidate answered 404. It is NOT distinct from lost
+    visibility -- BC3 answers 404 for a Campfire the caller may not see, too --
+    so a consumer marks the record blocked and retries on its own schedule;
+    ``stale_campfire_ids`` says when visibility, rather than existence, is what
+    changed.
+    """
+
+    def __init__(
+        self,
+        *,
+        bucket_id: int,
+        recording_id: int,
+        campfire_ids: list[int],
+        refreshed: bool = False,
+        stale_campfire_ids: list[int] | None = None,
+        **kwargs: Any,
+    ):
+        super().__init__(
+            f"chat line found under no visible campfire: line {recording_id} "
+            f"in bucket {bucket_id} (tried {len(campfire_ids)} campfires)",
+            code="recording_unresolved",
+            **kwargs,
+        )
+        self.bucket_id = bucket_id
+        self.recording_id = recording_id
+        #: The candidates tried, in order; empty when the bucket has no visible
+        #: Campfire at all.
+        self.campfire_ids = campfire_ids
+        #: Whether the cached discovery sources were re-read before concluding.
+        #: False when every source had been read within the refresh floor, so a
+        #: Campfire created in that window was not seen: the conclusion stands
+        #: on data up to that old, and a retry after the floor sees the current
+        #: sources.
+        self.refreshed = refreshed
+        #: Candidates from the cache that the refreshed sources no longer list
+        #: -- Campfires the caller could see when the cache filled and cannot
+        #: now. Non-empty only when ``refreshed``.
+        self.stale_campfire_ids = stale_campfire_ids or []
+
+
+class CampfireDiscoveryIncompleteError(BasecampError):
+    """A chat line's Campfire discovery could not be carried to a conclusion.
+
+    The Campfire listing overflowed its cap, or a bucket has more visible
+    Campfires than one call may try. Distinct from
+    :class:`RecordingUnresolvedError`: candidates were left unsearched, so
+    nothing can be reported absent.
+    """
+
+    def __init__(self, *, bucket_id: int, recording_id: int, reason: str, **kwargs: Any):
+        super().__init__(
+            f"campfire discovery incomplete: line {recording_id} in bucket {bucket_id}: {reason}",
+            code="campfire_discovery_incomplete",
+            **kwargs,
+        )
+        self.bucket_id = bucket_id
+        self.recording_id = recording_id
+        self.reason = reason
+
+
+class BucketMismatchError(BasecampError):
+    """The recording a read returned lives in a different bucket from the pointer's."""
+
+    def __init__(self, *, bucket_id: int, recording_id: int, requested_bucket_id: int, **kwargs: Any):
+        super().__init__(
+            f"recording is not in the requested bucket: recording {recording_id} "
+            f"is in bucket {bucket_id}, not {requested_bucket_id}",
+            code="bucket_mismatch",
+            **kwargs,
+        )
+        self.bucket_id = bucket_id
+        self.recording_id = recording_id
+        self.requested_bucket_id = requested_bucket_id
+
+
 def _error_body_object(body: str | bytes | None) -> dict[str, Any] | None:
     """The response body as a JSON object, or ``None`` when it is not one."""
     if not body:

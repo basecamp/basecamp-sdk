@@ -28,7 +28,10 @@ from basecamp.services.authorization import AuthorizationService
 _MODULE_TO_ACCESSOR = {"webhooks_service": "webhooks"}
 
 # Properties on an account client that are not service accessors.
-_INFRASTRUCTURE_PROPERTIES = {"account_id", "config", "http", "hooks"}
+# `campfire_index` is the owning client's Campfire discovery cache, reached
+# through the account client for the RecordingsSummarize composite's use
+# (SPEC section 18, Appendix F) -- shared state, not a service.
+_INFRASTRUCTURE_PROPERTIES = {"account_id", "config", "http", "hooks", "campfire_index"}
 
 
 def _generated_service_modules() -> list[str]:
@@ -182,8 +185,8 @@ class TestGroupedClientAccessorInventory:
     @pytest.mark.parametrize("client_class", [AccountClient, AsyncAccountClient])
     def test_no_accessor_without_a_generated_service(self, client_class):
         # The other direction: an accessor left behind by a removed or renamed
-        # service. Everything that is a property and is not one of the four
-        # infrastructure properties is expected to be a service accessor.
+        # service. Everything that is a property and is not one of the
+        # infrastructure properties above is expected to be a service accessor.
         accessors = {
             name for name, value in vars(client_class).items() if isinstance(value, property)
         } - _INFRASTRUCTURE_PROPERTIES
