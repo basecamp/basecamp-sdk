@@ -464,6 +464,19 @@ class MentionsTest < Minitest::Test
     end
   end
 
+  def test_characters_that_look_like_spaces_but_are_not_are_kept
+    # The control for the trim tests above. Without it they would pass just as
+    # happily if the trim removed everything it did not recognize: these three
+    # are NOT in the reference's space set, so an sgid they prefix stays
+    # undecodable.
+    sgid = person_sgid(40)
+
+    { "zero-width space" => "\u200B", "NUL" => "\u0000",
+      "Mongolian vowel separator" => "\u180E" }.each do |name, character|
+      assert_nil Basecamp::Mentions.person_id_from_sgid("#{character}#{sgid}".b), name
+    end
+  end
+
   def test_a_truncated_character_ends_the_trim_rather_than_extending_it
     # A byte that starts no character, or starts one that is cut short, is not
     # whitespace and stops the run — the reference's rune decode does the same.
