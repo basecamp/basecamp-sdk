@@ -1587,14 +1587,175 @@ func TestTTLCache_BoundEvictsOldestFirst(t *testing.T) {
 			t.Fatalf("%q was evicted although newer entries should have been kept", kept)
 		}
 	}
-	// Overwriting a present key takes no new room and evicts nothing.
-	*clock = clock.Add(time.Hour)
-	if _, err := cache.get(context.Background(), "g", false, func(context.Context) (int, error) { return 99, nil }); err != nil {
+	// Overwriting a present key takes no new room and evicts nothing: past the
+	// refresh floor but inside the TTL, a refresh of "g" republishes it with
+	// the cache at its bound, and all four survive.
+	*clock = clock.Add(2 * time.Second)
+	hit, err := cache.get(context.Background(), "g", true, func(context.Context) (int, error) { return 99, nil })
+	if err != nil || hit.cached || hit.value != 99 {
+		t.Fatalf("refresh of g: %+v %v", hit, err)
+	}
+	for _, kept := range []string{"d", "e", "f", "g"} {
+		if !has(kept) {
+			t.Fatalf("%q was evicted by an overwrite of a present key", kept)
+		}
+	}
+	if count() != bound {
+		t.Fatalf("entries = %d after the overwrite, want %d", count(), bound)
+	}
+}
+
+func TestTTLCache_EvictionTieBreaksByPublicationOrder(t *testing.T) {
+	// With every entry fetched at the same instant (a frozen clock) the
+	// oldest publication goes first, so the choice is total, not whatever
+	// map iteration visits first.
+	now := time.Date(2026, 9, 15, 12, 0, 0, 0, time.UTC)
+	cache := newTTLCache[string, int](func() time.Time { return now }, time.Hour, time.Second, 3)
+	for _, k := range []string{"first", "second", "third", "fourth"} {
+		if _, err := cache.get(context.Background(), k, false, func(context.Context) (int, error) { return 0, nil }); err != nil {
+			t.Fatal(err)
+		}
+	}
+	cache.mu.Lock()
+	_, firstGone := cache.entries["first"]
+	_, secondKept := cache.entries["second"]
+	n := len(cache.entries)
+	cache.mu.Unlock()
+	if firstGone || !secondKept || n != 3 {
+		t.Fatalf("first present=%v second present=%v entries=%d; want the earliest publication evicted", firstGone, secondKept, n)
+	}
+}
+
+func TestTTLCache_WaiterKeepsItsValueAcrossEviction(t *testing.T) {
+	// A waiter reads the load it waited on off the load record itself, so
+	// even when the bound evicts that entry between its publication and the
+	// waiter's read, the waiter still gets the value. The schedule is forced:
+	// the waiter is held just after it wakes, "k" is confirmed published,
+	// another key is published under a bound of one (evicting "k"), "k" is
+	// confirmed gone, and only then is the waiter released.
+	now := time.Date(2026, 9, 15, 12, 0, 0, 0, time.UTC)
+	cache := newTTLCache[string, int](func() time.Time { return now }, time.Hour, time.Second, 1)
+	has := func(k string) bool {
+		cache.mu.Lock()
+		defer cache.mu.Unlock()
+		_, ok := cache.entries[k]
+		return ok
+	}
+	started := make(chan struct{})
+	release := make(chan struct{})
+	go func() {
+		_, _ = cache.get(context.Background(), "k", false, func(context.Context) (int, error) {
+			close(started)
+			<-release
+			return 42, nil
+		})
+	}()
+	<-started
+	waiting := make(chan struct{})
+	woken := make(chan struct{})
+	proceed := make(chan struct{})
+	cache.onWait = func() { close(waiting) }
+	cache.onWoken = func() { close(woken); <-proceed }
+	done := make(chan ttlHit[int], 1)
+	go func() {
+		hit, _ := cache.get(context.Background(), "k", false, func(context.Context) (int, error) { return -1, nil })
+		done <- hit
+	}()
+	<-waiting
+	cache.onWait = nil
+	close(release)
+	<-woken // "k" is published; the waiter is held before its read
+	cache.onWoken = nil
+	if !has("k") {
+		t.Fatal("k should be in the cache right after publication")
+	}
+	if _, err := cache.get(context.Background(), "other", false, func(context.Context) (int, error) { return 7, nil }); err != nil {
 		t.Fatal(err)
 	}
-	if !has("g") || count() != 1 {
-		// a, b, c were already gone; d, e, f expired an hour on and were swept by this load
-		t.Fatalf("after the overwrite: g present=%v, entries=%d, want g alone (d, e, f expired)", has("g"), count())
+	if has("k") {
+		t.Fatal("the bound of one should have evicted k")
+	}
+	close(proceed)
+	hit := <-done
+	if hit.value != 42 || hit.cached {
+		t.Fatalf("waiter got %+v, want the awaited load's value", hit)
+	}
+}
+
+func TestTTLCache_BoundEvictsOldestFirst(t *testing.T) {
+	// More keys than the bound, none expired: the cache never holds more than
+	// the bound, and what goes is the oldest-fetched, deterministically.
+	now := time.Date(2026, 9, 15, 12, 0, 0, 0, time.UTC)
+	clock := &now
+	const bound = 4
+	cache := newTTLCache[string, int](func() time.Time { return *clock }, time.Hour, time.Second, bound)
+	count := func() int {
+		cache.mu.Lock()
+		defer cache.mu.Unlock()
+		return len(cache.entries)
+	}
+	has := func(k string) bool {
+		cache.mu.Lock()
+		defer cache.mu.Unlock()
+		_, ok := cache.entries[k]
+		return ok
+	}
+	for i, k := range []string{"a", "b", "c", "d", "e", "f", "g"} {
+		*clock = clock.Add(time.Second) // strictly increasing fetch times
+		v := i
+		if _, err := cache.get(context.Background(), k, false, func(context.Context) (int, error) { return v, nil }); err != nil {
+			t.Fatal(err)
+		}
+		if n := count(); n > bound {
+			t.Fatalf("entries = %d after %q, bound is %d", n, k, bound)
+		}
+	}
+	for _, gone := range []string{"a", "b", "c"} {
+		if has(gone) {
+			t.Fatalf("%q survived although it was among the oldest", gone)
+		}
+	}
+	for _, kept := range []string{"d", "e", "f", "g"} {
+		if !has(kept) {
+			t.Fatalf("%q was evicted although newer entries should have been kept", kept)
+		}
+	}
+	// Overwriting a present key takes no new room and evicts nothing: past the
+	// refresh floor but inside the TTL, a refresh of "g" republishes it with
+	// the cache at its bound, and all four survive.
+	*clock = clock.Add(2 * time.Second)
+	hit, err := cache.get(context.Background(), "g", true, func(context.Context) (int, error) { return 99, nil })
+	if err != nil || hit.cached || hit.value != 99 {
+		t.Fatalf("refresh of g: %+v %v", hit, err)
+	}
+	for _, kept := range []string{"d", "e", "f", "g"} {
+		if !has(kept) {
+			t.Fatalf("%q was evicted by an overwrite of a present key", kept)
+		}
+	}
+	if count() != bound {
+		t.Fatalf("entries = %d after the overwrite, want %d", count(), bound)
+	}
+}
+
+func TestTTLCache_EvictionTieBreaksByPublicationOrder(t *testing.T) {
+	// With every entry fetched at the same instant (a frozen clock) the
+	// oldest publication goes first, so the choice is total, not whatever
+	// map iteration visits first.
+	now := time.Date(2026, 9, 15, 12, 0, 0, 0, time.UTC)
+	cache := newTTLCache[string, int](func() time.Time { return now }, time.Hour, time.Second, 3)
+	for _, k := range []string{"first", "second", "third", "fourth"} {
+		if _, err := cache.get(context.Background(), k, false, func(context.Context) (int, error) { return 0, nil }); err != nil {
+			t.Fatal(err)
+		}
+	}
+	cache.mu.Lock()
+	_, firstGone := cache.entries["first"]
+	_, secondKept := cache.entries["second"]
+	n := len(cache.entries)
+	cache.mu.Unlock()
+	if firstGone || !secondKept || n != 3 {
+		t.Fatalf("first present=%v second present=%v entries=%d; want the earliest publication evicted", firstGone, secondKept, n)
 	}
 }
 
