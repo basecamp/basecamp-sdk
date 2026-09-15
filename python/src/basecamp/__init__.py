@@ -36,7 +36,11 @@ from basecamp.errors import (
 )
 from basecamp.hooks import BasecampHooks, OperationInfo, OperationResult, RequestInfo, RequestResult
 from basecamp.mentions import mention_markup, mentioned_person_ids, person_id_from_sgid, with_mentions
-from basecamp.services.recordings import RecordingSummary
+from basecamp.services.recordings import (
+    RecordingSummary,
+    summarizable_event_types,
+    summarizable_recording_types,
+)
 
 __all__ = [
     "Client",
@@ -81,6 +85,8 @@ __all__ = [
     "ListMeta",
     "DownloadResult",
     "RecordingSummary",
+    "summarizable_recording_types",
+    "summarizable_event_types",
     "mentioned_person_ids",
     "person_id_from_sgid",
     "mention_markup",

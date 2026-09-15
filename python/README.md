@@ -568,7 +568,7 @@ summary["campfire_id"]           # the Campfire a chat line was found under
 exhaustive — ask for it rather than hard-coding it:
 
 ```python
-from basecamp.services.recordings import summarizable_event_types, summarizable_recording_types
+from basecamp import summarizable_event_types, summarizable_recording_types
 ```
 
 Anything outside it raises `UnknownRecordingTypeError`, and `boost.*` raises
