@@ -636,10 +636,15 @@ private func entityAt(_ text: Substring, from start: Substring.Index) -> (Charac
     return (replacement, text.index(after: cursor))
 }
 
+/// Every entry is a character the base64 alphabet contains, plus the five XML
+/// ones a serializer emits. Each was checked against `html.UnescapeString`
+/// rather than guessed: `&hyphen;` and `&dash;` are NOT here because both name
+/// U+2010, not ASCII `-`, so decoding them to a hyphen would make this the
+/// lenient side and let an sgid through that Go decodes to something the
+/// alphabet does not contain. HTML5 has no named reference for U+002D at all.
 private let namedEntities: [String: Character] = [
     "amp": "&", "lt": "<", "gt": ">", "quot": "\"", "apos": "'",
-    // The base64 alphabet's punctuation, each spelled as HTML5 names it.
-    "plus": "+", "sol": "/", "equals": "=", "lowbar": "_", "hyphen": "-", "dash": "-",
+    "plus": "+", "sol": "/", "equals": "=", "lowbar": "_",
 ]
 
 /// The characters a GlobalID authority may contain. Narrow on purpose: BC3

@@ -184,17 +184,21 @@ final class CampfireIndexTests: XCTestCase {
             XCTFail("a cancelled waiter must stop waiting")
         } catch is CancellationError {}
 
-        // Releasing the gate lets the abandoned load reach its cancellation
-        // check, throw, and release the key.
-        await started.fulfill()
-        var claimed = await cache.isClaimed("k")
-        while claimed {
-            await Task.yield()
-            claimed = await cache.isClaimed("k")
-        }
+        // Detached at once, not when the cancelled load eventually returns: a
+        // caller arriving in that window must not join a flight already on its
+        // way to failing and be handed its CancellationError.
+        let claimed = await cache.isClaimed("k")
+        XCTAssertFalse(claimed, "the abandoned claim is detached immediately")
 
         let after = try await cache.value(for: "k", refresh: false) { loads.increment() }
         XCTAssertEqual(after.value, 1, "the key reloaded rather than joining a dead load")
+
+        // And the abandoned load finishing afterwards must not evict the claim
+        // that replaced it, nor resume anybody.
+        await started.fulfill()
+        await Task.yield()
+        let stored = await cache.cached("k")
+        XCTAssertEqual(stored?.value, 1)
     }
 
     /// The other half of the same rule: one caller leaving does NOT abandon a

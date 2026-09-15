@@ -172,9 +172,15 @@ final class MentionsTests: XCTestCase {
                 in: "<bc-attachment sgid=\"a&plus;b&sol;c&equals;\"></bc-attachment>"),
             ["a+b/c="])
         XCTAssertEqual(
-            Mentions.attachmentSgids(
-                in: "<bc-attachment sgid=\"a&lowbar;b&hyphen;c\"></bc-attachment>"),
-            ["a_b-c"])
+            Mentions.attachmentSgids(in: "<bc-attachment sgid=\"a&lowbar;b\"></bc-attachment>"),
+            ["a_b"])
+        // `&hyphen;` and `&dash;` name U+2010, not ASCII `-` — measured against
+        // html.UnescapeString, not assumed. Decoding them to a hyphen would make
+        // this the lenient side, so they are left verbatim, which is also what
+        // the base64 decode does with them either way.
+        XCTAssertEqual(
+            Mentions.attachmentSgids(in: "<bc-attachment sgid=\"a&hyphen;b\"></bc-attachment>"),
+            ["a&hyphen;b"])
     }
 
     /// Go trims the trailing `=` BEFORE decoding, and its decoder then refuses

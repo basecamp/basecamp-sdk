@@ -327,9 +327,9 @@ actor TTLCache<Key: Hashable & Sendable, Value: Sendable> {
         claim.task = Task {
             do {
                 let hit = self.publish(key, try await load())
-                self.finish(key, .success(hit))
+                self.finish(key, claim, .success(hit))
             } catch {
-                self.finish(key, .failure(error))
+                self.finish(key, claim, .failure(error))
             }
         }
     }
@@ -344,23 +344,33 @@ actor TTLCache<Key: Hashable & Sendable, Value: Sendable> {
         waiter.continuation = nil
         if let claim = waiting[key] {
             claim.waiters.removeAll { $0 === waiter }
-            // Nobody is waiting for this load any more, so it is abandoned. The
-            // key stays claimed until the cancelled load returns and `finish`
-            // releases it, which is as prompt as cancellation can be — and is
-            // the same dependence on a cooperative loader that Go's
-            // context-bound load has.
-            if claim.waiters.isEmpty { claim.task?.cancel() }
+            if claim.waiters.isEmpty {
+                // Nobody is waiting for this load any more, so it is abandoned:
+                // cancelled, and DETACHED at once rather than left in place
+                // until it returns. Leaving it would let the next caller join a
+                // flight that is already on its way to failing, and be handed a
+                // `CancellationError` it never asked for.
+                claim.task?.cancel()
+                waiting.removeValue(forKey: key)
+            }
         }
         continuation.resume(throwing: CancellationError())
     }
 
     /// Hands one load's outcome to everyone waiting on it, and releases the key.
-    private func finish(_ key: Key, _ outcome: Result<Hit, any Error>) {
-        for waiter in waiting.removeValue(forKey: key)?.waiters ?? [] {
+    ///
+    /// The claim is named rather than looked up, and the key is released only if
+    /// it still holds THIS claim: an abandoned flight was detached when its last
+    /// waiter left, and must not evict the claim that replaced it. Its own
+    /// waiters are resumed either way, of which an abandoned claim has none.
+    private func finish(_ key: Key, _ claim: Claim, _ outcome: Result<Hit, any Error>) {
+        if waiting[key] === claim { waiting.removeValue(forKey: key) }
+        for waiter in claim.waiters {
             guard let continuation = waiter.continuation else { continue }
             waiter.continuation = nil
             continuation.resume(with: outcome)
         }
+        claim.waiters.removeAll()
     }
 
     /// Returns the cached value for `key` when one is within the TTL, without
