@@ -753,7 +753,11 @@ every requested person and adds a mention unless the content already carries
 that person's exact `attachable_sgid`; a different sgid that merely decodes to
 the same id — stale, forged, or minted under another layout — does not count,
 because it cannot be verified and would let caller-supplied content suppress
-the real mention. `MentionMarkup` refuses an `attachable_sgid` that names
+the real mention. The comparison is on the attribute's decoded value, so the
+decoder's fidelity matters: an HTML5 unescaper that drops a C0 control
+character would turn `sgid="<real sgid>&#1;"` into the real sgid and suppress
+the mention; this reader emits the character, so the value differs and the
+mention is written. `MentionMarkup` refuses an `attachable_sgid` that names
 anyone other than the person it is given.
 
 ## Working with Webhooks

@@ -1751,39 +1751,79 @@ func TestSummarizableTypes_ReadmeMatchesTheRoutingTable(t *testing.T) {
 	}
 }
 
-func TestSummarize_ChatLineExhaustedBudgetIsIncompleteBeforeAnyRefresh(t *testing.T) {
-	// The cached listing alone exhausts the candidate budget. Past the refresh
-	// floor, with the listing now answering 503, discovery must return the
-	// deterministic incomplete verdict without spending a request a refresh
-	// could not have helped — not the 503, which a consumer would retry
-	// forever.
-	pairs := make([][2]int64, 0, MaxCampfireCandidates+5)
-	for i := int64(0); i < MaxCampfireCandidates+5; i++ {
+func TestSummarize_ChatLineExactlyAtTheBudgetIsUnresolvedWithoutARefresh(t *testing.T) {
+	// The cached listing holds exactly the budget, every candidate answers
+	// 404, and the budget ends at zero with nothing skipped. Past the refresh
+	// floor, with the listing now answering 503, the verdict is "unresolved"
+	// — every visible candidate was tried — and no re-read is spent: a
+	// re-read could hand this call nothing it may try, and its failure would
+	// otherwise replace a settled verdict with a transient one.
+	pairs := make([][2]int64, 0, MaxCampfireCandidates)
+	for i := int64(0); i < MaxCampfireCandidates; i++ {
 		pairs = append(pairs, [2]int64{7000 + i, letoLaptop})
 	}
 	fx := newChatFixture(t, 0, pairs...)
 	account, srv, clock := newSummaryClient(t, fx.route(t))
 	listings := func() int { return srv.count(listingRead) - srv.count(listingRead+"/") }
-	if _, err := account.Recordings().Summarize(context.Background(), lineRef()); !errors.Is(err, ErrCampfireDiscoveryIncomplete) {
-		t.Fatalf("priming: %v", err)
+	if _, err := account.Recordings().Summarize(context.Background(), lineRef()); !errors.Is(err, ErrRecordingUnresolved) {
+		t.Fatalf("priming: %v, want unresolved (all %d tried)", err, MaxCampfireCandidates)
 	}
 	*clock = clock.Add(campfireIndexMinRefresh)
 	inner := fx.route(t)
 	srv.mu.Lock()
 	srv.route = func(w http.ResponseWriter, r *http.Request, path string) bool {
-		if path == listingRead {
+		if path == listingRead || path == projectRead {
 			writeJSON(w, http.StatusServiceUnavailable, []byte(`{"error":"down"}`))
 			return true
 		}
 		return inner(w, r, path)
 	}
 	srv.mu.Unlock()
-	before := listings()
+	before, projects := listings(), srv.count(projectRead)
 	_, err := account.Recordings().Summarize(context.Background(), lineRef())
-	if !errors.Is(err, ErrCampfireDiscoveryIncomplete) {
-		t.Fatalf("err = %v, want the deterministic incomplete verdict, not the refresh's failure", err)
+	var unresolved *UnresolvedRecordingError
+	if !errors.As(err, &unresolved) || unresolved.Refreshed {
+		t.Fatalf("err = %v, want unresolved with Refreshed=false, not a refresh's failure", err)
 	}
-	if listings() != before {
-		t.Fatalf("a listing refresh was attempted with no budget left to try its candidates")
+	if listings() != before || srv.count(projectRead) != projects {
+		t.Fatalf("a re-read was spent with no budget left to try its candidates")
+	}
+}
+
+func TestSummarize_ChatLineBudgetSpentBeforeTheListingIsIncomplete(t *testing.T) {
+	// The project dock alone holds exactly the budget and every candidate
+	// answers 404. The listing was never consulted and may hold more, so the
+	// verdict is "incomplete", not "unresolved" — and the listing is not
+	// fetched, since nothing it returned could be tried.
+	fx := newChatFixture(t, 0, [2]int64{1069479345, letoLaptop})
+	// A dock naming MaxCampfireCandidates chat tools: build the project body
+	// by hand, since a real dock has one.
+	project := loadSummaryFixture(t, "projects/get.json")
+	var pj map[string]any
+	if err := json.Unmarshal(project, &pj); err != nil {
+		t.Fatal(err)
+	}
+	var dock []any
+	for i := int64(0); i < MaxCampfireCandidates; i++ {
+		dock = append(dock, map[string]any{"id": 8000 + i, "title": "Campfire", "name": "chat", "enabled": true, "position": 1, "url": "https://example.invalid/chats", "app_url": "https://example.invalid/chats"})
+	}
+	pj["dock"] = dock
+	inner := fx.route(t)
+	account, srv, _ := newSummaryClient(t, func(w http.ResponseWriter, r *http.Request, path string) bool {
+		if path == projectRead {
+			writeJSON(w, http.StatusOK, mustJSON(pj))
+			return true
+		}
+		return inner(w, r, path)
+	})
+	_, err := account.Recordings().Summarize(context.Background(), lineRef())
+	if !errors.Is(err, ErrCampfireDiscoveryIncomplete) || errors.Is(err, ErrRecordingUnresolved) {
+		t.Fatalf("err = %v, want incomplete: the listing was never consulted", err)
+	}
+	if n := srv.count(listingRead) - srv.count(listingRead+"/"); n != 0 {
+		t.Fatalf("the listing was fetched (%d) although no budget remained to try its candidates", n)
+	}
+	if n := srv.count("/195539477/chats/"); n != MaxCampfireCandidates {
+		t.Fatalf("tried %d candidates, want the budget %d", n, MaxCampfireCandidates)
 	}
 }

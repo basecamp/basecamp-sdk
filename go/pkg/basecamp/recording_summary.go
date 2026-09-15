@@ -1061,16 +1061,13 @@ func (s *RecordingsService) resolveChatLine(ctx context.Context, bucketID, lineI
 	// have populated or refreshed it in the meantime — so it always replaces
 	// the pass-1 one; "refreshed" is whether a source the conclusion had
 	// consulted is now newer than when it was consulted.
-	//
-	// Not when the budget is already spent: a re-read could return no
-	// candidate this call may try, so it would cost a request that cannot
-	// help — and a failure on it would replace the deterministic
-	// "incomplete" verdict with a transient error a consumer retries forever.
 	refreshed := false
-	if search.skipped {
-		return nil, 0, incomplete(fmt.Sprintf("more than %d visible campfires in the bucket", MaxCampfireCandidates))
-	}
-	if dock.cached {
+	// No budget left means no re-read: a source already consulted cannot
+	// hand this call a candidate it may try, so its refresh is skipped and
+	// the conclusion stands on what was seen (Refreshed=false). A source
+	// never consulted is different — candidates may exist there unsearched —
+	// so running out of budget before it makes the verdict incomplete.
+	if search.budget > 0 && dock.cached {
 		again, err := index.dockCampfires(ctx, ac, bucketID, true)
 		if err != nil {
 			return nil, 0, err
@@ -1083,22 +1080,23 @@ func (s *RecordingsService) resolveChatLine(ctx context.Context, bucketID, lineI
 			return line, id, err
 		}
 	}
-	if search.skipped {
-		return nil, 0, incomplete(fmt.Sprintf("more than %d visible campfires in the bucket", MaxCampfireCandidates))
-	}
-	again, err := index.listedCampfires(ctx, ac, bucketID, listCached)
-	if err != nil {
+	if search.budget <= 0 {
+		if !listCached {
+			return nil, 0, incomplete(fmt.Sprintf("the candidate budget of %d was spent before the account listing was consulted", MaxCampfireCandidates))
+		}
+	} else if again, err := index.listedCampfires(ctx, ac, bucketID, listCached); err != nil {
 		if errors.Is(err, errCampfireListingOverflow) {
 			return nil, 0, incomplete(err.Error())
 		}
 		return nil, 0, err
-	}
-	if listCached && (again.fetched.After(listed.fetched) || !again.cached) {
-		refreshed = true
-	}
-	listed = again
-	if line, id, err := search.try(ctx, listed.ids); err != nil || line != nil {
-		return line, id, err
+	} else {
+		if listCached && (again.fetched.After(listed.fetched) || !again.cached) {
+			refreshed = true
+		}
+		listed = again
+		if line, id, err := search.try(ctx, listed.ids); err != nil || line != nil {
+			return line, id, err
+		}
 	}
 	if err := ctx.Err(); err != nil {
 		return nil, 0, err
