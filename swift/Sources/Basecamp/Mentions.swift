@@ -449,14 +449,32 @@ extension Mentions {
     /// anything else rather than to be lenient about it.
     ///
     /// It disagrees with Go's `url.Parse` in exactly one mechanism NOW, and the
-    /// history is worth keeping because the claim has been wrong twice. It first
-    /// named one shape of a mechanism that has three. Then it claimed the
-    /// disagreement ran in the stricter direction only — true of the 747-shape
-    /// path-and-scheme sweep it cited, and false of the parser, which truncated
-    /// at `#` without looking while Go unescapes the fragment and refuses the
-    /// whole URL on a malformed escape there. `gid://bc3/Person/1#%zz` named a
-    /// person here and nobody in Go. A comment whose scope is narrower than its
-    /// claim reads as the claim.
+    /// history belongs here because that sentence has been false four times, and
+    /// each time the sweep that "proved" it was blind to the counterexample by
+    /// construction.
+    ///
+    ///   1. It named one shape of a mechanism that has three.
+    ///   2. It claimed the disagreement ran in the stricter direction only —
+    ///      true of the 747-shape path-and-scheme sweep it cited, whose shapes
+    ///      carry no fragment, and false of the parser, which truncated at `#`
+    ///      without looking while Go unescapes the fragment and refuses the
+    ///      whole URL on a malformed escape there. `gid://bc3/Person/1#%zz`
+    ///      named a person here and nobody in Go.
+    ///   3. The fragment check that fixed it was written over `Character`s, and
+    ///      a `Character` is a grapheme cluster: `#%\u{0301}zz` hides the `%`
+    ///      from an equality test and walked straight past it, while
+    ///      `#\u{0301}` hides the `#` so no fragment was found at all. No sweep
+    ///      of ASCII shapes can see either.
+    ///   4. The authority was checked against an alphabet of "printable ASCII"
+    ///      rather than against Go's, which is three alphabets: `unescape`'s for
+    ///      a host, `validUserinfo`'s for userinfo, and — inside brackets —
+    ///      `netip.ParseAddr`, so `[notanip]` and even `[1.2.3.4]` are hosts Go
+    ///      refuses. Ninety-four shapes of a byte sweep went the accepting way.
+    ///
+    /// A comment whose scope is narrower than its claim reads as the claim, and
+    /// a sweep whose alphabet is narrower than the parser's input proves less
+    /// than it appears to. The parser now reads UTF-8 bytes, which is what
+    /// `net/url` reads.
     ///
     /// What remains is one mechanism, stated as a mechanism rather than as a
     /// list of shapes: Go reads
@@ -483,6 +501,17 @@ extension Mentions {
     /// side of these helpers is the one place an attacker-supplied envelope is
     /// parsed.
     static func personId(fromGlobalId gid: String) -> Int? {
+        // Parsed as UTF-8 BYTES, which is what `net/url` parses, and the reason
+        // is not tidiness. A Swift `Character` is a grapheme cluster, so `%`
+        // followed by a combining acute is ONE Character equal to neither `"%"`
+        // nor anything else a delimiter search looks for. Reading this through
+        // `Character` was wrong in both directions at once:
+        // `gid://bc3/Person/1#%\u{0301}zz` walked past the fragment's escape
+        // check and named person 1 where Go refuses the whole URL, and
+        // `gid://bc3/Person/1#\u{0301}` hid the `#` inside a cluster so no
+        // fragment was found at all and a gid Go reads as person 1 named nobody
+        // here. Delimiters are ASCII bytes; they are found as bytes.
+        let bytes = Array(gid.utf8)
         // No ASCII control character anywhere in it. Go hands the gid to
         // `net/url`, which refuses one outright; a parser that strips tab, CR
         // and LF before parsing — the WHATWG rule Foundation follows, and the
@@ -492,10 +521,13 @@ extension Mentions {
         // not digits, and the write side's only authenticity-adjacent gate is
         // "does this sgid name this person": a parser more forgiving than Go's
         // renders a mention tag Go refuses to write.
-        guard !gid.utf8.contains(where: { $0 < 0x20 || $0 == 0x7F }) else { return nil }
-        guard let schemeEnd = gid.range(of: "://") else { return nil }
-        guard gid[gid.startIndex..<schemeEnd.lowerBound].lowercased() == "gid" else { return nil }
-        var rest = Substring(gid[schemeEnd.upperBound...])
+        guard !bytes.contains(where: { $0 < 0x20 || $0 == 0x7F }) else { return nil }
+        // Go's `getScheme` admits only ASCII in a scheme, so an ASCII fold is
+        // the whole of it — a non-ASCII spelling leaves Go with no scheme
+        // rather than with a scheme that folds to `gid`.
+        guard let schemeEnd = firstRange(of: "://", in: bytes, from: 0) else { return nil }
+        guard schemeEnd == 3, hasPrefix(bytes, at: 0, "gid") else { return nil }
+        var rest = bytes[(schemeEnd + 3)...]
         // The fragment and the query are kept out of the path, but they are not
         // equivalent and truncating at the first of either gets one of them
         // wrong. Go splits the fragment off the whole URL and UNESCAPES it, so a
@@ -504,12 +536,12 @@ extension Mentions {
         // and validates nothing, so `gid://bc3/Person/1?%zz` is a gid Go reads.
         // Truncating at `#` without looking accepted the first, which is the
         // permissive direction: a gid Go refuses, read here as a mention.
-        if let hash = rest.firstIndex(of: "#") {
-            guard isWellFormedPercentEscaping(rest[rest.index(after: hash)...]) else { return nil }
+        if let hash = rest.firstIndex(of: asciiHash) {
+            guard isWellFormedPercentEscaping(rest[(hash + 1)...]) else { return nil }
             rest = rest[..<hash]
         }
-        if let question = rest.firstIndex(of: "?") { rest = rest[..<question] }
-        guard let hostEnd = rest.firstIndex(of: "/"), hostEnd != rest.startIndex else { return nil }
+        if let question = rest.firstIndex(of: asciiQuestion) { rest = rest[..<question] }
+        guard let hostEnd = rest.firstIndex(of: asciiSlash), hostEnd != rest.startIndex else { return nil }
         // The authority is checked against what `net/url` accepts, which is the
         // parser Go hands the gid to. Both directions matter and an allowlist
         // gets one of them wrong: too loose and `gid://@/Person/1` names a
@@ -518,13 +550,13 @@ extension Mentions {
         // accepts, names nobody here and a real mention is lost.
         guard isValidGlobalIdAuthority(rest[..<hostEnd]) else { return nil }
 
-        let path = rest[rest.index(after: hostEnd)...]
-        guard let modelEnd = path.firstIndex(of: "/") else { return nil }
-        guard path[..<modelEnd] == "Person" else { return nil }
+        let path = rest[(hostEnd + 1)...]
+        guard let modelEnd = path.firstIndex(of: asciiSlash) else { return nil }
+        guard path[..<modelEnd].elementsEqual("Person".utf8) else { return nil }
 
-        let rawId = path[path.index(after: modelEnd)...]
-        guard !rawId.isEmpty, rawId.allSatisfy({ $0.isASCII && $0.isNumber }) else { return nil }
-        guard let id = Int(rawId), id > 0 else { return nil }
+        let rawId = path[(modelEnd + 1)...]
+        guard !rawId.isEmpty, rawId.allSatisfy({ $0 >= asciiZero && $0 <= asciiNine }) else { return nil }
+        guard let id = Int(String(decoding: rawId, as: UTF8.self)), id > 0 else { return nil }
         return id
     }
 }
@@ -540,6 +572,17 @@ private let asciiQuestion = UInt8(ascii: "?")
 private let asciiDoubleQuote = UInt8(ascii: "\"")
 private let asciiSingleQuote = UInt8(ascii: "'")
 private let asciiOpenBrace = UInt8(ascii: "{")
+private let asciiHash = UInt8(ascii: "#")
+private let asciiAt = UInt8(ascii: "@")
+private let asciiColon = UInt8(ascii: ":")
+private let asciiPercent = UInt8(ascii: "%")
+private let asciiOpenBracket = UInt8(ascii: "[")
+private let asciiCloseBracket = UInt8(ascii: "]")
+private let asciiZero = UInt8(ascii: "0")
+private let asciiNine = UInt8(ascii: "9")
+private let asciiDot = UInt8(ascii: ".")
+private let asciiTwo = UInt8(ascii: "2")
+private let asciiFive = UInt8(ascii: "5")
 
 private func isSpaceByte(_ c: UInt8) -> Bool {
     c == 0x20 || c == 0x09 || c == 0x0A || c == 0x0D || c == 0x0C
@@ -771,9 +814,16 @@ private let goWhitespace: CharacterSet = {
 
 /// A numeric reference's digit, tested as an ASCII byte the way Go tests it.
 /// Nil for everything else — including the fullwidth digit forms that
-/// `Character.hexDigitValue` accepts and Go refuses.
+/// `Character.hexDigitValue` accepts and Go refuses. The `asciiValue` guard is
+/// what refuses them: a fullwidth digit has none.
 private func asciiDigitValue(_ c: Character, hex: Bool) -> Int32? {
     guard let byte = c.asciiValue else { return nil }
+    return asciiDigitValue(byte, hex: hex)
+}
+
+/// The same table, reached from a byte. One table, so a percent escape and a
+/// numeric character reference cannot drift apart about what a hex digit is.
+private func asciiDigitValue(_ byte: UInt8, hex: Bool) -> Int32? {
     switch byte {
     case UInt8(ascii: "0")...UInt8(ascii: "9"):
         return Int32(byte - UInt8(ascii: "0"))
@@ -863,91 +913,291 @@ private let legacyEntities: [String: String] = [
 /// Everything else — `"`, `<`, `>`, `]`, `_` — Go accepts, and so must this, or
 /// a gid Go reads as a mention names nobody here. The host is never read beyond
 /// this check; the only job is to agree with Go about which gids exist.
-private func isValidGlobalIdAuthority(_ authority: Substring) -> Bool {
+///
+/// Every one of these reads UTF-8 bytes rather than `Character`s, for the reason
+/// the parser above does: a delimiter hidden in a grapheme cluster is a
+/// delimiter this would not find and `net/url` would.
+///
+/// The rules are `parseAuthority` and `parseHost`, ported rather than
+/// approximated, because an approximation was measured wrong in the accepting
+/// direction ninety-four ways over a byte sweep of the authority: a bracketed
+/// host accepted whatever was between the brackets where Go requires an IPv6
+/// address, and both the host and the userinfo accepted ASCII that Go's
+/// `unescape` and `validUserinfo` refuse.
+private func isValidGlobalIdAuthority(_ authority: ArraySlice<UInt8>) -> Bool {
     var host = authority
-    if let at = authority.lastIndex(of: "@") {
+    if let at = authority.lastIndex(of: asciiAt) {
         guard isValidUserinfo(authority[..<at]) else { return false }
-        host = authority[authority.index(after: at)...]
+        host = authority[(at + 1)...]
     }
     guard !host.isEmpty else { return false }
 
-    if host.first == "[" {
+    // `parseHost` looks for the LAST `[`: at 0 this is an IP literal, anywhere
+    // else it is malformed, and a second one puts it anywhere else.
+    if let openBracket = host.lastIndex(of: asciiOpenBracket) {
+        guard openBracket == host.startIndex else { return false }
         // A bracketed IP literal carries its port outside the brackets.
-        guard let close = host.lastIndex(of: "]") else { return false }
-        guard isValidOptionalPort(host[host.index(after: close)...]) else { return false }
-        host = host[host.index(after: host.startIndex)..<close]
-    } else if let colon = host.lastIndex(of: ":") {
+        guard let close = host.lastIndex(of: asciiCloseBracket) else { return false }
+        guard isValidOptionalPort(host[(close + 1)...]) else { return false }
+        return isValidIPLiteral(host[(host.startIndex + 1)..<close])
+    }
+    if let colon = host.lastIndex(of: asciiColon) {
         guard isValidOptionalPort(host[colon...]) else { return false }
         host = host[..<colon]
     }
     // Deliberately NOT re-checked for emptiness: Go's non-empty test is on
     // `u.Host`, which still carries the port, so `gid://:8080/Person/1` is a
     // host Go accepts and names a person for.
+    return unescapedHostBytes(host, zone: false) != nil
+}
 
-    var index = host.startIndex
-    while index < host.endIndex {
-        let c = host[index]
-        if let ascii = c.asciiValue, ascii <= 0x20 || ascii == 0x7F { return false }
-        guard c == "%" else {
-            index = host.index(after: index)
+/// Go's `validUserinfo` followed by `unescape(_, encodeUserPassword)`: an
+/// allowlist of ASCII, and well-formed escapes. It is an allowlist over RUNES,
+/// so every non-ASCII byte fails it — `gid://bé@bc3/Person/1` names nobody in
+/// Go, while `gid://bé c3/Person/1`… is not a host at all, and
+/// `gid://b%C3%A9c3/Person/1` IS a host Go reads. The three are not one rule.
+private func isValidUserinfo(_ userinfo: ArraySlice<UInt8>) -> Bool {
+    var index = userinfo.startIndex
+    while index < userinfo.endIndex {
+        let c = userinfo[index]
+        guard c < 0x80, isUserinfoByte(c) else { return false }
+        guard c == asciiPercent else {
+            index += 1
             continue
         }
-        guard let byte = percentEscapedByte(host, at: index) else { return false }
-        guard byte >= 0x80 || byte == 0x25 else { return false }
-        index = host.index(index, offsetBy: 3)
+        guard percentEscapedByte(userinfo, at: index) != nil else { return false }
+        index += 3
     }
     return true
 }
 
-/// Userinfo accepts an escape naming any byte; what it refuses is a malformed
-/// one, and a space or control character.
-private func isValidUserinfo(_ userinfo: Substring) -> Bool {
-    var index = userinfo.startIndex
-    while index < userinfo.endIndex {
-        let c = userinfo[index]
-        if let ascii = c.asciiValue, ascii <= 0x20 || ascii == 0x7F { return false }
-        guard c == "%" else {
-            index = userinfo.index(after: index)
+/// `unescape(_, encodeHost)` and `unescape(_, encodeZone)`, which both refuse a
+/// malformed escape and any ASCII byte the host grammar requires to be escaped,
+/// and return the decoded bytes. `encodeHost` additionally refuses an escape
+/// that names an ASCII byte — `a%41b` is not a host — with `%25` excepted, which
+/// is how RFC 6874 introduces a zone. Non-ASCII bytes pass through either way,
+/// which is why `b%C3%A9c3` and a literal `béc3` are both hosts Go accepts.
+private func unescapedHostBytes(_ text: ArraySlice<UInt8>, zone: Bool) -> [UInt8]? {
+    var decoded: [UInt8] = []
+    decoded.reserveCapacity(text.count)
+    var index = text.startIndex
+    while index < text.endIndex {
+        let c = text[index]
+        guard c == asciiPercent else {
+            guard c >= 0x80 || isHostByte(c) else { return nil }
+            decoded.append(c)
+            index += 1
             continue
         }
-        guard percentEscapedByte(userinfo, at: index) != nil else { return false }
-        index = userinfo.index(index, offsetBy: 3)
+        guard let byte = percentEscapedByte(text, at: index) else { return nil }
+        guard zone || byte >= 0x80 || byte == 0x25 else { return nil }
+        decoded.append(UInt8(byte))
+        index += 3
     }
-    return true
+    return decoded
+}
+
+/// What `parseHost` does with what is between the brackets: split the RFC 6874
+/// zone off at the first `%25`, unescape the two halves under their own rules,
+/// and require the result to be an IPv6 address. Anything else — `[notanip]`,
+/// `[]`, `[::1]]`, and an IPv4 literal like `[1.2.3.4]`, which `parseHost`
+/// refuses outright — is not a host, and a gid whose host is not a host names
+/// nobody.
+private func isValidIPLiteral(_ content: ArraySlice<UInt8>) -> Bool {
+    var decoded: [UInt8]
+    if let zoneStart = indexOfPercent25(content) {
+        guard let head = unescapedHostBytes(content[..<zoneStart], zone: false),
+            let tail = unescapedHostBytes(content[zoneStart...], zone: true)
+        else { return false }
+        decoded = head + tail
+    } else {
+        guard let whole = unescapedHostBytes(content, zone: false) else { return false }
+        decoded = whole
+    }
+    // `netip.ParseAddr` dispatches on the first of `.`, `:` or `%`: a dot means
+    // IPv4, which `parseHost` then refuses because only an IPv6 address may be
+    // bracketed; a percent before any colon is "missing IPv6 address"; nothing
+    // at all is "unable to parse IP". Only a colon reaches the IPv6 parser.
+    for byte in decoded {
+        if byte == asciiColon { return isIPv6Address(decoded) }
+        if byte == asciiDot || byte == asciiPercent { return false }
+    }
+    return false
+}
+
+private func indexOfPercent25(_ text: ArraySlice<UInt8>) -> Int? {
+    var index = text.startIndex
+    while index + 2 < text.endIndex {
+        if text[index] == asciiPercent, text[index + 1] == asciiTwo, text[index + 2] == asciiFive {
+            return index
+        }
+        index += 1
+    }
+    return nil
+}
+
+/// `netip.parseIPv6`, ported as the predicate this needs. The shape of the
+/// grammar is the point: at most one `::`, which must stand for at least one
+/// zero group; at most four hex digits a group; an embedded IPv4 tail only in
+/// the final two groups; a zone after `%` that may not be empty; and no
+/// trailing anything.
+private func isIPv6Address(_ input: [UInt8]) -> Bool {
+    var s = input[...]
+    // The zone is split off at the FIRST `%`, not the last, so everything after
+    // it is zone however many more percents it carries. `00::%25::%25` is a
+    // host Go reads for that reason alone.
+    if let percent = input.firstIndex(of: asciiPercent) {
+        // A zone was named, so it may not be empty.
+        guard percent + 1 < input.endIndex else { return false }
+        s = input[..<percent]
+    }
+
+    var filled = 0
+    var ellipsis = -1
+    if s.count >= 2, s[s.startIndex] == asciiColon, s[s.startIndex + 1] == asciiColon {
+        ellipsis = 0
+        s = s[(s.startIndex + 2)...]
+        if s.isEmpty { return true }
+    }
+
+    while filled < 16 {
+        var digits = 0
+        var group: UInt32 = 0
+        while s.startIndex + digits < s.endIndex,
+            let value = asciiDigitValue(s[s.startIndex + digits], hex: true)
+        {
+            group = (group << 4) + UInt32(value)
+            digits += 1
+            if digits > 4 { return false }
+        }
+        guard digits > 0 else { return false }
+
+        if s.startIndex + digits < s.endIndex, s[s.startIndex + digits] == asciiDot {
+            // An embedded IPv4 tail fills the last two groups and ends the address.
+            guard ellipsis >= 0 || filled == 12 else { return false }
+            guard filled + 4 <= 16 else { return false }
+            guard isIPv4Address(s) else { return false }
+            filled += 4
+            s = s[s.endIndex...]
+            break
+        }
+
+        filled += 2
+        s = s[(s.startIndex + digits)...]
+        if s.isEmpty { break }
+
+        guard s[s.startIndex] == asciiColon else { return false }
+        guard s.count > 1 else { return false }
+        s = s[(s.startIndex + 1)...]
+
+        if s[s.startIndex] == asciiColon {
+            guard ellipsis < 0 else { return false }
+            ellipsis = filled
+            s = s[(s.startIndex + 1)...]
+            if s.isEmpty { break }
+        }
+    }
+
+    guard s.isEmpty else { return false }
+    if filled < 16 { return ellipsis >= 0 }
+    return ellipsis < 0
+}
+
+/// `netip.parseIPv4`: exactly four dot-separated decimal octets, none empty,
+/// none above 255, and none written with a leading zero.
+private func isIPv4Address(_ text: ArraySlice<UInt8>) -> Bool {
+    var value = 0
+    var separators = 0
+    var digits = 0
+    var index = text.startIndex
+    while index < text.endIndex {
+        let c = text[index]
+        if c >= asciiZero && c <= asciiNine {
+            if digits == 1 && value == 0 { return false }
+            value = value * 10 + Int(c - asciiZero)
+            digits += 1
+            if value > 255 { return false }
+        } else if c == asciiDot {
+            guard index != text.startIndex, index != text.endIndex - 1 else { return false }
+            guard text[index - 1] != asciiDot else { return false }
+            guard separators != 3 else { return false }
+            separators += 1
+            value = 0
+            digits = 0
+        } else {
+            return false
+        }
+        index += 1
+    }
+    return separators == 3
+}
+
+/// The ASCII a host or a zone may spell literally — Go's `shouldEscape` for
+/// `encodeHost`, which is wider than the RFC's reg-name because it carries the
+/// port and the brackets inside `u.Host`.
+private func isHostByte(_ c: UInt8) -> Bool {
+    switch c {
+    case UInt8(ascii: "a")...UInt8(ascii: "z"), UInt8(ascii: "A")...UInt8(ascii: "Z"),
+        asciiZero...asciiNine:
+        return true
+    case UInt8(ascii: "-"), UInt8(ascii: "_"), asciiDot, UInt8(ascii: "~"):
+        return true
+    case asciiBang, UInt8(ascii: "$"), UInt8(ascii: "&"), asciiSingleQuote,
+        UInt8(ascii: "("), UInt8(ascii: ")"), UInt8(ascii: "*"), UInt8(ascii: "+"),
+        UInt8(ascii: ","), UInt8(ascii: ";"), asciiEquals, asciiColon,
+        asciiOpenBracket, asciiCloseBracket, asciiLessThan, asciiGreaterThan,
+        asciiDoubleQuote:
+        return true
+    default:
+        return false
+    }
+}
+
+/// Go's `validUserinfo` allowlist.
+private func isUserinfoByte(_ c: UInt8) -> Bool {
+    switch c {
+    case UInt8(ascii: "a")...UInt8(ascii: "z"), UInt8(ascii: "A")...UInt8(ascii: "Z"),
+        asciiZero...asciiNine:
+        return true
+    case UInt8(ascii: "-"), asciiDot, UInt8(ascii: "_"), asciiColon, UInt8(ascii: "~"),
+        asciiBang, UInt8(ascii: "$"), UInt8(ascii: "&"), asciiSingleQuote,
+        UInt8(ascii: "("), UInt8(ascii: ")"), UInt8(ascii: "*"), UInt8(ascii: "+"),
+        UInt8(ascii: ","), UInt8(ascii: ";"), asciiEquals, asciiPercent, asciiAt:
+        return true
+    default:
+        return false
+    }
 }
 
 /// Whether every `%` in `text` introduces a well-formed `%XX`. Go unescapes a
 /// fragment, and `unescape` errors on a malformed escape, which refuses the
 /// whole URL — so this is what stands between a gid Go rejects and a mention.
-private func isWellFormedPercentEscaping(_ text: Substring) -> Bool {
+private func isWellFormedPercentEscaping(_ text: ArraySlice<UInt8>) -> Bool {
     var index = text.startIndex
     while index < text.endIndex {
-        guard text[index] == "%" else {
-            index = text.index(after: index)
+        guard text[index] == asciiPercent else {
+            index += 1
             continue
         }
         guard percentEscapedByte(text, at: index) != nil else { return false }
-        index = text.index(index, offsetBy: 3)
+        index += 3
     }
     return true
 }
 
 /// The byte a `%XX` at `index` names, or nil when the escape is malformed.
-private func percentEscapedByte(_ text: Substring, at index: Substring.Index) -> Int? {
-    let first = text.index(after: index)
-    guard first < text.endIndex else { return nil }
-    let second = text.index(after: first)
-    guard second < text.endIndex else { return nil }
-    guard text[first].isASCII, text[second].isASCII,
-        let high = text[first].hexDigitValue, let low = text[second].hexDigitValue
+private func percentEscapedByte(_ text: ArraySlice<UInt8>, at index: Int) -> Int? {
+    guard index + 2 < text.endIndex else { return nil }
+    guard let high = asciiDigitValue(text[index + 1], hex: true),
+        let low = asciiDigitValue(text[index + 2], hex: true)
     else { return nil }
-    return high * 16 + low
+    return Int(high) * 16 + Int(low)
 }
 
 /// Go's `validOptionalPort`: empty, or a colon followed by digits and nothing
 /// else. A bare colon is valid, and there is no range check.
-private func isValidOptionalPort(_ port: Substring) -> Bool {
+private func isValidOptionalPort(_ port: ArraySlice<UInt8>) -> Bool {
     guard !port.isEmpty else { return true }
-    guard port.first == ":" else { return false }
-    return port.dropFirst().allSatisfy { $0.isASCII && $0.isNumber }
+    guard port.first == asciiColon else { return false }
+    return port.dropFirst().allSatisfy { $0 >= asciiZero && $0 <= asciiNine }
 }

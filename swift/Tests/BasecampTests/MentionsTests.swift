@@ -311,6 +311,136 @@ final class MentionsTests: XCTestCase {
         }
     }
 
+    /// A Swift `Character` is a grapheme cluster and a URL grammar's character
+    /// is a byte, and that gap runs BOTH ways at once.
+    ///
+    /// `%` followed by a combining acute is one `Character` equal to neither
+    /// `"%"` nor anything else, so a `Character`-based escape scan walks past a
+    /// malformed escape Go refuses; and `#` followed by one is a `Character`
+    /// that is not `"#"`, so a `Character`-based delimiter search never finds
+    /// the fragment Go splits off. The first is the accepting direction — a gid
+    /// Go rejects, read here as a mention — and no sweep of ASCII shapes can
+    /// see either, which is why this table exists next to one.
+    ///
+    /// Every expectation was produced by running the row through Go's
+    /// `url.Parse` and the `PersonIDFromSGID` gid rules, not by reading them.
+    func testAGraphemeClusterCannotHideADelimiter() {
+        let cases: [(gid: String, expected: Int?)] = [
+            // The escape is malformed in Go's eyes wherever the cluster hides it.
+            ("gid://bc3/Person/1#%\u{0301}zz", nil),
+            ("gid://bc3/Person/1#%\u{0300}", nil),
+            ("gid://bc3/Person/1#%2\u{0301}5", nil),
+            ("gid://bc3/Person/1#\u{0301}%zz", nil),
+            // The `#` is still a `#` to Go, so the fragment is still a fragment.
+            ("gid://bc3/Person/1#\u{0301}", 1),
+            ("gid://bc3/Person/1#\u{0301}ok", 1),
+            ("gid://bc3/Person/1?\u{0301}%zz", 1),
+            // A cluster over a structural byte elsewhere is not that byte.
+            ("gid://bc3/Person/1\u{0301}", nil),
+            ("gid://bc3/Person\u{0301}/1", nil),
+            ("gid://bc3/\u{0301}Person/1", nil),
+            ("gid:\u{0301}//bc3/Person/1", nil),
+            ("gid://bc3\u{0301}/Person/1", 1),
+        ]
+        for (gid, expected) in cases {
+            XCTAssertEqual(Mentions.personId(fromGlobalId: gid), expected, gid.debugDescription)
+        }
+    }
+
+    /// Only an IPv6 address may be bracketed, and `parseHost` enforces it with
+    /// `netip.ParseAddr` — so `[notanip]`, `[]`, `[::1]]` and even the perfectly
+    /// good IPv4 literal `[1.2.3.4]` are gids Go reads as nobody. A parser that
+    /// treats brackets as decoration accepts all four, which is the accepting
+    /// direction on the mention path.
+    ///
+    /// The cross product below is rebuilt here rather than described: ten group
+    /// spellings joined by `:` and by `::` at one, two and three positions,
+    /// 2,110 distinct literals, against the 60 Go names a person for. Compared
+    /// as a SET, so a literal this accepted and Go did not appears as an extra
+    /// element rather than as an unexamined claim.
+    ///
+    /// The `%25en0` rows are the ones worth reading twice. A zone begins at the
+    /// FIRST `%`, not the last, and everything after it is zone however many
+    /// more percents or colons it carries — which is why `0::%25en0::g` is a
+    /// host Go reads. Splitting at the last `%` refuses 108 of these.
+    func testABracketedHostIsAnIPv6AddressOrNoHostAtAll() {
+        let groups = ["", "0", "1", "ffff", "fffff", "g", "1.2.3.4", "01.2.3.4", "%25en0", "%en0"]
+        var literals = Set<String>()
+        for separator in [":", "::"] {
+            for a in groups {
+                literals.insert(a)
+                for b in groups {
+                    literals.insert([a, b].joined(separator: separator))
+                    for c in groups {
+                        literals.insert([a, b, c].joined(separator: separator))
+                    }
+                }
+            }
+        }
+        XCTAssertEqual(literals.count, 2110)
+
+        // What `PersonIDFromSGID` names a person for, run rather than reasoned.
+        let goAccepts: Set<String> = [
+            "0::", "0::%25en0", "0::%25en0::", "0::%25en0::%25en0", "0::%25en0::0",
+            "0::%25en0::01.2.3.4", "0::%25en0::1", "0::%25en0::1.2.3.4", "0::%25en0::ffff",
+            "0::%25en0::fffff", "0::%25en0::g", "0::0", "0::1", "0::1.2.3.4", "0::ffff",
+            "1::", "1::%25en0", "1::%25en0::", "1::%25en0::%25en0", "1::%25en0::0",
+            "1::%25en0::01.2.3.4", "1::%25en0::1", "1::%25en0::1.2.3.4", "1::%25en0::ffff",
+            "1::%25en0::fffff", "1::%25en0::g", "1::0", "1::1", "1::1.2.3.4", "1::ffff",
+            "::", "::%25en0", "::%25en0::", "::%25en0::%25en0", "::%25en0::0",
+            "::%25en0::01.2.3.4", "::%25en0::1", "::%25en0::1.2.3.4", "::%25en0::ffff",
+            "::%25en0::fffff", "::%25en0::g", "::0", "::1", "::1.2.3.4", "::ffff",
+            "ffff::", "ffff::%25en0", "ffff::%25en0::", "ffff::%25en0::%25en0",
+            "ffff::%25en0::0", "ffff::%25en0::01.2.3.4", "ffff::%25en0::1",
+            "ffff::%25en0::1.2.3.4", "ffff::%25en0::ffff", "ffff::%25en0::fffff",
+            "ffff::%25en0::g", "ffff::0", "ffff::1", "ffff::1.2.3.4", "ffff::ffff",
+        ]
+        XCTAssertEqual(goAccepts.count, 60)
+        XCTAssertTrue(goAccepts.isSubset(of: literals))
+
+        var accepted = Set<String>()
+        for literal in literals where Mentions.personId(fromGlobalId: "gid://[\(literal)]/Person/1") != nil {
+            accepted.insert(literal)
+        }
+        XCTAssertEqual(accepted, goAccepts)
+        // And the port outside the brackets does not change which host it is.
+        for literal in goAccepts {
+            XCTAssertEqual(Mentions.personId(fromGlobalId: "gid://[\(literal)]:80/Person/1"), 1, literal)
+        }
+    }
+
+    /// The host and the userinfo have DIFFERENT alphabets, and neither is "any
+    /// printable byte". Go runs the host through `unescape(_, encodeHost)`,
+    /// which refuses an ASCII byte the host grammar requires to be escaped, and
+    /// the userinfo through `validUserinfo`, which is an allowlist over runes —
+    /// so every non-ASCII byte fails it, while a non-ASCII byte in the HOST is
+    /// fine.
+    ///
+    /// Both alphabets are swept here rather than asserted: every printable ASCII
+    /// byte but `/`, placed once in each position, compared against the set Go
+    /// accepts. Reading `\\`, `^`, a backtick, `{`, `|` and `}` as host bytes is
+    /// six mentions Go does not report; the userinfo list is longer.
+    func testTheHostAndUserinfoAlphabetsAreGos() {
+        let swept = (UInt8(ascii: "!")...UInt8(ascii: "~"))
+            .map { Character(UnicodeScalar($0)) }
+            .filter { $0 != "/" }
+        XCTAssertEqual(swept.count, 93)
+
+        let goAcceptsInHost = Set("!\"$%&'()*+,-.0123456789;<=>@ABCDEFGHIJKLMNOPQRSTUVWXYZ]_abcdefghijklmnopqrstuvwxyz~")
+        let goAcceptsInUserinfo = Set("!$%&'()*+,-.0123456789:;=@ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz~")
+
+        XCTAssertEqual(
+            Set(swept.filter { Mentions.personId(fromGlobalId: "gid://b\($0)c3/Person/1") != nil }),
+            goAcceptsInHost)
+        XCTAssertEqual(
+            Set(swept.filter { Mentions.personId(fromGlobalId: "gid://b\($0)c3@bc3/Person/1") != nil }),
+            goAcceptsInUserinfo)
+
+        // A non-ASCII byte is a host Go reads and a userinfo it refuses.
+        XCTAssertEqual(Mentions.personId(fromGlobalId: "gid://b\u{00E9}c3/Person/1"), 1)
+        XCTAssertNil(Mentions.personId(fromGlobalId: "gid://b\u{00E9}c3@bc3/Person/1"))
+    }
+
     /// Go's `url.Parse` refuses an empty host behind userinfo and a bad percent
     /// escape in the authority. A split that only looks for the first slash
     /// accepts both — the PERMISSIVE direction, and the one that matters: a gid
