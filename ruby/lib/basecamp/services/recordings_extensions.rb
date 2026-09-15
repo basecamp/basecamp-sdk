@@ -455,7 +455,7 @@ module Basecamp
         # rendering and then scanned that for mentions, which is reading a body
         # the reference would have failed to decode. Title goes through the same
         # check because first_non_empty reaches both.
-        content = read_text(content, "content")
+        content = content.to_s
         title = read_text(title, "title")
 
         summary = {
@@ -742,8 +742,19 @@ module Basecamp
         campfires = @client.campfires.list(max_items: CampfireIndex::MAX_LISTING)
         listed = campfires.to_a
         if campfires.meta.truncated?
+          # The reason states what was OBSERVED and not why. meta.truncated? is
+          # set both by the max_items cap this call passes and by the client's
+          # max_pages limit leaving a next page unfetched, and the reference
+          # conflates the two in exactly the same way (client.go sets hasMore
+          # for the page cap). Naming one cause reported a small two-page
+          # listing under max_pages: 1 as "exceeds 1000".
+          #
+          # The VERDICT is the same either way, which is why this stays one
+          # error: candidates were left unsearched, so the call is incomplete
+          # rather than absent, and re-requesting repairs neither bound.
           raise CampfireIndex::ListingOverflow,
-            "campfire listing exceeds #{CampfireIndex::MAX_LISTING}"
+            "the account campfire listing was truncated before it was complete — either past the " \
+            "#{CampfireIndex::MAX_LISTING}-item cap or past the client's max_pages limit"
         end
 
         listed.each_with_object({}) do |campfire, by_bucket|
