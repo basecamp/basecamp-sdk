@@ -295,11 +295,19 @@ module Basecamp
       # Trimmed by {Basecamp::Text}, not by String#strip, and the difference is
       # a routing decision rather than a nicety. strip removes a leading or
       # trailing NUL where the reference's TrimSpace does not, so "Comment\0"
-      # and "comment.created\0" SELECTED A REAL TYPE here and were
-      # unknown_recording_type there — a malformed key reaching a live read, in
-      # the accepting direction. strip on a byte string also leaves the nineteen
-      # multi-byte spaces the reference trims. Measured: one byte of 256
-      # diverges one way and nineteen characters the other.
+      # SELECTED A REAL TYPE here and was unknown_recording_type there — a
+      # malformed key reaching a live read, in the accepting direction. strip on
+      # a byte string also leaves the nineteen multi-byte spaces the reference
+      # trims. Measured: one byte of 256 diverges one way and nineteen
+      # characters the other.
+      #
+      # Only the RECORDING TYPE, because only it is compared whole. An event
+      # type is split on its last "." and only the subject is looked up, so a
+      # NUL in the action segment is never examined and "comment.created\0"
+      # routes on BOTH sides. An earlier version of this paragraph claimed
+      # otherwise and the test three files away already said so — the review
+      # that found the NUL made the same claim, and measuring it is what
+      # separated the half that was true from the half that was not.
       def route_recording(event_type:, recording_type:)
         type = Text.trim_space(recording_type.to_s)
         unless type.empty?

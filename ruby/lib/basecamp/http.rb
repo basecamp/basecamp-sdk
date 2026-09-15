@@ -14,25 +14,47 @@ module Basecamp
 
     # Normalizes Person-shaped objects in parsed JSON.
     # For objects with personable_type and a string id:
-    # - Numeric strings: coerced to Integer, no system_label
+    # - Signed decimal strings: coerced to Integer, no system_label
     # - Non-numeric sentinels (e.g. "basecamp"): id becomes 0, system_label preserves original
+    # - Numeric overflow: left as the string, for the reader to refuse
     def self.normalize_person_ids(obj)
       case obj
       when Hash
-        if obj.key?("personable_type") && obj["id"].is_a?(String)
-          raw_id = obj["id"]
-          numeric = Integer(raw_id, exception: false)
-          if numeric
-            obj["id"] = numeric
-          else
-            obj["system_label"] = raw_id
-            obj["id"] = 0
-          end
-        end
+        coerce_person_id(obj) if obj.key?("personable_type") && obj["id"].is_a?(String)
         obj.each_value { |v| normalize_person_ids(v) }
       when Array
         obj.each { |item| normalize_person_ids(item) }
       end
+    end
+
+    # One Person-shaped object's string id, by the reference's grammar.
+    #
+    # SIGNED DECIMAL, not Ruby's Integer(). That method detects a base from the
+    # literal and tolerates surrounding space and underscores, so it read
+    # "0x10" as 16, "0b11" as 3, "1_2" as 12 and " 7" as 7 where the reference
+    # reads every one of them as a non-numeric sentinel and zeroes it. Worst of
+    # the set is "010": the reference parses base 10 and gets 10, Ruby detected
+    # octal and got 8 — not a refusal against an acceptance but two different
+    # PEOPLE, either of which a caller could then mention.
+    #
+    # This runs before either composite sees the value, so the strict decoding
+    # they do could never have seen the original: the normalizer had already
+    # replaced it. Measured against strconv.ParseInt(s, 10, 64) over the shapes
+    # above; the two agree everywhere else.
+    #
+    # Overflow is left as a String on purpose, which is what the reference does:
+    # the id is out of range for the field, so the reader refuses it rather than
+    # this silently substituting a sentinel.
+    def self.coerce_person_id(obj)
+      raw = obj["id"]
+      unless raw.b.match?(/\A[-+]?\d+\z/n)
+        obj["system_label"] = raw
+        obj["id"] = 0
+        return
+      end
+
+      value = raw.b.to_i
+      obj["id"] = value if value.between?(Ids::MIN, Ids::MAX)
     end
 
     # @param config [Config] configuration settings
