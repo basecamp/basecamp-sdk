@@ -339,6 +339,39 @@ class HttpPaginationMetaTest < Minitest::Test
       end
 
       assert_match(/not an object/, error.message)
+      assert_not error.retryable?
+      assert_not_includes error.message, "scalar"
+      WebMock.reset!
+    end
+  end
+
+  def test_a_keyed_page_whose_value_is_not_a_list_fails_with_a_basecamp_error
+    # The guard for the ENVELOPE stopped one line short of the value at the
+    # key, so `{"events": 5}` reached the caller's each_with_index as a
+    # NoMethodError and `{"events": {}}` paginated to zero items — silently
+    # reading "no rows" out of a body that could not be read, which is the
+    # hazard this very method's comment writes down for the bare-array branch.
+    [ "5", '"abc"', "true", "{}", '{"a":1}' ].each do |value|
+      stub_get("/progress.json", response_body: %({"person":{"id":7},"events":#{value}}))
+
+      error = assert_raises(Basecamp::ApiError, "an events value of #{value}") do
+        @http.paginate_wrapped("/progress.json", key: "events")["events"].to_a
+      end
+
+      assert_match(/at "events"/, error.message)
+      assert_not error.retryable?
+      WebMock.reset!
+    end
+  end
+
+  def test_a_keyed_page_with_a_null_or_absent_value_is_an_empty_page
+    # null and absent are the zero value there, not a malformed body.
+    [ %({"person":{"id":7},"events":null}), %({"person":{"id":7}}) ].each do |body|
+      stub_get("/progress.json", response_body: body)
+      result = @http.paginate_wrapped("/progress.json", key: "events")
+
+      assert_empty result["events"].to_a, body
+      assert_equal({ "id" => 7 }, result["person"])
       WebMock.reset!
     end
   end

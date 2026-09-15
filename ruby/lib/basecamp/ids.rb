@@ -73,10 +73,44 @@ module Basecamp
     # @param value [Object] as it arrived on the wire
     # @return [Integer, nil] the id, 0 when absent, nil when malformed
     def from_wire(value)
-      return value if value.is_a?(Integer)
+      # BOUNDED, like the argument reader above. The fields this serves are
+      # plain 64-bit integers in the reference, so a number outside that range
+      # is a decode failure there — 2**63 failed the read and was returned
+      # verbatim here, which the doc above already claimed was impossible.
+      return value if value.is_a?(Integer) && value.between?(MIN, MAX)
       return 0 if value.nil?
 
       nil
+    end
+
+    # A PERSON's id, which the reference decodes flexibly rather than strictly.
+    #
+    # +Person.Id+ is the single field in the generated model typed as the
+    # flexible decoder, so the rules differ from {from_wire} in exactly the way
+    # that method's own doc warns about:
+    #
+    # * an Integer in range, or an absent value, behaves as everywhere else;
+    # * a STRING of digits is the integer it spells, since the decoder hands it
+    #   to ParseInt — which takes a leading sign;
+    # * any OTHER string is 0 and not an error, because that is the sentinel the
+    #   API serves for system-generated entities ("basecamp");
+    # * a string whose digits overflow is a range error, so it fails the read;
+    # * anything else — a float, a boolean, an array, an object — is a decode
+    #   failure, as it is for every id.
+    #
+    # @param value [Object] as it arrived on the wire
+    # @return [Integer, nil] the id, 0 for absent or a non-numeric sentinel,
+    #   nil when the reference could not have decoded it
+    def person_from_wire(value)
+      return value if value.is_a?(Integer) && value.between?(MIN, MAX)
+      return 0 if value.nil?
+      return nil unless value.is_a?(String)
+
+      digits = value.b
+      return 0 unless digits.match?(/\A[-+]?\d+\z/n)
+
+      parsed = digits.to_i
+      parsed.between?(MIN, MAX) ? parsed : nil
     end
   end
 end

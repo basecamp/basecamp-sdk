@@ -110,6 +110,11 @@ module Basecamp
       # than calling the rest absent.
       MAX_CAMPFIRE_CANDIDATES = 50
 
+      # Where #project leaves the validated bucket id for the cross-bucket
+      # check, removed before the summary is returned. A symbol, so it cannot
+      # collide with any string key the projection carries.
+      BUCKET_ID_MEMO = :__validated_bucket_id
+
       # Resolves a recording pointer into a compact projection through the typed
       # read its type names.
       #
@@ -157,7 +162,10 @@ module Basecamp
         kind = route_recording(event_type: event_type, recording_type: recording_type)
         summary = read_summary(kind, bucket_id: bucket_id, recording_id: recording_id)
 
-        read_bucket_id = read_bucket_id(summary)
+        # fetch, not [], so a summary built by some future route that bypasses
+        # #project raises here rather than reading as "no bucket" and silently
+        # skipping the comparison.
+        read_bucket_id = summary.delete(BUCKET_ID_MEMO) { raise unvalidated_summary }
         # NON-ZERO, not positive. The reference compares whenever its bucket id
         # is not the zero value, so a negative one is a mismatch there and was
         # returned as a match here — this is the one check standing between a
@@ -234,8 +242,8 @@ module Basecamp
       # so is a malformed response here. Reading it as "none" would skip the
       # comparison, which is how a projection from another project would have
       # been returned.
-      def read_bucket_id(summary)
-        bucket = summary["bucket"]
+      def read_bucket_id(record)
+        bucket = record["bucket"]
         return 0 if bucket.nil?
 
         unless bucket.is_a?(Hash)
@@ -246,6 +254,12 @@ module Basecamp
         return id unless id.nil?
 
         raise malformed_response("the recording's bucket id is #{MergeSafe.describe(bucket["id"])}, not an integer")
+      end
+
+      # Raised when a summary reaches the cross-bucket check without having
+      # been through #project, which is the only place the bucket is validated.
+      def unvalidated_summary
+        malformed_response("the recording summary was built without validating its bucket")
       end
 
       # The error for a body this composite cannot read.
@@ -527,9 +541,25 @@ module Basecamp
         # leaves the field nil there and `omitempty` drops the key. Ruby emitted
         # the empty object, so a caller testing `summary.key?("bucket")` got a
         # different answer from the contract's.
+        # VALIDATED HERE, before any key is dropped, and memoized for the
+        # cross-bucket check. Reading it out of the summary afterwards made
+        # keep_member? — a predicate whose job is "should this key appear" —
+        # the thing guaranteeing that check runs at all, through two clauses
+        # written purely for that purpose. It failed open twice, both times
+        # because someone editing an output-shape predicate had no reason to
+        # suspect they were disabling a safety check. The reference validates
+        # the raw member and drops the key on its own emptiness rule, which is
+        # what this now does in the same order.
+        summary[BUCKET_ID_MEMO] = read_bucket_id(record)
+
         summary.delete("parent") unless keep_member?(parent, "title")
         summary.delete("bucket") unless keep_member?(summary["bucket"], "name")
-        summary.delete("creator") unless keep_member?(summary["creator"], "name")
+        # A creator's id is decoded FLEXIBLY, because a creator is a Person and
+        # that is the one id in the generated model typed that way. Reading it
+        # with the strict decoder made {"id" => "basecamp"} — the sentinel the
+        # API serves for system-generated entities — look malformed, so the
+        # member was kept where the reference reads 0 and drops it.
+        summary.delete("creator") unless keep_member?(summary["creator"], "name", person: true)
         # Absent or empty is genuinely nothing to report — the reference's
         # +omitempty+ leaves an empty slice out of its summary too, so the key
         # goes. Anything else that is not an array of objects is a decode
@@ -607,11 +637,14 @@ module Basecamp
       # or a name, so an EMPTY object leaves the key out of its summary where
       # this port emitted `{}`.
       #
-      # A member that is not an object at all is KEPT on purpose, so that the
-      # reader which refuses it still sees it. Dropping it here instead removed
-      # a malformed bucket before the cross-bucket check could object — which
-      # is the check this composite exists to protect, and which an existing
-      # test caught within a minute of the rule being written the other way.
+      # A member that is not an object, or whose id is not one, is KEPT — but
+      # this is no longer what makes the cross-bucket check safe, and the
+      # comment here used to say that it was. Twice this predicate dropped a
+      # malformed bucket before that check could object, because an
+      # output-shape rule was silently doing safety work. The bucket is
+      # validated in #project now, before any key is dropped, so these two
+      # clauses are belt-and-braces: mutating either to false leaves the suite
+      # green, which is the evidence that the coupling is gone.
       #
       # TWO NAMED FIELDS, not "any value present", and the label differs by
       # member: the reference tests <tt>Id != 0 || Name != ""</tt> for a bucket
@@ -620,29 +653,32 @@ module Basecamp
       # instead kept <tt>{"type" => "Project"}</tt> and <tt>{"url" => "u"}</tt>,
       # which the reference drops. That is the per-site rule lesson again: the
       # shared part here is the shape of the test, not the field it reads.
-      def keep_member?(member, label)
+      def keep_member?(member, label, person: false)
         return false if member.nil?
         return true unless member.is_a?(Hash)
 
-        id = Ids.from_wire(member["id"])
-        # A malformed ID keeps the member too, for the same reason a non-object
-        # member is kept: the reader that refuses it has to still see it. This
-        # is the SECOND time this predicate has swallowed a malformed bucket
-        # before the cross-bucket check could object — first for a bucket that
-        # was not an object, now for one whose id is not an integer. Anything
-        # that decides whether a key SURVIVES has to leave the malformed cases
-        # for the code that reports them.
+        # The LABEL is a plain string in the reference, so a number or an object
+        # there is a decode failure — and `.to_s` rendered every one of them
+        # into something non-empty, which kept the member and let the read
+        # succeed. Kept rather than refused here for the same reason a non-object
+        # member is: the readers that report a malformed body have to see it.
+        name = member[label]
+        return true unless name.nil? || name.is_a?(String)
+
+        id = person ? Ids.person_from_wire(member["id"]) : Ids.from_wire(member["id"])
         return true if id.nil?
 
-        !id.zero? || !member[label].to_s.empty?
+        !id.zero? || !name.to_s.empty?
       end
 
       def first_non_empty(*values)
-        values.each do |value|
-          text = read_text(value, "title or content")
-          return text unless text.empty?
-        end
-        ""
+        # EVERY candidate is type-checked, not just the ones reached before the
+        # first non-empty one. Returning early left a malformed SECOND candidate
+        # unread — a card with a good "content" and a numeric "description"
+        # succeeded here and was a decode failure there, because the reference
+        # decodes the whole struct before choosing between its fields.
+        texts = values.map { |value| read_text(value, "title or content") }
+        texts.find { |text| !text.empty? } || ""
       end
 
       # A text member of a read, or "" when it carries none.
@@ -673,7 +709,10 @@ module Basecamp
           # so a literal "<bc-attachment>" in it mentions nobody.
           summary["mentioned_person_ids"] = []
         end
-        summary["campfire_id"] = campfire_id
+        # Omitted when zero, as the reference's `omitempty` omits it. A listed
+        # Campfire with a zero id is a real candidate on both sides — neither
+        # filters ids there — so this is reachable rather than theoretical.
+        summary["campfire_id"] = campfire_id unless campfire_id.zero?
         summary
       end
 

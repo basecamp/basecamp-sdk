@@ -832,11 +832,6 @@ module Basecamp
       envelope_gid(value)
     end
 
-
-
-
-
-
     # Decodes one base64 payload and returns the gid its envelope carries.
     #
     # @param payload [String]

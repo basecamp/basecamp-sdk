@@ -425,7 +425,26 @@ module Basecamp
         unless data.key?(key)
           warn "[Basecamp SDK] paginate: expected key '#{key}' not found in response (page #{page})"
         end
-        data[key] || []
+        items = data[key]
+        # The VALUE at the key takes the same rule as the envelope above, and
+        # the guard added with that one stopped a line short. A scalar or a
+        # boolean here reached the caller's `each_with_index` as a native
+        # exception out of a public method, and an OBJECT paginated over its
+        # key/value pairs as though they were records — which is the hazard this
+        # method's own comment writes down for the bare-array branch, live one
+        # `else` away from it.
+        return [] if items.nil?
+
+        unless items.is_a?(Array)
+          raise Basecamp::ApiError.new(
+            "Paginated response (page #{page}) has a #{items.class} at #{key.inspect}, not a list",
+            hint: "This operation paginates over the #{key.inspect} key of a JSON object; " \
+                  "a value of another shape cannot be read.",
+            retryable: false
+          )
+        end
+
+        items
       end
     end
 

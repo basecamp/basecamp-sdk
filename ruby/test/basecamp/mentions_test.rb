@@ -440,34 +440,47 @@ class MentionsTest < Minitest::Test
 
   def test_every_hex_digit_decodes_to_its_own_value
     # wrapped_digits maps a-f and A-F by byte offset, and BOTH offsets survived
-    # mutation: nothing asserted a verdict over the letter digits, so -87 and
-    # -86 were indistinguishable to the suite. Each of the sixteen hex digits is
-    # now pinned through a real payload, in both cases.
-    sgid = person_sgid(51)
-    first = sgid[0]
-    rest = sgid[1..]
-
-    %w[0 1 2 3 4 5 6 7 8 9 a b c d e f A B C D E F].each do |digit|
-      # A hex reference whose value is the payload's first character, written
-      # with this digit somewhere in it, must still name person 51.
-      value = first.ord.to_s(16)
-      next unless value.downcase.include?(digit.downcase) || digit.match?(/[0-9]/)
-
-      spelled = digit.match?(/[a-fA-F]/) ? value.tr("abcdef", digit * 6) : value
-      next unless spelled.to_i(16) == first.ord
-
-      assert_equal [ 51 ], mentions_in_tag("&#x#{spelled};#{rest}"), "hex digit #{digit}"
+    # mutation: nothing asserted a verdict over the letter digits.
+    #
+    # The first version of this test looped over the sixteen digits and SKIPPED
+    # all twelve letters — its guard required the digit to appear in a value
+    # derived from the payload, and that value was "42". It also rebuilt the
+    # expected input with the same computation the code under test performs, so
+    # a shared error would have cancelled. Both are gone: these are literal
+    # inputs with literal expectations, which is the only form that pins an
+    # offset table.
+    {
+      "0" => 0x0, "1" => 0x1, "2" => 0x2, "3" => 0x3, "4" => 0x4, "5" => 0x5,
+      "6" => 0x6, "7" => 0x7, "8" => 0x8, "9" => 0x9,
+      "a" => 0xA, "b" => 0xB, "c" => 0xC, "d" => 0xD, "e" => 0xE, "f" => 0xF,
+      "A" => 0xA, "B" => 0xB, "C" => 0xC, "D" => 0xD, "E" => 0xE, "F" => 0xF
+    }.each do |digit, value|
+      assert_equal value, Basecamp::Mentions.send(:wrapped_digits, digit, 16),
+        "hex digit #{digit.inspect}"
     end
 
-    # And the letter digits carry their real values rather than an offset that
-    # merely happens to work for one of them: 0xAB and 0xab are the same
-    # character, and both differ from 0xBB.
-    assert_equal mentions_in_tag("&#xAB;#{rest}"), mentions_in_tag("&#xab;#{rest}")
-    assert_equal [ 0xAB ].pack("U").b,
-                 Basecamp::Mentions.send(:codepoint_reference, Basecamp::Mentions.send(:wrapped_digits, "AB", 16), "&#xAB;")
+    # Mixed case and position, so an offset that is right for one digit and
+    # wrong for another cannot pass.
     assert_equal 0xABCDEF, Basecamp::Mentions.send(:wrapped_digits, "abcdef", 16)
     assert_equal 0xABCDEF, Basecamp::Mentions.send(:wrapped_digits, "ABCDEF", 16)
+    assert_equal 0xAbCdEf, Basecamp::Mentions.send(:wrapped_digits, "AbCdEf", 16)
+    assert_equal 0xFEDCBA, Basecamp::Mentions.send(:wrapped_digits, "FEDCBA", 16)
     assert_equal 123_456, Basecamp::Mentions.send(:wrapped_digits, "123456", 10)
+
+    # And through a real payload, at a position where a LETTER digit decides
+    # the answer — the unit assertions above would pass with the end-to-end
+    # path broken, and the first version of this test had no end-to-end row
+    # touching a letter at all. Index 6 of this sgid is "k", 0x6B, so the "b"
+    # is load-bearing: an offset that is wrong for b resolves nobody.
+    sgid = person_sgid(51)
+
+    assert_equal "k", sgid[6], "the fixture this row depends on"
+
+    %w[6b 6B].each do |spelling|
+      decorated = "#{sgid[0, 6]}&#x#{spelling};#{sgid[7..]}"
+
+      assert_equal [ 51 ], mentions_in_tag(decorated), "&#x#{spelling};"
+    end
   end
 
   def test_the_digit_accumulator_wraps_at_thirty_two_bits
