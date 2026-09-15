@@ -646,6 +646,9 @@ async fn a_failed_person_read_posts_nothing() {
         .unwrap_err();
     assert_eq!(error.code(), ErrorCode::Forbidden);
     assert!(error.to_string().contains("resolving mention for person"));
+    // Context is added to the message and nothing else: the read's own error travels
+    // whole, so a caller still classifies it through the ordinary accessors.
+    assert_eq!(error.http_status(), Some(403));
     assert_eq!(paths(&server).await.len(), 1, "nothing was posted");
 }
 

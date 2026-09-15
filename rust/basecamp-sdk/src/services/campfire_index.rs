@@ -168,7 +168,11 @@ where
             if let Some(pending) = state.inflight.get(key) {
                 pending.clone()
             } else {
-                let cache = Arc::clone(self);
+                Self::sweep_inflight_locked(&mut state);
+                // WEAK, not strong: the map holds the future and the future reaches back for
+                // the map, so an owning handle would close a reference cycle that keeps this
+                // cache — and the client behind it — alive for as long as the process runs.
+                let cache = Arc::downgrade(self);
                 let owned = key.clone();
                 let loading = load();
                 let pending = async move {
@@ -182,7 +186,12 @@ where
                             "campfire discovery source panicked while loading",
                         ))),
                     };
-                    cache.publish(&owned, outcome)
+                    // The cache outliving the load is the ordinary case; a load outliving
+                    // the cache answers its waiters and caches nothing.
+                    match cache.upgrade() {
+                        Some(cache) => cache.publish(&owned, outcome),
+                        None => outcome.map(|value| (Arc::new(value), Instant::now())),
+                    }
                 }
                 .boxed()
                 .shared();
@@ -227,6 +236,7 @@ where
         // tries again rather than finding the key empty.
         let value = Arc::new(outcome?);
         let fetched = (self.clock)();
+        Self::sweep_inflight_locked(&mut state);
         self.sweep_locked(&mut state, fetched);
         self.make_room_locked(&mut state, key);
         state.seq += 1;
@@ -240,6 +250,21 @@ where
             },
         );
         Ok((value, fetched))
+    }
+
+    /// Drops every in-flight load nobody is waiting on any more.
+    ///
+    /// A load runs as a shared future polled by its callers, so a load every caller dropped
+    /// — an operation deadline shorter than the listing's round trip — is a future nothing
+    /// will ever finish. Its slot is held only by this map, and the map's own bound counts
+    /// published entries rather than in-flight ones, so without this a run of cancelled
+    /// calls on distinct buckets would grow the map without limit. A slot with another
+    /// holder is a live load and is left alone; one whose future has already completed is
+    /// gone from the map before this runs, and is dropped here too if it somehow is not.
+    fn sweep_inflight_locked(state: &mut CacheState<K, V>) {
+        state
+            .inflight
+            .retain(|_, pending| Shared::strong_count(pending).is_some_and(|holders| holders > 1));
     }
 
     /// Drops every entry past its TTL. It runs at each publication — the one moment the
@@ -427,24 +452,13 @@ impl CampfireIndex {
 /// taxonomy (SPEC §6) has no member for "the SDK's own bound was reached".
 const LISTING_OVERFLOW_HINT: &str = "campfire listing exceeds MAX_CAMPFIRE_LISTING";
 
-/// One failed load, projected for each caller waiting on it: `Error` is not `Clone`, so the
-/// shared original is chained as the cause and everything a caller classifies on is copied
-/// onto the projection.
+/// One failed load, projected for each caller waiting on it. `Error` is not `Clone` — its
+/// cause is a boxed trait object — so the record is duplicated whole and the shared original
+/// is chained back on as the cause. Nothing a caller classifies on is dropped on the way:
+/// the same failure reaches the caller that started the load and the callers that waited on
+/// it, timeout and deadline flags included.
 fn project(error: &Arc<Error>) -> Error {
-    let mut projected = Error::new(error.code(), error.message()).retryable(error.is_retryable());
-    if let Some(hint) = error.hint() {
-        projected = projected.with_hint(hint);
-    }
-    if let Some(status) = error.http_status() {
-        projected = projected.with_status(status);
-    }
-    if let Some(request_id) = error.request_id() {
-        projected = projected.with_request_id(request_id);
-    }
-    if let Some(seconds) = error.retry_after() {
-        projected = projected.with_retry_after(seconds);
-    }
-    projected.with_source(Arc::clone(error))
+    error.duplicate().with_source(Arc::clone(error))
 }
 
 fn listing_overflow() -> Error {
@@ -666,6 +680,84 @@ mod tests {
             assert_eq!(error.http_status(), Some(403));
         }
         assert_eq!(loads.load(Ordering::SeqCst), 1);
+    }
+
+    #[tokio::test]
+    async fn a_load_every_caller_dropped_leaves_no_slot_behind() {
+        let clock = TestClock::new();
+        let cache = cache::<i64>(&clock, 16);
+        let (_release, held) = tokio::sync::oneshot::channel::<()>();
+        // Polled once — long enough to take the key — then dropped, as an operation
+        // deadline shorter than the listing's round trip drops it.
+        let abandoned = cache.get(&1, false, move || async move {
+            let _ = held.await;
+            Ok(1)
+        });
+        assert!(abandoned.now_or_never().is_none());
+        assert_eq!(
+            cache.lock().inflight.len(),
+            1,
+            "the map still holds the slot"
+        );
+
+        // The next load past the same map sweeps it: the bound counts published entries,
+        // so an abandoned slot that nobody will ever finish must not accumulate.
+        cache.get(&2, false, || async { Ok(2) }).await.unwrap();
+        let state = cache.lock();
+        assert!(!state.inflight.contains_key(&1));
+        assert!(state.inflight.is_empty());
+    }
+
+    #[tokio::test]
+    async fn a_live_load_is_not_swept_out_from_under_its_waiter() {
+        let clock = TestClock::new();
+        let cache = cache::<i64>(&clock, 16);
+        let (release, held) = tokio::sync::oneshot::channel::<()>();
+        let waiting = cache.get(&1, false, move || async move {
+            let _ = held.await;
+            Ok(1)
+        });
+        let other = cache.get(&2, false, || async { Ok(2) });
+        let releaser = async {
+            tokio::task::yield_now().await;
+            let _ = release.send(());
+        };
+        let (waiting, other, ()) = futures_util::join!(waiting, other, releaser);
+        assert_eq!(*waiting.unwrap().value, 1);
+        assert_eq!(*other.unwrap().value, 2);
+    }
+
+    #[tokio::test]
+    async fn a_shared_failure_reaches_every_caller_with_nothing_classifiable_lost() {
+        let clock = TestClock::new();
+        let cache = cache::<i64>(&clock, 16);
+        let (release, held) = tokio::sync::oneshot::channel::<()>();
+        let first = cache.get(&1, false, move || async move {
+            let _ = held.await;
+            Err(Error::network_timeout(std::io::Error::new(
+                std::io::ErrorKind::TimedOut,
+                "the listing stalled",
+            ))
+            .with_status(504)
+            .with_request_id("req-1"))
+        });
+        let second = cache.get(&1, false, || async { Ok(0) });
+        let releaser = async {
+            tokio::task::yield_now().await;
+            let _ = release.send(());
+        };
+        let (first, second, ()) = futures_util::join!(first, second, releaser);
+        for outcome in [first, second] {
+            let error = outcome.err().expect("the shared load failed");
+            // A timeout that reaches a second caller without its timeout identity is a
+            // timeout that caller would handle differently (SPEC section 16).
+            assert!(error.is_timeout(), "{error}");
+            assert!(error.is_retryable());
+            assert_eq!(error.code(), ErrorCode::Network);
+            assert_eq!(error.http_status(), Some(504));
+            assert_eq!(error.request_id(), Some("req-1"));
+            assert!(error.hint().is_some());
+        }
     }
 
     #[test]

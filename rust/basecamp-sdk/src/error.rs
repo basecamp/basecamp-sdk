@@ -262,6 +262,43 @@ impl Error {
         error
     }
 
+    /// A full-fidelity copy of the record, without the cause.
+    ///
+    /// [`Error`] is not `Clone` — its cause is a boxed trait object — so a failure that must
+    /// reach more than one caller is copied here and the shared original chained back on as
+    /// the cause. Every member of the record travels, the classification flags included: an
+    /// error that loses `is_timeout` on the way to a second caller is an error that caller
+    /// would handle differently (SPEC §16).
+    pub(crate) fn duplicate(&self) -> Error {
+        Error {
+            inner: Box::new(Inner {
+                code: self.inner.code,
+                message: self.inner.message.clone(),
+                hint: self.inner.hint.clone(),
+                http_status: self.inner.http_status,
+                retryable: self.inner.retryable,
+                retry_after: self.inner.retry_after,
+                request_id: self.inner.request_id.clone(),
+                field_errors: self.inner.field_errors.clone(),
+                confirmation_people: self.inner.confirmation_people.clone(),
+                response_too_large: self.inner.response_too_large,
+                deadline_exceeded: self.inner.deadline_exceeded,
+                timeout: self.inner.timeout,
+                body: self.inner.body.clone(),
+            }),
+            source: None,
+        }
+    }
+
+    /// The same error, its message prefixed with what the caller was doing. Everything else
+    /// — code, status, hint, the classification flags, the cause — is left exactly as it
+    /// was, so adding context never costs a caller the accessors it classifies on. This is
+    /// the Rust spelling of Go's `fmt.Errorf("doing x: %w", err)`.
+    pub(crate) fn with_context(mut self, context: impl fmt::Display) -> Error {
+        self.inner.message = truncate(&format!("{context}: {}", self.inner.message));
+        self
+    }
+
     /// The same error with a hint, cut to the message cap like the message itself: a
     /// transport's rendering of its own failure is not bounded by anyone else.
     pub fn with_hint(mut self, hint: impl Into<String>) -> Error {

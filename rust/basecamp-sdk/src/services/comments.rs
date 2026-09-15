@@ -48,13 +48,11 @@ impl CommentsService<'_> {
             if !seen.insert(*id) {
                 continue;
             }
+            // Context only: the generated read's error travels whole — status, hint,
+            // request id, the timeout and deadline flags — so a caller still classifies it
+            // through the ordinary accessors.
             let person = self.client().people().get(*id).await.map_err(|error| {
-                Error::new(
-                    error.code(),
-                    format!("resolving mention for person {id}: {error}"),
-                )
-                .retryable(error.is_retryable())
-                .with_source(error)
+                error.with_context(format!("resolving mention for person {id}"))
             })?;
             people.push(person);
         }
