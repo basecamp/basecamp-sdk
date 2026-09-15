@@ -424,8 +424,15 @@ class RecordingsSummarizeTest < Minitest::Test
     # a name, so an empty object leaves the key out of its summary. This emitted
     # "{}" and a caller testing summary.key?("bucket") got a different answer
     # from the contract's.
+    # TWO NAMED FIELDS, and the label differs by member: the reference tests
+    # id-or-name for a bucket and a creator and id-or-TITLE for a parent. A
+    # predicate over "any value present" kept {"type" => "Project"} and
+    # {"url" => "u"}, which the reference drops — so the shapes that carry
+    # something OTHER than the two named fields are the ones that pin the rule.
     stub_get("/12345/comments/1", response_body: recording(
-      "bucket" => {}, "parent" => {}, "creator" => { "id" => 0, "name" => "" }
+      "bucket" => { "type" => "Project", "url" => "u" },
+      "parent" => { "name" => "not a title", "type" => "Message" },
+      "creator" => { "id" => 0, "name" => "" }
     ))
 
     summary = summarize(event_type: "comment.created")
@@ -433,6 +440,31 @@ class RecordingsSummarizeTest < Minitest::Test
     assert_not_includes summary.keys, "bucket"
     assert_not_includes summary.keys, "parent"
     assert_not_includes summary.keys, "creator"
+
+    # And each member's own label keeps it: a parent with a title, a bucket
+    # with a name. Swapping the two labels would drop both of these.
+    WebMock.reset!
+    stub_get("/12345/comments/1", response_body: recording(
+      "bucket" => { "name" => "The Leto Laptop" }, "parent" => { "title" => "We won Leto!" },
+      "creator" => { "name" => "Annie" }
+    ))
+
+    kept = summarize(event_type: "comment.created")
+
+    assert_includes kept.keys, "bucket"
+    assert_includes kept.keys, "parent"
+    assert_includes kept.keys, "creator"
+
+    WebMock.reset!
+    stub_get("/12345/comments/1", response_body: recording(
+      "bucket" => {}, "parent" => {}, "creator" => { "id" => 0, "name" => "" }
+    ))
+
+    empty = summarize(event_type: "comment.created")
+
+    assert_not_includes empty.keys, "bucket"
+    assert_not_includes empty.keys, "parent"
+    assert_not_includes empty.keys, "creator"
 
     # But a member that is not an object at all is KEPT, so the reader that
     # refuses it still sees it — dropping it here removed a malformed bucket
