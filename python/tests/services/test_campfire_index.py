@@ -14,7 +14,7 @@ import threading
 import pytest
 
 from basecamp.errors import CampfireIndexLoadAbortedError
-from basecamp.services._campfire_index import AsyncTTLCache, TTLCache
+from basecamp.services._campfire_index import AsyncTTLCache, TTLCache, _AsyncLoad, _SyncLoad
 
 
 class OwnerExit(BaseException):
@@ -209,6 +209,20 @@ class TestFailures:
         waiter.join(5)
 
         assert sorted(outcomes) == ["CampfireIndexLoadAbortedError", "SystemExit"]
+
+    def test_publication_releases_its_own_record_and_not_whatever_sits_there(self):
+        # Evicting by KEY rather than by identity drops the single-flight
+        # guarantee of whatever load has since registered under it -- while
+        # that one is still running. The listing's key is a bare account id, so
+        # the blast radius would be two concurrent account-wide listings.
+        clock = Clock()
+        cache = _cache(clock)
+        successor = _SyncLoad()
+        cache._inflight["k"] = successor
+
+        cache._publish("k", _SyncLoad(), "v", None)
+
+        assert cache._inflight.get("k") is successor, "a successor's slot must survive"
 
     def test_a_failed_load_releases_the_key(self):
         clock = Clock()
@@ -575,6 +589,16 @@ class TestAsyncCache:
 
         assert len(loads) == 1, "one load, shared — not one re-run per waiter"
         assert all(isinstance(outcome, TimeoutError) for outcome in outcomes)
+
+    async def test_publication_releases_its_own_record_and_not_whatever_sits_there(self):
+        clock = Clock()
+        cache = _async_cache(clock)
+        successor = _AsyncLoad()
+        cache._inflight["k"] = successor
+
+        await cache._publish("k", _AsyncLoad(), "v", None)
+
+        assert cache._inflight.get("k") is successor, "a successor's slot must survive"
 
     async def test_a_waiter_is_never_handed_a_bare_base_exception(self):
         # The protection is keyed on the CLASS, not on who was cancelled:
