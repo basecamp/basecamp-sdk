@@ -221,6 +221,34 @@ class TestAsyncPaginateNullBody:
 
         assert "expected a JSON array" in str(excinfo.value)
 
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_null_on_a_later_page_keeps_the_earlier_pages(self):
+        url = f"{_ACCOUNT_URL}/projects.json"
+        respx.get(url, params={"page": "2"}).mock(return_value=_json(None))
+        respx.get(url).mock(return_value=_json([{"id": 1}], _link_to(f"{url}?page=2")))
+
+        client = AsyncClient(access_token="test-token")
+        result = await client.for_account("12345").projects.list()
+        await client.close()
+
+        assert list(result) == [{"id": 1}]
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_wrong_typed_later_page_fails_the_read(self):
+        url = f"{_ACCOUNT_URL}/projects.json"
+        respx.get(url, params={"page": "2"}).mock(return_value=_json("abc"))
+        respx.get(url).mock(return_value=_json([{"id": 1}], _link_to(f"{url}?page=2")))
+
+        client = AsyncClient(access_token="test-token")
+        with pytest.raises(ApiError) as excinfo:
+            await client.for_account("12345").projects.list()
+        await client.close()
+
+        assert "page 2" in str(excinfo.value)
+        assert "expected a JSON array" in str(excinfo.value)
+
 
 class TestPaginateKeyNullBody:
     """``_paginate_key`` — envelope pages, items only. No generated public caller
@@ -434,6 +462,21 @@ class TestAsyncPaginateWrappedNullBody:
         await client.close()
 
         assert "expected a JSON object" in str(excinfo.value)
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_null_on_a_later_page_keeps_the_earlier_pages(self):
+        respx.get(_PROGRESS_URL, params={"page": "2"}).mock(return_value=_json(None))
+        respx.get(_PROGRESS_URL).mock(
+            return_value=_json({"events": [{"id": 1}], "person": {"id": 9}}, _link_to(f"{_PROGRESS_URL}?page=2"))
+        )
+
+        client = AsyncClient(access_token="test-token")
+        result = await client.for_account("12345").reports.person_progress(person_id=1)
+        await client.close()
+
+        assert list(result["events"]) == [{"id": 1}]
+        assert result["person"] == {"id": 9}
 
     @pytest.mark.asyncio
     @respx.mock
