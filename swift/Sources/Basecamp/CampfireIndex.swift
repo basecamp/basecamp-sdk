@@ -231,6 +231,12 @@ actor TTLCache<Key: Hashable & Sendable, Value: Sendable> {
     private final class Waiter: @unchecked Sendable {
         var continuation: CheckedContinuation<Hit, any Error>?
         var cancelled = false
+        /// The flight this waiter joined. Held so that cancelling it operates on
+        /// ITS claim rather than on whatever currently sits at the key — the
+        /// same evict-by-identity rule `finish` follows, and for the same
+        /// reason: a claim that has been replaced must not have its successor
+        /// disturbed by a straggler from the flight before it.
+        var claim: Claim?
     }
 
     private let clock: @Sendable () -> TimeInterval
@@ -316,6 +322,7 @@ actor TTLCache<Key: Hashable & Sendable, Value: Sendable> {
             waiting[key] = claim
         }
         claim.waiters.append(waiter)
+        waiter.claim = claim
         guard claim.task == nil else { return }
 
         // Unstructured on purpose: the load must outlive any ONE caller — but
@@ -342,7 +349,8 @@ actor TTLCache<Key: Hashable & Sendable, Value: Sendable> {
         // resumed it (nothing left to cancel).
         guard let continuation = waiter.continuation else { return }
         waiter.continuation = nil
-        if let claim = waiting[key] {
+        if let claim = waiter.claim {
+            waiter.claim = nil
             claim.waiters.removeAll { $0 === waiter }
             if claim.waiters.isEmpty {
                 // Nobody is waiting for this load any more, so it is abandoned:
@@ -350,8 +358,26 @@ actor TTLCache<Key: Hashable & Sendable, Value: Sendable> {
                 // until it returns. Leaving it would let the next caller join a
                 // flight that is already on its way to failing, and be handed a
                 // `CancellationError` it never asked for.
+                //
+                // Detached by IDENTITY. Removing whatever sits at the key would
+                // drop the single-flight guarantee of a claim that had since
+                // replaced this one — while that one was still loading — and
+                // the listing's key is a bare account id, so the blast radius
+                // would be every bucket in the account.
+                //
+                // Unreachable today, and deliberately kept: a claim in the table
+                // always has at least one waiter, because `register` appends
+                // before returning and this branch detaches the moment the last
+                // one leaves — so a waiter whose claim is no longer current has
+                // already been resumed and returns above. That is an invariant,
+                // not a structure, and it is the only thing standing between a
+                // future edit and an account-wide loss of single flight. No test
+                // can drive this line while the invariant holds, and none
+                // claims to; `finish` carries the same rule where it IS
+                // reachable, and `testAStragglerFinishingUnderItsSuccessorLeavesItAlone`
+                // drives that.
                 claim.task?.cancel()
-                waiting.removeValue(forKey: key)
+                if waiting[key] === claim { waiting.removeValue(forKey: key) }
             }
         }
         continuation.resume(throwing: CancellationError())
@@ -366,6 +392,7 @@ actor TTLCache<Key: Hashable & Sendable, Value: Sendable> {
     private func finish(_ key: Key, _ claim: Claim, _ outcome: Result<Hit, any Error>) {
         if waiting[key] === claim { waiting.removeValue(forKey: key) }
         for waiter in claim.waiters {
+            waiter.claim = nil
             guard let continuation = waiter.continuation else { continue }
             waiter.continuation = nil
             continuation.resume(with: outcome)
