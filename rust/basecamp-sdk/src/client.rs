@@ -22,6 +22,7 @@ use crate::pagination::Page;
 use crate::retry::{backoff_with_jitter, effective_attempts};
 use crate::route::{Representation, Route};
 use crate::security::{is_same_origin, require_secure_endpoint};
+use crate::services::campfire_index::CampfireIndex;
 use crate::version::default_user_agent;
 
 /// A Basecamp client: one identity, one API origin. Derive an [`AccountClient`] with
@@ -47,6 +48,12 @@ pub(crate) struct Shared {
     pub(crate) auth: Arc<dyn AuthStrategy>,
     pub(crate) user_agent: String,
     pub(crate) hooks: Arc<dyn Hooks>,
+    /// The Campfire discovery caches the recording-summary composite reads chat lines
+    /// through (SPEC §18). It hangs here, beside the credential it is bound to, so every
+    /// [`AccountClient`] derived from one [`Client`] shares one index and a burst of chat
+    /// lines costs one listing rather than one per line — and so entries are never shared
+    /// across authorization contexts.
+    pub(crate) campfires: CampfireIndex,
 }
 
 /// What came back from Basecamp, before it is decoded. Its `Debug` form redacts the
@@ -187,6 +194,7 @@ impl ClientBuilder {
                 auth,
                 user_agent: self.user_agent,
                 hooks: self.hooks,
+                campfires: CampfireIndex::new(),
             }),
         })
     }
@@ -257,6 +265,12 @@ impl AccountClient {
 
     pub(crate) fn shared(&self) -> &Arc<Shared> {
         &self.shared
+    }
+
+    /// The Campfire discovery index, shared with every other account client derived from
+    /// the same [`Client`].
+    pub(crate) fn campfire_index(&self) -> &CampfireIndex {
+        &self.shared.campfires
     }
 
     /// The account-independent client this was derived from.

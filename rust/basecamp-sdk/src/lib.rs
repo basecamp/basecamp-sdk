@@ -39,6 +39,7 @@ pub mod error;
 pub mod generated;
 pub mod hooks;
 pub mod http;
+pub mod mentions;
 #[cfg(feature = "oauth")]
 #[cfg_attr(docsrs, doc(cfg(feature = "oauth")))]
 pub mod oauth;
@@ -61,6 +62,7 @@ pub use error::{Error, ErrorCode};
 pub use generated::OPERATION_COUNT;
 pub use hooks::Hooks;
 pub use http::HttpClient;
+pub use mentions::{mention_markup, mentioned_person_ids, person_id_from_sgid, with_mentions};
 #[cfg(feature = "oauth")]
 #[cfg_attr(docsrs, doc(cfg(feature = "oauth")))]
 pub use oauth::{

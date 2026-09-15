@@ -4,11 +4,18 @@
 //! Each composite module re-exports the generated service it extends, so
 //! `services::todos::TodosService` is one type carrying both the wire methods and the
 //! composites built over them.
+//!
+//! Two of them are not merge-safe writes: [`recordings`] carries the recording-summary
+//! projection and its Campfire discovery, and [`comments`] the mention expansion those
+//! summaries round-trip with (SPEC §18, Appendix F).
 
 pub use crate::generated::services::*;
 
+pub mod campfire_index;
 pub mod cards;
+pub mod comments;
 pub mod documents;
+pub mod recordings;
 pub mod schedules;
 pub mod todolists;
 pub mod todos;

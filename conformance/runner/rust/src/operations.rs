@@ -14,6 +14,7 @@ use std::time::Duration;
 use basecamp_sdk::models::*;
 use basecamp_sdk::pagination::PageItems;
 use basecamp_sdk::services::cards::UpdateCardRequest;
+use basecamp_sdk::services::recordings::RecordingRef;
 use basecamp_sdk::services::documents::UpdateDocumentRequest;
 use basecamp_sdk::services::schedules::UpdateScheduleEntryRequest;
 use basecamp_sdk::services::todolists::UpdateTodolistRequest;
@@ -568,6 +569,30 @@ async fn dispatch(account: &AccountClient, case: &TestCase) -> Result<Outcome, E
             // origin (SPEC §14), so only the case's path matters.
             let raw = format!("https://storage.3.basecamp.com{}", case.path);
             unit(account.download_url(&raw).await)
+        }
+
+        // The recording-summary and mention composites (SPEC §18, Appendix F). Both answer
+        // the SDK's own model, serialized whole rather than summarized: this fixture pins
+        // nested identities (`bucket.id`, `creator.id`, `assignees.0.id`), which the Go
+        // runner resolves by descending, and so does `assertions::lookup`.
+        "RecordingsSummarize" => {
+            let reference = RecordingRef {
+                bucket_id: id("bucketId"),
+                recording_id: id("recordingId"),
+                event_type: optional_string_param(path, "eventType"),
+                recording_type: optional_string_param(path, "recordingType"),
+            };
+            json(account.recordings().summarize(&reference).await?)
+        }
+        "CommentsCreateWithMentions" => {
+            let content = string_param(body, "content");
+            let mentions = optional_int64_list_param(body, "mentions").unwrap_or_default();
+            json(
+                account
+                    .comments()
+                    .create_with_mentions(id("recordingId"), &content, &mentions)
+                    .await?,
+            )
         }
 
         // --- documents / schedules / cards ---------------------------------------------

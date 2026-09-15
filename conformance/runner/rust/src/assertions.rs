@@ -6,7 +6,9 @@
 use std::time::Duration;
 
 use basecamp_sdk::Error;
+use basecamp_sdk::chrono::DateTime;
 use basecamp_sdk::http::HeaderMap;
+use basecamp_sdk::services::recordings::RecordingSummaryError;
 use serde_json::Value;
 
 use crate::fixtures::{Assertion, TestCase};
@@ -163,7 +165,10 @@ fn check(run: &Run, assertion: &Assertion) -> Result<(), String> {
                     assertion.kind
                 ));
             };
-            let actual = error.code().as_str();
+            // A composite's own reason is classified first: `recording_unresolved` is
+            // neither an API read failure nor incomplete discovery, and no taxonomy code
+            // can carry that identity. Everything else answers its canonical code.
+            let actual = semantic_error_type(error).unwrap_or_else(|| error.code().as_str());
             if actual == expected {
                 Ok(())
             } else {
@@ -529,7 +534,37 @@ pub fn compare_values(label: &str, expected: &Value, actual: &Value) -> Result<(
     }
 }
 
+/// Names the recording-summary composite's own reasons for the `errorType` assertion, so a
+/// fixture can pin that "unresolved" is neither an API read failure nor incomplete
+/// discovery — an identity the message text cannot carry. The names are the fixture's
+/// vocabulary; this maps the Rust SDK's error kinds onto them (SPEC §18, Appendix F).
+pub fn semantic_error_type(error: &Error) -> Option<&'static str> {
+    match RecordingSummaryError::of(error)? {
+        RecordingSummaryError::Unresolved(_) => Some("recording_unresolved"),
+        RecordingSummaryError::CampfireDiscoveryIncomplete { .. } => {
+            Some("campfire_discovery_incomplete")
+        }
+        RecordingSummaryError::NoRecordingType { .. } => Some("no_recording_type"),
+        RecordingSummaryError::UnknownRecordingType { .. } => Some("unknown_recording_type"),
+        RecordingSummaryError::BucketMismatch { .. } => Some("bucket_mismatch"),
+        // The enum is non-exhaustive: a reason added upstream has no fixture vocabulary
+        // yet, and answering its canonical code is the honest fallback.
+        _ => None,
+    }
+}
+
 pub fn json_equal(expected: &Value, actual: &Value) -> bool {
+    // Two RFC 3339 timestamps compare as instants, so a fixture can pin a time without
+    // making any one language's rendering the contract: "2024-01-20T15:30:00.000-06:00" and
+    // "2024-01-20T21:30:00Z" agree.
+    if let (Value::String(expected), Value::String(actual)) = (expected, actual)
+        && let (Ok(expected), Ok(actual)) = (
+            DateTime::parse_from_rfc3339(expected),
+            DateTime::parse_from_rfc3339(actual),
+        )
+    {
+        return expected == actual;
+    }
     match (expected, actual) {
         (Value::Number(a), Value::Number(b)) => {
             if let (Some(a), Some(b)) = (a.as_i64(), b.as_i64()) {
