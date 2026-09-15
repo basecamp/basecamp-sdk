@@ -131,12 +131,19 @@ module Basecamp
     #
     # This rule was verified at every POSITION an escape can occupy, because a
     # rule checked in one position is not evidence about another — the reference
-    # runs a different validator on each. One escape per ASCII byte at six
-    # positions: userinfo, host, port, path and the id agree exactly, 133 cases
-    # each. The IPv6 ZONE diverges on 86 of 133, every one of them the
+    # runs a different validator on each. 133 escapes at six positions: one per
+    # ASCII byte, which is 128, plus five that exercise the rule's own edges
+    # (<tt>%C3</tt>, <tt>%80</tt>, <tt>%FF</tt> above ASCII, and <tt>%ff</tt> and
+    # <tt>%2a</tt> for hex case). userinfo, host, port, path and the id agree
+    # exactly. The IPv6 ZONE diverges on 86 of the 133, every one of them the
     # reference resolving and this refusing, because Ruby's parser has no
     # RFC 6874 zone grammar. That is the parser's gap rather than this rule's,
     # and it fails closed.
+    #
+    # The composition is spelled out because the count was not derivable from
+    # the description before it: "one escape per ASCII byte" accounts for 128,
+    # and a reader rebuilding the corpus from that sentence got 128 rows and a
+    # zone figure of 85 — the right direction and a different denominator.
     #
     # What the STRICTER side costs is worse than "a mention is not reported",
     # and that is worth being exact about, because the same parser is entered
@@ -174,9 +181,18 @@ module Basecamp
     # clean — 0 of 27 fragment rows, and 0 of 13 more carrying a fragment
     # alongside a query — because the reference unescapes a fragment while
     # parsing and so does Ruby, so a malformed escape fails both. 64 rows in
-    # all, and the denominators are per-component on purpose: an earlier version
-    # of this paragraph reported both figures against the whole corpus, which
-    # made "0 of 64" read as a sweep of 64 fragments when 27 of them were.
+    # all: 27 fragment, 14 query, 13 carrying both, and 10 plain and
+    # host-escape controls that fix the corpus against a change in the rule
+    # above. The denominators are per-component on purpose: an earlier version
+    # reported both figures against the whole corpus, which made "0 of 64" read
+    # as a sweep of 64 fragments when 27 of them were.
+    #
+    # EVERY COUNT in this comment came from a differential harness that is not
+    # in this repository, so a reader can re-derive the DIRECTIONS — which side
+    # resolves and which refuses, for each class named — from the reference
+    # itself, and cannot check the totals without rebuilding it. The directions
+    # are the claims; the totals are provenance. Three corrections to these
+    # numbers have all been to totals and none to a direction.
     #
     # The residue is more reachable than the seven hand-built shapes suggest:
     # fuzzing 20,000 documents that corrupt one character of a real payload put

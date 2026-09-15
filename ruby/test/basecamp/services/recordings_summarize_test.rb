@@ -402,6 +402,79 @@ class RecordingsSummarizeTest < Minitest::Test
     assert_equal people, summarize(event_type: "todo.created")["assignees"]
   end
 
+  def test_a_null_assignee_is_an_object_rather_than_a_nil
+    # The reference decodes a null member as the zero Person and emits it as an
+    # OBJECT, so passing nil through handed a consumer something that crashes on
+    # assignee["id"] where the contract gives 0. This guard survived three
+    # rounds of mutation because nothing asserted what a null member becomes.
+    stub_get("/12345/todos/1", response_body: recording(
+      "type" => "Todo", "assignees" => [ nil, { "id" => 3 } ]
+    ))
+
+    assignees = summarize(event_type: "todo.created")["assignees"]
+
+    assert_equal 2, assignees.length
+    assert_equal({}, assignees.first)
+    assert_nil assignees.first["id"], "an empty object is indexable, which nil was not"
+    assert_equal({ "id" => 3 }, assignees.last)
+  end
+
+  def test_an_empty_nested_object_is_omitted_as_the_reference_omits_it
+    # The reference builds a bucket, parent or creator only when it has an id or
+    # a name, so an empty object leaves the key out of its summary. This emitted
+    # "{}" and a caller testing summary.key?("bucket") got a different answer
+    # from the contract's.
+    stub_get("/12345/comments/1", response_body: recording(
+      "bucket" => {}, "parent" => {}, "creator" => { "id" => 0, "name" => "" }
+    ))
+
+    summary = summarize(event_type: "comment.created")
+
+    assert_not_includes summary.keys, "bucket"
+    assert_not_includes summary.keys, "parent"
+    assert_not_includes summary.keys, "creator"
+
+    # But a member that is not an object at all is KEPT, so the reader that
+    # refuses it still sees it — dropping it here removed a malformed bucket
+    # before the cross-bucket check could object.
+    WebMock.reset!
+    stub_get("/12345/comments/1", response_body: recording("bucket" => 5))
+
+    assert_raises(Basecamp::ApiError) { summarize(event_type: "comment.created") }
+  end
+
+  def test_the_recordings_own_id_is_typed_like_every_other_id
+    # Ten shapes reached the projection verbatim while the boundary comment
+    # claimed this field was where reproducing the decoder begins. The reference
+    # holds a plain int64 here, and the check was already written four times in
+    # the same file for the sibling id fields.
+    [ "", "s", "1", 5.5, true, [], [ 1 ], {}, { "a" => 1 } ].each do |malformed|
+      stub_get("/12345/comments/1", response_body: recording("id" => malformed))
+
+      assert_raises(Basecamp::ApiError, "an id of #{malformed.inspect}") do
+        summarize(event_type: "comment.created")
+      end
+      WebMock.reset!
+    end
+
+    # Absent is the zero value, as it is there.
+    stub_get("/12345/comments/1", response_body: recording("id" => nil))
+
+    assert_equal 0, summarize(event_type: "comment.created")["id"]
+  end
+
+  def test_a_title_or_content_candidate_is_typed_rather_than_coerced
+    # first_non_empty's type check survived mutation: reverting it to
+    # values.find { !v.to_s.empty? }.to_s left the suite green, because no test
+    # drove a malformed candidate through the MULTI-candidate arms. A to-do's
+    # title falls back to its content, and a card's content to its description.
+    stub_get("/12345/todos/1", response_body: recording(
+      "type" => "Todo", "title" => nil, "content" => [ "coerced" ]
+    ))
+
+    assert_raises(Basecamp::ApiError) { summarize(event_type: "todo.created") }
+  end
+
   def test_absent_or_empty_assignees_are_omitted_rather_than_refused
     # The reference's +omitempty+ leaves an empty slice out of its summary too,
     # so there is nothing to report and nothing malformed about it.

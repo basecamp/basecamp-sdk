@@ -225,7 +225,12 @@ module Basecamp
       wrapper = nil
       events = paginated_enumerator(path, key: key, params: params, operation: operation, \
         max_items: max_items) do |first_data|
-        wrapper = first_data.reject { |k, _| k == key }
+        # The wrapper is the same body the page items came out of, so it takes
+        # the same rule: a null body is an empty wrapper, not a crash. This is
+        # the site the previous null sweep did not reach — `nil.reject` raised
+        # NoMethodError out of a public method where the reference reads a zero
+        # value and reports no events.
+        wrapper = first_data.is_a?(Hash) ? first_data.reject { |k, _| k == key } : {}
       end
       wrapper.merge(key => events)
     end
@@ -389,7 +394,11 @@ module Basecamp
 
         unless data.is_a?(Array)
           raise Basecamp::ApiError.new(
-            "Paginated response (page #{page}) is #{Services::MergeSafe.describe(data)}, not a list",
+            # The CLASS only. MergeSafe.describe appends up to 500 bytes of the
+            # value, and here the value is a whole paginated page — customer
+            # data in an exception message, which travels into logs and bug
+            # reports. The shape is what a caller needs; the contents are not.
+            "Paginated response (page #{page}) is #{data.class}, not a list",
             hint: "This operation paginates over a bare JSON array; a body of another shape cannot be read.",
             retryable: false
           )
@@ -397,6 +406,22 @@ module Basecamp
 
         data
       else
+        # Same rule as the bare-array branch above: the reference decodes JSON
+        # `null` as the zero value, so a null body is an empty page rather than
+        # a malformed one — and anything that is not an object cannot be asked
+        # for a key at all. `data.key?` raised NoMethodError on nil and on a
+        # scalar, and TypeError on an array, straight out of a public method.
+        return [] if data.nil?
+
+        unless data.is_a?(Hash)
+          raise Basecamp::ApiError.new(
+            "Paginated response (page #{page}) is #{data.class}, not an object",
+            hint: "This operation paginates over the #{key.inspect} key of a JSON object; " \
+                  "a body of another shape cannot be read.",
+            retryable: false
+          )
+        end
+
         unless data.key?(key)
           warn "[Basecamp SDK] paginate: expected key '#{key}' not found in response (page #{page})"
         end

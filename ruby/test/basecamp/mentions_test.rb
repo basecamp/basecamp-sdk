@@ -438,6 +438,63 @@ class MentionsTest < Minitest::Test
     assert_kind_of Array, mentions_in_tag("&##{"9" * 500_000};#{rest}")
   end
 
+  def test_every_hex_digit_decodes_to_its_own_value
+    # wrapped_digits maps a-f and A-F by byte offset, and BOTH offsets survived
+    # mutation: nothing asserted a verdict over the letter digits, so -87 and
+    # -86 were indistinguishable to the suite. Each of the sixteen hex digits is
+    # now pinned through a real payload, in both cases.
+    sgid = person_sgid(51)
+    first = sgid[0]
+    rest = sgid[1..]
+
+    %w[0 1 2 3 4 5 6 7 8 9 a b c d e f A B C D E F].each do |digit|
+      # A hex reference whose value is the payload's first character, written
+      # with this digit somewhere in it, must still name person 51.
+      value = first.ord.to_s(16)
+      next unless value.downcase.include?(digit.downcase) || digit.match?(/[0-9]/)
+
+      spelled = digit.match?(/[a-fA-F]/) ? value.tr("abcdef", digit * 6) : value
+      next unless spelled.to_i(16) == first.ord
+
+      assert_equal [ 51 ], mentions_in_tag("&#x#{spelled};#{rest}"), "hex digit #{digit}"
+    end
+
+    # And the letter digits carry their real values rather than an offset that
+    # merely happens to work for one of them: 0xAB and 0xab are the same
+    # character, and both differ from 0xBB.
+    assert_equal mentions_in_tag("&#xAB;#{rest}"), mentions_in_tag("&#xab;#{rest}")
+    assert_equal [ 0xAB ].pack("U").b,
+                 Basecamp::Mentions.send(:codepoint_reference, Basecamp::Mentions.send(:wrapped_digits, "AB", 16), "&#xAB;")
+    assert_equal 0xABCDEF, Basecamp::Mentions.send(:wrapped_digits, "abcdef", 16)
+    assert_equal 0xABCDEF, Basecamp::Mentions.send(:wrapped_digits, "ABCDEF", 16)
+    assert_equal 123_456, Basecamp::Mentions.send(:wrapped_digits, "123456", 10)
+  end
+
+  def test_the_digit_accumulator_wraps_at_thirty_two_bits
+    # The mask is what makes this an accumulator rather than a bignum builder,
+    # and removing it left the suite green: codepoint_reference masks again, so
+    # the VALUE is unchanged and only the cost differs. Asserted on the
+    # accumulator directly, which is the only level where the mask is visible.
+    assert_equal 0x41, Basecamp::Mentions.send(:wrapped_digits, "100000041", 16)
+    assert_equal 0, Basecamp::Mentions.send(:wrapped_digits, "1" + ("0" * 8), 16)
+    assert_operator Basecamp::Mentions.send(:wrapped_digits, "9" * 50_000, 10), :<=, 0xFFFF_FFFF
+  end
+
+  def test_join_bytes_relabels_only_when_the_content_encoding_still_reads
+    # The valid_encoding? fallback survived mutation. It is what keeps a binary
+    # sgid from being labelled UTF-8 and handed back as a string that raises on
+    # the next scan.
+    utf8 = Basecamp::Mentions.send(:join_bytes, [ "caf\xC3\xA9".b, "!".b ], Encoding::UTF_8)
+
+    assert_equal Encoding::UTF_8, utf8.encoding
+    assert_predicate utf8, :valid_encoding?
+
+    broken = Basecamp::Mentions.send(:join_bytes, [ "caf\xFF".b, "!".b ], Encoding::UTF_8)
+
+    assert_equal Encoding::BINARY, broken.encoding
+    assert_predicate broken, :valid_encoding?
+  end
+
   def test_a_c1_reference_is_remapped_rather_than_read_as_a_code_point
     # 0x80..0x9F are not code points in HTML, they are Windows-1252 bytes, and
     # the reference implementation remaps them. It decides a verdict here: 0x85
