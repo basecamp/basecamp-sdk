@@ -84,8 +84,8 @@ val AccountClient.cloudFiles: CloudFilesService
     get() = service("CloudFiles") { CloudFilesService(this) }
 
 /** Comments operations. */
-val AccountClient.comments: CommentsService
-    get() = service("Comments") { CommentsService(this) }
+val AccountClient.comments: com.basecamp.sdk.services.CommentsService
+    get() = service("Comments") { com.basecamp.sdk.services.CommentsService(this) }
 
 /** Documents operations. */
 val AccountClient.documents: com.basecamp.sdk.services.DocumentsService
@@ -160,8 +160,8 @@ val AccountClient.projects: ProjectsService
     get() = service("Projects") { ProjectsService(this) }
 
 /** Recordings operations. */
-val AccountClient.recordings: RecordingsService
-    get() = service("Recordings") { RecordingsService(this) }
+val AccountClient.recordings: com.basecamp.sdk.services.RecordingsService
+    get() = service("Recordings") { com.basecamp.sdk.services.RecordingsService(this) }
 
 /** Reports operations. */
 val AccountClient.reports: ReportsService

@@ -207,6 +207,10 @@ class ErrorTest {
             BasecampException.Validation("invalid"),
             BasecampException.LimitExceeded(),
             BasecampException.Usage("bad arg"),
+            BasecampException.RecordingSummaryFailure(
+                BasecampException.RECORDING_UNRESOLVED,
+                "chat line found under no visible campfire",
+            ),
             BasecampException.DiscoverySelection("ambiguous_issuers", "ambiguous"),
             BasecampException.DeviceFlow(BasecampException.DEVICE_ACCESS_DENIED),
         )
@@ -224,6 +228,7 @@ class ErrorTest {
                 is BasecampException.Validation -> "validation"
                 is BasecampException.LimitExceeded -> "limit_exceeded"
                 is BasecampException.Usage -> "usage"
+                is BasecampException.RecordingSummaryFailure -> "recording_summary"
                 is BasecampException.DiscoverySelection -> "discovery_selection"
                 is BasecampException.DeviceFlow -> "device_flow"
             }

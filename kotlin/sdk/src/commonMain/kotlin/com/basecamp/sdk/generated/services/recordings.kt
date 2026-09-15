@@ -10,7 +10,7 @@ import kotlinx.serialization.json.JsonElement
  *
  * @generated from OpenAPI spec — do not edit directly
  */
-class RecordingsService(client: AccountClient) : BaseService(client) {
+open class RecordingsService(client: AccountClient) : BaseService(client) {
 
     /**
      * List recordings of a given type across projects

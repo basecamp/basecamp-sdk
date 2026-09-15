@@ -10,7 +10,7 @@ import kotlinx.serialization.json.JsonElement
  *
  * @generated from OpenAPI spec — do not edit directly
  */
-class CommentsService(client: AccountClient) : BaseService(client) {
+open class CommentsService(client: AccountClient) : BaseService(client) {
 
     /**
      * Get a single comment by id

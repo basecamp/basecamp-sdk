@@ -306,6 +306,62 @@ sealed class BasecampException(
     ) : BasecampException(message, CODE_USAGE, hint)
 
     /**
+     * A `RecordingsService.summarize` failure that is the composite's OWN
+     * identity rather than one of its constituent reads' (SPEC.md §18,
+     * Appendix F "Recording Summaries and Mention Helpers").
+     *
+     * [reason] carries the typed token, and is also this exception's [code], so
+     * a consumer matches the identity rather than parsing the message:
+     *
+     * - [RECORDING_NO_TYPE] — an event type that names no recording type
+     *   (`boost.created`, whose recording is the boost's target and whose type
+     *   the feed row does not carry). Raised before any request.
+     * - [RECORDING_UNKNOWN_TYPE] — neither the event type nor the recording type
+     *   names a type in the routing table. Raised before any request.
+     * - [RECORDING_UNRESOLVED] — a chat line was found under NONE of the
+     *   Campfires the caller can currently see in its bucket. Distinct from a
+     *   failed read (any non-404 answer is raised as itself) and from
+     *   [CAMPFIRE_DISCOVERY_INCOMPLETE]: every candidate answered 404. It is not
+     *   distinct from lost visibility — BC3 answers 404 for a Campfire the
+     *   caller may not see, too — so a consumer marks the record blocked and
+     *   retries on its own schedule; [staleCampfireIds] reports the cached
+     *   candidates the refreshed sources no longer list, which is how visibility
+     *   change shows itself.
+     * - [CAMPFIRE_DISCOVERY_INCOMPLETE] — discovery could not be carried to a
+     *   conclusion (the listing overflowed its cap, or the bucket has more
+     *   visible Campfires than the candidate budget). Nothing left unsearched is
+     *   ever reported absent.
+     * - [RECORDING_BUCKET_MISMATCH] — the recording the read returned lives in a
+     *   different bucket from the one the pointer named.
+     */
+    class RecordingSummaryFailure internal constructor(
+        /** Typed failure token; also this exception's [code]. */
+        val reason: String,
+        message: String,
+        hint: String? = null,
+        /** The pointer's bucket, on the failures raised after routing. */
+        val bucketId: Long? = null,
+        /** The pointer's recording id, on the failures raised after routing. */
+        val recordingId: Long? = null,
+        /** The Campfire candidates tried, in order; empty when none were visible. */
+        val campfireIds: List<Long> = emptyList(),
+        /**
+         * Whether the cached discovery sources were re-read before concluding.
+         * False when every source had been read within the refresh floor, so a
+         * Campfire created in that window was not seen: the conclusion stands on
+         * data up to that old, and a retry after the floor sees the current
+         * sources.
+         */
+        val refreshed: Boolean = false,
+        /**
+         * Candidates from the cache that the refreshed sources no longer list —
+         * Campfires the caller could see when the cache filled and cannot now.
+         * Set only when [refreshed].
+         */
+        val staleCampfireIds: List<Long> = emptyList(),
+    ) : BasecampException(message, reason, hint)
+
+    /**
      * Hard resource-first OAuth discovery selection/validation failure
      * (SPEC.md §16). THROWN, never returned as a Launchpad fallback, so no
      * consumer can convert it into a Launchpad request. [reason] carries the
@@ -375,6 +431,18 @@ sealed class BasecampException(
         const val CODE_AMBIGUOUS = "ambiguous"
         const val CODE_USAGE = "usage"
         const val CODE_LIMIT_EXCEEDED = "limit_exceeded"
+
+        /**
+         * The [RecordingSummaryFailure] tokens. They are the composite's own
+         * error identities, not HTTP statuses, and they are the vocabulary
+         * `conformance/tests/recording_summary.json` pins across every SDK —
+         * so the token, the [code], and the fixture all read the same.
+         */
+        const val RECORDING_NO_TYPE = "no_recording_type"
+        const val RECORDING_UNKNOWN_TYPE = "unknown_recording_type"
+        const val RECORDING_UNRESOLVED = "recording_unresolved"
+        const val CAMPFIRE_DISCOVERY_INCOMPLETE = "campfire_discovery_incomplete"
+        const val RECORDING_BUCKET_MISMATCH = "bucket_mismatch"
 
         // RFC 8628 device-flow reasons (see [DeviceFlow]).
         const val DEVICE_ACCESS_DENIED = "access_denied"
