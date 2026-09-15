@@ -107,6 +107,42 @@ final class MentionsTests: XCTestCase {
         }
     }
 
+    /// The gid PATH, against Go, in both directions.
+    ///
+    /// There is one mechanism of disagreement — Go reads `u.Path`, which is
+    /// percent-decoded, and this reads the path as written — and the rows below
+    /// are the three shapes it produces, not one. What the sweep behind them
+    /// establishes is the direction: over 756 scheme and path shapes, Go names a
+    /// person for 44, twelve rows differ, and NONE of them is Go refusing a gid
+    /// this accepts. The accepting direction is the one that would have the
+    /// write side act on something forged, so it is the half worth a test.
+    func testTheGidPathDisagreesWithGoInOneDirectionOnly() {
+        // The mechanism, in all three of its shapes: Go names person 1 for each.
+        for gid in [
+            "gid://bc3/Pers%6Fn/1",  // the model name
+            "gid://bc3/Person/%31",  // the id
+            "gid://bc3/Person%2F1",  // the separator between them
+        ] {
+            XCTAssertNil(
+                Mentions.personId(fromGlobalId: gid),
+                "refused here and read by Go — the stricter direction, deliberately: \(gid)")
+        }
+        // And the shapes that could run the other way do not: each is refused on
+        // both sides, so nothing this accepts is a gid Go rejects.
+        for gid in [
+            "gid:///Person/1", "gid:/Person/1", "gid:Person/1", " gid://bc3/Person/1",
+            "gid://bc3/person/1", "gid://bc3/Person/1/extra", "gid://bc3/Person//1",
+            "gid://bc3/Person/ 1", "gid://bc3/Person/+1", "gid://bc3/Person/\u{FF11}",
+        ] {
+            XCTAssertNil(Mentions.personId(fromGlobalId: gid), gid)
+        }
+        // The control group, so the negatives above are not passing vacuously.
+        XCTAssertEqual(Mentions.personId(fromGlobalId: "gid://bc3/Person/1"), 1)
+        XCTAssertEqual(Mentions.personId(fromGlobalId: "GID://bc3/Person/1"), 1)
+        XCTAssertEqual(Mentions.personId(fromGlobalId: "gid://bc3/Person/1?x=y"), 1)
+        XCTAssertEqual(Mentions.personId(fromGlobalId: "gid://bc3/Person/1#frag"), 1)
+    }
+
     /// The authority, against `net/url` in BOTH directions — measured over 1,824
     /// generated shapes, because a charset that looked about right was wrong
     /// each way, and a first fix that checked only the host was wrong again.

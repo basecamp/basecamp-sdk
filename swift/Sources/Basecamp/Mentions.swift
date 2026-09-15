@@ -448,12 +448,28 @@ extension Mentions {
     /// `/<Model>/<id>` — no more, no less — and the whole point is to refuse
     /// anything else rather than to be lenient about it.
     ///
-    /// Deliberately stricter than Go's `url.Parse`, in one respect: that reads
-    /// `u.Path`, which is percent-DECODED, so `gid://bc3/Pers%6Fn/1` names a
-    /// Person there and does not here. BC3 mints the literal form, an encoded
-    /// model name is not something a real sgid carries, and the read side of
-    /// these helpers is the one place an attacker-supplied envelope is parsed —
-    /// so refusing it is the right way to differ.
+    /// It disagrees with Go's `url.Parse` in exactly one MECHANISM, which is
+    /// worth stating as a mechanism rather than as a list of shapes: Go reads
+    /// `u.Path`, which is percent-DECODED, and this reads the path as written.
+    /// So every gid whose path spells a structural character through an escape
+    /// names a Person there and nobody here — the model name
+    /// (`gid://bc3/Pers%6Fn/1`), the id (`gid://bc3/Person/%31`), and the
+    /// separator between them (`gid://bc3/Person%2F1`) alike. An earlier version
+    /// of this comment named only the first and read as though that were the
+    /// whole of it, which is the shape of comment that stops a reader checking.
+    ///
+    /// The disagreement runs in that direction ONLY, and the sweep that says so
+    /// is `testTheGidPathDisagreesWithGoInOneDirectionOnly` — 756 scheme and
+    /// path shapes against the real `PersonIDFromSGID`, of which Go names a
+    /// person for 44: twelve rows differ, all twelve are this mechanism, and
+    /// none is Go refusing a gid this accepts. That last part is what matters,
+    /// because the accepting direction is the one that would have this SDK act
+    /// on an authority Go rejects.
+    ///
+    /// Refusing is the right way to differ here. BC3 mints the literal form, an
+    /// encoded model name is not something a real sgid carries, and the read
+    /// side of these helpers is the one place an attacker-supplied envelope is
+    /// parsed.
     static func personId(fromGlobalId gid: String) -> Int? {
         // No ASCII control character anywhere in it. Go hands the gid to
         // `net/url`, which refuses one outright; a parser that strips tab, CR
