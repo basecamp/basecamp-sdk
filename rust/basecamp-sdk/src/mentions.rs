@@ -339,16 +339,33 @@ fn parse_attributes(text: &[u8], mut pos: usize) -> Option<(Option<String>, usiz
 /// be right about. So `<bc-attachment ſgid="…">` names a person in Go, and an ASCII-only
 /// comparison silently reads it as an unknown attribute and names nobody.
 ///
-/// Two of the three names compared here (`bc-attachment`, `<p`/`<div`) contain neither `s`
-/// nor `k`, so an ASCII fold happens to agree on them today. They go through this function
-/// anyway: that agreement is a property of the spelling, not of the rule, and it would go
-/// away silently if a name ever gained an `s`.
+/// Two of the three names compared here contain neither `s` nor `k`, so an ASCII fold
+/// agrees with this on them today. They are routed through it anyway, but for different
+/// reasons, and only one of those reasons is about the spelling:
 ///
-/// A byte that is not valid UTF-8 cannot match: Go decodes it to U+FFFD, which folds to
-/// nothing in ASCII.
+/// - `bc-attachment` is compared against a SCANNED tag name of whatever length, so the
+///   agreement really is a property of how the name is spelt and would go away silently if
+///   one ever gained an `s`.
+/// - `<p` and `<div` are compared against a slice of exactly `name.len()` BYTES, mirroring
+///   the reference's own `content[i:i+len(name)]`. A folded rune needs two or three bytes
+///   where the needle allows one, so a fold match is structurally impossible there for ANY
+///   needle — that agreement survives a rename, and calling this is tidiness, not safety.
+///
+/// A byte that is not valid UTF-8 cannot match, because Go decodes it to U+FFFD, which
+/// folds to no ASCII. Nothing reachable through this crate's public API can present one:
+/// `&str` guarantees validity, and the one place a slice could cut a character is the
+/// fixed-length one above, which cannot fold regardless. The branch is kept because this
+/// function takes bytes and the guarantee is the caller's, not its own.
 fn equal_fold(text: &[u8], ascii_needle: &[u8]) -> bool {
     const LONG_S: &[u8] = &[0xc5, 0xbf]; // U+017F, in the orbit of `s`
     const KELVIN: &[u8] = &[0xe2, 0x84, 0xaa]; // U+212A, in the orbit of `k`
+    // The needle drives the walk, so a non-ASCII byte in it would compare against nothing
+    // and silently answer false rather than fold. Every caller passes a literal; this makes
+    // the precondition enforced in a test build rather than only written down.
+    debug_assert!(
+        ascii_needle.is_ascii(),
+        "equal_fold's needle must be ASCII; folding is only modelled from that side"
+    );
     let mut at = 0usize;
     for &wanted in ascii_needle {
         let rest = &text[at..];
@@ -770,11 +787,16 @@ fn valid_escapes(text: &str) -> bool {
 /// What follows `gid://`, matching the scheme case-insensitively as a URL parser does.
 fn strip_scheme(gid: &str) -> Option<&str> {
     let (scheme, rest) = gid.split_once("://")?;
-    // ASCII-only here, and that is NOT an oversight to be tidied into `equal_fold` above.
-    // A URL parser's scheme grammar admits only ASCII letters and digits, so a scheme
-    // carrying `ı` or `İ` is not a scheme at all and the gid never matches. Folding it the
-    // way a tag name is folded would resolve `gıd://bc3/Person/7` to a person. Two rules,
-    // one file; the reference uses a different one in each place.
+    // ASCII-only, because a URL parser's scheme grammar admits only ASCII letters and
+    // digits: a scheme carrying `ı` or `İ` is not a scheme at all and the gid never matches.
+    //
+    // The hazard is case MAPPING, not case folding. `scheme.to_uppercase() == "GID"`
+    // resolves `gıd://bc3/Person/7` to a person, because `ı` uppercases to `I`. Routing this
+    // through `equal_fold` above would in fact be harmless — "gid" contains neither `s` nor
+    // `k`, so that function admits no non-ASCII rune here — which is the same argument that
+    // makes two of its three call sites inert today. An earlier version of this comment said
+    // folding it would resolve `gıd`, which is false, and I had the argument six lines away
+    // in the other file at the time.
     scheme.eq_ignore_ascii_case("gid").then_some(rest)
 }
 
@@ -1625,6 +1647,48 @@ mod tests {
     /// The scheme is the counter-case in the same file: a URL parser's scheme grammar
     /// admits only ASCII, so `gıd` is not `gid` however it folds. Getting one rule right is
     /// not getting the other right, and the two live a few hundred lines apart.
+    /// `equal_fold` is exercised directly because half of it cannot be reached through the
+    /// public API: none of the four names this crate compares — `bc-attachment`, `sgid`,
+    /// `<p`, `<div` — contains a `k`, so U+212A can never be consumed by any caller, and
+    /// removing that branch breaks nothing reachable. It is kept because the function
+    /// implements a rule rather than four call sites, and a rule with a hole in it is worse
+    /// than one with a branch no current caller needs. This is what holds it.
+    #[test]
+    fn the_fold_admits_exactly_the_two_runes_that_fold_onto_ascii() {
+        // Both orbit members, in a needle position that admits them.
+        assert!(equal_fold("\u{17f}gid".as_bytes(), b"sgid"));
+        assert!(equal_fold("sgi\u{17f}".as_bytes(), b"sgis"));
+        assert!(equal_fold("\u{212a}".as_bytes(), b"k"));
+        assert!(equal_fold("\u{212a}".as_bytes(), b"K"));
+        assert!(equal_fold("mil\u{212a}".as_bytes(), b"MILK"));
+        assert!(equal_fold("\u{17f}\u{212a}".as_bytes(), b"sk"));
+        // Each is admitted ONLY against its own orbit's letter.
+        assert!(!equal_fold("\u{212a}gid".as_bytes(), b"sgid"));
+        assert!(!equal_fold("\u{17f}".as_bytes(), b"k"));
+        // Plain ASCII folding still works in both directions, and non-letters are literal.
+        assert!(equal_fold(b"BC-ATTACHMENT", b"bc-attachment"));
+        assert!(equal_fold(b"<DIV", b"<div"));
+        assert!(!equal_fold(b"<div", b"<p"));
+        // Length is exact: a fold consumes more bytes than the needle allocates, and that
+        // must not let a longer text pass.
+        assert!(!equal_fold("\u{17f}gid".as_bytes(), b"sgi"));
+        assert!(!equal_fold(b"sgid", b"sgi"));
+        assert!(!equal_fold(b"sgi", b"sgid"));
+        assert!(equal_fold(b"", b""));
+        assert!(!equal_fold(b"x", b""));
+        assert!(!equal_fold(b"", b"x"));
+        // A byte that is not valid UTF-8 folds to nothing — Go decodes it to U+FFFD, which
+        // reaches no ASCII letter. Only reachable by calling this directly, which is the
+        // other reason this test exists.
+        assert!(!equal_fold(&[b'<', 0xc5, b'p'], b"<sp"));
+        assert!(!equal_fold(&[0xff], b"s"));
+        assert!(!equal_fold(&[0xc5], b"s"));
+        // A truncated or overlong spelling of U+017F is not U+017F.
+        assert!(!equal_fold(&[0xc5, 0xbf, 0xbf], b"s"));
+        assert!(!equal_fold(&[0xe0, 0x85, 0xbf], b"s"));
+        assert!(!equal_fold(&[0xe2, 0x84], b"k"));
+    }
+
     #[test]
     fn a_name_folds_the_way_the_reference_folds_it_and_the_scheme_does_not() {
         let long_s = format!("<bc-attachment \u{17f}gid=\"{ANNIE_SGID}\"></bc-attachment>");
@@ -1632,12 +1696,24 @@ mod tests {
         let upper = format!("<BC-ATTACHMENT SGID=\"{ANNIE_SGID}\"></BC-ATTACHMENT>");
         assert_eq!(mentioned_person_ids(&upper), vec![1_049_715_915_i64]);
         // Not every non-ASCII letter folds onto an ASCII one; only those two do.
+        for miss in ["\u{131}gid", "\u{130}gid", "égid", "zgid"] {
+            let markup = format!("<bc-attachment {miss}=\"{ANNIE_SGID}\"></bc-attachment>");
+            assert!(
+                mentioned_person_ids(&markup).is_empty(),
+                "{miss} is not the sgid attribute"
+            );
+        }
+        // The fold is admitted only where the NEEDLE's character has a non-ASCII orbit
+        // member — `s` and `k`, nowhere else. Every row above puts its odd rune at position
+        // 0, where that guard is satisfied anyway and so goes untested: dropping the guard
+        // leaves them all passing while `sgiſ` starts naming a person the reference does
+        // not. These put the rune where the needle byte is `d`, and one where it is `s` but
+        // the rune is the other orbit's.
         for miss in [
-            "\u{131}gid",
-            "\u{130}gid",
-            "\u{17f}\u{17f}gid",
-            "égid",
-            "zgid",
+            "sgi\u{17f}",
+            "\u{17f}gi\u{17f}",
+            "\u{212a}gid",
+            "sgi\u{212a}",
         ] {
             let markup = format!("<bc-attachment {miss}=\"{ANNIE_SGID}\"></bc-attachment>");
             assert!(
@@ -1645,14 +1721,14 @@ mod tests {
                 "{miss} is not the sgid attribute"
             );
         }
-        // A byte that is not valid UTF-8 folds to nothing: Go decodes it to U+FFFD.
-        let broken = [
-            b"<bc-attachment \xc5gid=\"".as_slice(),
-            ANNIE_SGID.as_bytes(),
-            b"\"></bc-attachment>",
-        ]
-        .concat();
-        assert!(mentioned_person_ids(&String::from_utf8_lossy(&broken)).is_empty());
+        // Length, not folding, is what refuses these — both runes here DO fold onto `s`.
+        for miss in ["\u{17f}\u{17f}gid", "sgi", "sgidd"] {
+            let markup = format!("<bc-attachment {miss}=\"{ANNIE_SGID}\"></bc-attachment>");
+            assert!(
+                mentioned_person_ids(&markup).is_empty(),
+                "{miss} is the wrong length"
+            );
+        }
         // And the scheme, which is ASCII or it is not a scheme at all.
         for scheme in ["g\u{131}d", "G\u{130}D", "\u{131}d"] {
             let payload = json_sgid(&format!(
@@ -1788,13 +1864,17 @@ mod tests {
     fn a_digit_is_an_ascii_digit_everywhere_a_digit_is_read() {
         // One representative from each of several scripts, plus the shapes that are
         // "numeric" to Unicode without being digits at all.
+        // Each table is all ten digits of one script, because the numeric-reference rows
+        // below need the digits that spell 65 and 0x41 — the 'A' that position of the sgid
+        // actually holds — and not just a 7.
         for digits in [
-            "\u{ff10}\u{ff17}",
-            "\u{660}\u{667}",
-            "\u{966}\u{96d}",
-            "\u{1d7ce}\u{1d7d5}",
+            "\u{ff10}\u{ff11}\u{ff12}\u{ff13}\u{ff14}\u{ff15}\u{ff16}\u{ff17}\u{ff18}\u{ff19}",
+            "\u{660}\u{661}\u{662}\u{663}\u{664}\u{665}\u{666}\u{667}\u{668}\u{669}",
+            "\u{966}\u{967}\u{968}\u{969}\u{96a}\u{96b}\u{96c}\u{96d}\u{96e}\u{96f}",
+            "\u{1d7ce}\u{1d7cf}\u{1d7d0}\u{1d7d1}\u{1d7d2}\u{1d7d3}\u{1d7d4}\u{1d7d5}\u{1d7d6}\u{1d7d7}",
         ] {
-            let seven = digits.chars().nth(1).unwrap();
+            let digit: Vec<char> = digits.chars().collect();
+            let seven = digit[7];
             let payload = json_sgid(&format!(
                 r#"{{"gid":"gid://bc3/Person/{seven}{seven}","purpose":"attachable"}}"#
             ));
@@ -1808,10 +1888,18 @@ mod tests {
                 r#"{{"gid":"gid://bc3/Person/7{seven}","purpose":"attachable"}}"#
             ));
             assert_eq!(person_id_from_sgid(&mixed), None, "7{seven} is not 7");
-            // A numeric character reference spelt with one.
+            // A numeric character reference spelt with one. It must name the character
+            // that position holds — ANNIE_SGID[1] is 'A', so decimal 65 and hex 41 — or the
+            // sgid is broken whatever the decoder does and the row proves nothing. An
+            // earlier version used 77 and 0x77 here, which are 'M' and 'w': both spellings
+            // asserted "no mention" against a corrupt sgid rather than against the digit
+            // rule, and a decoder that DID accept these digits passed them.
             let head = &ANNIE_SGID[..1];
             let tail = &ANNIE_SGID[2..];
-            for reference in [format!("&#{seven}{seven};"), format!("&#x{seven}{seven};")] {
+            for reference in [
+                format!("&#{}{};", digit[6], digit[5]),
+                format!("&#x{}{};", digit[4], digit[1]),
+            ] {
                 let markup =
                     format!(r#"<bc-attachment sgid="{head}{reference}{tail}"></bc-attachment>"#);
                 assert!(
