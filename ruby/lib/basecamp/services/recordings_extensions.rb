@@ -142,7 +142,10 @@ module Basecamp
         kind = route_recording(event_type: event_type, recording_type: recording_type)
         summary = read_summary(kind, bucket_id: bucket_id, recording_id: recording_id)
 
-        read_bucket_id = summary.dig("bucket", "id").to_i
+        # A malformed "bucket" member is read as absent rather than raising:
+        # Hash#dig through a non-Hash is a TypeError, and a bad projection must
+        # not turn into an exception class no caller expects.
+        read_bucket_id = summary["bucket"].is_a?(Hash) ? summary["bucket"]["id"].to_i : 0
         if read_bucket_id.positive? && read_bucket_id != bucket_id
           raise BucketMismatchError.new(
             bucket_id: bucket_id, actual_bucket_id: read_bucket_id, recording_id: recording_id
@@ -471,7 +474,10 @@ module Basecamp
           return []
         end
 
-        Array(project["dock"]).filter_map do |item|
+        dock = project["dock"]
+        return [] unless dock.is_a?(Array)
+
+        dock.filter_map do |item|
           next unless item.is_a?(Hash) && item["name"] == "chat"
 
           id = item["id"].to_i
@@ -491,7 +497,10 @@ module Basecamp
         end
 
         listed.each_with_object({}) do |campfire, by_bucket|
-          bucket_id = campfire.dig("bucket", "id").to_i
+          bucket = campfire["bucket"]
+          next unless bucket.is_a?(Hash)
+
+          bucket_id = bucket["id"].to_i
           next unless bucket_id.positive?
 
           (by_bucket[bucket_id] ||= []) << campfire["id"]

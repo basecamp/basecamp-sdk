@@ -133,9 +133,12 @@ class CampfireIndexTest < Minitest::Test
     started.pop
 
     waiters = Array.new(3) { Thread.new { cache.get(:k) } }
-    # The waiters are parked on the in-flight load; releasing the owner is what
-    # lets them finish, so their results are read across a join, never "in
-    # practice".
+    # Released only once every waiter is provably parked inside `get` — a thread
+    # that reached `get` can only be blocked on the cache's mutex or on its
+    # condition variable, so "asleep" here means "waiting on the load". Without
+    # this barrier a waiter that arrives after publication is served from the
+    # cache instead, and the assertions below would pass or fail on timing.
+    await_parked(waiters)
     release << :go
     hits = ([ owner ] + waiters).map { |thread| thread.join.value }
 
@@ -144,6 +147,16 @@ class CampfireIndexTest < Minitest::Test
     # Every one of them loaded during this call rather than finding a snapshot
     # that predated it.
     assert_equal [ false ] * 4, hits.map(&:cached)
+  end
+
+  # Blocks until every thread is parked, or fails the test rather than hanging.
+  def await_parked(threads, timeout: 5)
+    deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + timeout
+    until threads.all? { |thread| thread.status == "sleep" }
+      flunk "threads never parked" if Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
+
+      Thread.pass
+    end
   end
 
   def test_a_failed_load_is_shared_with_its_waiters_rather_than_re_run
@@ -169,6 +182,7 @@ class CampfireIndexTest < Minitest::Test
     rescue RuntimeError => e
       e
     end
+    await_parked([ waiter ])
     release << :go
 
     assert_equal "boom", owner.join.value.message
