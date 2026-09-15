@@ -292,13 +292,17 @@ class RecordingsSummarizeTest < Minitest::Test
   end
 
   def test_the_dock_answers_without_the_listing_being_fetched
+    # The listing answers 503, not a valid body. Asserting only that it was not
+    # requested proves the call did not NEED it; making it fail proves the call
+    # does not DEPEND on it, which is the claim worth pinning.
     stub_dock([ 500 ])
     stub_line(500)
+    stub_request(:get, "#{BASE_URL}/12345/chats.json")
+      .to_return(status: 503, body: '{"error":"down"}', headers: { "Content-Type" => "application/json" })
 
     summary = summarize(event_type: "chat.line.created")
 
     assert_equal 500, summary["campfire_id"]
-    # The listing is the expensive request; the dock pre-empts it.
     assert_not_requested(:get, "#{BASE_URL}/12345/chats.json")
   end
 
@@ -452,7 +456,10 @@ class RecordingsSummarizeTest < Minitest::Test
     over_budget = (1..(Basecamp::Services::RecordingsExtensions::MAX_CAMPFIRE_CANDIDATES + 5)).to_a
     stub_dock(over_budget)
     over_budget.each { |id| stub_line(id, status: 404, body: { "error" => "Record not found" }) }
-    stub_get("/12345/chats.json", response_body: [])
+    # 503 rather than an empty body: the verdict must not depend on this read at
+    # all, and a failing one would surface as its own error if it were made.
+    stub_request(:get, "#{BASE_URL}/12345/chats.json")
+      .to_return(status: 503, body: '{"error":"down"}', headers: { "Content-Type" => "application/json" })
 
     error = assert_raises(Basecamp::CampfireDiscoveryIncompleteError) do
       summarize(event_type: "chat.line.created")
@@ -460,7 +467,6 @@ class RecordingsSummarizeTest < Minitest::Test
 
     assert_equal "campfire_discovery_incomplete", error.kind
     assert_match(/spent before the account listing was consulted/, error.message)
-    # The listing was never fetched: the verdict is about it being unsearched.
     assert_not_requested(:get, "#{BASE_URL}/12345/chats.json")
   end
 
@@ -506,6 +512,13 @@ class RecordingsSummarizeTest < Minitest::Test
     assert_raises(Basecamp::UnresolvedRecordingError) { summarize(event_type: "chat.line.created") }
     WebMock.reset!
     exactly.each { |id| stub_line(id, status: 404, body: { "error" => "Record not found" }) }
+
+    # Both sources answer 503 now. The second call must reach its verdict from
+    # what it already holds, rather than merely happening not to re-read them.
+    stub_request(:get, "#{BASE_URL}/12345/projects/#{BUCKET}")
+      .to_return(status: 503, body: '{"error":"down"}', headers: { "Content-Type" => "application/json" })
+    stub_request(:get, "#{BASE_URL}/12345/chats.json")
+      .to_return(status: 503, body: '{"error":"down"}', headers: { "Content-Type" => "application/json" })
 
     # Second call consults both sources from cache, spends the budget on them,
     # and must conclude rather than report the search unfinished.
