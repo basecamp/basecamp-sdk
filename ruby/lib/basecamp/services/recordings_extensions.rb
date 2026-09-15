@@ -311,6 +311,12 @@ module Basecamp
           project(@client.forwards.get_inbox(inbox_id: id), content: "", parent: nil)
         when :campfire
           project(@client.campfires.get(campfire_id: id), content: "", parent: nil)
+        else
+          # Unreachable while every value in RECORDING_TYPES and EVENT_SUBJECTS
+          # has a branch. It is here so that adding a routing row and forgetting
+          # the projection refuses the pointer by name rather than returning nil
+          # and failing somewhere else.
+          raise RecordingRoutingError.unknown_recording_type(kind)
         end
       end
 
@@ -503,7 +509,13 @@ module Basecamp
           bucket_id = bucket["id"].to_i
           next unless bucket_id.positive?
 
-          (by_bucket[bucket_id] ||= []) << campfire["id"]
+          # Normalized exactly as the dock's ids are. Otherwise a listing id
+          # that arrived as a string could never match a dock-sourced integer in
+          # the search's "already tried" set, and would spend budget twice.
+          campfire_id = campfire["id"].to_i
+          next unless campfire_id.positive?
+
+          (by_bucket[bucket_id] ||= []) << campfire_id
         end
       end
 
