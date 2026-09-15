@@ -1191,6 +1191,8 @@ RUBY_SKIPS = Set.new([
   "RecordingsSummarize routes Todo (recording type) to one typed read and projects the recording",
   "RecordingsSummarize routes Kanban::Card (recording type) to one typed read and projects the recording",
   "RecordingsSummarize routes Chat::Transcript (recording type) to one typed read and projects the recording",
+  "RecordingsSummarize routes card.moved (event type) to one typed read and projects the recording",
+  "RecordingsSummarize routes Chat::Lines::Text (recording type) through Campfire discovery and projects the line",
 ].freeze)
 
 RUBY_SKIP_REASONS = {
@@ -1232,6 +1234,8 @@ RUBY_SKIP_REASONS = {
   "RecordingsSummarize routes Todo (recording type) to one typed read and projects the recording" => "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
   "RecordingsSummarize routes Kanban::Card (recording type) to one typed read and projects the recording" => "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
   "RecordingsSummarize routes Chat::Transcript (recording type) to one typed read and projects the recording" => "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
+  "RecordingsSummarize routes card.moved (event type) to one typed read and projects the recording" => "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
+  "RecordingsSummarize routes Chat::Lines::Text (recording type) through Campfire discovery and projects the line" => "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
   "PUT operation is naturally idempotent" => "Ruby SDK only retries GET",
   "DELETE operation is naturally idempotent" => "Ruby SDK only retries GET",
   "POST operation retries when marked idempotent" => "Ruby SDK only retries GET",

@@ -77,6 +77,8 @@ private val KOTLIN_SKIPS: Map<String, String> = mapOf(
     "RecordingsSummarize routes Todo (recording type) to one typed read and projects the recording" to "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
     "RecordingsSummarize routes Kanban::Card (recording type) to one typed read and projects the recording" to "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
     "RecordingsSummarize routes Chat::Transcript (recording type) to one typed read and projects the recording" to "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
+    "RecordingsSummarize routes card.moved (event type) to one typed read and projects the recording" to "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
+    "RecordingsSummarize routes Chat::Lines::Text (recording type) through Campfire discovery and projects the line" to "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
 )
 
 /**

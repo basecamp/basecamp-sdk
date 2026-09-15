@@ -1650,6 +1650,8 @@ class ConformanceRunner:
         "RecordingsSummarize routes Todo (recording type) to one typed read and projects the recording",
         "RecordingsSummarize routes Kanban::Card (recording type) to one typed read and projects the recording",
         "RecordingsSummarize routes Chat::Transcript (recording type) to one typed read and projects the recording",
+        "RecordingsSummarize routes card.moved (event type) to one typed read and projects the recording",
+        "RecordingsSummarize routes Chat::Lines::Text (recording type) through Campfire discovery and projects the line",
     }
     SKIP_REASONS: dict[str, str] = {
         "RecordingsSummarize routes comment.created to the comment read and reads its mentions": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
@@ -1690,6 +1692,8 @@ class ConformanceRunner:
         "RecordingsSummarize routes Todo (recording type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
         "RecordingsSummarize routes Kanban::Card (recording type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
         "RecordingsSummarize routes Chat::Transcript (recording type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
+        "RecordingsSummarize routes card.moved (event type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
+        "RecordingsSummarize routes Chat::Lines::Text (recording type) through Campfire discovery and projects the line": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
     }
 
     def __init__(self, tests_dir: str):

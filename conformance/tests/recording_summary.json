@@ -5757,6 +5757,503 @@
     ]
   },
   {
+    "name": "RecordingsSummarize routes card.moved (event type) to one typed read and projects the recording",
+    "description": "The event type 'card.moved' names exactly one typed read — /999/card_tables/cards/1069479350 — and the projection carries the recording's type, id, status, title, app_url, its rich text as content, the person ids that content mentions (none here), the nested identities by id, and updated_at as an instant. card.moved is the planned work-queue trigger; it routes by its subject like every other card action. Part of the routing matrix a port must implement.",
+    "operation": "RecordingsSummarize",
+    "method": "GET",
+    "path": "/card_tables/cards/1069479350",
+    "pathParams": {
+      "bucketId": 2085958499,
+      "recordingId": 1069479350,
+      "eventType": "card.moved"
+    },
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 1069479350,
+          "status": "active",
+          "visible_to_clients": false,
+          "created_at": "2024-01-16T10:00:00.000-06:00",
+          "updated_at": "2024-01-20T15:30:00.000-06:00",
+          "title": "Implement user authentication",
+          "inherits_status": true,
+          "type": "Kanban::Card",
+          "url": "https://3.basecampapi.com/195539477/buckets/2085958499/card_tables/cards/1069479350.json",
+          "app_url": "https://3.basecamp.com/195539477/buckets/2085958499/card_tables/cards/1069479350",
+          "bookmark_url": "https://3.basecampapi.com/195539477/my/bookmarks/card1.json",
+          "subscription_url": "https://3.basecampapi.com/195539477/buckets/2085958499/recordings/1069479350/subscription.json",
+          "position": 1,
+          "content": "<div>Add OAuth2 login flow with Google and GitHub providers</div>",
+          "description": "Add OAuth2 login flow with Google and GitHub providers",
+          "due_on": "2024-02-01",
+          "completed": false,
+          "comments_count": 2,
+          "comments_url": "https://3.basecampapi.com/195539477/buckets/2085958499/recordings/1069479350/comments.json",
+          "comment_count": 2,
+          "completion_url": "https://3.basecampapi.com/195539477/buckets/2085958499/card_tables/cards/1069479350/completion.json",
+          "parent": {
+            "id": 1069479347,
+            "title": "In Progress",
+            "type": "Kanban::Column",
+            "url": "https://3.basecampapi.com/195539477/buckets/2085958499/card_tables/columns/1069479347.json",
+            "app_url": "https://3.basecamp.com/195539477/buckets/2085958499/card_tables/columns/1069479347"
+          },
+          "bucket": {
+            "id": 2085958499,
+            "name": "The Leto Laptop",
+            "type": "Project"
+          },
+          "creator": {
+            "id": 1049715914,
+            "attachable_sgid": "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE0P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--xyz456",
+            "name": "Victor Cooper",
+            "email_address": "victor@honchodesign.com",
+            "personable_type": "User",
+            "title": "Chief Strategist",
+            "bio": "Leading product strategy",
+            "location": "Chicago, IL",
+            "created_at": "2024-01-01T08:00:00.000-06:00",
+            "updated_at": "2024-01-15T10:00:00.000-06:00",
+            "admin": true,
+            "owner": true,
+            "client": false,
+            "employee": true,
+            "time_zone": "America/Chicago",
+            "avatar_url": "https://3.basecamp-static.com/avatar/123.jpg",
+            "can_ping": true,
+            "can_manage_projects": true,
+            "can_manage_people": true
+          },
+          "assignees": [
+            {
+              "id": 1049715915,
+              "attachable_sgid": "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE1P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--abc789",
+              "name": "Annie Bryan",
+              "email_address": "annie@honchodesign.com",
+              "personable_type": "User",
+              "title": "Designer",
+              "admin": false,
+              "owner": false,
+              "client": false,
+              "employee": true,
+              "time_zone": "America/Chicago",
+              "avatar_url": "https://3.basecamp-static.com/avatar/456.jpg"
+            }
+          ],
+          "completion_subscribers": [],
+          "steps": [
+            {
+              "id": 1069479360,
+              "status": "active",
+              "visible_to_clients": false,
+              "created_at": "2024-01-16T10:05:00.000-06:00",
+              "updated_at": "2024-01-18T11:00:00.000-06:00",
+              "title": "Set up OAuth providers",
+              "inherits_status": true,
+              "type": "Kanban::Step",
+              "url": "https://3.basecampapi.com/195539477/buckets/2085958499/card_tables/steps/1069479360.json",
+              "app_url": "https://3.basecamp.com/195539477/buckets/2085958499/card_tables/steps/1069479360",
+              "bookmark_url": "https://3.basecampapi.com/195539477/my/bookmarks/step1.json",
+              "position": 1,
+              "completed": true,
+              "completed_at": "2024-01-18T11:00:00.000-06:00",
+              "parent": {
+                "id": 1069479350,
+                "title": "Implement user authentication",
+                "type": "Kanban::Card",
+                "url": "https://3.basecampapi.com/195539477/buckets/2085958499/card_tables/cards/1069479350.json",
+                "app_url": "https://3.basecamp.com/195539477/buckets/2085958499/card_tables/cards/1069479350"
+              },
+              "bucket": {
+                "id": 2085958499,
+                "name": "The Leto Laptop",
+                "type": "Project"
+              },
+              "creator": {
+                "id": 1049715914,
+                "name": "Victor Cooper"
+              },
+              "completer": {
+                "id": 1049715915,
+                "name": "Annie Bryan"
+              },
+              "assignees": []
+            },
+            {
+              "id": 1069479361,
+              "status": "active",
+              "visible_to_clients": false,
+              "created_at": "2024-01-16T10:06:00.000-06:00",
+              "updated_at": "2024-01-16T10:06:00.000-06:00",
+              "title": "Implement callback handlers",
+              "inherits_status": true,
+              "type": "Kanban::Step",
+              "url": "https://3.basecampapi.com/195539477/buckets/2085958499/card_tables/steps/1069479361.json",
+              "app_url": "https://3.basecamp.com/195539477/buckets/2085958499/card_tables/steps/1069479361",
+              "bookmark_url": "https://3.basecampapi.com/195539477/my/bookmarks/step2.json",
+              "position": 2,
+              "completed": false,
+              "parent": {
+                "id": 1069479350,
+                "title": "Implement user authentication",
+                "type": "Kanban::Card",
+                "url": "https://3.basecampapi.com/195539477/buckets/2085958499/card_tables/cards/1069479350.json",
+                "app_url": "https://3.basecamp.com/195539477/buckets/2085958499/card_tables/cards/1069479350"
+              },
+              "bucket": {
+                "id": 2085958499,
+                "name": "The Leto Laptop",
+                "type": "Project"
+              },
+              "creator": {
+                "id": 1049715914,
+                "name": "Victor Cooper"
+              },
+              "assignees": []
+            }
+          ],
+          "description_attachments": []
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "noError"
+      },
+      {
+        "type": "requestPath",
+        "expected": "/999/card_tables/cards/1069479350"
+      },
+      {
+        "type": "responseBody",
+        "path": "type",
+        "expected": "Kanban::Card"
+      },
+      {
+        "type": "responseBody",
+        "path": "id",
+        "expected": 1069479350
+      },
+      {
+        "type": "responseBody",
+        "path": "status",
+        "expected": "active"
+      },
+      {
+        "type": "responseBody",
+        "path": "title",
+        "expected": "Implement user authentication"
+      },
+      {
+        "type": "responseBody",
+        "path": "app_url",
+        "expected": "https://3.basecamp.com/195539477/buckets/2085958499/card_tables/cards/1069479350"
+      },
+      {
+        "type": "responseBody",
+        "path": "content",
+        "expected": "<div>Add OAuth2 login flow with Google and GitHub providers</div>"
+      },
+      {
+        "type": "responseBody",
+        "path": "mentioned_person_ids",
+        "expected": []
+      },
+      {
+        "type": "responseBody",
+        "path": "bucket.id",
+        "expected": 2085958499
+      },
+      {
+        "type": "responseBody",
+        "path": "creator.id",
+        "expected": 1049715914
+      },
+      {
+        "type": "responseBody",
+        "path": "parent.id",
+        "expected": 1069479347
+      },
+      {
+        "type": "responseBody",
+        "path": "assignees.0.id",
+        "expected": 1049715915
+      },
+      {
+        "type": "responseBody",
+        "path": "updated_at",
+        "expected": "2024-01-20T15:30:00.000-06:00"
+      }
+    ],
+    "tags": [
+      "recording-summary",
+      "routing"
+    ]
+  },
+  {
+    "name": "RecordingsSummarize routes Chat::Lines::Text (recording type) through Campfire discovery and projects the line",
+    "description": "A chat line by recording type — any Chat::Lines::* subtype — takes the same discovery path as chat.line.created: the bucket's project dock (404 here: not a project), then the account-wide listing filtered to the bucket, then the line under each candidate in listing order until one answers. The projection carries the line's type, id, status, title, app_url, content, mentions (none: a plain text line's content is not rich text), the nested identities by id, updated_at as an instant, and campfire_id — the Campfire it was found under, the reply destination. Part of the routing matrix a port must implement.",
+    "operation": "RecordingsSummarize",
+    "method": "GET",
+    "path": "/projects/2085958499",
+    "pathParams": {
+      "bucketId": 2085958499,
+      "recordingId": 1069479350,
+      "recordingType": "Chat::Lines::Text"
+    },
+    "mockResponses": [
+      {
+        "status": 404,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "error": "Record not found"
+        }
+      },
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": [
+          {
+            "id": 1069479400,
+            "status": "active",
+            "visible_to_clients": false,
+            "created_at": "2022-10-28T15:25:00.000Z",
+            "updated_at": "2022-10-28T15:25:00.000Z",
+            "title": "Campfire",
+            "inherits_status": true,
+            "type": "Chat::Transcript",
+            "url": "https://3.basecampapi.com/999/buckets/2085958500/chats/1069479400.json",
+            "app_url": "https://3.basecamp.com/999/buckets/2085958500/chats/1069479400",
+            "lines_url": "https://3.basecampapi.com/999/buckets/2085958500/chats/1069479400/lines.json",
+            "bucket": {
+              "id": 2085958500,
+              "name": "Project 2085958500",
+              "type": "Project"
+            },
+            "creator": {
+              "id": 1049715914,
+              "name": "Victor Cooper"
+            }
+          },
+          {
+            "id": 1069479340,
+            "status": "active",
+            "visible_to_clients": false,
+            "created_at": "2022-10-28T15:25:00.000Z",
+            "updated_at": "2022-10-28T15:25:00.000Z",
+            "title": "Campfire",
+            "inherits_status": true,
+            "type": "Chat::Transcript",
+            "url": "https://3.basecampapi.com/999/buckets/2085958499/chats/1069479340.json",
+            "app_url": "https://3.basecamp.com/999/buckets/2085958499/chats/1069479340",
+            "lines_url": "https://3.basecampapi.com/999/buckets/2085958499/chats/1069479340/lines.json",
+            "bucket": {
+              "id": 2085958499,
+              "name": "Project 2085958499",
+              "type": "Project"
+            },
+            "creator": {
+              "id": 1049715914,
+              "name": "Victor Cooper"
+            }
+          },
+          {
+            "id": 1069479345,
+            "status": "active",
+            "visible_to_clients": false,
+            "created_at": "2022-10-28T15:25:00.000Z",
+            "updated_at": "2022-10-28T15:25:00.000Z",
+            "title": "Campfire",
+            "inherits_status": true,
+            "type": "Chat::Transcript",
+            "url": "https://3.basecampapi.com/999/buckets/2085958499/chats/1069479345.json",
+            "app_url": "https://3.basecamp.com/999/buckets/2085958499/chats/1069479345",
+            "lines_url": "https://3.basecampapi.com/999/buckets/2085958499/chats/1069479345/lines.json",
+            "bucket": {
+              "id": 2085958499,
+              "name": "Project 2085958499",
+              "type": "Project"
+            },
+            "creator": {
+              "id": 1049715914,
+              "name": "Victor Cooper"
+            }
+          }
+        ]
+      },
+      {
+        "status": 404,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "error": "Record not found"
+        }
+      },
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 1069479350,
+          "status": "active",
+          "visible_to_clients": false,
+          "created_at": "2022-10-28T15:25:00.000Z",
+          "updated_at": "2022-10-28T15:25:00.000Z",
+          "title": "Hello everyone!",
+          "inherits_status": true,
+          "type": "Chat::Lines::Text",
+          "url": "https://3.basecampapi.com/195539477/buckets/2085958499/chats/1069479345/lines/1069479350.json",
+          "app_url": "https://3.basecamp.com/195539477/buckets/2085958499/chats/1069479345#__recording_1069479350",
+          "content": "Hello everyone!",
+          "parent": {
+            "id": 1069479345,
+            "title": "Campfire",
+            "type": "Chat::Transcript",
+            "url": "https://3.basecampapi.com/195539477/buckets/2085958499/chats/1069479345.json",
+            "app_url": "https://3.basecamp.com/195539477/buckets/2085958499/chats/1069479345"
+          },
+          "bucket": {
+            "id": 2085958499,
+            "name": "The Leto Laptop",
+            "type": "Project"
+          },
+          "creator": {
+            "id": 1049715914,
+            "attachable_sgid": "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE0P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--aabbccdd",
+            "name": "Victor Cooper",
+            "email_address": "victor@honchodesign.com",
+            "personable_type": "User",
+            "title": "Chief Strategist",
+            "bio": "Don't let your dreams be dreams",
+            "location": "Chicago, IL",
+            "created_at": "2022-11-22T08:23:21.732Z",
+            "updated_at": "2022-11-22T08:23:21.732Z",
+            "admin": true,
+            "owner": true,
+            "client": false,
+            "employee": true,
+            "time_zone": "America/Chicago",
+            "avatar_url": "https://3.basecamp-static.com/195539477/people/BAhpBMpkkT4=--avatar",
+            "company": {
+              "id": 1033447817,
+              "name": "Honcho Design"
+            },
+            "can_manage_projects": true,
+            "can_manage_people": true
+          }
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestCount",
+        "expected": 4
+      },
+      {
+        "type": "noError"
+      },
+      {
+        "type": "requestPath",
+        "index": 0,
+        "expected": "/999/projects/2085958499"
+      },
+      {
+        "type": "requestPath",
+        "index": 1,
+        "expected": "/999/chats.json"
+      },
+      {
+        "type": "requestPath",
+        "index": 2,
+        "expected": "/999/chats/1069479340/lines/1069479350"
+      },
+      {
+        "type": "requestPath",
+        "index": 3,
+        "expected": "/999/chats/1069479345/lines/1069479350"
+      },
+      {
+        "type": "responseBody",
+        "path": "type",
+        "expected": "Chat::Lines::Text"
+      },
+      {
+        "type": "responseBody",
+        "path": "id",
+        "expected": 1069479350
+      },
+      {
+        "type": "responseBody",
+        "path": "status",
+        "expected": "active"
+      },
+      {
+        "type": "responseBody",
+        "path": "title",
+        "expected": "Hello everyone!"
+      },
+      {
+        "type": "responseBody",
+        "path": "app_url",
+        "expected": "https://3.basecamp.com/195539477/buckets/2085958499/chats/1069479345#__recording_1069479350"
+      },
+      {
+        "type": "responseBody",
+        "path": "content",
+        "expected": "Hello everyone!"
+      },
+      {
+        "type": "responseBody",
+        "path": "mentioned_person_ids",
+        "expected": []
+      },
+      {
+        "type": "responseBody",
+        "path": "campfire_id",
+        "expected": 1069479345
+      },
+      {
+        "type": "responseBody",
+        "path": "bucket.id",
+        "expected": 2085958499
+      },
+      {
+        "type": "responseBody",
+        "path": "creator.id",
+        "expected": 1049715914
+      },
+      {
+        "type": "responseBody",
+        "path": "parent.id",
+        "expected": 1069479345
+      },
+      {
+        "type": "responseBody",
+        "path": "updated_at",
+        "expected": "2022-10-28T15:25:00.000Z"
+      }
+    ],
+    "tags": [
+      "recording-summary",
+      "routing",
+      "chat"
+    ]
+  },
+  {
     "name": "RecordingsSummarize refuses boost.created before any request",
     "description": "boost.created names no recording type (the row points at the boost's target, whose type it does not carry), so the helper refuses it distinctly rather than reading something it is not. No request is made. The error is the composite's own identity (no_recording_type), which a consumer matches rather than parses.",
     "operation": "RecordingsSummarize",

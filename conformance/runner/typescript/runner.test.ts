@@ -179,6 +179,10 @@ const TS_SDK_SKIPS: Record<string, string> = {
     "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
   "RecordingsSummarize routes Chat::Transcript (recording type) to one typed read and projects the recording":
     "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
+  "RecordingsSummarize routes card.moved (event type) to one typed read and projects the recording":
+    "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
+  "RecordingsSummarize routes Chat::Lines::Text (recording type) through Campfire discovery and projects the line":
+    "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
 };
 
 /**

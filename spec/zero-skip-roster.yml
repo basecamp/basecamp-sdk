@@ -207,6 +207,10 @@ runners:
         reason: "unwaivered, tracked work: a Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet, and a port deletes this entry."
       - case: "RecordingsSummarize routes Chat::Transcript (recording type) to one typed read and projects the recording"
         reason: "unwaivered, tracked work: a Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet, and a port deletes this entry."
+      - case: "RecordingsSummarize routes card.moved (event type) to one typed read and projects the recording"
+        reason: "unwaivered, tracked work: a Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet, and a port deletes this entry."
+      - case: "RecordingsSummarize routes Chat::Lines::Text (recording type) through Campfire discovery and projects the line"
+        reason: "unwaivered, tracked work: a Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet, and a port deletes this entry."
 
   ruby:
     source: "`conformance/runner/ruby/runner.rb` `RUBY_SKIPS`"
@@ -325,6 +329,10 @@ runners:
         reason: "unwaivered, tracked work: a Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet, and a port deletes this entry."
       - case: "RecordingsSummarize routes Chat::Transcript (recording type) to one typed read and projects the recording"
         reason: "unwaivered, tracked work: a Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet, and a port deletes this entry."
+      - case: "RecordingsSummarize routes card.moved (event type) to one typed read and projects the recording"
+        reason: "unwaivered, tracked work: a Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet, and a port deletes this entry."
+      - case: "RecordingsSummarize routes Chat::Lines::Text (recording type) through Campfire discovery and projects the line"
+        reason: "unwaivered, tracked work: a Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet, and a port deletes this entry."
 
   typescript:
     source: "`conformance/runner/typescript/runner.test.ts` `TS_SDK_SKIPS`"
@@ -406,6 +414,10 @@ runners:
       - case: "RecordingsSummarize routes Kanban::Card (recording type) to one typed read and projects the recording"
         reason: "unwaivered, tracked work: a Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet, and a port deletes this entry."
       - case: "RecordingsSummarize routes Chat::Transcript (recording type) to one typed read and projects the recording"
+        reason: "unwaivered, tracked work: a Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet, and a port deletes this entry."
+      - case: "RecordingsSummarize routes card.moved (event type) to one typed read and projects the recording"
+        reason: "unwaivered, tracked work: a Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet, and a port deletes this entry."
+      - case: "RecordingsSummarize routes Chat::Lines::Text (recording type) through Campfire discovery and projects the line"
         reason: "unwaivered, tracked work: a Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet, and a port deletes this entry."
 
   # No section-level classification: the two kinds of entry below differ in
@@ -494,6 +506,10 @@ runners:
         reason: "unwaivered, tracked work: a Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet, and a port deletes this entry."
       - case: "RecordingsSummarize routes Chat::Transcript (recording type) to one typed read and projects the recording"
         reason: "unwaivered, tracked work: a Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet, and a port deletes this entry."
+      - case: "RecordingsSummarize routes card.moved (event type) to one typed read and projects the recording"
+        reason: "unwaivered, tracked work: a Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet, and a port deletes this entry."
+      - case: "RecordingsSummarize routes Chat::Lines::Text (recording type) through Campfire discovery and projects the line"
+        reason: "unwaivered, tracked work: a Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet, and a port deletes this entry."
 
   swift:
     source: "`conformance/runner/swift/.../Runner.swift` — `temporarySkips` carries the Go-first composite; the first entry below comes from the `link-header` tag branch"
@@ -575,6 +591,10 @@ runners:
       - case: "RecordingsSummarize routes Kanban::Card (recording type) to one typed read and projects the recording"
         reason: "unwaivered, tracked work: a Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet, and a port deletes this entry."
       - case: "RecordingsSummarize routes Chat::Transcript (recording type) to one typed read and projects the recording"
+        reason: "unwaivered, tracked work: a Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet, and a port deletes this entry."
+      - case: "RecordingsSummarize routes card.moved (event type) to one typed read and projects the recording"
+        reason: "unwaivered, tracked work: a Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet, and a port deletes this entry."
+      - case: "RecordingsSummarize routes Chat::Lines::Text (recording type) through Campfire discovery and projects the line"
         reason: "unwaivered, tracked work: a Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet, and a port deletes this entry."
 
   # Rust's `RUST_SKIPS` carries only the Go-first composite's cases below, like
@@ -661,4 +681,8 @@ runners:
       - case: "RecordingsSummarize routes Kanban::Card (recording type) to one typed read and projects the recording"
         reason: "unwaivered, tracked work: a Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet, and a port deletes this entry."
       - case: "RecordingsSummarize routes Chat::Transcript (recording type) to one typed read and projects the recording"
+        reason: "unwaivered, tracked work: a Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet, and a port deletes this entry."
+      - case: "RecordingsSummarize routes card.moved (event type) to one typed read and projects the recording"
+        reason: "unwaivered, tracked work: a Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet, and a port deletes this entry."
+      - case: "RecordingsSummarize routes Chat::Lines::Text (recording type) through Campfire discovery and projects the line"
         reason: "unwaivered, tracked work: a Go-first composite recorded in SPEC Appendix F (Recording Summaries and Mention Helpers); the Go runner executes it, this SDK has no port yet, and a port deletes this entry."
