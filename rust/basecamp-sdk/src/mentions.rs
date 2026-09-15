@@ -238,7 +238,7 @@ fn bc_attachment_sgids(text: &str) -> Vec<String> {
         let Some((attributes, end)) = parse_attributes(bytes, pos + name_end) else {
             return sgids; // an unterminated tag: nothing after it is markup
         };
-        if rest[..name_end].eq_ignore_ascii_case(b"bc-attachment")
+        if equal_fold(&rest[..name_end], b"bc-attachment")
             && let Some(sgid) = attributes
             && !sgid.is_empty()
         {
@@ -319,7 +319,7 @@ fn parse_attributes(text: &[u8], mut pos: usize) -> Option<(Option<String>, usiz
             pos += 1;
             continue;
         }
-        if sgid.is_none() && name.eq_ignore_ascii_case(b"sgid") {
+        if sgid.is_none() && equal_fold(name, b"sgid") {
             sgid = Some(unescape(&String::from_utf8_lossy(value)));
         }
     }
@@ -327,6 +327,48 @@ fn parse_attributes(text: &[u8], mut pos: usize) -> Option<(Option<String>, usiz
 }
 
 /// The index just past the opening `<p …>` or `<div …>` tag a rich text starts with, or
+/// `strings.EqualFold` against an ASCII needle, which is what the reference compares tag
+/// and attribute names with — NOT an ASCII-only fold.
+///
+/// Go folds by Unicode simple case folding, and exactly two non-ASCII runes share an orbit
+/// with an ASCII letter: U+017F LATIN SMALL LETTER LONG S with `s`, and U+212A KELVIN SIGN
+/// with `k`. Enumerated by walking `unicode.SimpleFold` over all 128 ASCII code points, not
+/// recalled — that list is short enough to be worth being sure about and easy to be wrong
+/// about. So `<bc-attachment ſgid="…">` names a person in Go, and an ASCII-only comparison
+/// silently reads it as an unknown attribute and names nobody.
+///
+/// Two of the three names compared here (`bc-attachment`, `<p`/`<div`) contain neither `s`
+/// nor `k`, so an ASCII fold happens to agree on them today. They go through this function
+/// anyway: that agreement is a property of the spelling, not of the rule, and it would go
+/// away silently if a name ever gained an `s`.
+///
+/// A byte that is not valid UTF-8 cannot match: Go decodes it to U+FFFD, which folds to
+/// nothing in ASCII.
+fn equal_fold(text: &[u8], ascii_needle: &[u8]) -> bool {
+    const LONG_S: &[u8] = &[0xc5, 0xbf]; // U+017F, in the orbit of `s`
+    const KELVIN: &[u8] = &[0xe2, 0x84, 0xaa]; // U+212A, in the orbit of `k`
+    let mut at = 0usize;
+    for &wanted in ascii_needle {
+        let rest = &text[at..];
+        let Some(&byte) = rest.first() else {
+            return false;
+        };
+        if byte < 0x80 {
+            if !byte.eq_ignore_ascii_case(&wanted) {
+                return false;
+            }
+            at += 1;
+        } else if wanted.eq_ignore_ascii_case(&b's') && rest.starts_with(LONG_S) {
+            at += LONG_S.len();
+        } else if wanted.eq_ignore_ascii_case(&b'k') && rest.starts_with(KELVIN) {
+            at += KELVIN.len();
+        } else {
+            return false;
+        }
+    }
+    at == text.len()
+}
+
 /// `None` when it starts with anything else, so mentions can be placed inside the first
 /// block rather than as a bare prefix in front of it. The tag's attributes are scanned
 /// quote-aware: a `>` inside an attribute value does not end it.
@@ -338,7 +380,7 @@ fn leading_block_end(content: &str) -> Option<usize> {
     }
     for name in [b"<p".as_slice(), b"<div".as_slice()] {
         let after = start + name.len();
-        if bytes.len() < after || !bytes[start..after].eq_ignore_ascii_case(name) {
+        if bytes.len() < after || !equal_fold(&bytes[start..after], name) {
             continue;
         }
         if after < bytes.len() && !is_tag_name_end(bytes[after]) {
@@ -726,6 +768,11 @@ fn valid_escapes(text: &str) -> bool {
 /// What follows `gid://`, matching the scheme case-insensitively as a URL parser does.
 fn strip_scheme(gid: &str) -> Option<&str> {
     let (scheme, rest) = gid.split_once("://")?;
+    // ASCII-only here, and that is NOT an oversight to be tidied into `equal_fold` above.
+    // A URL parser's scheme grammar admits only ASCII letters and digits, so a scheme
+    // carrying `ı` or `İ` is not a scheme at all and the gid never matches. Folding it the
+    // way a tag name is folded would resolve `gıd://bc3/Person/7` to a person. Two rules,
+    // one file; the reference uses a different one in each place.
     scheme.eq_ignore_ascii_case("gid").then_some(rest)
 }
 
@@ -1568,6 +1615,57 @@ mod tests {
         assert!(mentioned_person_ids(&near).is_empty());
     }
 
+    /// Names are compared by Unicode simple case folding, as the reference compares them,
+    /// and exactly two non-ASCII runes reach an ASCII letter: U+017F with `s` and U+212A
+    /// with `k`. So `ſgid` IS the sgid attribute. Measured against the Go function, which
+    /// names Annie for the first of these; an ASCII-only fold named nobody.
+    ///
+    /// The scheme is the counter-case in the same file: a URL parser's scheme grammar
+    /// admits only ASCII, so `gıd` is not `gid` however it folds. Getting one rule right is
+    /// not getting the other right, and the two live a few hundred lines apart.
+    #[test]
+    fn a_name_folds_the_way_the_reference_folds_it_and_the_scheme_does_not() {
+        let long_s = format!("<bc-attachment \u{17f}gid=\"{ANNIE_SGID}\"></bc-attachment>");
+        assert_eq!(mentioned_person_ids(&long_s), vec![1_049_715_915_i64]);
+        let upper = format!("<BC-ATTACHMENT SGID=\"{ANNIE_SGID}\"></BC-ATTACHMENT>");
+        assert_eq!(mentioned_person_ids(&upper), vec![1_049_715_915_i64]);
+        // Not every non-ASCII letter folds onto an ASCII one; only those two do.
+        for miss in [
+            "\u{131}gid",
+            "\u{130}gid",
+            "\u{17f}\u{17f}gid",
+            "égid",
+            "zgid",
+        ] {
+            let markup = format!("<bc-attachment {miss}=\"{ANNIE_SGID}\"></bc-attachment>");
+            assert!(
+                mentioned_person_ids(&markup).is_empty(),
+                "{miss} is not the sgid attribute"
+            );
+        }
+        // A byte that is not valid UTF-8 folds to nothing: Go decodes it to U+FFFD.
+        let broken = [
+            b"<bc-attachment \xc5gid=\"".as_slice(),
+            ANNIE_SGID.as_bytes(),
+            b"\"></bc-attachment>",
+        ]
+        .concat();
+        assert!(mentioned_person_ids(&String::from_utf8_lossy(&broken)).is_empty());
+        // And the scheme, which is ASCII or it is not a scheme at all.
+        for scheme in ["g\u{131}d", "G\u{130}D", "\u{131}d"] {
+            let payload = json_sgid(&format!(
+                r#"{{"gid":"{scheme}://bc3/Person/77","purpose":"attachable"}}"#
+            ));
+            assert_eq!(person_id_from_sgid(&payload), None, "{scheme} is not gid");
+        }
+        for scheme in ["gid", "GID", "Gid"] {
+            let payload = json_sgid(&format!(
+                r#"{{"gid":"{scheme}://bc3/Person/77","purpose":"attachable"}}"#
+            ));
+            assert_eq!(person_id_from_sgid(&payload), Some(77), "{scheme} is gid");
+        }
+    }
+
     #[test]
     fn an_unterminated_tag_ends_the_walk() {
         let unterminated = format!(
@@ -2207,20 +2305,39 @@ mod tests {
         ] {
             assert_eq!(person_id_from_sgid(marshal), Some(77));
         }
-        // And where the substitution DOES change the parse, both answer nobody: U+FFFD is
-        // not a digit, and it is not a model name either.
-        for damaged_gid in [
-            &b"gid://bc3/Person/77\xff"[..],
-            &b"gid://bc3/Pers\xffon/77"[..],
+        // Where the substitution DOES change the parse, both answer nobody. These use a
+        // U+FFFD that is already THERE, in valid JSON, rather than a malformed byte: a
+        // malformed byte makes serde_json refuse the document before the id is ever looked
+        // at, so it cannot show that U+FFFD is not a digit. Spelt this way the rows reach
+        // the check they name, and Go reaches it too.
+        for (position, envelope) in [
+            (
+                "the id",
+                r#"{"gid":"gid://bc3/Person/77\ufffd","purpose":"attachable"}"#,
+            ),
+            (
+                "the model name",
+                r#"{"gid":"gid://bc3/Pers\ufffdon/77","purpose":"attachable"}"#,
+            ),
+            (
+                "the purpose",
+                r#"{"gid":"gid://bc3/Person/77","purpose":"attach\ufffdable"}"#,
+            ),
         ] {
-            let envelope = [
-                br#"{"gid":""#.as_slice(),
-                damaged_gid,
-                br#"","purpose":"attachable"}"#,
-            ]
-            .concat();
-            assert_eq!(person_id_from_sgid(&json_sgid_bytes(&envelope)), None);
+            assert_eq!(
+                person_id_from_sgid(&json_sgid(envelope)),
+                None,
+                "U+FFFD in {position}"
+            );
         }
+        // But U+FFFD in the HOST is a legal host character, so both sides still answer —
+        // which is why "damage in a member that is read" was the wrong way to say this.
+        assert_eq!(
+            person_id_from_sgid(&json_sgid(
+                r#"{"gid":"gid://bc\ufffd3/Person/77","purpose":"attachable"}"#
+            )),
+            Some(77)
+        );
     }
 
     /// An unsigned JSON envelope, in the base64url spelling Rails emits.
