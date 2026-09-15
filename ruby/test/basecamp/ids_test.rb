@@ -14,9 +14,26 @@ require "test_helper"
 # Three of those four were added in the commit that introduced them, verified
 # by an ad-hoc script and not by anything that runs again.
 #
-# The expected values are the REFERENCE's, measured through its real decode
-# path — `json.Unmarshal` into the generated struct, whose person id is
-# `types.FlexibleInt64` and whose every other id is a plain `int64`.
+# The expected values are the REFERENCE's. That sentence used to end there, and
+# it was wrong at one row — person_from_wire(nil) was asserted as 0 when the
+# reference fails the read — so it now says how to re-run the measurement
+# instead of asking to be believed:
+#
+#   go/pkg/types/flexible_int64.go is the decoder for a person id;
+#   every other id in go/pkg/generated/client.gen.go is a plain int64.
+#   json.Unmarshal(`{"id":null}`) into a struct whose field is
+#   types.FlexibleInt64 returns an error, because the type has its own
+#   UnmarshalJSON, the number path decodes null into an empty json.Number, and
+#   Int64() then fails. The same input into a plain int64 field returns 0 with
+#   no error, because there is no hook and encoding/json handles the null
+#   itself. An ABSENT key is 0 for both.
+#
+# That is the whole asymmetry, and it is a property of the field's TYPE rather
+# than of its name — so a port unifying null-handling across id fields will be
+# wrong for exactly one of the two kinds, whichever way it chooses.
+#
+# A header claiming "measured against the reference" is itself a claim, and the
+# most load-bearing one in a file of expectations.
 class IdsTest < Minitest::Test
   include TestHelper
 
