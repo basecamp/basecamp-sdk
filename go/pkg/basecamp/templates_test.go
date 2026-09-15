@@ -305,7 +305,7 @@ func TestTemplatesService_CreateProjectMultipleOptions(t *testing.T) {
 	}
 }
 
-func TestTemplatesService_GetLibrary(t *testing.T) {
+func TestTemplatesService_GetLibraryTodolists(t *testing.T) {
 	var receivedMethod, receivedPath string
 	svc := testTemplatesServer(t, func(w http.ResponseWriter, r *http.Request) {
 		receivedMethod = r.Method
@@ -318,11 +318,11 @@ func TestTemplatesService_GetLibrary(t *testing.T) {
 		}`))
 	})
 
-	library, err := svc.GetLibrary(context.Background())
+	library, err := svc.GetLibraryTodolists(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if receivedMethod != http.MethodGet || receivedPath != "/99999/template_library.json" {
+	if receivedMethod != http.MethodGet || receivedPath != "/99999/template_library/todolists.json" {
 		t.Fatalf("request = %s %s", receivedMethod, receivedPath)
 	}
 	if library.Bucket.Type != "TemplateLibrary" || library.Todoset.ID != 2 {
@@ -333,17 +333,132 @@ func TestTemplatesService_GetLibrary(t *testing.T) {
 	}
 }
 
-func TestTemplatesService_GetLibraryForbidden(t *testing.T) {
+func TestTemplatesService_GetLibraryTodolistsForbidden(t *testing.T) {
 	svc := testTemplatesServer(t, func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusForbidden)
 		w.Write([]byte(`{"error":"Forbidden"}`))
 	})
 
-	_, err := svc.GetLibrary(context.Background())
+	_, err := svc.GetLibraryTodolists(context.Background())
 	var apiErr *Error
 	if !errors.As(err, &apiErr) || apiErr.Code != CodeForbidden || apiErr.HTTPStatus != http.StatusForbidden {
 		t.Fatalf("unexpected forbidden error: %v", err)
+	}
+}
+
+func TestTemplatesService_GetLibraryCardTables(t *testing.T) {
+	var receivedMethod, receivedPath string
+	svc := testTemplatesServer(t, func(w http.ResponseWriter, r *http.Request) {
+		receivedMethod = r.Method
+		receivedPath = r.URL.Path
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{
+			"bucket":{"id":1,"name":"To-do List Templates","type":"TemplateLibrary"},
+			"kanban_boardset":{"id":2,"title":"Card Table Templates","type":"Kanban::Boardset","url":"https://example.test/boardsets/2.json","app_url":"https://example.test/boardsets/2"},
+			"card_tables":[{"id":3,"status":"active","visible_to_clients":false,"created_at":"2026-09-09T01:52:46Z","updated_at":"2026-09-09T01:52:46Z","title":"Client onboarding","inherits_status":true,"type":"Kanban::Board","url":"https://example.test/card_tables/3.json","app_url":"https://example.test/card_tables/3","parent":{"id":2,"title":"Card Table Templates","type":"Kanban::Boardset","url":"https://example.test/boardsets/2.json","app_url":"https://example.test/boardsets/2"},"bucket":{"id":1,"name":"To-do List Templates","type":"TemplateLibrary"},"creator":{"id":4,"name":"Victor"}}]
+		}`))
+	})
+
+	library, err := svc.GetLibraryCardTables(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if receivedMethod != http.MethodGet || receivedPath != "/99999/template_library/card_tables.json" {
+		t.Fatalf("request = %s %s", receivedMethod, receivedPath)
+	}
+	if library.KanbanBoardset == nil || library.KanbanBoardset.ID != 2 {
+		t.Fatalf("unexpected boardset: %+v", library.KanbanBoardset)
+	}
+	if len(library.CardTables) != 1 || library.CardTables[0].Title != "Client onboarding" {
+		t.Fatalf("unexpected card tables: %+v", library.CardTables)
+	}
+}
+
+func TestTemplatesService_GetLibraryCardTablesWithoutBoardset(t *testing.T) {
+	svc := testTemplatesServer(t, func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{
+			"bucket":{"id":1,"name":"To-do List Templates","type":"TemplateLibrary"},
+			"kanban_boardset":null,
+			"card_tables":[]
+		}`))
+	})
+
+	library, err := svc.GetLibraryCardTables(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if library.KanbanBoardset != nil {
+		t.Fatalf("expected nil boardset, got %+v", library.KanbanBoardset)
+	}
+	if len(library.CardTables) != 0 {
+		t.Fatalf("expected no card tables, got %+v", library.CardTables)
+	}
+}
+
+func TestTemplatesService_GetLibraryCardTablesForbidden(t *testing.T) {
+	svc := testTemplatesServer(t, func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusForbidden)
+		w.Write([]byte(`{"error":"Forbidden"}`))
+	})
+
+	_, err := svc.GetLibraryCardTables(context.Background())
+	var apiErr *Error
+	if !errors.As(err, &apiErr) || apiErr.Code != CodeForbidden || apiErr.HTTPStatus != http.StatusForbidden {
+		t.Fatalf("unexpected forbidden error: %v", err)
+	}
+}
+
+func TestTemplatesService_CreateLibraryCardTable(t *testing.T) {
+	var receivedMethod, receivedPath string
+	var receivedBody map[string]any
+	svc := testTemplatesServer(t, func(w http.ResponseWriter, r *http.Request) {
+		receivedMethod = r.Method
+		receivedPath = r.URL.Path
+		receivedBody = decodeRequestBody(t, r)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		w.Write([]byte(`{"id":3,"status":"active","visible_to_clients":false,"created_at":"2026-09-09T01:52:46Z","updated_at":"2026-09-09T01:52:46Z","title":"Client onboarding","inherits_status":true,"type":"Kanban::Board","url":"https://example.test/card_tables/3.json","app_url":"https://example.test/card_tables/3","public_link_url":"https://example.test/publication","parent":{"id":2,"title":"Card Table Templates","type":"Kanban::Boardset","url":"https://example.test/boardsets/2.json","app_url":"https://example.test/boardsets/2"},"bucket":{"id":1,"name":"To-do List Templates","type":"TemplateLibrary"},"creator":{"id":4,"name":"Victor"},"subscribers":[],"lists":[{"id":10,"status":"active","visible_to_clients":false,"created_at":"2026-09-09T01:52:46Z","updated_at":"2026-09-09T01:52:46Z","title":"Triage","inherits_status":true,"type":"Kanban::Triage","url":"https://example.test/columns/10.json","app_url":"https://example.test/columns/10","bucket":{"id":1,"name":"To-do List Templates","type":"TemplateLibrary"},"creator":{"id":4,"name":"Victor"}}],"wormholes":[]}`))
+	})
+
+	cardTable, err := svc.CreateLibraryCardTable(context.Background(), "Client onboarding")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if receivedMethod != http.MethodPost || receivedPath != "/99999/template_library/card_tables.json" {
+		t.Fatalf("request = %s %s", receivedMethod, receivedPath)
+	}
+	if receivedBody["name"] != "Client onboarding" {
+		t.Fatalf("unexpected request body: %+v", receivedBody)
+	}
+	if cardTable.Title != "Client onboarding" {
+		t.Fatalf("unexpected title: %q", cardTable.Title)
+	}
+	if cardTable.Parent == nil || cardTable.Parent.ID != 2 {
+		t.Fatalf("unexpected parent: %+v", cardTable.Parent)
+	}
+	if cardTable.Position != nil {
+		t.Fatalf("expected no position on a template, got %v", *cardTable.Position)
+	}
+	if cardTable.PublicLinkURL != "https://example.test/publication" {
+		t.Fatalf("unexpected public link url: %q", cardTable.PublicLinkURL)
+	}
+	if len(cardTable.Lists) != 1 || cardTable.Lists[0].Title != "Triage" {
+		t.Fatalf("unexpected lists: %+v", cardTable.Lists)
+	}
+}
+
+func TestTemplatesService_CreateLibraryCardTableRequiresName(t *testing.T) {
+	svc := testTemplatesServer(t, func(w http.ResponseWriter, _ *http.Request) {
+		t.Fatal("expected no request for an empty name")
+	})
+
+	_, err := svc.CreateLibraryCardTable(context.Background(), "")
+	apiErr, ok := errors.AsType[*Error](err)
+	if !ok || apiErr.Code != CodeUsage {
+		t.Errorf("expected usage error, got: %v", err)
 	}
 }
 

@@ -14,19 +14,63 @@ import { Errors } from "../../errors.js";
 // Types
 // =============================================================================
 
+/** CardTable entity from the Basecamp API. */
+export type CardTable = components["schemas"]["CardTable"];
+/** Todolist entity from the Basecamp API. */
+export type Todolist = components["schemas"]["Todolist"];
 /** Template entity from the Basecamp API. */
 export type Template = components["schemas"]["Template"];
+
+/**
+ * Request parameters for createTemplatification.
+ */
+export interface CreateTemplatificationTemplateRequest {
+  /** What to call the template. Defaults to the source recording's own title. */
+  templateName?: string;
+  /** Carry the comments across. */
+  copyComments?: boolean;
+  /** Carry assignees and the people involved across, adding them to the library
+if they are not already there. */
+  copyAssignments?: boolean;
+  /** Gather the cards into Triage. Card tables only, and ignored otherwise. */
+  moveCardsToTriage?: boolean;
+}
+
+/**
+ * Request parameters for createLibraryCardTable.
+ */
+export interface CreateLibraryCardTableTemplateRequest {
+  /** The template's name. Write-only: the response carries it as `title`. */
+  name: string;
+}
 
 /**
  * Request parameters for createLibraryCopy.
  */
 export interface CreateLibraryCopyTemplateRequest {
-  /** Template recording id */
+  /** The to-do list or card table in the library to copy. */
   templateRecordingId: number;
-  /** Destination parent id */
-  destinationParentId: number;
+  /** The destination project. Basecamp resolves the container from the
+template's kind, so a caller naming a project needs to know nothing about
+docks or to-do sets. Supply this or destination_parent_id; if both are
+sent, destination_parent_id wins. */
+  destinationProjectId?: number;
+  /** The container to copy into, for a caller that already holds one: the
+project's to-do set for a to-do list template, or its dock for a card
+table. A caller who may not edit it gets 404, not 403. */
+  destinationParentId?: number;
   /** Confirm granting destination-project access to people referenced by the template. */
   addingPeopleConfirmed?: boolean;
+}
+
+/**
+ * Request parameters for createLibraryTodolist.
+ */
+export interface CreateLibraryTodolistTemplateRequest {
+  /** What to call the template. */
+  name: string;
+  /** Rich text describing the template. */
+  description?: string;
 }
 
 /**
@@ -78,39 +122,143 @@ export interface CreateProjectTemplateRequest {
 export class TemplatesService extends BaseService {
 
   /**
-   * Get the account's to-do list template library
-   * @returns The template_library
-   * @throws {BasecampError} If the resource is not found
+   * Templatify a to-do list or card table
+   * @param bucketId - The bucket ID
+   * @param recordingId - The to-do list or card table to templatify. Anything else is a 403.
+   * @param req - Templatification creation parameters
+   * @returns The templatification
+   * @throws {BasecampError} If required fields are missing or invalid
    *
    * @example
    * ```ts
-   * const result = await client.templates.getLibrary();
+   * const result = await client.templates.createTemplatification(123, 123, { });
    * ```
    */
-  async getLibrary(): Promise<components["schemas"]["GetTemplateLibraryResponseContent"]> {
+  async createTemplatification(bucketId: number, recordingId: number, req: CreateTemplatificationTemplateRequest): Promise<components["schemas"]["CreateTemplatificationResponseContent"]> {
     const response = await this.request(
       {
         service: "Templates",
-        operation: "GetTemplateLibrary",
-        resourceType: "template_library",
-        isMutation: false,
+        operation: "CreateTemplatification",
+        resourceType: "templatification",
+        isMutation: true,
+        projectId: bucketId,
+        resourceId: recordingId,
       },
       () =>
-        this.client.GET("/template_library.json", {
+        this.client.POST("/buckets/{bucketId}/recordings/{recordingId}/templatifications.json", {
+          params: {
+            path: { bucketId, recordingId },
+          },
+          body: {
+            template_name: req.templateName,
+            copy_comments: req.copyComments,
+            copy_assignments: req.copyAssignments,
+            move_cards_to_triage: req.moveCardsToTriage,
+          },
         })
     );
     return response;
   }
 
   /**
-   * Start copying a to-do list template into a project
+   * Get a templatification
+   * @param bucketId - The bucket ID
+   * @param recordingId - The recording ID
+   * @param templatificationId - The templatification ID
+   * @returns The templatification
+   * @throws {BasecampError} If the resource is not found
+   *
+   * @example
+   * ```ts
+   * const result = await client.templates.getTemplatification(123, 123, 123);
+   * ```
+   */
+  async getTemplatification(bucketId: number, recordingId: number, templatificationId: number): Promise<components["schemas"]["GetTemplatificationResponseContent"]> {
+    const response = await this.request(
+      {
+        service: "Templates",
+        operation: "GetTemplatification",
+        resourceType: "templatification",
+        isMutation: false,
+        projectId: bucketId,
+        resourceId: templatificationId,
+      },
+      () =>
+        this.client.GET("/buckets/{bucketId}/recordings/{recordingId}/templatifications/{templatificationId}", {
+          params: {
+            path: { bucketId, recordingId, templatificationId },
+          },
+        })
+    );
+    return response;
+  }
+
+  /**
+   * Get the account's card table templates
+   * @returns The template_library_card_table
+   * @throws {BasecampError} If the resource is not found
+   *
+   * @example
+   * ```ts
+   * const result = await client.templates.getLibraryCardTables();
+   * ```
+   */
+  async getLibraryCardTables(): Promise<components["schemas"]["GetTemplateLibraryCardTablesResponseContent"]> {
+    const response = await this.request(
+      {
+        service: "Templates",
+        operation: "GetTemplateLibraryCardTables",
+        resourceType: "template_library_card_table",
+        isMutation: false,
+      },
+      () =>
+        this.client.GET("/template_library/card_tables.json", {
+        })
+    );
+    return response;
+  }
+
+  /**
+   * Create a card table template with the default columns
+   * @param req - Template_library_card_table creation parameters
+   * @returns The CardTable
+   * @throws {BasecampError} If required fields are missing or invalid
+   *
+   * @example
+   * ```ts
+   * const result = await client.templates.createLibraryCardTable({ name: "My example" });
+   * ```
+   */
+  async createLibraryCardTable(req: CreateLibraryCardTableTemplateRequest): Promise<CardTable> {
+    if (!req.name) {
+      throw Errors.validation("Name is required");
+    }
+    const response = await this.request(
+      {
+        service: "Templates",
+        operation: "CreateTemplateLibraryCardTable",
+        resourceType: "template_library_card_table",
+        isMutation: true,
+      },
+      () =>
+        this.client.POST("/template_library/card_tables.json", {
+          body: {
+            name: req.name,
+          },
+        })
+    );
+    return response;
+  }
+
+  /**
+   * Start copying a to-do list or card table template into a project
    * @param req - Template_library_copy creation parameters
    * @returns The template_library_copy
    * @throws {BasecampError} If required fields are missing or invalid
    *
    * @example
    * ```ts
-   * const result = await client.templates.createLibraryCopy({ templateRecordingId: 1, destinationParentId: 1 });
+   * const result = await client.templates.createLibraryCopy({ templateRecordingId: 1 });
    * ```
    */
   async createLibraryCopy(req: CreateLibraryCopyTemplateRequest): Promise<components["schemas"]["CreateTemplateLibraryCopyResponseContent"]> {
@@ -125,6 +273,7 @@ export class TemplatesService extends BaseService {
         this.client.POST("/template_library/copies.json", {
           body: {
             template_recording_id: req.templateRecordingId,
+            destination_project_id: req.destinationProjectId,
             destination_parent_id: req.destinationParentId,
             adding_people_confirmed: req.addingPeopleConfirmed,
           },
@@ -157,6 +306,64 @@ export class TemplatesService extends BaseService {
         this.client.GET("/template_library/copies/{copyId}", {
           params: {
             path: { copyId },
+          },
+        })
+    );
+    return response;
+  }
+
+  /**
+   * Get the account's to-do list templates
+   * @returns The template_library_todolist
+   * @throws {BasecampError} If the resource is not found
+   *
+   * @example
+   * ```ts
+   * const result = await client.templates.getLibraryTodolists();
+   * ```
+   */
+  async getLibraryTodolists(): Promise<components["schemas"]["GetTemplateLibraryTodolistsResponseContent"]> {
+    const response = await this.request(
+      {
+        service: "Templates",
+        operation: "GetTemplateLibraryTodolists",
+        resourceType: "template_library_todolist",
+        isMutation: false,
+      },
+      () =>
+        this.client.GET("/template_library/todolists.json", {
+        })
+    );
+    return response;
+  }
+
+  /**
+   * Create an empty to-do list template
+   * @param req - Template_library_todolist creation parameters
+   * @returns The Todolist
+   * @throws {BasecampError} If required fields are missing or invalid
+   *
+   * @example
+   * ```ts
+   * const result = await client.templates.createLibraryTodolist({ name: "My example" });
+   * ```
+   */
+  async createLibraryTodolist(req: CreateLibraryTodolistTemplateRequest): Promise<Todolist> {
+    if (!req.name) {
+      throw Errors.validation("Name is required");
+    }
+    const response = await this.request(
+      {
+        service: "Templates",
+        operation: "CreateTemplateLibraryTodolist",
+        resourceType: "template_library_todolist",
+        isMutation: true,
+      },
+      () =>
+        this.client.POST("/template_library/todolists.json", {
+          body: {
+            name: req.name,
+            description: req.description,
           },
         })
     );

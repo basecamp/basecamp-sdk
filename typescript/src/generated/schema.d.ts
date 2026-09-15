@@ -355,6 +355,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/buckets/{bucketId}/recordings/{recordingId}/templatifications.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Templatify a to-do list or card table */
+        post: operations["CreateTemplatification"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/buckets/{bucketId}/recordings/{recordingId}/templatifications/{templatificationId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Get a templatification */
+        get: operations["GetTemplatification"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/buckets/{bucketId}/todosets/{todosetId}/todos.json": {
         parameters: {
             query?: never;
@@ -3012,17 +3046,18 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/template_library.json": {
+    "/template_library/card_tables.json": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** @description Get the account's to-do list template library */
-        get: operations["GetTemplateLibrary"];
+        /** @description Get the account's card table templates */
+        get: operations["GetTemplateLibraryCardTables"];
         put?: never;
-        post?: never;
+        /** @description Create a card table template with the default columns */
+        post: operations["CreateTemplateLibraryCardTable"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3038,7 +3073,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Start copying a to-do list template into a project */
+        /** @description Start copying a to-do list or card table template into a project */
         post: operations["CreateTemplateLibraryCopy"];
         delete?: never;
         options?: never;
@@ -3057,6 +3092,24 @@ export interface paths {
         get: operations["GetTemplateLibraryCopy"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/template_library/todolists.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Get the account's to-do list templates */
+        get: operations["GetTemplateLibraryTodolists"];
+        put?: never;
+        /** @description Create an empty to-do list template */
+        post: operations["CreateTemplateLibraryTodolist"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3950,6 +4003,18 @@ export interface components {
             app_url: string;
             bookmark_url?: string;
             subscription_url?: string;
+            /**
+             * Format: int32
+             * @description Position on the project dock. Absent on a card table template, which the
+             *     library orders by title instead.
+             */
+            position?: number;
+            parent?: components["schemas"]["RecordingParent"];
+            /**
+             * @description Public sharing URL. Absent for callers who may not share publicly, so the
+             *     same card table can carry it for one person and not another.
+             */
+            public_link_url?: string;
             bucket: components["schemas"]["TodoBucket"];
             creator: components["schemas"]["Person"];
             subscribers?: components["schemas"]["Person"][];
@@ -4443,20 +4508,62 @@ export interface components {
             visible_to_clients?: boolean;
         };
         CreateScheduleEntryResponseContent: components["schemas"]["ScheduleEntry"];
+        CreateTemplateLibraryCardTableRequestContent: {
+            /** @description The template's name. Write-only: the response carries it as `title`. */
+            name: string;
+        };
+        CreateTemplateLibraryCardTableResponseContent: components["schemas"]["CardTable"];
         CreateTemplateLibraryCopyRequestContent: {
-            /** Format: int64 */
+            /**
+             * Format: int64
+             * @description The to-do list or card table in the library to copy.
+             */
             template_recording_id: number;
-            /** Format: int64 */
-            destination_parent_id: number;
+            /**
+             * Format: int64
+             * @description The destination project. Basecamp resolves the container from the
+             *     template's kind, so a caller naming a project needs to know nothing about
+             *     docks or to-do sets. Supply this or destination_parent_id; if both are
+             *     sent, destination_parent_id wins.
+             */
+            destination_project_id?: number;
+            /**
+             * Format: int64
+             * @description The container to copy into, for a caller that already holds one: the
+             *     project's to-do set for a to-do list template, or its dock for a card
+             *     table. A caller who may not edit it gets 404, not 403.
+             */
+            destination_parent_id?: number;
             /** @description Confirm granting destination-project access to people referenced by the template. */
             adding_people_confirmed?: boolean;
         };
         CreateTemplateLibraryCopyResponseContent: components["schemas"]["TemplateLibraryCopy"];
+        CreateTemplateLibraryTodolistRequestContent: {
+            /** @description What to call the template. */
+            name: string;
+            /** @description Rich text describing the template. */
+            description?: string;
+        };
+        CreateTemplateLibraryTodolistResponseContent: components["schemas"]["Todolist"];
         CreateTemplateRequestContent: {
             name: string;
             description?: string;
         };
         CreateTemplateResponseContent: components["schemas"]["Template"];
+        CreateTemplatificationRequestContent: {
+            /** @description What to call the template. Defaults to the source recording's own title. */
+            template_name?: string;
+            /** @description Carry the comments across. */
+            copy_comments?: boolean;
+            /**
+             * @description Carry assignees and the people involved across, adding them to the library
+             *     if they are not already there.
+             */
+            copy_assignments?: boolean;
+            /** @description Gather the cards into Triage. Card tables only, and ignored otherwise. */
+            move_cards_to_triage?: boolean;
+        };
+        CreateTemplatificationResponseContent: components["schemas"]["Templatification"];
         CreateTimesheetEntryRequestContent: {
             date: string;
             hours: string;
@@ -5100,9 +5207,11 @@ export interface components {
         GetScheduleResponseContent: components["schemas"]["Schedule"];
         GetSearchMetadataResponseContent: components["schemas"]["SearchMetadata"];
         GetSubscriptionResponseContent: components["schemas"]["Subscription"];
+        GetTemplateLibraryCardTablesResponseContent: components["schemas"]["TemplateLibraryCardTables"];
         GetTemplateLibraryCopyResponseContent: components["schemas"]["TemplateLibraryCopy"];
-        GetTemplateLibraryResponseContent: components["schemas"]["TemplateLibrary"];
+        GetTemplateLibraryTodolistsResponseContent: components["schemas"]["TemplateLibraryTodolists"];
         GetTemplateResponseContent: components["schemas"]["Template"];
+        GetTemplatificationResponseContent: components["schemas"]["Templatification"];
         GetTimesheetEntryResponseContent: components["schemas"]["TimesheetEntry"];
         GetTimesheetReportResponseContent: components["schemas"]["TimesheetEntry"][];
         GetTodoResponseContent: components["schemas"]["Todo"];
@@ -6504,10 +6613,14 @@ export interface components {
             app_url?: string;
             dock?: components["schemas"]["DockItem"][];
         };
-        TemplateLibrary: {
+        TemplateLibraryCardTables: {
             bucket: components["schemas"]["RecordingBucket"];
-            todoset: components["schemas"]["RecordingParent"];
-            todolists: components["schemas"]["Todolist"][];
+            kanban_boardset: components["schemas"]["RecordingParent"] | null;
+            /**
+             * @description Active templates in title order, as recording projections: read one through
+             *     GetCardTable to see its columns.
+             */
+            card_tables: components["schemas"]["Recording"][];
         };
         TemplateLibraryConfirmationPerson: {
             /** Format: int64 */
@@ -6528,6 +6641,27 @@ export interface components {
             destination_parent_id: number;
             url: string;
             destination_todolist?: components["schemas"]["Todolist"];
+            destination_card_table?: components["schemas"]["CardTable"];
+        };
+        TemplateLibraryTodolists: {
+            bucket: components["schemas"]["RecordingBucket"];
+            todoset: components["schemas"]["RecordingParent"];
+            todolists: components["schemas"]["Todolist"][];
+        };
+        /**
+         * @description The record of templatifying a recording into the library. Carries no
+         *     destination parent, unlike a copy: the destination is always the library.
+         */
+        Templatification: {
+            /** Format: int64 */
+            id: number;
+            /** @description pending|processing|completed|failed */
+            status: string;
+            /** Format: int64 */
+            source_recording_id: number;
+            url: string;
+            destination_todolist?: components["schemas"]["Todolist"];
+            destination_card_table?: components["schemas"]["CardTable"];
         };
         /**
          * @description A single timeline-event attachment. This is an optional-field superset over
@@ -9451,6 +9585,157 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ValidationErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    CreateTemplatification: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bucketId: number;
+                /** @description The to-do list or card table to templatify. Anything else is a 403. */
+                recordingId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["CreateTemplatificationRequestContent"];
+            };
+        };
+        responses: {
+            /** @description CreateTemplatification 201 response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreateTemplatificationResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description FieldValidationError 422 response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FieldValidationErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    GetTemplatification: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bucketId: number;
+                recordingId: number;
+                templatificationId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description GetTemplatification 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetTemplatificationResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
                 };
             };
             /** @description RateLimitError 429 response */
@@ -21289,7 +21574,7 @@ export interface operations {
             };
         };
     };
-    GetTemplateLibrary: {
+    GetTemplateLibraryCardTables: {
         parameters: {
             query?: never;
             header?: never;
@@ -21298,13 +21583,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description GetTemplateLibrary 200 response */
+            /** @description GetTemplateLibraryCardTables 200 response */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["GetTemplateLibraryResponseContent"];
+                    "application/json": components["schemas"]["GetTemplateLibraryCardTablesResponseContent"];
                 };
             };
             /** @description UnauthorizedError 401 response */
@@ -21323,6 +21608,75 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    CreateTemplateLibraryCardTable: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateTemplateLibraryCardTableRequestContent"];
+            };
+        };
+        responses: {
+            /** @description CreateTemplateLibraryCardTable 201 response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreateTemplateLibraryCardTableResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description ValidationError 422 response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationErrorResponseContent"];
                 };
             };
             /** @description RateLimitError 429 response */
@@ -21468,6 +21822,131 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    GetTemplateLibraryTodolists: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description GetTemplateLibraryTodolists 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetTemplateLibraryTodolistsResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    CreateTemplateLibraryTodolist: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateTemplateLibraryTodolistRequestContent"];
+            };
+        };
+        responses: {
+            /** @description CreateTemplateLibraryTodolist 201 response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreateTemplateLibraryTodolistResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description ValidationError 422 response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationErrorResponseContent"];
                 };
             };
             /** @description RateLimitError 429 response */

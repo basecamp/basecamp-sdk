@@ -820,10 +820,10 @@ async fn subscriptions_get_reaches_the_wire() {
 }
 
 #[tokio::test]
-async fn templates_get_library_reaches_the_wire() {
+async fn templates_get_library_todolists_reaches_the_wire() {
     let server = MockServer::start().await;
     Mock::given(method("GET"))
-        .and(path("/999/template_library.json"))
+        .and(path("/999/template_library/todolists.json"))
         .and(header("Authorization", "Bearer test-token"))
         .and(header("Accept", "application/json"))
         .and(header("User-Agent", basecamp_sdk::version::default_user_agent().as_str()))
@@ -831,7 +831,84 @@ async fn templates_get_library_reaches_the_wire() {
         .expect(1)
         .mount(&server)
         .await;
-    account(&server).templates().get_library().await.unwrap();
+    account(&server)
+        .templates()
+        .get_library_todolists()
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn templates_get_library_card_tables_reaches_the_wire() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/999/template_library/card_tables.json"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "bucket": {"id": 1, "name": "x", "type": "TemplateLibrary"},
+            "kanban_boardset": {"app_url": "x", "id": 2, "title": "x", "type": "Kanban::Boardset", "url": "x"},
+            "card_tables": []
+        })))
+        .expect(1)
+        .mount(&server)
+        .await;
+    let library = account(&server)
+        .templates()
+        .get_library_card_tables()
+        .await
+        .unwrap();
+    assert_eq!(library.kanban_boardset.expect("boardset").id, 2);
+}
+
+#[tokio::test]
+async fn templates_get_library_card_tables_accepts_a_null_container() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/999/template_library/card_tables.json"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "bucket": {"id": 1, "name": "x", "type": "TemplateLibrary"},
+            "kanban_boardset": null,
+            "card_tables": []
+        })))
+        .expect(1)
+        .mount(&server)
+        .await;
+    let library = account(&server)
+        .templates()
+        .get_library_card_tables()
+        .await
+        .unwrap();
+    assert!(library.kanban_boardset.is_none());
+    assert!(library.card_tables.is_empty());
+}
+
+#[tokio::test]
+async fn templates_create_library_card_table_reaches_the_wire() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/999/template_library/card_tables.json"))
+        .respond_with(ResponseTemplate::new(201).set_body_json(serde_json::json!({
+            "id": 3, "status": "active", "visible_to_clients": false,
+            "created_at": "2026-09-09T01:52:46Z", "updated_at": "2026-09-09T01:52:46Z",
+            "title": "Client onboarding", "inherits_status": true, "type": "Kanban::Board",
+            "url": "x", "app_url": "x",
+            "parent": {"app_url": "x", "id": 2, "title": "x", "type": "Kanban::Boardset", "url": "x"},
+            "bucket": {"id": 1, "name": "x", "type": "TemplateLibrary"},
+            "creator": {"id": 4, "name": "Victor"}
+        })))
+        .expect(1)
+        .mount(&server)
+        .await;
+    let request = basecamp_sdk::models::CreateTemplateLibraryCardTableRequestContent {
+        name: "Client onboarding".to_string(),
+    };
+    let card_table = account(&server)
+        .templates()
+        .create_library_card_table(&request)
+        .await
+        .unwrap();
+    assert_eq!(card_table.title, "Client onboarding");
+    assert_eq!(card_table.parent.expect("parent").id, 2);
+    assert!(card_table.position.is_none());
 }
 
 #[tokio::test]
@@ -1394,8 +1471,10 @@ error_case!(
 );
 
 error_case!(
-    templates_get_library_maps_a_rejection,
-    |account: basecamp_sdk::AccountClient| async move { account.templates().get_library().await }
+    templates_get_library_todolists_maps_a_rejection,
+    |account: basecamp_sdk::AccountClient| async move {
+        account.templates().get_library_todolists().await
+    }
 );
 
 error_case!(

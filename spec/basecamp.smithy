@@ -255,7 +255,12 @@ service Basecamp {
     DeleteTemplate,
     CreateProjectFromTemplate,
     GetProjectConstruction,
-    GetTemplateLibrary,
+    GetTemplateLibraryTodolists,
+    GetTemplateLibraryCardTables,
+    CreateTemplateLibraryTodolist,
+    CreateTemplateLibraryCardTable,
+    CreateTemplatification,
+    GetTemplatification,
     CreateTemplateLibraryCopy,
     GetTemplateLibraryCopy,
     GetTool,
@@ -5960,6 +5965,18 @@ structure CardTable {
   app_url: String
   bookmark_url: String
   subscription_url: String
+
+  /// Position on the project dock. Absent on a card table template, which the
+  /// library orders by title instead.
+  position: Integer
+
+  /// Containing recording. The mirror of `position`: present on a card table
+  /// template, absent on one sitting directly on a project dock.
+  parent: RecordingParent
+
+  /// Public sharing URL. Absent for callers who may not share publicly, so the
+  /// same card table can carry it for one person and not another.
+  public_link_url: String
   @required
   bucket: TodoBucket
   @required
@@ -8692,29 +8709,173 @@ structure GetProjectConstructionOutput {
   construction: ProjectConstruction
 }
 
-// ===== To-do List Template Library Operations =====
+// ===== Template Library Operations =====
 
-/// Get the account's to-do list template library
+/// Get the account's to-do list templates
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "GET", uri: "/{accountId}/template_library.json")
-operation GetTemplateLibrary {
-  input: GetTemplateLibraryInput
-  output: GetTemplateLibraryOutput
+@http(method: "GET", uri: "/{accountId}/template_library/todolists.json")
+operation GetTemplateLibraryTodolists {
+  input: GetTemplateLibraryTodolistsInput
+  output: GetTemplateLibraryTodolistsOutput
   errors: [UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
-structure GetTemplateLibraryInput {
+structure GetTemplateLibraryTodolistsInput {
   @required
   @httpLabel
   accountId: AccountId
 }
 
-structure GetTemplateLibraryOutput {
-  library: TemplateLibrary
+structure GetTemplateLibraryTodolistsOutput {
+  library: TemplateLibraryTodolists
 }
 
-/// Start copying a to-do list template into a project
+/// Get the account's card table templates
+@readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@http(method: "GET", uri: "/{accountId}/template_library/card_tables.json")
+operation GetTemplateLibraryCardTables {
+  input: GetTemplateLibraryCardTablesInput
+  output: GetTemplateLibraryCardTablesOutput
+  errors: [UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure GetTemplateLibraryCardTablesInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+}
+
+structure GetTemplateLibraryCardTablesOutput {
+  library: TemplateLibraryCardTables
+}
+
+/// Create a card table template with the default columns
+@basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@http(method: "POST", uri: "/{accountId}/template_library/card_tables.json", code: 201)
+operation CreateTemplateLibraryCardTable {
+  input: CreateTemplateLibraryCardTableInput
+  output: CreateTemplateLibraryCardTableOutput
+  errors: [ValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure CreateTemplateLibraryCardTableInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  /// The template's name. Write-only: the response carries it as `title`.
+  @required
+  name: String
+}
+
+structure CreateTemplateLibraryCardTableOutput {
+  card_table: CardTable
+}
+
+/// Create an empty to-do list template
+@basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@http(method: "POST", uri: "/{accountId}/template_library/todolists.json", code: 201)
+operation CreateTemplateLibraryTodolist {
+  input: CreateTemplateLibraryTodolistInput
+  output: CreateTemplateLibraryTodolistOutput
+  errors: [ValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure CreateTemplateLibraryTodolistInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  /// What to call the template.
+  @required
+  name: String
+
+  /// Rich text describing the template.
+  description: String
+}
+
+structure CreateTemplateLibraryTodolistOutput {
+  todolist: Todolist
+}
+
+// ===== Templatification Operations =====
+
+/// Templatify a to-do list or card table
+@basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@http(method: "POST", uri: "/{accountId}/buckets/{bucketId}/recordings/{recordingId}/templatifications.json", code: 201)
+operation CreateTemplatification {
+  input: CreateTemplatificationInput
+  output: CreateTemplatificationOutput
+  errors: [FieldValidationError, NotFoundError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure CreateTemplatificationInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  bucketId: ProjectId
+
+  /// The to-do list or card table to templatify. Anything else is a 403.
+  @required
+  @httpLabel
+  recordingId: RecordingId
+
+  /// What to call the template. Defaults to the source recording's own title.
+  template_name: String
+
+  /// Carry the comments across.
+  copy_comments: Boolean
+
+  /// Carry assignees and the people involved across, adding them to the library
+  /// if they are not already there.
+  copy_assignments: Boolean
+
+  /// Gather the cards into Triage. Card tables only, and ignored otherwise.
+  move_cards_to_triage: Boolean
+}
+
+structure CreateTemplatificationOutput {
+  templatification: Templatification
+}
+
+/// Get a templatification
+@readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@http(method: "GET", uri: "/{accountId}/buckets/{bucketId}/recordings/{recordingId}/templatifications/{templatificationId}")
+operation GetTemplatification {
+  input: GetTemplatificationInput
+  output: GetTemplatificationOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure GetTemplatificationInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  bucketId: ProjectId
+
+  @required
+  @httpLabel
+  recordingId: RecordingId
+
+  @required
+  @httpLabel
+  templatificationId: TemplatificationId
+}
+
+structure GetTemplatificationOutput {
+  templatification: Templatification
+}
+
+/// Start copying a to-do list or card table template into a project
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "POST", uri: "/{accountId}/template_library/copies.json", code: 201)
 operation CreateTemplateLibraryCopy {
@@ -8728,11 +8889,20 @@ structure CreateTemplateLibraryCopyInput {
   @httpLabel
   accountId: AccountId
 
+  /// The to-do list or card table in the library to copy.
   @required
-  template_recording_id: TodolistId
+  template_recording_id: RecordingId
 
-  @required
-  destination_parent_id: TodosetId
+  /// The destination project. Basecamp resolves the container from the
+  /// template's kind, so a caller naming a project needs to know nothing about
+  /// docks or to-do sets. Supply this or destination_parent_id; if both are
+  /// sent, destination_parent_id wins.
+  destination_project_id: ProjectId
+
+  /// The container to copy into, for a caller that already holds one: the
+  /// project's to-do set for a to-do list template, or its dock for a card
+  /// table. A caller who may not edit it gets 404, not 403.
+  destination_parent_id: RecordingId
 
   /// Confirm granting destination-project access to people referenced by the template.
   adding_people_confirmed: Boolean
@@ -10010,7 +10180,7 @@ structure ProjectConstruction {
 
 long TemplateLibraryCopyId
 
-structure TemplateLibrary {
+structure TemplateLibraryTodolists {
   @required
   bucket: RecordingBucket
 
@@ -10019,6 +10189,22 @@ structure TemplateLibrary {
 
   @required
   todolists: TodolistList
+}
+
+structure TemplateLibraryCardTables {
+  @required
+  bucket: RecordingBucket
+
+  /// The container holding the card table templates, `null` until the first one
+  /// is created. Required-and-nullable is layered on in the OpenAPI, as for
+  /// Wormhole.destination_url, since Smithy cannot spell it.
+  @required
+  kanban_boardset: RecordingParent
+
+  /// Active templates in title order, as recording projections: read one through
+  /// GetCardTable to see its columns.
+  @required
+  card_tables: RecordingList
 }
 
 @documentation("pending|processing|completed|failed")
@@ -10032,16 +10218,20 @@ structure TemplateLibraryCopy {
   status: TemplateLibraryCopyStatus
 
   @required
-  source_recording_id: TodolistId
+  source_recording_id: RecordingId
 
   @required
-  destination_parent_id: TodosetId
+  destination_parent_id: RecordingId
 
   @required
   url: String
 
-  /// The copied to-do list. Present when the copy is completed.
+  /// The copied to-do list.
   destination_todolist: Todolist
+
+  /// The copied card table. Exactly one destination is present once the copy
+  /// completes, according to the kind copied, and neither before.
+  destination_card_table: CardTable
 }
 
 list TemplateLibraryConfirmationPersonList {
@@ -10071,6 +10261,30 @@ structure PeopleConfirmationRequiredError {
 
   @required
   people: TemplateLibraryConfirmationPersonList
+}
+
+long TemplatificationId
+
+/// The record of templatifying a recording into the library. Carries no
+/// destination parent, unlike a copy: the destination is always the library.
+structure Templatification {
+  @required
+  id: TemplatificationId
+
+  @required
+  status: TemplateLibraryCopyStatus
+
+  @required
+  source_recording_id: RecordingId
+
+  @required
+  url: String
+
+  /// Exactly one destination is present once the save completes, according to
+  /// the kind saved, and neither before.
+  destination_todolist: Todolist
+
+  destination_card_table: CardTable
 }
 
 // ===== Tool Shapes =====
