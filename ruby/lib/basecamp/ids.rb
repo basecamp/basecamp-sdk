@@ -46,26 +46,26 @@ module Basecamp
       id
     end
 
-    # Reads an id off a value the API sent. An Integer passes through; a string
-    # of digits is read as one; ABSENT reads as 0; anything else is MALFORMED
-    # and returns nil.
+    # Reads an id off a value the API sent: the Integer itself, 0 when the value
+    # is absent, and nil when it is anything else.
     #
-    # The three-way answer is the point, and an earlier version got it wrong by
-    # collapsing malformed into absent. It exists because +to_i+ is not defined
-    # on every JSON shape — <tt>{"bucket": {"id": []}}</tt> is valid JSON and
-    # turned a projection into a NoMethodError — but the reference decodes into
-    # a typed integer, so a payload like that fails the READ there. Reading it
-    # as absent instead let it through silently, and in the one place that
-    # matters it disarmed a check: a bucket id of 0 is not compared, so a
-    # recording from another bucket would have been returned. Loud was bad;
-    # silent was worse.
+    # Nothing is coerced, and a string of digits is NOT an id. The reference
+    # decodes every id into a typed integer, so a JSON string, float, boolean,
+    # array or object there is a DECODE error that fails the read — and this
+    # tier has no decoder, which is precisely why the check has to be explicit
+    # (the same reason {Basecamp::Services::MergeSafe} exists). An earlier
+    # version accepted digit strings on an argument about deduplicating ids
+    # across two sources; that argument was written in a comment and was never
+    # true of the reference.
+    #
+    # The caller turns nil into a malformed-response error. It is not raised
+    # here because the message belongs to the field, not to this reader.
     #
     # @param value [Object] as it arrived on the wire
     # @return [Integer, nil] the id, 0 when absent, nil when malformed
     def from_wire(value)
       return value if value.is_a?(Integer)
       return 0 if value.nil?
-      return value.to_i if value.is_a?(String) && value.b.match?(/\A\d+\z/n)
 
       nil
     end

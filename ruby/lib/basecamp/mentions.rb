@@ -97,18 +97,22 @@ module Basecamp
     # only authenticity-adjacent check is whether an sgid names the person it
     # is given.
     #
-    # The residue runs the other way and is stated rather than fixed, because
-    # every member of it is Ruby's URI parser refusing an authority the
-    # reference's parser tolerates: a raw non-ASCII byte, the four printable
-    # bytes <tt>" < > ]</tt>, and a doubled port like <tt>:8080:90</tt>. Seven
-    # shapes across 270 swept.
+    # A RESIDUE remains, and it is a residue rather than a list: the two URI
+    # parsers disagree about which authorities are well-formed, and every
+    # attempt to enumerate that disagreement here has been wrong — first a
+    # count, then a set of categories, then an absolute ("every member") that a
+    # single shape falsified. What is true, and checked by the harness rather
+    # than asserted here, is the SHAPE of it: Ruby's parser is stricter on most
+    # authorities the reference tolerates (raw non-ASCII, <tt>" < > ]</tt>,
+    # repeated <tt>@</tt>, doubled ports, IPv6 zone-ids) and more permissive on
+    # at least one it refuses (the RFC 3986 IPvFuture literal <tt>[v7.x]</tt>).
     #
-    # What it COSTS is worse than "a mention is not reported", and that is worth
-    # being exact about, because the same parser is entered from both sides.
-    # Read side, an sgid like that reports nobody. WRITE side — {mention_markup}
-    # asks this whether the sgid names the person it is given — a refusal raises,
-    # and +expand_mentions+ fails the whole comment rather than posting it
-    # without one mention. Measured from both entry points, not reasoned about.
+    # What the STRICTER side costs is worse than "a mention is not reported",
+    # and that is worth being exact about, because the same parser is entered
+    # from both directions. Read side, such an sgid reports nobody. WRITE side —
+    # {mention_markup} asks this whether an sgid names the person it is given —
+    # a refusal raises, and +expand_mentions+ fails the whole comment rather
+    # than posting it with one mention missing. Measured from both entry points.
     #
     # It is left because the sgid on the write side comes from a people read, and
     # BC3 mints <tt>gid://bc3/Person/N</tt> — the authority is a constant there,

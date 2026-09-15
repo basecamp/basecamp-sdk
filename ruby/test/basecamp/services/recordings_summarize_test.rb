@@ -158,23 +158,18 @@ class RecordingsSummarizeTest < Minitest::Test
     assert_equal "unknown_recording_type", error.kind
   end
 
-  def test_a_listing_id_matches_a_dock_id_whatever_the_wire_spelled_it
-    # Both sources normalize their ids, so a candidate already tried from the
-    # dock is not tried again — and its budget not spent twice — when the
-    # listing reports the same Campfire as a string.
+  def test_a_listed_campfire_already_tried_from_the_dock_is_not_tried_twice
+    # One candidate, two sources, one line read — the budget is not spent twice
+    # on the same Campfire.
     stub_dock([ 500 ])
     stub_line(500, status: 404, body: { "error" => "Record not found" })
-    stub_get("/12345/chats.json", response_body: [
-      { "id" => "500", "bucket" => { "id" => BUCKET } }
-    ])
+    stub_get("/12345/chats.json", response_body: [ { "id" => 500, "bucket" => { "id" => BUCKET } } ])
 
     error = assert_raises(Basecamp::UnresolvedRecordingError) { summarize(event_type: "chat.line.created") }
 
     assert_equal [ 500 ], error.campfire_ids
     assert_requested(:get, "#{BASE_URL}/12345/chats/500/lines/1", times: 1)
   end
-
-  # --- projection ----------------------------------------------------------
 
   def test_refuses_a_read_that_came_back_from_another_bucket
     # A pointer from one project must never resolve to a recording in another.
@@ -186,77 +181,78 @@ class RecordingsSummarizeTest < Minitest::Test
     assert_equal 999, error.actual_bucket_id
   end
 
-  def test_a_bucket_id_that_is_present_and_unreadable_fails_closed
-    # Absent and malformed are different answers. The reference decodes into a
-    # typed integer and fails the READ on a payload like this; reading it as
-    # absent would skip the comparison below, which is the one check standing
-    # between a pointer and a recording in another bucket.
-    [ [], {}, 12.5, true, "12oops" ].each do |malformed|
+  def test_a_bucket_id_of_the_wrong_type_fails_the_read
+    # The reference decodes every id into a typed integer, so a payload like
+    # this is a decode failure that fails the READ — it never reaches the
+    # comparison. Reading it as absent would skip that comparison, which is how
+    # a recording from another project gets returned.
+    [ [], {}, 12.5, true, "12oops", "2085958499" ].each do |malformed|
       stub_get("/12345/comments/1", response_body: recording("bucket" => { "id" => malformed }))
 
-      assert_raises(Basecamp::BucketMismatchError, "a bucket id of #{malformed.inspect} must fail closed") do
+      error = assert_raises(Basecamp::ApiError, "a bucket id of #{malformed.inspect}") do
+        summarize(event_type: "comment.created")
+      end
+
+      assert_equal Basecamp::ErrorCode::API, error.code
+      assert_not error.retryable?, "re-requesting cannot repair a malformed body"
+      WebMock.reset!
+    end
+  end
+
+  def test_a_bucket_that_is_not_an_object_fails_the_read
+    # Absent or null is genuinely no bucket — the reference holds a pointer
+    # there and reads its zero value. A number, a string or an array is a decode
+    # failure there, not a zero value.
+    [ 5, "x", [] ].each do |malformed|
+      stub_get("/12345/comments/1", response_body: recording("bucket" => malformed))
+
+      assert_raises(Basecamp::ApiError, "a bucket of #{malformed.inspect}") do
         summarize(event_type: "comment.created")
       end
       WebMock.reset!
     end
   end
 
-  def test_a_bucket_that_is_not_an_object_is_read_as_absent
-    # A "bucket" member that is not an object has no id at all, which is the
-    # reference's zero value and not a malformed one.
-    [ 5, "x", [] ].each do |malformed|
-      stub_get("/12345/comments/1", response_body: recording("bucket" => malformed))
-
-      assert_equal 1, summarize(event_type: "comment.created")["id"]
-      WebMock.reset!
-    end
-  end
-
-  def test_a_bucket_id_spelled_as_digits_is_read_as_that_id
-    # The wire spelling is not always an integer, and the two must compare. A
-    # matching one passes; a different one is still a mismatch.
-    stub_get("/12345/comments/1", response_body: recording("bucket" => { "id" => BUCKET.to_s }))
-
-    assert_equal 1, summarize(event_type: "comment.created")["id"]
-
-    WebMock.reset!
-    stub_get("/12345/comments/1", response_body: recording("bucket" => { "id" => "999" }))
+  def test_a_negative_bucket_id_is_a_mismatch
+    # NON-ZERO, not positive. The reference compares whenever its bucket id is
+    # not the zero value, so a negative one is a mismatch there — and this was
+    # the one place an earlier sweep of that same defect did not reach, which
+    # left the check failing OPEN.
+    stub_get("/12345/comments/1", response_body: recording("bucket" => { "id" => -5 }))
 
     error = assert_raises(Basecamp::BucketMismatchError) { summarize(event_type: "comment.created") }
 
-    assert_equal 999, error.actual_bucket_id
+    assert_equal(-5, error.actual_bucket_id)
   end
 
-  def test_a_malformed_campfire_id_is_skipped_rather_than_raising
+  def test_a_campfire_id_of_the_wrong_type_fails_the_read
+    # Same rule, same reason: a decode failure in the reference fails the whole
+    # project or listing read rather than quietly skipping one candidate.
     stub_get("/12345/projects/#{BUCKET}", response_body: {
-      "id" => BUCKET, "dock" => [ { "id" => [], "name" => "chat" }, { "id" => 500, "name" => "chat" } ]
+      "id" => BUCKET, "dock" => [ { "id" => [], "name" => "chat" } ]
     })
-    stub_get("/12345/chats.json", response_body: [
-      { "id" => {}, "bucket" => { "id" => BUCKET } },
-      { "id" => 501, "bucket" => { "id" => [] } }
-    ])
-    [ 500, 501 ].each { |id| stub_line(id, status: 404, body: { "error" => "Record not found" }) }
+
+    assert_raises(Basecamp::ApiError) { summarize(event_type: "chat.line.created") }
+
+    WebMock.reset!
+    stub_dock([])
+    stub_get("/12345/chats.json", response_body: [ { "id" => "500", "bucket" => { "id" => BUCKET } } ])
+
+    assert_raises(Basecamp::ApiError) { summarize(event_type: "chat.line.created") }
+  end
+
+  def test_a_listed_campfire_with_a_zero_id_is_still_a_candidate
+    # The reference applies NO id filter to a listed Campfire — its only guard
+    # is on the bucket id — so a zero id is tried there and was dropped here.
+    stub_dock([])
+    stub_get("/12345/chats.json", response_body: [ { "id" => 0, "bucket" => { "id" => BUCKET } } ])
+    stub_request(:get, "#{BASE_URL}/12345/chats/0/lines/1")
+      .to_return(status: 404, body: '{"error":"Record not found"}',
+                 headers: { "Content-Type" => "application/json" })
 
     error = assert_raises(Basecamp::UnresolvedRecordingError) { summarize(event_type: "chat.line.created") }
 
-    assert_equal [ 500 ], error.campfire_ids
-  end
-
-  def test_a_campfire_id_spelled_as_digits_is_a_candidate
-    # The branch that reads a digit string was untested, and the comment saying
-    # why it exists — so a listing id spelled as a string dedupes against the
-    # same id from the dock rather than spending the budget twice — stood in
-    # for a test until now.
-    stub_get("/12345/projects/#{BUCKET}", response_body: {
-      "id" => BUCKET, "dock" => [ { "id" => 500, "name" => "chat" } ]
-    })
-    stub_get("/12345/chats.json", response_body: [ { "id" => "500", "bucket" => { "id" => BUCKET.to_s } } ])
-    stub_line(500, status: 404, body: { "error" => "Record not found" })
-
-    error = assert_raises(Basecamp::UnresolvedRecordingError) { summarize(event_type: "chat.line.created") }
-
-    assert_equal [ 500 ], error.campfire_ids
-    assert_requested(:get, "#{BASE_URL}/12345/chats/500/lines/1", times: 1)
+    assert_equal [ 0 ], error.campfire_ids
   end
 
   def test_a_negative_campfire_id_is_still_a_candidate
