@@ -157,7 +157,36 @@ class TestExpandMentions:
         with pytest.raises(ValueError) as raised:
             _comments().expand_mentions(content="<div>x</div>", person_ids=[VICTOR_ID])
 
-        assert str(raised.value) == f"resolving mention for person {VICTOR_ID}"
+        # No message to prefix, so the context goes where it can: a note.
+        assert f"resolving mention for person {VICTOR_ID}" in raised.value.__notes__
+
+    @respx.mock
+    def test_an_error_whose_str_is_not_its_args_is_not_corrupted(self):
+        # `OSError` renders "[Errno 2] ..." whatever its args say, so rewriting
+        # them would hide the context AND leave the args wrong.
+        respx.get(f"{BASE}/people/{VICTOR_ID}").mock(side_effect=OSError(2, "No such file"))
+
+        with pytest.raises(OSError) as raised:
+            _comments().expand_mentions(content="<div>x</div>", person_ids=[VICTOR_ID])
+
+        assert raised.value.args == (2, "No such file")
+        assert str(raised.value) == "[Errno 2] No such file"
+        assert f"resolving mention for person {VICTOR_ID}" in raised.value.__notes__
+
+    @respx.mock
+    def test_re_annotating_names_the_person_that_just_failed(self):
+        # Go builds a new wrap each time and always names the id it just failed
+        # on. A re-raised instance must not keep naming the first.
+        failure = NotFoundError("Not found", http_status=404)
+        respx.get(url__regex=rf"{BASE}/people/\d+").mock(side_effect=failure)
+
+        with pytest.raises(NotFoundError):
+            _comments().expand_mentions(content="<div>x</div>", person_ids=[VICTOR_ID])
+        with pytest.raises(NotFoundError) as raised:
+            _comments().expand_mentions(content="<div>x</div>", person_ids=[ANNIE_ID])
+
+        assert str(raised.value) == f"resolving mention for person {ANNIE_ID}: Not found"
+        assert raised.value.http_status == 404
 
     @respx.mock
     def test_refuses_an_id_that_is_not_an_id(self):

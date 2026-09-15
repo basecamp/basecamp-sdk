@@ -1303,6 +1303,8 @@ class TestRunner:
             if assertion.get("type") != "requestPath":
                 return False
             index = assertion.get("index", 0)
+            if not isinstance(index, int) or isinstance(index, bool):
+                return False
             # A negative index counts from the end, as _request_at resolves it,
             # so "-2" on a two-request case IS request 0 and exempts it. The
             # other runners resolve it; reading the literal would not.

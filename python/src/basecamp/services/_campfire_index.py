@@ -196,18 +196,40 @@ def _owner_cancellation(error: BaseException) -> bool:
     error that context's own -- and both halves matter. This is their Python
     pair: the error is a cancellation AND this task actually has one pending.
     An ``httpx`` timeout, or a ``CancelledError`` escaping a scope the load
-    itself owns, is the load's own failure and is shared with the waiters,
-    exactly as in Go.
+    itself owns, is the load's own failure: the waiters are not sent to reload
+    it, exactly as in Go. (What they are HANDED is a separate question, settled
+    by :func:`_raise_to_waiter` -- a cancellation is never re-raised into a task
+    that did not ask for it, whoever it belonged to.)
 
     It decides one thing only: whether a waiter RELOADS. It must never decide
     whether a waiter is PROTECTED -- see :func:`_raise_to_waiter` -- because
     this heuristic can read either way and being wrong about protection cancels
     a task nobody cancelled.
     """
-    if not isinstance(error, asyncio.CancelledError):
+    if not _contains_cancelled(error):
         return False
     task = asyncio.current_task()
     return task is not None and task.cancelling() > 0
+
+
+def _cancellation_pending() -> bool:
+    """Whether the current task has a cancellation on the books.
+
+    Go's waiter checks ``ctx.Err() == nil`` before deciding to load for itself.
+    This is that check: an exact equivalent does not exist, but a task with an
+    outstanding cancellation should not be starting an HTTP request.
+    """
+    task = asyncio.current_task()
+    return task is not None and task.cancelling() > 0
+
+
+def _contains_cancelled(error: BaseException) -> bool:
+    """Whether a cancellation is in here, looking inside a group as Go looks inside ``Unwrap() []error``."""
+    if isinstance(error, asyncio.CancelledError):
+        return True
+    if isinstance(error, BaseExceptionGroup):
+        return error.subgroup(asyncio.CancelledError) is not None
+    return False
 
 
 def _raise_to_waiter(error: BaseException) -> NoReturn:
@@ -228,6 +250,14 @@ def _raise_to_waiter(error: BaseException) -> NoReturn:
     """
     if isinstance(error, Exception):
         raise error
+    if isinstance(error, BaseExceptionGroup):
+        # A mixed group carries real failures alongside the owner's exit. The
+        # failures are the load's own and belong to the waiters; only the exit
+        # is withheld. Substituting the whole group would throw away a 403's
+        # class, code and status along with it.
+        shareable = error.subgroup(Exception)
+        if shareable is not None:
+            raise shareable from error
     raise CampfireIndexLoadAbortedError() from error
 
 
@@ -357,14 +387,29 @@ class TTLCache(Generic[K, V]):
     def _publish(self, key: K, pending: _SyncLoad[V], value: Any, error: BaseException | None) -> None:
         # Structured exactly like the async twin's, so the two cannot drift
         # into different failure behaviour. See it for why.
+        recorded = False
         try:
             _record_outcome(pending, self._store, value, error)
+            recorded = True
             with self._lock:
                 if error is None:
                     self._store.store(key, value, pending.fetched)
         except BaseException as failure:
+            if recorded:
+                # The outcome is already on the record and every waiter will
+                # read it. What failed is the SHARED store -- in the async twin
+                # this is a cancellation delivered while acquiring the lock,
+                # which Go cannot suffer because its publish takes the mutex
+                # uncancellably. Overwriting here would tell waiters a load that
+                # SUCCEEDED was abandoned, or turn a 403 into a retryable
+                # error; the only real cost is that the entry misses the cache
+                # and the next caller loads again.
+                raise
+            # Recording the outcome itself failed -- a clock that raised. The
+            # waiters must hear that rather than read a half-written record.
             pending.error = failure
             pending.value = None
+            pending.owner_cancelled = False
             raise
         finally:
             if self._inflight.get(key) is pending:
@@ -421,7 +466,13 @@ class AsyncTTLCache(Generic[K, V]):
                     # owner-cancelled failure is reported rather than chased, so
                     # a run of cancelled owners cannot become a queue of
                     # sequential loads behind one waiter.
-                    if pending.owner_cancelled and not reacquired:
+                    # Go's condition is `callerDone && ctx.Err() == nil &&
+                    # !reacquired`: a waiter whose OWN context is done does not
+                    # go and load. `cancelling()` is this task's nearest
+                    # equivalent, and it is checked for the same reason -- a
+                    # task that swallowed a cancellation without `uncancel()`
+                    # would otherwise issue a live request on its way out.
+                    if pending.owner_cancelled and not reacquired and not _cancellation_pending():
                         reacquired = True
                         continue
                     _raise_to_waiter(pending.error)
@@ -449,12 +500,24 @@ class AsyncTTLCache(Generic[K, V]):
         # at the lock. Were the fields written after, an interrupted
         # publication would wake every waiter onto a record saying "succeeded,
         # value None".
+        recorded = False
         try:
             _record_outcome(pending, self._store, value, error, owner_cancelled=owner_cancelled)
+            recorded = True
             async with self._lock:
                 if error is None:
                     self._store.store(key, value, pending.fetched)
         except BaseException as failure:
+            if recorded:
+                # The outcome is already on the record and every waiter will
+                # read it. What failed is the SHARED store -- in the async twin
+                # this is a cancellation delivered while acquiring the lock,
+                # which Go cannot suffer because its publish takes the mutex
+                # uncancellably. Overwriting here would tell waiters a load that
+                # SUCCEEDED was abandoned, or turn a 403 into a retryable
+                # error; the only real cost is that the entry misses the cache
+                # and the next caller loads again.
+                raise
             # Publication itself failed -- a clock or a store that raised. The
             # waiters hear about that rather than reading a half-written
             # record; without this they would see "succeeded, value None".

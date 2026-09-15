@@ -16,6 +16,7 @@ import pytest
 
 from basecamp.errors import UsageError
 from basecamp.mentions import (
+    _unescape_like_go,
     mention_markup,
     mentioned_person_ids,
     person_id_from_sgid,
@@ -163,23 +164,42 @@ class TestPersonIDFromSGID:
     @pytest.mark.parametrize(
         ("authority", "accepted"),
         [
-            ("bc3", True),
+            ("bc3", True),  # the only shape BC3 emits
             ("bc3:80", True),
             ("bc3:", True),  # Go's validOptionalPort accepts an empty port
+            ("bc3:xx", False),
             ("bc 3", False),
             ("bc3|x", False),
             ("bc3{", False),
             ("bc3^", False),
-            ("bc3\\x", False),
-            ("bc3:xx", False),
-            ("b%zz", False),
-            ("b%41", True),
+            ("café", True),  # Go checks its character set for ASCII bytes ONLY
+            ("b]c", True),  # ']' is an ordinary host character
+            ("bc[3", False),  # but a stray '[' is not
+            ("b%zz", False),  # malformed escape
+            ("b%41", False),  # a host may escape only a NON-ASCII byte
+            ("b%C3%A9", True),
+            (":80", True),  # Go reads this as host ':80'
+            ("user@bc3", True),  # userinfo is not part of the host
+            ("a@b@bc3", True),  # split on the LAST '@'
+            ("a%41@bc3", True),  # an escape of an ASCII byte IS allowed in userinfo
+            ("%b@bc3", False),  # but a malformed one is not
+            ("a b@bc3", False),  # userinfo has a narrower character set than a host
+            ("é@bc3", False),  # and unlike a host it is ASCII-only
+            ("[::1]", True),
+            ("[::1]:80", True),
+            ("[v1.fe80::a+en1]", False),  # IPvFuture: Go parses the address
+            ("[fe80::1%25eth0]", True),  # RFC 6874 zone
+            ("[fe80::1%eth0]", False),  # a bare '%' is not a zone marker
+            ("[not-an-ip]", False),
         ],
     )
     def test_validates_the_authority_as_go_does(self, authority, accepted):
-        # Python's urlparse hands the authority back unexamined where Go's
-        # url.Parse refuses it, so each of these named a person here and nobody
-        # in Go — on the write side as well as the read side.
+        # Every row measured against a linked `url.Parse`, because the obvious
+        # reading of "validate the authority" is wrong three ways: Go strips
+        # userinfo before validating, permits any non-ASCII byte in a host, and
+        # refuses a percent-escape of an ASCII byte that a permissive reading
+        # waves through. An earlier version of this port got all three wrong
+        # and was a net regression on the corpus.
         sgid = json_sgid(f"gid://{authority}/Person/77")
         assert (person_id_from_sgid(sgid) == 77) is accepted
 
@@ -286,12 +306,39 @@ class TestPersonIDFromSGID:
         assert mentioned_person_ids("&" * 200_000) == []
         assert time.perf_counter() - start < 2.0
 
+    @pytest.mark.parametrize(
+        ("reference", "expected"),
+        [
+            # Go accumulates the code point in a rune -- an int32 -- and lets
+            # it WRAP. 0x100000041 truncates to 0x41, an ordinary "A", where an
+            # arbitrary-precision accumulator calls it out of range and emits
+            # U+FFFD. No corpus generates this by accident: it takes a value
+            # that wraps back INTO the valid range.
+            ("&#4294967361;", "A"),
+            ("&#0000004294967361;", "A"),
+            ("&#x100000041;", "A"),
+            # Leading zeros are an ordinary spelling and must not be capped
+            # away, which is what a digit-count limit would do.
+            ("&#00000000065;", "A"),
+            ("&#" + "0" * 40 + "65;", "A"),
+            # A wrap that lands negative is still refused, as Go's EncodeRune
+            # refuses it.
+            ("&#2147483713;", "\ufffd"),
+        ],
+    )
+    def test_numeric_overflow_wraps_as_gos_int32_does(self, reference, expected):
+        assert _unescape_like_go(reference) == expected
+
     @pytest.mark.parametrize("name", ["nGt;", "nLt;"])
     def test_a_name_absent_from_gos_table_is_left_literal(self, name):
         # Python's table decodes these two and Go's does not. Measured across
         # all 2231 names in four forms each; these are the only disagreements.
-        payload = json_sgid("gid://bc3/Person/77", signed=False)
-        assert mentioned_person_ids(f'<bc-attachment sgid="&{name}{payload}"></bc-attachment>') == []
+        #
+        # Asserted on the DECODER, not through a mention: both expansions are
+        # non-base64, so a mention-level assertion reads [] whether the name was
+        # expanded or left alone and passes with the exclusion set emptied.
+        assert _unescape_like_go(f"&{name}") == f"&{name}"
+        assert _unescape_like_go(f"x&{name}y") == f"x&{name}y"
 
     @pytest.mark.parametrize(("prefix", "resolves"), [("&nbsp", True), ("&nbsp;", True), ("&amp", False)])
     def test_a_named_reference_matches_the_table_not_the_longest_name_run(self, prefix, resolves):

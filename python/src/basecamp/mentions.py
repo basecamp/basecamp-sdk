@@ -59,12 +59,13 @@ from __future__ import annotations
 
 import base64
 import binascii
+import ipaddress
 import json
 import string
 from collections.abc import Iterable, Mapping
 from html.entities import html5
 from typing import Any
-from urllib.parse import unquote, urlparse
+from urllib.parse import unquote
 
 from basecamp.errors import UsageError
 
@@ -118,61 +119,145 @@ def go_trim_space(value: str) -> str:
     return value[start:end]
 
 
-#: What Go's url.Parse leaves unescaped in a host: the unreserved characters,
-#: the sub-delims, and the few it admits because a host cannot percent-encode
-#: an ASCII byte. Anything else makes Parse fail, where Python's urlparse hands
-#: the authority back unexamined.
+#: What Go's ``url.Parse`` leaves unescaped in a host: the unreserved
+#: characters, the sub-delims, and the few it admits because a host cannot
+#: percent-encode an ASCII byte. Go checks this set for ASCII bytes ONLY --
+#: anything at or above 0x80 passes untested, which is why a non-ASCII host is
+#: legal there.
 _HOST_ALLOWED_PUNCTUATION = "-._~!$&'()*+,;=:[]<>\""
 
 
-def _valid_authority(authority: str) -> bool:
-    """Whether Go's ``url.Parse`` would accept this authority.
+def _split_gid(gid: str) -> tuple[str, str] | None:
+    """A gid's authority and path, split as Go's ``url.Parse`` splits them.
 
-    Python's parser does not look: ``gid://bc 3/Person/1``, ``gid://b%zz/...``
-    and ``gid://bc3:xx/...`` all parse cleanly here and all fail there, so each
-    named a person in this SDK and nobody in Go. Same class as the
-    control-character refusal above, one dimension over, and it reaches the
-    write side: ``mention_markup`` would emit a tag Go refuses to build.
+    Hand-written rather than handed to ``urlparse``, because Python's parser
+    implements a DIFFERENT standard and the differences all fall on the write
+    side. It strips tab, CR and LF from the input before parsing (the WHATWG
+    rule, refused above instead), and it raises on an unmatched "]" in the
+    authority where Go accepts one as an ordinary host character. A gid is a
+    fixed, trivial shape, so parsing it here costs less than tracking which of
+    a general URL parser's behaviours happen to agree this week.
+    """
+    if gid[:6].casefold() != "gid://":
+        return None
+    rest = gid[6:]
+    cut = len(rest)
+    for index, character in enumerate(rest):
+        if character in "/?#":
+            cut = index
+            break
+    path = rest[cut:]
+    for terminator in "?#":
+        position = path.find(terminator)
+        if position >= 0:
+            path = path[:position]
+    return rest[:cut], path
+
+
+def _valid_authority(authority: str) -> bool:
+    """Whether Go's ``url.Parse`` would accept this authority's host.
+
+    Python's parser does not look at it: ``gid://bc 3/Person/1`` and
+    ``gid://bc3:xx/Person/1`` both parse cleanly here and fail there, so each
+    named a person in this SDK and nobody in Go -- on the write side, where the
+    only gate is whether the sgid names the person.
+
+    Checked against a linked ``url.Parse`` rather than described from it,
+    because the obvious reading of "validate the authority" is wrong in three
+    separate ways: Go strips USERINFO before validating (``user@bc3`` is host
+    ``bc3``), it permits any non-ASCII byte in a host, and it REFUSES a
+    percent-escape of an ASCII byte (``%41``) that a permissive reading waves
+    through.
     """
     if not authority:
         return False
-    host, port = _split_port(authority)
-    if port is not None and port != "" and not (port.isascii() and port.isdigit()):
+    # Userinfo is not part of the host -- Go splits on the LAST "@" -- but it is
+    # still validated, and against a NARROWER set than the host: no non-ASCII,
+    # no brackets, no space.
+    userinfo, at, host = authority.rpartition("@")
+    if at and not _valid_userinfo(userinfo):
         return False
-    if host.startswith("[") and host.endswith("]"):
-        host = host[1:-1]
     if not host:
         return False
+    # A "[" anywhere commits the host to the bracketed form: Go accepts "]" as
+    # an ordinary host character but never a stray "[".
+    if "[" in host:
+        return _valid_bracketed_host(host)
+    # An optional port begins at the last ":" and must be digits or empty.
+    _, colon, port = host.rpartition(":")
+    if colon and port and not (port.isascii() and port.isdigit()):
+        return False
+    return _valid_host_characters(host)
+
+
+def _valid_bracketed_host(host: str) -> bool:
+    if not host.startswith("["):
+        return False
+    closing = host.rfind("]")
+    if closing < 0:
+        return False
+    port = host[closing + 1 :]
+    if port and not (port.startswith(":") and (port == ":" or (port[1:].isascii() and port[1:].isdigit()))):
+        return False
+    inside = host[1:closing]
+    address, zoned, zone = inside.partition("%25")
+    if zoned:
+        # RFC 6874 spells a zone "%25<zone>", and the zone may not be empty.
+        if not zone or "%" in zone:
+            return False
+    elif "%" in inside:
+        # A bare "%" is not a zone marker; Go refuses "[fe80::1%eth0]".
+        return False
+    try:
+        ipaddress.IPv6Address(address)
+    except ValueError:
+        # IPvFuture ("[v1.fe80::a+en1]") reaches here, and Go refuses it too.
+        return False
+    return True
+
+
+#: What Go's ``validUserinfo`` permits, which is not what it permits in a host.
+_USERINFO_ALLOWED_PUNCTUATION = "-._:~!$&'()*+,;=%@"
+
+
+def _valid_userinfo(userinfo: str) -> bool:
     index = 0
-    while index < len(host):
-        character = host[index]
+    while index < len(userinfo):
+        character = userinfo[index]
         if character == "%":
-            # A host cannot carry a %-escape of an ASCII byte, but a malformed
-            # escape is refused outright, which is the case that matters.
-            escape = host[index + 1 : index + 3]
+            # Go unescapes the userinfo as well as validating its character
+            # set, so a malformed escape fails the whole parse. Unlike a host,
+            # an escape of an ASCII byte is allowed here.
+            escape = userinfo[index + 1 : index + 3]
             if len(escape) != 2 or not all(c in string.hexdigits for c in escape):
                 return False
             index += 3
             continue
-        if not character.isascii() or not (character.isalnum() or character in _HOST_ALLOWED_PUNCTUATION):
+        if not (character.isascii() and (character.isalnum() or character in _USERINFO_ALLOWED_PUNCTUATION)):
             return False
         index += 1
     return True
 
 
-def _split_port(authority: str) -> tuple[str, str | None]:
-    """The authority's host and its optional port, split as Go splits them."""
-    if authority.startswith("["):
-        closing = authority.rfind("]")
-        if closing < 0:
-            return authority, None
-        rest = authority[closing + 1 :]
-        if rest.startswith(":"):
-            return authority[: closing + 1], rest[1:]
-        # Anything else after the bracket is not a port and not a host.
-        return authority, (rest or None)
-    host, separator, port = authority.rpartition(":")
-    return (host, port) if separator else (authority, None)
+def _valid_host_characters(host: str) -> bool:
+    """Go's ``unescape(host, encodeHost)``: the byte-level half of the check."""
+    index = 0
+    while index < len(host):
+        character = host[index]
+        if character == "%":
+            escape = host[index + 1 : index + 3]
+            if len(escape) != 2 or not all(c in string.hexdigits for c in escape):
+                return False
+            # A host may percent-escape only a NON-ASCII byte -- and "%25",
+            # the escape for "%" itself, which is how a zone is spelled.
+            if host[index : index + 3] != "%25" and int(escape[0], 16) < 8:
+                return False
+            index += 3
+            continue
+        if character.isascii() and not (character.isalnum() or character in _HOST_ALLOWED_PUNCTUATION):
+            return False
+        index += 1
+    return True
 
 
 def mentioned_person_ids(rich_text: str) -> list[int]:
@@ -223,15 +308,15 @@ def person_id_from_sgid(sgid: str) -> int | None:
     # rejects any ASCII control character outright, and so does this.
     if any(character < " " or character == "\x7f" for character in gid):
         return None
-    try:
-        parsed = urlparse(gid)
-    except ValueError:
+    parsed = _split_gid(gid)
+    if parsed is None:
         return None
-    if parsed.scheme != "gid" or not _valid_authority(parsed.netloc):
+    authority, path = parsed
+    if not _valid_authority(authority):
         return None
     # A GlobalID path is exactly "/<Model>/<id>": no more, no less, and read
     # DECODED -- "gid://bc3/Pers%6fn/123" names a Person, as Go's url.Path does.
-    model, separator, raw_id = unquote(parsed.path).removeprefix("/").partition("/")
+    model, separator, raw_id = unquote(path).removeprefix("/").partition("/")
     if separator != "/" or model != "Person" or not raw_id:
         return None
     # `str.isdigit` is true for non-ASCII digits, which `int()` would then
@@ -265,7 +350,9 @@ def mention_markup(person: Mapping[str, Any]) -> str:
     # the last check report it; Python's dict can omit the key entirely, so the
     # id is normalised here rather than checked in a rung of its own.
     person_id = person.get("id")
-    if not isinstance(person_id, int) or isinstance(person_id, bool) or person_id <= 0:
+    if not isinstance(person_id, int) or isinstance(person_id, bool):
+        # Go reads an absent id as the zero value and lets the sgid/id check
+        # report it; a real id it names verbatim, negative or not.
         person_id = 0
     sgid = person.get("attachable_sgid") or ""
     if not isinstance(sgid, str) or not sgid:
@@ -277,7 +364,7 @@ def mention_markup(person: Mapping[str, Any]) -> str:
         raise UsageError(f"person {person_id} has a malformed attachable_sgid")
     # The tag mentions whoever the sgid names. Refuse to write one that names
     # someone else -- or a file -- under this person's id.
-    if person_id_from_sgid(sgid) != person_id:
+    if person_id <= 0 or person_id_from_sgid(sgid) != person_id:
         raise UsageError(
             f"person {person_id}'s attachable_sgid does not name that person",
             hint="read the person through people.get to obtain their own",
@@ -589,13 +676,31 @@ def _numeric_reference_at(value: str, start: int) -> tuple[int, str]:
         return (cursor - start, "\ufffd") if hex_form and terminated else (0, "")
     if not terminated and not hex_form and len(digits) < 2:
         return 0, ""
-    return cursor - start, _go_rune(int(digits, 16 if hex_form else 10))
+    return cursor - start, _go_rune(_accumulate(digits, 16 if hex_form else 10))
+
+
+def _accumulate(digits: str, base: int) -> int:
+    """The value Go's scanner accumulates, including its overflow.
+
+    Go builds the code point in a ``rune``, which is an int32, and lets it WRAP
+    -- so ``&#4294967361;`` is 0x100000041 truncated to 0x41, an ordinary "A".
+    Python's int is arbitrary-precision and would call that out of range and
+    emit U+FFFD instead. No corpus produces the case by accident; it takes a
+    value that wraps back into the valid range.
+    """
+    value = 0
+    for digit in digits:
+        value = (value * base + int(digit, 16)) & 0xFFFFFFFF
+    return value - 0x100000000 if value >= 0x80000000 else value
 
 
 def _go_rune(code: int) -> str:
     if 0x80 <= code <= 0x9F:
         return _C1_REPLACEMENTS[code - 0x80]
-    if code == 0 or 0xD800 <= code <= 0xDFFF or code > 0x10FFFF:
+    # `code <= 0` rather than `== 0`: the accumulator wraps into int32, so a
+    # value can land negative, and Go's EncodeRune writes RuneError for those
+    # exactly as its switch does for zero.
+    if code <= 0 or 0xD800 <= code <= 0xDFFF or code > 0x10FFFF:
         return "\ufffd"
     return chr(code)
 

@@ -64,11 +64,12 @@ def _checked_person_id(person_id: Any, seen: set[int]) -> int | None:
     return person_id
 
 
-#: Marks an exception this module has already annotated. Go builds a NEW error
-#: per wrap, so it cannot double-prefix; rewriting `args` in place can, and the
-#: standard mock idiom -- a ``side_effect`` holding one pre-built exception
-#: instance -- re-raises the same object on every call.
-_ANNOTATED = "_basecamp_mention_context"
+#: Where the original ``args`` are kept the first time an exception is
+#: annotated. Go builds a NEW error per wrap and therefore always names the id
+#: it just failed on; rewriting ``args`` in place cannot, unless the original
+#: is preserved — and the standard mock idiom is a ``side_effect`` holding one
+#: exception instance that is re-raised on every call.
+_ORIGINAL_ARGS = "_basecamp_mention_original_args"
 
 
 def _annotate(error: BaseException, person_id: int) -> None:
@@ -76,21 +77,34 @@ def _annotate(error: BaseException, person_id: int) -> None:
 
     Go wraps this with ``fmt.Errorf("resolving mention for person %d: %w", ...)``,
     so the prefix is part of the message — and the conformance runners assert on
-    message text. Rewriting `args` keeps that text while leaving the error's
+    message text. Rewriting ``args`` keeps that text while leaving the error's
     class, canonical code, HTTP status and retry hints exactly as the read
     produced them; raising a new instance would throw all of that away.
+
+    Two things it will not do. It does not rewrite ``args`` on an exception
+    whose ``__str__`` is not its args — ``OSError`` renders ``[Errno 2] ...``
+    regardless, so the prefix would be invisible AND the args left corrupt —
+    and it does not rewrite a ``BaseException`` that is not an ``Exception``,
+    because a cancellation's message is a channel callers use to identify their
+    own cancellation. Those get a note instead, which is the most Python can
+    say without damage.
     """
-    if getattr(error, _ANNOTATED, False):
-        return
     context = f"resolving mention for person {person_id}"
-    if error.args and isinstance(error.args[0], str):
-        error.args = (f"{context}: {error.args[0]}", *error.args[1:])
+    original = getattr(error, _ORIGINAL_ARGS, None)
+    if original is None:
+        original = error.args
+        with contextlib.suppress(AttributeError):
+            setattr(error, _ORIGINAL_ARGS, original)
+    rewritable = (
+        isinstance(error, Exception)
+        and type(error).__str__ is BaseException.__str__
+        and len(original) == 1
+        and isinstance(original[0], str)
+    )
+    if rewritable:
+        error.args = (f"{context}: {original[0]}",)
     else:
-        # An exception carrying no message still has to say which mention it
-        # was, and it has to say it in ``str(error)`` like the others.
-        error.args = (context, *error.args)
-    with contextlib.suppress(AttributeError):  # an exception with __slots__
-        setattr(error, _ANNOTATED, True)
+        error.add_note(context)
 
 
 class CommentsService(_GeneratedCommentsService):
