@@ -64,8 +64,11 @@ module Basecamp
       def create_with_mentions(recording_id:, content:, person_ids: nil)
         raise UsageError.new("comment content is required") if content.to_s.empty?
 
+        # Typed, not bounded. Ruby has no int64 to receive this in, so a value
+        # that is not an id at all is refused here — but the reference validates
+        # the CONTENT only and sends whatever id it is given, so a zero or a
+        # negative goes to the wire and comes back a 404, as it does there.
         recording_id = Ids.integer(recording_id, "recording id")
-        raise UsageError.new("recording id is required") unless recording_id.positive?
 
         create(recording_id: recording_id, content: expand_mentions(content: content, person_ids: person_ids))
       end

@@ -527,6 +527,23 @@ class MentionsTest < Minitest::Test
     assert_equal 12, Basecamp::Mentions.person_id_from_sgid(marshal_sgid("gid://bc3/Pe%72son/12"))
   end
 
+  def test_an_authority_that_is_only_a_port_still_names_a_host
+    # The reference's non-empty test is on a field that carries the PORT, with
+    # userinfo split off at the last "@". So an authority of just ":8080" IS a
+    # host there and resolves, while "user@" is not — and Ruby's URI reports an
+    # empty host for both, which refused eight shapes the reference accepts.
+    [ ":8080", ":80", ":0", ":", ":65535", "user@:8080", "user:pw@:8080" ].each do |authority|
+      assert_equal 12, Basecamp::Mentions.person_id_from_sgid(marshal_sgid("gid://#{authority}/Person/12")),
+        "authority #{authority.inspect} should name a host"
+    end
+
+    # The control: an authority that is ONLY userinfo has no host, in either.
+    [ "user@", "@", "" ].each do |authority|
+      assert_nil Basecamp::Mentions.person_id_from_sgid(marshal_sgid("gid://#{authority}/Person/12")),
+        "authority #{authority.inspect} should name no host"
+    end
+  end
+
   def test_a_percent_escaped_gid_path_decodes
     assert_equal 12, Basecamp::Mentions.person_id_from_sgid(marshal_sgid("gid://bc3/Pe%72son/12"))
     assert_equal 12, Basecamp::Mentions.person_id_from_sgid(marshal_sgid("gid://bc3/Person/%31%32"))

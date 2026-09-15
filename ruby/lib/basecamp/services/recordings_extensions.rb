@@ -142,10 +142,18 @@ module Basecamp
         kind = route_recording(event_type: event_type, recording_type: recording_type)
         summary = read_summary(kind, bucket_id: bucket_id, recording_id: recording_id)
 
-        # A malformed "bucket" member is read as absent rather than raising:
-        # Hash#dig through a non-Hash is a TypeError, and a bad projection must
-        # not turn into an exception class no caller expects.
+        # A "bucket" member that is not an object has no id and is read as
+        # absent, as the reference does when its own is the zero value. An id
+        # that is PRESENT and unreadable is different: the reference fails the
+        # read on it, and letting it pass as absent would skip the comparison
+        # below — which is the one check standing between a pointer and a
+        # recording in another bucket.
         read_bucket_id = summary["bucket"].is_a?(Hash) ? Ids.from_wire(summary["bucket"]["id"]) : 0
+        if read_bucket_id.nil?
+          raise BucketMismatchError.new(
+            bucket_id: bucket_id, actual_bucket_id: summary["bucket"]["id"], recording_id: recording_id
+          )
+        end
         if read_bucket_id.positive? && read_bucket_id != bucket_id
           raise BucketMismatchError.new(
             bucket_id: bucket_id, actual_bucket_id: read_bucket_id, recording_id: recording_id
@@ -504,8 +512,11 @@ module Basecamp
         dock.filter_map do |item|
           next unless item.is_a?(Hash) && item["name"] == "chat"
 
+          # Any NON-ZERO id, as the reference keeps, rather than any positive
+          # one — a negative id is a candidate there and dropping it here would
+          # search one Campfire fewer.
           id = Ids.from_wire(item["id"])
-          id.positive? ? id : nil
+          id.nil? || id.zero? ? nil : id
         end
       end
 
@@ -525,13 +536,13 @@ module Basecamp
           next unless bucket.is_a?(Hash)
 
           bucket_id = Ids.from_wire(bucket["id"])
-          next unless bucket_id.positive?
+          next unless bucket_id&.positive?
 
           # Normalized exactly as the dock's ids are. Otherwise a listing id
           # that arrived as a string could never match a dock-sourced integer in
           # the search's "already tried" set, and would spend budget twice.
           campfire_id = Ids.from_wire(campfire["id"])
-          next unless campfire_id.positive?
+          next if campfire_id.nil? || campfire_id.zero?
 
           (by_bucket[bucket_id] ||= []) << campfire_id
         end

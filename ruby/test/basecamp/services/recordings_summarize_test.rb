@@ -186,16 +186,45 @@ class RecordingsSummarizeTest < Minitest::Test
     assert_equal 999, error.actual_bucket_id
   end
 
-  def test_a_malformed_id_inside_a_nested_member_is_read_as_absent
-    # The outer Hash check does not make the id inside it safe to coerce:
-    # {"bucket": {"id": []}} is valid JSON and has no to_i.
-    [ [], {}, 12.5, true ].each do |malformed|
+  def test_a_bucket_id_that_is_present_and_unreadable_fails_closed
+    # Absent and malformed are different answers. The reference decodes into a
+    # typed integer and fails the READ on a payload like this; reading it as
+    # absent would skip the comparison below, which is the one check standing
+    # between a pointer and a recording in another bucket.
+    [ [], {}, 12.5, true, "12oops" ].each do |malformed|
       stub_get("/12345/comments/1", response_body: recording("bucket" => { "id" => malformed }))
 
-      assert_equal 1, summarize(event_type: "comment.created")["id"],
-        "a bucket id of #{malformed.inspect} should read as absent, not raise"
+      assert_raises(Basecamp::BucketMismatchError, "a bucket id of #{malformed.inspect} must fail closed") do
+        summarize(event_type: "comment.created")
+      end
       WebMock.reset!
     end
+  end
+
+  def test_a_bucket_that_is_not_an_object_is_read_as_absent
+    # A "bucket" member that is not an object has no id at all, which is the
+    # reference's zero value and not a malformed one.
+    [ 5, "x", [] ].each do |malformed|
+      stub_get("/12345/comments/1", response_body: recording("bucket" => malformed))
+
+      assert_equal 1, summarize(event_type: "comment.created")["id"]
+      WebMock.reset!
+    end
+  end
+
+  def test_a_bucket_id_spelled_as_digits_is_read_as_that_id
+    # The wire spelling is not always an integer, and the two must compare. A
+    # matching one passes; a different one is still a mismatch.
+    stub_get("/12345/comments/1", response_body: recording("bucket" => { "id" => BUCKET.to_s }))
+
+    assert_equal 1, summarize(event_type: "comment.created")["id"]
+
+    WebMock.reset!
+    stub_get("/12345/comments/1", response_body: recording("bucket" => { "id" => "999" }))
+
+    error = assert_raises(Basecamp::BucketMismatchError) { summarize(event_type: "comment.created") }
+
+    assert_equal 999, error.actual_bucket_id
   end
 
   def test_a_malformed_campfire_id_is_skipped_rather_than_raising
@@ -211,6 +240,37 @@ class RecordingsSummarizeTest < Minitest::Test
     error = assert_raises(Basecamp::UnresolvedRecordingError) { summarize(event_type: "chat.line.created") }
 
     assert_equal [ 500 ], error.campfire_ids
+  end
+
+  def test_a_campfire_id_spelled_as_digits_is_a_candidate
+    # The branch that reads a digit string was untested, and the comment saying
+    # why it exists — so a listing id spelled as a string dedupes against the
+    # same id from the dock rather than spending the budget twice — stood in
+    # for a test until now.
+    stub_get("/12345/projects/#{BUCKET}", response_body: {
+      "id" => BUCKET, "dock" => [ { "id" => 500, "name" => "chat" } ]
+    })
+    stub_get("/12345/chats.json", response_body: [ { "id" => "500", "bucket" => { "id" => BUCKET.to_s } } ])
+    stub_line(500, status: 404, body: { "error" => "Record not found" })
+
+    error = assert_raises(Basecamp::UnresolvedRecordingError) { summarize(event_type: "chat.line.created") }
+
+    assert_equal [ 500 ], error.campfire_ids
+    assert_requested(:get, "#{BASE_URL}/12345/chats/500/lines/1", times: 1)
+  end
+
+  def test_a_negative_campfire_id_is_still_a_candidate
+    # The reference keeps any non-zero id; requiring a positive one would search
+    # one Campfire fewer than it does.
+    stub_get("/12345/projects/#{BUCKET}", response_body: {
+      "id" => BUCKET, "dock" => [ { "id" => -5, "name" => "chat" }, { "id" => 0, "name" => "chat" } ]
+    })
+    stub_get("/12345/chats.json", response_body: [])
+    stub_line(-5, status: 404, body: { "error" => "Record not found" })
+
+    error = assert_raises(Basecamp::UnresolvedRecordingError) { summarize(event_type: "chat.line.created") }
+
+    assert_equal [ -5 ], error.campfire_ids
   end
 
   def test_a_malformed_assignees_member_is_read_as_absent
