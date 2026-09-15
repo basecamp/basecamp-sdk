@@ -44,6 +44,7 @@ pub mod reports;
 pub mod schedules;
 pub mod search;
 pub mod subscriptions;
+pub mod subtasks;
 pub mod templates;
 pub mod timeline;
 pub mod timesheets;

@@ -41,6 +41,7 @@ export { BubbleUpsService } from "./bubble-ups.js";
 export { ClientVisibilityService } from "./client-visibility.js";
 export { EventsService } from "./events.js";
 export { SubscriptionsService } from "./subscriptions.js";
+export { SubtasksService } from "./subtasks.js";
 export { ReportsService } from "./reports.js";
 export { SchedulesService } from "./schedules.js";
 export { SearchService } from "./search.js";

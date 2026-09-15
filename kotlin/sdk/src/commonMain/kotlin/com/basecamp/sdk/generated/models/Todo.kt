@@ -41,5 +41,8 @@ data class Todo(
     @SerialName("completion_url") val completionUrl: String? = null,
     @SerialName("boosts_count") val boostsCount: Int? = null,
     @SerialName("boosts_url") val boostsUrl: String? = null,
+    @SerialName("subtasks_count") val subtasksCount: Int? = null,
+    @SerialName("subtasks_completed_count") val subtasksCompletedCount: Int? = null,
+    @SerialName("subtasks_url") val subtasksUrl: String? = null,
     val steps: List<CardStep>? = null
 )

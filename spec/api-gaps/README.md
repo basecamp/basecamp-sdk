@@ -76,12 +76,15 @@ making the absorption journey publicly auditable.
 | [recording-spotlights](recording-spotlights.md) | absorbed-in-sdk | master | medium |
 | [notifications-sort-pings-first](notifications-sort-pings-first.md) | partial-coverage | master | low |
 | [bc5-authorization-document-shape](bc5-authorization-document-shape.md) | covered-outside-spec | master | medium |
-| [subtasks-canonical-rename](subtasks-canonical-rename.md) | partial-coverage | master | low |
+| [subtasks-canonical-rename](subtasks-canonical-rename.md) | absorbed-in-sdk | master | medium |
 | [recent-projects](recent-projects.md) | absorbed-in-sdk | master | medium |
 | [template-library](template-library.md) | absorbed-in-sdk | master | high |
 | [delegated-events-performed-by](delegated-events-performed-by.md) | addressed-in-bc3-pr-13040 | master | low |
 | [recording-bubble-up-write](recording-bubble-up-write.md) | partial-coverage | master | medium |
 | [project-client-users](project-client-users.md) | absorbed-in-sdk | master | high |
+| [recording-show-unscoped](recording-show-unscoped.md) | addressed-in-bc3-pr-10158 | master | medium |
+| [recording-backlinks](recording-backlinks.md) | addressed-in-bc3-pr-13121 | master | medium |
+| [account-people-enrollment](account-people-enrollment.md) | addressed-in-bc3-pr-9962 | master | medium |
 
 > Statuses reflect how BC3's **BC5 API train** actually shipped (8 PRs merged
 > to `master`, 2026-07-18..21); BC3 #10947 closed unmerged, superseded by the
@@ -109,14 +112,83 @@ making the absorption journey publicly auditable.
 > tracked in #12463) and the SDK's matching removal of `GetEverythingBoosts`;
 > its `no-json-contract` is literal — the feed has no JSON API today.
 >
-> The provenance pin is `c680233ba0e` (2026-09-02). <!-- @bc3-pin -->
+> The provenance pin is `5daa0911d33` (2026-09-15). <!-- @bc3-pin -->
 > That line is checked by `make doc-constants-check` and deliberately *not*
 > rewritten by `make sync-api-version`: this file is in
 > `spec/doc-constants.json` `.writerExcludes`, because the pin sentence heads
 > the range triage below and cannot advance without that triage advancing too.
 > The ranges themselves are settled history and stay unmarked.
 >
-> The `88549ca619e..c680233ba0e` range is **111 commits** (15 merges, 96
+> The `c680233ba0e..5daa0911d33` range is **249 commits** (44 merges, 205
+> non-merge), read from a local bc3 checkout. Eleven non-merge commits touch
+> `doc/api` or `app/views/api`, and the vendored route table moves from 382
+> routes across 66 sections to 398 across 68 — sixteen routes, every one
+> accounted for below:
+>
+> - BC3 **#12659** (`e8f0d765ba6`) — the `Subtask` API, **absorbed** in this
+>   repin as the `Subtasks` service: `ListSubtasks`, `GetSubtask`,
+>   `CreateSubtask`, `UpdateSubtask`, `CompleteSubtask`, `UncompleteSubtask`,
+>   `RepositionSubtask`, `DeleteSubtask` (eight routes, all flat; the wire shape
+>   stays `CardStep` with `type: "Kanban::Step"`), plus `subtasks_count`,
+>   `subtasks_completed_count` and `subtasks_url` on `Todo`, `Card` and the
+>   generic `Recording` projection — which is also every `everything.md`,
+>   `reports.md` and `my_assignments.md` example delta. The same commit
+>   corrected `card_table_steps.md`'s reposition `position` from "Zero
+>   indexed" to 1-based; the server always counted from 1, so
+>   `RepositionCardStep`'s member doc and the Go wrapper's lower bound moved
+>   with it (MIGRATING). [`subtasks-canonical-rename.md`](subtasks-canonical-rename.md)
+>   closes `absorbed-in-sdk`.
+> - BC3 **#13098** (`1d8d4ce95d5`) — client users and client enablement, three
+>   routes, **absorbed ahead of this repin** as
+>   [`project-client-users.md`](project-client-users.md); the repin ratifies
+>   it.
+> - BC3 **#10158** (`87a3d3603c1`) — the unscoped `GET /recordings/:id.json`
+>   and its bucket-scoped alias, now rendered under `app/views/api` and
+>   documented. **Registered**, not absorbed:
+>   [`recording-show-unscoped.md`](recording-show-unscoped.md),
+>   `addressed-in-bc3-pr-10158`. This is the operation removed as
+>   `GetRecording` in v0.13.0 (#584) for lacking exactly that template.
+> - BC3 **#13121** (`b6ab4d76b1b`) — `GET /recordings/:id/backlinks.json`
+>   and its alias, a new `backlinks.md` section. **Registered**:
+>   [`recording-backlinks.md`](recording-backlinks.md),
+>   `addressed-in-bc3-pr-13121`.
+> - BC3 **#9962** (`368a9b6edb9`; sync coalesced by **#13134**) —
+>   `POST /account/enrollments/people.json`, bulk account enrollment.
+>   **Registered**:
+>   [`account-people-enrollment.md`](account-people-enrollment.md),
+>   `addressed-in-bc3-pr-9962`.
+> - BC3 **#13259** (`3a151536f80`) — documents `start_date` on project
+>   construction. Already modelled (`ProjectConstructionAttributes.start_date`,
+>   from the template-library work); doc-only here.
+> - `f3437f5c732` (direct to master) — `PUT /my/unreads.json` refuses more
+>   than 500 `readables` with **422** before any per-item work. Absorbed as
+>   member documentation, `@length(max: 500)` on `MarkAsReadInput.readables`,
+>   and `ValidationError` on `MarkAsRead`, which had no 422 branch before.
+> - BC3 **#9949** (`74320ef45b3`) — circle creation over JSON, with
+>   `app/views/api/circles/` partials. Undocumented (no `doc/api` section,
+>   so absent from the route table) and pings/circles are outside the modelled
+>   surface; recorded, not registered — a documented contract is the trigger.
+> - `a4a1e8216c9` (BC3 #13182) — a `membership_change` chat-line JSON partial
+>   ahead of group pings, the same kind of per-kind partial
+>   [`recordable-subtypes-doc.md`](recordable-subtypes-doc.md) tracks; no
+>   documented shape change. `efb589a02be`/`a84586b8670` are a revert pair
+>   touching an API view path with no net diff.
+>
+> The controller-only remainder is wire-neutral for the modelled surface:
+> `cbb836a37d6`/`200de59e81d`/`18b2dd53ffa`/`fa00363125c` (BC3 #13226) tighten
+> who may archive or trash a recording through a status update — a **403**
+> SPEC §6 already maps generically, on operations that already declare
+> `ForbiddenError`; `993f2bf0abe`, `46880ebb1b5` and `4753e432204` turn
+> malformed message params from 500s into 4xx responses (`CreateMessage`
+> already declares `ValidationError`); `fdee08f5e1c` honours an exact
+> `window_starts_on` in `Calendar::WindowScopedEntries`, which only the
+> calendar display and card frames include — the documented
+> `GET /reports/schedules/upcoming.json` (`GetUpcomingSchedule`) reads the
+> same-named parameter through its own controller and is untouched; the rest
+> is hotcell, filing, sidebar, billing and web UI. The `bc3-four`
+> compatibility pin does not move: this sync re-verifies only `master`.
+>
+> The previous `88549ca619e..c680233ba0e` range was **111 commits** (15 merges, 96
 > non-merge). The complete raw diff was inspected because GitHub's compare
 > response exceeded its file cap. Three non-merge commits touch `doc/api` or
 > `app/views/api`:

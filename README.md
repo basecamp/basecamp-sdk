@@ -243,7 +243,7 @@ All SDKs provide:
 | Category | Services |
 |----------|----------|
 | **Projects** | Projects, Templates, Tools, People |
-| **To-dos** | Todos, Todolists, Todosets, TodolistGroups |
+| **To-dos** | Todos, Todolists, Todosets, TodolistGroups, Subtasks |
 | **Messages** | Messages, MessageBoards, MessageTypes, Comments |
 | **Chat** | Campfires (lines, chatbots) |
 | **Scheduling** | Schedules, Timeline, Lineup, Checkins |

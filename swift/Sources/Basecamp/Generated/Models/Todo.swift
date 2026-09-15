@@ -32,6 +32,9 @@ public struct Todo: Codable, Sendable {
     public var startsOn: String?
     public var steps: [CardStep]?
     public var subscriptionUrl: String?
+    public var subtasksCompletedCount: Int32?
+    public var subtasksCount: Int32?
+    public var subtasksUrl: String?
 
     public init(
         appUrl: String,
@@ -63,7 +66,10 @@ public struct Todo: Codable, Sendable {
         position: Int32? = nil,
         startsOn: String? = nil,
         steps: [CardStep]? = nil,
-        subscriptionUrl: String? = nil
+        subscriptionUrl: String? = nil,
+        subtasksCompletedCount: Int32? = nil,
+        subtasksCount: Int32? = nil,
+        subtasksUrl: String? = nil
     ) {
         self.appUrl = appUrl
         self.bucket = bucket
@@ -95,5 +101,8 @@ public struct Todo: Codable, Sendable {
         self.startsOn = startsOn
         self.steps = steps
         self.subscriptionUrl = subscriptionUrl
+        self.subtasksCompletedCount = subtasksCompletedCount
+        self.subtasksCount = subtasksCount
+        self.subtasksUrl = subtasksUrl
     }
 }

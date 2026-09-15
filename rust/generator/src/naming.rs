@@ -134,6 +134,8 @@ const SIMPLE_RESOURCES: &[&str] = &[
     "uploadversions",
     "boost",
     "boosts",
+    "subtask",
+    "subtasks",
     "hillchart",
     "hillcharts",
     "wormhole",

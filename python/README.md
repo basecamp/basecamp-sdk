@@ -495,6 +495,7 @@ All services are constructed from an `AccountClient`, obtained via `client.for_a
 | | Events | `account.events` |
 | | Automation | `account.automation` |
 | | Boosts | `account.boosts` |
+| | Subtasks | `account.subtasks` |
 | **Reporting** | Search | `account.search` |
 | | Reports | `account.reports` |
 | | Timesheets | `account.timesheets` |

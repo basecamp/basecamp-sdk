@@ -820,6 +820,38 @@ async fn subscriptions_get_reaches_the_wire() {
 }
 
 #[tokio::test]
+async fn subtasks_get_reaches_the_wire() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/999/subtasks/100"))
+        .and(header("Authorization", "Bearer test-token"))
+        .and(header("Accept", "application/json"))
+        .and(header(
+            "User-Agent",
+            basecamp_sdk::version::default_user_agent().as_str(),
+        ))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": 100,
+            "status": "active",
+            "visible_to_clients": false,
+            "created_at": "2026-07-02T00:23:00Z",
+            "updated_at": "2026-07-02T00:23:00Z",
+            "title": "Hero shot on the desk",
+            "inherits_status": true,
+            "type": "Kanban::Step",
+            "url": "https://3.basecampapi.com/999/buckets/1/subtasks/100.json",
+            "app_url": "https://3.basecamp.com/999/buckets/1/todos/200#__recording_100",
+            "parent": {"id": 200, "title": "Shot list", "type": "Todo", "url": "u", "app_url": "a"},
+            "bucket": {"id": 1, "name": "The Leto Laptop", "type": "Project"},
+            "creator": {"id": 7, "name": "Matt Donahue"}
+        })))
+        .expect(1)
+        .mount(&server)
+        .await;
+    account(&server).subtasks().get(100).await.unwrap();
+}
+
+#[tokio::test]
 async fn templates_get_library_reaches_the_wire() {
     let server = MockServer::start().await;
     Mock::given(method("GET"))
@@ -1391,6 +1423,11 @@ error_case!(
 error_case!(
     subscriptions_get_maps_a_rejection,
     |account: basecamp_sdk::AccountClient| async move { account.subscriptions().get(100).await }
+);
+
+error_case!(
+    subtasks_get_maps_a_rejection,
+    |account: basecamp_sdk::AccountClient| async move { account.subtasks().get(100).await }
 );
 
 error_case!(

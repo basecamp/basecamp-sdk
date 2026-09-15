@@ -21,7 +21,9 @@ export type CardStep = components["schemas"]["CardStep"];
 export interface RepositionCardStepRequest {
   /** Source id */
   sourceId: number;
-  /** 0-indexed position */
+  /** The 1-based position to move it to (1 = top), the same `reposition_to`
+a to-do uses. bc3's doc said "Zero indexed" until BC3 #12659 corrected
+it; the server never was. */
   position: number;
 }
 

@@ -139,11 +139,11 @@ fn configuration_is_validated() {
 #[test]
 fn the_route_table_is_complete_and_consistent() {
     use basecamp_sdk::routes::{ROUTES, Route};
-    assert_eq!(ROUTES.len(), 262);
-    assert_eq!(basecamp_sdk::metadata::OPERATIONS.len(), 262);
+    assert_eq!(ROUTES.len(), 270);
+    assert_eq!(basecamp_sdk::metadata::OPERATIONS.len(), 270);
     let mut ids: Vec<&str> = ROUTES.iter().map(|route| route.id).collect();
     ids.dedup();
-    assert_eq!(ids.len(), 262, "operation ids are unique");
+    assert_eq!(ids.len(), 270, "operation ids are unique");
     for route in ROUTES {
         assert_eq!(route.id, route.metadata.operation);
         assert!(route.path.starts_with('/'));
@@ -154,12 +154,12 @@ fn the_route_table_is_complete_and_consistent() {
         .iter()
         .filter(|route| route.metadata.idempotent)
         .count();
-    assert_eq!(idempotent, 91);
+    assert_eq!(idempotent, 96);
     let readonly = ROUTES
         .iter()
         .filter(|route| route.metadata.readonly)
         .count();
-    assert_eq!(readonly, 128);
+    assert_eq!(readonly, 130);
     let paginated = ROUTES
         .iter()
         .filter(|route| {
@@ -169,7 +169,7 @@ fn the_route_table_is_complete_and_consistent() {
             )
         })
         .count();
-    assert_eq!(paginated, 61);
+    assert_eq!(paginated, 62);
     let route: &Route = &basecamp_sdk::routes::GET_PROJECT;
     assert_eq!(route.fill(&[&12345]), "/projects/12345");
     assert_eq!(
@@ -194,7 +194,7 @@ fn the_route_table_is_complete_and_consistent() {
         basecamp_sdk::routes::UPDATE_ACCOUNT_LOGO.body,
         basecamp_sdk::routes::BodyKind::Multipart { field: "logo" }
     );
-    assert_eq!(basecamp_sdk::OPERATION_COUNT, 262);
+    assert_eq!(basecamp_sdk::OPERATION_COUNT, 270);
 }
 
 #[test]

@@ -179,6 +179,10 @@ val AccountClient.search: SearchService
 val AccountClient.subscriptions: SubscriptionsService
     get() = service("Subscriptions") { SubscriptionsService(this) }
 
+/** Subtasks operations. */
+val AccountClient.subtasks: SubtasksService
+    get() = service("Subtasks") { SubtasksService(this) }
+
 /** Templates operations. */
 val AccountClient.templates: TemplatesService
     get() = service("Templates") { TemplatesService(this) }
