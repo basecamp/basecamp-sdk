@@ -540,28 +540,45 @@ class AsyncTTLCache(Generic[K, V]):
             pending.done.set()
 
 
+def _recording_id(value: Any) -> int | None:
+    """An id from a payload, or ``None`` when it is not one.
+
+    The type is checked as well as the value. Go decodes these into `int64`, so
+    a JSON `true` or a string never reaches its discovery loop at all; a
+    dict-based SDK has to say so itself, and `bool` is an `int` in Python — an
+    `if item["id"]` test admits `True` and then builds a request path from it.
+    """
+    if not isinstance(value, int) or isinstance(value, bool) or value <= 0:
+        return None
+    return value
+
+
 def _dock_campfire_ids(project: dict[str, Any]) -> list[int]:
     """The Campfire ids a project's dock names."""
     ids: list[int] = []
     for item in project.get("dock") or ():
-        if not isinstance(item, dict):
+        if not isinstance(item, dict) or item.get("name") != "chat":
             continue
-        if item.get("name") == "chat" and item.get("id"):
-            ids.append(item["id"])
+        campfire_id = _recording_id(item.get("id"))
+        if campfire_id is not None:
+            ids.append(campfire_id)
     return ids
 
 
 def _campfires_by_bucket(campfires: list[dict[str, Any]]) -> dict[int, list[int]]:
     by_bucket: dict[int, list[int]] = {}
     for campfire in campfires:
-        bucket = campfire.get("bucket") or {}
-        bucket_id = bucket.get("id")
-        campfire_id = campfire.get("id")
-        # Both ids are required, and an entry missing either is skipped rather
-        # than turned into a KeyError: this runs inside a cache loader whose
-        # failure is shared with every waiter on the key, and a bare KeyError
-        # would escape the SDK's error taxonomy entirely.
-        if not bucket_id or not campfire_id:
+        if not isinstance(campfire, dict):
+            continue
+        bucket = campfire.get("bucket")
+        bucket_id = _recording_id(bucket.get("id")) if isinstance(bucket, dict) else None
+        campfire_id = _recording_id(campfire.get("id"))
+        # Both ids are required, and an entry missing or mistyping either is
+        # skipped rather than turned into a KeyError or a request path built
+        # from a bool: this runs inside a cache loader whose failure is shared
+        # with every waiter on the key, and a bare KeyError would escape the
+        # SDK's error taxonomy entirely.
+        if bucket_id is None or campfire_id is None:
             continue
         by_bucket.setdefault(bucket_id, []).append(campfire_id)
     return by_bucket

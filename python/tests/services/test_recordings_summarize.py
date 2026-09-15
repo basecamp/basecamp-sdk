@@ -467,6 +467,53 @@ class TestChatLineDiscovery:
         assert summary["campfire_id"] == 5
 
     @respx.mock
+    @pytest.mark.parametrize("bad_id", [True, False, "5", 5.0, None, 0, -1, {"id": 5}])
+    def test_a_listing_entry_whose_id_is_not_an_id_is_skipped(self, bad_id):
+        # Go decodes these into int64, so a JSON `true` or a string never
+        # reaches its discovery loop; a dict-based SDK has to say so itself.
+        # `bool` is an `int` in Python, so a truthiness test admits True and
+        # then builds a request path out of it.
+        respx.get(f"{BASE}/projects/{BUCKET}").mock(return_value=_not_found())
+        respx.get(f"{BASE}/chats.json").mock(
+            return_value=httpx.Response(
+                200,
+                json=[{"id": bad_id, "type": "Chat::Transcript", "bucket": {"id": BUCKET}}, _campfire(5)],
+            )
+        )
+        line = respx.get(f"{BASE}/chats/5/lines/{LINE_ID}").mock(return_value=httpx.Response(200, json=_line(5)))
+        bogus = respx.get(url__regex=rf"{BASE}/chats/(True|False|5\.0|None|0|-1)/lines/\d+").mock(
+            return_value=_not_found()
+        )
+
+        summary = _account().recordings.summarize(
+            bucket_id=BUCKET, recording_id=LINE_ID, event_type="chat.line.created"
+        )
+
+        assert summary["campfire_id"] == 5
+        assert line.called
+        assert not bogus.called, "a mistyped id must never become a request path"
+
+    @respx.mock
+    @pytest.mark.parametrize("bad_id", [True, "5", 5.0, None])
+    def test_a_dock_entry_whose_id_is_not_an_id_is_skipped(self, bad_id):
+        respx.get(f"{BASE}/projects/{BUCKET}").mock(
+            return_value=httpx.Response(
+                200,
+                json={"id": BUCKET, "dock": [{"id": bad_id, "name": "chat"}, {"id": 7, "name": "chat"}]},
+            )
+        )
+        line = respx.get(f"{BASE}/chats/7/lines/{LINE_ID}").mock(return_value=httpx.Response(200, json=_line(7)))
+        bogus = respx.get(url__regex=rf"{BASE}/chats/(True|5\.0|None)/lines/\d+").mock(return_value=_not_found())
+
+        summary = _account().recordings.summarize(
+            bucket_id=BUCKET, recording_id=LINE_ID, event_type="chat.line.created"
+        )
+
+        assert summary["campfire_id"] == 7
+        assert line.called
+        assert not bogus.called
+
+    @respx.mock
     def test_a_listing_over_its_cap_is_incomplete_and_is_not_cached(self):
         respx.get(f"{BASE}/projects/{BUCKET}").mock(return_value=_not_found())
         overflowing = [_campfire(i) for i in range(1, _campfire_index.MAX_CAMPFIRE_LISTING + 1)]

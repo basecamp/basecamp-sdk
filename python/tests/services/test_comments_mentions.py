@@ -198,10 +198,15 @@ class TestExpandMentions:
             def __getattr__(self, name):
                 return "anything"
 
-        respx.get(f"{BASE}/people/{VICTOR_ID}").mock(side_effect=Permissive("boom"))
+        class ReadOnlyArgs(Exception):
+            @property
+            def args(self):
+                return ("fixed",)
 
-        with pytest.raises(Permissive):
-            _comments().expand_mentions(content="<div>x</div>", person_ids=[VICTOR_ID])
+        for failure in (Permissive("boom"), ReadOnlyArgs()):
+            respx.get(f"{BASE}/people/{VICTOR_ID}").mock(side_effect=failure)
+            with pytest.raises(type(failure)):
+                _comments().expand_mentions(content="<div>x</div>", person_ids=[VICTOR_ID])
 
     @respx.mock
     def test_the_note_path_also_names_only_the_latest_person(self):

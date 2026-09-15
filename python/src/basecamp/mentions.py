@@ -131,12 +131,17 @@ def _split_gid(gid: str) -> tuple[str, str] | None:
     """A gid's authority and path, split as Go's ``url.Parse`` splits them.
 
     Hand-written rather than handed to ``urlparse``, because Python's parser
-    implements a DIFFERENT standard and the differences all fall on the write
-    side. It strips tab, CR and LF from the input before parsing (the WHATWG
-    rule, refused above instead), and it raises on an unmatched "]" in the
-    authority where Go accepts one as an ordinary host character. A gid is a
-    fixed, trivial shape, so parsing it here costs less than tracking which of
-    a general URL parser's behaviours happen to agree this week.
+    implements a DIFFERENT standard — WHATWG rather than RFC 3986 as Go reads
+    it — and the disagreements land on the write path, where a parser stricter
+    than Go's refuses to build a tag Go builds.
+
+    Deliberately no list of those disagreements here. Two were found and
+    written down, a third was found later, and an enumeration in a comment is
+    exactly the thing that stops the next sweep happening. The shape is what
+    matters: a general parser normalises and rejects on its own schedule, a gid
+    is a fixed trivial form, and parity is established by differential against
+    a linked ``url.Parse`` rather than by reasoning about either. The harness
+    lives with the port's review notes.
     """
     if gid[:6].casefold() != "gid://":
         return None
@@ -646,13 +651,18 @@ _C1_REPLACEMENTS = (
     "\u02dc\u2122\u0161\u203a\u0153\u009d\u017e\u0178"
 )
 
-#: Names Python's table decodes and Go's does not. Measured, not assumed: the
-#: whole 2231-name table was run through a linked ``html.UnescapeString`` in
-#: four forms each, and these two are the only disagreements. Their expansions
-#: are neither whitespace nor base64 characters, so they cannot change which
-#: person an sgid names either way -- but "cannot matter" is the argument this
-#: port has already watched collapse twice, so they are excluded rather than
-#: reasoned about.
+#: Names Python's table decodes and Go's does not.
+#:
+#: Measured rather than assumed, and the basis is stated so it can be re-taken
+#: rather than believed: every name in the table, in five syntactic forms each,
+#: through a linked ``html.UnescapeString``. That is exhaustive over the table,
+#: which is finite -- it is NOT a claim about inputs outside it. An earlier
+#: version of this set was built from the first 400 names and was wrong.
+#:
+#: Their expansions are neither whitespace nor base64 characters, so they
+#: cannot change which person an sgid names either way -- but "cannot matter"
+#: is the argument this port has watched collapse twice, so they are excluded
+#: rather than reasoned about.
 _NOT_IN_GO_TABLE = frozenset({"nGt;", "nLt;"})
 
 _MAX_ENTITY_NAME = max(len(name) for name in html5)

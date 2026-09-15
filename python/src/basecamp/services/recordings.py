@@ -42,6 +42,7 @@ from basecamp.services._campfire_index import (
     CampfireListingOverflow,
     ChatLineSearch,
     SourceRead,
+    _recording_id,
 )
 
 __all__ = [
@@ -259,8 +260,9 @@ def _project(record: dict[str, Any], read: _Read, *, campfire_id: int | None = N
     content = _text(record, read.content)
     return RecordingSummary(
         # 0, not None, where the payload carries no id: `id` is declared `int`
-        # and Go cannot produce anything else.
-        id=record.get("id") or 0,
+        # and Go cannot produce anything else — nor can it produce a bool or a
+        # string, which its typed decode refuses and a dict does not.
+        id=_recording_id(record.get("id")) or 0,
         status=_text(record, ("status",)),
         type=_text(record, ("type",)),
         title=_text(record, read.title),
