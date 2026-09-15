@@ -355,7 +355,7 @@ sealed class BasecampException(
      * than smoothed. Discovery stopping at its own bound is not a server fault,
      * not an absence — `not_found` would say the line is not there, which is
      * exactly what this verdict refuses to say — and not multiple matches.
-     * `usage` is chosen because no HTTP RESPONSE maps to it. `fromStatus` can
+     * `usage` is chosen because no HTTP RESPONSE maps to it. [fromHttpStatus] can
      * produce `auth_required`, `forbidden`, `not_found`, `rate_limit`,
      * `validation`, `limit_exceeded` and `api_error`, and never this one — so
      * `usage` cannot be confused with a constituent read's own answer, which is
