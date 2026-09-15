@@ -444,6 +444,16 @@ extension Mentions {
     /// these helpers is the one place an attacker-supplied envelope is parsed —
     /// so refusing it is the right way to differ.
     static func personId(fromGlobalId gid: String) -> Int? {
+        // No ASCII control character anywhere in it. Go hands the gid to
+        // `net/url`, which refuses one outright; a parser that strips tab, CR
+        // and LF before parsing — the WHATWG rule Foundation follows, and the
+        // one that bit the Python port — reads `gid://bc3/Person/104\n9715915`
+        // as a clean person id where Go reads nothing. The digits-only check
+        // below already catches that exact shape, but the host and scheme are
+        // not digits, and the write side's only authenticity-adjacent gate is
+        // "does this sgid name this person": a parser more forgiving than Go's
+        // renders a mention tag Go refuses to write.
+        guard !gid.utf8.contains(where: { $0 < 0x20 || $0 == 0x7F }) else { return nil }
         guard let schemeEnd = gid.range(of: "://") else { return nil }
         guard gid[gid.startIndex..<schemeEnd.lowerBound].lowercased() == "gid" else { return nil }
         var rest = Substring(gid[schemeEnd.upperBound...])

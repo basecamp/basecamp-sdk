@@ -74,6 +74,27 @@ final class MentionsTests: XCTestCase {
             "the bound is applied to the encoded form, before anything is allocated")
     }
 
+    /// Go parses the gid with `net/url`, which refuses any ASCII control
+    /// character. A parser that strips tab, CR and LF first — the WHATWG rule —
+    /// reads a crafted gid as a clean person id where Go reads nothing, and the
+    /// write side would then render a mention tag Go refuses to write.
+    func testRefusesAGlobalIdCarryingAControlCharacter() {
+        XCTAssertNil(Mentions.personId(fromGlobalId: "gid://bc3/Person/104\u{0A}9715915"))
+        XCTAssertNil(Mentions.personId(fromGlobalId: "gid://bc3/Person/104\u{09}9715915"))
+        XCTAssertNil(Mentions.personId(fromGlobalId: "gid://bc\u{0D}3/Person/42"))
+        XCTAssertNil(Mentions.personId(fromGlobalId: "gid://bc3/Pers\u{00}on/42"))
+        XCTAssertNil(Mentions.personId(fromGlobalId: "gid://bc3/Person/42\u{7F}"))
+    }
+
+    /// Go reads the id with `ParseInt(..., 64)`, which refuses an overflow
+    /// rather than wrapping.
+    func testRefusesAPersonIdThatOverflows() {
+        XCTAssertNil(Mentions.personId(fromGlobalId: "gid://bc3/Person/9223372036854775808"))
+        XCTAssertEqual(
+            Mentions.personId(fromGlobalId: "gid://bc3/Person/9223372036854775807"),
+            9_223_372_036_854_775_807)
+    }
+
     func testRefusesAMalformedGlobalIdPath() {
         XCTAssertNil(Mentions.personId(fromGlobalId: "gid://bc3/Person"))
         XCTAssertNil(Mentions.personId(fromGlobalId: "gid://bc3/Person/"))
