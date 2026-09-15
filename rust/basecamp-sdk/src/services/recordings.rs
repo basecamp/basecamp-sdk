@@ -1142,14 +1142,25 @@ async fn resolve_chat_line(
     // retries forever.
     //
     // KNOWN GAP, shared with Go and deliberately left matching it. The gate below is
-    // `skipped`, which is set only when a candidate was actually passed over for want of
-    // budget — so a bucket holding EXACTLY `MAX_CAMPFIRE_CANDIDATES` candidates, all of
-    // them 404, reaches here with the budget at zero and `skipped` false, and pays for a
-    // re-read that can admit nothing. Go does the same at recording_summary.go's pass 2,
-    // so the prose above is what both implementations intend and neither quite does.
-    // Fixing it here alone would make this SDK the one that behaves differently, and the
-    // shared fixture pins neither shape; it belongs in the Go original first and then in
-    // every port at once.
+    // `skipped`, which `try_candidates` sets only when it is about to try a candidate and
+    // finds the budget spent — and candidates already tried are filtered out before that
+    // check. So a bucket holding EXACTLY `MAX_CAMPFIRE_CANDIDATES` candidates, all of them
+    // 404, reaches here with the budget at zero and `skipped` false, and pays for a
+    // re-read that can admit nothing. Go does the same in pass 2 of its own
+    // `resolveChatLine`, so the prose above is what both implementations intend and
+    // neither quite does. Fixing it here alone would make this SDK the one that behaves
+    // differently, and the shared fixture pins neither shape; it belongs in the Go
+    // original first and then in every port at once.
+    //
+    // The obvious fix is itself a defect, which is why this note says more than "known
+    // gap": gating on `budget == 0` and concluding `incomplete` would report a bucket
+    // whose 50 candidates were ALL searched as incomplete, when nothing went unsearched.
+    // At the boundary the extra request is exactly what separates the two verdicts — a
+    // 51st candidate appearing means something was missed, nothing new appearing means the
+    // line is genuinely not there. The shape that works is to gate the RE-READS on the
+    // budget and fall through to the final `skipped` check below, plus a rule that a
+    // source never consulted because the budget ran out first yields `incomplete` rather
+    // than `unresolved`.
     let mut refreshed = false;
     if search.skipped {
         return Err(incomplete(over_budget()));
