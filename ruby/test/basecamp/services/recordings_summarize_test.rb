@@ -186,6 +186,33 @@ class RecordingsSummarizeTest < Minitest::Test
     assert_equal 999, error.actual_bucket_id
   end
 
+  def test_a_malformed_id_inside_a_nested_member_is_read_as_absent
+    # The outer Hash check does not make the id inside it safe to coerce:
+    # {"bucket": {"id": []}} is valid JSON and has no to_i.
+    [ [], {}, 12.5, true ].each do |malformed|
+      stub_get("/12345/comments/1", response_body: recording("bucket" => { "id" => malformed }))
+
+      assert_equal 1, summarize(event_type: "comment.created")["id"],
+        "a bucket id of #{malformed.inspect} should read as absent, not raise"
+      WebMock.reset!
+    end
+  end
+
+  def test_a_malformed_campfire_id_is_skipped_rather_than_raising
+    stub_get("/12345/projects/#{BUCKET}", response_body: {
+      "id" => BUCKET, "dock" => [ { "id" => [], "name" => "chat" }, { "id" => 500, "name" => "chat" } ]
+    })
+    stub_get("/12345/chats.json", response_body: [
+      { "id" => {}, "bucket" => { "id" => BUCKET } },
+      { "id" => 501, "bucket" => { "id" => [] } }
+    ])
+    [ 500, 501 ].each { |id| stub_line(id, status: 404, body: { "error" => "Record not found" }) }
+
+    error = assert_raises(Basecamp::UnresolvedRecordingError) { summarize(event_type: "chat.line.created") }
+
+    assert_equal [ 500 ], error.campfire_ids
+  end
+
   def test_a_malformed_assignees_member_is_read_as_absent
     # Same reason a malformed bucket is: a bad projection must not become an
     # exception class no caller expects.
