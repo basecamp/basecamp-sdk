@@ -49,14 +49,23 @@ module Basecamp
     # Reads an id off a value the API sent: the Integer itself, 0 when the value
     # is absent, and nil when it is anything else.
     #
-    # Nothing is coerced, and a string of digits is NOT an id. The reference
-    # decodes every id into a typed integer, so a JSON string, float, boolean,
-    # array or object there is a DECODE error that fails the read — and this
-    # tier has no decoder, which is precisely why the check has to be explicit
-    # (the same reason {Basecamp::Services::MergeSafe} exists). An earlier
-    # version accepted digit strings on an argument about deduplicating ids
-    # across two sources; that argument was written in a comment and was never
-    # true of the reference.
+    # Nothing is coerced, and a string of digits is NOT an id. At every field
+    # this reads — a bucket id, a dock item's id, a listed Campfire's id and its
+    # bucket's id — the reference holds a plain 64-bit integer, so a JSON
+    # string, float, boolean, array or object there is a DECODE error that fails
+    # the read. This tier has no decoder, which is precisely why the check has
+    # to be explicit (the same reason {Basecamp::Services::MergeSafe} exists).
+    # An earlier version accepted digit strings on an argument about
+    # deduplicating ids across two sources; that argument was written in a
+    # comment and was never true of these fields.
+    #
+    # NOT "every id in the API", which an earlier version of this paragraph
+    # claimed. A PERSON's id is the one exception in the whole generated model:
+    # it is decoded flexibly, so the reference takes <tt>"7"</tt> as 7 and
+    # <tt>"basecamp"</tt> — the sentinel it serves for system-generated
+    # entities — as 0, neither of them an error. Nothing routed through here
+    # reads a person id today. Anything that starts to must not reach for this
+    # method, because it would refuse a body the reference accepts.
     #
     # The caller turns nil into a malformed-response error. It is not raised
     # here because the message belongs to the field, not to this reader.
