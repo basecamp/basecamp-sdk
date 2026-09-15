@@ -455,7 +455,7 @@ module Basecamp
         # rendering and then scanned that for mentions, which is reading a body
         # the reference would have failed to decode. Title goes through the same
         # check because first_non_empty reaches both.
-        content = content.to_s
+        content = read_text(content, "content")
         title = read_text(title, "title")
 
         summary = {
