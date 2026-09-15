@@ -473,12 +473,50 @@ fn entity_at(rest: &str) -> Option<(&'static str, usize)> {
     None
 }
 
+/// What a numeric reference in `0x80..=0x9F` actually means. Those are not code points in
+/// HTML — they are Windows-1252 bytes, and a decoder remaps them. `&#133;` is a horizontal
+/// ellipsis, NOT U+0085 NEL.
+///
+/// Getting this wrong is not cosmetic here, and the mechanism is worth stating because it
+/// is not obvious: U+0085 IS Unicode whitespace, so a decoder that reads 133 as a code
+/// point produces a character the surrounding trim then deletes — and `<real sgid>&#133;`
+/// resolves to a person Go refuses. That is the accepting direction, on the helper a
+/// connector admits events by.
+///
+/// Read off `html.UnescapeString` by probing all thirty-two, not off a spec: the two are not
+/// interchangeable here, and four of the thirty-two (0x81, 0x8D, 0x8F, 0x90, 0x9D) map to
+/// themselves while the rest do not.
+const C1_REPLACEMENTS: [char; 32] = [
+    '\u{20ac}', '\u{81}', '\u{201a}', '\u{192}', '\u{201e}', '\u{2026}', '\u{2020}', '\u{2021}',
+    '\u{2c6}', '\u{2030}', '\u{160}', '\u{2039}', '\u{152}', '\u{8d}', '\u{17d}', '\u{8f}',
+    '\u{90}', '\u{2018}', '\u{2019}', '\u{201c}', '\u{201d}', '\u{2022}', '\u{2013}', '\u{2014}',
+    '\u{2dc}', '\u{2122}', '\u{161}', '\u{203a}', '\u{153}', '\u{9d}', '\u{17e}', '\u{178}',
+];
+
+/// The character a numeric reference's value denotes, with the substitutions a decoder makes
+/// — all measured against `html.UnescapeString` rather than assumed.
+fn numeric_scalar(code: u32) -> char {
+    const REPLACEMENT: char = '\u{fffd}';
+    match code {
+        0x80..=0x9f => C1_REPLACEMENTS[(code - 0x80) as usize],
+        // Zero, the surrogates, and anything past the last scalar all become the
+        // replacement character — `from_u32` already answers `None` for the last two, so
+        // only zero needs naming.
+        0 => REPLACEMENT,
+        code => char::from_u32(code).unwrap_or(REPLACEMENT),
+    }
+}
+
 /// A numeric character reference, on Go's boundary rather than the obvious one.
 ///
-/// Go refuses a reference whose text through its last digit is three characters or fewer,
-/// which is why `&#9B` stays literal while `&#12B` is a form feed and `&#xB` — one hex
-/// digit, but four characters — is a vertical tab. Read off the real function by probing
-/// it, not off its source; nobody would guess this.
+/// The reference is refused when its text — `&#`, the digits, and the `;` if there is one —
+/// is three characters or fewer. That is why `&#9` and `&#9B` stay literal while `&#9;` is a
+/// tab and `&#xB` is a vertical tab: the rule counts CHARACTERS, not digits, so a semicolon
+/// is worth as much as a digit and the hex `x` is worth one on its own. `&#x;` is the odd
+/// corner, four characters with no digits at all, and decodes to the replacement character.
+///
+/// Read off the real function by probing it. Nobody would derive this from its source, and a
+/// port that counts digits gets `&#9;` wrong in the vanishing direction.
 fn numeric_entity(body: &str) -> Option<(&'static str, usize)> {
     let (radix, digits, prefix) = match body.strip_prefix(['x', 'X']) {
         Some(hex) => (16, hex, 3usize),
@@ -487,13 +525,14 @@ fn numeric_entity(body: &str) -> Option<(&'static str, usize)> {
     let taken = digits
         .find(|character: char| !character.is_digit(radix))
         .unwrap_or(digits.len());
-    if taken == 0 || prefix + taken <= 3 {
+    let semicolon = usize::from(digits[taken..].starts_with(';'));
+    let consumed = prefix + taken + semicolon;
+    if consumed <= 3 || (taken == 0 && (radix == 10 || semicolon == 0)) {
         return None;
     }
-    let code = u32::from_str_radix(&digits[..taken], radix).ok()?;
-    let decoded = char::from_u32(code)?;
-    let semicolon = usize::from(digits[taken..].starts_with(';'));
-    Some((leak_char(decoded), prefix + taken + semicolon))
+    // A value too large to hold is the replacement character, as an out-of-range one is.
+    let code = u32::from_str_radix(&digits[..taken], radix).unwrap_or(0x0011_0000);
+    Some((leak_char(numeric_scalar(code)), consumed))
 }
 
 /// A decoded scalar as a `&'static str`, so both entity paths answer one type. The set of
@@ -1016,6 +1055,38 @@ mod tests {
             ("&#66", "B"),
             ("&#x42;", "B"),
             ("&#x42", "B"),
+            // The boundary counts CHARACTERS from `&`, not digits, so a semicolon is worth
+            // as much as a digit and the hex `x` is worth one on its own. A port that
+            // counts digits gets the first of these wrong in the vanishing direction.
+            ("&#9;", "\t"),
+            ("&#9", "&#9"),
+            ("&#9B", "&#9B"),
+            ("&#1;", "\u{1}"),
+            ("&#12", "\u{c}"),
+            ("&#x9", "\t"),
+            ("&#xB", "\u{b}"),
+            // 0x80..=0x9F are Windows-1252 BYTES, not code points: `&#133;` is a horizontal
+            // ellipsis, not U+0085 NEL. Reading them as code points produces a character
+            // the surrounding trim then deletes, resolving a person Go refuses.
+            ("&#133;", "\u{2026}"),
+            ("&#x85;", "\u{2026}"),
+            ("&#128;", "\u{20ac}"),
+            ("&#159;", "\u{178}"),
+            // Five of the thirty-two map to themselves; the rest do not.
+            ("&#129;", "\u{81}"),
+            ("&#141;", "\u{8d}"),
+            ("&#157;", "\u{9d}"),
+            // U+00A0 is just past the remapped range and is itself.
+            ("&#160;", "\u{a0}"),
+            // Zero, the surrogates and anything past the last scalar are the replacement
+            // character — not a refusal, and not a NUL.
+            ("&#0;", "\u{fffd}"),
+            ("&#0", "&#0"),
+            ("&#55296;", "\u{fffd}"),
+            ("&#1114112;", "\u{fffd}"),
+            ("&#x;", "\u{fffd}"),
+            ("&#;", "&#;"),
+            ("&#1114111;", "\u{10ffff}"),
             // An unknown entity is left verbatim, in Go too.
             ("&unknownthing;", "&unknownthing;"),
             ("&", "&"),
