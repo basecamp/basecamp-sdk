@@ -12,14 +12,15 @@ import XCTest
 /// process alive for weeks grows without limit.
 final class CampfireIndexTests: XCTestCase {
     /// A clock the test moves by hand. Wall-clock sleeps cannot express a
-    /// ten-minute TTL.
+    /// ten-minute TTL. Seconds rather than a `Date`, because the cache reads a
+    /// monotonic counter: a wall clock would let an NTP step freeze the TTL.
     private final class TestClock: @unchecked Sendable {
         private let lock = NSLock()
-        private var _now = Date(timeIntervalSince1970: 1_700_000_000)
+        private var _now: TimeInterval = 10_000
 
-        var now: Date { lock.withLock { _now } }
+        var now: TimeInterval { lock.withLock { _now } }
         func advance(_ seconds: TimeInterval) { lock.withLock { _now += seconds } }
-        func reader() -> @Sendable () -> Date { { [self] in now } }
+        func reader() -> @Sendable () -> TimeInterval { { [self] in now } }
     }
 
     private final class LoadCounter: @unchecked Sendable {
@@ -173,6 +174,63 @@ final class CampfireIndexTests: XCTestCase {
         XCTAssertEqual(after.value, 1, "the snapshot the failed refresh could not replace")
         XCTAssertTrue(after.cached)
         XCTAssertEqual(loads.count, 1)
+    }
+
+    /// The single-flight slot has to be released on every path control can leave
+    /// the load by, or one dead loader parks every later caller for that key for
+    /// the life of the process — and waiters wait with no timeout. Go spells
+    /// this with a deferred recover; here the release is in a `catch` that the
+    /// only non-fatal abnormal exit (a thrown error, cancellation included) also
+    /// takes.
+    func testAKeyWhoseLoadFailedIsFreeToLoadAgain() async throws {
+        let clock = TestClock()
+        let cache = makeCache(clock: clock)
+        struct Boom: Error {}
+
+        do {
+            _ = try await cache.value(for: "k", refresh: false) { throw Boom() }
+            XCTFail("expected the load to fail")
+        } catch is Boom {}
+
+        let stillClaimed = await cache.waiterCount(for: "k")
+        XCTAssertEqual(stillClaimed, 0, "the slot is not still claimed")
+        let after = try await cache.value(for: "k", refresh: false) { 7 }
+        XCTAssertEqual(after.value, 7, "a later caller is served rather than parked")
+    }
+
+    /// The same question from the other side: the caller that CLAIMED the key
+    /// walks away. The load is nobody's to cancel, so it finishes, publishes and
+    /// releases the slot anyway.
+    func testCancellingTheCallerThatStartedTheLoadStillReleasesTheKey() async throws {
+        let clock = TestClock()
+        let loads = LoadCounter()
+        let cache = makeCache(clock: clock)
+        let started = Expectation()
+
+        let claimer = Task {
+            try await cache.value(for: "k", refresh: false) {
+                await started.wait()
+                return loads.increment()
+            }
+        }
+        while await cache.waiterCount(for: "k") < 1 { await Task.yield() }
+        claimer.cancel()
+
+        do {
+            _ = try await claimer.value
+            XCTFail("a cancelled caller must stop waiting")
+        } catch is CancellationError {}
+
+        await started.fulfill()
+        // The load publishes for whoever comes next, and the key is usable.
+        var stored = await cache.cached("k")
+        while stored == nil {
+            await Task.yield()
+            stored = await cache.cached("k")
+        }
+        XCTAssertEqual(stored?.value, 1)
+        let stillClaimed = await cache.waiterCount(for: "k")
+        XCTAssertEqual(stillClaimed, 0)
     }
 
     func testTheEntryBoundEvictsTheOldestFetchedFirst() async throws {

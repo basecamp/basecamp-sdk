@@ -112,7 +112,13 @@ public enum Mentions {
                 message: "person \(id) has no attachable_sgid to mention",
                 hint: "read the person through people.get(personId:) to obtain one")
         }
-        if sgid.contains(where: { markupUnsafeCharacters.contains($0) }) {
+        // Scalars, not Characters. A `Character` is a grapheme cluster, so a
+        // quote followed by a combining mark is one Character that compares
+        // unequal to `"` and walks straight past a Character-based test — and
+        // the value is written into the attribute verbatim, with nothing else
+        // validating the half of the sgid after the last `--`. Go's
+        // `strings.ContainsAny` tests runes; this is the same test.
+        if sgid.unicodeScalars.contains(where: { markupUnsafeScalars.contains($0) }) {
             throw BasecampError.usage(
                 message: "person \(id) has a malformed attachable_sgid", hint: nil)
         }
@@ -176,7 +182,7 @@ public enum Mentions {
 /// value verbatim. Checked rather than escaped: a real `attachable_sgid` is
 /// base64url plus `--` plus hex, so one carrying markup is corrupt input, not
 /// input to sanitize.
-private let markupUnsafeCharacters: Set<Character> = ["\"", "'", "<", ">", "&"]
+private let markupUnsafeScalars: Set<Unicode.Scalar> = ["\"", "'", "<", ">", "&"]
 
 extension Mentions {
     /// Returns the `sgid` attribute of every `<bc-attachment>` in the text, in
@@ -367,7 +373,24 @@ extension Mentions {
         // Both decode through the standard alphabet once the two symbols are
         // mapped, and stripping the padding lets a truncated-but-valid payload
         // through.
-        var normalized = payload.replacingOccurrences(of: "-", with: "+")
+        // Go's `base64.RawStdEncoding.DecodeString` ignores CR and LF, and
+        // Foundation's decoder refuses them unless asked not to, so an sgid a
+        // serializer wrapped across lines decodes there and not here — a mention
+        // that silently vanishes. Strip exactly those two, alongside the
+        // alphabet normalization this already does by hand.
+        //
+        // Exactly those two, and not "whitespace": Go refuses a space or a tab
+        // inside base64 (verified against `RawStdEncoding`), so stripping them
+        // would make this the LENIENT side and let a payload through that Go
+        // rejects. The rule is parity in both directions, not leniency. Trailing
+        // bits need no handling: Go ignores a non-zero final group and so does
+        // Foundation — `QR` decodes to `A` in both.
+        // Byte-level, because a CRLF is ONE Swift `Character` and a
+        // Character-level filter for "\r" or "\n" walks straight past the pair a
+        // line-wrapping serializer actually emits.
+        let unwrapped = String(
+            decoding: payload.utf8.filter { $0 != 0x0D && $0 != 0x0A }, as: UTF8.self)
+        var normalized = unwrapped.replacingOccurrences(of: "-", with: "+")
             .replacingOccurrences(of: "_", with: "/")
         while normalized.hasSuffix("=") { normalized.removeLast() }
         guard let raw = decodeUnpaddedBase64(normalized), !raw.isEmpty,
@@ -413,6 +436,13 @@ extension Mentions {
     /// Hand-parsed rather than handed to `URL`: a GlobalID path is exactly
     /// `/<Model>/<id>` — no more, no less — and the whole point is to refuse
     /// anything else rather than to be lenient about it.
+    ///
+    /// Deliberately stricter than Go's `url.Parse`, in one respect: that reads
+    /// `u.Path`, which is percent-DECODED, so `gid://bc3/Pers%6Fn/1` names a
+    /// Person there and does not here. BC3 mints the literal form, an encoded
+    /// model name is not something a real sgid carries, and the read side of
+    /// these helpers is the one place an attacker-supplied envelope is parsed —
+    /// so refusing it is the right way to differ.
     static func personId(fromGlobalId gid: String) -> Int? {
         guard let schemeEnd = gid.range(of: "://") else { return nil }
         guard gid[gid.startIndex..<schemeEnd.lowerBound].lowercased() == "gid" else { return nil }

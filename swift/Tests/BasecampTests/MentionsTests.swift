@@ -194,6 +194,49 @@ final class MentionsTests: XCTestCase {
         }
     }
 
+    /// The guard has to test scalars, not `Character`s: a quote followed by a
+    /// combining mark is ONE grapheme cluster that compares unequal to `"`, and
+    /// the sgid is written into the attribute verbatim. Nothing else validates
+    /// the half after the last `--`, so a Character-based test is an
+    /// attribute-escape bypass.
+    func testMarkupRefusesAQuoteHiddenInAGraphemeCluster() {
+        let payload = railsJSONSgid  // decodes to person 42
+        let hidden = "\u{0022}\u{0301}"  // quote + combining acute: one Character
+        XCTAssertEqual(hidden.count, 1, "precondition: this is a single grapheme cluster")
+
+        XCTAssertThrowsError(
+            try Mentions.markup(for: person(42, "\(payload)--dead\(hidden) onerror=x"))
+        ) { error in
+            guard case BasecampError.usage(let message, _) = error else {
+                return XCTFail("expected a usage error, got \(error)")
+            }
+            XCTAssertTrue(message.contains("malformed"), message)
+        }
+    }
+
+    /// Go's base64 decoder ignores CR and LF; Foundation's refuses them. An sgid
+    /// a serializer wrapped across lines has to decode to the same person on
+    /// both sides, or the mention silently vanishes on one of them.
+    func testDecodesAnSgidWrappedAcrossLines() {
+        let wrapped = railsJSONSgid.prefix(20) + "\r\n" + railsJSONSgid.dropFirst(20)
+        XCTAssertEqual(Mentions.personId(fromAttachableSgid: String(wrapped)), 42)
+    }
+
+    /// Parity runs both ways. Go refuses a space inside base64, so accepting one
+    /// here would make this the lenient side — a payload Go rejects decoding to
+    /// a mention.
+    func testRefusesAnSgidWithASpaceInIt() {
+        let spaced = railsJSONSgid.prefix(20) + " " + railsJSONSgid.dropFirst(20)
+        XCTAssertNil(Mentions.personId(fromAttachableSgid: String(spaced)))
+    }
+
+    /// A non-zero final group is ignored by Go's decoder and by Foundation's, so
+    /// nothing has to be done about it — but it is pinned, because "handling" it
+    /// is the obvious wrong fix.
+    func testANonZeroTrailingGroupDecodesTheSameOnBothSides() {
+        XCTAssertEqual(Data(base64Encoded: "QR==").map { [UInt8]($0) }, [65])
+    }
+
     func testMentionsArePlacedInsideTheLeadingBlock() throws {
         let content = try Mentions.adding([person(42, railsJSONSgid)], to: "<div>On it.</div>")
         XCTAssertEqual(

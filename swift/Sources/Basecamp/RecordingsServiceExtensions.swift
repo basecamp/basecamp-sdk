@@ -55,10 +55,17 @@ public struct RecordingRef: Sendable, Equatable {
 
     /// The routing key a failure names: the recording type when there is one,
     /// the event type otherwise.
+    ///
+    /// Trimmed the way Go's `strings.TrimSpace` trims — newlines, carriage
+    /// returns and form feeds included, not just the spaces
+    /// `CharacterSet.whitespaces` covers. A type read off a line-terminated feed
+    /// field arrives as `"Comment\n"`, and a recording type of `"\n"` beside a
+    /// usable event type has to read as ABSENT: otherwise a pointer Go resolves
+    /// to a summary becomes an unknown-type refusal here.
     var routingKey: String {
-        let type = recordingType?.trimmingCharacters(in: .whitespaces) ?? ""
+        let type = recordingType?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         if !type.isEmpty { return type }
-        return eventType?.trimmingCharacters(in: .whitespaces) ?? ""
+        return eventType?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
     }
 }
 
@@ -369,7 +376,7 @@ extension RecordingsService {
 
     /// Picks the read for a ref. ``RecordingRef/recordingType`` wins when set.
     static func route(_ ref: RecordingRef) throws -> RecordingSummaryKind {
-        let type = ref.recordingType?.trimmingCharacters(in: .whitespaces) ?? ""
+        let type = ref.recordingType?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         if !type.isEmpty {
             if type.hasPrefix(chatLineTypePrefix) { return .chatLine }
             guard let kind = summarizableTypes[type] else {
@@ -378,7 +385,7 @@ extension RecordingsService {
             return kind
         }
 
-        let eventType = ref.eventType?.trimmingCharacters(in: .whitespaces) ?? ""
+        let eventType = ref.eventType?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         guard !eventType.isEmpty else { throw RecordingSummaryError.unknownRecordingType(ref) }
         // A feed type is "<subject>.<action>"; the subject names the recording
         // type. A string with no action is not a feed type and is not routed.
@@ -538,7 +545,7 @@ extension RecordingsService {
             let vault = try await account.vaults.get(vaultId: id)
             return project(
                 id: vault.id, status: vault.status, type: vault.type, title: vault.title,
-                appUrl: vault.appUrl, parent: vault.parent.map { RecordingSummaryParent($0) }, bucket: RecordingSummaryBucket(vault.bucket),
+                appUrl: vault.appUrl, parent: vault.parent.flatMap { RecordingSummaryParent($0) }, bucket: RecordingSummaryBucket(vault.bucket),
                 creator: vault.creator, content: "", updatedAt: vault.updatedAt)
 
         case .forward:
@@ -827,7 +834,11 @@ extension RecordingsService {
     ) -> RecordingSummary {
         RecordingSummary(
             id: id, status: status, type: type, title: title, appUrl: appUrl, parent: parent,
-            bucket: bucket, creator: creator, assignees: assignees,
+            bucket: bucket, creator: creator,
+            // An empty assignee list is absent, not present-and-empty: Go's
+            // `omitempty` drops it, and the projection must not depend on which
+            // SDK rendered it.
+            assignees: (assignees?.isEmpty ?? true) ? nil : assignees,
             mentionedPersonIds: mentionedPersonIds ?? Mentions.personIds(in: content),
             content: content, updatedAt: updatedAt, campfireId: campfireId)
     }
@@ -841,27 +852,35 @@ private func firstNonEmpty(_ values: String?...) -> String {
     return ""
 }
 
+// An all-zero nested identity is ABSENT, not an identity whose every field
+// happens to be empty. Go's model conversions build `*Parent`/`*Bucket` only
+// when the payload carried an id or a name, so the projection omits the key
+// rather than emitting `{"id":0,"title":"","type":"",…}`, and a consumer reading
+// the projection from any SDK has to see the same thing.
 extension RecordingSummaryParent {
-    init(_ parent: RecordingParent) {
+    init?(_ parent: RecordingParent) {
+        guard parent.id != 0 || !parent.title.isEmpty else { return nil }
         self.init(
             id: parent.id, title: parent.title, type: parent.type, url: parent.url,
             appUrl: parent.appUrl)
     }
 
-    init(_ parent: TodoParent) {
+    init?(_ parent: TodoParent) {
+        guard parent.id != 0 || !parent.title.isEmpty else { return nil }
         self.init(
             id: parent.id, title: parent.title, type: parent.type, url: parent.url,
             appUrl: parent.appUrl)
     }
-
 }
 
 extension RecordingSummaryBucket {
-    init(_ bucket: TodoBucket) {
+    init?(_ bucket: TodoBucket) {
+        guard bucket.id != 0 || !bucket.name.isEmpty else { return nil }
         self.init(id: bucket.id, name: bucket.name, type: bucket.type)
     }
 
-    init(_ bucket: RecordingBucket) {
+    init?(_ bucket: RecordingBucket) {
+        guard bucket.id != 0 || !bucket.name.isEmpty else { return nil }
         self.init(id: bucket.id, name: bucket.name, type: bucket.type)
     }
 }

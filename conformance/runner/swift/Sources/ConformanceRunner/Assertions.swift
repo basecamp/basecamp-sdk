@@ -40,22 +40,69 @@ func conformanceCode(_ error: BasecampError) -> String {
     }
 }
 
-/// Operations whose dispatch makes several requests against DIFFERENT resources,
-/// so the fixture's single `path` field can only describe the first of them.
+/// The hops a multi-request composite is allowed to make, for the operations
+/// whose hops address DIFFERENT resources and so cannot all be described by the
+/// fixture's single `path` field.
 ///
-/// Kept to the SPEC Appendix F composites, which are the only dispatch arms that
-/// do it: `RecordingsSummarize` reads a project dock, then the Campfire listing,
-/// then a line under each candidate; `CommentsCreateWithMentions` reads each
-/// person, then posts. Both pin the hops they care about with indexed
-/// `requestPath` assertions — this only stops the implicit invariant from
-/// demanding that a Campfire listing arrive at a project's path.
+/// This is not an exemption. A later hop with no indexed `requestPath` assertion
+/// is checked here instead of against the fixture path: it must be one of the
+/// shapes the composite is defined to make, AND it must carry the ids the
+/// fixture named. A dispatch that read the wrong project, listed Campfires it
+/// had no business listing, or looked for some other line still fails — which is
+/// what the implicit invariant is for, and what a blanket `continue` would have
+/// thrown away for the two cases that assert only a request count and an error
+/// type.
 ///
-/// Adding an operation here removes real cover, so add one only when its hops
-/// genuinely address different resources, and never to quiet a failure that is
-/// telling you the dispatch went somewhere it should not have.
-private let operationsWhoseHopsAddressDifferentResources: Set<String> = [
-    "RecordingsSummarize", "CommentsCreateWithMentions",
-]
+/// Returns nil when the operation makes no such hops, which is every operation
+/// but these two; the read-modify-write composites GET and PUT one resource and
+/// stay under the fixture-path rule.
+private func compositeHopIsOnContract(
+    _ tc: TestCase, path: String, accountID: String
+) -> Bool? {
+    // Answer "not my business" BEFORE anything else: every other operation is
+    // governed by the fixture-path rule, and a `false` here would put a download
+    // hop, a pagination follow or a redirect under a contract written for two
+    // composites.
+    switch tc.operation {
+    case "RecordingsSummarize", "CommentsCreateWithMentions": break
+    default: return nil
+    }
+
+    let segments = path.split(separator: "/").map(String.init)
+    guard segments.first == accountID else { return false }
+    let hop = Array(segments.dropFirst())
+
+    func id(_ key: String) -> String? {
+        tc.pathParams?[key].flatMap { $0.intValue.map(String.init) ?? $0.stringValue }
+    }
+
+    switch tc.operation {
+    case "RecordingsSummarize":
+        // The bucket's project dock, the account-wide Campfire listing, and a
+        // line read under one candidate Campfire — the two-hop discovery, in the
+        // only shapes it has.
+        if hop.count == 2, hop[0] == "projects" { return hop[1] == id("bucketId") }
+        if hop == ["chats.json"] { return true }
+        if hop.count == 4, hop[0] == "chats", hop[2] == "lines", Int(hop[1]) != nil {
+            return hop[3] == id("recordingId")
+        }
+        return false
+    case "CommentsCreateWithMentions":
+        // One read per mentioned person, then the comment write.
+        if hop.count == 2, hop[0] == "people" {
+            let mentioned = tc.requestBody?["mentions"]?.arrayValue?
+                .compactMap { $0.intValue.map(String.init) } ?? []
+            return mentioned.contains(hop[1])
+        }
+        if hop.count == 3, hop[0] == "recordings", hop[2] == "comments.json" {
+            return hop[1] == id("recordingId")
+        }
+        return false
+    default:
+        // Unreachable: the switch at the top already returned for these.
+        return nil
+    }
+}
 
 /// A §18 composite's own error identity, in the vocabulary the fixtures use.
 ///
@@ -239,13 +286,18 @@ func evaluateAssertions(
                 if explicitAssertionCovers("requestPath", request: i) { continue }
                 // A composite whose hops address DIFFERENT resources has no one
                 // path for the fixture's `path` field to name, so that field
-                // names the first hop and the rest are pinned — where the case
-                // means to pin them — by indexed assertions. The read-modify-write
-                // composites are untouched by this: they GET and PUT the same
-                // resource, so every hop is still held to the fixture's path, and
-                // that is the regression the invariant was written for.
-                if i > 0, operationsWhoseHopsAddressDifferentResources.contains(tc.operation) {
-                    continue
+                // names the first hop and the rest are held to the composite's
+                // own contract instead — same strictness, different rule. The
+                // read-modify-write composites are untouched: they GET and PUT
+                // the same resource, so every hop of theirs is still checked
+                // against the fixture path, which is the regression the
+                // invariant was written for.
+                if i > 0, let onContract = compositeHopIsOnContract(
+                    tc, path: request.path, accountID: testAccountID)
+                {
+                    if onContract { continue }
+                    return .fail(
+                        "Expected request \(i) to be one of \(tc.operation)'s hops against the resources the fixture named, got \(request.path)")
                 }
                 if !requestPathMatches(request.path, fixturePath: expected, accountID: testAccountID) {
                     let want = expectedRequestPath(expected, accountID: testAccountID)

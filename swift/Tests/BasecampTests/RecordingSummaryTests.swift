@@ -69,6 +69,46 @@ final class RecordingSummaryTests: XCTestCase {
         XCTAssertEqual(server.paths, ["/\(accountId)/messages/7"])
     }
 
+    /// Go trims with `strings.TrimSpace`, which takes newlines too. A type read
+    /// off a line-terminated feed field must still route, and a whitespace-only
+    /// recording type must read as ABSENT so the event type is consulted —
+    /// otherwise a pointer Go resolves becomes a refusal here.
+    func testRoutingTrimsTheWhitespaceGoTrims() async throws {
+        let server = RecordingServer()
+        let account = makeTestAccountClient(transport: server.makeTransport())
+
+        _ = try await account.recordings.summarize(
+            RecordingRef(bucketId: 1, recordingId: 7, recordingType: "Comment\n"))
+        _ = try await account.recordings.summarize(
+            RecordingRef(bucketId: 1, recordingId: 7, eventType: "comment.created\n"))
+        _ = try await account.recordings.summarize(
+            RecordingRef(
+                bucketId: 1, recordingId: 7, eventType: "comment.created",
+                recordingType: "\n \t"))
+
+        XCTAssertEqual(
+            server.paths, Array(repeating: "/\(accountId)/comments/7", count: 3))
+    }
+
+    /// The projection is one shape across every SDK, so a nested identity the
+    /// payload did not carry is ABSENT rather than an object of empty fields.
+    func testAnAllZeroParentAndAnEmptyAssigneeListAreAbsent() async throws {
+        let server = RecordingServer(emptyParent: true)
+        let account = makeTestAccountClient(transport: server.makeTransport())
+
+        let summary = try await account.recordings.summarize(
+            RecordingRef(bucketId: 1, recordingId: 7, recordingType: "Comment"))
+
+        XCTAssertNil(summary.parent, "an id-less, title-less parent is not a parent")
+        XCTAssertNotNil(summary.bucket, "the bucket this one does carry stays")
+        XCTAssertNil(summary.assignees, "a comment has none, and none is absent, not []")
+
+        let encoded = try XCTUnwrap(
+            String(data: try BaseService.encoder.encode(summary), encoding: .utf8))
+        XCTAssertFalse(encoded.contains("\"parent\""), encoded)
+        XCTAssertFalse(encoded.contains("\"assignees\""), encoded)
+    }
+
     func testRequiresBothIds() async {
         let server = RecordingServer()
         let account = makeTestAccountClient(transport: server.makeTransport())
@@ -290,6 +330,7 @@ private final class RecordingServer: @unchecked Sendable {
     private var _paths: [String] = []
 
     private let commentBucketId: Int
+    private let emptyParent: Bool
     private let dockCampfireIds: [Int]
     private let listedCampfireIds: [Int]
     private let listingAdvertisesMore: Bool
@@ -303,6 +344,7 @@ private final class RecordingServer: @unchecked Sendable {
 
     init(
         commentBucketId: Int = 1,
+        emptyParent: Bool = false,
         dockCampfireIds: [Int] = [],
         listedCampfireIds: [Int] = [],
         listingAdvertisesMore: Bool = false,
@@ -311,6 +353,7 @@ private final class RecordingServer: @unchecked Sendable {
         lineStatusByCampfire: [Int: Int] = [:]
     ) {
         self.commentBucketId = commentBucketId
+        self.emptyParent = emptyParent
         self.dockCampfireIds = dockCampfireIds
         self.listedCampfireIds = listedCampfireIds
         self.listingAdvertisesMore = listingAdvertisesMore
@@ -451,7 +494,9 @@ private final class RecordingServer: @unchecked Sendable {
             "app_url": "https://3.basecamp.com/999999999/buckets/\(bucketId)/x/\(id)",
             "bucket": ["id": bucketId, "name": "The Leto Laptop", "type": "Project"],
             "creator": personJSON,
-            "parent": parentJSON(id: 1, type: "Message::Board"),
+            "parent": emptyParent
+                ? ["id": 0, "title": "", "type": "", "url": "", "app_url": ""] as [String: Any]
+                : parentJSON(id: 1, type: "Message::Board"),
         ]
         if type == "Message" { json["subject"] = "We won Leto!" }
         return json

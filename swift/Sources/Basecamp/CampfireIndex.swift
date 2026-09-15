@@ -41,7 +41,15 @@ final class CampfireIndex: Sendable {
     /// The account-wide listing, grouped by bucket, keyed by account id.
     let listings: TTLCache<String, [Int: [Int]]>
 
-    init(clock: @escaping @Sendable () -> Date = { Date() }) {
+    /// `clock` reads a MONOTONIC seconds counter, not a wall clock. Go's
+    /// `time.Now()` carries a monotonic reading and its `Sub`/`After`
+    /// comparisons use it, so its TTL and refresh floor are immune to a clock
+    /// step; `Date()` is not, and a backward NTP step would make every entry's
+    /// age negative — serving a stale snapshot and refusing every refresh for
+    /// the length of the step, while reporting `refreshed: false` on lines it
+    /// had concluded nothing about. `systemUptime` is the reading that matches
+    /// Go's on both platforms, sleep behaviour included.
+    init(clock: @escaping @Sendable () -> TimeInterval = { ProcessInfo.processInfo.systemUptime }) {
         docks = TTLCache(
             clock: clock, ttl: RecordingsService.campfireIndexTTL,
             refreshFloor: RecordingsService.campfireIndexMinRefresh, maxItems: Self.maxItems)
@@ -55,7 +63,9 @@ final class CampfireIndex: Sendable {
     /// call.
     struct SourceRead: Sendable {
         var ids: [Int]
-        var fetchedAt: Date
+        /// A monotonic reading, comparable only against another from the same
+        /// cache — which is all anything does with it.
+        var fetchedAt: TimeInterval
         var cached: Bool
     }
 
@@ -142,6 +152,18 @@ struct CampfireListingOverflow: Error, CustomStringConvertible {
 ///     snapshot it publishes is the one the next call would have paid for
 ///     anyway.
 ///
+///     There is therefore no attribution question to get wrong. Go has to
+///     decide whether a failed load was the owning caller's doing — and has to
+///     decide it from *whose* context ended, not from the error, because a
+///     transport timeout looks exactly like a cancellation while the caller is
+///     still alive; a port that reads the error type instead re-runs a load Go
+///     would have shared, once per waiter. Here the load runs under no caller's
+///     task, so every failure is the load's own and is shared, and neither
+///     `CancellationError` nor `URLError.cancelled` can be mistaken for
+///     anything. Publication is uncancellable for the same reason: nothing
+///     holds the load task to cancel it, and neither the publish nor the
+///     release suspends.
+///
 ///   * A cancelled caller still stops waiting *at once*, which is the half that
 ///     does not come for free: `await someTask.value` is not interrupted by the
 ///     awaiting task's cancellation, so a waiter that simply awaited the load
@@ -157,39 +179,50 @@ actor TTLCache<Key: Hashable & Sendable, Value: Sendable> {
     /// a snapshot it already consulted from a newer one, whoever loaded it.
     struct Hit: Sendable {
         let value: Value
-        let fetchedAt: Date
+        let fetchedAt: TimeInterval
         let cached: Bool
     }
 
     private struct Entry {
         let value: Value
-        let fetchedAt: Date
+        let fetchedAt: TimeInterval
         /// Publication order: the tie-breaker when fetch times are equal, so
         /// eviction is total rather than whatever dictionary order visits first.
         let sequence: UInt64
     }
 
-    private let clock: @Sendable () -> Date
+    /// One suspended caller.
+    ///
+    /// A reference type so that the cancellation handler and the registration
+    /// can name the same waiter without a registry to clean up: whichever runs
+    /// first leaves its mark here, the other reads it, and the whole thing dies
+    /// with the call. An earlier shape kept a set of cancelled ids on the actor
+    /// instead, which grew by one entry for every cancel that raced a
+    /// completion and was never swept — the unbounded growth this cache's entry
+    /// bound exists to prevent, reintroduced beside it.
+    ///
+    /// Every member is read and written on the actor and nowhere else, which is
+    /// what the unchecked conformance stands on.
+    private final class Waiter: @unchecked Sendable {
+        var continuation: CheckedContinuation<Hit, any Error>?
+        var cancelled = false
+    }
+
+    private let clock: @Sendable () -> TimeInterval
     private let ttl: TimeInterval
     private let refreshFloor: TimeInterval
     private let maxItems: Int
 
     private var entries: [Key: Entry] = [:]
     /// Keys with a load in progress, and the callers waiting on each. A waiter
-    /// is a continuation rather than an `await` on the load task, so that
-    /// cancelling one caller does not mean waiting out the read (see the type
-    /// comment).
-    private var waiting: [Key: [UUID: CheckedContinuation<Hit, any Error>]] = [:]
-    /// Waiters cancelled in the window between the cancellation handler being
-    /// armed and the continuation being registered. Without this the handler
-    /// finds nothing to resume and the continuation that arrives a moment later
-    /// is never resumed at all — a hang, and the one race this design has.
-    private var cancelledBeforeRegistering: Set<UUID> = []
+    /// is a continuation rather than an `await` on the load task, so cancelling
+    /// one caller does not mean waiting out the read (see the type comment).
+    private var waiting: [Key: [Waiter]] = [:]
     private var sequence: UInt64 = 0
 
     init(
-        clock: @escaping @Sendable () -> Date, ttl: TimeInterval, refreshFloor: TimeInterval,
-        maxItems: Int
+        clock: @escaping @Sendable () -> TimeInterval, ttl: TimeInterval,
+        refreshFloor: TimeInterval, maxItems: Int
     ) {
         self.clock = clock
         self.ttl = ttl
@@ -205,57 +238,56 @@ actor TTLCache<Key: Hashable & Sendable, Value: Sendable> {
         try Task.checkCancellation()
 
         if let entry = entries[key] {
-            let age = clock().timeIntervalSince(entry.fetchedAt)
+            let age = clock() - entry.fetchedAt
             if age < ttl, !refresh || age < refreshFloor {
                 return Hit(value: entry.value, fetchedAt: entry.fetchedAt, cached: true)
             }
         }
-
-        // Claim the key before suspending, so the caller that claims it is the
-        // one that starts the load and everyone else queues behind it.
-        let startsTheLoad = waiting[key] == nil
-        if startsTheLoad { waiting[key] = [:] }
         // The load this call waited on is this call's load: its value is handed
         // over as fresh, not as something that predated the call.
-        return try await waitForLoad(of: key, starting: startsTheLoad ? load : nil)
+        return try await waitForLoad(of: key, load: load)
     }
 
     /// Suspends until the load for `key` publishes — or until this caller is
     /// cancelled, whichever comes first.
-    ///
-    /// `load` is non-nil for the caller that claimed the key, and it is started
-    /// from inside the registration below rather than before it. That ordering
-    /// is what makes the wait safe: the load runs on this actor, so it cannot
-    /// publish — and cannot resume waiters — until the registration that started
-    /// it has returned.
     private func waitForLoad(
-        of key: Key, starting load: (@Sendable () async throws -> Value)?
+        of key: Key, load: @escaping @Sendable () async throws -> Value
     ) async throws -> Hit {
-        let id = UUID()
+        let waiter = Waiter()
         return try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { continuation in
-                register(id, waitingOn: key, continuation, starting: load)
+                register(waiter, continuation, on: key, load: load)
             }
         } onCancel: {
-            Task { await self.stopWaiting(id, on: key) }
+            Task { await self.stopWaiting(waiter, on: key) }
         }
     }
 
+    /// Registers one waiter, claiming the key and starting the load when this is
+    /// the first caller to arrive.
+    ///
+    /// Claiming, registering and starting all happen here, in one synchronous
+    /// actor-isolated step. That is what makes the wait safe: there is no
+    /// suspension between them for a load to publish into, so a waiter can never
+    /// register against a key whose load has already finished, and a key can
+    /// never be claimed without a load being started behind it.
     private func register(
-        _ id: UUID, waitingOn key: Key, _ continuation: CheckedContinuation<Hit, any Error>,
-        starting load: (@Sendable () async throws -> Value)?
+        _ waiter: Waiter, _ continuation: CheckedContinuation<Hit, any Error>, on key: Key,
+        load: @escaping @Sendable () async throws -> Value
     ) {
-        guard cancelledBeforeRegistering.remove(id) == nil else {
-            // Cancelled in the window before this ran. Release the key when this
-            // was the caller that claimed it, or nothing would ever load it
-            // again.
-            if load != nil { waiting[key] = nil }
+        guard !waiter.cancelled else {
+            // Cancelled before this ran. It never claimed the key, so there is
+            // nothing to release and nobody else to disturb.
             continuation.resume(throwing: CancellationError())
             return
         }
-        waiting[key]?[id] = continuation
+        waiter.continuation = continuation
 
-        guard let load else { return }
+        let startsTheLoad = waiting[key] == nil
+        if startsTheLoad { waiting[key] = [] }
+        waiting[key]?.append(waiter)
+        guard startsTheLoad else { return }
+
         // Unstructured on purpose: the load must outlive any one caller.
         // `Task.init` inherits this actor's isolation, so `publish` and `finish`
         // run under the actor without a second hop; awaiting the loader suspends
@@ -270,23 +302,23 @@ actor TTLCache<Key: Hashable & Sendable, Value: Sendable> {
         }
     }
 
-    private func stopWaiting(_ id: UUID, on key: Key) {
-        if let continuation = waiting[key]?.removeValue(forKey: id) {
-            continuation.resume(throwing: CancellationError())
-        } else {
-            // The continuation is not registered yet, so leave a marker for the
-            // registration to find. (The other way to reach here is a cancel
-            // that lands after the load already resumed this waiter; ids are
-            // unique, so the marker it leaves is inert.)
-            cancelledBeforeRegistering.insert(id)
-        }
+    private func stopWaiting(_ waiter: Waiter, on key: Key) {
+        waiter.cancelled = true
+        // No continuation means one of two things, and neither needs anything
+        // more than the flag above: this waiter has not registered yet (the
+        // registration will read the flag and refuse), or the load already
+        // resumed it (nothing left to cancel).
+        guard let continuation = waiter.continuation else { return }
+        waiter.continuation = nil
+        waiting[key]?.removeAll { $0 === waiter }
+        continuation.resume(throwing: CancellationError())
     }
 
     /// Hands one load's outcome to everyone waiting on it, and releases the key.
     private func finish(_ key: Key, _ outcome: Result<Hit, any Error>) {
-        let waiters = waiting.removeValue(forKey: key) ?? [:]
-        for (id, continuation) in waiters {
-            cancelledBeforeRegistering.remove(id)
+        for waiter in waiting.removeValue(forKey: key) ?? [] {
+            guard let continuation = waiter.continuation else { continue }
+            waiter.continuation = nil
             continuation.resume(with: outcome)
         }
     }
@@ -294,9 +326,7 @@ actor TTLCache<Key: Hashable & Sendable, Value: Sendable> {
     /// Returns the cached value for `key` when one is within the TTL, without
     /// loading.
     func cached(_ key: Key) -> Hit? {
-        guard let entry = entries[key], clock().timeIntervalSince(entry.fetchedAt) < ttl else {
-            return nil
-        }
+        guard let entry = entries[key], clock() - entry.fetchedAt < ttl else { return nil }
         return Hit(value: entry.value, fetchedAt: entry.fetchedAt, cached: true)
     }
 
@@ -324,7 +354,7 @@ actor TTLCache<Key: Hashable & Sendable, Value: Sendable> {
     /// rather than for its lifetime.
     private func sweep() {
         let now = clock()
-        entries = entries.filter { now.timeIntervalSince($0.value.fetchedAt) < ttl }
+        entries = entries.filter { now - $0.value.fetchedAt < ttl }
     }
 
     /// Evicts the oldest-fetched entries until the one about to be stored for
