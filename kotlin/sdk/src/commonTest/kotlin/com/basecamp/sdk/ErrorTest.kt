@@ -242,6 +242,14 @@ class ErrorTest {
         val unmapped = BasecampException.RecordingSummaryFailure("a_reason_added_later", "failed")
         assertEquals(BasecampException.CODE_USAGE, unmapped.code)
         assertEquals(1, unmapped.exitCode)
+        // `reason != code` above is a real check rather than a theorem, and this
+        // is the input that shows it: a reason spelled like a canonical code
+        // derives THAT code, so the two sides coincide. Without this row, an
+        // `assertNotEquals` between a value and a function of that value reads
+        // as something the derivation guarantees, and a reader cannot tell a
+        // guard from a tautology.
+        val collides = BasecampException.RecordingSummaryFailure(BasecampException.CODE_USAGE, "failed")
+        assertEquals(collides.reason, collides.code)
         // recording_unresolved and a read's own 404 share a coarse code on
         // purpose — both mean "not found" — and stay distinguishable by reason.
         val unresolved = BasecampException.RecordingSummaryFailure(
