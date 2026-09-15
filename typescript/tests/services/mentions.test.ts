@@ -139,9 +139,45 @@ describe("personIdFromSGID", () => {
       ok(`gid://b${allowed}c3/Person/${VICTOR}`);
     }
 
-    // A control byte anywhere in the URL, not merely in the authority.
+    // A control byte in the URL, but NOT in the fragment: Parse cuts the
+    // fragment before it looks for one.
     no(`gid://bc3/Person/${VICTOR}\u0001`);
     no(`gid://bc3/Person/${VICTOR}?x=\u0001`);
+    ok(`gid://bc3/Person/${VICTOR}#\u0001`);
+
+    // The fragment IS unescaped, so a malformed escape there is an error; the
+    // query is left raw, so the same escape there is not.
+    no(`gid://bc3/Person/${VICTOR}#%zz`);
+    no(`gid://bc3/Person/${VICTOR}#%2`);
+    ok(`gid://bc3/Person/${VICTOR}?x=%zz`);
+
+    // The path is percent-decoded, as url.Parse decodes it, and a malformed
+    // escape there is refused.
+    ok(`gid://bc3/Pe%72son/${VICTOR}`);
+    ok(`gid://bc3/Person/104%39715914`);
+    no(`gid://bc3/Person/${VICTOR}%zz`);
+
+    // A bracketed literal is parsed, not shape-checked — six defects across
+    // five ports have lived on these two lines, every one a look-like test
+    // standing in for the reference's parse.
+    ok(`gid://[::1]/Person/${VICTOR}`);
+    ok(`gid://[::ffff:1.2.3.4]/Person/${VICTOR}`);
+    no(`gid://[1.2.3.4]/Person/${VICTOR}`);
+    // A dotted quad is legal only at the END of the address: with a trailing
+    // "::" the quad sits in front of the compression.
+    no(`gid://[1.2.3.4::]/Person/${VICTOR}`);
+    no(`gid://[0:0.0.0.0::]/Person/${VICTOR}`);
+
+    // The zone has its own character and escape rules, and they are not the
+    // ones the rest of the URL uses.
+    ok(`gid://[fe80::1%25eth0]/Person/${VICTOR}`);
+    ok(`gid://[fe80::1%25e%20f]/Person/${VICTOR}`);
+    ok(`gid://[fe80::1%25e%25f]/Person/${VICTOR}`);
+    no(`gid://[fe80::1%25e f]/Person/${VICTOR}`);
+    no(`gid://[fe80::1%25e[f]/Person/${VICTOR}`);
+    no(`gid://[fe80::1%25e%2Ff]/Person/${VICTOR}`);
+    no(`gid://[fe80::1%25e%00f]/Person/${VICTOR}`);
+    no(`gid://[fe80::1%25]/Person/${VICTOR}`);
   });
 
   it("refuses a malformed id, and an id that cannot be a number without rounding", () => {
@@ -540,6 +576,21 @@ describe("mentionMarkup", () => {
       const resolves = personIdFromSGID(legacySGID(gid)) === VICTOR;
       expect(writes(gid), `write side disagrees with the read side for ${gid}`).toBe(resolves);
     }
+
+    // Deriving both ends from the same parser pins DRIFT and is blind to
+    // COMMON-MODE error: forcing isParsableHost or personIdFromSGID to a
+    // constant leaves the loop above green, because both sides move together.
+    // These rows are literal, one per verdict class, so the two failure modes
+    // are covered by different assertions rather than by the same one twice.
+    expect(writes(`gid://bc3/Person/${VICTOR}`)).toBe(true);
+    expect(writes(`gid://[::1]/Person/${VICTOR}`)).toBe(true);
+    expect(writes(`gid://@/Person/${VICTOR}`)).toBe(false);
+    expect(writes(`gid://[not-an-ip]/Person/${VICTOR}`)).toBe(false);
+    expect(writes(`gid://[fe80::1%25eth0]/Person/${VICTOR}`)).toBe(true);
+    expect(writes(`gid://[fe80::1%25e f]/Person/${VICTOR}`)).toBe(false);
+    expect(writes(`gid://[1.2.3.4::]/Person/${VICTOR}`)).toBe(false);
+    expect(writes(`gid://bc3/Person/${VICTOR}#%zz`)).toBe(false);
+    expect(writes(`gid://bc3/Pe%72son/${VICTOR}`)).toBe(true);
   });
 
   it("refuses an sgid carrying markup characters", () => {
