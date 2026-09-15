@@ -149,6 +149,38 @@ class CampfireIndexTest < Minitest::Test
     assert_equal [ false ] * 4, hits.map(&:cached)
   end
 
+  def test_the_default_clock_is_monotonic
+    # Wall time can step backwards — an NTP correction, a VM resume — and every
+    # consequence is silent: an entry outliving its TTL, a genuinely due refresh
+    # declined, the `refreshed` and stale-candidate signals lost with it.
+    cache = Basecamp::CampfireIndex::TTLCache.new(ttl: 1.0, floor: 1.0, max_items: 10)
+    clock = cache.instance_variable_get(:@clock)
+
+    before = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    reading = clock.call
+    after = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+
+    assert_operator reading, :>=, before
+    assert_operator reading, :<=, after
+    # A wall clock would be far away from the monotonic one; the same clock is
+    # within the window above, which Time.now.to_f never would be.
+    assert_operator (reading - Time.now.to_f).abs, :>, 1.0
+  end
+
+  def test_publication_is_idempotent
+    # An async exception landing between the load returning and the key being
+    # released lets `get`'s ensure publish a second time; the first outcome has
+    # to stand rather than being overwritten with an abandonment error.
+    cache = Basecamp::CampfireIndex::TTLCache.new(ttl: 100.0, floor: 1.0, max_items: 10, clock: -> { @now })
+    pending = { done: false, error: nil, value: nil, fetched: nil }
+    cache.send(:publish, :k, pending, "first", nil)
+    cache.send(:publish, :k, pending, nil, RuntimeError.new("late"))
+
+    assert_nil pending[:error]
+    assert_equal "first", pending[:value]
+    assert_equal "first", cache.peek(:k).value
+  end
+
   def test_a_loader_that_leaves_without_an_outcome_releases_the_key
     # Not a StandardError, so neither rescue arm runs: an Interrupt, a signal, a
     # Thread#kill. Without the ensure the key stays in flight and every later
