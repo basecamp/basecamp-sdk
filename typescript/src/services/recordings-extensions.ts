@@ -23,7 +23,7 @@
  */
 
 import type { BasecampHooks } from "../hooks.js";
-import { BasecampError, Errors, isBasecampError } from "../errors.js";
+import { BasecampError, Errors, isBasecampError, truncateErrorMessage } from "../errors.js";
 import type { BasecampErrorOptions, ErrorCode } from "../errors.js";
 import { RecordingsService as GeneratedRecordingsService } from "../generated/services/recordings.js";
 import type { RawClient } from "./base.js";
@@ -223,7 +223,13 @@ export class RecordingRoutingError extends RecordingSummaryError {
   readonly ref: RecordingRef;
 
   constructor(ref: RecordingRef, kind: "no_recording_type" | "unknown_recording_type") {
-    const key = ref.recordingType?.trim() || ref.eventType?.trim() || "";
+    // Raw, and the fallback is on exactly "", as Go's RecordingRoutingError
+    // reads them: routing trims before matching, but the message reports what
+    // the caller actually passed.
+    const key =
+      ref.recordingType !== undefined && ref.recordingType !== ""
+        ? ref.recordingType
+        : (ref.eventType ?? "");
     const reason =
       kind === "no_recording_type"
         ? "event type names no recording type"
@@ -630,6 +636,14 @@ class TtlCache<K, V> {
     // an `AbortError` whether a timeout or a caller fired the signal. There is
     // nothing to attribute: the services take no per-call signal, so no caller
     // can be dead while another is live, and no waiter ever re-runs a load.
+    //
+    // That is a property of the CALL SITES, not of the client — client.ts does
+    // thread an AbortSignal through its middleware and retry loop. Giving
+    // summarize() a per-call signal would make a load abortable by one caller
+    // while another still waits, and this paragraph would stop being true: Go's
+    // attribution would have to be ported with it, and it cannot be done from
+    // the rejection, since an aborted fetch rejects with an AbortError
+    // whichever signal fired.
     if (pending !== undefined) return pending;
 
     // The order of these three statements is the release guarantee, and it is
@@ -774,12 +788,16 @@ class CampfireIndex {
         if (isNotFound(err)) return [];
         throw err;
       }
-      // An item whose id the response omitted is not a candidate: reading a
-      // line under `undefined` would spend a candidate on a request that cannot
-      // answer, and a non-404 from it would abort the whole search.
+      // Two layers, as Go has two: its decoder refuses a dock id that is not a
+      // number and fails the whole project read, and only then does it skip a
+      // zero id. TypeScript decodes nothing, so the first layer is the explicit
+      // refusal below — without it a malformed id would be dropped silently and
+      // discovery could go on to report the line unresolved, a composite
+      // verdict standing in for a failed read.
       return (project.dock ?? [])
-        .filter((item) => item.name === "chat" && typeof item.id === "number" && item.id !== 0)
-        .map((item) => item.id);
+        .filter((item) => item.name === "chat")
+        .map((item) => requireNumericId(item.id, "project dock item"))
+        .filter((id) => id !== 0);
     });
     return { ids: hit.value, fetchedAt: hit.fetchedAt, cached: hit.cached };
   }
@@ -810,11 +828,17 @@ class CampfireIndex {
       const byBucket = new Map<number, number[]>();
       for (const campfire of list) {
         const bucket = campfire.bucket;
-        if (!bucket || typeof bucket.id !== "number" || bucket.id === 0) continue;
-        if (typeof campfire.id !== "number" || campfire.id === 0) continue;
-        const ids = byBucket.get(bucket.id);
-        if (ids === undefined) byBucket.set(bucket.id, [campfire.id]);
-        else ids.push(campfire.id);
+        if (!bucket) continue;
+        // Go filters this source on the bucket alone — a zero campfire id is a
+        // candidate there, spends budget, and lands in the unresolved verdict's
+        // campfireIds — so it is kept here too. Only a value Go's decoder would
+        // have refused outright is refused.
+        const campfireId = requireNumericId(campfire.id, "campfire listing entry");
+        const bucketId = requireNumericId(bucket.id, "campfire listing bucket");
+        if (bucketId === 0) continue;
+        const ids = byBucket.get(bucketId);
+        if (ids === undefined) byBucket.set(bucketId, [campfireId]);
+        else ids.push(campfireId);
       }
       return byBucket;
     });
@@ -833,6 +857,36 @@ class CampfireListingOverflow extends Error {
     super(`campfire listing exceeds ${MAX_CAMPFIRE_LISTING}`);
     this.name = "CampfireListingOverflow";
   }
+}
+
+/**
+ * The id a discovery source carried, or the malformed-response error Go gets
+ * from its decoder.
+ *
+ * Both sources declare these ids as required numbers, so a value that is not
+ * one came off the wire malformed. Go never reaches its filter in that case —
+ * `json.Unmarshal` fails and the read's own error is what `summarize` raises —
+ * and SPEC §6 spells this shape for a composite that cannot proceed with a 2xx
+ * body: `api_error`, statusless, non-retryable.
+ */
+function requireNumericId(value: unknown, what: string): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    throw Errors.apiError(
+      truncateErrorMessage(`${what} has a non-numeric id (${describeIdValue(value)})`),
+      undefined,
+      {
+        retryable: false,
+        hint: "the discovery source's response is malformed; nothing can be read under that id",
+      },
+    );
+  }
+  return value;
+}
+
+function describeIdValue(value: unknown): string {
+  if (value === null) return "null";
+  if (typeof value === "string") return JSON.stringify(value);
+  return typeof value;
 }
 
 /**
@@ -970,8 +1024,13 @@ export class RecordingsService extends GeneratedRecordingsService {
     const summary = await this.#readSummary(ref, kind);
     // A bucket the read did not identify is Go's zero value: there is nothing
     // to disagree with, so the pointer stands rather than the call failing.
+    // `typeof`, not `!== undefined`: a JSON null decodes into Go's int64 as 0
+    // and is skipped there, and a string id fails Go's decode outright rather
+    // than becoming a mismatch. TypeScript has no decoder to refuse either, so
+    // both read as "no bucket id was identified" — the half of Go's behaviour
+    // that does not invent a disagreement out of a malformed value.
     const readBucketId = summary.bucket?.id;
-    if (readBucketId !== undefined && readBucketId !== 0 && readBucketId !== ref.bucketId) {
+    if (typeof readBucketId === "number" && readBucketId !== 0 && readBucketId !== ref.bucketId) {
       throw new BucketMismatchError(ref, readBucketId);
     }
     return summary;
@@ -1311,15 +1370,20 @@ function projectRecording(
   nested: SummarizableNested,
 ): RecordingSummary {
   const body = content ?? "";
+  // The scalars default to "" rather than carrying `undefined` through: they
+  // are required on every routed shape, so a body omitting one is malformed,
+  // and Go's zero value for a string is "" and is emitted. Left undefined,
+  // JSON.stringify would drop the key and a consumer would see a shape no other
+  // SDK produces.
   const summary: RecordingSummary = {
     id: recording.id,
-    status: recording.status,
-    type: recording.type,
+    status: recording.status ?? "",
+    type: recording.type ?? "",
     title,
-    app_url: recording.app_url,
+    app_url: recording.app_url ?? "",
     mentioned_person_ids: mentionedPersonIds(body),
     content: body,
-    updated_at: recording.updated_at,
+    updated_at: recording.updated_at ?? "",
   };
   if (nested.parent) summary.parent = nested.parent;
   if (nested.bucket) summary.bucket = nested.bucket;

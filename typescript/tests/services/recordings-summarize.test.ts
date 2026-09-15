@@ -485,16 +485,41 @@ describe("recordings.summarize", () => {
       expect(paths).toContain("/12345/chats.json");
     });
 
-    it("does not make a dock item with no id a candidate", async () => {
-      // Reading a line under `undefined` spends a candidate on a request that
-      // cannot answer, and a non-404 from it would abort the whole search.
+    it("refuses a dock item whose id is not a number, as Go's decoder does", async () => {
+      // Go never reaches its `item.ID != 0` filter for a malformed id:
+      // json.Unmarshal fails and the project read's own error is what surfaces.
+      // Dropping the item instead would let discovery go on and report the line
+      // unresolved — a composite verdict standing in for a failed read, which is
+      // the distinction this whole path exists to protect.
+      server.use(
+        http.get(`${BASE_URL}/projects/${BUCKET}`, () =>
+          HttpResponse.json({
+            id: BUCKET,
+            dock: [{ id: "77", name: "chat", title: "Campfire", enabled: true, url: "", app_url: "" }],
+          }),
+        ),
+      );
+
+      const err = await client.recordings
+        .summarize({ bucketId: BUCKET, recordingId: 9, eventType: "chat.line.created" })
+        .catch((e: unknown) => e);
+
+      expect(err).toBeInstanceOf(BasecampError);
+      expect((err as BasecampError).code).toBe("api_error");
+      expect((err as BasecampError).httpStatus).toBeUndefined();
+      expect((err as BasecampError).retryable).toBe(false);
+      expect((err as BasecampError).message).toContain("project dock item");
+      expect(err).not.toBeInstanceOf(UnresolvedRecordingError);
+    });
+
+    it("skips a zero dock id without failing, as Go's filter does", async () => {
       const paths = trackRequests();
       server.use(
         http.get(`${BASE_URL}/projects/${BUCKET}`, () =>
           HttpResponse.json({
             id: BUCKET,
             dock: [
-              { name: "chat", title: "Campfire", enabled: true, url: "", app_url: "" },
+              { id: 0, name: "chat", title: "Campfire", enabled: true, url: "", app_url: "" },
               { id: 77, name: "chat", title: "Campfire", enabled: true, url: "", app_url: "" },
             ],
           }),

@@ -33,13 +33,23 @@ export interface MentionPeopleSource {
 /**
  * Re-raises a person read's failure with the mention it was resolving.
  *
- * The classification is preserved rather than flattened into a generic error:
- * a caller matching `code === "not_found"` or `"forbidden"` on the expansion
- * still gets the answer the read gave, and `cause` keeps the original for a
- * stack.
+ * Go wraps with `%w`, which adds the context AND keeps every wrapped type
+ * reachable through `errors.As`. JavaScript has no such operator: a new error
+ * carries the context but not the original's class, and the original carries
+ * its class but not the context. Identity wins, because it is the half a caller
+ * can act on — `PeopleConfirmationRequiredError` carries a `people` list that a
+ * flattened copy would drop, and a transport rejection is matched on its own
+ * shape.
+ *
+ * So the context is added only in the case where nothing is lost by minting a
+ * new error: the plain `BasecampError` the people read actually produces, whose
+ * every field is copied across. A subclass or a non-`BasecampError` is re-raised
+ * untouched, and `expandMentions` documents that.
  */
 function mentionLookupFailed(personId: number, err: unknown): unknown {
-  if (!(err instanceof BasecampError)) return err;
+  // `constructor`, not `instanceof`: a subclass passes `instanceof` and would
+  // be flattened into its base by the copy below.
+  if (!(err instanceof BasecampError) || err.constructor !== BasecampError) return err;
   return new BasecampError(err.code, `resolving mention for person ${personId}: ${err.message}`, {
     hint: err.hint,
     httpStatus: err.httpStatus,
@@ -97,7 +107,9 @@ export class CommentsService extends GeneratedCommentsService {
    *   one read and produce one mention.
    * @returns The content with the mentions placed.
    * @throws {BasecampError} `usage` for a non-positive id, or the person read's
-   *   own error, re-raised with the mention it was resolving.
+   *   own error. A plain `BasecampError` from that read is re-raised with the
+   *   mention it was resolving named in its message; a subclass or a transport
+   *   rejection is re-raised untouched, so its class and payload survive.
    *
    * @example
    * ```ts
@@ -110,10 +122,12 @@ export class CommentsService extends GeneratedCommentsService {
     const people: Person[] = [];
     const seen = new Set<number>();
     for (const id of personIds) {
-      // Validated as the list is walked, not ahead of it, which is where the Go
-      // reference validates: a bad id after a good one costs the good one's read
-      // before it raises. The invariant that matters is unaffected — the reads
-      // all happen before the write, so a refused expansion posts nothing.
+      // The Go reference validates here too — inside the loop, not ahead of it
+      // (go/pkg/basecamp/comments.go, ExpandMentions) — so a bad id after a good
+      // one costs the good one's read before it raises. Kept identical
+      // deliberately; the invariant that matters is unaffected either way, since
+      // every read happens before the write and a refused expansion posts
+      // nothing.
       if (!Number.isInteger(id) || id <= 0) {
         throw Errors.usage(`invalid mention person id ${id}`);
       }

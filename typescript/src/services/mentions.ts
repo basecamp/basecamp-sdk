@@ -101,6 +101,73 @@ export function mentionedPersonIds(richText: string): number[] {
 const GID_URL = /^gid:\/\/([^/?#\s"<>\\^`{|}\u0000-\u001f\u007f]+)(\/[^?#]*)?(?:[?#][\s\S]*)?$/i;
 
 /**
+ * Whether an authority is one `url.Parse` would accept.
+ *
+ * The character class in {@link GID_URL} models what may not APPEAR in a host;
+ * this models the one structural rule on top of it, which a character class
+ * cannot express: everything after the last `:` must be a port, meaning digits
+ * or nothing. Without it `gid://bc3:abc/Person/1` names a person here and fails
+ * to parse in Go — a regex imitating a parser being wrong in the place a
+ * character class cannot see. An IPv6 literal is bracketed, and the port rule
+ * applies to what follows the bracket, exactly as `net/url` reads it.
+ */
+function isParsableHost(authority: string): boolean {
+  // Userinfo comes off first, as `url.Parse` splits it at the LAST "@" before
+  // looking at the host at all — otherwise the colon in "user:pass@bc3" reads
+  // as a port and the gid is refused, where Go accepts it. A percent-escape is
+  // legal in userinfo and not in the host, so the order matters twice over.
+  const at = authority.lastIndexOf("@");
+  const host = at < 0 ? authority : authority.slice(at + 1);
+
+  // `net/url` refuses EVERY percent-escape in a host, valid or not: it is not a
+  // decode-then-validate, so "b%41c3" is an error there rather than "bAc3".
+  if (host.includes("%")) return false;
+
+  if (host.startsWith("[")) {
+    const close = host.indexOf("]");
+    return close >= 0 && isOptionalPort(host.slice(close + 1));
+  }
+  const colon = host.lastIndexOf(":");
+  return colon < 0 || isOptionalPort(host.slice(colon));
+}
+
+/**
+ * The path with its percent-escapes resolved, or `undefined` when one of them
+ * is malformed.
+ *
+ * `url.Parse` decodes the path and refuses an escape that is not two hex
+ * digits, so `gid://bc3/Pe%72son/1` names a Person in Go and `…/1%zz` is a
+ * parse error. Decoding here rather than refusing every escape is what keeps
+ * the two agreeing — and it is the opposite of the rule for the HOST, where Go
+ * refuses escapes outright. The escapes resolve to BYTES which are then read as
+ * UTF-8, as Go reads them, so a multi-byte character spelled in escapes comes
+ * back as itself rather than as its bytes.
+ */
+function percentDecodePath(path: string): string | undefined {
+  if (!path.includes("%")) return path;
+  const encoder = new TextEncoder();
+  const bytes: number[] = [];
+  for (let i = 0; i < path.length; ) {
+    const code = path.charCodeAt(i);
+    if (code !== 0x25 /* % */) {
+      for (const byte of encoder.encode(path[i]!)) bytes.push(byte);
+      i++;
+      continue;
+    }
+    const high = hexDigit(path.charCodeAt(i + 1), true);
+    const low = hexDigit(path.charCodeAt(i + 2), true);
+    if (high < 0 || low < 0) return undefined;
+    bytes.push(high * 16 + low);
+    i += 3;
+  }
+  return new TextDecoder("utf-8").decode(new Uint8Array(bytes));
+}
+
+function isOptionalPort(port: string): boolean {
+  return port === "" || (port.startsWith(":") && /^[0-9]*$/.test(port.slice(1)));
+}
+
+/**
  * The Person id an `attachable_sgid` names, or `undefined` when the sgid does
  * not decode, or names something other than a Person (a file attachment's sgid
  * names an `ActiveStorage::Blob`).
@@ -117,13 +184,12 @@ export function personIdFromSGID(sgid: string): number | undefined {
   // A GlobalID is `gid://<app>/<Model>/<id>`, optionally with a query — BC3
   // mints `gid://bc3/Person/1049715915?expires_in=`. The query and fragment are
   // stripped the way a URL parser strips them, and the path must then be
-  // exactly `/<Model>/<id>`: no more, no less. Nothing is percent-decoded, so a
-  // gid that spells its id in escapes is refused rather than normalized into
-  // one that looks authentic — deliberately stricter than Go's `url.Parse`,
-  // which decodes the path before this comparison.
+  // exactly `/<Model>/<id>`: no more, no less.
   const parsed = GID_URL.exec(gid);
   if (parsed === null) return undefined;
-  const path = parsed[2] ?? "";
+  if (!isParsableHost(parsed[1] ?? "")) return undefined;
+  const path = percentDecodePath(parsed[2] ?? "");
+  if (path === undefined) return undefined;
   const separator = path.indexOf("/", 1);
   if (separator < 0) return undefined;
   const model = path.slice(1, separator);
@@ -304,42 +370,166 @@ function parseAttributes(text: string, start: number): TagAttributes {
 }
 
 /**
- * The named character references an attribute value can carry that matter here.
+ * The named character references that can change what an sgid decodes to.
  *
- * A `Map`, not an object literal: the reference name comes out of the markup,
- * and `{}["constructor"]` is a hit, so a table on `Object.prototype` would
- * substitute a function into an attribute value instead of leaving `&constructor;`
- * alone.
+ * NOT the full HTML5 table Go's `html.UnescapeString` carries. That table has
+ * 2231 names; this is the 23 of them whose expansion consists entirely of
+ * characters that can matter here — base64 alphabet, padding, or Go whitespace
+ * (which {@link trimGoSpace} strips at either end). The subset was extracted
+ * from Go's own `html/entity.go` by filtering on that property, not chosen by
+ * eye.
  *
- * Deliberately narrow rather than the full HTML5 table: an `attachable_sgid` is
- * base64url, `--`, and hex, so the only reference a producer can realistically
- * have written into one is `&amp;` (and only by escaping twice). The numeric
- * forms are decoded in full because they can spell any of these characters.
+ * Every other name expands to something no base64 payload can contain, so Go
+ * expands it and refuses the sgid while this leaves it literal and refuses the
+ * sgid: different text, same verdict. The keys carry their terminating `;`
+ * exactly as Go's table does, which is also why a name outside this subset can
+ * never be shadowed by one inside it — `sol;` is not a prefix of `solb;`. The
+ * one name Go lists twice, with and without the semicolon, is listed twice
+ * here.
+ *
+ * Two rows come from Go's SECOND table, `entity2`, whose values are rune PAIRS:
+ * `&fjlig;` is "fj" — two base64 letters — and `&ThickSpace;` is two spaces. A
+ * subset derived by reading only the single-rune table misses them, which is
+ * why the enumeration asks `html.UnescapeString` for every value rather than
+ * parsing the table's literals.
  */
 const NAMED_ENTITIES = new Map<string, string>([
+  ["AMP;", "&"],
+  ["AMP", "&"],
+  ["GT;", ">"],
+  ["GT", ">"],
+  ["LT;", "<"],
+  ["LT", "<"],
+  ["MediumSpace;", "\u205f"],
+  ["NewLine;", "\n"],
+  ["NonBreakingSpace;", "\u00a0"],
+  ["QUOT;", '"'],
+  ["QUOT", '"'],
+  ["Tab;", "\t"],
+  ["ThickSpace;", "\u205f\u200a"],
+  ["ThinSpace;", "\u2009"],
+  ["UnderBar;", "_"],
+  ["VeryThinSpace;", "\u200a"],
+  ["amp;", "&"],
   ["amp", "&"],
-  ["lt", "<"],
+  ["apos;", "'"],
+  ["bne;", "=\u20e5"],
+  ["emsp13;", "\u2004"],
+  ["emsp14;", "\u2005"],
+  ["emsp;", "\u2003"],
+  ["ensp;", "\u2002"],
+  ["equals;", "="],
+  ["fjlig;", "fj"],
+  ["gt;", ">"],
   ["gt", ">"],
-  ["quot", '"'],
-  ["apos", "'"],
+  ["hairsp;", "\u200a"],
+  ["lowbar;", "_"],
+  ["lt;", "<"],
+  ["lt", "<"],
+  ["nbsp;", "\u00a0"],
   ["nbsp", "\u00a0"],
+  ["numsp;", "\u2007"],
+  ["plus;", "+"],
+  ["puncsp;", "\u2008"],
+  ["quot;", '"'],
+  ["quot", '"'],
+  ["sol;", "/"],
+  ["thinsp;", "\u2009"],
 ]);
+
+/** The longest key in {@link NAMED_ENTITIES}, so the scan knows where to start. */
+const LONGEST_ENTITY_NAME = Math.max(...[...NAMED_ENTITIES.keys()].map((name) => name.length));
+
+/**
+ * Windows-1252 for U+0080-U+009F, which is what Go substitutes for a numeric
+ * reference in that range rather than emitting the C1 control.
+ */
+const WINDOWS_1252 = [
+  0x20ac, 0x0081, 0x201a, 0x0192, 0x201e, 0x2026, 0x2020, 0x2021, 0x02c6, 0x2030, 0x0160,
+  0x2039, 0x0152, 0x008d, 0x017d, 0x008f, 0x0090, 0x2018, 0x2019, 0x201c, 0x201d, 0x2022,
+  0x2013, 0x2014, 0x02dc, 0x2122, 0x0161, 0x203a, 0x0153, 0x009d, 0x017e, 0x0178,
+];
+
+const REPLACEMENT = "\ufffd";
+
+/** Bounds the digits a numeric reference may claim before it is out of range anyway. */
+const MAX_NUMERIC_DIGITS = 10;
+
+/**
+ * Decodes the character reference at `start` (where the text has `&`), Go's
+ * way, returning the replacement text and the index just past what it consumed.
+ *
+ * The boundary rules are read off `html.UnescapeString` by measurement rather
+ * than from its source, because they are not guessable: a decimal reference
+ * needs two digits when no `;` follows it and one when it does (`&#6B` is
+ * literal, `&#65B` is `"AB"`, `&#6;B` is a tab then `B`); a hex reference needs
+ * only one digit either way; `&#x;` with no digits at all is U+FFFD while
+ * `&#;` is literal; and a trailing `;` is consumed when present but never
+ * required except in those two cases.
+ */
+function unescapeEntity(text: string, start: number): [string, number] {
+  const literal = (): [string, number] => ["&", start + 1];
+  if (text.charCodeAt(start + 1) !== 0x23 /* # */) {
+    for (let length = Math.min(LONGEST_ENTITY_NAME, text.length - start - 1); length > 0; length--) {
+      const replacement = NAMED_ENTITIES.get(text.slice(start + 1, start + 1 + length));
+      if (replacement !== undefined) return [replacement, start + 1 + length];
+    }
+    return literal();
+  }
+
+  let pos = start + 2;
+  const lead = text.charCodeAt(pos);
+  const hex = lead === 0x78 || lead === 0x58; /* x X */
+  if (hex) pos++;
+
+  const digitsStart = pos;
+  let value = 0;
+  while (pos < text.length) {
+    const digit = hexDigit(text.charCodeAt(pos), hex);
+    if (digit < 0) break;
+    if (pos - digitsStart < MAX_NUMERIC_DIGITS) value = value * (hex ? 16 : 10) + digit;
+    else value = 0x110000; // out of range, and stays out
+    pos++;
+  }
+  const digits = pos - digitsStart;
+  const terminated = pos < text.length && text.charCodeAt(pos) === 0x3b; /* ; */
+
+  if (digits === 0) {
+    // `&#x;` is the one zero-digit form Go accepts, as the value zero.
+    if (!hex || !terminated) return literal();
+  } else if (!hex && digits === 1 && !terminated) {
+    return literal();
+  }
+  if (terminated) pos++;
+
+  if (value >= 0x80 && value <= 0x9f) return [String.fromCodePoint(WINDOWS_1252[value - 0x80]!), pos];
+  if (value === 0 || value > 0x10ffff || (value >= 0xd800 && value <= 0xdfff)) {
+    return [REPLACEMENT, pos];
+  }
+  return [String.fromCodePoint(value), pos];
+}
+
+function hexDigit(code: number, hex: boolean): number {
+  if (code >= 0x30 && code <= 0x39) return code - 0x30;
+  if (!hex) return -1;
+  if (code >= 0x61 && code <= 0x66) return code - 0x61 + 10;
+  if (code >= 0x41 && code <= 0x46) return code - 0x41 + 10;
+  return -1;
+}
 
 /** Decodes the character references an HTML attribute value may carry. */
 function unescapeEntities(value: string): string {
   if (!value.includes("&")) return value;
-  return value.replace(/&(#[0-9]+|#[xX][0-9a-fA-F]+|[a-zA-Z][a-zA-Z0-9]*);/g, (match, ref: string) => {
-    if (ref.charCodeAt(0) === 0x23) {
-      const hex = ref.charCodeAt(1) === 0x78 || ref.charCodeAt(1) === 0x58;
-      const code = Number.parseInt(hex ? ref.slice(2) : ref.slice(1), hex ? 16 : 10);
-      // Out of range, a surrogate half, or unparseable: leave the reference as
-      // written rather than inventing a replacement character for it.
-      if (!Number.isInteger(code) || code <= 0 || code > 0x10ffff) return match;
-      if (code >= 0xd800 && code <= 0xdfff) return match;
-      return String.fromCodePoint(code);
-    }
-    return NAMED_ENTITIES.get(ref) ?? match;
-  });
+  let out = "";
+  let pos = 0;
+  for (;;) {
+    const amp = value.indexOf("&", pos);
+    if (amp < 0) return out + value.slice(pos);
+    out += value.slice(pos, amp);
+    const [replacement, next] = unescapeEntity(value, amp);
+    out += replacement;
+    pos = next;
+  }
 }
 
 // =============================================================================
@@ -367,6 +557,24 @@ const MAX_SGID_PAYLOAD_BYTES = 4096;
 const MAX_SGID_ENCODED_BYTES = Math.floor(MAX_SGID_PAYLOAD_BYTES / 3) * 4 + 4;
 
 /**
+ * Go's `unicode.IsSpace` set, which is what `strings.TrimSpace` trims.
+ *
+ * Neither a subset nor a superset of what `String.prototype.trim` strips, so
+ * neither is usable as-is: JS omits U+0085 (NEL), which Go trims, and JS strips
+ * U+FEFF (BOM), which Go does not — because the BOM is a format character, not
+ * White_Space. Left to `trim()`, an sgid padded with NEL loses its mention here
+ * and keeps it in Go, and one padded with a BOM gains a mention here that Go
+ * refuses. Both directions matter: one vanishes a real mention, the other
+ * invents one.
+ */
+const GO_SPACE = "\\t\\n\\v\\f\\r \\u0085\\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000";
+const GO_TRIM = new RegExp(`^[${GO_SPACE}]+|[${GO_SPACE}]+$`, "gu");
+
+function trimGoSpace(value: string): string {
+  return value.replace(GO_TRIM, "");
+}
+
+/**
  * The global id string an sgid's envelope carries.
  *
  * A signed sgid is `<payload>--<digest>`, and `-` is a base64url character, so
@@ -376,7 +584,7 @@ const MAX_SGID_ENCODED_BYTES = Math.floor(MAX_SGID_PAYLOAD_BYTES / 3) * 4 + 4;
  * contain `--` included — needs.
  */
 function globalIDFromSGID(sgid: string): string | undefined {
-  const value = sgid.trim();
+  const value = trimGoSpace(sgid);
   const separator = value.lastIndexOf("--");
   if (separator > 0) {
     const gid = envelopeGID(value.slice(0, separator));
