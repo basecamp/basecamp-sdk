@@ -856,6 +856,64 @@ describe("recordings.summarize", () => {
       expect(paths.filter((path) => path === `/12345/projects/${BUCKET}`)).toHaveLength(1);
     });
 
+    it("is unresolved, not incomplete, when a spent budget consulted both sources", async () => {
+      // The third property of the budget boundary, and the one that produces a
+      // WRONG VERDICT rather than a wasted request. Everything was searched and
+      // every candidate answered 404, so nothing is unsearched: the answer is
+      // recording_unresolved, which a consumer treats as settled, not
+      // campfire_discovery_incomplete, which tells it to look again.
+      //
+      // The same case makes property 1 observable. The clock is past the
+      // refresh floor, so a dock refresh guarded only on `dock.cached` WOULD
+      // fire a request here; guarded on the spent budget as well, it does not.
+      const clock = { ms: 0 };
+      const recordings = serviceWithClock(clock);
+      const dockIds = Array.from({ length: MAX_CAMPFIRE_CANDIDATES - 1 }, (_, i) => 200 + i);
+      server.use(
+        http.get(`${BASE_URL}/projects/${BUCKET}`, () =>
+          HttpResponse.json({
+            id: BUCKET,
+            dock: dockIds.map((id) => ({
+              id,
+              name: "chat",
+              title: "C",
+              enabled: true,
+              url: "",
+              app_url: "",
+            })),
+          }),
+        ),
+        http.get(`${BASE_URL}/chats.json`, () =>
+          HttpResponse.json([campfire(300, BUCKET), campfire(400, OTHER_BUCKET)]),
+        ),
+        http.get(`${BASE_URL}/chats/:campfireId/lines/9`, () => notFound()),
+      );
+
+      // First call fills both caches and spends the budget exactly: 49 dock
+      // candidates and the one the listing adds, with none left over.
+      const first = (await recordings
+        .summarize({ bucketId: BUCKET, recordingId: 9, eventType: "chat.line.created" })
+        .catch((e: unknown) => e)) as UnresolvedRecordingError;
+      expect(first).toBeInstanceOf(UnresolvedRecordingError);
+      expect(first.campfireIds).toHaveLength(MAX_CAMPFIRE_CANDIDATES);
+
+      // Second call, past the refresh floor, with both sources cached.
+      clock.ms += 60_000;
+      const paths = trackRequests();
+      const err = (await recordings
+        .summarize({ bucketId: BUCKET, recordingId: 9, eventType: "chat.line.created" })
+        .catch((e: unknown) => e)) as UnresolvedRecordingError;
+
+      expect(err).toBeInstanceOf(UnresolvedRecordingError);
+      expect(err).not.toBeInstanceOf(CampfireDiscoveryIncompleteError);
+      expect(err.kind).toBe("recording_unresolved");
+      expect(err.campfireIds).toHaveLength(MAX_CAMPFIRE_CANDIDATES);
+      expect(err.refreshed).toBe(false);
+      // Neither source is re-read once the budget is spent.
+      expect(paths).not.toContain(`/12345/projects/${BUCKET}`);
+      expect(paths).not.toContain("/12345/chats.json");
+    });
+
     it("loads a source once for concurrent callers", async () => {
       const paths = trackRequests();
       let listings = 0;
