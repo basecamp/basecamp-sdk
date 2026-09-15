@@ -4895,6 +4895,9 @@
             }
           }
         },
+        "tags": [
+          "Card Tables"
+        ],
         "x-basecamp-idempotent": {
           "natural": true
         },
@@ -4988,6 +4991,9 @@
             }
           }
         },
+        "tags": [
+          "Card Tables"
+        ],
         "x-basecamp-idempotent": {
           "natural": true
         },
@@ -12337,6 +12343,9 @@
             }
           }
         },
+        "tags": [
+          "Checkins"
+        ],
         "x-basecamp-pagination": {
           "style": "link",
           "maxPageSize": 50
@@ -15457,6 +15466,9 @@
             }
           }
         },
+        "tags": [
+          "Timeline"
+        ],
         "x-basecamp-pagination": {
           "style": "link",
           "totalCountHeader": "X-Total-Count",
@@ -16618,6 +16630,9 @@
             }
           }
         },
+        "tags": [
+          "Checkins"
+        ],
         "x-basecamp-pagination": {
           "style": "link",
           "maxPageSize": 50
@@ -16740,6 +16755,9 @@
             }
           }
         },
+        "tags": [
+          "Checkins"
+        ],
         "x-basecamp-pagination": {
           "style": "link",
           "maxPageSize": 50
@@ -16852,6 +16870,9 @@
             }
           }
         },
+        "tags": [
+          "Checkins"
+        ],
         "x-basecamp-idempotent": {
           "natural": true
         },
@@ -16944,6 +16965,9 @@
             }
           }
         },
+        "tags": [
+          "Checkins"
+        ],
         "x-basecamp-idempotent": {
           "natural": true
         },
@@ -17044,6 +17068,9 @@
             }
           }
         },
+        "tags": [
+          "Checkins"
+        ],
         "x-basecamp-idempotent": {
           "natural": true
         },
@@ -20336,6 +20363,9 @@
             }
           }
         },
+        "tags": [
+          "Reports"
+        ],
         "x-basecamp-pagination": {
           "style": "link",
           "totalCountHeader": "X-Total-Count",
@@ -20451,6 +20481,9 @@
             }
           }
         },
+        "tags": [
+          "Reports"
+        ],
         "x-basecamp-retry": {
           "maxAttempts": 3,
           "baseDelayMs": 1000,
@@ -20636,6 +20669,9 @@
             }
           }
         },
+        "tags": [
+          "People"
+        ],
         "x-basecamp-retry": {
           "maxAttempts": 3,
           "baseDelayMs": 1000,
@@ -20744,6 +20780,9 @@
             }
           }
         },
+        "tags": [
+          "Reports"
+        ],
         "x-basecamp-retry": {
           "maxAttempts": 3,
           "baseDelayMs": 1000,
@@ -20824,6 +20863,9 @@
             }
           }
         },
+        "tags": [
+          "Reports"
+        ],
         "x-basecamp-retry": {
           "maxAttempts": 3,
           "baseDelayMs": 1000,
@@ -20933,6 +20975,9 @@
             }
           }
         },
+        "tags": [
+          "Reports"
+        ],
         "x-basecamp-pagination": {
           "style": "link",
           "totalCountHeader": "X-Total-Count",
@@ -25759,6 +25804,9 @@
             }
           }
         },
+        "tags": [
+          "Todos"
+        ],
         "x-basecamp-idempotent": {
           "natural": true
         },

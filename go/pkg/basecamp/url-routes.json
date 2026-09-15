@@ -553,7 +553,7 @@
     },
     {
       "pattern": "/{accountId}/card_tables/lists/{columnId}/subscription",
-      "resource": null,
+      "resource": "Card Tables",
       "operations": {
         "DELETE": "UnsubscribeFromCardColumn",
         "POST": "SubscribeToCardColumn"
@@ -1370,7 +1370,7 @@
     },
     {
       "pattern": "/{accountId}/my/question_reminders",
-      "resource": null,
+      "resource": "Checkins",
       "operations": {
         "GET": "GetQuestionReminders"
       },
@@ -1685,7 +1685,7 @@
     },
     {
       "pattern": "/{accountId}/projects/{projectId}/timeline",
-      "resource": null,
+      "resource": "Timeline",
       "operations": {
         "GET": "GetProjectTimeline"
       },
@@ -1808,7 +1808,7 @@
     },
     {
       "pattern": "/{accountId}/questions/{questionId}/answers/by",
-      "resource": null,
+      "resource": "Checkins",
       "operations": {
         "GET": "ListQuestionAnswerers"
       },
@@ -1825,7 +1825,7 @@
     },
     {
       "pattern": "/{accountId}/questions/{questionId}/answers/by/{personId}",
-      "resource": null,
+      "resource": "Checkins",
       "operations": {
         "GET": "GetAnswersByPerson"
       },
@@ -1846,7 +1846,7 @@
     },
     {
       "pattern": "/{accountId}/questions/{questionId}/notification_settings",
-      "resource": null,
+      "resource": "Checkins",
       "operations": {
         "PUT": "UpdateQuestionNotificationSettings"
       },
@@ -1863,7 +1863,7 @@
     },
     {
       "pattern": "/{accountId}/questions/{questionId}/pause",
-      "resource": null,
+      "resource": "Checkins",
       "operations": {
         "DELETE": "ResumeQuestion",
         "POST": "PauseQuestion"
@@ -2183,7 +2183,7 @@
     },
     {
       "pattern": "/{accountId}/reports/progress",
-      "resource": null,
+      "resource": "Reports",
       "operations": {
         "GET": "GetProgressReport"
       },
@@ -2196,7 +2196,7 @@
     },
     {
       "pattern": "/{accountId}/reports/schedules/upcoming",
-      "resource": null,
+      "resource": "Reports",
       "operations": {
         "GET": "GetUpcomingSchedule"
       },
@@ -2222,7 +2222,7 @@
     },
     {
       "pattern": "/{accountId}/reports/todos/assigned",
-      "resource": null,
+      "resource": "People",
       "operations": {
         "GET": "ListAssignablePeople"
       },
@@ -2235,7 +2235,7 @@
     },
     {
       "pattern": "/{accountId}/reports/todos/assigned/{personId}",
-      "resource": null,
+      "resource": "Reports",
       "operations": {
         "GET": "GetAssignedTodos"
       },
@@ -2252,7 +2252,7 @@
     },
     {
       "pattern": "/{accountId}/reports/todos/overdue",
-      "resource": null,
+      "resource": "Reports",
       "operations": {
         "GET": "GetOverdueTodos"
       },
@@ -2265,7 +2265,7 @@
     },
     {
       "pattern": "/{accountId}/reports/users/progress/{personId}",
-      "resource": null,
+      "resource": "Reports",
       "operations": {
         "GET": "GetPersonProgress"
       },
@@ -2721,7 +2721,7 @@
     },
     {
       "pattern": "/{accountId}/todos/{todoId}/position",
-      "resource": null,
+      "resource": "Todos",
       "operations": {
         "PUT": "RepositionTodo"
       },

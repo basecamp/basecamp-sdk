@@ -56,6 +56,7 @@ class ServiceGenerator
         GetCardColumn UpdateCardColumn SetCardColumnColor
         EnableCardColumnOnHold DisableCardColumnOnHold
         CreateCardColumn MoveCardColumn
+        SubscribeToCardColumn UnsubscribeFromCardColumn
       ],
       'CardSteps' => %w[
         GetCardStep CreateCardStep UpdateCardStep SetCardStepCompletion
