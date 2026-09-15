@@ -330,6 +330,39 @@ class MentionsTest < Minitest::Test
     assert_equal [ 32 ], mentions_in_tag("#{sgid[0, 10]}&NewLine;#{sgid[10..]}")
   end
 
+  def test_a_numeric_reference_past_the_last_code_point_wraps_rather_than_latching
+    # The reference accumulates into a signed 32-bit rune and says in as many
+    # words that it does not check for overflow, so every test it then applies
+    # runs on the WRAPPED value. This port latched anything past 0x10FFFF to
+    # U+FFFD, so a wrap that lands back on a real character spoiled a payload
+    # the reference decodes — one mention fewer than the contract.
+    #
+    # Measured against the reference: 6 of 54 hand-built overflow shapes and 14
+    # of 20,000 fuzzed ones diverged before this, none after. Found by reading a
+    # sibling port's fix, not by a review of this one; nine corpora had never
+    # reached it.
+    sgid = person_sgid(33)
+    first = sgid[0]
+    rest = sgid[1..]
+
+    # The same character named by its code point, and by three values that wrap
+    # onto it. All four must resolve the same person.
+    [ first.ord, first.ord + 0x1_0000_0000, first.ord + 0x2_0000_0000 ].each do |value|
+      assert_equal [ 33 ], mentions_in_tag("&##{value};#{rest}"),
+        "decimal &##{value}; should wrap onto #{first.inspect}"
+      assert_equal [ 33 ], mentions_in_tag("&#x#{value.to_s(16)};#{rest}"),
+        "hex &#x#{value.to_s(16)}; should wrap onto #{first.inspect}"
+    end
+
+    # A wrap landing in 0x80..0x9F is remapped as a Windows-1252 byte, not
+    # replaced — the C1 branch is tested on the wrapped value too.
+    assert_equal mentions_in_tag("&#x85;#{rest}"), mentions_in_tag("&#x100000085;#{rest}")
+
+    # A wrap landing negative falls through the reference's checks and reaches
+    # its encoder, which writes U+FFFD. Same answer as an explicit U+FFFD.
+    assert_equal mentions_in_tag("&#xFFFD;#{rest}"), mentions_in_tag("&#x80000000;#{rest}")
+  end
+
   def test_a_c1_reference_is_remapped_rather_than_read_as_a_code_point
     # 0x80..0x9F are not code points in HTML, they are Windows-1252 bytes, and
     # the reference implementation remaps them. It decides a verdict here: 0x85
