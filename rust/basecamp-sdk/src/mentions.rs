@@ -348,110 +348,174 @@ fn leading_block_end(content: &str) -> Option<usize> {
     None
 }
 
-/// The longest entity this reads: `&` plus a name or numeric body plus `;`. Go's scanner is
-/// bounded the same way, by the longest name in its table. The bound is what keeps this
-/// LINEAR — without it, `"&".repeat(n) + ";"` makes every failed parse rescan to the same
-/// far semicolon and the walk is quadratic in an attribute an author controls.
-const MAX_ENTITY_LENGTH: usize = 34;
+/// The longest name in [`VERDICT_RELEVANT_ENTITIES`], plus `&` and `;`. Matching is
+/// longest-first over that table rather than "consume the run of name characters", because
+/// Go matches against its table the same way — which is what makes `&nbspBAh7…` resolve
+/// there. A greedy name read swallows `nbspBAh7…` whole, matches nothing, and loses the
+/// mention. The bound is also what keeps this LINEAR: without it, `"&".repeat(n) + ";"`
+/// makes every failed parse rescan to the same far semicolon.
+const MAX_ENTITY_NAME: usize = 17;
 
-/// Named references that produce a character an `attachable_sgid` can actually contain, plus
-/// the five a serializer emits. Measured against Go's `html.UnescapeString`, not recalled.
+/// The named character references that can change which person an sgid names, with the
+/// exact expansions `html.UnescapeString` produces — extracted from Go's own entity table
+/// rather than recalled, and pinned by a differential test over all 2138 of its entries.
 ///
-/// The full HTML5 table is ~2200 entries and reproducing it would be its own liability. It
-/// is not needed, and the reason is worth stating because it is what makes this equivalent
-/// rather than merely smaller: an sgid is base64url plus `=` padding and the `--` separator,
-/// so its alphabet is `A-Za-z0-9+/=_-`. A reference that yields a character INSIDE that
-/// alphabet can change which person an sgid names, and every one of those is here. A
-/// reference that yields a character outside it cannot: Go decodes it and gets an sgid with
-/// a character no base64 payload may hold, which fails to decode and names nobody — and
-/// this leaves it verbatim, which fails to decode and names nobody. Same answer, both ways.
+/// The full table is 2138 names and reproducing it would be its own liability. It is not
+/// needed, and this is why — an sgid is base64url plus `=` padding and the `--` separator,
+/// so exactly three classes of expansion can move the verdict:
 ///
-/// Letters and digits have no named references at all. `&hyphen;` and `&dash;` are U+2010,
-/// not ASCII `-`, so no named reference produces a hyphen — only a numeric one does.
-const NAMED_ENTITIES: &[(&str, char)] = &[
-    ("amp", '&'),
-    ("apos", '\''),
-    ("equals", '='),
-    ("gt", '>'),
-    ("lowbar", '_'),
-    ("lt", '<'),
-    ("plus", '+'),
-    ("quot", '"'),
-    ("sol", '/'),
-    ("UnderBar", '_'),
+/// 1. A character in the base64 alphabet. There are exactly FIVE such entities in the whole
+///    HTML5 table, and all five are here.
+/// 2. Whitespace, because the whole sgid is trimmed before it is read — so a space
+///    expansion at either end is erased and the payload decodes, where a literal `&…` would
+///    not. There are sixteen, and all sixteen are here, at their true code points rather
+///    than folded, so Rust's `trim` (Unicode `White_Space`) erases exactly what Go's
+///    `TrimSpace` (`unicode.IsSpace`) erases.
+/// 3. CR and LF specifically, which a base64 decoder skips wherever they sit rather than
+///    only at the ends. `&NewLine;` and `&Tab;` are therefore kept as themselves, never
+///    folded to a space.
+///
+/// Every other expansion is a character that is neither in the alphabet nor whitespace, so
+/// it kills the decode exactly as the literal `&name;` this leaves in its place does. Same
+/// verdict, both ways — which the differential test asserts rather than assumes.
+///
+/// Go keeps a SECOND table for references that expand to two runes, and it matters twice:
+/// `&fjlig;` is `f` + `j`, two alphabet characters — falsifying "letters and digits have no
+/// named references" — and `&ThickSpace;` is two spaces. `&bne;` is the third with any
+/// relevant rune (`=` plus a combining mark) and is deliberately absent: the mark is neither
+/// alphabet nor whitespace, so it kills the decode wherever it lands, exactly as the literal
+/// does.
+///
+/// The five standard references a serializer emits are here too, for the same reason they
+/// are anywhere: they cost nothing and a reader expects them.
+const VERDICT_RELEVANT_ENTITIES: &[(&str, &str)] = &[
+    ("MediumSpace;", "\u{205f}"),
+    ("NewLine;", "\u{a}"),
+    ("NonBreakingSpace;", "\u{a0}"),
+    ("Tab;", "\u{9}"),
+    ("ThinSpace;", "\u{2009}"),
+    ("UnderBar;", "\u{5f}"),
+    ("ThickSpace;", "\u{205f}\u{200a}"),
+    ("VeryThinSpace;", "\u{200a}"),
+    ("amp", "\u{26}"),
+    ("amp;", "\u{26}"),
+    ("apos;", "\u{27}"),
+    ("emsp;", "\u{2003}"),
+    ("emsp13;", "\u{2004}"),
+    ("emsp14;", "\u{2005}"),
+    ("ensp;", "\u{2002}"),
+    ("equals;", "\u{3d}"),
+    ("fjlig;", "\u{66}\u{6a}"),
+    ("gt", "\u{3e}"),
+    ("gt;", "\u{3e}"),
+    ("hairsp;", "\u{200a}"),
+    ("lowbar;", "\u{5f}"),
+    ("lt", "\u{3c}"),
+    ("lt;", "\u{3c}"),
+    ("nbsp", "\u{a0}"),
+    ("nbsp;", "\u{a0}"),
+    ("numsp;", "\u{2007}"),
+    ("plus;", "\u{2b}"),
+    ("puncsp;", "\u{2008}"),
+    ("quot", "\u{22}"),
+    ("quot;", "\u{22}"),
+    ("sol;", "\u{2f}"),
+    ("thinsp;", "\u{2009}"),
 ];
 
-/// Decodes the character references in an attribute value the way a browser — and Go's
-/// `html.UnescapeString` — would.
-///
-/// Semicolon-less numeric references are decoded, because Go decodes them (`&#66` is `B`).
-/// Anything this does not recognize is passed through verbatim, which is also what Go does
-/// with an unknown entity.
+/// Decodes the character references in an attribute value the way Go's
+/// `html.UnescapeString` does, for every reference that can change which person an sgid
+/// names. Anything else is passed through verbatim, which is also what Go does with an
+/// unknown entity — and, for a known one outside the three classes above, is
+/// verdict-equivalent to what Go produces.
 fn unescape(value: &str) -> String {
     if !value.contains('&') {
         return value.to_string();
     }
     let mut out = String::with_capacity(value.len());
-    let bytes = value.as_bytes();
-    let mut pos = 0usize;
-    while pos < bytes.len() {
-        if bytes[pos] != b'&' {
-            let next = bytes[pos..]
-                .iter()
-                .position(|byte| *byte == b'&')
-                .map_or(bytes.len(), |offset| pos + offset);
-            out.push_str(&value[pos..next]);
-            pos = next;
-            continue;
-        }
-        if let Some((decoded, length)) = entity_at(value, pos) {
-            out.push(decoded);
-            pos += length;
+    let mut rest = value;
+    while let Some(start) = rest.find('&') {
+        out.push_str(&rest[..start]);
+        rest = &rest[start..];
+        if let Some((decoded, length)) = entity_at(rest) {
+            out.push_str(decoded);
+            rest = &rest[length..];
         } else {
             out.push('&');
-            pos += 1;
+            rest = &rest[1..];
         }
     }
+    out.push_str(rest);
     out
 }
 
-/// The character reference beginning at `start` (which is an `&`), and how many bytes it
-/// occupies. The scan is bounded by [`MAX_ENTITY_LENGTH`], so a failure costs a constant.
-fn entity_at(value: &str, start: usize) -> Option<(char, usize)> {
-    let end = value.len().min(start + MAX_ENTITY_LENGTH);
-    let window = value.get(start..end)?;
-    let body = window.strip_prefix('&')?;
-    if let Some(digits) = body.strip_prefix('#') {
-        let (radix, digits) = match digits.strip_prefix(['x', 'X']) {
-            Some(hex) => (16, hex),
-            None => (10, digits),
-        };
-        // Greedy, then optionally a ";". Go accepts both spellings.
-        let taken = digits
-            .find(|character: char| !character.is_digit(radix))
-            .unwrap_or(digits.len());
-        if taken == 0 {
-            return None;
-        }
-        let code = u32::from_str_radix(&digits[..taken], radix).ok()?;
-        let decoded = char::from_u32(code)?;
-        let prefix = window.len() - body.len() + (body.len() - digits.len());
-        let semicolon = usize::from(digits[taken..].starts_with(';'));
-        return Some((decoded, prefix + taken + semicolon));
+/// The character reference at the start of `rest` (which begins with `&`), and how many
+/// bytes it occupies.
+fn entity_at(rest: &str) -> Option<(&'static str, usize)> {
+    if let Some(body) = rest.strip_prefix("&#") {
+        return numeric_entity(body);
     }
-    let name_end = body
-        .find(|character: char| !character.is_ascii_alphanumeric())
-        .unwrap_or(body.len());
-    let name = &body[..name_end];
-    let (_, decoded) = NAMED_ENTITIES
-        .iter()
-        .find(|(candidate, _)| *candidate == name)?;
-    // A named reference needs its semicolon. Go's semicolon-less forms are a legacy table
-    // whose every member yields a character outside an sgid's alphabet, so admitting them
-    // could not change which person an sgid names.
-    body[name_end..]
-        .starts_with(';')
-        .then(|| (*decoded, 1 + name_end + 1))
+    // Longest-first over the table, as Go matches: `&nbspBAh7…` is `nbsp` followed by text,
+    // not a name called `nbspBAh7…`.
+    let body = rest.get(1..)?;
+    let limit = body.len().min(MAX_ENTITY_NAME);
+    for length in (1..=limit).rev() {
+        let Some(name) = body.get(..length) else {
+            continue;
+        };
+        if let Some((_, decoded)) = VERDICT_RELEVANT_ENTITIES
+            .iter()
+            .find(|(candidate, _)| *candidate == name)
+        {
+            return Some((decoded, 1 + length));
+        }
+    }
+    None
+}
+
+/// A numeric character reference, on Go's boundary rather than the obvious one.
+///
+/// Go refuses a reference whose text through its last digit is three characters or fewer,
+/// which is why `&#9B` stays literal while `&#12B` is a form feed and `&#xB` — one hex
+/// digit, but four characters — is a vertical tab. Read off the real function by probing
+/// it, not off its source; nobody would guess this.
+fn numeric_entity(body: &str) -> Option<(&'static str, usize)> {
+    let (radix, digits, prefix) = match body.strip_prefix(['x', 'X']) {
+        Some(hex) => (16, hex, 3usize),
+        None => (10, body, 2usize),
+    };
+    let taken = digits
+        .find(|character: char| !character.is_digit(radix))
+        .unwrap_or(digits.len());
+    if taken == 0 || prefix + taken <= 3 {
+        return None;
+    }
+    let code = u32::from_str_radix(&digits[..taken], radix).ok()?;
+    let decoded = char::from_u32(code)?;
+    let semicolon = usize::from(digits[taken..].starts_with(';'));
+    Some((leak_char(decoded), prefix + taken + semicolon))
+}
+
+/// A decoded scalar as a `&'static str`, so both entity paths answer one type. The set of
+/// distinct characters a numeric reference can yield is bounded by Unicode, and the cache
+/// only ever grows to what a document actually used.
+fn leak_char(character: char) -> &'static str {
+    use std::collections::HashMap;
+    use std::sync::{Mutex, OnceLock};
+    static CACHE: OnceLock<Mutex<HashMap<char, &'static str>>> = OnceLock::new();
+    let cache = CACHE.get_or_init(|| Mutex::new(HashMap::new()));
+    let mut cache = cache
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    cache.entry(character).or_insert_with(|| {
+        let mut buffer = [0u8; 4];
+        Box::leak(
+            character
+                .encode_utf8(&mut buffer)
+                .to_string()
+                .into_boxed_str(),
+        )
+    })
 }
 
 /// The global id string an sgid's envelope carries.
@@ -546,9 +610,19 @@ fn envelope_gid(payload: &str) -> Option<String> {
 /// they begin: in `gid://bc3?x/Person/77` the `?` ends the host and everything after it is
 /// the query, so the URL has no path at all.
 fn parse_global_id(gid: &str) -> Option<(String, String)> {
+    // A URL parser refuses a control byte anywhere up to the fragment, whatever part it
+    // lands in, so that check comes before the URL is taken apart at all.
+    let before_fragment = gid.split('#').next().unwrap_or_default();
+    if before_fragment
+        .bytes()
+        .any(|byte| byte < b' ' || byte == 0x7f)
+    {
+        return None;
+    }
     let after_scheme = strip_scheme(gid)?;
     let authority_and_path = after_scheme.split(['?', '#']).next().unwrap_or_default();
-    let (host, path) = authority_and_path.split_once('/')?;
+    let (authority, path) = authority_and_path.split_once('/')?;
+    let host = authority_host(authority)?;
     if host.is_empty() || !is_valid_host(host) {
         return None;
     }
@@ -570,8 +644,37 @@ fn strip_scheme(gid: &str) -> Option<&str> {
     scheme.eq_ignore_ascii_case("gid").then_some(rest)
 }
 
-/// Whether a host is one a URL parser would accept: no space, no control character, and
-/// none of the delimiters that would have ended the authority.
+/// The host an authority names: userinfo before the LAST `@` is dropped, and an optional
+/// port after the last `:` must be digits — a URL parser refuses `bc3:xx` outright rather
+/// than reading it as a host.
+///
+/// A percent-escape ANYWHERE in the authority is refused, which is measured rather than
+/// assumed: `net/url` answers `invalid URL escape` for every one of `%63`, `%2D`, `%41` and
+/// a bare `%` in a host, so there is no escape it accepts and nothing to decode. Decoding
+/// and then validating would be the natural design and is wrong in the accepting direction
+/// — it lets `b%63%33` through as `bc3`, naming a person Go names nobody for.
+fn authority_host(authority: &str) -> Option<&str> {
+    if authority.contains('%') {
+        return None;
+    }
+    let host = match authority.rfind('@') {
+        Some(at) => &authority[at + 1..],
+        None => authority,
+    };
+    match host.rfind(':') {
+        // A bracketed IPv6 literal's colons are inside the brackets.
+        Some(colon) if !host.ends_with(']') => {
+            let port = &host[colon + 1..];
+            port.bytes()
+                .all(|byte| byte.is_ascii_digit())
+                .then(|| &host[..colon])
+        }
+        _ => Some(host),
+    }
+}
+
+/// Whether a decoded host is one a URL parser would accept: no space, no control character,
+/// and none of the delimiters that would have ended the authority.
 fn is_valid_host(host: &str) -> bool {
     !host.bytes().any(|byte| {
         byte <= b' ' || byte == 0x7f || matches!(byte, b'/' | b'?' | b'#' | b'@' | b'\\')
@@ -843,9 +946,34 @@ mod tests {
     }
 
     /// Every row measured against `net/url` + the Go helper, not recalled.
+    ///
+    /// The authority rows are the ones worth keeping: a hand-rolled split gets userinfo, a
+    /// non-numeric port and a percent-escape wrong in DIFFERENT directions, and three of
+    /// them name a person Go names nobody for.
     #[test]
     fn the_gid_parse_answers_what_net_url_answers() {
         let go: &[(&str, Option<i64>)] = &[
+            // Userinfo before the last `@` is dropped; a URL parser accepts these.
+            ("gid://user@bc3/Person/77", Some(77)),
+            ("gid://user:pw@bc3/Person/77", Some(77)),
+            ("gid://a@b@bc3/Person/77", Some(77)),
+            ("gid://@bc3/Person/77", Some(77)),
+            // A port must be digits. `bc3:xx` is not a host with a funny name, it is a
+            // parse error; an empty port is fine.
+            ("gid://bc3:8080/Person/77", Some(77)),
+            ("gid://bc3:/Person/77", Some(77)),
+            ("gid://bc3:xx/Person/77", None),
+            ("gid://[::1]/Person/77", Some(77)),
+            // `net/url` refuses EVERY percent-escape in a host — measured, not assumed —
+            // so there is nothing to decode. Decoding first and validating after is the
+            // natural design and admits `b%63%33` as `bc3`, which Go refuses.
+            ("gid://b%63%33/Person/77", None),
+            ("gid://%20/Person/77", None),
+            // A control byte anywhere up to the fragment is refused; inside it is not.
+            // Written as the JSON escape the envelope actually carries, so the control
+            // byte reaches the parser rather than breaking the envelope around it.
+            (r"gid://bc3/Person/77?\u0001", None),
+            (r"gid://bc3/Person/77#\u0001", Some(77)),
             ("gid://bc3/Person/77", Some(77)),
             // The path is percent-decoded before it is read.
             ("gid://bc3/Person/%37%37", Some(77)),
