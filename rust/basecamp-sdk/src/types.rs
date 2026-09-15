@@ -208,8 +208,11 @@ pub(crate) mod flexible_i64 {
     /// Note that this is *not* the rule the global-id parser applies to the person id in
     /// `gid://bc3/Person/<id>`. That one walks the bytes and refuses anything outside
     /// `0..=9` *before* it parses (`go/pkg/basecamp/mentions.go:252-256`), so it rejects a
-    /// leading `+` that this one accepts. Two sites, two rules, deliberately; do not hoist
-    /// either into the other.
+    /// leading `+` that this one accepts. Both live in this crate: `parse_global_id` in
+    /// [`crate::mentions`] carries that digit walk, and it is *correct* to, because the
+    /// reference has that shape at that site. The same shape was wrong here only because
+    /// the Go line governing this site has no pre-walk. Two sites, two rules, deliberately:
+    /// do not hoist either into the other, in either direction.
     fn parse_int(text: &str) -> Result<i64, Refusal> {
         let (negative, digits) = match text.as_bytes() {
             [] => return Err(Refusal::Syntax),
@@ -217,6 +220,9 @@ pub(crate) mod flexible_i64 {
             [b'-', rest @ ..] => (true, rest),
             whole => (false, whole),
         };
+        // Unobservable through this consumer — an empty digit run accumulates 0 and a
+        // syntax refusal reads 0, so no test here can pin it — but it is Go's behaviour
+        // and it matters the moment `parse_int` is read by anything where the two differ.
         if digits.is_empty() {
             return Err(Refusal::Syntax);
         }
@@ -832,6 +838,33 @@ mod tests {
                 "\"0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000007z\"",
                 Some(0),
             ), // 300 leading zeros then 7 then junk
+        ]);
+    }
+
+    #[test]
+    fn go_parity_the_i64_min_boundary_in_several_spellings() {
+        // The two subtlest lines in `parse_int` — the negative-magnitude comparison
+        // and the fallback that turns 2^63 into i64::MIN — were each pinned by exactly one
+        // row, so an edit to that row could have hidden a mutation. These are the same two
+        // magnitudes spelled several ways.
+        check_against_go(&[
+            ("\"-09223372036854775808\"", Some(i64::MIN)), // string '-09223372036854775808'
+            ("\"-009223372036854775808\"", Some(i64::MIN)), // string '-009223372036854775808'
+            (
+                "\"-00000000000000000000009223372036854775808\"",
+                Some(i64::MIN),
+            ), // string '-00000000000000000000009223372036854775808'
+            ("\"+09223372036854775807\"", Some(i64::MAX)), // string '+09223372036854775807'
+            ("\"+009223372036854775807\"", Some(i64::MAX)), // string '+009223372036854775807'
+            (
+                "\"-09223372036854775807\"",
+                Some(-9_223_372_036_854_775_807),
+            ), // string '-09223372036854775807'
+            ("\"-009223372036854775809\"", None),          // string '-009223372036854775809'
+            ("\"+09223372036854775808\"", None),           // string '+09223372036854775808'
+            ("\"+009223372036854775808\"", None),          // string '+009223372036854775808'
+            ("\"-0000000000000000000000000000000000000001\"", Some(-1)), // string '-0000000000000000000000000000000000000001'
+            ("\"+0000000000000000000000000000000000000001\"", Some(1)), // string '+0000000000000000000000000000000000000001'
         ]);
     }
 
