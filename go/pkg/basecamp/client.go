@@ -48,8 +48,8 @@ type Client struct {
 	authMu        sync.Mutex
 	authorization *AuthorizationService
 
-	// Campfire index for chat line discovery (RecordingsService.Summarize),
-	// shared by every AccountClient this Client hands out.
+	// Campfire discovery sources for RecordingsService.Summarize, shared by
+	// every AccountClient this Client hands out.
 	campfireOnce sync.Once
 	campfireIdx  *campfireIndex
 }

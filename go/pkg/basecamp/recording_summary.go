@@ -92,10 +92,13 @@ var (
 	ErrUnknownRecordingType = errors.New("no typed read for recording type")
 
 	// ErrRecordingUnresolved is returned when a chat line was found under none
-	// of the Campfires visible in its bucket. It is distinct from a failed read:
-	// every candidate answered 404, the candidate list was refreshed, and the
-	// line is still not there. A consumer marks the record blocked and retries
-	// on its own schedule; the line may be in a Campfire the caller cannot see.
+	// of the Campfires the caller can currently see in its bucket. It is
+	// distinct from a failed read (any non-404 answer is returned as itself)
+	// and from discovery that could not finish (ErrCampfireDiscoveryIncomplete):
+	// every candidate answered 404. It is not distinct from lost visibility —
+	// BC3 answers 404 for a Campfire the caller may not see, too — so a
+	// consumer marks the record blocked and retries on its own schedule; see
+	// UnresolvedRecordingError.StaleCampfireIDs.
 	ErrRecordingUnresolved = errors.New("chat line found under no visible campfire")
 
 	// ErrBucketMismatch is returned when the recording the read returned lives
@@ -128,6 +131,16 @@ type UnresolvedRecordingError struct {
 	BucketID    int64
 	RecordingID int64
 	CampfireIDs []int64
+	// Refreshed reports whether the cached discovery sources were re-read
+	// before concluding. False when every source had been read within the
+	// last campfireIndexMinRefresh, so a Campfire created in that window was
+	// not seen: the conclusion stands on data up to that old, and a retry after
+	// the floor sees the current sources.
+	Refreshed bool
+	// StaleCampfireIDs are candidates from the cache that the refreshed
+	// sources no longer list — Campfires the caller could see when the cache
+	// filled and cannot now. Set only when Refreshed.
+	StaleCampfireIDs []int64
 }
 
 func (e *UnresolvedRecordingError) Error() string {
@@ -257,8 +270,9 @@ func routeRecording(ref RecordingRef) (summaryKind, error) {
 // otherwise — a 404 is CodeNotFound, as from the typed read itself; for chat
 // lines, ErrRecordingUnresolved when every visible Campfire answered 404, which
 // is distinct from a read that failed (any non-404 from a candidate is returned
-// as that error, and the loop stops there); ErrBucketMismatch when the read
-// returned a recording from another bucket.
+// as that error, and the loop stops there) and from
+// ErrCampfireDiscoveryIncomplete (candidates were left unsearched);
+// ErrBucketMismatch when the read returned a recording from another bucket.
 func (s *RecordingsService) Summarize(ctx context.Context, ref RecordingRef) (*RecordingSummary, error) {
 	if ref.BucketID <= 0 || ref.RecordingID <= 0 {
 		return nil, ErrUsage("bucket id and recording id are required")
@@ -432,189 +446,357 @@ func firstNonEmpty(values ...string) string {
 // Campfire discovery for chat lines.
 //
 // A chat.line.created row carries the line's id and bucket, not its Campfire,
-// and the line read is /chats/{campfireId}/lines/{lineId}. The candidates are
-// the Campfires the caller can see in that bucket, read off the account-wide
-// Campfire listing (there is no per-bucket one) and cached — per account, ten
-// minutes — so a burst of chat lines costs one listing, not one per line. The
-// loop tries the line under each candidate until one answers.
+// and the line read is /chats/{campfireId}/lines/{lineId}. Candidates come
+// from two sources, tried in order and each cached ten minutes:
+//
+//  1. The bucket's project dock, whose "chat" tool is the project's Campfire:
+//     one project read per bucket, and the answer for every line posted in a
+//     project. Cached per bucket.
+//  2. The account-wide Campfire listing (BC3 has no per-bucket one), filtered
+//     to the bucket, for buckets that are not projects or whose dock did not
+//     hold the line. Cached per account, so a burst of lines costs one listing.
+//
+// The loop tries the line under each candidate until one answers, within one
+// total budget of MaxCampfireCandidates per call.
 //
 // Two failure shapes are kept apart on purpose. A candidate that answers
 // anything but 404 — 401, 403, 5xx, a network error, a cancelled context —
 // stops the loop and is returned as that error: the read failed, and trying
 // the next Campfire would only hide it. A 404 means "not here", so the loop
 // moves on. Only when every candidate said "not here" is the line unresolved
-// (ErrRecordingUnresolved) — and before concluding that, the listing is
-// refreshed once, so a Campfire created after the cache filled is tried too.
+// (ErrRecordingUnresolved) — and before concluding that, the cached sources
+// are refreshed (subject to a floor, below) so a Campfire created after the
+// cache filled is tried too. Discovery that could not be completed — a
+// listing cut off at its cap, a bucket with more candidates than the budget
+// — is ErrCampfireDiscoveryIncomplete, never "unresolved": nothing unsearched
+// is ever reported absent.
+//
+// What HTTP cannot tell apart: BC3 answers 404 both for a line that is not in
+// a Campfire and for a Campfire the caller may no longer see. "Unresolved"
+// therefore means "under no Campfire the caller can currently see", and the
+// error reports the cached candidates that the refreshed sources no longer
+// list (StaleCampfireIDs) so a consumer can see when visibility, not
+// existence, is what changed.
 
 const (
-	// CampfireIndexTTL is how long the per-account Campfire listing is reused
-	// for chat line discovery before it is listed again.
+	// CampfireIndexTTL is how long a cached discovery source — a bucket's
+	// project dock, the account's Campfire listing — is reused before it is
+	// read again.
 	CampfireIndexTTL = 10 * time.Minute
 
 	// campfireIndexMinRefresh bounds the refresh-on-miss: a line found under
-	// no candidate re-lists the account's Campfires, but not more often than
-	// this, so a run of unresolvable lines cannot turn into a listing per line.
+	// no candidate re-reads the cached sources, but not more often than this
+	// per source, so a run of unresolvable lines cannot turn into a listing
+	// per line. UnresolvedRecordingError.Refreshed says whether the floor
+	// applied.
 	campfireIndexMinRefresh = 30 * time.Second
 
-	// MaxCampfireCandidates bounds how many Campfires in one bucket the
-	// discovery loop tries. A project has one Campfire and a handful of pings;
-	// a bucket past this bound is not a shape BC3 produces, and an unbounded
-	// loop over a hostile listing is the failure the bound prevents.
+	// MaxCampfireCandidates bounds how many Campfires one Summarize call
+	// tries, across both sources and the refresh. A project has one Campfire
+	// and a handful of pings; a bucket past this bound is not a shape BC3
+	// produces, and the call reports ErrCampfireDiscoveryIncomplete rather
+	// than calling the rest absent.
 	MaxCampfireCandidates = 50
+
+	// MaxCampfireListing caps the account-wide Campfire listing the fallback
+	// source reads. A listing that overflows it is not cached and the call
+	// reports ErrCampfireDiscoveryIncomplete: the dock covers every project,
+	// so the listing only ever serves the leftover, and an account with more
+	// Campfires than this should not pay a full walk per ten minutes for it.
+	MaxCampfireListing = 1000
 )
 
-// campfireIndex is the cached account-wide Campfire listing, keyed by bucket.
-// It lives on Client (shared by every AccountClient the Client hands out) and
-// is keyed by account id; a Client is bound to one credential, so entries are
-// never shared across authorization contexts.
-type campfireIndex struct {
+// ErrCampfireDiscoveryIncomplete is returned when a chat line's discovery
+// could not be carried to a conclusion — the Campfire listing overflowed
+// MaxCampfireListing, or a bucket has more visible Campfires than
+// MaxCampfireCandidates. Distinct from ErrRecordingUnresolved: candidates
+// were left unsearched, so nothing can be reported absent.
+var ErrCampfireDiscoveryIncomplete = errors.New("campfire discovery incomplete")
+
+// CampfireDiscoveryIncompleteError carries the pointer and why discovery
+// stopped short.
+type CampfireDiscoveryIncompleteError struct {
+	BucketID    int64
+	RecordingID int64
+	Reason      string
+}
+
+func (e *CampfireDiscoveryIncompleteError) Error() string {
+	return fmt.Sprintf("%v: line %d in bucket %d: %s", ErrCampfireDiscoveryIncomplete, e.RecordingID, e.BucketID, e.Reason)
+}
+
+// Unwrap exposes ErrCampfireDiscoveryIncomplete for errors.Is.
+func (e *CampfireDiscoveryIncompleteError) Unwrap() error { return ErrCampfireDiscoveryIncomplete }
+
+// ttlCache is a per-key cache with single-flight loading: concurrent callers
+// for one key wait on the one load in progress rather than loading again, a
+// failed load leaves the previous value in place, and a refresh is honoured
+// only once the value is older than a floor.
+type ttlCache[K comparable, V any] struct {
 	mu       sync.Mutex
 	now      func() time.Time
-	entries  map[string]*campfireIndexEntry
-	inflight map[string]*campfireListing
+	ttl      time.Duration
+	floor    time.Duration
+	entries  map[K]*ttlEntry[V]
+	inflight map[K]*ttlLoad
 }
 
-type campfireIndexEntry struct {
-	byBucket map[int64][]int64 // campfire ids in listing order
-	fetched  time.Time
+type ttlEntry[V any] struct {
+	value   V
+	fetched time.Time
 }
 
-// campfireListing is one in-progress listing; concurrent callers for the same
-// account wait on done and read err rather than listing again themselves.
-type campfireListing struct {
+type ttlLoad struct {
 	done chan struct{}
 	err  error
 }
 
-func newCampfireIndex() *campfireIndex {
-	return &campfireIndex{
-		now:      time.Now,
-		entries:  map[string]*campfireIndexEntry{},
-		inflight: map[string]*campfireListing{},
-	}
+func newTTLCache[K comparable, V any](now func() time.Time, ttl, floor time.Duration) *ttlCache[K, V] {
+	return &ttlCache[K, V]{now: now, ttl: ttl, floor: floor, entries: map[K]*ttlEntry[V]{}, inflight: map[K]*ttlLoad{}}
 }
 
-// candidates returns the Campfire ids visible in bucketID, and whether they
-// came from the cache. With refresh set, a listing younger than
-// campfireIndexMinRefresh is still reused; anything older is re-listed.
-func (ix *campfireIndex) candidates(ctx context.Context, ac *AccountClient, bucketID int64, refresh bool) (ids []int64, cached bool, err error) {
+// get returns the value for key, loading it when absent or older than the
+// TTL — or, with refresh set, older than the floor. cached reports whether
+// the value predates this call.
+func (c *ttlCache[K, V]) get(ctx context.Context, key K, refresh bool, load func(context.Context) (V, error)) (value V, cached bool, err error) {
 	for {
-		ix.mu.Lock()
-		if entry := ix.entries[ac.accountID]; entry != nil {
-			age := ix.now().Sub(entry.fetched)
-			if age < CampfireIndexTTL && (!refresh || age < campfireIndexMinRefresh) {
-				ids = append([]int64(nil), entry.byBucket[bucketID]...)
-				ix.mu.Unlock()
-				return ids, true, nil
+		if err := ctx.Err(); err != nil {
+			return value, false, err
+		}
+		c.mu.Lock()
+		if entry := c.entries[key]; entry != nil {
+			age := c.now().Sub(entry.fetched)
+			if age < c.ttl && (!refresh || age < c.floor) {
+				c.mu.Unlock()
+				return entry.value, true, nil
 			}
 		}
-		if pending := ix.inflight[ac.accountID]; pending != nil {
-			ix.mu.Unlock()
+		if pending := c.inflight[key]; pending != nil {
+			c.mu.Unlock()
 			select {
 			case <-pending.done:
 			case <-ctx.Done():
-				return nil, false, ctx.Err()
+				return value, false, ctx.Err()
 			}
 			if pending.err != nil {
-				return nil, false, pending.err
+				return value, false, pending.err
 			}
 			continue // the entry is now fresh; read it under the lock
 		}
-		listing := &campfireListing{done: make(chan struct{})}
-		ix.inflight[ac.accountID] = listing
-		ix.mu.Unlock()
+		pending := &ttlLoad{done: make(chan struct{})}
+		c.inflight[key] = pending
+		c.mu.Unlock()
 
-		byBucket, listErr := listCampfiresByBucket(ctx, ac)
+		loaded, loadErr := load(ctx)
 
-		ix.mu.Lock()
-		delete(ix.inflight, ac.accountID)
-		listing.err = listErr
-		if listErr == nil {
-			// A failed listing leaves the previous entry in place: a transient
-			// failure must not evict a usable index.
-			ix.entries[ac.accountID] = &campfireIndexEntry{byBucket: byBucket, fetched: ix.now()}
-			ids = append([]int64(nil), byBucket[bucketID]...)
+		c.mu.Lock()
+		delete(c.inflight, key)
+		pending.err = loadErr
+		if loadErr == nil {
+			c.entries[key] = &ttlEntry[V]{value: loaded, fetched: c.now()}
 		}
-		close(listing.done)
-		ix.mu.Unlock()
-		if listErr != nil {
-			return nil, false, listErr
+		close(pending.done)
+		c.mu.Unlock()
+		if loadErr != nil {
+			return value, false, loadErr
 		}
-		return ids, false, nil
+		return loaded, false, nil
 	}
 }
 
-func listCampfiresByBucket(ctx context.Context, ac *AccountClient) (map[int64][]int64, error) {
-	list, err := ac.Campfires().List(ctx, &CampfireListOptions{})
-	if err != nil {
-		return nil, err
-	}
-	byBucket := map[int64][]int64{}
-	for _, c := range list.Campfires {
-		if c.Bucket == nil || c.Bucket.ID == 0 {
-			continue
-		}
-		byBucket[c.Bucket.ID] = append(byBucket[c.Bucket.ID], c.ID)
-	}
-	return byBucket, nil
+// campfireIndex holds the two discovery sources. It lives on Client (shared
+// by every AccountClient the Client hands out); a Client is bound to one
+// credential, so entries are never shared across authorization contexts, and
+// every key carries the account id.
+type campfireIndex struct {
+	docks    *ttlCache[campfireBucketKey, []int64]
+	listings *ttlCache[string, map[int64][]int64]
 }
 
-// resolveChatLine finds the Campfire a line lives in and reads it. See the
-// discovery comment above for the loop's contract.
-func (s *RecordingsService) resolveChatLine(ctx context.Context, bucketID, lineID int64) (*CampfireLine, int64, error) {
-	ac := s.client
-	index := ac.parent.campfires()
-	candidates, cached, err := index.candidates(ctx, ac, bucketID, false)
-	if err != nil {
-		return nil, 0, err
+type campfireBucketKey struct {
+	accountID string
+	bucketID  int64
+}
+
+func newCampfireIndex() *campfireIndex {
+	return newCampfireIndexAt(time.Now)
+}
+
+func newCampfireIndexAt(now func() time.Time) *campfireIndex {
+	return &campfireIndex{
+		docks:    newTTLCache[campfireBucketKey, []int64](now, CampfireIndexTTL, campfireIndexMinRefresh),
+		listings: newTTLCache[string, map[int64][]int64](now, CampfireIndexTTL, campfireIndexMinRefresh),
 	}
-	tried := make([]int64, 0, len(candidates))
-	line, campfireID, err := s.tryCampfires(ctx, candidates, lineID, &tried)
-	if err != nil || line != nil {
-		return line, campfireID, err
-	}
-	if cached {
-		// Every cached candidate said "not here". The listing may predate the
-		// line's Campfire; refresh once and try only what is new.
-		fresh, _, err := index.candidates(ctx, ac, bucketID, true)
+}
+
+// dockCampfires returns the Campfire ids a bucket's project dock names. A
+// bucket that is not a project (a 404 on the project read) has none; any
+// other failure of the read is returned.
+func (ix *campfireIndex) dockCampfires(ctx context.Context, ac *AccountClient, bucketID int64, refresh bool) ([]int64, bool, error) {
+	key := campfireBucketKey{accountID: ac.accountID, bucketID: bucketID}
+	return ix.docks.get(ctx, key, refresh, func(ctx context.Context) ([]int64, error) {
+		project, err := ac.Projects().Get(ctx, bucketID)
 		if err != nil {
-			return nil, 0, err
+			if apiErr, ok := errors.AsType[*Error](err); ok && apiErr.Code == CodeNotFound {
+				return nil, nil
+			}
+			return nil, err
 		}
-		var untried []int64
-		for _, id := range fresh {
-			if !containsID(tried, id) {
-				untried = append(untried, id)
+		var ids []int64
+		for _, item := range project.Dock {
+			if item.Name == "chat" && item.ID != 0 {
+				ids = append(ids, item.ID)
 			}
 		}
-		line, campfireID, err = s.tryCampfires(ctx, untried, lineID, &tried)
-		if err != nil || line != nil {
-			return line, campfireID, err
-		}
-	}
-	return nil, 0, &UnresolvedRecordingError{BucketID: bucketID, RecordingID: lineID, CampfireIDs: tried}
+		return ids, nil
+	})
 }
 
-// tryCampfires reads lineID under each candidate in order. A 404 appends the
-// candidate to tried and moves on; any other error returns at once.
-func (s *RecordingsService) tryCampfires(ctx context.Context, candidates []int64, lineID int64, tried *[]int64) (*CampfireLine, int64, error) {
-	if len(candidates) > MaxCampfireCandidates {
-		candidates = candidates[:MaxCampfireCandidates]
+// listedCampfires returns the Campfire ids the account-wide listing shows in
+// a bucket. A listing that overflows MaxCampfireListing is not cached and is
+// reported as ErrCampfireDiscoveryIncomplete by the caller.
+func (ix *campfireIndex) listedCampfires(ctx context.Context, ac *AccountClient, bucketID int64, refresh bool) ([]int64, bool, error) {
+	byBucket, cached, err := ix.listings.get(ctx, ac.accountID, refresh, func(ctx context.Context) (map[int64][]int64, error) {
+		list, err := ac.Campfires().List(ctx, &CampfireListOptions{Limit: MaxCampfireListing})
+		if err != nil {
+			return nil, err
+		}
+		if list.Meta.Truncated {
+			return nil, errCampfireListingOverflow
+		}
+		byBucket := map[int64][]int64{}
+		for _, c := range list.Campfires {
+			if c.Bucket == nil || c.Bucket.ID == 0 {
+				continue
+			}
+			byBucket[c.Bucket.ID] = append(byBucket[c.Bucket.ID], c.ID)
+		}
+		return byBucket, nil
+	})
+	if err != nil {
+		return nil, false, err
 	}
+	return append([]int64(nil), byBucket[bucketID]...), cached, nil
+}
+
+// errCampfireListingOverflow is the load error for a listing past its cap;
+// resolveChatLine turns it into the typed CampfireDiscoveryIncompleteError.
+var errCampfireListingOverflow = errors.New("campfire listing exceeds MaxCampfireListing")
+
+// chatLineSearch is one Summarize call's discovery state.
+type chatLineSearch struct {
+	svc      *RecordingsService
+	bucketID int64
+	lineID   int64
+	tried    []int64 // candidates that answered 404, in order
+	budget   int     // candidates still allowed
+	skipped  bool    // a candidate was left untried for want of budget
+}
+
+// try reads the line under each candidate not yet tried. It returns the line
+// and its Campfire on a hit; on a miss it returns nil with no error and
+// records the candidates in tried. Any answer but 404 is returned as is.
+func (s *chatLineSearch) try(ctx context.Context, candidates []int64) (*CampfireLine, int64, error) {
 	for _, campfireID := range candidates {
+		if containsID(s.tried, campfireID) {
+			continue
+		}
+		if s.budget <= 0 {
+			s.skipped = true
+			return nil, 0, nil
+		}
 		if err := ctx.Err(); err != nil {
 			return nil, 0, err
 		}
-		line, err := s.client.Campfires().GetLine(ctx, campfireID, lineID)
+		s.budget--
+		line, err := s.svc.client.Campfires().GetLine(ctx, campfireID, s.lineID)
 		if err == nil {
 			return line, campfireID, nil
 		}
 		if apiErr, ok := errors.AsType[*Error](err); ok && apiErr.Code == CodeNotFound {
-			*tried = append(*tried, campfireID)
+			s.tried = append(s.tried, campfireID)
 			continue
 		}
 		return nil, 0, err
 	}
 	return nil, 0, nil
+}
+
+// resolveChatLine finds the Campfire a line lives in and reads it. See the
+// discovery comment above for the contract.
+func (s *RecordingsService) resolveChatLine(ctx context.Context, bucketID, lineID int64) (*CampfireLine, int64, error) {
+	ac := s.client
+	index := ac.parent.campfires()
+	search := &chatLineSearch{svc: s, bucketID: bucketID, lineID: lineID, budget: MaxCampfireCandidates}
+	incomplete := func(reason string) error {
+		return &CampfireDiscoveryIncompleteError{BucketID: bucketID, RecordingID: lineID, Reason: reason}
+	}
+
+	// Pass 1: the project dock, then the account listing.
+	dock, dockCached, err := index.dockCampfires(ctx, ac, bucketID, false)
+	if err != nil {
+		return nil, 0, err
+	}
+	if line, id, err := search.try(ctx, dock); err != nil || line != nil {
+		return line, id, err
+	}
+	listed, listCached, err := index.listedCampfires(ctx, ac, bucketID, false)
+	if err != nil {
+		if errors.Is(err, errCampfireListingOverflow) {
+			return nil, 0, incomplete(err.Error())
+		}
+		return nil, 0, err
+	}
+	if line, id, err := search.try(ctx, listed); err != nil || line != nil {
+		return line, id, err
+	}
+
+	// Pass 2: every candidate said "not here". Re-read whichever source was
+	// served from cache (the floor may decline) and try only what is new.
+	refreshed := false
+	currentDock, currentList := dock, listed
+	if dockCached {
+		again, stillCached, err := index.dockCampfires(ctx, ac, bucketID, true)
+		if err != nil {
+			return nil, 0, err
+		}
+		if !stillCached {
+			refreshed, currentDock = true, again
+		}
+		if line, id, err := search.try(ctx, again); err != nil || line != nil {
+			return line, id, err
+		}
+	}
+	if listCached {
+		again, stillCached, err := index.listedCampfires(ctx, ac, bucketID, true)
+		if err != nil {
+			if errors.Is(err, errCampfireListingOverflow) {
+				return nil, 0, incomplete(err.Error())
+			}
+			return nil, 0, err
+		}
+		if !stillCached {
+			refreshed, currentList = true, again
+		}
+		if line, id, err := search.try(ctx, again); err != nil || line != nil {
+			return line, id, err
+		}
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, 0, err
+	}
+	if search.skipped {
+		return nil, 0, incomplete(fmt.Sprintf("more than %d visible campfires in the bucket", MaxCampfireCandidates))
+	}
+	unresolved := &UnresolvedRecordingError{BucketID: bucketID, RecordingID: lineID, CampfireIDs: search.tried, Refreshed: refreshed}
+	if refreshed {
+		for _, id := range search.tried {
+			if !containsID(currentDock, id) && !containsID(currentList, id) {
+				unresolved.StaleCampfireIDs = append(unresolved.StaleCampfireIDs, id)
+			}
+		}
+	}
+	return nil, 0, unresolved
 }
 
 func containsID(ids []int64, id int64) bool {

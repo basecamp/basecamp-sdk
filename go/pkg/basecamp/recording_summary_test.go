@@ -57,12 +57,6 @@ func (s *summaryServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusTeapot)
 }
 
-func (s *summaryServer) setRoute(route func(w http.ResponseWriter, r *http.Request, path string) bool) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.route = route
-}
-
 func (s *summaryServer) requests() []string {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -98,7 +92,7 @@ func newSummaryClient(t *testing.T, route func(w http.ResponseWriter, r *http.Re
 	client := NewClient(cfg, &StaticTokenProvider{Token: "test-token"}, WithMaxRetries(0), WithBaseDelay(time.Millisecond))
 	now := time.Date(2026, 9, 15, 12, 0, 0, 0, time.UTC)
 	clock := &now
-	client.campfires().now = func() time.Time { return *clock }
+	client.campfireOnce.Do(func() { client.campfireIdx = newCampfireIndexAt(func() time.Time { return *clock }) })
 	return client.ForAccount(summaryAccount), srv, clock
 }
 
@@ -317,13 +311,60 @@ func TestSummarize_ReadErrorsPassThrough(t *testing.T) {
 	}
 }
 
-// chatServer serves an account-wide Campfire listing and a line under one
-// Campfire; every other Campfire answers 404 for the line.
-func chatServer(t *testing.T, listing *atomic.Pointer[[]byte], foundUnder int64, lineStatus func(campfireID int64) int) func(w http.ResponseWriter, r *http.Request, path string) bool {
+// chatFixture is the server side of chat line discovery: an account-wide
+// Campfire listing, a project dock per bucket (a bucket absent from docks is
+// not a project and answers 404), and the line under one Campfire; every
+// other Campfire answers 404 for it, or whatever lineStatus says.
+type chatFixture struct {
+	listing    atomic.Pointer[[]byte]
+	docks      map[int64]int64 // bucket -> the dock's chat tool id
+	foundUnder atomic.Int64
+	lineStatus func(campfireID int64) int
+	dockStatus int // non-zero: the project read answers this instead of a dock
+}
+
+func newChatFixture(t *testing.T, foundUnder int64, pairs ...[2]int64) *chatFixture {
+	t.Helper()
+	f := &chatFixture{docks: map[int64]int64{}}
+	body := campfireListJSON(t, pairs...)
+	f.listing.Store(&body)
+	f.foundUnder.Store(foundUnder)
+	return f
+}
+
+func (f *chatFixture) setListing(t *testing.T, pairs ...[2]int64) {
+	t.Helper()
+	body := campfireListJSON(t, pairs...)
+	f.listing.Store(&body)
+}
+
+func (f *chatFixture) route(t *testing.T) func(w http.ResponseWriter, r *http.Request, path string) bool {
 	line := loadSummaryFixture(t, "campfires/line_get.json")
+	project := loadSummaryFixture(t, "projects/get.json") // dock chat tool 1069479341, bucket 2085958499
 	return func(w http.ResponseWriter, _ *http.Request, path string) bool {
+		if bucket, ok := strings.CutPrefix(path, "/195539477/projects/"); ok {
+			if f.dockStatus != 0 {
+				writeJSON(w, f.dockStatus, []byte(`{"error":"nope"}`))
+				return true
+			}
+			chatID, isProject := f.docks[parseID(bucket)]
+			if !isProject {
+				writeJSON(w, http.StatusNotFound, []byte(`{"error":"Record not found"}`))
+				return true
+			}
+			var p map[string]any
+			_ = json.Unmarshal(project, &p)
+			p["id"] = parseID(bucket)
+			for _, item := range p["dock"].([]any) {
+				if entry := item.(map[string]any); entry["name"] == "chat" {
+					entry["id"] = chatID
+				}
+			}
+			writeJSON(w, http.StatusOK, mustJSON(p))
+			return true
+		}
 		if path == "/195539477/chats" {
-			writeJSON(w, http.StatusOK, *listing.Load())
+			writeJSON(w, http.StatusOK, *f.listing.Load())
 			return true
 		}
 		rest, ok := strings.CutPrefix(path, "/195539477/chats/")
@@ -334,17 +375,14 @@ func chatServer(t *testing.T, listing *atomic.Pointer[[]byte], foundUnder int64,
 		if !ok || lineID != "1069479350" {
 			return false
 		}
-		var id int64
-		for _, c := range campfire {
-			id = id*10 + int64(c-'0')
-		}
-		if lineStatus != nil {
-			if status := lineStatus(id); status != 0 {
+		id := parseID(campfire)
+		if f.lineStatus != nil {
+			if status := f.lineStatus(id); status != 0 {
 				writeJSON(w, status, []byte(`{"error":"nope"}`))
 				return true
 			}
 		}
-		if id == foundUnder {
+		if id == f.foundUnder.Load() {
 			writeJSON(w, http.StatusOK, line)
 			return true
 		}
@@ -353,27 +391,66 @@ func chatServer(t *testing.T, listing *atomic.Pointer[[]byte], foundUnder int64,
 	}
 }
 
+func parseID(s string) int64 {
+	var id int64
+	for _, c := range s {
+		if c < '0' || c > '9' {
+			break
+		}
+		id = id*10 + int64(c-'0')
+	}
+	return id
+}
+
 func lineRef() RecordingRef {
 	return RecordingRef{BucketID: letoLaptop, RecordingID: 1069479350, EventType: "chat.line.created"}
 }
 
-func TestSummarize_ChatLineFoundUnderSecondCampfire(t *testing.T) {
-	var listing atomic.Pointer[[]byte]
-	// Two Campfires in the line's bucket (a ping and the project's), one in
-	// another project that must never be tried.
-	body := campfireListJSON(t, [2]int64{1069479400, letoLocator}, [2]int64{1069479340, letoLaptop}, [2]int64{1069479345, letoLaptop})
-	listing.Store(&body)
-	account, srv, _ := newSummaryClient(t, chatServer(t, &listing, 1069479345, nil))
+const (
+	projectRead = "/195539477/projects/2085958499"
+	listingRead = "/195539477/chats"
+)
+
+func lineRead(campfireID int64) string {
+	return "/195539477/chats/" + itoa64(campfireID) + "/lines/1069479350"
+}
+
+func TestSummarize_ChatLineFoundViaProjectDock(t *testing.T) {
+	fx := newChatFixture(t, 1069479341, [2]int64{1069479341, letoLaptop})
+	fx.docks[letoLaptop] = 1069479341
+	account, srv, _ := newSummaryClient(t, fx.route(t))
 
 	got, err := account.Recordings().Summarize(context.Background(), lineRef())
 	if err != nil {
 		t.Fatalf("Summarize: %v", err)
 	}
-	want := []string{
-		"/195539477/chats",
-		"/195539477/chats/1069479340/lines/1069479350",
-		"/195539477/chats/1069479345/lines/1069479350",
+	// The dock answered; the account-wide listing was never needed.
+	if want := []string{projectRead, lineRead(1069479341)}; !reflect.DeepEqual(srv.requests(), want) {
+		t.Fatalf("requests = %v, want %v", srv.requests(), want)
 	}
+	if got.CampfireID != 1069479341 {
+		t.Errorf("CampfireID = %d", got.CampfireID)
+	}
+	// The dock is cached: a second line in the same bucket costs one read.
+	if _, err := account.Recordings().Summarize(context.Background(), lineRef()); err != nil {
+		t.Fatal(err)
+	}
+	if want := []string{projectRead, lineRead(1069479341), lineRead(1069479341)}; !reflect.DeepEqual(srv.requests(), want) {
+		t.Fatalf("requests = %v, want %v", srv.requests(), want)
+	}
+}
+
+func TestSummarize_ChatLineFoundUnderSecondCampfire(t *testing.T) {
+	// A bucket that is not a project (a Circle, say): no dock. Two Campfires
+	// in the line's bucket, one in another project that must never be tried.
+	fx := newChatFixture(t, 1069479345, [2]int64{1069479400, letoLocator}, [2]int64{1069479340, letoLaptop}, [2]int64{1069479345, letoLaptop})
+	account, srv, _ := newSummaryClient(t, fx.route(t))
+
+	got, err := account.Recordings().Summarize(context.Background(), lineRef())
+	if err != nil {
+		t.Fatalf("Summarize: %v", err)
+	}
+	want := []string{projectRead, listingRead, lineRead(1069479340), lineRead(1069479345)}
 	if reqs := srv.requests(); !reflect.DeepEqual(reqs, want) {
 		t.Fatalf("requests = %v, want %v", reqs, want)
 	}
@@ -390,7 +467,7 @@ func TestSummarize_ChatLineFoundUnderSecondCampfire(t *testing.T) {
 		t.Errorf("Creator = %+v", got.Creator)
 	}
 
-	// The same by recording type, each Chat::Lines subtype.
+	// The same by recording type, each Chat::Lines subtype, from the cache.
 	for _, typ := range []string{"Chat::Lines::Text", "Chat::Lines::RichText", "Chat::Lines::Code", "Chat::Lines::Upload", "Chat::Lines::Integration"} {
 		if _, err := account.Recordings().Summarize(context.Background(), RecordingRef{BucketID: letoLaptop, RecordingID: 1069479350, RecordingType: typ}); err != nil {
 			t.Errorf("%s: %v", typ, err)
@@ -399,57 +476,76 @@ func TestSummarize_ChatLineFoundUnderSecondCampfire(t *testing.T) {
 	if n := srv.count("/195539477/chats/"); n != 2+5*2 {
 		t.Errorf("line reads = %d, want 2 for the first call and 2 per typed call", n)
 	}
-	if n := srv.count("/195539477/chats"); n-srv.count("/195539477/chats/") != 1 {
-		t.Errorf("the Campfire listing was fetched %d times within the TTL, want 1", n-srv.count("/195539477/chats/"))
+	if n := srv.count(listingRead) - srv.count(listingRead+"/"); n != 1 {
+		t.Errorf("listings = %d within the TTL, want 1", n)
+	}
+	if n := srv.count(projectRead); n != 1 {
+		t.Errorf("project reads = %d within the TTL, want 1", n)
 	}
 }
 
-func TestSummarize_ChatLineListingIsCachedTenMinutes(t *testing.T) {
-	var listing atomic.Pointer[[]byte]
-	body := campfireListJSON(t, [2]int64{1069479345, letoLaptop})
-	listing.Store(&body)
-	account, srv, clock := newSummaryClient(t, chatServer(t, &listing, 1069479345, nil))
+func TestSummarize_ChatLineDockMissFallsBackToListing(t *testing.T) {
+	// The dock names a Campfire the line is not in (it was posted in a ping
+	// listed for the same bucket); the listing supplies the rest.
+	fx := newChatFixture(t, 1069479345, [2]int64{1069479341, letoLaptop}, [2]int64{1069479345, letoLaptop})
+	fx.docks[letoLaptop] = 1069479341
+	account, srv, _ := newSummaryClient(t, fx.route(t))
+	got, err := account.Recordings().Summarize(context.Background(), lineRef())
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The dock's Campfire is not tried twice when the listing repeats it.
+	want := []string{projectRead, lineRead(1069479341), listingRead, lineRead(1069479345)}
+	if !reflect.DeepEqual(srv.requests(), want) {
+		t.Fatalf("requests = %v, want %v", srv.requests(), want)
+	}
+	if got.CampfireID != 1069479345 {
+		t.Errorf("CampfireID = %d", got.CampfireID)
+	}
+}
 
-	listings := func() int { return srv.count("/195539477/chats") - srv.count("/195539477/chats/") }
+func TestSummarize_ChatLineSourcesAreCachedTenMinutes(t *testing.T) {
+	fx := newChatFixture(t, 1069479345, [2]int64{1069479345, letoLaptop})
+	account, srv, clock := newSummaryClient(t, fx.route(t))
+
+	listings := func() int { return srv.count(listingRead) - srv.count(listingRead+"/") }
 	for i := 0; i < 3; i++ {
 		if _, err := account.Recordings().Summarize(context.Background(), lineRef()); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if listings() != 1 {
-		t.Fatalf("listings = %d after three lookups, want 1", listings())
+	if listings() != 1 || srv.count(projectRead) != 1 {
+		t.Fatalf("listings = %d, project reads = %d after three lookups, want 1 each", listings(), srv.count(projectRead))
 	}
 	*clock = clock.Add(CampfireIndexTTL - time.Second)
 	if _, err := account.Recordings().Summarize(context.Background(), lineRef()); err != nil {
 		t.Fatal(err)
 	}
-	if listings() != 1 {
-		t.Fatalf("listings = %d just inside the TTL, want 1", listings())
+	if listings() != 1 || srv.count(projectRead) != 1 {
+		t.Fatalf("re-read just inside the TTL: listings = %d, project reads = %d", listings(), srv.count(projectRead))
 	}
 	*clock = clock.Add(2 * time.Second)
 	if _, err := account.Recordings().Summarize(context.Background(), lineRef()); err != nil {
 		t.Fatal(err)
 	}
-	if listings() != 2 {
-		t.Fatalf("listings = %d past the TTL, want 2", listings())
+	if listings() != 2 || srv.count(projectRead) != 2 {
+		t.Fatalf("past the TTL: listings = %d, project reads = %d, want 2 each", listings(), srv.count(projectRead))
 	}
 
-	// A second AccountClient from the same Client shares the index.
+	// A second AccountClient from the same Client shares the sources.
 	other := account.parent.ForAccount(summaryAccount)
 	if _, err := other.Recordings().Summarize(context.Background(), lineRef()); err != nil {
 		t.Fatal(err)
 	}
-	if listings() != 2 {
-		t.Fatalf("listings = %d from a sibling AccountClient, want 2 (shared index)", listings())
+	if listings() != 2 || srv.count(projectRead) != 2 {
+		t.Fatalf("a sibling AccountClient re-read the sources")
 	}
 }
 
 func TestSummarize_ChatLineUnresolvedIsDistinct(t *testing.T) {
-	var listing atomic.Pointer[[]byte]
-	body := campfireListJSON(t, [2]int64{1069479340, letoLaptop}, [2]int64{1069479345, letoLaptop})
-	listing.Store(&body)
-	account, srv, clock := newSummaryClient(t, chatServer(t, &listing, 0, nil)) // found under none
-	listings := func() int { return srv.count("/195539477/chats") - srv.count("/195539477/chats/") }
+	fx := newChatFixture(t, 0, [2]int64{1069479340, letoLaptop}, [2]int64{1069479345, letoLaptop}) // found under none
+	account, srv, clock := newSummaryClient(t, fx.route(t))
+	listings := func() int { return srv.count(listingRead) - srv.count(listingRead+"/") }
 
 	_, err := account.Recordings().Summarize(context.Background(), lineRef())
 	if !errors.Is(err, ErrRecordingUnresolved) {
@@ -462,21 +558,35 @@ func TestSummarize_ChatLineUnresolvedIsDistinct(t *testing.T) {
 	if unresolved.BucketID != letoLaptop || unresolved.RecordingID != 1069479350 || !reflect.DeepEqual(unresolved.CampfireIDs, []int64{1069479340, 1069479345}) {
 		t.Fatalf("unresolved = %+v", unresolved)
 	}
+	if unresolved.Refreshed || unresolved.StaleCampfireIDs != nil {
+		t.Fatalf("a conclusion on sources read this very call claims a refresh: %+v", unresolved)
+	}
 	if apiErr, ok := errors.AsType[*Error](err); ok {
 		t.Fatalf("unresolved surfaced as an API error: %+v", apiErr)
 	}
-	// The listing was fresh, so the miss did not re-list.
-	if listings() != 1 {
-		t.Fatalf("listings = %d on a fresh index, want 1", listings())
+	if errors.Is(err, ErrCampfireDiscoveryIncomplete) {
+		t.Fatal("a complete search must not read as incomplete")
+	}
+	if listings() != 1 || srv.count(projectRead) != 1 {
+		t.Fatalf("sources read this call were re-read on the miss: listings = %d, project reads = %d", listings(), srv.count(projectRead))
 	}
 
-	// Once the listing is older than the refresh floor, a miss re-lists once
-	// and tries only what is new — here, a Campfire created after the cache
-	// filled, which is where the line was all along.
-	*clock = clock.Add(campfireIndexMinRefresh)
-	body2 := campfireListJSON(t, [2]int64{1069479340, letoLaptop}, [2]int64{1069479345, letoLaptop}, [2]int64{1069479399, letoLaptop})
-	listing.Store(&body2)
-	srv.setRoute(chatServer(t, &listing, 1069479399, nil))
+	// Inside the refresh floor the cached sources stand and the error says so.
+	*clock = clock.Add(campfireIndexMinRefresh - time.Second)
+	_, err = account.Recordings().Summarize(context.Background(), lineRef())
+	if !errors.As(err, &unresolved) || unresolved.Refreshed {
+		t.Fatalf("err = %#v, want unresolved with Refreshed=false inside the floor", err)
+	}
+	if listings() != 1 || srv.count(projectRead) != 1 {
+		t.Fatalf("the floor did not hold: listings = %d, project reads = %d", listings(), srv.count(projectRead))
+	}
+
+	// Past the floor, a miss re-reads both sources once and tries only what
+	// is new — here a Campfire created after the cache filled, which is where
+	// the line was all along.
+	*clock = clock.Add(time.Second)
+	fx.setListing(t, [2]int64{1069479340, letoLaptop}, [2]int64{1069479345, letoLaptop}, [2]int64{1069479399, letoLaptop})
+	fx.foundUnder.Store(1069479399)
 	got, err := account.Recordings().Summarize(context.Background(), lineRef())
 	if err != nil {
 		t.Fatalf("after refresh: %v", err)
@@ -484,19 +594,23 @@ func TestSummarize_ChatLineUnresolvedIsDistinct(t *testing.T) {
 	if got.CampfireID != 1069479399 {
 		t.Fatalf("CampfireID = %d, want the newly listed Campfire", got.CampfireID)
 	}
-	if listings() != 2 {
-		t.Fatalf("listings = %d, want 2 (one refresh on miss)", listings())
-	}
 	reqs := srv.requests()
-	tail := reqs[len(reqs)-4:]
-	want := []string{
-		"/195539477/chats/1069479340/lines/1069479350",
-		"/195539477/chats/1069479345/lines/1069479350",
-		"/195539477/chats",
-		"/195539477/chats/1069479399/lines/1069479350",
-	}
-	if !reflect.DeepEqual(tail, want) {
+	want := []string{lineRead(1069479340), lineRead(1069479345), projectRead, listingRead, lineRead(1069479399)}
+	if tail := reqs[len(reqs)-len(want):]; !reflect.DeepEqual(tail, want) {
 		t.Fatalf("requests = %v, want tail %v", reqs, want)
+	}
+
+	// A refreshed miss reports the Campfires the cache had that the sources no
+	// longer list: visibility changed, and 404 alone cannot say so.
+	*clock = clock.Add(campfireIndexMinRefresh)
+	fx.setListing(t, [2]int64{1069479345, letoLaptop})
+	fx.foundUnder.Store(0)
+	_, err = account.Recordings().Summarize(context.Background(), lineRef())
+	if !errors.As(err, &unresolved) || !unresolved.Refreshed {
+		t.Fatalf("err = %#v, want unresolved with Refreshed=true past the floor", err)
+	}
+	if !reflect.DeepEqual(unresolved.CampfireIDs, []int64{1069479340, 1069479345, 1069479399}) || !reflect.DeepEqual(unresolved.StaleCampfireIDs, []int64{1069479340, 1069479399}) {
+		t.Fatalf("unresolved = %+v", unresolved)
 	}
 
 	// A bucket with no visible Campfire at all is unresolved too, with an
@@ -510,16 +624,14 @@ func TestSummarize_ChatLineUnresolvedIsDistinct(t *testing.T) {
 func TestSummarize_ChatLineReadFailureIsNotUnresolved(t *testing.T) {
 	for _, status := range []int{http.StatusForbidden, http.StatusInternalServerError, http.StatusUnauthorized} {
 		t.Run(http.StatusText(status), func(t *testing.T) {
-			var listing atomic.Pointer[[]byte]
-			body := campfireListJSON(t, [2]int64{1069479340, letoLaptop}, [2]int64{1069479345, letoLaptop})
-			listing.Store(&body)
-			failing := func(id int64) int {
+			fx := newChatFixture(t, 1069479345, [2]int64{1069479340, letoLaptop}, [2]int64{1069479345, letoLaptop})
+			fx.lineStatus = func(id int64) int {
 				if id == 1069479340 {
 					return status
 				}
 				return 0
 			}
-			account, srv, _ := newSummaryClient(t, chatServer(t, &listing, 1069479345, failing))
+			account, srv, _ := newSummaryClient(t, fx.route(t))
 			_, err := account.Recordings().Summarize(context.Background(), lineRef())
 			apiErr, ok := errors.AsType[*Error](err)
 			if !ok || apiErr.HTTPStatus != status {
@@ -528,19 +640,36 @@ func TestSummarize_ChatLineReadFailureIsNotUnresolved(t *testing.T) {
 			if errors.Is(err, ErrRecordingUnresolved) {
 				t.Fatal("a failed read must not read as unresolved")
 			}
-			if srv.count("/195539477/chats/1069479345/") != 0 {
+			if srv.count(lineRead(1069479345)) != 0 {
 				t.Fatalf("the loop went on past a failed read: %v", srv.requests())
 			}
 		})
 	}
+	t.Run("project read failure", func(t *testing.T) {
+		fx := newChatFixture(t, 1069479345, [2]int64{1069479345, letoLaptop})
+		fx.dockStatus = http.StatusForbidden
+		account, srv, _ := newSummaryClient(t, fx.route(t))
+		_, err := account.Recordings().Summarize(context.Background(), lineRef())
+		apiErr, ok := errors.AsType[*Error](err)
+		if !ok || apiErr.HTTPStatus != http.StatusForbidden || errors.Is(err, ErrRecordingUnresolved) {
+			t.Fatalf("err = %v, want the dock read's 403", err)
+		}
+		if len(srv.requests()) != 1 {
+			t.Fatalf("discovery went on past a failed dock read: %v", srv.requests())
+		}
+	})
 }
 
 func TestSummarize_ChatLineListingFailurePassesThrough(t *testing.T) {
 	account, srv, _ := newSummaryClient(t, func(w http.ResponseWriter, _ *http.Request, path string) bool {
-		if path != "/195539477/chats" {
+		switch path {
+		case projectRead:
+			writeJSON(w, http.StatusNotFound, []byte(`{"error":"Record not found"}`))
+		case listingRead:
+			writeJSON(w, http.StatusServiceUnavailable, []byte(`{"error":"down"}`))
+		default:
 			return false
 		}
-		writeJSON(w, http.StatusServiceUnavailable, []byte(`{"error":"down"}`))
 		return true
 	})
 	_, err := account.Recordings().Summarize(context.Background(), lineRef())
@@ -550,20 +679,105 @@ func TestSummarize_ChatLineListingFailurePassesThrough(t *testing.T) {
 	}
 	// A failed listing caches nothing: the next call lists again.
 	_, _ = account.Recordings().Summarize(context.Background(), lineRef())
-	if n := srv.count("/195539477/chats"); n != 2 {
+	if n := srv.count(listingRead); n != 2 {
 		t.Fatalf("listings = %d, want 2", n)
 	}
 }
 
+func TestSummarize_ChatLineDiscoveryIncompleteIsNotUnresolved(t *testing.T) {
+	t.Run("bucket over the candidate budget", func(t *testing.T) {
+		pairs := make([][2]int64, 0, MaxCampfireCandidates+5)
+		for i := int64(0); i < MaxCampfireCandidates+5; i++ {
+			pairs = append(pairs, [2]int64{7000 + i, letoLaptop})
+		}
+		fx := newChatFixture(t, 7000+MaxCampfireCandidates+2, pairs...) // the line is past the budget
+		account, srv, _ := newSummaryClient(t, fx.route(t))
+		_, err := account.Recordings().Summarize(context.Background(), lineRef())
+		if !errors.Is(err, ErrCampfireDiscoveryIncomplete) || errors.Is(err, ErrRecordingUnresolved) {
+			t.Fatalf("err = %v, want incomplete, not unresolved", err)
+		}
+		var incomplete *CampfireDiscoveryIncompleteError
+		if !errors.As(err, &incomplete) || incomplete.BucketID != letoLaptop || incomplete.RecordingID != 1069479350 {
+			t.Fatalf("err = %#v", err)
+		}
+		if n := srv.count("/195539477/chats/"); n != MaxCampfireCandidates {
+			t.Fatalf("tried %d candidates, want the budget %d", n, MaxCampfireCandidates)
+		}
+	})
+	t.Run("listing over its cap", func(t *testing.T) {
+		pairs := make([][2]int64, 0, MaxCampfireListing+1)
+		for i := int64(0); i <= MaxCampfireListing; i++ {
+			pairs = append(pairs, [2]int64{9000 + i, letoLocator})
+		}
+		fx := newChatFixture(t, 0, pairs...)
+		account, srv, _ := newSummaryClient(t, fx.route(t))
+		_, err := account.Recordings().Summarize(context.Background(), lineRef())
+		if !errors.Is(err, ErrCampfireDiscoveryIncomplete) || errors.Is(err, ErrRecordingUnresolved) {
+			t.Fatalf("err = %v, want incomplete, not unresolved", err)
+		}
+		// An overflowing listing is not cached: the next call lists again.
+		_, _ = account.Recordings().Summarize(context.Background(), lineRef())
+		if n := srv.count(listingRead); n != 2 {
+			t.Fatalf("listings = %d, want 2", n)
+		}
+	})
+}
+
+func TestSummarize_ChatLineHonoursCancellation(t *testing.T) {
+	t.Run("while waiting on another caller's listing", func(t *testing.T) {
+		fx := newChatFixture(t, 1069479345, [2]int64{1069479345, letoLaptop})
+		started := make(chan struct{})
+		release := make(chan struct{})
+		inner := fx.route(t)
+		var once sync.Once
+		account, _, _ := newSummaryClient(t, func(w http.ResponseWriter, r *http.Request, path string) bool {
+			if path == listingRead {
+				once.Do(func() { close(started) })
+				<-release
+			}
+			return inner(w, r, path)
+		})
+		go func() { _, _ = account.Recordings().Summarize(context.Background(), lineRef()) }()
+		<-started
+		ctx, cancel := context.WithCancel(context.Background())
+		done := make(chan error, 1)
+		go func() {
+			_, err := account.Recordings().Summarize(ctx, lineRef())
+			done <- err
+		}()
+		cancel()
+		select {
+		case err := <-done:
+			if !errors.Is(err, context.Canceled) {
+				t.Fatalf("err = %v, want context.Canceled", err)
+			}
+		case <-time.After(5 * time.Second):
+			t.Fatal("a waiter did not observe its cancelled context")
+		}
+		close(release)
+	})
+	t.Run("with every source cached and no candidate to try", func(t *testing.T) {
+		fx := newChatFixture(t, 0, [2]int64{1069479400, letoLocator})
+		account, _, _ := newSummaryClient(t, fx.route(t))
+		if _, err := account.Recordings().Summarize(context.Background(), lineRef()); !errors.Is(err, ErrRecordingUnresolved) {
+			t.Fatalf("priming: %v", err)
+		}
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+		_, err := account.Recordings().Summarize(ctx, lineRef())
+		if !errors.Is(err, context.Canceled) || errors.Is(err, ErrRecordingUnresolved) {
+			t.Fatalf("err = %v, want context.Canceled, not unresolved", err)
+		}
+	})
+}
+
 func TestSummarize_ChatLineListingIsSingleFlight(t *testing.T) {
-	var listing atomic.Pointer[[]byte]
-	body := campfireListJSON(t, [2]int64{1069479345, letoLaptop})
-	listing.Store(&body)
+	fx := newChatFixture(t, 1069479345, [2]int64{1069479345, letoLaptop})
 	release := make(chan struct{})
 	var listCalls atomic.Int32
-	inner := chatServer(t, &listing, 1069479345, nil)
-	account, _, _ := newSummaryClient(t, func(w http.ResponseWriter, r *http.Request, path string) bool {
-		if path == "/195539477/chats" {
+	inner := fx.route(t)
+	account, srv, _ := newSummaryClient(t, func(w http.ResponseWriter, r *http.Request, path string) bool {
+		if path == listingRead {
 			listCalls.Add(1)
 			<-release // hold every listing until all callers are waiting
 		}
@@ -596,67 +810,18 @@ func TestSummarize_ChatLineListingIsSingleFlight(t *testing.T) {
 	if n := listCalls.Load(); n != 1 {
 		t.Fatalf("listings = %d for %d concurrent callers, want 1", n, callers)
 	}
-}
-
-func TestSummarize_ChatLineHonoursCancellationWhileWaiting(t *testing.T) {
-	var listing atomic.Pointer[[]byte]
-	body := campfireListJSON(t, [2]int64{1069479345, letoLaptop})
-	listing.Store(&body)
-	started := make(chan struct{})
-	release := make(chan struct{})
-	inner := chatServer(t, &listing, 1069479345, nil)
-	var once sync.Once
-	account, _, _ := newSummaryClient(t, func(w http.ResponseWriter, r *http.Request, path string) bool {
-		if path == "/195539477/chats" {
-			once.Do(func() { close(started) })
-			<-release
-		}
-		return inner(w, r, path)
-	})
-
-	go func() { _, _ = account.Recordings().Summarize(context.Background(), lineRef()) }()
-	<-started
-	ctx, cancel := context.WithCancel(context.Background())
-	done := make(chan error, 1)
-	go func() {
-		_, err := account.Recordings().Summarize(ctx, lineRef())
-		done <- err
-	}()
-	cancel()
-	select {
-	case err := <-done:
-		if !errors.Is(err, context.Canceled) {
-			t.Fatalf("err = %v, want context.Canceled", err)
-		}
-	case <-time.After(5 * time.Second):
-		t.Fatal("a waiter did not observe its cancelled context")
-	}
-	close(release)
-}
-
-func TestSummarize_ChatLineCandidatesAreBounded(t *testing.T) {
-	pairs := make([][2]int64, 0, MaxCampfireCandidates+5)
-	for i := int64(0); i < MaxCampfireCandidates+5; i++ {
-		pairs = append(pairs, [2]int64{7000 + i, letoLaptop})
-	}
-	var listing atomic.Pointer[[]byte]
-	body := campfireListJSON(t, pairs...)
-	listing.Store(&body)
-	account, srv, _ := newSummaryClient(t, chatServer(t, &listing, 0, nil))
-	_, err := account.Recordings().Summarize(context.Background(), lineRef())
-	var unresolved *UnresolvedRecordingError
-	if !errors.As(err, &unresolved) {
-		t.Fatalf("err = %v", err)
-	}
-	if len(unresolved.CampfireIDs) != MaxCampfireCandidates || srv.count("/195539477/chats/") != MaxCampfireCandidates {
-		t.Fatalf("tried %d candidates, want the bound %d", len(unresolved.CampfireIDs), MaxCampfireCandidates)
+	if n := srv.count(projectRead); n != 1 {
+		t.Fatalf("project reads = %d for %d concurrent callers, want 1", n, callers)
 	}
 }
 
 // TestMentions_RoundTripThroughCommentAndSummary is the card's round trip: an
 // id goes in through CreateWithMentions, the sgid BC3 serves for that person
 // is what gets written, and Summarize on the resulting comment reads the same
-// id back out.
+// id back out. The server is a mock composed from the shared fixtures — the
+// person read's sgid, and BC3's documented rendering of a mention on read —
+// so this proves the composition, not BC3 itself; the sgid decoder's own
+// contract with Rails is pinned separately, on payloads Ruby produced.
 func TestMentions_RoundTripThroughCommentAndSummary(t *testing.T) {
 	person := loadSummaryFixture(t, "people/get.json") // id 1049715915, older sgid layout
 	var posted atomic.Pointer[string]
@@ -677,10 +842,14 @@ func TestMentions_RoundTripThroughCommentAndSummary(t *testing.T) {
 			c["content"] = content
 			writeJSON(w, http.StatusCreated, mustJSON(c))
 		case path == "/195539477/comments/1069479361":
+			// On read, BC3 expands the bare tag into the rendered mention:
+			// content-type, avatar figure, figcaption. Simulate that, so the
+			// summary reads what a real response carries, not the echo.
 			var c map[string]any
 			_ = json.Unmarshal(commentTemplate, &c)
 			if p := posted.Load(); p != nil {
-				c["content"] = *p
+				bare := `<bc-attachment sgid="` + fixtureSGIDPerson + `"></bc-attachment>`
+				c["content"] = strings.ReplaceAll(*p, bare, renderedMention(fixtureSGIDPerson, 1049715915, "Victor Cooper"))
 			}
 			writeJSON(w, http.StatusOK, mustJSON(c))
 		default:
@@ -711,15 +880,13 @@ func TestMentions_RoundTripThroughCommentAndSummary(t *testing.T) {
 	if !reflect.DeepEqual(sum.MentionedPersonIDs, []int64{1049715915}) {
 		t.Fatalf("summary mentions %v, want [1049715915]", sum.MentionedPersonIDs)
 	}
-	if sum.Content != wantContent {
-		t.Fatalf("summary content %q", sum.Content)
+	if sum.Content == wantContent || !strings.Contains(sum.Content, `content-type="application/vnd.basecamp.mention"`) {
+		t.Fatalf("the summary did not read the rendered form: %q", sum.Content)
 	}
-
-	// The same round trip with the mention BC3 would render on read — the
-	// avatar figure and content-type added — resolves to the same id.
-	rendered := renderedMention(fixtureSGIDPerson, 1049715915, "Victor Cooper")
-	if ids := MentionedPersonIDs("<div>" + rendered + " On it.</div>"); !reflect.DeepEqual(ids, []int64{1049715915}) {
-		t.Fatalf("rendered mention reads back %v", ids)
+	// Expanding again against the rendered form adds nothing.
+	again, err := account.Comments().ExpandMentions(context.Background(), sum.Content, []int64{1049715915})
+	if err != nil || again != sum.Content || peopleReads.Load() != 1 {
+		t.Fatalf("re-expansion changed the content or read people again: %v, reads %d", err, peopleReads.Load())
 	}
 }
 

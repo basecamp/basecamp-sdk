@@ -680,6 +680,8 @@ if err != nil {
     case errors.Is(err, basecamp.ErrRecordingUnresolved):
         // A chat line found under none of the Campfires you can see in that
         // bucket. Distinct from a failed read — retry on your own schedule.
+    case errors.Is(err, basecamp.ErrCampfireDiscoveryIncomplete):
+        // Candidates were left unsearched (too many Campfires); not absent.
     }
     return err
 }
@@ -695,13 +697,24 @@ own (`Document`, `Upload`, `Schedule::Entry`, `Question`, `Question::Answer`,
 something it is not.
 
 Chat lines need discovery first: their read takes the Campfire id, which the
-pointer does not carry. `Summarize` lists the Campfires you can see (cached ten
-minutes per account, one listing for every line in every bucket), tries the
-line under each Campfire in the line's bucket, and reports `CampfireID` — the
-reply destination — on success. A candidate that answers anything but 404
-stops the loop with that error; only when every candidate says "not here" is
-the line `ErrRecordingUnresolved`, and the listing is refreshed once before
-concluding that.
+pointer does not carry. `Summarize` reads the bucket's project dock, whose
+chat tool is the project's Campfire (one project read per bucket, cached ten
+minutes), and falls back to the account-wide Campfire listing filtered to the
+bucket (cached ten minutes per account) for buckets that are not projects. It
+tries the line under each candidate and reports `CampfireID` — the reply
+destination — on success. A candidate that answers anything but 404 stops the
+loop with that error, so a 401, 403 or 5xx never reads as "not here". When
+every candidate says 404 the cached sources are re-read (at most once per 30
+seconds) and only what is new is tried; if the line is still under no
+Campfire you can see, the result is `ErrRecordingUnresolved`, whose
+`UnresolvedRecordingError` says whether the sources were refreshed and which
+cached Campfires they no longer list. Discovery that could not finish — a
+bucket with more visible Campfires than `MaxCampfireCandidates`, a listing
+past `MaxCampfireListing` — is `ErrCampfireDiscoveryIncomplete`, never
+"unresolved": nothing unsearched is reported absent. One limit HTTP imposes:
+Basecamp answers 404 both for a line that is not in a Campfire and for a
+Campfire you may no longer see, so "unresolved" means "under no Campfire you
+can currently see", and is worth a retry.
 
 Mentions are `<bc-attachment>` tags whose `sgid` is a person's
 `attachable_sgid`. Two helpers read and write them:
@@ -721,9 +734,10 @@ line, err := account.Campfires().CreateLine(ctx, campfireID, content,
     &basecamp.CreateLineOptions{ContentType: basecamp.LineContentTypeHTML})
 ```
 
-`MentionedPersonIDs` decodes the person id out of each sgid's payload; it does
+`MentionedPersonIDs` decodes the person id out of each sgid's envelope; it does
 not verify the signature, which only Basecamp can. A person already mentioned
-in the content is never mentioned twice.
+in the content is never mentioned twice, and `MentionMarkup` refuses an
+`attachable_sgid` that names anyone other than the person it is given.
 
 ## Working with Webhooks
 
