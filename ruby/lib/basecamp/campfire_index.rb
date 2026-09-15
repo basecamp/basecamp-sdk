@@ -136,6 +136,13 @@ module Basecamp
 
       Entry = Struct.new(:value, :fetched, :seq, keyword_init: true)
 
+      # The clock is MONOTONIC, never wall time. A backwards step in wall time —
+      # an NTP correction, a VM resume — would make an entry outlive its TTL,
+      # decline a refresh that is genuinely due, and take the `refreshed` and
+      # stale-candidate signals down with it, none of which surfaces as an
+      # error. The injected clock in tests is monotonic in the same sense: it
+      # only ever moves forward.
+      #
       # @param ttl [Float] seconds a value is reused for
       # @param floor [Float] seconds a refresh must wait before it is honoured
       # @param max_items [Integer] entry bound; 0 or less disables eviction
@@ -242,6 +249,13 @@ module Basecamp
       # its own TTL runs out.
       def publish(key, pending, value, error)
         @mutex.synchronize do
+          # Idempotent, so publication survives being interrupted. An async
+          # exception landing between the load returning and this call
+          # completing would otherwise let {#get}'s ensure publish a second time
+          # and overwrite a good value with an abandonment error. Whichever
+          # publication lands first is the outcome; the rest are no-ops.
+          return if pending[:done]
+
           @inflight.delete(key)
           pending[:error] = error
           if error.nil?

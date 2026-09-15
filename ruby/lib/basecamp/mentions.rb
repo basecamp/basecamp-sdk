@@ -529,8 +529,15 @@ module Basecamp
       return nil unless normalized.match?(%r{\A[A-Za-z0-9+/]+\z})
       return nil if (normalized.length % 4) == 1
 
+      # Decoded with the LENIENT unpack, deliberately. Go's RawStdEncoding is
+      # non-strict: it does not require the final group's unused bits to be
+      # zero, and `unpack1("m0")` does — it raises on "QR" where Go returns
+      # 0x41. A stricter decoder here does not report an error, it makes a real
+      # mention silently vanish. The one leniency `m` has that Go does not —
+      # discarding characters outside the alphabet — cannot apply, because the
+      # alphabet check above has already refused any such payload.
       raw = begin
-        (normalized + ("=" * ((4 - (normalized.length % 4)) % 4))).unpack1("m0")
+        normalized.unpack1("m")
       rescue ArgumentError
         return nil
       end

@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require "test_helper"
-require "benchmark"
 
 # Tests for Basecamp::Mentions — the read/write pair over <bc-attachment> sgids.
 #
@@ -233,6 +232,22 @@ class MentionsTest < Minitest::Test
     )
   end
 
+  def test_a_final_group_with_non_zero_unused_bits_still_decodes
+    # The reference decoder is NOT strict about the final group's unused bits,
+    # and a stricter one here does not report an error — it makes a real mention
+    # silently vanish. Person 10's payload ends in a two-character group whose
+    # last character carries four unused bits; setting them decodes to the same
+    # bytes and must resolve to the same person.
+    sgid = person_sgid(10)
+    payload, signature = sgid.split("--", 2)
+
+    assert_equal 2, payload.length % 4, "this case needs a partial final group"
+    assert_equal "A", payload[-1]
+
+    assert_equal 10, Basecamp::Mentions.person_id_from_sgid(sgid)
+    assert_equal 10, Basecamp::Mentions.person_id_from_sgid("#{payload[0..-2]}B--#{signature}")
+  end
+
   def test_a_person_id_past_the_64_bit_range_is_refused
     assert_nil Basecamp::Mentions.person_id_from_sgid(marshal_sgid("gid://bc3/Person/99999999999999999999999"))
   end
@@ -250,8 +265,8 @@ class MentionsTest < Minitest::Test
     ascii = "x#{tags}"
     multibyte = "é#{tags}"
 
-    plain = Benchmark.realtime { Basecamp::Mentions.mentioned_person_ids(ascii) }
-    accented = Benchmark.realtime { Basecamp::Mentions.mentioned_person_ids(multibyte) }
+    plain = elapsed { Basecamp::Mentions.mentioned_person_ids(ascii) }
+    accented = elapsed { Basecamp::Mentions.mentioned_person_ids(multibyte) }
 
     assert_operator accented, :<, (plain * 10) + 0.5,
       "one non-ASCII character should not change the walk's complexity"
@@ -276,6 +291,13 @@ class MentionsTest < Minitest::Test
     [ [ 26 ], "26", Object.new ].each do |person|
       assert_raises(Basecamp::UsageError) { Basecamp::Mentions.mention_markup(person) }
     end
+  end
+
+  # Monotonic, and no require: `benchmark` left the default gems in Ruby 4.0.
+  def elapsed
+    started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    yield
+    Process.clock_gettime(Process::CLOCK_MONOTONIC) - started
   end
 
   def person(id, sgid: nil)
