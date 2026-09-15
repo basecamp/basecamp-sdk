@@ -416,6 +416,71 @@ describe("recordings.summarize", () => {
       }
     });
 
+    it("refuses a read whose body is not a recording, and reads a null body as Go's zero value", async () => {
+      // Measured by decoding each body into generated.Comment: `"hello"`, `[]`,
+      // `[{…}]`, `42` and `true` are decode errors that fail the read, and a
+      // JSON `null` is a no-op that yields the ZERO recording with no error.
+      // Both halves matter here. The refusal is not cosmetic: the arms
+      // dereference the body, so a bare string projected every scalar to its
+      // default AND left `bucket` absent — which is how a recording in another
+      // project came back as a match rather than a bucket_mismatch. The null is
+      // the shape that used to throw a raw TypeError out of the SDK.
+      for (const body of ['"hello"', "[]", '[{"id":1}]', "42", "true"]) {
+        const fresh = createBasecampClient({ accountId: "12345", accessToken: "t", enableRetry: false });
+        server.use(
+          http.get(`${BASE_URL}/comments/1`, () =>
+            HttpResponse.text(body, { headers: { "content-type": "application/json" } }),
+          ),
+        );
+
+        const err = await fresh.recordings
+          .summarize({ bucketId: BUCKET, recordingId: 1, recordingType: "Comment" })
+          .catch((e: unknown) => e);
+
+        expect(err, body).toBeInstanceOf(BasecampError);
+        expect((err as BasecampError).code, body).toBe("api_error");
+        expect((err as BasecampError).httpStatus, body).toBeUndefined();
+      }
+
+      const fresh = createBasecampClient({ accountId: "12345", accessToken: "t", enableRetry: false });
+      server.use(
+        http.get(`${BASE_URL}/comments/1`, () =>
+          HttpResponse.text("null", { headers: { "content-type": "application/json" } }),
+        ),
+      );
+      const summary = await fresh.recordings.summarize({
+        bucketId: BUCKET,
+        recordingId: 1,
+        recordingType: "Comment",
+      });
+      expect(summary).toMatchObject({ id: 0, status: "", type: "", title: "", content: "" });
+    });
+
+    it("refuses a read whose bucket is not an object, rather than reading it as absent", async () => {
+      // The other half of the same defect, and the one with teeth: a bucket
+      // that is a string or an array leaves `?.id` undefined, the cross-project
+      // check finds nothing to disagree with, and a recording from ANOTHER
+      // project is returned as a match. Go fails the read on both bodies.
+      for (const bucket of ['"nope"', '["x"]']) {
+        const fresh = createBasecampClient({ accountId: "12345", accessToken: "t", enableRetry: false });
+        server.use(
+          http.get(`${BASE_URL}/comments/1`, () =>
+            HttpResponse.text(`{"id":1,"title":"t","content":"c","bucket":${bucket}}`, {
+              headers: { "content-type": "application/json" },
+            }),
+          ),
+        );
+
+        const err = await fresh.recordings
+          .summarize({ bucketId: BUCKET, recordingId: 1, recordingType: "Comment" })
+          .catch((e: unknown) => e);
+
+        expect(err, bucket).toBeInstanceOf(BasecampError);
+        expect((err as BasecampError).code, bucket).toBe("api_error");
+        expect((err as BasecampError).httpStatus, bucket).toBeUndefined();
+      }
+    });
+
     it("explains itself when the service was built without the client's reads", async () => {
       const bare = new RecordingsService(client.raw);
       await expect(

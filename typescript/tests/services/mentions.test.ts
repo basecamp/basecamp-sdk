@@ -502,6 +502,36 @@ describe("mentionMarkup", () => {
     }
   });
 
+  it("reads a string person id the way the reference's FlexibleInt64 does", () => {
+    // Go's Person.Id is the one FlexibleInt64 in the generated model, and this
+    // SDK's own normalizer only rewrites a string id when `personable_type` is
+    // present — so a people read without it arrives here still carrying a
+    // string, and comparing it to the number the sgid names refused a person
+    // the reference mentions. Every row measured by decoding the same body
+    // through generated.Person, not read off this code.
+    const sgid = personSGID(VICTOR);
+    const withId = (id: unknown): Person =>
+      ({ id, name: "Person", attachable_sgid: sgid }) as unknown as Person;
+
+    // "1049715914" and "+1049715914" are that number in Go.
+    expect(mentionMarkup(withId(String(VICTOR)))).toBe(attachment(sgid));
+    expect(mentionMarkup(withId(`+${VICTOR}`))).toBe(attachment(sgid));
+
+    // A non-numeric string is Go's sentinel zero, and every one of them is a
+    // refusal: the sgid side refuses a non-positive id outright (`id <= 0` in
+    // PersonIDFromSGID), so nothing a sentinel could match ever decodes. Zero
+    // is still what this reads, because that is what Go reads — the equality is
+    // just unreachable, which the first draft of this test got wrong by
+    // asserting an sgid naming person 0 would match it.
+    for (const sentinel of ["basecamp", ` ${VICTOR}`, `${VICTOR}.0`]) {
+      expect(() => mentionMarkup(withId(sentinel))).toThrow(/does not name that person/);
+    }
+
+    // The one string Go refuses outright, taking the people read with it. This
+    // layer cannot fail a read that already returned, so it refuses the write.
+    expect(() => mentionMarkup(withId("9223372036854775808"))).toThrow(/does not name that person/);
+  });
+
   it("refuses an sgid that names someone else", () => {
     expect(() => mentionMarkup(person(VICTOR, personSGID(ANNIE)))).toThrow(/does not name that person/);
   });

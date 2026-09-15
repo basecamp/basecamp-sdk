@@ -897,6 +897,39 @@ class CampfireListingOverflow extends Error {
  * past it cannot be held without rounding it into a different id, so refusing
  * it is the honest answer even though Go decodes it.
  */
+/**
+ * The body of a routed read, refused when it is not a recording object.
+ *
+ * Go decodes each read into a struct, so a body that is not a JSON object never
+ * reaches the projection: it fails the read. TypeScript decodes nothing, and
+ * the cost is not a cosmetic one — the arms dereference the body immediately
+ * (`c.title`), so a bare `"hello"` projected every scalar to its default and,
+ * worse, left `bucket` absent, which is how a recording in ANOTHER project came
+ * back as a match instead of a `bucket_mismatch`. A malformed body decided a
+ * verdict, which is the line at which this port replicates Go's decoder.
+ *
+ * `null` is the exception, and it is measured rather than assumed: `json.Unmarshal`
+ * takes a JSON null into a struct as a no-op, so Go returns the ZERO recording
+ * and no error. That is projected here as the zero recording too — and it is
+ * also the shape that used to throw a raw TypeError out of the SDK, since the
+ * arm dereferenced it before anything could check. An array is a decode error
+ * there, so it is refused here.
+ */
+function recordingBody<T>(value: T): T {
+  if (value === null) return {} as T;
+  if (typeof value !== "object" || Array.isArray(value)) {
+    throw Errors.apiError(
+      truncateErrorMessage(`the recording read returned ${describeIdValue(value)} rather than a recording`),
+      undefined,
+      {
+        retryable: false,
+        hint: "the response is malformed; the recording it names cannot be summarized from it",
+      },
+    );
+  }
+  return value;
+}
+
 function numericId(value: unknown, what: string): number {
   if (value === undefined || value === null) return 0;
   if (typeof value !== "number" || !Number.isSafeInteger(value)) {
@@ -914,6 +947,9 @@ function numericId(value: unknown, what: string): number {
 
 function describeIdValue(value: unknown): string {
   if (typeof value === "string") return JSON.stringify(value);
+  // `typeof []` is "object", which names neither of the two shapes a caller
+  // would have to tell apart to fix the response.
+  if (Array.isArray(value)) return "an array";
   if (typeof value === "number") {
     // Two different complaints, and the first version made both of them the
     // second: 1.5 is perfectly in range and was carried faithfully — what is
@@ -1075,6 +1111,22 @@ export class RecordingsService extends GeneratedRecordingsService {
     // rounds identically, so the comparison still means something (waiver
     // 1B.6); dropping it there would lose a real mismatch rather than avoid a
     // fabricated one.
+    // The bucket itself, not only its id: a string or an array where the object
+    // belongs leaves `?.id` undefined, and "no bucket identified" is exactly the
+    // answer that lets a recording in another project pass as a match. Go fails
+    // the read on that body (measured: a string and an array are both decode
+    // errors into the bucket struct; a null is the zero value, hence absent).
+    const readBucket = summary.bucket as unknown;
+    if (readBucket !== undefined && (typeof readBucket !== "object" || Array.isArray(readBucket))) {
+      throw Errors.apiError(
+        truncateErrorMessage(`the recording read identified its bucket as ${describeIdValue(readBucket)}`),
+        undefined,
+        {
+          retryable: false,
+          hint: "the response is malformed; whether the recording is in the requested project cannot be decided from it",
+        },
+      );
+    }
     const readBucketId = summary.bucket?.id;
     if (
       typeof readBucketId === "number" &&
@@ -1105,11 +1157,11 @@ export class RecordingsService extends GeneratedRecordingsService {
 
     switch (kind) {
       case "comment": {
-        const c = await reads.comments.get(id);
+        const c = recordingBody(await reads.comments.get(id));
         return projectRecording(c, c.title, c.content, { parent: c.parent, bucket: c.bucket, creator: c.creator });
       }
       case "message": {
-        const m = await reads.messages.get(id);
+        const m = recordingBody(await reads.messages.get(id));
         return projectRecording(m, firstNonEmpty(m.title, m.subject), m.content, {
           parent: m.parent,
           bucket: m.bucket,
@@ -1119,7 +1171,7 @@ export class RecordingsService extends GeneratedRecordingsService {
       case "todo": {
         // A to-do's content is its plain title; the rich text — where mentions
         // live — is the description.
-        const t = await reads.todos.get(id);
+        const t = recordingBody(await reads.todos.get(id));
         return projectRecording(t, firstNonEmpty(t.title, t.content), t.description, {
           parent: t.parent,
           bucket: t.bucket,
@@ -1128,7 +1180,7 @@ export class RecordingsService extends GeneratedRecordingsService {
         });
       }
       case "card": {
-        const c = await reads.cards.get(id);
+        const c = recordingBody(await reads.cards.get(id));
         return projectRecording(c, c.title, firstNonEmpty(c.content, c.description), {
           parent: c.parent,
           bucket: c.bucket,
@@ -1137,7 +1189,8 @@ export class RecordingsService extends GeneratedRecordingsService {
         });
       }
       case "chatLine": {
-        const { line, campfireId } = await this.#resolveChatLine(ref.bucketId, id);
+        const { line: rawLine, campfireId } = await this.#resolveChatLine(ref.bucketId, id);
+        const line = recordingBody(rawLine);
         const summary = projectRecording(line, line.title, line.content, {
           parent: line.parent,
           bucket: line.bucket,
@@ -1152,11 +1205,11 @@ export class RecordingsService extends GeneratedRecordingsService {
         return summary;
       }
       case "document": {
-        const d = await reads.documents.get(id);
+        const d = recordingBody(await reads.documents.get(id));
         return projectRecording(d, d.title, d.content, { parent: d.parent, bucket: d.bucket, creator: d.creator });
       }
       case "upload": {
-        const u = await reads.uploads.get(id);
+        const u = recordingBody(await reads.uploads.get(id));
         return projectRecording(u, firstNonEmpty(u.title, u.filename), u.description, {
           parent: u.parent,
           bucket: u.bucket,
@@ -1164,7 +1217,7 @@ export class RecordingsService extends GeneratedRecordingsService {
         });
       }
       case "scheduleEntry": {
-        const e = await reads.schedules.getEntry(id);
+        const e = recordingBody(await reads.schedules.getEntry(id));
         return projectRecording(e, firstNonEmpty(e.title, e.summary), e.description, {
           parent: e.parent,
           bucket: e.bucket,
@@ -1172,15 +1225,15 @@ export class RecordingsService extends GeneratedRecordingsService {
         });
       }
       case "question": {
-        const q = await reads.checkins.getQuestion(id);
+        const q = recordingBody(await reads.checkins.getQuestion(id));
         return projectRecording(q, q.title, "", { parent: q.parent, bucket: q.bucket, creator: q.creator });
       }
       case "questionAnswer": {
-        const a = await reads.checkins.getAnswer(id);
+        const a = recordingBody(await reads.checkins.getAnswer(id));
         return projectRecording(a, a.title, a.content, { parent: a.parent, bucket: a.bucket, creator: a.creator });
       }
       case "todolist": {
-        const l = await reads.todolists.get(id);
+        const l = recordingBody(await reads.todolists.get(id));
         return projectRecording(l, firstNonEmpty(l.title, l.name), l.description, {
           parent: l.parent,
           bucket: l.bucket,
@@ -1188,11 +1241,11 @@ export class RecordingsService extends GeneratedRecordingsService {
         });
       }
       case "vault": {
-        const v = await reads.vaults.get(id);
+        const v = recordingBody(await reads.vaults.get(id));
         return projectRecording(v, v.title, "", { parent: v.parent, bucket: v.bucket, creator: v.creator });
       }
       case "forward": {
-        const f = await reads.forwards.get(id);
+        const f = recordingBody(await reads.forwards.get(id));
         return projectRecording(f, firstNonEmpty(f.title, f.subject), f.content, {
           parent: f.parent,
           bucket: f.bucket,
@@ -1200,7 +1253,7 @@ export class RecordingsService extends GeneratedRecordingsService {
         });
       }
       case "clientApproval": {
-        const a = await reads.clientApprovals.get(id);
+        const a = recordingBody(await reads.clientApprovals.get(id));
         return projectRecording(a, firstNonEmpty(a.title, a.subject), a.content, {
           parent: a.parent,
           bucket: a.bucket,
@@ -1208,7 +1261,7 @@ export class RecordingsService extends GeneratedRecordingsService {
         });
       }
       case "clientCorrespondence": {
-        const c = await reads.clientCorrespondences.get(id);
+        const c = recordingBody(await reads.clientCorrespondences.get(id));
         return projectRecording(c, firstNonEmpty(c.title, c.subject), c.content, {
           parent: c.parent,
           bucket: c.bucket,
@@ -1216,15 +1269,15 @@ export class RecordingsService extends GeneratedRecordingsService {
         });
       }
       case "googleDocument": {
-        const g = await reads.googleDocuments.googleDocument(id);
+        const g = recordingBody(await reads.googleDocuments.googleDocument(id));
         return projectRecording(g, g.title, g.description, { parent: g.parent, bucket: g.bucket, creator: g.creator });
       }
       case "cloudFile": {
-        const f = await reads.cloudFiles.cloudFile(id);
+        const f = recordingBody(await reads.cloudFiles.cloudFile(id));
         return projectRecording(f, f.title, f.description, { parent: f.parent, bucket: f.bucket, creator: f.creator });
       }
       case "cardStep": {
-        const s = await reads.cardSteps.get(id);
+        const s = recordingBody(await reads.cardSteps.get(id));
         return projectRecording(s, s.title, "", {
           parent: s.parent,
           bucket: s.bucket,
@@ -1233,27 +1286,27 @@ export class RecordingsService extends GeneratedRecordingsService {
         });
       }
       case "questionnaire": {
-        const q = await reads.checkins.getQuestionnaire(id);
+        const q = recordingBody(await reads.checkins.getQuestionnaire(id));
         return projectRecording(q, firstNonEmpty(q.title, q.name), "", { bucket: q.bucket, creator: q.creator });
       }
       case "schedule": {
-        const s = await reads.schedules.get(id);
+        const s = recordingBody(await reads.schedules.get(id));
         return projectRecording(s, s.title, "", { bucket: s.bucket, creator: s.creator });
       }
       case "todoset": {
-        const t = await reads.todosets.get(id);
+        const t = recordingBody(await reads.todosets.get(id));
         return projectRecording(t, firstNonEmpty(t.title, t.name), "", { bucket: t.bucket, creator: t.creator });
       }
       case "messageBoard": {
-        const b = await reads.messageBoards.get(id);
+        const b = recordingBody(await reads.messageBoards.get(id));
         return projectRecording(b, b.title, "", { bucket: b.bucket, creator: b.creator });
       }
       case "cardTable": {
-        const t = await reads.cardTables.get(id);
+        const t = recordingBody(await reads.cardTables.get(id));
         return projectRecording(t, t.title, "", { bucket: t.bucket, creator: t.creator });
       }
       case "cardColumn": {
-        const c = await reads.cardColumns.get(id);
+        const c = recordingBody(await reads.cardColumns.get(id));
         return projectRecording(c, c.title, c.description, {
           parent: c.parent,
           bucket: c.bucket,
@@ -1261,11 +1314,11 @@ export class RecordingsService extends GeneratedRecordingsService {
         });
       }
       case "inbox": {
-        const i = await reads.forwards.getInbox(id);
+        const i = recordingBody(await reads.forwards.getInbox(id));
         return projectRecording(i, i.title, "", { bucket: i.bucket, creator: i.creator });
       }
       case "campfire": {
-        const c = await reads.campfires.get(id);
+        const c = recordingBody(await reads.campfires.get(id));
         return projectRecording(c, c.title, "", { bucket: c.bucket, creator: c.creator });
       }
       default:
