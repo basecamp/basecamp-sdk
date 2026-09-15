@@ -207,6 +207,25 @@ func TestPersonIDFromSGID_HostileMarshal(t *testing.T) {
 			}
 		})
 	}
+	t.Run("trailing bytes after a valid envelope", func(t *testing.T) {
+		payload, _, _ := strings.Cut(rubySGIDPerson, "--")
+		raw, err := base64.StdEncoding.DecodeString(strings.NewReplacer("-", "+", "_", "/").Replace(payload))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if id, ok := PersonIDFromSGID(sgid(append(raw, "junk"...))); ok {
+			t.Fatalf("accepted as person %d with trailing bytes", id)
+		}
+		if _, ok := PersonIDFromSGID(sgid(raw)); !ok {
+			t.Fatal("the same envelope without the trailing bytes must decode")
+		}
+	})
+	t.Run("encoded form over the size cap is refused before decoding", func(t *testing.T) {
+		// Not even valid base64: the length alone refuses it.
+		if _, ok := PersonIDFromSGID(strings.Repeat("!", maxSGIDEncodedBytes+1) + "--00"); ok {
+			t.Fatal("accepted an oversized encoded sgid")
+		}
+	})
 	t.Run("payload over the size cap", func(t *testing.T) {
 		big := append([]byte{0x04, 0x08, '"'}, 0x02, 0x00, 0x20) // a string of 8192 bytes
 		big = append(big, make([]byte, 8192)...)

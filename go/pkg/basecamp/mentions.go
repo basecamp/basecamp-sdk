@@ -241,7 +241,9 @@ func PersonIDFromSGID(sgid string) (int64, bool) {
 // globalIDFromSGID returns the global id string an sgid's envelope carries.
 func globalIDFromSGID(sgid string) (string, bool) {
 	payload, _, _ := strings.Cut(strings.TrimSpace(sgid), "--")
-	if payload == "" {
+	// The bound is applied to the encoded form first, so an oversized sgid
+	// costs nothing to refuse — no normalization, no decode buffer.
+	if payload == "" || len(payload) > maxSGIDEncodedBytes {
 		return "", false
 	}
 	// Rails' MessageVerifier emits either alphabet; base64url is current. Both
@@ -291,6 +293,10 @@ func unmarshalRuby(data []byte) (any, error) {
 	if err != nil {
 		return nil, err
 	}
+	if r.pos != len(data) {
+		// A Marshal dump is exactly one value; bytes after it are corruption.
+		return nil, fmt.Errorf("marshal: %d trailing bytes", len(data)-r.pos)
+	}
 	return v, nil
 }
 
@@ -307,6 +313,9 @@ const (
 	// payload is under 200 bytes; the cap keeps a hostile one from costing
 	// more than its own size to reject.
 	maxSGIDPayloadBytes = 4096
+	// maxSGIDEncodedBytes is the same bound on the base64 form (4/3 of the
+	// payload, plus padding), checked before anything is allocated.
+	maxSGIDEncodedBytes = maxSGIDPayloadBytes/3*4 + 4
 )
 
 func (r *rubyMarshalReader) byte() (byte, error) {

@@ -1165,29 +1165,43 @@ func TestSummarize_ChatLineTakesTheListingAnotherCallerPopulated(t *testing.T) {
 	// 404. B must report X as tried and current — not stale — because the
 	// snapshot it concluded on is the one it was handed.
 	const bucketA, bucketB = letoLaptop, letoLocator
-	const campfireX = int64(1069479888)
-	fx := newChatFixture(t, 0, [2]int64{1069479345, bucketA})
+	const campfireX, campfireY = int64(1069479888), int64(1069479777)
+	fx := newChatFixture(t, campfireY, [2]int64{1069479345, bucketA})
 	fx.setDock(bucketA, 0)
-	fx.setDock(bucketB, 0)
+	fx.setDock(bucketB, campfireY)
 	account, srv, clock := newSummaryClient(t, fx.route(t))
+	listings := func() int { return srv.count(listingRead) - srv.count(listingRead+"/") }
 	refA := lineRef()
 	refB := RecordingRef{BucketID: bucketB, RecordingID: 1069479350, EventType: "chat.line.created"}
 
-	// T: prime A (dock A, listing). T+9:30: prime B's dock. T+10:30: the
-	// listing has expired; B's dock is a minute old.
-	_, _ = account.Recordings().Summarize(context.Background(), refA)
+	// T: A primes its dock and the listing (unresolved: nothing in A's bucket
+	// holds the line). T+9:30: B primes its dock by finding the line under Y,
+	// so nothing refreshes the listing. T+10:30: the listing has expired; B's
+	// dock is a minute old, past the floor.
+	if _, err := account.Recordings().Summarize(context.Background(), refA); !errors.Is(err, ErrRecordingUnresolved) {
+		t.Fatalf("priming A: %v", err)
+	}
 	*clock = clock.Add(CampfireIndexTTL - 30*time.Second)
-	_, _ = account.Recordings().Summarize(context.Background(), refB)
+	if _, err := account.Recordings().Summarize(context.Background(), refB); err != nil {
+		t.Fatalf("priming B: %v", err)
+	}
+	if listings() != 1 {
+		t.Fatalf("listings = %d after priming, want 1 (still the T listing)", listings())
+	}
 	*clock = clock.Add(time.Minute)
+	fx.foundUnder.Store(0) // the line is now under nobody
 	fx.setListing(t, [2]int64{1069479345, bucketA}, [2]int64{campfireX, bucketB})
 
-	// B's dock refresh (its second project read) blocks until A has finished.
+	// B's dock refresh — its first project read from here on — is held until
+	// A has fetched the listing.
+	refreshStarted := make(chan struct{})
 	aDone := make(chan struct{})
-	var projectReadsB atomic.Int32
+	var once sync.Once
 	inner := fx.route(t)
 	srv.mu.Lock()
 	srv.route = func(w http.ResponseWriter, r *http.Request, path string) bool {
-		if path == "/195539477/projects/"+itoa64(bucketB) && projectReadsB.Add(1) == 2 {
+		if path == "/195539477/projects/"+itoa64(bucketB) {
+			once.Do(func() { close(refreshStarted) })
 			<-aDone
 		}
 		return inner(w, r, path)
@@ -1199,12 +1213,17 @@ func TestSummarize_ChatLineTakesTheListingAnotherCallerPopulated(t *testing.T) {
 		_, err := account.Recordings().Summarize(context.Background(), refB)
 		bDone <- err
 	}()
-	// Wait for B to be inside its dock refresh, then let A populate the listing.
-	deadline := time.Now().Add(5 * time.Second)
-	for projectReadsB.Load() < 2 && time.Now().Before(deadline) {
-		time.Sleep(time.Millisecond)
+	select {
+	case <-refreshStarted:
+	case <-time.After(5 * time.Second):
+		t.Fatal("B never reached its dock refresh; the interleaving under test did not happen")
 	}
-	_, _ = account.Recordings().Summarize(context.Background(), refA) // fetches the listing
+	if _, err := account.Recordings().Summarize(context.Background(), refA); !errors.Is(err, ErrRecordingUnresolved) {
+		t.Fatalf("A: %v", err)
+	}
+	if listings() != 2 {
+		t.Fatalf("listings = %d after A, want 2 (A fetched the expired listing)", listings())
+	}
 	close(aDone)
 
 	var unresolved *UnresolvedRecordingError
@@ -1216,13 +1235,16 @@ func TestSummarize_ChatLineTakesTheListingAnotherCallerPopulated(t *testing.T) {
 	case <-time.After(5 * time.Second):
 		t.Fatal("B did not finish")
 	}
-	if !reflect.DeepEqual(unresolved.CampfireIDs, []int64{campfireX}) {
-		t.Fatalf("B tried %v, want [%d] from the listing A populated", unresolved.CampfireIDs, campfireX)
+	if listings() != 2 {
+		t.Fatalf("listings = %d, want 2: B must have taken the listing A populated rather than fetch its own", listings())
+	}
+	if !reflect.DeepEqual(unresolved.CampfireIDs, []int64{campfireY, campfireX}) {
+		t.Fatalf("B tried %v, want [%d %d]: its dock's Y, then X from the listing A populated", unresolved.CampfireIDs, campfireY, campfireX)
 	}
 	if !unresolved.Refreshed {
 		t.Fatal("B re-read its dock; Refreshed should say so")
 	}
 	if len(unresolved.StaleCampfireIDs) != 0 {
-		t.Fatalf("B reported %v stale although the listing it was handed holds them", unresolved.StaleCampfireIDs)
+		t.Fatalf("B reported %v stale although the sources it was handed hold them", unresolved.StaleCampfireIDs)
 	}
 }
