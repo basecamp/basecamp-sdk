@@ -97,11 +97,14 @@ module Basecamp
     # only authenticity-adjacent check is whether an sgid names the person it
     # is given.
     #
-    # The residue runs the other way and is stated rather than fixed: Ruby's URI
-    # parser refuses a raw non-ASCII byte in the authority, and the four
-    # printable bytes <tt>" < > ]</tt>, where the reference returns a usable id.
-    # That is six shapes out of 208 swept, all in the direction that reports
-    # FEWER mentions, and none of them is a host BC3 mints.
+    # The residue runs the other way and is stated rather than fixed, because
+    # every member of it is Ruby's URI parser refusing an authority the
+    # reference's parser tolerates: a raw non-ASCII byte, the four printable
+    # bytes <tt>" < > ]</tt>, and a doubled port like <tt>:8080:90</tt>. Seven
+    # shapes across 270 swept, all in the direction that reports FEWER mentions,
+    # and none of them is an authority BC3 mints. Closing them means replacing
+    # the parser, which would trade a clean agreement on everything else for a
+    # hand-rolled one.
     HOST_ASCII_ESCAPE = /%(?!25)[0-7][0-9A-Fa-f]/n
 
     # The largest person id an sgid may name, matching the 64-bit bound the
@@ -270,8 +273,20 @@ module Basecamp
       rescue URI::Error
         return nil
       end
-      return nil unless uri.scheme == "gid" && !uri.host.to_s.empty?
-      return nil if uri.host.b.match?(HOST_ASCII_ESCAPE)
+      return nil unless uri.scheme == "gid"
+
+      # The reference's non-empty test is on its own host field, which carries
+      # the PORT and has userinfo split off at the last "@". So "gid://:8080/…"
+      # has a host there and resolves, while "gid://user@/…" does not — and
+      # Ruby's URI reports an empty host for both, which refused eight shapes
+      # the reference accepts. Measured, not derived; nobody's report prompted
+      # it. The authority is taken from the gid itself because URI offers no
+      # field that means the same thing.
+      authority = gid[%r{\Agid://([^/?#]*)}i, 1].to_s
+      userinfo = authority.rindex("@")
+      host_and_port = userinfo ? authority[(userinfo + 1)..] : authority
+      return nil if host_and_port.empty?
+      return nil if host_and_port.b.match?(HOST_ASCII_ESCAPE)
 
       # A GlobalID path is exactly "/<Model>/<id>": no more, no less. The path is
       # unescaped first, as Go's url.Parse hands it over unescaped — so the two

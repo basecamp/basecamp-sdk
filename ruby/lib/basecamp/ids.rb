@@ -46,24 +46,28 @@ module Basecamp
       id
     end
 
-    # Reads an id off a value the API sent, where there is no caller to blame
-    # and nothing to raise about: anything that is not an id reads as ABSENT,
-    # which is 0.
+    # Reads an id off a value the API sent. An Integer passes through; a string
+    # of digits is read as one; ABSENT reads as 0; anything else is MALFORMED
+    # and returns nil.
     #
-    # It exists because +to_i+ is not defined on every JSON shape — a response
-    # carrying <tt>{"bucket": {"id": []}}</tt> is valid JSON and turns a
-    # projection into a NoMethodError. The reference decodes into a typed
-    # integer, so such a payload never reaches the projection there at all;
-    # absent is the closest thing this tier has to that, and it is the same rule
-    # the surrounding code already applies to a malformed nested member.
+    # The three-way answer is the point, and an earlier version got it wrong by
+    # collapsing malformed into absent. It exists because +to_i+ is not defined
+    # on every JSON shape — <tt>{"bucket": {"id": []}}</tt> is valid JSON and
+    # turned a projection into a NoMethodError — but the reference decodes into
+    # a typed integer, so a payload like that fails the READ there. Reading it
+    # as absent instead let it through silently, and in the one place that
+    # matters it disarmed a check: a bucket id of 0 is not compared, so a
+    # recording from another bucket would have been returned. Loud was bad;
+    # silent was worse.
     #
     # @param value [Object] as it arrived on the wire
-    # @return [Integer] the id, or 0
+    # @return [Integer, nil] the id, 0 when absent, nil when malformed
     def from_wire(value)
       return value if value.is_a?(Integer)
+      return 0 if value.nil?
       return value.to_i if value.is_a?(String) && value.b.match?(/\A\d+\z/n)
 
-      0
+      nil
     end
   end
 end

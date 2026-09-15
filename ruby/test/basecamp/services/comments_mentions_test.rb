@@ -154,20 +154,27 @@ class CommentsMentionsTest < Minitest::Test
     end
   end
 
-  def test_create_with_mentions_validates_the_recording_id_too
-    # It goes into the write path, so it gets the same treatment summarize gives
-    # its pointer rather than being interpolated as whatever it is.
+  def test_create_with_mentions_refuses_an_id_that_is_not_one
+    # Ruby has no int64 to receive this in, so a value that is not an id at all
+    # is refused before any read or write.
     assert_raises(Basecamp::UsageError) do
       @account.comments.create_with_mentions(recording_id: "12oops", content: "<div>hi</div>")
     end
-    # And it checks the same positivity the other pointers do, rather than
-    # interpolating a zero or a negative into the path.
-    [ 0, -1, -(2**63) ].each do |id|
-      assert_raises(Basecamp::UsageError) do
-        @account.comments.create_with_mentions(recording_id: id, content: "<div>hi</div>")
-      end
-    end
     assert_not_requested(:any, %r{\A#{Regexp.escape(BASE_URL)}})
+  end
+
+  def test_create_with_mentions_does_not_invent_a_positivity_rule
+    # The reference validates the CONTENT only and sends whatever id it is
+    # given, so a zero goes to the wire and comes back a 404, as it does there.
+    # Refusing it locally would be this port inventing a rule — which it did,
+    # briefly, on a reviewer's suggestion, before the reference was checked.
+    stub_request(:post, "#{BASE_URL}/12345/recordings/0/comments.json")
+      .to_return(status: 404, body: '{"error":"Not found"}', headers: { "Content-Type" => "application/json" })
+
+    assert_raises(Basecamp::NotFoundError) do
+      @account.comments.create_with_mentions(recording_id: 0, content: "<div>hi</div>")
+    end
+    assert_requested(:post, "#{BASE_URL}/12345/recordings/0/comments.json", times: 1)
   end
 
   def test_create_with_mentions_requires_content
