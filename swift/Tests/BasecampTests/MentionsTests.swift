@@ -107,40 +107,134 @@ final class MentionsTests: XCTestCase {
         }
     }
 
-    /// The gid PATH, against Go, in both directions.
+    /// The gid PATH and SCHEME, against Go, over the whole sweep rather than a
+    /// handful of rows — the cross product is built here, and Go's answers to it
+    /// are the data below.
     ///
-    /// There is one mechanism of disagreement — Go reads `u.Path`, which is
-    /// percent-decoded, and this reads the path as written — and the rows below
-    /// are the three shapes it produces, not one. What the sweep behind them
-    /// establishes is the direction: over 756 scheme and path shapes, Go names a
-    /// person for 44, twelve rows differ, and NONE of them is Go refusing a gid
-    /// this accepts. The accepting direction is the one that would have the
-    /// write side act on something forged, so it is the half worth a test.
+    /// 756 shapes: nine spellings of the scheme, three prefixes, twenty-eight
+    /// paths. Go names a person for 44 of them, obtained by running each through
+    /// `PersonIDFromSGID` in `go/pkg/basecamp`. This parser must name a person
+    /// for exactly those 44 MINUS the 12 that differ, and for nothing else.
+    ///
+    /// The 12 are one mechanism, not one shape: Go reads `u.Path`, which is
+    /// percent-DECODED, and this reads the path as written — so an escape
+    /// spelling the model name, the id, or the separator between them names a
+    /// Person there and nobody here. The set difference is what makes the
+    /// direction a property rather than a claim: any shape this accepted and Go
+    /// did not would appear as an extra element, and there is none.
     func testTheGidPathDisagreesWithGoInOneDirectionOnly() {
-        // The mechanism, in all three of its shapes: Go names person 1 for each.
-        for gid in [
-            "gid://bc3/Pers%6Fn/1",  // the model name
-            "gid://bc3/Person/%31",  // the id
-            "gid://bc3/Person%2F1",  // the separator between them
-        ] {
-            XCTAssertNil(
-                Mentions.personId(fromGlobalId: gid),
-                "refused here and read by Go — the stricter direction, deliberately: \(gid)")
+        let paths = [
+            "Person/1",
+            "Person/01",
+            "Person/1/extra",
+            "Person/",
+            "Person",
+            "Pers%6Fn/1",
+            "Person/%31",
+            "person/1",
+            "PERSON/1",
+            "Person/1?x=y",
+            "Person/1#frag",
+            "Person/1#x?y",
+            "Person/1?y#x",
+            "Person//1",
+            "/Person/1",
+            "Person/1/",
+            "Person/-1",
+            "Person/+1",
+            "Person/ 1",
+            "Person/1 ",
+            "Person%2F1",
+            "Person/9223372036854775807",
+            "Person/9223372036854775808",
+            "Person/0",
+            "Person/00001",
+            "Per\u{A7}on/1",
+            "Person/\u{FF11}",
+            "Person/1\u{301}",
+        ]
+        let schemes = ["gid", "GID", "Gid", "gID", " gid", "gid ", "xgid", "", "g id"]
+        let prefixes = ["%@://bc3/", "%@:/", "%@:"]
+
+        // Every shape Go names a person for.
+        let goAccepts: Set<String> = [
+            "GID://bc3/Pers%6Fn/1",
+            "GID://bc3/Person%2F1",
+            "GID://bc3/Person/%31",
+            "GID://bc3/Person/00001",
+            "GID://bc3/Person/01",
+            "GID://bc3/Person/1",
+            "GID://bc3/Person/1#frag",
+            "GID://bc3/Person/1#x?y",
+            "GID://bc3/Person/1?x=y",
+            "GID://bc3/Person/1?y#x",
+            "GID://bc3/Person/9223372036854775807",
+            "Gid://bc3/Pers%6Fn/1",
+            "Gid://bc3/Person%2F1",
+            "Gid://bc3/Person/%31",
+            "Gid://bc3/Person/00001",
+            "Gid://bc3/Person/01",
+            "Gid://bc3/Person/1",
+            "Gid://bc3/Person/1#frag",
+            "Gid://bc3/Person/1#x?y",
+            "Gid://bc3/Person/1?x=y",
+            "Gid://bc3/Person/1?y#x",
+            "Gid://bc3/Person/9223372036854775807",
+            "gID://bc3/Pers%6Fn/1",
+            "gID://bc3/Person%2F1",
+            "gID://bc3/Person/%31",
+            "gID://bc3/Person/00001",
+            "gID://bc3/Person/01",
+            "gID://bc3/Person/1",
+            "gID://bc3/Person/1#frag",
+            "gID://bc3/Person/1#x?y",
+            "gID://bc3/Person/1?x=y",
+            "gID://bc3/Person/1?y#x",
+            "gID://bc3/Person/9223372036854775807",
+            "gid://bc3/Pers%6Fn/1",
+            "gid://bc3/Person%2F1",
+            "gid://bc3/Person/%31",
+            "gid://bc3/Person/00001",
+            "gid://bc3/Person/01",
+            "gid://bc3/Person/1",
+            "gid://bc3/Person/1#frag",
+            "gid://bc3/Person/1#x?y",
+            "gid://bc3/Person/1?x=y",
+            "gid://bc3/Person/1?y#x",
+            "gid://bc3/Person/9223372036854775807",
+        ]
+        // The subset this refuses, deliberately, and the only way the two differ.
+        let percentDecodedPath: Set<String> = [
+            "GID://bc3/Pers%6Fn/1",
+            "GID://bc3/Person%2F1",
+            "GID://bc3/Person/%31",
+            "Gid://bc3/Pers%6Fn/1",
+            "Gid://bc3/Person%2F1",
+            "Gid://bc3/Person/%31",
+            "gID://bc3/Pers%6Fn/1",
+            "gID://bc3/Person%2F1",
+            "gID://bc3/Person/%31",
+            "gid://bc3/Pers%6Fn/1",
+            "gid://bc3/Person%2F1",
+            "gid://bc3/Person/%31",
+        ]
+
+        var accepted: Set<String> = []
+        for scheme in schemes {
+            for prefix in prefixes {
+                for path in paths {
+                    let gid = prefix.replacingOccurrences(of: "%@", with: scheme) + path
+                    if Mentions.personId(fromGlobalId: gid) != nil { accepted.insert(gid) }
+                }
+            }
         }
-        // And the shapes that could run the other way do not: each is refused on
-        // both sides, so nothing this accepts is a gid Go rejects.
-        for gid in [
-            "gid:///Person/1", "gid:/Person/1", "gid:Person/1", " gid://bc3/Person/1",
-            "gid://bc3/person/1", "gid://bc3/Person/1/extra", "gid://bc3/Person//1",
-            "gid://bc3/Person/ 1", "gid://bc3/Person/+1", "gid://bc3/Person/\u{FF11}",
-        ] {
-            XCTAssertNil(Mentions.personId(fromGlobalId: gid), gid)
-        }
-        // The control group, so the negatives above are not passing vacuously.
-        XCTAssertEqual(Mentions.personId(fromGlobalId: "gid://bc3/Person/1"), 1)
-        XCTAssertEqual(Mentions.personId(fromGlobalId: "GID://bc3/Person/1"), 1)
-        XCTAssertEqual(Mentions.personId(fromGlobalId: "gid://bc3/Person/1?x=y"), 1)
-        XCTAssertEqual(Mentions.personId(fromGlobalId: "gid://bc3/Person/1#frag"), 1)
+
+        XCTAssertEqual(
+            accepted, goAccepts.subtracting(percentDecodedPath),
+            "this parser must accept exactly what Go accepts, less the percent-decoded-path shapes")
+        XCTAssertTrue(
+            accepted.isSubset(of: goAccepts),
+            "nothing this accepts may be a gid Go refuses — that is the direction that matters")
     }
 
     /// The authority, against `net/url` in BOTH directions — measured over 1,824

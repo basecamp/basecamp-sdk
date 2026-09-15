@@ -279,6 +279,14 @@ extension RecordingsService {
     /// cached sources, but not more often than this per source, so a run of
     /// unresolvable lines cannot turn into a listing per line.
     /// ``UnresolvedRecording/refreshed`` says whether the floor applied.
+    ///
+    /// It also makes the budget half of the pass-2 dock gate untestable from
+    /// outside. Two calls in one test are milliseconds apart, so the floor
+    /// declines the re-read whatever the budget says, and reverting
+    /// `budgetRemaining > 0` leaves the suite green. Reaching that half needs a
+    /// cached dock older than this floor, which needs a clock seam
+    /// ``BasecampClient`` does not expose — a deliberate gap, recorded here
+    /// rather than papered over with a test that passes for the other reason.
     static let campfireIndexMinRefresh: TimeInterval = 30
 
     /// Bounds how many Campfires one ``summarize(_:)`` call tries, across both

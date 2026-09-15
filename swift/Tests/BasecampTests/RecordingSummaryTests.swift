@@ -316,6 +316,53 @@ final class RecordingSummaryTests: XCTestCase {
             "every candidate the budget allows was tried first")
     }
 
+    /// A second line in a bucket whose dock is cached costs no project read, and
+    /// still concludes incomplete when the budget was spent before the listing.
+    ///
+    /// What this does NOT isolate, and the next person should not assume it
+    /// does: the `budgetRemaining > 0` half of the pass-2 dock gate. Two calls
+    /// in one test are milliseconds apart, so the 30-second refresh floor
+    /// declines the re-read on its own — reverting the budget half of the gate
+    /// leaves this test, and the whole suite, green. Driving that half needs the
+    /// cached dock to be older than the floor, which needs a clock seam the
+    /// client does not expose; see the note on
+    /// `RecordingsService.campfireIndexMinRefresh`. The floor and the budget
+    /// gate are two independent reasons not to re-read, and only the floor is
+    /// reachable from here.
+    func testASpentBudgetDoesNotReReadASourceAlreadyConsulted() async throws {
+        // Exactly the budget, in the dock, so the second call finds it cached
+        // and spends the budget on it before reaching the refresh.
+        let campfireIds = Array(100..<(100 + RecordingsService.maxCampfireCandidates))
+        let server = RecordingServer(dockCampfireIds: campfireIds)
+        server.lineFoundUnder = nil
+        let account = makeTestAccountClient(transport: server.makeTransport())
+
+        await assertSummarizeFails(
+            account, RecordingRef(bucketId: 1, recordingId: 7, eventType: "chat.line.created")
+        ) { _ in }
+        let afterFirst = server.paths.count
+        XCTAssertEqual(
+            server.paths.filter { $0.hasSuffix("/projects/1") }.count, 1,
+            "precondition: the first call read the dock once and cached it")
+
+        await assertSummarizeFails(
+            account, RecordingRef(bucketId: 1, recordingId: 8, eventType: "chat.line.created")
+        ) { error in
+            guard case .campfireDiscoveryIncomplete = error else {
+                return XCTFail("expected campfireDiscoveryIncomplete, got \(error)")
+            }
+        }
+
+        let secondCall = Array(server.paths.dropFirst(afterFirst))
+        XCTAssertEqual(
+            secondCall.filter { $0.contains("/lines/") }.count,
+            RecordingsService.maxCampfireCandidates,
+            "every candidate the budget allows was tried")
+        XCTAssertFalse(
+            secondCall.contains { $0.hasSuffix("/projects/1") },
+            "and the dock was NOT re-read: the budget it would hand back is already spent")
+    }
+
     /// The third property of the budget rule, and the one that produces a WRONG
     /// VERDICT rather than a wasted request: a spent budget where BOTH sources
     /// were consulted is `unresolved`, not `incomplete`. Everything was

@@ -458,13 +458,15 @@ extension Mentions {
     /// of this comment named only the first and read as though that were the
     /// whole of it, which is the shape of comment that stops a reader checking.
     ///
-    /// The disagreement runs in that direction ONLY, and the sweep that says so
-    /// is `testTheGidPathDisagreesWithGoInOneDirectionOnly` — 756 scheme and
-    /// path shapes against the real `PersonIDFromSGID`, of which Go names a
-    /// person for 44: twelve rows differ, all twelve are this mechanism, and
-    /// none is Go refusing a gid this accepts. That last part is what matters,
-    /// because the accepting direction is the one that would have this SDK act
-    /// on an authority Go rejects.
+    /// The disagreement runs in that direction ONLY, and
+    /// `testTheGidPathDisagreesWithGoInOneDirectionOnly` is where that is a
+    /// property rather than a claim: it builds the same 756-shape cross product
+    /// — nine spellings of the scheme, three prefixes, twenty-eight paths — and
+    /// compares what this parser accepts against the 44 shapes Go names a
+    /// person for, as a SET. Anything this accepted and Go did not would show up
+    /// as an extra element. There is none, and that is the half that matters:
+    /// the accepting direction is the one that would have this SDK act on a gid
+    /// Go rejects.
     ///
     /// Refusing is the right way to differ here. BC3 mints the literal form, an
     /// encoded model name is not something a real sgid carries, and the read
