@@ -63,6 +63,67 @@ describe("personIdFromSGID", () => {
     expect(personIdFromSGID(legacySGID(`gid://bc3/Person/${VICTOR}/avatar`))).toBeUndefined();
   });
 
+  it("reads a numeric reference the way Go's rune arithmetic does", () => {
+    // Two rules, both measured against html.UnescapeString. There is no cap on
+    // the digit count — an earlier version capped at ten and so truncated
+    // "&#00000000065;", an ordinary way to write "A" rather than a hostile
+    // input. And Go accumulates into an int32 that WRAPS, range-checking the
+    // wrapped result, so 65 can be reached the long way round.
+    const gid = `gid://bc3/Person/${VICTOR}`;
+    const named = (value: string) =>
+      mentionedPersonIds(`<bc-attachment sgid="${value}"></bc-attachment>`);
+    const sgid = legacySGID(gid);
+
+    // A zero-padded whitespace reference is consumed, so the trim erases it and
+    // the person is still named; capping the digits would leave U+FFFD instead.
+    expect(named(`&#9;${sgid}`)).toEqual([VICTOR]);
+    expect(named(`&#00000000009;${sgid}`)).toEqual([VICTOR]);
+    expect(named(`&#0000000000000000000009;${sgid}`)).toEqual([VICTOR]);
+    expect(named(`&#00000000160;${sgid}`)).toEqual([VICTOR]);
+    // The same value reached by wrapping an int32, which Go also resolves.
+    expect(named(`&#4294967328;${sgid}`)).toEqual([VICTOR]);
+    expect(named(`&#x100000020;${sgid}`)).toEqual([VICTOR]);
+  });
+
+  it("accepts and refuses the authorities net/url does", () => {
+    const person = (gid: string) => personIdFromSGID(legacySGID(gid));
+    const ok = (gid: string) => expect(person(gid)).toBe(VICTOR);
+    const no = (gid: string) => expect(person(gid)).toBeUndefined();
+
+    // An empty host is refused. Without this the read side INVENTS a mention,
+    // which is the dangerous direction.
+    no(`gid://@/Person/${VICTOR}`);
+    no(`gid://user@/Person/${VICTOR}`);
+    no(`gid://user:pass@/Person/${VICTOR}`);
+
+    // Userinfo is split at the last "@" before the port is read.
+    ok(`gid://user@bc3/Person/${VICTOR}`);
+    ok(`gid://user:pass@bc3/Person/${VICTOR}`);
+    no(`gid://\u00e9@bc3/Person/${VICTOR}`);
+    no(`gid://u%zz@bc3/Person/${VICTOR}`);
+
+    // Escapes: refused in a host only when they name an ASCII byte, with %25
+    // exempt. Refusing all of them — as an earlier version did on a claim about
+    // net/url that measurement contradicted — loses mentions Go reports.
+    no(`gid://b%41c3/Person/${VICTOR}`);
+    ok(`gid://b%C3%A9c3/Person/${VICTOR}`);
+    ok(`gid://bc%253/Person/${VICTOR}`);
+    no(`gid://b%zzc3/Person/${VICTOR}`);
+
+    // The swept character set, including the four Go allows that look as though
+    // it should not.
+    for (const forbidden of [" ", "[", "\\", "^", "`", "{", "|", "}"]) {
+      no(`gid://b${forbidden}c3/Person/${VICTOR}`);
+    }
+    for (const allowed of ['"', "<", ">", "]"]) {
+      ok(`gid://b${allowed}c3/Person/${VICTOR}`);
+    }
+
+    // A control byte anywhere in the URL, not merely in the authority.
+    no(`gid://bc3/Person/${VICTOR}\u0001`);
+    no(`gid://bc3/Person/${VICTOR}?x=\u0001`);
+  });
+
   it("refuses a malformed id, and an id that cannot be a number without rounding", () => {
     expect(personIdFromSGID(legacySGID("gid://bc3/Person/12a"))).toBeUndefined();
     expect(personIdFromSGID(legacySGID("gid://bc3/Person/0"))).toBeUndefined();

@@ -523,7 +523,9 @@ describe("recordings.summarize", () => {
         .summarize({ bucketId: BUCKET, recordingId: 9, eventType: "chat.line.created" })
         .catch((e: unknown) => e);
       expect(err).toBeInstanceOf(CampfireDiscoveryIncompleteError);
-      expect((err as CampfireDiscoveryIncompleteError).reason).toContain(String(MAX_CAMPFIRE_LISTING));
+      expect((err as CampfireDiscoveryIncompleteError).reason).toBe(
+        "campfire listing exceeds MaxCampfireListing",
+      );
 
       // A failed load leaves nothing behind: the next call reads the listing
       // again rather than serving a half-built snapshot.
@@ -534,31 +536,69 @@ describe("recordings.summarize", () => {
       expect(paths).toContain("/12345/chats.json");
     });
 
-    it("refuses a dock item whose id is not a number, as Go's decoder does", async () => {
+    it("skips a dock item with no id, as Go's zero value does", async () => {
+      // An absent key and a JSON null both decode to Go's zero value and are
+      // skipped at its own filter. An earlier fix here turned both into a hard
+      // error, which failed the whole summarize on a dock entry Go simply
+      // ignores — and deleted the test that covered it. This is that test back.
+      const paths = trackRequests();
+      server.use(
+        http.get(`${BASE_URL}/projects/${BUCKET}`, () =>
+          HttpResponse.json({
+            id: BUCKET,
+            dock: [
+              { name: "chat", title: "Campfire", enabled: true, url: "", app_url: "" },
+              { id: null, name: "chat", title: "Campfire", enabled: true, url: "", app_url: "" },
+              { id: 77, name: "chat", title: "Campfire", enabled: true, url: "", app_url: "" },
+            ],
+          }),
+        ),
+        http.get(`${BASE_URL}/chats/77/lines/9`, () =>
+          HttpResponse.json(recording(9, "Chat::Lines::Text", { content: "hi" })),
+        ),
+      );
+
+      const summary = await client.recordings.summarize({
+        bucketId: BUCKET,
+        recordingId: 9,
+        eventType: "chat.line.created",
+      });
+
+      expect(summary.campfire_id).toBe(77);
+      expect(paths).toEqual([`/12345/projects/${BUCKET}`, "/12345/chats/77/lines/9"]);
+    });
+
+    it("refuses a dock item whose id is not a whole number, as Go's decoder does", async () => {
       // Go never reaches its `item.ID != 0` filter for a malformed id:
       // json.Unmarshal fails and the project read's own error is what surfaces.
       // Dropping the item instead would let discovery go on and report the line
       // unresolved — a composite verdict standing in for a failed read, which is
       // the distinction this whole path exists to protect.
-      server.use(
-        http.get(`${BASE_URL}/projects/${BUCKET}`, () =>
-          HttpResponse.json({
-            id: BUCKET,
-            dock: [{ id: "77", name: "chat", title: "Campfire", enabled: true, url: "", app_url: "" }],
-          }),
-        ),
-      );
+      // A string, a fraction and a number past int64 all fail Go's decode and
+      // take the whole project read with them. A fraction reaching the search
+      // would have issued GET /chats/1.5/lines/{id}.
+      for (const badId of ["77", 1.5, 1e20]) {
+        const fresh = createBasecampClient({ accountId: "12345", accessToken: "t", enableRetry: false });
+        server.use(
+          http.get(`${BASE_URL}/projects/${BUCKET}`, () =>
+            HttpResponse.json({
+              id: BUCKET,
+              dock: [{ id: badId, name: "chat", title: "C", enabled: true, url: "", app_url: "" }],
+            }),
+          ),
+        );
 
-      const err = await client.recordings
-        .summarize({ bucketId: BUCKET, recordingId: 9, eventType: "chat.line.created" })
-        .catch((e: unknown) => e);
+        const err = await fresh.recordings
+          .summarize({ bucketId: BUCKET, recordingId: 9, eventType: "chat.line.created" })
+          .catch((e: unknown) => e);
 
-      expect(err).toBeInstanceOf(BasecampError);
-      expect((err as BasecampError).code).toBe("api_error");
-      expect((err as BasecampError).httpStatus).toBeUndefined();
-      expect((err as BasecampError).retryable).toBe(false);
-      expect((err as BasecampError).message).toContain("project dock item");
-      expect(err).not.toBeInstanceOf(UnresolvedRecordingError);
+        expect(err).toBeInstanceOf(BasecampError);
+        expect((err as BasecampError).code).toBe("api_error");
+        expect((err as BasecampError).httpStatus).toBeUndefined();
+        expect((err as BasecampError).retryable).toBe(false);
+        expect((err as BasecampError).message).toContain("project dock item");
+        expect(err).not.toBeInstanceOf(UnresolvedRecordingError);
+      }
     });
 
     it("skips a zero dock id without failing, as Go's filter does", async () => {
