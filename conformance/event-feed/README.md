@@ -111,8 +111,16 @@ teeth):
 
 Literal origins (e.g. `https://attacker.example.com`) are intentional and must
 **not** be substituted — the hostile-continuation fixtures depend on them staying
-foreign, and the harness must assert those hosts receive **zero** requests
-(structurally guaranteed: no expect step ever serves them).
+foreign, and **where the connector itself holds such a URL as a continuation
+target** (fixtures 26 and 27) the harness must assert those hosts receive
+**zero** requests (structurally guaranteed: no expect step ever serves them).
+
+That obligation is deliberately scoped to connector-visible targets. Where a
+foreign origin reaches the connector only through a value the seam has already
+converted — fixture 30's redirect `Location`, which the driver reduces to an
+origin before the connector sees anything — there is no egress for a harness to
+observe, and asserting its absence would be a statement about the driver rather
+than about the connector. See the row-15 note under the mutation kill matrix.
 
 ## Count semantics: seam calls, never wire attempts
 
@@ -133,8 +141,79 @@ asserting its scheduled delay against a `{min, max}` envelope — that is how ji
 is asserted without a cross-language RNG seam (Go additionally pins the full-jitter
 formula exactly in tier 3; a degenerate always-0 RNG is caught only there — a
 documented divergence). Each language's test clock passes the shared semantics
-checklist (deadline order, reentrant scheduling within an advance, creation-order
-tie-break) before its tier-2 results count.
+checklist (deadline order, creation-order tie-break) before its tier-2 results
+count; the reentrant clause stays normative for the algorithm — a clock that
+ignored it would fire the wrong set — but no tier-2 fixture can reach it (next
+paragraph), so it is not part of that gate.
+
+**The reentrant clause is unscriptable where the connector runs concurrently,
+so no fixture may rely on it.** In a single-threaded test clock, "a timer armed
+during the window also fires" is exact. Where the connector runs on its own
+thread or goroutine it is a scheduling question: the same fixture can fire the
+follow-on in one language and not in another. There is no settle that fixes
+this — waiting for the firing to be CONSUMED deadlocks against §23's own
+requirement that a staleness window closing during a delivery is latched and
+observed later, and waiting for the follow-on ARMING requires knowing one is
+coming, which nothing can tell you.
+
+**So an `advance` whose window would fire ANY timer is rejected**, and the
+driver names `fireTimer` as the alternative — it fires one named timer without
+moving the clock, so no re-selection is involved. This is unconditional, not a
+per-fixture opt-in: a flag would let a fixture author take the divergence
+instead of avoiding it.
+
+The rule asks what an advance would FIRE, not what it arms, and the difference
+is the whole reason it is enforceable. Arming happens on the connector's
+schedule, so a driver can only look for it by waiting and then guessing that
+nothing more is coming — a heuristic wearing a MUST, which silently passes a
+late arm. Firing is decided by the clock's own state before time moves: one
+atomic read, under the same lock the advance selects under, answers it
+completely.
+
+That inversion is sound because of what an advance does when it fires nothing.
+A test clock holds its lock while selecting due timers and releases it only
+across a firing's aftermath — deliberately, so a woken recipient can arm inside
+the window. An advance with nothing due therefore never releases the lock, never
+wakes anything, and cannot be the cause of any arm. There is nothing left to
+detect.
+
+It is stricter than an arming rule, and deliberately: a firing that replaces
+nothing is rejected too. A script that wants that firing writes `fireTimer` and
+says which timer it means, which is more legible anyway. The Go driver
+self-tests three arms — the rejection, an ordinary quiet-window advance still
+passing, and a firing that arms nothing being rejected all the same.
+
+**And the due-set read needs a settled set to read.** An action's completion
+can precede the timer arms its transition causes — a connect is observable
+before the handshake deadline is armed on the connector's own thread — so an
+advance placed right behind an action races those arms: rejected on one
+schedule, accepted with time moved past a deadline about to arm on another.
+The rendezvous is authored, not guessed, and it is TWO steps: every `advance`
+must be the scenario's first step or immediately follow `expectState` then
+`expectTimers`, enforced at fixture load (an empty `expectTimers` set is
+rejected with it — it orders nothing). Neither step alone settles. A set match
+can coincide with a transient mid-surgery set: the welcome transition stops
+`handshake-deadline` and arms `confirmation-deadline` in separate clock
+acquisitions, so an authored set can exist in the gap. An announcement can
+precede a tail arm: Backoff announces before its timer is armed. Together they
+settle — the announcement bounds the surgery, and any timer still unarmed at
+the announcement is exactly what the following exact-set match waits for. Both
+steps block under the scenario watchdog, so a wrongly authored state or set
+fails loudly on every schedule where the pair no longer holds. The precise
+guarantee: a pair naming the PRE-action state can pass on the schedule where
+the action has not yet been processed, so wrong authorship is at worst FLAKY —
+red whenever the transition lands first — never stably green; the settled
+guarantee belongs to correctly authored pairs, the ones the per-state tables
+define. What stays outside this
+rendezvous is a transition that announces no state change, or only rearms a
+timer of the same kind and count — invisible to both barriers. The concrete
+case is a live frame served in a socket-open state: its receipt rearms
+`staleness` pump-side with no announcement, so an advance behind it would race
+the rearm's deadline shift. A script that must advance across served frames
+takes the schema's own `stalenessMs` guidance — override it large, so both the
+old and the new deadline sit outside any window the script advances (fixture
+05 does exactly this, at ~11.5 virtual days against a 121-second window) — and
+a script that wants the staleness firing itself writes `fireTimer`.
 
 ## Contract notes the fixtures encode (SDK-owned, final)
 
@@ -238,7 +317,8 @@ revoked-mint threshold).
 | 27 | `27-hostile-resume-cross-origin.json` | accepted 410 with a cross-origin `resume` → Terminal(`invalid_continuation`), zero foreign requests |
 | 28 | `28-checkpoint-load-failure.json` | store load Failed → Terminal(`checkpoint_load`) with ZERO wire attempts; distinct from Missing (which proceeds to a present entry) |
 | 29 | `29-checkpoint-save-failure-continues.json` | save Failed → feed continues and a SUBSEQUENT save is attempted (exact store-call script: no save circuit breaker) |
-| 30 | `30-continuation-redirect-cross-origin.json` | validated same-origin `next` answering 302 + cross-origin Location → Terminal(`invalid_continuation`), zero foreign egress |
+| 30 | `30-continuation-redirect-cross-origin.json` | validated same-origin `next` answering 302 + cross-origin Location → Terminal(`invalid_continuation`); zero foreign egress holds by construction of the seam here, and proving it against a real redirect is ASSIGNED to Layer 1, whose adapters are still pending, tracked in #819 — see the row-15 note |
+| 31 | `31-post-snapshot-straggler-below-served-id.json` | post-snapshot straggler with an id BELOW the entry page's served id delivered live; the re-push of that served id still suppressed |
 
 **Hostile-URL coverage note (stated author's choice, per the PR-1 review):** the
 downgrade (HTTPS→HTTP) variant is deliberately not a separate fixture here. Tier-2
@@ -264,7 +344,7 @@ reason via a constant, not the literal.
 | Disconnect reason literal `unauthorized` (arrives only pre-welcome) | 1 (+ 2 for the pre-welcome timing) | 07 |
 | Disconnect reason literal `invalid_event_stream_command`, `reconnect:false` | 1 | 06 |
 | Disconnect reason literal `remote`, `reconnect:true` | 1 — **no transcript capture exists**; source-verified against the pinned Rails; its freeze rides bc3's disconnect-matrix re-verification plus the one requested capture frame | 17 |
-| Poll body envelope keys `events` / `position` / `next` | 1 | every fixture serving a 200 poll: 01, 02, 05, 07, 12, 16, 17, 19, 20, 22, 26, 29, 30 (mechanically derived from the fixture files; re-derive when the set changes) |
+| Poll body envelope keys `events` / `position` / `next` | 1 | every fixture serving a 200 poll: 01, 02, 05, 07, 12, 16, 17, 19, 20, 22, 26, 29, 30, 31 (mechanically derived from the fixture files; re-derive when the set changes) |
 | Mint response body `{ticket, expires_in, url}`, status 200 | 1 | every fixture with `expectMint` (all but 28) |
 | Subscribe identifier literals: channel `EventsChannel`, param spellings `types`/`buckets`/`creators`, comma-joined values | 1 | channel: every `expectSubscribe`; `types` spelling: 01 (its `expectSubscribe` pins `params` explicitly, single-valued); `buckets`/`creators` spellings + comma-joining: no PR-2 fixture — pinned at PR-4 (fixture 15, whose retransmit case also pins byte-identity of the identifier) |
 | 409 body: all three keys `error` / `position_digest` / `filters_digest` required; digest values bare 16-hex (no `srv1-` prefix), `error` content unconstrained | 1 | schema-pinned shape only (the 409 respond variant requires all three keys); **no PR-2 fixture serves a 409** — pinned live at PR-4 (the tier-1 dispatch case additionally owns the wire pin when tier 1 lands) |
@@ -275,7 +355,7 @@ reason via a constant, not the literal.
 | Filter raw bounds: a filter list of > 1,000 elements or > 16 KB → filter 400 | 2 | unreachable through validated construction (the client caps at 100 ids); recorded, unpinned |
 | `since=now` / bare entry mints the cursor at the newest visible id; an empty entry page positions above an in-flight lower id N | 2 | 19, 20 |
 | Safety-horizon bound: position-relative, best-effort, ~30s — never wall-clock | 2 | premise of 19/20 (not directly assertable client-side; the entry-boundary fixtures encode its consequence) |
-| Frozen-head `next` predicate: absent `next` = the walk reached its head | 2 | every fixture whose walk ends on a 200 page without `next`: 01, 02, 05, 07, 12, 16, 17, 19, 20, 22, 29 (mechanically derived; re-derive when the set changes) |
+| Frozen-head `next` predicate: absent `next` = the walk reached its head | 2 | every fixture whose walk ends on a 200 page without `next`: 01, 02, 05, 07, 12, 16, 17, 19, 20, 22, 29, 31 (mechanically derived; re-derive when the set changes) |
 | 410 `resume` re-enters at `since=now` with the canonical filter set preserved | 2 | 16 (resume URL followed verbatim); 27 (hostile variant) |
 | 400-position / 409 re-entry semantics (`since=<last poll-served id>`, present-class fallback) | 2 | no PR-2 fixture — pinned at PR-4 |
 | Ticket statelessness + ~120s TTL (server-owned `expires_in`) | 2 | 05 (TTL-advance premise; `expires_in` never schedules anything) |
@@ -321,10 +401,20 @@ when every line is done:
 7. Any drifted row: fix fixtures, schema, and SPEC §23 together in the true-up PR —
    never fixture-only.
 
-## Mutation kill matrix (fifteen)
+## Mutation kill matrix (sixteen)
 
-Each mutation is shown red against at least one fixture in the reference
-implementation PR's body before it counts.
+Fifteen of the sixteen mutations are shown red against at least one fixture in
+the reference implementation PR's body before they count. Row 15 is the
+recorded exception — not killed at tier 2, pending the Layer-1 adapters #819
+tracks — and the note below is its account.
+
+**One row is an exception, and it is the reason this heading is worth reading
+twice.** Row 15's mutation is **not killed at tier 2 at all** — it lives below
+the poll seam, where no tier-2 harness can reach it. Fixture 30 is named
+against it because it pins a different fault class at the same boundary, not
+because it kills the mutant. Every other row is a real kill. A matrix that
+counted an unreachable mutant as killed — or as half-killed — would be making
+exactly the class of claim this family exists to check.
 
 | # | Mutation | Killed by |
 |---|---|---|
@@ -342,7 +432,45 @@ implementation PR's body before it counts.
 | 12 | `bypass-configured-handler` (handler registered but skipped; default-terminal applied) | 24, 25 (via `handlerInvocations` exact-set) |
 | 13 | `follow-cross-origin-continuation` (skips §8 validation, polls the hostile URL) | 26, 27 |
 | 14 | `collapse-load-error-to-missing` | 28 |
-| 15 | `follow-cross-origin-redirect` (follows a 302 to a foreign Location) | 30 — killed by **outcome divergence**: the mutant's redirect-follow happens inside the poll seam call, which the harness cannot instrument, and leads to a divergent end state; PLUS the harness obligation that the fixture's foreign origin is bound to a sentinel listener whose any-request fails the scenario |
+| 15 | `follow-cross-origin-redirect` (follows a 302 to a foreign Location) | **not killed at tier 2** — below the poll seam; assigned to Layer 1, whose adapters are still pending, tracked in #819. Fixture 30 pins a different fault class above the seam. See the note under this table. |
+| 16 | `discard-live-id-at-or-below-served-id` (streaming lane orders live ids against the highest poll-served id) | 31 — and 31 alone: verified to pass all of 01–30, because every other straggler either arrives with nothing yet served (20) or is buffered pre-cut (01, 12, 19) |
+
+**Row 15 is not killed at tier 2, and the reason is structural.** In tier 2 the
+poll lane is a SEAM. The driver receives the fixture's scripted 302, reduces
+the `Location` to its origin with `CanonicalOrigin`, and hands the connector a
+`PollRedirectRefused` verdict carrying that origin and a generic cause. The
+connector never sees a `Location` header and never decides whether to follow
+one, so `follow-cross-origin-redirect` is not merely hard to observe here — it
+is **unreachable**, and an unreachable mutant is not a partial kill.
+
+What fixture 30 does pin is a different fault class, above the seam: given a
+`PollRedirectRefused` verdict, a connector must classify it as
+Terminal(`invalid_continuation`) and must not retry it. Its `finally` makes
+both fail loudly — the reason is asserted exactly, and `mintCount: 1` /
+`connectCount: 1` / `timers: {}` / `socket: closed` leave no room for a retry,
+a reconnect, or a lingering timer.
+
+**Redaction is not among them**, and an earlier revision of this note said it
+was. The driver performs the redaction itself, before the connector runs: no
+path or query text from the `Location` ever reaches the connector, so a
+connector that echoed its entire input verbatim would pass fixture 30
+unchanged. Claiming it here would have been a kill that cannot fail. That proof
+belongs to `TestRedirectRefusalRendersNoServerValue`, which feeds a
+secret-bearing cause and asserts the terminal's whole rendering and cause chain
+never carry it — a test that exists today — and, for the real-adapter path, to
+Layer 1 once its adapters land.
+
+An earlier revision of this row claimed a harness obligation to "bind the
+foreign origin to a sentinel listener whose any-request fails the scenario".
+That is withdrawn. No implementation met it, and meeting it would prove
+nothing: the foreign origin is unreachable **by construction of the harness**,
+because the harness is the seam, so a silent sentinel is a statement about the
+driver rather than about the connector. Zero egress to a foreign redirect
+target is a Layer-1 property, and proving it is ASSIGNED to the Layer-1 seam
+adapter's own 302 test, where a real generated `PollEvents` call will meet a
+real redirect. Those adapters have not landed — `go/pkg/basecamp/eventfeed/doc.go`
+lists them among the pieces still to come — so this is a recorded obligation,
+not a proof the repository contains today. Tracked in #819.
 
 Auto-continue-past-unhandled-gap needs no separate mutation — fixture 23's
 exact-set `finally` is its direct test. Fixture 29's exact store-call script is the

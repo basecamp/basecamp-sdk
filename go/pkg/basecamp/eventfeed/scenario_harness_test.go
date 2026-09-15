@@ -680,11 +680,11 @@ func (h *scenarioHarness) newConnector(cfg scenarioConfig) (*eventfeed.Connector
 			},
 		}),
 	}
-	if cfg.ConfirmationDeadlineMs > 0 {
-		opts = append(opts, eventfeed.WithConfirmationDeadline(millis(cfg.ConfirmationDeadlineMs)))
+	if cfg.ConfirmationDeadlineMs.set {
+		opts = append(opts, eventfeed.WithConfirmationDeadline(millis(cfg.ConfirmationDeadlineMs.v)))
 	}
-	if cfg.RepairPollBaseMs > 0 {
-		opts = append(opts, eventfeed.WithRepairInterval(millis(cfg.RepairPollBaseMs)))
+	if cfg.RepairPollBaseMs.set {
+		opts = append(opts, eventfeed.WithRepairInterval(millis(cfg.RepairPollBaseMs.v)))
 	}
 	if cfg.LiveBufferCapacity > 0 {
 		opts = append(opts, eventfeed.WithLiveBufferCapacity(cfg.LiveBufferCapacity))
@@ -700,8 +700,8 @@ func (h *scenarioHarness) newConnector(cfg scenarioConfig) (*eventfeed.Connector
 	if err != nil {
 		return nil, err
 	}
-	if cfg.StalenessMs > 0 {
-		conn.SetStaleAfter(millis(cfg.StalenessMs))
+	if cfg.StalenessMs.set {
+		conn.SetStaleAfter(millis(cfg.StalenessMs.v))
 	}
 	conn.OnStateChanged(h.recordState)
 	conn.OnBufferOccupancy(h.recordOccupancy)
@@ -750,4 +750,4 @@ func (h *scenarioHarness) signalHandler(dispositions map[string]string) eventfee
 	}
 }
 
-func millis(ms int) time.Duration { return time.Duration(ms) * time.Millisecond }
+func millis(ms int64) time.Duration { return time.Duration(ms) * time.Millisecond }
