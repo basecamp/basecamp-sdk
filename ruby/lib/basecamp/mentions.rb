@@ -105,10 +105,15 @@ module Basecamp
     # @return [Array<Integer>] mentioned person ids, in document order
     def mentioned_person_ids(rich_text)
       ids = []
+      # Membership is a hash lookup rather than a scan of `ids`: rich text comes
+      # from whoever wrote it, and a mention-heavy recording should not cost
+      # quadratic time to project.
+      seen = {}
       bc_attachment_sgids(rich_text.to_s).each do |sgid|
         id = person_id_from_sgid(sgid)
-        next if id.nil? || ids.include?(id)
+        next if id.nil? || seen.key?(id)
 
+        seen[id] = true
         ids << id
       end
       ids
