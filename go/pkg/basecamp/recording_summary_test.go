@@ -1348,7 +1348,7 @@ func TestTTLCache_TransportTimeoutIsSharedNotRetried(t *testing.T) {
 		firstDone <- err
 	}()
 	<-started
-	const waiters = 4
+	const waiters = 5
 	waiting := make(chan struct{}, waiters)
 	cache.onWait = func() { waiting <- struct{}{} }
 	results := make(chan error, waiters)
@@ -1378,5 +1378,75 @@ func TestTTLCache_TransportTimeoutIsSharedNotRetried(t *testing.T) {
 	}
 	if n := loads.Load(); n != 1 {
 		t.Fatalf("loads = %d, want 1: the timeout is shared, not re-run per waiter", n)
+	}
+}
+
+func TestTTLCache_ReacquireIsBounded(t *testing.T) {
+	// Waiter W waits on owner 1, who is cancelled. W re-acquires — but a
+	// fresh caller X takes the slot first and is cancelled too. W, having
+	// already re-acquired once, returns that second owner-attributed failure
+	// instead of loading a third time: a run of cancelled owners must not
+	// become a queue of sequential loads behind one waiter.
+	now := time.Date(2026, 9, 15, 12, 0, 0, 0, time.UTC)
+	cache := newTTLCache[string, int](func() time.Time { return now }, time.Minute, time.Second)
+	var loads atomic.Int32
+	load := func(ctx context.Context) (int, error) {
+		loads.Add(1)
+		<-ctx.Done() // every owner in this test is cancelled mid-load
+		return 0, ctx.Err()
+	}
+	start := func() (context.CancelFunc, chan error) {
+		ctx, cancel := context.WithCancel(context.Background())
+		done := make(chan error, 1)
+		go func() {
+			_, err := cache.get(ctx, "k", false, load)
+			done <- err
+		}()
+		return cancel, done
+	}
+	cancel1, owner1 := start()
+	for loads.Load() < 1 {
+		time.Sleep(time.Millisecond)
+	}
+	waiting := make(chan struct{}, 4)
+	cache.onWait = func() { waiting <- struct{}{} }
+	var xCancel context.CancelFunc
+	var xDone chan error
+	xStarted := make(chan struct{})
+	cache.onReacquire = func() {
+		// Between W's decision to re-acquire and its next lock, X arrives,
+		// takes the slot, and is cancelled once W is waiting on it.
+		xCancel, xDone = start()
+		for loads.Load() < 2 {
+			time.Sleep(time.Millisecond)
+		}
+		close(xStarted)
+	}
+	wDone := make(chan error, 1)
+	go func() {
+		_, err := cache.get(context.Background(), "k", false, load)
+		wDone <- err
+	}()
+	<-waiting // W waits on owner 1
+	cancel1()
+	if err := <-owner1; !errors.Is(err, context.Canceled) {
+		t.Fatalf("owner 1: %v", err)
+	}
+	<-xStarted
+	<-waiting // W waits on X
+	xCancel()
+	if err := <-xDone; !errors.Is(err, context.Canceled) {
+		t.Fatalf("X: %v", err)
+	}
+	select {
+	case err := <-wDone:
+		if !errors.Is(err, context.Canceled) {
+			t.Fatalf("W: %v, want the second owner's cancellation returned, not chased", err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("W never finished")
+	}
+	if n := loads.Load(); n != 2 {
+		t.Fatalf("loads = %d, want 2 (owner 1 and X): W must not load a third time", n)
 	}
 }

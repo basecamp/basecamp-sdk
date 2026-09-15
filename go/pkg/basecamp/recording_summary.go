@@ -559,9 +559,11 @@ type ttlCache[K comparable, V any] struct {
 	entries  map[K]*ttlEntry[V]
 	inflight map[K]*ttlLoad
 	// onWait, when set, runs just before a caller waits on another caller's
-	// load. A test seam: it lets a test know the waiting path was reached
-	// rather than guess at it with a sleep.
-	onWait func()
+	// load; onReacquire runs just before a waiter goes round again after an
+	// owner-attributed failure. Test seams: they let a test know a path was
+	// reached rather than guess at it with a sleep.
+	onWait      func()
+	onReacquire func()
 }
 
 type ttlEntry[V any] struct {
@@ -598,6 +600,7 @@ type ttlHit[V any] struct {
 // get returns the value for key, loading it when absent or older than the
 // TTL — or, with refresh set, older than the floor.
 func (c *ttlCache[K, V]) get(ctx context.Context, key K, refresh bool, load func(context.Context) (V, error)) (ttlHit[V], error) {
+	reacquired := false
 	for {
 		if err := ctx.Err(); err != nil {
 			return ttlHit[V]{}, err
@@ -626,10 +629,18 @@ func (c *ttlCache[K, V]) get(ctx context.Context, key K, refresh bool, load func
 				// caller's, not this one's: a waiter whose own context is
 				// live goes round again and loads for itself (the key is
 				// free, so it becomes the loader and any other waiters queue
-				// behind it — one load, not a stampede). Any other error —
-				// a transport timeout included — is the load's own and is
-				// shared, so N waiters never re-run one failed load N times.
-				if pending.callerDone && ctx.Err() == nil {
+				// behind it — one load, not a stampede). Once only: a second
+				// owner-attributed failure — another caller won the slot and
+				// was cancelled too — is returned rather than chased, so a
+				// run of cancelled owners cannot become a queue of sequential
+				// loads behind one waiter. Any other error — a transport
+				// timeout included — is the load's own and is shared, so N
+				// waiters never re-run one failed load N times.
+				if pending.callerDone && ctx.Err() == nil && !reacquired {
+					reacquired = true
+					if c.onReacquire != nil {
+						c.onReacquire()
+					}
 					continue
 				}
 				return ttlHit[V]{}, pending.err
