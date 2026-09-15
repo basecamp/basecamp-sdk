@@ -573,6 +573,12 @@ type ttlLoad struct {
 	done    chan struct{}
 	err     error
 	fetched time.Time // set at publication, for the loader's own hit
+	// callerDone records whether the loading caller's own context was done
+	// when the load ended. It is the only reliable sign that the failure was
+	// that caller's cancellation or deadline: an http.Client.Timeout also
+	// satisfies errors.Is(err, context.DeadlineExceeded) with the context
+	// still live, and that failure is the load's own, to be shared.
+	callerDone bool
 }
 
 func newTTLCache[K comparable, V any](now func() time.Time, ttl, floor time.Duration) *ttlCache[K, V] {
@@ -615,13 +621,15 @@ func (c *ttlCache[K, V]) get(ctx context.Context, key K, refresh bool, load func
 				return ttlHit[V]{}, ctx.Err()
 			}
 			if pending.err != nil {
-				// The load ran under the loading caller's context. Its
-				// cancellation or deadline is that caller's, not this one's:
-				// a waiter whose own context is live goes round again and
-				// loads for itself (the key is free, so it becomes the loader
-				// and any other waiters queue behind it — one load, not a
-				// stampede). Any other error is the load's own and is shared.
-				if (errors.Is(pending.err, context.Canceled) || errors.Is(pending.err, context.DeadlineExceeded)) && ctx.Err() == nil {
+				// The load ran under the loading caller's context. If that
+				// context was done when the load ended, the failure is that
+				// caller's, not this one's: a waiter whose own context is
+				// live goes round again and loads for itself (the key is
+				// free, so it becomes the loader and any other waiters queue
+				// behind it — one load, not a stampede). Any other error —
+				// a transport timeout included — is the load's own and is
+				// shared, so N waiters never re-run one failed load N times.
+				if pending.callerDone && ctx.Err() == nil {
 					continue
 				}
 				return ttlHit[V]{}, pending.err
@@ -670,19 +678,20 @@ func (c *ttlCache[K, V]) load(ctx context.Context, key K, pending *ttlLoad, load
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("basecamp: cache loader panicked: %v", r)
-			c.publish(key, pending, loaded, err)
+			c.publish(key, pending, loaded, err, ctx.Err() != nil)
 			panic(r)
 		}
-		c.publish(key, pending, loaded, err)
+		c.publish(key, pending, loaded, err, ctx.Err() != nil)
 	}()
 	return loader(ctx)
 }
 
-func (c *ttlCache[K, V]) publish(key K, pending *ttlLoad, loaded V, err error) {
+func (c *ttlCache[K, V]) publish(key K, pending *ttlLoad, loaded V, err error, callerDone bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	delete(c.inflight, key)
 	pending.err = err
+	pending.callerDone = err != nil && callerDone
 	if err == nil {
 		pending.fetched = c.now()
 		c.entries[key] = &ttlEntry[V]{value: loaded, fetched: pending.fetched}

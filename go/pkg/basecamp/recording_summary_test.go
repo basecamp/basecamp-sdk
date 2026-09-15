@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -1319,5 +1320,63 @@ func TestTTLCache_WaiterOutlivesTheLoadersCancellation(t *testing.T) {
 	boom := errors.New("boom")
 	if _, err := cache.get(context.Background(), "boom", false, func(context.Context) (int, error) { return 0, boom }); !errors.Is(err, boom) {
 		t.Fatalf("got %v, want the load's own error", err)
+	}
+}
+
+func TestTTLCache_TransportTimeoutIsSharedNotRetried(t *testing.T) {
+	// A load that fails with an error satisfying errors.Is(err,
+	// context.DeadlineExceeded) — an http.Client.Timeout does — while the
+	// loading caller's context is still live is the load's own failure. Every
+	// waiter must share it; none may re-run the load, or N concurrent callers
+	// become N sequential requests past any configured retry budget.
+	now := time.Date(2026, 9, 15, 12, 0, 0, 0, time.UTC)
+	cache := newTTLCache[string, int](func() time.Time { return now }, time.Minute, time.Second)
+	timeout := fmt.Errorf("Get \"https://example.invalid/chats.json\": %w (Client.Timeout exceeded while awaiting headers)", context.DeadlineExceeded)
+	var loads atomic.Int32
+	started := make(chan struct{})
+	release := make(chan struct{})
+	load := func(context.Context) (int, error) {
+		if loads.Add(1) == 1 {
+			close(started)
+			<-release
+		}
+		return 0, timeout
+	}
+	firstDone := make(chan error, 1)
+	go func() {
+		_, err := cache.get(context.Background(), "k", false, load)
+		firstDone <- err
+	}()
+	<-started
+	const waiters = 4
+	waiting := make(chan struct{}, waiters)
+	cache.onWait = func() { waiting <- struct{}{} }
+	results := make(chan error, waiters)
+	for i := 0; i < waiters; i++ {
+		go func() {
+			_, err := cache.get(context.Background(), "k", false, load)
+			results <- err
+		}()
+	}
+	for i := 0; i < waiters; i++ {
+		<-waiting
+	}
+	cache.onWait = nil
+	close(release)
+	if err := <-firstDone; !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("loader: %v", err)
+	}
+	for i := 0; i < waiters; i++ {
+		select {
+		case err := <-results:
+			if !errors.Is(err, context.DeadlineExceeded) {
+				t.Fatalf("waiter: %v, want the shared timeout", err)
+			}
+		case <-time.After(5 * time.Second):
+			t.Fatal("a waiter never finished")
+		}
+	}
+	if n := loads.Load(); n != 1 {
+		t.Fatalf("loads = %d, want 1: the timeout is shared, not re-run per waiter", n)
 	}
 }
