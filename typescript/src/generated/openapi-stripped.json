@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Basecamp",
-    "version": "2026-09-02",
+    "version": "2026-09-15",
     "description": "Basecamp API",
     "contact": {
       "name": "Basecamp",
@@ -11278,7 +11278,7 @@
     },
     "/my/unreads.json": {
       "put": {
-        "description": "Mark specified items as read",
+        "description": "Mark specified items as read\n\nA batch is capped at 500 readables; a larger one is refused with 422\nbefore any per-item work (bc3 `f3437f5c732`).",
         "operationId": "MarkAsRead",
         "requestBody": {
           "content": {
@@ -11311,6 +11311,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "ValidationError 422 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorResponseContent"
                 }
               }
             }
@@ -17513,6 +17523,221 @@
         }
       }
     },
+    "/recordings/{recordingId}/subtasks.json": {
+      "get": {
+        "description": "List a recording's subtasks, in position order\n\nOnly to-dos and cards hold subtasks; check for `subtasks_count` and\n`subtasks_url` on the parent's JSON.\n\n**Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL\nto fetch additional pages. X-Total-Count header provides total count.",
+        "operationId": "ListSubtasks",
+        "parameters": [
+          {
+            "name": "recordingId",
+            "in": "path",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "required": true
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ListSubtasks 200 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListSubtasksResponseContent"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UnauthorizedError 401 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ForbiddenError 403 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NotFoundError 404 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundErrorResponseContent"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RateLimitError 429 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitErrorResponseContent"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError 500 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Subtasks"
+        ],
+        "x-basecamp-pagination": {
+          "style": "link",
+          "totalCountHeader": "X-Total-Count",
+          "maxPageSize": 50
+        },
+        "x-basecamp-retry": {
+          "maxAttempts": 3,
+          "baseDelayMs": 1000,
+          "backoff": "exponential",
+          "retryOn": [
+            429,
+            503
+          ]
+        }
+      },
+      "post": {
+        "description": "Create a subtask under a to-do or a card\n\nAny other recording answers `403 Forbidden`.",
+        "operationId": "CreateSubtask",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSubtaskRequestContent"
+              }
+            }
+          },
+          "required": true
+        },
+        "parameters": [
+          {
+            "name": "recordingId",
+            "in": "path",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "CreateSubtask 201 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateSubtaskResponseContent"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UnauthorizedError 401 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ForbiddenError 403 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NotFoundError 404 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundErrorResponseContent"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "ValidationError 422 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorResponseContent"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RateLimitError 429 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitErrorResponseContent"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError 500 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Subtasks"
+        ],
+        "x-basecamp-retry": {
+          "maxAttempts": 2,
+          "baseDelayMs": 1000,
+          "backoff": "exponential",
+          "retryOn": [
+            429,
+            503
+          ]
+        }
+      }
+    },
     "/recordings/{recordingId}/timesheet.json": {
       "get": {
         "description": "Get timesheet for a specific recording",
@@ -20070,6 +20295,522 @@
         },
         "tags": [
           "Folders"
+        ],
+        "x-basecamp-idempotent": {
+          "natural": true
+        },
+        "x-basecamp-retry": {
+          "maxAttempts": 3,
+          "baseDelayMs": 1000,
+          "backoff": "exponential",
+          "retryOn": [
+            429,
+            503
+          ]
+        }
+      }
+    },
+    "/subtasks/{subtaskId}": {
+      "delete": {
+        "description": "Delete a subtask\n\nOn accounts where deleting is limited to admins and the creator, everyone\nelse gets `403 Forbidden`.",
+        "operationId": "DeleteSubtask",
+        "parameters": [
+          {
+            "name": "subtaskId",
+            "in": "path",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "DeleteSubtask 204 response"
+          },
+          "401": {
+            "description": "UnauthorizedError 401 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ForbiddenError 403 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NotFoundError 404 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundErrorResponseContent"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError 500 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Subtasks"
+        ],
+        "x-basecamp-idempotent": {
+          "natural": true
+        },
+        "x-basecamp-retry": {
+          "maxAttempts": 3,
+          "baseDelayMs": 1000,
+          "backoff": "exponential",
+          "retryOn": [
+            429,
+            503
+          ]
+        }
+      },
+      "get": {
+        "description": "Get a subtask by ID",
+        "operationId": "GetSubtask",
+        "parameters": [
+          {
+            "name": "subtaskId",
+            "in": "path",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "GetSubtask 200 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetSubtaskResponseContent"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UnauthorizedError 401 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ForbiddenError 403 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NotFoundError 404 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundErrorResponseContent"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError 500 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Subtasks"
+        ],
+        "x-basecamp-retry": {
+          "maxAttempts": 3,
+          "baseDelayMs": 1000,
+          "backoff": "exponential",
+          "retryOn": [
+            429,
+            503
+          ]
+        }
+      },
+      "put": {
+        "description": "Update a subtask\n\nA partial update: every omitted parameter is left unchanged. Clearing a\nvalue takes an explicit send — `\"due_on\": null` (or `\"\"`) clears the due\ndate, `\"assignee_ids\": []` removes every assignee.",
+        "operationId": "UpdateSubtask",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSubtaskRequestContent"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "subtaskId",
+            "in": "path",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "UpdateSubtask 200 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateSubtaskResponseContent"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UnauthorizedError 401 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ForbiddenError 403 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NotFoundError 404 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundErrorResponseContent"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "ValidationError 422 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorResponseContent"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError 500 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Subtasks"
+        ],
+        "x-basecamp-idempotent": {
+          "natural": true
+        },
+        "x-basecamp-retry": {
+          "maxAttempts": 3,
+          "baseDelayMs": 1000,
+          "backoff": "exponential",
+          "retryOn": [
+            429,
+            503
+          ]
+        }
+      }
+    },
+    "/subtasks/{subtaskId}/completion.json": {
+      "delete": {
+        "description": "Mark a subtask as not completed",
+        "operationId": "UncompleteSubtask",
+        "parameters": [
+          {
+            "name": "subtaskId",
+            "in": "path",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "UncompleteSubtask 204 response"
+          },
+          "401": {
+            "description": "UnauthorizedError 401 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ForbiddenError 403 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NotFoundError 404 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundErrorResponseContent"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError 500 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Subtasks"
+        ],
+        "x-basecamp-idempotent": {
+          "natural": true
+        },
+        "x-basecamp-retry": {
+          "maxAttempts": 3,
+          "baseDelayMs": 1000,
+          "backoff": "exponential",
+          "retryOn": [
+            429,
+            503
+          ]
+        }
+      },
+      "post": {
+        "description": "Mark a subtask as completed",
+        "operationId": "CompleteSubtask",
+        "parameters": [
+          {
+            "name": "subtaskId",
+            "in": "path",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "CompleteSubtask 204 response"
+          },
+          "401": {
+            "description": "UnauthorizedError 401 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ForbiddenError 403 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NotFoundError 404 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundErrorResponseContent"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RateLimitError 429 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitErrorResponseContent"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError 500 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Subtasks"
+        ],
+        "x-basecamp-idempotent": {
+          "natural": true
+        },
+        "x-basecamp-retry": {
+          "maxAttempts": 3,
+          "baseDelayMs": 1000,
+          "backoff": "exponential",
+          "retryOn": [
+            429,
+            503
+          ]
+        }
+      }
+    },
+    "/subtasks/{subtaskId}/position.json": {
+      "put": {
+        "description": "Move a subtask to a new position among its siblings",
+        "operationId": "RepositionSubtask",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RepositionSubtaskRequestContent"
+              }
+            }
+          },
+          "required": true
+        },
+        "parameters": [
+          {
+            "name": "subtaskId",
+            "in": "path",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "RepositionSubtask 204 response"
+          },
+          "401": {
+            "description": "UnauthorizedError 401 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ForbiddenError 403 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NotFoundError 404 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundErrorResponseContent"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "ValidationError 422 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorResponseContent"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError 500 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Subtasks"
         ],
         "x-basecamp-idempotent": {
           "natural": true
@@ -25671,6 +26412,7 @@
             "items": {
               "$ref": "#/components/schemas/CardStep"
             },
+            "description": "The first 100 subtasks, embedded read-only. A card with more than 100\nreports the total in `subtasks_count`; fetch the rest from `subtasks_url`.",
             "x-go-type-skip-optional-pointer": true
           },
           "boosts_count": {
@@ -25678,6 +26420,18 @@
             "format": "int32"
           },
           "boosts_url": {
+            "type": "string"
+          },
+          "subtasks_count": {
+            "type": "integer",
+            "description": "Subtask accounting (BC3 #12659). `subtasks_count` is the real total,\n`subtasks_completed_count` how many are done, and `subtasks_url` the\npaginated listing of all of them (`ListSubtasks`).",
+            "format": "int32"
+          },
+          "subtasks_completed_count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "subtasks_url": {
             "type": "string"
           }
         },
@@ -27311,6 +28065,34 @@
       },
       "CreateScheduleEntryResponseContent": {
         "$ref": "#/components/schemas/ScheduleEntry"
+      },
+      "CreateSubtaskRequestContent": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "due_on": {
+            "type": "string",
+            "x-go-type": "types.Date",
+            "x-go-type-import": {
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
+            }
+          },
+          "assignee_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        },
+        "required": [
+          "title"
+        ]
+      },
+      "CreateSubtaskResponseContent": {
+        "$ref": "#/components/schemas/CardStep"
       },
       "CreateTemplateLibraryCopyRequestContent": {
         "type": "object",
@@ -29238,6 +30020,9 @@
       "GetSubscriptionResponseContent": {
         "$ref": "#/components/schemas/Subscription"
       },
+      "GetSubtaskResponseContent": {
+        "$ref": "#/components/schemas/CardStep"
+      },
       "GetTemplateLibraryCopyResponseContent": {
         "$ref": "#/components/schemas/TemplateLibraryCopy"
       },
@@ -29814,6 +30599,12 @@
           "$ref": "#/components/schemas/ScheduleEntry"
         }
       },
+      "ListSubtasksResponseContent": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/CardStep"
+        }
+      },
       "ListTemplatesResponseContent": {
         "type": "array",
         "items": {
@@ -29870,7 +30661,8 @@
             "items": {
               "type": "string"
             },
-            "description": "Array of readable_sgid values identifying the items to mark as read"
+            "maxItems": 500,
+            "description": "Array of readable_sgid values identifying the items to mark as read.\nAt most 500 per request."
           }
         },
         "required": [
@@ -31452,6 +32244,18 @@
           "boosts_url": {
             "type": "string"
           },
+          "subtasks_count": {
+            "type": "integer",
+            "description": "Subtask count/URL. Carried on subtaskable recordings — to-dos and cards,\nwhose type-specific partials render with `subtaskable: true` (BC3\n#12659). Optional (absent on every other recording type and on the\nbase/webhook partial).",
+            "format": "int32"
+          },
+          "subtasks_completed_count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "subtasks_url": {
+            "type": "string"
+          },
           "subject": {
             "type": "string",
             "description": "Message subject. Present on `Message` recordings — notably the account-wide\n`/messages.json` aggregate feed, whose message partial renders `subject`."
@@ -31726,13 +32530,26 @@
           },
           "position": {
             "type": "integer",
-            "description": "0-indexed position",
+            "description": "The 1-based position to move it to (1 = top), the same `reposition_to`\na to-do uses. bc3's doc said \"Zero indexed\" until BC3 #12659 corrected\nit; the server never was.",
             "format": "int32"
           }
         },
         "required": [
           "position",
           "source_id"
+        ]
+      },
+      "RepositionSubtaskRequestContent": {
+        "type": "object",
+        "properties": {
+          "position": {
+            "type": "integer",
+            "description": "The 1-based position to move it to",
+            "format": "int32"
+          }
+        },
+        "required": [
+          "position"
         ]
       },
       "RepositionTodoRequestContent": {
@@ -33205,12 +34022,24 @@
           "boosts_url": {
             "type": "string"
           },
+          "subtasks_count": {
+            "type": "integer",
+            "description": "Subtask accounting (BC3 #12659). `subtasks_count` is the real total,\n`subtasks_completed_count` how many are done, and `subtasks_url` the\npaginated listing of all of them (`ListSubtasks`).",
+            "format": "int32"
+          },
+          "subtasks_completed_count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "subtasks_url": {
+            "type": "string"
+          },
           "steps": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/CardStep"
             },
-            "description": "Steps embedded in the Todo response (BC5 addition). The shared\n`steps/step` jbuilder partial emits the same shape as `CardStep`,\nso the existing `CardStepList` is reused.",
+            "description": "The first 100 subtasks, embedded read-only (BC5 addition). The shared\n`subtasks/subtask` jbuilder partial emits the same shape as `CardStep`,\nso the existing `CardStepList` is reused. A to-do with more than 100\nreports the total in `subtasks_count`; fetch the rest from `subtasks_url`.",
             "x-go-type-skip-optional-pointer": true
           }
         },
@@ -34440,6 +35269,31 @@
       },
       "UpdateSubscriptionResponseContent": {
         "$ref": "#/components/schemas/Subscription"
+      },
+      "UpdateSubtaskRequestContent": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "due_on": {
+            "type": "string",
+            "x-go-type": "types.Date",
+            "x-go-type-import": {
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
+            }
+          },
+          "assignee_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        }
+      },
+      "UpdateSubtaskResponseContent": {
+        "$ref": "#/components/schemas/CardStep"
       },
       "UpdateTemplateRequestContent": {
         "type": "object",

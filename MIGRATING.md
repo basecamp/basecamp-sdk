@@ -13,6 +13,23 @@ what wrong behaviour you get if you ignore one. This file is that half.
 
 # Unreleased
 
+### Card steps: `RepositionCardStep`'s `position` is 1-based, and Go rejects 0
+
+bc3's `card_table_steps.md` said the reposition `position` was "Zero indexed"
+until BC3 #12659 corrected it to 1-based (1 = top); the server always counted
+from 1 through the same `reposition_to` a to-do uses, so nothing changed on
+the wire. The Smithy member doc now says so in every SDK, and Go's
+`CardStepsService.Reposition` refuses `position < 1` with a usage error where
+it used to refuse only negatives. A caller that sent `0` meaning "first" was
+sending a value outside the documented range all along; send `1`.
+
+The same PR is why there is a new `Subtasks` service (`ListSubtasks`,
+`GetSubtask`, `CreateSubtask`, `UpdateSubtask`, `CompleteSubtask`,
+`UncompleteSubtask`, `RepositionSubtask`, `DeleteSubtask`) and why `Todo`,
+`Card` and `Recording` carry `subtasks_count`, `subtasks_completed_count` and
+`subtasks_url`. Both are additive: a subtask is a `CardStep` on the wire, and
+the `CardSteps` operations keep working at their legacy card-scoped paths.
+
 ### Rust: new SDK
 
 A seventh SDK, not a breaking change for anyone. The `basecamp-sdk` crate on

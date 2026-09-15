@@ -58,8 +58,12 @@ class MyNotificationsService(BaseService):
     def mark_as_read(self, *, readables: list[str]) -> None:
         """Mark specified items as read.
 
+        A batch is capped at 500 readables; a larger one is refused with 422
+        before any per-item work (bc3 `f3437f5c732`).
+
         Args:
-            readables: Array of readable_sgid values identifying the items to mark as read
+            readables: Array of readable_sgid values identifying the items to mark as read. At most
+                500 per request.
         """
         self._request_void(
             OperationInfo(service="mynotifications", operation="mark_as_read", is_mutation=True),
@@ -120,8 +124,12 @@ class AsyncMyNotificationsService(AsyncBaseService):
     async def mark_as_read(self, *, readables: list[str]) -> None:
         """Mark specified items as read.
 
+        A batch is capped at 500 readables; a larger one is refused with 422
+        before any per-item work (bc3 `f3437f5c732`).
+
         Args:
-            readables: Array of readable_sgid values identifying the items to mark as read
+            readables: Array of readable_sgid values identifying the items to mark as read. At most
+                500 per request.
         """
         await self._request_void(
             OperationInfo(service="mynotifications", operation="mark_as_read", is_mutation=True),

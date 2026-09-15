@@ -193,6 +193,7 @@ grouped:
 # If you move an operation OUT of this list, you are asserting it now belongs on
 # the grouped surface and must add the matching arm to client.tmpl.
 not_grouped:
+  - CompleteSubtask
   - CreateAnswer
   - CreateAttachment
   - CreateBookmark
@@ -212,6 +213,7 @@ not_grouped:
   - CreateProjectFromTemplate
   - CreateQuestion
   - CreateRecordingBoost
+  - CreateSubtask
   - CreateTimesheetEntry
   - CreateTodolist
   - CreateTodolistGroup
@@ -227,18 +229,19 @@ not_grouped:
   - DeleteFolder
   - DeleteLineupMarker
   - DeleteMessageType
+  - DeleteSubtask
   - DeleteTool
   - DeleteWormhole
   - DeprioritizeAssignment
   - DestroyGaugeNeedle
   - DestroyTimesheetEntry
   - DisableCardColumnOnHold
-  - DisableProjectClients
   - DisableOutOfOffice
+  - DisableProjectClients
   - DisableTool
   - EnableCardColumnOnHold
-  - EnableProjectClients
   - EnableOutOfOffice
+  - EnableProjectClients
   - EnableTool
   - GetAccount
   - GetAnswer
@@ -302,6 +305,7 @@ not_grouped:
   - GetScheduleEntryOccurrence
   - GetSearchMetadata
   - GetSubscription
+  - GetSubtask
   - GetTimesheetEntry
   - GetTimesheetReport
   - GetTodolistOrGroup
@@ -331,6 +335,7 @@ not_grouped:
   - ListQuestionAnswerers
   - ListQuestions
   - ListRecordingBoosts
+  - ListSubtasks
   - ListTodolistGroups
   - ListTodolists
   - ListUploadVersions
@@ -342,6 +347,7 @@ not_grouped:
   - RemoveAccountLogo
   - ReorderUpNext
   - RepositionCardStep
+  - RepositionSubtask
   - RepositionTodo
   - RepositionTodolist
   - RepositionTodolistGroup
@@ -354,6 +360,7 @@ not_grouped:
   - Subscribe
   - SubscribeToCardColumn
   - ToggleGauge
+  - UncompleteSubtask
   - UnpinMessage
   - Unsubscribe
   - UnsubscribeFromCardColumn
@@ -381,6 +388,7 @@ not_grouped:
   - UpdateQuestionNotificationSettings
   - UpdateScheduleSettings
   - UpdateSubscription
+  - UpdateSubtask
   - UpdateTimesheetEntry
   - UpdateTodolistOrGroup
   - UpdateTool

@@ -184,6 +184,7 @@ private let simpleResources: Set<String> = [
     "campfireline", "campfirelines", "todolistgroup", "todolistgroups",
     "todolistorgroup", "uploadversions",
     "boost", "boosts",
+    "subtask", "subtasks",
     "hillchart", "hillcharts",
     "wormhole", "wormholes",
 ]

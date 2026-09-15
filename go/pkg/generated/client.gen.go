@@ -264,13 +264,23 @@ type Card struct {
 	Parent                 RecordingParent      `json:"parent"`
 	Position               *int32               `json:"position,omitempty"`
 	Status                 string               `json:"status"`
-	Steps                  []CardStep           `json:"steps,omitempty"`
-	SubscriptionUrl        *string              `json:"subscription_url,omitempty"`
-	Title                  string               `json:"title"`
-	Type                   string               `json:"type"`
-	UpdatedAt              time.Time            `json:"updated_at"`
-	Url                    string               `json:"url"`
-	VisibleToClients       bool                 `json:"visible_to_clients"`
+
+	// Steps The first 100 subtasks, embedded read-only. A card with more than 100
+	// reports the total in `subtasks_count`; fetch the rest from `subtasks_url`.
+	Steps                  []CardStep `json:"steps,omitempty"`
+	SubscriptionUrl        *string    `json:"subscription_url,omitempty"`
+	SubtasksCompletedCount *int32     `json:"subtasks_completed_count,omitempty"`
+
+	// SubtasksCount Subtask accounting (BC3 #12659). `subtasks_count` is the real total,
+	// `subtasks_completed_count` how many are done, and `subtasks_url` the
+	// paginated listing of all of them (`ListSubtasks`).
+	SubtasksCount    *int32    `json:"subtasks_count,omitempty"`
+	SubtasksUrl      *string   `json:"subtasks_url,omitempty"`
+	Title            string    `json:"title"`
+	Type             string    `json:"type"`
+	UpdatedAt        time.Time `json:"updated_at"`
+	Url              string    `json:"url"`
+	VisibleToClients bool      `json:"visible_to_clients"`
 }
 
 // CardColumn defines model for CardColumn.
@@ -928,6 +938,16 @@ type CreateScheduleEntryRequestContent struct {
 
 // CreateScheduleEntryResponseContent defines model for CreateScheduleEntryResponseContent.
 type CreateScheduleEntryResponseContent = ScheduleEntry
+
+// CreateSubtaskRequestContent defines model for CreateSubtaskRequestContent.
+type CreateSubtaskRequestContent struct {
+	AssigneeIds *[]int64    `json:"assignee_ids,omitempty"`
+	DueOn       *types.Date `json:"due_on,omitempty"`
+	Title       string      `json:"title"`
+}
+
+// CreateSubtaskResponseContent defines model for CreateSubtaskResponseContent.
+type CreateSubtaskResponseContent = CardStep
 
 // CreateTemplateLibraryCopyRequestContent defines model for CreateTemplateLibraryCopyRequestContent.
 type CreateTemplateLibraryCopyRequestContent struct {
@@ -1810,6 +1830,9 @@ type GetSearchMetadataResponseContent = SearchMetadata
 // GetSubscriptionResponseContent defines model for GetSubscriptionResponseContent.
 type GetSubscriptionResponseContent = Subscription
 
+// GetSubtaskResponseContent defines model for GetSubtaskResponseContent.
+type GetSubtaskResponseContent = CardStep
+
 // GetTemplateLibraryCopyResponseContent defines model for GetTemplateLibraryCopyResponseContent.
 type GetTemplateLibraryCopyResponseContent = TemplateLibraryCopy
 
@@ -2075,6 +2098,9 @@ type ListRecordingsResponseContent = []Recording
 // ListScheduleEntriesResponseContent defines model for ListScheduleEntriesResponseContent.
 type ListScheduleEntriesResponseContent = []ScheduleEntry
 
+// ListSubtasksResponseContent defines model for ListSubtasksResponseContent.
+type ListSubtasksResponseContent = []CardStep
+
 // ListTemplatesResponseContent defines model for ListTemplatesResponseContent.
 type ListTemplatesResponseContent = []Template
 
@@ -2101,7 +2127,8 @@ type ListWebhooksResponseContent = []Webhook
 
 // MarkAsReadRequestContent defines model for MarkAsReadRequestContent.
 type MarkAsReadRequestContent struct {
-	// Readables Array of readable_sgid values identifying the items to mark as read
+	// Readables Array of readable_sgid values identifying the items to mark as read.
+	// At most 500 per request.
 	Readables []string `json:"readables"`
 }
 
@@ -2692,11 +2719,19 @@ type Recording struct {
 
 	// Subject Message subject. Present on `Message` recordings — notably the account-wide
 	// `/messages.json` aggregate feed, whose message partial renders `subject`.
-	Subject         *string   `json:"subject,omitempty"`
-	SubscriptionUrl *string   `json:"subscription_url,omitempty"`
-	Title           string    `json:"title"`
-	Type            string    `json:"type"`
-	UpdatedAt       time.Time `json:"updated_at"`
+	Subject                *string `json:"subject,omitempty"`
+	SubscriptionUrl        *string `json:"subscription_url,omitempty"`
+	SubtasksCompletedCount *int32  `json:"subtasks_completed_count,omitempty"`
+
+	// SubtasksCount Subtask count/URL. Carried on subtaskable recordings — to-dos and cards,
+	// whose type-specific partials render with `subtaskable: true` (BC3
+	// #12659). Optional (absent on every other recording type and on the
+	// base/webhook partial).
+	SubtasksCount *int32    `json:"subtasks_count,omitempty"`
+	SubtasksUrl   *string   `json:"subtasks_url,omitempty"`
+	Title         string    `json:"title"`
+	Type          string    `json:"type"`
+	UpdatedAt     time.Time `json:"updated_at"`
 
 	// Url API URL of the recording. Exception: in the `type=Door` (external-link)
 	// projection, `url` is the door's **external destination address** (e.g. the
@@ -2825,9 +2860,17 @@ type ReplaceTodoResponseContent = Todo
 
 // RepositionCardStepRequestContent defines model for RepositionCardStepRequestContent.
 type RepositionCardStepRequestContent struct {
-	// Position 0-indexed position
+	// Position The 1-based position to move it to (1 = top), the same `reposition_to`
+	// a to-do uses. bc3's doc said "Zero indexed" until BC3 #12659 corrected
+	// it; the server never was.
 	Position int32 `json:"position"`
 	SourceId int64 `json:"source_id"`
+}
+
+// RepositionSubtaskRequestContent defines model for RepositionSubtaskRequestContent.
+type RepositionSubtaskRequestContent struct {
+	// Position The 1-based position to move it to
+	Position int32 `json:"position"`
 }
 
 // RepositionTodoRequestContent defines model for RepositionTodoRequestContent.
@@ -3599,16 +3642,24 @@ type Todo struct {
 	// Status active|archived|trashed
 	Status string `json:"status"`
 
-	// Steps Steps embedded in the Todo response (BC5 addition). The shared
-	// `steps/step` jbuilder partial emits the same shape as `CardStep`,
-	// so the existing `CardStepList` is reused.
-	Steps            []CardStep `json:"steps,omitempty"`
-	SubscriptionUrl  *string    `json:"subscription_url,omitempty"`
-	Title            string     `json:"title"`
-	Type             string     `json:"type"`
-	UpdatedAt        time.Time  `json:"updated_at"`
-	Url              string     `json:"url"`
-	VisibleToClients bool       `json:"visible_to_clients"`
+	// Steps The first 100 subtasks, embedded read-only (BC5 addition). The shared
+	// `subtasks/subtask` jbuilder partial emits the same shape as `CardStep`,
+	// so the existing `CardStepList` is reused. A to-do with more than 100
+	// reports the total in `subtasks_count`; fetch the rest from `subtasks_url`.
+	Steps                  []CardStep `json:"steps,omitempty"`
+	SubscriptionUrl        *string    `json:"subscription_url,omitempty"`
+	SubtasksCompletedCount *int32     `json:"subtasks_completed_count,omitempty"`
+
+	// SubtasksCount Subtask accounting (BC3 #12659). `subtasks_count` is the real total,
+	// `subtasks_completed_count` how many are done, and `subtasks_url` the
+	// paginated listing of all of them (`ListSubtasks`).
+	SubtasksCount    *int32    `json:"subtasks_count,omitempty"`
+	SubtasksUrl      *string   `json:"subtasks_url,omitempty"`
+	Title            string    `json:"title"`
+	Type             string    `json:"type"`
+	UpdatedAt        time.Time `json:"updated_at"`
+	Url              string    `json:"url"`
+	VisibleToClients bool      `json:"visible_to_clients"`
 }
 
 // TodoBucket defines model for TodoBucket.
@@ -4325,6 +4376,16 @@ type UpdateSubscriptionRequestContent struct {
 
 // UpdateSubscriptionResponseContent defines model for UpdateSubscriptionResponseContent.
 type UpdateSubscriptionResponseContent = Subscription
+
+// UpdateSubtaskRequestContent defines model for UpdateSubtaskRequestContent.
+type UpdateSubtaskRequestContent struct {
+	AssigneeIds *[]int64    `json:"assignee_ids,omitempty"`
+	DueOn       *types.Date `json:"due_on,omitempty"`
+	Title       *string     `json:"title,omitempty"`
+}
+
+// UpdateSubtaskResponseContent defines model for UpdateSubtaskResponseContent.
+type UpdateSubtaskResponseContent = CardStep
 
 // UpdateTemplateRequestContent defines model for UpdateTemplateRequestContent.
 type UpdateTemplateRequestContent struct {
@@ -5048,6 +5109,12 @@ type ListEventBoostsParams struct {
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
+// ListSubtasksParams defines parameters for ListSubtasks.
+type ListSubtasksParams struct {
+	// Page Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
+	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
+}
+
 // GetRecordingTimesheetParams defines parameters for GetRecordingTimesheet.
 type GetRecordingTimesheetParams struct {
 	From     *string `form:"from,omitempty" json:"from,omitempty"`
@@ -5454,6 +5521,9 @@ type CreateEventBoostJSONRequestBody = CreateEventBoostRequestContent
 // UpdateSubscriptionJSONRequestBody defines body for UpdateSubscription for application/json ContentType.
 type UpdateSubscriptionJSONRequestBody = UpdateSubscriptionRequestContent
 
+// CreateSubtaskJSONRequestBody defines body for CreateSubtask for application/json ContentType.
+type CreateSubtaskJSONRequestBody = CreateSubtaskRequestContent
+
 // CreateTimesheetEntryJSONRequestBody defines body for CreateTimesheetEntry for application/json ContentType.
 type CreateTimesheetEntryJSONRequestBody = CreateTimesheetEntryRequestContent
 
@@ -5474,6 +5544,12 @@ type CreateFolderJSONRequestBody = CreateFolderRequestContent
 
 // UpdateFolderJSONRequestBody defines body for UpdateFolder for application/json ContentType.
 type UpdateFolderJSONRequestBody = UpdateFolderRequestContent
+
+// UpdateSubtaskJSONRequestBody defines body for UpdateSubtask for application/json ContentType.
+type UpdateSubtaskJSONRequestBody = UpdateSubtaskRequestContent
+
+// RepositionSubtaskJSONRequestBody defines body for RepositionSubtask for application/json ContentType.
+type RepositionSubtaskJSONRequestBody = RepositionSubtaskRequestContent
 
 // CreateTemplateLibraryCopyJSONRequestBody defines body for CreateTemplateLibraryCopy for application/json ContentType.
 type CreateTemplateLibraryCopyJSONRequestBody = CreateTemplateLibraryCopyRequestContent
@@ -6767,6 +6843,14 @@ type ClientInterface interface {
 
 	UpdateSubscription(ctx context.Context, accountId string, recordingId int64, body UpdateSubscriptionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// ListSubtasks request
+	ListSubtasks(ctx context.Context, accountId string, recordingId int64, params *ListSubtasksParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateSubtaskWithBody request with any body
+	CreateSubtaskWithBody(ctx context.Context, accountId string, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	CreateSubtask(ctx context.Context, accountId string, recordingId int64, body CreateSubtaskJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetRecordingTimesheet request
 	GetRecordingTimesheet(ctx context.Context, accountId string, recordingId int64, params *GetRecordingTimesheetParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -6861,6 +6945,28 @@ type ClientInterface interface {
 	UpdateFolderWithBody(ctx context.Context, accountId string, folderId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	UpdateFolder(ctx context.Context, accountId string, folderId int64, body UpdateFolderJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteSubtask request
+	DeleteSubtask(ctx context.Context, accountId string, subtaskId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetSubtask request
+	GetSubtask(ctx context.Context, accountId string, subtaskId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateSubtaskWithBody request with any body
+	UpdateSubtaskWithBody(ctx context.Context, accountId string, subtaskId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	UpdateSubtask(ctx context.Context, accountId string, subtaskId int64, body UpdateSubtaskJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UncompleteSubtask request
+	UncompleteSubtask(ctx context.Context, accountId string, subtaskId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CompleteSubtask request
+	CompleteSubtask(ctx context.Context, accountId string, subtaskId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RepositionSubtaskWithBody request with any body
+	RepositionSubtaskWithBody(ctx context.Context, accountId string, subtaskId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	RepositionSubtask(ctx context.Context, accountId string, subtaskId int64, body RepositionSubtaskJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetTemplateLibrary request
 	GetTemplateLibrary(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -9708,6 +9814,46 @@ func (c *Client) UpdateSubscription(ctx context.Context, accountId string, recor
 
 }
 
+// ListSubtasks is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) ListSubtasks(ctx context.Context, accountId string, recordingId int64, params *ListSubtasksParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewListSubtasksRequest(c.Server, accountId, recordingId, params)
+	}, true, "ListSubtasks", reqEditors...)
+
+}
+
+// CreateSubtaskWithBody executes the CreateSubtask operation.
+
+func (c *Client) CreateSubtaskWithBody(ctx context.Context, accountId string, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	req, err := NewCreateSubtaskRequestWithBody(c.Server, accountId, recordingId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+
+}
+
+func (c *Client) CreateSubtask(ctx context.Context, accountId string, recordingId int64, body CreateSubtaskJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	req, err := NewCreateSubtaskRequest(c.Server, accountId, recordingId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+
+}
+
 // GetRecordingTimesheet is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) GetRecordingTimesheet(ctx context.Context, accountId string, recordingId int64, params *GetRecordingTimesheetParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -10073,6 +10219,82 @@ func (c *Client) UpdateFolder(ctx context.Context, accountId string, folderId in
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateFolderRequest(c.Server, accountId, folderId, body)
 	}, true, "UpdateFolder", reqEditors...)
+
+}
+
+// DeleteSubtask is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) DeleteSubtask(ctx context.Context, accountId string, subtaskId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewDeleteSubtaskRequest(c.Server, accountId, subtaskId)
+	}, true, "DeleteSubtask", reqEditors...)
+
+}
+
+// GetSubtask is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) GetSubtask(ctx context.Context, accountId string, subtaskId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetSubtaskRequest(c.Server, accountId, subtaskId)
+	}, true, "GetSubtask", reqEditors...)
+
+}
+
+// UpdateSubtaskWithBody is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) UpdateSubtaskWithBody(ctx context.Context, accountId string, subtaskId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewUpdateSubtaskRequestWithBody(c.Server, accountId, subtaskId, contentType, body)
+	}, true, "UpdateSubtask", reqEditors...)
+
+}
+
+func (c *Client) UpdateSubtask(ctx context.Context, accountId string, subtaskId int64, body UpdateSubtaskJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewUpdateSubtaskRequest(c.Server, accountId, subtaskId, body)
+	}, true, "UpdateSubtask", reqEditors...)
+
+}
+
+// UncompleteSubtask is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) UncompleteSubtask(ctx context.Context, accountId string, subtaskId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewUncompleteSubtaskRequest(c.Server, accountId, subtaskId)
+	}, true, "UncompleteSubtask", reqEditors...)
+
+}
+
+// CompleteSubtask is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) CompleteSubtask(ctx context.Context, accountId string, subtaskId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewCompleteSubtaskRequest(c.Server, accountId, subtaskId)
+	}, true, "CompleteSubtask", reqEditors...)
+
+}
+
+// RepositionSubtaskWithBody is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) RepositionSubtaskWithBody(ctx context.Context, accountId string, subtaskId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewRepositionSubtaskRequestWithBody(c.Server, accountId, subtaskId, contentType, body)
+	}, true, "RepositionSubtask", reqEditors...)
+
+}
+
+func (c *Client) RepositionSubtask(ctx context.Context, accountId string, subtaskId int64, body RepositionSubtaskJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewRepositionSubtaskRequest(c.Server, accountId, subtaskId, body)
+	}, true, "RepositionSubtask", reqEditors...)
 
 }
 
@@ -20614,6 +20836,123 @@ func NewUpdateSubscriptionRequestWithBody(server string, accountId string, recor
 	return req, nil
 }
 
+// NewListSubtasksRequest generates requests for ListSubtasks
+func NewListSubtasksRequest(server string, accountId string, recordingId int64, params *ListSubtasksParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "recordingId", runtime.ParamLocationPath, recordingId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/recordings/%s/subtasks.json", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, *params.Page); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCreateSubtaskRequest calls the generic CreateSubtask builder with application/json body
+func NewCreateSubtaskRequest(server string, accountId string, recordingId int64, body CreateSubtaskJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateSubtaskRequestWithBody(server, accountId, recordingId, "application/json", bodyReader)
+}
+
+// NewCreateSubtaskRequestWithBody generates requests for CreateSubtask with any type of body
+func NewCreateSubtaskRequestWithBody(server string, accountId string, recordingId int64, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "recordingId", runtime.ParamLocationPath, recordingId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/recordings/%s/subtasks.json", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewGetRecordingTimesheetRequest generates requests for GetRecordingTimesheet
 func NewGetRecordingTimesheetRequest(server string, accountId string, recordingId int64, params *GetRecordingTimesheetParams) (*http.Request, error) {
 	var err error
@@ -22220,6 +22559,278 @@ func NewUpdateFolderRequestWithBody(server string, accountId string, folderId in
 	}
 
 	operationPath := fmt.Sprintf("/%s/stacks/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("PUT", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDeleteSubtaskRequest generates requests for DeleteSubtask
+func NewDeleteSubtaskRequest(server string, accountId string, subtaskId int64) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "subtaskId", runtime.ParamLocationPath, subtaskId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/subtasks/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetSubtaskRequest generates requests for GetSubtask
+func NewGetSubtaskRequest(server string, accountId string, subtaskId int64) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "subtaskId", runtime.ParamLocationPath, subtaskId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/subtasks/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateSubtaskRequest calls the generic UpdateSubtask builder with application/json body
+func NewUpdateSubtaskRequest(server string, accountId string, subtaskId int64, body UpdateSubtaskJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateSubtaskRequestWithBody(server, accountId, subtaskId, "application/json", bodyReader)
+}
+
+// NewUpdateSubtaskRequestWithBody generates requests for UpdateSubtask with any type of body
+func NewUpdateSubtaskRequestWithBody(server string, accountId string, subtaskId int64, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "subtaskId", runtime.ParamLocationPath, subtaskId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/subtasks/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("PUT", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewUncompleteSubtaskRequest generates requests for UncompleteSubtask
+func NewUncompleteSubtaskRequest(server string, accountId string, subtaskId int64) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "subtaskId", runtime.ParamLocationPath, subtaskId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/subtasks/%s/completion.json", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCompleteSubtaskRequest generates requests for CompleteSubtask
+func NewCompleteSubtaskRequest(server string, accountId string, subtaskId int64) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "subtaskId", runtime.ParamLocationPath, subtaskId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/subtasks/%s/completion.json", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewRepositionSubtaskRequest calls the generic RepositionSubtask builder with application/json body
+func NewRepositionSubtaskRequest(server string, accountId string, subtaskId int64, body RepositionSubtaskJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewRepositionSubtaskRequestWithBody(server, accountId, subtaskId, "application/json", bodyReader)
+}
+
+// NewRepositionSubtaskRequestWithBody generates requests for RepositionSubtask with any type of body
+func NewRepositionSubtaskRequestWithBody(server string, accountId string, subtaskId int64, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "subtaskId", runtime.ParamLocationPath, subtaskId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/subtasks/%s/position.json", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -25229,6 +25840,8 @@ var operationMetadata = map[string]OperationMetadata{
 	"GetSubscription":                    {Idempotent: true, HasSensitiveParams: false},
 	"Subscribe":                          {Idempotent: true, HasSensitiveParams: false},
 	"UpdateSubscription":                 {Idempotent: true, HasSensitiveParams: false},
+	"ListSubtasks":                       {Idempotent: true, HasSensitiveParams: false},
+	"CreateSubtask":                      {Idempotent: false, HasSensitiveParams: false},
 	"GetRecordingTimesheet":              {Idempotent: true, HasSensitiveParams: false},
 	"CreateTimesheetEntry":               {Idempotent: false, HasSensitiveParams: false},
 	"DisableTool":                        {Idempotent: true, HasSensitiveParams: false},
@@ -25256,6 +25869,12 @@ var operationMetadata = map[string]OperationMetadata{
 	"DeleteFolder":                       {Idempotent: true, HasSensitiveParams: false},
 	"GetFolder":                          {Idempotent: true, HasSensitiveParams: false},
 	"UpdateFolder":                       {Idempotent: true, HasSensitiveParams: false},
+	"DeleteSubtask":                      {Idempotent: true, HasSensitiveParams: false},
+	"GetSubtask":                         {Idempotent: true, HasSensitiveParams: false},
+	"UpdateSubtask":                      {Idempotent: true, HasSensitiveParams: false},
+	"UncompleteSubtask":                  {Idempotent: true, HasSensitiveParams: false},
+	"CompleteSubtask":                    {Idempotent: true, HasSensitiveParams: false},
+	"RepositionSubtask":                  {Idempotent: true, HasSensitiveParams: false},
 	"GetTemplateLibrary":                 {Idempotent: true, HasSensitiveParams: false},
 	"CreateTemplateLibraryCopy":          {Idempotent: false, HasSensitiveParams: false},
 	"GetTemplateLibraryCopy":             {Idempotent: true, HasSensitiveParams: false},
@@ -25500,6 +26119,8 @@ var operationRetryMax = map[string]int{
 	"GetSubscription":                    3,
 	"Subscribe":                          2,
 	"UpdateSubscription":                 3,
+	"ListSubtasks":                       3,
+	"CreateSubtask":                      2,
 	"GetRecordingTimesheet":              3,
 	"CreateTimesheetEntry":               3,
 	"DisableTool":                        3,
@@ -25527,6 +26148,12 @@ var operationRetryMax = map[string]int{
 	"DeleteFolder":                       3,
 	"GetFolder":                          3,
 	"UpdateFolder":                       3,
+	"DeleteSubtask":                      3,
+	"GetSubtask":                         3,
+	"UpdateSubtask":                      3,
+	"UncompleteSubtask":                  3,
+	"CompleteSubtask":                    3,
+	"RepositionSubtask":                  3,
 	"GetTemplateLibrary":                 3,
 	"CreateTemplateLibraryCopy":          2,
 	"GetTemplateLibraryCopy":             3,
@@ -25769,6 +26396,8 @@ var operationRetryOn = map[string][]int{
 	"GetSubscription":                    {429, 503},
 	"Subscribe":                          {429, 503},
 	"UpdateSubscription":                 {429, 503},
+	"ListSubtasks":                       {429, 503},
+	"CreateSubtask":                      {429, 503},
 	"GetRecordingTimesheet":              {429, 503},
 	"CreateTimesheetEntry":               {429, 503},
 	"DisableTool":                        {429, 503},
@@ -25796,6 +26425,12 @@ var operationRetryOn = map[string][]int{
 	"DeleteFolder":                       {429, 503},
 	"GetFolder":                          {429, 503},
 	"UpdateFolder":                       {429, 503},
+	"DeleteSubtask":                      {429, 503},
+	"GetSubtask":                         {429, 503},
+	"UpdateSubtask":                      {429, 503},
+	"UncompleteSubtask":                  {429, 503},
+	"CompleteSubtask":                    {429, 503},
+	"RepositionSubtask":                  {429, 503},
 	"GetTemplateLibrary":                 {429, 503},
 	"CreateTemplateLibraryCopy":          {429, 503},
 	"GetTemplateLibraryCopy":             {429, 503},
@@ -27589,6 +28224,14 @@ type ClientWithResponsesInterface interface {
 
 	UpdateSubscriptionWithResponse(ctx context.Context, accountId string, recordingId int64, body UpdateSubscriptionJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateSubscriptionResponse, error)
 
+	// ListSubtasksWithResponse request
+	ListSubtasksWithResponse(ctx context.Context, accountId string, recordingId int64, params *ListSubtasksParams, reqEditors ...RequestEditorFn) (*ListSubtasksResponse, error)
+
+	// CreateSubtaskWithBodyWithResponse request with any body
+	CreateSubtaskWithBodyWithResponse(ctx context.Context, accountId string, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateSubtaskResponse, error)
+
+	CreateSubtaskWithResponse(ctx context.Context, accountId string, recordingId int64, body CreateSubtaskJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateSubtaskResponse, error)
+
 	// GetRecordingTimesheetWithResponse request
 	GetRecordingTimesheetWithResponse(ctx context.Context, accountId string, recordingId int64, params *GetRecordingTimesheetParams, reqEditors ...RequestEditorFn) (*GetRecordingTimesheetResponse, error)
 
@@ -27683,6 +28326,28 @@ type ClientWithResponsesInterface interface {
 	UpdateFolderWithBodyWithResponse(ctx context.Context, accountId string, folderId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateFolderResponse, error)
 
 	UpdateFolderWithResponse(ctx context.Context, accountId string, folderId int64, body UpdateFolderJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateFolderResponse, error)
+
+	// DeleteSubtaskWithResponse request
+	DeleteSubtaskWithResponse(ctx context.Context, accountId string, subtaskId int64, reqEditors ...RequestEditorFn) (*DeleteSubtaskResponse, error)
+
+	// GetSubtaskWithResponse request
+	GetSubtaskWithResponse(ctx context.Context, accountId string, subtaskId int64, reqEditors ...RequestEditorFn) (*GetSubtaskResponse, error)
+
+	// UpdateSubtaskWithBodyWithResponse request with any body
+	UpdateSubtaskWithBodyWithResponse(ctx context.Context, accountId string, subtaskId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateSubtaskResponse, error)
+
+	UpdateSubtaskWithResponse(ctx context.Context, accountId string, subtaskId int64, body UpdateSubtaskJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateSubtaskResponse, error)
+
+	// UncompleteSubtaskWithResponse request
+	UncompleteSubtaskWithResponse(ctx context.Context, accountId string, subtaskId int64, reqEditors ...RequestEditorFn) (*UncompleteSubtaskResponse, error)
+
+	// CompleteSubtaskWithResponse request
+	CompleteSubtaskWithResponse(ctx context.Context, accountId string, subtaskId int64, reqEditors ...RequestEditorFn) (*CompleteSubtaskResponse, error)
+
+	// RepositionSubtaskWithBodyWithResponse request with any body
+	RepositionSubtaskWithBodyWithResponse(ctx context.Context, accountId string, subtaskId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RepositionSubtaskResponse, error)
+
+	RepositionSubtaskWithResponse(ctx context.Context, accountId string, subtaskId int64, body RepositionSubtaskJSONRequestBody, reqEditors ...RequestEditorFn) (*RepositionSubtaskResponse, error)
 
 	// GetTemplateLibraryWithResponse request
 	GetTemplateLibraryWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*GetTemplateLibraryResponse, error)
@@ -32030,6 +32695,7 @@ type MarkAsReadResponse struct {
 	HTTPResponse *http.Response
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
+	JSON422      *ValidationErrorResponseContent
 	JSON429      *RateLimitErrorResponseContent
 	JSON500      *InternalServerErrorResponseContent
 }
@@ -34191,6 +34857,77 @@ func (r UpdateSubscriptionResponse) ContentType() string {
 	return ""
 }
 
+type ListSubtasksResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ListSubtasksResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r ListSubtasksResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListSubtasksResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListSubtasksResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateSubtaskResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON201      *CreateSubtaskResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON422      *ValidationErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateSubtaskResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateSubtaskResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateSubtaskResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetRecordingTimesheetResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -35112,6 +35849,209 @@ func (r UpdateFolderResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r UpdateFolderResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeleteSubtaskResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteSubtaskResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteSubtaskResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteSubtaskResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetSubtaskResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *GetSubtaskResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r GetSubtaskResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetSubtaskResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetSubtaskResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateSubtaskResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *UpdateSubtaskResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON422      *ValidationErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateSubtaskResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateSubtaskResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateSubtaskResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UncompleteSubtaskResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r UncompleteSubtaskResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UncompleteSubtaskResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UncompleteSubtaskResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CompleteSubtaskResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r CompleteSubtaskResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CompleteSubtaskResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CompleteSubtaskResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type RepositionSubtaskResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON422      *ValidationErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r RepositionSubtaskResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RepositionSubtaskResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RepositionSubtaskResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -39009,6 +39949,32 @@ func (c *ClientWithResponses) UpdateSubscriptionWithResponse(ctx context.Context
 	return ParseUpdateSubscriptionResponse(rsp)
 }
 
+// ListSubtasksWithResponse request returning *ListSubtasksResponse
+func (c *ClientWithResponses) ListSubtasksWithResponse(ctx context.Context, accountId string, recordingId int64, params *ListSubtasksParams, reqEditors ...RequestEditorFn) (*ListSubtasksResponse, error) {
+	rsp, err := c.ListSubtasks(ctx, accountId, recordingId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListSubtasksResponse(rsp)
+}
+
+// CreateSubtaskWithBodyWithResponse request with arbitrary body returning *CreateSubtaskResponse
+func (c *ClientWithResponses) CreateSubtaskWithBodyWithResponse(ctx context.Context, accountId string, recordingId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateSubtaskResponse, error) {
+	rsp, err := c.CreateSubtaskWithBody(ctx, accountId, recordingId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateSubtaskResponse(rsp)
+}
+
+func (c *ClientWithResponses) CreateSubtaskWithResponse(ctx context.Context, accountId string, recordingId int64, body CreateSubtaskJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateSubtaskResponse, error) {
+	rsp, err := c.CreateSubtask(ctx, accountId, recordingId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateSubtaskResponse(rsp)
+}
+
 // GetRecordingTimesheetWithResponse request returning *GetRecordingTimesheetResponse
 func (c *ClientWithResponses) GetRecordingTimesheetWithResponse(ctx context.Context, accountId string, recordingId int64, params *GetRecordingTimesheetParams, reqEditors ...RequestEditorFn) (*GetRecordingTimesheetResponse, error) {
 	rsp, err := c.GetRecordingTimesheet(ctx, accountId, recordingId, params, reqEditors...)
@@ -39306,6 +40272,76 @@ func (c *ClientWithResponses) UpdateFolderWithResponse(ctx context.Context, acco
 		return nil, err
 	}
 	return ParseUpdateFolderResponse(rsp)
+}
+
+// DeleteSubtaskWithResponse request returning *DeleteSubtaskResponse
+func (c *ClientWithResponses) DeleteSubtaskWithResponse(ctx context.Context, accountId string, subtaskId int64, reqEditors ...RequestEditorFn) (*DeleteSubtaskResponse, error) {
+	rsp, err := c.DeleteSubtask(ctx, accountId, subtaskId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteSubtaskResponse(rsp)
+}
+
+// GetSubtaskWithResponse request returning *GetSubtaskResponse
+func (c *ClientWithResponses) GetSubtaskWithResponse(ctx context.Context, accountId string, subtaskId int64, reqEditors ...RequestEditorFn) (*GetSubtaskResponse, error) {
+	rsp, err := c.GetSubtask(ctx, accountId, subtaskId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetSubtaskResponse(rsp)
+}
+
+// UpdateSubtaskWithBodyWithResponse request with arbitrary body returning *UpdateSubtaskResponse
+func (c *ClientWithResponses) UpdateSubtaskWithBodyWithResponse(ctx context.Context, accountId string, subtaskId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateSubtaskResponse, error) {
+	rsp, err := c.UpdateSubtaskWithBody(ctx, accountId, subtaskId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateSubtaskResponse(rsp)
+}
+
+func (c *ClientWithResponses) UpdateSubtaskWithResponse(ctx context.Context, accountId string, subtaskId int64, body UpdateSubtaskJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateSubtaskResponse, error) {
+	rsp, err := c.UpdateSubtask(ctx, accountId, subtaskId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateSubtaskResponse(rsp)
+}
+
+// UncompleteSubtaskWithResponse request returning *UncompleteSubtaskResponse
+func (c *ClientWithResponses) UncompleteSubtaskWithResponse(ctx context.Context, accountId string, subtaskId int64, reqEditors ...RequestEditorFn) (*UncompleteSubtaskResponse, error) {
+	rsp, err := c.UncompleteSubtask(ctx, accountId, subtaskId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUncompleteSubtaskResponse(rsp)
+}
+
+// CompleteSubtaskWithResponse request returning *CompleteSubtaskResponse
+func (c *ClientWithResponses) CompleteSubtaskWithResponse(ctx context.Context, accountId string, subtaskId int64, reqEditors ...RequestEditorFn) (*CompleteSubtaskResponse, error) {
+	rsp, err := c.CompleteSubtask(ctx, accountId, subtaskId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCompleteSubtaskResponse(rsp)
+}
+
+// RepositionSubtaskWithBodyWithResponse request with arbitrary body returning *RepositionSubtaskResponse
+func (c *ClientWithResponses) RepositionSubtaskWithBodyWithResponse(ctx context.Context, accountId string, subtaskId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RepositionSubtaskResponse, error) {
+	rsp, err := c.RepositionSubtaskWithBody(ctx, accountId, subtaskId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRepositionSubtaskResponse(rsp)
+}
+
+func (c *ClientWithResponses) RepositionSubtaskWithResponse(ctx context.Context, accountId string, subtaskId int64, body RepositionSubtaskJSONRequestBody, reqEditors ...RequestEditorFn) (*RepositionSubtaskResponse, error) {
+	rsp, err := c.RepositionSubtask(ctx, accountId, subtaskId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRepositionSubtaskResponse(rsp)
 }
 
 // GetTemplateLibraryWithResponse request returning *GetTemplateLibraryResponse
@@ -46247,6 +47283,12 @@ func ParseMarkAsReadResponse(rsp *http.Response) (*MarkAsReadResponse, error) {
 			response.JSON403 = &dest
 		}
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON422 = &dest
+		}
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
 		var dest RateLimitErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
@@ -49548,6 +50590,124 @@ func ParseUpdateSubscriptionResponse(rsp *http.Response) (*UpdateSubscriptionRes
 	return response, nil
 }
 
+// ParseListSubtasksResponse parses an HTTP response from a ListSubtasksWithResponse call
+func ParseListSubtasksResponse(rsp *http.Response) (*ListSubtasksResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListSubtasksResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ListSubtasksResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON401 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON403 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON404 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON429 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON500 = &dest
+		}
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateSubtaskResponse parses an HTTP response from a CreateSubtaskWithResponse call
+func ParseCreateSubtaskResponse(rsp *http.Response) (*CreateSubtaskResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateSubtaskResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest CreateSubtaskResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON401 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON403 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON404 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON422 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON429 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON500 = &dest
+		}
+
+	}
+
+	return response, nil
+}
+
 // ParseGetRecordingTimesheetResponse parses an HTTP response from a GetRecordingTimesheetWithResponse call
 func ParseGetRecordingTimesheetResponse(rsp *http.Response) (*GetRecordingTimesheetResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -50945,6 +52105,308 @@ func ParseUpdateFolderResponse(rsp *http.Response) (*UpdateFolderResponse, error
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
 		var dest FieldValidationErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON422 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON500 = &dest
+		}
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteSubtaskResponse parses an HTTP response from a DeleteSubtaskWithResponse call
+func ParseDeleteSubtaskResponse(rsp *http.Response) (*DeleteSubtaskResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteSubtaskResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON401 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON403 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON404 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON500 = &dest
+		}
+
+	}
+
+	return response, nil
+}
+
+// ParseGetSubtaskResponse parses an HTTP response from a GetSubtaskWithResponse call
+func ParseGetSubtaskResponse(rsp *http.Response) (*GetSubtaskResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetSubtaskResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GetSubtaskResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON401 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON403 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON404 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON500 = &dest
+		}
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateSubtaskResponse parses an HTTP response from a UpdateSubtaskWithResponse call
+func ParseUpdateSubtaskResponse(rsp *http.Response) (*UpdateSubtaskResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateSubtaskResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest UpdateSubtaskResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON401 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON403 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON404 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON422 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON500 = &dest
+		}
+
+	}
+
+	return response, nil
+}
+
+// ParseUncompleteSubtaskResponse parses an HTTP response from a UncompleteSubtaskWithResponse call
+func ParseUncompleteSubtaskResponse(rsp *http.Response) (*UncompleteSubtaskResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UncompleteSubtaskResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON401 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON403 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON404 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON500 = &dest
+		}
+
+	}
+
+	return response, nil
+}
+
+// ParseCompleteSubtaskResponse parses an HTTP response from a CompleteSubtaskWithResponse call
+func ParseCompleteSubtaskResponse(rsp *http.Response) (*CompleteSubtaskResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CompleteSubtaskResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON401 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON403 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON404 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON429 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON500 = &dest
+		}
+
+	}
+
+	return response, nil
+}
+
+// ParseRepositionSubtaskResponse parses an HTTP response from a RepositionSubtaskWithResponse call
+func ParseRepositionSubtaskResponse(rsp *http.Response) (*RepositionSubtaskResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RepositionSubtaskResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON401 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON403 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON404 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
 			response.JSON422 = &dest
 		}

@@ -182,6 +182,9 @@ class Card(TypedDict):
     status: str
     steps: NotRequired[list[CardStep]]
     subscription_url: NotRequired[str]
+    subtasks_completed_count: NotRequired[int]
+    subtasks_count: NotRequired[int]
+    subtasks_url: NotRequired[str]
     title: str
     type: str
     updated_at: str
@@ -590,6 +593,12 @@ class CreateScheduleEntryRequestContent(TypedDict):
     summary: str
     url: NotRequired[str]
     visible_to_clients: NotRequired[bool]
+
+
+class CreateSubtaskRequestContent(TypedDict):
+    assignee_ids: NotRequired[list[int]]
+    due_on: NotRequired[str]
+    title: str
 
 
 class CreateTemplateLibraryCopyRequestContent(TypedDict):
@@ -1491,6 +1500,9 @@ Recording = TypedDict(
         "status": str,
         "subject": NotRequired[str],
         "subscription_url": NotRequired[str],
+        "subtasks_completed_count": NotRequired[int],
+        "subtasks_count": NotRequired[int],
+        "subtasks_url": NotRequired[str],
         "title": str,
         "type": str,
         "updated_at": str,
@@ -1556,6 +1568,10 @@ class ReplaceTodoRequestContent(TypedDict):
 class RepositionCardStepRequestContent(TypedDict):
     position: int
     source_id: int
+
+
+class RepositionSubtaskRequestContent(TypedDict):
+    position: int
 
 
 class RepositionTodoRequestContent(TypedDict):
@@ -1899,6 +1915,9 @@ class Todo(TypedDict):
     status: str
     steps: NotRequired[list[CardStep]]
     subscription_url: NotRequired[str]
+    subtasks_completed_count: NotRequired[int]
+    subtasks_count: NotRequired[int]
+    subtasks_url: NotRequired[str]
     title: str
     type: str
     updated_at: str
@@ -2218,6 +2237,12 @@ class UpdateScheduleSettingsRequestContent(TypedDict):
 class UpdateSubscriptionRequestContent(TypedDict):
     subscriptions: NotRequired[list[int]]
     unsubscriptions: NotRequired[list[int]]
+
+
+class UpdateSubtaskRequestContent(TypedDict):
+    assignee_ids: NotRequired[list[int]]
+    due_on: NotRequired[str]
+    title: NotRequired[str]
 
 
 class UpdateTemplateRequestContent(TypedDict):

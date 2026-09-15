@@ -34,7 +34,8 @@ module Basecamp
       end
 
       # Mark specified items as read
-      # @param readables [Array] Array of readable_sgid values identifying the items to mark as read
+      # @param readables [Array] Array of readable_sgid values identifying the items to mark as read.
+      #   At most 500 per request.
       # @return [void]
       def mark_as_read(readables:)
         with_operation(service: "mynotifications", operation: "mark_as_read", is_mutation: true) do

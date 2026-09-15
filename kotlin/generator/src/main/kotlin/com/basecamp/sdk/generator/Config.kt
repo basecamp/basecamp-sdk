@@ -17,6 +17,7 @@ val TAG_TO_SERVICE = mapOf(
     "Automation" to "Automation",
     "ClientFeatures" to "ClientFeatures",
     "Boosts" to "Boosts",
+    "Subtasks" to "Subtasks",
     "Untagged" to "Miscellaneous",
 )
 
@@ -454,6 +455,7 @@ val SIMPLE_RESOURCES = setOf(
     "campfireline", "campfirelines", "todolistgroup", "todolistgroups",
     "todolistorgroup", "uploadversions",
     "boost", "boosts",
+    "subtask", "subtasks",
     "hillchart", "hillcharts",
     "wormhole", "wormholes",
 )

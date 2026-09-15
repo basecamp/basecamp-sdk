@@ -453,6 +453,12 @@ class AccountClient:
         return self._service("boosts", lambda: BoostsService(self))
 
     @property
+    def subtasks(self):
+        from basecamp.generated.services.subtasks import SubtasksService
+
+        return self._service("subtasks", lambda: SubtasksService(self))
+
+    @property
     def client_approvals(self):
         from basecamp.generated.services.client_approvals import ClientApprovalsService
 

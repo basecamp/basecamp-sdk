@@ -53,6 +53,7 @@
   "ListRecordingBoostsOptions": ["page", "maxItems"],
   "ListRecordingsOptions": ["bucket", "status", "sort", "direction", "maxItems", "page"],
   "ListScheduleEntriesOptions": ["status", "maxItems", "page"],
+  "ListSubtasksOptions": ["page", "maxItems"],
   "ListTemplatesOptions": ["status", "maxItems", "page"],
   "ListTodolistGroupsOptions": ["page", "maxItems"],
   "ListTodolistsOptions": ["status", "maxItems", "page"],

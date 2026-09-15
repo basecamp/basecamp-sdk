@@ -519,6 +519,16 @@ export {
   type CreateForEventBoostRequest,
 } from "./generated/services/boosts.js";
 
+// Subtasks service - generated. The entity is CardStep, exported from
+// card-steps.js: a subtask is a Kanban::Step on the wire.
+export {
+  SubtasksService,
+  type ListSubtaskOptions,
+  type CreateSubtaskRequest,
+  type UpdateSubtaskRequest,
+  type RepositionSubtaskRequest,
+} from "./generated/services/subtasks.js";
+
 // Account service - generated
 export {
   AccountService,

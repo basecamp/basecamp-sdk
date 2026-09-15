@@ -49,6 +49,26 @@ pub static ARCHIVE_RECORDING: Route = Route {
     metadata: &metadata::ARCHIVE_RECORDING,
 };
 
+/// `POST /subtasks/{subtaskId}/completion.json`.
+pub static COMPLETE_SUBTASK: Route = Route {
+    id: "CompleteSubtask",
+    service: "Subtasks",
+    method: Method::POST,
+    path: "/subtasks/{subtaskId}/completion.json",
+    pattern: "/subtasks/{subtaskId}/completion",
+    resource_type: "subtask",
+    params: &[RouteParam {
+        name: "subtaskId",
+        kind: ParamKind::Int64,
+    }],
+    body: BodyKind::None,
+    response: Representation::Empty,
+    pagination: Pagination::None,
+    write: None,
+    deprecated: false,
+    metadata: &metadata::COMPLETE_SUBTASK,
+};
+
 /// `POST /todos/{todoId}/completion.json`.
 pub static COMPLETE_TODO: Route = Route {
     id: "CompleteTodo",
@@ -581,6 +601,26 @@ pub static CREATE_SCHEDULE_ENTRY: Route = Route {
     metadata: &metadata::CREATE_SCHEDULE_ENTRY,
 };
 
+/// `POST /recordings/{recordingId}/subtasks.json`.
+pub static CREATE_SUBTASK: Route = Route {
+    id: "CreateSubtask",
+    service: "Subtasks",
+    method: Method::POST,
+    path: "/recordings/{recordingId}/subtasks.json",
+    pattern: "/recordings/{recordingId}/subtasks",
+    resource_type: "subtask",
+    params: &[RouteParam {
+        name: "recordingId",
+        kind: ParamKind::Int64,
+    }],
+    body: BodyKind::Json,
+    response: Representation::Json,
+    pagination: Pagination::None,
+    write: None,
+    deprecated: false,
+    metadata: &metadata::CREATE_SUBTASK,
+};
+
 /// `POST /templates.json`.
 pub static CREATE_TEMPLATE: Route = Route {
     id: "CreateTemplate",
@@ -1027,6 +1067,26 @@ pub static DELETE_MESSAGE_TYPE: Route = Route {
     write: None,
     deprecated: false,
     metadata: &metadata::DELETE_MESSAGE_TYPE,
+};
+
+/// `DELETE /subtasks/{subtaskId}`.
+pub static DELETE_SUBTASK: Route = Route {
+    id: "DeleteSubtask",
+    service: "Subtasks",
+    method: Method::DELETE,
+    path: "/subtasks/{subtaskId}",
+    pattern: "/subtasks/{subtaskId}",
+    resource_type: "subtask",
+    params: &[RouteParam {
+        name: "subtaskId",
+        kind: ParamKind::Int64,
+    }],
+    body: BodyKind::None,
+    response: Representation::Empty,
+    pagination: Pagination::None,
+    write: None,
+    deprecated: false,
+    metadata: &metadata::DELETE_SUBTASK,
 };
 
 /// `DELETE /templates/{templateId}`.
@@ -2822,6 +2882,26 @@ pub static GET_SUBSCRIPTION: Route = Route {
     metadata: &metadata::GET_SUBSCRIPTION,
 };
 
+/// `GET /subtasks/{subtaskId}`.
+pub static GET_SUBTASK: Route = Route {
+    id: "GetSubtask",
+    service: "Subtasks",
+    method: Method::GET,
+    path: "/subtasks/{subtaskId}",
+    pattern: "/subtasks/{subtaskId}",
+    resource_type: "subtask",
+    params: &[RouteParam {
+        name: "subtaskId",
+        kind: ParamKind::Int64,
+    }],
+    body: BodyKind::None,
+    response: Representation::Json,
+    pagination: Pagination::None,
+    write: None,
+    deprecated: false,
+    metadata: &metadata::GET_SUBTASK,
+};
+
 /// `GET /templates/{templateId}`.
 pub static GET_TEMPLATE: Route = Route {
     id: "GetTemplate",
@@ -3825,6 +3905,29 @@ pub static LIST_SCHEDULE_ENTRIES: Route = Route {
     metadata: &metadata::LIST_SCHEDULE_ENTRIES,
 };
 
+/// `GET /recordings/{recordingId}/subtasks.json`.
+pub static LIST_SUBTASKS: Route = Route {
+    id: "ListSubtasks",
+    service: "Subtasks",
+    method: Method::GET,
+    path: "/recordings/{recordingId}/subtasks.json",
+    pattern: "/recordings/{recordingId}/subtasks",
+    resource_type: "subtask",
+    params: &[RouteParam {
+        name: "recordingId",
+        kind: ParamKind::Int64,
+    }],
+    body: BodyKind::None,
+    response: Representation::Json,
+    pagination: Pagination::Link {
+        key: None,
+        total_count_header: Some("X-Total-Count"),
+    },
+    write: None,
+    deprecated: false,
+    metadata: &metadata::LIST_SUBTASKS,
+};
+
 /// `GET /templates.json`.
 pub static LIST_TEMPLATES: Route = Route {
     id: "ListTemplates",
@@ -4263,6 +4366,26 @@ pub static REPOSITION_CARD_STEP: Route = Route {
     metadata: &metadata::REPOSITION_CARD_STEP,
 };
 
+/// `PUT /subtasks/{subtaskId}/position.json`.
+pub static REPOSITION_SUBTASK: Route = Route {
+    id: "RepositionSubtask",
+    service: "Subtasks",
+    method: Method::PUT,
+    path: "/subtasks/{subtaskId}/position.json",
+    pattern: "/subtasks/{subtaskId}/position",
+    resource_type: "subtask",
+    params: &[RouteParam {
+        name: "subtaskId",
+        kind: ParamKind::Int64,
+    }],
+    body: BodyKind::Json,
+    response: Representation::Empty,
+    pagination: Pagination::None,
+    write: None,
+    deprecated: false,
+    metadata: &metadata::REPOSITION_SUBTASK,
+};
+
 /// `PUT /todos/{todoId}/position.json`.
 pub static REPOSITION_TODO: Route = Route {
     id: "RepositionTodo",
@@ -4607,6 +4730,26 @@ pub static UNARCHIVE_RECORDING: Route = Route {
     write: None,
     deprecated: false,
     metadata: &metadata::UNARCHIVE_RECORDING,
+};
+
+/// `DELETE /subtasks/{subtaskId}/completion.json`.
+pub static UNCOMPLETE_SUBTASK: Route = Route {
+    id: "UncompleteSubtask",
+    service: "Subtasks",
+    method: Method::DELETE,
+    path: "/subtasks/{subtaskId}/completion.json",
+    pattern: "/subtasks/{subtaskId}/completion",
+    resource_type: "subtask",
+    params: &[RouteParam {
+        name: "subtaskId",
+        kind: ParamKind::Int64,
+    }],
+    body: BodyKind::None,
+    response: Representation::Empty,
+    pagination: Pagination::None,
+    write: None,
+    deprecated: false,
+    metadata: &metadata::UNCOMPLETE_SUBTASK,
 };
 
 /// `DELETE /todos/{todoId}/completion.json`.
@@ -5282,6 +5425,26 @@ pub static UPDATE_SUBSCRIPTION: Route = Route {
     metadata: &metadata::UPDATE_SUBSCRIPTION,
 };
 
+/// `PUT /subtasks/{subtaskId}`.
+pub static UPDATE_SUBTASK: Route = Route {
+    id: "UpdateSubtask",
+    service: "Subtasks",
+    method: Method::PUT,
+    path: "/subtasks/{subtaskId}",
+    pattern: "/subtasks/{subtaskId}",
+    resource_type: "subtask",
+    params: &[RouteParam {
+        name: "subtaskId",
+        kind: ParamKind::Int64,
+    }],
+    body: BodyKind::Json,
+    response: Representation::Json,
+    pagination: Pagination::None,
+    write: None,
+    deprecated: false,
+    metadata: &metadata::UPDATE_SUBTASK,
+};
+
 /// `PUT /templates/{templateId}`.
 pub static UPDATE_TEMPLATE: Route = Route {
     id: "UpdateTemplate",
@@ -5455,6 +5618,7 @@ pub static UPDATE_WORMHOLE: Route = Route {
 pub static ROUTES: &[&Route] = &[
     &ARCHIVE_PROJECT,
     &ARCHIVE_RECORDING,
+    &COMPLETE_SUBTASK,
     &COMPLETE_TODO,
     &CREATE_ANSWER,
     &CREATE_ATTACHMENT,
@@ -5481,6 +5645,7 @@ pub static ROUTES: &[&Route] = &[
     &CREATE_QUESTION,
     &CREATE_RECORDING_BOOST,
     &CREATE_SCHEDULE_ENTRY,
+    &CREATE_SUBTASK,
     &CREATE_TEMPLATE,
     &CREATE_TEMPLATE_LIBRARY_COPY,
     &CREATE_TIMESHEET_ENTRY,
@@ -5502,6 +5667,7 @@ pub static ROUTES: &[&Route] = &[
     &DELETE_FOLDER,
     &DELETE_LINEUP_MARKER,
     &DELETE_MESSAGE_TYPE,
+    &DELETE_SUBTASK,
     &DELETE_TEMPLATE,
     &DELETE_TOOL,
     &DELETE_WEBHOOK,
@@ -5589,6 +5755,7 @@ pub static ROUTES: &[&Route] = &[
     &GET_SCHEDULE_ENTRY_OCCURRENCE,
     &GET_SEARCH_METADATA,
     &GET_SUBSCRIPTION,
+    &GET_SUBTASK,
     &GET_TEMPLATE,
     &GET_TEMPLATE_LIBRARY,
     &GET_TEMPLATE_LIBRARY_COPY,
@@ -5636,6 +5803,7 @@ pub static ROUTES: &[&Route] = &[
     &LIST_RECORDING_BOOSTS,
     &LIST_RECORDINGS,
     &LIST_SCHEDULE_ENTRIES,
+    &LIST_SUBTASKS,
     &LIST_TEMPLATES,
     &LIST_TODOLIST_GROUPS,
     &LIST_TODOLISTS,
@@ -5657,6 +5825,7 @@ pub static ROUTES: &[&Route] = &[
     &REPLACE_SCHEDULE_ENTRY,
     &REPLACE_TODO,
     &REPOSITION_CARD_STEP,
+    &REPOSITION_SUBTASK,
     &REPOSITION_TODO,
     &REPOSITION_TODOLIST,
     &REPOSITION_TODOLIST_GROUP,
@@ -5674,6 +5843,7 @@ pub static ROUTES: &[&Route] = &[
     &TRASH_RECORDING,
     &UNARCHIVE_PROJECT,
     &UNARCHIVE_RECORDING,
+    &UNCOMPLETE_SUBTASK,
     &UNCOMPLETE_TODO,
     &UNPIN_MESSAGE,
     &UNSPOTLIGHT_RECORDING,
@@ -5707,6 +5877,7 @@ pub static ROUTES: &[&Route] = &[
     &UPDATE_QUESTION_NOTIFICATION_SETTINGS,
     &UPDATE_SCHEDULE_SETTINGS,
     &UPDATE_SUBSCRIPTION,
+    &UPDATE_SUBTASK,
     &UPDATE_TEMPLATE,
     &UPDATE_TIMESHEET_ENTRY,
     &UPDATE_TODOLIST_OR_GROUP,

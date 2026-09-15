@@ -102,6 +102,18 @@ targets:
     fixture: cards/get.json
     pointer: ""
     schema: Card
+  # A subtask is a CardStep on the wire (type "Kanban::Step" permanently; bc3
+  # #12659). Both fixtures are the documented examples from
+  # doc/api/sections/subtasks.md, so their canonical `url`/`completion_url`
+  # say /subtasks where the embedded `steps` of cards/get.json still say
+  # /card_tables/steps — bc3 serves both spellings for the same records.
+  - id: subtask-get
+    fixture: subtasks/get.json
+    pointer: ""
+    schema: CardStep
+  - id: subtask-list
+    operation: ListSubtasks
+    fixture: subtasks/list.json
   - id: todolist-get
     fixture: todolists/get.json
     pointer: ""
@@ -400,6 +412,7 @@ covered_schemas:
   Message: [message-get]
   Document: [document-get]
   Card: [card-get]
+  CardStep: [subtask-get]
   Todolist: [todolist-get, todolist-group-get]
   Upload: [upload-get]
   UploadVersion: [upload-version-0, upload-version-recordable-gone]

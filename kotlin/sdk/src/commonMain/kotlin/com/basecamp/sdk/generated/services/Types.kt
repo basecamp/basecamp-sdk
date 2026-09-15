@@ -970,6 +970,34 @@ data class UpdateSubscriptionBody(
     val unsubscriptions: List<Long>? = null
 )
 
+/** Options for ListSubtasks. */
+data class ListSubtasksOptions(
+    /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */
+    val page: Long? = null,
+    val maxItems: Int? = null
+) {
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
+}
+
+/** Request body for CreateSubtask. */
+data class CreateSubtaskBody(
+    val title: String,
+    val dueOn: String? = null,
+    val assigneeIds: List<Long>? = null
+)
+
+/** Request body for UpdateSubtask. */
+data class UpdateSubtaskBody(
+    val title: String? = null,
+    val dueOn: String? = null,
+    val assigneeIds: List<Long>? = null
+)
+
+/** Request body for RepositionSubtask. */
+data class RepositionSubtaskBody(
+    val position: Int
+)
+
 /** Request body for CreateTemplateLibraryCopy. */
 data class CreateTemplateLibraryCopyBody(
     val templateRecordingId: Long,

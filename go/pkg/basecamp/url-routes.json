@@ -2116,6 +2116,24 @@
       }
     },
     {
+      "pattern": "/{accountId}/recordings/{recordingId}/subtasks",
+      "resource": "Subtasks",
+      "operations": {
+        "GET": "ListSubtasks",
+        "POST": "CreateSubtask"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "recordingId": {
+          "role": "parent",
+          "type": "int64"
+        }
+      }
+    },
+    {
       "pattern": "/{accountId}/recordings/{recordingId}/timesheet",
       "resource": "Schedule",
       "operations": {
@@ -2410,6 +2428,60 @@
         },
         "folderId": {
           "role": "recording",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/subtasks/{subtaskId}",
+      "resource": "Subtasks",
+      "operations": {
+        "DELETE": "DeleteSubtask",
+        "GET": "GetSubtask",
+        "PUT": "UpdateSubtask"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "subtaskId": {
+          "role": "recording",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/subtasks/{subtaskId}/completion",
+      "resource": "Subtasks",
+      "operations": {
+        "DELETE": "UncompleteSubtask",
+        "POST": "CompleteSubtask"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "subtaskId": {
+          "role": "parent",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/subtasks/{subtaskId}/position",
+      "resource": "Subtasks",
+      "operations": {
+        "PUT": "RepositionSubtask"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "subtaskId": {
+          "role": "parent",
           "type": "int64"
         }
       }

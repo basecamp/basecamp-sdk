@@ -104,14 +104,19 @@ type Card struct {
 	BoostsURL              string               `json:"boosts_url,omitempty"`
 	CommentsURL            string               `json:"comments_url,omitempty"`
 	CommentCount           int                  `json:"comment_count"`
-	CompletionURL          string               `json:"completion_url,omitempty"`
-	Parent                 *Parent              `json:"parent,omitempty"`
-	Bucket                 *Bucket              `json:"bucket,omitempty"`
-	Creator                *Person              `json:"creator,omitempty"`
-	Completer              *Person              `json:"completer,omitempty"`
-	Assignees              []Person             `json:"assignees,omitempty"`
-	CompletionSubscribers  []Person             `json:"completion_subscribers,omitempty"`
-	Steps                  []CardStep           `json:"steps,omitempty"`
+	// SubtasksCount is the real number of subtasks; Steps embeds at most 100.
+	// SubtasksURL lists all of them, paginated (SubtasksService.List).
+	SubtasksCount          int        `json:"subtasks_count,omitempty"`
+	SubtasksCompletedCount int        `json:"subtasks_completed_count,omitempty"`
+	SubtasksURL            string     `json:"subtasks_url,omitempty"`
+	CompletionURL          string     `json:"completion_url,omitempty"`
+	Parent                 *Parent    `json:"parent,omitempty"`
+	Bucket                 *Bucket    `json:"bucket,omitempty"`
+	Creator                *Person    `json:"creator,omitempty"`
+	Completer              *Person    `json:"completer,omitempty"`
+	Assignees              []Person   `json:"assignees,omitempty"`
+	CompletionSubscribers  []Person   `json:"completion_subscribers,omitempty"`
+	Steps                  []CardStep `json:"steps,omitempty"`
 }
 
 // CardStep represents a step (checklist item) on a card.
@@ -1304,7 +1309,9 @@ func (s *CardStepsService) Uncomplete(ctx context.Context, stepID int64) (result
 }
 
 // Reposition changes the position of a step within a card.
-// position is 0-indexed.
+// position is 1-based (1 = top). bc3's documentation said "Zero indexed"
+// until basecamp/bc3#12659 corrected it; the server always counted from 1,
+// like every other reposition in Basecamp.
 func (s *CardStepsService) Reposition(ctx context.Context, cardID, stepID int64, position int) (err error) {
 	op := OperationInfo{
 		Service: "CardSteps", Operation: "Reposition",
@@ -1320,14 +1327,14 @@ func (s *CardStepsService) Reposition(ctx context.Context, cardID, stepID int64,
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if position < 0 {
-		err = ErrUsage("position must be at least 0")
+	if position < 1 || position > math.MaxInt32 {
+		err = ErrUsage("position must be between 1 and 2147483647")
 		return err
 	}
 
 	body := generated.RepositionCardStepJSONRequestBody{
 		SourceId: stepID,
-		Position: int32(position), // #nosec G115 -- position is validated and bounded by API
+		Position: int32(position), // #nosec G115 -- bounds checked above
 	}
 
 	resp, err := s.client.parent.gen.RepositionCardStepWithResponse(ctx, s.client.accountID, cardID, body)
@@ -1512,6 +1519,10 @@ func cardFromGenerated(gc generated.Card) Card {
 		CompletionURL:    deref(gc.CompletionUrl),
 		CreatedAt:        gc.CreatedAt,
 		UpdatedAt:        gc.UpdatedAt,
+
+		SubtasksCount:          int(deref(gc.SubtasksCount)),
+		SubtasksCompletedCount: int(deref(gc.SubtasksCompletedCount)),
+		SubtasksURL:            deref(gc.SubtasksUrl),
 	}
 
 	if gc.Id != 0 {

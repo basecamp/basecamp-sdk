@@ -18,6 +18,9 @@
   "completed": false,
   "comments_count": 2,
   "comments_url": "https://3.basecampapi.com/195539477/buckets/2085958499/recordings/1069479350/comments.json",
+  "subtasks_count": 2,
+  "subtasks_completed_count": 1,
+  "subtasks_url": "https://3.basecampapi.com/195539477/recordings/1069479350/subtasks.json",
   "comment_count": 2,
   "completion_url": "https://3.basecampapi.com/195539477/buckets/2085958499/card_tables/cards/1069479350/completion.json",
   "parent": {

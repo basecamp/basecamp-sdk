@@ -44,7 +44,8 @@ export interface BubbleUpsMyNotificationOptions extends PaginationOptions {
  * Request parameters for markAsRead.
  */
 export interface MarkAsReadMyNotificationRequest {
-  /** Array of readable_sgid values identifying the items to mark as read */
+  /** Array of readable_sgid values identifying the items to mark as read.
+At most 500 per request. */
   readables: string[];
 }
 
