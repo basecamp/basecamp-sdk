@@ -268,6 +268,10 @@ async fn a_separate_client_starts_with_an_empty_index() {
     );
 }
 
+/// The dock has its say before the listing is fetched, so a listing that is down never
+/// stands between a project's line and the one project read that finds it. The listing is
+/// mounted as a 503 here rather than left unmounted: an unmounted route proves only that
+/// the request was not made, while a failing one proves the call does not depend on it.
 #[tokio::test]
 async fn the_dock_is_read_first_and_the_listing_only_when_it_misses() {
     let server = MockServer::start().await;
@@ -277,6 +281,14 @@ async fn the_dock_is_read_first_and_the_listing_only_when_it_misses() {
         &format!("/999/projects/{BUCKET}"),
         200,
         &project_with_chat(SECOND_CAMPFIRE),
+    )
+    .await;
+    mount(
+        &server,
+        "GET",
+        "/999/chats.json",
+        503,
+        &json!({ "error": "the listing is down" }),
     )
     .await;
     mount(
@@ -530,6 +542,47 @@ async fn a_budget_spent_after_both_sources_were_consulted_is_unresolved_not_inco
         2,
         "only the two line reads; neither source was re-read"
     );
+}
+
+/// Only a listing OVER ITS CAP is incomplete discovery. Any other listing failure is that
+/// read's own error and passes through: a 403 is not a settled verdict about where the line
+/// is, and reporting it as one would tell a consumer to stop looking.
+#[tokio::test]
+async fn a_listing_failure_that_is_not_an_overflow_passes_through() {
+    for (status, code) in [
+        (403, ErrorCode::Forbidden),
+        (401, ErrorCode::AuthRequired),
+        (422, ErrorCode::Validation),
+    ] {
+        let server = MockServer::start().await;
+        mount(
+            &server,
+            "GET",
+            &format!("/999/projects/{BUCKET}"),
+            404,
+            &not_found(),
+        )
+        .await;
+        mount(
+            &server,
+            "GET",
+            "/999/chats.json",
+            status,
+            &json!({ "error": "nope" }),
+        )
+        .await;
+        let error = account(&server)
+            .recordings()
+            .summarize(&chat_line_ref())
+            .await
+            .unwrap_err();
+        assert_eq!(error.code(), code, "status {status}");
+        assert_eq!(error.http_status(), Some(status));
+        assert!(
+            RecordingSummaryError::of(&error).is_none(),
+            "a failed listing read is not the composite's own verdict (status {status})"
+        );
+    }
 }
 
 #[tokio::test]
