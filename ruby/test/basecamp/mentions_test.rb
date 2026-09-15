@@ -264,6 +264,81 @@ class MentionsTest < Minitest::Test
     assert_equal 10, Basecamp::Mentions.person_id_from_sgid("#{payload[0..-2]}B--#{signature}")
   end
 
+  # The character-reference rules below were not read off the reference
+  # implementation, they were MEASURED against it: a corpus of ~1000 crafted
+  # attribute values was run through both and diffed. Reasoning about what the
+  # scanner "should" do is what produced two earlier wrong answers.
+  #
+  # References are decoded where they occur — in an attribute value — so these
+  # go through the walker rather than through person_id_from_sgid.
+  def mentions_in_tag(value)
+    Basecamp::Mentions.mentioned_person_ids(%(<bc-attachment sgid="#{value}"></bc-attachment>))
+  end
+
+  def test_a_decimal_reference_needs_two_digits_or_a_semicolon
+    # "&#9B" is not a reference at all in the reference scanner — one digit and
+    # no semicolon leaves it literal — while "&#66B" is "B" followed by "B".
+    sgid = person_sgid(26)
+
+    assert_equal [ 26 ], mentions_in_tag("&#66;#{sgid[1..]}")
+    assert_equal [ 26 ], mentions_in_tag("&#66#{sgid[1..]}")
+    assert_empty mentions_in_tag("&#9#{sgid}")
+    # Terminated, the same one digit IS a reference — a tab, which the trim erases.
+    assert_equal [ 26 ], mentions_in_tag("&#9;#{sgid}")
+  end
+
+  def test_a_hex_reference_takes_its_digits_greedily
+    # "&#x42B" is U+042B, not "B" followed by "B" — the trailing letter is a hex
+    # digit and is consumed.
+    sgid = person_sgid(27)
+
+    assert_equal [ 27 ], mentions_in_tag("&#x42;#{sgid[1..]}")
+    assert_empty mentions_in_tag("&#x42#{sgid[1..]}")
+  end
+
+  def test_a_named_reference_is_matched_against_the_table_not_greedily
+    # "&nbspBAh7…" is "&nbsp" followed by text, not a name called "nbspBAh7…".
+    # nbsp is one of the references the legacy list accepts unterminated.
+    sgid = person_sgid(28)
+
+    assert_equal [ 28 ], mentions_in_tag("&nbsp#{sgid}")
+    assert_equal [ 28 ], mentions_in_tag("&nbsp;#{sgid}")
+    # Tab is not in the legacy list, so unterminated it stays literal.
+    assert_equal [ 28 ], mentions_in_tag("&Tab;#{sgid}")
+    assert_empty mentions_in_tag("&Tab#{sgid}")
+  end
+
+  def test_whitespace_references_are_erased_at_an_end_and_refused_inside
+    # Every whitespace expansion is folded to a space, which is
+    # verdict-equivalent: trimmed at either end, refused in the interior.
+    sgid = person_sgid(29)
+
+    [ "&nbsp;", "&ensp;", "&ThickSpace;", "&#160;", "&#8194;", "&#x2002;" ].each do |reference|
+      assert_equal [ 29 ], mentions_in_tag("#{reference}#{sgid}"),
+        "#{reference} should be trimmed at the start"
+      assert_empty mentions_in_tag("#{sgid[0, 10]}#{reference}#{sgid[10..]}"),
+        "#{reference} should be refused in the interior"
+    end
+  end
+
+  def test_a_line_break_reference_survives_wherever_it_sits
+    # CR and LF are the whitespace a base64 decoder skips in the interior too,
+    # so they are NOT folded to a space with the rest.
+    sgid = person_sgid(32)
+
+    assert_equal [ 32 ], mentions_in_tag("&NewLine;#{sgid}")
+    assert_equal [ 32 ], mentions_in_tag("#{sgid[0, 10]}&NewLine;#{sgid[10..]}")
+  end
+
+  def test_a_reference_outside_the_table_can_only_lose_a_mention_never_add_one
+    # The bound is one-directional by construction: a reference left literal
+    # contributes "&" and ";", which no base64 alphabet accepts.
+    sgid = person_sgid(31)
+
+    assert_empty mentions_in_tag("&nosuchref;#{sgid}")
+    assert_empty mentions_in_tag("#{sgid[0, 10]}&nosuchref;#{sgid[10..]}")
+  end
+
   def test_a_person_id_past_the_64_bit_range_is_refused
     assert_nil Basecamp::Mentions.person_id_from_sgid(marshal_sgid("gid://bc3/Person/99999999999999999999999"))
   end

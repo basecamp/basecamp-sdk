@@ -92,20 +92,86 @@ module Basecamp
 
     # The character references an attribute value is decoded through.
     #
-    # DELIBERATELY not the whole HTML5 table Go's html.UnescapeString carries.
-    # It is the five predefined references plus every named reference whose
-    # expansion is a character one of the base64 alphabets or an sgid's
-    # separator uses — which is the complete set that can change whether an sgid
-    # DECODES. Every other named reference expands to a character outside both
-    # alphabets, so leaving it literal refuses the sgid exactly as expanding it
-    # would; only the undecodable literal differs, and nothing reads that.
+    # DELIBERATELY not the whole HTML5 table the reference implementation
+    # carries. Only two kinds of expansion can change whether an sgid DECODES,
+    # and this covers both:
+    #
+    # * a character one of the base64 alphabets or an sgid's separator uses, and
+    # * whitespace, which the trim in {global_id_from_sgid} erases at either end.
+    #
+    # Whitespace other than CR and LF is folded to a plain ASCII space. That is
+    # verdict-equivalent and keeps the decoded value a byte string: at either end
+    # both implementations trim it away, and in the interior both refuse it,
+    # since no base64 alphabet accepts a space any more than it accepts U+00A0.
+    # CR and LF are NOT folded — a base64 decoder skips those two wherever they
+    # sit, so they have to survive as themselves.
+    #
+    # Every other named reference expands to something outside both alphabets
+    # that no trim removes, so leaving it literal refuses the sgid exactly as
+    # expanding it would. That residue is one-directional by construction — a
+    # reference left literal contributes "&" and ";", which no alphabet accepts
+    # — so this can only ever report FEWER mentions, never more, and never
+    # writes a tag the reference implementation would not.
     NAMED_ENTITIES = {
+      # The five predefined references.
       "amp" => "&", "lt" => "<", "gt" => ">", "quot" => '"', "apos" => "'",
-      "plus" => "+", "sol" => "/", "equals" => "=", "lowbar" => "_", "UnderBar" => "_"
+      # Expansions inside a base64 alphabet.
+      "plus" => "+", "sol" => "/", "equals" => "=", "lowbar" => "_", "UnderBar" => "_",
+      # The one whitespace expansion a base64 decoder skips wherever it sits.
+      "NewLine" => "\n",
+      # Expansions the trim erases, folded to a space.
+      "Tab" => " ", "nbsp" => " ", "NonBreakingSpace" => " ",
+      "ensp" => " ", "emsp" => " ", "emsp13" => " ", "emsp14" => " ",
+      "numsp" => " ", "puncsp" => " ",
+      "thinsp" => " ", "ThinSpace" => " ",
+      "hairsp" => " ", "VeryThinSpace" => " ",
+      "MediumSpace" => " ", "ThickSpace" => " "
     }.freeze
 
-    # One character reference: a decimal or hex numeric reference, or a name.
-    ENTITY_PATTERN = /&(\#[0-9]+|\#[Xx][0-9A-Fa-f]+|[A-Za-z][A-Za-z0-9]*);/
+    # The references the HTML5 legacy list also accepts without their closing
+    # semicolon, restricted to the ones above whose expansion can matter.
+    SEMICOLONLESS_ENTITIES = %w[amp AMP lt LT gt GT quot QUOT nbsp].freeze
+
+    # The codepoints the trim treats as whitespace, matching the reference
+    # implementation's unicode.IsSpace. CR and LF are deliberately absent — they
+    # are handled as themselves, above.
+    WHITESPACE_CODEPOINTS = ([ 0x09, 0x0B, 0x0C, 0x20, 0x85, 0xA0, 0x1680,
+                               0x2028, 0x2029, 0x202F, 0x205F, 0x3000 ] +
+                             (0x2000..0x200A).to_a).freeze
+
+    # The names above, longest first, so a name is matched against the TABLE the
+    # way the reference scanner matches it — longest entry that fits — rather
+    # than by consuming the longest run of name characters. "&nbspBAh7" is
+    # "&nbsp" followed by text, not a name called "nbspBAh7".
+    NAMED_ENTITY_PATTERN = Regexp.union(NAMED_ENTITIES.keys.sort_by { |name| -name.length })
+
+    # One character reference, matching the reference scanner's own rules:
+    #
+    # * a hex reference takes its digits greedily and needs no semicolon, so
+    #   "&#x42B" is U+042B rather than "B" followed by "B";
+    # * a decimal reference takes its digits greedily and needs no semicolon
+    #   ONLY when it has two or more of them — "&#66B" is "BB", while "&#9B" is
+    #   not a reference at all and stays literal;
+    # * a named reference needs its semicolon unless it is in the legacy list.
+    #
+    # The last alternative catches a terminated name that is not in the table,
+    # so the whole reference is stepped over as one literal rather than being
+    # rescanned character by character.
+    ENTITY_PATTERN = /
+      &(?:
+        \#(?<hex>[Xx][0-9A-Fa-f]+);?
+        |\#(?<decimal>[0-9]{2,});?
+        |\#(?<lone_digit>[0-9]);
+        |(?<name>#{NAMED_ENTITY_PATTERN})(?<semicolon>;)?
+        |(?<unknown>[A-Za-z][A-Za-z0-9]*;)
+      )
+    /x
+
+    # The whitespace an sgid is trimmed of before it is read, matching the
+    # reference implementation's TrimSpace: the Unicode space set, which
+    # includes NBSP and NEL and excludes NUL. Ruby's String#strip is neither —
+    # it misses every non-ASCII space and removes NUL, which no trim there does.
+    SGID_TRIM_PATTERN = /\A[[:space:]]+|[[:space:]]+\z/
 
     module_function
 
@@ -425,27 +491,37 @@ module Basecamp
     end
 
     # Decodes the character references in an attribute value, through
-    # {NAMED_ENTITIES} and numeric references that resolve to ASCII.
+    # {NAMED_ENTITIES} and {ENTITY_PATTERN}.
     #
     # One pass, so an escaped reference (<tt>&amp;amp;lowbar;</tt>) decodes to the
-    # literal <tt>&amp;lowbar;</tt> rather than being decoded twice. A numeric
-    # reference outside ASCII is left literal: Go resolves it to a character
-    # (or to U+FFFD), and every such character is outside both base64 alphabets,
-    # so the sgid is refused either way — and leaving it literal keeps the value
-    # a byte string, which is what the walker is scanning.
+    # literal <tt>&amp;lowbar;</tt> rather than being decoded twice.
     def unescape_attribute_value(value)
       return value unless value.include?("&")
 
       value.gsub(ENTITY_PATTERN) do |reference|
-        name = Regexp.last_match(1)
-        if name.start_with?("#")
-          digits = name[1..]
-          code = digits.match?(/\A[Xx]/) ? digits[1..].to_i(16) : digits.to_i
-          code.positive? && code < 128 ? code.chr : reference
+        match = Regexp.last_match
+        if match[:hex]
+          codepoint_reference(match[:hex][1..].to_i(16), reference)
+        elsif (digits = match[:decimal] || match[:lone_digit])
+          codepoint_reference(digits.to_i, reference)
+        elsif match[:name] && (match[:semicolon] || SEMICOLONLESS_ENTITIES.include?(match[:name]))
+          NAMED_ENTITIES.fetch(match[:name])
         else
-          NAMED_ENTITIES.fetch(name, reference)
+          reference
         end
       end
+    end
+
+    # One numeric reference's expansion, or the literal reference when expanding
+    # it cannot change the verdict: above ASCII and not whitespace, the character
+    # is outside every alphabet and no trim removes it, so the literal refuses
+    # the sgid exactly as the character would — and it keeps the value a byte
+    # string, which is what the walker is scanning.
+    def codepoint_reference(codepoint, reference)
+      return " " if WHITESPACE_CODEPOINTS.include?(codepoint)
+      return codepoint.chr if codepoint.positive? && codepoint < 128
+
+      reference
     end
 
     # Returns the global id string an sgid's envelope carries, or nil.
@@ -459,7 +535,7 @@ module Basecamp
     # @param sgid [String, nil]
     # @return [String, nil]
     def global_id_from_sgid(sgid)
-      value = sgid.to_s.strip
+      value = sgid.to_s.gsub(SGID_TRIM_PATTERN, "")
       separator = value.rindex("--")
       if separator && separator.positive?
         gid = envelope_gid(value[0, separator])
@@ -576,7 +652,7 @@ module Basecamp
     # and private so the module's documented surface is the four — plus
     # {bc_attachment_sgids}, which a caller deduplicating its own writes needs.
     private_class_method :parse_attributes, :leading_block_end, :global_id_from_sgid,
-                         :envelope_gid, :decode_payload, :unescape_attribute_value,
+                         :envelope_gid, :decode_payload, :unescape_attribute_value, :codepoint_reference,
                          :field, :space?, :tag_name_char?, :tag_name_end?
 
     # A reader for the subset of Ruby's Marshal 4.8 format a SignedGlobalID
