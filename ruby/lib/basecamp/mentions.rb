@@ -365,6 +365,13 @@ module Basecamp
       # hands back text; the same sgid in two encodings is neither eql? nor
       # hash-equal once it holds a non-ASCII byte, which would split the set and
       # write the mention a second time.
+      #
+      # The LOOKUP side below is the load-bearing one — mutation testing says so:
+      # removing its +.b+ fails the guard test, removing this one does not,
+      # because {bc_attachment_sgids} already returns bytes. Both are kept, since
+      # the redundant one is what holds the invariant if that ever changes; this
+      # note is here so the next reader deletes neither by mistaking which is
+      # which.
       present = {}
       bc_attachment_sgids(content).each { |sgid| present[sgid.b] = true }
 
