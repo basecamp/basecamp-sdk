@@ -196,20 +196,46 @@ class MentionsTest {
 
     @Test
     fun theAuthorityIsJudgedTheWayAUrlParserJudgesIt() {
-        // Each row was probed against Go's net/url. The two rejections are the
-        // ones a port that only checks the port would miss, and they reach the
-        // WRITE side: mentionMarkup asks this same question, so a looser parse
-        // renders and posts a tag Go refuses to write.
-        assertNull(personIdFromSgid(jsonSgidFor("gid://b c3/Person/1")), "a space in the host")
-        assertNull(personIdFromSgid(jsonSgidFor("gid://bc%zz3/Person/1")), "a malformed percent escape")
-        assertNull(personIdFromSgid(jsonSgidFor("gid://bc3:abc/Person/1")), "a non-numeric port")
-        assertNull(personIdFromSgid(jsonSgidFor("gid://[::1/Person/1")), "an unclosed bracket")
-        // And the rows Go ACCEPTS must keep working — being stricter than the
-        // reference loses real mentions just as silently.
-        assertEquals(1L, personIdFromSgid(jsonSgidFor("gid://user@bc3/Person/1")), "userinfo")
-        assertEquals(1L, personIdFromSgid(jsonSgidFor("gid://bc<3/Person/1")), "Go's host set is permissive")
-        assertEquals(1L, personIdFromSgid(jsonSgidFor("gid://bc3:3000/Person/1")), "a numeric port")
-        assertEquals(1L, personIdFromSgid(jsonSgidFor("gid://[::1]:80/Person/1")), "a bracketed host with a port")
+        // Every row swept against the reference parser rather than derived from
+        // a rule someone stated: all 95 printable ASCII bytes planted mid-host,
+        // plus the percent, userinfo, port and bracket shapes. The two columns
+        // agreed on all 111 cases; these are the ones worth keeping.
+        //
+        // The rejections a port that only checks the port would miss:
+        assertNull(personIdFromSgid(jsonSgidFor("gid://b c3/Person/7")), "a space in the host")
+        assertNull(personIdFromSgid(jsonSgidFor("gid://b%zzc3/Person/7")), "a malformed percent escape")
+        assertNull(personIdFromSgid(jsonSgidFor("gid://bc3:abc/Person/7")), "a non-numeric port")
+        assertNull(personIdFromSgid(jsonSgidFor("gid://[::1/Person/7")), "an unclosed bracket")
+        assertNull(personIdFromSgid(jsonSgidFor("gid://a^b@bc3/Person/7")), "userinfo the parser refuses")
+        assertNull(personIdFromSgid(jsonSgidFor("gid://user@/Person/7")), "an empty host behind userinfo")
+        // A `[` anywhere but the start is an INVALID IP-literal, not a name
+        // character — even though the character set permits `[` so that a
+        // bracketed literal can carry one.
+        assertNull(personIdFromSgid(jsonSgidFor("gid://b[c3/Person/7")), "a bracket mid-host")
+
+        // A percent escape is refused only when it names an ASCII byte, and
+        // `%25` is exempt. Refusing them all would lose real hosts — the
+        // vanishing direction.
+        assertNull(personIdFromSgid(jsonSgidFor("gid://b%41c3/Person/7")), "an escape naming an ASCII byte")
+        assertEquals(7L, personIdFromSgid(jsonSgidFor("gid://b%C3%A9c3/Person/7")), "a non-ASCII escape is a host")
+        assertEquals(7L, personIdFromSgid(jsonSgidFor("gid://b%25c3/Person/7")), "%25 is the exemption")
+
+        // And the rows the reference ACCEPTS must keep working — being stricter
+        // than it loses real mentions just as silently.
+        assertEquals(7L, personIdFromSgid(jsonSgidFor("gid://user@bc3/Person/7")), "userinfo")
+        assertEquals(7L, personIdFromSgid(jsonSgidFor("gid://bc3:3000/Person/7")), "a numeric port")
+        assertEquals(7L, personIdFromSgid(jsonSgidFor("gid://[::1]:80/Person/7")), "a bracketed host with a port")
+        assertEquals(7L, personIdFromSgid(jsonSgidFor("gid://bc3]/Person/7")), "a closing bracket alone is a name")
+        // `"` and `#` are absent deliberately: the envelope carrying these gids
+        // is JSON, so it cannot hold a raw quote, and `#` opens a fragment. The
+        // sweep could not reach either byte by this route, so neither is claimed.
+        for (permitted in listOf('<', '>', ']', '!', '$', '&', '\'', '(', ')', '*', '+', ',', ';', '=')) {
+            assertEquals(
+                7L,
+                personIdFromSgid(jsonSgidFor("gid://b${permitted}c3/Person/7")),
+                "the reference accepts $permitted in a host",
+            )
+        }
     }
 
     /** Builds an unsigned JSON-layout attachable sgid for an arbitrary gid. */

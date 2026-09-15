@@ -298,18 +298,21 @@ private fun parseAttributes(text: String, pos: Int): TagAttributes? {
  * Decodes the character references a browser resolves inside an attribute value:
  * the five XML named entities and numeric references in either base.
  *
- * Deliberately narrower than the reference, in three ways worth naming because
- * a reader would not predict the last two: the full HTML5 named-entity table is
- * not carried (it runs to more than two thousand names); the legacy
- * semicolon-less forms are not recognized, so `&amp` without its `;` stays
- * literal where a browser yields `&`; and a numeric reference in 0x80..0x9F is
- * taken at face value rather than remapped through Windows-1252, so `&#128;`
- * is U+0080 here and `€` there. An unrecognized `&…;` is left as written rather
- * than guessed at.
+ * Deliberately narrower than the reference in one way, and exact in the rest.
  *
- * None of it is reachable for a well-formed sgid — `&` is outside the base64url
- * alphabet, so a value containing one fails to decode on both sides — and the
- * write side refuses an sgid containing `&` outright.
+ * The full HTML5 named-entity table is not carried — it runs to more than two
+ * thousand names — but the families that can change an sgid's VERDICT are, and
+ * they are the whole reason this decoder exists: the references that expand to
+ * whitespace (trimmed away, so the payload behind them decodes) and the ones
+ * that expand to base64 characters (resolved back into the payload). Every other
+ * reference expands to something outside the base64 alphabet, so a value
+ * carrying one fails to decode on both sides.
+ *
+ * What IS matched here matches the reference exactly: `&nbsp` resolves without
+ * its semicolon because the reference's legacy set includes it, numeric
+ * references honour the reference's own boundary rules, and a numeric reference
+ * in 0x80..0x9F is remapped through Windows-1252 rather than taken at face
+ * value — so `&#133;` is an ellipsis, not a NEL that would be trimmed.
  */
 private fun unescapeHtml(value: String): String {
     if ('&' !in value) return value
@@ -348,12 +351,26 @@ private fun unescapeHtml(value: String): String {
  * `nbsp` is the one whitespace reference in the legacy semicolon-optional set.
  */
 private fun namedReferenceAt(value: String, i: Int, out: StringBuilder): Int {
-    val semi = value.indexOf(';', i + 1)
-    if (semi > i + 1 && semi - i - 1 <= MAX_ENTITY_NAME) {
-        val expansion = namedExpansion(value.substring(i + 1, semi))
+    // The search is bounded by the name characters actually present. A table
+    // name is `[A-Za-z0-9]+` with an optional `;`, so nothing past that run can
+    // match and there is no reason to look further.
+    //
+    // Looking for the next `;` instead makes this QUADRATIC: `indexOf` scans to
+    // the next semicolon anywhere in the input — to the end of it when there is
+    // none — and a length check applied to the result does not bound the scan
+    // that produced it. A run of ampersands is the worst case, and it is
+    // reachable from any attribute an author can write. Measured before this
+    // change: an 80,000-character run took 35 ms and scaled at 12x for a 4x
+    // input. After: 4x, which is the linear answer.
+    var end = i + 1
+    val limit = minOf(value.length, i + 1 + MAX_ENTITY_NAME)
+    while (end < limit && isEntityNameChar(value[end])) end++
+    if (end == i + 1) return 0 // no name at all: a bare `&`
+    if (end < value.length && value[end] == ';') {
+        val expansion = namedExpansion(value.substring(i + 1, end))
         if (expansion != null) {
             out.append(expansion)
-            return semi - i + 1
+            return end - i + 1
         }
     }
     if (value.startsWith(NBSP_ENTITY, i + 1)) {
@@ -363,14 +380,32 @@ private fun namedReferenceAt(value: String, i: Int, out: StringBuilder): Int {
     return 0
 }
 
-private fun namedExpansion(name: String): String? = when {
-    name.equals("amp", ignoreCase = true) -> "&"
-    name.equals("lt", ignoreCase = true) -> "<"
-    name.equals("gt", ignoreCase = true) -> ">"
-    name.equals("quot", ignoreCase = true) -> "\""
-    name.equals("apos", ignoreCase = true) -> "'"
-    else -> WHITESPACE_ENTITIES[name] ?: BASE64_ENTITIES[name]
-}
+private fun isEntityNameChar(c: Char): Boolean =
+    c in 'a'..'z' || c in 'A'..'Z' || c in '0'..'9'
+
+private fun namedExpansion(name: String): String? =
+    XML_ENTITIES[name] ?: WHITESPACE_ENTITIES[name] ?: BASE64_ENTITIES[name]
+
+/**
+ * The markup-punctuation references, spelled with the reference decoder's exact
+ * casing — it carries `amp` `AMP` `lt` `Lt` `LT` `gt` `Gt` `GT` `quot` `QUOT`
+ * and `apos`, and nothing else. Matching these case-insensitively resolved
+ * `&Amp;` and `&APOS;`, which the reference leaves literal.
+ *
+ * None of these expansions is whitespace or base64, so the divergence could not
+ * change a verdict — but the commit that rewrote this decoder claims to decode
+ * the way the reference does, and this is part of doing that. For the same
+ * reason the reference's semicolon-LESS forms of `amp`/`lt`/`gt`/`quot` are
+ * deliberately absent: carrying them would change no verdict either, and
+ * `nbsp` is the only legacy form that can (it is whitespace, so it is trimmed).
+ */
+private val XML_ENTITIES: Map<String, String> = mapOf(
+    "amp" to "&", "AMP" to "&",
+    "lt" to "<", "Lt" to "<", "LT" to "<",
+    "gt" to ">", "Gt" to ">", "GT" to ">",
+    "quot" to "\"", "QUOT" to "\"",
+    "apos" to "'",
+)
 
 /**
  * The named references that expand to a character of the base64url alphabet —
@@ -389,6 +424,10 @@ private val BASE64_ENTITIES: Map<String, String> = mapOf(
     "equals" to "=",
     "lowbar" to "_",
     "UnderBar" to "_",
+    // The reference keeps this one in its TWO-RUNE table, so a sweep of the
+    // single-rune table does not see it. It is the only multi-character
+    // expansion that is entirely base64.
+    "fjlig" to "fj",
 )
 
 /**
@@ -409,11 +448,17 @@ private fun numericReferenceAt(value: String, i: Int, out: StringBuilder): Int {
     val hex = p < value.length && (value[p] == 'x' || value[p] == 'X')
     if (hex) p++
     val digitsStart = p
-    var code = 0L
+    // Accumulated as a 32-bit signed value that WRAPS on overflow, because the
+    // reference accumulates into a rune and signed overflow wraps there.
+    // Saturating instead makes `&#4294967361;` the replacement character where
+    // the reference gives "A" — 2^32 + 65 wrapping to 65 — and that is a base64
+    // character reachable through a reference this would otherwise refuse.
+    val radix = if (hex) 16 else 10
+    var code = 0
     while (p < value.length) {
         val d = if (hex) hexDigitValue(value[p]) else decimalDigitValue(value[p])
         if (d < 0) break
-        if (code <= 0x10FFFF) code = code * 10L.let { if (hex) 16L else 10L } + d
+        code = code * radix + d
         p++
     }
     val digits = p - digitsStart
@@ -438,11 +483,15 @@ private fun hexDigitValue(c: Char): Int = when (c) {
     else -> -1
 }
 
-/** The reference decoder's mapping from a numeric reference's value to text. */
-private fun referenceCodePoint(code: Long): String {
-    if (code in 0x80..0x9F) return WINDOWS_1252[(code - 0x80).toInt()].toString()
-    if (code == 0L || code > 0x10FFFF || code in 0xD800..0xDFFF) return REPLACEMENT
-    return codePointOrNull(code.toInt()) ?: REPLACEMENT
+/**
+ * The reference decoder's mapping from a numeric reference's accumulated value
+ * to text. A negative value is what a wrapped accumulation leaves behind, and
+ * encoding it yields the replacement character there too.
+ */
+private fun referenceCodePoint(code: Int): String {
+    if (code in 0x80..0x9F) return WINDOWS_1252[code - 0x80].toString()
+    if (code <= 0 || code > 0x10FFFF || code in 0xD800..0xDFFF) return REPLACEMENT
+    return codePointOrNull(code) ?: REPLACEMENT
 }
 
 private const val REPLACEMENT = "\uFFFD"
@@ -677,7 +726,9 @@ private fun globalIdModelAndId(gid: String): Pair<String, String>? {
  */
 private fun isValidAuthority(authority: String): Boolean {
     if (authority.isEmpty()) return false
-    val host = authority.substringAfterLast('@')
+    val at = authority.lastIndexOf('@')
+    if (at >= 0 && !isValidUserinfo(authority.substring(0, at))) return false
+    val host = authority.substring(at + 1)
     if (host.isEmpty()) return false
     if (host.startsWith("[")) {
         val close = host.indexOf(']')
@@ -686,10 +737,25 @@ private fun isValidAuthority(authority: String): Boolean {
         if (!(after.isEmpty() || (after.startsWith(":") && after.drop(1).all { it.isDigit() }))) return false
         return isValidHostText(host.substring(1, close))
     }
+    // A `[` anywhere makes the host an IP-literal candidate, and one that does
+    // not START with it is an invalid IP-literal rather than an ordinary name —
+    // `b[c3` is a parse error where `bc3]` is a perfectly good host. Measured
+    // against the reference parser rather than derived from the character set,
+    // which permits `[` precisely so a bracketed literal can carry one.
+    if ('[' in host) return false
     val colon = host.lastIndexOf(':')
     val name = if (colon < 0) host else host.substring(0, colon)
     if (colon >= 0 && !host.substring(colon + 1).all { it.isDigit() }) return false
     return isValidHostText(name)
+}
+
+/**
+ * The userinfo half: the reference parser validates it rather than discarding
+ * it, so `gid://a^b@bc3/Person/7` is a parse error there and must name nobody
+ * here either.
+ */
+private fun isValidUserinfo(userinfo: String): Boolean = userinfo.all { c ->
+    c in 'a'..'z' || c in 'A'..'Z' || c in '0'..'9' || c in "-._~!$&'()*+,;=:%@"
 }
 
 /** The host-text half of [isValidAuthority]: escapes well-formed, raw ASCII permitted. */
@@ -700,6 +766,11 @@ private fun isValidHostText(host: String): Boolean {
         if (c == '%') {
             if (i + 2 >= host.length) return false
             if (!host[i + 1].isHexDigit() || !host[i + 2].isHexDigit()) return false
+            // A host may percent-encode only NON-ASCII bytes (RFC 3986 §3.2.2),
+            // so an escape whose value is under 0x80 is a parse error there —
+            // with one exception, a literal `%` written as `%25`. Without this,
+            // `gid://ho%41st/Person/7` names a person here and nothing there.
+            if (host[i + 1].digitToInt(16) < 8 && !host.regionMatches(i, "%25", 0, 3)) return false
             i += 3
             continue
         }
