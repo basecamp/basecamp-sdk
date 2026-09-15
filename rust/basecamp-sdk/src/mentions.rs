@@ -1172,6 +1172,158 @@ mod tests {
         assert_eq!(person_id_from_sgid(&before_digest), None);
     }
 
+    /// A DIFFERENTIAL table: every row is what `basecamp.PersonIDFromSGID` — the real Go
+    /// function, not a transcription of it — answered for the same input, captured by
+    /// piping both implementations the same list and diffing.
+    ///
+    /// The axis here is not what the decoder skips, it is WHERE THE TRIM SITS relative to
+    /// the padding strip and the separator split. Go's order is: trim the whole value,
+    /// split on the LAST `--`, right-trim the padding, then decode with an encoding that
+    /// has no padding character. Four other ports got that order wrong in one direction or
+    /// the other, and neither the shared fixture nor a leniency table can see it: a break
+    /// between the padding and the separator survives the whole-value trim and then blocks
+    /// the padding trim, so the `=` reaches a decoder that refuses it — while a break at
+    /// either END of the value is gone before anything looks at it.
+    ///
+    /// `\\n`, `\\r`, `\\s` and `\\t` in the inputs are escapes this test expands, so the
+    /// rows read the same here as they were fed to Go.
+    #[test]
+    fn the_sgid_read_agrees_with_the_go_function_row_for_row() {
+        const ANNIE: i64 = 1_049_715_915;
+        let cases: &[(&str, Option<i64>)] = &[
+            // baseline signed
+            (
+                "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE1P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--919d2c8b11ff403eefcab9db42dd26846d0c3102",
+                Some(ANNIE),
+            ),
+            // break between pad and sep
+            (
+                "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE1P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==\\n--919d2c8b11ff403eefcab9db42dd26846d0c3102",
+                None,
+            ),
+            // CR between pad and sep
+            (
+                "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE1P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==\\r--919d2c8b11ff403eefcab9db42dd26846d0c3102",
+                None,
+            ),
+            // break amid the padding
+            (
+                "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE1P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA=\\n=--919d2c8b11ff403eefcab9db42dd26846d0c3102",
+                None,
+            ),
+            // break before the padding
+            (
+                "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE1P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA\\n==--919d2c8b11ff403eefcab9db42dd26846d0c3102",
+                Some(ANNIE),
+            ),
+            // break inside the payload
+            (
+                "BAh7CEkiCGdpZAY6BkVU\\nSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE1P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--919d2c8b11ff403eefcab9db42dd26846d0c3102",
+                Some(ANNIE),
+            ),
+            // break after the separator
+            (
+                "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE1P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--\\n919d2c8b11ff403eefcab9db42dd26846d0c3102",
+                Some(ANNIE),
+            ),
+            // trailing break whole value
+            (
+                "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE1P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--919d2c8b11ff403eefcab9db42dd26846d0c3102\\n",
+                Some(ANNIE),
+            ),
+            // leading break whole value
+            (
+                "\\nBAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE1P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--919d2c8b11ff403eefcab9db42dd26846d0c3102",
+                Some(ANNIE),
+            ),
+            // spaces both ends
+            (
+                "\\s\\sBAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE1P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--919d2c8b11ff403eefcab9db42dd26846d0c3102\\s\\s",
+                Some(ANNIE),
+            ),
+            // tab trailing
+            (
+                "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE1P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--919d2c8b11ff403eefcab9db42dd26846d0c3102\\t",
+                Some(ANNIE),
+            ),
+            // unsigned bare
+            (
+                "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE1P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==",
+                Some(ANNIE),
+            ),
+            // unsigned trailing break
+            (
+                "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE1P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==\\n",
+                Some(ANNIE),
+            ),
+            // unsigned leading break
+            (
+                "\\nBAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE1P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==",
+                Some(ANNIE),
+            ),
+            // unsigned break amid pad
+            (
+                "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE1P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA=\\n=",
+                None,
+            ),
+            // unsigned break before pad
+            (
+                "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE1P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA\\n==",
+                Some(ANNIE),
+            ),
+            // unsigned break in payload
+            (
+                "BAh7CEkiCGdpZAY6BkVU\\nSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE1P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==",
+                Some(ANNIE),
+            ),
+            // padding stripped entirely
+            (
+                "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE1P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA--919d2c8b11ff403eefcab9db42dd26846d0c3102",
+                Some(ANNIE),
+            ),
+            // double separator
+            (
+                "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE1P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--919d2c8b11ff403eefcab9db42dd26846d0c3102--extra",
+                None,
+            ),
+            // separator only
+            (
+                "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE1P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--",
+                Some(ANNIE),
+            ),
+        ];
+        for (escaped, expected) in cases {
+            let sgid = expand(escaped);
+            assert_eq!(person_id_from_sgid(&sgid), *expected, "{escaped}");
+        }
+    }
+
+    /// Expands the escapes the differential table is written with.
+    fn expand(value: &str) -> String {
+        let bytes = value.as_bytes();
+        let mut out = String::new();
+        let mut index = 0;
+        while index < bytes.len() {
+            if bytes[index] == b'\\' && index + 1 < bytes.len() {
+                let replacement = match bytes[index + 1] {
+                    b'n' => Some('\n'),
+                    b'r' => Some('\r'),
+                    b's' => Some(' '),
+                    b't' => Some('\t'),
+                    _ => None,
+                };
+                if let Some(character) = replacement {
+                    out.push(character);
+                    index += 2;
+                    continue;
+                }
+            }
+            out.push(char::from(bytes[index]));
+            index += 1;
+        }
+        out
+    }
+
     /// The other half of the same rule, and the half a defensive port gets wrong: Go trims
     /// the WHOLE sgid before parsing it, so whitespace at either end is not a reason to
     /// refuse. Refusing here would raise no error — it would drop a real mention.
