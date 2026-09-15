@@ -202,6 +202,28 @@ class TestPersonIDFromSGID:
             ("[fe80::1%25eth0]", True),  # RFC 6874 zone
             ("[fe80::1%eth0]", False),  # a bare '%' is not a zone marker
             ("[not-an-ip]", False),
+            ("[1.2.3.4]", False),  # a bare IPv4 is not an IP-literal
+            ("[::ffff:1.2.3.4]", True),
+            ("[fe80::1%25eth0]:80", True),
+            ("[fe80::1%25eth0]:xx", False),
+            ("[fe80::1%25]", False),  # the zone may not be empty
+            ("[%25eth0]", False),  # nor the address
+            ("[notanip%25eth0]", False),
+            # A zone may escape anything it could have written literally, PLUS
+            # a space, because Windows puts spaces in zone identifiers. So the
+            # escaped form is accepted and the literal one is not.
+            ("[fe80::1%25%20en0]", True),
+            ("[fe80::1%25en 0]", False),
+            ("[fe80::1%25%25en0]", True),
+            ("[fe80::1%25e%6e0]", True),
+            ("[fe80::1%25%41]", True),
+            ("[fe80::1%25%C3]", False),  # but not a non-ASCII byte
+            ("[fe80::1%25é]", True),  # written literally, though, it is fine
+            ("[fe80::1%25a|b]", False),
+            ("[fe80::1%25a]b]", True),  # the CLOSING bracket is the last one
+            ("[fe80::1%25en[0]", False),  # a second "[" never is
+            ("[::1[]", False),
+            ("[::1]]", False),
         ],
     )
     def test_validates_the_authority_as_go_does(self, authority, accepted):
@@ -367,6 +389,26 @@ class TestPersonIDFromSGID:
         payload = json_sgid("gid://bc3/Person/77", signed=False)
         content = f'<bc-attachment sgid="{prefix}{payload}"></bc-attachment>'
         assert (mentioned_person_ids(content) == [77]) is resolves
+
+    @pytest.mark.parametrize(
+        ("suffix", "resolves"),
+        [
+            # Go cuts the fragment off BEFORE refusing control characters, so a
+            # control character behind "#" is not the URL's problem — while a
+            # malformed escape in the fragment still fails the parse.
+            ("#x", True),
+            ("#\n", True),
+            ("#\x7f", True),
+            ("#%41", True),
+            ("#%", False),
+            ("#%zz", False),
+            ("?q=1", True),
+            ("\n#x", False),
+        ],
+    )
+    def test_the_fragment_is_cut_before_the_control_character_check(self, suffix, resolves):
+        sgid = json_sgid(f"gid://bc3/Person/77{suffix}")
+        assert (person_id_from_sgid(sgid) == 77) is resolves
 
     def test_refuses_a_percent_encoded_control_character(self):
         assert person_id_from_sgid(json_sgid("gid://bc3/Person/104%0A9715915")) is None

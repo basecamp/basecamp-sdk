@@ -191,7 +191,9 @@ def _valid_authority(authority: str) -> bool:
 
 
 def _valid_bracketed_host(host: str) -> bool:
-    if not host.startswith("["):
+    # A "[" may appear only as the opening bracket; a "]" inside is ordinary,
+    # because the CLOSING one is the last.
+    if not host.startswith("[") or "[" in host[1:]:
         return False
     closing = host.rfind("]")
     if closing < 0:
@@ -202,8 +204,9 @@ def _valid_bracketed_host(host: str) -> bool:
     inside = host[1:closing]
     address, zoned, zone = inside.partition("%25")
     if zoned:
-        # RFC 6874 spells a zone "%25<zone>", and the zone may not be empty.
-        if not zone or "%" in zone:
+        # RFC 6874 spells a zone "%25<zone>". The zone may not be empty, and it
+        # is held to its own character rule -- see _valid_host_characters.
+        if not zone or not _valid_host_characters(zone, zone_identifier=True):
             return False
     elif "%" in inside:
         # A bare "%" is not a zone marker; Go refuses "[fe80::1%eth0]".
@@ -211,7 +214,8 @@ def _valid_bracketed_host(host: str) -> bool:
     try:
         ipaddress.IPv6Address(address)
     except ValueError:
-        # IPvFuture ("[v1.fe80::a+en1]") reaches here, and Go refuses it too.
+        # IPvFuture ("[v1.fe80::a+en1]") and a bare IPv4 reach here, and Go
+        # refuses both.
         return False
     return True
 
@@ -239,22 +243,58 @@ def _valid_userinfo(userinfo: str) -> bool:
     return True
 
 
-def _valid_host_characters(host: str) -> bool:
-    """Go's ``unescape(host, encodeHost)``: the byte-level half of the check."""
+def _valid_escapes(text: str) -> bool:
+    """Whether every percent-escape in ``text`` is well formed.
+
+    Go unescapes a fragment when it sets one, so a malformed escape there fails
+    the whole parse even though nothing else about a fragment is checked.
+    """
+    index = text.find("%")
+    while index >= 0:
+        escape = text[index + 1 : index + 3]
+        if len(escape) != 2 or not all(c in string.hexdigits for c in escape):
+            return False
+        index = text.find("%", index + 3)
+    return True
+
+
+def _must_escape_in_host(byte: int) -> bool:
+    """Go's ``shouldEscape(c, encodeHost)``: everything outside the allowed set.
+
+    A byte at or above 0x80 must be escaped by this rule — which is what makes
+    a percent-escape of a non-ASCII byte legal in a host and an escape of an
+    ASCII one illegal.
+    """
+    character = chr(byte)
+    return not (character.isascii() and (character.isalnum() or character in _HOST_ALLOWED_PUNCTUATION))
+
+
+def _valid_host_characters(text: str, *, zone_identifier: bool = False) -> bool:
+    """Go's ``unescape(s, encodeHost)`` — or ``encodeZone`` for a zone.
+
+    The two differ only in what an escape may carry. A host may escape a
+    non-ASCII byte and nothing else; a ZONE may escape anything it could have
+    written literally, plus a space, because Windows puts spaces in zone
+    identifiers. So ``[fe80::1%25%20en0]`` is a host Go accepts and
+    ``[fe80::1%25en 0]`` — the same byte, written literally — is not.
+    """
     index = 0
-    while index < len(host):
-        character = host[index]
+    while index < len(text):
+        character = text[index]
         if character == "%":
-            escape = host[index + 1 : index + 3]
+            escape = text[index + 1 : index + 3]
             if len(escape) != 2 or not all(c in string.hexdigits for c in escape):
                 return False
-            # A host may percent-escape only a NON-ASCII byte -- and "%25",
-            # the escape for "%" itself, which is how a zone is spelled.
-            if host[index : index + 3] != "%25" and int(escape[0], 16) < 8:
-                return False
+            if text[index : index + 3] != "%25":
+                byte = int(escape, 16)
+                if zone_identifier:
+                    if byte != 0x20 and _must_escape_in_host(byte):
+                        return False
+                elif byte < 0x80:
+                    return False
             index += 3
             continue
-        if character.isascii() and not (character.isalnum() or character in _HOST_ALLOWED_PUNCTUATION):
+        if character.isascii() and _must_escape_in_host(ord(character)):
             return False
         index += 1
     return True
@@ -301,14 +341,20 @@ def person_id_from_sgid(sgid: str) -> int | None:
     gid = _global_id_from_sgid(sgid)
     if gid is None:
         return None
+    # Go cuts the fragment off FIRST and only then refuses control characters,
+    # so a control character behind "#" is not the URL's problem — while a
+    # malformed escape in the fragment still fails the parse.
+    located, hashed, fragment = gid.partition("#")
+    if hashed and not _valid_escapes(fragment):
+        return None
     # Refused BEFORE parsing, because Python's URL parser would not refuse it:
     # `urlsplit` STRIPS tab, CR and LF from the input (the WHATWG rule), so
     # "gid://bc3/Person/104\n9715915" would parse as a clean id and this helper
     # would report a mention of somebody the API never named. Go's net/url
     # rejects any ASCII control character outright, and so does this.
-    if any(character < " " or character == "\x7f" for character in gid):
+    if any(character < " " or character == "\x7f" for character in located):
         return None
-    parsed = _split_gid(gid)
+    parsed = _split_gid(located)
     if parsed is None:
         return None
     authority, path = parsed
