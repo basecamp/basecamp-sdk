@@ -17,7 +17,6 @@ import java.io.File
 import java.io.IOException
 import java.util.concurrent.atomic.AtomicInteger
 
-/** Default account ID for conformance tests. */
 /**
  * The SPEC §6 taxonomy an `errorType` or `errorCode` assertion can name. Closed:
  * a composite's own verdict is not a member and must not be able to satisfy one.
@@ -31,10 +30,13 @@ private val CANONICAL_ERROR_TYPES = mapOf(
     "api_error" to BasecampException.CODE_API,
     "usage" to BasecampException.CODE_USAGE,
     "network" to BasecampException.CODE_NETWORK,
-    // All ten, not the eight an `errorType` assertion happens to name today.
-    // A set short of the table silently forbids a real code: `limit_exceeded`
-    // is already asserted through `errorCode` by `uploads_write.json`, and
-    // spelling that same case as `errorType` would have failed as "unknown".
+    // All ten of SPEC §6's codes, counted against the table rather than against
+    // what the fixtures happen to name — which today is four values in total,
+    // `forbidden` and `network` through `errorType` and the rest through
+    // `errorCode`. A set short of the table silently FORBIDS a real code rather
+    // than catching a typo'd one: `limit_exceeded` is already asserted by
+    // `uploads_write.json`, and spelling that same case as `errorType` would
+    // have failed as "unknown" while the map held eight.
     "ambiguous" to BasecampException.CODE_AMBIGUOUS,
     "limit_exceeded" to BasecampException.CODE_LIMIT_EXCEEDED,
 )
@@ -53,6 +55,7 @@ private val SEMANTIC_ERROR_TYPES = setOf(
     BasecampException.RECORDING_BUCKET_MISMATCH,
 )
 
+/** Default account ID for conformance tests. */
 private const val TEST_ACCOUNT_ID = "999"
 
 /**
@@ -877,6 +880,11 @@ private fun runTest(tc: TestCase): TestResult {
                 // `RecordingSummaryFailure` not putting a token in `code` — so
                 // reverting that one constructor would quietly let a composite
                 // identity satisfy a canonical code again.
+                //
+                // It is a denylist of the five, not a canonical-membership
+                // check: a token in neither set still passes if it happens to
+                // equal the thrown code. Stated rather than implied, because
+                // the name above says "taxonomy" and this guard is narrower.
                 if (expected in SEMANTIC_ERROR_TYPES) {
                     return TestResult(
                         false,
