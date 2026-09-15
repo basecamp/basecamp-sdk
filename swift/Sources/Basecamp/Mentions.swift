@@ -799,28 +799,51 @@ private let legacyEntities: [String: String] = [
     "nbsp": "\u{A0}",
 ]
 
-/// Whether `net/url` would accept this authority as a host.
+/// Whether `net/url` would accept this authority.
 ///
 /// Ported from what Go's parser does rather than from a charset that looked
-/// about right, because it was measured in both directions:
+/// about right, and the WHOLE authority is checked rather than just the host —
+/// both of those because both were measured wrong first. Each rule below is a
+/// row in `testTheAuthorityMatchesWhatGoAccepts`:
 ///
-///   * userinfo leaves the host EMPTY, and Go refuses an empty host — so
-///     `gid://user@/Person/1` and `gid://@/Person/1` name nobody there;
-///   * a percent escape is refused only when it names an ASCII byte, with
-///     `%25` exempt — so `gid://a%41b/…` is refused and `gid://b%C3%A9c3/…`,
-///     which decodes to `béc3`, is a host Go ACCEPTS;
-///   * a malformed escape is refused outright;
-///   * a control character or a space is refused;
-///   * and `"`, `<`, `>`, `]`, a port, and `_` are all accepted, which a
-///     conservative allowlist would have refused.
+///   * **Userinfo** may carry an escape naming any byte, but a MALFORMED escape,
+///     a space or a control refuses the gid: `bad%zz@bc3` and `us er@bc3` name
+///     nobody in Go.
+///   * **The host** is what remains after any userinfo, and it may not be empty
+///     — which is why `gid://user@/Person/1` names nobody. The emptiness test is
+///     on the host WITH its port, as Go's is, so `gid://:8080/Person/1` is a
+///     host Go accepts.
+///   * **In the host** a percent escape is allowed only when it names a
+///     non-ASCII byte, `%25` excepted. `b%C3%A9c3` decodes to `béc3` and is a
+///     host Go ACCEPTS; `a%41b` is not. In userinfo the same escape is fine.
+///   * **A port** is a `:` and then digits, and nothing else: `bc3:8080`,
+///     `bc3:` and even `bc3:99999999999` are accepted, `bc3:notaport` is not.
+///     Go splits at the LAST colon, which is why `bc3:80:80` is a host as well.
+///   * **A bracketed literal** carries its port after the `]`.
 ///
-/// The host is never read beyond this check — the gid's authority is BC3's app
-/// name — so the only job here is to agree with Go about which gids exist.
+/// Everything else — `"`, `<`, `>`, `]`, `_` — Go accepts, and so must this, or
+/// a gid Go reads as a mention names nobody here. The host is never read beyond
+/// this check; the only job is to agree with Go about which gids exist.
 private func isValidGlobalIdAuthority(_ authority: Substring) -> Bool {
-    // Userinfo, if any, is not the host; what follows the LAST "@" is.
-    let host = authority.lastIndex(of: "@").map { authority[authority.index(after: $0)...] }
-        ?? authority
+    var host = authority
+    if let at = authority.lastIndex(of: "@") {
+        guard isValidUserinfo(authority[..<at]) else { return false }
+        host = authority[authority.index(after: at)...]
+    }
     guard !host.isEmpty else { return false }
+
+    if host.first == "[" {
+        // A bracketed IP literal carries its port outside the brackets.
+        guard let close = host.lastIndex(of: "]") else { return false }
+        guard isValidOptionalPort(host[host.index(after: close)...]) else { return false }
+        host = host[host.index(after: host.startIndex)..<close]
+    } else if let colon = host.lastIndex(of: ":") {
+        guard isValidOptionalPort(host[colon...]) else { return false }
+        host = host[..<colon]
+    }
+    // Deliberately NOT re-checked for emptiness: Go's non-empty test is on
+    // `u.Host`, which still carries the port, so `gid://:8080/Person/1` is a
+    // host Go accepts and names a person for.
 
     var index = host.startIndex
     while index < host.endIndex {
@@ -830,18 +853,46 @@ private func isValidGlobalIdAuthority(_ authority: Substring) -> Bool {
             index = host.index(after: index)
             continue
         }
-        let first = host.index(after: index)
-        guard first < host.endIndex else { return false }
-        let second = host.index(after: first)
-        guard second < host.endIndex else { return false }
-        guard let high = host[first].hexDigitValue, let low = host[second].hexDigitValue,
-            host[first].isASCII, host[second].isASCII
-        else { return false }
-        let byte = high * 16 + low
-        // Only a non-ASCII byte may be escaped in a host — `%25` excepted,
-        // which is how a literal "%" is spelled.
+        guard let byte = percentEscapedByte(host, at: index) else { return false }
         guard byte >= 0x80 || byte == 0x25 else { return false }
-        index = host.index(after: second)
+        index = host.index(index, offsetBy: 3)
     }
     return true
+}
+
+/// Userinfo accepts an escape naming any byte; what it refuses is a malformed
+/// one, and a space or control character.
+private func isValidUserinfo(_ userinfo: Substring) -> Bool {
+    var index = userinfo.startIndex
+    while index < userinfo.endIndex {
+        let c = userinfo[index]
+        if let ascii = c.asciiValue, ascii <= 0x20 || ascii == 0x7F { return false }
+        guard c == "%" else {
+            index = userinfo.index(after: index)
+            continue
+        }
+        guard percentEscapedByte(userinfo, at: index) != nil else { return false }
+        index = userinfo.index(index, offsetBy: 3)
+    }
+    return true
+}
+
+/// The byte a `%XX` at `index` names, or nil when the escape is malformed.
+private func percentEscapedByte(_ text: Substring, at index: Substring.Index) -> Int? {
+    let first = text.index(after: index)
+    guard first < text.endIndex else { return nil }
+    let second = text.index(after: first)
+    guard second < text.endIndex else { return nil }
+    guard text[first].isASCII, text[second].isASCII,
+        let high = text[first].hexDigitValue, let low = text[second].hexDigitValue
+    else { return nil }
+    return high * 16 + low
+}
+
+/// Go's `validOptionalPort`: empty, or a colon followed by digits and nothing
+/// else. A bare colon is valid, and there is no range check.
+private func isValidOptionalPort(_ port: Substring) -> Bool {
+    guard !port.isEmpty else { return true }
+    guard port.first == ":" else { return false }
+    return port.dropFirst().allSatisfy { $0.isASCII && $0.isNumber }
 }

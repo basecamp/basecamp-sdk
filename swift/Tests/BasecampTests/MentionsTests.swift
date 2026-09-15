@@ -107,25 +107,35 @@ final class MentionsTests: XCTestCase {
         }
     }
 
-    /// The authority, against `net/url` in BOTH directions — measured over 40
-    /// shapes, because a charset that looked about right got one of them wrong
-    /// each way.
+    /// The authority, against `net/url` in BOTH directions — measured over 1,824
+    /// generated shapes, because a charset that looked about right was wrong
+    /// each way, and a first fix that checked only the host was wrong again.
     func testTheAuthorityMatchesWhatGoAccepts() {
-        // Refused there and here: userinfo leaves the host empty, a malformed
-        // escape is invalid, an escape naming an ASCII byte is not allowed in a
-        // host, and a space is not a host character.
+        // Refused there, so refused here. Userinfo leaves the host empty; a
+        // malformed escape, a space or a control refuses the gid wherever it
+        // sits; an escape naming an ASCII byte is not allowed in a HOST; and a
+        // port is digits or nothing.
         for gid in [
-            "gid://user@/Person/1", "gid://@/Person/1", "gid://bad%zz/Person/1",
-            "gid://a%41b/Person/1", "gid://a b/Person/1", "gid:///Person/1",
+            "gid://user@/Person/1", "gid://@/Person/1", "gid:///Person/1",
+            "gid://bad%zz/Person/1", "gid://bad%zz@bc3/Person/1",
+            "gid://a%41b/Person/1", "gid://a b/Person/1", "gid://a b@bc3/Person/1",
+            "gid://us er@bc3/Person/1", "gid://user%zz:pw@bc3/Person/1",
+            "gid://bc3:notaport/Person/1", "gid://[::1]:x/Person/1",
         ] {
             XCTAssertNil(Mentions.personId(fromGlobalId: gid), gid)
         }
-        // Accepted there, so accepted here — a conservative allowlist refused
-        // every one of these, and each is a mention Go reads and we would not.
+        // Accepted there, so accepted here — each one a mention Go reads that a
+        // conservative allowlist would have thrown away.
         for gid in [
             "gid://bc3/Person/1", "gid://b%C3%A9c3/Person/1", "gid://a%25b/Person/1",
             "gid://a\"b/Person/1", "gid://a<b/Person/1", "gid://a>b/Person/1",
-            "gid://a]b/Person/1", "gid://bc3:8080/Person/1", "gid://a_b/Person/1",
+            "gid://a]b/Person/1", "gid://a_b/Person/1",
+            "gid://bc3:8080/Person/1", "gid://bc3:/Person/1", "gid://bc3:0/Person/1",
+            "gid://bc3:99999999999/Person/1", "gid://bc3:80:80/Person/1",
+            // An escape naming an ASCII byte is fine in USERINFO, unlike a host.
+            "gid://a%41b@bc3/Person/1", "gid://user:pw@bc3/Person/1",
+            // Go's non-empty test is on the host WITH its port.
+            "gid://:8080/Person/1", "gid://user@:8080/Person/1",
         ] {
             XCTAssertEqual(Mentions.personId(fromGlobalId: gid), 1, gid)
         }
