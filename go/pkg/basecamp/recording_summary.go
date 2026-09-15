@@ -557,19 +557,23 @@ type ttlCache[K comparable, V any] struct {
 	ttl      time.Duration
 	floor    time.Duration
 	maxItems int
+	seq      uint64 // publications so far; stamps entries so eviction order is total
 	entries  map[K]*ttlEntry[V]
 	inflight map[K]*ttlLoad[V]
 	// onWait, when set, runs just before a caller waits on another caller's
-	// load; onReacquire runs just before a waiter goes round again after an
+	// load; onWoken just after that wait ends and before the waiter reads the
+	// result; onReacquire just before a waiter goes round again after an
 	// owner-attributed failure. Test seams: they let a test know a path was
-	// reached rather than guess at it with a sleep.
+	// reached, or hold it there, rather than guess at it with a sleep.
 	onWait      func()
+	onWoken     func()
 	onReacquire func()
 }
 
 type ttlEntry[V any] struct {
 	value   V
 	fetched time.Time
+	seq     uint64 // publication order: the tie-breaker when fetch times are equal
 }
 
 type ttlLoad[V any] struct {
@@ -639,6 +643,9 @@ func (c *ttlCache[K, V]) get(ctx context.Context, key K, refresh bool, load func
 			case <-pending.done:
 			case <-ctx.Done():
 				return ttlHit[V]{}, ctx.Err()
+			}
+			if c.onWoken != nil {
+				c.onWoken()
 			}
 			if pending.err != nil {
 				// The load ran under the loading caller's context. If that
@@ -736,15 +743,18 @@ func (c *ttlCache[K, V]) publish(key K, pending *ttlLoad[V], loaded V, err error
 		pending.fetched = c.now()
 		c.sweepLocked()
 		c.makeRoomLocked(key)
-		c.entries[key] = &ttlEntry[V]{value: loaded, fetched: pending.fetched}
+		c.seq++
+		c.entries[key] = &ttlEntry[V]{value: loaded, fetched: pending.fetched, seq: c.seq}
 	}
 	close(pending.done)
 }
 
 // makeRoomLocked evicts the oldest-fetched entries until the one about to be
-// stored for key fits under maxItems. Oldest-first is deterministic and is
-// also the right order: the entry nearest its TTL is the one least worth
-// keeping. Caller holds c.mu.
+// stored for key fits under maxItems — oldest by fetch time, and by
+// publication order among equals, so the choice is total rather than
+// whatever map iteration happens to visit first. Oldest-first is also the
+// right order: the entry nearest its TTL is the one least worth keeping.
+// Caller holds c.mu.
 func (c *ttlCache[K, V]) makeRoomLocked(key K) {
 	if c.maxItems <= 0 {
 		return
@@ -756,9 +766,10 @@ func (c *ttlCache[K, V]) makeRoomLocked(key K) {
 		var oldestKey K
 		var oldest time.Time
 		first := true
+		var oldestSeq uint64
 		for k, e := range c.entries {
-			if first || e.fetched.Before(oldest) {
-				oldestKey, oldest, first = k, e.fetched, false
+			if first || e.fetched.Before(oldest) || (e.fetched.Equal(oldest) && e.seq < oldestSeq) {
+				oldestKey, oldest, oldestSeq, first = k, e.fetched, e.seq, false
 			}
 		}
 		delete(c.entries, oldestKey)
