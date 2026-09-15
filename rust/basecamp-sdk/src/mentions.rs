@@ -51,6 +51,7 @@
 //! layout `{"gid" => gid, "purpose" => …, "expires_at" => …}`, and the JSON spelling of
 //! either, which Rails' JSON message serializer emits.
 
+use std::borrow::Cow;
 use std::collections::HashSet;
 
 use serde_json::Value;
@@ -348,7 +349,8 @@ fn leading_block_end(content: &str) -> Option<usize> {
     None
 }
 
-/// The longest name in [`VERDICT_RELEVANT_ENTITIES`], plus `&` and `;`. Matching is
+/// The longest name in [`VERDICT_RELEVANT_ENTITIES`] — `NonBreakingSpace;`, whose `;` is
+/// part of the name. The leading `&` is accounted for separately in [`entity_at`]. Matching is
 /// longest-first over that table rather than "consume the run of name characters", because
 /// Go matches against its table the same way — which is what makes `&nbspBAh7…` resolve
 /// there. A greedy name read swallows `nbspBAh7…` whole, matches nothing, and loses the
@@ -438,7 +440,7 @@ fn unescape(value: &str) -> String {
         out.push_str(&rest[..start]);
         rest = &rest[start..];
         if let Some((decoded, length)) = entity_at(rest) {
-            out.push_str(decoded);
+            out.push_str(&decoded);
             rest = &rest[length..];
         } else {
             out.push('&');
@@ -451,7 +453,7 @@ fn unescape(value: &str) -> String {
 
 /// The character reference at the start of `rest` (which begins with `&`), and how many
 /// bytes it occupies.
-fn entity_at(rest: &str) -> Option<(&'static str, usize)> {
+fn entity_at(rest: &str) -> Option<(Cow<'static, str>, usize)> {
     if let Some(body) = rest.strip_prefix("&#") {
         return numeric_entity(body);
     }
@@ -478,7 +480,7 @@ fn entity_at(rest: &str) -> Option<(&'static str, usize)> {
             .iter()
             .find(|(candidate, _)| *candidate == name)
         {
-            return Some((decoded, 1 + length));
+            return Some((Cow::Borrowed(*decoded), 1 + length));
         }
     }
     None
@@ -495,7 +497,7 @@ fn entity_at(rest: &str) -> Option<(&'static str, usize)> {
 /// connector admits events by.
 ///
 /// Read off `html.UnescapeString` by probing all thirty-two, not off a spec: the two are not
-/// interchangeable here, and four of the thirty-two (0x81, 0x8D, 0x8F, 0x90, 0x9D) map to
+/// interchangeable here, and five of the thirty-two (0x81, 0x8D, 0x8F, 0x90, 0x9D) map to
 /// themselves while the rest do not.
 const C1_REPLACEMENTS: [char; 32] = [
     '\u{20ac}', '\u{81}', '\u{201a}', '\u{192}', '\u{201e}', '\u{2026}', '\u{2020}', '\u{2021}',
@@ -528,7 +530,7 @@ fn numeric_scalar(code: u32) -> char {
 ///
 /// Read off the real function by probing it. Nobody would derive this from its source, and a
 /// port that counts digits gets `&#9;` wrong in the vanishing direction.
-fn numeric_entity(body: &str) -> Option<(&'static str, usize)> {
+fn numeric_entity(body: &str) -> Option<(Cow<'static, str>, usize)> {
     let (radix, digits, prefix) = match body.strip_prefix(['x', 'X']) {
         Some(hex) => (16, hex, 3usize),
         None => (10, body, 2usize),
@@ -541,31 +543,20 @@ fn numeric_entity(body: &str) -> Option<(&'static str, usize)> {
     if consumed <= 3 || (taken == 0 && (radix == 10 || semicolon == 0)) {
         return None;
     }
-    // A value too large to hold is the replacement character, as an out-of-range one is.
-    let code = u32::from_str_radix(&digits[..taken], radix).unwrap_or(0x0011_0000);
-    Some((leak_char(numeric_scalar(code)), consumed))
-}
-
-/// A decoded scalar as a `&'static str`, so both entity paths answer one type. The set of
-/// distinct characters a numeric reference can yield is bounded by Unicode, and the cache
-/// only ever grows to what a document actually used.
-fn leak_char(character: char) -> &'static str {
-    use std::collections::HashMap;
-    use std::sync::{Mutex, OnceLock};
-    static CACHE: OnceLock<Mutex<HashMap<char, &'static str>>> = OnceLock::new();
-    let cache = CACHE.get_or_init(|| Mutex::new(HashMap::new()));
-    let mut cache = cache
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner);
-    cache.entry(character).or_insert_with(|| {
-        let mut buffer = [0u8; 4];
-        Box::leak(
-            character
-                .encode_utf8(&mut buffer)
-                .to_string()
-                .into_boxed_str(),
-        )
-    })
+    // Go accumulates into a `rune`, which is an `int32`, and lets it WRAP — the value is
+    // the low 32 bits, and the C1, surrogate and out-of-range checks then run on that. So
+    // `&#x100000041;` is "A" there, not a replacement character. Mirrored rather than
+    // clamped, because clamping only ever loses a mention: it can never name someone Go
+    // does not, but it can miss someone Go finds.
+    let mut accumulator: i32 = 0;
+    let radix = i32::try_from(radix).ok()?;
+    for digit in digits[..taken].chars() {
+        let value = i32::try_from(digit.to_digit(36)?).ok()?;
+        accumulator = accumulator.wrapping_mul(radix).wrapping_add(value);
+    }
+    #[allow(clippy::cast_sign_loss)] // the wrap is the point: this is Go's rune
+    let code = accumulator as u32;
+    Some((Cow::Owned(numeric_scalar(code).to_string()), consumed))
 }
 
 /// The global id string an sgid's envelope carries.
@@ -642,23 +633,27 @@ fn envelope_gid(payload: &str) -> Option<String> {
         .map(str::to_string)
 }
 
-/// A `GlobalID`'s model and raw id, read the way `net/url` reads it — which is the parser
-/// the reference implementation uses, so its answers are the contract.
+/// A `GlobalID`'s model and raw id, read the way `net/url` reads it — the parser the
+/// reference implementation uses, so its answers are the contract.
 ///
-/// Three of its behaviours have to be reproduced deliberately, because a hand-rolled split
-/// gets each of them wrong in a way that matters:
+/// The authority is where a hand-rolled split goes wrong, and it goes wrong in the
+/// accepting direction, on a helper a connector admits events by. Every rule below was
+/// measured against `url.Parse` rather than derived from RFC 3986, because the two differ:
 ///
-/// - The scheme is ASCII case-insensitive (`GID://` parses).
-/// - The path is percent-DECODED before it is read, so `gid://bc3/Person/%37%37` names
-///   person 77.
-/// - The authority is validated. `gid:// /Person/77` is not a URL at all — a space is
-///   illegal in a host — and Go refuses it. Splitting on the first `/` instead would read
-///   `" "` as the host and name person 77 that Go names nobody for, which is the dangerous
-///   direction for a helper a connector admits events by.
+/// - The scheme is ASCII case-insensitive.
+/// - The path is percent-DECODED before it is read, so `gid://bc3/Person/%37%37` names 77.
+/// - Userinfo before the last `@` is dropped, but only after being VALIDATED. `u s@bc3` and
+///   `é@bc3` are parse errors, not hosts called `bc3`.
+/// - What `u.Host` holds INCLUDES the port, so `gid://:8080/…` has a non-empty host and
+///   resolves; stripping the port before the emptiness check refuses what Go accepts.
+/// - A bracketed literal must really be one: the brackets are matched from the FRONT, the
+///   content must parse as an IPv6 address and not as IPv4, and a `[` anywhere else is an
+///   error. `[bad]`, `[192.0.2.1]` and `bc3[` are all refused.
+/// - The host's character set is an ALLOWLIST. `<`, `"` and `;` are legal in a host; `^`,
+///   `` ` ``, `{`, `|` and `}` are not.
 ///
-/// The query and the fragment are cut FIRST, before the authority, because that is where
-/// they begin: in `gid://bc3?x/Person/77` the `?` ends the host and everything after it is
-/// the query, so the URL has no path at all.
+/// The query and the fragment are cut first, before the authority, because that is where
+/// they begin: in `gid://bc3?x/Person/77` the `?` ends the host and the URL has no path.
 fn parse_global_id(gid: &str) -> Option<(String, String)> {
     // A URL parser refuses a control byte anywhere up to the fragment, whatever part it
     // lands in, so that check comes before the URL is taken apart at all.
@@ -672,8 +667,8 @@ fn parse_global_id(gid: &str) -> Option<(String, String)> {
     let after_scheme = strip_scheme(gid)?;
     let authority_and_path = after_scheme.split(['?', '#']).next().unwrap_or_default();
     let (authority, path) = authority_and_path.split_once('/')?;
-    let host = authority_host(authority)?;
-    if host.is_empty() || !is_valid_host(host) {
+    let host = parse_authority(authority)?;
+    if host.is_empty() {
         return None;
     }
     let path = percent_decode(path)?;
@@ -694,41 +689,177 @@ fn strip_scheme(gid: &str) -> Option<&str> {
     scheme.eq_ignore_ascii_case("gid").then_some(rest)
 }
 
-/// The host an authority names: userinfo before the LAST `@` is dropped, and an optional
-/// port after the last `:` must be digits — a URL parser refuses `bc3:xx` outright rather
-/// than reading it as a host.
-///
-/// A percent-escape ANYWHERE in the authority is refused, which is measured rather than
-/// assumed: `net/url` answers `invalid URL escape` for every one of `%63`, `%2D`, `%41` and
-/// a bare `%` in a host, so there is no escape it accepts and nothing to decode. Decoding
-/// and then validating would be the natural design and is wrong in the accepting direction
-/// — it lets `b%63%33` through as `bc3`, naming a person Go names nobody for.
-fn authority_host(authority: &str) -> Option<&str> {
-    if authority.contains('%') {
-        return None;
-    }
-    let host = match authority.rfind('@') {
-        Some(at) => &authority[at + 1..],
-        None => authority,
-    };
-    match host.rfind(':') {
-        // A bracketed IPv6 literal's colons are inside the brackets.
-        Some(colon) if !host.ends_with(']') => {
-            let port = &host[colon + 1..];
-            port.bytes()
-                .all(|byte| byte.is_ascii_digit())
-                .then(|| &host[..colon])
+/// The host an authority names, as `u.Host` holds it: userinfo validated and dropped, the
+/// port kept, the rest percent-unescaped.
+fn parse_authority(authority: &str) -> Option<String> {
+    match authority.rfind('@') {
+        Some(at) => {
+            if !valid_userinfo(&authority[..at]) {
+                return None;
+            }
+            parse_host(&authority[at + 1..])
         }
-        _ => Some(host),
+        None => parse_host(authority),
     }
 }
 
-/// Whether a decoded host is one a URL parser would accept: no space, no control character,
-/// and none of the delimiters that would have ended the authority.
-fn is_valid_host(host: &str) -> bool {
-    !host.bytes().any(|byte| {
-        byte <= b' ' || byte == 0x7f || matches!(byte, b'/' | b'?' | b'#' | b'@' | b'\\')
+/// Userinfo's own allowlist, which is wider than the host's: alphanumerics plus
+/// `-._:~!$&'()*+,;=%@`. Anything else — a space, a quote, any non-ASCII — is a parse error
+/// rather than something to discard.
+fn valid_userinfo(userinfo: &str) -> bool {
+    // Userinfo is unescaped as well as validated, so a `%` that does not introduce two hex
+    // digits is a parse error rather than a literal percent.
+    let bytes = userinfo.as_bytes();
+    for (index, byte) in bytes.iter().enumerate() {
+        if *byte == b'%'
+            && !userinfo
+                .get(index + 1..index + 3)
+                .is_some_and(|hex| hex.bytes().all(|byte| byte.is_ascii_hexdigit()))
+        {
+            return false;
+        }
+    }
+    userinfo.bytes().all(|byte| {
+        byte.is_ascii_alphanumeric()
+            || matches!(
+                byte,
+                b'-' | b'.'
+                    | b'_'
+                    | b':'
+                    | b'~'
+                    | b'!'
+                    | b'$'
+                    | b'&'
+                    | b'\''
+                    | b'('
+                    | b')'
+                    | b'*'
+                    | b'+'
+                    | b','
+                    | b';'
+                    | b'='
+                    | b'%'
+                    | b'@'
+            )
     })
+}
+
+/// A host, with its optional port, validated and unescaped as `parseHost` does.
+fn parse_host(host: &str) -> Option<String> {
+    if let Some(rest) = host.strip_prefix('[') {
+        let close = host.rfind(']')?;
+        if !valid_optional_port(&host[close + 1..]) {
+            return None;
+        }
+        // RFC 6874: `%25` introduces a zone identifier, and the zone may escape freely — so
+        // a literal carrying one is not validated as an address at all, which is what Go
+        // does and is measurable (`[::1%25eth0]` parses).
+        if let Some(zone) = host[..close].find("%25") {
+            let head = unescape_host(&host[..zone])?;
+            let middle = unescape_host(&host[zone..close])?;
+            let tail = unescape_host(&host[close..])?;
+            return Some(format!("{head}{middle}{tail}"));
+        }
+        let literal = &rest[..close - 1];
+        let address: std::net::IpAddr = literal.parse().ok()?;
+        if address.is_ipv4() {
+            return None; // an IPv4 address in brackets is not an IP-literal
+        }
+    } else {
+        if host.contains('[') {
+            return None; // a bracket anywhere but the front is not a literal
+        }
+        if let Some(colon) = host.rfind(':')
+            && !valid_optional_port(&host[colon..])
+        {
+            return None;
+        }
+    }
+    unescape_host(host)
+}
+
+/// `validOptionalPort`: empty, or a `:` followed by digits only.
+fn valid_optional_port(port: &str) -> bool {
+    match port.strip_prefix(':') {
+        None => port.is_empty(),
+        Some(digits) => digits.bytes().all(|byte| byte.is_ascii_digit()),
+    }
+}
+
+/// Percent-unescapes a host and enforces its allowlist.
+///
+/// The escape rule is the surprising half, and the blanket refusal this replaces was built
+/// on too small a sample: an escape is refused only when its first hex digit is BELOW 8 and
+/// the triple is not `%25`. So `%63` is an error while `%80`, `%C3%A9` and `%25` are not —
+/// a host may percent-encode its non-ASCII bytes, and `%25` is how a literal `%` is written.
+fn unescape_host(host: &str) -> Option<String> {
+    let bytes = host.as_bytes();
+    let mut out = Vec::with_capacity(bytes.len());
+    let mut pos = 0usize;
+    while pos < bytes.len() {
+        match bytes[pos] {
+            b'%' => {
+                let triple = host.get(pos..pos + 3)?;
+                let hex = &triple[1..];
+                let value = u8::from_str_radix(hex, 16).ok()?;
+                if !hex.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+                    return None;
+                }
+                if unhex(bytes[pos + 1]) < 8 && triple != "%25" {
+                    return None;
+                }
+                out.push(value);
+                pos += 3;
+            }
+            byte if byte < 0x80 && !allowed_in_host(byte) => return None,
+            byte => {
+                out.push(byte);
+                pos += 1;
+            }
+        }
+    }
+    // A host is a byte string, not text: `%80` is a legal escape and decodes to a byte no
+    // UTF-8 sequence starts with. Only its EMPTINESS is read afterwards, so it is rendered
+    // lossily rather than refused — refusing would lose a host Go keeps.
+    Some(String::from_utf8_lossy(&out).into_owned())
+}
+
+fn unhex(byte: u8) -> u8 {
+    match byte {
+        b'0'..=b'9' => byte - b'0',
+        b'a'..=b'f' => byte - b'a' + 10,
+        b'A'..=b'F' => byte - b'A' + 10,
+        _ => 255,
+    }
+}
+
+/// The ASCII bytes a host may carry unescaped. An allowlist, not a denylist: `<`, `"` and
+/// `;` are in it and `^`, `` ` ``, `{`, `|`, `}` are not, which a denylist gets backwards.
+fn allowed_in_host(byte: u8) -> bool {
+    byte.is_ascii_alphanumeric()
+        || matches!(
+            byte,
+            b'-' | b'_'
+                | b'.'
+                | b'~'
+                | b'!'
+                | b'$'
+                | b'&'
+                | b'\''
+                | b'('
+                | b')'
+                | b'*'
+                | b'+'
+                | b','
+                | b';'
+                | b'='
+                | b':'
+                | b'['
+                | b']'
+                | b'<'
+                | b'>'
+                | b'"'
+        )
 }
 
 /// Percent-decodes a URL path, refusing a truncated or non-hex escape as a parser would.
@@ -743,6 +874,9 @@ fn percent_decode(path: &str) -> Option<String> {
     while pos < bytes.len() {
         if bytes[pos] == b'%' {
             let hex = path.get(pos + 1..pos + 3)?;
+            if !hex.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+                return None;
+            }
             out.push(u8::from_str_radix(hex, 16).ok()?);
             pos += 3;
         } else {
@@ -1024,6 +1158,41 @@ mod tests {
             // byte reaches the parser rather than breaking the envelope around it.
             (r"gid://bc3/Person/77?\u0001", None),
             (r"gid://bc3/Person/77#\u0001", Some(77)),
+            // Userinfo is VALIDATED, not merely discarded: its own allowlist is wider than
+            // the host's, but a space, a non-ASCII byte or a malformed escape is a parse
+            // error rather than something to drop.
+            ("gid://user:pw@bc3/Person/77", Some(77)),
+            ("gid://%40@bc3/Person/77", Some(77)),
+            ("gid://u s@bc3/Person/77", None),
+            ("gid://u%s@bc3/Person/77", None),
+            // A bracketed literal must really be one: matched from the FRONT, parsed as an
+            // address, and refused if it is IPv4. A `[` anywhere else is not a literal.
+            ("gid://[::1]/Person/77", Some(77)),
+            ("gid://[::1]:80/Person/77", Some(77)),
+            ("gid://[::1%25eth0]/Person/77", Some(77)),
+            ("gid://[bad]/Person/77", None),
+            ("gid://[192.0.2.1]/Person/77", None),
+            ("gid://[::1/Person/77", None),
+            ("gid://bc3[/Person/77", None),
+            ("gid://a:1]/Person/77", None),
+            // The host is what `u.Host` holds, which INCLUDES the port — so an empty name
+            // with a port is not an empty host.
+            ("gid://:8080/Person/77", Some(77)),
+            ("gid://:/Person/77", Some(77)),
+            // An escape is refused only when its first hex digit is below 8 and the triple
+            // is not `%25`. A blanket refusal loses every one of these.
+            ("gid://%25/Person/77", Some(77)),
+            ("gid://bc%80/Person/77", Some(77)),
+            ("gid://%C3%A9/Person/77", Some(77)),
+            ("gid://%bc3/Person/77", Some(77)),
+            ("gid://b%63%33/Person/77", None),
+            ("gid://bc3%/Person/77", None),
+            // The host's character set is an allowlist, and these four are on opposite
+            // sides of it from what a denylist would guess.
+            ("gid://b<3/Person/77", Some(77)),
+            ("gid://b;3/Person/77", Some(77)),
+            ("gid://b^3/Person/77", None),
+            ("gid://b|3/Person/77", None),
             ("gid://bc3/Person/77", Some(77)),
             // The path is percent-decoded before it is read.
             ("gid://bc3/Person/%37%37", Some(77)),
@@ -1098,6 +1267,13 @@ mod tests {
             ("&#x;", "\u{fffd}"),
             ("&#;", "&#;"),
             ("&#1114111;", "\u{10ffff}"),
+            // A value past 2^32 WRAPS, because Go accumulates into an int32 and the range
+            // checks then run on the wrapped value. Clamping to the replacement character
+            // only ever loses a mention Go finds.
+            ("&#x100000041;", "A"),
+            ("&#4294967361;", "A"),
+            ("&#x100000020;", " "),
+            ("&#x10000000000000041;", "A"),
             // An unknown entity is left verbatim, in Go too.
             ("&unknownthing;", "&unknownthing;"),
             ("&", "&"),
@@ -1614,6 +1790,82 @@ mod tests {
             index += 1;
         }
         out
+    }
+
+    /// A non-ASCII space at one end and a stray character in the digest half — the shape
+    /// that broke a sibling port, where the trim chose its alphabet from whether the WHOLE
+    /// value was well-formed and so fell back to ASCII when anything anywhere was not.
+    ///
+    /// Rust cannot reach the byte-level version of that: `person_id_from_sgid` takes a
+    /// `&str`, so an ill-formed byte cannot be handed to it, and the one
+    /// `from_utf8_lossy` on this path slices a `&str` at ASCII quote boundaries, where the
+    /// result is already well-formed and nothing is ever substituted. `str::trim` decodes a
+    /// character from each end independently, as Go's `TrimSpace` does, and the two agree
+    /// on every separator here.
+    ///
+    /// Measured against the Go function over 224 cases — twenty-four space characters in
+    /// seven positions, and seven non-space characters each paired with five different
+    /// leading spaces — with every case base64-framed, because a corpus written one case
+    /// per line silently splits the ones containing U+000A, U+000D, U+2028 or U+2029 and
+    /// reports a clean run it never actually made.
+    #[test]
+    fn a_space_at_one_end_and_a_stray_in_the_digest_agree_with_go() {
+        const ANNIE: i64 = 1_049_715_915;
+        let payload = ANNIE_SGID.split("--").next().unwrap().to_string();
+        let digest = ANNIE_SGID.split("--").nth(1).unwrap().to_string();
+        let signed = |lead: &str, stray: &str| {
+            format!("{lead}{payload}--{}{stray}{}", &digest[..10], &digest[10..])
+        };
+
+        // A space at an end is trimmed and the payload decodes, whatever sits in the
+        // digest — the separator throws that half away.
+        for lead in ["\u{20}", "\u{a0}", "\u{2009}", "\u{3000}", "\u{85}"] {
+            for stray in ["\u{fffd}", "\u{200b}", "\u{feff}", "\u{b7}"] {
+                assert_eq!(
+                    person_id_from_sgid(&signed(lead, stray)),
+                    Some(ANNIE),
+                    "lead {lead:?} stray {stray:?}"
+                );
+            }
+        }
+
+        // Every separator Go trims, this trims: the ASCII set, NEL, the line separators,
+        // and the Unicode spaces.
+        for space in [
+            "\u{20}", "\u{9}", "\u{a}", "\u{d}", "\u{b}", "\u{c}", "\u{85}", "\u{a0}", "\u{1680}",
+            "\u{2000}", "\u{2009}", "\u{200a}", "\u{202f}", "\u{205f}", "\u{3000}", "\u{2028}",
+            "\u{2029}",
+        ] {
+            assert_eq!(
+                person_id_from_sgid(&format!("{space}{ANNIE_SGID}")),
+                Some(ANNIE),
+                "leading {space:?}"
+            );
+            assert_eq!(
+                person_id_from_sgid(&format!("{space}{ANNIE_SGID}{space}")),
+                Some(ANNIE),
+                "both ends {space:?}"
+            );
+        }
+
+        // A non-space at an end is NOT trimmed, so it stays in the payload and names
+        // nobody — including the replacement character, which a lossy decode would have
+        // put there and which must not be mistaken for a separator.
+        for stray in ["\u{fffd}", "\u{200b}", "\u{2060}", "\u{feff}", "\u{b7}"] {
+            assert_eq!(
+                person_id_from_sgid(&format!("{stray}{ANNIE_SGID}")),
+                None,
+                "leading {stray:?}"
+            );
+        }
+
+        // And a space between the padding and the separator still names nobody: the trim
+        // cannot reach it, and it blocks the padding strip.
+        assert_eq!(person_id_from_sgid(&signed("", "")), Some(ANNIE));
+        assert_eq!(
+            person_id_from_sgid(&format!("{payload}\u{a0}--{digest}")),
+            None
+        );
     }
 
     /// The other half of the same rule, and the half a defensive port gets wrong: Go trims
