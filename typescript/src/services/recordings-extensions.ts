@@ -856,6 +856,16 @@ class CampfireIndex {
         // every Campfire in it, including the healthy entries beside it.
         const listedBucketId = wireInteger(bucket.id, "campfire listing bucket");
         if (listedBucketId === 0) continue;
+        // Unreachable while `summarize` refuses a caller `bucketId` past 2^53:
+        // every rounded value above that is itself above MAX_SAFE_INTEGER, so
+        // it can never equal a safe id and the filter below already drops it.
+        // Stated here anyway, because the property it rests on lives in another
+        // method — and reverting this line is behaviour-neutral, which the
+        // guard-checking harness records as such rather than as a gap. What
+        // makes it worth stating: rounding is not injective, so two int64
+        // buckets can land on one double, and a key built from one would offer
+        // another project's Campfire as a candidate.
+        if (!Number.isSafeInteger(listedBucketId)) continue;
         const ids = byBucket.get(listedBucketId);
         if (ids === undefined) byBucket.set(listedBucketId, [campfireId]);
         else ids.push(campfireId);
@@ -912,6 +922,13 @@ class CampfireListingOverflow extends Error {
  * the upper bound is 2^53, not int64, which is the same limit SPEC §19 waives for this SDK: an id
  * past it cannot be held without rounding it into a different id, so refusing
  * it is the honest answer even though Go decodes it.
+ *
+ * The int64 window's own two ends are not symmetric after rounding, and the
+ * message says so rather than pretending otherwise: 9223372036854775808 rounds
+ * to exactly 2^63 and is refused, while -9223372036854775809 — a decode error
+ * in Go — rounds to exactly -2^63, a legal value, and nothing at this layer can
+ * tell the two apart. One end is measurable after JSON.parse and the other is
+ * not.
  */
 /**
  * The body of a routed read, refused when it is not a recording object.
@@ -1196,7 +1213,20 @@ export class RecordingsService extends GeneratedRecordingsService {
    * ```
    */
   async summarize(ref: RecordingRef): Promise<RecordingSummary> {
-    if (!Number.isInteger(ref.bucketId) || ref.bucketId <= 0 || !Number.isInteger(ref.recordingId) || ref.recordingId <= 0) {
+    // `isSafeInteger`, not `isInteger`: every rule downstream of this — the
+    // listing's bucket filter, the cross-project check — decides by comparing
+    // this number to one that arrived through JSON.parse, and a caller id past
+    // 2^53 has already been rounded before it reaches here. Two int64 buckets
+    // can round onto one double, so the comparisons would be answering about a
+    // value neither side actually holds. Refusing it is the honest end of SPEC
+    // waiver 1B.6, and it is a usage error because the caller, not the server,
+    // supplied it.
+    if (
+      !Number.isSafeInteger(ref.bucketId) ||
+      ref.bucketId <= 0 ||
+      !Number.isSafeInteger(ref.recordingId) ||
+      ref.recordingId <= 0
+    ) {
       throw Errors.usage("bucket id and recording id are required");
     }
     const kind = routeRecording(ref);
@@ -1246,7 +1276,19 @@ export class RecordingsService extends GeneratedRecordingsService {
     // the SDK documents into a failed read, and would be this port's policy
     // wearing the reference's shape.
     const readBucketId = wireInteger(summary.bucket?.id, "the recording read's bucket");
-    if (readBucketId !== 0 && readBucketId !== ref.bucketId) {
+    // `!Number.isSafeInteger` is a MISMATCH, not a pass — and, like the listing
+    // filter, unreachable while `ref.bucketId` must itself be a safe integer,
+    // since a rounded value above 2^53 cannot equal one below it. The fix for
+    // the defect is the check in `summarize`, not this clause; this states the
+    // same fact where the comparison happens, and a revert of it is
+    // behaviour-neutral.
+    //
+    // The defect: this used to compare the rounded values, with a comment
+    // arguing they "round identically, so the comparison still means
+    // something". It does not. Rounding is not injective, and a recording from
+    // bucket 2^53+1 came back as a MATCH for a request against 2^53 — the one
+    // thing this check exists to prevent, argued for in prose.
+    if (readBucketId !== 0 && (!Number.isSafeInteger(readBucketId) || readBucketId !== ref.bucketId)) {
       throw new BucketMismatchError(ref, readBucketId);
     }
     return summary;
@@ -1641,13 +1683,29 @@ function projectRecording(
     // the zero instant rather than as "".
     updated_at: recordingInstant(recording.updated_at),
   };
-  if (nested.parent) summary.parent = nested.parent;
+  // Each nested identity through the same gate as the bucket, and for the same
+  // reason the sweep gave when it stopped at the bucket: measured through
+  // generated.Comment and generated.Todo, a number, a string, a boolean or an
+  // array in any of these slots is a decode error, while null and {} are the
+  // zero value. Two of the four had no rule at all, three lines from the one
+  // that did — the sweep stopped one field short of where it said it stopped.
+  const parent = nestedIdentity(nested.parent, "a recording parent");
+  if (parent !== undefined) summary.parent = parent;
   // Assigned when PRESENT, not when truthy: a falsy non-object (0, false, "")
   // is a decode error in Go, and dropping the key here hid it from the
   // cross-project check, which then found nothing to disagree with.
   if (nested.bucket !== undefined && nested.bucket !== null) summary.bucket = nested.bucket;
-  if (nested.creator) summary.creator = nested.creator;
-  if (nested.assignees && nested.assignees.length > 0) summary.assignees = nested.assignees;
+  const creator = nestedIdentity(nested.creator, "a recording creator");
+  if (creator !== undefined) summary.creator = creator;
+  // `assignees` is a LIST of them: Go refuses a non-array and a non-object
+  // element, and takes null as the nil slice. Go's own `omitempty` is why an
+  // empty list is dropped rather than emitted.
+  const assignees = (nested.assignees as unknown) === undefined || nested.assignees === null
+    ? []
+    : sourceItems(nested.assignees, "a recording assignees list").map(
+        (assignee) => nestedIdentity(assignee, "a recording assignee") as NonNullable<typeof nested.assignees>[number],
+      );
+  if (assignees.length > 0) summary.assignees = assignees;
   return summary;
 }
 
@@ -1682,7 +1740,11 @@ function firstNonEmpty(what: string, ...values: (string | undefined)[]): string 
  */
 /** Go's zero `time.Time`, which is what it marshals for an absent instant. */
 const ZERO_INSTANT = "0001-01-01T00:00:00Z";
-const RFC3339 = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/;
+// Measured against Go's decoder rather than read off RFC 3339: the fraction may
+// be separated by a COMMA as well as a dot (`…05,5Z` decodes, and re-marshals
+// as `.5`), and the offset's own range is wider than a clock — hour 00 to 24
+// and minute 00 to 60 are all accepted, 25 and 61 are not.
+const RFC3339 = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:[.,]\d+)?(?:Z|([+-])(\d{2}):(\d{2}))$/;
 
 /**
  * The instant a routed read carries, refused when it is not one.
@@ -1706,17 +1768,32 @@ function recordingInstant(value: unknown): string {
   const text = recordingText(value, "a recording updated_at");
   const parts = RFC3339.exec(text);
   if (parts !== null) {
-    const [, year, month, day, hour, minute, second] = parts.map(Number) as number[];
+    const year = Number(parts[1]);
+    const month = Number(parts[2]);
+    const day = Number(parts[3]);
+    const hour = Number(parts[4]);
+    const minute = Number(parts[5]);
+    const second = Number(parts[6]);
+    const offsetHour = parts[8] === undefined ? 0 : Number(parts[8]);
+    const offsetMinute = parts[9] === undefined ? 0 : Number(parts[9]);
     // The shape is not enough: 2024-02-30 and 25:04 match it and Go refuses
-    // them. A UTC round-trip is what rejects a date the calendar does not have.
-    const at = new Date(Date.UTC(year!, month! - 1, day!, hour!, minute!, second!));
+    // them. A UTC round-trip is what rejects a date the calendar does not have
+    // — with `setUTCFullYear` after it, because `Date.UTC(1, …)` means 1901,
+    // not year 1, and the two-digit-year mapping made this refuse
+    // "0001-01-01T00:00:00Z": THE ZERO INSTANT, the value Go marshals for an
+    // absent time and the one this very function returns for a null. It was not
+    // idempotent on its own output.
+    const at = new Date(Date.UTC(2000, month - 1, day, hour, minute, second));
+    at.setUTCFullYear(year);
     if (
       at.getUTCFullYear() === year &&
-      at.getUTCMonth() === month! - 1 &&
+      at.getUTCMonth() === month - 1 &&
       at.getUTCDate() === day &&
       at.getUTCHours() === hour &&
       at.getUTCMinutes() === minute &&
-      at.getUTCSeconds() === second
+      at.getUTCSeconds() === second &&
+      offsetHour <= 24 &&
+      offsetMinute <= 60
     ) {
       return text;
     }
@@ -1726,6 +1803,22 @@ function recordingInstant(value: unknown): string {
     undefined,
     { retryable: false, hint: "the response is malformed; the recording cannot be summarized from it" },
   );
+}
+
+/**
+ * A nested identity the projection carries verbatim, or `undefined` for Go's
+ * zero value. A shape Go's decoder refuses fails the read here too.
+ */
+function nestedIdentity<T>(value: T, what: string): T | undefined {
+  if (value === undefined || value === null) return undefined;
+  if (typeof value !== "object" || Array.isArray(value)) {
+    throw Errors.apiError(
+      truncateErrorMessage(`${what} is ${describeWireValue(value)} rather than an object`),
+      undefined,
+      { retryable: false, hint: "the response is malformed; the recording cannot be summarized from it" },
+    );
+  }
+  return value;
 }
 
 function recordingText(value: unknown, what: string): string {

@@ -498,6 +498,116 @@ describe("recordings.summarize", () => {
       expect(summary.id).toBe(9007199254740992); // rounded by JSON.parse, per waiver 1B.6
     });
 
+    it("does not let rounding pass a recording from another project as a match", async () => {
+      // The defect this replaces was argued for in a comment: two ids "round
+      // identically", so comparing the rounded values was said to still mean
+      // something. It does not — rounding is not injective, and 2^53+1 and 2^53
+      // are one bucket apart and the same double. A recording from bucket
+      // …993 came back as a MATCH for a request against …992, which is the one
+      // thing this check exists to prevent.
+      //
+      // Go compares int64s, so a read whose bucket id is past 2^53 is a
+      // different bucket there. Saying mismatch here is the same answer.
+      server.use(
+        http.get(`${BASE_URL}/comments/1`, () =>
+          HttpResponse.text(
+            `{"id":1,"title":"t","content":"c","bucket":{"id":9007199254740993,"name":"Other","type":"Project"}}`,
+            { headers: { "content-type": "application/json" } },
+          ),
+        ),
+      );
+
+      const err = await client.recordings
+        .summarize({ bucketId: 9007199254740992, recordingId: 1, recordingType: "Comment" })
+        .catch((e: unknown) => e);
+
+      // The caller's own id is past 2^53 too, so this one is refused before any
+      // read: every rule downstream compares it to a value JSON.parse has
+      // already rounded.
+      expect(err).toBeInstanceOf(BasecampError);
+      expect((err as BasecampError).code).toBe("usage");
+
+      // With a caller id this runtime can hold, the read's rounded bucket is a
+      // mismatch rather than a match.
+      const fresh = createBasecampClient({ accountId: "12345", accessToken: "t", enableRetry: false });
+      server.use(
+        http.get(`${BASE_URL}/comments/1`, () =>
+          HttpResponse.text(
+            `{"id":1,"title":"t","content":"c","bucket":{"id":9007199254740993,"name":"Other","type":"Project"}}`,
+            { headers: { "content-type": "application/json" } },
+          ),
+        ),
+      );
+      const mismatch = await fresh.recordings
+        .summarize({ bucketId: BUCKET, recordingId: 1, recordingType: "Comment" })
+        .catch((e: unknown) => e);
+      expect(mismatch).toBeInstanceOf(BucketMismatchError);
+    });
+
+    it("refuses a nested identity Go's decoder refuses, and reads null as absent", async () => {
+      // The container sweep stopped at `bucket` while `creator`, `parent` and
+      // `assignees` sat three lines away with no rule at all. Measured through
+      // generated.Comment and generated.Todo: a number, a string, a boolean or
+      // an array in any of those slots is a decode error; null and {} are the
+      // zero value.
+      for (const [field, value] of [
+        ["creator", "42"], ["creator", '"nope"'], ["creator", "[1]"], ["creator", "true"],
+        ["parent", "42"], ["parent", '"nope"'], ["parent", "[1]"],
+      ] as const) {
+        const fresh = createBasecampClient({ accountId: "12345", accessToken: "t", enableRetry: false });
+        server.use(
+          http.get(`${BASE_URL}/comments/1`, () =>
+            HttpResponse.text(`{"id":1,"title":"t","content":"c","${field}":${value}}`, {
+              headers: { "content-type": "application/json" },
+            }),
+          ),
+        );
+        const err = await fresh.recordings
+          .summarize({ bucketId: BUCKET, recordingId: 1, recordingType: "Comment" })
+          .catch((e: unknown) => e);
+        expect(err, `${field}=${value}`).toBeInstanceOf(BasecampError);
+        expect((err as BasecampError).code, `${field}=${value}`).toBe("api_error");
+      }
+
+      // A non-array assignees list, and a non-object element in one.
+      for (const value of ["42", '"nope"', "[42]"]) {
+        const fresh = createBasecampClient({ accountId: "12345", accessToken: "t", enableRetry: false });
+        server.use(
+          http.get(`${BASE_URL}/todos/1`, () =>
+            HttpResponse.text(`{"id":1,"title":"t","content":"c","assignees":${value}}`, {
+              headers: { "content-type": "application/json" },
+            }),
+          ),
+        );
+        const err = await fresh.recordings
+          .summarize({ bucketId: BUCKET, recordingId: 1, recordingType: "Todo" })
+          .catch((e: unknown) => e);
+        expect(err, value).toBeInstanceOf(BasecampError);
+        expect((err as BasecampError).code, value).toBe("api_error");
+      }
+
+      // And null in any of them is Go's zero value: the key is omitted, not
+      // emitted as null, which is what `omitempty` does there.
+      const fresh = createBasecampClient({ accountId: "12345", accessToken: "t", enableRetry: false });
+      server.use(
+        http.get(`${BASE_URL}/comments/1`, () =>
+          HttpResponse.text(
+            `{"id":1,"title":"t","content":"c","bucket":null,"creator":null,"parent":null}`,
+            { headers: { "content-type": "application/json" } },
+          ),
+        ),
+      );
+      const summary = await fresh.recordings.summarize({
+        bucketId: BUCKET,
+        recordingId: 1,
+        recordingType: "Comment",
+      });
+      const rendered = JSON.parse(JSON.stringify(summary)) as Record<string, unknown>;
+      expect("bucket" in rendered).toBe(false);
+      expect("creator" in rendered).toBe(false);
+      expect("parent" in rendered).toBe(false);
+    });
+
     it("reads updated_at as the time.Time it is, not as one more string", async () => {
       // Its Go type is not a string, and its rules are not the string rules.
       // Measured through generated.Comment: null is the zero instant and no
@@ -508,7 +618,15 @@ describe("recordings.summarize", () => {
       // timestamp instead of a visibly empty one.
       for (const updated of ['""', '"not-a-date"', '"2024-01-02 03:04:05"', '"2024-02-30T03:04:05Z"',
                              '"2024-01-02t03:04:05Z"', '"2024-01-02T03:04:05z"', '"2024-01-02T25:04:05Z"',
-                             '"2024-01-02T03:04:05+0200"', "42"]) {
+                             '"2024-01-02T03:04:05+0200"', "42",
+                             // The far side of each range the rows above pin:
+                             // one past the offset hour and minute Go allows,
+                             // a year with five digits, a February 29th in a
+                             // common year, and a bare instant with no zone —
+                             // the last of which nothing held before.
+                             '"2024-01-02T03:04:05+25:00"', '"2024-01-02T03:04:05+00:61"',
+                             '"10000-01-01T00:00:00Z"', '"2023-02-29T03:04:05Z"',
+                             '"2024-01-02T03:04:05"', '"2024-01-02T03:04:05.5,5Z"']) {
         const fresh = createBasecampClient({ accountId: "12345", accessToken: "t", enableRetry: false });
         server.use(
           http.get(`${BASE_URL}/comments/1`, () =>
@@ -527,6 +645,23 @@ describe("recordings.summarize", () => {
 
       for (const [updated, expected] of [
         ["null", "0001-01-01T00:00:00Z"],
+        // The zero instant itself, which an earlier version of this rule
+        // REFUSED: `Date.UTC(1, …)` means 1901, so the two-digit-year mapping
+        // rejected the very string the null row above returns. A rule that
+        // cannot accept its own output is wrong on its face, and years 0000
+        // through 0099 went with it.
+        ['"0001-01-01T00:00:00Z"', "0001-01-01T00:00:00Z"],
+        ['"0000-01-01T00:00:00Z"', "0000-01-01T00:00:00Z"],
+        ['"0099-12-31T23:59:59Z"', "0099-12-31T23:59:59Z"],
+        // A COMMA is a legal decimal separator to Go's parser (it re-marshals
+        // it as a dot); refusing it failed a read the reference completes.
+        ['"2024-01-02T03:04:05,5Z"', "2024-01-02T03:04:05,5Z"],
+        // And the offset range is wider than a clock: hour 24 and minute 60
+        // are both accepted there, measured, so this must not "fix" them.
+        ['"2024-01-02T03:04:05+24:00"', "2024-01-02T03:04:05+24:00"],
+        ['"2024-01-02T03:04:05+00:60"', "2024-01-02T03:04:05+00:60"],
+        ['"9999-12-31T23:59:59Z"', "9999-12-31T23:59:59Z"],
+        ['"2024-02-29T03:04:05Z"', "2024-02-29T03:04:05Z"],
         ['"2024-01-02T03:04:05Z"', "2024-01-02T03:04:05Z"],
         ['"2024-01-02T03:04:05.123456789Z"', "2024-01-02T03:04:05.123456789Z"],
         ['"2024-01-02T03:04:05-07:00"', "2024-01-02T03:04:05-07:00"],
@@ -906,9 +1041,14 @@ describe("recordings.summarize", () => {
         .summarize({ bucketId: BUCKET, recordingId: 9, eventType: "chat.line.created" })
         .catch((e: unknown) => e);
 
+      // Order matters: the `kind` assertion below never fired, because the
+      // mutation it was written for fails the `code` assertion first. It is
+      // kept ahead of the code check so it is the one that speaks — what this
+      // row is really about is that a malformed dock does not become the
+      // composite's own "unresolved" verdict.
+      expect((err as { kind?: string }).kind, "a failed read must not become a composite verdict").toBeUndefined();
       expect(err).toBeInstanceOf(BasecampError);
       expect((err as BasecampError).code).toBe("api_error");
-      expect((err as { kind?: string }).kind).toBeUndefined(); // not a composite verdict
     });
 
     it("refuses a listing entry whose bucket is not an object, rather than dropping it", async () => {
@@ -1239,7 +1379,19 @@ describe("recordings.summarize", () => {
       // project read with them. (`null` is the one that decodes, to 0, and the
       // test above covers it.) A fraction reaching the search would have issued
       // GET /chats/1.5/lines/{id}; a `true` reaching it, GET /chats/true/....
-      for (const badId of [true, false, "77", 1.5, 1e20, [1], {}]) {
+      // ±2^63 is in this list for the int64 window, whose two ends are not
+      // symmetric after rounding: 9223372036854775808 rounds to exactly 2^63
+      // and is caught, while -9223372036854775809 rounds to exactly -2^63,
+      // which is a legal value, and cannot be told from it here. The first is
+      // pinned; the second is stated in the helper rather than asserted, since
+      // no assertion could distinguish it.
+      // 2^63 is in this list for the int64 window, whose two ends are not
+      // symmetric after rounding: 9223372036854775808 rounds to exactly 2^63
+      // and is caught, while -9223372036854775809 rounds to exactly -2^63,
+      // which is a legal value and cannot be told from it here. The first is
+      // pinned; the second is stated in the helper rather than asserted,
+      // because no assertion could distinguish it.
+      for (const badId of [true, false, "77", 1.5, 1e20, [1], {}, 9223372036854775808]) {
         const fresh = createBasecampClient({ accountId: "12345", accessToken: "t", enableRetry: false });
         server.use(
           http.get(`${BASE_URL}/projects/${BUCKET}`, () =>

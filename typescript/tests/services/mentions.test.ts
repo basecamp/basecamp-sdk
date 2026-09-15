@@ -216,7 +216,15 @@ describe("personIdFromSGID", () => {
     expect(mentionedPersonIds(withAttr("sgid"))).toEqual([VICTOR]);
     expect(mentionedPersonIds(withAttr("SGID"))).toEqual([VICTOR]);
     expect(mentionedPersonIds(withAttr("\u017Fgid"))).toEqual([VICTOR]);
-    expect(mentionedPersonIds(withAttr("SGI\u0044"))).toEqual([VICTOR]);
+    // The table's other half, U+212A KELVIN SIGN onto `k`, is unobservable at
+    // all three call sites — none of `sgid`, `bc-attachment`, `<p` or `<div`
+    // contains a `k` — so it is asserted through the helper's own rule rather
+    // than through a tag, and named here so nobody reads the tag rows as
+    // covering it. (The row this replaces was `"SGI\u0044"`, which is the
+    // string "SGID": byte-identical to the line above it and discriminating
+    // nothing.)
+    expect(mentionedPersonIds(withAttr("s\u212Aid"))).toEqual([]);
+    expect(mentionedPersonIds(`<div><bc-atta\u212Ahment sgid="${sgid}"></bc-attachment></div>`)).toEqual([]);
 
     // And nothing else folds onto it: a Cyrillic ѕ, a sharp s, a full-width s
     // are all different letters to EqualFold, so the tag names nobody.
