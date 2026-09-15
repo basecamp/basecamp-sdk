@@ -505,6 +505,16 @@ describe("recordings.summarize", () => {
       // a different recording and reports it as the one asked for. Reverting
       // that half to `isInteger` left the whole suite green.
       const paths = trackRequests();
+      // Handlers for the ROUNDED ids, so the request-count assertion is what
+      // fails if the guard goes: without them the leaked read dies on MSW's
+      // unhandled-request error and the earlier assertion speaks instead,
+      // which would make the interesting line decorative.
+      server.use(
+        http.get(`${BASE_URL}/comments/9007199254740992`, () =>
+          HttpResponse.json(recording(9007199254740992, "Comment", { content: "" })),
+        ),
+        http.get(`${BASE_URL}/projects/9007199254740992`, () => HttpResponse.json({ id: 1, dock: [] })),
+      );
       for (const ref of [
         { bucketId: BUCKET, recordingId: 9007199254740993, recordingType: "Comment" as const },
         { bucketId: 9007199254740993, recordingId: 1, recordingType: "Comment" as const },
@@ -520,12 +530,16 @@ describe("recordings.summarize", () => {
     });
 
     it("pins the int64 window where nothing else masks it", async () => {
-      // `wireInteger`'s window is masked at the three id sites, because
-      // `numericId`'s safe-integer clause refuses an out-of-range value first;
-      // the row added for it could not tell the two apart. The bucket
-      // cross-check is the one site that calls `wireInteger` alone, so it is
-      // where the window can be pinned: 9223372036854775808 is a decode error
-      // in Go and JSON.parse holds it as exactly 2^63.
+      // `wireInteger`'s window is masked at the three sites that call it through
+      // `numericId`, whose safe-integer clause refuses an out-of-range value
+      // first — which is why the row beside that clause could not tell the two
+      // apart. It is NOT masked everywhere: three call sites reach it directly
+      // (the listing's bucket id, this cross-check, and the projection's own
+      // id), and the listing row already pinned the bound by feeding 1e20,
+      // which the commit that added this row got wrong when it said otherwise.
+      // This keeps a second, narrower pin — 9223372036854775808 is a decode
+      // error in Go and JSON.parse holds it as exactly 2^63 — at the site whose
+      // failure mode is a fabricated verdict rather than a dropped candidate.
       server.use(
         http.get(`${BASE_URL}/comments/1`, () =>
           HttpResponse.text(
@@ -542,6 +556,33 @@ describe("recordings.summarize", () => {
       expect(err).toBeInstanceOf(BasecampError);
       expect((err as BasecampError).code).toBe("api_error");
       expect(err).not.toBeInstanceOf(BucketMismatchError);
+      // The hint names the read that failed. `wireInteger` hard-coded the
+      // discovery wording until now, so this path — a recording read — told the
+      // caller no Campfire could be read from it.
+      expect((err as BasecampError).hint).toContain("recording");
+      expect((err as BasecampError).hint).not.toContain("Campfire");
+
+      // The window's LOWER end, at the same unmasked site. Go refuses -1e20,
+      // and without the clause a bucket id of -1e20 comes back as a
+      // bucket_mismatch naming a bucket that cannot exist — which is what
+      // `wireInteger`'s comment says the window prevents. At the dock this row
+      // would prove nothing: `numericId` refuses it one layer earlier, the same
+      // mask that hid the upper bound.
+      const low = createBasecampClient({ accountId: "12345", accessToken: "t", enableRetry: false });
+      server.use(
+        http.get(`${BASE_URL}/comments/1`, () =>
+          HttpResponse.text(
+            `{"id":1,"title":"t","content":"c","bucket":{"id":-1e20,"name":"B","type":"Project"}}`,
+            { headers: { "content-type": "application/json" } },
+          ),
+        ),
+      );
+      const belowRange = await low.recordings
+        .summarize({ bucketId: BUCKET, recordingId: 1, recordingType: "Comment" })
+        .catch((e: unknown) => e);
+      expect(belowRange).toBeInstanceOf(BasecampError);
+      expect((belowRange as BasecampError).code).toBe("api_error");
+      expect(belowRange).not.toBeInstanceOf(BucketMismatchError);
     });
 
     it("does not let rounding pass a recording from another project as a match", async () => {
@@ -588,6 +629,41 @@ describe("recordings.summarize", () => {
         .summarize({ bucketId: BUCKET, recordingId: 1, recordingType: "Comment" })
         .catch((e: unknown) => e);
       expect(mismatch).toBeInstanceOf(BucketMismatchError);
+    });
+
+    it("names the read that failed in every hint, in both directions", async () => {
+      // The hint was fixed in the container helpers and left wrong one helper
+      // along: `wireInteger` and `numericId` still hard-coded the discovery
+      // wording, so a malformed id on a RECORDING read advised the caller about
+      // Campfires. And only the recording direction was asserted, so the mirror
+      // — a discovery error naming the recording read — could have shipped the
+      // same way.
+      const fresh = createBasecampClient({ accountId: "12345", accessToken: "t", enableRetry: false });
+      server.use(
+        http.get(`${BASE_URL}/comments/1`, () =>
+          HttpResponse.text(`{"id":"1","title":"t","content":"c"}`, {
+            headers: { "content-type": "application/json" },
+          }),
+        ),
+      );
+      const recordingSide = await fresh.recordings
+        .summarize({ bucketId: BUCKET, recordingId: 1, recordingType: "Comment" })
+        .catch((e: unknown) => e);
+      expect((recordingSide as BasecampError).hint).toContain("recording");
+      expect((recordingSide as BasecampError).hint).not.toContain("Campfire");
+
+      const other = createBasecampClient({ accountId: "12345", accessToken: "t", enableRetry: false });
+      server.use(
+        http.get(`${BASE_URL}/projects/${BUCKET}`, () =>
+          HttpResponse.text(`{"id":${BUCKET},"dock":[{"id":"77","name":"chat"}]}`, {
+            headers: { "content-type": "application/json" },
+          }),
+        ),
+      );
+      const discoverySide = await other.recordings
+        .summarize({ bucketId: BUCKET, recordingId: 9, eventType: "chat.line.created" })
+        .catch((e: unknown) => e);
+      expect((discoverySide as BasecampError).hint).toContain("Campfire");
     });
 
     it("refuses a nested identity Go's decoder refuses, and reads null as absent", async () => {
@@ -686,7 +762,11 @@ describe("recordings.summarize", () => {
                              '"2024-1-02T03:04:05Z"', '"2024-01-2T03:04:05Z"',
                              '"2024-01-02T03:4:05Z"', '"2024-01-02T03:04:5Z"',
                              '"2024-01-02T03:04:05+5:30"', '"2024-01-02T03:04:05+05:3"',
-                             '"2024-01-02T003:04:05Z"']) {
+                             '"2024-01-02T003:04:05Z"',
+                             // A separator with no digits after it: Go refuses
+                             // both spellings, and nothing held that until now
+                             // — inside the clause the comment cites as fixed.
+                             '"2024-01-02T03:04:05.Z"', '"2024-01-02T03:04:05,Z"']) {
         const fresh = createBasecampClient({ accountId: "12345", accessToken: "t", enableRetry: false });
         server.use(
           http.get(`${BASE_URL}/comments/1`, () =>
@@ -1448,7 +1528,12 @@ describe("recordings.summarize", () => {
       // 2^63 is in this list for the int64 window, whose two ends are not
       // symmetric after rounding: 9223372036854775808 rounds to exactly 2^63
       // and is caught, while -9223372036854775809 rounds to exactly -2^63,
-      // which is a legal value and cannot be told from it here. Neither end is
+      // which is a legal value and cannot be told from it here. -1e20 pins the
+      // bound itself, which is a different claim from the literal: Go refuses
+      // it, and without the clause a bucket id of -1e20 comes back as a
+      // bucket_mismatch naming a bucket that cannot exist — the exact outcome
+      // `wireInteger`'s own comment says the window prevents. Neither LITERAL
+      // boundary is
       // PINNED at this call site, and the reason is the mask: `numericId`'s
       // safe-integer clause refuses both before `wireInteger`'s window sees
       // them, so a revert of the window alone is invisible here. The row that

@@ -988,10 +988,15 @@ function sourceObject(value: unknown, what: string, hint = DISCOVERY_HINT): Reco
 }
 
 /**
- * The hints these helpers carry. Two, because the same shape check runs on two
- * different reads: a Campfire discovery source, and the recording itself. The
- * projection borrowed the discovery wording for a while, so a malformed
- * `assignees` on a to-do read advised the caller about Campfires.
+ * The hints these helpers carry. Two, because the same shape checks run on two
+ * different reads: a Campfire discovery source, and the recording itself.
+ *
+ * The projection borrowed the discovery wording for a while, so a malformed
+ * `assignees` on a to-do read advised the caller about Campfires. Fixing that in
+ * the container helpers left it unfixed one helper along, in `wireInteger` and
+ * `numericId`, whose recording-side callers went on saying it — which is why
+ * this is a parameter on every one of them rather than a constant inside the
+ * two that were noticed first.
  */
 const DISCOVERY_HINT = "the discovery source's response is malformed; no Campfire can be read from it";
 const RECORDING_HINT = "the response is malformed; the recording cannot be summarized from it";
@@ -1026,7 +1031,7 @@ function sourceItems(value: unknown, what: string, hint = DISCOVERY_HINT): Recor
  */
 const INT64_LIMIT = 2 ** 63;
 
-function wireInteger(value: unknown, what: string): number {
+function wireInteger(value: unknown, what: string, hint = DISCOVERY_HINT): number {
   if (value === undefined || value === null) return 0;
   // The window is Go's int64, measured at both ends: 9223372036854775807 and
   // -9223372036854775808 decode, and one past either is a decode error. An
@@ -1037,25 +1042,19 @@ function wireInteger(value: unknown, what: string): number {
     throw Errors.apiError(
       truncateErrorMessage(`${what} has an id that is not a usable whole number (${describeIdValue(value)})`),
       undefined,
-      {
-        retryable: false,
-        hint: "the discovery source's response is malformed; nothing can be read under that id",
-      },
+      { retryable: false, hint },
     );
   }
   return value;
 }
 
-function numericId(value: unknown, what: string): number {
-  const id = wireInteger(value, what);
+function numericId(value: unknown, what: string, hint = DISCOVERY_HINT): number {
+  const id = wireInteger(value, what, hint);
   if (!Number.isSafeInteger(id)) {
     throw Errors.apiError(
       truncateErrorMessage(`${what} has an id that is not a usable whole number (${describeIdValue(value)})`),
       undefined,
-      {
-        retryable: false,
-        hint: "the discovery source's response is malformed; nothing can be read under that id",
-      },
+      { retryable: false, hint },
     );
   }
   return id;
@@ -1226,16 +1225,19 @@ export class RecordingsService extends GeneratedRecordingsService {
     // id, both worth stating because a reader checking only the first would
     // think the second was along for the ride.
     //
-    // `bucketId` is COMPARED: the listing's bucket filter and the cross-project
-    // check both weigh it against a number that arrived through JSON.parse.
-    // Two int64 buckets can round onto one double, so past 2^53 those
-    // comparisons answer about a value neither side holds — which is how a
-    // recording from another project passed as a match.
-    //
     // `recordingId` is ADDRESSED: it is interpolated into every read this
     // composite makes, so a rounded value fetches a DIFFERENT recording and
     // reports it as the one asked for. That is the same rule `numericId`
     // applies to a Campfire id, at the other end of the same URL.
+    //
+    // `bucketId` is COMPARED — the listing's bucket filter and the cross-project
+    // check both weigh it against a number that arrived through JSON.parse, and
+    // two int64 buckets can round onto one double, which is how a recording from
+    // another project passed as a match — AND addressed, since chat-line
+    // discovery reads `/projects/{bucketId}`. An earlier version of this
+    // paragraph split the two ids by those two words, one each, in a commit
+    // whose whole point was that a reason had covered only half of a check. It
+    // covered half again.
     //
     // Go accepts both — its ids are int64 — so this is a refusal the reference
     // does not make, and it is this port's, not a reading of SPEC waiver 1B.6:
@@ -1294,13 +1296,12 @@ export class RecordingsService extends GeneratedRecordingsService {
     // A URL from the id, where a rounded value addresses a different Campfire.
     // Nothing is addressed here; the id is only compared.
     //
-    // This paragraph used to continue "and `ref.bucketId` rounds identically,
-    // so a value past 2^53 still compares meaningfully". That was wrong, it is
-    // deleted rather than softened, and the deletion is the point: it argued
-    // for the behaviour two lines below it, and a reader comparing the two
-    // would have believed the prose. What replaced it lives in `summarize`,
-    // which refuses a caller id this runtime cannot hold exactly.
-    const readBucketId = wireInteger(summary.bucket?.id, "the recording read's bucket");
+    // An argument for comparing rounded ids stood here until it was deleted.
+    // Not softened and not quoted: it argued for the behaviour two lines below
+    // it, and a reader weighing prose against code would have believed the
+    // prose. What replaced it lives in `summarize`, which refuses a caller id
+    // this runtime cannot hold exactly.
+    const readBucketId = wireInteger(summary.bucket?.id, "the recording read's bucket", RECORDING_HINT);
     // `!Number.isSafeInteger` is a MISMATCH, not a pass — and, like the listing
     // filter, unreachable while `ref.bucketId` must itself be a safe integer,
     // since a rounded value above 2^53 cannot equal one below it. The fix for
@@ -1694,7 +1695,7 @@ function projectRecording(
     // one number field left on a bare `??`, so `{"id":"1"}` came back as the
     // STRING "1" in a field typed `number`, a shape no other SDK can produce.
     // `wireInteger`, not `numericId`: this id is emitted, never addressed.
-    id: wireInteger(recording.id, "the recording"),
+    id: wireInteger(recording.id, "the recording", RECORDING_HINT),
     status: recordingText(recording.status, "a recording status"),
     type: recordingText(recording.type, "a recording type"),
     // The types that read `title` straight off the recording pass it through
@@ -1794,14 +1795,22 @@ const RFC3339 = /^(\d{4})-(\d{2})-(\d{2})T(\d{1,2}):(\d{2}):(\d{2})(?:[.,]\d+)?(
  * What this does not model is the re-rendering: Go parses and re-marshals, so
  * `2024-01-02T03:04:05.000Z` comes back as `…:05Z` there and verbatim here, and
  * `T3:04:05Z` as `T03:04:05Z`. The conformance runner compares instants rather
- * than strings, so that difference is invisible to it — with two exceptions
- * worth stating rather than discovering: `,5` and an offset of `+24:00` are
- * accepted by Go's DECODER and are not values a JS `Date` can parse, so a
- * consumer doing date arithmetic on them gets `NaN` where one reading Go's
- * re-rendered output would not. (`+24:00` cannot even be marshalled back by Go
- * — its own encoder rejects an offset hour outside [0,23].) Accepting them is
- * still right: refusing a body the reference reads would be the worse error,
- * and this composite reports what the API served.
+ * than strings — but only for the forms its own regex admits, and these are
+ * not all of them. Five accepted spellings render differently here than in Go:
+ * `,5` (Go re-renders `.5`), `T3:` (`T03:`), `T3:` with an offset, `+24:00`
+ * (which Go's ENCODER then refuses outright, its own offset range being
+ * [0,23]), and `+00:60` (`+01:00`). The runner's `sameInstant` demands a
+ * two-digit hour, a dot fraction and a parseable `Date`, so all five fall back
+ * to exact string comparison, where this port's verbatim output and Go's
+ * re-rendering differ. Nothing in the fixture carries one — checked, every
+ * `updated_at` there is canonical — so the difference is invisible in practice
+ * rather than by construction.
+ *
+ * Accepting them is still right: refusing a body the reference reads is the
+ * worse error, and this composite reports what the API served. The leniency is
+ * the stdlib's own — `format_rfc3339.go` disables strict parsing behind a
+ * `case true:` and a TODO about a GODEBUG opt-out — so if that lands, these
+ * become decode errors there and this rule follows the measurement again.
  */
 function recordingInstant(value: unknown): string {
   if (value === undefined || value === null) return ZERO_INSTANT;
