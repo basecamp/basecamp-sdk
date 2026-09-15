@@ -119,8 +119,15 @@ class _Read:
     parent: bool = True
     #: Whether this type's parent is Go's `RecordingParent` (which carries a
     #: typed `bucket`) or its `TodoParent` (which has no `bucket` field at all,
-    #: so Go drops an unknown one). Only `Todo` and `Todolist` are the latter --
-    #: checked against every `Parent` field in the generated models, not guessed.
+    #: so Go drops an unknown one).
+    #:
+    #: Of the 19 ROUTED types that read a parent, exactly two -- `Todo` and
+    #: `Todolist` -- take the bucket-less shape. Stated over the routed set on
+    #: purpose: the generated models carry five distinct parent shapes and four
+    #: of the five have no `bucket`, so "two of thirty-three" would be true of
+    #: a different set than this flag governs. The other three bucket-less
+    #: shapes (`DraftParent`, `MyAssignmentParent`, `UpcomingAssignableParent`)
+    #: belong to models nothing here routes.
     parent_has_bucket: bool = True
     assignees: bool = False
 
@@ -386,6 +393,10 @@ def _decoded_parent(value: Any, what: str, *, has_bucket: bool) -> dict[str, Any
     Applying one shape to both refused `{"parent": {"bucket": 7}}` on a todo --
     a body the reference ACCEPTS, which is the vanishing direction.
     """
+    # The caller passes `has_bucket` from the read's own row rather than this
+    # function guessing from the payload: the same `bucket` key means a typed
+    # struct under one containing type and an ignored unknown under another,
+    # and only the reference says which.
     parent = _decoded_optional_object(value, what)
     if parent is None:
         return None
