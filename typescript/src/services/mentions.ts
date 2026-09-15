@@ -118,10 +118,19 @@ const CONTROL_BYTE = /[\u0000-\u001f\u007f]/;
  * host Go accepts and decodes.
  *
  * What it models: userinfo split at the last `@` and held to `validUserinfo`; a
- * host that may not be empty; the optional-port rule; and the escape rule
- * above. What it does NOT model is the validation of a bracketed IPv6 literal,
- * which is intricate and Go-version-dependent — a bracketed authority is
- * accepted here on the port rule alone, which is wider than current Go.
+ * host that may not be empty; the optional-port rule; the escape rule above;
+ * and — since the bracket sweep — the literal itself, through
+ * {@link isIPv6Literal}. This paragraph used to say the opposite, that a
+ * bracketed authority was accepted on the port rule alone; it stayed behind
+ * when the check landed, which is the more dangerous half of a stale comment:
+ * a reader deciding what to trust here would have read a wider contract than
+ * the code keeps.
+ *
+ * An unbracketed authority with SEVERAL colons — `bc3:80:90` — is accepted,
+ * and deliberately: `url.Parse` accepts it too (measured; host `bc3:80:90`),
+ * because `validOptionalPort` only ever sees the text after the LAST colon.
+ * `[::1]:80:90` is refused on both sides by the same rule read from the last
+ * bracket.
  */
 function isParsableHost(authority: string): boolean {
   // Userinfo comes off first, as `url.Parse` splits it at the LAST "@" before
@@ -1112,6 +1121,18 @@ export function mentionMarkup(person: Person): string {
     throw Errors.usage("cannot mention a person that is not a person object");
   }
   const sgid = person.attachable_sgid;
+  // A STRING. `attachable_sgid` is typed as one, but the value arrives off a
+  // response, and a truthy non-string (a number, an object) passed the presence
+  // check, survived the markup regex — `test` stringifies — and reached the
+  // parser, whose first character read threw a raw TypeError out of a helper
+  // documented to raise a usage error. Go cannot reach this state: its field
+  // decodes as a string or the read fails.
+  if (sgid !== undefined && sgid !== null && typeof sgid !== "string") {
+    throw Errors.usage(
+      `person ${person.id} has an attachable_sgid that is not a string`,
+      "read the person through people.get to obtain one",
+    );
+  }
   if (!sgid) {
     throw Errors.usage(
       `person ${person.id} has no attachable_sgid to mention`,

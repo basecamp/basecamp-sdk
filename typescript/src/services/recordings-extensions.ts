@@ -804,7 +804,7 @@ class CampfireIndex {
       // refusal below — without it a malformed id would be dropped silently and
       // discovery could go on to report the line unresolved, a composite
       // verdict standing in for a failed read.
-      return (project.dock ?? [])
+      return sourceItems(sourceObject(project, "the project read").dock, "the project dock")
         .filter((item) => item.name === "chat")
         .map((item) => numericId(item.id, "project dock item"))
         .filter((id) => id !== 0);
@@ -836,9 +836,13 @@ class CampfireIndex {
       const list = await sources.campfires.list({ maxItems: MAX_CAMPFIRE_LISTING });
       if (list.meta.truncated) throw new CampfireListingOverflow();
       const byBucket = new Map<number, number[]>();
-      for (const campfire of list) {
-        const bucket = campfire.bucket;
-        if (!bucket) continue;
+      for (const campfire of sourceItems(list, "the campfire listing")) {
+        // The bucket OBJECT, not only its id: a string or an array here left
+        // `?.id` undefined and the entry was dropped in silence, where Go's
+        // decode of the same body fails the listing read. A JSON null is the
+        // measured exception — the zero struct, whose zero bucket id the filter
+        // below skips, exactly as Go's `c.Bucket == nil` does.
+        const bucket = sourceObject(campfire.bucket, "campfire listing bucket");
         // Go filters this source on the bucket alone — a zero campfire id is a
         // candidate there, spends budget, and lands in the unresolved verdict's
         // campfireIds — so it is kept here too. Only a value Go's decoder would
@@ -891,8 +895,14 @@ class CampfireListingOverflow extends Error {
  * `7.7e1` are decode errors there. By the time this runs, `JSON.parse` has
  * turned every one of those into the number 77, and the literal is gone: an
  * exponent or trailing-zero spelling of a whole number is accepted here and
- * refused there — `1.0` arrives as 1, `1e2` as 100, `7.7e1` as 77 — and no
- * check at this layer can tell any of them from the literal Go refuses. And
+ * refused there — `1.0` arrives as 1, `1e2` as 100, `7.7e1` as 77 — and this
+ * layer, which receives an already-parsed value, cannot tell any of them from
+ * the literal Go refuses. Not an impossibility, a placement: on the supported
+ * Node floor a `JSON.parse` reviver can read `context.source` and see the
+ * spelling (SPEC §19 says so for the large-integer case), so a decoder that
+ * wanted these distinctions could have them. This composite does not reach for
+ * one, because it would mean parsing every response body twice to refuse a
+ * spelling no BC3 endpoint emits. And
  * the upper bound is 2^53, not int64, which is the same limit SPEC §19 waives for this SDK: an id
  * past it cannot be held without rounding it into a different id, so refusing
  * it is the honest answer even though Go decodes it.
@@ -930,9 +940,61 @@ function recordingBody<T>(value: T): T {
   return value;
 }
 
-function numericId(value: unknown, what: string): number {
+/**
+ * A nested object a discovery source carries, refused when it is not one.
+ *
+ * The id sweep covered the id FIELD at each site and not the container around
+ * it, and the container has the same two failure modes with worse consequences.
+ * Measured through the generated structs: a dock or a listing entry that is not
+ * an object fails Go's decode outright, and a JSON `null` is the zero struct —
+ * whose empty name and zero ids each site already skips. TypeScript did neither:
+ * a non-object was read for fields it does not have and dropped in silence, and
+ * a `null` threw a raw TypeError out of the SDK on a body Go reads happily.
+ */
+function sourceObject(value: unknown, what: string): Record<string, unknown> {
+  if (value === null || value === undefined) return {};
+  if (typeof value !== "object" || Array.isArray(value)) {
+    throw Errors.apiError(
+      truncateErrorMessage(`${what} is ${describeIdValue(value)} rather than an object`),
+      undefined,
+      {
+        retryable: false,
+        hint: "the discovery source's response is malformed; no Campfire can be read from it",
+      },
+    );
+  }
+  return value as Record<string, unknown>;
+}
+
+/** The same, for a list of them: absent is empty, a non-array is a failed read. */
+function sourceItems(value: unknown, what: string): Record<string, unknown>[] {
+  if (value === null || value === undefined) return [];
+  if (!Array.isArray(value)) {
+    throw Errors.apiError(
+      truncateErrorMessage(`${what} is ${describeIdValue(value)} rather than a list`),
+      undefined,
+      {
+        retryable: false,
+        hint: "the discovery source's response is malformed; no Campfire can be read from it",
+      },
+    );
+  }
+  return value.map((item) => sourceObject(item, `${what} entry`));
+}
+
+/**
+ * The whole number a wire field carries, or a failed read — the TYPE half only.
+ *
+ * Shared because Go's decoders agree on it everywhere: absent and JSON null are
+ * the zero value, and anything that is not a whole number in an int64 fails the
+ * read. What is NOT shared is what each site then does with the number, and a
+ * helper that decided that too would be the tidy kind of wrong: a rule reading
+ * like the reference's while applying one site's policy at another's. Each
+ * caller spells its own value rule beside the Go line it mirrors.
+ */
+function wireInteger(value: unknown, what: string): number {
   if (value === undefined || value === null) return 0;
-  if (typeof value !== "number" || !Number.isSafeInteger(value)) {
+  if (typeof value !== "number" || !Number.isInteger(value)) {
     throw Errors.apiError(
       truncateErrorMessage(`${what} has an id that is not a usable whole number (${describeIdValue(value)})`),
       undefined,
@@ -943,6 +1005,21 @@ function numericId(value: unknown, what: string): number {
     );
   }
   return value;
+}
+
+function numericId(value: unknown, what: string): number {
+  const id = wireInteger(value, what);
+  if (!Number.isSafeInteger(id)) {
+    throw Errors.apiError(
+      truncateErrorMessage(`${what} has an id that is not a usable whole number (${describeIdValue(value)})`),
+      undefined,
+      {
+        retryable: false,
+        hint: "the discovery source's response is malformed; nothing can be read under that id",
+      },
+    );
+  }
+  return id;
 }
 
 function describeIdValue(value: unknown): string {
@@ -1097,20 +1174,6 @@ export class RecordingsService extends GeneratedRecordingsService {
     const summary = await this.#readSummary(ref, kind);
     // A bucket the read did not identify is Go's zero value: there is nothing
     // to disagree with, so the pointer stands rather than the call failing.
-    // `typeof`, not `!== undefined`: a JSON null decodes into Go's int64 as 0
-    // and is skipped there, and a string, a boolean, an array or an object
-    // fails Go's decode outright rather than becoming a mismatch. TypeScript
-    // has no decoder to refuse either, so all of them read as "no bucket id was
-    // identified" — the half of Go's behaviour that does not invent a
-    // disagreement out of a malformed value. `isInteger` extends that rule to
-    // the one malformed shape `typeof` lets through: 1.5 is a number, so the
-    // first version of this compared it and reported the recording as living in
-    // bucket 1.5, a semantic verdict a consumer matches on, invented out of a
-    // value no bucket ever has. A large integer past 2^53 is *not* excluded —
-    // it is rounded by JSON.parse, but `ref.bucketId` is a `number` too and
-    // rounds identically, so the comparison still means something (waiver
-    // 1B.6); dropping it there would lose a real mismatch rather than avoid a
-    // fabricated one.
     // The bucket itself, not only its id: a string or an array where the object
     // belongs leaves `?.id` undefined, and "no bucket identified" is exactly the
     // answer that lets a recording in another project pass as a match. Go fails
@@ -1127,13 +1190,28 @@ export class RecordingsService extends GeneratedRecordingsService {
         },
       );
     }
-    const readBucketId = summary.bucket?.id;
-    if (
-      typeof readBucketId === "number" &&
-      Number.isInteger(readBucketId) &&
-      readBucketId !== 0 &&
-      readBucketId !== ref.bucketId
-    ) {
+    // And the id, through the same gate as the three discovery sites — this one
+    // reached it last. It began as `!== undefined`, which read a malformed id as
+    // "no bucket"; then `typeof`, which still compared a FRACTION and could
+    // report the recording as living in bucket 1.5; then `isInteger`, which
+    // stopped fabricating that verdict but still answered "no bucket
+    // identified" for a string, a boolean, an array or an object — and that
+    // answer is the one that lets a recording in ANOTHER project pass as a
+    // match. Go refuses every one of those bodies outright, and `numericId`
+    // says exactly that: null and absent are its zero, which is skipped;
+    // anything else that is not a whole number in range fails the read.
+    // Go's line is `summary.Bucket != nil && summary.Bucket.ID != 0 &&
+    // summary.Bucket.ID != ref.BucketID` — the type half from its decoder, then
+    // a value rule of exactly "not zero, not the one asked for". `wireInteger`,
+    // not `numericId`: the safe-integer clause belongs to the sites that BUILD
+    // A URL from the id, where a rounded value addresses a different Campfire.
+    // Nothing is addressed here; the id is only compared, and `ref.bucketId` is
+    // a `number` that JSON.parse rounds identically, so a value past 2^53 still
+    // compares meaningfully (waiver 1B.6). Refusing it would turn a limitation
+    // the SDK documents into a failed read, and would be this port's policy
+    // wearing the reference's shape.
+    const readBucketId = wireInteger(summary.bucket?.id, "the recording read's bucket");
+    if (readBucketId !== 0 && readBucketId !== ref.bucketId) {
       throw new BucketMismatchError(ref, readBucketId);
     }
     return summary;
@@ -1201,7 +1279,12 @@ export class RecordingsService extends GeneratedRecordingsService {
           // markup, so a literal "<bc-attachment>" in it mentions nobody.
           summary.mentioned_person_ids = [];
         }
-        summary.campfire_id = campfireId;
+        // Omitted when zero, because Go's field is `omitempty` and a zero
+        // marshals away there. A zero is reachable: the account listing keeps
+        // an entry whose own id is null as a candidate (Go filters that source
+        // on the bucket alone), so a Campfire 0 that answers 200 resolves the
+        // line — and only then do the two SDKs' JSON differ by a key.
+        if (campfireId !== 0) summary.campfire_id = campfireId;
         return summary;
       }
       case "document": {
@@ -1495,7 +1578,7 @@ function projectRecording(
   content: string | undefined,
   nested: SummarizableNested,
 ): RecordingSummary {
-  const body = content ?? "";
+  const body = recordingText(content, "a recording rich text");
   // The scalars default rather than carrying `undefined` through: they are
   // required on every routed shape, so a body omitting one is malformed, and
   // Go emits its zero value. Left undefined, JSON.stringify would drop the key
@@ -1505,18 +1588,18 @@ function projectRecording(
     // `id` too, which the first pass at this missed even while the comment
     // above stated the rule: Go marshals a zero RecordingSummary as {"id":0,…}.
     id: recording.id ?? 0,
-    status: recording.status ?? "",
-    type: recording.type ?? "",
+    status: recordingText(recording.status, "a recording status"),
+    type: recordingText(recording.type, "a recording type"),
     // The types that read `title` straight off the recording pass it through
     // undefined when the body omits it; the ones with a fallback already
     // resolve to "" through firstNonEmpty.
-    title: title ?? "",
-    app_url: recording.app_url ?? "",
+    title: recordingText(title, "a recording title"),
+    app_url: recordingText(recording.app_url, "a recording app_url"),
     mentioned_person_ids: mentionedPersonIds(body),
     content: body,
     // Go's zero value here is a `time.Time`, not a string, and it marshals as
     // the zero instant rather than as "".
-    updated_at: recording.updated_at ?? "0001-01-01T00:00:00Z",
+    updated_at: recordingText(recording.updated_at, "a recording updated_at") || "0001-01-01T00:00:00Z",
   };
   if (nested.parent) summary.parent = nested.parent;
   if (nested.bucket) summary.bucket = nested.bucket;
@@ -1527,7 +1610,36 @@ function projectRecording(
 
 function firstNonEmpty(...values: (string | undefined)[]): string {
   for (const value of values) {
-    if (value !== undefined && value !== "") return value;
+    // `recordingText` first, so a JSON null reads as Go's zero value and falls
+    // THROUGH to the next candidate. Treating null as present is the quiet
+    // version of this defect: {"title":null,"subject":"S"} decodes in Go with
+    // an empty title and takes the subject, while here null passed the test,
+    // was returned, and the caller's `?? ""` turned it into "" — the fallback
+    // lost, and a message summarized under no title at all.
+    const text = recordingText(value, "a recording title");
+    if (text !== "") return text;
   }
   return "";
+}
+
+/**
+ * A string field a routed read carries, refused when it is not one.
+ *
+ * Go's generated models decode these as `string`: a JSON null is the zero value
+ * and no error, and a number, a boolean, an object or an array fails the read.
+ * TypeScript carried whatever arrived into the projection, so `content: 42`
+ * reached `mentionedPersonIds`, whose first string operation threw a raw
+ * TypeError out of `summarize` — the same untyped-throw boundary the body and
+ * container checks close, one level further in.
+ */
+function recordingText(value: unknown, what: string): string {
+  if (value === undefined || value === null) return "";
+  if (typeof value !== "string") {
+    throw Errors.apiError(
+      truncateErrorMessage(`${what} is ${describeIdValue(value)} rather than text`),
+      undefined,
+      { retryable: false, hint: "the response is malformed; the recording cannot be summarized from it" },
+    );
+  }
+  return value;
 }

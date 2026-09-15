@@ -387,33 +387,135 @@ describe("recordings.summarize", () => {
       expect(summary.id).toBe(1);
     });
 
-    it("accepts a read whose bucket id is null or not a number, as Go's decode does", async () => {
-      // A revert test showed nothing held the `typeof` in place: the previous
-      // `!== undefined` still handled an absent id, so only null and a string
-      // distinguish them. A JSON null decodes to Go's zero and is skipped; a
-      // string fails Go's decode rather than becoming a mismatch, and inventing
-      // a mismatch out of a malformed value is the half worth avoiding.
-      // 1.5 is in the list because it is the shape `typeof` alone lets through:
-      // it is a number, so the first version compared it and reported the
-      // recording as living in bucket 1.5. Go's decoder refuses it outright.
-      for (const badBucketId of [null, "2085958499", true, false, [1], {}, 1.5]) {
+    it("fails the read on a bucket id Go's decoder would refuse, and skips a null one", async () => {
+      // Three versions of this check, each fixing the last and each still
+      // wrong: `!== undefined` read a malformed id as "no bucket"; `typeof`
+      // compared a FRACTION and could report the recording as living in bucket
+      // 1.5; `isInteger` stopped fabricating that verdict but still answered
+      // "no bucket identified" for a string, a boolean, an array or an object —
+      // and that answer is the dangerous one, because it lets a recording in
+      // ANOTHER project pass the check as a match. Measured: only `null`
+      // decodes into TodoBucket.Id, as zero; every other shape fails the read.
+      for (const badBucketId of ['"2085958499"', "true", "false", "[1]", "{}", "1.5"]) {
         const fresh = createBasecampClient({ accountId: "12345", accessToken: "t", enableRetry: false });
         server.use(
           http.get(`${BASE_URL}/comments/1`, () =>
-            HttpResponse.json({
-              ...recording(1, "Comment", { content: "" }),
-              bucket: { id: badBucketId, name: "B", type: "Project" },
+            HttpResponse.text(
+              `{"id":1,"title":"t","content":"c","bucket":{"id":${badBucketId},"name":"B","type":"Project"}}`,
+              { headers: { "content-type": "application/json" } },
+            ),
+          ),
+        );
+
+        const err = await fresh.recordings
+          .summarize({ bucketId: BUCKET, recordingId: 1, recordingType: "Comment" })
+          .catch((e: unknown) => e);
+
+        expect(err, badBucketId).toBeInstanceOf(BasecampError);
+        expect((err as BasecampError).code, badBucketId).toBe("api_error");
+        expect((err as BasecampError).httpStatus, badBucketId).toBeUndefined();
+        // Not a BucketMismatchError: the point is that the check could not be
+        // made, not that it failed.
+        expect(err, badBucketId).not.toBeInstanceOf(BucketMismatchError);
+      }
+
+      // A bucket id past 2^53 is COMPARED, not refused: the safe-integer rule
+      // belongs to the sites that build a URL from an id, and nothing is
+      // addressed here. JSON.parse rounds it, `ref.bucketId` is a `number` that
+      // rounds the same way, and Go raises a mismatch on this body — so a
+      // mismatch is what comes back, rather than a failed read invented out of
+      // a limitation SPEC waiver 1B.6 already documents.
+      const big = createBasecampClient({ accountId: "12345", accessToken: "t", enableRetry: false });
+      server.use(
+        http.get(`${BASE_URL}/comments/1`, () =>
+          HttpResponse.text(
+            `{"id":1,"title":"t","content":"c","bucket":{"id":9007199254740993,"name":"B","type":"Project"}}`,
+            { headers: { "content-type": "application/json" } },
+          ),
+        ),
+      );
+      const mismatch = await big.recordings
+        .summarize({ bucketId: BUCKET, recordingId: 1, recordingType: "Comment" })
+        .catch((e: unknown) => e);
+      expect(mismatch).toBeInstanceOf(BucketMismatchError);
+
+      // A null id is Go's zero, which its own check skips — the recording is
+      // returned rather than refused, and no mismatch is invented.
+      const fresh = createBasecampClient({ accountId: "12345", accessToken: "t", enableRetry: false });
+      server.use(
+        http.get(`${BASE_URL}/comments/1`, () =>
+          HttpResponse.text(`{"id":1,"title":"t","content":"c","bucket":{"id":null,"name":"B"}}`, {
+            headers: { "content-type": "application/json" },
+          }),
+        ),
+      );
+      const summary = await fresh.recordings.summarize({
+        bucketId: BUCKET,
+        recordingId: 1,
+        recordingType: "Comment",
+      });
+      expect(summary.id).toBe(1);
+    });
+
+    it("refuses a wrong-typed text field, and reads a null one as Go's zero value", async () => {
+      // One level in from the body check. Measured through generated.Comment:
+      // `content: 42`, `true` and `[]` are decode errors; `content: null` is the
+      // zero value and no error. Without the refusal, 42 reached
+      // mentionedPersonIds and threw a raw TypeError out of summarize.
+      for (const content of ["42", "true", "[]", "{}"]) {
+        const fresh = createBasecampClient({ accountId: "12345", accessToken: "t", enableRetry: false });
+        server.use(
+          http.get(`${BASE_URL}/comments/1`, () =>
+            HttpResponse.text(`{"id":1,"title":"t","content":${content}}`, {
+              headers: { "content-type": "application/json" },
             }),
           ),
         );
 
-        const summary = await fresh.recordings.summarize({
-          bucketId: BUCKET,
-          recordingId: 1,
-          recordingType: "Comment",
-        });
-        expect(summary.id).toBe(1);
+        const err = await fresh.recordings
+          .summarize({ bucketId: BUCKET, recordingId: 1, recordingType: "Comment" })
+          .catch((e: unknown) => e);
+
+        expect(err, content).toBeInstanceOf(BasecampError);
+        expect((err as BasecampError).code, content).toBe("api_error");
+        expect((err as BasecampError).httpStatus, content).toBeUndefined();
       }
+
+      const fresh = createBasecampClient({ accountId: "12345", accessToken: "t", enableRetry: false });
+      server.use(
+        http.get(`${BASE_URL}/comments/1`, () =>
+          HttpResponse.text(`{"id":1,"title":null,"content":null}`, {
+            headers: { "content-type": "application/json" },
+          }),
+        ),
+      );
+      const summary = await fresh.recordings.summarize({
+        bucketId: BUCKET,
+        recordingId: 1,
+        recordingType: "Comment",
+      });
+      expect(summary).toMatchObject({ id: 1, title: "", content: "" });
+    });
+
+    it("falls back past a null title, as Go's zero-value string does", async () => {
+      // `{"title":null,"subject":"S"}` decodes in Go with an empty title, so the
+      // subject is what the summary carries. Reading null as PRESENT returned it
+      // instead, and the caller's `?? ""` turned that into "" — the fallback
+      // silently lost and the message summarized under no title at all.
+      server.use(
+        http.get(`${BASE_URL}/messages/1`, () =>
+          HttpResponse.text(`{"id":1,"title":null,"subject":"Kickoff","content":"c"}`, {
+            headers: { "content-type": "application/json" },
+          }),
+        ),
+      );
+
+      const summary = await client.recordings.summarize({
+        bucketId: BUCKET,
+        recordingId: 1,
+        recordingType: "Message",
+      });
+      expect(summary.title).toBe("Kickoff");
     });
 
     it("refuses a read whose body is not a recording, and reads a null body as Go's zero value", async () => {
@@ -542,6 +644,123 @@ describe("recordings.summarize", () => {
         "/12345/chats/70/lines/9",
       ]);
       expect(summary.campfire_id).toBe(70);
+    });
+
+    it("reads a malformed dock or listing CONTAINER the way Go's decoder reads it", async () => {
+      // The id sweep covered the id field at three sites and not the container
+      // around it. Measured through generated.Project and []generated.Campfire:
+      // a dock that is not an array, and an entry that is not an object, are
+      // decode errors that fail the read; a JSON null is the ZERO struct, whose
+      // empty name and zero ids each filter already skips. TypeScript did
+      // neither — a non-object entry was read for fields it does not have and
+      // dropped in silence, and `[null]` threw a raw TypeError out of the SDK
+      // on a body the reference reads happily.
+      for (const dock of ["5", '"x"', "{}", "true", "[5]", '["x"]', "[[1]]"]) {
+        const fresh = createBasecampClient({ accountId: "12345", accessToken: "t", enableRetry: false });
+        server.use(
+          http.get(`${BASE_URL}/projects/${BUCKET}`, () =>
+            HttpResponse.text(`{"id":${BUCKET},"dock":${dock}}`, {
+              headers: { "content-type": "application/json" },
+            }),
+          ),
+          http.get(`${BASE_URL}/chats.json`, () => HttpResponse.json([])),
+        );
+
+        const err = await fresh.recordings
+          .summarize({ bucketId: BUCKET, recordingId: 9, eventType: "chat.line.created" })
+          .catch((e: unknown) => e);
+
+        expect(err, dock).toBeInstanceOf(BasecampError);
+        expect((err as BasecampError).code, dock).toBe("api_error");
+        expect((err as BasecampError).httpStatus, dock).toBeUndefined();
+      }
+
+      // `null` in either container is Go's zero value, and the search goes on.
+      const paths = trackRequests();
+      server.use(
+        http.get(`${BASE_URL}/projects/${BUCKET}`, () =>
+          HttpResponse.text(`{"id":${BUCKET},"dock":[null,{"id":77,"name":"chat"}]}`, {
+            headers: { "content-type": "application/json" },
+          }),
+        ),
+        http.get(`${BASE_URL}/chats/77/lines/9`, () =>
+          HttpResponse.json(recording(9, "Chat::Lines::Text", { content: "hi" })),
+        ),
+      );
+      const summary = await client.recordings.summarize({
+        bucketId: BUCKET,
+        recordingId: 9,
+        eventType: "chat.line.created",
+      });
+      expect(summary.campfire_id).toBe(77);
+      expect(paths).toEqual([`/12345/projects/${BUCKET}`, "/12345/chats/77/lines/9"]);
+
+      // And a null listing entry, which used to throw on `campfire.bucket`.
+      const fresh = createBasecampClient({ accountId: "12345", accessToken: "t", enableRetry: false });
+      const listingPaths = trackRequests();
+      server.use(
+        http.get(`${BASE_URL}/projects/${BUCKET}`, () => notFound()),
+        http.get(`${BASE_URL}/chats.json`, () =>
+          HttpResponse.text(`[null,${JSON.stringify(campfire(70, BUCKET))}]`, {
+            headers: { "content-type": "application/json" },
+          }),
+        ),
+        http.get(`${BASE_URL}/chats/70/lines/9`, () => HttpResponse.json(line(9))),
+      );
+      const found = await fresh.recordings.summarize({
+        bucketId: BUCKET,
+        recordingId: 9,
+        eventType: "chat.line.created",
+      });
+      expect(found.campfire_id).toBe(70);
+      expect(listingPaths).toContain("/12345/chats/70/lines/9");
+    });
+
+    it("omits campfire_id when the line resolved under a zero id, as Go's omitempty does", async () => {
+      // The listing keeps an entry whose own id is null as a candidate, so
+      // campfire 0 can answer 200 — and Go's `campfire_id,omitempty` drops a
+      // zero from the JSON. Setting it unconditionally made TypeScript the one
+      // SDK emitting a key the others do not.
+      server.use(
+        http.get(`${BASE_URL}/projects/${BUCKET}`, () => notFound()),
+        http.get(`${BASE_URL}/chats.json`, () =>
+          HttpResponse.json([{ ...campfire(50, BUCKET), id: null }]),
+        ),
+        http.get(`${BASE_URL}/chats/0/lines/9`, () => HttpResponse.json(line(9))),
+      );
+
+      const summary = await client.recordings.summarize({
+        bucketId: BUCKET,
+        recordingId: 9,
+        eventType: "chat.line.created",
+      });
+
+      expect(summary.id).toBe(9);
+      expect("campfire_id" in summary).toBe(false);
+      expect(JSON.parse(JSON.stringify(summary))).not.toHaveProperty("campfire_id");
+    });
+
+    it("refuses a listing entry whose bucket is not an object, rather than dropping it", async () => {
+      // Go fails the listing read on all three; dropping the entry instead
+      // turns a failed read into "the line is under no Campfire you can see".
+      for (const bucket of ["5", '"x"', "[1]", "true"]) {
+        const fresh = createBasecampClient({ accountId: "12345", accessToken: "t", enableRetry: false });
+        server.use(
+          http.get(`${BASE_URL}/projects/${BUCKET}`, () => notFound()),
+          http.get(`${BASE_URL}/chats.json`, () =>
+            HttpResponse.text(`[{"id":70,"bucket":${bucket}}]`, {
+              headers: { "content-type": "application/json" },
+            }),
+          ),
+        );
+
+        const err = await fresh.recordings
+          .summarize({ bucketId: BUCKET, recordingId: 9, eventType: "chat.line.created" })
+          .catch((e: unknown) => e);
+
+        expect(err, bucket).toBeInstanceOf(BasecampError);
+        expect((err as BasecampError).code, bucket).toBe("api_error");
+      }
     });
 
     it("refuses a listing entry whose id or bucket id is not a whole number, as Go's decoder does", async () => {
@@ -827,6 +1046,17 @@ describe("recordings.summarize", () => {
         expect((err as BasecampError).code).toBe("api_error");
         expect((err as BasecampError).httpStatus).toBeUndefined();
         expect((err as BasecampError).retryable).toBe(false);
+        // The message's two complaints are different and were asserted by
+        // nothing: a fraction is in range and was carried faithfully, so what
+        // is wrong with it is that it is not whole; a value past 2^53 has
+        // already been rounded by JSON.parse, so quoting it would report a
+        // number the response never carried.
+        const message = (err as BasecampError).message;
+        if (typeof badId === "number" && !Number.isInteger(badId)) {
+          expect(message, String(badId)).toContain(`${badId}, which is not whole`);
+        } else if (typeof badId === "number") {
+          expect(message, String(badId)).toContain("out of safe integer range");
+        }
         expect((err as BasecampError).message).toContain("project dock item");
         expect(err).not.toBeInstanceOf(UnresolvedRecordingError);
       }

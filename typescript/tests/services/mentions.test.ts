@@ -178,6 +178,22 @@ describe("personIdFromSGID", () => {
     no(`gid://[fe80::1%25e%2Ff]/Person/${VICTOR}`);
     no(`gid://[fe80::1%25e%00f]/Person/${VICTOR}`);
     no(`gid://[fe80::1%25]/Person/${VICTOR}`);
+
+    // Four rules of the literal parser that a review found correct and held by
+    // nothing: each mutation below left the whole suite green while making the
+    // parser accept a gid Go refuses — the invent-a-mention direction. Every
+    // pair is measured through the reference's own write path, the refusal
+    // beside the neighbour it must not take with it.
+    no(`gid://[::01.2.3.4]/Person/${VICTOR}`); // an octet may not carry a leading zero
+    ok(`gid://[::1.2.3.4]/Person/${VICTOR}`);
+    no(`gid://[1:2:3:4:5:6:7:8::]/Person/${VICTOR}`); // "::" must expand to a field
+    ok(`gid://[1:2:3:4:5:6:7::]/Person/${VICTOR}`);
+    no(`gid://[1:2:3:4:5:6::1.2.3.4]/Person/${VICTOR}`); // the quad is two of the eight
+    ok(`gid://[1:2:3:4:5::1.2.3.4]/Person/${VICTOR}`);
+    no(`gid://[12345::1]/Person/${VICTOR}`); // a group is at most four digits
+    ok(`gid://[1234::1]/Person/${VICTOR}`);
+    no(`gid://[bogus%25eth0]/Person/${VICTOR}`); // a zone does not make an address
+    ok(`gid://[::1%25eth0]/Person/${VICTOR}`);
   });
 
   it("refuses a malformed id, and an id that cannot be a number without rounding", () => {
@@ -325,7 +341,7 @@ describe("mentionedPersonIds", () => {
     expect(mentionedPersonIds(`<bc-attachment sgid="${escaped}"></bc-attachment>`)).toEqual([VICTOR]);
   });
 
-  it("decodes each character reference to the string Go decodes it to", () => {
+  it("decodes each character reference to the string the carried table decodes it to", () => {
     // Pins the DECODED STRING, not merely the verdict. A row asserting "names
     // nobody" is satisfied by any failure that also names nobody — including a
     // decoder that does nothing at all — so the rows guarding a specific
@@ -346,7 +362,12 @@ describe("mentionedPersonIds", () => {
       ["&lowbar;", "_"],
       ["&Tab;", "\t"],
       ["&NewLine;", "\n"],
-      // Not in the carried subset, and left exactly as written.
+      // Not in the carried subset, and left exactly as written — Go expands all
+      // four (`&eacute;` to "é", `&hyphen;` to U+2010, `&solb;` to U+29C4,
+      // `&constructor;` to nothing, being no name at all). These are the same
+      // deliberate difference as `&ltcc;` below, from the other direction: a
+      // name the 24 do not carry. Neither direction can change a verdict,
+      // because neither expansion can appear in a decodable payload.
       ["&eacute;", "&eacute;"],
       ["&hyphen;", "&hyphen;"],
       ["&constructor;", "&constructor;"],
@@ -378,7 +399,9 @@ describe("mentionedPersonIds", () => {
       expect(unescapeEntities(input), `unescaping ${JSON.stringify(input)}`).toBe(expected);
     }
 
-    // The one place the text deliberately differs from Go's, and it is the
+    // The SHADOWING form of the same deliberate difference, and the subtler of
+    // the two: the rows above differ by a name this table does not carry, which
+    // is plain to see, while this one differs on a name it does. It is the
     // price of carrying 24 names instead of 2231. Go matches the longest name
     // in its full table, so "&ltcc;" is U+2AA6; here the longest match is the
     // semicolon-less "lt", giving "<cc;". Only the nine semicolon-less legacy
@@ -446,37 +469,41 @@ describe("mentionedPersonIds", () => {
     }
   });
 
-  it("scans a run of ampersands linearly", () => {
-    // A ratio, not a wall clock: an absolute threshold measures the machine,
-    // and this ran on CI. Quadratic would be near 16x for 4x the input; linear
-    // is near 4x. The floor keeps a fast machine from making it vacuous by
-    // timing two runs that both round to nothing.
+  it("tries one table length per ampersand, not every length", () => {
+    // This replaces a wall-clock ratio, and the reason is worth keeping. That
+    // assertion compared a 4x input's time against a 4x budget: linear is near
+    // 4, quadratic near 16, and the threshold sat between them at 10. An
+    // adversarial re-measurement on a loaded box put the LINEAR ratio at 18.85
+    // in 2 of 80 trials — past the quadratic reference the test was discriminating
+    // against, so no threshold on that axis separates the two. A timing test
+    // that cannot fail for the reason it names is worse than no test.
     //
-    // What this CANNOT catch is a regression to searching every table length
-    // per "&" — that is linear too, just with a constant about 1.7x larger.
-    // The bound itself is pinned by the table-shape test above.
-    const scan = (n: number): number => {
-      const input = `<bc-attachment sgid="${"&".repeat(n)}"></bc-attachment>`;
-      for (let i = 0; i < 3; i++) mentionedPersonIds(input);
-      let best = Infinity;
-      for (let r = 0; r < 5; r++) {
-        const start = performance.now();
-        mentionedPersonIds(input);
-        best = Math.min(best, performance.now() - start);
-      }
-      return best;
+    // The bound is countable instead. The scan slices the text once per length
+    // it tries, so counting slices during one pass measures exactly the thing:
+    // bounded by the name characters present (one try per "&a"), or the whole
+    // table (LONGEST_ENTITY_NAME tries). No clock, no machine, no flake.
+    const native = String.prototype.slice;
+    let slices = 0;
+    String.prototype.slice = function (this: string, ...args: [number?, number?]) {
+      slices++;
+      return native.apply(this, args);
     };
+    let perAmpersand: number;
+    try {
+      const n = 20_000;
+      mentionedPersonIds(`<bc-attachment sgid="${"&a".repeat(n)}"></bc-attachment>`);
+      perAmpersand = slices / n;
+    } finally {
+      String.prototype.slice = native;
+    }
 
-    const small = scan(50_000);
-    const large = scan(200_000);
-    // Only meaningful once the smaller run is measurable at all.
-    if (small < 0.5) return;
-    // 10, not 8. Measured worst case over 120 trials with the CPU four times
-    // oversubscribed: 4.42. Quadratic would be near 16, so 10 keeps the
-    // discrimination while leaving room for a loaded CI box — this is the only
-    // wall-clock assertion in the suite, and one that fails for reasons
-    // unrelated to the code is worse than none.
-    expect(large / small).toBeLessThan(10);
+    // One try per "&a" costs one slice; searching every length costs
+    // LONGEST_ENTITY_NAME of them. The bound in between is loose on purpose —
+    // what it must never admit is a constant that grows with the TABLE.
+    expect(perAmpersand).toBeLessThan(4);
+    // And not vacuous: a scan that sliced nothing at all would pass the line
+    // above while measuring an implementation that no longer works this way.
+    expect(perAmpersand).toBeGreaterThan(0);
   });
 
   it("stops at an unterminated comment or tag rather than guessing", () => {
@@ -552,6 +579,26 @@ describe("mentionMarkup", () => {
     const anonymous = { name: "No id", attachable_sgid: "not-a-real-sgid-at-all" } as unknown as Person;
     expect(() => mentionMarkup(anonymous)).toThrow(BasecampError);
     expect(() => withMentions("<div>hi</div>", [anonymous])).toThrow(BasecampError);
+  });
+
+  it("refuses an attachable_sgid that is not a string, rather than throwing on it", () => {
+    // Typed as a string, but it arrives off a response: a truthy non-string
+    // passed the presence check, survived the markup regex — `test`
+    // stringifies — and reached the parser, whose first character read threw a
+    // raw TypeError out of a helper documented to raise a usage error.
+    for (const sgid of [42, true, { sgid: "x" }, ["x"]]) {
+      const person = { id: VICTOR, name: "P", attachable_sgid: sgid } as unknown as Person;
+      const err = (() => {
+        try {
+          mentionMarkup(person);
+          return undefined;
+        } catch (e: unknown) {
+          return e;
+        }
+      })();
+      expect(err, JSON.stringify(sgid)).toBeInstanceOf(BasecampError);
+      expect((err as BasecampError).code).toBe("usage");
+    }
   });
 
   it("refuses something that is not a person at all", () => {
