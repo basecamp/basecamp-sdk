@@ -30,7 +30,10 @@ class AccessorInventoryTest < Minitest::Test
   NON_GENERATED_SERVICE_FILES = [ "base_service.rb" ].freeze
 
   # Zero-arity public methods on AccountClient that are not service accessors.
-  INFRASTRUCTURE_METHODS = %i[account_id config http hooks].freeze
+  # `campfire_index` is the parent Client's chat-line discovery caches, reached
+  # through here by the `recordings.summarize` composite; it delegates upward
+  # like config/http/hooks and resolves to no service.
+  INFRASTRUCTURE_METHODS = %i[account_id config http hooks campfire_index].freeze
 
   # Non-vacuity floor. Every assertion below iterates a derived roster, so a
   # path change that yielded an empty roster would make all of them vacuously
@@ -89,7 +92,7 @@ class AccessorInventoryTest < Minitest::Test
   def test_no_accessor_without_a_generated_service
     # The other direction: an accessor left behind by a removed or renamed
     # service. Every service accessor is a zero-arity public method defined
-    # directly on AccountClient; the four infrastructure readers are the only
+    # directly on AccountClient; the five infrastructure readers are the only
     # others, and they are named rather than derived so a new one has to be
     # acknowledged here.
     #

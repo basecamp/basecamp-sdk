@@ -822,6 +822,23 @@ class OperationMapper
         group_id: path_params["groupId"],
         position: body["position"]
       )
+    when "RecordingsSummarize"
+      # The composite returns a plain Hash, so responseBody assertions read it
+      # directly — no summarizer, unlike the list arms above.
+      @account.recordings.summarize(
+        bucket_id: path_params["bucketId"],
+        recording_id: path_params["recordingId"],
+        event_type: path_params["eventType"],
+        recording_type: path_params["recordingType"]
+      )
+    when "CommentsCreateWithMentions"
+      # "mentions" is the fixture's spelling of the person ids; the SDK calls
+      # them person_ids, after the people read that resolves each one.
+      @account.comments.create_with_mentions(
+        recording_id: path_params["recordingId"],
+        content: body["content"],
+        person_ids: body["mentions"]
+      )
     else
       raise "Unknown operation: #{operation}"
     end
@@ -1153,89 +1170,9 @@ RUBY_SKIPS = Set.new([
   "PrioritizeAssignment POST retries when marked idempotent",
   "DeprioritizeAssignment DELETE retries when marked idempotent",
   "Network error on an idempotent POST is retried then succeeds",
-  "RecordingsSummarize routes comment.created to the comment read and reads its mentions",
-  "RecordingsSummarize refuses boost.created before any request",
-  "RecordingsSummarize finds a chat line under the second visible Campfire",
-  "RecordingsSummarize reports a chat line under no visible Campfire as unresolved, not as a failed read",
-  "RecordingsSummarize returns a Campfire candidate's 403 as that read's error",
-  "CommentsCreateWithMentions resolves each person before posting and writes the mention from attachable_sgid",
-  "RecordingsSummarize routes message.created (event type) to one typed read and projects the recording",
-  "RecordingsSummarize routes todo.created (event type) to one typed read and projects the recording",
-  "RecordingsSummarize routes card.created (event type) to one typed read and projects the recording",
-  "RecordingsSummarize routes Document (recording type) to one typed read and projects the recording",
-  "RecordingsSummarize routes Upload (recording type) to one typed read and projects the recording",
-  "RecordingsSummarize routes Schedule::Entry (recording type) to one typed read and projects the recording",
-  "RecordingsSummarize routes Question (recording type) to one typed read and projects the recording",
-  "RecordingsSummarize routes Question::Answer (recording type) to one typed read and projects the recording",
-  "RecordingsSummarize routes Todolist (recording type) to one typed read and projects the recording",
-  "RecordingsSummarize routes Vault (recording type) to one typed read and projects the recording",
-  "RecordingsSummarize routes Inbox::Forward (recording type) to one typed read and projects the recording",
-  "RecordingsSummarize routes Client::Approval (recording type) to one typed read and projects the recording",
-  "RecordingsSummarize routes Client::Correspondence (recording type) to one typed read and projects the recording",
-  "RecordingsSummarize routes GoogleDocument (recording type) to one typed read and projects the recording",
-  "RecordingsSummarize routes CloudFile (recording type) to one typed read and projects the recording",
-  "RecordingsSummarize routes Kanban::Step (recording type) to one typed read and projects the recording",
-  "RecordingsSummarize routes Questionnaire (recording type) to one typed read and projects the recording",
-  "RecordingsSummarize routes Schedule (recording type) to one typed read and projects the recording",
-  "RecordingsSummarize routes Todoset (recording type) to one typed read and projects the recording",
-  "RecordingsSummarize routes Message::Board (recording type) to one typed read and projects the recording",
-  "RecordingsSummarize routes Kanban::Board (recording type) to one typed read and projects the recording",
-  "RecordingsSummarize routes Kanban::Column (recording type) to one typed read and projects the recording",
-  "RecordingsSummarize routes Inbox (recording type) to one typed read and projects the recording",
-  "RecordingsSummarize routes todo.completed (event type) to one typed read and projects the recording",
-  "RecordingsSummarize routes todo.assignment_changed (event type) to one typed read and projects the recording",
-  "RecordingsSummarize routes card.completed (event type) to one typed read and projects the recording",
-  "RecordingsSummarize routes card.assignment_changed (event type) to one typed read and projects the recording",
-  "RecordingsSummarize routes Comment (recording type) to one typed read and projects the recording",
-  "RecordingsSummarize routes Message (recording type) to one typed read and projects the recording",
-  "RecordingsSummarize routes Todo (recording type) to one typed read and projects the recording",
-  "RecordingsSummarize routes Kanban::Card (recording type) to one typed read and projects the recording",
-  "RecordingsSummarize routes Chat::Transcript (recording type) to one typed read and projects the recording",
-  "RecordingsSummarize routes card.moved (event type) to one typed read and projects the recording",
-  "RecordingsSummarize routes Chat::Lines::Text (recording type) through Campfire discovery and projects the line",
 ].freeze)
 
 RUBY_SKIP_REASONS = {
-  "RecordingsSummarize routes comment.created to the comment read and reads its mentions" => "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-  "RecordingsSummarize refuses boost.created before any request" => "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-  "RecordingsSummarize finds a chat line under the second visible Campfire" => "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-  "RecordingsSummarize reports a chat line under no visible Campfire as unresolved, not as a failed read" => "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-  "RecordingsSummarize returns a Campfire candidate's 403 as that read's error" => "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-  "CommentsCreateWithMentions resolves each person before posting and writes the mention from attachable_sgid" => "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-  "RecordingsSummarize routes message.created (event type) to one typed read and projects the recording" => "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-  "RecordingsSummarize routes todo.created (event type) to one typed read and projects the recording" => "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-  "RecordingsSummarize routes card.created (event type) to one typed read and projects the recording" => "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-  "RecordingsSummarize routes Document (recording type) to one typed read and projects the recording" => "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-  "RecordingsSummarize routes Upload (recording type) to one typed read and projects the recording" => "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-  "RecordingsSummarize routes Schedule::Entry (recording type) to one typed read and projects the recording" => "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-  "RecordingsSummarize routes Question (recording type) to one typed read and projects the recording" => "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-  "RecordingsSummarize routes Question::Answer (recording type) to one typed read and projects the recording" => "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-  "RecordingsSummarize routes Todolist (recording type) to one typed read and projects the recording" => "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-  "RecordingsSummarize routes Vault (recording type) to one typed read and projects the recording" => "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-  "RecordingsSummarize routes Inbox::Forward (recording type) to one typed read and projects the recording" => "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-  "RecordingsSummarize routes Client::Approval (recording type) to one typed read and projects the recording" => "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-  "RecordingsSummarize routes Client::Correspondence (recording type) to one typed read and projects the recording" => "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-  "RecordingsSummarize routes GoogleDocument (recording type) to one typed read and projects the recording" => "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-  "RecordingsSummarize routes CloudFile (recording type) to one typed read and projects the recording" => "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-  "RecordingsSummarize routes Kanban::Step (recording type) to one typed read and projects the recording" => "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-  "RecordingsSummarize routes Questionnaire (recording type) to one typed read and projects the recording" => "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-  "RecordingsSummarize routes Schedule (recording type) to one typed read and projects the recording" => "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-  "RecordingsSummarize routes Todoset (recording type) to one typed read and projects the recording" => "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-  "RecordingsSummarize routes Message::Board (recording type) to one typed read and projects the recording" => "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-  "RecordingsSummarize routes Kanban::Board (recording type) to one typed read and projects the recording" => "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-  "RecordingsSummarize routes Kanban::Column (recording type) to one typed read and projects the recording" => "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-  "RecordingsSummarize routes Inbox (recording type) to one typed read and projects the recording" => "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-  "RecordingsSummarize routes todo.completed (event type) to one typed read and projects the recording" => "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-  "RecordingsSummarize routes todo.assignment_changed (event type) to one typed read and projects the recording" => "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-  "RecordingsSummarize routes card.completed (event type) to one typed read and projects the recording" => "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-  "RecordingsSummarize routes card.assignment_changed (event type) to one typed read and projects the recording" => "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-  "RecordingsSummarize routes Comment (recording type) to one typed read and projects the recording" => "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-  "RecordingsSummarize routes Message (recording type) to one typed read and projects the recording" => "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-  "RecordingsSummarize routes Todo (recording type) to one typed read and projects the recording" => "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-  "RecordingsSummarize routes Kanban::Card (recording type) to one typed read and projects the recording" => "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-  "RecordingsSummarize routes Chat::Transcript (recording type) to one typed read and projects the recording" => "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-  "RecordingsSummarize routes card.moved (event type) to one typed read and projects the recording" => "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-  "RecordingsSummarize routes Chat::Lines::Text (recording type) through Campfire discovery and projects the line" => "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
   "PUT operation is naturally idempotent" => "Ruby SDK only retries GET",
   "DELETE operation is naturally idempotent" => "Ruby SDK only retries GET",
   "POST operation retries when marked idempotent" => "Ruby SDK only retries GET",
@@ -1463,7 +1400,18 @@ class TestRunner
     # path: the mock route is origin-wide, so the first request must target
     # the pathParams-substituted fixture path — a misrouted request on the
     # same origin would otherwise consume a queued response silently.
-    if @test["operation"] != "DownloadURL" && !@test["path"].to_s.empty? && @tracker.requests.any?
+    #
+    # Unless the fixture already pins request 0's path explicitly, in which
+    # case that assertion is strictly stronger (exact equality, not substring)
+    # and this backstop is redundant. A composite that reads before it writes —
+    # CommentsCreateWithMentions, whose `path` names the POST while request 0 is
+    # the people read — is the case that needs the carve-out, and pinning
+    # request 0 explicitly is exactly how such a fixture states its sequence.
+    pins_first_request_path = (@test["assertions"] || []).any? do |a|
+      a["type"] == "requestPath" && (a["index"] || 0).zero?
+    end
+    if @test["operation"] != "DownloadURL" && !pins_first_request_path &&
+       !@test["path"].to_s.empty? && @tracker.requests.any?
       expected_path = substituted_path
       actual_path = URI.parse(@tracker.requests.first[:uri]).path
       unless actual_path.include?(expected_path)
@@ -1550,6 +1498,17 @@ class TestRunner
           failures << "Expected error type #{expected_type.inspect}, but got no error"
           next
         end
+        # A composite's own identity (SPEC section 18, Appendix F) is checked
+        # first: "unresolved" is neither an API read failure nor incomplete
+        # discovery, and no HTTP status can carry that distinction. See
+        # semantic_error_type.
+        semantic = semantic_error_type(error)
+        if semantic
+          failures << "Expected error type #{expected_type.inspect}, got #{semantic.inspect} (#{error.message})" \
+            unless semantic == expected_type
+          next
+        end
+
         # Map conformance canonical error types to Ruby SDK error codes
         code_map = {
           "not_found" => Basecamp::ErrorCode::NOT_FOUND,
@@ -1803,6 +1762,21 @@ class TestRunner
     cause.response_status if cause.respond_to?(:response_status)
   end
 
+  # Names a composite's own error identity for the errorType assertion, in the
+  # fixture's vocabulary.
+  #
+  # The recording-summary composite's outcomes are not HTTP answers: "this
+  # pointer names no recording type", "this chat line is under no Campfire you
+  # can currently see". A fixture pins those so it can prove "unresolved" is
+  # neither a failed read nor incomplete discovery — an identity neither a status
+  # code nor the message text can carry. The Ruby SDK spells them as error
+  # classes carrying #kind; this maps that onto the fixture's names.
+  #
+  # nil for every other error, which then classifies by canonical code as before.
+  def semantic_error_type(error)
+    error.is_a?(Basecamp::RecordingSummaryError) ? error.kind : nil
+  end
+
   def dig_path(obj, path)
     return obj if path.nil? || path.empty?
 
@@ -1815,6 +1789,12 @@ class TestRunner
         # responseBody assertion on a boolean field could never see false. Check
         # key presence instead of truthiness.
         current.key?(key) ? current[key] : current[key.to_sym]
+      elsif current.is_a?(Array)
+        # An integer segment indexes an array, as the Go and TypeScript
+        # navigators do — that is how a fixture reaches `assignees.0.id`.
+        # Anything else, or an out-of-range index, is absent rather than an
+        # error, so the assertion fails with the value it read.
+        key.match?(/\A\d+\z/) ? current[key.to_i] : nil
       elsif current.respond_to?(key)
         current.send(key)
       else
@@ -1829,39 +1809,33 @@ class ConformanceRunner
   def initialize(tests_dir)
     @tests_dir = tests_dir
     @tracker = TestTracker.new
-
-    # Create a test client (use "conformance-test-token" to match headerInjected assertions)
-    config = Basecamp::Config.new(base_url: "https://3.basecampapi.com")
-    token_provider = Basecamp::StaticTokenProvider.new("conformance-test-token")
-    client = Basecamp::Client.new(config: config, token_provider: token_provider)
-    @account = client.for_account("999")
-    @mapper = OperationMapper.new(@account)
   end
 
   # Returns an OperationMapper for the test, handling configOverrides.
-  # If configOverrides.baseUrl is set, constructs a new client with that URL.
+  # If configOverrides.baseUrl is set, constructs a client with that URL.
   # Construction-time errors (e.g., HTTPS enforcement) are wrapped in an
   # ErrorMapper that always raises the caught error.
+  #
+  # A FRESH client per case, as the Go runner builds one (`basecamp.NewClient`
+  # inside its per-case closure). A Client carries state that outlives a single
+  # call — the Campfire discovery caches `recordings.summarize` consults for a
+  # chat line, ten minutes each — so a shared client would let one case's dock
+  # and listing snapshots answer the next case's discovery, and the request
+  # sequence every chat fixture pins would depend on fixture order.
   def mapper_for_test(test_case)
-    overrides = test_case["configOverrides"]
-    return @mapper unless overrides
+    overrides = test_case["configOverrides"] || {}
 
-    has_base_url = overrides.key?("baseUrl")
-    has_max_pages = overrides.key?("maxPages")
-    # maxRetries has to be in this list or a case overriding ONLY the retry cap
-    # silently gets the shared default client and passes while testing nothing.
-    has_max_retries = overrides.key?("maxRetries")
-    return @mapper unless has_base_url || has_max_pages || has_max_retries
+    config_opts = { base_url: overrides.fetch("baseUrl", "https://3.basecampapi.com") }
+    # maxRetries has to be carried through or a case overriding ONLY the retry
+    # cap would silently get the default and pass while testing nothing.
+    config_opts[:max_pages] = overrides["maxPages"] if overrides.key?("maxPages")
+    config_opts[:max_retries] = overrides["maxRetries"] if overrides.key?("maxRetries")
 
     begin
-      config_opts = { base_url: has_base_url ? overrides["baseUrl"] : "https://3.basecampapi.com" }
-      config_opts[:max_pages] = overrides["maxPages"] if has_max_pages
-      config_opts[:max_retries] = overrides["maxRetries"] if has_max_retries
       config = Basecamp::Config.new(**config_opts)
       token_provider = Basecamp::StaticTokenProvider.new("conformance-test-token")
       client = Basecamp::Client.new(config: config, token_provider: token_provider)
-      account = client.for_account("999")
-      OperationMapper.new(account)
+      OperationMapper.new(client.for_account("999"))
     rescue StandardError => e
       ErrorMapper.new(e)
     end
