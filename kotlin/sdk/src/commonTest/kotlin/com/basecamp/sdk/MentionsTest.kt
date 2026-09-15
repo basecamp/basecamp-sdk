@@ -380,16 +380,56 @@ class MentionsTest {
             // WITH its port, so a bare port is a host there. Stripping the port
             // first and demanding a non-empty remainder refuses these — the
             // losing direction, and one another port shipped.
+            // The scheme is ASCII-folded, not case-folded: a scheme grammar
+            // admits only ASCII letters, so a dotless or dotted Turkish i makes
+            // the whole thing scheme-less rather than a `gid`.
+            "GID://bc3/Person/7" to 7L,
+            "gId://bc3/Person/7" to 7L,
+            "g\u0131d://bc3/Person/7" to null,
+            "g\u0130d://bc3/Person/7" to null,
+            "g\u0456d://bc3/Person/7" to null,
+
             "gid://:8080/Person/7" to 7L,
             "gid://:/Person/7" to 7L,
             "gid://user@:80/Person/7" to 7L,
         )
         // Counted so a row lost to an editing slip shows up as a failure rather
         // than as a smaller sweep that still passes.
-        assertEquals(89, rows.size, "the swept rows")
+        assertEquals(94, rows.size, "the swept rows")
         for ((gid, expected) in rows) {
             assertEquals(expected, personIdFromSgid(jsonSgidFor(gid)), gid)
         }
+    }
+
+    @Test
+    fun theTagAndAttributeNamesFoldTheWayTheReferenceFoldsThem() {
+        // Two different rules, and neither is Kotlin's `ignoreCase`. The tag and
+        // attribute names are matched with the reference's case FOLD, which
+        // walks the Unicode simple-folding orbit: for an ASCII letter that is
+        // just the two cases, except `s`, whose orbit also carries U+017F LATIN
+        // SMALL LETTER LONG S. So `\u017Fgid` IS the sgid attribute — measured on
+        // the reference, not reasoned from the spelling.
+        //
+        // The names are built by concatenation rather than written into a raw
+        // string: a raw string does not process escapes, so `\u017F` inside one
+        // is eight literal characters and the row would test nothing.
+        val sgid = jsonSgidFor("gid://bc3/Person/7")
+        fun mention(tag: String, attr: String) =
+            mentionedPersonIds("<" + tag + " " + attr + "=\"" + sgid + "\"></" + tag + ">")
+
+        assertEquals(listOf(7L), mention("bc-attachment", "sgid"))
+        assertEquals(listOf(7L), mention("BC-ATTACHMENT", "SGID"))
+        assertEquals(listOf(7L), mention("Bc-Attachment", "SgId"))
+        // The long s reaches `sgid` through the fold, there and here.
+        assertEquals(listOf(7L), mention("bc-attachment", "\u017Fgid"))
+
+        // A Unicode-aware `ignoreCase` matches these two; the reference's fold
+        // does not, so neither is a mention.
+        assertEquals(emptyList(), mention("bc-attachment", "sg\u0131d"))
+        assertEquals(emptyList(), mention("bc-attachment", "sg\u0130d"))
+        // And lookalikes in no orbit at all stay different names.
+        assertEquals(emptyList(), mention("bc-attachment", "s\u0261id"))
+        assertEquals(emptyList(), mention("bc-\u0430ttachment", "sgid"))
     }
 
     private fun jsonSgidFor(gid: String): String {
