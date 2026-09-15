@@ -8,7 +8,7 @@
  * caches' lifetime and refresh floor, the candidate budget, the listing cap,
  * and the error identities those produce.
  */
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { http, HttpResponse } from "msw";
 import { server } from "../setup.js";
 import { createBasecampClient } from "../../src/client.js";
@@ -661,6 +661,125 @@ describe("recordings.summarize", () => {
 
       expect(err.refreshed).toBe(true);
       expect(err.staleCampfireIds).toEqual([70]);
+    });
+
+    /**
+     * A service whose dock read is the test's own function, so a loader can
+     * fail in ways MSW cannot produce — synchronously, or with an AbortError.
+     */
+    function serviceWithDockRead(get: () => Promise<{ id: number; dock?: unknown[] }>): RecordingsService {
+      return new RecordingsService(
+        client.raw,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        () =>
+          ({ ...client, projects: { ...client.projects, get } }) as unknown as RecordingReadSources,
+      );
+    }
+
+    const chatDock = { id: BUCKET, dock: [{ id: 77, name: "chat", title: "C", enabled: true, url: "", app_url: "" }] };
+
+    it("releases the single-flight slot when a loader throws synchronously", async () => {
+      // The slot is taken after the wrapper promise exists and its release
+      // handler is attached, so no exit can leave a key marked in flight — and
+      // a leaked key would park every later caller forever, since a waiter
+      // waits with no timeout. This test would hang rather than fail if that
+      // ordering were ever inverted.
+      let calls = 0;
+      const recordings = serviceWithDockRead(() => {
+        calls++;
+        if (calls === 1) throw new Error("the loader died before it returned a promise");
+        return Promise.resolve(chatDock);
+      });
+      server.use(
+        http.get(`${BASE_URL}/chats/77/lines/9`, () =>
+          HttpResponse.json(recording(9, "Chat::Lines::Text", { content: "hi" })),
+        ),
+      );
+
+      await expect(
+        recordings.summarize({ bucketId: BUCKET, recordingId: 9, eventType: "chat.line.created" }),
+      ).rejects.toThrow("the loader died");
+
+      const summary = await recordings.summarize({
+        bucketId: BUCKET,
+        recordingId: 9,
+        eventType: "chat.line.created",
+      });
+      expect(summary.campfire_id).toBe(77);
+      expect(calls).toBe(2);
+    });
+
+    it("shares one failed load with every waiter rather than re-running it", async () => {
+      // An aborted fetch rejects with an AbortError whether a request timeout
+      // or a caller's cancellation fired the signal, so a waiter that decided
+      // anything from the rejection could not tell a dead caller from a slow
+      // server — and would re-run a load Go shares, once per waiter. Nothing
+      // reads the rejection: every waiter gets the same object, and the load
+      // ran once.
+      const aborted = Object.assign(new Error("This operation was aborted"), { name: "AbortError" });
+      let calls = 0;
+      const recordings = serviceWithDockRead(() => {
+        calls++;
+        return calls === 1 ? Promise.reject(aborted) : Promise.resolve(chatDock);
+      });
+      server.use(
+        http.get(`${BASE_URL}/chats/77/lines/9`, () =>
+          HttpResponse.json(recording(9, "Chat::Lines::Text", { content: "hi" })),
+        ),
+      );
+
+      const outcomes = await Promise.allSettled([
+        recordings.summarize({ bucketId: BUCKET, recordingId: 9, eventType: "chat.line.created" }),
+        recordings.summarize({ bucketId: BUCKET, recordingId: 10, eventType: "chat.line.created" }),
+        recordings.summarize({ bucketId: BUCKET, recordingId: 11, eventType: "chat.line.created" }),
+      ]);
+
+      expect(calls).toBe(1);
+      for (const outcome of outcomes) {
+        expect(outcome.status).toBe("rejected");
+        expect((outcome as PromiseRejectedResult).reason).toBe(aborted);
+      }
+
+      // And the slot is free afterwards: the next call loads for itself.
+      const summary = await recordings.summarize({
+        bucketId: BUCKET,
+        recordingId: 9,
+        eventType: "chat.line.created",
+      });
+      expect(summary.campfire_id).toBe(77);
+      expect(calls).toBe(2);
+    });
+
+    it("reads a clock a wall-clock jump cannot move", async () => {
+      // The discovery caches time themselves on performance.now(), which is
+      // monotonic. On Date.now() a backwards step would keep an entry past its
+      // TTL, decline a refresh that was due, and quietly cost the refreshed /
+      // stale-candidate signal in the unresolved verdict.
+      const paths = trackRequests();
+      server.use(
+        http.get(`${BASE_URL}/projects/${BUCKET}`, () =>
+          HttpResponse.json({ id: BUCKET, dock: [{ id: 77, name: "chat", title: "C", enabled: true, url: "", app_url: "" }] }),
+        ),
+        http.get(`${BASE_URL}/chats/77/lines/:lineId`, () =>
+          HttpResponse.json(recording(9, "Chat::Lines::Text", { content: "hi" })),
+        ),
+      );
+
+      await client.recordings.summarize({ bucketId: BUCKET, recordingId: 9, eventType: "chat.line.created" });
+
+      const wallClock = vi.spyOn(Date, "now").mockReturnValue(Date.now() + 24 * 60 * 60 * 1000);
+      try {
+        await client.recordings.summarize({ bucketId: BUCKET, recordingId: 10, eventType: "chat.line.created" });
+      } finally {
+        wallClock.mockRestore();
+      }
+
+      // A day of wall clock is far past the TTL; the snapshot is still served.
+      expect(paths.filter((path) => path === `/12345/projects/${BUCKET}`)).toHaveLength(1);
     });
 
     it("loads a source once for concurrent callers", async () => {
