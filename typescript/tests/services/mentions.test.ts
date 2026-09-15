@@ -435,7 +435,12 @@ describe("mentionedPersonIds", () => {
     const large = scan(200_000);
     // Only meaningful once the smaller run is measurable at all.
     if (small < 0.5) return;
-    expect(large / small).toBeLessThan(8);
+    // 10, not 8. Measured worst case over 120 trials with the CPU four times
+    // oversubscribed: 4.42. Quadratic would be near 16, so 10 keeps the
+    // discrimination while leaving room for a loaded CI box — this is the only
+    // wall-clock assertion in the suite, and one that fails for reasons
+    // unrelated to the code is worse than none.
+    expect(large / small).toBeLessThan(10);
   });
 
   it("stops at an unterminated comment or tag rather than guessing", () => {
