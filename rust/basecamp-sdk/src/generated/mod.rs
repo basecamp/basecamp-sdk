@@ -9,7 +9,7 @@ pub mod services;
 pub mod types;
 
 /// The Basecamp API version this SDK was generated against.
-pub const API_VERSION: &str = "2026-09-02";
+pub const API_VERSION: &str = "2026-09-15";
 
 /// How many operations the model declares.
 pub const OPERATION_COUNT: usize = 267;

@@ -110,12 +110,76 @@ making the absorption journey publicly auditable.
 > tracked in #12463) and the SDK's matching removal of `GetEverythingBoosts`;
 > its `no-json-contract` is literal — the feed has no JSON API today.
 >
-> The provenance pin is `c680233ba0e` (2026-09-02). <!-- @bc3-pin -->
+> The provenance pin is `66d387b62fb` (2026-09-15). <!-- @bc3-pin -->
 > That line is checked by `make doc-constants-check` and deliberately *not*
 > rewritten by `make sync-api-version`: this file is in
 > `spec/doc-constants.json` `.writerExcludes`, because the pin sentence heads
 > the range triage below and cannot advance without that triage advancing too.
 > The ranges themselves are settled history and stay unmarked.
+>
+> The `c680233ba0e..66d387b62fb` range is **466 commits** (58 merges, 408
+> non-merge). Twenty-three non-merge commits touch `doc/api` or
+> `app/views/api`. This repin was taken to absorb the template library's split
+> by kind; most of the rest of the range is registered rather than absorbed,
+> which is what the pin asserts.
+>
+> **Absorbed here.** Six commits ship the per-kind template library and
+> templatifications, modelled in this repin:
+> `4baa3931385` routes to-do list templates by kind (`GET`/`POST
+> /template_library/todolists.json`, with `GET /template_library.json` kept as a
+> documented redirect — removed here, not aliased, under the no-alias policy),
+> `e9302173649` serves card table templates, `33cc345aafc` and `66a0bb79df9`
+> add the create and templatify paths, `4ca4595e131` names the destination
+> project on a copy, and `e83bec21754` refuses a destination that cannot hold
+> the template. Two view-only commits belong to the same work and are covered by
+> the same shapes: `635a7a70e5f` gives the card table template container its JSON
+> representation (`kanban_boardset` plus the `card_tables` projection, both
+> modelled on `TemplateLibraryCardTables`) and `9f39faa4d98`/`b27c7dbaade` widen
+> the copies controller to any template kind.
+>
+> **Registered, not absorbed.** Four surfaces are documented upstream and
+> unmodelled here, each with a brief and matching `bc3_routes_not_modeled`
+> entries:
+>
+> - BC3 **#12659** (`e8f0d765ba6`) documents the Subtask API — eight routes under
+>   `/subtasks` and `/recordings/:id/subtasks`. Recorded in
+>   [`subtasks-canonical-rename.md`](subtasks-canonical-rename.md), which had
+>   predicted this and guessed the spelling wrong: the published surface is
+>   recording-scoped, not the canonical `/card_tables/subtasks` one, and it
+>   reaches subtasks on to-dos, which the SDK's five card-step operations do not.
+> - BC3 **#13121** (`b6ab4d76b1b`) serves a recording's backlinks —
+>   [`recording-backlinks.md`](recording-backlinks.md).
+> - BC3 **#10158** (`87a3d3603c1`) documents a generic recording show route —
+>   [`recording-generic-show.md`](recording-generic-show.md). Worth flagging: the
+>   SDK removed `GetRecording` at this path as issue #584, a confirmed live 404.
+>   That diagnosis was right when made; #10158 changed the fact under it.
+> - BC3 **#9962** (`368a9b6edb9`) adds bulk account enrollment —
+>   [`account-enrollments.md`](account-enrollments.md).
+>
+> **Already modelled.** BC3 **#13098** (`1d8d4ce95d5`) documents the project
+> client-access routes the SDK had been carrying as evidenced scope aliases. The
+> routes now appear in the vendored table, so the three waivers were deleted from
+> `bc3-route-allowlist.yml` exactly as their own notes instructed.
+>
+> **Wire-neutral for the modelled API.** BC3 **#13259** documents `start_date` on
+> project construction, which the SDK already models and pins in
+> `project_constructions.json`. BC3 **#13317**'s authorization-document parity is
+> tracked in
+> [`bc5-authorization-document-shape.md`](bc5-authorization-document-shape.md).
+> The readables batch cap on `PUT /my/unreads`, the cookie bridge's bearer
+> handling (#13217) and the agents work (#12314) add no documented JSON routes
+> and no field changes to modelled shapes. Two view-only changes were checked
+> rather than assumed: `a4a1e8216c9` adds a `membership_change` chat line
+> partial that renders the same `content` field every other line variant already
+> emits, and the `efb589a02be`/`a84586b8670` embeds pair is a change and its
+> revert. One genuinely new surface is deliberately absent from the ledger:
+> `74320ef45b3` (#9949) adds API views for circle creation but no `doc/api`
+> section, so it is undocumented, invisible to the doc-derived route table, and
+> not yet a contract the SDK can model against.
+>
+> The route table moves from 382 routes across 66 sections to 403 across 70. The
+> `bc3-four` compatibility pin does not move: this sync re-verifies only
+> `master`.
 >
 > The `88549ca619e..c680233ba0e` range is **111 commits** (15 merges, 96
 > non-merge). The complete raw diff was inspected because GitHub's compare

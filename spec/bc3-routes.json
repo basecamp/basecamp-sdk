@@ -5,12 +5,12 @@
   "source": {
     "repo": "basecamp/bc3",
     "branch": "master",
-    "revision": "c680233ba0e7784f08e86405a7319d7ece9cb267",
-    "date": "2026-09-02",
+    "revision": "66d387b62fb9ff968c5272b9cfec538b598ec05d",
+    "date": "2026-09-15",
     "extracted_from": [
       "doc/api/sections/*.md"
     ],
-    "sections_scanned": 66,
+    "sections_scanned": 70,
     "generator_sha256": "20e682227ca1962b8127691abb41343dde05155bff529123d0dd0489f5ecc378"
   },
   "routes": [
@@ -303,6 +303,17 @@
     },
     {
       "method": "DELETE",
+      "path": "/projects/:id/client_enablement",
+      "raw": "/projects/1/client_enablement.json",
+      "sections": [
+        "people.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "DELETE",
       "path": "/projects/:id/gauge/needles/:id",
       "raw": "/projects/1/gauge/needles/2.json",
       "sections": [
@@ -373,6 +384,28 @@
       "raw": "/stacks/2.json",
       "sections": [
         "folders.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/subtasks/:id",
+      "raw": "/subtasks/2.json",
+      "sections": [
+        "subtasks.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/subtasks/:id/completion",
+      "raw": "/subtasks/2/completion.json",
+      "sections": [
+        "subtasks.md"
       ],
       "evidence": [
         "bullet"
@@ -886,6 +919,28 @@
     },
     {
       "method": "GET",
+      "path": "/buckets/:id/recordings/:id",
+      "raw": "/buckets/1/recordings/2.json",
+      "sections": [
+        "recordings.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/buckets/:id/recordings/:id/backlinks",
+      "raw": "/buckets/1/recordings/2/backlinks.json",
+      "sections": [
+        "backlinks.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "GET",
       "path": "/buckets/:id/recordings/:id/boosts",
       "raw": "/buckets/1/recordings/2/boosts.json",
       "sections": [
@@ -926,6 +981,18 @@
       ],
       "evidence": [
         "bullet"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/buckets/:id/recordings/:id/templatifications/:id",
+      "raw": "/buckets/1/recordings/2/templatifications/3.json",
+      "sections": [
+        "templatifications.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
       ]
     },
     {
@@ -1952,6 +2019,28 @@
     },
     {
       "method": "GET",
+      "path": "/recordings/:id",
+      "raw": "/recordings/2.json",
+      "sections": [
+        "recordings.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/recordings/:id/backlinks",
+      "raw": "/recordings/2/backlinks.json",
+      "sections": [
+        "backlinks.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "GET",
       "path": "/recordings/:id/bookmark",
       "raw": "/recordings/2/bookmark.json",
       "sections": [
@@ -2016,6 +2105,18 @@
       "raw": "/recordings/2/subscription.json",
       "sections": [
         "subscriptions.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/recordings/:id/subtasks",
+      "raw": "/recordings/3/subtasks.json",
+      "sections": [
+        "subtasks.md"
       ],
       "evidence": [
         "bullet",
@@ -2216,10 +2317,22 @@
     },
     {
       "method": "GET",
-      "path": "/template_library",
-      "raw": "/template_library.json",
+      "path": "/subtasks/:id",
+      "raw": "/subtasks/2.json",
       "sections": [
-        "template_library.md"
+        "subtasks.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/template_library/card_tables",
+      "raw": "/template_library/card_tables.json",
+      "sections": [
+        "card_table_templates.md"
       ],
       "evidence": [
         "bullet",
@@ -2230,6 +2343,18 @@
       "method": "GET",
       "path": "/template_library/copies/:id",
       "raw": "/template_library/copies/1.json",
+      "sections": [
+        "template_library.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/template_library/todolists",
+      "raw": "/template_library/todolists.json",
       "sections": [
         "template_library.md"
       ],
@@ -2509,6 +2634,18 @@
       "raw": "/webhooks/3.json",
       "sections": [
         "webhooks.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/account/enrollments/people",
+      "raw": "/account/enrollments/people.json",
+      "sections": [
+        "people.md"
       ],
       "evidence": [
         "bullet",
@@ -2802,6 +2939,18 @@
       ],
       "evidence": [
         "bullet"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/buckets/:id/recordings/:id/templatifications",
+      "raw": "/buckets/1/recordings/2/templatifications.json",
+      "sections": [
+        "templatifications.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
       ]
     },
     {
@@ -3141,6 +3290,17 @@
     },
     {
       "method": "POST",
+      "path": "/projects/:id/client_enablement",
+      "raw": "/projects/1/client_enablement.json",
+      "sections": [
+        "people.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "POST",
       "path": "/projects/:id/gauge/needles",
       "raw": "/projects/1/gauge/needles.json",
       "sections": [
@@ -3286,6 +3446,17 @@
     },
     {
       "method": "POST",
+      "path": "/recordings/:id/subtasks",
+      "raw": "/recordings/3/subtasks.json",
+      "sections": [
+        "subtasks.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "POST",
       "path": "/recordings/:id/timesheet/entries",
       "raw": "/recordings/2/timesheet/entries.json",
       "sections": [
@@ -3321,8 +3492,44 @@
     },
     {
       "method": "POST",
+      "path": "/subtasks/:id/completion",
+      "raw": "/subtasks/2/completion.json",
+      "sections": [
+        "subtasks.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/template_library/card_tables",
+      "raw": "/template_library/card_tables.json",
+      "sections": [
+        "card_table_templates.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "POST",
       "path": "/template_library/copies",
       "raw": "/template_library/copies.json",
+      "sections": [
+        "card_table_templates.md",
+        "template_library.md"
+      ],
+      "evidence": [
+        "bullet",
+        "example-marker"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/template_library/todolists",
+      "raw": "/template_library/todolists.json",
       "sections": [
         "template_library.md"
       ],
@@ -4084,6 +4291,17 @@
     },
     {
       "method": "PUT",
+      "path": "/projects/:id/people/client_users",
+      "raw": "/projects/1/people/client_users.json",
+      "sections": [
+        "people.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
       "path": "/projects/:id/people/users",
       "raw": "/projects/1/people/users.json",
       "sections": [
@@ -4237,6 +4455,28 @@
       "evidence": [
         "bullet",
         "example-marker"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/subtasks/:id",
+      "raw": "/subtasks/2.json",
+      "sections": [
+        "subtasks.md"
+      ],
+      "evidence": [
+        "bullet"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/subtasks/:id/position",
+      "raw": "/subtasks/2/position.json",
+      "sections": [
+        "subtasks.md"
+      ],
+      "evidence": [
+        "bullet"
       ]
     },
     {
