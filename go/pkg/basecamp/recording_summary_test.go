@@ -1038,7 +1038,7 @@ func TestSummarize_ChatLineDockRefreshIsNotBlockedByTheListing(t *testing.T) {
 
 func TestTTLCache_LoaderPanicReleasesTheKey(t *testing.T) {
 	now := time.Date(2026, 9, 15, 12, 0, 0, 0, time.UTC)
-	cache := newTTLCache[string, int](func() time.Time { return now }, time.Minute, time.Second)
+	cache := newTTLCache[string, int](func() time.Time { return now }, time.Minute, time.Second, campfireIndexMaxItems)
 	started := make(chan struct{})
 	release := make(chan struct{})
 
@@ -1087,7 +1087,7 @@ func TestTTLCache_LoaderPanicReleasesTheKey(t *testing.T) {
 
 func TestTTLCache_WaiterGetsTheLoadItWaitedOnAsFresh(t *testing.T) {
 	now := time.Date(2026, 9, 15, 12, 0, 0, 0, time.UTC)
-	cache := newTTLCache[string, int](func() time.Time { return now }, time.Minute, time.Second)
+	cache := newTTLCache[string, int](func() time.Time { return now }, time.Minute, time.Second, campfireIndexMaxItems)
 	started := make(chan struct{})
 	release := make(chan struct{})
 	go func() {
@@ -1260,7 +1260,7 @@ func TestTTLCache_WaiterOutlivesTheLoadersCancellation(t *testing.T) {
 	// the re-acquire, caller 2 returns context.Canceled and the second load
 	// never happens.
 	now := time.Date(2026, 9, 15, 12, 0, 0, 0, time.UTC)
-	cache := newTTLCache[string, int](func() time.Time { return now }, time.Minute, time.Second)
+	cache := newTTLCache[string, int](func() time.Time { return now }, time.Minute, time.Second, campfireIndexMaxItems)
 	var loads atomic.Int32
 	started := make(chan struct{})
 	load := func(ctx context.Context) (int, error) {
@@ -1330,7 +1330,7 @@ func TestTTLCache_TransportTimeoutIsSharedNotRetried(t *testing.T) {
 	// waiter must share it; none may re-run the load, or N concurrent callers
 	// become N sequential requests past any configured retry budget.
 	now := time.Date(2026, 9, 15, 12, 0, 0, 0, time.UTC)
-	cache := newTTLCache[string, int](func() time.Time { return now }, time.Minute, time.Second)
+	cache := newTTLCache[string, int](func() time.Time { return now }, time.Minute, time.Second, campfireIndexMaxItems)
 	timeout := fmt.Errorf("Get \"https://example.invalid/chats.json\": %w (Client.Timeout exceeded while awaiting headers)", context.DeadlineExceeded)
 	var loads atomic.Int32
 	started := make(chan struct{})
@@ -1388,7 +1388,7 @@ func TestTTLCache_ReacquireIsBounded(t *testing.T) {
 	// instead of loading a third time: a run of cancelled owners must not
 	// become a queue of sequential loads behind one waiter.
 	now := time.Date(2026, 9, 15, 12, 0, 0, 0, time.UTC)
-	cache := newTTLCache[string, int](func() time.Time { return now }, time.Minute, time.Second)
+	cache := newTTLCache[string, int](func() time.Time { return now }, time.Minute, time.Second, campfireIndexMaxItems)
 	var loads atomic.Int32
 	load := func(ctx context.Context) (int, error) {
 		loads.Add(1)
@@ -1464,7 +1464,7 @@ func TestTTLCache_OwnerCancelledAfterAGenuineFailureDoesNotRetryIt(t *testing.T)
 	// cause: the failure is the load's own and every waiter shares it, with
 	// exactly one load made.
 	now := time.Date(2026, 9, 15, 12, 0, 0, 0, time.UTC)
-	cache := newTTLCache[string, int](func() time.Time { return now }, time.Minute, time.Second)
+	cache := newTTLCache[string, int](func() time.Time { return now }, time.Minute, time.Second, campfireIndexMaxItems)
 	forbidden := &Error{Code: CodeForbidden, Message: "access denied", HTTPStatus: 403}
 	var loads atomic.Int32
 	started := make(chan struct{})
@@ -1515,7 +1515,7 @@ func TestTTLCache_SweepsExpiredEntriesOnLoad(t *testing.T) {
 	// kept for the client's lifetime: the next load on any key sweeps them.
 	now := time.Date(2026, 9, 15, 12, 0, 0, 0, time.UTC)
 	clock := &now
-	cache := newTTLCache[string, int](func() time.Time { return *clock }, time.Minute, time.Second)
+	cache := newTTLCache[string, int](func() time.Time { return *clock }, time.Minute, time.Second, campfireIndexMaxItems)
 	one := func(context.Context) (int, error) { return 1, nil }
 	for _, k := range []string{"a", "b", "c"} {
 		if _, err := cache.get(context.Background(), k, false, one); err != nil {
@@ -1546,5 +1546,91 @@ func TestTTLCache_SweepsExpiredEntriesOnLoad(t *testing.T) {
 	}
 	if count() != 2 {
 		t.Fatalf("entries = %d after a load, want 2 (d and e)", count())
+	}
+}
+
+func TestTTLCache_BoundEvictsOldestFirst(t *testing.T) {
+	// More keys than the bound, none expired: the cache never holds more than
+	// the bound, and what goes is the oldest-fetched, deterministically.
+	now := time.Date(2026, 9, 15, 12, 0, 0, 0, time.UTC)
+	clock := &now
+	const bound = 4
+	cache := newTTLCache[string, int](func() time.Time { return *clock }, time.Hour, time.Second, bound)
+	count := func() int {
+		cache.mu.Lock()
+		defer cache.mu.Unlock()
+		return len(cache.entries)
+	}
+	has := func(k string) bool {
+		cache.mu.Lock()
+		defer cache.mu.Unlock()
+		_, ok := cache.entries[k]
+		return ok
+	}
+	for i, k := range []string{"a", "b", "c", "d", "e", "f", "g"} {
+		*clock = clock.Add(time.Second) // strictly increasing fetch times
+		v := i
+		if _, err := cache.get(context.Background(), k, false, func(context.Context) (int, error) { return v, nil }); err != nil {
+			t.Fatal(err)
+		}
+		if n := count(); n > bound {
+			t.Fatalf("entries = %d after %q, bound is %d", n, k, bound)
+		}
+	}
+	for _, gone := range []string{"a", "b", "c"} {
+		if has(gone) {
+			t.Fatalf("%q survived although it was among the oldest", gone)
+		}
+	}
+	for _, kept := range []string{"d", "e", "f", "g"} {
+		if !has(kept) {
+			t.Fatalf("%q was evicted although newer entries should have been kept", kept)
+		}
+	}
+	// Overwriting a present key takes no new room and evicts nothing.
+	*clock = clock.Add(time.Hour)
+	if _, err := cache.get(context.Background(), "g", false, func(context.Context) (int, error) { return 99, nil }); err != nil {
+		t.Fatal(err)
+	}
+	if !has("g") || count() != 1 {
+		// a, b, c were already gone; d, e, f expired an hour on and were swept by this load
+		t.Fatalf("after the overwrite: g present=%v, entries=%d, want g alone (d, e, f expired)", has("g"), count())
+	}
+}
+
+func TestTTLCache_WaiterKeepsItsValueAcrossEviction(t *testing.T) {
+	// A waiter reads the load it waited on off the load record itself, so
+	// even if the bound evicts that entry before the waiter runs, the waiter
+	// still gets the value. Bound of one: the very next publish on another
+	// key evicts the awaited entry.
+	now := time.Date(2026, 9, 15, 12, 0, 0, 0, time.UTC)
+	cache := newTTLCache[string, int](func() time.Time { return now }, time.Hour, time.Second, 1)
+	started := make(chan struct{})
+	release := make(chan struct{})
+	go func() {
+		_, _ = cache.get(context.Background(), "k", false, func(context.Context) (int, error) {
+			close(started)
+			<-release
+			return 42, nil
+		})
+	}()
+	<-started
+	waiting := make(chan struct{})
+	cache.onWait = func() { close(waiting) }
+	done := make(chan ttlHit[int], 1)
+	go func() {
+		hit, _ := cache.get(context.Background(), "k", false, func(context.Context) (int, error) { return -1, nil })
+		done <- hit
+	}()
+	<-waiting
+	cache.onWait = nil
+	close(release)
+	// Evict "k" from the entries before the waiter necessarily reads anything.
+	if _, err := cache.get(context.Background(), "other", false, func(context.Context) (int, error) { return 7, nil }); err != nil {
+		t.Fatal(err)
+	}
+	hit := <-done
+	if hit.value != 42 || hit.cached {
+		t.Fatalf("waiter got %+v, want the awaited load's value", hit)
 	}
 }

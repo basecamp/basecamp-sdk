@@ -556,8 +556,9 @@ type ttlCache[K comparable, V any] struct {
 	now      func() time.Time
 	ttl      time.Duration
 	floor    time.Duration
+	maxItems int
 	entries  map[K]*ttlEntry[V]
-	inflight map[K]*ttlLoad
+	inflight map[K]*ttlLoad[V]
 	// onWait, when set, runs just before a caller waits on another caller's
 	// load; onReacquire runs just before a waiter goes round again after an
 	// owner-attributed failure. Test seams: they let a test know a path was
@@ -571,9 +572,10 @@ type ttlEntry[V any] struct {
 	fetched time.Time
 }
 
-type ttlLoad struct {
+type ttlLoad[V any] struct {
 	done    chan struct{}
 	err     error
+	value   V         // the loaded value, read by waiters off this record: no sweep or bound can take it from them
 	fetched time.Time // set at publication, for the loader's own hit
 	// callerDone records that the failure is attributable to the loading
 	// caller's own context: that context was done when the load ended AND
@@ -589,8 +591,17 @@ type ttlLoad struct {
 	callerDone bool
 }
 
-func newTTLCache[K comparable, V any](now func() time.Time, ttl, floor time.Duration) *ttlCache[K, V] {
-	return &ttlCache[K, V]{now: now, ttl: ttl, floor: floor, entries: map[K]*ttlEntry[V]{}, inflight: map[K]*ttlLoad{}}
+// campfireIndexMaxItems bounds each discovery cache's entry count. The dock
+// cache holds one snapshot per bucket consulted within the TTL: a connector
+// listening across every project an agent can see touches hundreds of
+// buckets, not thousands, and a snapshot is a handful of ids, so 1024 is
+// generous headroom at a few hundred KB, and the bound exists so that a
+// process alive for weeks can never grow past it whatever it sees. When the
+// bound is reached the oldest-fetched entries go first, deterministically.
+const campfireIndexMaxItems = 1024
+
+func newTTLCache[K comparable, V any](now func() time.Time, ttl, floor time.Duration, maxItems int) *ttlCache[K, V] {
+	return &ttlCache[K, V]{now: now, ttl: ttl, floor: floor, maxItems: maxItems, entries: map[K]*ttlEntry[V]{}, inflight: map[K]*ttlLoad[V]{}}
 }
 
 // ttlHit is what a cache read hands back: the value, when it was fetched,
@@ -652,16 +663,12 @@ func (c *ttlCache[K, V]) get(ctx context.Context, key K, refresh bool, load func
 				return ttlHit[V]{}, pending.err
 			}
 			// The load this call waited on is this call's load: hand its
-			// value over as fresh, not as something that predated the call.
-			c.mu.Lock()
-			entry := c.entries[key]
-			c.mu.Unlock()
-			if entry != nil {
-				return ttlHit[V]{value: entry.value, fetched: entry.fetched}, nil
-			}
-			continue
+			// value over as fresh, not as something that predated the call —
+			// read off the load record, so a sweep or the bound evicting the
+			// entry in the meantime cannot take it from this waiter.
+			return ttlHit[V]{value: pending.value, fetched: pending.fetched}, nil
 		}
-		pending := &ttlLoad{done: make(chan struct{})}
+		pending := &ttlLoad[V]{done: make(chan struct{})}
 		c.inflight[key] = pending
 		c.mu.Unlock()
 
@@ -705,7 +712,7 @@ func (c *ttlCache[K, V]) sweepLocked() {
 // and wakes its waiters (with an error) before the panic continues; without
 // that the key would stay in flight forever and every later caller would
 // wait on it.
-func (c *ttlCache[K, V]) load(ctx context.Context, key K, pending *ttlLoad, loader func(context.Context) (V, error)) (loaded V, err error) {
+func (c *ttlCache[K, V]) load(ctx context.Context, key K, pending *ttlLoad[V], loader func(context.Context) (V, error)) (loaded V, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("basecamp: cache loader panicked: %v", r)
@@ -717,27 +724,54 @@ func (c *ttlCache[K, V]) load(ctx context.Context, key K, pending *ttlLoad, load
 	return loader(ctx)
 }
 
-func (c *ttlCache[K, V]) publish(key K, pending *ttlLoad, loaded V, err error, ctxErr error) {
+func (c *ttlCache[K, V]) publish(key K, pending *ttlLoad[V], loaded V, err error, ctxErr error) {
 	callerDone := ctxErr != nil
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c.sweepLocked()
 	delete(c.inflight, key)
 	pending.err = err
 	pending.callerDone = err != nil && callerDone && errors.Is(err, ctxErr)
 	if err == nil {
+		pending.value = loaded
 		pending.fetched = c.now()
+		c.sweepLocked()
+		c.makeRoomLocked(key)
 		c.entries[key] = &ttlEntry[V]{value: loaded, fetched: pending.fetched}
 	}
 	close(pending.done)
+}
+
+// makeRoomLocked evicts the oldest-fetched entries until the one about to be
+// stored for key fits under maxItems. Oldest-first is deterministic and is
+// also the right order: the entry nearest its TTL is the one least worth
+// keeping. Caller holds c.mu.
+func (c *ttlCache[K, V]) makeRoomLocked(key K) {
+	if c.maxItems <= 0 {
+		return
+	}
+	if _, present := c.entries[key]; present {
+		return // an overwrite takes no new room
+	}
+	for len(c.entries) >= c.maxItems {
+		var oldestKey K
+		var oldest time.Time
+		first := true
+		for k, e := range c.entries {
+			if first || e.fetched.Before(oldest) {
+				oldestKey, oldest, first = k, e.fetched, false
+			}
+		}
+		delete(c.entries, oldestKey)
+	}
 }
 
 // campfireIndex holds the two discovery sources. It lives on Client (shared
 // by every AccountClient the Client hands out); a Client is bound to one
 // credential, so entries are never shared across authorization contexts, and
 // every key carries the account id. Expired snapshots are swept at each
-// load, so the index holds at most the buckets and accounts consulted within
-// the last TTL, not everything the Client has ever seen.
+// load and each cache is bounded (campfireIndexMaxItems, oldest out first),
+// so the index holds at most the buckets and accounts consulted within the
+// last TTL, and never more than the bound, whatever the Client has seen.
 type campfireIndex struct {
 	docks    *ttlCache[campfireBucketKey, []int64]
 	listings *ttlCache[string, map[int64][]int64]
@@ -754,8 +788,8 @@ func newCampfireIndex() *campfireIndex {
 
 func newCampfireIndexAt(now func() time.Time) *campfireIndex {
 	return &campfireIndex{
-		docks:    newTTLCache[campfireBucketKey, []int64](now, CampfireIndexTTL, campfireIndexMinRefresh),
-		listings: newTTLCache[string, map[int64][]int64](now, CampfireIndexTTL, campfireIndexMinRefresh),
+		docks:    newTTLCache[campfireBucketKey, []int64](now, CampfireIndexTTL, campfireIndexMinRefresh, campfireIndexMaxItems),
+		listings: newTTLCache[string, map[int64][]int64](now, CampfireIndexTTL, campfireIndexMinRefresh, campfireIndexMaxItems),
 	}
 }
 
