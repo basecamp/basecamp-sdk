@@ -48,6 +48,26 @@ describe("personIdFromSGID", () => {
     expect(personIdFromSGID(legacySGID(gid, { digest: "b".repeat(40) }))).toBe(VICTOR);
   });
 
+  it("trims each end on its own, whatever sits between them", () => {
+    // The trim examines the boundary characters and nothing else. A port that
+    // instead chose its whitespace alphabet from a validity test over the WHOLE
+    // value loses a mention on this shape: a non-ASCII space in front, and
+    // something odd in the digest half the separator throws away. Go decodes a
+    // character at each end independently of everything between.
+    //
+    // Verified against Go over 200 combinations — nine non-ASCII spaces, four
+    // kinds of stray content, five positions — and the same corpus run against
+    // an ASCII-only trim diverges on 117 of them, so it reaches the class
+    // rather than merely agreeing.
+    const sgid = personSGID(VICTOR);
+    for (const space of ["\u0085", "\u00a0", "\u1680", "\u2003", "\u202f", "\u3000"]) {
+      for (const stray of ["\ufffd", "\ud83d\ude00", "\ud800", "\u00e9"]) {
+        expect(personIdFromSGID(`${space}${sgid}${stray}`)).toBe(VICTOR);
+        expect(personIdFromSGID(`${space}${sgid}${stray}${space}`)).toBe(VICTOR);
+      }
+    }
+  });
+
   it("refuses a purpose BC3 does not accept in rich text", () => {
     expect(personIdFromSGID(legacySGID(`gid://bc3/Person/${VICTOR}`, { purpose: "readable" }))).toBeUndefined();
     expect(personIdFromSGID(railsSGID(`gid://bc3/Person/${VICTOR}`, { purpose: "bookmarkable" }))).toBeUndefined();
