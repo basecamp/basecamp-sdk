@@ -90,14 +90,13 @@ export function mentionedPersonIds(richText: string): number[] {
 }
 
 /**
- * A GlobalID URL, split into host and path.
+ * A GlobalID URL, split into authority and path.
  *
- * The scheme is matched case-insensitively as a URL parser matches it; the host
- * may not carry whitespace, a URL delimiter, or a control character, which is
- * what a URL parser refuses there — the control range is the point of the
- * class, not an accident, hence the lint suppression.
+ * The scheme is matched case-insensitively, as a URL parser matches it. The
+ * class is deliberately permissive — what may appear in an authority is decided
+ * by {@link isParsableHost}, which models the rules `net/url` actually applies
+ * rather than approximating them with a character class.
  */
-// oxlint-disable-next-line no-control-regex
 const GID_URL = /^gid:\/\/([^/?#]*)(\/[^?#]*)?(?:[?#][\s\S]*)?$/i;
 
 /**
@@ -132,19 +131,82 @@ function isParsableHost(authority: string): boolean {
   if (at >= 0 && !isValidUserinfo(authority.slice(0, at))) return false;
   const host = at < 0 ? authority : authority.slice(at + 1);
 
-  // Go refuses a URL whose Host is empty, which is what "gid://user@/Person/1"
-  // parses to. Without this the read side INVENTS a mention Go does not report
-  // — the direction the module comment calls out as the dangerous one.
+  // An empty host, which is what "gid://user@/Person/1" parses to. `url.Parse`
+  // ACCEPTS that — the refusal is `u.Host == ""` in Go's own PersonIDFromSGID,
+  // not in net/url, and the distinction matters because a reader re-deriving
+  // this from net/url alone would delete the check. Without it the read side
+  // INVENTS a mention Go does not report.
   if (host === "") return false;
 
   if (host.startsWith("[")) {
+    // `parseHost` takes the LAST "]", checks what follows it as a port, and
+    // then validates the literal itself. Accepting any bracketed authority on
+    // the port rule alone — which this did — let "[a]", "[]", "[1.2.3.4]" and
+    // "[ab]]" all name a person Go refuses: 29 of 48 bracket shapes, every one
+    // in the invent direction.
     const close = host.lastIndexOf("]");
-    return close >= 0 && isOptionalPort(host.slice(close + 1));
+    if (close < 0 || !isOptionalPort(host.slice(close + 1))) return false;
+    return isIPv6Literal(host.slice(1, close));
   }
   if (FORBIDDEN_IN_HOST.test(host)) return false;
   const colon = host.lastIndexOf(":");
   if (colon >= 0 && !isOptionalPort(host.slice(colon))) return false;
   return hasParsableHostEscapes(colon < 0 ? host : host.slice(0, colon));
+}
+
+/**
+ * Whether a bracketed authority holds something `netip.ParseAddr` accepts.
+ *
+ * IPv6 only: a bare dotted quad in brackets is refused, and the embedded-IPv4
+ * tail is the only place dots may appear. An RFC 6874 zone is spelled `%25`
+ * followed by a non-empty zone, and the address before it must still parse —
+ * `[a%25eth0]` is refused, as is `[fe80::1%25]` and a zone carrying a malformed
+ * escape. Derived by sweeping 48 bracket shapes through Go rather than from the
+ * RFC, because the interesting rules are `netip`'s rather than the grammar's.
+ */
+function isIPv6Literal(inner: string): boolean {
+  const zoneAt = inner.indexOf("%25");
+  if (zoneAt >= 0) {
+    const zone = inner.slice(zoneAt + 3);
+    if (zone === "" || !hasValidEscapes(zone)) return false;
+    return isIPv6Address(inner.slice(0, zoneAt));
+  }
+  return isIPv6Address(inner);
+}
+
+function isIPv6Address(text: string): boolean {
+  const compressAt = text.indexOf("::");
+  const compressed = compressAt >= 0;
+  if (compressed && text.indexOf("::", compressAt + 1) >= 0) return false;
+  const head = compressed ? text.slice(0, compressAt) : text;
+  const tail = compressed ? text.slice(compressAt + 2) : "";
+
+  const parts = [
+    ...(head === "" ? [] : head.split(":")),
+    ...(tail === "" ? [] : tail.split(":")),
+  ];
+  let groups = 0;
+  for (let i = 0; i < parts.length; i++) {
+    const part = parts[i]!;
+    // A dotted quad is only legal as the last element, where it stands for the
+    // low two groups.
+    if (i === parts.length - 1 && part.includes(".")) {
+      if (!isIPv4Address(part)) return false;
+      groups += 2;
+      continue;
+    }
+    if (!/^[0-9A-Fa-f]{1,4}$/.test(part)) return false;
+    groups += 1;
+  }
+  // "::" must stand for at least one group; without it every group is spelled.
+  return compressed ? groups < 8 : groups === 8;
+}
+
+function isIPv4Address(text: string): boolean {
+  const octets = text.split(".");
+  if (octets.length !== 4) return false;
+  // No leading zeros: `netip.ParseAddr` refuses "192.168.001.1".
+  return octets.every((octet) => /^(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])$/.test(octet));
 }
 
 /**
@@ -155,6 +217,15 @@ function isParsableHost(authority: string): boolean {
  * `]` are all accepted by Go, and an earlier version of this file refused them.
  */
 const FORBIDDEN_IN_HOST = /[ [\\^`{|}]/;
+
+/** Whether every `%` in a string introduces two hex digits, as `unescape` requires. */
+function hasValidEscapes(text: string): boolean {
+  for (let i = text.indexOf("%"); i >= 0; i = text.indexOf("%", i + 1)) {
+    if (hexDigit(text.charCodeAt(i + 1), true) < 0) return false;
+    if (hexDigit(text.charCodeAt(i + 2), true) < 0) return false;
+  }
+  return true;
+}
 
 /**
  * The escapes `unescape(…, encodeHost)` accepts: two hex digits, with the first
@@ -241,7 +312,16 @@ export function personIdFromSGID(sgid: string): number | undefined {
   // mints `gid://bc3/Person/1049715915?expires_in=`. The query and fragment are
   // stripped the way a URL parser strips them, and the path must then be
   // exactly `/<Model>/<id>`: no more, no less.
-  if (CONTROL_BYTE.test(gid)) return undefined;
+  // `Parse` cuts the fragment off first and only then refuses control bytes, so
+  // a control byte in the fragment is fine and one in the query is not — and
+  // the fragment IS unescaped afterwards while the query is left raw, so a
+  // malformed escape is an error there and not there. "Anywhere in the string"
+  // was wrong in both halves.
+  const hash = gid.indexOf("#");
+  const beforeFragment = hash < 0 ? gid : gid.slice(0, hash);
+  if (CONTROL_BYTE.test(beforeFragment)) return undefined;
+  if (hash >= 0 && !hasValidEscapes(gid.slice(hash + 1))) return undefined;
+
   const parsed = GID_URL.exec(gid);
   if (parsed === null) return undefined;
   if (!isParsableHost(parsed[1] ?? "")) return undefined;
@@ -597,7 +677,12 @@ function unescapeEntity(text: string, start: number): [string, number] {
   if (terminated) pos++;
 
   if (value >= 0x80 && value <= 0x9f) return [String.fromCodePoint(WINDOWS_1252[value - 0x80]!), pos];
-  if (value === 0 || value > 0x10ffff || (value >= 0xd800 && value <= 0xdfff)) {
+  // `<= 0`, not `=== 0`: the int32 wrap above can land on a NEGATIVE value, and
+  // Go's `utf8.EncodeRune` reads the rune as a `uint32` and writes U+FFFD for
+  // anything past MaxRune. Guarding only zero let a negative through to
+  // `String.fromCodePoint`, which throws a RangeError — an untyped throw out of
+  // a public read helper, on content a server can serve.
+  if (value <= 0 || value > 0x10ffff || (value >= 0xd800 && value <= 0xdfff)) {
     return [REPLACEMENT, pos];
   }
   return [String.fromCodePoint(value), pos];
@@ -611,8 +696,17 @@ function hexDigit(code: number, hex: boolean): number {
   return -1;
 }
 
-/** Decodes the character references an HTML attribute value may carry. */
-function unescapeEntities(value: string): string {
+/**
+ * Decodes the character references an HTML attribute value may carry.
+ *
+ * Exported for the test that pins the scanner against Go's. It is NOT part of
+ * the package surface — `src/index.ts` does not re-export it — and it is
+ * exported at all because a test asserting only "this names nobody" is
+ * satisfied by any failure that also names nobody, including a decoder that
+ * does nothing. Pinning the decoded string is what makes the row fail under the
+ * regression it is written to catch.
+ */
+export function unescapeEntities(value: string): string {
   if (!value.includes("&")) return value;
   let out = "";
   let pos = 0;
