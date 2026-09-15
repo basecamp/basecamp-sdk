@@ -33,8 +33,16 @@ data class RecordingRef(
 )
 
 /**
- * The compact projection `RecordingsService.summarize` returns. Fields a type
- * does not have are absent: a comment has no [assignees], a vault no [content].
+ * The compact projection `RecordingsService.summarize` returns.
+ *
+ * A field a type does not have is EMPTY rather than missing, the way the
+ * reference states it ("fields a type does not have are zero"), and which of
+ * the two a consumer sees follows the field's own nullability: [parent],
+ * [bucket], [creator], [assignees] and [campfireId] are nullable and are
+ * omitted from the JSON, while [mentionedPersonIds] and [content] are not, so
+ * a vault reads `"content": ""` and not a missing key. Saying "absent" of all
+ * of them was wrong about the two that carry the zero value — and [content]
+ * was the example it gave.
  *
  * @property type The recording type as BC3 spells it (`Comment`, `Kanban::Card`).
  * @property parent The recording this one hangs off — the commented recording

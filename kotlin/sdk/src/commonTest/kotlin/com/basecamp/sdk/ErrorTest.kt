@@ -243,8 +243,11 @@ class ErrorTest {
         assertEquals(BasecampException.CODE_USAGE, unmapped.code)
         assertEquals(1, unmapped.exitCode)
         // `reason != code` above is a real check rather than a theorem, and this
-        // is the input that shows it: a reason spelled like a canonical code
-        // derives THAT code, so the two sides coincide. Without this row, an
+        // is the input that shows it. There is no name matching in the
+        // derivation — `RecordingSummaryFailure("not_found", …)` reports
+        // `usage`, not `not_found` — so exactly ONE reason coincides with its
+        // own code, and it does so because `usage` IS the fallback the `else`
+        // arm returns. Without a row where the two sides can meet, an
         // `assertNotEquals` between a value and a function of that value reads
         // as something the derivation guarantees, and a reader cannot tell a
         // guard from a tautology.
