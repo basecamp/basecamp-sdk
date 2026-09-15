@@ -237,6 +237,38 @@ final class MentionsTests: XCTestCase {
             "nothing this accepts may be a gid Go refuses — that is the direction that matters")
     }
 
+    /// The fragment and the query are not equivalent, and truncating at the
+    /// first of either gets one of them wrong.
+    ///
+    /// Go splits the fragment off the whole URL and UNESCAPES it, so a malformed
+    /// escape there refuses the entire gid. It keeps `RawQuery` raw and
+    /// validates nothing. Truncating at `#` without looking accepted a gid Go
+    /// refuses — the permissive direction, on a path whose only
+    /// authenticity-adjacent gate is "does this sgid name this person".
+    ///
+    /// Measured over 364 shapes — two paths × seven queries × thirteen
+    /// fragments, in both orders — of which Go accepts 160, with zero
+    /// mismatches in either direction.
+    func testTheFragmentIsValidatedAndTheQueryIsNot() {
+        // Go unescapes the fragment, so a malformed escape in it refuses the gid.
+        for gid in [
+            "gid://bc3/Person/1#%zz", "gid://bc3/Person/1#%", "gid://bc3/Person/1#%2",
+            "gid://bc3/Person/1?x=y#%zz", "gid://bc3/Person/1#a%1", "gid://bc3/Person/1#%1g",
+        ] {
+            XCTAssertNil(Mentions.personId(fromGlobalId: gid), gid)
+        }
+        // A well-formed escape, or no escape at all, is fine there.
+        for gid in [
+            "gid://bc3/Person/1#frag", "gid://bc3/Person/1#%41", "gid://bc3/Person/1#%C3%A9",
+            "gid://bc3/Person/1#a b", "gid://bc3/Person/1#f%20g", "gid://bc3/Person/1#",
+            // And the query is never validated: Go keeps it raw.
+            "gid://bc3/Person/1?%zz", "gid://bc3/Person/1?%", "gid://bc3/Person/1?x=%zz",
+            "gid://bc3/Person/1?a b", "gid://bc3/Person/1?",
+        ] {
+            XCTAssertEqual(Mentions.personId(fromGlobalId: gid), 1, gid)
+        }
+    }
+
     /// The authority, against `net/url` in BOTH directions — measured over 1,824
     /// generated shapes, because a charset that looked about right was wrong
     /// each way, and a first fix that checked only the host was wrong again.
