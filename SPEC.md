@@ -4425,6 +4425,37 @@ default policy; the endpoint re-enters the SDK as caller configuration on a
 caller-owned client, and the enforcement is that client's to compose (§16
 requirement 6).
 
+### Recording Summaries and Mention Helpers
+
+A compact recording projection resolved from an event pointer, and the mention
+read/write pair over `<bc-attachment>` sgids, are implemented in Go only:
+`RecordingsService.Summarize` (`go/pkg/basecamp/recording_summary.go`),
+`MentionedPersonIDs` / `PersonIDFromSGID` / `MentionMarkup` / `WithMentions`
+(`go/pkg/basecamp/mentions.go`), and `CommentsService.ExpandMentions` /
+`CreateWithMentions`. They are hand-written composition over the Go service
+wrappers — every request is a generated operation under its own hook identity,
+no path is constructed, and no wire operation the spec lacks is introduced —
+and they are not §18 composites: none takes over a generated method name, and
+the chat line path is stateful (a per-account Campfire listing cached ten
+minutes, shared by every `AccountClient` a `Client` hands out) rather than a
+stateless read-overlay-write. This is a deliberate Go-first move, like the
+address policies above: the consumers are the Go agent connector and the two
+Go MCP servers, which must read one projection so they cannot disagree about
+its shape.
+
+| SDK | Recording summary and mention helpers |
+|-----|---------------------------------------|
+| Go | `RecordingsService.Summarize(ctx, RecordingRef)` routes on the feed event type (`comment.*`, `message.*`, `todo.*`, `card.*`, `chat.line.*`) or the BC3 recording type to the one typed read that serves it; refuses `boost.*` with `ErrNoRecordingType`; discovers a chat line's Campfire from the cached listing and reports `ErrRecordingUnresolved` — distinct from any read failure — only when every visible candidate answered 404 after one refresh. Mentions are read by decoding the Person gid out of each sgid payload (unsigned; both Rails payload layouts) and written from `attachable_sgid`. Native Go tests only. |
+| TypeScript, Ruby, Python, Kotlin, Swift, Rust | Not implemented. The constituent reads exist in every SDK, so each could carry the same composition; a port is not conformance-covered today, since these helpers have no `conformance/tests/` fixture — adding one would put the case on six runners' skip rosters until each ports it. |
+
+The behavioral contract worth restating across a port: the read for a type is
+exactly one generated operation and the pointer's bucket is checked against the
+read's (`ErrBucketMismatch`); the chat line loop stops at the first non-404
+and returns it, so a permission failure never masquerades as "not here"; the
+mention reader counts every `<bc-attachment>` whose sgid names a Person,
+quoted or nested, and skips file blobs and undecodable sgids; and the writer
+never repeats a person the content already mentions.
+
 ### Retry Strategy (§7)
 
 | SDK | Retry behavior |

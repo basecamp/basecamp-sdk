@@ -540,7 +540,7 @@ for both.
 | `Messages()` | List, Get, Create, Update, Trash |
 | `MessageBoards()` | Get |
 | `MessageTypes()` | List, Get, Create, Update, Destroy |
-| `Comments()` | List, Get, Create, Update, Trash |
+| `Comments()` | List, Get, Create, Update, Trash, ExpandMentions, CreateWithMentions |
 | `Campfires()` | List, Get, ListLines, GetLine, CreateLine, UpdateLine, DeleteLine, Chatbot CRUD |
 | `Forwards()` | List, Get |
 
@@ -585,7 +585,7 @@ for both.
 |---------|---------|
 | `Webhooks()` | List, Get, Create, Update, Delete |
 | `Subscriptions()` | List, Subscribe, Unsubscribe, Update |
-| `Recordings()` | Archive, Unarchive, Trash |
+| `Recordings()` | Archive, Unarchive, Trash, Summarize |
 
 ### Client Portal
 
@@ -654,6 +654,76 @@ line, err := account.Campfires().CreateLine(ctx, campfireID, "Hello, team!")
 // List recent messages
 lines, err := account.Campfires().ListLines(ctx, campfireID, nil)
 ```
+
+## Working with recording summaries and mentions
+
+An account event feed row or a webhook points at a recording — bucket id,
+recording id, and an event type such as `comment.created` — without carrying
+its content. `Recordings().Summarize` resolves that pointer through the typed
+read the type names (the API has no untyped recording read, so the type is the
+routing key) into a compact projection: type, title, app URL, parent, bucket,
+creator, assignees, the person ids the content mentions, the content itself,
+and `updated_at`.
+
+```go
+summary, err := account.Recordings().Summarize(ctx, basecamp.RecordingRef{
+    BucketID:    bucketID,
+    RecordingID: recordingID,
+    EventType:   "comment.created", // or RecordingType: "Comment"
+})
+if err != nil {
+    switch {
+    case errors.Is(err, basecamp.ErrNoRecordingType):
+        // boost.created: the row names no recording type; resolve it elsewhere.
+    case errors.Is(err, basecamp.ErrUnknownRecordingType):
+        // Nothing to read for this type.
+    case errors.Is(err, basecamp.ErrRecordingUnresolved):
+        // A chat line found under none of the Campfires you can see in that
+        // bucket. Distinct from a failed read — retry on your own schedule.
+    }
+    return err
+}
+fmt.Println(summary.Type, summary.Title, summary.MentionedPersonIDs)
+```
+
+Every catalogued feed type routes (`comment.*`, `message.*`, `todo.*`,
+`card.*`, `chat.line.*`), as do the recording types with a typed read of their
+own (`Document`, `Upload`, `Schedule::Entry`, `Question`, `Question::Answer`,
+`Todolist`, `Vault`, `Inbox::Forward`, `Client::Approval`,
+`Client::Correspondence`, `GoogleDocument`, `CloudFile`, `Kanban::Step`).
+`boost.created` is refused with `ErrNoRecordingType` rather than read as
+something it is not.
+
+Chat lines need discovery first: their read takes the Campfire id, which the
+pointer does not carry. `Summarize` lists the Campfires you can see (cached ten
+minutes per account, one listing for every line in every bucket), tries the
+line under each Campfire in the line's bucket, and reports `CampfireID` — the
+reply destination — on success. A candidate that answers anything but 404
+stops the loop with that error; only when every candidate says "not here" is
+the line `ErrRecordingUnresolved`, and the listing is refreshed once before
+concluding that.
+
+Mentions are `<bc-attachment>` tags whose `sgid` is a person's
+`attachable_sgid`. Two helpers read and write them:
+
+```go
+// Read: the people a rich text mentions.
+ids := basecamp.MentionedPersonIDs(comment.Content)
+
+// Write: post a comment that mentions people by id. Each id is resolved
+// through People().Get for its attachable_sgid before anything is posted.
+comment, err := account.Comments().CreateWithMentions(ctx, recordingID,
+    "<div>On it.</div>", []int64{personID})
+
+// Or expand first and post however you like — a Campfire line, say.
+content, err := account.Comments().ExpandMentions(ctx, "<div>On it.</div>", []int64{personID})
+line, err := account.Campfires().CreateLine(ctx, campfireID, content,
+    &basecamp.CreateLineOptions{ContentType: basecamp.LineContentTypeHTML})
+```
+
+`MentionedPersonIDs` decodes the person id out of each sgid's payload; it does
+not verify the signature, which only Basecamp can. A person already mentioned
+in the content is never mentioned twice.
 
 ## Working with Webhooks
 
