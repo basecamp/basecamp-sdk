@@ -24,6 +24,7 @@ from basecamp.errors import (
     CampfireDiscoveryIncompleteError,
     ForbiddenError,
     NoRecordingTypeError,
+    NotFoundError,
     RecordingRoutingError,
     RecordingUnresolvedError,
     UnknownRecordingTypeError,
@@ -134,7 +135,14 @@ class TestRoutingRefusals:
         with pytest.raises(NoRecordingTypeError) as raised:
             _account().recordings.summarize(bucket_id=BUCKET, recording_id=1, event_type="boost.created")
         assert not route.called
-        assert raised.value.code == "no_recording_type"
+        # The IDENTITY is the class; `code` is the coarse SPEC section 6
+        # answer derived from it. A pointer refused from the caller's own
+        # arguments before any request is `usage` -- it used to fall through
+        # an unknown code to exit 7, reporting "server-side error" for a
+        # mistake the SDK never sent anywhere.
+        assert isinstance(raised.value, NoRecordingTypeError)
+        assert raised.value.code == "usage"
+        assert raised.value.exit_code == 1
         assert isinstance(raised.value, RecordingRoutingError)
 
     @respx.mock
@@ -155,7 +163,9 @@ class TestRoutingRefusals:
         with pytest.raises(UnknownRecordingTypeError) as raised:
             _account().recordings.summarize(bucket_id=BUCKET, recording_id=1, **pointer)
         assert not route.called
-        assert raised.value.code == "unknown_recording_type"
+        assert isinstance(raised.value, UnknownRecordingTypeError)
+        assert raised.value.code == "usage"
+        assert raised.value.exit_code == 1
 
     @respx.mock
     def test_a_refusal_reports_the_routing_key_as_given(self):
@@ -220,7 +230,8 @@ class TestProjection:
         )
         with pytest.raises(BucketMismatchError) as raised:
             _account().recordings.summarize(bucket_id=BUCKET, recording_id=1, event_type="comment.created")
-        assert raised.value.code == "bucket_mismatch"
+        assert isinstance(raised.value, BucketMismatchError)
+        assert raised.value.code == "usage"
         assert raised.value.bucket_id == 777
         assert raised.value.requested_bucket_id == BUCKET
 
@@ -556,7 +567,14 @@ class TestChatLineDiscovery:
         with pytest.raises(RecordingUnresolvedError) as raised:
             _account().recordings.summarize(bucket_id=BUCKET, recording_id=LINE_ID, event_type="chat.line.created")
 
-        assert raised.value.code == "recording_unresolved"
+        # Still distinct from a failed read, and the CLASS is what says so:
+        # `NotFoundError` and `RecordingUnresolvedError` are different types.
+        # The coarse code is `not_found` because that is what the answer means
+        # to a CLI -- BC3 answers 404 for a Campfire the caller cannot see too,
+        # which is why this error exists rather than being one.
+        assert isinstance(raised.value, RecordingUnresolvedError)
+        assert not isinstance(raised.value, NotFoundError)
+        assert raised.value.code == "not_found"
         assert raised.value.campfire_ids == [1, 2]
         assert raised.value.bucket_id == BUCKET
 
@@ -589,7 +607,13 @@ class TestChatLineDiscovery:
         with pytest.raises(CampfireDiscoveryIncompleteError) as raised:
             _account().recordings.summarize(bucket_id=BUCKET, recording_id=LINE_ID, event_type="chat.line.created")
 
-        assert raised.value.code == "campfire_discovery_incomplete"
+        assert isinstance(raised.value, CampfireDiscoveryIncompleteError)
+        # No enum member fits "I could not finish looking", so it takes the
+        # residual one -- and stays NON-retryable despite that code's usual
+        # meaning, because both reasons are deterministic for the same account
+        # state and a retry loop would re-run the same search forever.
+        assert raised.value.code == "api_error"
+        assert raised.value.retryable is False
         assert str(MAX_CAMPFIRE_CANDIDATES) in raised.value.reason
         assert lines.call_count == MAX_CAMPFIRE_CANDIDATES
 
@@ -1110,7 +1134,13 @@ class TestAsync:
         with pytest.raises(CampfireDiscoveryIncompleteError) as raised:
             await account.recordings.summarize(bucket_id=BUCKET, recording_id=LINE_ID, event_type="chat.line.created")
 
-        assert raised.value.code == "campfire_discovery_incomplete"
+        assert isinstance(raised.value, CampfireDiscoveryIncompleteError)
+        # No enum member fits "I could not finish looking", so it takes the
+        # residual one -- and stays NON-retryable despite that code's usual
+        # meaning, because both reasons are deterministic for the same account
+        # state and a retry loop would re-run the same search forever.
+        assert raised.value.code == "api_error"
+        assert raised.value.retryable is False
 
     @respx.mock
     async def test_a_miss_refreshes_the_cached_dock_before_concluding(self):

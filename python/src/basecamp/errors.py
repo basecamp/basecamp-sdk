@@ -190,13 +190,38 @@ class PeopleConfirmationRequiredError(ValidationError):
 # --- Recording summary identities -------------------------------------------
 #
 # The errors ``RecordingsService.summarize`` raises for its own refusals, as
-# opposed to a read's. Their ``code`` values sit deliberately OUTSIDE
-# ``ErrorCode``: that enum is SPEC section 6's canonical mapping of HTTP answers
-# onto a taxonomy the CLI turns into exit codes, and none of these is an HTTP
-# answer. They are composite identities -- facts about the resolution, matched
-# with ``except`` rather than parsed out of a message -- so they carry their own
-# names and fall through ``exit_code`` to ``ExitCode.API`` like any other
-# unmapped code.
+# opposed to a read's. Identity and CLASSIFICATION are separate here, following
+# ``DeviceFlowError`` in ``oauth/errors.py``: that carries the precise outcome
+# in ``reason`` and DERIVES the coarse ``code`` from it, overriding retryability
+# from the reason rather than from the code. The same split applies, with the
+# exception CLASS as the identity a consumer matches -- the shape Go uses too,
+# where these are sentinel errors with no code slot at all and its conformance
+# runner matches them with ``errors.Is`` before falling through to ``.Code``.
+#
+# ``code`` therefore stays inside ``ErrorCode``. SPEC section 6 declares that
+# enum CLOSED, so a name outside it is a spec violation rather than an
+# extension -- and ``exit_code`` maps an unknown code to ``ExitCode.API``, so
+# every one of these reported "server-side error" (7), including the two that
+# are refused from the caller's own arguments before any request is made.
+#: The canonical SPEC section 6 code each composite identity classifies as.
+#: Identity is the class; this is the coarse answer a CLI turns into an exit
+#: code. Derived, never stored, so the two cannot drift apart.
+_COMPOSITE_CODE: dict[str, ErrorCode] = {
+    # Refused from the caller's own arguments, before any request.
+    "no_recording_type": ErrorCode.USAGE,
+    "unknown_recording_type": ErrorCode.USAGE,
+    # The pointer names a bucket the recording is not in -- also the caller's.
+    "bucket_mismatch": ErrorCode.USAGE,
+    # Every visible candidate answered 404: the recording is not there.
+    "recording_unresolved": ErrorCode.NOT_FOUND,
+    # Not an HTTP answer and not the caller's fault; no enum member fits, so it
+    # takes the residual one. Deliberately NOT retryable despite that code's
+    # usual meaning: both reasons -- too many visible campfires, and a budget
+    # spent before the listing -- are deterministic for the same account state,
+    # so a retry loop would re-run the same search forever. `DeviceFlowError`
+    # overrides retryability from the reason for the same kind of reason.
+    "campfire_discovery_incomplete": ErrorCode.API,
+}
 
 
 class RecordingRoutingError(BasecampError):
@@ -218,7 +243,7 @@ class NoRecordingTypeError(RecordingRoutingError):
     def __init__(self, routing_key: str, **kwargs: Any):
         super().__init__(
             f"event type names no recording type: {routing_key!r}",
-            code="no_recording_type",
+            code=_COMPOSITE_CODE["no_recording_type"],
             **kwargs,
         )
         self.routing_key = routing_key
@@ -230,7 +255,7 @@ class UnknownRecordingTypeError(RecordingRoutingError):
     def __init__(self, routing_key: str, **kwargs: Any):
         super().__init__(
             f"no typed read for recording type: {routing_key!r}",
-            code="unknown_recording_type",
+            code=_COMPOSITE_CODE["unknown_recording_type"],
             **kwargs,
         )
         self.routing_key = routing_key
@@ -261,7 +286,7 @@ class RecordingUnresolvedError(BasecampError):
         super().__init__(
             f"chat line found under no visible campfire: line {recording_id} "
             f"in bucket {bucket_id} (tried {len(campfire_ids)} campfires)",
-            code="recording_unresolved",
+            code=_COMPOSITE_CODE["recording_unresolved"],
             **kwargs,
         )
         self.bucket_id = bucket_id
@@ -293,7 +318,7 @@ class CampfireDiscoveryIncompleteError(BasecampError):
     def __init__(self, *, bucket_id: int, recording_id: int, reason: str, **kwargs: Any):
         super().__init__(
             f"campfire discovery incomplete: line {recording_id} in bucket {bucket_id}: {reason}",
-            code="campfire_discovery_incomplete",
+            code=_COMPOSITE_CODE["campfire_discovery_incomplete"],
             **kwargs,
         )
         self.bucket_id = bucket_id
@@ -328,7 +353,7 @@ class BucketMismatchError(BasecampError):
         super().__init__(
             f"recording is not in the requested bucket: recording {recording_id} "
             f"is in bucket {bucket_id}, not {requested_bucket_id}",
-            code="bucket_mismatch",
+            code=_COMPOSITE_CODE["bucket_mismatch"],
             **kwargs,
         )
         self.bucket_id = bucket_id
