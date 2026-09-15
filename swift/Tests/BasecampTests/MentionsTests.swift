@@ -230,11 +230,38 @@ final class MentionsTests: XCTestCase {
         XCTAssertNil(Mentions.personId(fromAttachableSgid: String(spaced)))
     }
 
-    /// A non-zero final group is ignored by Go's decoder and by Foundation's, so
-    /// nothing has to be done about it — but it is pinned, because "handling" it
-    /// is the obvious wrong fix.
-    func testANonZeroTrailingGroupDecodesTheSameOnBothSides() {
+    /// The whole base64 leniency table, measured against Go's `RawStdEncoding`
+    /// rather than reasoned about, because the fixture cannot see any of it and
+    /// a divergence in EITHER direction is a silent wrong answer: stricter loses
+    /// a real mention, looser accepts a payload Go refuses.
+    ///
+    /// Foundation matches none of it out of the box — `Data(base64Encoded:)`
+    /// rejects CR and LF, and `.ignoreUnknownCharacters` would accept space and
+    /// tab as well — which is why the decode normalises the two bytes Go ignores
+    /// and nothing else.
+    func testBase64LeniencyMatchesGoRowForRow() {
+        // A payload for person 42, and the same payload mutilated six ways.
+        func decodes(_ payload: String) -> Bool {
+            Mentions.envelopeGlobalId(payload) == "gid://bc3/Person/42"
+        }
+        let base = railsJSONSgid
+        let head = String(base.prefix(20))
+        let tail = String(base.dropFirst(20))
+
+        XCTAssertTrue(decodes(base), "the control")
+        // Non-zero trailing (discarded) bits: Go accepts, only Encoding.Strict()
+        // rejects. Checked on the primitive, since a mutated envelope would not
+        // decode to the same gid.
         XCTAssertEqual(Data(base64Encoded: "QR==").map { [UInt8]($0) }, [65])
+        // length % 4 == 1: rejected on both sides.
+        XCTAssertFalse(decodes(base + "A"))
+        // Embedded LF and CR: accepted on both sides.
+        XCTAssertTrue(decodes(head + "\n" + tail))
+        XCTAssertTrue(decodes(head + "\r" + tail))
+        XCTAssertTrue(decodes(head + "\r\n" + tail))
+        // Embedded space and tab: rejected on both sides.
+        XCTAssertFalse(decodes(head + " " + tail))
+        XCTAssertFalse(decodes(head + "\t" + tail))
     }
 
     func testMentionsArePlacedInsideTheLeadingBlock() throws {

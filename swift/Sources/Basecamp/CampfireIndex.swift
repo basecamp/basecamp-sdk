@@ -164,6 +164,12 @@ struct CampfireListingOverflow: Error, CustomStringConvertible {
 ///     holds the load task to cancel it, and neither the publish nor the
 ///     release suspends.
 ///
+///     What bounds a load that never settles is the transport, not this cache:
+///     every request carries `BasecampConfig.timeoutInterval` (30 s by default)
+///     as its `URLRequest.timeoutInterval`, so the load ends and the key is
+///     released whatever the origin does. A waiter that will not wait that long
+///     cancels, which is the next point.
+///
 ///   * A cancelled caller still stops waiting *at once*, which is the half that
 ///     does not come for free: `await someTask.value` is not interrupted by the
 ///     awaiting task's cancellation, so a waiter that simply awaited the load
