@@ -42,6 +42,17 @@ module Basecamp
       # matched by prefix rather than listed.
       CHAT_LINE_TYPE_PREFIX = "Chat::Lines::"
 
+      # What a malformed field was being read FOR. Two sites, two hints: a hint
+      # that sends the reader to the wrong half of the composite is worse than a
+      # shorter one.
+      RECORDING_HINT =
+        "The recording summary reads this field to decide what the recording is and which " \
+        "project it belongs to, so a value of the wrong type cannot be used."
+
+      DISCOVERY_HINT =
+        "The recording summary reads this field to decide which Campfires a chat line could " \
+        "be in, so a value of the wrong type cannot be used."
+
       # Maps BC3's recording type strings to a read. It is the routing contract,
       # and it is a DELIBERATE set, not an exhaustive one: the recording types
       # the account event feed's trigger matrix names (comment, message, to-do,
@@ -130,6 +141,10 @@ module Basecamp
       #   left unsearched
       # @raise [Basecamp::BucketMismatchError] when the read returned a recording
       #   from another bucket
+      # @raise [Basecamp::ApiError] non-retryable, when a successful response
+      #   carries a value the reference's decoder would have refused — a body
+      #   that is not an object, a bucket that is not one, an id that is not an
+      #   integer. Minted by this composite, not by the read.
       # @raise [Basecamp::Error] the read's own error otherwise — a 404 is a
       #   {Basecamp::NotFoundError}, as from the typed read itself
       def summarize(bucket_id:, recording_id:, event_type: nil, recording_type: nil)
@@ -155,6 +170,50 @@ module Basecamp
         end
 
         summary
+      end
+
+      # The recording types {#summarize} routes by +recording_type+, sorted, with
+      # the +Chat::Lines+ subtypes represented by their shared prefix. The set is
+      # deliberate rather than exhaustive — see {RECORDING_TYPES} — and any other
+      # type is +unknown_recording_type+ by design.
+      #
+      # @return [Array<String>]
+      def summarizable_recording_types
+        (RECORDING_TYPES.keys + [ "#{CHAT_LINE_TYPE_PREFIX}*" ]).sort
+      end
+
+      # The account event feed subjects {#summarize} routes by +event_type+ — an
+      # event type is "<subject>.<action>", and any action on a listed subject
+      # routes to that subject's read — sorted. "boost" is absent on purpose.
+      #
+      # @return [Array<String>]
+      def summarizable_event_types
+        EVENT_SUBJECTS.keys.map { |subject| "#{subject}.*" }.sort
+      end
+
+      private
+
+      # The read's body, which has to be an object before a single field is read
+      # off it.
+      #
+      # This is the guard one level up from the field checks, and it is the one
+      # that matters most, because a String body does not fail — it PASSES. In
+      # Ruby <tt>"scalar"["bucket"]</tt> is a substring search that quietly
+      # answers nil, so the bucket reads as absent, the cross-bucket comparison
+      # never runs, and a recording from another project is returned. That is
+      # the same fail-open this composite has now produced from three
+      # directions; the other two were a negative bucket id and a non-object
+      # bucket. An Array or a number raises TypeError instead, and nil raises
+      # NoMethodError — native exceptions out of a public method, where the
+      # reference has a decode failure.
+      #
+      # {Basecamp::Services::MergeSafe#require_hash} describes this same hazard
+      # in the same words; the message differs only because the escape it names
+      # belongs to the merge-safe writes.
+      def read_record(record)
+        return record if record.is_a?(Hash)
+
+        raise malformed_response("the read returned #{MergeSafe.describe(record)}, not a recording object")
       end
 
       # The bucket the read came back in, or 0 when it carries none.
@@ -187,34 +246,14 @@ module Basecamp
       # response, nothing the caller passed is at fault, and re-requesting
       # cannot repair it. The reference gets this refusal from its decoder; this
       # tier has no decoder, so it is explicit.
-      def malformed_response(message)
-        MergeSafe.malformed(
-          message,
-          "The recording summary reads this field to decide what the recording is and which " \
-            "project it belongs to, so a value of the wrong type cannot be used."
-        )
+      # The hint names what the field is actually read FOR, so the two sites get
+      # two hints. Attaching the recording one to a dock item said the value
+      # decided "which project it belongs to" when it decides which Campfire to
+      # search — a hint that sends the reader to the wrong half of the composite
+      # is worse than a shorter one.
+      def malformed_response(message, hint: RECORDING_HINT)
+        MergeSafe.malformed(message, hint)
       end
-
-      # The recording types {#summarize} routes by +recording_type+, sorted, with
-      # the +Chat::Lines+ subtypes represented by their shared prefix. The set is
-      # deliberate rather than exhaustive — see {RECORDING_TYPES} — and any other
-      # type is +unknown_recording_type+ by design.
-      #
-      # @return [Array<String>]
-      def summarizable_recording_types
-        (RECORDING_TYPES.keys + [ "#{CHAT_LINE_TYPE_PREFIX}*" ]).sort
-      end
-
-      # The account event feed subjects {#summarize} routes by +event_type+ — an
-      # event type is "<subject>.<action>", and any action on a listed subject
-      # routes to that subject's read — sorted. "boost" is absent on purpose.
-      #
-      # @return [Array<String>]
-      def summarizable_event_types
-        EVENT_SUBJECTS.keys.map { |subject| "#{subject}.*" }.sort
-      end
-
-      private
 
       # Picks the read for a pointer. +recording_type+ wins when set.
       def route_recording(event_type:, recording_type:)
@@ -254,12 +293,12 @@ module Basecamp
         when :comment
           project(@client.comments.get(comment_id: id))
         when :message
-          record = @client.messages.get(message_id: id)
+          record = read_record(@client.messages.get(message_id: id))
           project(record, title: first_non_empty(record["title"], record["subject"]))
         when :todo
           # A to-do's content is its plain title; the rich text — where mentions
           # live — is the description.
-          record = @client.todos.get(todo_id: id)
+          record = read_record(@client.todos.get(todo_id: id))
           project(
             record,
             title: first_non_empty(record["title"], record["content"]),
@@ -267,7 +306,7 @@ module Basecamp
             assignees: record["assignees"]
           )
         when :card
-          record = @client.cards.get(card_id: id)
+          record = read_record(@client.cards.get(card_id: id))
           project(
             record,
             content: first_non_empty(record["content"], record["description"]),
@@ -278,14 +317,14 @@ module Basecamp
         when :document
           project(@client.documents.get(document_id: id))
         when :upload
-          record = @client.uploads.get(upload_id: id)
+          record = read_record(@client.uploads.get(upload_id: id))
           project(
             record,
             title: first_non_empty(record["title"], record["filename"]),
             content: record["description"]
           )
         when :schedule_entry
-          record = @client.schedules.get_entry(entry_id: id)
+          record = read_record(@client.schedules.get_entry(entry_id: id))
           project(
             record,
             title: first_non_empty(record["title"], record["summary"]),
@@ -296,7 +335,7 @@ module Basecamp
         when :question_answer
           project(@client.checkins.get_answer(answer_id: id))
         when :todolist
-          record = @client.todolists.get(id: id)
+          record = read_record(@client.todolists.get(id: id))
           project(
             record,
             title: first_non_empty(record["title"], record["name"]),
@@ -305,25 +344,25 @@ module Basecamp
         when :vault
           project(@client.vaults.get(vault_id: id), content: "")
         when :forward
-          record = @client.forwards.get(forward_id: id)
+          record = read_record(@client.forwards.get(forward_id: id))
           project(record, title: first_non_empty(record["title"], record["subject"]))
         when :client_approval
-          record = @client.client_approvals.get(approval_id: id)
+          record = read_record(@client.client_approvals.get(approval_id: id))
           project(record, title: first_non_empty(record["title"], record["subject"]))
         when :client_correspondence
-          record = @client.client_correspondences.get(correspondence_id: id)
+          record = read_record(@client.client_correspondences.get(correspondence_id: id))
           project(record, title: first_non_empty(record["title"], record["subject"]))
         when :google_document
-          record = @client.google_documents.get_google_document(google_document_id: id)
+          record = read_record(@client.google_documents.get_google_document(google_document_id: id))
           project(record, content: record["description"])
         when :cloud_file
-          record = @client.cloud_files.get_cloud_file(cloud_file_id: id)
+          record = read_record(@client.cloud_files.get_cloud_file(cloud_file_id: id))
           project(record, content: record["description"])
         when :card_step
-          record = @client.card_steps.get(step_id: id)
+          record = read_record(@client.card_steps.get(step_id: id))
           project(record, content: "", assignees: record["assignees"])
         when :questionnaire
-          record = @client.checkins.get_questionnaire(questionnaire_id: id)
+          record = read_record(@client.checkins.get_questionnaire(questionnaire_id: id))
           project(
             record,
             title: first_non_empty(record["title"], record["name"]),
@@ -333,7 +372,7 @@ module Basecamp
         when :schedule
           project(@client.schedules.get(schedule_id: id), content: "", parent: nil)
         when :todoset
-          record = @client.todosets.get(todoset_id: id)
+          record = read_record(@client.todosets.get(todoset_id: id))
           project(
             record,
             title: first_non_empty(record["title"], record["name"]),
@@ -345,7 +384,7 @@ module Basecamp
         when :card_table
           project(@client.card_tables.get(card_table_id: id), content: "", parent: nil)
         when :card_column
-          record = @client.card_columns.get(column_id: id)
+          record = read_record(@client.card_columns.get(column_id: id))
           project(record, content: record["description"])
         when :inbox
           project(@client.forwards.get_inbox(inbox_id: id), content: "", parent: nil)
@@ -366,7 +405,31 @@ module Basecamp
       # reads the same shape whatever the type: a comment has no assignees, a
       # vault no content. +mentioned_person_ids+ is the exception — always
       # present, so a consumer reads [] rather than a missing key.
+      # Builds the projection.
+      #
+      # WHERE THIS PORT'S TYPE CHECKING STOPS, stated here because the edge is a
+      # decision rather than an oversight. The reference decodes the whole body
+      # into a struct, so any field of the wrong type fails its read. This tier
+      # has no decoder, and reproducing one field by field would be writing a
+      # second decoder by hand against a spec that moves.
+      #
+      # So the rule is: this composite refuses what would make it ACT wrongly,
+      # and passes through what it merely REPORTS. Refused — the body envelope,
+      # the bucket and its id (they decide whether the recording is in the
+      # caller's project), the dock and listing entries and their ids and names
+      # (they decide which Campfires get searched), and "assignees" (it decides
+      # whether the key appears at all). Passed through verbatim — "id",
+      # "status", "type", "app_url", "parent", "creator", "updated_at". A
+      # malformed one of those reaches the caller as it arrived, where the
+      # reference would have failed the read.
+      #
+      # Checking a few more of them would not close that gap; it would only move
+      # the edge somewhere less defensible and make the next reader think the
+      # projection is validated. Widening it means validating the WHOLE
+      # projection, and that is a decoder — a different change, deliberately not
+      # this one.
       def project(record, title: :default, content: :default, assignees: nil, parent: :default)
+        record = read_record(record)
         title = record["title"] if title == :default
         content = record["content"] if content == :default
         parent = record["parent"] if parent == :default
@@ -389,11 +452,41 @@ module Basecamp
         summary.delete("parent") if parent.nil?
         summary.delete("bucket") if summary["bucket"].nil?
         summary.delete("creator") if summary["creator"].nil?
-        # A malformed "assignees" member is read as absent for the same reason a
-        # malformed "bucket" is: a bad projection must not become an exception
-        # class no caller expects.
-        summary.delete("assignees") unless assignees.is_a?(Array) && !assignees.empty?
+        # Absent or empty is genuinely nothing to report — the reference's
+        # +omitempty+ leaves an empty slice out of its summary too, so the key
+        # goes. Anything else that is not an array of objects is a decode
+        # failure there and fails the read here.
+        #
+        # This comment used to say a malformed "assignees" was read as absent
+        # "for the same reason a malformed bucket is". That reason stopped being
+        # true when the bucket started raising, and the sentence survived the
+        # change it contradicted — which is the whole hazard of writing an
+        # invariant down next to the code instead of into a test.
+        if assignees.nil? || (assignees.is_a?(Array) && assignees.empty?)
+          summary.delete("assignees")
+        else
+          summary["assignees"] = read_assignees(assignees)
+        end
         summary
+      end
+
+      # The assignees, which the reference decodes as a slice of people.
+      #
+      # The members are checked for being objects and are then passed through
+      # whole. Their FIELDS are not checked, and that is the deliberate edge of
+      # this port's rule: it refuses what it would otherwise read wrongly, and
+      # it does not attempt the reference's whole-body decode. A person id is
+      # the one place the two genuinely differ — see {Basecamp::Ids.from_wire}.
+      def read_assignees(assignees)
+        unless assignees.is_a?(Array)
+          raise malformed_response("the recording's \"assignees\" is #{MergeSafe.describe(assignees)}, not an array")
+        end
+
+        assignees.each do |assignee|
+          next if assignee.is_a?(Hash)
+
+          raise malformed_response("an assignee is #{MergeSafe.describe(assignee)}, not an object")
+        end
       end
 
       def first_non_empty(*values)
@@ -538,18 +631,47 @@ module Basecamp
           return []
         end
 
+        project = read_record(project)
         dock = project["dock"]
-        return [] unless dock.is_a?(Array)
+        # An absent dock is genuinely none — a project need not have one, and the
+        # reference reads its zero value. Anything else that is not an array is a
+        # decode failure there, and reading it as "no Campfires" would report a
+        # line absent from a project whose dock was never legible.
+        return [] if dock.nil?
+
+        unless dock.is_a?(Array)
+          raise malformed_response("the project's \"dock\" is #{MergeSafe.describe(dock)}, not an array",
+            hint: DISCOVERY_HINT)
+        end
 
         dock.filter_map do |item|
-          next unless item.is_a?(Hash) && item["name"] == "chat"
+          unless item.is_a?(Hash)
+            raise malformed_response("a dock item is #{MergeSafe.describe(item)}, not an object",
+              hint: DISCOVERY_HINT)
+          end
+          # Read BEFORE the name filter, because the reference's dock item holds
+          # a plain int64 id and a plain string name for EVERY item, whatever it
+          # docks — so a malformed id on the schedule fails the read there while
+          # a check placed after the filter would never see it. A rule that only
+          # runs on the entries that survive an earlier filter is a rule about
+          # this port's control flow rather than about the response.
+          name = item["name"]
+          unless name.nil? || name.is_a?(String)
+            raise malformed_response("a dock item's name is #{MergeSafe.describe(name)}, not a string",
+              hint: DISCOVERY_HINT)
+          end
 
           # Any NON-ZERO id, as the reference keeps, rather than any positive
           # one — a negative id is a candidate there and dropping it here would
           # search one Campfire fewer. An id of the wrong type is a decode
           # failure there, so it fails this read rather than skipping an entry.
           id = Ids.from_wire(item["id"])
-          raise malformed_response("a dock item's id is #{MergeSafe.describe(item["id"])}, not an integer") if id.nil?
+          if id.nil?
+            raise malformed_response("a dock item's id is #{MergeSafe.describe(item["id"])}, not an integer",
+              hint: DISCOVERY_HINT)
+          end
+
+          next unless name == "chat"
 
           id.zero? ? nil : id
         end
@@ -567,25 +689,39 @@ module Basecamp
         end
 
         listed.each_with_object({}) do |campfire, by_bucket|
+          campfire = read_record(campfire)
+
+          # The id is read BEFORE the bucket filter, for the reason the dock's is
+          # read before its name filter: the reference decodes every listed
+          # Campfire, so an id it cannot decode fails the listing whether or not
+          # this call would have gone on to want that entry.
+          #
+          # No id FILTER at all, which is what the reference applies here — its
+          # only guard on a listed Campfire is the BUCKET id below, so an id of
+          # zero is a candidate too.
+          campfire_id = Ids.from_wire(campfire["id"])
+          if campfire_id.nil?
+            raise malformed_response("a campfire's id is #{MergeSafe.describe(campfire["id"])}, not an integer",
+              hint: DISCOVERY_HINT)
+          end
+
           bucket = campfire["bucket"]
-          next unless bucket.is_a?(Hash)
+          # An absent bucket is genuinely none and cannot be grouped; anything
+          # else that is not an object is a decode failure there, and skipping it
+          # would drop a candidate rather than report the body.
+          next if bucket.nil?
+
+          unless bucket.is_a?(Hash)
+            raise malformed_response("a campfire's \"bucket\" is #{MergeSafe.describe(bucket)}, not an object",
+              hint: DISCOVERY_HINT)
+          end
 
           bucket_id = Ids.from_wire(bucket["id"])
           if bucket_id.nil?
-            raise malformed_response("a campfire's bucket id is #{MergeSafe.describe(bucket["id"])}, not an integer")
+            raise malformed_response("a campfire's bucket id is #{MergeSafe.describe(bucket["id"])}, not an integer",
+              hint: DISCOVERY_HINT)
           end
           next if bucket_id.zero?
-
-          # Normalized exactly as the dock's ids are. Otherwise a listing id
-          # that arrived as a string could never match a dock-sourced integer in
-          # the search's "already tried" set, and would spend budget twice.
-          # No id filter at all, which is what the reference applies here — its
-          # only guard on a listed Campfire is the BUCKET id above, so an id of
-          # zero is a candidate there too.
-          campfire_id = Ids.from_wire(campfire["id"])
-          if campfire_id.nil?
-            raise malformed_response("a campfire's id is #{MergeSafe.describe(campfire["id"])}, not an integer")
-          end
 
           (by_bucket[bucket_id] ||= []) << campfire_id
         end

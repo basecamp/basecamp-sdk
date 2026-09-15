@@ -269,12 +269,120 @@ class RecordingsSummarizeTest < Minitest::Test
     assert_equal [ -5 ], error.campfire_ids
   end
 
-  def test_a_malformed_assignees_member_is_read_as_absent
-    # Same reason a malformed bucket is: a bad projection must not become an
-    # exception class no caller expects.
-    stub_get("/12345/todos/1", response_body: recording("type" => "Todo", "assignees" => 5))
+  def test_a_body_that_is_not_an_object_fails_the_read
+    # The guard one level above the field checks, and the one that matters most.
+    # A String body does not fail in Ruby — it PASSES: `"scalar"["bucket"]` is a
+    # substring search answering nil, so the bucket reads as absent, the
+    # cross-bucket comparison never runs, and a recording from another project
+    # comes back. That is this composite's third fail-open from the same shape.
+    # The other three raise natively — TypeError, TypeError, NoMethodError —
+    # which is an exception class out of a public method that no caller expects.
+    [ '"scalar"', "[1,2]", "5", "null" ].each do |body|
+      stub_get("/12345/comments/1", response_body: body)
 
-    assert_not_includes summarize(event_type: "todo.created").keys, "assignees"
+      error = assert_raises(Basecamp::ApiError, "a body of #{body}") do
+        summarize(event_type: "comment.created")
+      end
+
+      assert_equal Basecamp::ErrorCode::API, error.code
+      assert_not error.retryable?
+      WebMock.reset!
+    end
+  end
+
+  def test_assignees_that_are_not_an_array_of_objects_fail_the_read
+    # The reference decodes a slice of people, so neither of these is a value it
+    # could read. This used to be deleted from the projection, on a comment
+    # saying it was "the same reason a malformed bucket is" — which stopped
+    # being true when the bucket started raising, and the comment outlived it.
+    [ 5, "x", {}, [ 5 ], [ "x" ], [ [] ] ].each do |malformed|
+      stub_get("/12345/todos/1", response_body: recording("type" => "Todo", "assignees" => malformed))
+
+      assert_raises(Basecamp::ApiError, "assignees of #{malformed.inspect}") do
+        summarize(event_type: "todo.created")
+      end
+      WebMock.reset!
+    end
+  end
+
+  def test_absent_or_empty_assignees_are_omitted_rather_than_refused
+    # The reference's +omitempty+ leaves an empty slice out of its summary too,
+    # so there is nothing to report and nothing malformed about it.
+    [ nil, [] ].each do |empty|
+      stub_get("/12345/todos/1", response_body: recording("type" => "Todo", "assignees" => empty))
+
+      assert_not_includes summarize(event_type: "todo.created").keys, "assignees"
+      WebMock.reset!
+    end
+  end
+
+  def test_the_dock_is_read_as_a_whole_rather_than_per_surviving_entry
+    # Two rules in one, because they are the same rule. The reference decodes
+    # the dock into a slice of typed items, so a dock that is not an array, an
+    # item that is not an object, and a malformed id or name on ANY item — not
+    # only on the chat ones — all fail the read there. A check placed after the
+    # `name == "chat"` filter would never see the last of those, which would
+    # make it a rule about this port's control flow rather than about the body.
+    [ { "dock" => 5 },
+      { "dock" => "x" },
+      { "dock" => {} },
+      { "dock" => [ 5 ] },
+      { "dock" => [ [] ] },
+      { "dock" => [ { "id" => 1, "name" => "chat" }, { "id" => "x", "name" => "schedule" } ] },
+      { "dock" => [ { "id" => 1, "name" => "chat" }, { "id" => 2, "name" => 5 } ] },
+      { "dock" => [ { "id" => true, "name" => "chat" } ] } ].each do |project|
+      stub_get("/12345/projects/#{BUCKET}", response_body: { "id" => BUCKET }.merge(project))
+      stub_get("/12345/chats.json", response_body: [])
+
+      assert_raises(Basecamp::ApiError, "a dock of #{project.inspect}") do
+        summarize(event_type: "chat.line.created")
+      end
+      WebMock.reset!
+    end
+  end
+
+  def test_an_absent_dock_is_no_campfires_rather_than_a_malformed_one
+    # A project need not have a dock, and the reference reads its zero value.
+    stub_get("/12345/projects/#{BUCKET}", response_body: { "id" => BUCKET })
+    stub_get("/12345/chats.json", response_body: [])
+
+    assert_raises(Basecamp::UnresolvedRecordingError) { summarize(event_type: "chat.line.created") }
+  end
+
+  def test_a_listed_campfire_is_read_as_a_whole_rather_than_per_surviving_entry
+    # The id is read before the bucket filter for the reason the dock's is read
+    # before its name filter. The bucket-id row is the one the previous rewrite
+    # deleted its only coverage for: a mutation turning that raise into a `next`
+    # left all 41 tests green.
+    [ 5, "x", [ 1 ] ].each do |entry|
+      assert_listing_refused([ entry ], "an entry of #{entry.inspect}")
+    end
+    assert_listing_refused([ { "id" => "x", "bucket" => { "id" => 999 } } ], "an id on a filtered-out bucket")
+    assert_listing_refused([ { "id" => 1, "bucket" => 5 } ], "a bucket that is not an object")
+    assert_listing_refused([ { "id" => 1, "bucket" => { "id" => [] } } ], "a bucket id of the wrong type")
+  end
+
+  def test_a_listed_campfire_with_no_bucket_is_skipped_rather_than_refused
+    # The reference skips on a nil bucket ("c.Bucket == nil || c.Bucket.ID == 0")
+    # rather than failing the listing.
+    stub_dock([])
+    stub_get("/12345/chats.json", response_body: [ { "id" => 7, "bucket" => nil } ])
+
+    assert_raises(Basecamp::UnresolvedRecordingError) { summarize(event_type: "chat.line.created") }
+  end
+
+  def test_the_response_readers_are_not_public_api
+    # They are prepended onto the generated service, so a helper left public
+    # mints SDK surface by accident — and shadows any generated method that
+    # later takes the name.
+    service = @account.recordings
+
+    %i[read_record read_bucket_id malformed_response read_assignees].each do |helper|
+      assert_not service.respond_to?(helper), "#{helper} is public API"
+    end
+    # The two that are meant to be public still are.
+    assert_respond_to service, :summarizable_recording_types
+    assert_respond_to service, :summarizable_event_types
   end
 
   def test_a_read_with_no_bucket_is_not_a_mismatch
@@ -319,6 +427,16 @@ class RecordingsSummarizeTest < Minitest::Test
   end
 
   # --- chat line discovery -------------------------------------------------
+
+  # The listing refuses this body, with an empty dock so discovery reaches it.
+  def assert_listing_refused(listing, message)
+    stub_dock([])
+    stub_get("/12345/chats.json", response_body: listing)
+
+    assert_raises(Basecamp::ApiError, message) { summarize(event_type: "chat.line.created") }
+  ensure
+    WebMock.reset!
+  end
 
   def stub_dock(campfire_ids, bucket: BUCKET)
     stub_get("/12345/projects/#{bucket}", response_body: {

@@ -177,6 +177,46 @@ class CampfireIndexTest < Minitest::Test
     assert_equal "first", cache.peek(:k).value
   end
 
+  def test_a_repeat_publication_still_wakes_the_waiters
+    # The repeat path broadcasts rather than returning bare, and until now
+    # nothing held it to that: reverting it to `return if pending[:done]` left
+    # every test green. It only matters in one window — an async exception
+    # landing between `done` being set and its broadcast — so the window has to
+    # be built rather than waited for. Here the record is settled by hand with
+    # no broadcast, exactly as an interrupt there would leave it, and the
+    # publication that follows is the only thing that can get the waiter up.
+    cache, arrivals = cache_with_waiter_barrier
+    started = Queue.new
+    release = Queue.new
+    owner = Thread.new do
+      cache.get(:k) do
+        started << :loading
+        release.pop
+        "loaded"
+      end
+    end
+    started.pop
+    waiter = Thread.new { cache.get(:k) { flunk "the waiter loaded for itself" } }
+    arrivals.pop
+
+    pending = cache.instance_variable_get(:@inflight)[:k]
+    cache.instance_variable_get(:@mutex).synchronize do
+      pending[:done] = true
+      pending[:value] = "settled with nobody woken"
+      pending[:fetched] = @now
+    end
+
+    begin
+      cache.send(:publish, :k, pending, "settled with nobody woken", nil)
+
+      assert waiter.join(5), "a repeat publication left the waiter parked on a settled record"
+      assert_equal "settled with nobody woken", waiter.value.value
+    ensure
+      release << :go
+      owner.join(5)
+    end
+  end
+
   def test_a_loader_that_leaves_without_an_outcome_releases_the_key
     # Not a StandardError, so neither rescue arm runs: an Interrupt, a signal, a
     # Thread#kill. Without the ensure the key stays in flight and every later
