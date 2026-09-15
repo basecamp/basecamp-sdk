@@ -458,7 +458,18 @@ fn entity_at(rest: &str) -> Option<(&'static str, usize)> {
     // Longest-first over the table, as Go matches: `&nbspBAh7…` is `nbsp` followed by text,
     // not a name called `nbspBAh7…`.
     let body = rest.get(1..)?;
-    let limit = body.len().min(MAX_ENTITY_NAME);
+    // Bounded by the NAME CHARACTERS actually present, not by the window. A table name is
+    // `[A-Za-z0-9]+` and optionally its `;`, so nothing longer than that run can match —
+    // and `&&&&…`, where the run is empty, costs one look instead of a full sweep of the
+    // table at every length. That is the difference between a large linear constant and a
+    // small one, on input an author controls.
+    let run = body
+        .bytes()
+        .take_while(u8::is_ascii_alphanumeric)
+        .count()
+        .min(MAX_ENTITY_NAME);
+    let semicolon = usize::from(body.as_bytes().get(run) == Some(&b';'));
+    let limit = (run + semicolon).min(MAX_ENTITY_NAME);
     for length in (1..=limit).rev() {
         let Some(name) = body.get(..length) else {
             continue;
@@ -1117,16 +1128,27 @@ mod tests {
         assert_eq!(expanded.matches("bc-attachment sgid=").count(), 1);
     }
 
+    /// Quadratic entity scanning is reachable from any attribute in content an author
+    /// writes, so it is worth a test — but asserted by SCALING, not by a wall clock. An
+    /// absolute bound is a different number in a debug build, on a shared CI runner, and on
+    /// a laptop; the first version of this passed locally in release and failed CI in debug,
+    /// which told me about my own test rather than about the code.
     #[test]
-    fn a_hostile_run_of_ampersands_costs_only_its_own_length() {
-        // Quadratic here would be reachable from any attribute in content an author writes.
-        let hostile = format!("<p sgid=\"{}\">x</p>", "&".repeat(200_000) + ";");
-        let started = std::time::Instant::now();
-        assert!(mentioned_person_ids(&hostile).is_empty());
-        assert!(
-            started.elapsed() < std::time::Duration::from_secs(2),
-            "entity scanning is not linear: {:?}",
+    fn a_hostile_run_of_ampersands_stays_linear() {
+        let elapsed = |n: usize| {
+            let hostile = format!("<p sgid=\"{}\">x</p>", "&".repeat(n) + ";");
+            let started = std::time::Instant::now();
+            assert!(mentioned_person_ids(&hostile).is_empty());
             started.elapsed()
+        };
+        let small = elapsed(20_000);
+        let large = elapsed(80_000);
+        // Four times the input: linear lands near 4x, quadratic near 16x. The floor keeps a
+        // near-zero `small` from making the ratio meaningless on a fast machine.
+        let budget = small.max(std::time::Duration::from_micros(200)) * 10;
+        assert!(
+            large < budget,
+            "entity scanning is not linear: {small:?} for 20k, {large:?} for 80k"
         );
     }
 
