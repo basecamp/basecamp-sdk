@@ -315,6 +315,10 @@ def _too_many_candidates() -> str:
     return f"more than {MAX_CAMPFIRE_CANDIDATES} visible campfires in the bucket"
 
 
+def _budget_spent_before_listing() -> str:
+    return f"the candidate budget of {MAX_CAMPFIRE_CANDIDATES} was spent before the account listing was consulted"
+
+
 def _stale_candidates(tried: list[int], dock: SourceRead, listed: SourceRead) -> list[int]:
     """Tried candidates the refreshed sources no longer list."""
     current = set(dock.ids) | set(listed.ids)
@@ -422,9 +426,13 @@ class RecordingsService(_GeneratedRecordingsService):
         # help -- and a failure on it would replace the deterministic
         # "incomplete" verdict with a transient error a consumer retries forever.
         refreshed = False
-        if search.skipped:
-            raise incomplete(_too_many_candidates())
-        if dock.cached:
+        # No budget left means no re-read: a source already consulted cannot
+        # hand this call a candidate it may try, so its refresh is skipped and
+        # the conclusion stands on what was seen (refreshed stays False). A
+        # source never consulted is different -- candidates may exist there
+        # unsearched -- so running out of budget before it makes the verdict
+        # incomplete rather than unresolved.
+        if search.budget > 0 and dock.cached:
             again = index.dock_campfires(account, bucket_id, refresh=True)
             if again.fetched > dock.fetched or not again.cached:
                 refreshed = True
@@ -432,19 +440,22 @@ class RecordingsService(_GeneratedRecordingsService):
             hit = self._try_candidates(search, dock.ids, line_id)
             if hit is not None:
                 return hit
-        if search.skipped:
-            raise incomplete(_too_many_candidates())
 
-        try:
-            again = index.listed_campfires(account, bucket_id, refresh=cached_listing is not None)
-        except CampfireListingOverflow as overflow:
-            raise incomplete(str(overflow)) from overflow
-        if cached_listing is not None and (again.fetched > listed.fetched or not again.cached):
-            refreshed = True
-        listed = again
-        hit = self._try_candidates(search, listed.ids, line_id)
-        if hit is not None:
-            return hit
+        if search.budget <= 0:
+            if cached_listing is None:
+                raise incomplete(_budget_spent_before_listing())
+        else:
+            try:
+                again = index.listed_campfires(account, bucket_id, refresh=cached_listing is not None)
+            except CampfireListingOverflow as overflow:
+                raise incomplete(str(overflow)) from overflow
+            if cached_listing is not None and (again.fetched > listed.fetched or not again.cached):
+                refreshed = True
+            listed = again
+            hit = self._try_candidates(search, listed.ids, line_id)
+            if hit is not None:
+                return hit
+
         if search.skipped:
             raise incomplete(_too_many_candidates())
 
@@ -518,9 +529,13 @@ class AsyncRecordingsService(_GeneratedAsyncRecordingsService):
                 return hit
 
         refreshed = False
-        if search.skipped:
-            raise incomplete(_too_many_candidates())
-        if dock.cached:
+        # No budget left means no re-read: a source already consulted cannot
+        # hand this call a candidate it may try, so its refresh is skipped and
+        # the conclusion stands on what was seen (refreshed stays False). A
+        # source never consulted is different -- candidates may exist there
+        # unsearched -- so running out of budget before it makes the verdict
+        # incomplete rather than unresolved.
+        if search.budget > 0 and dock.cached:
             again = await index.dock_campfires(account, bucket_id, refresh=True)
             if again.fetched > dock.fetched or not again.cached:
                 refreshed = True
@@ -528,19 +543,22 @@ class AsyncRecordingsService(_GeneratedAsyncRecordingsService):
             hit = await self._try_candidates(search, dock.ids, line_id)
             if hit is not None:
                 return hit
-        if search.skipped:
-            raise incomplete(_too_many_candidates())
 
-        try:
-            again = await index.listed_campfires(account, bucket_id, refresh=cached_listing is not None)
-        except CampfireListingOverflow as overflow:
-            raise incomplete(str(overflow)) from overflow
-        if cached_listing is not None and (again.fetched > listed.fetched or not again.cached):
-            refreshed = True
-        listed = again
-        hit = await self._try_candidates(search, listed.ids, line_id)
-        if hit is not None:
-            return hit
+        if search.budget <= 0:
+            if cached_listing is None:
+                raise incomplete(_budget_spent_before_listing())
+        else:
+            try:
+                again = await index.listed_campfires(account, bucket_id, refresh=cached_listing is not None)
+            except CampfireListingOverflow as overflow:
+                raise incomplete(str(overflow)) from overflow
+            if cached_listing is not None and (again.fetched > listed.fetched or not again.cached):
+                refreshed = True
+            listed = again
+            hit = await self._try_candidates(search, listed.ids, line_id)
+            if hit is not None:
+                return hit
+
         if search.skipped:
             raise incomplete(_too_many_candidates())
 

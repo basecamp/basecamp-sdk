@@ -361,6 +361,47 @@ class TestChatLineDiscovery:
         assert lines.call_count == MAX_CAMPFIRE_CANDIDATES
 
     @respx.mock
+    def test_a_dock_that_spends_the_budget_exactly_never_fetches_the_listing(self):
+        # The exact boundary: the budget reaches zero without `skipped` ever
+        # being set, because no 51st candidate was observed. Go guards on the
+        # BUDGET, not on `skipped`, so the listing is not fetched — a request
+        # that cannot help, and whose failure would replace a deterministic
+        # "incomplete" with a transient error a consumer retries forever.
+        respx.get(f"{BASE}/projects/{BUCKET}").mock(
+            return_value=httpx.Response(200, json=_project(*range(1, MAX_CAMPFIRE_CANDIDATES + 1)))
+        )
+        lines = respx.get(url__regex=rf"{BASE}/chats/\d+/lines/{LINE_ID}").mock(return_value=_not_found())
+        listing = respx.get(f"{BASE}/chats.json").mock(return_value=httpx.Response(500, json={"error": "boom"}))
+
+        with pytest.raises(CampfireDiscoveryIncompleteError) as raised:
+            _account().recordings.summarize(bucket_id=BUCKET, recording_id=LINE_ID, event_type="chat.line.created")
+
+        assert lines.call_count == MAX_CAMPFIRE_CANDIDATES
+        assert not listing.called, "a spent budget must not buy a request that cannot help"
+        assert "was spent before the account listing was consulted" in raised.value.reason
+
+    @respx.mock
+    def test_a_spent_budget_with_the_listing_already_consulted_is_unresolved(self):
+        # The other half of Go's rule: when BOTH sources were consulted,
+        # running out of budget is not "something was left unsearched" — every
+        # candidate that exists was tried, so the verdict is unresolved.
+        respx.get(f"{BASE}/projects/{BUCKET}").mock(return_value=_not_found())
+        respx.get(f"{BASE}/chats.json").mock(
+            return_value=httpx.Response(200, json=[_campfire(i) for i in range(1, MAX_CAMPFIRE_CANDIDATES + 1)])
+        )
+        respx.get(url__regex=rf"{BASE}/chats/\d+/lines/\d+").mock(return_value=_not_found())
+        account = _account()
+
+        # First call fills the listing cache and spends its own budget.
+        with pytest.raises(RecordingUnresolvedError):
+            account.recordings.summarize(bucket_id=BUCKET, recording_id=LINE_ID, event_type="chat.line.created")
+        # Second call consults the cached listing in pass 1, spends the budget
+        # there, and must conclude unresolved rather than incomplete.
+        with pytest.raises(RecordingUnresolvedError) as raised:
+            account.recordings.summarize(bucket_id=BUCKET, recording_id=LINE_ID + 1, event_type="chat.line.created")
+        assert len(raised.value.campfire_ids) == MAX_CAMPFIRE_CANDIDATES
+
+    @respx.mock
     def test_a_listing_entry_missing_an_id_is_skipped_not_a_crash(self):
         # This runs inside a cache loader whose failure is shared with every
         # waiter on the key, and a bare KeyError would escape the SDK's error

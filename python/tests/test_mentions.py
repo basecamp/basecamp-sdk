@@ -271,6 +271,21 @@ class TestPersonIDFromSGID:
         assert respelled != payload
         assert mentioned_person_ids(f'<bc-attachment sgid="{respelled}"></bc-attachment>') == [77]
 
+    def test_a_run_of_ampersands_does_not_sweep_the_table_per_character(self):
+        # Longest-match-against-the-table is the right RULE; sweeping every
+        # length up to the longest name in the table is the wrong mechanism for
+        # it. That costs a few hundred comparisons per "&" whatever follows,
+        # which is linear with a constant big enough to matter on content an
+        # author writes — and a run of ampersands is its worst case.
+        #
+        # The bound is generous by three orders of magnitude against the
+        # sweeping version, so this catches a regression without timing noise.
+        import time
+
+        start = time.perf_counter()
+        assert mentioned_person_ids("&" * 200_000) == []
+        assert time.perf_counter() - start < 2.0
+
     @pytest.mark.parametrize("name", ["nGt;", "nLt;"])
     def test_a_name_absent_from_gos_table_is_left_literal(self, name):
         # Python's table decodes these two and Go's does not. Measured across

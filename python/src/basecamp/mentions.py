@@ -543,16 +543,31 @@ def _reference_at(value: str, start: int) -> tuple[int, str]:
     """
     if value.startswith("&#", start):
         return _numeric_reference_at(value, start)
-    # Longest match against the table, not the longest run of name characters:
+    # Longest match against the TABLE, not the longest run of name characters:
     # "&nbspBAh7" is "&nbsp" followed by "BAh7", which a greedy name scan reads
     # as one unknown name and leaves undecoded.
-    for length in range(min(_MAX_ENTITY_NAME, len(value) - start - 1), 0, -1):
+    #
+    # Bounded by the characters actually present, though, and that bound is
+    # load-bearing rather than tidy. A table name is [A-Za-z0-9]+ with an
+    # optional ";", so nothing longer than the run following "&" can match, and
+    # sweeping every length to the longest name in the table regardless would
+    # cost a few hundred comparisons per ampersand. That is linear in the input
+    # with a constant big enough to matter on content an author controls, and a
+    # run of ampersands is its worst case: here each one costs a single look.
+    limit = start + 1
+    ceiling = min(len(value), limit + _MAX_ENTITY_NAME)
+    while limit < ceiling and value[limit].isascii() and value[limit].isalnum():
+        limit += 1
+    length = limit - (start + 1)
+    if limit < len(value) and value[limit] == ";":
+        length = min(length + 1, _MAX_ENTITY_NAME)
+    while length > 0:
         name = value[start + 1 : start + 1 + length]
-        if name in _NOT_IN_GO_TABLE:
-            continue
-        replacement = html5.get(name)
-        if replacement is not None:
-            return length + 1, replacement
+        if name not in _NOT_IN_GO_TABLE:
+            replacement = html5.get(name)
+            if replacement is not None:
+                return length + 1, replacement
+        length -= 1
     return 0, ""
 
 

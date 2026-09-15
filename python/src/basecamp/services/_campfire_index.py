@@ -619,7 +619,9 @@ class ChatLineSearch:
     """
 
     def __init__(self, budget: int = MAX_CAMPFIRE_CANDIDATES) -> None:
-        self._budget = budget
+        #: Candidates this call may still try. Read by the resolver, which
+        #: refuses to re-read a source it cannot spend a candidate on.
+        self.budget = budget
         #: Candidates that answered 404, in order.
         self.tried: list[int] = []
         #: A candidate was left untried for want of budget.
@@ -634,10 +636,10 @@ class ChatLineSearch:
         for campfire_id in ids:
             if campfire_id in self.tried:
                 continue
-            if self._budget <= 0:
+            if self.budget <= 0:
                 self.skipped = True
                 return
-            self._budget -= 1
+            self.budget -= 1
             yield campfire_id
 
     def record_miss(self, campfire_id: int) -> None:
