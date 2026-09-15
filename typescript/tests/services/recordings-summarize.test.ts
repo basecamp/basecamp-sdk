@@ -270,6 +270,27 @@ describe("recordings.summarize", () => {
       expect(paths).toEqual([]);
     });
 
+    it("refuses a type that names an Object.prototype member, before any request", async () => {
+      // The routing tables take an untrusted string off a feed row, and a plain
+      // object literal answers for every Object.prototype member — which would
+      // route "constructor" to something that is not a read at all.
+      const paths = trackRequests();
+      for (const ref of [
+        { recordingType: "constructor" },
+        { recordingType: "toString" },
+        { recordingType: "__proto__" },
+        { eventType: "constructor.created" },
+        { eventType: "valueOf.created" },
+      ]) {
+        const err = await client.recordings
+          .summarize({ bucketId: BUCKET, recordingId: 1, ...ref })
+          .catch((e: unknown) => e);
+        expect(err).toBeInstanceOf(RecordingRoutingError);
+        expect((err as RecordingRoutingError).kind).toBe("unknown_recording_type");
+      }
+      expect(paths).toEqual([]);
+    });
+
     it("refuses a pointer with no usable ids", async () => {
       const paths = trackRequests();
       for (const ref of [
@@ -304,6 +325,24 @@ describe("recordings.summarize", () => {
       expect((err as BucketMismatchError).bucketId).toBe(OTHER_BUCKET);
       // Statusless: the transport succeeded, so no status describes the verdict.
       expect((err as BucketMismatchError).httpStatus).toBeUndefined();
+    });
+
+    it("accepts a read whose bucket carries no id, as Go's zero value does", async () => {
+      server.use(
+        http.get(`${BASE_URL}/comments/1`, () =>
+          HttpResponse.json({
+            ...recording(1, "Comment", { content: "" }),
+            bucket: { name: "Nameless", type: "Project" },
+          }),
+        ),
+      );
+
+      const summary = await client.recordings.summarize({
+        bucketId: BUCKET,
+        recordingId: 1,
+        recordingType: "Comment",
+      });
+      expect(summary.id).toBe(1);
     });
 
     it("explains itself when the service was built without the client's reads", async () => {
@@ -444,6 +483,35 @@ describe("recordings.summarize", () => {
         .summarize({ bucketId: BUCKET, recordingId: 9, eventType: "chat.line.created" })
         .catch(() => undefined);
       expect(paths).toContain("/12345/chats.json");
+    });
+
+    it("does not make a dock item with no id a candidate", async () => {
+      // Reading a line under `undefined` spends a candidate on a request that
+      // cannot answer, and a non-404 from it would abort the whole search.
+      const paths = trackRequests();
+      server.use(
+        http.get(`${BASE_URL}/projects/${BUCKET}`, () =>
+          HttpResponse.json({
+            id: BUCKET,
+            dock: [
+              { name: "chat", title: "Campfire", enabled: true, url: "", app_url: "" },
+              { id: 77, name: "chat", title: "Campfire", enabled: true, url: "", app_url: "" },
+            ],
+          }),
+        ),
+        http.get(`${BASE_URL}/chats/77/lines/9`, () =>
+          HttpResponse.json(recording(9, "Chat::Lines::Text", { content: "hi" })),
+        ),
+      );
+
+      const summary = await client.recordings.summarize({
+        bucketId: BUCKET,
+        recordingId: 9,
+        eventType: "chat.line.created",
+      });
+
+      expect(summary.campfire_id).toBe(77);
+      expect(paths).toEqual([`/12345/projects/${BUCKET}`, "/12345/chats/77/lines/9"]);
     });
 
     it("does not read a statusless not_found as \"the line is not in this Campfire\"", async () => {

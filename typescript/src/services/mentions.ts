@@ -90,6 +90,17 @@ export function mentionedPersonIds(richText: string): number[] {
 }
 
 /**
+ * A GlobalID URL, split into host and path.
+ *
+ * The scheme is matched case-insensitively as a URL parser matches it; the host
+ * may not carry whitespace, a URL delimiter, or a control character, which is
+ * what a URL parser refuses there — the control range is the point of the
+ * class, not an accident, hence the lint suppression.
+ */
+// oxlint-disable-next-line no-control-regex
+const GID_URL = /^gid:\/\/([^/?#\s"<>\\^`{|}\u0000-\u001f\u007f]+)(\/[^?#]*)?(?:[?#][\s\S]*)?$/i;
+
+/**
  * The Person id an `attachable_sgid` names, or `undefined` when the sgid does
  * not decode, or names something other than a Person (a file attachment's sgid
  * names an `ActiveStorage::Blob`).
@@ -108,8 +119,9 @@ export function personIdFromSGID(sgid: string): number | undefined {
   // stripped the way a URL parser strips them, and the path must then be
   // exactly `/<Model>/<id>`: no more, no less. Nothing is percent-decoded, so a
   // gid that spells its id in escapes is refused rather than normalized into
-  // one that looks authentic.
-  const parsed = /^gid:\/\/([^/?#]+)(\/[^?#]*)?(?:[?#][\s\S]*)?$/.exec(gid);
+  // one that looks authentic — deliberately stricter than Go's `url.Parse`,
+  // which decodes the path before this comparison.
+  const parsed = GID_URL.exec(gid);
   if (parsed === null) return undefined;
   const path = parsed[2] ?? "";
   const separator = path.indexOf("/", 1);
@@ -134,8 +146,9 @@ export function personIdFromSGID(sgid: string): number | undefined {
  * attributes rather than pattern-matching them, so a `>` inside a quoted value
  * does not end the tag, an `sgid=` inside another attribute's value is not an
  * attribute, either quote style works, attribute order and case are free, the
- * first `sgid` attribute wins as in HTML, and entity escapes in the value are
- * decoded as a browser would.
+ * first `sgid` attribute wins as in HTML, and the character references an sgid
+ * can carry are decoded — a narrower set than a browser's, for the reason
+ * {@link NAMED_ENTITIES} gives.
  */
 function bcAttachmentSGIDs(text: string): string[] {
   const sgids: string[] = [];
@@ -293,19 +306,24 @@ function parseAttributes(text: string, start: number): TagAttributes {
 /**
  * The named character references an attribute value can carry that matter here.
  *
+ * A `Map`, not an object literal: the reference name comes out of the markup,
+ * and `{}["constructor"]` is a hit, so a table on `Object.prototype` would
+ * substitute a function into an attribute value instead of leaving `&constructor;`
+ * alone.
+ *
  * Deliberately narrow rather than the full HTML5 table: an `attachable_sgid` is
  * base64url, `--`, and hex, so the only reference a producer can realistically
  * have written into one is `&amp;` (and only by escaping twice). The numeric
  * forms are decoded in full because they can spell any of these characters.
  */
-const NAMED_ENTITIES: Record<string, string> = {
-  amp: "&",
-  lt: "<",
-  gt: ">",
-  quot: '"',
-  apos: "'",
-  nbsp: " ",
-};
+const NAMED_ENTITIES = new Map<string, string>([
+  ["amp", "&"],
+  ["lt", "<"],
+  ["gt", ">"],
+  ["quot", '"'],
+  ["apos", "'"],
+  ["nbsp", "\u00a0"],
+]);
 
 /** Decodes the character references an HTML attribute value may carry. */
 function unescapeEntities(value: string): string {
@@ -320,7 +338,7 @@ function unescapeEntities(value: string): string {
       if (code >= 0xd800 && code <= 0xdfff) return match;
       return String.fromCodePoint(code);
     }
-    return NAMED_ENTITIES[ref] ?? match;
+    return NAMED_ENTITIES.get(ref) ?? match;
   });
 }
 
@@ -382,7 +400,10 @@ function envelopeGID(payload: string): string | undefined {
     if (envelope === MARSHAL_FAILED) return undefined;
   } else if (raw[0] === 0x7b /* { */) {
     try {
-      envelope = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(raw));
+      // Non-fatal: Go's JSON decoder substitutes U+FFFD for invalid UTF-8
+      // inside a string rather than refusing the document, so an envelope with
+      // bad bytes in a field other than the gid decodes on both sides.
+      envelope = JSON.parse(new TextDecoder("utf-8").decode(raw));
     } catch {
       return undefined;
     }
@@ -422,7 +443,16 @@ function envelopeGID(payload: string): string | undefined {
  * `atob` accepts the unpadded form.
  */
 function decodeBase64(payload: string): Uint8Array | undefined {
-  const normalized = payload.replace(/-/g, "+").replace(/_/g, "/").replace(/=+$/, "");
+  const normalized = payload
+    .replace(/-/g, "+")
+    .replace(/_/g, "/")
+    // Go's decoder ignores CR and LF inside a payload and nothing else; `atob`
+    // ignores every ASCII whitespace character, so a space or a tab inside an
+    // sgid would decode here and be refused there. Drop the two Go drops, then
+    // insist on the alphabet, so the two accept the same payloads.
+    .replace(/[\r\n]/g, "")
+    .replace(/=+$/, "");
+  if (!/^[A-Za-z0-9+/]*$/.test(normalized)) return undefined;
   let binary: string;
   try {
     binary = atob(normalized);
@@ -638,6 +668,9 @@ class RubyMarshalReader {
  * @throws {BasecampError} `usage` when the person cannot be mentioned.
  */
 export function mentionMarkup(person: Person): string {
+  if (person === null || typeof person !== "object") {
+    throw Errors.usage("cannot mention a person that is not a person object");
+  }
   const sgid = person.attachable_sgid;
   if (!sgid) {
     throw Errors.usage(
@@ -649,8 +682,12 @@ export function mentionMarkup(person: Person): string {
     throw Errors.usage(`person ${person.id} has a malformed attachable_sgid`);
   }
   // The tag mentions whoever the sgid names. Refuse to write one that names
-  // someone else — or a file — under this person's id.
-  if (personIdFromSGID(sgid) !== person.id) {
+  // someone else — or a file — under this person's id, and refuse one that
+  // names nobody at all. The two halves are separate on purpose: comparing only
+  // "names a different person" would pass an undecodable sgid for a person
+  // projection carrying no id, since neither side would be a number.
+  const named = personIdFromSGID(sgid);
+  if (named === undefined || named !== person.id) {
     throw Errors.usage(
       `person ${person.id}'s attachable_sgid does not name that person`,
       "read the person through people.get to obtain their own",
