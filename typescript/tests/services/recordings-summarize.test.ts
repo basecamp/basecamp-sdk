@@ -457,6 +457,119 @@ describe("recordings.summarize", () => {
       expect(summary.id).toBe(1);
     });
 
+    it("reads the projection's own id through the same type rule as every other field", async () => {
+      // The one number field the id sweep left on a bare `??` while sweeping
+      // the three discovery sites and every string beside it. Measured through
+      // generated.Comment: `"1"`, 1.5 and an object are decode errors, null is
+      // zero. Without the rule, `{"id":"1"}` came back as the STRING "1" in a
+      // field typed `number` — a shape no other SDK can produce.
+      for (const id of ['"1"', "1.5", '{"a":1}', "true", "[1]"]) {
+        const fresh = createBasecampClient({ accountId: "12345", accessToken: "t", enableRetry: false });
+        server.use(
+          http.get(`${BASE_URL}/comments/1`, () =>
+            HttpResponse.text(`{"id":${id},"title":"t","content":"c"}`, {
+              headers: { "content-type": "application/json" },
+            }),
+          ),
+        );
+        const err = await fresh.recordings
+          .summarize({ bucketId: BUCKET, recordingId: 1, recordingType: "Comment" })
+          .catch((e: unknown) => e);
+        expect(err, id).toBeInstanceOf(BasecampError);
+        expect((err as BasecampError).code, id).toBe("api_error");
+      }
+
+      // And an id past 2^53 is EMITTED, not refused: nothing is addressed with
+      // it, JSON.parse has already rounded it, and refusing it would turn
+      // waiver 1B.6 into a failed read. Go decodes it and emits it.
+      const big = createBasecampClient({ accountId: "12345", accessToken: "t", enableRetry: false });
+      server.use(
+        http.get(`${BASE_URL}/comments/1`, () =>
+          HttpResponse.text(`{"id":9007199254740993,"title":"t","content":"c"}`, {
+            headers: { "content-type": "application/json" },
+          }),
+        ),
+      );
+      const summary = await big.recordings.summarize({
+        bucketId: BUCKET,
+        recordingId: 1,
+        recordingType: "Comment",
+      });
+      expect(summary.id).toBe(9007199254740992); // rounded by JSON.parse, per waiver 1B.6
+    });
+
+    it("reads updated_at as the time.Time it is, not as one more string", async () => {
+      // Its Go type is not a string, and its rules are not the string rules.
+      // Measured through generated.Comment: null is the zero instant and no
+      // error, while "", "not-a-date", "2024-01-02 03:04:05", "2024-02-30T…",
+      // a lowercase t or z, and a +0200 offset are all decode errors. Reading
+      // it as a string and defaulting with `||` painted "" with the zero
+      // instant — a body the reference refuses, coming back with a plausible
+      // timestamp instead of a visibly empty one.
+      for (const updated of ['""', '"not-a-date"', '"2024-01-02 03:04:05"', '"2024-02-30T03:04:05Z"',
+                             '"2024-01-02t03:04:05Z"', '"2024-01-02T03:04:05z"', '"2024-01-02T25:04:05Z"',
+                             '"2024-01-02T03:04:05+0200"', "42"]) {
+        const fresh = createBasecampClient({ accountId: "12345", accessToken: "t", enableRetry: false });
+        server.use(
+          http.get(`${BASE_URL}/comments/1`, () =>
+            HttpResponse.text(`{"id":1,"title":"t","content":"c","updated_at":${updated}}`, {
+              headers: { "content-type": "application/json" },
+            }),
+          ),
+        );
+        const err = await fresh.recordings
+          .summarize({ bucketId: BUCKET, recordingId: 1, recordingType: "Comment" })
+          .catch((e: unknown) => e);
+        expect(err, updated).toBeInstanceOf(BasecampError);
+        expect((err as BasecampError).code, updated).toBe("api_error");
+        expect((err as BasecampError).httpStatus, updated).toBeUndefined();
+      }
+
+      for (const [updated, expected] of [
+        ["null", "0001-01-01T00:00:00Z"],
+        ['"2024-01-02T03:04:05Z"', "2024-01-02T03:04:05Z"],
+        ['"2024-01-02T03:04:05.123456789Z"', "2024-01-02T03:04:05.123456789Z"],
+        ['"2024-01-02T03:04:05-07:00"', "2024-01-02T03:04:05-07:00"],
+      ] as const) {
+        const fresh = createBasecampClient({ accountId: "12345", accessToken: "t", enableRetry: false });
+        server.use(
+          http.get(`${BASE_URL}/comments/1`, () =>
+            HttpResponse.text(`{"id":1,"title":"t","content":"c","updated_at":${updated}}`, {
+              headers: { "content-type": "application/json" },
+            }),
+          ),
+        );
+        const summary = await fresh.recordings.summarize({
+          bucketId: BUCKET,
+          recordingId: 1,
+          recordingType: "Comment",
+        });
+        expect(summary.updated_at, updated).toBe(expected);
+      }
+    });
+
+    it("refuses a wrong-typed fallback candidate the projection never reaches", async () => {
+      // `firstNonEmpty` used to short-circuit, so a bad SECOND candidate was
+      // never looked at — while Go's decoder refuses the field whether or not
+      // the projection goes on to use it. `{"title":"T","subject":42}` is a
+      // failed read there and was a 200 with title "T" here.
+      server.use(
+        http.get(`${BASE_URL}/messages/1`, () =>
+          HttpResponse.text(`{"id":1,"title":"T","subject":42,"content":"c"}`, {
+            headers: { "content-type": "application/json" },
+          }),
+        ),
+      );
+      const err = await client.recordings
+        .summarize({ bucketId: BUCKET, recordingId: 1, recordingType: "Message" })
+        .catch((e: unknown) => e);
+      expect(err).toBeInstanceOf(BasecampError);
+      expect((err as BasecampError).code).toBe("api_error");
+      // The message names the field that is wrong, not whichever field the
+      // helper was first written for: a card's bad content is not "a title".
+      expect((err as BasecampError).message).toContain("a message title");
+    });
+
     it("refuses a wrong-typed text field, and reads a null one as Go's zero value", async () => {
       // One level in from the body check. Measured through generated.Comment:
       // `content: 42`, `true` and `[]` are decode errors; `content: null` is the
@@ -563,7 +676,11 @@ describe("recordings.summarize", () => {
       // that is a string or an array leaves `?.id` undefined, the cross-project
       // check finds nothing to disagree with, and a recording from ANOTHER
       // project is returned as a match. Go fails the read on both bodies.
-      for (const bucket of ['"nope"', '["x"]']) {
+      // 0, false and "" are in the list because the projection assigns this key
+      // on TRUTHINESS: they never became a key at all, so a guard reading
+      // `!== undefined` never saw them and they read as "no bucket identified"
+      // — the answer that lets a recording in another project pass as a match.
+      for (const bucket of ['"nope"', '["x"]', "0", "false", '""', "42"]) {
         const fresh = createBasecampClient({ accountId: "12345", accessToken: "t", enableRetry: false });
         server.use(
           http.get(`${BASE_URL}/comments/1`, () =>
@@ -740,6 +857,60 @@ describe("recordings.summarize", () => {
       expect(JSON.parse(JSON.stringify(summary))).not.toHaveProperty("campfire_id");
     });
 
+    it("keys the listing on a bucket id past 2^53 instead of failing the read", async () => {
+      // The value rule at this site is Go's `c.Bucket.ID == 0` and a map key —
+      // the id is never addressed, only compared, so the safe-integer clause
+      // that belongs to the URL-building sites does not. Borrowing it failed a
+      // listing Go reads: an account whose bucket id is past 2^53 lost every
+      // Campfire in it, including the healthy entries beside it.
+      const paths = trackRequests();
+      server.use(
+        http.get(`${BASE_URL}/projects/${BUCKET}`, () => notFound()),
+        http.get(`${BASE_URL}/chats.json`, () =>
+          HttpResponse.text(
+            `[{"id":70,"bucket":{"id":9007199254740993,"name":"Other","type":"Project"}},` +
+              `{"id":71,"bucket":{"id":${BUCKET},"name":"B","type":"Project"}}]`,
+            { headers: { "content-type": "application/json" } },
+          ),
+        ),
+        http.get(`${BASE_URL}/chats/71/lines/9`, () => HttpResponse.json(line(9))),
+      );
+
+      const summary = await client.recordings.summarize({
+        bucketId: BUCKET,
+        recordingId: 9,
+        eventType: "chat.line.created",
+      });
+
+      expect(summary.campfire_id).toBe(71);
+      // The out-of-range bucket belongs to another project and is not tried.
+      expect(paths).not.toContain("/12345/chats/70/lines/9");
+    });
+
+    it("refuses a dock entry whose name is not a string, rather than reading it as not-a-chat", async () => {
+      // Go: `cannot unmarshal number into …dock.0.name of type string`. Here
+      // the filter simply found it was not "chat", dropped it, and let
+      // discovery conclude — a composite verdict standing in for a failed read,
+      // which is the thing the comment three lines above that filter warns
+      // against. The id beside it was already guarded; the name was not.
+      const fresh = createBasecampClient({ accountId: "12345", accessToken: "t", enableRetry: false });
+      server.use(
+        http.get(`${BASE_URL}/projects/${BUCKET}`, () =>
+          HttpResponse.text(`{"id":${BUCKET},"dock":[{"id":77,"name":42}]}`, {
+            headers: { "content-type": "application/json" },
+          }),
+        ),
+      );
+
+      const err = await fresh.recordings
+        .summarize({ bucketId: BUCKET, recordingId: 9, eventType: "chat.line.created" })
+        .catch((e: unknown) => e);
+
+      expect(err).toBeInstanceOf(BasecampError);
+      expect((err as BasecampError).code).toBe("api_error");
+      expect((err as { kind?: string }).kind).toBeUndefined(); // not a composite verdict
+    });
+
     it("refuses a listing entry whose bucket is not an object, rather than dropping it", async () => {
       // Go fails the listing read on all three; dropping the entry instead
       // turns a failed read into "the line is under no Campfire you can see".
@@ -760,6 +931,13 @@ describe("recordings.summarize", () => {
 
         expect(err, bucket).toBeInstanceOf(BasecampError);
         expect((err as BasecampError).code, bucket).toBe("api_error");
+        expect((err as BasecampError).httpStatus, bucket).toBeUndefined();
+        expect((err as BasecampError).retryable, bucket).toBe(false);
+        expect((err as BasecampError).hint, bucket).toBeTruthy();
+        // And the message says what the value IS. The id vocabulary — "out of
+        // safe integer range", "not whole" — was reused at sites reading no id,
+        // which sent a reader hunting for an oversized id given `"bucket": 0`.
+        expect((err as BasecampError).message, bucket).not.toContain("safe integer range");
       }
     });
 
