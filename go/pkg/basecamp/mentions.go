@@ -22,6 +22,18 @@ package basecamp
 // off content the API already served, and a caller that needs the id verified
 // reads the person back through People().Get.
 //
+// That sets a trust boundary between the two sides. READING — MentionedPersonIDs,
+// PersonIDFromSGID — describes what a text says it mentions, and unsigned is
+// fine for description: the ids are reported, not acted on as proof. WRITING —
+// WithMentions, CommentsService.ExpandMentions — never treats an unsigned id as
+// proof that a valid mention already exists: a forged or stale sgid in
+// caller-supplied content naming the right id would otherwise make the writer
+// skip the authoritative people read and post a tag Basecamp will not honour,
+// so the person is silently not mentioned. The writer therefore resolves every
+// requested person and deduplicates only against the exact attachable_sgid
+// string that read returned. Do not reuse the read-side helpers to decide
+// whether a write can be skipped.
+//
 // The markup is read as BC3 serves it: a sanitized tree of the tags
 // doc/api/sections/rich_text.md allows, which has no raw-text elements. The
 // tag walk skips comments and quoted attribute values but does not model
@@ -52,6 +64,10 @@ import (
 // Person named by the sgid of each <bc-attachment>, in document order, with
 // repeats removed. Attachments that are not mentions — files, images, embeds —
 // are skipped, as is any sgid that does not decode to a Person.
+//
+// This is the read side: a description of what the text says, from sgids
+// whose signatures cannot be checked here. Report it; do not treat an id in
+// it as proof that a valid mention exists (see the trust boundary above).
 //
 // Every <bc-attachment> in the text counts, including one inside a
 // <blockquote>: BC3 notifies quoted mentions too, so the read matches what the
@@ -212,7 +228,9 @@ func parseAttributes(text string, pos int) (attrs tagAttributes, end int, ok boo
 // a Person (a file attachment's sgid names an ActiveStorage::Blob).
 //
 // This reads the id out of the sgid's payload; it does not verify the sgid's
-// signature, which only BC3 can. See the package comment in mentions.go.
+// signature, which only BC3 can. It is a read-side helper: never use its
+// answer to decide that a write may skip the authoritative people read (see
+// the trust boundary in the package comment).
 func PersonIDFromSGID(sgid string) (int64, bool) {
 	gid, ok := globalIDFromSGID(sgid)
 	if !ok {
@@ -583,39 +601,35 @@ func leadingBlockEnd(content string) int {
 }
 
 // WithMentions returns content that mentions each of the given people, for
-// posting as a comment or a Campfire line. People the content already mentions
-// are left alone, so passing the same person twice — or a person the author
-// already @-mentioned inline — never duplicates the mention; the rest are
-// added at the start of the content, inside its first <p> or <div> when it
-// opens with one, so they render on the first line rather than as a block of
-// their own.
+// posting as a comment or a Campfire line. A person whose exact
+// attachable_sgid the content already carries is left alone, so passing the
+// same person twice — or a person the author already mentioned with that
+// sgid — never duplicates the mention; the rest are added at the start of the
+// content, inside its first <p> or <div> when it opens with one, so they
+// render on the first line rather than as a block of their own.
 //
-// Every person needs an attachable_sgid (see MentionMarkup); the account-bound
+// This is the write side, and it deduplicates on the sgid string alone, never
+// on the person id an existing tag's sgid decodes to: that id is unsigned, and
+// a forged or stale tag naming the right person must not stand in for the
+// real mention (see the trust boundary in the package comment). Every person
+// needs their own attachable_sgid (see MentionMarkup); the account-bound
 // CommentsService.ExpandMentions resolves ids to people first.
 func WithMentions(content string, people []Person) (string, error) {
-	already := map[int64]struct{}{}
-	for _, id := range MentionedPersonIDs(content) {
-		already[id] = struct{}{}
+	present := map[string]struct{}{}
+	for _, sgid := range bcAttachmentSGIDs(content) {
+		present[sgid] = struct{}{}
 	}
 	var tags []string
 	for i := range people {
 		p := &people[i]
-		if _, done := already[p.ID]; done {
-			continue
-		}
 		tag, err := MentionMarkup(p)
 		if err != nil {
 			return "", err
 		}
-		// Trust the id the caller passed only as far as the sgid agrees: the
-		// tag names whoever the sgid names, so dedupe on that.
-		if sgidID, ok := PersonIDFromSGID(p.AttachableSGID); ok {
-			if _, done := already[sgidID]; done {
-				continue
-			}
-			already[sgidID] = struct{}{}
+		if _, done := present[p.AttachableSGID]; done {
+			continue
 		}
-		already[p.ID] = struct{}{}
+		present[p.AttachableSGID] = struct{}{}
 		tags = append(tags, tag)
 	}
 	if len(tags) == 0 {

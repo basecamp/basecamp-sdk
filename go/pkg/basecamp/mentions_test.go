@@ -359,14 +359,28 @@ func TestWithMentions(t *testing.T) {
 			t.Fatalf("got %q, want %q", got, want)
 		}
 	})
-	t.Run("already mentioned is not repeated", func(t *testing.T) {
-		content := "<div>" + renderedMention(rubySGIDPerson, 1049715915, "Victor Cooper") + " agreed</div>"
+	t.Run("already mentioned with the exact sgid is not repeated", func(t *testing.T) {
+		content := "<div>" + renderedMention(fixtureSGIDPerson, 1049715915, "Victor Cooper") + " agreed</div>"
 		got, err := WithMentions(content, []Person{victor})
 		if err != nil {
 			t.Fatal(err)
 		}
 		if got != content {
 			t.Fatalf("content changed: %q", got)
+		}
+	})
+	t.Run("a different sgid naming the same id does not stand in for the real mention", func(t *testing.T) {
+		// The content carries a tag whose (unsigned) sgid decodes to Victor's
+		// id but is not the attachable_sgid the people read returned — forged,
+		// stale, or minted under another layout. The write side must not
+		// trust it: Victor's own sgid is still added.
+		content := "<div>" + renderedMention(rubySGIDPerson, 1049715915, "Victor Cooper") + " agreed</div>"
+		got, err := WithMentions(content, []Person{victor})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(got, victorTag) {
+			t.Fatalf("the authoritative sgid was not written: %q", got)
 		}
 	})
 	t.Run("same person twice is one mention", func(t *testing.T) {

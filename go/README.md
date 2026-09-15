@@ -688,18 +688,24 @@ if err != nil {
 fmt.Println(summary.Type, summary.Title, summary.MentionedPersonIDs)
 ```
 
-Every catalogued feed type routes (`comment.*`, `message.*`, `todo.*`,
-`card.*`, `chat.line.*`), as does every recording type the SDK reads from its
-id alone: `Comment`, `Message`, `Todo`, `Kanban::Card`, the `Chat::Lines::*`
-subtypes, `Document`, `Upload`, `Schedule::Entry`, `Question`,
-`Question::Answer`, `Todolist`, `Vault`, `Inbox::Forward`, `Client::Approval`,
-`Client::Correspondence`, `GoogleDocument`, `CloudFile`, `Kanban::Step`, and
-the tool-shaped recordings `Questionnaire`, `Schedule`, `Todoset`,
-`Message::Board`, `Kanban::Board`, `Kanban::Column`, `Inbox` and
-`Chat::Transcript`. The only types refused are `Client::Reply` and
-`Forward::Reply`, whose reads need a parent id the pointer does not carry.
-`boost.created` is refused with `ErrNoRecordingType` rather than read as
-something it is not.
+The routed set is deliberate, not exhaustive. By event type, any action on
+these subjects routes to the subject's read; by recording type, exactly these
+(the `Chat::Lines::*` subtypes share one route). `SummarizableEventTypes()`
+and `SummarizableRecordingTypes()` return the same lists at run time, and a
+test holds this block to them:
+
+<!-- summarizable-types:begin -->
+```
+event types:     card.* chat.line.* comment.* message.* todo.*
+recording types: Chat::Lines::* Chat::Transcript Client::Approval Client::Correspondence CloudFile Comment Document GoogleDocument Inbox Inbox::Forward Kanban::Board Kanban::Card Kanban::Column Kanban::Step Message Message::Board Question Question::Answer Questionnaire Schedule Schedule::Entry Todo Todolist Todoset Upload Vault
+```
+<!-- summarizable-types:end -->
+
+Anything else is `ErrUnknownRecordingType` by design — including types the
+SDK can read from an id (`Timesheet::Entry`, `Gauge::Needle`) and types it
+cannot (`Client::Reply`, `Forward::Reply`, whose reads need a parent id the
+pointer does not carry). `boost.created` is refused with `ErrNoRecordingType`
+rather than read as something it is not.
 
 Chat lines need discovery first: their read takes the Campfire id, which the
 pointer does not carry. `Summarize` reads the bucket's project dock, whose

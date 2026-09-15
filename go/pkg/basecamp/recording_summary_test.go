@@ -923,10 +923,11 @@ func TestMentions_RoundTripThroughCommentAndSummary(t *testing.T) {
 	if sum.Content == wantContent || !strings.Contains(sum.Content, `content-type="application/vnd.basecamp.mention"`) {
 		t.Fatalf("the summary did not read the rendered form: %q", sum.Content)
 	}
-	// Expanding again against the rendered form adds nothing.
+	// Expanding again against the rendered form reads the person again (the
+	// read is never skipped) and adds nothing, since the exact sgid is there.
 	again, err := account.Comments().ExpandMentions(context.Background(), sum.Content, []int64{1049715915})
-	if err != nil || again != sum.Content || peopleReads.Load() != 1 {
-		t.Fatalf("re-expansion changed the content or read people again: %v, reads %d", err, peopleReads.Load())
+	if err != nil || again != sum.Content || peopleReads.Load() != 2 {
+		t.Fatalf("re-expansion changed the content or skipped the read: %v, reads %d", err, peopleReads.Load())
 	}
 }
 
@@ -953,11 +954,31 @@ func TestExpandMentions(t *testing.T) {
 			t.Fatalf("got %q, %v, reads %d", got, err, peopleReads.Load())
 		}
 	})
-	t.Run("an id the content already mentions costs no read", func(t *testing.T) {
+	t.Run("an id the content already mentions is still read, and not repeated", func(t *testing.T) {
+		// The read is authoritative and always happens; the exact sgid it
+		// returns is what the content already carries, so nothing is added.
 		content := "<p>" + renderedMention(fixtureSGIDPerson, 1049715915, "Victor Cooper") + " hi</p>"
 		got, err := comments.ExpandMentions(context.Background(), content, []int64{1049715915})
-		if err != nil || got != content || peopleReads.Load() != 0 {
-			t.Fatalf("got %q, %v, reads %d", got, err, peopleReads.Load())
+		if err != nil || got != content || peopleReads.Load() != 1 {
+			t.Fatalf("got %q, %v, reads %d (want 1)", got, err, peopleReads.Load())
+		}
+	})
+	t.Run("a forged sgid naming the id does not skip the read or the mention", func(t *testing.T) {
+		// The content's tag decodes to Victor's id but is not his
+		// attachable_sgid. Trusting it would post a tag Basecamp will not
+		// honour and skip the person silently; instead the read happens and
+		// the real mention is added.
+		before := peopleReads.Load()
+		content := "<p>" + renderedMention(rubySGIDPerson, 1049715915, "Victor Cooper") + " hi</p>"
+		got, err := comments.ExpandMentions(context.Background(), content, []int64{1049715915})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if peopleReads.Load() != before+1 {
+			t.Fatalf("reads = %d, want %d: the forged tag must not skip the read", peopleReads.Load(), before+1)
+		}
+		if !strings.Contains(got, `<bc-attachment sgid="`+fixtureSGIDPerson+`"></bc-attachment>`) {
+			t.Fatalf("the authoritative mention was not written: %q", got)
 		}
 	})
 	t.Run("a person the account cannot resolve fails the expansion", func(t *testing.T) {
@@ -1689,5 +1710,43 @@ func TestTTLCache_WaiterKeepsItsValueAcrossEviction(t *testing.T) {
 	hit := <-done
 	if hit.value != 42 || hit.cached {
 		t.Fatalf("waiter got %+v, want the awaited load's value", hit)
+	}
+}
+
+// TestSummarizableTypes_ReadmeMatchesTheRoutingTable holds the README's
+// documented routing set to the code's, so the contract cannot drift from
+// what routes: widening or narrowing either without the other fails here.
+func TestSummarizableTypes_ReadmeMatchesTheRoutingTable(t *testing.T) {
+	readme, err := os.ReadFile(filepath.Join("..", "..", "README.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(readme)
+	start := strings.Index(text, "<!-- summarizable-types:begin -->")
+	end := strings.Index(text, "<!-- summarizable-types:end -->")
+	if start < 0 || end < start {
+		t.Fatal("README has no summarizable-types block")
+	}
+	block := text[start:end]
+	want := map[string][]string{
+		"event types:":     SummarizableEventTypes(),
+		"recording types:": SummarizableRecordingTypes(),
+	}
+	for label, list := range want {
+		i := strings.Index(block, label)
+		if i < 0 {
+			t.Fatalf("README block lacks %q", label)
+		}
+		line := block[i+len(label):]
+		line = line[:strings.IndexByte(line, '\n')]
+		if got := strings.Fields(line); !reflect.DeepEqual(got, list) {
+			t.Fatalf("README %s = %v, want the code's %v", label, got, list)
+		}
+	}
+	// The refused types the README names really are refused.
+	for _, typ := range []string{"Timesheet::Entry", "Gauge::Needle", "Client::Reply", "Forward::Reply"} {
+		if _, err := routeRecording(RecordingRef{RecordingType: typ}); !errors.Is(err, ErrUnknownRecordingType) {
+			t.Fatalf("%s: %v, want ErrUnknownRecordingType by design", typ, err)
+		}
 	}
 }

@@ -22,6 +22,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -208,19 +209,25 @@ var eventSubjects = map[string]summaryKind{
 	"chat.line": kindChatLine,
 }
 
-// recordingTypes maps BC3's recording type strings to a read: every
-// recording type the Go SDK can read from the recording id alone. Chat lines
-// are matched by prefix (Chat::Lines::Text, ::RichText, ::Code, ::Upload,
+// recordingTypes maps BC3's recording type strings to a read. It is the
+// routing contract, and it is a DELIBERATE set, not an exhaustive one: the
+// recording types the account event feed's trigger matrix names (comment,
+// message, to-do, card, chat line), plus the content and tool recordings a
+// consumer reasoning about those is likely to hold an id for. Chat lines are
+// matched by prefix (Chat::Lines::Text, ::RichText, ::Code, ::Upload,
 // ::Integration all read through the same route); everything else exactly.
-// The tool-shaped recordings — a project's questionnaire, schedule, to-do
-// set, message board, card table, columns, inbox, Campfire — are here too:
-// no feed event points at them today, but they are recordings with id-only
-// reads, and a caller holding one of their ids gets the same projection.
 //
-// Absent on purpose, because their reads need a parent id the pointer does
-// not carry: Client::Reply (bucket + correspondence + reply) and
-// Forward::Reply (forward + reply). Those two are the whole exception; a
-// RecordingType naming either is ErrUnknownRecordingType.
+// A type outside this set is ErrUnknownRecordingType by design, whether or
+// not the SDK has an id-only read for it — Timesheet::Entry and
+// Gauge::Needle do, and are not routed; Client::Reply and Forward::Reply
+// cannot be, since their reads need a parent id the pointer does not carry.
+// Widening the set is a product decision, not a gap: add the type here, its
+// projection in readSummary, a routing row in the native test, and a case in
+// conformance/tests/recording_summary.json, the fixture a port implements.
+//
+// SummarizableRecordingTypes exposes this map's keys, and the README's list
+// is held to it by a test, so the documented contract cannot drift from the
+// routed one.
 var recordingTypes = map[string]summaryKind{
 	"Comment":                kindComment,
 	"Message":                kindMessage,
@@ -250,6 +257,34 @@ var recordingTypes = map[string]summaryKind{
 }
 
 const chatLineTypePrefix = "Chat::Lines::"
+
+// SummarizableRecordingTypes returns the recording types Summarize routes by
+// RecordingType, sorted, with the Chat::Lines subtypes represented by their
+// shared prefix ("Chat::Lines::*"). The set is deliberate rather than
+// exhaustive — see recordingTypes — and any other type is
+// ErrUnknownRecordingType by design.
+func SummarizableRecordingTypes() []string {
+	types := make([]string, 0, len(recordingTypes)+1)
+	for t := range recordingTypes {
+		types = append(types, t)
+	}
+	types = append(types, chatLineTypePrefix+"*")
+	sort.Strings(types)
+	return types
+}
+
+// SummarizableEventTypes returns the account event feed subjects Summarize
+// routes by EventType — an event type is "<subject>.<action>", and any action
+// on a listed subject routes to that subject's read — sorted. "boost" is
+// absent on purpose: ErrNoRecordingType.
+func SummarizableEventTypes() []string {
+	subjects := make([]string, 0, len(eventSubjects))
+	for s := range eventSubjects {
+		subjects = append(subjects, s+".*")
+	}
+	sort.Strings(subjects)
+	return subjects
+}
 
 // chatLineIsRichText reports whether a chat line subtype carries rich text —
 // the two that declare rich_text_attribute :content in BC3, and so the only
