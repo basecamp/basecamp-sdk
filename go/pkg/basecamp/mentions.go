@@ -343,7 +343,13 @@ func (r *rubyMarshalReader) int() (int64, error) {
 	if err != nil {
 		return 0, err
 	}
-	c := int64(int8(b))
+	// Marshal's packed-integer lead byte is a signed int8. Sign-extend it
+	// arithmetically: this widens the byte into its signed meaning, it does
+	// not narrow anything, so there is no overflow to guard.
+	c := int64(b)
+	if c > 127 {
+		c -= 256
+	}
 	switch {
 	case c == 0:
 		return 0, nil
