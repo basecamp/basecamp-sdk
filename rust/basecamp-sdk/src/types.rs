@@ -150,8 +150,9 @@ pub(crate) mod flex_int {
 /// `"basecamp"` system actor's id — reads as `0`, as Go's `FlexibleInt64` and Kotlin's
 /// `FlexibleLongSerializer` read it; a numeric string past 64 bits is still an error.
 ///
-/// "Is a number" is Go's `strconv.ParseInt(s, 10, 64)` and nothing looser — see
-/// `is_go_decimal` below for the grammar and what it deliberately refuses.
+/// "Is a number" is Go's `strconv.ParseInt(s, 10, 64)` and nothing looser — see `parse_int`
+/// below for the grammar, for which refusal Go turns into `0` and which it raises, and for
+/// why the two cannot be told apart without walking the string the way Go walks it.
 pub(crate) mod flexible_i64 {
     use serde::{Deserialize, Deserializer};
 
@@ -170,25 +171,77 @@ pub(crate) mod flexible_i64 {
         }
     }
 
-    /// The string path of Go's `FlexibleInt64`: `strconv.ParseInt(s, 10, 64)`, whose
-    /// syntax errors collapse to `0` and whose range errors are raised.
+    /// The string path of `FlexibleInt64` (`go/pkg/types/flexible_int64.go:34`): the two
+    /// error kinds `strconv.ParseInt` distinguishes, and what Go does with each — a syntax
+    /// error becomes `0` (`:46`), a range error is raised (`:43`).
     fn from_text(text: &str) -> Result<i64, String> {
-        if !is_go_decimal(text) {
-            return Ok(0);
+        match parse_int(text) {
+            Ok(value) => Ok(value),
+            Err(Refusal::Syntax) => Ok(0),
+            Err(Refusal::Range) => Err(format!("integer id {text:?} does not fit 64 bits")),
         }
-        text.parse()
-            .map_err(|_| format!("integer id {text:?} does not fit 64 bits"))
     }
 
-    /// `strconv.ParseInt(s, 10, 64)`'s grammar: one optional ASCII sign, then one or more
-    /// ASCII digits, and nothing else. Go trims no whitespace, so `" 7"` is a syntax error
-    /// there and reads as `0`; it accepts a leading `+`; it takes `_` as a digit separator
-    /// only for base 0, never for base 10; and it reads ASCII digits alone, so a fullwidth
-    /// `７` is not a digit. Everything this admits, `i64::from_str` also admits, so the
-    /// parse that follows can only fail on range — the one error Go raises.
-    fn is_go_decimal(text: &str) -> bool {
-        let digits = text.strip_prefix(['+', '-']).unwrap_or(text);
-        !digits.is_empty() && digits.bytes().all(|b| b.is_ascii_digit())
+    /// Which way `strconv.ParseInt` refused. Keeping them apart is the whole point: Go
+    /// answers `0` to one and an error to the other, and no single "is this a number?"
+    /// predicate can tell them apart, because *which refusal comes first* depends on
+    /// where in the string each disqualifying byte sits.
+    enum Refusal {
+        Syntax,
+        Range,
+    }
+
+    /// `strconv.ParseInt(s, 10, 64)`, scan order included.
+    ///
+    /// It takes one optional ASCII sign, then one or more ASCII digits, and nothing else:
+    /// no whitespace (Go trims none, so `" 7"` is a syntax error and reads `0`), a leading
+    /// `+` accepted, `_` never a separator at base 10 (only base 0 allows it), and ASCII
+    /// digits alone, so a fullwidth `７` is not a digit.
+    ///
+    /// The subtlety worth the hand-rolled loop: `ParseUint` checks the magnitude *inside*
+    /// the scan and returns `ErrRange` the moment the accumulator would overflow `u64`,
+    /// before it ever looks at the rest of the string. So the first disqualifying byte
+    /// wins, and `"18446744073709551616x"` is a **range** error — Go raises it — while
+    /// `"18446744073709551615x"` is a **syntax** error and reads `0`. Testing the whole
+    /// string for well-formedness first gets that pair backwards.
+    ///
+    /// Note that this is *not* the rule the global-id parser applies to the person id in
+    /// `gid://bc3/Person/<id>`. That one walks the bytes and refuses anything outside
+    /// `0..=9` *before* it parses (`go/pkg/basecamp/mentions.go:252-256`), so it rejects a
+    /// leading `+` that this one accepts. Two sites, two rules, deliberately; do not hoist
+    /// either into the other.
+    fn parse_int(text: &str) -> Result<i64, Refusal> {
+        let (negative, digits) = match text.as_bytes() {
+            [] => return Err(Refusal::Syntax),
+            [b'+', rest @ ..] => (false, rest),
+            [b'-', rest @ ..] => (true, rest),
+            whole => (false, whole),
+        };
+        if digits.is_empty() {
+            return Err(Refusal::Syntax);
+        }
+
+        // `ParseUint`'s loop, byte for byte.
+        let mut magnitude: u64 = 0;
+        for byte in digits {
+            if !byte.is_ascii_digit() {
+                return Err(Refusal::Syntax);
+            }
+            magnitude = magnitude
+                .checked_mul(10)
+                .and_then(|shifted| shifted.checked_add(u64::from(byte - b'0')))
+                .ok_or(Refusal::Range)?;
+        }
+
+        // `ParseInt`'s own bound, applied to what `ParseUint` returned.
+        if negative {
+            if magnitude > i64::MIN.unsigned_abs() {
+                return Err(Refusal::Range);
+            }
+            Ok(i64::try_from(magnitude).map_or(i64::MIN, |value| -value))
+        } else {
+            i64::try_from(magnitude).map_err(|_| Refusal::Range)
+        }
     }
 
     /// [`deserialize`], with `null` as `None`. The generator emits it for an optional
@@ -309,6 +362,15 @@ mod tests {
         id: i64,
     }
 
+    /// The shape the generator emits for an *optional* flexible id, attribute for
+    /// attribute. The model has no such field today, so this frame is the only thing
+    /// holding `deserialize_optional` to the same rule as its required sibling.
+    #[derive(Deserialize)]
+    struct OptionallyIdentified {
+        #[serde(default, deserialize_with = "flexible_i64::deserialize_optional")]
+        id: Option<i64>,
+    }
+
     #[test]
     fn dates_round_trip_through_json() {
         let date: Date = serde_json::from_str("\"2026-03-04\"").unwrap();
@@ -387,31 +449,63 @@ mod tests {
     // implementation, and not from `strconv.ParseInt`'s documentation. A linked probe
     // unmarshalled `{"id": <case>, "name": "x"}` into `go/pkg/generated.Person`, whose
     // `Id` is `types.FlexibleInt64`, over the whole corpus, and each row pins that run's
-    // verdict: `Some(n)` accepted with value n, `None` rejected. The probe was proved
-    // live first — a mutation of `flexible_int64.go` moved 15 of its rows, and reverting
-    // it restored them. `generated::types::Person::id` in this crate is the same field
-    // through the deserializer under test.
+    // verdict: `Some(n)` accepted with value n, `None` rejected.
+    //
+    // The probe was proved live before it was trusted, on both of the paths it measures:
+    // a mutation of the string path in `flexible_int64.go` moved 33 rows, a mutation of
+    // the number path moved 6, and reverting each restored every one byte for byte.
+    // `generated::types::Person::id` in this crate is the same field through the
+    // deserializer under test.
     //
     // The rule those rows turned out to encode, for a reader who wants it in a sentence:
     // the string path is `strconv.ParseInt(s, 10, 64)`, whose syntax errors read as `0`
-    // and whose range errors are raised; the number path is `json.Number.Int64()`, the
-    // same parse over the literal's own text. The rows are the evidence; this sentence
-    // is only a summary of them.
+    // and whose range errors are raised, deciding between the two by whichever
+    // disqualifying byte the left-to-right scan reaches first; the number path is
+    // `json.Number.Int64()`, the same parse over the literal's own text. The rows are the
+    // evidence; this sentence is only a summary of them.
     // -----------------------------------------------------------------------------
 
     /// Runs one slice of the corpus through the deserializer under test. `None` means the
     /// decode must fail; `Some(n)` that it must succeed with exactly `n`. Reports every
     /// divergent row at once, so a regression names all of its casualties.
+    ///
+    /// Every row is read through *both* frames the generator can emit — the required id
+    /// and the optional one. Go's own optional frame, a `*types.FlexibleInt64` field,
+    /// returns the required frame's verdict on every row but one: a literal `null`, which
+    /// it takes as absent. So the two frames share one set of expectations, with `null` as
+    /// the single exception, and the optional arm cannot drift away from the rule while
+    /// the required arm still follows it.
     fn check_against_go(rows: &[(&str, Option<i64>)]) {
         let divergences: Vec<String> = rows
             .iter()
-            .filter_map(|(raw, expected)| {
-                let read = serde_json::from_str::<Identified>(&format!("{{\"id\": {raw}}}"))
+            .flat_map(|(raw, expected)| {
+                let body = format!("{{\"id\": {raw}}}");
+                let required = serde_json::from_str::<Identified>(&body)
                     .ok()
                     .map(|identified| identified.id);
-                (read != *expected)
-                    .then(|| format!("  id: {raw} — Go reads {expected:?}, this crate {read:?}"))
+                let optional = serde_json::from_str::<OptionallyIdentified>(&body)
+                    .ok()
+                    .map(|identified| identified.id);
+                // `null` is the one row where the optional frame legitimately parts
+                // company with the required one: absent, not a zero and not an error.
+                let optional_expected = if *raw == "null" {
+                    Some(None)
+                } else {
+                    expected.map(Some)
+                };
+                [
+                    (required != *expected).then(|| {
+                        format!("  id: {raw} — Go reads {expected:?}, this crate {required:?}")
+                    }),
+                    (optional != optional_expected).then(|| {
+                        format!(
+                            "  id: {raw} (optional field) — Go reads {optional_expected:?}, \
+                             this crate {optional:?}"
+                        )
+                    }),
+                ]
             })
+            .flatten()
             .collect();
         assert!(
             divergences.is_empty(),
@@ -689,17 +783,100 @@ mod tests {
         ]);
     }
 
+    #[test]
+    fn go_parity_which_refusal_comes_first() {
+        // `ParseUint` checks the magnitude inside the scan, so an overflowing digit
+        // ends the parse before a later non-digit is seen: the first disqualifying byte
+        // wins. That makes the boundary u64::MAX, not i64::MAX, and it is why junk after
+        // an oversized prefix is RAISED while the same junk after a merely large one
+        // reads 0. Junk before the digits is a syntax error wherever it sits.
+        check_against_go(&[
+            ("\"18446744073709551615x\"", Some(0)), // string '18446744073709551615x'
+            ("\"9223372036854775808x\"", Some(0)),  // string '9223372036854775808x'
+            ("\"9223372036854775807x\"", Some(0)),  // string '9223372036854775807x'
+            ("\"-9223372036854775809x\"", Some(0)), // string '-9223372036854775809x'
+            ("\"000018446744073709551615x\"", Some(0)), // string '000018446744073709551615x'
+            ("\"18446744073709551616x\"", None),    // string '18446744073709551616x'
+            ("\"18446744073709551616 \"", None),    // string '18446744073709551616 '
+            ("\"18446744073709551616.0\"", None),   // string '18446744073709551616.0'
+            ("\"18446744073709551616\\n\"", None),  // string '18446744073709551616\n'
+            ("\"18446744073709551616\\t\"", None),  // string '18446744073709551616\t'
+            ("\"18446744073709551616\\u0000\"", None), // string '18446744073709551616\x00'
+            ("\"18446744073709551616\\u00a0\"", None), // string '18446744073709551616\xa0'
+            ("\"18446744073709551616_0\"", None),   // string '18446744073709551616_0'
+            ("\"18446744073709551616abc\"", None),  // string '18446744073709551616abc'
+            ("\"-18446744073709551616x\"", None),   // string '-18446744073709551616x'
+            ("\"+18446744073709551616x\"", None),   // string '+18446744073709551616x'
+            ("\"000018446744073709551616x\"", None), // string '000018446744073709551616x'
+            ("\"184467440737095516161234x\"", None), // string '184467440737095516161234x'
+            ("\"99999999999999999999_\"", None),    // string '99999999999999999999_'
+            ("\"1844674407370955161612345678901234567890x\"", None), // string '1844674407370955161612345678901234567890x'
+            ("\"x18446744073709551616\"", Some(0)), // string 'x18446744073709551616'
+            ("\" 18446744073709551616\"", Some(0)), // string ' 18446744073709551616'
+            ("\"+x18446744073709551616\"", Some(0)), // string '+x18446744073709551616'
+            ("\"-18446744073709551616\"", None),    // string '-18446744073709551616'
+            ("\"+18446744073709551616\"", None),    // string '+18446744073709551616'
+            (
+                "\"9999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999z\"",
+                None,
+            ), // 100 nines then a letter
+            (
+                "\"9999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999\"",
+                None,
+            ), // 100 nines
+            (
+                "\"0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000007\"",
+                Some(7),
+            ), // 300 leading zeros then 7
+            (
+                "\"0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000007z\"",
+                Some(0),
+            ), // 300 leading zeros then 7 then junk
+        ]);
+    }
+
     /// A bare JSON `-0` is the one corpus row this crate still refuses where Go accepts
     /// it. Go parses the literal's own text — `ParseInt("-0", 10, 64)` is 0 — while
     /// `serde_json` has already turned that literal into the float `-0.0` by the time the
     /// deserializer sees it, and the text is gone. Reading the float back as 0 would also
-    /// accept `-0.0`, `-0e0` and `-0.000`, which Go rejects (rows above): three new
-    /// divergences in the accepting direction to close one in the refusing direction. So
-    /// the divergence stays, pinned here so it cannot change unnoticed.
+    /// accept `-0.0`, `-0e0`, `-0.000` and `-0.0e0`, which Go rejects (rows above), and a
+    /// fallback keyed on the value rather than the sign would take `0.0` and `0e0` too:
+    /// six new divergences in the accepting direction to close one in the refusing
+    /// direction. So the divergence stays, pinned here so it cannot change unnoticed.
     #[test]
     fn a_bare_negative_zero_is_a_known_residual_divergence() {
         // Go accepts this and reads 0; this crate rejects it.
         assert!(serde_json::from_str::<Identified>(r#"{"id": -0}"#).is_err());
+    }
+
+    /// The other residual, and it is not this function's to fix: a lone surrogate escape
+    /// inside the id string. Go's `encoding/json` folds it to U+FFFD, so `ParseInt` sees a
+    /// syntax error and the id reads 0; `serde_json` refuses the *document*, so the
+    /// deserializer is never reached. The proof that the layer is the parser and not the
+    /// rule is that a plain `String` field fails on the same input. It is the refusing
+    /// direction, and closing it would mean changing JSON parsers.
+    #[test]
+    fn a_lone_surrogate_is_refused_by_the_json_parser_not_by_this_rule() {
+        assert!(serde_json::from_str::<String>(r#""\ud800""#).is_err());
+        assert!(serde_json::from_str::<Identified>(r#"{"id": "\ud800"}"#).is_err());
+    }
+
+    /// An optional flexible id that is absent reads as absent, not as `0` — the same as
+    /// Go's `*types.FlexibleInt64`, which stays nil for a missing key and for `null`.
+    #[test]
+    fn an_absent_optional_flexible_id_is_none() {
+        assert_eq!(
+            serde_json::from_str::<OptionallyIdentified>("{}")
+                .ok()
+                .map(|identified| identified.id),
+            Some(None)
+        );
+        assert_eq!(
+            serde_json::from_str::<OptionallyIdentified>(r#"{"id": null}"#)
+                .ok()
+                .map(|identified| identified.id),
+            Some(None)
+        );
     }
 
     /// The corpus runs through `Identified`. The field that actually ships is
@@ -713,6 +890,9 @@ mod tests {
             ("\"+7\"", Some(7)),
             ("\"basecamp\"", Some(0)),
             ("\"9223372036854775808\"", None),
+            // The pair that only a left-to-right scan gets right, on the shipped field.
+            ("\"18446744073709551615x\"", Some(0)),
+            ("\"18446744073709551616x\"", None),
         ] {
             let read = serde_json::from_str::<crate::generated::types::Person>(&format!(
                 "{{\"id\": {raw}, \"name\": \"x\"}}"
