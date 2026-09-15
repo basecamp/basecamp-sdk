@@ -401,6 +401,29 @@ class MentionsTest < Minitest::Test
     assert_predicate ascii, :valid_encoding?
   end
 
+  def test_a_very_long_numeric_reference_wraps_without_building_the_whole_number
+    # The digits are accumulated modulo 2**32 as they are scanned. `to_i` built
+    # the whole integer first, out of rich text other people wrote, and it is
+    # superlinear — 400,000 digits already cost 56 ms, and nothing bounds how
+    # many digits one attribute value may carry.
+    #
+    # Asserted on the VALUE rather than on a clock, because a timing assertion
+    # is flaky and would not catch an accumulator that is fast and wrong. A
+    # leading run of zeros cannot change a number, and padding the same value
+    # out to 200,000 digits must therefore give the same character — which is
+    # only true if the modular accumulation is correct at every step.
+    sgid = person_sgid(33)
+    first = sgid[0]
+    rest = sgid[1..]
+
+    padded = ("0" * 200_000) + first.ord.to_s
+
+    assert_equal [ 33 ], mentions_in_tag("&##{padded};#{rest}")
+    # And a run of digits long enough to be a real payload still terminates,
+    # resolving to whatever the wrap lands on rather than hanging.
+    assert_kind_of Array, mentions_in_tag("&##{"9" * 500_000};#{rest}")
+  end
+
   def test_a_c1_reference_is_remapped_rather_than_read_as_a_code_point
     # 0x80..0x9F are not code points in HTML, they are Windows-1252 bytes, and
     # the reference implementation remaps them. It decides a verdict here: 0x85

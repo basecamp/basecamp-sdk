@@ -12,14 +12,27 @@ module Basecamp
   # (doc/api/sections/rich_text.md, "Inserting a mention"). BC3 renders the
   # same tag back with +content-type="application/vnd.basecamp.mention"+ and an
   # avatar figure inside it, but the sgid is the only part of the markup that
-  # names the person on both the write and the read side, so both helpers here
-  # work from it:
+  # names the person on both the write and the read side, so every helper here
+  # works from it. There are FIVE, named rather than counted, because an earlier
+  # version of this paragraph said "both helpers" above a list of two while the
+  # module exposed five — a sentence that was true when it was written and was
+  # not corrected when the list grew under it:
   #
   # * {mentioned_person_ids} reads the person ids a rich text names, by
   #   decoding the sgid of every +<bc-attachment>+ and keeping the ones that
   #   point at a Person.
+  # * {person_id_from_sgid} decodes one sgid on its own, and is what the reader
+  #   above is built from.
   # * {mention_markup} writes the tag for a person, from their
   #   +attachable_sgid+.
+  # * {with_mentions} places those tags into existing content, adding nothing
+  #   for a person whose exact sgid the content already carries.
+  # * {bc_attachment_sgids} returns the raw sgid of every +<bc-attachment>+,
+  #   decoding nothing. The reference keeps its equivalent UNEXPORTED; it is
+  #   public here for a caller deduplicating its own writes, and that is the one
+  #   piece of surface this module has that the contract does not. Read the
+  #   trust boundary below before reaching for it: an sgid it returns is
+  #   unsigned, so it describes what a text claims and never proves anything.
   #
   # An +attachable_sgid+ is a Rails SignedGlobalID: a base64 payload, then
   # <tt>--</tt>, then an HMAC only BC3 can verify. The payload is an envelope
@@ -106,8 +119,15 @@ module Basecamp
     # authorities the reference tolerates, and the residue is now ENTIRELY in
     # that direction. It was not always: the RFC 3986 IPvFuture literal
     # <tt>[v7.x]</tt> resolved here and nowhere else, and is refused explicitly
-    # now (see {IPVFUTURE_AUTHORITY}). Swept afterwards across every corpus —
-    # 13,700 inputs — for any other accepting-direction row: none.
+    # now (see {IPVFUTURE_AUTHORITY}). Swept afterwards for any other
+    # accepting-direction row across every corpus and BOTH stages — 1,917 sgids
+    # through {person_id_from_sgid}, and 33,745 documents through
+    # {mentioned_person_ids}, 35,662 in all: none.
+    #
+    # The two stages are counted separately on purpose. An earlier version of
+    # this sentence said "13,700 inputs", which was the walker corpora's total
+    # borrowed for a claim about a sweep that had only run over the sgid ones —
+    # a number measured through a different stage than the claim was about.
     #
     # This rule was verified at every POSITION an escape can occupy, because a
     # rule checked in one position is not evidence about another — the reference
@@ -707,9 +727,9 @@ module Basecamp
       value.b.gsub(ENTITY_PATTERN) do |reference|
         match = Regexp.last_match
         if match[:hex]
-          codepoint_reference(match[:hex][1..].to_i(16), reference)
+          codepoint_reference(wrapped_digits(match[:hex][1..], 16), reference)
         elsif (digits = match[:decimal] || match[:lone_digit])
-          codepoint_reference(digits.to_i, reference)
+          codepoint_reference(wrapped_digits(digits, 10), reference)
         elsif match[:name] && (match[:semicolon] || SEMICOLONLESS_ENTITIES.include?(match[:name]))
           # As BYTES, like every other branch. The table is written as readable
           # source literals, which are UTF-8, and the value being rewritten is a
@@ -720,6 +740,29 @@ module Basecamp
           reference
         end
       end
+    end
+
+    # The digits' value, accumulated modulo 2**32 as they are scanned.
+    #
+    # {codepoint_reference} wraps to a signed 32-bit rune anyway, so the answer
+    # is identical to reading the whole number and masking it — but `to_i` built
+    # the whole number FIRST, out of rich text other people wrote, and it is
+    # superlinear: 400,000 digits already cost 56 ms here, and nothing bounds
+    # how many digits one attribute value may carry. This stays O(n) on a
+    # constant-size integer.
+    #
+    # The character classes are guaranteed by {ENTITY_PATTERN}, so a byte is a
+    # digit of this base by construction.
+    def wrapped_digits(digits, base)
+      value = 0
+      digits.each_byte do |byte|
+        digit = if byte >= 97 then byte - 87    # a-f
+        elsif byte >= 65 then byte - 55         # A-F
+        else byte - 48                          # 0-9
+        end
+        value = ((value * base) + digit) & 0xFFFF_FFFF
+      end
+      value
     end
 
     # One numeric reference's expansion, as the reference implementation spells
@@ -957,7 +1000,7 @@ module Basecamp
     private_class_method :parse_attributes, :leading_block_end, :global_id_from_sgid,
                          :envelope_gid, :decode_payload, :unescape_attribute_value, :codepoint_reference, :trim_sgid, :space_run_end, :space_run_start, :space_width_at,
                          :space_width_behind, :trim_padding,
-                         :field, :person_identity, :join_bytes, :space?, :tag_name_char?, :tag_name_end?
+                         :field, :person_identity, :join_bytes, :wrapped_digits, :space?, :tag_name_char?, :tag_name_end?
 
     # A reader for the subset of Ruby's Marshal 4.8 format a SignedGlobalID
     # payload uses — nil, booleans, fixnums, strings (with their encoding

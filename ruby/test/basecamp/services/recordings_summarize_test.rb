@@ -622,6 +622,24 @@ class RecordingsSummarizeTest < Minitest::Test
     assert_not_requested(:get, "#{BASE_URL}/12345/chats.json")
   end
 
+  def test_a_null_chat_line_is_a_zero_valued_summary_like_every_other_route
+    # project() normalizes a null body to a zero-valued summary, because the
+    # reference decodes `null` as the zero value with no error — but the
+    # chat-line route went on indexing the RAW response for its type, so a null
+    # line raised NoMethodError out of a public method while every other route
+    # handled it. The null rule was applied where it was found and not at the
+    # one site that reads around the projection.
+    stub_dock([ 500 ])
+    stub_request(:get, "#{BASE_URL}/12345/chats/500/lines/1")
+      .to_return(status: 200, body: "null", headers: { "Content-Type" => "application/json" })
+
+    summary = summarize(event_type: "chat.line.created")
+
+    assert_equal 500, summary["campfire_id"]
+    assert_equal [], summary["mentioned_person_ids"]
+    assert_equal "", summary["content"]
+  end
+
   def test_only_a_rich_text_chat_line_reports_mentions
     # A Text line's content is HTML-escaped on the way out and a Code line's is
     # served verbatim, so a literal "<bc-attachment>" in either mentions nobody;

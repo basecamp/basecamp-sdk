@@ -550,7 +550,14 @@ module Basecamp
       def summarize_chat_line(bucket_id:, line_id:)
         line, campfire_id = resolve_chat_line(bucket_id: bucket_id, line_id: line_id)
         summary = project(line)
-        unless RICH_TEXT_CHAT_LINE_TYPES.include?(line["type"])
+        # Read off the PROJECTION, not off the original. project normalizes a
+        # null body to a zero-valued summary — the reference decodes `null` as
+        # the zero value with no error — and this line went on indexing the raw
+        # response, so a chat line that came back null raised NoMethodError out
+        # of a public method while every other summary route handled it. The
+        # null rule was applied where it was found and not at the one site that
+        # reads around it.
+        unless RICH_TEXT_CHAT_LINE_TYPES.include?(summary["type"])
           # A plain-text or code line's content is text BC3 never read as markup,
           # so a literal "<bc-attachment>" in it mentions nobody.
           summary["mentioned_person_ids"] = []
