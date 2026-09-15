@@ -305,6 +305,18 @@ class RecordingsSummarizeTest < Minitest::Test
     end
   end
 
+  def test_a_well_formed_assignees_list_carries_the_assignees_through
+    # The positive half of the rule above. It had been asserted only inside a
+    # test about a to-do's rich text, so a reader checking what guards the
+    # assignees path would not have found it — and the revert harness reports a
+    # rule killed only by a test that does not name it as unguarded, which is
+    # the right verdict.
+    people = [ { "id" => 3, "name" => "Annie" }, { "id" => 4, "name" => "Vic" } ]
+    stub_get("/12345/todos/1", response_body: recording("type" => "Todo", "assignees" => people))
+
+    assert_equal people, summarize(event_type: "todo.created")["assignees"]
+  end
+
   def test_absent_or_empty_assignees_are_omitted_rather_than_refused
     # The reference's +omitempty+ leaves an empty slice out of its summary too,
     # so there is nothing to report and nothing malformed about it.

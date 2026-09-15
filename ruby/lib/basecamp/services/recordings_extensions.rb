@@ -487,6 +487,12 @@ module Basecamp
 
           raise malformed_response("an assignee is #{MergeSafe.describe(assignee)}, not an object")
         end
+
+        # Returned explicitly rather than leaning on #each handing back its
+        # receiver. The projection assigns from this call, so a later edit that
+        # ends the method on anything else — an each_with_index, a guard clause,
+        # one more line — would put nil into the summary silently.
+        assignees
       end
 
       def first_non_empty(*values)
