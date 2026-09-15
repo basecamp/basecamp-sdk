@@ -485,8 +485,20 @@ module Basecamp
       return id if id.is_a?(Integer)
       return nil unless id.is_a?(String)
 
+      # A LEADING SIGN is accepted, both of them, because the reference's
+      # flexible decoder hands the string to strconv.ParseInt
+      # (go/pkg/types/flexible_int64.go) and that accepts "+7" and "-7" alike.
+      # Refusing "+7" failed the whole comment where the reference mints the
+      # mention. A negative still gets nowhere, but at the identity comparison
+      # rather than here, which is also where the reference stops it: an sgid's
+      # person id is positive, so -7 matches nothing.
+      #
+      # Cited because "matches the reference" is ambiguous on this point — its
+      # own treatment of a signed integer-shaped person id differs between the
+      # digit walk, this decoder, and the wrapper path, and this method
+      # implements THIS one: the people-read field typed as the flexible int.
       digits = id.b
-      return nil unless digits.match?(/\A-?\d+\z/n)
+      return nil unless digits.match?(/\A[-+]?\d+\z/n)
 
       value = digits.to_i
       value.between?(Ids::MIN, Ids::MAX) ? value : nil

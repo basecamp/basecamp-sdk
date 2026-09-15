@@ -375,7 +375,21 @@ class MentionsTest < Minitest::Test
       Basecamp::Mentions.with_mentions("hi", [ { "id" => "7", "attachable_sgid" => sgid } ])
     )
 
-    [ 7.0, "7.0", "seven", "basecamp", true, [ 7 ], { "id" => 7 }, nil, "" ].each do |id|
+    # A LEADING SIGN is accepted, because the reference hands the string to
+    # strconv.ParseInt and that takes "+7". Refusing it failed the whole comment
+    # where the reference mints the mention. Measured against the reference row
+    # by row: "+7" and "007" resolve, "-7" and " 7" and "basecamp" do not — the
+    # last three because the reference reads them as 0 or -7, neither of which
+    # can match an sgid's person id, which is always positive.
+    assert_equal [ 7 ], Basecamp::Mentions.mentioned_person_ids(
+      Basecamp::Mentions.with_mentions("hi", [ { "id" => "+7", "attachable_sgid" => sgid } ])
+    )
+    assert_equal [ 7 ], Basecamp::Mentions.mentioned_person_ids(
+      Basecamp::Mentions.with_mentions("hi", [ { "id" => "007", "attachable_sgid" => sgid } ])
+    )
+
+    [ 7.0, "7.0", "seven", "basecamp", true, [ 7 ], { "id" => 7 }, nil, "",
+      "-7", " 7", "7 ", "+0", "1_2" ].each do |id|
       assert_raises(Basecamp::UsageError, "an id of #{id.inspect}") do
         Basecamp::Mentions.with_mentions("hi", [ { "id" => id, "attachable_sgid" => sgid } ])
       end
