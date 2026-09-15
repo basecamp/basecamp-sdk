@@ -518,9 +518,9 @@ module Basecamp
         # leaves the field nil there and `omitempty` drops the key. Ruby emitted
         # the empty object, so a caller testing `summary.key?("bucket")` got a
         # different answer from the contract's.
-        summary.delete("parent") unless keep_member?(parent)
-        summary.delete("bucket") unless keep_member?(summary["bucket"])
-        summary.delete("creator") unless keep_member?(summary["creator"])
+        summary.delete("parent") unless keep_member?(parent, "title")
+        summary.delete("bucket") unless keep_member?(summary["bucket"], "name")
+        summary.delete("creator") unless keep_member?(summary["creator"], "name")
         # Absent or empty is genuinely nothing to report — the reference's
         # +omitempty+ leaves an empty slice out of its summary too, so the key
         # goes. Anything else that is not an array of objects is a decode
@@ -603,11 +603,29 @@ module Basecamp
       # a malformed bucket before the cross-bucket check could object — which
       # is the check this composite exists to protect, and which an existing
       # test caught within a minute of the rule being written the other way.
-      def keep_member?(member)
+      #
+      # TWO NAMED FIELDS, not "any value present", and the label differs by
+      # member: the reference tests <tt>Id != 0 || Name != ""</tt> for a bucket
+      # and a creator, and <tt>Id != 0 || Title != ""</tt> for a parent —
+      # uniformly, across all 17 conversions. A predicate over every value
+      # instead kept <tt>{"type" => "Project"}</tt> and <tt>{"url" => "u"}</tt>,
+      # which the reference drops. That is the per-site rule lesson again: the
+      # shared part here is the shape of the test, not the field it reads.
+      def keep_member?(member, label)
         return false if member.nil?
         return true unless member.is_a?(Hash)
 
-        member.any? { |_, value| !value.nil? && value != "" && value != 0 }
+        id = Ids.from_wire(member["id"])
+        # A malformed ID keeps the member too, for the same reason a non-object
+        # member is kept: the reader that refuses it has to still see it. This
+        # is the SECOND time this predicate has swallowed a malformed bucket
+        # before the cross-bucket check could object — first for a bucket that
+        # was not an object, now for one whose id is not an integer. Anything
+        # that decides whether a key SURVIVES has to leave the malformed cases
+        # for the code that reports them.
+        return true if id.nil?
+
+        !id.zero? || !member[label].to_s.empty?
       end
 
       def first_non_empty(*values)
