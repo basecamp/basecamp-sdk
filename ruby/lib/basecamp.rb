@@ -31,6 +31,17 @@ end
 loader.on_load("Basecamp::Services::SchedulesService") do |klass, _abspath|
   klass.prepend(Basecamp::Services::SchedulesExtensions)
 end
+# And for recordings: the generated class owns the status writes, and the
+# hand-written `summarize` projection — one typed read per recording type, plus
+# Campfire discovery for chat lines — is prepended over it.
+loader.on_load("Basecamp::Services::RecordingsService") do |klass, _abspath|
+  klass.prepend(Basecamp::Services::RecordingsExtensions)
+end
+# And for comments: the generated class owns `create`, and the mention-expanding
+# `create_with_mentions`/`expand_mentions` surface is prepended over it.
+loader.on_load("Basecamp::Services::CommentsService") do |klass, _abspath|
+  klass.prepend(Basecamp::Services::CommentsExtensions)
+end
 loader.setup
 
 # Load generated types if available

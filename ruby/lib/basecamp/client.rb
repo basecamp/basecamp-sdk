@@ -96,6 +96,23 @@ module Basecamp
     def account_id
       nil
     end
+
+    # @api private
+    # The Campfire discovery caches used by +recordings.summarize+ when it
+    # resolves a chat line.
+    #
+    # It lives here rather than on {AccountClient} so a burst of lines costs one
+    # project read per bucket and one account-wide listing, however many
+    # AccountClients this Client has handed out. A Client is bound to one
+    # credential, so entries are never shared across authorization contexts, and
+    # every key carries the account id anyway.
+    #
+    # @return [CampfireIndex]
+    def campfire_index
+      @mutex.synchronize do
+        @campfire_index ||= CampfireIndex.new
+      end
+    end
   end
 
   # HTTP client bound to a specific Basecamp account.
@@ -140,6 +157,14 @@ module Basecamp
     # @return [Http] the HTTP client
     def http
       @parent.http
+    end
+
+    # @api private
+    # The parent Client's Campfire discovery caches, shared by every
+    # AccountClient it handed out. See {Client#campfire_index}.
+    # @return [CampfireIndex]
+    def campfire_index
+      @parent.campfire_index
     end
 
     # @api private

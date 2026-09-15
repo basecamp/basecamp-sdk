@@ -289,6 +289,60 @@ class HttpPaginationMetaTest < Minitest::Test
     assert_not enum.meta.truncated
   end
 
+  def test_a_paginated_body_that_is_not_a_list_fails_with_a_basecamp_error
+    # extract_page_items returned the parsed body verbatim and the caller's loop
+    # indexed it, so a scalar, a boolean or a null raised NoMethodError out of a
+    # public list method and an OBJECT paginated over its key/value pairs as
+    # though they were records. The widest-blast-radius guard on this branch had
+    # no test naming it — its null branch was killed only incidentally by a
+    # Campfire-discovery test one layer up.
+    [ '"scalar"', "5", "true", "{}" ].each do |body|
+      stub_get("/things.json", response_body: body)
+
+      error = assert_raises(Basecamp::ApiError, "a bare-list body of #{body}") do
+        @http.paginate("/things.json").to_a
+      end
+
+      assert_not error.retryable?
+      assert_match(/not a list/, error.message)
+      # The body is NOT echoed: a whole paginated page is customer data, and an
+      # error message travels into logs and bug reports.
+      assert_not_includes error.message, "scalar"
+      WebMock.reset!
+    end
+  end
+
+  def test_a_null_paginated_body_is_an_empty_page_at_both_branches
+    # The reference decodes JSON null as the zero value, so a null body is "no
+    # rows" rather than a failed read — at the bare-list branch, at the keyed
+    # branch, and in the wrapper that paginate_wrapped builds from the same
+    # body. The first was fixed a commit before the other two, which is how the
+    # third site came to raise NoMethodError from `nil.reject`.
+    stub_get("/things.json", response_body: "null")
+
+    assert_empty @http.paginate("/things.json").to_a
+    WebMock.reset!
+
+    stub_get("/progress.json", response_body: "null")
+    result = @http.paginate_wrapped("/progress.json", key: "events")
+
+    assert_kind_of Hash, result
+    assert_empty result["events"].to_a
+  end
+
+  def test_a_keyed_paginated_body_that_is_not_an_object_fails_with_a_basecamp_error
+    [ '"scalar"', "5", "[1,2]" ].each do |body|
+      stub_get("/progress.json", response_body: body)
+
+      error = assert_raises(Basecamp::ApiError, "a keyed body of #{body}") do
+        @http.paginate_wrapped("/progress.json", key: "events")
+      end
+
+      assert_match(/not an object/, error.message)
+      WebMock.reset!
+    end
+  end
+
   def test_paginate_wrapped_shape_survives_with_meta
     stub_get(
       "/progress.json",
