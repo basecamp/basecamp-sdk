@@ -115,6 +115,52 @@ const TS_SDK_SKIPS: Record<string, string> = {
     "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
   "CommentsCreateWithMentions resolves each person before posting and writes the mention from attachable_sgid":
     "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
+  "RecordingsSummarize routes message.created (event type) to one typed read and projects the recording":
+    "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
+  "RecordingsSummarize routes todo.created (event type) to one typed read and projects the recording":
+    "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
+  "RecordingsSummarize routes card.created (event type) to one typed read and projects the recording":
+    "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
+  "RecordingsSummarize routes Document (recording type) to one typed read and projects the recording":
+    "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
+  "RecordingsSummarize routes Upload (recording type) to one typed read and projects the recording":
+    "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
+  "RecordingsSummarize routes Schedule::Entry (recording type) to one typed read and projects the recording":
+    "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
+  "RecordingsSummarize routes Question (recording type) to one typed read and projects the recording":
+    "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
+  "RecordingsSummarize routes Question::Answer (recording type) to one typed read and projects the recording":
+    "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
+  "RecordingsSummarize routes Todolist (recording type) to one typed read and projects the recording":
+    "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
+  "RecordingsSummarize routes Vault (recording type) to one typed read and projects the recording":
+    "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
+  "RecordingsSummarize routes Inbox::Forward (recording type) to one typed read and projects the recording":
+    "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
+  "RecordingsSummarize routes Client::Approval (recording type) to one typed read and projects the recording":
+    "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
+  "RecordingsSummarize routes Client::Correspondence (recording type) to one typed read and projects the recording":
+    "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
+  "RecordingsSummarize routes GoogleDocument (recording type) to one typed read and projects the recording":
+    "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
+  "RecordingsSummarize routes CloudFile (recording type) to one typed read and projects the recording":
+    "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
+  "RecordingsSummarize routes Kanban::Step (recording type) to one typed read and projects the recording":
+    "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
+  "RecordingsSummarize routes Questionnaire (recording type) to one typed read and projects the recording":
+    "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
+  "RecordingsSummarize routes Schedule (recording type) to one typed read and projects the recording":
+    "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
+  "RecordingsSummarize routes Todoset (recording type) to one typed read and projects the recording":
+    "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
+  "RecordingsSummarize routes Message::Board (recording type) to one typed read and projects the recording":
+    "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
+  "RecordingsSummarize routes Kanban::Board (recording type) to one typed read and projects the recording":
+    "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
+  "RecordingsSummarize routes Kanban::Column (recording type) to one typed read and projects the recording":
+    "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
+  "RecordingsSummarize routes Inbox (recording type) to one typed read and projects the recording":
+    "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
 };
 
 /**
