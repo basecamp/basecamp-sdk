@@ -615,6 +615,15 @@ func (c *ttlCache[K, V]) get(ctx context.Context, key K, refresh bool, load func
 				return ttlHit[V]{}, ctx.Err()
 			}
 			if pending.err != nil {
+				// The load ran under the loading caller's context. Its
+				// cancellation or deadline is that caller's, not this one's:
+				// a waiter whose own context is live goes round again and
+				// loads for itself (the key is free, so it becomes the loader
+				// and any other waiters queue behind it — one load, not a
+				// stampede). Any other error is the load's own and is shared.
+				if (errors.Is(pending.err, context.Canceled) || errors.Is(pending.err, context.DeadlineExceeded)) && ctx.Err() == nil {
+					continue
+				}
 				return ttlHit[V]{}, pending.err
 			}
 			// The load this call waited on is this call's load: hand its

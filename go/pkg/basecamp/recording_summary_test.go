@@ -1251,3 +1251,73 @@ func TestSummarize_ChatLineTakesTheListingAnotherCallerPopulated(t *testing.T) {
 		t.Fatalf("B reported %v stale although the sources it was handed hold them", unresolved.StaleCampfireIDs)
 	}
 }
+
+func TestTTLCache_WaiterOutlivesTheLoadersCancellation(t *testing.T) {
+	// Caller 1 owns the load and is cancelled mid-way; caller 2, whose
+	// context is live, was waiting on it. Caller 2 must not be handed caller
+	// 1's cancellation: it re-acquires the key and loads for itself. Without
+	// the re-acquire, caller 2 returns context.Canceled and the second load
+	// never happens.
+	now := time.Date(2026, 9, 15, 12, 0, 0, 0, time.UTC)
+	cache := newTTLCache[string, int](func() time.Time { return now }, time.Minute, time.Second)
+	var loads atomic.Int32
+	started := make(chan struct{})
+	load := func(ctx context.Context) (int, error) {
+		n := loads.Add(1)
+		if n == 1 {
+			close(started)
+			<-ctx.Done() // the first load respects its caller's cancellation
+			return 0, ctx.Err()
+		}
+		return 42, nil
+	}
+
+	ctx1, cancel1 := context.WithCancel(context.Background())
+	firstDone := make(chan error, 1)
+	go func() {
+		_, err := cache.get(ctx1, "k", false, load)
+		firstDone <- err
+	}()
+	<-started
+
+	waiting := make(chan struct{})
+	cache.onWait = func() { close(waiting) }
+	type outcome struct {
+		hit ttlHit[int]
+		err error
+	}
+	secondDone := make(chan outcome, 1)
+	go func() {
+		hit, err := cache.get(context.Background(), "k", false, load)
+		secondDone <- outcome{hit, err}
+	}()
+	<-waiting
+	cache.onWait = nil
+	cancel1()
+
+	if err := <-firstDone; !errors.Is(err, context.Canceled) {
+		t.Fatalf("caller 1: %v, want its own cancellation", err)
+	}
+	select {
+	case got := <-secondDone:
+		if got.err != nil || got.hit.value != 42 || got.hit.cached {
+			t.Fatalf("caller 2 got %+v, %v; want its own successful load", got.hit, got.err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("caller 2 never finished")
+	}
+	if loads.Load() != 2 {
+		t.Fatalf("loads = %d, want 2: the cancelled one and caller 2's own", loads.Load())
+	}
+	// A waiter whose own context is dead keeps its own error, not a retry.
+	ctx3, cancel3 := context.WithCancel(context.Background())
+	cancel3()
+	if _, err := cache.get(ctx3, "other", false, load); !errors.Is(err, context.Canceled) {
+		t.Fatalf("a cancelled caller got %v, want context.Canceled", err)
+	}
+	// And a load's own (non-cancellation) error is shared with its waiters.
+	boom := errors.New("boom")
+	if _, err := cache.get(context.Background(), "boom", false, func(context.Context) (int, error) { return 0, boom }); !errors.Is(err, boom) {
+		t.Fatalf("got %v, want the load's own error", err)
+	}
+}

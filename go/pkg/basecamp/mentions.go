@@ -31,7 +31,8 @@ package basecamp
 //
 // The envelope is decoded structurally, never searched as bytes, so a Person
 // gid that merely appears inside some other value — a Document gid built from
-// one, a purpose string that looks like one — is not a mention. Three
+// one, a purpose string that looks like one — is not a mention, and the
+// envelope's purpose must be "attachable", the one BC3 accepts in rich text. Three
 // envelopes are read: Rails' current Marshal layout
 // {"_rails" => {"data" => gid, "pur" => purpose}}, the older Marshal layout
 // {"gid" => gid, "purpose" => …, "expires_at" => …}, and the JSON spelling of
@@ -272,15 +273,33 @@ func globalIDFromSGID(sgid string) (string, bool) {
 	if !ok {
 		return "", false
 	}
+	// A SignedGlobalID is bound to a purpose, and only an "attachable" one
+	// may be placed in rich text: BC3 refuses any other, so a Person sgid
+	// minted for bookmarking or reading is not a mention however valid its
+	// gid. Both layouts carry the purpose; an envelope without one is not a
+	// Rails envelope.
+	//
 	// Current layout: {"_rails" => {"data" => gid, "pur" => purpose}}.
 	if rails, ok := top["_rails"].(map[string]any); ok {
+		if pur, _ := rails["pur"].(string); pur != sgidPurposeAttachable {
+			return "", false
+		}
 		gid, ok := rails["data"].(string)
 		return gid, ok && gid != ""
 	}
 	// Older layout: {"gid" => gid, "purpose" => …, "expires_at" => …}.
+	if purpose, _ := top["purpose"].(string); purpose != sgidPurposeAttachable {
+		return "", false
+	}
 	gid, ok := top["gid"].(string)
 	return gid, ok && gid != ""
 }
+
+// sgidPurposeAttachable is the SignedGlobalID purpose BC3 mints attachable
+// sgids with (doc/api/sections/rich_text.md: attachable_sgid). Pinned by
+// TestPersonIDFromSGID's purpose cases, so a rename upstream breaks a test
+// here rather than silently turning every mention invisible.
+const sgidPurposeAttachable = "attachable"
 
 // unmarshalRuby decodes the subset of Ruby's Marshal 4.8 format a
 // SignedGlobalID payload uses — nil, booleans, fixnums, strings (with their

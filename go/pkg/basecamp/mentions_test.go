@@ -41,6 +41,10 @@ const (
 	rubySGIDPersonExtraKeys = "BAh7B0kiC19yYWlscwY6BkVUewdJIglkYXRhBjsAVEkiK2dpZDovL2JjMy9QZXJzb24vMTA0OTcxNTkxNT9leHBpcmVzX2luBjsAVEkiCHB1cgY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiCmV4dHJhBjsAVFsKaQZURjBJIgZzBjsAVA==--00"
 	// Rails' JSON message serializer spelling of the current layout.
 	jsonSGIDPerson = "eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vMTA0OTcxNTkxNT9leHBpcmVzX2luIiwicHVyIjoiYXR0YWNoYWJsZSJ9fQ==--00"
+	// The same person, Ruby-produced, minted for another purpose in each
+	// layout: valid signed global ids, but not ones BC3 accepts in rich text.
+	rubySGIDPersonReadable      = "BAh7BkkiC19yYWlscwY6BkVUewdJIglkYXRhBjsAVEkiK2dpZDovL2JjMy9QZXJzb24vMTA0OTcxNTkxNT9leHBpcmVzX2luBjsAVEkiCHB1cgY7AFRJIg1yZWFkYWJsZQY7AFQ=--00"
+	rubySGIDPersonBookmarkOlder = "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE1P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg1ib29rbWFyawY7AFRJIg9leHBpcmVzX2F0BjsAVDA=--00"
 )
 
 // renderedMention is what BC3 serves back for a mention: the sgid, the
@@ -97,6 +101,11 @@ func TestPersonIDFromSGID(t *testing.T) {
 		{"json: negative id", jsonEnvelope("gid://bc3/Person/-5"), 0, false},
 		{"marshal: unsupported type is undecodable", "BAh" + base64.StdEncoding.EncodeToString([]byte{'o'}) + "--00", 0, false},
 		{"marshal: truncated", strings.SplitN(rubySGIDPerson, "--", 2)[0][:40], 0, false},
+		{"purpose other than attachable, current layout (ruby)", rubySGIDPersonReadable, 0, false},
+		{"purpose other than attachable, older layout (ruby)", rubySGIDPersonBookmarkOlder, 0, false},
+		{"json: purpose other than attachable", base64.StdEncoding.EncodeToString([]byte(`{"_rails":{"data":"gid://bc3/Person/80","pur":"bookmark"}}`)) + "--00", 0, false},
+		{"json: purpose missing", base64.StdEncoding.EncodeToString([]byte(`{"_rails":{"data":"gid://bc3/Person/80"}}`)) + "--00", 0, false},
+		{"json: older layout purpose missing", base64.StdEncoding.EncodeToString([]byte(`{"gid":"gid://bc3/Person/80"}`)) + "--00", 0, false},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -277,6 +286,9 @@ func TestMentionMarkup(t *testing.T) {
 	}
 	if _, err := MentionMarkup(&Person{ID: 5, AttachableSGID: fixtureSGIDPerson}); err == nil {
 		t.Fatal("expected an error for an sgid naming another person")
+	}
+	if _, err := MentionMarkup(&Person{ID: 1049715915, AttachableSGID: rubySGIDPersonReadable}); err == nil {
+		t.Fatal("expected an error for the right person's sgid minted for another purpose")
 	}
 }
 
