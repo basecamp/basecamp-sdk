@@ -16,6 +16,7 @@ import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -389,7 +390,16 @@ class RecordingsSummarizeTest {
             )
         }
         assertEquals(BasecampException.CAMPFIRE_DISCOVERY_INCOMPLETE, failure.reason)
-        assertEquals(1, listingCalls, "an overflowing listing is not cached and not re-walked in the same call")
+        assertEquals(1, listingCalls, "one listing fetch in this call")
+        // The "not cached" half needs a SECOND call to prove: an overflowing
+        // listing must not be stored, so the next summarize pays for its own
+        // fetch rather than inheriting a snapshot that was never complete.
+        assertFailsWith<BasecampException.RecordingSummaryFailure> {
+            client.forAccount("999").recordings.summarize(
+                RecordingRef(BUCKET, LINE, eventType = "chat.line.created"),
+            )
+        }
+        assertEquals(2, listingCalls, "an overflowing listing is not cached, so the next call fetches again")
         client.close()
     }
 
@@ -544,6 +554,34 @@ class RecordingsSummarizeTest {
         assertNull(summary.parent)
         assertNull(summary.bucket)
         assertNull(summary.creator)
+        client.close()
+    }
+
+    @Test
+    fun anUntypedRecordingWithAPartialNestedIdentityFailsAsAnApiErrorNotARawDecoderThrow() = runTest {
+        // The cloud-storage reads are projected from decoded JSON by hand, and
+        // the nested identities' serializers declare required members — so a
+        // payload missing one raises a SerializationException. Unwrapped, that
+        // escapes summarize through an error contract that promises only
+        // BasecampException, while every generated read turns the identical
+        // failure into SPEC §6's statusless api_error. Go never reaches this at
+        // all: unmarshalling into its pointer structs leaves zero values.
+        val client = client {
+            ok(
+                """{"id": 7, "status": "active", "type": "CloudFile", "title": "Brand book",
+                    "app_url": "https://3.basecamp.com/999/buckets/$BUCKET/cloud_files/7",
+                    "updated_at": "2022-11-22T08:30:00.000Z",
+                    "bucket": {"id": $BUCKET, "name": "The Leto Laptop"},
+                    "description": "<div>Draft</div>"}""",
+            )
+        }
+        val failure = assertFailsWith<BasecampException.Api> {
+            client.forAccount("999").recordings.summarize(
+                RecordingRef(BUCKET, 7, recordingType = "CloudFile"),
+            )
+        }
+        assertNull(failure.httpStatus, "the request succeeded; no status describes this")
+        assertNotNull(failure.decodeFailure, "carries the decoder's own refusal, as a generated read's does")
         client.close()
     }
 }

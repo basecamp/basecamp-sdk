@@ -600,7 +600,17 @@ abstract class BaseService(
      * expression would relabel a request-encoding fault as a malformed
      * response — the same conflation in a new shape.
      */
-    private fun <T> decodeOrApiError(operation: String, decode: () -> T): T =
+    /**
+     * Protected, not private, because a SPEC §18 composite can have a decode of
+     * its own: the two cloud-storage reads are modeled as raw documents, so
+     * `RecordingsService.summarize` projects them from decoded JSON by hand. That
+     * decode has to fail the way every generated read's does — a statusless
+     * `api_error` carrying the decoder's refusal in [BasecampException.Api.decodeFailure]
+     * — or the composite leaks a raw `SerializationException` through an error
+     * contract that promises only [BasecampException], and the conformance
+     * runner reads it as a fixture-body bug rather than an SDK failure.
+     */
+    protected fun <T> decodeOrApiError(operation: String, decode: () -> T): T =
         try {
             decode()
         } catch (e: SerializationException) {

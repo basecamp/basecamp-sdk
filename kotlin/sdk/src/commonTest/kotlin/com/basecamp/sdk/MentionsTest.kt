@@ -194,6 +194,24 @@ class MentionsTest {
         assertEquals(42L, personIdFromSgid(jsonSgidFor("gid://bc3:3000/Person/42")))
     }
 
+    @Test
+    fun theAuthorityIsJudgedTheWayAUrlParserJudgesIt() {
+        // Each row was probed against Go's net/url. The two rejections are the
+        // ones a port that only checks the port would miss, and they reach the
+        // WRITE side: mentionMarkup asks this same question, so a looser parse
+        // renders and posts a tag Go refuses to write.
+        assertNull(personIdFromSgid(jsonSgidFor("gid://b c3/Person/1")), "a space in the host")
+        assertNull(personIdFromSgid(jsonSgidFor("gid://bc%zz3/Person/1")), "a malformed percent escape")
+        assertNull(personIdFromSgid(jsonSgidFor("gid://bc3:abc/Person/1")), "a non-numeric port")
+        assertNull(personIdFromSgid(jsonSgidFor("gid://[::1/Person/1")), "an unclosed bracket")
+        // And the rows Go ACCEPTS must keep working — being stricter than the
+        // reference loses real mentions just as silently.
+        assertEquals(1L, personIdFromSgid(jsonSgidFor("gid://user@bc3/Person/1")), "userinfo")
+        assertEquals(1L, personIdFromSgid(jsonSgidFor("gid://bc<3/Person/1")), "Go's host set is permissive")
+        assertEquals(1L, personIdFromSgid(jsonSgidFor("gid://bc3:3000/Person/1")), "a numeric port")
+        assertEquals(1L, personIdFromSgid(jsonSgidFor("gid://[::1]:80/Person/1")), "a bracketed host with a port")
+    }
+
     /** Builds an unsigned JSON-layout attachable sgid for an arbitrary gid. */
     private fun jsonSgidFor(gid: String): String {
         val json = "{\"_rails\":{\"data\":\"$gid\",\"pur\":\"attachable\"}}"
