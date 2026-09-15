@@ -29,11 +29,9 @@ import com.basecamp.sdk.generated.uploads
 import com.basecamp.sdk.generated.vaults
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.longOrNull
 
 /**
  * `RecordingsService` with [summarize] on top of the generated surface (`list`,
@@ -327,34 +325,49 @@ class RecordingsService(private val account: AccountClient) :
         decodeOrApiError(operation) { projectUntypedRecording(element) }
 
     private fun projectUntypedRecording(element: JsonElement): RecordingSummary {
-        val obj = element as? JsonObject
-            ?: throw BasecampException.Api("recording body is not a JSON object", httpStatus = null)
-        fun string(key: String): String = (obj[key] as? JsonPrimitive)?.takeIf { it.isString }?.content.orEmpty()
-        // A key present with a JSON null is absent, not a value to decode: it is
-        // JsonNull rather than Kotlin null, so `?.let` would fire and hand a
-        // non-nullable serializer something it refuses — a raw
-        // SerializationException out of a composite that is supposed to speak
-        // only BasecampException. The typed reads get this from the decoder; this
-        // one has to say it.
-        fun nested(key: String): JsonObject? = obj[key] as? JsonObject
+        // Decoded through a declared shape rather than read key by key. Reading
+        // by key coerced a type mismatch instead of refusing it — a quoted
+        // `"id": "7"` projected 0 and a numeric `"status": 5` projected "" —
+        // which is the opposite of what routing this through the shared decode
+        // seam was for: the typed reads REFUSE those bodies, and so does Go's
+        // unmarshal. A declared shape refuses them here for the same reason,
+        // and gets the JSON-null-is-absent handling for free, since a nullable
+        // member accepts an explicit null.
+        val body = json.decodeFromJsonElement(UntypedRecording.serializer(), element)
         return summaryOf(
-            // A body with no id projects as 0, as it does through the typed
-            // reads: the pointer already said which recording this is. A QUOTED
-            // id is not an id — the typed decode into a Long refuses one, and
-            // `longOrNull` does not look at `isString`, so the guard has to.
-            (obj["id"] as? JsonPrimitive)?.takeIf { !it.isString }?.longOrNull ?: 0L,
-            string("status"),
-            string("type"),
-            string("title"),
-            string("app_url"),
-            nested("parent")?.let { json.decodeFromJsonElement(RecordingParent.serializer(), it) },
-            nested("bucket")?.let { json.decodeFromJsonElement(TodoBucket.serializer(), it) },
-            nested("creator")?.let { json.decodeFromJsonElement(Person.serializer(), it) },
+            body.id,
+            body.status,
+            body.type,
+            body.title,
+            body.appUrl,
+            body.parent,
+            body.bucket,
+            body.creator,
             null,
-            string("description"),
-            string("updated_at"),
+            body.description.orEmpty(),
+            body.updatedAt,
         )
     }
+
+    /**
+     * The shape the two cloud-storage reads are projected from. Every member is
+     * optional with a default, because the reference's unmarshal into a struct
+     * leaves a zero value for an absent key rather than failing — but each is
+     * TYPED, so a present key of the wrong type is refused on both sides.
+     */
+    @Serializable
+    private data class UntypedRecording(
+        val id: Long = 0,
+        val status: String = "",
+        val type: String = "",
+        val title: String = "",
+        @SerialName("app_url") val appUrl: String = "",
+        @SerialName("updated_at") val updatedAt: String = "",
+        val description: String? = null,
+        val parent: RecordingParent? = null,
+        val bucket: TodoBucket? = null,
+        val creator: Person? = null,
+    )
 
     // --- Campfire discovery for chat lines ------------------------------------
     //
@@ -452,37 +465,52 @@ class RecordingsService(private val account: AccountClient) :
         // the pass-1 one; "refreshed" is whether a source the conclusion had
         // consulted is now newer than when it was consulted.
         //
-        // Not when the budget is already spent: a re-read could return no
-        // candidate this call may try, so it would cost a request that cannot
-        // help — and a failure on it would replace the deterministic
-        // "incomplete" verdict with a transient error a consumer retries forever.
+        // The budget decides both halves, and the two halves are NOT the same
+        // rule. A source ALREADY CONSULTED is not re-read once the budget is
+        // spent: it cannot hand this call a candidate it may try, so the refresh
+        // is skipped and the conclusion stands on what was seen. A source NEVER
+        // CONSULTED is different — candidates may exist there unsearched — so a
+        // budget spent before reaching it makes the verdict incomplete, with its
+        // own reason.
+        //
+        // Gating on `skipped` instead is subtly wrong, and it is the shape this
+        // code had: `skipped` is set only when a candidate is OBSERVED and cannot
+        // be tried, so a dock holding exactly the budget's worth of candidates
+        // that all answer 404 leaves the budget at zero with `skipped` still
+        // false. The listing would then be fetched — a request that cannot help —
+        // and a failure on it replaces a deterministic `incomplete` with a
+        // transient error a consumer retries forever.
         var refreshed = false
-        if (search.skipped) throw tooManyCandidates(bucketId, lineId)
-        if (dock.cached) {
+        var listedIds = listed?.ids.orEmpty()
+        if (search.budget > 0 && dock.cached) {
             val again = index.dockCampfires(account, bucketId, refresh = true)
             if (again.fetched > dock.fetched || !again.cached) refreshed = true
             dock = again
             search.tryAll(dock.ids)?.let { return it }
         }
-        if (search.skipped) throw tooManyCandidates(bucketId, lineId)
-        val againListed = try {
-            index.listedCampfires(account, bucketId, refresh = listCached)
-        } catch (e: CampfireListingOverflow) {
-            throw BasecampException.RecordingSummaryFailure(
-                BasecampException.CAMPFIRE_DISCOVERY_INCOMPLETE,
-                "campfire discovery incomplete: line $lineId in bucket $bucketId: ${e.message}",
-                "narrow the search by reading the line through campfires.getLine with a known Campfire id",
-                bucketId = bucketId,
-                recordingId = lineId,
-            )
+        if (search.budget <= 0) {
+            if (!listCached) throw budgetSpentBeforeListing(bucketId, lineId)
+        } else {
+            val again = try {
+                index.listedCampfires(account, bucketId, refresh = listCached)
+            } catch (e: CampfireListingOverflow) {
+                throw BasecampException.RecordingSummaryFailure(
+                    BasecampException.CAMPFIRE_DISCOVERY_INCOMPLETE,
+                    "campfire discovery incomplete: line $lineId in bucket $bucketId: ${e.message}",
+                    "narrow the search by reading the line through campfires.getLine with a known Campfire id",
+                    bucketId = bucketId,
+                    recordingId = lineId,
+                )
+            }
+            if (listed != null && (again.fetched > listed.fetched || !again.cached)) refreshed = true
+            listedIds = again.ids
+            search.tryAll(again.ids)?.let { return it }
         }
-        if (listed != null && (againListed.fetched > listed.fetched || !againListed.cached)) refreshed = true
-        search.tryAll(againListed.ids)?.let { return it }
         currentCoroutineContext().ensureActive()
         if (search.skipped) throw tooManyCandidates(bucketId, lineId)
 
         val stale = if (refreshed) {
-            search.tried.filter { it !in dock.ids && it !in againListed.ids }
+            search.tried.filter { it !in dock.ids && it !in listedIds }
         } else {
             emptyList()
         }
@@ -498,6 +526,15 @@ class RecordingsService(private val account: AccountClient) :
             staleCampfireIds = stale,
         )
     }
+
+    private fun budgetSpentBeforeListing(bucketId: Long, lineId: Long) = BasecampException.RecordingSummaryFailure(
+        BasecampException.CAMPFIRE_DISCOVERY_INCOMPLETE,
+        "campfire discovery incomplete: line $lineId in bucket $bucketId: " +
+            "the candidate budget of $MAX_CAMPFIRE_CANDIDATES was spent before the account listing was consulted",
+        "read the line through campfires.getLine with a known Campfire id",
+        bucketId = bucketId,
+        recordingId = lineId,
+    )
 
     private fun tooManyCandidates(bucketId: Long, lineId: Long) = BasecampException.RecordingSummaryFailure(
         BasecampException.CAMPFIRE_DISCOVERY_INCOMPLETE,

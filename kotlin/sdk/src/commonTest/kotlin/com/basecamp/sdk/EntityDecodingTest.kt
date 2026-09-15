@@ -190,4 +190,51 @@ class EntityDecodingTest {
         assertEquals(1049715915L, idFor(good.replace("=", "&equals;")))
     }
 
+    @Test
+    fun aLeadingNonAsciiSpaceStillTrimsWhenTheDIGESTHalfIsCorrupt() {
+        // The trim must decide the boundary characters on their own, not from a
+        // property of the whole value. A port that first asks "is this value
+        // well-formed?" and picks an ASCII-only alphabet when it is not will
+        // leave a non-ASCII space in place and lose the mention — and the byte
+        // that made it decide is in the DIGEST half, the part the separator
+        // throws away, so it cannot affect the answer at all.
+        //
+        // On this platform the transport hands over an already-decoded string,
+        // so a malformed byte arrives as U+FFFD rather than as itself; that is
+        // the shape to pin here. Verified against the reference over the same
+        // grid of six leading spaces and five digest corruptions: all thirty
+        // resolve there, and all thirty resolve here.
+        val payload = good.substringBefore("--")
+        for (space in listOf("\u00A0", "\u2002", "\u2028", "\u3000", "\u0085", " ")) {
+            for (corruption in listOf("", "\uFFFD", "\uFFFD\uFFFD", "\u0000", "\u00FF")) {
+                val sgid = space + payload + "--919d2c8b" + corruption + "11ff403e"
+                assertEquals(
+                    1049715915L,
+                    idFor(sgid),
+                    "space U+%04X with %d corrupt char(s) in the digest".format(space[0].code, corruption.length),
+                )
+            }
+        }
+    }
+
+    @Test
+    fun leadingZerosAreAnOrdinaryWayToWriteACodePoint() {
+        // No cap on the digit run, because there cannot be one: `&#00000000065;`
+        // is an ordinary spelling of "A", and a length cap justified by "longer
+        // than this is out of range anyway" is false the moment a reference is
+        // padded. No generated corpus produces leading zeros by accident.
+        assertEquals(1049715915L, idFor("&#00000000032;$good"))
+        assertEquals(1049715915L, idFor("&#000000000000000000032;$good"))
+        assertEquals(1049715915L, idFor("&#x0000000020;$good"))
+        assertNull(idFor("&#0000000000065;$good"), "a padded 'A' is still not whitespace")
+    }
+
+    @Test
+    fun aNumericReferencePastTheRuneRangeWrapsRatherThanSaturating() {
+        // The reference accumulates into a rune and signed overflow wraps there,
+        // so 2^32 + 65 is "A". Saturating at the rune maximum instead would
+        // refuse a base64 character the reference resolves.
+        assertEquals(1049715915L, idFor(good.replace("=", "&#4294967357;")), "2^32+61 wraps to '='")
+        assertNull(idFor("&#4294967296;$good"), "2^32 wraps to 0, which is the replacement character")
+    }
 }

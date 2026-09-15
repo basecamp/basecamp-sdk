@@ -82,17 +82,17 @@ class RecordingsSummarizeTest {
         "creator": {"id": 1049715914, "name": "Victor Cooper"}
     }"""
 
-    private fun projectJson(bucketId: Long, campfireId: Long?) = """{
+    private fun projectJson(bucketId: Long, campfireIds: List<Long>) = """{
         "id": $bucketId, "status": "active",
         "created_at": "2022-10-28T15:25:00.000Z", "updated_at": "2022-10-28T15:25:00.000Z",
         "name": "The Leto Laptop", "url": "https://3.basecampapi.com/999/projects/$bucketId.json",
         "app_url": "https://3.basecamp.com/999/projects/$bucketId",
         "dock": [${
-        campfireId?.let {
+        campfireIds.joinToString(",") {
             """{"id": $it, "title": "Campfire", "name": "chat", "enabled": true,
                  "url": "https://3.basecampapi.com/999/buckets/$bucketId/chats/$it.json",
                  "app_url": "https://3.basecamp.com/999/buckets/$bucketId/chats/$it"}"""
-        }.orEmpty()
+        }
     }]
     }"""
 
@@ -213,7 +213,7 @@ class RecordingsSummarizeTest {
     fun readsTheLineUnderTheProjectDockCampfireFirst() = runTest {
         val client = client { path ->
             when {
-                path == "/999/projects/$BUCKET" -> ok(projectJson(BUCKET, campfireId = 77))
+                path == "/999/projects/$BUCKET" -> ok(projectJson(BUCKET, listOf(77L)))
                 path == "/999/chats/77/lines/$LINE" -> ok(lineJson())
                 else -> notFound()
             }
@@ -409,7 +409,7 @@ class RecordingsSummarizeTest {
     fun theDiscoverySourcesAreReadOncePerBucketWithinTheTtl() = runTest {
         val client = client { path ->
             when {
-                path == "/999/projects/$BUCKET" -> ok(projectJson(BUCKET, campfireId = 77))
+                path == "/999/projects/$BUCKET" -> ok(projectJson(BUCKET, listOf(77L)))
                 path.startsWith("/999/chats/77/lines/") -> ok(lineJson())
                 else -> notFound()
             }
@@ -582,6 +582,75 @@ class RecordingsSummarizeTest {
         }
         assertNull(failure.httpStatus, "the request succeeded; no status describes this")
         assertNotNull(failure.decodeFailure, "carries the decoder's own refusal, as a generated read's does")
+        client.close()
+    }
+
+    @Test
+    fun aBudgetSpentBeforeTheListingIsIncompleteAndCostsNoListingRequest() = runTest {
+        // The dock holds exactly the budget's worth of candidates and they all
+        // answer 404. The budget is spent, but nothing was ever left UNTRIED, so
+        // the `skipped` flag is false — and gating on `skipped` would let the
+        // call go on to fetch the account listing. That request cannot help (no
+        // budget remains to try anything it returns) and a failure on it would
+        // replace this deterministic verdict with a transient error a consumer
+        // retries forever.
+        val campfireIds = (1L..MAX_CAMPFIRE_CANDIDATES).toList()
+        val client = client { path ->
+            when {
+                path == "/999/projects/$BUCKET" -> ok(projectJson(BUCKET, campfireIds))
+                path.startsWith("/999/chats/") -> notFound()
+                else -> error("unexpected request to $path")
+            }
+        }
+        val failure = assertFailsWith<BasecampException.RecordingSummaryFailure> {
+            client.forAccount("999").recordings.summarize(
+                RecordingRef(BUCKET, LINE, eventType = "chat.line.created"),
+            )
+        }
+        assertEquals(BasecampException.CAMPFIRE_DISCOVERY_INCOMPLETE, failure.reason)
+        assertTrue(
+            "before the account listing was consulted" in failure.message.orEmpty(),
+            "the reason names WHY it is incomplete: ${failure.message}",
+        )
+        assertTrue(
+            recordedPaths.none { it == "/999/chats.json" },
+            "the listing must not be fetched with no budget left to use it: $recordedPaths",
+        )
+        client.close()
+    }
+
+    @Test
+    fun aBudgetSpentAfterTheListingWasConsultedIsUnresolvedNotIncomplete() = runTest {
+        // The mirror image, and the reason "incomplete on a spent budget" is the
+        // wrong fix: here BOTH sources were consulted and every candidate was
+        // searched. Nothing is unsearched, so the answer is a settled
+        // "unresolved" rather than "incomplete" — and the cached listing is not
+        // re-read, because it cannot hand this call a candidate it may try.
+        val listingIds = (1L..MAX_CAMPFIRE_CANDIDATES).toList()
+        val listing = "[" + listingIds.joinToString(",") { campfireJson(it, BUCKET) } + "]"
+        var listingFetches = 0
+        val client = client { path ->
+            when {
+                path == "/999/projects/$BUCKET" -> notFound()
+                path == "/999/chats.json" -> { listingFetches++; ok(listing) }
+                path.startsWith("/999/chats/") -> notFound()
+                else -> error("unexpected request to $path")
+            }
+        }
+        val service = client.forAccount("999").recordings
+        // First call fills the listing cache and spends nothing this call keeps.
+        assertFailsWith<BasecampException.RecordingSummaryFailure> {
+            service.summarize(RecordingRef(BUCKET, LINE, eventType = "chat.line.created"))
+        }
+        val fetchesAfterFirst = listingFetches
+        // Second call: the listing is cached, so it is consulted in pass 1 and
+        // the whole budget goes on it.
+        val failure = assertFailsWith<BasecampException.RecordingSummaryFailure> {
+            service.summarize(RecordingRef(BUCKET, LINE + 1, eventType = "chat.line.created"))
+        }
+        assertEquals(BasecampException.RECORDING_UNRESOLVED, failure.reason)
+        assertEquals(MAX_CAMPFIRE_CANDIDATES, failure.campfireIds.size)
+        assertEquals(fetchesAfterFirst, listingFetches, "a consulted source is not re-read with the budget spent")
         client.close()
     }
 }
