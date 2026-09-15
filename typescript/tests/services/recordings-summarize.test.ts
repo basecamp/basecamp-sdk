@@ -364,6 +364,27 @@ describe("recordings.summarize", () => {
 
       expect(err).toBeInstanceOf(BucketMismatchError);
       expect((err as BucketMismatchError).kind).toBe("bucket_mismatch");
+      // The CODE too, and pinned against the ports already on `main` rather
+      // than against this port's own taste: Python's `_COMPOSITE_CODE` and
+      // Kotlin's `recordingSummaryCode` both map this identity to `usage` —
+      // the pointer named a bucket the recording is not in, which is the
+      // caller's argument, not the API misbehaving. The fixture pins
+      // `errorType` (this `kind`) and says nothing about the code, so nothing
+      // but a cross-SDK check catches a seventh answer here.
+      expect((err as BasecampError).code).toBe("usage");
+      expect((err as BasecampError).httpStatus).toBeUndefined();
+
+      // The other four identities' codes, from the same cross-SDK table:
+      // `recording_unresolved` is `not_found` in Python and Kotlin both, the
+      // two routing refusals are `usage` everywhere, and
+      // `campfire_discovery_incomplete` is `api_error` here and in Python
+      // while Kotlin maps it to `usage` — a disagreement between two merged
+      // ports that this port cannot settle unilaterally, recorded here so the
+      // next reader sees it rather than discovering it.
+      const routing = await client.recordings
+        .summarize({ bucketId: BUCKET, recordingId: 1 })
+        .catch((e: unknown) => e);
+      expect((routing as BasecampError).code).toBe("usage");
       expect((err as BucketMismatchError).bucketId).toBe(OTHER_BUCKET);
       // Statusless: the transport succeeded, so no status describes the verdict.
       expect((err as BucketMismatchError).httpStatus).toBeUndefined();

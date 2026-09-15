@@ -326,7 +326,15 @@ export class BucketMismatchError extends RecordingSummaryError {
   constructor(ref: RecordingRef, bucketId: number) {
     super(
       "bucket_mismatch",
-      "api_error",
+      // `usage`, not `api_error`: the pointer named a bucket the recording is
+      // not in, which is the caller's argument being wrong rather than the API
+      // misbehaving. Checked against the ports already on `main` rather than
+      // argued from first principles — Python's `_COMPOSITE_CODE` and Kotlin's
+      // `recordingSummaryCode` both map this identity to `usage`, and the code
+      // is a CLOSED taxonomy a consumer branches on, so a seventh answer here
+      // would be a divergence no fixture can catch: the fixture pins
+      // `errorType`, which is `kind`, and says nothing about the code.
+      "usage",
       `recording is not in the requested bucket: recording ${ref.recordingId} is in bucket ${bucketId}, not ${ref.bucketId}`,
     );
     this.name = "BucketMismatchError";
