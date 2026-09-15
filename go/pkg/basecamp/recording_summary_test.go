@@ -1196,6 +1196,9 @@ func TestSummarize_ChatLineTakesTheListingAnotherCallerPopulated(t *testing.T) {
 	// A has fetched the listing.
 	refreshStarted := make(chan struct{})
 	aDone := make(chan struct{})
+	var releaseOnce sync.Once
+	release := func() { releaseOnce.Do(func() { close(aDone) }) }
+	t.Cleanup(release) // a failed assertion must not leave the held handler blocking server shutdown
 	var once sync.Once
 	inner := fx.route(t)
 	srv.mu.Lock()
@@ -1224,7 +1227,7 @@ func TestSummarize_ChatLineTakesTheListingAnotherCallerPopulated(t *testing.T) {
 	if listings() != 2 {
 		t.Fatalf("listings = %d after A, want 2 (A fetched the expired listing)", listings())
 	}
-	close(aDone)
+	release()
 
 	var unresolved *UnresolvedRecordingError
 	select {
