@@ -500,6 +500,48 @@ describe("mentionMarkup", () => {
     expect(mentionedPersonIds(`<bc-attachment sgid="&toString;"></bc-attachment>`)).toEqual([]);
   });
 
+  it("reaches the same gid verdicts from the write side as from the read side", () => {
+    // The gid parser has two entry points, and every differential run against
+    // this port until now went through the read one. mentionMarkup checks that
+    // a person's attachable_sgid names that person, so a parser STRICTER than
+    // Go's does not merely fail to read a mention — it refuses to WRITE one for
+    // a person Go would write, and expandMentions then fails the whole comment.
+    // That is worse than a missed read, and it is the direction every
+    // tightening of the host rules is a candidate for.
+    const writes = (gid: string): boolean => {
+      const sgid = legacySGID(gid);
+      try {
+        mentionMarkup(person(VICTOR, sgid));
+        return true;
+      } catch {
+        return false;
+      }
+    };
+
+    // Whatever the read side resolves, the write side must write — and the
+    // assertion is tied to the read side rather than to a literal, so the two
+    // cannot drift apart without this failing.
+    for (const gid of [
+      `gid://bc3/Person/${VICTOR}`,
+      `gid://bc3/Person/${VICTOR}?expires_in=`,
+      `gid://user:pass@bc3/Person/${VICTOR}`,
+      `gid://b%C3%A9c3/Person/${VICTOR}`,
+      `gid://[::1]/Person/${VICTOR}`,
+      `gid://[fe80::1%25eth0]/Person/${VICTOR}`,
+      `gid://bc3/Pe%72son/${VICTOR}`,
+      `gid://b<c3/Person/${VICTOR}`,
+      // and the ones neither side may resolve
+      `gid://@/Person/${VICTOR}`,
+      `gid://[not-an-ip]/Person/${VICTOR}`,
+      `gid://b{c3/Person/${VICTOR}`,
+      `gid://b%41c3/Person/${VICTOR}`,
+      `gid://bc3/Person/${VICTOR}#%zz`,
+    ]) {
+      const resolves = personIdFromSGID(legacySGID(gid)) === VICTOR;
+      expect(writes(gid), `write side disagrees with the read side for ${gid}`).toBe(resolves);
+    }
+  });
+
   it("refuses an sgid carrying markup characters", () => {
     expect(() => mentionMarkup(person(VICTOR, `"><script>`))).toThrow(/malformed attachable_sgid/);
   });
