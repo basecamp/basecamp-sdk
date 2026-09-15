@@ -343,6 +343,13 @@ sealed class BasecampException(
         val bucketId: Long? = null,
         /** The pointer's recording id, on the failures raised after routing. */
         val recordingId: Long? = null,
+        /**
+         * The bucket the read actually returned, on
+         * [RECORDING_BUCKET_MISMATCH]. Both halves are carried, because the
+         * whole content of that failure is that they differ and [bucketId]
+         * alone cannot say which one it is.
+         */
+        val readBucketId: Long? = null,
         /** The Campfire candidates tried, in order; empty when none were visible. */
         val campfireIds: List<Long> = emptyList(),
         /**

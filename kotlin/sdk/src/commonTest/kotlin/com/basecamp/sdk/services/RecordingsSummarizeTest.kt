@@ -11,6 +11,7 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.json.Json
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
@@ -476,6 +477,73 @@ class RecordingsSummarizeTest {
             recordedPaths.count { it == "/999/chats.json" || it == "/999/projects/$BUCKET" },
             "a run of unresolvable lines cannot become a listing per line",
         )
+        client.close()
+    }
+
+    @Test
+    fun refusesARecordingFromAnotherBucketAndNamesBothBuckets() = runTest {
+        val client = client { ok(commentJson(bucketId = 111)) }
+        val failure = assertFailsWith<BasecampException.RecordingSummaryFailure> {
+            client.forAccount("999").recordings.summarize(
+                RecordingRef(BUCKET, 1069479361, eventType = "comment.created"),
+            )
+        }
+        // The whole content of this failure is that the two differ, so both are
+        // carried: one field cannot say which is which.
+        assertEquals(BUCKET, failure.bucketId)
+        assertEquals(111L, failure.readBucketId)
+        client.close()
+    }
+
+    @Test
+    fun theRoutingFailureReportsTheKeyTheCallerWrote() = runTest {
+        val client = client { error("no request expected") }
+        val failure = assertFailsWith<BasecampException.RecordingSummaryFailure> {
+            client.forAccount("999").recordings.summarize(RecordingRef(BUCKET, 1, recordingType = " Widget "))
+        }
+        assertTrue(
+            "\" Widget \"" in failure.message.orEmpty(),
+            "the key is trimmed to route and reported as written: ${failure.message}",
+        )
+        client.close()
+    }
+
+    @Test
+    fun aTypeWithNoAssigneesEmitsNoAssigneesKey() = runTest {
+        val client = client { ok(commentJson(BUCKET)) }
+        val summary = client.forAccount("999").recordings.summarize(
+            RecordingRef(BUCKET, 1069479361, eventType = "comment.created"),
+        )
+        val json = Json.encodeToString(RecordingSummary.serializer(), summary)
+        assertTrue("assignees" !in json, "absent and empty are one thing, as Go's omitempty makes them: $json")
+        assertTrue("parent" in json && "campfire_id" !in json, json)
+        client.close()
+    }
+
+    @Test
+    fun anUntypedRecordingWithNullNestedIdentitiesProjectsRatherThanRefusing() = runTest {
+        // The cloud-storage reads hand back decoded JSON rather than a named
+        // type, so this projection has to read a present-but-null key as absent
+        // itself: a JSON null is JsonNull, not Kotlin null, and handing it to a
+        // non-nullable serializer would throw a raw SerializationException out of
+        // a composite that speaks only BasecampException.
+        val client = client {
+            ok(
+                """{"id": 7, "status": "active", "type": "GoogleDocument", "title": "Roadmap",
+                    "app_url": "https://3.basecamp.com/999/buckets/$BUCKET/google_documents/7",
+                    "updated_at": "2022-11-22T08:30:00.000Z",
+                    "parent": null, "bucket": null, "creator": null,
+                    "description": "<div>Quarterly roadmap</div>"}""",
+            )
+        }
+        val summary = client.forAccount("999").recordings.summarize(
+            RecordingRef(BUCKET, 7, recordingType = "GoogleDocument"),
+        )
+        assertEquals("GoogleDocument", summary.type)
+        assertEquals("<div>Quarterly roadmap</div>", summary.content)
+        assertNull(summary.parent)
+        assertNull(summary.bucket)
+        assertNull(summary.creator)
         client.close()
     }
 }

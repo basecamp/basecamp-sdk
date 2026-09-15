@@ -174,4 +174,43 @@ class MentionsTest {
         val out = withMentions("Hi", listOf(person(1049715914, victorSgid), person(1049715915, annieSgid)))
         assertEquals(listOf(1049715914L, 1049715915L), mentionedPersonIds(out))
     }
+
+    @Test
+    fun readsAnSgidWhoseEncodedFormCarriesALineBreak() {
+        // An HTML attribute may hold a newline and Go's base64 decoder ignores
+        // one, so a value Go reads as a mention has to stay one here.
+        val wrapped = railsJsonSgid.chunked(40).joinToString("\n")
+        assertEquals(42L, personIdFromSgid(wrapped))
+    }
+
+    @Test
+    fun refusesAGidWhoseAuthorityIsNotOneAUrlParserWouldAccept() {
+        // `bc3:abc` is an invalid port, and a control character is refused
+        // outright; a URL parser fails on both, so neither names a person. This
+        // is the write side too — mentionMarkup asks the same question.
+        assertNull(personIdFromSgid(jsonSgidFor("gid://bc3:abc/Person/42")))
+        assertNull(personIdFromSgid(jsonSgidFor("gid://b\u0001c3/Person/42")))
+        // A numeric port is fine, as it is there.
+        assertEquals(42L, personIdFromSgid(jsonSgidFor("gid://bc3:3000/Person/42")))
+    }
+
+    /** Builds an unsigned JSON-layout attachable sgid for an arbitrary gid. */
+    private fun jsonSgidFor(gid: String): String {
+        val json = "{\"_rails\":{\"data\":\"$gid\",\"pur\":\"attachable\"}}"
+        val alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
+        val bytes = json.encodeToByteArray()
+        val out = StringBuilder()
+        var buffer = 0
+        var bits = 0
+        for (b in bytes) {
+            buffer = (buffer shl 8) or (b.toInt() and 0xFF)
+            bits += 8
+            while (bits >= 6) {
+                bits -= 6
+                out.append(alphabet[(buffer shr bits) and 0x3F])
+            }
+        }
+        if (bits > 0) out.append(alphabet[(buffer shl (6 - bits)) and 0x3F])
+        return out.toString()
+    }
 }

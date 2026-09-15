@@ -2026,9 +2026,15 @@ private fun navigateJsonPath(element: JsonElement, path: String): JsonElement? {
 private fun compareJsonValues(label: String, expected: JsonElement?, actual: JsonElement): TestResult? {
     if (expected == null) return TestResult(false, "$label: expected value is null in assertion")
     if (expected is JsonPrimitive && actual is JsonPrimitive) {
-        // Compare as long to preserve large integer precision
-        val expLong = expected.longOrNull
-        val actLong = actual.longOrNull
+        // Compare as long to preserve large integer precision. `longOrNull` does
+        // not look at `isString`, so the guard has to: without it the quoted
+        // "1069479345" and the bare 1069479345 compare equal, and a fixture
+        // pinning a string would be satisfied by a number (and the reverse). The
+        // Go runner cannot conflate them — it switches on the expected value's
+        // Go type — and this projection now carries both shapes side by side
+        // (`updated_at` a string, `campfire_id` a number).
+        val expLong = if (expected.isString) null else expected.longOrNull
+        val actLong = if (actual.isString) null else actual.longOrNull
         if (expLong != null && actLong != null) {
             if (expLong != actLong) {
                 return TestResult(false, "Expected $label = $expLong, got $actLong")

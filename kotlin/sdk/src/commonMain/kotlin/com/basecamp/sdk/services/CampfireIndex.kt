@@ -5,13 +5,16 @@ import com.basecamp.sdk.BasecampException
 import com.basecamp.sdk.PaginationOptions
 import com.basecamp.sdk.generated.campfires
 import com.basecamp.sdk.generated.projects
-import com.basecamp.sdk.http.currentTimeMillis
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import kotlin.coroutines.cancellation.CancellationException
+import kotlin.time.TimeSource
 
 /**
  * How long a cached discovery source — a bucket's project dock, the account's
@@ -57,6 +60,22 @@ const val MAX_CAMPFIRE_LISTING: Int = 1000
 private const val CAMPFIRE_INDEX_MAX_ITEMS = 1024
 
 /**
+ * The cache's clock: milliseconds since an arbitrary fixed origin, read from a
+ * MONOTONIC source rather than the wall clock.
+ *
+ * Go gets this for free — a `time.Time` from `time.Now()` carries a monotonic
+ * reading and `Sub` uses it — and the cache depends on it in three places that
+ * all fail quietly under a backwards wall-clock step: an entry whose computed
+ * age goes negative outlives its TTL and survives the sweep, a refresh is
+ * declined below a floor it has actually passed, and the fetched-time comparison
+ * that decides `refreshed` (and therefore the stale-candidate report) reads the
+ * wrong way. None of those raise; they just answer wrongly.
+ */
+internal fun monotonicMillis(): Long = MONOTONIC_ORIGIN.elapsedNow().inWholeMilliseconds
+
+private val MONOTONIC_ORIGIN = TimeSource.Monotonic.markNow()
+
+/**
  * What a cache read hands back: the value, when it was fetched, and whether it
  * predated the call (as opposed to being loaded during it, by this caller or by
  * one it waited on). The fetch time is what lets a caller tell a snapshot it
@@ -83,6 +102,17 @@ internal class TtlCache<K, V>(
 
         /** Set at publication, so the loader's own hit reports a real fetch time. */
         var fetched: Long = 0
+
+        /**
+         * Records that the failure is attributable to the loading caller's own
+         * cancellation: its job was no longer active when the load ended AND the
+         * failure is a cancellation. Both halves are needed. Ktor's
+         * `HttpRequestTimeoutException` IS a `CancellationException` and arrives
+         * with the owner's job still active — that is the load's own failure, to
+         * be shared with every waiter, not the owner's to be retried. Getting
+         * this wrong turns one timed-out request into one request per waiter.
+         */
+        var ownerCancelled: Boolean = false
     }
 
     private val mutex = Mutex()
@@ -99,6 +129,10 @@ internal class TtlCache<K, V>(
     suspend fun get(key: K, refresh: Boolean, load: suspend () -> V): TtlHit<V> {
         var reacquired = false
         while (true) {
+            // A cancelled caller gets no answer, cached or otherwise: the mutex
+            // below may be free, and a fresh hit would otherwise let a cancelled
+            // call run to a verdict without ever suspending.
+            currentCoroutineContext().ensureActive()
             var fresh: TtlHit<V>? = null
             var pending: Load<V>? = null
             var owned: Load<V>? = null
@@ -128,17 +162,19 @@ internal class TtlCache<K, V>(
                 val value = try {
                     waited.done.await()
                 } catch (e: CancellationException) {
-                    // The load ran under the loading caller's coroutine. Its
-                    // cancellation is that caller's failure, not this one's: a
+                    // The load ran under the loading caller's coroutine. If that
+                    // caller was cancelled, the failure is its, not this one's: a
                     // waiter whose own job is live goes round again and loads for
                     // itself (the key is free, so it becomes the loader and any
                     // other waiters queue behind it — one load, not a stampede).
                     // Once only: a second owner-attributed cancellation is
                     // rethrown rather than chased, so a run of cancelled owners
                     // cannot become a queue of sequential loads behind one
-                    // waiter. Any other failure is the load's own and is shared,
-                    // so N waiters never re-run one failed load N times.
-                    if (currentCoroutineContext().isActive && !reacquired) {
+                    // waiter. Any other failure — a transport timeout included,
+                    // which Ktor spells as a CancellationException — is the
+                    // load's own and is shared, so N waiters never re-run one
+                    // failed load N times.
+                    if (waited.ownerCancelled && currentCoroutineContext().isActive && !reacquired) {
                         reacquired = true
                         continue
                     }
@@ -152,14 +188,28 @@ internal class TtlCache<K, V>(
             }
 
             val load0 = requireNotNull(owned)
-            val value = try {
-                load()
+            var settled = false
+            try {
+                val value = load()
+                publishSuccess(key, load0, value)
+                settled = true
+                return TtlHit(value, load0.fetched, cached = false)
             } catch (t: Throwable) {
+                load0.ownerCancelled = t is CancellationException && !currentCoroutineContext().isActive
                 publishFailure(key, load0, t)
+                settled = true
                 throw t
+            } finally {
+                // Go releases the key from a deferred recover, so a loader that
+                // leaves by SOME OTHER path still frees the slot and wakes its
+                // waiters. The catch above covers every throw, and this covers
+                // what a catch cannot. It matters more than it looks: waiters
+                // wait with no timeout, so one slot never released parks every
+                // later caller for that key for the life of the client — and the
+                // listing's key is the bare account id, which makes that an
+                // account rather than a bucket.
+                if (!settled) releaseOrphanedSlot(key, load0)
             }
-            publishSuccess(key, load0, value)
-            return TtlHit(value, load0.fetched, cached = false)
         }
     }
 
@@ -174,7 +224,16 @@ internal class TtlCache<K, V>(
         TtlHit(entry.value, entry.fetched, cached = true)
     }
 
-    private suspend fun publishSuccess(key: K, load: Load<V>, value: V) {
+    /**
+     * Publication is NonCancellable, on both paths and for the same reason Go
+     * publishes from a `defer`: it always runs. A cancellation landing between
+     * the loader returning and the key being released would otherwise throw out
+     * of `withLock`, leaving the key in flight and its waiters suspended on a
+     * deferred nobody will ever complete — a key poisoned for the life of the
+     * client. The failure path needs it most, since it is reached AFTER a
+     * cancellation.
+     */
+    private suspend fun publishSuccess(key: K, load: Load<V>, value: V) = withContext(NonCancellable) {
         mutex.withLock {
             inflight.remove(key)
             load.fetched = now()
@@ -186,8 +245,18 @@ internal class TtlCache<K, V>(
         load.done.complete(value)
     }
 
-    private suspend fun publishFailure(key: K, load: Load<V>, cause: Throwable) {
-        // The key is released first so a later caller can load again; the previous
+    /**
+     * The last-resort release: the key is freed and its waiters are woken with a
+     * failure that says what happened, so a slot can never outlive the coroutine
+     * that took it.
+     */
+    private suspend fun releaseOrphanedSlot(key: K, load: Load<V>) = withContext(NonCancellable) {
+        mutex.withLock { inflight.remove(key) }
+        load.done.completeExceptionally(IllegalStateException("basecamp: cache loader left without publishing"))
+    }
+
+    private suspend fun publishFailure(key: K, load: Load<V>, cause: Throwable) = withContext(NonCancellable) {
+        // The key is released so a later caller can load again; the previous
         // value, if any, stays in place.
         mutex.withLock { inflight.remove(key) }
         load.done.completeExceptionally(cause)
@@ -264,7 +333,7 @@ internal class CampfireListingOverflow :
  * buckets and accounts consulted within the last TTL, and never more than the
  * bound, whatever the client has seen.
  */
-internal class CampfireIndex(now: () -> Long = ::currentTimeMillis) {
+internal class CampfireIndex(now: () -> Long = ::monotonicMillis) {
     private val docks = TtlCache<CampfireBucketKey, List<Long>>(
         now,
         CAMPFIRE_INDEX_TTL_MILLIS,

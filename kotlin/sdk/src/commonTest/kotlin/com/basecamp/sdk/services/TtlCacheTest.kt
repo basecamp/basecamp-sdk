@@ -1,9 +1,15 @@
 package com.basecamp.sdk.services
 
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.yield
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -68,23 +74,28 @@ class TtlCacheTest {
         val clock = Clock()
         val cache = cache(clock)
         val gate = CompletableDeferred<Unit>()
+        val loading = CompletableDeferred<Unit>()
         var loads = 0
-        val results = coroutineScope {
-            val first = async {
-                cache.get("k", refresh = false) {
-                    loads++
-                    gate.await()
-                    7
-                }
+        // The handshake matters: the second caller has to reach the cache while
+        // the first caller's load is STILL in flight. Completing the gate before
+        // either coroutine runs would let the first finish and the second take an
+        // ordinary cache hit — one load either way, and the single-flight path
+        // never exercised.
+        val first = async {
+            cache.get("k", refresh = false) {
+                loads++
+                loading.complete(Unit)
+                gate.await()
+                7
             }
-            val second = async {
-                // Queues behind the load the first caller owns.
-                cache.get("k", refresh = false) { loads++; 8 }
-            }
-            gate.complete(Unit)
-            listOf(first.await(), second.await())
         }
+        loading.await()
+        val second = async { cache.get("k", refresh = false) { loads++; 8 } }
+        yield()
+        gate.complete(Unit)
+        val results = listOf(first.await(), second.await())
         assertEquals(listOf(7, 7), results.map { it.value })
+        assertFalse(results[1].cached, "the value came from the load this call waited on, not from an entry")
         assertEquals(1, loads, "the second caller must wait on the load in flight, not start another")
     }
 
@@ -114,5 +125,75 @@ class TtlCacheTest {
         assertEquals(null, cache.peek("a"), "the oldest entry goes first")
         assertEquals(2, cache.peek("b")?.value)
         assertEquals(3, cache.peek("c")?.value)
+    }
+
+    @Test
+    fun aLoadCancelledByItsOwnTimeoutIsSharedRatherThanRerunPerWaiter() = runTest {
+        // Ktor spells a request timeout as a CancellationException with the
+        // calling job still active. That is the LOAD's failure, not the caller's,
+        // so every waiter takes it — otherwise one timed-out listing becomes one
+        // listing per waiting call. The Go cache tests the same two halves
+        // (`callerDone`): context done AND the error being that context's.
+        val cache = cache(Clock())
+        val gate = CompletableDeferred<Unit>()
+        val loading = CompletableDeferred<Unit>()
+        var loads = 0
+        val owner = async {
+            runCatching {
+                cache.get("k", refresh = false) {
+                    loads++
+                    loading.complete(Unit)
+                    gate.await()
+                    throw CancellationException("simulated transport timeout")
+                }
+            }
+        }
+        loading.await()
+        val waiter = async { runCatching { cache.get("k", refresh = false) { loads++; 9 } } }
+        yield()
+        gate.complete(Unit)
+        val outcomes = listOf(owner.await(), waiter.await())
+        assertEquals(1, loads, "the failed load is shared, not re-run behind each waiter")
+        assertTrue(outcomes.all { it.isFailure }, "both callers see the load's own failure")
+    }
+
+    @Test
+    fun aCancelledOwnerReleasesTheKeyAndALiveWaiterLoadsForItself() = runTest {
+        // The owner's cancellation is the owner's. A waiter whose own job is live
+        // goes round once and loads for itself — and can only do that because the
+        // key was released, which is what makes publication uncancellable. Without
+        // that, this test hangs on a deferred nobody completes.
+        val cache = cache(Clock())
+        val gate = CompletableDeferred<Unit>()
+        val ownerStarted = CompletableDeferred<Unit>()
+        var loads = 0
+        val ownerScope = CoroutineScope(coroutineContext + Job())
+        ownerScope.launch {
+            cache.get("k", refresh = false) {
+                loads++
+                ownerStarted.complete(Unit)
+                gate.await()
+                1
+            }
+        }
+        ownerStarted.await()
+        val waiter = async { cache.get("k", refresh = false) { loads++; 7 } }
+        yield()
+        ownerScope.cancel()
+        assertEquals(7, waiter.await().value)
+        assertEquals(2, loads, "the waiter loaded for itself rather than inheriting the cancellation")
+    }
+
+    @Test
+    fun aLoaderThatDiesAbnormallyStillReleasesTheKey() = runTest {
+        // Not an exception the loader chose: an Error, the shape a `catch
+        // (Exception)` would step over. Waiters wait with no timeout, so a key
+        // left in flight is a permanent hang for every later caller — and the
+        // listing's key is a whole account.
+        val cache = cache(Clock())
+        assertFailsWith<AssertionError>("the abnormal exit reaches the caller") {
+            cache.get("k", refresh = false) { throw AssertionError("loader died") }
+        }
+        assertEquals(5, cache.get("k", refresh = false) { 5 }.value, "the key was released, not poisoned")
     }
 }

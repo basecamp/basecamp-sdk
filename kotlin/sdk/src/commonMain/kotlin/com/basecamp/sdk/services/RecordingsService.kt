@@ -27,6 +27,8 @@ import com.basecamp.sdk.generated.todos
 import com.basecamp.sdk.generated.todosets
 import com.basecamp.sdk.generated.uploads
 import com.basecamp.sdk.generated.vaults
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -103,6 +105,7 @@ class RecordingsService(private val account: AccountClient) :
                     "is in bucket $bucketId, not ${ref.bucketId}",
                 bucketId = ref.bucketId,
                 recordingId = ref.recordingId,
+                readBucketId = bucketId,
             )
         }
         return summary
@@ -311,17 +314,24 @@ class RecordingsService(private val account: AccountClient) :
         val obj = element as? JsonObject
             ?: throw BasecampException.Api("recording body is not a JSON object", httpStatus = null)
         fun string(key: String): String = (obj[key] as? JsonPrimitive)?.contentOrNull.orEmpty()
-        val id = (obj["id"] as? JsonPrimitive)?.longOrNull
-            ?: throw BasecampException.Api("recording body carries no id", httpStatus = null)
+        // A key present with a JSON null is absent, not a value to decode: it is
+        // JsonNull rather than Kotlin null, so `?.let` would fire and hand a
+        // non-nullable serializer something it refuses — a raw
+        // SerializationException out of a composite that is supposed to speak
+        // only BasecampException. The typed reads get this from the decoder; this
+        // one has to say it.
+        fun nested(key: String): JsonObject? = obj[key] as? JsonObject
         return summaryOf(
-            id,
+            // A body with no id projects as 0, as it does through the typed
+            // reads: the pointer already said which recording this is.
+            (obj["id"] as? JsonPrimitive)?.longOrNull ?: 0L,
             string("status"),
             string("type"),
             string("title"),
             string("app_url"),
-            obj["parent"]?.let { json.decodeFromJsonElement(RecordingParent.serializer(), it) },
-            obj["bucket"]?.let { json.decodeFromJsonElement(TodoBucket.serializer(), it) },
-            obj["creator"]?.let { json.decodeFromJsonElement(Person.serializer(), it) },
+            nested("parent")?.let { json.decodeFromJsonElement(RecordingParent.serializer(), it) },
+            nested("bucket")?.let { json.decodeFromJsonElement(TodoBucket.serializer(), it) },
+            nested("creator")?.let { json.decodeFromJsonElement(Person.serializer(), it) },
             null,
             string("description"),
             string("updated_at"),
@@ -375,6 +385,10 @@ class RecordingsService(private val account: AccountClient) :
                     skipped = true
                     return null
                 }
+                // A cancelled caller must not be handed a verdict: without this,
+                // a run of already-cached candidates could reach "unresolved"
+                // without ever suspending. Go checks ctx.Err() here.
+                currentCoroutineContext().ensureActive()
                 budget--
                 val line = try {
                     account.campfires.getLine(campfireId, lineId)
@@ -446,6 +460,7 @@ class RecordingsService(private val account: AccountClient) :
         }
         if (listed != null && (againListed.fetched > listed.fetched || !againListed.cached)) refreshed = true
         search.tryAll(againListed.ids)?.let { return it }
+        currentCoroutineContext().ensureActive()
         if (search.skipped) throw tooManyCandidates(bucketId, lineId)
 
         val stale = if (refreshed) {
