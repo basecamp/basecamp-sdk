@@ -346,8 +346,14 @@ func (r *rubyMarshalReader) byte() (byte, error) {
 	return b, nil
 }
 
+// bytes takes the next n bytes. The bound is checked against what remains,
+// never by adding n to the position: on a 32-bit target r.pos+n overflows
+// for a hostile length near MaxInt32 and would pass a naive check into a
+// slice panic. Every length reaches here through count(), which already
+// rejected anything past the remaining bytes as an int64, so the int
+// conversion upstream cannot have truncated either.
 func (r *rubyMarshalReader) bytes(n int) ([]byte, error) {
-	if n < 0 || r.pos+n > len(r.data) {
+	if n < 0 || n > len(r.data)-r.pos {
 		return nil, fmt.Errorf("marshal: unexpected end of data")
 	}
 	b := r.data[r.pos : r.pos+n]
@@ -400,10 +406,14 @@ func (r *rubyMarshalReader) int() (int64, error) {
 	}
 }
 
-// count reads an element, pair or ivar count and rejects one that cannot be
-// honest: negative, or more than the bytes left could encode (every element
-// takes at least one byte). Allocation follows what actually decodes, so a
-// hostile count costs its own bytes to refuse, never the capacity it claims.
+// count reads a length or count — string and symbol bytes, array elements,
+// hash pairs, ivar pairs — and rejects one that cannot be honest: negative,
+// or more than the bytes left (every element takes at least one byte). The
+// comparison is made on the int64 against the remaining length, before any
+// conversion to int and never by adding to the position, so neither a
+// 32-bit truncation nor an overflow-by-addition can let a hostile length
+// through. Allocation follows what actually decodes, so a hostile count
+// costs its own bytes to refuse, never the capacity it claims.
 func (r *rubyMarshalReader) count() (int64, error) {
 	n, err := r.int()
 	if err != nil {
@@ -433,7 +443,7 @@ func (r *rubyMarshalReader) value(depth int) (any, error) {
 	case 'i':
 		return r.int()
 	case '"':
-		n, err := r.int()
+		n, err := r.count()
 		if err != nil {
 			return nil, err
 		}
@@ -443,7 +453,7 @@ func (r *rubyMarshalReader) value(depth int) (any, error) {
 		}
 		return string(raw), nil
 	case ':':
-		n, err := r.int()
+		n, err := r.count()
 		if err != nil {
 			return nil, err
 		}

@@ -198,13 +198,29 @@ func TestPersonIDFromSGID_HostileMarshal(t *testing.T) {
 		"negative ivar count on the envelope string":     {0x04, 0x08, 'I', '"', 0x06, 'x', 0xfa},
 		"string claiming past the end":                   {0x04, 0x08, '"', 0x20, 'a'},
 		"unsupported object type":                        {0x04, 0x08, 'o', ':', 0x06, 'X', 0x00},
-		"truncated after the version":                    {0x04, 0x08},
+		// A packed Marshal length is at most four bytes (a lead byte of 1..4
+		// says how many follow; larger values are bignums), so the largest
+		// claim is 2^32-1 and the sharpest is MaxInt32: on a 32-bit target a
+		// bounds check that adds the length to the position overflows and
+		// passes it into a slice panic. Refused, never sliced — the
+		// GOARCH=386 run of this test is where the mutant shows.
+		"string of MaxInt32 at a non-zero position": {0x04, 0x08, '[', 0x07, 'i', 0x06, '"', 0x04, 0xff, 0xff, 0xff, 0x7f, 'a'},
+		"string of 2^32-1 at a non-zero position":   {0x04, 0x08, '[', 0x07, 'i', 0x06, '"', 0x04, 0xff, 0xff, 0xff, 0xff, 'a'},
+		"symbol of MaxInt32":                        {0x04, 0x08, ':', 0x04, 0xff, 0xff, 0xff, 0x7f, 'a'},
+		"negative string length":                    {0x04, 0x08, '"', 0xfa, 'a'},
+		"negative symbol length":                    {0x04, 0x08, ':', 0xfa, 'a'},
+		"truncated after the version":               {0x04, 0x08},
 	}
 	for name, raw := range cases {
 		t.Run(name, func(t *testing.T) {
 			done := make(chan struct{})
 			go func() {
 				defer close(done)
+				defer func() {
+					if r := recover(); r != nil {
+						t.Errorf("decoding panicked: %v", r)
+					}
+				}()
 				if id, ok := PersonIDFromSGID(sgid(raw)); ok {
 					t.Errorf("accepted as person %d", id)
 				}
