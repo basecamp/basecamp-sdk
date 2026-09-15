@@ -1128,12 +1128,12 @@ impl MarshalReader<'_> {
 mod tests {
     use super::*;
 
-    /// `{"gid" => "gid://bc3/Person/1049715915?expires_in", "purpose" => "attachable",
-    /// "expires_at" => nil}`, Marshal 4.8, as BC3 mints it.
-    /// Measured on rustc 1.98.0. The MSRV job builds on 1.88 and runs this too; if the two
-    /// toolchains ever decode differently, that job fails here.
+    /// The digest of the decode below, measured on rustc 1.98.0. The MSRV job builds on 1.88
+    /// and runs this too; if the two toolchains ever decode differently, that job fails here.
     const DECODE_DIGEST: u64 = 419_185_206_463_269_138;
 
+    /// `{"gid" => "gid://bc3/Person/1049715915?expires_in", "purpose" => "attachable",
+    /// "expires_at" => nil}`, Marshal 4.8, as BC3 mints it.
     const ANNIE_SGID: &str = "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE1P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9hdHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--aeb392ebf54ffd820e45f27add22bae3a8c7da56";
 
     fn person(id: i64, sgid: Option<&str>) -> Person {
@@ -1225,6 +1225,39 @@ mod tests {
             ("gid://[::ffff:192.0.2.1]/Person/1", Some(1)),
             ("gid://[fe80::1%25eth0]:8080/Person/1", Some(1)),
             ("gid://[::1]:/Person/1", Some(1)),
+            // A ZONE does not excuse the literal from being an address. These are the rows
+            // that separate "validated unconditionally" from "skipped when a zone is
+            // present"; `[::1%25eth0]` above cannot, because it parses either way. Every
+            // answer here is Go's, measured, not predicted — the accepting direction was a
+            // real defect on this line and the probe that was supposed to have caught it
+            // could only ever agree with the premise it came from.
+            ("gid://[not-an-address%25zone]/Person/77", None),
+            ("gid://[abc%25z]/Person/77", None),
+            ("gid://[1%25z]/Person/77", None),
+            ("gid://[bad%25x]/Person/77", None),
+            ("gid://[%25]/Person/77", None),
+            // An EMPTY zone is refused: `ParseAddr` will not take one.
+            ("gid://[::1%25]/Person/77", None),
+            // IPv4 in brackets stays refused with a zone on it, and the IPv4-mapped IPv6
+            // form stays accepted — the check is on what the address IS, not how it reads.
+            ("gid://[192.0.2.1%25eth0]/Person/77", None),
+            ("gid://[::ffff:192.0.2.1%25eth0]/Person/77", Some(77)),
+            // The zone's escape rule is its OWN, and admits escapes a host refuses: `%41`
+            // and `%20` both have a first hex digit below 8. Verifying that rule at the
+            // host position says nothing about this one.
+            ("gid://[::1%25%41]/Person/77", Some(77)),
+            ("gid://[::1%25a%20b]/Person/77", Some(77)),
+            // But not every escape: a zone still refuses one whose byte it could not have
+            // written directly.
+            ("gid://[::1%25a%2fb]/Person/77", None),
+            ("gid://[::1%25%01]/Person/77", None),
+            // IPvFuture is a real RFC 3986 production and `netip.ParseAddr` does not
+            // implement it, so Go refuses it. A port that checks whether the brackets LOOK
+            // like a literal instead of parsing one accepts these.
+            ("gid://[v7.x]/Person/77", None),
+            ("gid://[V7.x]/Person/77", None),
+            ("gid://[vz.x]/Person/77", None),
+            ("gid://[v1.fe80::a+en1]/Person/77", None),
             // An empty host stays empty after userinfo is stripped — but `u.Host` carries
             // the port, so an empty NAME with a port is not an empty host.
             ("gid://@/Person/1", None),
@@ -2010,10 +2043,93 @@ mod tests {
         }
     }
 
+    /// A KNOWN, DELIBERATE divergence, pinned so it is a decision rather than a surprise.
+    ///
+    /// Go's `encoding/json` replaces a malformed UTF-8 byte or an unpaired surrogate escape
+    /// with U+FFFD and carries on, so an envelope whose damage sits in a member the decode
+    /// ignores still yields its person. `serde_json` refuses the document instead, and the
+    /// sgid names nobody.
+    ///
+    /// It runs in ONE direction only — measured, not assumed, across every position an
+    /// envelope has: where the damage lands in the gid or the purpose both sides answer
+    /// "nobody", and where it lands in an ignored key or value Go answers 77 and this
+    /// answers nobody. So this port never names a person Go does not; it declines a few Go
+    /// would name. On a helper a connector admits events by, that is the direction to fail
+    /// in, and it is why this is pinned rather than chased: matching byte-for-byte needs a
+    /// lossy re-encode of the raw bytes AND a surrogate-replacing JSON reader, two
+    /// substitutions of someone else's parser, to accept input BC3 does not mint. The
+    /// Marshal branch, which is what BC3's own sgids actually use, matches exactly.
+    #[test]
+    fn a_malformed_byte_in_a_json_envelope_declines_where_go_substitutes() {
+        let gid = br#""gid":"gid://bc3/Person/77","purpose":"attachable""#;
+        // Damage in a member neither side reads: Go replaces and answers, this declines.
+        for (name, damaged) in [
+            ("a raw continuation byte", &b"\x80"[..]),
+            ("a raw 0xff, which is in no UTF-8 sequence", &b"\xff"[..]),
+            ("an overlong NUL", &b"\xc0\x80"[..]),
+            ("a surrogate encoded as UTF-8", &b"\xed\xa0\x80"[..]),
+            ("a truncated three-byte sequence", &b"\xe2\x82"[..]),
+            ("a code point above the maximum", &b"\xf4\x90\x80\x80"[..]),
+            ("an unpaired high surrogate escape", &br"\ud800"[..]),
+            ("an unpaired low surrogate escape", &br"\udfff"[..]),
+        ] {
+            for (position, envelope) in [
+                (
+                    "an ignored value",
+                    [b"{".as_slice(), gid, br#","x":""#, damaged, br#""}"#].concat(),
+                ),
+                (
+                    "an ignored key",
+                    [b"{".as_slice(), gid, b",\"", damaged, br#"":"y"}"#].concat(),
+                ),
+            ] {
+                assert_eq!(
+                    person_id_from_sgid(&json_sgid_bytes(&envelope)),
+                    None,
+                    "{name} in {position}: Go answers 77 here; this port declines, and the \
+                     divergence is deliberate"
+                );
+            }
+        }
+        // The same envelopes undamaged DO answer, so the assertion above is about the
+        // malformed byte and not about the envelope shape.
+        assert_eq!(
+            person_id_from_sgid(&json_sgid_bytes(
+                &[b"{".as_slice(), gid, br#","x":"ok"}"#].concat()
+            )),
+            Some(77)
+        );
+        // And valid non-ASCII is not the divergence: an emoji, as UTF-8 or as a correct
+        // surrogate PAIR, is carried by both.
+        for valid in [&b"\xf0\x9f\x98\x80"[..], &br"\ud83d\ude00"[..]] {
+            assert_eq!(
+                person_id_from_sgid(&json_sgid_bytes(
+                    &[b"{".as_slice(), gid, br#","x":""#, valid, br#""}"#].concat()
+                )),
+                Some(77)
+            );
+        }
+        // Where the damage lands in a member that IS read, both sides answer nobody — the
+        // replacement character is not a digit either.
+        for damaged in [&b"\xff"[..], &br"\ud800"[..]] {
+            let envelope = [
+                br#"{"gid":"gid://bc3/Person/77"#.as_slice(),
+                damaged,
+                br#"","purpose":"attachable"}"#,
+            ]
+            .concat();
+            assert_eq!(person_id_from_sgid(&json_sgid_bytes(&envelope)), None);
+        }
+    }
+
     /// An unsigned JSON envelope, in the base64url spelling Rails emits.
     fn json_sgid(json: &str) -> String {
+        json_sgid_bytes(json.as_bytes())
+    }
+
+    /// The same, over bytes, so an envelope carrying a malformed one can be built at all.
+    fn json_sgid_bytes(bytes: &[u8]) -> String {
         const ALPHABET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
-        let bytes = json.as_bytes();
         let mut out = String::new();
         for chunk in bytes.chunks(3) {
             let mut buffer = [0u8; 3];

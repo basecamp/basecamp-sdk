@@ -1418,3 +1418,383 @@ mod tests {
         assert_eq!(first_non_empty(String::new(), None), "");
     }
 }
+
+/// The refresh path, which needs the floor crossed and so needs a clock a test can move.
+/// Everything here turns on entries ageing: the rest of the discovery behaviour is driven
+/// end-to-end in `tests/composites_recording_summary.rs`, where real time is enough.
+#[cfg(test)]
+mod refresh_tests {
+    use super::*;
+    use crate::Config;
+    use crate::client::Client;
+    use crate::services::campfire_index::{
+        CAMPFIRE_INDEX_MIN_REFRESH, MAX_CAMPFIRE_CANDIDATES, TestClock,
+    };
+    use serde_json::{Value, json};
+    use std::sync::Arc;
+    use std::time::Duration;
+    use wiremock::matchers::{method, path};
+    use wiremock::{Mock, MockServer, ResponseTemplate};
+
+    const BUCKET: i64 = 1_069_479_338;
+    const LINE: i64 = 1_069_479_351;
+    const CACHED_A: i64 = 1_069_479_340;
+    const CACHED_B: i64 = 1_069_479_345;
+    const APPEARED: i64 = 1_069_479_399;
+    const OTHER_BUCKET: i64 = 2_085_958_500;
+
+    fn campfire(id: i64, bucket: i64) -> Value {
+        json!({
+            "id": id,
+            "status": "active",
+            "created_at": "2022-10-28T15:25:00.000Z",
+            "updated_at": "2022-10-28T15:25:00.000Z",
+            "title": "Campfire",
+            "visible_to_clients": false,
+            "inherits_status": true,
+            "type": "Chat::Transcript",
+            "url": "https://3.basecampapi.com/999/buckets/x/chats/x.json",
+            "app_url": "https://3.basecamp.com/999/buckets/x/chats/x",
+            "bucket": { "id": bucket, "name": "A project", "type": "Project" },
+            "creator": { "id": 1, "name": "Victor Cooper" },
+        })
+    }
+
+    fn project_docking(campfire_ids: &[i64]) -> Value {
+        let dock: Vec<Value> = campfire_ids
+            .iter()
+            .map(|id| {
+                json!({ "id": id, "title": "Campfire", "name": "chat", "enabled": true, "url": "u", "app_url": "a" })
+            })
+            .collect();
+        json!({
+            "id": BUCKET,
+            "status": "active",
+            "created_at": "2022-10-28T15:25:00.000Z",
+            "updated_at": "2022-10-28T15:25:00.000Z",
+            "name": "A project",
+            "url": "https://3.basecampapi.com/999/projects/x.json",
+            "app_url": "https://3.basecamp.com/999/projects/x",
+            "dock": dock,
+        })
+    }
+
+    async fn mount(server: &MockServer, route: &str, status: u16, body: &Value) {
+        Mock::given(method("GET"))
+            .and(path(route))
+            .respond_with(ResponseTemplate::new(status).set_body_json(body.clone()))
+            .mount(server)
+            .await;
+    }
+
+    /// The dock shows `docked`, the account listing shows `listed`, and every line read
+    /// answers 404 — so the search always runs to the end and reports what it tried. The
+    /// line routes are mounted one per candidate rather than as a catch-all, which could
+    /// shadow the dock or the listing and decide the test by mount order.
+    async fn scripted(server: &MockServer, docked: &[i64], listed: &[i64]) {
+        server.reset().await;
+        mount(
+            server,
+            &format!("/999/projects/{BUCKET}"),
+            200,
+            &project_docking(docked),
+        )
+        .await;
+        let listing: Vec<Value> = listed.iter().map(|id| campfire(*id, BUCKET)).collect();
+        mount(server, "/999/chats.json", 200, &json!(listing)).await;
+        for id in docked.iter().chain(listed) {
+            mount(
+                server,
+                &format!("/999/chats/{id}/lines/{LINE}"),
+                404,
+                &json!({ "error": "Record not found" }),
+            )
+            .await;
+        }
+    }
+
+    async fn paths(server: &MockServer) -> Vec<String> {
+        server
+            .received_requests()
+            .await
+            .unwrap_or_default()
+            .iter()
+            .map(|request| request.url.path().to_string())
+            .collect()
+    }
+
+    fn account_on(server: &MockServer, clock: &Arc<TestClock>) -> AccountClient {
+        Client::builder(
+            Config::default()
+                .with_base_url(server.uri())
+                .with_timeout(Duration::from_secs(86_400)),
+        )
+        .access_token("test-token")
+        .campfire_clock(clock.clock())
+        .build()
+        .expect("client")
+        .for_account("999")
+    }
+
+    fn unresolved_from(error: &Error) -> UnresolvedRecording {
+        match RecordingSummaryError::of(error) {
+            Some(RecordingSummaryError::Unresolved(unresolved)) => unresolved.clone(),
+            _ => panic!("expected an unresolved line, got {error}"),
+        }
+    }
+
+    /// Past the floor a miss re-reads both sources, and the conclusion says so: `refreshed`
+    /// is set, and the Campfires the cache had that neither source lists any more are named
+    /// as stale. That is the only signal a consumer has that the line went missing because
+    /// visibility changed rather than because it never existed — a 404 per candidate cannot
+    /// tell the two apart. Mirrors Go's `TestSummarize_ChatLineDiscovery`.
+    #[tokio::test]
+    async fn a_refreshed_miss_names_the_campfires_the_caller_can_no_longer_see() {
+        let clock = TestClock::new();
+        let server = MockServer::start().await;
+        scripted(&server, &[CACHED_A], &[CACHED_A, CACHED_B]).await;
+        let account = account_on(&server, &clock);
+        let reference = RecordingRef::from_event(BUCKET, LINE, "chat.line.created");
+
+        // First call: both sources are read during the call, so nothing was refreshed.
+        let first = unresolved_from(
+            &account
+                .recordings()
+                .summarize(&reference)
+                .await
+                .unwrap_err(),
+        );
+        assert_eq!(first.campfire_ids, vec![CACHED_A, CACHED_B]);
+        assert!(!first.refreshed, "sources read this very call");
+        assert!(first.stale_campfire_ids.is_empty());
+
+        // Past the floor, with both sources now showing a Campfire that did not exist when
+        // the cache filled and no longer showing either that did.
+        clock.advance(CAMPFIRE_INDEX_MIN_REFRESH + Duration::from_secs(1));
+        scripted(&server, &[APPEARED], &[APPEARED]).await;
+
+        let second = unresolved_from(
+            &account
+                .recordings()
+                .summarize(&reference)
+                .await
+                .unwrap_err(),
+        );
+        assert!(
+            second.refreshed,
+            "the floor was past and both sources answered newer than the cache"
+        );
+        assert_eq!(
+            second.campfire_ids,
+            vec![CACHED_A, CACHED_B, APPEARED],
+            "the cached candidates were tried first, then the one the refresh found"
+        );
+        assert_eq!(
+            second.stale_campfire_ids,
+            vec![CACHED_A, CACHED_B],
+            "both cached Campfires are gone from the dock and the listing"
+        );
+    }
+
+    /// Refreshed by the LISTING alone. The account listing is cached per account, not per
+    /// bucket, so the first bucket looked at pays for it and every other bucket meets it
+    /// already warm — while its own dock is read fresh this call and so is never re-read.
+    /// That is the one path where the listing refresh is what makes the conclusion a
+    /// refreshed one, and the only reason to test it separately is that on every other path
+    /// the dock re-read has already said so.
+    ///
+    /// Written after mutation testing: with the listing branch's `refreshed = true` removed,
+    /// every other test here still passed.
+    #[tokio::test]
+    async fn a_second_bucket_meets_a_warm_listing_and_is_refreshed_by_it_alone() {
+        let clock = TestClock::new();
+        let server = MockServer::start().await;
+        // Neither bucket is a project, so the dock answers "no dock" and the listing is the
+        // only source. It shows one Campfire in each bucket.
+        for bucket in [BUCKET, OTHER_BUCKET] {
+            mount(
+                &server,
+                &format!("/999/projects/{bucket}"),
+                404,
+                &json!({ "error": "Record not found" }),
+            )
+            .await;
+        }
+        for id in [CACHED_A, CACHED_B] {
+            mount(
+                &server,
+                &format!("/999/chats/{id}/lines/{LINE}"),
+                404,
+                &json!({ "error": "Record not found" }),
+            )
+            .await;
+        }
+        mount(
+            &server,
+            "/999/chats.json",
+            200,
+            &json!([campfire(CACHED_A, BUCKET), campfire(CACHED_B, OTHER_BUCKET)]),
+        )
+        .await;
+        let account = account_on(&server, &clock);
+
+        // The first bucket pays for the listing.
+        let first = unresolved_from(
+            &account
+                .recordings()
+                .summarize(&RecordingRef::from_event(BUCKET, LINE, "chat.line.created"))
+                .await
+                .unwrap_err(),
+        );
+        assert_eq!(first.campfire_ids, vec![CACHED_A]);
+        assert!(!first.refreshed, "the listing was read during that call");
+
+        // Past the floor, and the listing no longer shows the second bucket's Campfire.
+        clock.advance(CAMPFIRE_INDEX_MIN_REFRESH + Duration::from_secs(1));
+        server.reset().await;
+        for bucket in [BUCKET, OTHER_BUCKET] {
+            mount(
+                &server,
+                &format!("/999/projects/{bucket}"),
+                404,
+                &json!({ "error": "Record not found" }),
+            )
+            .await;
+        }
+        mount(
+            &server,
+            &format!("/999/chats/{CACHED_B}/lines/{LINE}"),
+            404,
+            &json!({ "error": "Record not found" }),
+        )
+        .await;
+        mount(
+            &server,
+            "/999/chats.json",
+            200,
+            &json!([campfire(CACHED_A, BUCKET)]),
+        )
+        .await;
+
+        let second = unresolved_from(
+            &account
+                .recordings()
+                .summarize(&RecordingRef::from_event(
+                    OTHER_BUCKET,
+                    LINE,
+                    "chat.line.created",
+                ))
+                .await
+                .unwrap_err(),
+        );
+        assert_eq!(second.bucket_id, OTHER_BUCKET);
+        assert_eq!(
+            second.campfire_ids,
+            vec![CACHED_B],
+            "the warm listing supplied the candidate"
+        );
+        assert!(
+            second.refreshed,
+            "this bucket's dock was read fresh and never re-read, so only the listing \
+             refresh can have said the conclusion rests on newer data"
+        );
+        assert_eq!(
+            second.stale_campfire_ids,
+            vec![CACHED_B],
+            "the refreshed listing no longer shows it: visibility changed"
+        );
+    }
+
+    /// The stale list is measured against what the conclusion ACTUALLY consulted, and on
+    /// this path the listing is never re-read: the dock refresh spends the last of the
+    /// budget, so refreshing the listing could hand this call no candidate it may try and
+    /// is skipped. The cached listing's Campfires are therefore still visible as far as
+    /// this call knows, and naming them stale would tell a consumer visibility changed when
+    /// nothing did. That is the whole reason the listing snapshot is carried forward
+    /// instead of starting empty.
+    ///
+    /// Written after mutation testing showed the other two tests here pass with the
+    /// snapshot dropped: they take the branch that overwrites it.
+    #[tokio::test]
+    async fn a_refresh_that_spends_the_budget_measures_stale_against_the_listing_it_read() {
+        let clock = TestClock::new();
+        let server = MockServer::start().await;
+        // Pass 1 costs two candidates, leaving the rest of the budget for the dock refresh.
+        let appeared: Vec<i64> = (0..i64::try_from(MAX_CAMPFIRE_CANDIDATES).unwrap() - 2)
+            .map(|index| 9_000_000 + index)
+            .collect();
+        scripted(&server, &[CACHED_A], &[CACHED_A, CACHED_B]).await;
+        let account = account_on(&server, &clock);
+        let reference = RecordingRef::from_event(BUCKET, LINE, "chat.line.created");
+        account
+            .recordings()
+            .summarize(&reference)
+            .await
+            .unwrap_err();
+
+        clock.advance(CAMPFIRE_INDEX_MIN_REFRESH + Duration::from_secs(1));
+        // The dock now holds exactly the remaining budget, and the listing still holds what
+        // pass 1 saw. Only the dock is re-read; the listing snapshot is the cached one.
+        scripted(&server, &appeared, &[CACHED_A, CACHED_B]).await;
+        let before = paths(&server).await.len();
+
+        let unresolved = unresolved_from(
+            &account
+                .recordings()
+                .summarize(&reference)
+                .await
+                .unwrap_err(),
+        );
+        assert!(
+            unresolved.refreshed,
+            "the dock re-read answered newer than the cache"
+        );
+        let mut expected = vec![CACHED_A, CACHED_B];
+        expected.extend(&appeared);
+        assert_eq!(unresolved.campfire_ids, expected);
+        assert!(
+            unresolved.stale_campfire_ids.is_empty(),
+            "the cached listing still lists both, so neither has been lost from view: {:?}",
+            unresolved.stale_campfire_ids
+        );
+        let after = paths(&server).await;
+        assert!(
+            !after[before..].iter().any(|path| path == "/999/chats.json"),
+            "a listing refresh that could admit no candidate was not paid for"
+        );
+    }
+
+    /// The stale list is what the conclusion ACTUALLY consulted minus what the refresh
+    /// shows, so a candidate the refreshed listing still lists is not stale — even though
+    /// the dock (which never had it) does not name it either.
+    #[tokio::test]
+    async fn a_candidate_the_refresh_still_lists_is_not_stale() {
+        let clock = TestClock::new();
+        let server = MockServer::start().await;
+        scripted(&server, &[CACHED_A], &[CACHED_A, CACHED_B]).await;
+        let account = account_on(&server, &clock);
+        let reference = RecordingRef::from_event(BUCKET, LINE, "chat.line.created");
+        account
+            .recordings()
+            .summarize(&reference)
+            .await
+            .unwrap_err();
+
+        clock.advance(CAMPFIRE_INDEX_MIN_REFRESH + Duration::from_secs(1));
+        scripted(&server, &[APPEARED], &[CACHED_B]).await;
+
+        let second = unresolved_from(
+            &account
+                .recordings()
+                .summarize(&reference)
+                .await
+                .unwrap_err(),
+        );
+        assert!(second.refreshed);
+        assert_eq!(
+            second.stale_campfire_ids,
+            vec![CACHED_A],
+            "CACHED_B is still listed, so only the dropped dock Campfire is stale"
+        );
+    }
+}

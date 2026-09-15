@@ -558,36 +558,44 @@ pub(crate) fn is_listing_overflow(error: &Error) -> bool {
     error.find_source::<ListingOverflow>().is_some()
 }
 
+/// A clock a test moves by hand. The TTL and the refresh floor are minutes and tens of
+/// seconds wide, so no test can cross them by waiting; every test that turns on an entry's
+/// age drives one of these instead. Shared with [`crate::services::recordings`], which
+/// needs the floor crossed to reach the refresh path at all.
+#[cfg(test)]
+pub(crate) struct TestClock {
+    base: Instant,
+    offset: std::sync::atomic::AtomicU64,
+}
+
+#[cfg(test)]
+impl TestClock {
+    pub(crate) fn new() -> Arc<TestClock> {
+        Arc::new(TestClock {
+            base: Instant::now(),
+            offset: std::sync::atomic::AtomicU64::new(0),
+        })
+    }
+
+    pub(crate) fn clock(self: &Arc<Self>) -> Clock {
+        let clock = Arc::clone(self);
+        Arc::new(move || {
+            clock.base
+                + Duration::from_millis(clock.offset.load(std::sync::atomic::Ordering::SeqCst))
+        })
+    }
+
+    pub(crate) fn advance(&self, by: Duration) {
+        let millis = u64::try_from(by.as_millis()).unwrap_or(u64::MAX);
+        self.offset
+            .fetch_add(millis, std::sync::atomic::Ordering::SeqCst);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::sync::atomic::{AtomicU64, Ordering};
-
-    struct TestClock {
-        base: Instant,
-        offset: AtomicU64,
-    }
-
-    impl TestClock {
-        fn new() -> Arc<TestClock> {
-            Arc::new(TestClock {
-                base: Instant::now(),
-                offset: AtomicU64::new(0),
-            })
-        }
-
-        fn clock(self: &Arc<Self>) -> Clock {
-            let clock = Arc::clone(self);
-            Arc::new(move || {
-                clock.base + Duration::from_millis(clock.offset.load(Ordering::SeqCst))
-            })
-        }
-
-        fn advance(&self, by: Duration) {
-            let millis = u64::try_from(by.as_millis()).unwrap_or(u64::MAX);
-            self.offset.fetch_add(millis, Ordering::SeqCst);
-        }
-    }
 
     fn cache<V: Send + Sync + 'static>(
         clock: &Arc<TestClock>,

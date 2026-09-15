@@ -109,6 +109,10 @@ pub struct ClientBuilder {
     user_agent: String,
     hooks: Arc<dyn Hooks>,
     auth_given: u8,
+    /// Test-only: the discovery index reads real time unless a test hands it a clock, and
+    /// the refresh floor cannot be crossed by waiting in a test.
+    #[cfg(test)]
+    campfire_clock: Option<crate::services::campfire_index::Clock>,
 }
 
 impl ClientBuilder {
@@ -121,7 +125,21 @@ impl ClientBuilder {
             user_agent: default_user_agent(),
             hooks: Arc::new(NoopHooks),
             auth_given: 0,
+            #[cfg(test)]
+            campfire_clock: None,
         }
+    }
+
+    /// The clock the Campfire discovery index ages its entries by. Test-only: nothing
+    /// outside this crate's own tests can move it, and the shipped client always reads
+    /// [`std::time::Instant::now`].
+    #[cfg(test)]
+    pub(crate) fn campfire_clock(
+        mut self,
+        clock: crate::services::campfire_index::Clock,
+    ) -> ClientBuilder {
+        self.campfire_clock = Some(clock);
+        self
     }
 
     /// A fixed bearer token — a personal access token, say.
@@ -186,6 +204,13 @@ impl ClientBuilder {
             Some(http) => http,
             None => shipped_http_client(self.config.timeout)?,
         };
+        #[cfg(test)]
+        let campfires = match self.campfire_clock {
+            Some(clock) => CampfireIndex::with_clock(clock),
+            None => CampfireIndex::new(),
+        };
+        #[cfg(not(test))]
+        let campfires = CampfireIndex::new();
         Ok(Client {
             shared: Arc::new(Shared {
                 config: self.config,
@@ -194,7 +219,7 @@ impl ClientBuilder {
                 auth,
                 user_agent: self.user_agent,
                 hooks: self.hooks,
-                campfires: CampfireIndex::new(),
+                campfires,
             }),
         })
     }
