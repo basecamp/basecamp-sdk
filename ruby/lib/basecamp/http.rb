@@ -372,6 +372,22 @@ module Basecamp
     # bare-array pagination, or the named key's array otherwise.
     def extract_page_items(data, key:, page:)
       if key.nil?
+        # Bare-array pagination, so the body must BE the array. It was returned
+        # verbatim, and the caller's loop then did `items.each_with_index` on
+        # it: a scalar, a boolean or a null body raised NoMethodError out of a
+        # public list method, and an object returned its key/value pairs as
+        # though they were records. An empty object was the worst of the set,
+        # because it silently paginated to zero items — a composite that reads
+        # "no rows" as "nothing exists" then reports absent what it never
+        # managed to read.
+        unless data.is_a?(Array)
+          raise Basecamp::ApiError.new(
+            "Paginated response (page #{page}) is #{Services::MergeSafe.describe(data)}, not a list",
+            hint: "This operation paginates over a bare JSON array; a body of another shape cannot be read.",
+            retryable: false
+          )
+        end
+
         data
       else
         unless data.key?(key)

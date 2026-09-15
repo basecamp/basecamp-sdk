@@ -14,6 +14,21 @@ class RecordingsSummarizeTest < Minitest::Test
 
   BUCKET = 2085958499
 
+  # A real Marshal-envelope sgid for a person, so a test about the rich-text
+  # filter is driven by input the filter actually changes.
+  def person_sgid(id)
+    gid = "gid://bc3/Person/#{id}"
+    payload = "\x04\b{\aI\"\bgid\x06:\x06ET" + marshal_string(gid) +
+              "I\"\fpurpose\x06;\x00T" + marshal_string("attachable")
+    [ payload.b ].pack("m0").tr("+/", "-_").delete("=") + "--abc123"
+  end
+
+  def marshal_string(value)
+    bytes = value.b
+    length = bytes.bytesize < 123 ? (bytes.bytesize + 5).chr : "\x01" + bytes.bytesize.chr
+    "I\"" + length + bytes + "\x06:\x06ET"
+  end
+
   def setup
     @account = create_account_client(account_id: "12345")
   end
@@ -133,6 +148,43 @@ class RecordingsSummarizeTest < Minitest::Test
     )
 
     assert_equal 1, summary["id"]
+  end
+
+  def test_a_routing_argument_with_invalid_utf_8_is_refused_not_a_crash
+    # A Go string carries arbitrary bytes, so the reference routes
+    # "comment.\xFF" on its "comment" subject like any other. Ruby's
+    # String#strip validates the encoding and raised
+    # Encoding::CompatibilityError straight out of this public method — a native
+    # exception where the contract promises a Basecamp::Error.
+    broken = "Comm\xFFent".dup.force_encoding(Encoding::UTF_8)
+
+    error = assert_raises(Basecamp::RecordingRoutingError) { summarize(recording_type: broken) }
+
+    assert_equal "unknown_recording_type", error.kind
+
+    # And the event-type arm routes on its subject, as the reference does.
+    stub_get("/12345/comments/1", response_body: recording)
+    subject = "comment.\xFF".dup.force_encoding(Encoding::UTF_8)
+
+    assert_equal 1, summarize(event_type: subject)["id"]
+  end
+
+  def test_content_that_is_not_a_string_fails_the_read
+    # Content is the one member this composite INTERPRETS — mentioned_person_ids
+    # is derived from it — so to_s turned an array or a hash into its Ruby
+    # rendering and then scanned THAT for mentions. Title goes the same way,
+    # because first_non_empty reaches both.
+    [ [ "x" ], { "a" => 1 }, 5, true ].each do |malformed|
+      stub_get("/12345/comments/1", response_body: recording("content" => malformed))
+
+      assert_raises(Basecamp::ApiError, "content of #{malformed.inspect}") { summarize(event_type: "comment.created") }
+      WebMock.reset!
+
+      stub_get("/12345/comments/1", response_body: recording("title" => malformed))
+
+      assert_raises(Basecamp::ApiError, "title of #{malformed.inspect}") { summarize(event_type: "comment.created") }
+      WebMock.reset!
+    end
   end
 
   def test_the_documented_sets_match_the_routing_table
@@ -275,9 +327,15 @@ class RecordingsSummarizeTest < Minitest::Test
     # substring search answering nil, so the bucket reads as absent, the
     # cross-bucket comparison never runs, and a recording from another project
     # comes back. That is this composite's third fail-open from the same shape.
-    # The other three raise natively — TypeError, TypeError, NoMethodError —
-    # which is an exception class out of a public method that no caller expects.
-    [ '"scalar"', "[1,2]", "5", "null" ].each do |body|
+    # The others raised natively — TypeError, TypeError — which is an exception
+    # class out of a public method that no caller expects.
+    #
+    # "null" is NOT in this list, and the first version of this test had it
+    # wrong. Measured against the reference: json.Unmarshal of `null` into a
+    # struct returns no error and leaves it zero, so a null body is a
+    # zero-valued summary there rather than a decode failure. Refusing it would
+    # have been this port inventing a rule and calling it the contract.
+    [ '"scalar"', "[1,2]", "5" ].each do |body|
       stub_get("/12345/comments/1", response_body: body)
 
       error = assert_raises(Basecamp::ApiError, "a body of #{body}") do
@@ -353,6 +411,70 @@ class RecordingsSummarizeTest < Minitest::Test
     end
   end
 
+  def test_a_null_member_is_the_zero_value_the_reference_decodes_it_into
+    # The reference's decoder never errors on a null — at any depth it writes
+    # the zero value — so a null dock item is a nameless item that is simply not
+    # "chat", and a null listing entry is a Campfire with no bucket. Refusing
+    # them was this port adding a rule the contract does not have, in the
+    # ACCEPTING-direction's mirror: a body the reference reads, refused here.
+    stub_get("/12345/projects/#{BUCKET}", response_body: {
+      "id" => BUCKET, "dock" => [ nil, { "id" => 77, "name" => "chat" } ]
+    })
+    stub_get("/12345/chats.json", response_body: [ nil, { "id" => 78, "bucket" => { "id" => BUCKET } } ])
+    stub_line(77, status: 404, body: { "error" => "Record not found" })
+    stub_line(78, status: 404, body: { "error" => "Record not found" })
+
+    error = assert_raises(Basecamp::UnresolvedRecordingError) { summarize(event_type: "chat.line.created") }
+
+    assert_equal [ 77, 78 ], error.campfire_ids.sort
+  end
+
+  def test_a_null_body_is_a_zero_valued_summary_rather_than_a_refusal
+    stub_get("/12345/comments/1", response_body: "null")
+
+    summary = summarize(event_type: "comment.created")
+
+    assert_equal "", summary["content"]
+    assert_equal [], summary["mentioned_person_ids"]
+    assert_not_includes summary.keys, "bucket"
+  end
+
+  def test_a_campfire_listing_that_is_not_a_list_fails_the_read
+    # The listing ELEMENTS were guarded and the envelope was not, so the
+    # pagination loop indexed whatever the body was: a scalar, a boolean or a
+    # null raised NoMethodError out of a public method, and an OBJECT paginated
+    # to zero entries — which this composite would then have reported as "no
+    # visible Campfire", the one conclusion its own rules forbid it to reach
+    # from something it could not read.
+    [ "{}", '{"campfires":[]}', '"x"', "5", "true" ].each do |body|
+      stub_dock([])
+      stub_get("/12345/chats.json", response_body: body)
+
+      assert_raises(Basecamp::ApiError, "a listing body of #{body}") do
+        summarize(event_type: "chat.line.created")
+      end
+      WebMock.reset!
+    end
+  end
+
+  def test_a_project_body_that_is_not_an_object_fails_the_discovery_read
+    # The dock read has its own body guard, and nothing reached it: the
+    # body-guard test only drives the comments arm, so deleting this one
+    # survived the whole suite. A string body is the original fail-open reborn
+    # — project["dock"] is a substring search answering nil, so discovery would
+    # report "no visible Campfire" for a project it never managed to read.
+    [ '"scalar"', "5", "true" ].each do |body|
+      stub_get("/12345/projects/#{BUCKET}", response_body: body)
+      stub_get("/12345/chats.json", response_body: [])
+
+      assert_raises(Basecamp::ApiError, "a project body of #{body}") do
+        summarize(event_type: "chat.line.created")
+      end
+      @account = create_account_client(account_id: "12345")
+      WebMock.reset!
+    end
+  end
+
   def test_an_absent_dock_is_no_campfires_rather_than_a_malformed_one
     # A project need not have a dock, and the reference reads its zero value.
     stub_get("/12345/projects/#{BUCKET}", response_body: { "id" => BUCKET })
@@ -369,7 +491,15 @@ class RecordingsSummarizeTest < Minitest::Test
     [ 5, "x", [ 1 ] ].each do |entry|
       assert_listing_refused([ entry ], "an entry of #{entry.inspect}")
     end
-    assert_listing_refused([ { "id" => "x", "bucket" => { "id" => 999 } } ], "an id on a filtered-out bucket")
+    # Each of these has a bucket the filter DOES drop, so only an id read
+    # before that filter can see the bad id. The previous row used bucket 999,
+    # which the filter keeps — so it passed under either ordering and pinned
+    # nothing. A mutation moving the id read after the filter survived the whole
+    # suite because of it.
+    assert_listing_refused([ { "id" => "x", "bucket" => nil } ], "a bad id on a bucketless campfire")
+    assert_listing_refused([ { "id" => "x", "bucket" => { "id" => 0 } } ], "a bad id on a zero bucket")
+    assert_listing_refused([ { "id" => "x" } ], "a bad id with no bucket at all")
+    assert_listing_refused([ { "id" => "x", "bucket" => { "id" => 999 } } ], "a bad id on another bucket")
     assert_listing_refused([ { "id" => 1, "bucket" => 5 } ], "a bucket that is not an object")
     assert_listing_refused([ { "id" => 1, "bucket" => { "id" => [] } } ], "a bucket id of the wrong type")
   end
@@ -492,16 +622,30 @@ class RecordingsSummarizeTest < Minitest::Test
     assert_not_requested(:get, "#{BASE_URL}/12345/chats.json")
   end
 
-  def test_a_plain_line_reports_no_mentions_even_when_its_text_looks_like_markup
-    # A Text line's content is HTML-escaped on the way out, so a literal
-    # "<bc-attachment>" in it mentions nobody.
-    stub_dock([ 500 ])
-    stub_line(500, body: {
-      "id" => 1, "type" => "Chat::Lines::Text", "bucket" => { "id" => BUCKET },
-      "content" => %(<bc-attachment sgid="whatever"></bc-attachment>)
-    })
+  def test_only_a_rich_text_chat_line_reports_mentions
+    # A Text line's content is HTML-escaped on the way out and a Code line's is
+    # served verbatim, so a literal "<bc-attachment>" in either mentions nobody;
+    # the two rich-text subtypes do.
+    #
+    # The sgid here is a REAL one. This test used sgid="whatever", which names
+    # no person, so it asserted [] against a line that had no mention in it
+    # either way — and a mutation removing the type filter entirely survived the
+    # whole suite. A test for a filter has to use input the filter changes.
+    sgid = person_sgid(42)
+    tag = %(<bc-attachment sgid="#{sgid}"></bc-attachment>)
 
-    assert_equal [], summarize(event_type: "chat.line.created")["mentioned_person_ids"]
+    { "Chat::Lines::Text" => [], "Chat::Lines::Code" => [],
+      "Chat::Lines::RichText" => [ 42 ], "Chat::Lines::Integration" => [ 42 ] }.each do |type, expected|
+      stub_dock([ 500 ])
+      stub_line(500, body: {
+        "id" => 1, "type" => type, "bucket" => { "id" => BUCKET }, "content" => tag
+      })
+
+      assert_equal expected, summarize(recording_type: type)["mentioned_person_ids"],
+        "#{type} should report #{expected.inspect}"
+      @account = create_account_client(account_id: "12345")
+      WebMock.reset!
+    end
   end
 
   def test_a_non_404_from_a_candidate_stops_the_loop_and_is_raised_as_itself

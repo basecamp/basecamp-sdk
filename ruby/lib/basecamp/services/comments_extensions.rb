@@ -39,13 +39,20 @@ module Basecamp
         return content if person_ids.empty?
 
         seen = {}
-        people = person_ids.filter_map do |person_id|
+        people = []
+        person_ids.each do |person_id|
           id = Ids.integer(person_id, "mention person id")
           raise UsageError.new("invalid mention person id #{person_id.inspect}") unless id.positive?
           next if seen.key?(id)
 
           seen[id] = true
-          @client.people.get(person_id: id)
+          # Collected with an explicit push rather than by filter_map. That
+          # dropped every FALSY return as well as the duplicates it was meant
+          # to skip, so a people read answering JSON null or false removed the
+          # mention and let the comment post without it — the exact opposite of
+          # what this method's own doc promises, and a defect a comment saying
+          # "nothing is posted on a partial mention list" made harder to see.
+          people << read_person(id, @client.people.get(person_id: id))
         end
 
         Mentions.with_mentions(content, people)
@@ -71,6 +78,25 @@ module Basecamp
         recording_id = Ids.integer(recording_id, "recording id")
 
         create(recording_id: recording_id, content: expand_mentions(content: content, person_ids: person_ids))
+      end
+
+      private
+
+      # The people read's body, which has to be an object before a mention is
+      # built from it.
+      #
+      # The reference decodes into a typed Person, so a scalar, an array or a
+      # null body fails the read there and never reaches the write. Here they
+      # reached {Basecamp::Mentions.with_mentions}, which would have gone on to
+      # index them.
+      def read_person(id, person)
+        return person if person.is_a?(Hash)
+
+        raise MergeSafe.malformed(
+          "the read for person #{id} returned #{MergeSafe.describe(person)}, not a person object",
+          "Every requested mention is resolved before the comment is written, so a person that " \
+            "cannot be read fails the whole write rather than posting without that mention."
+        )
       end
     end
   end
