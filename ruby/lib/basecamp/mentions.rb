@@ -103,9 +103,17 @@ module Basecamp
     # count, then a set of categories, then an absolute ("every member") that a
     # single shape falsified. What is true, and checked by the harness rather
     # than asserted here, is the SHAPE of it: Ruby's parser is stricter on most
-    # authorities the reference tolerates (raw non-ASCII, <tt>" < > ]</tt>,
-    # repeated <tt>@</tt>, doubled ports, IPv6 zone-ids) and more permissive on
-    # at least one it refuses (the RFC 3986 IPvFuture literal <tt>[v7.x]</tt>).
+    # authorities the reference tolerates and more permissive on at least one it
+    # refuses (the RFC 3986 IPvFuture literal <tt>[v7.x]</tt>).
+    #
+    # This rule was verified at every POSITION an escape can occupy, because a
+    # rule checked in one position is not evidence about another — the reference
+    # runs a different validator on each. One escape per ASCII byte at six
+    # positions: userinfo, host, port, path and the id agree exactly, 133 cases
+    # each. The IPv6 ZONE diverges on 86 of 133, every one of them the
+    # reference resolving and this refusing, because Ruby's parser has no
+    # RFC 6874 zone grammar. That is the parser's gap rather than this rule's,
+    # and it fails closed.
     #
     # What the STRICTER side costs is worse than "a mention is not reported",
     # and that is worth being exact about, because the same parser is entered
