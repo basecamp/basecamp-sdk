@@ -144,6 +144,19 @@ class _AsyncLoad(_Load[V]):
     done: asyncio.Event = field(default_factory=asyncio.Event)
 
 
+def _record_outcome(pending: _Load[V], store: _Store[K, V], value: Any, error: BaseException | None) -> None:
+    """Write a finished load's outcome onto its record.
+
+    Everything a waiter reads lives here, and it is all set in one go with
+    nothing between that can suspend or raise, so a waiter woken at any later
+    point sees a complete answer rather than a half-written one.
+    """
+    pending.error = error
+    if error is None:
+        pending.value = value
+        pending.fetched = store.now()
+
+
 class _Store(Generic[K, V]):
     """The bookkeeping both caches share: entries, TTL, sweeping, eviction.
 
@@ -268,18 +281,17 @@ class TTLCache(Generic[K, V]):
         return _Hit(value, pending.fetched, cached=False)
 
     def _publish(self, key: K, pending: _SyncLoad[V], value: Any, error: BaseException | None) -> None:
+        # Written before the lock, and released after it, for the reasons the
+        # async twin's _publish spells out — kept identical here so the two
+        # cannot drift into different failure behaviour.
+        _record_outcome(pending, self._store, value, error)
         try:
             with self._lock:
-                self._inflight.pop(key, None)
-                pending.error = error
                 if error is None:
-                    pending.value = value
-                    pending.fetched = self._store.now()
                     self._store.store(key, value, pending.fetched)
         finally:
-            # Set outside the lock's failure modes: a loader that raised, or a
-            # store that somehow did, must still release its waiters rather than
-            # leave them parked on an event nobody will ever set.
+            if self._inflight.get(key) is pending:
+                del self._inflight[key]
             pending.done.set()
 
 
@@ -347,22 +359,26 @@ class AsyncTTLCache(Generic[K, V]):
             return _Hit(value, pending.fetched, cached=False)
 
     async def _publish(self, key: K, pending: _AsyncLoad[V], value: Any, error: BaseException | None) -> None:
+        # The outcome is written onto the load record BEFORE anything that can
+        # suspend. A waiter reads it the instant the event is set, and this
+        # task can be cancelled at the lock: were the fields written after,
+        # an interrupted publication would wake every waiter onto a record
+        # saying "succeeded, value None".
+        _record_outcome(pending, self._store, value, error)
         try:
-            # Shielded: publication must not be skipped because the owning task
-            # was cancelled while acquiring the lock, or every waiter stays
-            # parked on an event nobody will set.
-            await asyncio.shield(self._acquire_and_store(key, pending, value, error))
+            async with self._lock:
+                if error is None:
+                    self._store.store(key, value, pending.fetched)
         finally:
+            # Neither of these may be skipped, whatever happened above: a key
+            # left in flight behind a finished load parks every later caller on
+            # it forever, and an event nobody sets parks the current ones. Both
+            # are single statements with no suspension between them, so the
+            # lock the store needs is not needed here — and the identity check
+            # means a load that replaced this one can never be dropped by it.
+            if self._inflight.get(key) is pending:
+                del self._inflight[key]
             pending.done.set()
-
-    async def _acquire_and_store(self, key: K, pending: _AsyncLoad[V], value: Any, error: BaseException | None) -> None:
-        async with self._lock:
-            self._inflight.pop(key, None)
-            pending.error = error
-            if error is None:
-                pending.value = value
-                pending.fetched = self._store.now()
-                self._store.store(key, value, pending.fetched)
 
 
 def _dock_campfire_ids(project: dict[str, Any]) -> list[int]:

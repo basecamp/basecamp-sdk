@@ -1283,23 +1283,26 @@ class TestRunner:
         # Implicit invariants: the mock route is origin-wide, so a misroute
         # to a different path on the same origin would silently consume the
         # queue. For DownloadURL, hop 1 must hit the test case path exactly;
-        # for every other operation with a path and no requestPath assertions
-        # of its own, the first request must contain the pathParams-substituted
-        # fixture path.
+        # for every other operation with a path and no requestPath assertion
+        # on request 0, the first request must contain the pathParams-
+        # substituted fixture path.
         if self._test["operation"] == "DownloadURL" and self._tracker.requests:
             expected_path = self._test["path"]
             actual_path = urlparse(self._tracker.requests[0]["url"]).path
             if actual_path != expected_path:
                 failures.append(f"DownloadURL hop 1 expected path {expected_path!r}, got {actual_path!r}")
-        # A fixture that pins its paths explicitly, hop by hop, has already said
+        # A fixture that pins request 0's path explicitly has already said
         # something stricter than this backstop can, and the two disagree for a
         # composite whose first request is a constituent read rather than the
         # operation the fixture is named for (CommentsCreateWithMentions reads
-        # the mentioned people before it posts). Same shape as the method
-        # invariant below: the implicit check covers the fixtures that declare
-        # nothing, and steps aside for the ones that do.
-        has_path_assertions = any(a["type"] == "requestPath" for a in self._test.get("assertions", []))
-        if self._test["operation"] != "DownloadURL" and not has_path_assertions and self._test.get("path") and self._tracker.requests:
+        # the mentioned people before it posts). The exemption is keyed on
+        # request 0 specifically, not on "the fixture asserts some path
+        # somewhere": todos_write.json pins index 1 alone, and a broader gate
+        # would quietly stop checking its leading GET.
+        pins_first_path = any(
+            a["type"] == "requestPath" and a.get("index", 0) == 0 for a in self._test.get("assertions", [])
+        )
+        if self._test["operation"] != "DownloadURL" and not pins_first_path and self._test.get("path") and self._tracker.requests:
             expected_path = self._test["path"]
             for key, value in self._test.get("pathParams", {}).items():
                 expected_path = expected_path.replace(f"{{{key}}}", str(value))

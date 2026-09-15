@@ -22,7 +22,7 @@ per-service names (SPEC.md section 18 rule 3).
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, NotRequired, TypedDict
+from typing import Any, TypedDict
 
 from basecamp.errors import (
     BucketMismatchError,
@@ -70,10 +70,13 @@ class RecordingSummary(TypedDict):
     title: str
     app_url: str
     #: The recording this one hangs off -- the commented recording for a
-    #: comment, the Campfire for a chat line, the column for a card.
-    parent: NotRequired[dict[str, Any] | None]
-    bucket: NotRequired[dict[str, Any] | None]
-    creator: NotRequired[dict[str, Any] | None]
+    #: comment, the Campfire for a chat line, the column for a card. Present
+    #: and ``None`` where the type has none, never absent: the projection
+    #: always writes every key, and a type saying otherwise would push
+    #: `.get()` guards onto callers for a case that cannot arise.
+    parent: dict[str, Any] | None
+    bucket: dict[str, Any] | None
+    creator: dict[str, Any] | None
     #: Set for the assignable types (to-dos, cards, card steps).
     assignees: list[dict[str, Any]]
     #: The people ``content`` mentions, per :func:`basecamp.mentions.mentioned_person_ids`.
@@ -274,8 +277,16 @@ def _project_chat_line(line: dict[str, Any], campfire_id: int) -> RecordingSumma
 
 
 def _check_pointer(bucket_id: int, recording_id: int) -> None:
-    if bucket_id <= 0 or recording_id <= 0:
-        raise UsageError("bucket id and recording id are required")
+    """Refuse a pointer that names no recording, before anything is routed.
+
+    The type is checked as well as the value: `bool` is an `int` in Python, so
+    a bare range test would read ``True`` as recording 1, and a string id would
+    raise a bare ``TypeError`` from the comparison instead of the SDK's own
+    usage error.
+    """
+    for value in (bucket_id, recording_id):
+        if not isinstance(value, int) or isinstance(value, bool) or value <= 0:
+            raise UsageError("bucket id and recording id are required")
 
 
 def _check_bucket(summary: RecordingSummary, bucket_id: int, recording_id: int) -> None:

@@ -169,8 +169,23 @@ class TestRoutingRefusals:
         assert route.called
         assert summary["type"] == "Document"
 
-    @pytest.mark.parametrize("pointer", [{"bucket_id": 0, "recording_id": 1}, {"bucket_id": 1, "recording_id": 0}])
-    def test_a_pointer_missing_an_id_is_a_usage_error(self, pointer):
+    @pytest.mark.parametrize(
+        "pointer",
+        [
+            {"bucket_id": 0, "recording_id": 1},
+            {"bucket_id": 1, "recording_id": 0},
+            {"bucket_id": -1, "recording_id": 1},
+            # `bool` is an `int` in Python, so a bare range test would read
+            # True as recording 1 and go and fetch it.
+            {"bucket_id": True, "recording_id": 1},
+            {"bucket_id": 1, "recording_id": True},
+            # A non-integer must reach the SDK's own usage error rather than a
+            # bare TypeError from the comparison.
+            {"bucket_id": "2085958499", "recording_id": 1},
+            {"bucket_id": 1, "recording_id": None},
+        ],
+    )
+    def test_a_pointer_that_names_no_recording_is_a_usage_error(self, pointer):
         with pytest.raises(UsageError, match="bucket id and recording id"):
             _account().recordings.summarize(event_type="comment.created", **pointer)
 
