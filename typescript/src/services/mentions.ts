@@ -443,15 +443,21 @@ function envelopeGID(payload: string): string | undefined {
  * `atob` accepts the unpadded form.
  */
 function decodeBase64(payload: string): Uint8Array | undefined {
+  // The order of these two is Go's, and it is observable. Go right-trims `=`
+  // off the string as written and only then decodes, and its decoder ignores CR
+  // and LF as it goes — so "MA==" decodes and "MA==\n" does NOT, the trim
+  // having stopped at the newline and left an `=` the raw alphabet refuses.
+  // Stripping the newlines first would quietly decode that one.
+  //
+  // The alphabet check afterwards is the other half of the parity: `atob`
+  // ignores every ASCII whitespace character, where Go's decoder ignores only
+  // CR and LF, so a space or a tab inside an sgid would decode here and be
+  // refused there.
   const normalized = payload
     .replace(/-/g, "+")
     .replace(/_/g, "/")
-    // Go's decoder ignores CR and LF inside a payload and nothing else; `atob`
-    // ignores every ASCII whitespace character, so a space or a tab inside an
-    // sgid would decode here and be refused there. Drop the two Go drops, then
-    // insist on the alphabet, so the two accept the same payloads.
-    .replace(/[\r\n]/g, "")
-    .replace(/=+$/, "");
+    .replace(/=+$/, "")
+    .replace(/[\r\n]/g, "");
   if (!/^[A-Za-z0-9+/]*$/.test(normalized)) return undefined;
   let binary: string;
   try {
