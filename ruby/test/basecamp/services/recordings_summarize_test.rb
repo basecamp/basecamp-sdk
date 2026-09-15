@@ -324,6 +324,55 @@ class RecordingsSummarizeTest < Minitest::Test
     assert_not_requested(:get, "#{BASE_URL}/12345/chats/501/lines/1")
   end
 
+  def test_a_listing_failure_that_is_not_an_overflow_passes_through
+    # Only a listing OVER ITS CAP is "incomplete". Any other failure of that
+    # read is that read's error — a 503 is not a settled verdict about where the
+    # line is, and calling it incomplete or unresolved would say something the
+    # call never learned.
+    stub_dock([])
+    stub_request(:get, "#{BASE_URL}/12345/chats.json")
+      .to_return(status: 403, body: '{"error":"Access denied"}', headers: { "Content-Type" => "application/json" })
+
+    assert_raises(Basecamp::ForbiddenError) { summarize(event_type: "chat.line.created") }
+  end
+
+  def test_a_dock_failure_that_is_not_a_404_passes_through
+    # A bucket that is not a project answers 404 and simply has no dock. Any
+    # other failure is the project read's own — the rescue is that narrow, and
+    # a 403 here must not read as "this bucket has no Campfires".
+    stub_request(:get, "#{BASE_URL}/12345/projects/#{BUCKET}")
+      .to_return(status: 403, body: '{"error":"Access denied"}', headers: { "Content-Type" => "application/json" })
+    stub_get("/12345/chats.json", response_body: [])
+
+    assert_raises(Basecamp::ForbiddenError) { summarize(event_type: "chat.line.created") }
+    # And the listing is never reached, so the failure cannot be mistaken for it.
+    assert_not_requested(:get, "#{BASE_URL}/12345/chats.json")
+  end
+
+  def test_the_dock_refresh_is_not_blocked_by_the_listing
+    # The dock's refresh gets its say BEFORE the listing is fetched, so a
+    # listing that is down never stands between a project's line and the one
+    # project read that finds it.
+    clock = 0.0
+    @account = account_with_clock(-> { clock })
+    stub_dock([])
+    stub_get("/12345/chats.json", response_body: [])
+
+    assert_raises(Basecamp::UnresolvedRecordingError) { summarize(event_type: "chat.line.created") }
+
+    clock += Basecamp::CampfireIndex::MIN_REFRESH + 1
+    WebMock.reset!
+    # The refreshed dock now names the Campfire the line is in; the listing is
+    # down. The line still resolves.
+    stub_dock([ 500 ])
+    stub_line(500)
+    stub_request(:get, "#{BASE_URL}/12345/chats.json")
+      .to_return(status: 503, body: '{"error":"down"}', headers: { "Content-Type" => "application/json" })
+
+    assert_equal 500, summarize(event_type: "chat.line.created")["campfire_id"]
+    assert_not_requested(:get, "#{BASE_URL}/12345/chats.json")
+  end
+
   def test_the_caches_are_reused_across_calls_on_one_client
     stub_dock([ 500 ])
     stub_line(500)
