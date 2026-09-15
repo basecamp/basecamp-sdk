@@ -77,7 +77,7 @@ class RecordingsSummarizeTest < Minitest::Test
 
     assert_equal "no_recording_type", error.kind
     assert_equal Basecamp::ErrorCode::USAGE, error.code
-    assert_not_requested(:any, %r{\A#{BASE_URL}})
+    assert_not_requested(:any, %r{\A#{Regexp.escape(BASE_URL)}})
   end
 
   def test_refuses_a_type_outside_the_deliberate_set
@@ -98,7 +98,7 @@ class RecordingsSummarizeTest < Minitest::Test
 
       assert_equal "unknown_recording_type", error.kind
     end
-    assert_not_requested(:any, %r{\A#{BASE_URL}})
+    assert_not_requested(:any, %r{\A#{Regexp.escape(BASE_URL)}})
   end
 
   def test_refuses_an_incomplete_pointer_before_routing
@@ -125,7 +125,7 @@ class RecordingsSummarizeTest < Minitest::Test
         @account.recordings.summarize(bucket_id: malformed, recording_id: 1, event_type: "comment.created")
       end
     end
-    assert_not_requested(:any, %r{\A#{BASE_URL}})
+    assert_not_requested(:any, %r{\A#{Regexp.escape(BASE_URL)}})
     # A string of digits is a reasonable thing to hold, and is accepted.
     stub_get("/12345/comments/1", response_body: recording)
     summary = @account.recordings.summarize(
