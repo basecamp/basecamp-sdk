@@ -427,6 +427,14 @@ def _envelope_gid(payload: str) -> str | None:
     # emits it unwrapped; this only keeps the two readers agreeing on what
     # counts as the same sgid.
     normalized = normalized.replace("\r", "").replace("\n", "")
+    # ORDER matters, and this is the half that is easy to lose. Go trims the
+    # padding FIRST and only then hands the value to a decoder that skips line
+    # breaks, so a "=" the trim could not reach -- one with a break after it --
+    # reaches `RawStdEncoding`, which has no padding character and refuses it.
+    # Removing the breaks first and re-padding would quietly resolve a person
+    # Go names nobody for, which is the write side's one gate.
+    if "=" in normalized:
+        return None
     try:
         raw = base64.b64decode(normalized + "=" * (-len(normalized) % 4), validate=True)
     except (binascii.Error, ValueError):

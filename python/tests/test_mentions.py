@@ -54,6 +54,24 @@ def mention(sgid: str) -> str:
     return f'<bc-attachment sgid="{sgid}"></bc-attachment>'
 
 
+def padded_sgid_payload() -> str:
+    """A payload whose base64 actually carries ``=`` padding.
+
+    Most envelopes happen to encode to a multiple of four characters, which
+    makes every padding case in the table below vacuous. This finds one that
+    does not.
+    """
+    import base64
+    import json
+
+    for filler in range(64):
+        body = json.dumps({"gid": "gid://bc3/Person/77", "purpose": "attachable", "expires_at": "x" * filler}).encode()
+        encoded = base64.urlsafe_b64encode(body).decode()
+        if encoded.count("=") == 2:
+            return encoded
+    raise AssertionError("no padded payload found")
+
+
 _BASE64_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
 
 
@@ -176,6 +194,41 @@ class TestPersonIDFromSGID:
     def test_base64_leniency_matches_go(self, label, mutate, accepted):
         payload = json_sgid("gid://bc3/Person/77", signed=False)
         assert (person_id_from_sgid(mutate(payload)) == 77) is accepted, label
+
+    @pytest.mark.parametrize(
+        ("label", "build", "accepted"),
+        [
+            # Go's ORDER: TrimSpace the whole value, split on the last "--",
+            # then TrimRight the padding and hand what is left to a decoder
+            # that skips line breaks and refuses every other non-alphabet
+            # byte -- "=" included, since RawStdEncoding has no padding
+            # character. So a "=" the trim could not reach is fatal, and the
+            # reason it could not reach it is a line break sitting after it.
+            # Two other ports got this family wrong in opposite directions.
+            ("padded, unsigned", lambda p, s: p, True),
+            ("padded then separator", lambda p, s: p + s, True),
+            ("break between padding and separator", lambda p, s: p + "\n" + s, False),
+            ("break amid the padding", lambda p, s: p[:-1] + "\n" + p[-1:], False),
+            # TrimSpace runs on the WHOLE value first, so a break at either end
+            # is gone before any of that.
+            ("padding then a break at the end", lambda p, s: p + "\n", True),
+            ("leading break on the whole value", lambda p, s: "\n" + p + s, True),
+            ("trailing break on the whole value", lambda p, s: p + s + "\n", True),
+            # TrimRight reaches this padding, so the break before it is only a
+            # break, and the decoder skips it.
+            ("break before the padding", lambda p, s: p.rstrip("=") + "\n==", True),
+            ("break inside the payload", lambda p, s: p[:8] + "\n" + p[8:], True),
+            ("break inside the signature", lambda p, s: p + "--0123\n456789", True),
+            # Space and tab are not line breaks and Go's decoder does not skip
+            # them.
+            ("space between padding and separator", lambda p, s: p + " " + s, False),
+            ("tab inside the payload", lambda p, s: p[:8] + "\t" + p[8:], False),
+        ],
+    )
+    def test_padding_and_line_break_ordering_matches_go(self, label, build, accepted):
+        payload = padded_sgid_payload()
+        value = build(payload, "--0123456789abcdef")
+        assert (person_id_from_sgid(value) == 77) is accepted, label
 
     def test_reads_a_line_wrapped_payload_as_go_does(self):
         # Go's base64 decoder skips CR and LF mid-stream. It does NOT skip
