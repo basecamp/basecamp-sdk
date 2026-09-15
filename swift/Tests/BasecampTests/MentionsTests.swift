@@ -107,6 +107,176 @@ final class MentionsTests: XCTestCase {
         }
     }
 
+    /// The gid PATH and SCHEME, against Go, over the whole sweep rather than a
+    /// handful of rows — the cross product is built here, and Go's answers to it
+    /// are the data below.
+    ///
+    /// 747 distinct shapes, from nine spellings of the scheme, three prefixes
+    /// and twenty-eight paths. Go names a person for 44, obtained by running each through
+    /// `PersonIDFromSGID` in `go/pkg/basecamp`. This parser must name a person
+    /// for exactly those 44 MINUS the 12 that differ, and for nothing else.
+    ///
+    /// The 12 are one mechanism, not one shape: Go reads `u.Path`, which is
+    /// percent-DECODED, and this reads the path as written — so an escape
+    /// spelling the model name, the id, or the separator between them names a
+    /// Person there and nobody here. The set difference is what makes the
+    /// direction a property rather than a claim: any shape this accepted and Go
+    /// did not would appear as an extra element, and there is none.
+    func testTheGidPathDisagreesWithGoInOneDirectionOnly() {
+        let paths = [
+            "Person/1",
+            "Person/01",
+            "Person/1/extra",
+            "Person/",
+            "Person",
+            "Pers%6Fn/1",
+            "Person/%31",
+            "person/1",
+            "PERSON/1",
+            "Person/1?x=y",
+            "Person/1#frag",
+            "Person/1#x?y",
+            "Person/1?y#x",
+            "Person//1",
+            "/Person/1",
+            "Person/1/",
+            "Person/-1",
+            "Person/+1",
+            "Person/ 1",
+            "Person/1 ",
+            "Person%2F1",
+            "Person/9223372036854775807",
+            "Person/9223372036854775808",
+            "Person/0",
+            "Person/00001",
+            "Per\u{A7}on/1",
+            "Person/\u{FF11}",
+            "Person/1\u{301}",
+        ]
+        let schemes = ["gid", "GID", "Gid", "gID", " gid", "gid ", "xgid", "", "g id"]
+        let prefixes = ["%@://bc3/", "%@:/", "%@:"]
+
+        // Every shape Go names a person for. The cross product yields 756
+        // constructions but 747 distinct gids — `scheme:` + `/Person/1` and
+        // `scheme:/` + `Person/1` spell the same thing — which is why this is a
+        // Set and why the count below is of shapes, not of constructions.
+        let goAccepts: Set<String> = [
+            "GID://bc3/Pers%6Fn/1",
+            "GID://bc3/Person%2F1",
+            "GID://bc3/Person/%31",
+            "GID://bc3/Person/00001",
+            "GID://bc3/Person/01",
+            "GID://bc3/Person/1",
+            "GID://bc3/Person/1#frag",
+            "GID://bc3/Person/1#x?y",
+            "GID://bc3/Person/1?x=y",
+            "GID://bc3/Person/1?y#x",
+            "GID://bc3/Person/9223372036854775807",
+            "Gid://bc3/Pers%6Fn/1",
+            "Gid://bc3/Person%2F1",
+            "Gid://bc3/Person/%31",
+            "Gid://bc3/Person/00001",
+            "Gid://bc3/Person/01",
+            "Gid://bc3/Person/1",
+            "Gid://bc3/Person/1#frag",
+            "Gid://bc3/Person/1#x?y",
+            "Gid://bc3/Person/1?x=y",
+            "Gid://bc3/Person/1?y#x",
+            "Gid://bc3/Person/9223372036854775807",
+            "gID://bc3/Pers%6Fn/1",
+            "gID://bc3/Person%2F1",
+            "gID://bc3/Person/%31",
+            "gID://bc3/Person/00001",
+            "gID://bc3/Person/01",
+            "gID://bc3/Person/1",
+            "gID://bc3/Person/1#frag",
+            "gID://bc3/Person/1#x?y",
+            "gID://bc3/Person/1?x=y",
+            "gID://bc3/Person/1?y#x",
+            "gID://bc3/Person/9223372036854775807",
+            "gid://bc3/Pers%6Fn/1",
+            "gid://bc3/Person%2F1",
+            "gid://bc3/Person/%31",
+            "gid://bc3/Person/00001",
+            "gid://bc3/Person/01",
+            "gid://bc3/Person/1",
+            "gid://bc3/Person/1#frag",
+            "gid://bc3/Person/1#x?y",
+            "gid://bc3/Person/1?x=y",
+            "gid://bc3/Person/1?y#x",
+            "gid://bc3/Person/9223372036854775807",
+        ]
+        // The subset this refuses, deliberately, and the only way the two differ.
+        let percentDecodedPath: Set<String> = [
+            "GID://bc3/Pers%6Fn/1",
+            "GID://bc3/Person%2F1",
+            "GID://bc3/Person/%31",
+            "Gid://bc3/Pers%6Fn/1",
+            "Gid://bc3/Person%2F1",
+            "Gid://bc3/Person/%31",
+            "gID://bc3/Pers%6Fn/1",
+            "gID://bc3/Person%2F1",
+            "gID://bc3/Person/%31",
+            "gid://bc3/Pers%6Fn/1",
+            "gid://bc3/Person%2F1",
+            "gid://bc3/Person/%31",
+        ]
+
+        var accepted: Set<String> = []
+        for scheme in schemes {
+            for prefix in prefixes {
+                for path in paths {
+                    let gid = prefix.replacingOccurrences(of: "%@", with: scheme) + path
+                    if Mentions.personId(fromGlobalId: gid) != nil { accepted.insert(gid) }
+                }
+            }
+        }
+
+        XCTAssertEqual(
+            accepted, goAccepts.subtracting(percentDecodedPath),
+            "this parser must accept exactly what Go accepts, less the percent-decoded-path shapes")
+        // Not `accepted.isSubset(of: goAccepts)`: that is implied by the
+        // equality above, since `subtracting` can only remove. This pins the
+        // PREMISE the equality rests on instead — that the twelve shapes named
+        // as the one mechanism are themselves gids Go accepts, so the set
+        // difference is narrowing the right set.
+        XCTAssertTrue(
+            percentDecodedPath.isSubset(of: goAccepts),
+            "the documented divergences must be shapes Go accepts, or the difference means nothing")
+    }
+
+    /// The fragment and the query are not equivalent, and truncating at the
+    /// first of either gets one of them wrong.
+    ///
+    /// Go splits the fragment off the whole URL and UNESCAPES it, so a malformed
+    /// escape there refuses the entire gid. It keeps `RawQuery` raw and
+    /// validates nothing. Truncating at `#` without looking accepted a gid Go
+    /// refuses — the permissive direction, on a path whose only
+    /// authenticity-adjacent gate is "does this sgid name this person".
+    ///
+    /// Measured over 364 shapes — two paths × seven queries × thirteen
+    /// fragments, in both orders — of which Go accepts 160, with zero
+    /// mismatches in either direction.
+    func testTheFragmentIsValidatedAndTheQueryIsNot() {
+        // Go unescapes the fragment, so a malformed escape in it refuses the gid.
+        for gid in [
+            "gid://bc3/Person/1#%zz", "gid://bc3/Person/1#%", "gid://bc3/Person/1#%2",
+            "gid://bc3/Person/1?x=y#%zz", "gid://bc3/Person/1#a%1", "gid://bc3/Person/1#%1g",
+        ] {
+            XCTAssertNil(Mentions.personId(fromGlobalId: gid), gid)
+        }
+        // A well-formed escape, or no escape at all, is fine there.
+        for gid in [
+            "gid://bc3/Person/1#frag", "gid://bc3/Person/1#%41", "gid://bc3/Person/1#%C3%A9",
+            "gid://bc3/Person/1#a b", "gid://bc3/Person/1#f%20g", "gid://bc3/Person/1#",
+            // And the query is never validated: Go keeps it raw.
+            "gid://bc3/Person/1?%zz", "gid://bc3/Person/1?%", "gid://bc3/Person/1?x=%zz",
+            "gid://bc3/Person/1?a b", "gid://bc3/Person/1?",
+        ] {
+            XCTAssertEqual(Mentions.personId(fromGlobalId: gid), 1, gid)
+        }
+    }
+
     /// The authority, against `net/url` in BOTH directions — measured over 1,824
     /// generated shapes, because a charset that looked about right was wrong
     /// each way, and a first fix that checked only the host was wrong again.

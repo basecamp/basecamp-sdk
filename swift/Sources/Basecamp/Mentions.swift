@@ -448,12 +448,40 @@ extension Mentions {
     /// `/<Model>/<id>` — no more, no less — and the whole point is to refuse
     /// anything else rather than to be lenient about it.
     ///
-    /// Deliberately stricter than Go's `url.Parse`, in one respect: that reads
-    /// `u.Path`, which is percent-DECODED, so `gid://bc3/Pers%6Fn/1` names a
-    /// Person there and does not here. BC3 mints the literal form, an encoded
-    /// model name is not something a real sgid carries, and the read side of
-    /// these helpers is the one place an attacker-supplied envelope is parsed —
-    /// so refusing it is the right way to differ.
+    /// It disagrees with Go's `url.Parse` in exactly one mechanism NOW, and the
+    /// history is worth keeping because the claim has been wrong twice. It first
+    /// named one shape of a mechanism that has three. Then it claimed the
+    /// disagreement ran in the stricter direction only — true of the 747-shape
+    /// path-and-scheme sweep it cited, and false of the parser, which truncated
+    /// at `#` without looking while Go unescapes the fragment and refuses the
+    /// whole URL on a malformed escape there. `gid://bc3/Person/1#%zz` named a
+    /// person here and nobody in Go. A comment whose scope is narrower than its
+    /// claim reads as the claim.
+    ///
+    /// What remains is one mechanism, stated as a mechanism rather than as a
+    /// list of shapes: Go reads
+    /// `u.Path`, which is percent-DECODED, and this reads the path as written.
+    /// So every gid whose path spells a structural character through an escape
+    /// names a Person there and nobody here — the model name
+    /// (`gid://bc3/Pers%6Fn/1`), the id (`gid://bc3/Person/%31`), and the
+    /// separator between them (`gid://bc3/Person%2F1`) alike. An earlier version
+    /// of this comment named only the first and read as though that were the
+    /// whole of it, which is the shape of comment that stops a reader checking.
+    ///
+    /// The disagreement runs in that direction ONLY, and
+    /// `testTheGidPathDisagreesWithGoInOneDirectionOnly` is where that is a
+    /// property rather than a claim: it builds the same 747-shape cross product
+    /// — nine spellings of the scheme, three prefixes, twenty-eight paths — and
+    /// compares what this parser accepts against the 44 shapes Go names a
+    /// person for, as a SET. Anything this accepted and Go did not would show up
+    /// as an extra element. There is none, and that is the half that matters:
+    /// the accepting direction is the one that would have this SDK act on a gid
+    /// Go rejects.
+    ///
+    /// Refusing is the right way to differ here. BC3 mints the literal form, an
+    /// encoded model name is not something a real sgid carries, and the read
+    /// side of these helpers is the one place an attacker-supplied envelope is
+    /// parsed.
     static func personId(fromGlobalId gid: String) -> Int? {
         // No ASCII control character anywhere in it. Go hands the gid to
         // `net/url`, which refuses one outright; a parser that strips tab, CR
@@ -468,8 +496,19 @@ extension Mentions {
         guard let schemeEnd = gid.range(of: "://") else { return nil }
         guard gid[gid.startIndex..<schemeEnd.lowerBound].lowercased() == "gid" else { return nil }
         var rest = Substring(gid[schemeEnd.upperBound...])
-        // Drop the query and fragment a URL parser would keep out of the path.
-        if let cut = rest.firstIndex(where: { $0 == "?" || $0 == "#" }) { rest = rest[..<cut] }
+        // The fragment and the query are kept out of the path, but they are not
+        // equivalent and truncating at the first of either gets one of them
+        // wrong. Go splits the fragment off the whole URL and UNESCAPES it, so a
+        // malformed escape there refuses the entire gid —
+        // `gid://bc3/Person/1#%zz` names nobody in Go. It keeps `RawQuery` raw
+        // and validates nothing, so `gid://bc3/Person/1?%zz` is a gid Go reads.
+        // Truncating at `#` without looking accepted the first, which is the
+        // permissive direction: a gid Go refuses, read here as a mention.
+        if let hash = rest.firstIndex(of: "#") {
+            guard isWellFormedPercentEscaping(rest[rest.index(after: hash)...]) else { return nil }
+            rest = rest[..<hash]
+        }
+        if let question = rest.firstIndex(of: "?") { rest = rest[..<question] }
         guard let hostEnd = rest.firstIndex(of: "/"), hostEnd != rest.startIndex else { return nil }
         // The authority is checked against what `net/url` accepts, which is the
         // parser Go hands the gid to. Both directions matter and an allowlist
@@ -873,6 +912,22 @@ private func isValidUserinfo(_ userinfo: Substring) -> Bool {
         }
         guard percentEscapedByte(userinfo, at: index) != nil else { return false }
         index = userinfo.index(index, offsetBy: 3)
+    }
+    return true
+}
+
+/// Whether every `%` in `text` introduces a well-formed `%XX`. Go unescapes a
+/// fragment, and `unescape` errors on a malformed escape, which refuses the
+/// whole URL — so this is what stands between a gid Go rejects and a mention.
+private func isWellFormedPercentEscaping(_ text: Substring) -> Bool {
+    var index = text.startIndex
+    while index < text.endIndex {
+        guard text[index] == "%" else {
+            index = text.index(after: index)
+            continue
+        }
+        guard percentEscapedByte(text, at: index) != nil else { return false }
+        index = text.index(index, offsetBy: 3)
     }
     return true
 }

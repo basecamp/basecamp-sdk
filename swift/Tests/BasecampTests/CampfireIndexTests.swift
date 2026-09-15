@@ -104,7 +104,7 @@ final class CampfireIndexTests: XCTestCase {
         // a sleep: a sleep that ran long would let the first load publish and
         // the second call read a cached snapshot, and the test would be asking a
         // different question on a slow machine.
-        while await cache.waiterCount(for: "k") < 2 { await Task.yield() }
+        await waitUntil("two callers to arrive") { await cache.waiterCount(for: "k") >= 2 }
         await started.fulfill()
 
         let (first, second) = try await (a, b)
@@ -129,13 +129,13 @@ final class CampfireIndexTests: XCTestCase {
             await started.wait()
             return loads.increment()
         }
-        while await cache.waiterCount(for: "k") < 1 { await Task.yield() }
+        await waitUntil("a caller to arrive") { await cache.waiterCount(for: "k") >= 1 }
 
         // A second caller, which is then cancelled while the load is in flight.
         let leaver = Task {
             try await cache.value(for: "k", refresh: false) { loads.increment() }
         }
-        while await cache.waiterCount(for: "k") < 2 { await Task.yield() }
+        await waitUntil("two callers to arrive") { await cache.waiterCount(for: "k") >= 2 }
         leaver.cancel()
 
         do {
@@ -177,7 +177,7 @@ final class CampfireIndexTests: XCTestCase {
                 return loads.increment()
             }
         }
-        while await cache.waiterCount(for: "k") < 1 { await Task.yield() }
+        await waitUntil("a caller to arrive") { await cache.waiterCount(for: "k") >= 1 }
         leaver.cancel()
         do {
             _ = try await leaver.value
@@ -190,12 +190,20 @@ final class CampfireIndexTests: XCTestCase {
         let claimed = await cache.isClaimed("k")
         XCTAssertFalse(claimed, "the abandoned claim is detached immediately")
 
+        // Released BEFORE the next call, and that ordering is load-bearing. If
+        // the detach regresses, the key is still held by the cancelled flight
+        // whose loader is parked on this gate — so a call made first would
+        // register on a dead claim and wait for something nothing can free,
+        // turning the regression into a CI timeout instead of the assertion
+        // above. `waitUntil` cannot reach into `cache.value`, so the ordering is
+        // what bounds it.
+        await started.fulfill()
+
         let after = try await cache.value(for: "k", refresh: false) { loads.increment() }
         XCTAssertEqual(after.value, 1, "the key reloaded rather than joining a dead load")
 
-        // And the abandoned load finishing afterwards must not evict the claim
-        // that replaced it, nor resume anybody.
-        await started.fulfill()
+        // And the abandoned load finishing must not evict the claim that
+        // replaced it, nor resume anybody.
         await Task.yield()
         let stored = await cache.cached("k")
         XCTAssertEqual(stored?.value, 1)
@@ -214,10 +222,10 @@ final class CampfireIndexTests: XCTestCase {
             try Task.checkCancellation()
             return loads.increment()
         }
-        while await cache.waiterCount(for: "k") < 1 { await Task.yield() }
+        await waitUntil("a caller to arrive") { await cache.waiterCount(for: "k") >= 1 }
 
         let leaver = Task { try await cache.value(for: "k", refresh: false) { loads.increment() } }
-        while await cache.waiterCount(for: "k") < 2 { await Task.yield() }
+        await waitUntil("two callers to arrive") { await cache.waiterCount(for: "k") >= 2 }
         leaver.cancel()
         do {
             _ = try await leaver.value
@@ -251,7 +259,7 @@ final class CampfireIndexTests: XCTestCase {
                 return loads.increment()
             }
         }
-        while await cache.waiterCount(for: "k") < 1 { await Task.yield() }
+        await waitUntil("a caller to arrive") { await cache.waiterCount(for: "k") >= 1 }
         leaver.cancel()
         do {
             _ = try await leaver.value
@@ -263,14 +271,14 @@ final class CampfireIndexTests: XCTestCase {
             await secondGate.wait()
             return loads.increment()
         }
-        while await cache.waiterCount(for: "k") < 1 { await Task.yield() }
+        await waitUntil("a caller to arrive") { await cache.waiterCount(for: "k") >= 1 }
 
         // Let the abandoned flight run to completion underneath it, and wait for
         // an OBSERVABLE signal that it has — its loader incrementing — rather
         // than for a number of scheduler yields, which guarantees nothing.
         await firstGate.fulfill()
-        while loads.count < 1 { await Task.yield() }
-        while await cache.cached("k") == nil { await Task.yield() }
+        await waitUntil("the abandoned loader to run") { loads.count >= 1 }
+        await waitUntil("the straggler to publish") { await cache.cached("k") != nil }
 
         let stillClaimed = await cache.isClaimed("k")
         XCTAssertTrue(stillClaimed, "the successor's claim survived the straggler finishing")
@@ -341,7 +349,7 @@ final class CampfireIndexTests: XCTestCase {
                 return loads.increment()
             }
         }
-        while await cache.waiterCount(for: "k") < 1 { await Task.yield() }
+        await waitUntil("a caller to arrive") { await cache.waiterCount(for: "k") >= 1 }
         claimer.cancel()
 
         do {
@@ -351,11 +359,8 @@ final class CampfireIndexTests: XCTestCase {
 
         await started.fulfill()
         // The load publishes for whoever comes next, and the key is usable.
-        var stored = await cache.cached("k")
-        while stored == nil {
-            await Task.yield()
-            stored = await cache.cached("k")
-        }
+        await waitUntil("the abandoned load to publish") { await cache.cached("k") != nil }
+        let stored = await cache.cached("k")
         XCTAssertEqual(stored?.value, 1)
         let stillClaimed = await cache.waiterCount(for: "k")
         XCTAssertEqual(stillClaimed, 0)
@@ -428,4 +433,29 @@ private actor Expectation {
         if fulfilled { return }
         await withCheckedContinuation { waiters.append($0) }
     }
+}
+
+/// Spins until `condition` holds, or fails by name after a bounded number of
+/// yields.
+///
+/// An unbounded `while … { await Task.yield() }` turns a regression into a CI
+/// timeout with no diagnosis, which is barely better than a test that passes
+/// through one. Each iteration here is a finite actor hop, so an unsatisfiable
+/// condition returns and records a failure rather than spinning.
+///
+/// What it does NOT do, because a measured claim is worth more than a tidy one:
+/// bound every wait in this file. A suspension inside `cache.value` is out of
+/// its reach — see the ordering note in
+/// `testALoadNobodyIsWaitingForIsAbandoned`, where releasing the gate before the
+/// next call is what keeps the abandonment regression a named assertion failure
+/// instead of a timeout.
+private func waitUntil(
+    _ description: String, file: StaticString = #filePath, line: UInt = #line,
+    _ condition: () async -> Bool
+) async {
+    for _ in 0..<20_000 {
+        if await condition() { return }
+        await Task.yield()
+    }
+    XCTFail("timed out waiting for \(description)", file: file, line: line)
 }
