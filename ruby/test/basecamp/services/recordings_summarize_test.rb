@@ -169,6 +169,33 @@ class RecordingsSummarizeTest < Minitest::Test
     assert_equal 1, summarize(event_type: subject)["id"]
   end
 
+  def test_every_scalar_the_reference_types_as_a_string_is_typed_here
+    # The projection's boundary is drawn where the REFERENCE draws it, not where
+    # this port happened to need it. app_url was coerced with to_s, which turned
+    # an array into Ruby inspection text and fabricated a URL-shaped value the
+    # caller could not tell from a real one; status was passed through raw. Both
+    # are plain strings in the reference, so a value of another type is a decode
+    # failure there.
+    %w[status app_url].each do |field|
+      [ [ "x" ], { "a" => 1 }, 5, true ].each do |malformed|
+        stub_get("/12345/comments/1", response_body: recording(field => malformed))
+
+        assert_raises(Basecamp::ApiError, "#{field} of #{malformed.inspect}") do
+          summarize(event_type: "comment.created")
+        end
+        WebMock.reset!
+      end
+
+      # Null normalizes to "" at every one of them, which is what the
+      # reference's decoder does — so the rule cannot be satisfied by refusing
+      # everything that is not already a String.
+      stub_get("/12345/comments/1", response_body: recording(field => nil))
+
+      assert_equal "", summarize(event_type: "comment.created")[field]
+      WebMock.reset!
+    end
+  end
+
   def test_content_that_is_not_a_string_fails_the_read
     # Content is the one member this composite INTERPRETS — mentioned_person_ids
     # is derived from it — so to_s turned an array or a hash into its Ruby

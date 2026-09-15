@@ -430,15 +430,32 @@ module Basecamp
       # second decoder by hand against a spec that moves.
       #
       # So the rule is: this composite refuses what would make it ACT wrongly,
-      # and passes through what it merely REPORTS. Refused — the body envelope,
+      # and passes through what it merely REPORTS — but that line moved three
+      # times, each time because a fix made this composite read a field it had
+      # only been reporting, so it is now drawn where the REFERENCE draws it
+      # instead of where this port happened to need it.
+      #
+      # TYPED, because the reference holds a plain string and a value of another
+      # type is a decode failure there: "status", "type", "title", "content",
+      # "app_url". Null normalizes to "" at every one of them, which is what its
+      # decoder does. Also refused, for reasons of their own: the body envelope,
       # the bucket and its id (they decide whether the recording is in the
-      # caller's project), the dock and listing entries and their ids and names
-      # (they decide which Campfires get searched), "assignees" (it decides
-      # whether the key appears at all), "content" and "title" (content is
-      # scanned for mentions), and "type" (the chat-line route reads it to
-      # decide whether a line can carry a mention at all). Passed through
-      # verbatim — "id", "status", "app_url", "parent", "creator",
-      # "updated_at". A
+      # caller's project), the dock and listing entries with their ids and names
+      # (they decide which Campfires get searched), and "assignees" (it decides
+      # whether the key appears at all).
+      #
+      # PASSED THROUGH — "id", "parent", "bucket", "creator", and "updated_at".
+      # The first four are where reproducing the decoder would actually begin:
+      # an id is an integer and the other three are nested objects, so checking
+      # them means writing the type the generated layer deliberately does not
+      # have. "updated_at" is a deliberate divergence rather than a gap — the
+      # reference parses an instant and every port here keeps the API's own
+      # string, which Appendix F records.
+      #
+      # The rule that produced three rounds of findings, stated so the next
+      # person does not rediscover it: when a change makes this composite READ a
+      # field it used to only report, the field moves into the typed set and
+      # this paragraph has to move with it. A
       # malformed one of those reaches the caller as it arrived, where the
       # reference would have failed the read.
       #
@@ -463,7 +480,7 @@ module Basecamp
 
         summary = {
           "id" => record["id"],
-          "status" => record["status"],
+          "status" => read_text(record["status"], "status"),
           # Typed, not passed through, because the chat-line route READS this to
           # decide whether a line's content can carry a mention. The reference
           # holds a plain string, so an array or an object there is a decode
@@ -471,7 +488,7 @@ module Basecamp
           # successfully with its mentions silently cleared.
           "type" => read_text(record["type"], "type"),
           "title" => title.to_s,
-          "app_url" => record["app_url"].to_s,
+          "app_url" => read_text(record["app_url"], "app_url"),
           "parent" => parent,
           "bucket" => record["bucket"],
           "creator" => record["creator"],
