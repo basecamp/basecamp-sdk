@@ -270,12 +270,92 @@ final class RecordingSummaryTests: XCTestCase {
             XCTAssertTrue(
                 incomplete.reason.contains("\(RecordingsService.maxCampfireCandidates)"),
                 incomplete.reason)
+            XCTAssertTrue(
+                incomplete.reason.contains("before the account listing was consulted"),
+                "the budget ran out before a source that was never consulted: \(incomplete.reason)")
         }
 
         XCTAssertEqual(
             server.paths.filter { $0.contains("/lines/") }.count,
             RecordingsService.maxCampfireCandidates,
             "the budget bounds the reads one call makes")
+    }
+
+    /// The boundary the budget guard exists for, and the one a `skipped`-keyed
+    /// guard misses: a dock holding EXACTLY the budget, every entry answering
+    /// 404. Every candidate was observed and tried, so nothing was skipped and
+    /// the budget is spent — and the account listing has not been consulted, so
+    /// candidates may exist there unsearched.
+    ///
+    /// Reading `skipped` here would fall through and fetch the listing: a
+    /// request that cannot help, whose failure would replace a settled
+    /// "incomplete" with a transient error a consumer retries forever.
+    func testASpentBudgetBeforeTheListingIsIncompleteRatherThanAFetchThatCannotHelp() async throws {
+        let campfireIds = Array(100..<(100 + RecordingsService.maxCampfireCandidates))
+        let server = RecordingServer(dockCampfireIds: campfireIds)
+        server.lineFoundUnder = nil
+        let account = makeTestAccountClient(transport: server.makeTransport())
+
+        await assertSummarizeFails(
+            account, RecordingRef(bucketId: 1, recordingId: 7, eventType: "chat.line.created")
+        ) { error in
+            guard case .campfireDiscoveryIncomplete(let incomplete) = error else {
+                return XCTFail("expected campfireDiscoveryIncomplete, got \(error)")
+            }
+            XCTAssertTrue(
+                incomplete.reason.contains("before the account listing was consulted"),
+                incomplete.reason)
+        }
+
+        XCTAssertFalse(
+            server.paths.contains { $0.hasSuffix("/chats.json") },
+            "the listing is never fetched: no candidate it returned could be tried")
+        XCTAssertEqual(
+            server.paths.filter { $0.contains("/lines/") }.count,
+            RecordingsService.maxCampfireCandidates,
+            "every candidate the budget allows was tried first")
+    }
+
+    /// The third property of the budget rule, and the one that produces a WRONG
+    /// VERDICT rather than a wasted request: a spent budget where BOTH sources
+    /// were consulted is `unresolved`, not `incomplete`. Everything was
+    /// searched, so nothing is unsearched — and `unresolved` is settled while
+    /// `incomplete` tells a consumer to look again for a recording that was
+    /// thoroughly searched for and is not there.
+    func testASpentBudgetWithBothSourcesConsultedIsUnresolvedNotIncomplete() async throws {
+        // Exactly the budget, in the listing rather than the dock, so the second
+        // call finds the listing already cached.
+        let campfireIds = Array(100..<(100 + RecordingsService.maxCampfireCandidates))
+        let server = RecordingServer(listedCampfireIds: campfireIds)
+        server.lineFoundUnder = nil
+        let account = makeTestAccountClient(transport: server.makeTransport())
+
+        // First call populates both caches: an empty dock and the listing.
+        await assertSummarizeFails(
+            account, RecordingRef(bucketId: 1, recordingId: 7, eventType: "chat.line.created")
+        ) { _ in }
+        let afterFirst = server.paths.count
+
+        // Second call: the dock is cached and empty, the listing is cached and
+        // holds exactly the budget, every candidate answers 404.
+        await assertSummarizeFails(
+            account, RecordingRef(bucketId: 1, recordingId: 8, eventType: "chat.line.created")
+        ) { error in
+            guard case .recordingUnresolved(let unresolved) = error else {
+                return XCTFail("expected recordingUnresolved, got \(error)")
+            }
+            XCTAssertEqual(
+                unresolved.campfireIds.count, RecordingsService.maxCampfireCandidates,
+                "every candidate was tried, so nothing was left unsearched")
+        }
+
+        let secondCall = Array(server.paths.dropFirst(afterFirst))
+        XCTAssertFalse(
+            secondCall.contains { $0.hasSuffix("/chats.json") },
+            "the listing was already consulted, so a spent budget does not re-read it")
+        XCTAssertFalse(
+            secondCall.contains { $0.hasSuffix("/projects/1") },
+            "nor the dock")
     }
 
     func testAListingPastItsCapIsIncompleteNotUnresolved() async throws {
