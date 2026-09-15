@@ -603,6 +603,80 @@ def _decoded_string(value: Any, what: str) -> str:
     return value
 
 
+_UINT64_MAX = 2**64 - 1
+
+
+def _go_parse_int64(text: str) -> tuple[int | None, bool]:
+    """Go's ``strconv.ParseInt(s, 10, 64)``: ``(value, overflowed)``.
+
+    ``value`` is None for a SYNTAX error, which the flexible type turns into 0
+    rather than a failure; ``overflowed`` marks the range error, which it
+    raises.
+
+    The order matters and is not the obvious one. ParseInt defers to ParseUint,
+    which checks magnitude INSIDE the scan, so the first disqualifying thing
+    wins -- and it is measured against **uint64**, not int64:
+
+        "9223372036854775807x"   syntax -> 0   (junk reached first)
+        "18446744073709551615x"  syntax -> 0   (equals uint64 max, then junk)
+        "18446744073709551616x"  RANGE  -> error (overflowed before the junk)
+
+    Writing this as "is it all digits? then parse" gets the third row wrong in
+    the accepting direction: it answers 0, and 0 is the system-actor sentinel,
+    so an unreadable id silently becomes "basecamp" instead of failing the
+    read. A corpus whose oversized cases are junk-free never shows it.
+    """
+    body = text[1:] if text[:1] in ("+", "-") else text
+    if not body:
+        return None, False
+    magnitude = 0
+    for character in body:
+        if not ("0" <= character <= "9"):
+            return None, False
+        magnitude = magnitude * 10 + (ord(character) - 48)
+        if magnitude > _UINT64_MAX:
+            return None, True
+    value = -magnitude if text[:1] == "-" else magnitude
+    if not (_INT64_MIN <= value <= _INT64_MAX):
+        return None, True
+    return value, False
+
+
+def _decoded_flexible_int64(value: Any, what: str) -> int:
+    """``types.FlexibleInt64``: a JSON number, or a string holding one.
+
+    BC3 serializes person ids as strings in some responses and numbers in
+    others, so this field is not `_decoded_int64` and differs from it in two
+    directions that are easy to get backwards:
+
+      - a NON-NUMERIC string is 0, not an error. That 0 is the system-actor
+        sentinel -- "basecamp", "campfire" -- so reading it as a person id
+        would name a real person where Go names no one.
+      - ``null`` IS an error here, where a plain int64 field reads it as 0.
+        Measured, not assumed: `FlexibleInt64.UnmarshalJSON` is called for
+        null and decodes it as a number.
+    """
+    if isinstance(value, str):
+        parsed, overflowed = _go_parse_int64(value)
+        if overflowed:
+            raise ApiError(f"{what} overflows int64: {value!r}")
+        return 0 if parsed is None else parsed
+    if value is None or not isinstance(value, int) or isinstance(value, bool):
+        raise ApiError(f"{what} was not an int64: {value!r}")
+    if not (_INT64_MIN <= value <= _INT64_MAX):
+        raise ApiError(f"{what} was not an int64: {value!r}")
+    return value
+
+
+def _decoded_optional_string(value: Any, what: str) -> str | None:
+    """A string field whose absence stays ``None`` rather than becoming ``""``."""
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        raise ApiError(f"{what} was not a string: {type(value).__name__}")
+    return value
+
+
 def _decoded_int64(value: Any, what: str) -> int:
     """An ``int64`` field: 0 for null, the int itself, else a decode error.
 

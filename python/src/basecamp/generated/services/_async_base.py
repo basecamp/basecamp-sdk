@@ -301,11 +301,7 @@ class AsyncBaseService:
             except Exception as e:
                 raise ApiError(f"Failed to parse paginated response (page {page}): {_security.truncate(str(e))}") from e
 
-            # `or ()` because a JSON `null` body is not a failure: Go decodes
-            # it into a nil slice and reads zero items, where `extend(None)`
-            # raised a bare TypeError from inside pagination. Every list in
-            # this SDK shares this line.
-            all_items.extend(items or ())
+            all_items.extend(items)
 
             # SPEC section 8: a positive `page` selects exactly that page. The
             # follow loop stops here after a single request; a next link still
@@ -369,11 +365,7 @@ class AsyncBaseService:
                 raise ApiError(f"Failed to parse paginated response (page {page}): {_security.truncate(str(e))}") from e
 
             items = data.get(key, [])
-            # `or ()` because a JSON `null` body is not a failure: Go decodes
-            # it into a nil slice and reads zero items, where `extend(None)`
-            # raised a bare TypeError from inside pagination. Every list in
-            # this SDK shares this line.
-            all_items.extend(items or ())
+            all_items.extend(items)
 
             # SPEC section 8: a positive `page` selects exactly that page. The
             # follow loop stops here after a single request; a next link still

@@ -24,7 +24,14 @@ import respx
 import basecamp
 from basecamp import Client, Config, StaticTokenProvider
 from basecamp.auth import BearerAuth
-from basecamp.errors import BasecampError
+from basecamp.errors import (
+    BasecampError,
+    BucketMismatchError,
+    CampfireDiscoveryIncompleteError,
+    NoRecordingTypeError,
+    RecordingUnresolvedError,
+    UnknownRecordingTypeError,
+)
 
 # Wire keys for todo write operations; identical to the Python kwarg /
 # edit-attribute names, so fixtures map onto the SDK surface directly.
@@ -1403,38 +1410,47 @@ class TestRunner:
                     if not error:
                         failures.append(f"Expected error type {expected_type!r}, but got no error")
                         continue
-                    code_map = {
-                        "not_found": "not_found",
-                        "auth_required": "auth_required",
-                        "forbidden": "forbidden",
-                        "rate_limit": "rate_limit",
-                        "validation": "validation",
-                        "network": "network",
-                        # A composite's own identity (SPEC section 18 rule 3,
-                        # Appendix F): something a consumer matches with
-                        # `except`, never an HTTP status. These live outside
-                        # `ErrorCode` in the SDK for that reason, and a fixture
-                        # pins them so that "unresolved" cannot quietly become a
-                        # not_found or a forbidden.
-                        "recording_unresolved": "recording_unresolved",
-                        "campfire_discovery_incomplete": "campfire_discovery_incomplete",
-                        "no_recording_type": "no_recording_type",
-                        "unknown_recording_type": "unknown_recording_type",
-                        "bucket_mismatch": "bucket_mismatch",
+                    # A composite's identity is its CLASS, and it is classified
+                    # here rather than read off `.code` -- the same split Go's
+                    # runner makes, where `semanticErrorType` matches the
+                    # sentinel with `errors.Is` and only a mapped `*Error`
+                    # falls through to `.Code`. Reading `.code` for both made
+                    # the SDK's public error code load-bearing for conformance
+                    # in a way Go's never is, and SPEC section 6 declares that
+                    # field a CLOSED enum of HTTP answers; none of these is one.
+                    semantic = {
+                        RecordingUnresolvedError: "recording_unresolved",
+                        CampfireDiscoveryIncompleteError: "campfire_discovery_incomplete",
+                        NoRecordingTypeError: "no_recording_type",
+                        UnknownRecordingTypeError: "unknown_recording_type",
+                        BucketMismatchError: "bucket_mismatch",
                     }
-                    expected_code = code_map.get(expected_type)
-                    if expected_code is None:
+                    canonical = {
+                        "not_found",
+                        "auth_required",
+                        "forbidden",
+                        "rate_limit",
+                        "validation",
+                        "network",
+                        "api_error",
+                        "usage",
+                    }
+                    actual_type = None
+                    for error_class, identity in semantic.items():
+                        if isinstance(error, error_class):
+                            actual_type = identity
+                            break
+                    if actual_type is None:
+                        actual_type = getattr(error, "code", None)
+                    if expected_type not in semantic.values() and expected_type not in canonical:
                         failures.append(f"Unknown conformance error type {expected_type!r}")
-                    else:
-                        # Require a canonical code that exists and matches — an
-                        # error carrying no .code must fail, not silently pass.
-                        actual_code = getattr(error, "code", None)
-                        if actual_code is None:
-                            failures.append(
-                                f"Expected error code {expected_code!r}, but {type(error).__name__} carries no code: {error}"
-                            )
-                        elif actual_code != expected_code:
-                            failures.append(f"Expected error code {expected_code!r}, got {actual_code!r}")
+                    elif actual_type is None:
+                        failures.append(
+                            f"Expected error type {expected_type!r}, but {type(error).__name__} is neither a "
+                            f"composite identity nor carries a code: {error}"
+                        )
+                    elif actual_type != expected_type:
+                        failures.append(f"Expected error type {expected_type!r}, got {actual_type!r}")
 
                 case "requestPath":
                     expected = assertion["expected"]

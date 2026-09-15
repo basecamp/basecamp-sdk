@@ -44,9 +44,10 @@ from basecamp.services._campfire_index import (
     ChatLineSearch,
     SourceRead,
     _decoded_array,
+    _decoded_flexible_int64,
     _decoded_int64,
-    _decoded_object,
     _decoded_optional_object,
+    _decoded_optional_string,
     _decoded_string,
 )
 
@@ -259,8 +260,13 @@ def _text(record: dict[str, Any], keys: tuple[str, ...]) -> str:
     Go, so a number or an object there fails the whole read. Skipping to the
     next key instead would quietly answer with a different field's value.
     """
-    for key in keys:
-        value = _decoded_string(record.get(key), f"the recording {key}")
+    # EVERY key is decoded before any is chosen. Returning on the first
+    # non-empty one would leave the later keys unread, so `{"title": "ok",
+    # "subject": 7}` answered "ok" where Go -- which has decoded the whole
+    # struct before `firstNonEmpty` runs -- fails the read. That gap reached
+    # the eleven routed types whose title or content tuple has two keys.
+    decoded = [_decoded_string(record.get(key), f"the recording {key}") for key in keys]
+    for value in decoded:
         if value:
             return value
     return ""
@@ -288,6 +294,45 @@ def _body(record: Any, what: str) -> dict[str, Any]:
     return record
 
 
+def _decoded_person(value: Any, what: str) -> dict[str, Any] | None:
+    """A `Person`, validated on the field the summary's consumers key on.
+
+    Only `id` is decoded, and deliberately: `Person` carries a dozen fields and
+    guessing at the rest risks refusing a body Go accepts, which is the worse
+    direction. `id` is `FlexibleInt64` -- NOT the `int64` its neighbours use.
+    """
+    person = _decoded_optional_object(value, what)
+    if person is not None and "id" in person:
+        _decoded_flexible_int64(person["id"], f"{what} id")
+    return person
+
+
+def _decoded_parent(value: Any, what: str) -> dict[str, Any] | None:
+    """A `RecordingParent`, whose whole shape is small enough to decode."""
+    parent = _decoded_optional_object(value, what)
+    if parent is None:
+        return None
+    # `Id` is a plain `int64` here, where a Person's is flexible: "7" resolves
+    # for a creator and FAILS THE READ for a parent. One rule for both would be
+    # wrong in one direction whichever was chosen -- measured, not assumed.
+    _decoded_int64(parent.get("id"), f"{what} id")
+    for field in ("title", "type", "url", "app_url"):
+        _decoded_string(parent.get(field), f"{what} {field}")
+    _decoded_optional_object(parent.get("bucket"), f"{what} bucket")
+    return parent
+
+
+def _decoded_bucket(value: Any, what: str) -> dict[str, Any] | None:
+    """A `TodoBucket`: id, name, type."""
+    bucket = _decoded_optional_object(value, what)
+    if bucket is None:
+        return None
+    _decoded_int64(bucket.get("id"), f"{what} id")
+    for field in ("name", "type"):
+        _decoded_string(bucket.get(field), f"{what} {field}")
+    return bucket
+
+
 def _project(record: Any, read: _Read, *, campfire_id: int | None = None) -> RecordingSummary:
     record = _body(record, "the recording")
     content = _text(record, read.content)
@@ -305,15 +350,15 @@ def _project(record: Any, read: _Read, *, campfire_id: int | None = None) -> Rec
         # `*Parent`, `*Bucket`, `*Person`: null stays None, an object stays an
         # object, anything else fails the read as it does one level up. The
         # guard was top-level only, so `{"parent": "oops"}` sailed through.
-        parent=_decoded_optional_object(record.get("parent"), "the recording parent") if read.parent else None,
-        bucket=_decoded_optional_object(record.get("bucket"), "the recording bucket"),
-        creator=_decoded_optional_object(record.get("creator"), "the recording creator"),
+        parent=_decoded_parent(record.get("parent"), "the recording parent") if read.parent else None,
+        bucket=_decoded_bucket(record.get("bucket"), "the recording bucket"),
+        creator=_decoded_person(record.get("creator"), "the recording creator"),
         # `[]Person`. `list("oops")` INVENTED four assignees out of a string
         # and `list(7)` raised a bare TypeError; a null element is Go's zero
         # Person, which is an empty object rather than None.
         assignees=(
             [
-                _decoded_object(person, "an assignee")
+                _decoded_person(person, "an assignee") or {}
                 for person in _decoded_array(record.get("assignees"), "the recording assignees")
             ]
             if read.assignees
@@ -321,7 +366,11 @@ def _project(record: Any, read: _Read, *, campfire_id: int | None = None) -> Rec
         ),
         mentioned_person_ids=mentioned_person_ids(content),
         content=content,
-        updated_at=record.get("updated_at"),
+        # `time.Time` in Go, so a number or an object fails the read. The port
+        # keeps the API's own string rather than parsing an instant (Appendix
+        # F), so the TYPE is checked and the VALUE is not: a string Go could
+        # not parse as RFC 3339 still rides through here.
+        updated_at=_decoded_optional_string(record.get("updated_at"), "the recording updated_at"),
         campfire_id=campfire_id,
     )
 

@@ -316,6 +316,106 @@ class TestProjection:
         with pytest.raises(ApiError, match=match):
             _account().recordings.summarize(bucket_id=BUCKET, recording_id=1, event_type="comment.created")
 
+    # Every row below is Go's own answer, read off a linked oracle driving the
+    # real generated types -- not derived from this implementation.
+    @respx.mock
+    @pytest.mark.parametrize(
+        ("creator_id", "fails"),
+        [
+            # `Person.Id` is FlexibleInt64, so a numeric STRING resolves and a
+            # non-numeric one is the system-actor 0 rather than a failure.
+            ("7", False),
+            ("basecamp", False),
+            ("", False),
+            ("007", False),
+            ("+7", False),
+            (7, False),
+            (-7, False),
+            # ...but `null` IS an error here, where a plain int64 field reads
+            # it as 0. The two rules are neighbours and differ.
+            (None, True),
+            (True, True),
+            (7.0, True),
+            (2**63, True),
+            # The magnitude check happens INSIDE Go's scan and against uint64,
+            # so the first disqualifying thing wins. These three rows are the
+            # whole point: a junk-free corpus never contains them, and "is it
+            # all digits? then parse" gets the last one wrong -- answering the
+            # system-actor 0 where Go fails the read.
+            ("9223372036854775807x", False),
+            ("18446744073709551615x", False),
+            ("18446744073709551616x", True),
+            ("9223372036854775808", True),
+            ("18446744073709551615", True),
+            ("-9223372036854775808", False),
+            ("-9223372036854775809", True),
+            ("-9223372036854775809x", False),
+        ],
+    )
+    def test_a_creator_id_follows_the_flexible_int64_rule(self, creator_id, fails):
+        respx.get(f"{BASE}/comments/1").mock(
+            return_value=httpx.Response(200, json={"id": 1, "type": "Comment", "creator": {"id": creator_id}})
+        )
+        if fails:
+            with pytest.raises(ApiError, match="int64"):
+                _account().recordings.summarize(bucket_id=BUCKET, recording_id=1, event_type="comment.created")
+        else:
+            summary = _account().recordings.summarize(bucket_id=BUCKET, recording_id=1, event_type="comment.created")
+            assert summary["creator"] == {"id": creator_id}
+
+    @respx.mock
+    @pytest.mark.parametrize(
+        ("path", "body", "event", "bad_key"),
+        [
+            ("messages/2", {"id": 2, "type": "Message", "title": "ok", "subject": 7}, "message.created", "subject"),
+            (
+                "todos/2",
+                {"id": 2, "type": "Todo", "title": "T", "content": 7, "description": "d"},
+                "todo.created",
+                "content",
+            ),
+        ],
+    )
+    def test_a_later_title_key_is_decoded_even_when_an_earlier_one_answers(self, path, body, event, bad_key):
+        # `_text` returns the first non-empty key, so returning early left the
+        # LATER keys unread and a number there sailed through. Go has decoded
+        # the whole struct before `firstNonEmpty` runs, so it fails the read.
+        # Eleven routed types have a two-key title or content tuple.
+        respx.get(f"{BASE}/{path}").mock(return_value=httpx.Response(200, json=body))
+        with pytest.raises(ApiError, match=f"{bad_key} was not a string"):
+            _account().recordings.summarize(bucket_id=BUCKET, recording_id=2, event_type=event)
+
+    @respx.mock
+    def test_a_parent_id_is_a_plain_int64_not_a_flexible_one(self):
+        # The asymmetry that makes one shared rule impossible: `"7"` resolves
+        # for a creator and FAILS THE READ for a parent, because
+        # `RecordingParent.Id` is `int64` where `Person.Id` is FlexibleInt64.
+        respx.get(f"{BASE}/todos/9").mock(
+            return_value=httpx.Response(200, json={"id": 9, "type": "Todo", "parent": {"id": "7"}})
+        )
+        with pytest.raises(ApiError, match="parent id was not an int64"):
+            _account().recordings.summarize(bucket_id=BUCKET, recording_id=9, event_type="todo.created")
+
+    @respx.mock
+    @pytest.mark.parametrize(
+        ("value", "fails"),
+        [(None, False), ("2026-09-15T20:00:00Z", False), ("oops", False), (7, True), ([], True), ({}, True)],
+    )
+    def test_updated_at_is_type_checked_but_not_parsed(self, value, fails):
+        # `time.Time` in Go: a number or an object fails the read. A string it
+        # could not parse as RFC 3339 fails there too and does NOT here -- the
+        # port keeps the API's own string rather than an instant, so the "oops"
+        # row is a KNOWN divergence recorded in Appendix F, not an oversight.
+        respx.get(f"{BASE}/comments/1").mock(
+            return_value=httpx.Response(200, json={"id": 1, "type": "Comment", "updated_at": value})
+        )
+        if fails:
+            with pytest.raises(ApiError, match="updated_at was not a string"):
+                _account().recordings.summarize(bucket_id=BUCKET, recording_id=1, event_type="comment.created")
+        else:
+            summary = _account().recordings.summarize(bucket_id=BUCKET, recording_id=1, event_type="comment.created")
+            assert summary["updated_at"] == value
+
     @respx.mock
     def test_a_null_body_is_a_zero_recording_not_a_failed_read(self):
         # `json.Unmarshal` of `null` into a struct is a NO-OP at any depth: no
