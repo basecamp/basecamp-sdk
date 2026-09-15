@@ -240,9 +240,10 @@ class RecordingsService(private val account: AccountClient) :
             // spec, so the generated method hands back the decoded JSON rather
             // than a named type. The projection reads the same keys the other
             // content recordings expose.
-            SummaryKind.GOOGLE_DOCUMENT -> untypedRecordingSummary(account.googleDocuments.googleDocument(id))
+            SummaryKind.GOOGLE_DOCUMENT ->
+                untypedRecordingSummary("GetGoogleDocument", account.googleDocuments.googleDocument(id))
 
-            SummaryKind.CLOUD_FILE -> untypedRecordingSummary(account.cloudFiles.cloudFile(id))
+            SummaryKind.CLOUD_FILE -> untypedRecordingSummary("GetCloudFile", account.cloudFiles.cloudFile(id))
 
             SummaryKind.CARD_STEP -> account.cardSteps.get(id).let {
                 summaryOf(
@@ -309,11 +310,26 @@ class RecordingsService(private val account: AccountClient) :
         }
     }
 
-    /** Projects a recording the spec models as a raw document. */
-    private fun untypedRecordingSummary(element: JsonElement): RecordingSummary {
+    /**
+     * Projects a recording the spec models as a raw document.
+     *
+     * The whole projection runs inside [decodeOrApiError], the same seam every
+     * generated read decodes through. The nested identities are the reason: their
+     * serializers declare required members, so a payload missing one raises a
+     * `SerializationException` — and unwrapped that would escape `summarize`
+     * through an error contract that promises only [BasecampException], while the
+     * typed reads turn the identical failure into SPEC §6's statusless
+     * `api_error`. Go cannot reach this at all: unmarshalling into its pointer
+     * structs leaves zero values rather than failing, so the divergence is one
+     * this decode has to close rather than inherit.
+     */
+    private fun untypedRecordingSummary(operation: String, element: JsonElement): RecordingSummary =
+        decodeOrApiError(operation) { projectUntypedRecording(element) }
+
+    private fun projectUntypedRecording(element: JsonElement): RecordingSummary {
         val obj = element as? JsonObject
             ?: throw BasecampException.Api("recording body is not a JSON object", httpStatus = null)
-        fun string(key: String): String = (obj[key] as? JsonPrimitive)?.contentOrNull.orEmpty()
+        fun string(key: String): String = (obj[key] as? JsonPrimitive)?.takeIf { it.isString }?.content.orEmpty()
         // A key present with a JSON null is absent, not a value to decode: it is
         // JsonNull rather than Kotlin null, so `?.let` would fire and hand a
         // non-nullable serializer something it refuses — a raw
@@ -323,8 +339,10 @@ class RecordingsService(private val account: AccountClient) :
         fun nested(key: String): JsonObject? = obj[key] as? JsonObject
         return summaryOf(
             // A body with no id projects as 0, as it does through the typed
-            // reads: the pointer already said which recording this is.
-            (obj["id"] as? JsonPrimitive)?.longOrNull ?: 0L,
+            // reads: the pointer already said which recording this is. A QUOTED
+            // id is not an id — the typed decode into a Long refuses one, and
+            // `longOrNull` does not look at `isString`, so the guard has to.
+            (obj["id"] as? JsonPrimitive)?.takeIf { !it.isString }?.longOrNull ?: 0L,
             string("status"),
             string("type"),
             string("title"),

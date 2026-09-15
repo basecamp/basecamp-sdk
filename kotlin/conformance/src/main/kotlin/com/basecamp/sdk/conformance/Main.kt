@@ -1976,8 +1976,12 @@ private fun parseRequestBody(body: io.ktor.http.content.OutgoingContent): JsonOb
 private fun JsonObject?.longParam(key: String): Long {
     if (this == null) return 0L
     val element = this[key] ?: return 0L
-    return when (element) {
-        is JsonPrimitive -> element.long
+    return when {
+        // `JsonPrimitive.long` does not look at `isString`, so a quoted
+        // "2085958499" would read as a number — the same conflation the
+        // assertion side already guards against. A path param is a number or it
+        // is not one.
+        element is JsonPrimitive && !element.isString -> element.long
         else -> 0L
     }
 }

@@ -298,11 +298,18 @@ private fun parseAttributes(text: String, pos: Int): TagAttributes? {
  * Decodes the character references a browser resolves inside an attribute value:
  * the five XML named entities and numeric references in either base.
  *
- * Deliberately narrower than the full HTML5 named-entity table, which runs to
- * more than two thousand names, none of which can appear in a well-formed sgid —
- * a base64url payload, `--`, and a hex digest. An unrecognized `&…;` is left as
- * written rather than guessed at, which is also what a browser does for a name it
- * does not know.
+ * Deliberately narrower than the reference, in three ways worth naming because
+ * a reader would not predict the last two: the full HTML5 named-entity table is
+ * not carried (it runs to more than two thousand names); the legacy
+ * semicolon-less forms are not recognized, so `&amp` without its `;` stays
+ * literal where a browser yields `&`; and a numeric reference in 0x80..0x9F is
+ * taken at face value rather than remapped through Windows-1252, so `&#128;`
+ * is U+0080 here and `€` there. An unrecognized `&…;` is left as written rather
+ * than guessed at.
+ *
+ * None of it is reachable for a well-formed sgid — `&` is outside the base64url
+ * alphabet, so a value containing one fails to decode on both sides — and the
+ * write side refuses an sgid containing `&` outright.
  */
 private fun unescapeHtml(value: String): String {
     if ('&' !in value) return value
@@ -490,22 +497,60 @@ private fun globalIdModelAndId(gid: String): Pair<String, String>? {
 }
 
 /**
- * Whether an authority is one a URL parser would accept: a host, and — after the
- * last `:` that is not inside brackets — a port made only of digits. `bc3:abc`
- * is an invalid port and fails the parse there, so it names no app here either.
+ * Whether an authority is one a URL parser would accept.
+ *
+ * Three checks, each mirroring one a URL parser makes, because each one is a way
+ * a forged sgid could otherwise name a person here and nobody in Go: an
+ * optional port must be digits only; every percent escape must be two hex
+ * digits; and a raw ASCII character must be one a host may carry unescaped.
+ *
+ * The permitted ASCII set is the reference parser's host set — unreserved
+ * (alphanumerics and `-._~`), the sub-delims `!$&'()*+,;=`, and `:[]<>"`, which
+ * it allows because a host cannot percent-encode ASCII and these are what is
+ * left. Bytes at or above 0x80 are allowed, as they are there. A space and a
+ * malformed escape are the two rows this closes.
+ *
+ * Userinfo is split off at the last `@` first, the way a parser splits it, so
+ * `user@host` is judged on its host alone.
  */
 private fun isValidAuthority(authority: String): Boolean {
     if (authority.isEmpty()) return false
-    if (authority.startsWith("[")) {
-        val close = authority.indexOf(']')
+    val host = authority.substringAfterLast('@')
+    if (host.isEmpty()) return false
+    if (host.startsWith("[")) {
+        val close = host.indexOf(']')
         if (close < 0) return false
-        val after = authority.substring(close + 1)
-        return after.isEmpty() || (after.startsWith(":") && after.drop(1).all { it.isDigit() })
+        val after = host.substring(close + 1)
+        if (!(after.isEmpty() || (after.startsWith(":") && after.drop(1).all { it.isDigit() }))) return false
+        return isValidHostText(host.substring(1, close))
     }
-    val colon = authority.lastIndexOf(':')
-    if (colon < 0) return true
-    return authority.substring(colon + 1).all { it.isDigit() }
+    val colon = host.lastIndexOf(':')
+    val name = if (colon < 0) host else host.substring(0, colon)
+    if (colon >= 0 && !host.substring(colon + 1).all { it.isDigit() }) return false
+    return isValidHostText(name)
 }
+
+/** The host-text half of [isValidAuthority]: escapes well-formed, raw ASCII permitted. */
+private fun isValidHostText(host: String): Boolean {
+    var i = 0
+    while (i < host.length) {
+        val c = host[i]
+        if (c == '%') {
+            if (i + 2 >= host.length) return false
+            if (!host[i + 1].isHexDigit() || !host[i + 2].isHexDigit()) return false
+            i += 3
+            continue
+        }
+        if (c.code < 0x80 && !isHostChar(c)) return false
+        i++
+    }
+    return true
+}
+
+private fun Char.isHexDigit(): Boolean = this in '0'..'9' || this in 'a'..'f' || this in 'A'..'F'
+
+private fun isHostChar(c: Char): Boolean =
+    c in 'a'..'z' || c in 'A'..'Z' || c in '0'..'9' || c in "-._~" || c in "!$&'()*+,;=" || c in ":[]<>\""
 
 /** Decodes `%XX` escapes, or null when one is malformed (as a URL parser errors). */
 private fun percentDecode(s: String): String? {
@@ -520,6 +565,9 @@ private fun percentDecode(s: String): String? {
             continue
         }
         if (i + 2 >= s.length) return null
+        // toIntOrNull(16) accepts a leading sign, so "%-1" would decode where a
+        // URL parser errors. An escape is exactly two hex digits.
+        if (!s[i + 1].isHexDigit() || !s[i + 2].isHexDigit()) return null
         val hex = s.substring(i + 1, i + 3).toIntOrNull(16) ?: return null
         out.append(hex.toChar())
         i += 3

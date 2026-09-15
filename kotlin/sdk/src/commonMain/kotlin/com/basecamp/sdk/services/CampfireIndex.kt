@@ -106,11 +106,22 @@ internal class TtlCache<K, V>(
         /**
          * Records that the failure is attributable to the loading caller's own
          * cancellation: its job was no longer active when the load ended AND the
-         * failure is a cancellation. Both halves are needed. Ktor's
+         * failure is a cancellation.
+         *
+         * Both halves are needed, and the second one is why: Ktor's
          * `HttpRequestTimeoutException` IS a `CancellationException` and arrives
-         * with the owner's job still active — that is the load's own failure, to
-         * be shared with every waiter, not the owner's to be retried. Getting
-         * this wrong turns one timed-out request into one request per waiter.
+         * with the owner's job still active. Classifying on the type alone would
+         * make that the owner's cancellation and turn one timed-out request into
+         * one request per waiter.
+         *
+         * It is a PROXY for Go's `callerDone`, not a translation of it. Go asks
+         * whether the error is the context's own (`errors.Is(err, ctxErr)`);
+         * this asks whether the job is still active, which answers the same
+         * question everywhere except one race — a transport timeout landing in
+         * the same instant as an unrelated cancellation of the owner reads as
+         * owner-attributed here and as shared in Go. The cost is bounded to one
+         * extra load by the `reacquired` latch, and Go's own comment concedes an
+         * overlap it cannot separate either.
          */
         var ownerCancelled: Boolean = false
     }
@@ -162,22 +173,41 @@ internal class TtlCache<K, V>(
                 val value = try {
                     waited.done.await()
                 } catch (e: CancellationException) {
+                    // This caller's OWN cancellation is its own to throw, and it
+                    // takes precedence over anything the load did.
+                    currentCoroutineContext().ensureActive()
                     // The load ran under the loading caller's coroutine. If that
                     // caller was cancelled, the failure is its, not this one's: a
                     // waiter whose own job is live goes round again and loads for
                     // itself (the key is free, so it becomes the loader and any
                     // other waiters queue behind it — one load, not a stampede).
-                    // Once only: a second owner-attributed cancellation is
-                    // rethrown rather than chased, so a run of cancelled owners
-                    // cannot become a queue of sequential loads behind one
-                    // waiter. Any other failure — a transport timeout included,
-                    // which Ktor spells as a CancellationException — is the
-                    // load's own and is shared, so N waiters never re-run one
-                    // failed load N times.
-                    if (waited.ownerCancelled && currentCoroutineContext().isActive && !reacquired) {
+                    // Once only, so a run of cancelled owners cannot become a
+                    // queue of sequential loads behind one waiter.
+                    if (waited.ownerCancelled && !reacquired) {
                         reacquired = true
                         continue
                     }
+                    if (waited.ownerCancelled) {
+                        // Past the one retry, and the failure belongs to a job
+                        // that is not this one. Relaying a foreign
+                        // CancellationException would end THIS live coroutine as
+                        // "cancelled" and do it silently: JobSupport.childCancelled
+                        // short-circuits on a CancellationException, so no
+                        // CoroutineExceptionHandler ever runs and a `launch { }`
+                        // caller loses the failure entirely. Go hands its waiter an
+                        // ordinary error value; this is the nearest thing Kotlin
+                        // has to that.
+                        throw BasecampException.Api(
+                            "the campfire discovery read this call was waiting on was cancelled by the caller that started it",
+                            httpStatus = null,
+                            hint = "retry; another caller's cancellation is not this one's failure",
+                            cause = e,
+                        )
+                    }
+                    // Anything else is the load's OWN failure and is shared —
+                    // a transport timeout included, which Ktor spells as a
+                    // CancellationException. The owner sees that same shape
+                    // natively, so a waiter seeing it too is the honest answer.
                     throw e
                 }
                 // The load this call waited on is this call's load: hand its value
@@ -188,27 +218,30 @@ internal class TtlCache<K, V>(
             }
 
             val load0 = requireNotNull(owned)
-            var settled = false
+            // Every exit from here releases the key. `publishSuccess` is INSIDE
+            // the try, so a failure in publication itself lands in the catch and
+            // republishes as a failure rather than leaking the slot; and the
+            // catch is on Throwable, so an Error and a cancellation are covered
+            // too. That totality is what Go gets from its deferred publish, and
+            // it is load-bearing rather than tidy: waiters wait with no timeout,
+            // so a slot never released parks every later caller for that key for
+            // the life of the client — and the listing's key is the bare account
+            // id, which makes that an account rather than a bucket.
+            //
+            // A `finally` would add nothing reachable on top of that. The only
+            // ways past a Throwable catch are a throw from inside the catch
+            // itself, and a coroutine that is never resumed at all — and a
+            // coroutine that is never resumed does not run its `finally` either,
+            // so the guard could not help where it would be needed. Go's
+            // goroutine has the identical hole.
             try {
                 val value = load()
                 publishSuccess(key, load0, value)
-                settled = true
                 return TtlHit(value, load0.fetched, cached = false)
             } catch (t: Throwable) {
                 load0.ownerCancelled = t is CancellationException && !currentCoroutineContext().isActive
                 publishFailure(key, load0, t)
-                settled = true
                 throw t
-            } finally {
-                // Go releases the key from a deferred recover, so a loader that
-                // leaves by SOME OTHER path still frees the slot and wakes its
-                // waiters. The catch above covers every throw, and this covers
-                // what a catch cannot. It matters more than it looks: waiters
-                // wait with no timeout, so one slot never released parks every
-                // later caller for that key for the life of the client — and the
-                // listing's key is the bare account id, which makes that an
-                // account rather than a bucket.
-                if (!settled) releaseOrphanedSlot(key, load0)
             }
         }
     }
@@ -243,16 +276,6 @@ internal class TtlCache<K, V>(
             entries[key] = Entry(value, load.fetched, seq)
         }
         load.done.complete(value)
-    }
-
-    /**
-     * The last-resort release: the key is freed and its waiters are woken with a
-     * failure that says what happened, so a slot can never outlive the coroutine
-     * that took it.
-     */
-    private suspend fun releaseOrphanedSlot(key: K, load: Load<V>) = withContext(NonCancellable) {
-        mutex.withLock { inflight.remove(key) }
-        load.done.completeExceptionally(IllegalStateException("basecamp: cache loader left without publishing"))
     }
 
     private suspend fun publishFailure(key: K, load: Load<V>, cause: Throwable) = withContext(NonCancellable) {

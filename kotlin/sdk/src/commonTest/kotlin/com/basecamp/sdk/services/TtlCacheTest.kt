@@ -1,5 +1,6 @@
 package com.basecamp.sdk.services
 
+import com.basecamp.sdk.BasecampException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Job
@@ -185,15 +186,58 @@ class TtlCacheTest {
     }
 
     @Test
-    fun aLoaderThatDiesAbnormallyStillReleasesTheKey() = runTest {
-        // Not an exception the loader chose: an Error, the shape a `catch
-        // (Exception)` would step over. Waiters wait with no timeout, so a key
-        // left in flight is a permanent hang for every later caller — and the
-        // listing's key is a whole account.
+    fun anErrorNotJustAnExceptionStillReleasesTheKey() = runTest {
+        // The release path is a `catch (Throwable)`, and this pins the breadth of
+        // it: an Error is the shape a `catch (Exception)` would step over. It
+        // matters because waiters wait with no timeout, so a key left in flight
+        // is a permanent hang for every later caller — and the listing's key is a
+        // whole account.
         val cache = cache(Clock())
-        assertFailsWith<AssertionError>("the abnormal exit reaches the caller") {
+        assertFailsWith<AssertionError>("the failure reaches the caller") {
             cache.get("k", refresh = false) { throw AssertionError("loader died") }
         }
         assertEquals(5, cache.get("k", refresh = false) { 5 }.value, "the key was released, not poisoned")
+    }
+
+    @Test
+    fun aWaiterPastItsOneRetryIsNotEndedByAnotherJobsCancellation() = runTest {
+        // Reaching the latched arm takes two cancelled owners in a row. First A
+        // owns and is cancelled, which sends both waiters round once; the first
+        // of them (W) becomes the new owner, so the second (B) is now latched
+        // behind W. Cancelling W then lands B on the branch under test.
+        //
+        // What that branch must NOT do is relay W's CancellationException. It
+        // belongs to W's job, not B's, and Kotlin reads a CancellationException
+        // structurally: JobSupport.childCancelled short-circuits on one, so no
+        // CoroutineExceptionHandler runs and a `launch { }` caller would see its
+        // coroutine end as "cancelled" with the failure lost. Go hands its waiter
+        // an ordinary error value.
+        val cache = cache(Clock())
+        val aLoading = CompletableDeferred<Unit>()
+        val wLoading = CompletableDeferred<Unit>()
+        var loads = 0
+
+        val aScope = CoroutineScope(coroutineContext + Job())
+        aScope.launch {
+            cache.get("k", refresh = false) { loads++; aLoading.complete(Unit); CompletableDeferred<Unit>().await(); 1 }
+        }
+        aLoading.await()
+
+        val wScope = CoroutineScope(coroutineContext + Job())
+        wScope.launch {
+            cache.get("k", refresh = false) { loads++; wLoading.complete(Unit); CompletableDeferred<Unit>().await(); 2 }
+        }
+        yield()
+        val b = async { runCatching { cache.get("k", refresh = false) { loads++; 3 } } }
+        yield()
+
+        aScope.cancel()
+        wLoading.await()
+        wScope.cancel()
+
+        val failure = b.await().exceptionOrNull()
+        assertTrue(failure !is CancellationException, "got ${failure?.let { it::class.simpleName }}")
+        assertTrue(failure is BasecampException.Api, "got ${failure?.let { it::class.simpleName }}")
+        assertEquals(2, loads, "B never loaded for itself past its one retry")
     }
 }

@@ -33,6 +33,15 @@ class CommentsService(private val account: AccountClient) :
      * an id that is not a person in this account, a 403 — fails the expansion;
      * nothing is posted on a partial mention list.
      *
+     * That read's own exception propagates unwrapped, which is a deliberate
+     * divergence from the Go original: Go annotates it with the person id
+     * (`resolving mention for person N`) and keeps the underlying error
+     * reachable through `errors.As`, a pairing Kotlin has no equivalent for —
+     * wrapping here would replace `BasecampException.NotFound` with something a
+     * caller can no longer match on. The type is kept and the id is lost; with
+     * several ids in flight, a caller wanting to know WHICH read failed has to
+     * expand them one at a time.
+     *
      * The rendered mentions round-trip:
      * [com.basecamp.sdk.mentionedPersonIds] on the returned content reports
      * every id passed here, and `RecordingsService.summarize` reports them on the
