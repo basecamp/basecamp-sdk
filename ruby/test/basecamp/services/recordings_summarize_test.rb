@@ -366,17 +366,94 @@ class RecordingsSummarizeTest < Minitest::Test
     assert_equal [ 500 ], error.stale_campfire_ids
   end
 
-  def test_more_candidates_than_the_budget_is_incomplete_not_unresolved
-    # Nothing left unsearched is ever reported absent.
+  # The three answers a spent candidate budget can produce. They are three
+  # different verdicts, not one: "incomplete" tells a consumer to look again,
+  # "unresolved" is settled, and telling them apart is the whole point of the
+  # bound.
+  def test_a_budget_spent_before_the_listing_is_consulted_is_incomplete
+    # Candidates may exist in the listing, unsearched, and nothing unsearched is
+    # ever reported absent.
     over_budget = (1..(Basecamp::Services::RecordingsExtensions::MAX_CAMPFIRE_CANDIDATES + 5)).to_a
     stub_dock(over_budget)
     over_budget.each { |id| stub_line(id, status: 404, body: { "error" => "Record not found" }) }
+    stub_get("/12345/chats.json", response_body: [])
 
     error = assert_raises(Basecamp::CampfireDiscoveryIncompleteError) do
       summarize(event_type: "chat.line.created")
     end
 
     assert_equal "campfire_discovery_incomplete", error.kind
+    assert_match(/spent before the account listing was consulted/, error.message)
+    # The listing was never fetched: the verdict is about it being unsearched.
+    assert_not_requested(:get, "#{BASE_URL}/12345/chats.json")
+  end
+
+  def test_a_spent_budget_does_not_pay_for_a_re_read_that_cannot_help
+    # A source already consulted cannot hand this call a candidate it may try,
+    # so its refresh is skipped. Proved by making both sources answer 503 on the
+    # second call: a re-read would surface that transient error in place of the
+    # settled verdict, which is exactly the failure this rule prevents.
+    clock = 0.0
+    @account = account_with_clock(-> { clock })
+    exactly = (1..Basecamp::Services::RecordingsExtensions::MAX_CAMPFIRE_CANDIDATES).to_a
+    stub_dock([])
+    stub_get("/12345/chats.json",
+      response_body: exactly.map { |id| { "id" => id, "bucket" => { "id" => BUCKET } } })
+    exactly.each { |id| stub_line(id, status: 404, body: { "error" => "Record not found" }) }
+
+    assert_raises(Basecamp::UnresolvedRecordingError) { summarize(event_type: "chat.line.created") }
+
+    clock += Basecamp::CampfireIndex::MIN_REFRESH + 1
+    WebMock.reset!
+    stub_request(:get, "#{BASE_URL}/12345/projects/#{BUCKET}")
+      .to_return(status: 503, body: '{"error":"down"}', headers: { "Content-Type" => "application/json" })
+    stub_request(:get, "#{BASE_URL}/12345/chats.json")
+      .to_return(status: 503, body: '{"error":"down"}', headers: { "Content-Type" => "application/json" })
+    exactly.each { |id| stub_line(id, status: 404, body: { "error" => "Record not found" }) }
+
+    error = assert_raises(Basecamp::UnresolvedRecordingError) { summarize(event_type: "chat.line.created") }
+
+    assert_not error.refreshed?, "a re-read was spent with no budget left to try its candidates"
+    assert_not_requested(:get, "#{BASE_URL}/12345/projects/#{BUCKET}")
+    assert_not_requested(:get, "#{BASE_URL}/12345/chats.json")
+  end
+
+  def test_a_budget_spent_with_both_sources_consulted_is_unresolved
+    # Everything was searched. "Look again" would be the wrong answer.
+    exactly = (1..Basecamp::Services::RecordingsExtensions::MAX_CAMPFIRE_CANDIDATES).to_a
+    stub_dock([])
+    stub_get("/12345/chats.json",
+      response_body: exactly.map { |id| { "id" => id, "bucket" => { "id" => BUCKET } } })
+    exactly.each { |id| stub_line(id, status: 404, body: { "error" => "Record not found" }) }
+
+    # First call consults the listing in pass 2 and caches it.
+    assert_raises(Basecamp::UnresolvedRecordingError) { summarize(event_type: "chat.line.created") }
+    WebMock.reset!
+    exactly.each { |id| stub_line(id, status: 404, body: { "error" => "Record not found" }) }
+
+    # Second call consults both sources from cache, spends the budget on them,
+    # and must conclude rather than report the search unfinished.
+    error = assert_raises(Basecamp::UnresolvedRecordingError) { summarize(event_type: "chat.line.created") }
+
+    assert_equal "recording_unresolved", error.kind
+    assert_equal Basecamp::Services::RecordingsExtensions::MAX_CAMPFIRE_CANDIDATES, error.campfire_ids.length
+    assert_not_requested(:get, "#{BASE_URL}/12345/projects/#{BUCKET}")
+    assert_not_requested(:get, "#{BASE_URL}/12345/chats.json")
+  end
+
+  def test_more_candidates_than_the_budget_leaves_one_untried_is_incomplete
+    # The other incomplete: a candidate was OBSERVED and could not be tried.
+    # Reached when both sources are consulted and the listing still holds more.
+    stub_dock([])
+    over_budget = (1..(Basecamp::Services::RecordingsExtensions::MAX_CAMPFIRE_CANDIDATES + 5)).to_a
+    stub_get("/12345/chats.json",
+      response_body: over_budget.map { |id| { "id" => id, "bucket" => { "id" => BUCKET } } })
+    over_budget.each { |id| stub_line(id, status: 404, body: { "error" => "Record not found" }) }
+
+    error = assert_raises(Basecamp::CampfireDiscoveryIncompleteError) do
+      summarize(event_type: "chat.line.created")
+    end
+
     assert_match(/more than #{Basecamp::Services::RecordingsExtensions::MAX_CAMPFIRE_CANDIDATES}/, error.message)
   end
 

@@ -424,14 +424,21 @@ module Basecamp
         # the pass-1 one; "refreshed" is whether a source the conclusion had
         # consulted is now newer than when it was consulted.
         #
-        # Not when the budget is already spent: a re-read could return no
-        # candidate this call may try, so it would cost a request that cannot
-        # help — and a failure on it would replace the deterministic "incomplete"
-        # verdict with a transient error a consumer retries forever.
+        # What a spent budget does here has three cases, and they are three
+        # different answers rather than one:
+        #
+        # 1. A source ALREADY CONSULTED is not re-read. It could hand this call
+        #    no candidate it may try, so the request cannot help — and a failure
+        #    on it would replace a settled verdict with a transient error a
+        #    consumer retries forever.
+        # 2. A source NEVER CONSULTED is incomplete, and says which one. There
+        #    may be candidates there, unsearched, and nothing unsearched is ever
+        #    reported absent.
+        # 3. A spent budget with BOTH sources consulted is unresolved, not
+        #    incomplete. Everything was searched; "look again" would be wrong.
         refreshed = false
-        raise budget_exhausted(bucket_id, line_id) if search.skipped?
 
-        if dock.cached?
+        if search.budget_left? && dock.cached?
           again = index.dock_campfires(account_id: account_id, bucket_id: bucket_id, refresh: true) do
             dock_campfire_ids(bucket_id)
           end
@@ -441,21 +448,29 @@ module Basecamp
           return found if found
         end
 
-        raise budget_exhausted(bucket_id, line_id) if search.skipped?
-
-        begin
-          again = index.listed_campfires(
-            account_id: account_id, bucket_id: bucket_id, refresh: list_cached
-          ) { listed_campfire_ids_by_bucket }
-        rescue CampfireIndex::ListingOverflow => e
-          raise CampfireDiscoveryIncompleteError.new(
-            bucket_id: bucket_id, recording_id: line_id, reason: e.message
-          )
+        if !search.budget_left?
+          unless list_cached
+            raise CampfireDiscoveryIncompleteError.new(
+              bucket_id: bucket_id, recording_id: line_id,
+              reason: "the candidate budget of #{MAX_CAMPFIRE_CANDIDATES} was spent before " \
+                      "the account listing was consulted"
+            )
+          end
+        else
+          begin
+            again = index.listed_campfires(
+              account_id: account_id, bucket_id: bucket_id, refresh: list_cached
+            ) { listed_campfire_ids_by_bucket }
+          rescue CampfireIndex::ListingOverflow => e
+            raise CampfireDiscoveryIncompleteError.new(
+              bucket_id: bucket_id, recording_id: line_id, reason: e.message
+            )
+          end
+          refreshed = true if list_cached && (again.fetched > listed.fetched || !again.cached?)
+          listed = again
+          found = search.try(listed.ids)
+          return found if found
         end
-        refreshed = true if list_cached && (again.fetched > listed.fetched || !again.cached?)
-        listed = again
-        found = search.try(listed.ids)
-        return found if found
 
         raise budget_exhausted(bucket_id, line_id) if search.skipped?
 
@@ -574,6 +589,11 @@ module Basecamp
         # @return [Boolean] whether a candidate was left untried for want of budget
         def skipped?
           @skipped
+        end
+
+        # @return [Boolean] whether this call may still try another candidate
+        def budget_left?
+          @budget.positive?
         end
       end
     end
