@@ -203,6 +203,14 @@ def _valid_bracketed_host(host: str) -> bool:
         return False
     inside = host[1:closing]
     address, zoned, zone = inside.partition("%25")
+    # A "%" in the ADDRESS half is refused outright. Go unescapes that half in
+    # host mode, where an escape may carry only a byte at or above 0x80, and
+    # then hands the result to an IPv6 parser that no such byte survives — so
+    # every spelling fails there. Python's `IPv6Address` accepts a `%scope`
+    # suffix of its own, which would otherwise let the whole family through:
+    # "[fe80::1%ab%25eth0]" parsed as address "fe80::1%ab" and named a person.
+    if "%" in address:
+        return False
     if zoned:
         # RFC 6874 spells a zone "%25<zone>". The zone may not be empty, and it
         # is held to its own character rule -- see _valid_host_characters.
@@ -410,7 +418,10 @@ def mention_markup(person: Mapping[str, Any]) -> str:
         raise UsageError(f"person {person_id} has a malformed attachable_sgid")
     # The tag mentions whoever the sgid names. Refuse to write one that names
     # someone else -- or a file -- under this person's id.
-    if person_id <= 0 or person_id_from_sgid(sgid) != person_id:
+    # No `person_id <= 0` guard: `person_id_from_sgid` never returns one, so a
+    # non-positive id simply fails this comparison — and Go reports the id it
+    # was given rather than a normalised one.
+    if person_id_from_sgid(sgid) != person_id:
         raise UsageError(
             f"person {person_id}'s attachable_sgid does not name that person",
             hint="read the person through people.get to obtain their own",

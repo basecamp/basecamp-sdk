@@ -71,6 +71,9 @@ def _checked_person_id(person_id: Any, seen: set[int]) -> int | None:
 #: exception instance that is re-raised on every call.
 _ORIGINAL_ARGS = "_basecamp_mention_original_args"
 
+#: The prefix a previous annotation used, so a re-raise replaces it.
+_NOTE_PREFIX = "resolving mention for person "
+
 
 def _annotate(error: BaseException, person_id: int) -> None:
     """Say which mention failed, without replacing the error that says why.
@@ -86,25 +89,39 @@ def _annotate(error: BaseException, person_id: int) -> None:
     regardless, so the prefix would be invisible AND the args left corrupt —
     and it does not rewrite a ``BaseException`` that is not an ``Exception``,
     because a cancellation's message is a channel callers use to identify their
-    own cancellation. Those get a note instead, which is the most Python can
-    say without damage.
+    own cancellation. Those get a note instead.
+
+    Nothing here may raise. It runs inside an ``except`` block whose job is to
+    re-raise the read's own failure, so an exception escaping from ANNOTATION
+    would destroy the 403 it was describing — and an exception type is free to
+    give ``args`` a read-only property, ``__notes__`` a non-list, or
+    ``__getattr__`` an answer for every name.
     """
     context = f"resolving mention for person {person_id}"
-    original = getattr(error, _ORIGINAL_ARGS, None)
-    if original is None:
-        original = error.args
-        with contextlib.suppress(AttributeError):
-            setattr(error, _ORIGINAL_ARGS, original)
-    rewritable = (
-        isinstance(error, Exception)
-        and type(error).__str__ is BaseException.__str__
-        and len(original) == 1
-        and isinstance(original[0], str)
-    )
-    if rewritable:
-        error.args = (f"{context}: {original[0]}",)
-    else:
-        error.add_note(context)
+    # Suppressed rather than handled, deliberately: there is nothing useful to
+    # do with a failure here, and the one thing that must not happen is losing
+    # the read's own error on the way out.
+    with contextlib.suppress(Exception):
+        original = getattr(error, _ORIGINAL_ARGS, None)
+        if not isinstance(original, tuple):
+            original = error.args
+            with contextlib.suppress(Exception):
+                setattr(error, _ORIGINAL_ARGS, original)
+        if (
+            isinstance(error, Exception)
+            and type(error).__str__ is BaseException.__str__
+            and len(original) == 1
+            and isinstance(original[0], str)
+        ):
+            error.args = (f"{context}: {original[0]}",)
+            return
+    # The note path is idempotent for the same reason the args path is: a
+    # re-raised instance must name the person that just failed, not every
+    # person it has ever failed on.
+    with contextlib.suppress(Exception):
+        notes = [note for note in getattr(error, "__notes__", []) if not note.startswith(_NOTE_PREFIX)]
+        notes.append(context)
+        error.__notes__ = notes
 
 
 class CommentsService(_GeneratedCommentsService):

@@ -711,6 +711,136 @@ class TestAsyncCache:
         assert [hit.value for hit in hits] == ["v"] * 4
         assert loads.count("waiter") == 1, "four waiters, one reload between them"
 
+    @staticmethod
+    async def _publish_cancelled_at_the_lock(cache, value, error):
+        """Run one publication and cancel it while it waits for the lock.
+
+        Driven directly rather than through two racing callers: ``get`` takes
+        the same lock, so holding it for the duration stops a waiter ever
+        attaching, and releasing it later turns the test into a race. This puts
+        the cancellation exactly where Go's uncancellable mutex means it can
+        never land.
+        """
+        pending = _AsyncLoad()
+        cache._inflight["k"] = pending
+        held = asyncio.Lock()
+        await held.acquire()
+        cache._lock = held
+
+        publisher = asyncio.create_task(cache._publish("k", pending, value, error))
+        await asyncio.sleep(0)
+        publisher.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await publisher
+        return pending
+
+    async def test_a_cancellation_at_the_publish_lock_does_not_rewrite_the_outcome(self):
+        # Go takes its mutex uncancellably. Python's `async with self._lock`
+        # inside _publish is a delivery point, so a cancellation there must cost
+        # the shared cache its entry and NOTHING else — without the `recorded`
+        # guard a waiter is told a load that RETURNED A VALUE was abandoned.
+        # Reverting that guard leaves the rest of the suite green, which is why
+        # this test exists.
+        cache = _async_cache(Clock())
+
+        pending = await self._publish_cancelled_at_the_lock(cache, "THE VALUE", None)
+
+        assert pending.done.is_set(), "waiters must be released whatever happened"
+        assert pending.error is None, "a load that returned a value is not 'abandoned'"
+        assert pending.value == "THE VALUE"
+        assert "k" not in cache._inflight, "the slot is released on every path"
+
+    async def test_a_failure_at_the_publish_lock_keeps_its_class(self):
+        # The same hole in its other direction: a 403 must not reach a waiter as
+        # a retryable abort, or a caller's retry loop re-hammers a permission
+        # failure.
+        cache = _async_cache(Clock())
+        denied = ForbiddenError("Denied", http_status=403)
+
+        pending = await self._publish_cancelled_at_the_lock(cache, None, denied)
+
+        assert pending.done.is_set()
+        assert pending.error is denied
+        assert pending.error.http_status == 403
+        assert pending.error.retryable is False
+
+    async def test_a_waiter_with_a_cancellation_on_the_books_does_not_load(self):
+        # The `not _cancellation_pending()` clause — the exact one round two
+        # removed and round three restored. Go's condition is
+        # `callerDone && ctx.Err() == nil && !reacquired`; without the third
+        # conjunct a task on its way out issues a live request.
+        #
+        # The slot must be RELEASED before the event is set, exactly as
+        # _publish releases it: with the key still in flight a retry finds
+        # itself a waiter again and the mutation hides.
+        cache = _async_cache(Clock())
+        loads = []
+
+        class _Cancelling:
+            def cancelling(self) -> int:
+                return 1
+
+        async def load():
+            loads.append(1)
+            return "v"
+
+        pending = _AsyncLoad()
+        cache._inflight["k"] = pending
+
+        real_current_task = _campfire_index.asyncio.current_task
+        _campfire_index.asyncio.current_task = lambda: _Cancelling()
+        try:
+            waiter = asyncio.create_task(cache.get("k", refresh=False, load=load))
+            await asyncio.sleep(0)
+            pending.error = asyncio.CancelledError()
+            pending.owner_cancelled = True
+            del cache._inflight["k"]
+            pending.done.set()
+            with pytest.raises(CampfireIndexLoadAbortedError):
+                await asyncio.wait_for(waiter, timeout=5)
+        finally:
+            _campfire_index.asyncio.current_task = real_current_task
+
+        assert loads == [], "a task with a cancellation on the books must not issue a request"
+
+    async def test_a_mixed_exception_group_keeps_its_real_failure(self):
+        # The subgroup branch: a group carrying a 403 alongside the owner's exit
+        # must hand the waiter the 403, not substitute the whole thing away.
+        clock = Clock()
+        cache = _async_cache(clock)
+        gate = asyncio.Event()
+
+        async def load():
+            await gate.wait()
+            raise BaseExceptionGroup("mixed", [ForbiddenError("Denied", http_status=403), OwnerExit()])
+
+        tasks = [asyncio.create_task(cache.get("k", refresh=False, load=load)) for _ in range(2)]
+        await asyncio.sleep(0)
+        gate.set()
+        outcomes = []
+        for task in tasks:
+            try:
+                await task
+            except BaseException as error:  # noqa: BLE001 - the point is what reaches a waiter
+                outcomes.append(error)
+
+        waiter_errors = [e for e in outcomes if not isinstance(e, BaseExceptionGroup)] + [
+            e for e in outcomes if isinstance(e, ExceptionGroup)
+        ]
+        found = [e for e in outcomes if isinstance(e, ExceptionGroup) and e.subgroup(ForbiddenError)]
+        assert found, f"the waiter must keep the 403; got {[type(e).__name__ for e in outcomes]}"
+        del waiter_errors
+
+    async def test_a_group_of_only_cancellations_is_attributed_as_one(self):
+        # `_contains_cancelled` must look INSIDE a group, as Go's errors.Is
+        # looks inside Unwrap() []error — a bare isinstance does not.
+        from basecamp.services._campfire_index import _contains_cancelled
+
+        assert _contains_cancelled(BaseExceptionGroup("g", [asyncio.CancelledError()])) is True
+        assert _contains_cancelled(BaseExceptionGroup("g", [OwnerExit()])) is False
+        assert _contains_cancelled(asyncio.CancelledError()) is True
+        assert _contains_cancelled(ForbiddenError("Denied")) is False
+
     async def test_a_waiter_is_never_handed_a_bare_base_exception(self):
         # The protection is keyed on the CLASS, not on who was cancelled:
         # attribution decides whether a waiter RELOADS and is allowed to be

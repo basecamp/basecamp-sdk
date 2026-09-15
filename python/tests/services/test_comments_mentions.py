@@ -189,6 +189,37 @@ class TestExpandMentions:
         assert raised.value.http_status == 404
 
     @respx.mock
+    def test_annotation_never_masks_the_read_it_describes(self):
+        # _annotate runs inside an `except` whose job is to re-raise the read's
+        # own failure, so an exception escaping from ANNOTATION would destroy
+        # the error it was describing. An exception type is free to give `args`
+        # a read-only property or `__notes__` a non-list.
+        class Permissive(Exception):
+            def __getattr__(self, name):
+                return "anything"
+
+        respx.get(f"{BASE}/people/{VICTOR_ID}").mock(side_effect=Permissive("boom"))
+
+        with pytest.raises(Permissive):
+            _comments().expand_mentions(content="<div>x</div>", person_ids=[VICTOR_ID])
+
+    @respx.mock
+    def test_the_note_path_also_names_only_the_latest_person(self):
+        # The args path was made idempotent; the note path had the same defect
+        # left standing, so a reused instance named every person it ever failed
+        # on. `OSError` takes the note path because its __str__ is not its args.
+        failure = OSError(2, "No such file")
+        respx.get(url__regex=rf"{BASE}/people/\d+").mock(side_effect=failure)
+
+        with pytest.raises(OSError):
+            _comments().expand_mentions(content="<div>x</div>", person_ids=[VICTOR_ID])
+        with pytest.raises(OSError) as raised:
+            _comments().expand_mentions(content="<div>x</div>", person_ids=[ANNIE_ID])
+
+        notes = [n for n in raised.value.__notes__ if n.startswith("resolving mention")]
+        assert notes == [f"resolving mention for person {ANNIE_ID}"]
+
+    @respx.mock
     def test_refuses_an_id_that_is_not_an_id(self):
         route = respx.route(host="3.basecampapi.com")
         for bad in (0, -1, "1049715915", None, True):

@@ -222,6 +222,15 @@ class TestPersonIDFromSGID:
             ("[fe80::1%25a|b]", False),
             ("[fe80::1%25a]b]", True),  # the CLOSING bracket is the last one
             ("[fe80::1%25en[0]", False),  # a second "[" never is
+            # A bare "%" in the ADDRESS half. `ipaddress.IPv6Address` accepts a
+            # "%scope" suffix of its own, so without an explicit refusal the
+            # whole family slips past — Go unescapes that half in host mode,
+            # where an escape may carry only a byte its IPv6 parser then
+            # rejects, so every spelling fails there.
+            ("[fe80::1%ab%25eth0]", False),
+            ("[fe80::1%eth%25x]", False),
+            ("[::1%12%25x]", False),
+            ("[::1%lo%25!]", False),
             ("[::1[]", False),
             ("[::1]]", False),
         ],
@@ -624,6 +633,39 @@ class TestWithMentions:
     def test_validates_even_a_person_the_content_already_mentions(self):
         with pytest.raises(UsageError, match="does not name that person"):
             with_mentions(f"<div>{mention(VICTOR_SGID)}</div>", [person(42, VICTOR_SGID)])
+
+    @pytest.mark.parametrize(
+        ("authority", "writable"),
+        [
+            # The gid parser is entered from the WRITE side too:
+            # `mention_markup` uses it to check the sgid names the person, so a
+            # parser stricter than Go's does not merely miss a mention — it
+            # REFUSES to write one the caller asked for, and `expand_mentions`
+            # then fails the whole comment. Every corpus on this port entered
+            # through the read path until this was measured.
+            ("bc3", True),
+            ("café", True),
+            ("user@bc3", True),
+            ("[::1]", True),
+            ("[fe80::1%25eth0]", True),  # a zone with LETTERS must survive
+            ("[fe80::1%25%20en0]", True),
+            ("[fe80::1%25en 0]", False),
+            ("[fe80::1%ab%25eth0]", False),
+            ("[not-an-ip]", False),
+            ("b%41", False),
+            ("bc 3", False),
+            ("@", False),
+        ],
+    )
+    def test_the_write_path_accepts_exactly_what_the_read_path_does(self, authority, writable):
+        person_id = 77
+        sgid = json_sgid(f"gid://{authority}/Person/{person_id}")
+        someone = person(person_id, sgid)
+        if writable:
+            assert with_mentions("<div>x</div>", [someone]) == f"<div>{mention(sgid)} x</div>"
+        else:
+            with pytest.raises(UsageError):
+                with_mentions("<div>x</div>", [someone])
 
     def test_round_trips_through_the_reader(self):
         out = with_mentions("<div>x</div>", [person(VICTOR_ID, VICTOR_SGID)])
