@@ -416,7 +416,7 @@ extension Mentions {
             else { return nil }
             envelope = map
         } else if bytes[0] == asciiOpenBrace {
-            guard let decoded = try? JSONSerialization.jsonObject(with: raw),
+            guard let decoded = try? JSONSerialization.jsonObject(with: jsonEnvelopeBytes(bytes)),
                 let map = decoded as? [String: Any]
             else { return nil }
             envelope = map
@@ -470,6 +470,16 @@ extension Mentions {
     ///      a host, `validUserinfo`'s for userinfo, and — inside brackets —
     ///      `netip.ParseAddr`, so `[notanip]` and even `[1.2.3.4]` are hosts Go
     ///      refuses. Ninety-four shapes of a byte sweep went the accepting way.
+    ///   5. Fixing 4 introduced a FOURTH alphabet and left it unwritten: an
+    ///      escape inside a zone follows the mirror of the host's rule, not no
+    ///      rule, so `[::1%25%C3%A9]` names nobody in Go and named person 1
+    ///      here. 171 of the 256 byte values went that way — and the sweep
+    ///      added in 4 could not see it, because none of its shapes put a second
+    ///      escape inside a zone.
+    ///   6. The control-character check was run on the whole gid where Go runs
+    ///      it on the gid with the fragment already cut off, so every control
+    ///      after a `#` lost a mention Go reports. Checking more than Go reads
+    ///      as the safe direction and is not one.
     ///
     /// A comment whose scope is narrower than its claim reads as the claim, and
     /// a sweep whose alphabet is narrower than the parser's input proves less
@@ -512,16 +522,26 @@ extension Mentions {
         // fragment was found at all and a gid Go reads as person 1 named nobody
         // here. Delimiters are ASCII bytes; they are found as bytes.
         let bytes = Array(gid.utf8)
-        // No ASCII control character anywhere in it. Go hands the gid to
-        // `net/url`, which refuses one outright; a parser that strips tab, CR
-        // and LF before parsing — the WHATWG rule Foundation follows, and the
+        // No ASCII control character — but only BEFORE the fragment, because
+        // that is where Go's is. `url.Parse` cuts the fragment off the raw URL
+        // first and runs `stringContainsCTLByte` on what is left, so
+        // `gid://bc3/Person/1#\u{01}` is person 1 there; the query is NOT cut
+        // first, so `gid://bc3/Person/1?\u{01}` is nobody. Checking the whole
+        // string reads as the safer choice and is not one: it loses 34 real
+        // mentions per position and guards nothing, since the fragment is
+        // discarded either way.
+        //
+        // The check itself matters where it does apply. Go hands the gid to
+        // `net/url`, which refuses a control outright; a parser that strips tab,
+        // CR and LF before parsing — the WHATWG rule Foundation follows, and the
         // one that bit the Python port — reads `gid://bc3/Person/104\n9715915`
         // as a clean person id where Go reads nothing. The digits-only check
         // below already catches that exact shape, but the host and scheme are
         // not digits, and the write side's only authenticity-adjacent gate is
         // "does this sgid name this person": a parser more forgiving than Go's
         // renders a mention tag Go refuses to write.
-        guard !bytes.contains(where: { $0 < 0x20 || $0 == 0x7F }) else { return nil }
+        let beforeFragment = bytes[..<(bytes.firstIndex(of: asciiHash) ?? bytes.endIndex)]
+        guard !beforeFragment.contains(where: { $0 < 0x20 || $0 == 0x7F }) else { return nil }
         // Go's `getScheme` admits only ASCII in a scheme, so an ASCII fold is
         // the whole of it — a non-ASCII spelling leaves Go with no scheme
         // rather than with a scheme that folds to `gid`.
@@ -559,6 +579,92 @@ extension Mentions {
         guard let id = Int(String(decoding: rawId, as: UTF8.self)), id > 0 else { return nil }
         return id
     }
+}
+
+/// The bytes to hand `JSONSerialization`, with the two substitutions Go's
+/// `encoding/json` makes and Foundation refuses to.
+///
+/// `json.Unmarshal` does not reject a string it cannot read as UTF-8 — it
+/// substitutes U+FFFD, for an invalid byte sequence and for a `\uXXXX` escape
+/// naming an unpaired surrogate alike. `JSONSerialization` refuses the whole
+/// DOCUMENT for either, so a single stray byte anywhere in the envelope — in a
+/// field this code never reads — loses an sgid Go decodes. That is the
+/// vanishing direction, and it says nothing about whether the envelope names a
+/// person.
+///
+/// The walk is over unicode scalars rather than `Character`s on purpose: a
+/// quote or a backslash followed by a combining mark is one `Character` and
+/// would hide the string boundary from a `Character`-level scan, which is the
+/// same trap the gid parser was in.
+private func jsonEnvelopeBytes(_ raw: [UInt8]) -> Data {
+    // Decoding as UTF-8 is what performs the first substitution: an invalid
+    // sequence becomes U+FFFD here exactly as it does in `unquote`.
+    let scalars = Array(String(decoding: raw, as: UTF8.self).unicodeScalars)
+    var out = String.UnicodeScalarView()
+    out.reserveCapacity(scalars.count)
+    var inString = false
+    var index = 0
+    while index < scalars.count {
+        let scalar = scalars[index]
+        guard inString else {
+            if scalar == "\"" { inString = true }
+            out.append(scalar)
+            index += 1
+            continue
+        }
+        if scalar == "\"" {
+            inString = false
+            out.append(scalar)
+            index += 1
+            continue
+        }
+        guard scalar == "\\", index + 1 < scalars.count else {
+            out.append(scalar)
+            index += 1
+            continue
+        }
+        // Any other escape is two scalars, `\\` included — consuming both is
+        // what stops `\\u0041`, a literal backslash then `u0041`, being read as
+        // an escape.
+        guard scalars[index + 1] == "u", index + 5 < scalars.count,
+            let value = hexEscapeValue(scalars[(index + 2)...(index + 5)])
+        else {
+            out.append(scalar)
+            out.append(scalars[index + 1])
+            index += 2
+            continue
+        }
+        if value >= 0xD800, value <= 0xDBFF, index + 11 < scalars.count,
+            scalars[index + 6] == "\\", scalars[index + 7] == "u",
+            let low = hexEscapeValue(scalars[(index + 8)...(index + 11)]),
+            low >= 0xDC00, low <= 0xDFFF
+        {
+            out.append(contentsOf: scalars[index...(index + 11)])
+            index += 12
+            continue
+        }
+        if value >= 0xD800, value <= 0xDFFF {
+            out.append(contentsOf: "\\ufffd".unicodeScalars)
+            index += 6
+            continue
+        }
+        out.append(contentsOf: scalars[index...(index + 5)])
+        index += 6
+    }
+    return Data(String(out).utf8)
+}
+
+/// The value of a four-digit `\uXXXX` escape, or nil when it is not four hex
+/// digits — which both parsers refuse, so it is passed through unchanged.
+private func hexEscapeValue(_ digits: ArraySlice<Unicode.Scalar>) -> Int? {
+    var value = 0
+    for scalar in digits {
+        guard scalar.isASCII, let digit = asciiDigitValue(UInt8(scalar.value), hex: true) else {
+            return nil
+        }
+        value = value * 16 + Int(digit)
+    }
+    return value
 }
 
 // MARK: - Byte helpers
@@ -973,10 +1079,23 @@ private func isValidUserinfo(_ userinfo: ArraySlice<UInt8>) -> Bool {
 
 /// `unescape(_, encodeHost)` and `unescape(_, encodeZone)`, which both refuse a
 /// malformed escape and any ASCII byte the host grammar requires to be escaped,
-/// and return the decoded bytes. `encodeHost` additionally refuses an escape
-/// that names an ASCII byte — `a%41b` is not a host — with `%25` excepted, which
-/// is how RFC 6874 introduces a zone. Non-ASCII bytes pass through either way,
+/// and return the decoded bytes. Non-ASCII bytes pass through LITERALLY in both,
 /// which is why `b%C3%A9c3` and a literal `béc3` are both hosts Go accepts.
+///
+/// What they do with an ESCAPE is where they part, and it is not that one is
+/// stricter than the other — each refuses what the other allows:
+///
+///   * `encodeHost` refuses an escape that names an ASCII byte, because in a
+///     host an escape exists only to spell a byte you could not write. `a%41b`
+///     is not a host. `%25` is excepted, which is how RFC 6874 opens a zone.
+///   * `encodeZone` refuses an escape that names a byte you COULD have written
+///     — the mirror rule, "you can escape in a zone but not to introduce a byte
+///     you could not just write directly" — so `%25`, `%20` (Windows puts
+///     spaces in zone names) and an escape naming a literal host byte are the
+///     whole of what it allows. `[::1%25%C3%A9]` names nobody in Go.
+///
+/// Reading that second rule as simply absent accepts 171 of the 256 byte values
+/// behind a zone, every one of them a gid Go refuses.
 private func unescapedHostBytes(_ text: ArraySlice<UInt8>, zone: Bool) -> [UInt8]? {
     var decoded: [UInt8] = []
     decoded.reserveCapacity(text.count)
@@ -990,7 +1109,11 @@ private func unescapedHostBytes(_ text: ArraySlice<UInt8>, zone: Bool) -> [UInt8
             continue
         }
         guard let byte = percentEscapedByte(text, at: index) else { return nil }
-        guard zone || byte >= 0x80 || byte == 0x25 else { return nil }
+        if zone {
+            guard byte == 0x25 || byte == 0x20 || isHostByte(UInt8(byte)) else { return nil }
+        } else {
+            guard byte >= 0x80 || byte == 0x25 else { return nil }
+        }
         decoded.append(UInt8(byte))
         index += 3
     }

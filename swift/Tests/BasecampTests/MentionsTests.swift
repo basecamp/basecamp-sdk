@@ -362,7 +362,10 @@ final class MentionsTests: XCTestCase {
     /// The `%25en0` rows are the ones worth reading twice. A zone begins at the
     /// FIRST `%`, not the last, and everything after it is zone however many
     /// more percents or colons it carries — which is why `0::%25en0::g` is a
-    /// host Go reads. Splitting at the last `%` refuses 108 of these.
+    /// host Go reads. Only four of the sixty carry a second `%`, so this sweep
+    /// is not where that rule was caught; splitting at the last `%` refused 108
+    /// shapes of a separate 45,816-gid fuzz. Four rows is enough to hold it once
+    /// it is known, which is what a regression test is for.
     func testABracketedHostIsAnIPv6AddressOrNoHostAtAll() {
         let groups = ["", "0", "1", "ffff", "fffff", "g", "1.2.3.4", "01.2.3.4", "%25en0", "%en0"]
         var literals = Set<String>()
@@ -417,14 +420,17 @@ final class MentionsTests: XCTestCase {
     /// fine.
     ///
     /// Both alphabets are swept here rather than asserted: every printable ASCII
-    /// byte but `/`, placed once in each position, compared against the set Go
-    /// accepts. Reading `\\`, `^`, a backtick, `{`, `|` and `}` as host bytes is
-    /// six mentions Go does not report; the userinfo list is longer.
+    /// byte but `/` — 94 of them, space included, since printable ASCII is
+    /// 0x20–0x7E and an off-by-one there would silently drop the one byte most
+    /// likely to be mishandled — placed once in each position, compared against
+    /// the set Go accepts. Reading `\\`, `^`, a backtick, `{`, `|` and `}` as
+    /// host bytes is six mentions Go does not report; the userinfo list is
+    /// longer. A third alphabet, the zone's, is swept in its own test.
     func testTheHostAndUserinfoAlphabetsAreGos() {
-        let swept = (UInt8(ascii: "!")...UInt8(ascii: "~"))
+        let swept = (UInt8(ascii: " ")...UInt8(ascii: "~"))
             .map { Character(UnicodeScalar($0)) }
             .filter { $0 != "/" }
-        XCTAssertEqual(swept.count, 93)
+        XCTAssertEqual(swept.count, 94)
 
         let goAcceptsInHost = Set("!\"$%&'()*+,-.0123456789;<=>@ABCDEFGHIJKLMNOPQRSTUVWXYZ]_abcdefghijklmnopqrstuvwxyz~")
         let goAcceptsInUserinfo = Set("!$%&'()*+,-.0123456789:;=@ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz~")
@@ -439,6 +445,124 @@ final class MentionsTests: XCTestCase {
         // A non-ASCII byte is a host Go reads and a userinfo it refuses.
         XCTAssertEqual(Mentions.personId(fromGlobalId: "gid://b\u{00E9}c3/Person/1"), 1)
         XCTAssertNil(Mentions.personId(fromGlobalId: "gid://b\u{00E9}c3@bc3/Person/1"))
+    }
+
+    /// A zone identifier's escapes obey the MIRROR of the host's rule, and
+    /// reading the second rule as simply absent is permissive across most of the
+    /// byte space.
+    ///
+    /// In a host an escape exists only to spell a byte you could not write, so
+    /// `%41` is refused and `%C3` is fine. In a zone Go says the opposite — "you
+    /// can use escaping in the zone identifier but not to introduce bytes you
+    /// couldn't just write directly" — so `%C3` is refused and `%41` is fine,
+    /// with `%25` and `%20` (Windows puts spaces in zone names) excepted. The
+    /// two rules are not one rule, and they are not ordered by strictness.
+    ///
+    /// Both are swept here over all 256 byte values rather than asserted.
+    func testAZoneEscapeAndAHostEscapeAllowOppositeBytes() {
+        let everyByte = (0...255)
+
+        // A host escape: non-ASCII only, plus `%25`.
+        let goAcceptsInHostEscape = Set(everyByte.filter { $0 >= 0x80 || $0 == 0x25 })
+        XCTAssertEqual(goAcceptsInHostEscape.count, 129)
+        XCTAssertEqual(
+            Set(everyByte.filter {
+                Mentions.personId(fromGlobalId: String(format: "gid://b%%%02Xc3/Person/1", $0)) != nil
+            }),
+            goAcceptsInHostEscape)
+
+        // A zone escape: a literal host byte, plus space, plus `%25`. Measured
+        // through Go rather than derived from the sentence above.
+        let goAcceptsInZoneEscape = Set(
+            Array(" !\"$%&'()*+,-.0123456789:;<=>ABCDEFGHIJKLMNOPQRSTUVWXYZ[]_abcdefghijklmnopqrstuvwxyz~"
+                .unicodeScalars.map { Int($0.value) }))
+        XCTAssertEqual(goAcceptsInZoneEscape.count, 85)
+        XCTAssertEqual(
+            Set(everyByte.filter {
+                Mentions.personId(fromGlobalId: String(format: "gid://[::1%%25%%%02X]/Person/1", $0)) != nil
+            }),
+            goAcceptsInZoneEscape)
+
+        // With no zone rule at all every one of the 256 would be accepted, so
+        // the hole is 171 byte values wide — and the two rules overlap on
+        // exactly one byte, `%` itself.
+        XCTAssertEqual(256 - goAcceptsInZoneEscape.count, 171)
+        XCTAssertEqual(goAcceptsInHostEscape.intersection(goAcceptsInZoneEscape), [0x25])
+        XCTAssertNil(Mentions.personId(fromGlobalId: "gid://[::1%25%C3%A9]/Person/1"))
+        XCTAssertEqual(Mentions.personId(fromGlobalId: "gid://[::1%25%20]/Person/1"), 1)
+        XCTAssertEqual(Mentions.personId(fromGlobalId: "gid://[::1%25%41]/Person/1"), 1)
+    }
+
+    /// Go's control-character check runs on the URL with the fragment ALREADY
+    /// cut off, and only the fragment — `Parse` splits at the first `#` before
+    /// `parse` ever sees the string, while the query is split inside `parse`,
+    /// after the check. So a control in a fragment is a gid Go reads and a
+    /// control in a query is not.
+    ///
+    /// Checking the whole string instead reads as the safer choice and is not
+    /// one: it guards nothing, because the fragment is discarded either way, and
+    /// it loses every mention whose sgid carries a stray control after a `#`.
+    func testAControlIsRefusedWhereGoRefusesItAndNotInTheFragment() {
+        let controls = (0...0x20).map { $0 } + [0x7F]
+        let scalars = controls.map { Character(UnicodeScalar(UInt8($0))) }
+
+        // Accepted in a fragment, every one of them, at either position.
+        for c in scalars {
+            XCTAssertEqual(Mentions.personId(fromGlobalId: "gid://bc3/Person/1#\(c)"), 1, c.debugDescription)
+            XCTAssertEqual(Mentions.personId(fromGlobalId: "gid://bc3/Person/1#a\(c)b"), 1, c.debugDescription)
+        }
+        // Refused everywhere else — in the query, the host and the path tail —
+        // with space the one byte that is not a control.
+        for c in scalars where c != " " {
+            XCTAssertNil(Mentions.personId(fromGlobalId: "gid://bc3/Person/1?\(c)"), c.debugDescription)
+            XCTAssertNil(Mentions.personId(fromGlobalId: "gid://bc3\(c)/Person/1"), c.debugDescription)
+            XCTAssertNil(Mentions.personId(fromGlobalId: "gid://bc3/Person/1\(c)"), c.debugDescription)
+        }
+        XCTAssertEqual(Mentions.personId(fromGlobalId: "gid://bc3/Person/1? "), 1)
+    }
+
+    /// Go's `encoding/json` substitutes U+FFFD for text it cannot read as UTF-8;
+    /// `JSONSerialization` refuses the whole DOCUMENT. So one stray byte
+    /// anywhere in the envelope — in a field this code never looks at — loses an
+    /// sgid Go decodes.
+    ///
+    /// Two substitutions, because Go makes two: an invalid UTF-8 sequence, and a
+    /// `\uXXXX` escape naming an unpaired surrogate, which is all-ASCII on the
+    /// wire and so survives the first.
+    ///
+    /// Every expectation was produced by running the sgid through
+    /// `basecamp.PersonIDFromSGID`.
+    func testAnUnreadableByteInTheEnvelopeDoesNotLoseTheMention() {
+        func sgid(_ payload: [UInt8]) -> String {
+            var encoded = Data(payload).base64EncodedString()
+            while encoded.hasSuffix("=") { encoded.removeLast() }
+            return encoded
+        }
+        func envelope(_ extra: [UInt8]) -> [UInt8] {
+            Array(#"{"x":""#.utf8) + extra
+                + Array(#"","_rails":{"data":"gid://bc3/Person/7","pur":"attachable"}}"#.utf8)
+        }
+
+        // Invalid UTF-8 in a field nothing reads.
+        for stray: [UInt8] in [[0xFF], [0xC3], [0x80], [0xE2, 0x82], [0xED, 0xA0]] {
+            XCTAssertEqual(Mentions.personId(fromAttachableSgid: sgid(envelope(stray))), 7, "\(stray)")
+        }
+        // An unpaired surrogate escape, high and low.
+        for escape in ["\\ud800", "\\udc00", "\\udbff", "\\udfff", "\\ud800\\ud800", "\\udc00\\ud800"] {
+            XCTAssertEqual(
+                Mentions.personId(fromAttachableSgid: sgid(envelope(Array(escape.utf8)))), 7, escape)
+        }
+        // A PAIRED surrogate escape is a character, not a substitution, and must
+        // still decode; and `\\ud800` is a literal backslash then `ud800`, which
+        // is not an escape at all.
+        for escape in ["\\ud83d\\ude00", "\\\\ud800", "\\u0041", "ok"] {
+            XCTAssertEqual(
+                Mentions.personId(fromAttachableSgid: sgid(envelope(Array(escape.utf8)))), 7, escape)
+        }
+        // The substitution does not make a broken document readable.
+        for broken in ["{\"_rails\":", "{\"_rails\":{\"data\":\"gid://bc3/Person/7\"", "{\u{FF}}"] {
+            XCTAssertNil(Mentions.personId(fromAttachableSgid: sgid(Array(broken.utf8))), broken)
+        }
     }
 
     /// Go's `url.Parse` refuses an empty host behind userinfo and a bad percent
