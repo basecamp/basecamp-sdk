@@ -706,12 +706,16 @@ private let windows1252Replacements: [UInt32] = [
 /// The references whose expansion is a base64-alphabet character or whitespace —
 /// the only two kinds that can change what an sgid decodes to.
 ///
-/// Not assembled from memory: Go's table is 2,032 entries, and exactly twenty of
-/// them expand to something all-whitespace or containing a base64 character.
-/// Those twenty are here, each with the value `html.UnescapeString` gives it,
-/// plus the five XML ones the tag walk has to see through. `&hyphen;` and
-/// `&dash;` are absent because both name U+2010 rather than ASCII `-`, and
-/// `&ThickSpace;` is two scalars for the same measured reason.
+/// Not assembled from memory. Every name in Go's table was run through
+/// `html.UnescapeString` and kept if its expansion is all-whitespace or contains
+/// a base64 character: 2,231 names in, 24 rows out, and those 24 are here with
+/// the values that call gave them.
+///
+/// Through the FUNCTION, not by parsing the table — that distinction is
+/// load-bearing. Go keeps a second table for two-rune expansions, so a
+/// classification of the single-rune one misses `&fjlig;` ("fj", two alphabet
+/// characters) and `&bne;`. It is also how `&hyphen;` and `&dash;` are known to
+/// be absent: both name U+2010 rather than ASCII `-`.
 private let namedEntities: [String: String] = [
     // The five a serializer emits, which the tag walk has to see through.
     "amp": "&", "lt": "<", "gt": ">", "quot": "\"", "apos": "'",
@@ -719,6 +723,11 @@ private let namedEntities: [String: String] = [
     // Base64 punctuation. There is no named reference for ASCII `-`:
     // `&hyphen;` and `&dash;` are U+2010.
     "plus": "+", "sol": "/", "equals": "=", "lowbar": "_", "UnderBar": "_",
+    // Go keeps a SECOND table for two-rune expansions, and two of its entries
+    // land here. `&fjlig;` is the one that can change an answer on its own — two
+    // alphabet characters — and it is invisible to anyone who classifies the
+    // single-rune table alone.
+    "fjlig": "fj", "bne": "=\u{20E5}",
     // Whitespace, which the trim erases at either end of the value.
     "Tab": "\u{09}", "NewLine": "\u{0A}",
     "nbsp": "\u{A0}", "NonBreakingSpace": "\u{A0}",

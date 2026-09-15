@@ -475,6 +475,44 @@ final class MentionsTests: XCTestCase {
             "different bytes are different sgids, whatever Unicode says about them")
     }
 
+    /// The write-side dedupe turned against itself, which is the direction none
+    /// of the other entity findings pointed in.
+    ///
+    /// HTML5 drops a numeric reference naming a C0 control to the empty string;
+    /// Go emits the character. A decoder that followed HTML5 here would unescape
+    /// `sgid="<real sgid>&#1;"` to exactly the real sgid, the dedupe would match
+    /// what the people read returned, and the mention would be SKIPPED as
+    /// already present — an attacker suppressing a real mention through the very
+    /// rule that makes the dedupe sound. Go keeps the control, the strings
+    /// differ, and the mention is written.
+    func testAControlCharacterCannotSuppressAMention() throws {
+        let victor = Person(id: 42, name: "Victor", attachableSgid: railsJSONSgid)
+        let poisoned = "<div><bc-attachment sgid=\"\(railsJSONSgid)&#1;\"></bc-attachment> hi</div>"
+
+        XCTAssertEqual(
+            Mentions.attachmentSgids(in: poisoned), [railsJSONSgid + "\u{01}"],
+            "the control survives the unescape, as it does in Go")
+
+        let content = try Mentions.adding([victor], to: poisoned)
+        XCTAssertEqual(
+            Mentions.attachmentSgids(in: content).count, 2,
+            "the authoritative mention is written; the decorated tag is not it")
+        XCTAssertTrue(Mentions.attachmentSgids(in: content).contains(railsJSONSgid))
+    }
+
+    /// `&fjlig;` expands to two ALPHABET characters, and it lives in Go's second
+    /// table — the one for two-rune expansions. A classification of the
+    /// single-rune table alone misses it, and then an sgid it spells resolves in
+    /// Go and nowhere else.
+    func testTheTwoRuneEntitiesAreInTheTable() {
+        XCTAssertEqual(
+            Mentions.attachmentSgids(in: "<bc-attachment sgid=\"&fjlig;x\"></bc-attachment>"),
+            ["fjx"])
+        XCTAssertEqual(
+            Mentions.attachmentSgids(in: "<bc-attachment sgid=\"&bne;\"></bc-attachment>"),
+            ["=\u{20E5}"])
+    }
+
     /// The trust boundary, stated as a test: dedupe is on the sgid STRING, never
     /// on the person id an existing tag decodes to. A port that deduplicates by
     /// id lets a forged or stale tag suppress the real mention.
