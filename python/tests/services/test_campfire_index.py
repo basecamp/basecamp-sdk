@@ -467,6 +467,62 @@ class TestAsyncCache:
         assert len(loads) == 1, "one load, shared — not one re-run per waiter"
         assert all(isinstance(outcome, asyncio.CancelledError) for outcome in outcomes)
 
+    async def test_a_callers_deadline_is_the_callers_and_waiters_reload(self):
+        # `asyncio.timeout` around get() is Go's caller-context deadline: the
+        # owner's context is done and the error is that context's own, so
+        # `callerDone` holds and a live waiter loads for itself.
+        clock = Clock()
+        cache = _async_cache(clock)
+        loads = []
+        started = asyncio.Event()
+
+        async def never_settles():
+            loads.append("owner")
+            started.set()
+            await asyncio.sleep(3600)
+
+        async def quick():
+            loads.append("waiter")
+            return "v"
+
+        async def owner_with_deadline():
+            async with asyncio.timeout(0.05):
+                await cache.get("k", refresh=False, load=never_settles)
+
+        owner = asyncio.create_task(owner_with_deadline())
+        await started.wait()
+        waiter = asyncio.create_task(cache.get("k", refresh=False, load=quick))
+        await asyncio.sleep(0)
+
+        with pytest.raises(TimeoutError):
+            await owner
+        assert (await waiter).value == "v"
+        assert loads == ["owner", "waiter"]
+
+    async def test_a_deadline_the_load_owns_is_the_loads_own_and_is_shared(self):
+        # The mirror image, and the trap: a timeout INSIDE the load is the
+        # load's own failure in Go's model and must be shared, not re-run once
+        # per waiter. It survives as a TimeoutError rather than a
+        # CancelledError, which is why attribution must not read the type.
+        clock = Clock()
+        cache = _async_cache(clock)
+        loads = []
+        gate = asyncio.Event()
+
+        async def self_timing_out():
+            loads.append(1)
+            await gate.wait()
+            async with asyncio.timeout(0.001):
+                await asyncio.sleep(3600)
+
+        tasks = [asyncio.create_task(cache.get("k", refresh=False, load=self_timing_out)) for _ in range(3)]
+        await asyncio.sleep(0)
+        gate.set()
+        outcomes = await asyncio.gather(*tasks, return_exceptions=True)
+
+        assert len(loads) == 1, "one load, shared — not one re-run per waiter"
+        assert all(isinstance(outcome, TimeoutError) for outcome in outcomes)
+
     async def test_a_waiter_with_a_pending_cancellation_does_not_reload(self):
         # asyncio.Event.wait() returns WITHOUT suspending when the event is
         # already set, so a waiter cancelled while queued has no delivery point
