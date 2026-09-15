@@ -175,15 +175,24 @@ module Basecamp
       )
     /x
 
-    # The whitespace an sgid is trimmed of before it is read, matching the
-    # reference implementation's TrimSpace: the Unicode space set, which
-    # includes NBSP and NEL and excludes NUL. Ruby's String#strip is neither —
-    # it misses every non-ASCII space and removes NUL, which no trim there does.
-    SGID_TRIM_PATTERN = /\A[[:space:]]+|[[:space:]]+\z/
+    # What an sgid is trimmed DOWN TO, expressed as the first character that is
+    # not whitespace. The whitespace set matches the reference implementation's
+    # TrimSpace: the Unicode space set, which includes NBSP and NEL and excludes
+    # NUL. Ruby's String#strip is neither — it misses every non-ASCII space and
+    # removes NUL, which no trim there does.
+    #
+    # Spelled as a NEGATED single character class, and used with index/rindex,
+    # rather than as an anchored `[[:space:]]+\z`. An anchored quantifier is
+    # what code scanning flags as polynomial here, and the input is an attribute
+    # value out of rich text somebody else wrote with no length bound before
+    # this point — so the shape is worth not having, even though MRI's engine
+    # optimises it and no quadratic case could actually be constructed against
+    # it. Two linear searches depend on nothing but the language.
+    SGID_NON_SPACE = /[^[:space:]]/
 
-    # The same trim for bytes that are not valid UTF-8, where only the ASCII
-    # spaces can be recognized. Such a value cannot decode anyway.
-    BINARY_TRIM_PATTERN = /\A[ \t\n\v\f\r]+|[ \t\n\v\f\r]+\z/n
+    # The same, for bytes that are not valid UTF-8, where only the ASCII spaces
+    # can be recognized. Such a value cannot decode anyway.
+    BINARY_NON_SPACE = /[^ \t\n\v\f\r]/n
     module_function
 
     # Returns the ids of the people a rich text mentions: the Person named by
@@ -579,14 +588,24 @@ module Basecamp
     def trim_sgid(value)
       if value.encoding == Encoding::BINARY
         text = value.dup.force_encoding(Encoding::UTF_8)
-        return text.gsub(SGID_TRIM_PATTERN, "").b if text.valid_encoding?
+        return trim_to(text, SGID_NON_SPACE).b if text.valid_encoding?
 
-        return value.gsub(BINARY_TRIM_PATTERN, "")
+        return trim_to(value, BINARY_NON_SPACE)
       end
 
-      return value.gsub(SGID_TRIM_PATTERN, "") if value.valid_encoding?
+      return trim_to(value, SGID_NON_SPACE) if value.valid_encoding?
 
-      value.b.gsub(BINARY_TRIM_PATTERN, "")
+      trim_to(value.b, BINARY_NON_SPACE)
+    end
+
+    # The span between the first and last character matching +non_space+, or ""
+    # when there is none. Two single-character-class searches and a slice, all
+    # linear — see {SGID_NON_SPACE} for why that matters.
+    def trim_to(value, non_space)
+      first = value.index(non_space)
+      return "" if first.nil?
+
+      value[first..value.rindex(non_space)]
     end
 
     # Decodes one base64 payload and returns the gid its envelope carries.
@@ -654,7 +673,7 @@ module Basecamp
       # trims the raw string, so "MA==\n" keeps its "=" and names nobody there.
       # Deleting the break first would strip the padding and resolve a person
       # the reference does not.
-      normalized = payload.tr("-_", "+/").sub(/=+\z/, "")
+      normalized = trim_padding(payload.tr("-_", "+/"))
       return nil unless normalized.match?(%r{\A[A-Za-z0-9+/\r\n]+\z})
 
       normalized = normalized.delete("\r\n")
@@ -675,6 +694,13 @@ module Basecamp
       return nil if raw.nil? || raw.empty? || raw.bytesize > MAX_SGID_PAYLOAD_BYTES
 
       raw
+    end
+
+    # Drops the trailing "=" padding with a single search rather than an
+    # anchored quantifier, for the reason {SGID_NON_SPACE} gives.
+    def trim_padding(value)
+      last = value.rindex(/[^=]/)
+      last.nil? ? "" : value[0..last]
     end
 
     # Reads a field off a person hash, string keys first, symbol keys second, so
@@ -702,7 +728,7 @@ module Basecamp
     # and private so the module's documented surface is the four — plus
     # {bc_attachment_sgids}, which a caller deduplicating its own writes needs.
     private_class_method :parse_attributes, :leading_block_end, :global_id_from_sgid,
-                         :envelope_gid, :decode_payload, :unescape_attribute_value, :codepoint_reference, :trim_sgid,
+                         :envelope_gid, :decode_payload, :unescape_attribute_value, :codepoint_reference, :trim_sgid, :trim_to, :trim_padding,
                          :field, :space?, :tag_name_char?, :tag_name_end?
 
     # A reader for the subset of Ruby's Marshal 4.8 format a SignedGlobalID

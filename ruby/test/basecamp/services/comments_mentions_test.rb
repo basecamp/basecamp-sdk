@@ -46,7 +46,7 @@ class CommentsMentionsTest < Minitest::Test
   def test_expand_mentions_returns_content_unchanged_with_no_ids
     assert_equal "<div>hi</div>", @account.comments.expand_mentions(content: "<div>hi</div>", person_ids: nil)
     assert_equal "<div>hi</div>", @account.comments.expand_mentions(content: "<div>hi</div>", person_ids: [])
-    assert_not_requested(:any, %r{\A#{BASE_URL}})
+    assert_not_requested(:any, %r{\A#{Regexp.escape(BASE_URL)}})
   end
 
   def test_expand_mentions_reads_each_distinct_id_once
@@ -87,7 +87,7 @@ class CommentsMentionsTest < Minitest::Test
         @account.comments.expand_mentions(content: "<div>hi</div>", person_ids: [ malformed ])
       end
     end
-    assert_not_requested(:any, %r{\A#{BASE_URL}})
+    assert_not_requested(:any, %r{\A#{Regexp.escape(BASE_URL)}})
   end
 
   def test_expand_mentions_refuses_a_non_positive_id_before_any_read
@@ -97,7 +97,7 @@ class CommentsMentionsTest < Minitest::Test
     assert_raises(Basecamp::UsageError) do
       @account.comments.expand_mentions(content: "<div>hi</div>", person_ids: [ -1 ])
     end
-    assert_not_requested(:any, %r{\A#{BASE_URL}})
+    assert_not_requested(:any, %r{\A#{Regexp.escape(BASE_URL)}})
   end
 
   def test_a_failed_person_read_posts_nothing
@@ -160,14 +160,14 @@ class CommentsMentionsTest < Minitest::Test
     assert_raises(Basecamp::UsageError) do
       @account.comments.create_with_mentions(recording_id: "12oops", content: "<div>hi</div>")
     end
-    assert_not_requested(:any, %r{\A#{BASE_URL}})
+    assert_not_requested(:any, %r{\A#{Regexp.escape(BASE_URL)}})
   end
 
   def test_create_with_mentions_requires_content
     assert_raises(Basecamp::UsageError) do
       @account.comments.create_with_mentions(recording_id: RECORDING_ID, content: "", person_ids: [ 108 ])
     end
-    assert_not_requested(:any, %r{\A#{BASE_URL}})
+    assert_not_requested(:any, %r{\A#{Regexp.escape(BASE_URL)}})
   end
 
   def test_the_generated_create_is_still_reachable_unchanged
