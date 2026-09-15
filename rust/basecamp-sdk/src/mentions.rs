@@ -1772,6 +1772,73 @@ mod tests {
         }
     }
 
+    /// A digit is an ASCII digit at every position that reads one. Another port shipped a
+    /// fullwidth digit reaching a numeric parse and suppressing a real mention, so this
+    /// sweeps the positions rather than the one predicate: the person id, both spellings of
+    /// a numeric character reference, the port, and a bracketed literal.
+    ///
+    /// Recorded honestly, because the measurement is weaker than it looks: 59 cases against
+    /// the Go function diverge nowhere, but making either predicate Unicode-aware ALSO
+    /// diverges nowhere. What actually refuses these is the ASCII-only `parse` and
+    /// `to_digit` downstream of both. The predicates are belt and braces, and this test
+    /// holds the composite behaviour so that removing either layer is still caught.
+    #[test]
+    fn a_digit_is_an_ascii_digit_everywhere_a_digit_is_read() {
+        // One representative from each of several scripts, plus the shapes that are
+        // "numeric" to Unicode without being digits at all.
+        for digits in [
+            "\u{ff10}\u{ff17}",
+            "\u{660}\u{667}",
+            "\u{966}\u{96d}",
+            "\u{1d7ce}\u{1d7d5}",
+        ] {
+            let seven = digits.chars().nth(1).unwrap();
+            let payload = json_sgid(&format!(
+                r#"{{"gid":"gid://bc3/Person/{seven}{seven}","purpose":"attachable"}}"#
+            ));
+            assert_eq!(
+                person_id_from_sgid(&payload),
+                None,
+                "{seven} is not a digit"
+            );
+            // Mixed with a real ASCII digit, which is how this hides.
+            let mixed = json_sgid(&format!(
+                r#"{{"gid":"gid://bc3/Person/7{seven}","purpose":"attachable"}}"#
+            ));
+            assert_eq!(person_id_from_sgid(&mixed), None, "7{seven} is not 7");
+            // A numeric character reference spelt with one.
+            let head = &ANNIE_SGID[..1];
+            let tail = &ANNIE_SGID[2..];
+            for reference in [format!("&#{seven}{seven};"), format!("&#x{seven}{seven};")] {
+                let markup =
+                    format!(r#"<bc-attachment sgid="{head}{reference}{tail}"></bc-attachment>"#);
+                assert!(
+                    mentioned_person_ids(&markup).is_empty(),
+                    "{reference} is not a numeric reference"
+                );
+            }
+            // And the port, which a URL parser reads as digits too.
+            let ported = json_sgid(&format!(
+                r#"{{"gid":"gid://bc3:{seven}0/Person/77","purpose":"attachable"}}"#
+            ));
+            assert_eq!(person_id_from_sgid(&ported), None, "{seven}0 is not a port");
+        }
+        // The ASCII spellings of all four still resolve, so the assertions above are about
+        // the digits and not about the shapes carrying them.
+        assert_eq!(
+            person_id_from_sgid(&json_sgid(
+                r#"{"gid":"gid://bc3:80/Person/77","purpose":"attachable"}"#
+            )),
+            Some(77)
+        );
+        let ascii = format!(
+            r#"<bc-attachment sgid="{}&#x41;{}"></bc-attachment>"#,
+            &ANNIE_SGID[..1],
+            &ANNIE_SGID[2..]
+        );
+        assert_eq!(mentioned_person_ids(&ascii), vec![1_049_715_915_i64]);
+    }
+
     #[test]
     fn a_crafted_suffix_cannot_suppress_a_real_mention() {
         let annie = person(1_049_715_915, Some(ANNIE_SGID));
