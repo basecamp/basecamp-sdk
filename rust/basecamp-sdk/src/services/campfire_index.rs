@@ -97,8 +97,17 @@ type Loaded<V> = Result<(Arc<V>, Instant), Arc<Error>>;
 /// owning handle is the `Shared` each caller holds while it waits.
 type PendingSlot<V> = WeakShared<BoxFuture<'static, Loaded<V>>>;
 
+/// One load's registration: the weak handle, and the identity that says WHOSE it is.
+struct Registration<V> {
+    id: u64,
+    slot: PendingSlot<V>,
+}
+
 struct CacheState<K, V> {
     seq: u64,
+    /// Hands out a distinct identity to each load, so a publication can prove the
+    /// registration it is about to retire is its own.
+    loads: u64,
     entries: HashMap<K, Entry<V>>,
     /// The loads under way, held WEAKLY.
     ///
@@ -112,7 +121,7 @@ struct CacheState<K, V> {
     /// Holding the load weakly means the callers own it and it lives exactly as long as
     /// somebody is waiting on it. A slot whose load every caller dropped upgrades to
     /// `None`, and the next caller starts a fresh one.
-    inflight: HashMap<K, PendingSlot<V>>,
+    inflight: HashMap<K, Registration<V>>,
 }
 
 /// A per-key cache with single-flight loading: concurrent callers for one key wait on the
@@ -139,6 +148,7 @@ where
         TtlCache {
             state: Mutex::new(CacheState {
                 seq: 0,
+                loads: 0,
                 entries: HashMap::new(),
                 inflight: HashMap::new(),
             }),
@@ -179,13 +189,19 @@ where
                     });
                 }
             }
-            if let Some(pending) = state.inflight.get(key).and_then(WeakShared::upgrade) {
+            if let Some(pending) = state
+                .inflight
+                .get(key)
+                .and_then(|registered| registered.slot.upgrade())
+            {
                 pending
             } else {
                 Self::sweep_inflight_locked(&mut state);
                 // WEAK, not strong: the map holds the future and the future reaches back
                 // for the map, so an owning handle would close a reference cycle that keeps
                 // this cache — and the client behind it — alive for the life of the process.
+                state.loads += 1;
+                let load_id = state.loads;
                 let cache = Arc::downgrade(self);
                 let owned = key.clone();
                 let loading = load();
@@ -204,7 +220,7 @@ where
                     // The cache outliving the load is the ordinary case; a load outliving
                     // the cache answers its waiters and caches nothing.
                     match cache.upgrade() {
-                        Some(cache) => cache.publish(&owned, outcome),
+                        Some(cache) => cache.publish(&owned, load_id, outcome),
                         None => outcome.map(|value| (Arc::new(value), Instant::now())),
                     }
                 }
@@ -213,7 +229,9 @@ where
                 // `downgrade` answers `None` only for a future that has already completed,
                 // which a freshly built one has not.
                 if let Some(slot) = pending.downgrade() {
-                    state.inflight.insert(key.clone(), slot);
+                    state
+                        .inflight
+                        .insert(key.clone(), Registration { id: load_id, slot });
                 }
                 pending
             }
@@ -264,9 +282,23 @@ where
         })
     }
 
-    fn publish(&self, key: &K, outcome: Result<V, Arc<Error>>) -> Loaded<V> {
+    fn publish(&self, key: &K, load_id: u64, outcome: Result<V, Arc<Error>>) -> Loaded<V> {
         let mut state = self.lock();
-        state.inflight.remove(key);
+        // Retire the registration only when it is THIS load's. Evicting by key alone would
+        // let a publication from one load drop a newer load's registration while that load
+        // was still running, and the single-flight guarantee with it — two concurrent
+        // account-wide listings under one key, which for the listing is the bare account id
+        // and so is process-wide. Rust makes this unreachable on its own (an abandoned
+        // future never runs the rest of its body, so there is no publication without a
+        // registration), but that is a property of the whole design; this makes it a
+        // property of these three lines.
+        if state
+            .inflight
+            .get(key)
+            .is_some_and(|registered| registered.id == load_id)
+        {
+            state.inflight.remove(key);
+        }
         // A failed load leaves the previous value in place: the next caller past the TTL
         // tries again rather than finding the key empty.
         let value = Arc::new(outcome?);
@@ -296,7 +328,9 @@ where
     /// would grow it without limit. A slot that still upgrades is a live load somebody is
     /// waiting on, and is left alone.
     fn sweep_inflight_locked(state: &mut CacheState<K, V>) {
-        state.inflight.retain(|_, slot| slot.upgrade().is_some());
+        state
+            .inflight
+            .retain(|_, registered| registered.slot.upgrade().is_some());
     }
 
     /// Drops every entry past its TTL. It runs at each publication — the one moment the
@@ -935,7 +969,7 @@ mod tests {
                 .lock()
                 .inflight
                 .get(&1)
-                .and_then(WeakShared::upgrade)
+                .and_then(|registered| registered.slot.upgrade())
                 .is_none(),
             "the abandoned load was dropped, not left running"
         );
@@ -947,6 +981,41 @@ mod tests {
             "the abandoned load never finished"
         );
         assert!(cache.lock().inflight.is_empty());
+    }
+
+    #[tokio::test]
+    async fn a_publication_retires_only_its_own_registration() {
+        let clock = TestClock::new();
+        let cache = cache::<i64>(&clock, 16);
+        let (release, held) = tokio::sync::oneshot::channel::<()>();
+        let mut live = Box::pin(cache.get(&1, false, move || async move {
+            let _ = held.await;
+            Ok(7)
+        }));
+        // One poll registers the load and parks it.
+        assert!(futures_util::poll!(live.as_mut()).is_pending());
+        let registered = cache.lock().inflight.get(&1).map(|entry| entry.id);
+        assert!(registered.is_some(), "the live load is registered");
+
+        // A publication carrying somebody else's identity must not retire it. Evicting by
+        // key alone would drop this load's registration while it was still running, and
+        // the next caller would start a second load under the same key.
+        let stale = cache.publish(&1, 0, Ok(99));
+        assert!(stale.is_ok());
+        assert_eq!(
+            cache.lock().inflight.get(&1).map(|entry| entry.id),
+            registered,
+            "the live load kept its slot"
+        );
+
+        // And the live load still finishes, still alone, and its value is what the caller
+        // waiting on it receives.
+        let _ = release.send(());
+        assert_eq!(*live.await.unwrap().value, 7);
+        assert!(
+            cache.lock().inflight.is_empty(),
+            "its own publication did retire it"
+        );
     }
 
     #[tokio::test]
