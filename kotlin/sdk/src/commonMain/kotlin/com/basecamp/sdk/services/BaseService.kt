@@ -570,9 +570,10 @@ abstract class BaseService(
      * kotlinx uses to say "this body is not what the model expects", and the
      * `cause` it becomes here is a contract other code reads: the §18
      * composites and the conformance runner both tell a decoder rejection from a
-     * real `api_error` through [BasecampException.Api.decodeFailure], the slot
-     * [malformedBody] alone fills, and read the exception itself back out of
-     * it. A second mapped type would be a second cause type they would
+     * real `api_error` through [BasecampException.Api.decodeFailure], and read
+     * the exception itself back out of it. [malformedBody] is one of the two
+     * things that fill that slot; the §18 composites that re-render a decode
+     * failure of their own are the other, as the KDoc on [malformedBody] says. A second mapped type would be a second cause type they would
      * each have to learn, so anything that is a decode failure is made to speak
      * this one *where it is raised* instead — see
      * [com.basecamp.sdk.serialization.FlexibleLongSerializer], whose numeric

@@ -37,21 +37,30 @@ data class RecordingRef(
  *
  * A field a type does not have is either MISSING from the JSON or present and
  * empty, and which one is not a property of nullability — it is whether the
- * field has a DEFAULT. `Json` here leaves `encodeDefaults` off, so a property
- * equal to its default is omitted; `explicitNulls` is on, so a nullable
- * property with no default would serialize as `null` rather than vanish.
+ * field has a DEFAULT. Nothing in this SDK encodes a summary; the conformance
+ * runner does, with kotlinx's default `Json`, which leaves `encodeDefaults` off
+ * so a property equal to its default is omitted, and `explicitNulls` on so a
+ * nullable property with NO default would serialize as `null` rather than
+ * vanish.
  *
  *  - [parent], [bucket], [creator], [assignees] and [campfireId] declare
  *    `= null` and so are omitted. [assignees] needs one more step to get there,
  *    in [summaryOf]: an empty list is not the default, so it is narrowed to
  *    null before it can be left out.
  *  - Every other property has no default and is always written, including when
- *    it is empty. A vault reads `"content": ""`, and a type whose read carries
- *    no title reads `"title": ""` — [firstNonEmpty] returns the empty string
- *    rather than null.
+ *    it is empty. A vault reads `"content": ""` because the projection passes a
+ *    literal `""` for the types that carry no rich text.
  *
- * The reference says the same thing about its own struct ("fields a type does
- * not have are zero") and reaches the missing-key half with `omitempty`.
+ * An empty [title] is a narrower case and does not come from this rule at all:
+ * a generated model's `title` is non-null with no default, so a payload that
+ * omits it fails to DECODE rather than projecting `""`. It reaches `""` only
+ * where the read genuinely carries one, or through
+ * `RecordingsService.UntypedRecording`, whose own `title` defaults to `""` for
+ * the two cloud-storage types that have no typed model.
+ *
+ * The reference reaches the missing-key half differently — `omitempty`, keyed
+ * on emptiness rather than on a default — while saying the same thing about its
+ * struct: "fields a type does not have are zero".
  *
  * @property type The recording type as BC3 spells it (`Comment`, `Kanban::Card`).
  * @property parent The recording this one hangs off — the commented recording
