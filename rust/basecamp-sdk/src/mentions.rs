@@ -1739,6 +1739,39 @@ mod tests {
     /// surrogates, the BOM and the zero-width characters — against Go's own `WithMentions`:
     /// both write the mention in all 2,452, and the empty-suffix control below is what
     /// proves the assertion is not vacuous.
+    /// The reference accumulates a numeric reference into an int32 and says in its own
+    /// comment that it does not check for overflow, so every later test runs on the WRAPPED
+    /// value and `&#x100000041;` is `A`. A guard the reference deliberately omits is a
+    /// divergence when you add it: clamping or a checked accumulate can never name someone
+    /// Go does not, but it suppresses a mention Go finds, which is the direction that reads
+    /// as safe and so does not get noticed.
+    ///
+    /// `entities_decode_where_go_decodes_them` pins the decoded character. This pins the
+    /// consequence, which is the thing that matters: an sgid one of whose characters is
+    /// written as an overflowing reference still names its person. 261 such cases were
+    /// measured against the Go function, 240 of them resolving to a person, so the branch
+    /// is known to have been reached and not merely included.
+    #[test]
+    fn an_overflowing_numeric_reference_still_completes_the_sgid_it_sits_in() {
+        let head = &ANNIE_SGID[..1];
+        let tail = &ANNIE_SGID[2..];
+        // ANNIE_SGID[1] is 'A' (0x41); each of these wraps an int32 back onto it.
+        for reference in [
+            "&#x100000041;",
+            "&#4294967361;",
+            "&#x000000000100000041;",
+            "&#x2100000041;",
+        ] {
+            let markup =
+                format!(r#"<bc-attachment sgid="{head}{reference}{tail}"></bc-attachment>"#);
+            assert_eq!(
+                mentioned_person_ids(&markup),
+                vec![1_049_715_915_i64],
+                "{reference} must decode to A and complete the sgid"
+            );
+        }
+    }
+
     #[test]
     fn a_crafted_suffix_cannot_suppress_a_real_mention() {
         let annie = person(1_049_715_915, Some(ANNIE_SGID));

@@ -111,7 +111,7 @@ pub struct ClientBuilder {
     auth_given: u8,
     /// Test-only: the discovery index reads real time unless a test hands it a clock, and
     /// the refresh floor cannot be crossed by waiting in a test.
-    #[cfg(test)]
+    #[cfg(all(test, feature = "reqwest"))]
     campfire_clock: Option<crate::services::campfire_index::Clock>,
 }
 
@@ -125,7 +125,7 @@ impl ClientBuilder {
             user_agent: default_user_agent(),
             hooks: Arc::new(NoopHooks),
             auth_given: 0,
-            #[cfg(test)]
+            #[cfg(all(test, feature = "reqwest"))]
             campfire_clock: None,
         }
     }
@@ -133,7 +133,7 @@ impl ClientBuilder {
     /// The clock the Campfire discovery index ages its entries by. Test-only: nothing
     /// outside this crate's own tests can move it, and the shipped client always reads
     /// [`std::time::Instant::now`].
-    #[cfg(test)]
+    #[cfg(all(test, feature = "reqwest"))]
     pub(crate) fn campfire_clock(
         mut self,
         clock: crate::services::campfire_index::Clock,
@@ -204,12 +204,12 @@ impl ClientBuilder {
             Some(http) => http,
             None => shipped_http_client(self.config.timeout)?,
         };
-        #[cfg(test)]
+        #[cfg(all(test, feature = "reqwest"))]
         let campfires = match self.campfire_clock {
             Some(clock) => CampfireIndex::with_clock(clock),
             None => CampfireIndex::new(),
         };
-        #[cfg(not(test))]
+        #[cfg(not(all(test, feature = "reqwest")))]
         let campfires = CampfireIndex::new();
         Ok(Client {
             shared: Arc::new(Shared {

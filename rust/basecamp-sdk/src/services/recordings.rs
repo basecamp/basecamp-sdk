@@ -1422,7 +1422,11 @@ mod tests {
 /// The refresh path, which needs the floor crossed and so needs a clock a test can move.
 /// Everything here turns on entries ageing: the rest of the discovery behaviour is driven
 /// end-to-end in `tests/composites_recording_summary.rs`, where real time is enough.
-#[cfg(test)]
+///
+/// These drive wiremock and so need the shipped transport, exactly as the OAuth unit tests
+/// do. The no-default-features lane builds the crate WITHOUT one — that is the point of the
+/// lane — so it skips this module rather than failing in it.
+#[cfg(all(test, feature = "reqwest"))]
 mod refresh_tests {
     use super::*;
     use crate::Config;
