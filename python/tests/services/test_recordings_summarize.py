@@ -402,8 +402,10 @@ class TestProjection:
 
     # Go has TWO parent structs and the port had been applying one of them to
     # both. `Todo` and `Todolist` carry a `TodoParent` with NO `bucket` field,
-    # so Go drops an unknown one; everything else carries a `RecordingParent`
-    # whose `Bucket` is fully typed. Every row is Go's own answer.
+    # so Go drops an unknown one; every other ROUTED type carries a
+    # `RecordingParent` whose `Bucket` is fully typed. Every row is Go's own
+    # answer. (Three more parent shapes exist in the generated package and
+    # none of them is routed here.)
     @respx.mock
     @pytest.mark.parametrize("bucket", [7, "x", {"id": "7"}, [], True])
     @pytest.mark.parametrize(

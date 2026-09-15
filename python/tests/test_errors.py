@@ -514,53 +514,92 @@ class TestCompositeIdentities:
     """Identity is the class; `code` is the canonical SPEC section 6 answer."""
 
     def test_no_error_in_the_module_carries_a_code_outside_the_enum(self):
-        # A REAL sweep this time. The previous version filtered `vars(errors)`
-        # down to a hard-coded list of six names, so it could only fail on a
-        # rename -- adding a seventh subclass with a code outside the enum left
-        # it green, which is exactly the recurrence its comment claimed to
-        # prevent. Parsing the source catches a class nobody thought to list.
+        # Third attempt at this test, and the first two both failed to catch a
+        # new member breaking the rule -- which is the ONLY thing it exists for.
+        #
+        #   v1 filtered `vars(errors)` to six hard-coded names, so it could
+        #      only fail on a rename.
+        #   v2 walked the AST for `code=` STRING LITERALS. The module contains
+        #      none: every site is `ErrorCode.X` (10) or `_COMPOSITE_CODE[...]`
+        #      (6), so it asserted `not {}` and passed no matter what was added.
+        #
+        # So the rule is inverted here. Rather than recognising the safe forms
+        # and checking them, it requires EVERY `code=` site to be one of the
+        # forms this test knows how to verify, and verifies each. A new site in
+        # any other shape -- a bare literal, an f-string, a call -- fails as
+        # unrecognised rather than passing unexamined.
         import ast
         import pathlib
 
         import basecamp.errors as _errors
 
-        source = pathlib.Path(_errors.__file__).read_text()
         canonical = {member.value for member in _errors.ErrorCode}
-        literals: dict[str, str] = {}
+        source = pathlib.Path(_errors.__file__).read_text()
+        unverifiable: list[str] = []
+        outside: list[str] = []
+        sites = 0
         for node in ast.walk(ast.parse(source)):
             if not isinstance(node, ast.Call):
                 continue
             for keyword in node.keywords:
-                if (
-                    keyword.arg == "code"
-                    and isinstance(keyword.value, ast.Constant)
-                    and isinstance(keyword.value.value, str)
+                if keyword.arg != "code":
+                    continue
+                sites += 1
+                value = keyword.value
+                where = f"line {value.lineno}"
+                if isinstance(value, ast.Constant):
+                    if value.value not in canonical:
+                        outside.append(f"{value.value!r} at {where}")
+                elif isinstance(value, ast.Attribute) and getattr(value.value, "id", None) == "ErrorCode":
+                    if value.attr not in _errors.ErrorCode.__members__:
+                        outside.append(f"ErrorCode.{value.attr} at {where}")
+                elif (
+                    isinstance(value, ast.Subscript)
+                    and getattr(value.value, "id", None) == "_COMPOSITE_CODE"
+                    and isinstance(value.slice, ast.Constant)
                 ):
-                    literals[keyword.value.value] = f"line {keyword.value.lineno}"
-        outside = {code: where for code, where in literals.items() if code not in canonical}
-        assert not outside, f"a `code=` literal outside the closed ErrorCode enum: {outside}"
+                    if value.slice.value not in _errors._COMPOSITE_CODE:
+                        outside.append(f"_COMPOSITE_CODE[{value.slice.value!r}] missing at {where}")
+                else:
+                    unverifiable.append(f"{ast.dump(value)[:60]} at {where}")
+        assert sites >= 16, f"the walk found only {sites} `code=` sites; it has stopped finding them"
+        assert not unverifiable, f"a `code=` site this test cannot verify: {unverifiable}"
+        assert not outside, f"a code outside the closed ErrorCode enum: {outside}"
+        # ...and the table every composite reads from is itself in-enum, which
+        # is what a seventh identity added the way the six existing ones are
+        # written would violate.
+        rogue = {key: code for key, code in _errors._COMPOSITE_CODE.items() if code not in canonical}
+        assert not rogue, f"_COMPOSITE_CODE maps an identity outside the enum: {rogue}"
 
-    def test_each_composite_exit_code_is_the_one_its_own_code_maps_to(self):
-        # The previous assertion was `exit_code in {1, 2, 7}`, which cannot
-        # detect the fall-through its comment named: 7 IS the catch-all, and
-        # the unfixed error produced exactly 7. Deriving the expectation from
-        # the code makes an out-of-enum code raise here instead of passing.
+    def test_each_composite_exit_code_is_the_one_its_identity_should_get(self):
+        # The previous version asserted `{exit codes} == {1, 2, 7}` -- a SET
+        # over six errors, so four of the six could be misclassified without
+        # changing it, and `campfire_index_load_aborted` was pinned by nothing
+        # in the entire repo: flipping it API->NOT_FOUND left all 2080 tests
+        # and all 274 conformance cases green. Its exit code is a public,
+        # documented answer, so it is spelled out per identity here.
         import basecamp.errors as _errors
-        from basecamp.errors import _EXIT_CODE_MAP, ErrorCode
 
+        expected = {
+            "NoRecordingTypeError": ("usage", 1),
+            "UnknownRecordingTypeError": ("usage", 1),
+            "BucketMismatchError": ("usage", 1),
+            "RecordingUnresolvedError": ("not_found", 2),
+            "CampfireDiscoveryIncompleteError": ("api_error", 7),
+            "CampfireIndexLoadAbortedError": ("api_error", 7),
+        }
         built = [
             _errors.NoRecordingTypeError(routing_key="boost.created"),
             _errors.UnknownRecordingTypeError(routing_key="x.y"),
+            _errors.BucketMismatchError(bucket_id=1, recording_id=2, requested_bucket_id=3),
             _errors.RecordingUnresolvedError(bucket_id=1, recording_id=2, campfire_ids=[], refreshed=False),
             _errors.CampfireDiscoveryIncompleteError(bucket_id=1, recording_id=2, reason="r"),
-            _errors.BucketMismatchError(bucket_id=1, recording_id=2, requested_bucket_id=3),
             _errors.CampfireIndexLoadAbortedError(),
         ]
+        assert {type(e).__name__ for e in built} == set(expected), "every identity must be built here"
         for error in built:
-            assert error.exit_code == _EXIT_CODE_MAP[ErrorCode(error.code)], type(error).__name__
-        # ...and the set is not all-catch-all, so a regression to exit 7
-        # everywhere would show as a failure rather than as agreement.
-        assert {e.exit_code for e in built} == {1, 2, 7}
+            name = type(error).__name__
+            assert (error.code, error.exit_code) == expected[name], name
 
     def test_discovery_incomplete_cannot_be_told_it_is_retryable(self):
         # `DeviceFlowError` overwrites rather than setdefaults so a caller's
