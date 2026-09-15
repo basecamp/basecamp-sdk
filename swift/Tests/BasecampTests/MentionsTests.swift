@@ -193,10 +193,19 @@ final class MentionsTests: XCTestCase {
     ///
     /// Both columns, because the id column alone cannot see this: every row whose
     /// expectation is "no mention" is reached by a hundred routes, so a decoder
-    /// that did NOTHING satisfied eleven of these sixteen — including the row
-    /// written to guard `&hyphen;`, which did not fail when that regression was
-    /// reintroduced. The decoded column discriminates; the id column keeps the
-    /// rows tied to the contract.
+    /// that did NOTHING satisfied eleven of the sixteen id-only rows this
+    /// replaces — including the row written to guard `&hyphen;`, which did not
+    /// fail when that exact regression was reintroduced. The decoded column
+    /// discriminates; the id column keeps the rows tied to the contract.
+    ///
+    /// Checked by mutation, and no row here is vacuous. Replacing the decoder
+    /// with the identity function flips 14 of the 18; each of the four that
+    /// survive states a rule an identity decoder happens to satisfy, and each is
+    /// caught by a mutation aimed at that rule — relaxing the "no characters
+    /// matched" guard flips `&#9x`, stopping the `x` counting toward the index
+    /// flips `&#x9x`, accepting a fullwidth digit flips its own row, and adding
+    /// a name to the table flips the unknown-name row. A survivor is not
+    /// evidence of a worthless row until a second mutation says so.
     ///
     /// The id column is `MentionedPersonIDs` from `go/pkg/basecamp`, run on
     /// these exact inputs. The decoded column is this decoder's own output,
