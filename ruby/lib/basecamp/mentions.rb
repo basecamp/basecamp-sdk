@@ -86,9 +86,10 @@ module Basecamp
     # its own name and never compares equal to "bc-attachment".
     SPACE_CHARS = [ " ", "\t", "\n", "\r", "\f" ].freeze
 
-    # The largest person id an sgid may name, matching the 64-bit bound Go's
-    # ParseInt applies.
-    MAX_PERSON_ID = (2**63) - 1
+    # The largest person id an sgid may name, matching the 64-bit bound the
+    # reference implementation's ParseInt applies. One definition, shared with
+    # the id argument check.
+    MAX_PERSON_ID = Ids::MAX
 
     # The character references an attribute value is decoded through.
     #

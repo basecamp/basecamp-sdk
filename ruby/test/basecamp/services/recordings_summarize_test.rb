@@ -116,7 +116,8 @@ class RecordingsSummarizeTest < Minitest::Test
     # bucket can still match, so nothing downstream would catch it.
     # "1_2" is Ruby's integer-literal grammar, not a string of digits, and
     # Integer() would read it as 12 — the same wrong-record hazard in disguise.
-    [ "12oops", 12.9, nil, "", [ 12 ], "1_2", " 12 ", "+12", (2**70).to_s ].each do |malformed|
+    [ "12oops", 12.9, nil, "", [ 12 ], "1_2", " 12 ", "+12", (2**70).to_s,
+      "12\xFF".dup.force_encoding(Encoding::UTF_8) ].each do |malformed|
       assert_raises(Basecamp::UsageError) do
         @account.recordings.summarize(bucket_id: BUCKET, recording_id: malformed, event_type: "comment.created")
       end

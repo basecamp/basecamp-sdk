@@ -117,7 +117,7 @@ class CampfireIndexTest < Minitest::Test
   end
 
   def test_concurrent_callers_share_one_load
-    cache = Basecamp::CampfireIndex::TTLCache.new(ttl: 100.0, floor: 1.0, max_items: 10, clock: -> { @now })
+    cache, arrivals = cache_with_waiter_barrier
     started = Queue.new
     release = Queue.new
     loads = 0
@@ -133,12 +133,8 @@ class CampfireIndexTest < Minitest::Test
     started.pop
 
     waiters = Array.new(3) { Thread.new { cache.get(:k) } }
-    # Released only once every waiter is provably parked inside `get` — a thread
-    # that reached `get` can only be blocked on the cache's mutex or on its
-    # condition variable, so "asleep" here means "waiting on the load". Without
-    # this barrier a waiter that arrives after publication is served from the
-    # cache instead, and the assertions below would pass or fail on timing.
-    await_parked(waiters)
+    # Released only once every waiter has announced itself from inside the wait.
+    3.times { arrivals.pop }
     release << :go
     hits = ([ owner ] + waiters).map { |thread| thread.join.value }
 
@@ -235,35 +231,101 @@ class CampfireIndexTest < Minitest::Test
   end
 
   def test_a_waiter_re_runs_an_abandoned_load_only_once
-    # Bounded, so a run of abandoned owners cannot become a queue of sequential
-    # loads behind one waiter.
-    cache = Basecamp::CampfireIndex::TTLCache.new(ttl: 100.0, floor: 1.0, max_items: 10, clock: -> { @now })
-    started = Queue.new
-    owner = Thread.new { cache.get(:k) { started << :loading; sleep } }
-    started.pop
-    await_parked([ owner ])
+    # The bound, reached rather than implied: the waiter's OWN re-run is
+    # abandoned too, and it must raise rather than load a third time. Deleting
+    # the bound turns this into an unbounded per-waiter reload, which is the
+    # request amplification the whole rule exists to prevent — so this test has
+    # to fail when the bound is removed, and nothing else in this file does.
+    cache, arrivals = cache_with_waiter_barrier
+    loads = Queue.new
+    loaders = Queue.new
 
-    second = Queue.new
+    owner = Thread.new { cache.get(:k) { loads << Thread.current; loaders.pop } }
+    loads.pop
+
     waiter = Thread.new do
-      cache.get(:k) { second << :reloading; sleep }
+      cache.get(:k) { loads << Thread.current; loaders.pop }
     rescue Basecamp::CampfireIndex::TTLCache::LoaderAbandoned => e
       e
     end
-    await_parked([ waiter ])
+    arrivals.pop
     owner.kill
     owner.join
-    # The waiter is now the owner, loading for itself. Abandon that one too.
-    second.pop
+
+    # The waiter has used its one re-run and is now the owner, loading for
+    # itself. Abandon that load too.
+    second_loader = loads.pop
+
+    assert_equal waiter, second_loader
     await_parked([ waiter ])
     waiter.kill
     waiter.join
 
-    third = Thread.new do
-      cache.get(:k) { "third" }
-    end
+    # A third caller finds the key free and loads normally, so the kill above
+    # released it — the bound is about the WAITER, not about wedging the key.
+    third = Thread.new { cache.get(:k) { "third" } }
 
     assert third.join(5), "the key was never released"
     assert_equal "third", third.value.value
+  end
+
+  def test_a_waiter_raises_rather_than_re_running_twice
+    # The same bound, observed from the waiter rather than from the key: two
+    # abandonments in a row and the waiter gets the error instead of a third
+    # load.
+    cache, arrivals = cache_with_waiter_barrier
+    attempts = Queue.new
+    held = Queue.new
+
+    owner = Thread.new { cache.get(:k) { attempts << :first; held.pop } }
+    attempts.pop
+
+    waiter = Thread.new do
+      cache.get(:k) { attempts << :waiter_reload; held.pop }
+    rescue Basecamp::CampfireIndex::TTLCache::LoaderAbandoned => e
+      e
+    end
+    arrivals.pop
+
+    # A second waiter, which will wake on the FIRST abandonment, use its one
+    # re-run to queue behind the first waiter's load, and then wake on the
+    # SECOND abandonment with its re-run already spent.
+    second = Thread.new do
+      cache.get(:k) { attempts << :second_reload; held.pop }
+    rescue Basecamp::CampfireIndex::TTLCache::LoaderAbandoned => e
+      e
+    end
+    arrivals.pop
+
+    owner.kill
+    owner.join
+    attempts.pop # the first waiter is now loading
+    arrivals.pop # the second waiter has queued behind it, re-run spent
+    await_parked([ waiter ])
+    waiter.kill
+    waiter.join
+
+    assert second.join(5), "the second waiter was left parked"
+    assert_kind_of Basecamp::CampfireIndex::TTLCache::LoaderAbandoned, second.value
+    # The abandonment it woke on, propagated — not a substitute minted after the
+    # attempts ran out. Those are different lines, and only this distinguishes
+    # them.
+    assert_equal "cache loader did not complete", second.value.message
+    assert_empty attempts, "the second waiter loaded a third time instead of raising"
+  end
+
+  def test_a_loader_that_raises_stop_iteration_still_raises
+    # Kernel#loop rescues StopIteration and returns its result, so wrapping get
+    # in one would hand the caller an arbitrary value from the loader's
+    # enumerator in place of a Hit — a raise turned into a silently wrong
+    # answer, which the caller then dies on somewhere unrelated.
+    cache = Basecamp::CampfireIndex::TTLCache.new(ttl: 100.0, floor: 1.0, max_items: 10, clock: -> { @now })
+
+    assert_raises(StopIteration) { cache.get(:k) { raise StopIteration } }
+    assert_raises(StopIteration) do
+      enumerator = [].each
+      cache.get(:k2) { enumerator.next }
+    end
   end
 
   def test_an_abandoned_load_is_a_basecamp_error
@@ -308,7 +370,27 @@ class CampfireIndexTest < Minitest::Test
     assert_equal 1, loads
   end
 
-  # Blocks until every thread is parked, or fails the test rather than hanging.
+  # A cache whose waiters announce themselves as they reach the wait, and the
+  # queue they announce on.
+  #
+  # Thread#status is NOT a sound barrier here: Ruby reports a thread merely
+  # blocked on the cache's lock as "sleep" too, so a waiter could still be at
+  # the entry check when the test released the owner, read the published entry,
+  # and report a cache hit — timing-dependent again. The seam fires under the
+  # lock, so a waiter the test has heard from provably reaches the wait before
+  # anything else can take the lock.
+  def cache_with_waiter_barrier(ttl: 100.0, floor: 1.0, max_items: 10)
+    arrivals = Queue.new
+    cache = Basecamp::CampfireIndex::TTLCache.new(
+      ttl: ttl, floor: floor, max_items: max_items, clock: -> { @now },
+      on_wait: -> { arrivals << :waiting }
+    )
+    [ cache, arrivals ]
+  end
+
+  # Blocks until every thread has stopped running, or fails rather than hanging.
+  # Only for threads parked in a loader the test controls — never as a barrier
+  # against a publication, which is what the seam above is for.
   def await_parked(threads, timeout: 5)
     deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + timeout
     until threads.all? { |thread| thread.status == "sleep" }
@@ -319,7 +401,7 @@ class CampfireIndexTest < Minitest::Test
   end
 
   def test_a_failed_load_is_shared_with_its_waiters_rather_than_re_run
-    cache = Basecamp::CampfireIndex::TTLCache.new(ttl: 100.0, floor: 1.0, max_items: 10, clock: -> { @now })
+    cache, arrivals = cache_with_waiter_barrier
     started = Queue.new
     release = Queue.new
     loads = 0
@@ -341,7 +423,7 @@ class CampfireIndexTest < Minitest::Test
     rescue RuntimeError => e
       e
     end
-    await_parked([ waiter ])
+    arrivals.pop
     release << :go
 
     assert_equal "boom", owner.join.value.message
