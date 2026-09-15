@@ -13,7 +13,8 @@ import threading
 
 import pytest
 
-from basecamp.errors import CampfireIndexLoadAbortedError
+from basecamp.errors import CampfireIndexLoadAbortedError, ForbiddenError
+from basecamp.services import _campfire_index
 from basecamp.services._campfire_index import AsyncTTLCache, TTLCache, _AsyncLoad, _SyncLoad
 
 
@@ -324,6 +325,33 @@ class TestBound:
         cache.get("fresh", refresh=False, load=lambda: "v")
 
         assert cache._store._entries.keys() == {"fresh"}
+
+
+class TestCancellationAttribution:
+    def test_an_owner_cancelled_after_a_genuine_failure_is_not_retried(self, monkeypatch):
+        # Go's condition is `err != nil && callerDone && errors.Is(err, ctxErr)`
+        # — BOTH halves. A 403 that happens to surface while the owner is being
+        # cancelled is still the load's own failure and is shared, not re-run
+        # once per waiter. Named after Go's
+        # TestTTLCache_OwnerCancelledAfterAGenuineFailureDoesNotRetryIt.
+        #
+        # The task's cancellation state is STUBBED rather than driven with a
+        # real `cancel()`/`uncancel()` pair: `uncancel()` does not clear
+        # `_must_cancel` before 3.13, so the real version leaks a
+        # CancelledError into the test runner on the older interpreters — a
+        # version-specific artefact of the test, not of the code.
+        class _Cancelling:
+            def cancelling(self) -> int:
+                return 1
+
+        monkeypatch.setattr(_campfire_index.asyncio, "current_task", lambda: _Cancelling())
+
+        assert _campfire_index._owner_cancellation(ForbiddenError("Denied")) is False
+        assert _campfire_index._owner_cancellation(asyncio.CancelledError()) is True
+
+    def test_a_cancellation_with_no_pending_cancel_is_the_loads_own(self, monkeypatch):
+        monkeypatch.setattr(_campfire_index.asyncio, "current_task", lambda: None)
+        assert _campfire_index._owner_cancellation(asyncio.CancelledError()) is False
 
 
 class TestSingleFlight:
@@ -647,24 +675,6 @@ class TestAsyncCache:
         await cache._publish("k", _AsyncLoad(), "v", None)
 
         assert cache._inflight.get("k") is successor, "a successor's slot must survive"
-
-    async def test_an_owner_cancelled_after_a_genuine_failure_is_not_retried(self):
-        # Go's condition is `err != nil && callerDone && errors.Is(err, ctxErr)`
-        # — BOTH halves. A 403 that happens to surface while the owner is being
-        # cancelled is still the load's own failure and is shared, not re-run
-        # once per waiter. Named after Go's
-        # TestTTLCache_OwnerCancelledAfterAGenuineFailureDoesNotRetryIt.
-        from basecamp.errors import ForbiddenError
-        from basecamp.services._campfire_index import _owner_cancellation
-
-        task = asyncio.current_task()
-        assert task is not None
-        task.cancel()
-        try:
-            assert _owner_cancellation(ForbiddenError("Denied")) is False
-            assert _owner_cancellation(asyncio.CancelledError()) is True
-        finally:
-            task.uncancel()
 
     async def test_waiters_behind_a_cancelled_owner_reload_once_between_them(self):
         # The reacquire is "one load, not a stampede": the first waiter to go
