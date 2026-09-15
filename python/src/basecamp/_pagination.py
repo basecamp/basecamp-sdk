@@ -1,66 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, TypeVar
-
-from basecamp.errors import ApiError
+from typing import TypeVar
 
 T = TypeVar("T")
-
-# JSON shape names for refusal messages, keyed by exact type so ``bool`` never
-# resolves through its ``int`` base class.
-_JSON_TYPE_NAMES: dict[type, str] = {
-    type(None): "null",
-    bool: "boolean",
-    int: "number",
-    float: "number",
-    str: "string",
-    list: "array",
-    dict: "object",
-}
-
-
-def _json_type_name(value: Any) -> str:
-    return _JSON_TYPE_NAMES.get(type(value), type(value).__name__)
-
-
-def decode_list(value: Any, *, where: str, at: str | None = None) -> list:
-    """Read a decoded JSON value as a list of items, the way Go's reference does.
-
-    ``json.Unmarshal`` of ``null`` is a no-op at any depth: it leaves the
-    destination at its zero value and returns no error, so a null list — a null
-    body, a null value under the item key, or a key that is absent altogether —
-    is *no rows*, not a failure. Every other non-array shape fails the decode of
-    the whole response, which is why this raises rather than falling back to an
-    empty page.
-
-    The distinction is the point. ``value or []`` would read ``0`` and ``false``
-    as an empty listing too, turning a loud refusal into a silent wrong answer.
-
-    ``where`` names the read for the refusal message; ``at`` names the envelope
-    key when the list came from inside one.
-    """
-    if value is None:
-        return []
-    if not isinstance(value, list):
-        location = "" if at is None else f" at {at!r}"
-        raise ApiError(f"Failed to parse {where}: expected a JSON array{location}, got {_json_type_name(value)}")
-    return value
-
-
-def decode_envelope(value: Any, *, where: str) -> dict:
-    """Read a decoded JSON value as a keyed envelope, the way Go's reference does.
-
-    Same rule as :func:`decode_list` one level up: Go unmarshals these bodies
-    into a struct, so ``null`` yields the zero struct — every field empty, which
-    includes the item key — and every other non-object shape, an array included,
-    fails the decode.
-    """
-    if value is None:
-        return {}
-    if not isinstance(value, dict):
-        raise ApiError(f"Failed to parse {where}: expected a JSON object, got {_json_type_name(value)}")
-    return value
 
 
 @dataclass(frozen=True)

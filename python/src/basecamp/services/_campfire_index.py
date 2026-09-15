@@ -58,6 +58,7 @@ from collections.abc import Awaitable, Callable, Hashable
 from dataclasses import dataclass, field
 from typing import Any, Generic, NoReturn, TypeVar
 
+from basecamp._decoding import decoded_array, decoded_object, decoded_optional_object, decoded_string
 from basecamp.errors import ApiError, CampfireIndexLoadAbortedError, NotFoundError
 
 #: How long a cached discovery source -- a bucket's project dock, the account's
@@ -563,44 +564,15 @@ _INT64_MIN = -(2**63)
 _INT64_MAX = 2**63 - 1
 
 
-def _decoded_object(value: Any, what: str) -> dict[str, Any]:
-    """An object field: ``{}`` for null, the dict itself, else a decode error."""
-    if value is None:
-        return {}
-    if not isinstance(value, dict):
-        raise ApiError(f"{what} was not an object: {type(value).__name__}")
-    return value
-
-
-def _decoded_optional_object(value: Any, what: str) -> dict[str, Any] | None:
-    """A pointer-to-struct field, where null stays ``None`` rather than ``{}``.
-
-    Go tells `*Bucket` nil from `&Bucket{}`, and the bucket check begins
-    `summary.Bucket != nil`, so the two cannot be collapsed here either.
-    """
-    if value is None:
-        return None
-    if not isinstance(value, dict):
-        raise ApiError(f"{what} was not an object: {type(value).__name__}")
-    return value
-
-
-def _decoded_array(value: Any, what: str) -> list[Any]:
-    """A slice field: ``[]`` for null, the list itself, else a decode error."""
-    if value is None:
-        return []
-    if not isinstance(value, list):
-        raise ApiError(f"{what} was not an array: {type(value).__name__}")
-    return value
-
-
-def _decoded_string(value: Any, what: str) -> str:
-    """A string field: ``""`` for null, the str itself, else a decode error."""
-    if value is None:
-        return ""
-    if not isinstance(value, str):
-        raise ApiError(f"{what} was not a string: {type(value).__name__}")
-    return value
+# The four field readers below are the shared decode in ``basecamp._decoding``,
+# aliased under the names this module and ``recordings.py`` already import. The
+# rule they implement -- null is the zero value, anything else of the wrong type
+# fails the whole response -- is the same one the paginators apply, and it lives
+# in one place so the two cannot drift apart.
+_decoded_object = decoded_object
+_decoded_optional_object = decoded_optional_object
+_decoded_array = decoded_array
+_decoded_string = decoded_string
 
 
 _UINT64_MAX = 2**64 - 1

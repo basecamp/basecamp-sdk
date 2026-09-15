@@ -33,11 +33,14 @@ their own rows on the array sites for the same reason: Python's ``extend`` and
 ``list()`` accept both and fabricate items out of them (three characters, or the
 envelope's keys) rather than raising.
 
-All four list-reading sites are covered, sync and async: the three paginators
+All four list-reading methods are covered, sync and async — the three paginators
 (``_paginate``, ``_paginate_key``, ``_paginate_wrapped``) and the unpaginated
-full-array read (``_request_list``). They are eight separate decode sites, and a
-site left unguarded would keep raising a bare builtin ``TypeError`` or
-``AttributeError`` out of the SDK while every other one stayed green.
+full-array read (``_request_list``) — and the method is not the unit that
+matters. ``_paginate_key`` and ``_paginate_wrapped`` each decode on the first
+page and again on every later page, from separate arms, so the rows go per ARM:
+a guard on the first page alone leaves the original crash reachable behind any
+``Link: rel="next"`` while the suite stays green. Every later-page arm therefore
+carries its own rows, both directions, in both flavours.
 """
 
 from __future__ import annotations
@@ -49,7 +52,7 @@ import pytest
 import respx
 
 from basecamp import AsyncClient, Client
-from basecamp._pagination import decode_envelope, decode_list
+from basecamp._decoding import decoded_array, decoded_object
 from basecamp.errors import ApiError
 
 _ACCOUNT_URL = "https://3.basecampapi.com/12345"
@@ -111,31 +114,32 @@ class TestDecodeHelpers:
     """The rule itself, named directly, one level below the eight call sites."""
 
     def test_null_decodes_to_no_rows(self):
-        assert decode_list(None, where="list response") == []
+        assert decoded_array(None, "the body") == []
 
     def test_an_array_decodes_to_itself(self):
-        assert decode_list([{"id": 1}], where="list response") == [{"id": 1}]
+        assert decoded_array([{"id": 1}], "the body") == [{"id": 1}]
 
     @pytest.mark.parametrize("value", _NOT_AN_ARRAY)
     def test_every_other_shape_fails_the_decode(self, value):
-        with pytest.raises(ApiError, match="expected a JSON array"):
-            decode_list(value, where="list response")
+        with pytest.raises(ApiError, match="was not an array"):
+            decoded_array(value, "the body")
 
     def test_the_refusal_names_the_shape_it_got(self):
         """``0`` and ``False`` are the pair ``value or []`` would read as an empty
-        listing; the message has to be able to tell them apart from ``null``."""
-        with pytest.raises(ApiError, match="got number"):
-            decode_list(0, where="list response")
-        with pytest.raises(ApiError, match="got boolean"):
-            decode_list(False, where="list response")
+        listing; the refusal has to tell them apart from ``null``, which is the
+        one shape that legitimately reads as empty."""
+        with pytest.raises(ApiError, match="was not an array: int"):
+            decoded_array(0, "the body")
+        with pytest.raises(ApiError, match="was not an array: bool"):
+            decoded_array(False, "the body")
 
     def test_null_envelope_decodes_to_the_zero_struct(self):
-        assert decode_envelope(None, where="list response") == {}
+        assert decoded_object(None, "the body") == {}
 
     @pytest.mark.parametrize("value", _NOT_AN_OBJECT)
     def test_every_other_envelope_shape_fails_the_decode(self, value):
-        with pytest.raises(ApiError, match="expected a JSON object"):
-            decode_envelope(value, where="list response")
+        with pytest.raises(ApiError, match="was not an object"):
+            decoded_object(value, "the body")
 
 
 class TestPaginateNullBody:
@@ -172,7 +176,7 @@ class TestPaginateNullBody:
         with pytest.raises(ApiError) as excinfo:
             _account().projects.list()
 
-        assert "expected a JSON array" in str(excinfo.value)
+        assert "was not an array" in str(excinfo.value)
         assert "page 1" in str(excinfo.value)
 
     @respx.mock
@@ -193,7 +197,7 @@ class TestPaginateNullBody:
             _account().projects.list()
 
         assert "page 2" in str(excinfo.value)
-        assert "expected a JSON array" in str(excinfo.value)
+        assert "was not an array" in str(excinfo.value)
 
 
 class TestAsyncPaginateNullBody:
@@ -219,7 +223,7 @@ class TestAsyncPaginateNullBody:
             await client.for_account("12345").projects.list()
         await client.close()
 
-        assert "expected a JSON array" in str(excinfo.value)
+        assert "was not an array" in str(excinfo.value)
 
     @pytest.mark.asyncio
     @respx.mock
@@ -247,7 +251,7 @@ class TestAsyncPaginateNullBody:
         await client.close()
 
         assert "page 2" in str(excinfo.value)
-        assert "expected a JSON array" in str(excinfo.value)
+        assert "was not an array" in str(excinfo.value)
 
 
 class TestPaginateKeyNullBody:
@@ -288,7 +292,7 @@ class TestPaginateKeyNullBody:
         with pytest.raises(ApiError) as excinfo:
             _account().projects._paginate_key("/x.json", "events")
 
-        assert "expected a JSON object" in str(excinfo.value)
+        assert "was not an object" in str(excinfo.value)
 
     @pytest.mark.parametrize("value", _NOT_AN_ARRAY_UNDER_KEY)
     @respx.mock
@@ -298,7 +302,43 @@ class TestPaginateKeyNullBody:
         with pytest.raises(ApiError) as excinfo:
             _account().projects._paginate_key("/x.json", "events")
 
-        assert "expected a JSON array at 'events'" in str(excinfo.value)
+        assert "the 'events' list in the response" in str(excinfo.value)
+        assert "was not an array" in str(excinfo.value)
+
+    @respx.mock
+    def test_null_on_a_later_page_keeps_the_earlier_pages(self):
+        """The later-page decode is a separate arm from the first-page one, and a
+        guard on only the first page leaves the original crash reachable behind
+        any ``Link: rel="next"``."""
+        url = f"{_ACCOUNT_URL}/x.json"
+        respx.get(url, params={"page": "2"}).mock(return_value=_json(None))
+        respx.get(url).mock(return_value=_json({"events": [{"id": 1}]}, _link_to(f"{url}?page=2")))
+
+        assert list(_account().projects._paginate_key("/x.json", "events")) == [{"id": 1}]
+
+    @respx.mock
+    def test_wrong_typed_later_page_body_fails_the_read(self):
+        url = f"{_ACCOUNT_URL}/x.json"
+        respx.get(url, params={"page": "2"}).mock(return_value=_json([]))
+        respx.get(url).mock(return_value=_json({"events": [{"id": 1}]}, _link_to(f"{url}?page=2")))
+
+        with pytest.raises(ApiError) as excinfo:
+            _account().projects._paginate_key("/x.json", "events")
+
+        assert "page 2" in str(excinfo.value)
+        assert "was not an object" in str(excinfo.value)
+
+    @respx.mock
+    def test_wrong_typed_later_page_value_under_the_key_fails_the_read(self):
+        url = f"{_ACCOUNT_URL}/x.json"
+        respx.get(url, params={"page": "2"}).mock(return_value=_json({"events": 0}))
+        respx.get(url).mock(return_value=_json({"events": [{"id": 1}]}, _link_to(f"{url}?page=2")))
+
+        with pytest.raises(ApiError) as excinfo:
+            _account().projects._paginate_key("/x.json", "events")
+
+        assert "page 2" in str(excinfo.value)
+        assert "was not an array" in str(excinfo.value)
 
 
 class TestAsyncPaginateKeyNullBody:
@@ -324,7 +364,8 @@ class TestAsyncPaginateKeyNullBody:
             await client.for_account("12345").projects._paginate_key("/x.json", "events")
         await client.close()
 
-        assert "expected a JSON array at 'events'" in str(excinfo.value)
+        assert "the 'events' list in the response" in str(excinfo.value)
+        assert "was not an array" in str(excinfo.value)
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize("body", _NOT_AN_OBJECT)
@@ -337,7 +378,35 @@ class TestAsyncPaginateKeyNullBody:
             await client.for_account("12345").projects._paginate_key("/x.json", "events")
         await client.close()
 
-        assert "expected a JSON object" in str(excinfo.value)
+        assert "was not an object" in str(excinfo.value)
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_null_on_a_later_page_keeps_the_earlier_pages(self):
+        url = f"{_ACCOUNT_URL}/x.json"
+        respx.get(url, params={"page": "2"}).mock(return_value=_json(None))
+        respx.get(url).mock(return_value=_json({"events": [{"id": 1}]}, _link_to(f"{url}?page=2")))
+
+        client = AsyncClient(access_token="test-token")
+        result = await client.for_account("12345").projects._paginate_key("/x.json", "events")
+        await client.close()
+
+        assert list(result) == [{"id": 1}]
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_wrong_typed_later_page_body_fails_the_read(self):
+        url = f"{_ACCOUNT_URL}/x.json"
+        respx.get(url, params={"page": "2"}).mock(return_value=_json("abc"))
+        respx.get(url).mock(return_value=_json({"events": [{"id": 1}]}, _link_to(f"{url}?page=2")))
+
+        client = AsyncClient(access_token="test-token")
+        with pytest.raises(ApiError) as excinfo:
+            await client.for_account("12345").projects._paginate_key("/x.json", "events")
+        await client.close()
+
+        assert "page 2" in str(excinfo.value)
+        assert "was not an object" in str(excinfo.value)
 
 
 _PROGRESS_URL = f"{_ACCOUNT_URL}/reports/users/progress/1.json"
@@ -387,7 +456,7 @@ class TestPaginateWrappedNullBody:
         with pytest.raises(ApiError) as excinfo:
             _account().reports.person_progress(person_id=1)
 
-        assert "expected a JSON object" in str(excinfo.value)
+        assert "was not an object" in str(excinfo.value)
 
     @pytest.mark.parametrize("value", _NOT_AN_ARRAY_UNDER_KEY)
     @respx.mock
@@ -399,7 +468,8 @@ class TestPaginateWrappedNullBody:
         with pytest.raises(ApiError) as excinfo:
             _account().reports.person_progress(person_id=1)
 
-        assert "expected a JSON array at 'events'" in str(excinfo.value)
+        assert "the 'events' list in the response" in str(excinfo.value)
+        assert "was not an array" in str(excinfo.value)
 
     @respx.mock
     def test_null_on_a_later_page_keeps_the_earlier_pages(self):
@@ -413,6 +483,20 @@ class TestPaginateWrappedNullBody:
         assert list(result["events"]) == [{"id": 1}]
         assert result["person"] == {"id": 9}
 
+    @pytest.mark.parametrize("body", _NOT_AN_OBJECT)
+    @respx.mock
+    def test_wrong_typed_later_page_body_fails_the_read(self, body):
+        """The later page's ENVELOPE decode is its own arm: the wrong-typed-value
+        rows below go through ``decoded_array`` at the key and never reach it."""
+        respx.get(_PROGRESS_URL, params={"page": "2"}).mock(return_value=_json(body))
+        respx.get(_PROGRESS_URL).mock(return_value=_json({"events": [{"id": 1}]}, _link_to(f"{_PROGRESS_URL}?page=2")))
+
+        with pytest.raises(ApiError) as excinfo:
+            _account().reports.person_progress(person_id=1)
+
+        assert "page 2" in str(excinfo.value)
+        assert "was not an object" in str(excinfo.value)
+
     @respx.mock
     def test_wrong_typed_later_page_fails_the_read(self):
         respx.get(_PROGRESS_URL, params={"page": "2"}).mock(return_value=_json({"events": "abc"}))
@@ -422,7 +506,8 @@ class TestPaginateWrappedNullBody:
             _account().reports.person_progress(person_id=1)
 
         assert "page 2" in str(excinfo.value)
-        assert "expected a JSON array at 'events'" in str(excinfo.value)
+        assert "the 'events' list in the response" in str(excinfo.value)
+        assert "was not an array" in str(excinfo.value)
 
 
 class TestAsyncPaginateWrappedNullBody:
@@ -448,7 +533,8 @@ class TestAsyncPaginateWrappedNullBody:
             await client.for_account("12345").reports.person_progress(person_id=1)
         await client.close()
 
-        assert "expected a JSON array at 'events'" in str(excinfo.value)
+        assert "the 'events' list in the response" in str(excinfo.value)
+        assert "was not an array" in str(excinfo.value)
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize("body", _NOT_AN_OBJECT)
@@ -461,7 +547,7 @@ class TestAsyncPaginateWrappedNullBody:
             await client.for_account("12345").reports.person_progress(person_id=1)
         await client.close()
 
-        assert "expected a JSON object" in str(excinfo.value)
+        assert "was not an object" in str(excinfo.value)
 
     @pytest.mark.asyncio
     @respx.mock
@@ -479,6 +565,21 @@ class TestAsyncPaginateWrappedNullBody:
         assert result["person"] == {"id": 9}
 
     @pytest.mark.asyncio
+    @pytest.mark.parametrize("body", _NOT_AN_OBJECT)
+    @respx.mock
+    async def test_wrong_typed_later_page_body_fails_the_read(self, body):
+        respx.get(_PROGRESS_URL, params={"page": "2"}).mock(return_value=_json(body))
+        respx.get(_PROGRESS_URL).mock(return_value=_json({"events": [{"id": 1}]}, _link_to(f"{_PROGRESS_URL}?page=2")))
+
+        client = AsyncClient(access_token="test-token")
+        with pytest.raises(ApiError) as excinfo:
+            await client.for_account("12345").reports.person_progress(person_id=1)
+        await client.close()
+
+        assert "page 2" in str(excinfo.value)
+        assert "was not an object" in str(excinfo.value)
+
+    @pytest.mark.asyncio
     @respx.mock
     async def test_wrong_typed_later_page_fails_the_read(self):
         respx.get(_PROGRESS_URL, params={"page": "2"}).mock(return_value=_json({"events": 0}))
@@ -490,7 +591,8 @@ class TestAsyncPaginateWrappedNullBody:
         await client.close()
 
         assert "page 2" in str(excinfo.value)
-        assert "expected a JSON array at 'events'" in str(excinfo.value)
+        assert "the 'events' list in the response" in str(excinfo.value)
+        assert "was not an array" in str(excinfo.value)
 
 
 class TestRequestListNullBody:
@@ -515,7 +617,24 @@ class TestRequestListNullBody:
         with pytest.raises(ApiError) as excinfo:
             _account().folders.list_folders()
 
-        assert "expected a JSON array" in str(excinfo.value)
+        assert "was not an array" in str(excinfo.value)
+
+    @respx.mock
+    def test_an_undecodable_body_is_an_api_error_with_the_decoder_behind_it(self):
+        """The two malformed-body classes at this site have to answer in the same
+        taxonomy. Guarding the wrong-typed body while an undecodable one still
+        escaped as a raw ``JSONDecodeError`` would leave the very builtin escape
+        this change exists to close, at the site it edits — and the paginators
+        have classified both as ``ApiError`` with a populated cause since #750."""
+        respx.get(f"{_ACCOUNT_URL}/stacks.json").mock(
+            return_value=httpx.Response(200, content='[{"id": 1', headers={"Content-Type": "application/json"})
+        )
+
+        with pytest.raises(ApiError) as excinfo:
+            _account().folders.list_folders()
+
+        assert "Failed to parse list response" in str(excinfo.value)
+        assert isinstance(excinfo.value.cause, json.JSONDecodeError)
 
 
 class TestAsyncRequestListNullBody:
@@ -542,4 +661,19 @@ class TestAsyncRequestListNullBody:
             await client.for_account("12345").folders.list_folders()
         await client.close()
 
-        assert "expected a JSON array" in str(excinfo.value)
+        assert "was not an array" in str(excinfo.value)
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_an_undecodable_body_is_an_api_error_with_the_decoder_behind_it(self):
+        respx.get(f"{_ACCOUNT_URL}/stacks.json").mock(
+            return_value=httpx.Response(200, content='[{"id": 1', headers={"Content-Type": "application/json"})
+        )
+
+        client = AsyncClient(access_token="test-token")
+        with pytest.raises(ApiError) as excinfo:
+            await client.for_account("12345").folders.list_folders()
+        await client.close()
+
+        assert "Failed to parse list response" in str(excinfo.value)
+        assert isinstance(excinfo.value.cause, json.JSONDecodeError)

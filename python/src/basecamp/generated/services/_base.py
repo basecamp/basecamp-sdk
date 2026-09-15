@@ -4,11 +4,10 @@ import time
 from typing import TYPE_CHECKING, Any
 
 from basecamp import _security
+from basecamp._decoding import decoded_array, decoded_object
 from basecamp._pagination import (
     ListMeta,
     ListResult,
-    decode_envelope,
-    decode_list,
     parse_next_link,
     parse_total_count,
     selects_single_page,
@@ -110,7 +109,12 @@ class BaseService:
         try:
             response = self._client.http.get(self._client.account_path(path), params=params, operation=operation)
             _security.check_body_size(response.content, _security.MAX_RESPONSE_BODY_BYTES)
-            items = decode_list(response.json(), where="list response")
+            try:
+                body = response.json()
+            except Exception as e:
+                raise ApiError(f"Failed to parse list response: {_security.truncate(str(e))}") from e
+
+            items = decoded_array(body, "the list response body")
             _normalize_person_ids(items)
             # Unpaginated feeds return the whole collection in a single response,
             # so the total count is simply the array length. This is authoritative
@@ -308,7 +312,7 @@ class BaseService:
             except Exception as e:
                 raise ApiError(f"Failed to parse paginated response (page {page}): {_security.truncate(str(e))}") from e
 
-            all_items.extend(decode_list(items, where=f"paginated response (page {page})"))
+            all_items.extend(decoded_array(items, f"the paginated response body (page {page})"))
 
             # SPEC section 8: a positive `page` selects exactly that page. The
             # follow loop stops here after a single request; a next link still
@@ -371,8 +375,8 @@ class BaseService:
             except Exception as e:
                 raise ApiError(f"Failed to parse paginated response (page {page}): {_security.truncate(str(e))}") from e
 
-            where = f"paginated response (page {page})"
-            all_items.extend(decode_list(decode_envelope(data, where=where).get(key), where=where, at=key))
+            envelope = decoded_object(data, f"the paginated response body (page {page})")
+            all_items.extend(decoded_array(envelope.get(key), f"the {key!r} list in the response (page {page})"))
 
             # SPEC section 8: a positive `page` selects exactly that page. The
             # follow loop stops here after a single request; a next link still
@@ -429,9 +433,9 @@ class BaseService:
         except Exception as e:
             raise ApiError(f"Failed to parse paginated response (page 1): {_security.truncate(str(e))}") from e
 
-        first_data = decode_envelope(first_data, where="paginated response (page 1)")
+        first_data = decoded_object(first_data, "the paginated response body (page 1)")
         wrapper = {k: v for k, v in first_data.items() if k != key}
-        all_items = list(decode_list(first_data.get(key), where="paginated response (page 1)", at=key))
+        all_items = list(decoded_array(first_data.get(key), f"the {key!r} list in the response (page 1)"))
 
         next_link = parse_next_link(first_response.headers.get("link"))
         url = base_url
@@ -461,8 +465,8 @@ class BaseService:
             except Exception as e:
                 raise ApiError(f"Failed to parse paginated response (page {page}): {_security.truncate(str(e))}") from e
 
-            where = f"paginated response (page {page})"
-            all_items.extend(decode_list(decode_envelope(data, where=where).get(key), where=where, at=key))
+            envelope = decoded_object(data, f"the paginated response body (page {page})")
+            all_items.extend(decoded_array(envelope.get(key), f"the {key!r} list in the response (page {page})"))
             next_link = parse_next_link(response.headers.get("link"))
             url = next_url
 
