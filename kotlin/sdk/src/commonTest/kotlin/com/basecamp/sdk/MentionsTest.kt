@@ -10,7 +10,7 @@ import kotlin.test.assertTrue
 class MentionsTest {
 
     // Marshal 4.8, the older Rails layout, exactly as BC3 serves it:
-    // {"gid" => "gid://bc3/Person/1049715915?expires_in", "purpose" =>
+    // {"gid" => "gid://bc3/Person/1049715914?expires_in", "purpose" =>
     // "attachable", "expires_at" => nil}. The query string is why the gid is
     // parsed as a URL rather than split on "/".
     private val victorSgid =

@@ -23,29 +23,42 @@ import kotlin.time.TimeSource
  * run against each mutation with `--rerun-tasks`, because a Gradle task
  * reported UP-TO-DATE reports nothing at all.
  *
- * Killed:
+ * Killed (each verified by making the change and re-running, not by reading
+ * the assertions):
  *
  *  - `readWhole` returning null unconditionally — the acceptance control. An
  *    earlier version of this class built its controls from JSON envelopes, so
  *    the Marshal reader was never constructed and this mutation survived every
- *    row. That is why the controls below are Marshal.
- *  - the "a dump is exactly one value" check — the trailing-bytes row. Nothing
- *    in the repo covered it before.
- *  - the count bound and the length bound removed TOGETHER, with an
- *    OutOfMemoryError.
+ *    row HERE. It did not survive the suite: `MentionsTest` decodes the same
+ *    envelope. What was missing was this class being able to see its own
+ *    subject disappear, which is why the controls below are Marshal.
+ *  - the "a dump is exactly one value" check — the trailing-bytes row. No other
+ *    row in the KOTLIN suite reaches it; the reference covers it, which is
+ *    where the case came from.
+ *  - the count bound and the length bound removed TOGETHER. The first row to
+ *    throw is "string claiming past the end", whose `copyOfRange` runs off a
+ *    five-byte array long before the MaxInt32 rows can allocate anything.
  *
  * Not killed, and each for a reason worth knowing:
  *
  *  - the count bound alone, and the length bound alone: whichever survives
  *    refuses next. Neither line is pinned; the pair is.
- *  - the encoded cap alone and the payload cap alone: the same redundancy one
- *    layer out, plus the trailing-bytes check catching what gets past them.
+ *  - the payload cap alone: the 4097-byte row falls through to the
+ *    trailing-bytes check, which refuses it for a different reason.
+ *  - the encoded cap alone: the row that names it is 20,000 `!` characters,
+ *    which the base64 decoder refuses on the first byte. Nothing here reaches
+ *    the encoded cap as the deciding check.
  *  - the nesting bound. It is REACHED — it trips at depth 33 and 34 nested
  *    single-element arrays is 71 bytes, far under both caps — but reaching it
  *    changes no verdict: a nested array is not a person envelope whether the
  *    reader refuses it or returns it. Nor can removing it crash anything here;
  *    the 4096-byte cap admits about two thousand levels, well under what would
- *    exhaust a stack.
+ *    exhaust a stack. The row below walks that path and pins nothing, and its
+ *    name says so.
+ *  - the negative-ivar row, ported from the reference for completeness. Remove
+ *    the `n < 0` half of the count bound and `repeat(-1)` is a no-op, the reader
+ *    resumes mid-value and fails on a non-string hash key — still null, still
+ *    green. It documents a shape; it does not guard one.
  *
  * An earlier version of this note called the nesting bound unreachable because
  * the cap bounds recursion first. That inverted the arithmetic: 2048 is the
@@ -95,7 +108,12 @@ class HostileMarshalTest {
      * these controls did exactly that — every row green with a reader that
      * returned null unconditionally.
      */
-    private val marshalEnvelope = hex("04087b08492208676964063a06455449222b6769643a2f2f6263332f506572736f6e2f313034393731353931343f657870697265735f696e063b005449220c707572706f7365063b005449220f61747461636861626c65063b005449220f657870697265735f6174063b005430")
+    private val marshalEnvelope = hex(
+        "04087b08492208676964063a06455449222b6769643a2f2f6263332f506572736f6e2f31" +
+            "3034393731353931343f657870697265735f696e063b005449220c707572706f7365063b" +
+            "005449220f61747461636861626c65063b005449220f657870697265735f6174063b0054" +
+            "30",
+    )
 
     @Test
     fun refusesEveryHostilePayloadWithoutThrowing() {
@@ -150,7 +168,7 @@ class HostileMarshalTest {
     }
 
     @Test
-    fun refusesAPayloadNestedDeeperThanTheReaderWillRecurse() {
+    fun walksTheNestingPathOnBothSidesOfTheDepthBoundWithoutPinningIt() {
         // `[` then a packed 1 (0x06) is an array of one element; a `0` at the
         // bottom is Ruby nil. 34 levels is 71 bytes — past the guard's 32 and
         // far under both caps, so this is the depth path rather than the size
@@ -203,21 +221,28 @@ class HostileMarshalTest {
     fun refusesAPayloadOverTheSizeCapRatherThanOverTheEncodedOne() {
         // There are two caps and the encoded one fires first for anything much
         // too big, so a row has to be sized deliberately to reach the payload
-        // check: 4097 decoded bytes is one past it and 5464 encoded is one
-        // under the encoded cap. An 8KB payload — the obvious choice — never
-        // gets there.
+        // check. An 8KB payload — the obvious choice — never gets there.
+        //
+        // The margin is ZERO, not one: 4097 bytes encode to exactly 5464
+        // characters, which is exactly `MAX_SGID_ENCODED_BYTES`, and this row
+        // survives that check only because it is written `>` rather than `>=`.
+        // So the encoded length is asserted rather than assumed — tighten that
+        // comparison and this row fails loudly instead of quietly ceasing to
+        // exercise the cap it names.
         val big = bytes(0x04, 0x08, 0x22) + ByteArray(4094)
         assertEquals(4097, big.size)
+        assertEquals(5464, sgid(big).length - "--00".length, "exactly at the encoded cap, not under it")
         assertNull(personIdFromSgid(sgid(big)), "one byte past the payload cap")
     }
 
     @Test
     fun theAcceptanceControlsForBothEnvelopeShapes() {
         // Every other assertion in this class is a refusal, and a decoder that
-        // refused everything would satisfy all of them. Both branches need a
-        // control, because the refusals are split across the two: the Marshal
-        // reader for the hostile table, the JSON parser for nothing at all —
-        // which is exactly why the trailing-byte row above moved to Marshal.
+        // refused everything would satisfy all of them. The Marshal control is
+        // the one that matters here, because every refusal in this class is a
+        // Marshal refusal; the JSON control is kept beside it so the two
+        // branches cannot be confused again, which is what went wrong when
+        // these rows were JSON and the hostile table was not.
         assertEquals(1049715914L, personIdFromSgid(sgid(marshalEnvelope)), "marshal")
         val json = "{\"_rails\":{\"data\":\"gid://bc3/Person/1049715915\",\"pur\":\"attachable\"}}"
         assertEquals(1049715915L, personIdFromSgid(sgid(json.encodeToByteArray())), "json")
