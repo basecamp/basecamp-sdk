@@ -401,8 +401,12 @@ private fun namedExpansion(name: String): String? =
  */
 private val XML_ENTITIES: Map<String, String> = mapOf(
     "amp" to "&", "AMP" to "&",
-    "lt" to "<", "Lt" to "<", "LT" to "<",
-    "gt" to ">", "Gt" to ">", "GT" to ">",
+    "lt" to "<", "LT" to "<",
+    "gt" to ">", "GT" to ">",
+    // `Lt` and `Gt` are NOT the markup punctuation — the reference expands them
+    // to the much-less-than and much-greater-than signs. Mapping them to `<` and
+    // `>` was the KDoc's "exact casing" claim being false about its own table.
+    "Lt" to "\u226A", "Gt" to "\u226B",
     "quot" to "\"", "QUOT" to "\"",
     "apos" to "'",
 )
@@ -731,21 +735,27 @@ private fun isValidAuthority(authority: String): Boolean {
     val host = authority.substring(at + 1)
     if (host.isEmpty()) return false
     if (host.startsWith("[")) {
-        val close = host.indexOf(']')
+        // The closing bracket is the LAST one, as the reference takes it, so
+        // `[::1]]` leaves `::1]` as the literal and fails on the address rather
+        // than on the tail.
+        val close = host.lastIndexOf(']')
         if (close < 0) return false
         val after = host.substring(close + 1)
-        if (!(after.isEmpty() || (after.startsWith(":") && after.drop(1).all { it.isDigit() }))) return false
-        return isValidHostText(host.substring(1, close))
+        if (!(after.isEmpty() || (after.startsWith(":") && after.drop(1).isValidPort()))) return false
+        return isValidIpLiteral(host.substring(1, close))
     }
-    // A `[` anywhere makes the host an IP-literal candidate, and one that does
-    // not START with it is an invalid IP-literal rather than an ordinary name —
-    // `b[c3` is a parse error where `bc3]` is a perfectly good host. Measured
-    // against the reference parser rather than derived from the character set,
-    // which permits `[` precisely so a bracketed literal can carry one.
+    // A `[` in a host that does not OPEN with one is an invalid IP-literal, not
+    // an ordinary name — `b[c3` is a parse error where `bc3]` is a perfectly
+    // good host. Measured against the reference parser rather than derived from
+    // the character set, which permits `[` precisely so a bracketed literal can
+    // carry one. A `[` inside a literal that did open with one needs no rule
+    // here: the address parse below refuses it.
     if ('[' in host) return false
     val colon = host.lastIndexOf(':')
     val name = if (colon < 0) host else host.substring(0, colon)
-    if (colon >= 0 && !host.substring(colon + 1).all { it.isDigit() }) return false
+    // ASCII digits only. `Char.isDigit()` is the Unicode Nd category, so it
+    // accepts a fullwidth digit that the reference's port check refuses.
+    if (colon >= 0 && !host.substring(colon + 1).isValidPort()) return false
     return isValidHostText(name)
 }
 
@@ -754,8 +764,24 @@ private fun isValidAuthority(authority: String): Boolean {
  * it, so `gid://a^b@bc3/Person/7` is a parse error there and must name nobody
  * here either.
  */
-private fun isValidUserinfo(userinfo: String): Boolean = userinfo.all { c ->
-    c in 'a'..'z' || c in 'A'..'Z' || c in '0'..'9' || c in "-._~!$&'()*+,;=:%@"
+private fun isValidUserinfo(userinfo: String): Boolean {
+    var i = 0
+    while (i < userinfo.length) {
+        val c = userinfo[i]
+        if (c == '%') {
+            // The character set permits `%`, but only as the start of an escape.
+            // Checking the set alone admits `u%zz`, which the reference refuses —
+            // a malformed escape let through on the one path carrying the write
+            // side's only authenticity-adjacent check.
+            if (i + 2 >= userinfo.length) return false
+            if (!userinfo[i + 1].isHexDigit() || !userinfo[i + 2].isHexDigit()) return false
+            i += 3
+            continue
+        }
+        if (!(c in 'a'..'z' || c in 'A'..'Z' || c in '0'..'9' || c in "-._~!$&'()*+,;=:@")) return false
+        i++
+    }
+    return true
 }
 
 /** The host-text half of [isValidAuthority]: escapes well-formed, raw ASCII permitted. */
@@ -779,6 +805,143 @@ private fun isValidHostText(host: String): Boolean {
     }
     return true
 }
+
+/**
+ * The contents of a bracketed IP-literal, judged the way the reference judges
+ * them: the escapes are unwrapped first, then what comes out has to PARSE as an
+ * IPv6 address.
+ *
+ * An earlier version checked the shape instead — non-empty, a colon somewhere,
+ * nothing but the characters an address can carry. That was wrong in both
+ * directions at once. It accepted `[::1::2]` and `[:%25a]`, which the reference
+ * refuses; and it refused `[fe80::1%25eth0]` — a zone id, spelled with the
+ * `%25` RFC 6874 requires — which the reference accepts. The second direction
+ * is the dangerous one: a host the reference reads as a mention vanished here.
+ */
+private fun isValidIpLiteral(literal: String): Boolean {
+    // The zone id opens at the first literal `%25` and everything from there is
+    // read under the LOOSER zone rules. Decoding the whole literal under one set
+    // of rules is what let `[::1%25a%2Fb]` through: `%2F` is a byte a zone may
+    // not smuggle in, but a host may not carry `/` either, so only a mode-aware
+    // split catches it.
+    val zoneAt = literal.indexOf("%25")
+    val addressText = if (zoneAt >= 0) literal.substring(0, zoneAt) else literal
+    // Before the zone the literal is host text: an escape may only name a
+    // non-ASCII byte.
+    if (!isValidHostText(addressText)) return false
+    val address = percentDecode(addressText) ?: return false
+    if (zoneAt >= 0 && !isValidZoneText(literal.substring(zoneAt + 3))) return false
+    // `[::1%25]` is a zone that is not there — "zone must be a non-empty string".
+    if (zoneAt >= 0 && literal.length == zoneAt + 3) return false
+    return isIpv6Address(address)
+}
+
+/**
+ * A zone id past its `%25`: RFC 6874 lets a zone escape nearly anything, but not
+ * so as to introduce a byte that could not have been written directly. So an
+ * escape has to name `%` itself, a space, or a byte a host may carry raw.
+ */
+private fun isValidZoneText(zone: String): Boolean {
+    var i = 0
+    while (i < zone.length) {
+        val c = zone[i]
+        if (c == '%') {
+            if (i + 2 >= zone.length) return false
+            if (!zone[i + 1].isHexDigit() || !zone[i + 2].isHexDigit()) return false
+            val value = zone[i + 1].hexValue() * 16 + zone[i + 2].hexValue()
+            val permitted = zone.regionMatches(i, "%25", 0, 3) ||
+                value == ' '.code ||
+                value >= 0x80 ||
+                isHostChar(value.toChar())
+            if (!permitted) return false
+            i += 3
+            continue
+        }
+        if (c.code < 0x80 && !isHostChar(c)) return false
+        i++
+    }
+    return true
+}
+
+/**
+ * IPv6 as the reference's address parser accepts it: eight 16-bit groups of one
+ * to four hex digits, at most one `::` and that one standing for at least one
+ * group, with an optional dotted-quad tail in place of the last two groups.
+ *
+ * A bare IPv4 is NOT an IP-literal — `[192.0.2.1]` is refused there — so the
+ * dotted quad is only ever reachable as that tail.
+ */
+private fun isIpv6Address(address: String): Boolean {
+    var groups = 0
+    var i = 0
+    var hasDoubleColon = false
+    if (address.startsWith("::")) {
+        hasDoubleColon = true
+        i = 2
+        if (i == address.length) return true // "::" is the unspecified address
+    } else if (address.startsWith(":")) {
+        return false // a single leading colon never starts an address
+    }
+    while (i < address.length) {
+        // A dotted quad is allowed only as the final two groups, and only where
+        // two groups still fit.
+        val dot = address.indexOf('.', i)
+        if (dot >= 0 && (address.indexOf(':', i) < 0 || address.indexOf(':', i) > dot)) {
+            if (!isIpv4Address(address.substring(i))) return false
+            groups += 2
+            i = address.length
+            break
+        }
+        var end = i
+        while (end < address.length && address[end].isHexDigit()) end++
+        val digits = end - i
+        if (digits == 0 || digits > 4) return false
+        groups++
+        i = end
+        if (i == address.length) break
+        if (address[i] != ':') return false
+        i++
+        if (i < address.length && address[i] == ':') {
+            if (hasDoubleColon) return false // only one `::` in an address
+            hasDoubleColon = true
+            i++
+            if (i == address.length) break
+        } else if (i == address.length) {
+            return false // a trailing single colon is not a group separator
+        }
+    }
+    if (groups > 8) return false
+    // `::` has to stand for at least one group of zeros; without it the address
+    // must be complete.
+    return if (hasDoubleColon) groups < 8 else groups == 8
+}
+
+/** A dotted quad as the reference's address parser reads one: no leading zeros, each field at most 255. */
+private fun isIpv4Address(text: String): Boolean {
+    val fields = text.split('.')
+    if (fields.size != 4) return false
+    for (field in fields) {
+        if (field.isEmpty() || field.length > 3) return false
+        if (field.length > 1 && field[0] == '0') return false
+        if (field.any { it < '0' || it > '9' }) return false
+        if (field.toInt() > 255) return false
+    }
+    return true
+}
+
+private fun Char.hexValue(): Int = when (this) {
+    in '0'..'9' -> this - '0'
+    in 'a'..'f' -> this - 'a' + 10
+    else -> this - 'A' + 10
+}
+
+/**
+ * An optional port: EMPTY is valid, as it is for the reference — `bc3:` is a
+ * host with no port, not a malformed one. Otherwise ASCII digits only;
+ * `Char.isDigit()` is the Unicode Nd category and admits a fullwidth digit the
+ * reference refuses.
+ */
+private fun String.isValidPort(): Boolean = all { it in '0'..'9' }
 
 private fun Char.isHexDigit(): Boolean = this in '0'..'9' || this in 'a'..'f' || this in 'A'..'F'
 

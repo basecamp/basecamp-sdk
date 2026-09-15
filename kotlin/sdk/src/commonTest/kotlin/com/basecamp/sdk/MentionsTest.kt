@@ -239,6 +239,123 @@ class MentionsTest {
     }
 
     /** Builds an unsigned JSON-layout attachable sgid for an arbitrary gid. */
+    @Test
+    fun theShapesThatOnlyASweepFindsAreJudgedTheWayTheReferenceJudgesThem() {
+        // Each row below was read off the reference parser through the same
+        // public entry point, not derived from a rule. They are the shapes a
+        // port gets wrong while every hand-written row still passes: a second
+        // bracket INSIDE a bracketed literal, a malformed escape in the
+        // userinfo half, and a digit that is a digit only to Unicode.
+        //
+        // `expected` is the reference's own answer; null means it names nobody.
+        val rows: List<Pair<String, Long?>> = listOf(
+            // A `[` past the first index is an invalid IP-literal wherever it
+            // sits — including inside one that already opened. Checking only
+            // "a bracket mid-host" lets `[::1[]` and `bc3[` through.
+            "gid://b[c3/Person/7" to null,
+            "gid://bc3[/Person/7" to null,
+            "gid://[bc3/Person/7" to null,
+            "gid://[::1[]/Person/7" to null,
+            "gid://[::1]/Person/7" to 7L,
+            "gid://[::1]x/Person/7" to null,
+            "gid://[]/Person/7" to null,
+            "gid://[zzz]/Person/7" to null,
+            "gid://[::1]:80/Person/7" to 7L,
+            "gid://[::1]:/Person/7" to 7L,
+            "gid://[::1]:8a/Person/7" to null,
+            "gid://a:1]/Person/7" to null,
+            // A bracketed literal holding no colon is not an address there: a
+            // bare IPv4 is not an IP-literal.
+            "gid://[192.0.2.1]/Person/7" to null,
+            // The literal is PARSED, not shape-checked. These are the rows a
+            // shape check gets wrong in both directions at once.
+            "gid://[::1::2]/Person/7" to null,
+            "gid://[:%25a]/Person/7" to null,
+            "gid://[g::1]/Person/7" to null,
+            "gid://[1:2:3:4:5:6:7:8:9]/Person/7" to null,
+            "gid://[1:2:3:4:5:6:7]/Person/7" to null,
+            "gid://[1:2:3:4:5:6:7::8]/Person/7" to null,
+            "gid://[::12345:1]/Person/7" to null,
+            "gid://[::1.2.3.256]/Person/7" to null,
+            "gid://[::01.2.3.4]/Person/7" to null,
+            "gid://[::]/Person/7" to 7L,
+            "gid://[1:2:3:4:5:6:7:8]/Person/7" to 7L,
+            "gid://[::ffff:192.0.2.1]/Person/7" to 7L,
+            "gid://[::1.2.3.4]/Person/7" to 7L,
+            // A zone id, spelled the way RFC 6874 requires. A shape check that
+            // refused the letters in `eth0` dropped a host the reference reads.
+            "gid://[fe80::1%25eth0]/Person/7" to 7L,
+            "gid://[fe80::1%eth0]/Person/7" to null,
+            "gid://[fe80::1%25]/Person/7" to null,
+            "gid://[::1%25e%41t]/Person/7" to 7L,
+            // A zone may escape, but not so as to smuggle in a byte it could not
+            // have written raw — `%2F` is `/`, which no host may carry.
+            "gid://[::1%25a%2Fb]/Person/7" to null,
+            // The literal ends at the LAST `]`, not the first: a zone id may
+            // carry one, so `[::1%25a]b]` is a host with the zone `a]b`. Taking
+            // the first closing bracket loses it.
+            "gid://[::1%25a]b]/Person/7" to 7L,
+            "gid://[::1%25e%zzt]/Person/7" to null,
+            "gid://[::1%25e^t]/Person/7" to null,
+
+            // The userinfo half is PARSED, not just character-checked: `%` is a
+            // permitted character but only as the head of a well-formed escape.
+            "gid://u%zz@bc3/Person/7" to null,
+            "gid://u%z@bc3/Person/7" to null,
+            "gid://u%@bc3/Person/7" to null,
+            "gid://u%2@bc3/Person/7" to null,
+            "gid://a%GG@bc3/Person/7" to null,
+            "gid://u%41@bc3/Person/7" to 7L,
+            "gid://u%2F@bc3/Person/7" to 7L,
+            "gid://a^b@bc3/Person/7" to null,
+            "gid://user@bc3/Person/7" to 7L,
+            "gid://us:pw@bc3/Person/7" to 7L,
+
+            // An EMPTY port is valid; a non-ASCII digit is not. `Char.isDigit()`
+            // is the Unicode Nd category, so a port check written with it accepts
+            // fullwidth and Arabic-Indic digits the reference refuses.
+            "gid://bc3:80/Person/7" to 7L,
+            "gid://bc3:/Person/7" to 7L,
+            "gid://bc3:abc/Person/7" to null,
+            "gid://bc3:\uFF18\uFF10/Person/7" to null,
+            "gid://bc3:\u0668\u0660/Person/7" to null,
+            "gid://bc3:\u06F8\u06F0/Person/7" to null,
+            "gid://bc3:\u2078\u2070/Person/7" to null,
+            "gid://bc3:8\u0660/Person/7" to null,
+
+            // The same door on the id itself, plus the shapes a lenient integer
+            // parse would swallow.
+            "gid://bc3/Person/\uFF17" to null,
+            "gid://bc3/Person/\u0667" to null,
+            "gid://bc3/Person/\u06F7" to null,
+            "gid://bc3/Person/7\uFF17" to null,
+            "gid://bc3/Person/7 " to null,
+            "gid://bc3/Person/+7" to null,
+            "gid://bc3/Person/07" to 7L,
+            "gid://bc3/Person/0" to null,
+            "gid://bc3/Person/-7" to null,
+
+            // And the host's own escapes, for the ASCII rule and its exemption.
+            "gid://bc%zz3/Person/7" to null,
+            "gid://bc%413/Person/7" to null,
+            "gid://bc%253/Person/7" to 7L,
+
+            // The reference's "is there a host at all" test runs on the host
+            // WITH its port, so a bare port is a host there. Stripping the port
+            // first and demanding a non-empty remainder refuses these — the
+            // losing direction, and one another port shipped.
+            "gid://:8080/Person/7" to 7L,
+            "gid://:/Person/7" to 7L,
+            "gid://user@:80/Person/7" to 7L,
+        )
+        // Counted so a row lost to an editing slip shows up as a failure rather
+        // than as a smaller sweep that still passes.
+        assertEquals(67, rows.size, "the swept rows")
+        for ((gid, expected) in rows) {
+            assertEquals(expected, personIdFromSgid(jsonSgidFor(gid)), gid)
+        }
+    }
+
     private fun jsonSgidFor(gid: String): String {
         val json = "{\"_rails\":{\"data\":\"$gid\",\"pur\":\"attachable\"}}"
         val alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"

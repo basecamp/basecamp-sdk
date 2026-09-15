@@ -28,6 +28,19 @@ class EntityDecodingTest {
         "BAh7CEkiCGdpZAY6BkVUSSIrZ2lkOi8vYmMzL1BlcnNvbi8xMDQ5NzE1OTE1P2V4cGlyZXNfaW4GOwBUSSIMcHVycG9zZQY7AFRJIg9h" +
             "dHRhY2hhYmxlBjsAVEkiD2V4cGlyZXNfYXQGOwBUMA==--919d2c8b11ff403eefcab9db42dd26846d0c3102"
 
+    private val plusSeed = "eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vMTA0OTcxNTkxNSIsInB1ciI6ImF0dGFjaGFibGUiLCJ4Ijoi77+9In19"
+    private val solSeed = "eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vMTA0OTcxNTkxNSIsInB1ciI6ImF0dGFjaGFibGUiLCJ4Ijoi77+/In19"
+
+    /**
+     * An envelope whose base64 contains `fj`. CONSTRUCTED, not searched: `f` is
+     * sextet 31 and `j` is 35, which needs the byte `~` at an offset divisible
+     * by three followed by one in 0x30..0x3F. A random search over alphanumeric
+     * filler runs forever and looks broken — 200,000 trials found none — because
+     * the one byte it needs is never in the alphabet.
+     */
+    private val fjSeed =
+        "eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vMTA0OTcxNTkxNSIsInB1ciI6ImF0dGFjaGFibGUiLCJ4IjoifjAifX0="
+
     private fun idFor(value: String): Long? =
         mentionedPersonIds("<bc-attachment sgid=\"$value\"></bc-attachment>").firstOrNull()
 
@@ -237,4 +250,71 @@ class EntityDecodingTest {
         assertEquals(1049715915L, idFor(good.replace("=", "&#4294967357;")), "2^32+61 wraps to '='")
         assertNull(idFor("&#4294967296;$good"), "2^32 wraps to 0, which is the replacement character")
     }
+
+    @Test
+    fun everyBase64ExpandingReferenceIsResolvedBackIntoThePayload() {
+        // The headline fix of the round that added `fjlig` had NO test. A table
+        // is not tested by a row asserting "no mention": a hundred different
+        // failures satisfy that, including a decoder that does nothing at all.
+        // Each row here asserts a POSITIVE id, so it can only pass if that
+        // specific expansion happened.
+        //
+        // `fjlig` is the one the reference keeps in its two-rune table, which is
+        // why a sweep of the single-rune table reported five names where there
+        // are six.
+        val seeds = mapOf(
+            "&equals;" to good.replace("=", "&equals;"),
+            "&plus;" to plusSeed.replace("+", "&plus;"),
+            "&sol;" to solSeed.replace("/", "&sol;"),
+        )
+        for ((name, value) in seeds) {
+            assertEquals(1049715915L, idFor(value), "$name must resolve back into the payload")
+        }
+        // fj appears in this payload's base64; written as the reference spells
+        // it, the mention must still be found.
+        assertEquals(1049715915L, idFor(fjSeed), "the fj seed itself decodes")
+        assertEquals(1049715915L, idFor(fjSeed.replace("fj", "&fjlig;")), "&fjlig; expands to fj")
+    }
+
+    @Test
+    fun theTableTestsCanTellTheFixFromItsAbsence() {
+        // A mutation check on the assertions above, done in the test rather than
+        // by editing the decoder: each expansion, left literal, must NOT resolve.
+        // If these passed, the positive rows above would be satisfied by a
+        // decoder that expanded nothing.
+        assertNull(idFor(good.replace("=", "&equalsX;")), "a near-miss name must not resolve")
+        assertNull(idFor(fjSeed.replace("fj", "&fjligX;")), "a near-miss fjlig must not resolve")
+        assertNull(idFor(fjSeed.replace("fj", "&amp;")), "a different expansion must not resolve")
+        // And the whitespace family, same check.
+        assertNull(idFor("&nbspX;$good"), "a near-miss whitespace name must not resolve")
+    }
+
+    @Test
+    fun theMarkupPunctuationNamesCarryTheReferencesOwnCasingAndValues() {
+        // `Lt` and `Gt` are NOT the markup punctuation in the reference's table:
+        // they are the much-less-than and much-greater-than signs. Mapping them
+        // to `<` and `>` was the KDoc's "exact casing" claim being false about
+        // its own table, and nothing asserted it either way.
+        assertEquals("\u226A", unescapeForTest("&Lt;"))
+        assertEquals("\u226B", unescapeForTest("&Gt;"))
+        assertEquals("<", unescapeForTest("&lt;"))
+        assertEquals("<", unescapeForTest("&LT;"))
+        assertEquals(">", unescapeForTest("&gt;"))
+        assertEquals(">", unescapeForTest("&GT;"))
+        assertEquals("&", unescapeForTest("&amp;"))
+        assertEquals("&", unescapeForTest("&AMP;"))
+        assertEquals("'", unescapeForTest("&apos;"))
+        // The casings the reference does NOT carry stay literal.
+        for (absent in listOf("&Amp;", "&APOS;", "&Apos;", "&QuOt;", "&Quot;")) {
+            assertEquals(absent, unescapeForTest(absent), "$absent is not in the reference's table")
+        }
+    }
+
+    /**
+     * Reads one reference back through the scanner, by putting it in an sgid
+     * attribute and taking what the scanner reports. The decoder is internal to
+     * the markup walk, so this is the seam a test can reach it through.
+     */
+    private fun unescapeForTest(reference: String): String =
+        bcAttachmentSgids("<bc-attachment sgid=\"$reference\"></bc-attachment>").single()
 }
