@@ -1205,6 +1205,77 @@ mod tests {
         assert_eq!(twice.matches("bc-attachment sgid=").count(), 1);
     }
 
+    /// The SUPPRESSION direction: content crafted so that its unescape equals the sgid the
+    /// people read returned, making the write-side dedupe fire and skip a mention that
+    /// should be written. It is the `&fjlig;` machinery inverted — that one made the dedupe
+    /// MISS and emit a duplicate; this one makes it HIT and emit nothing.
+    ///
+    /// The Python and Ruby ports were vulnerable through `&#1;`: an HTML5 decoder drops a
+    /// numeric reference naming a C0 control to the empty string, so `<real sgid>&#1;`
+    /// unescaped to exactly the real sgid and the mention was silently suppressed. Go emits
+    /// the control character, the strings differ, and the mention is written.
+    ///
+    /// This decoder cannot do it, and the reason is structural rather than lucky: no
+    /// expansion in the table is empty, a numeric reference always yields a character or is
+    /// left literal, and a literal `&…` is not empty either. So the unescape of
+    /// `<sgid><anything non-empty>` is never `<sgid>`. Measured across 2,452 suffixes —
+    /// every entity name in both of Go's tables, every C0 control and DEL in six spellings,
+    /// surrogates, the BOM and the zero-width characters — against Go's own `WithMentions`:
+    /// both write the mention in all 2,452, and the empty-suffix control below is what
+    /// proves the assertion is not vacuous.
+    #[test]
+    fn a_crafted_suffix_cannot_suppress_a_real_mention() {
+        let annie = person(1_049_715_915, Some(ANNIE_SGID));
+        let content_with = |suffix: &str| {
+            format!(r#"<div><bc-attachment sgid="{ANNIE_SGID}{suffix}"></bc-attachment>hi</div>"#)
+        };
+        let tags = |suffix: &str| {
+            with_mentions(&content_with(suffix), std::slice::from_ref(&annie))
+                .unwrap()
+                .matches("bc-attachment sgid=")
+                .count()
+        };
+
+        // The control: with nothing appended the content really does already carry the
+        // mention, so the dedupe SHOULD fire. Without this row the rest proves nothing.
+        assert_eq!(tags(""), 1, "the dedupe fires when it should");
+
+        for suffix in [
+            "&#1;",
+            "&#1",
+            "&#x1;",
+            "&#01;",
+            "&#001;",
+            "&#0;",
+            "&#127;",
+            "&#xd800;",
+            "&#xfeff;",
+            "&#8203;",
+            "&#x110000;",
+            "&#;",
+            "&#",
+            "&#x",
+            "&",
+            "&&",
+            "&;",
+            "&NewLine;",
+            "&Tab;",
+            "&nbsp;",
+            "&nbsp",
+            "&ThickSpace;",
+            "&fjlig;",
+            "&amp;",
+            "&equals;",
+            "&unknownthing;",
+        ] {
+            assert_eq!(
+                tags(suffix),
+                2,
+                "a real mention was suppressed by {suffix:?}"
+            );
+        }
+    }
+
     #[test]
     fn dedupe_is_on_the_sgid_string_not_on_the_person_id_it_decodes_to() {
         // A stale tag naming the right person: the sgid differs, so the real mention is
