@@ -537,7 +537,7 @@ private fun percentDecode(s: String): String? {
  * final group of a single character carries no whole byte and is refused, as it
  * is there.
  */
-private fun decodeBase64(s: String): ByteArray? {
+internal fun decodeBase64(s: String): ByteArray? {
     if (s.isEmpty()) return null
     val out = ByteArray(s.length * 3 / 4 + 1)
     var written = 0
