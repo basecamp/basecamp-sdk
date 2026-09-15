@@ -102,9 +102,12 @@ module Basecamp
     # attempt to enumerate that disagreement here has been wrong — first a
     # count, then a set of categories, then an absolute ("every member") that a
     # single shape falsified. What is true, and checked by the harness rather
-    # than asserted here, is the SHAPE of it: Ruby's parser is stricter on most
-    # authorities the reference tolerates and more permissive on at least one it
-    # refuses (the RFC 3986 IPvFuture literal <tt>[v7.x]</tt>).
+    # than asserted here, is the SHAPE of it: Ruby's parser is stricter on some
+    # authorities the reference tolerates, and the residue is now ENTIRELY in
+    # that direction. It was not always: the RFC 3986 IPvFuture literal
+    # <tt>[v7.x]</tt> resolved here and nowhere else, and is refused explicitly
+    # now (see {IPVFUTURE_AUTHORITY}). Swept afterwards across every corpus —
+    # 13,700 inputs — for any other accepting-direction row: none.
     #
     # This rule was verified at every POSITION an escape can occupy, because a
     # rule checked in one position is not evidence about another — the reference
@@ -143,6 +146,14 @@ module Basecamp
     # * a percent escape is refused unless it names a byte at or above 0x80,
     #   <tt>%25</tt> excepted. That rule is already ported, on {HOST_ASCII_ESCAPE}.
     #
+    # The QUERY belongs to this residue too, and is named separately because it
+    # is a different rule rather than more of the same one: the reference never
+    # unescapes a query, so a malformed escape there parses fine and resolves,
+    # while Ruby's parser refuses it. Measured at 2 of 64 across the three
+    # components. The FRAGMENT, which a sibling port got wrong in the accepting
+    # direction, is clean here at 0 of 64 — the reference unescapes it while
+    # parsing and so does Ruby, so a malformed escape fails both.
+    #
     # The residue is more reachable than the seven hand-built shapes suggest:
     # fuzzing 20,000 documents that corrupt one character of a real payload put
     # it at 14, all of them the reference resolving where this refuses, because
@@ -155,6 +166,24 @@ module Basecamp
     # about something else. The IPv6 literal is separate again: bracketed hosts
     # agree today except for the zone-id and the IPvFuture shape recorded below.
     HOST_ASCII_ESCAPE = /%(?!25)[0-7][0-9A-Fa-f]/n
+
+    # An RFC 3986 IPvFuture literal — "[v7.x]" — which Ruby's URI parses and the
+    # reference's does not: a bracketed host must be an IPv6 address there, and
+    # its address parser has no IPvFuture grammar.
+    #
+    # This is the one shape where this port ACCEPTED an authority the reference
+    # refuses, and the accepting direction is the one that matters, because the
+    # write side's only authenticity-adjacent check is whether an sgid names the
+    # person it was given. It was documented in the comment above for several
+    # rounds while the spec waiver two commits later asserted that no accepting
+    # case existed. Both statements were mine and neither reader put them side
+    # by side until one read the claim against the source.
+    #
+    # Refusing this cannot refuse a real address: IPv6 is hex digits and colons,
+    # and "v" is not a hex digit. Measured after: 7 accepting shapes closed,
+    # every valid IPv6 literal still resolving, and zero accepting-direction
+    # rows left across all corpora.
+    IPVFUTURE_AUTHORITY = /\A\[[vV][0-9A-Fa-f]+\./n
 
     # The largest person id an sgid may name, matching the 64-bit bound the
     # reference implementation's ParseInt applies. One definition, shared with
@@ -336,6 +365,7 @@ module Basecamp
       host_and_port = userinfo ? authority[(userinfo + 1)..] : authority
       return nil if host_and_port.empty?
       return nil if host_and_port.b.match?(HOST_ASCII_ESCAPE)
+      return nil if host_and_port.b.match?(IPVFUTURE_AUTHORITY)
 
       # A GlobalID path is exactly "/<Model>/<id>": no more, no less. The path is
       # unescaped first, as the reference's parser hands it over unescaped, so
@@ -400,7 +430,14 @@ module Basecamp
       # someone else — or a file — under this person's id. Integer identity, not
       # numeric equality: 12.0 == 12 in Ruby, and a person read that came back
       # with a float id must not mint a tag on that basis.
-      unless id.is_a?(Integer) && person_id_from_sgid(sgid) == id
+      #
+      # A DIGIT STRING is an integer here, though, and only here. A person's id
+      # is the one field in the whole generated model the reference decodes
+      # flexibly, so it reads "7" as 7 — and requiring an Integer refused a
+      # people response the reference accepts, failing the whole comment. A
+      # float, a boolean, an array and a non-numeric string are all still
+      # refused, which is what keeps this an identity check.
+      unless person_identity(id) && person_id_from_sgid(sgid) == person_identity(id)
         raise UsageError.new(
           "person #{id}'s attachable_sgid does not name that person",
           hint: "read the person through people.get to obtain their own"
@@ -408,6 +445,27 @@ module Basecamp
       end
 
       %(<bc-attachment sgid="#{sgid}"></bc-attachment>)
+    end
+
+    # A person's id as the reference decodes one, or nil when it is not an id.
+    #
+    # +Person.Id+ is the single field in the generated model typed as the
+    # flexible decoder, so a JSON string of digits IS an id there — and the
+    # sentinel it serves for system-generated entities, "basecamp", decodes to
+    # 0 rather than erroring. Zero never matches an sgid's person, which must be
+    # positive, so that one falls out as a refusal on its own.
+    #
+    # Nothing else is coerced. Matched on BYTES, since a String with a broken
+    # encoding would otherwise raise out of the regexp engine.
+    def person_identity(id)
+      return id if id.is_a?(Integer)
+      return nil unless id.is_a?(String)
+
+      digits = id.b
+      return nil unless digits.match?(/\A-?\d+\z/n)
+
+      value = digits.to_i
+      value.between?(Ids::MIN, Ids::MAX) ? value : nil
     end
 
     # Returns content that mentions each of the given people, for posting as a
@@ -466,9 +524,25 @@ module Basecamp
       # byteslice. The cut lands just after a ">", which is never inside a
       # character, so each half stays valid in the content's own encoding.
       block_end = leading_block_end(content)
-      return prefix + content if block_end.negative?
+      return join_bytes([ prefix, content ], content.encoding) if block_end.negative?
 
-      content.byteslice(0, block_end) + prefix + content.byteslice(block_end..)
+      join_bytes([ content.byteslice(0, block_end), prefix, content.byteslice(block_end..) ], content.encoding)
+    end
+
+    # Joins the pieces as BYTES, then gives the result the content's own
+    # encoding when that is still a valid reading of it.
+    #
+    # An sgid is base64url and "--" and a hex digest, so in every case BC3
+    # produces the tag is ASCII and this returns exactly what "+" returned
+    # before. A person hash carrying a non-ASCII sgid is not such a case, and
+    # there "+" raised Encoding::CompatibilityError out of a public method for
+    # a binary tag over UTF-8 content. The reference has no encoding to
+    # reconcile and simply writes the bytes; so does this, and it labels them
+    # as the caller's encoding whenever that reading is valid.
+    def join_bytes(parts, encoding)
+      joined = parts.map(&:b).join
+      joined.force_encoding(encoding)
+      joined.valid_encoding? ? joined : joined.b
     end
 
     # Returns the sgid attribute of every +<bc-attachment>+ in the text, in
@@ -883,7 +957,7 @@ module Basecamp
     private_class_method :parse_attributes, :leading_block_end, :global_id_from_sgid,
                          :envelope_gid, :decode_payload, :unescape_attribute_value, :codepoint_reference, :trim_sgid, :space_run_end, :space_run_start, :space_width_at,
                          :space_width_behind, :trim_padding,
-                         :field, :space?, :tag_name_char?, :tag_name_end?
+                         :field, :person_identity, :join_bytes, :space?, :tag_name_char?, :tag_name_end?
 
     # A reader for the subset of Ruby's Marshal 4.8 format a SignedGlobalID
     # payload uses — nil, booleans, fixnums, strings (with their encoding

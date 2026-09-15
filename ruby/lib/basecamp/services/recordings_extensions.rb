@@ -210,8 +210,17 @@ module Basecamp
       # {Basecamp::Services::MergeSafe#require_hash} describes this same hazard
       # in the same words; the message differs only because the escape it names
       # belongs to the merge-safe writes.
+      #
+      # NULL IS NOT MALFORMED, and the first version of this guard had that
+      # wrong — it said the reference has a decode failure for nil, and the
+      # reference has no such thing. Measured: json.Unmarshal of `null` into a
+      # struct returns no error and leaves it zero, everywhere and at every
+      # depth, so a null body is a zero-valued summary there. An empty object
+      # is the same zero: every field reads as absent, and the bucket
+      # comparison is skipped exactly as it is for a zero bucket id.
       def read_record(record)
         return record if record.is_a?(Hash)
+        return {} if record.nil?
 
         raise malformed_response("the read returned #{MergeSafe.describe(record)}, not a recording object")
       end
@@ -256,8 +265,15 @@ module Basecamp
       end
 
       # Picks the read for a pointer. +recording_type+ wins when set.
+      #
+      # Matched on BYTES. A Go string carries arbitrary bytes, so the reference
+      # routes "comment.\xFF" on its "comment" subject like any other; Ruby's
+      # String#strip validates the encoding and raised
+      # Encoding::CompatibilityError straight out of the public method for both
+      # arguments. The tables are ASCII, and an ASCII-only binary string is
+      # eql? to its text twin, so the lookups are unaffected.
       def route_recording(event_type:, recording_type:)
-        type = recording_type.to_s.strip
+        type = recording_type.to_s.b.strip
         unless type.empty?
           return :chat_line if type.start_with?(CHAT_LINE_TYPE_PREFIX)
 
@@ -267,7 +283,7 @@ module Basecamp
           raise RecordingRoutingError.unknown_recording_type(type)
         end
 
-        subject_type = event_type.to_s.strip
+        subject_type = event_type.to_s.b.strip
         raise RecordingRoutingError.unknown_recording_type(subject_type) if subject_type.empty?
 
         # A feed type is "<subject>.<action>"; the subject names the recording
@@ -433,7 +449,14 @@ module Basecamp
         title = record["title"] if title == :default
         content = record["content"] if content == :default
         parent = record["parent"] if parent == :default
-        content = content.to_s
+        # CONTENT is refused rather than coerced, because it is the one member
+        # of the projection this composite INTERPRETS: mentioned_person_ids is
+        # derived from it. to_s turned an array or a hash into its Ruby
+        # rendering and then scanned that for mentions, which is reading a body
+        # the reference would have failed to decode. Title goes through the same
+        # check because first_non_empty reaches both.
+        content = read_text(content, "content")
+        title = read_text(title, "title")
 
         summary = {
           "id" => record["id"],
@@ -483,7 +506,10 @@ module Basecamp
         end
 
         assignees.each do |assignee|
-          next if assignee.is_a?(Hash)
+          # nil is the zero Person the reference decodes a null member into,
+          # and this member is reported rather than interpreted, so it travels
+          # as it arrived — see the boundary stated on #project.
+          next if assignee.nil? || assignee.is_a?(Hash)
 
           raise malformed_response("an assignee is #{MergeSafe.describe(assignee)}, not an object")
         end
@@ -495,8 +521,29 @@ module Basecamp
         assignees
       end
 
+      # The first of these that is a non-empty string.
+      #
+      # Each candidate is type-checked rather than coerced, for the reason
+      # read_text gives: these feed the title and the content, and a to_s here
+      # would have hidden exactly what that check exists to catch.
       def first_non_empty(*values)
-        values.find { |value| !value.to_s.empty? }.to_s
+        values.each do |value|
+          text = read_text(value, "title or content")
+          return text unless text.empty?
+        end
+        ""
+      end
+
+      # A text member of a read, or "" when it carries none.
+      #
+      # Absent or null is genuinely empty. A String passes through. Anything
+      # else is a decode failure in the reference, which holds a plain string
+      # for every one of these.
+      def read_text(value, name)
+        return "" if value.nil?
+        return value if value.is_a?(String)
+
+        raise malformed_response("the recording's \"#{name}\" is #{MergeSafe.describe(value)}, not a string")
       end
 
       # Resolves the line, then projects it with the Campfire it was found under.
@@ -651,6 +698,11 @@ module Basecamp
         end
 
         dock.filter_map do |item|
+          # A null element decodes to a ZERO item there, not to an error, and a
+          # zero item's name is "" — so it is skipped for the same reason any
+          # non-chat item is, rather than failing the read.
+          next if item.nil?
+
           unless item.is_a?(Hash)
             raise malformed_response("a dock item is #{MergeSafe.describe(item)}, not an object",
               hint: DISCOVERY_HINT)

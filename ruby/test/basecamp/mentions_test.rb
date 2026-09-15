@@ -363,6 +363,44 @@ class MentionsTest < Minitest::Test
     assert_equal mentions_in_tag("&#xFFFD;#{rest}"), mentions_in_tag("&#x80000000;#{rest}")
   end
 
+  def test_a_digit_string_person_id_mints_the_mention
+    # Person.Id is the single field in the generated model the reference decodes
+    # flexibly, so it reads "7" as 7 and a people response carrying a string id
+    # mints the mention there. Requiring an Integer refused it here and failed
+    # the whole comment. Everything else that is not an integer is still
+    # refused, which is what keeps this an identity check rather than a coercion.
+    sgid = person_sgid(7)
+
+    assert_equal [ 7 ], Basecamp::Mentions.mentioned_person_ids(
+      Basecamp::Mentions.with_mentions("hi", [ { "id" => "7", "attachable_sgid" => sgid } ])
+    )
+
+    [ 7.0, "7.0", "seven", "basecamp", true, [ 7 ], { "id" => 7 }, nil, "" ].each do |id|
+      assert_raises(Basecamp::UsageError, "an id of #{id.inspect}") do
+        Basecamp::Mentions.with_mentions("hi", [ { "id" => id, "attachable_sgid" => sgid } ])
+      end
+    end
+  end
+
+  def test_a_binary_sgid_does_not_raise_an_encoding_error_through_the_write
+    # The tag is built from the sgid's bytes and then joined to the caller's
+    # content; "+" raised Encoding::CompatibilityError straight out of this
+    # public method for a binary sgid over UTF-8 text. The reference has no
+    # encoding to reconcile and writes the bytes, and so does this.
+    sgid = person_sgid(7).b + "\xFF".b
+
+    result = Basecamp::Mentions.with_mentions("café", [ { "id" => 7, "attachable_sgid" => sgid } ])
+
+    assert_includes result.b, sgid
+    assert_includes result.b, "café".b
+    # The ordinary case is untouched: an ASCII sgid over UTF-8 content still
+    # comes back as UTF-8, not as bytes.
+    ascii = Basecamp::Mentions.with_mentions("café", [ { "id" => 7, "attachable_sgid" => person_sgid(7) } ])
+
+    assert_equal Encoding::UTF_8, ascii.encoding
+    assert_predicate ascii, :valid_encoding?
+  end
+
   def test_a_c1_reference_is_remapped_rather_than_read_as_a_code_point
     # 0x80..0x9F are not code points in HTML, they are Windows-1252 bytes, and
     # the reference implementation remaps them. It decides a verdict here: 0x85
@@ -566,6 +604,33 @@ class MentionsTest < Minitest::Test
     assert_empty Basecamp::Mentions.mentioned_person_ids(
       %(<bc-attachment sgid="#{sgid}"></bc-attachment>)
     )
+  end
+
+  def test_an_ipvfuture_authority_is_refused
+    # The ONE shape where this port accepted an authority the reference refuses:
+    # a bracketed host must be an IPv6 address there, and its address parser has
+    # no IPvFuture grammar, while Ruby's URI parses "[v7.x]" happily. The
+    # accepting direction is the one that matters, because the write side's only
+    # authenticity-adjacent check is whether an sgid names the person it was
+    # given.
+    #
+    # It sat documented in a comment for several rounds while a spec waiver
+    # asserted no accepting case existed. The row is literal-pinned, and it
+    # carries the must-still-resolve neighbours so it cannot be satisfied by
+    # refusing too much — refusing every bracketed host would pass a
+    # refuse-only test and break every real IPv6 authority.
+    refused = [ "[v7.x]", "[v7.abc]", "[vF.a:b]", "[v1.~]", "[v0.0]", "[vff.a-b.c]", "[v7.x]:80" ]
+    refused.each do |authority|
+      assert_nil Basecamp::Mentions.person_id_from_sgid(marshal_sgid("gid://#{authority}/Person/4711")),
+        "#{authority} is IPvFuture and the reference refuses it"
+    end
+
+    # No valid IPv6 address can begin with "v" — it is not a hex digit — so the
+    # rule cannot reach these.
+    [ "[fe80::1]", "[::1]", "[::]", "[2001:db8::1]:8080" ].each do |authority|
+      assert_equal 4711, Basecamp::Mentions.person_id_from_sgid(marshal_sgid("gid://#{authority}/Person/4711")),
+        "#{authority} is a real IPv6 authority and must still resolve"
+    end
   end
 
   def test_an_escape_naming_an_ascii_byte_in_the_authority_is_refused

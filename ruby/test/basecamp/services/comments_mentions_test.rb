@@ -184,6 +184,30 @@ class CommentsMentionsTest < Minitest::Test
     assert_not_requested(:any, %r{\A#{Regexp.escape(BASE_URL)}})
   end
 
+  def test_a_person_read_that_is_not_an_object_fails_the_whole_write
+    # The single most dangerous fail-open in either composite, because it is a
+    # WRITE and it was silent. The people reads were collected with filter_map,
+    # which drops a falsy element as readily as the duplicate it was there to
+    # skip — so a 200 carrying `null` removed that mention and POSTED the
+    # comment anyway, telling the caller it had succeeded. This method's own
+    # doc promised the opposite: "nothing is posted on a partial mention list".
+    [ "null", "false", '"scalar"', "[]", "5" ].each do |body|
+      stub_request(:get, "#{BASE_URL}/12345/people/108")
+        .to_return(status: 200, body: body, headers: { "Content-Type" => "application/json" })
+      stub_comment_create
+
+      error = assert_raises(Basecamp::ApiError, "a person body of #{body}") do
+        @account.comments.create_with_mentions(
+          recording_id: RECORDING_ID, content: "<div>ship it</div>", person_ids: [ 108 ]
+        )
+      end
+
+      assert_not error.retryable?
+      assert_not_requested(:post, "#{BASE_URL}/12345/recordings/#{RECORDING_ID}/comments.json")
+      WebMock.reset!
+    end
+  end
+
   def test_the_generated_create_is_still_reachable_unchanged
     # The composite is prepended, not substituted: `create` is still the plain
     # single POST that writes exactly what it is given.
