@@ -689,8 +689,17 @@ private const val MARSHAL_MINOR: Byte = 0x08
  * it, and percent escapes in the path are decoded, so the comparison is against
  * the path a parser would report rather than against its spelling.
  */
-private fun globalIdModelAndId(gid: String): Pair<String, String>? {
-    // A URL parser refuses a control character anywhere in the input, and this
+private fun globalIdModelAndId(raw: String): Pair<String, String>? {
+    // The fragment comes off FIRST, the way a URL parser splits it, because the
+    // two halves are judged by different rules: a raw control character is a
+    // parse error in the URL but not in the fragment, and a malformed escape is
+    // an error in the fragment but not in the query. Checking the whole string
+    // for control characters lost `gid://bc3/Person/7#<LF>`, which the reference
+    // reads as a mention — the vanishing direction.
+    val hash = raw.indexOf('#')
+    val gid = if (hash >= 0) raw.substring(0, hash) else raw
+    if (hash >= 0 && !hasWellFormedEscapes(raw.substring(hash + 1))) return null
+    // A URL parser refuses a control character anywhere in what is left, and this
     // is the write side too: MentionMarkup asks this helper whether an sgid names
     // the person it is given, so a gid Go calls undecodable must not become a tag
     // here.
@@ -700,7 +709,8 @@ private fun globalIdModelAndId(gid: String): Pair<String, String>? {
     if (!gid.regionMatches(0, "gid", 0, 3, ignoreCase = true)) return null
     if (!gid.startsWith("://", schemeEnd)) return null
     var rest = gid.substring(schemeEnd + 3)
-    rest.indexOf('#').let { if (it >= 0) rest = rest.substring(0, it) }
+    // The query is dropped unvalidated: a URL parser keeps it raw, so `?%zz` is
+    // a mention there.
     rest.indexOf('?').let { if (it >= 0) rest = rest.substring(0, it) }
     val slash = rest.indexOf('/')
     if (slash <= 0) return null // an empty authority names no app
@@ -734,6 +744,14 @@ private fun isValidAuthority(authority: String): Boolean {
     if (at >= 0 && !isValidUserinfo(authority.substring(0, at))) return false
     val host = authority.substring(at + 1)
     if (host.isEmpty()) return false
+    // The reference's rule is positional: a `[` at any index past the first is
+    // an invalid IP-literal, whether or not a literal opened. `b[c3` is a parse
+    // error where `bc3]` is a perfectly good host, and `[::1%25a[b]` is one too
+    // — that bracket sits in a ZONE id and never reaches the address parser, so
+    // nothing else here would refuse it. An earlier revision deleted this line
+    // as dead because a mutation of it changed no verdict on 1,627 sampled
+    // literals; none of them had put a `[` and a `%25` in the same literal.
+    if (host.lastIndexOf('[') > 0) return false
     if (host.startsWith("[")) {
         // The closing bracket is the LAST one, as the reference takes it, so
         // `[::1]]` leaves `::1]` as the literal and fails on the address rather
@@ -744,13 +762,6 @@ private fun isValidAuthority(authority: String): Boolean {
         if (!(after.isEmpty() || (after.startsWith(":") && after.drop(1).isValidPort()))) return false
         return isValidIpLiteral(host.substring(1, close))
     }
-    // A `[` in a host that does not OPEN with one is an invalid IP-literal, not
-    // an ordinary name — `b[c3` is a parse error where `bc3]` is a perfectly
-    // good host. Measured against the reference parser rather than derived from
-    // the character set, which permits `[` precisely so a bracketed literal can
-    // carry one. A `[` inside a literal that did open with one needs no rule
-    // here: the address parse below refuses it.
-    if ('[' in host) return false
     val colon = host.lastIndexOf(':')
     val name = if (colon < 0) host else host.substring(0, colon)
     // ASCII digits only. `Char.isDigit()` is the Unicode Nd category, so it
@@ -849,10 +860,13 @@ private fun isValidZoneText(zone: String): Boolean {
             if (i + 2 >= zone.length) return false
             if (!zone[i + 1].isHexDigit() || !zone[i + 2].isHexDigit()) return false
             val value = zone[i + 1].hexValue() * 16 + zone[i + 2].hexValue()
+            // `%25` and an escaped space are the two named exemptions; past
+            // those an escape may only name a byte the zone could have written
+            // raw. A NON-ASCII byte may not be escaped — `[::1%25%C3%A9]` is an
+            // escape error there while a raw `[::1%25é]` is a host.
             val permitted = zone.regionMatches(i, "%25", 0, 3) ||
                 value == ' '.code ||
-                value >= 0x80 ||
-                isHostChar(value.toChar())
+                (value < 0x80 && isHostChar(value.toChar()))
             if (!permitted) return false
             i += 3
             continue
@@ -947,6 +961,21 @@ private fun Char.isHexDigit(): Boolean = this in '0'..'9' || this in 'a'..'f' ||
 
 private fun isHostChar(c: Char): Boolean =
     c in 'a'..'z' || c in 'A'..'Z' || c in '0'..'9' || c in "-._~" || c in "!$&'()*+,;=" || c in ":[]<>\""
+
+/** Whether every `%` in the text opens a well-formed escape, without decoding them. */
+private fun hasWellFormedEscapes(text: String): Boolean {
+    var i = 0
+    while (i < text.length) {
+        if (text[i] == '%') {
+            if (i + 2 >= text.length) return false
+            if (!text[i + 1].isHexDigit() || !text[i + 2].isHexDigit()) return false
+            i += 3
+            continue
+        }
+        i++
+    }
+    return true
+}
 
 /** Decodes `%XX` escapes, or null when one is malformed (as a URL parser errors). */
 private fun percentDecode(s: String): String? {
