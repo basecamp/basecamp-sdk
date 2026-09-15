@@ -111,8 +111,8 @@ final class MentionsTests: XCTestCase {
     /// handful of rows — the cross product is built here, and Go's answers to it
     /// are the data below.
     ///
-    /// 756 shapes: nine spellings of the scheme, three prefixes, twenty-eight
-    /// paths. Go names a person for 44 of them, obtained by running each through
+    /// 747 distinct shapes, from nine spellings of the scheme, three prefixes
+    /// and twenty-eight paths. Go names a person for 44, obtained by running each through
     /// `PersonIDFromSGID` in `go/pkg/basecamp`. This parser must name a person
     /// for exactly those 44 MINUS the 12 that differ, and for nothing else.
     ///
@@ -156,7 +156,10 @@ final class MentionsTests: XCTestCase {
         let schemes = ["gid", "GID", "Gid", "gID", " gid", "gid ", "xgid", "", "g id"]
         let prefixes = ["%@://bc3/", "%@:/", "%@:"]
 
-        // Every shape Go names a person for.
+        // Every shape Go names a person for. The cross product yields 756
+        // constructions but 747 distinct gids — `scheme:` + `/Person/1` and
+        // `scheme:/` + `Person/1` spell the same thing — which is why this is a
+        // Set and why the count below is of shapes, not of constructions.
         let goAccepts: Set<String> = [
             "GID://bc3/Pers%6Fn/1",
             "GID://bc3/Person%2F1",
@@ -232,9 +235,14 @@ final class MentionsTests: XCTestCase {
         XCTAssertEqual(
             accepted, goAccepts.subtracting(percentDecodedPath),
             "this parser must accept exactly what Go accepts, less the percent-decoded-path shapes")
+        // Not `accepted.isSubset(of: goAccepts)`: that is implied by the
+        // equality above, since `subtracting` can only remove. This pins the
+        // PREMISE the equality rests on instead — that the twelve shapes named
+        // as the one mechanism are themselves gids Go accepts, so the set
+        // difference is narrowing the right set.
         XCTAssertTrue(
-            accepted.isSubset(of: goAccepts),
-            "nothing this accepts may be a gid Go refuses — that is the direction that matters")
+            percentDecodedPath.isSubset(of: goAccepts),
+            "the documented divergences must be shapes Go accepts, or the difference means nothing")
     }
 
     /// The fragment and the query are not equivalent, and truncating at the

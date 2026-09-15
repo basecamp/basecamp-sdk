@@ -190,12 +190,20 @@ final class CampfireIndexTests: XCTestCase {
         let claimed = await cache.isClaimed("k")
         XCTAssertFalse(claimed, "the abandoned claim is detached immediately")
 
+        // Released BEFORE the next call, and that ordering is load-bearing. If
+        // the detach regresses, the key is still held by the cancelled flight
+        // whose loader is parked on this gate — so a call made first would
+        // register on a dead claim and wait for something nothing can free,
+        // turning the regression into a CI timeout instead of the assertion
+        // above. `waitUntil` cannot reach into `cache.value`, so the ordering is
+        // what bounds it.
+        await started.fulfill()
+
         let after = try await cache.value(for: "k", refresh: false) { loads.increment() }
         XCTAssertEqual(after.value, 1, "the key reloaded rather than joining a dead load")
 
-        // And the abandoned load finishing afterwards must not evict the claim
-        // that replaced it, nor resume anybody.
-        await started.fulfill()
+        // And the abandoned load finishing must not evict the claim that
+        // replaced it, nor resume anybody.
         await Task.yield()
         let stored = await cache.cached("k")
         XCTAssertEqual(stored?.value, 1)
@@ -427,11 +435,20 @@ private actor Expectation {
     }
 }
 
-/// Spins until `condition` holds, or fails the test rather than hanging.
+/// Spins until `condition` holds, or fails by name after a bounded number of
+/// yields.
 ///
 /// An unbounded `while … { await Task.yield() }` turns a regression into a CI
-/// timeout with no diagnosis — which is barely better than a test that passes
-/// through one. Reverting the abandonment rule made exactly that happen here.
+/// timeout with no diagnosis, which is barely better than a test that passes
+/// through one. Each iteration here is a finite actor hop, so an unsatisfiable
+/// condition returns and records a failure rather than spinning.
+///
+/// What it does NOT do, because a measured claim is worth more than a tidy one:
+/// bound every wait in this file. A suspension inside `cache.value` is out of
+/// its reach — see the ordering note in
+/// `testALoadNobodyIsWaitingForIsAbandoned`, where releasing the gate before the
+/// next call is what keeps the abandonment regression a named assertion failure
+/// instead of a timeout.
 private func waitUntil(
     _ description: String, file: StaticString = #filePath, line: UInt = #line,
     _ condition: () async -> Bool

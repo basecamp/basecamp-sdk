@@ -451,7 +451,7 @@ extension Mentions {
     /// It disagrees with Go's `url.Parse` in exactly one mechanism NOW, and the
     /// history is worth keeping because the claim has been wrong twice. It first
     /// named one shape of a mechanism that has three. Then it claimed the
-    /// disagreement ran in the stricter direction only — true of the 756-shape
+    /// disagreement ran in the stricter direction only — true of the 747-shape
     /// path-and-scheme sweep it cited, and false of the parser, which truncated
     /// at `#` without looking while Go unescapes the fragment and refuses the
     /// whole URL on a malformed escape there. `gid://bc3/Person/1#%zz` named a
@@ -470,7 +470,7 @@ extension Mentions {
     ///
     /// The disagreement runs in that direction ONLY, and
     /// `testTheGidPathDisagreesWithGoInOneDirectionOnly` is where that is a
-    /// property rather than a claim: it builds the same 756-shape cross product
+    /// property rather than a claim: it builds the same 747-shape cross product
     /// — nine spellings of the scheme, three prefixes, twenty-eight paths — and
     /// compares what this parser accepts against the 44 shapes Go names a
     /// person for, as a SET. Anything this accepted and Go did not would show up
