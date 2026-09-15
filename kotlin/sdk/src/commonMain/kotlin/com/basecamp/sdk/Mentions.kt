@@ -218,7 +218,7 @@ internal fun bcAttachmentSgids(text: String): List<String> {
         val parsed = parseAttributes(text, nameEnd) ?: return sgids // unterminated tag
         val nameLength = nameEnd - pos
         if (nameLength == BC_ATTACHMENT.length &&
-            text.regionMatches(pos, BC_ATTACHMENT, 0, nameLength, ignoreCase = true) &&
+            foldEqualsAt(text, pos, BC_ATTACHMENT) &&
             parsed.sgid.isNotEmpty()
         ) {
             sgids.add(parsed.sgid)
@@ -286,7 +286,7 @@ private fun parseAttributes(text: String, pos: Int): TagAttributes? {
             p++
             continue
         }
-        if (!sgidSeen && name.equals("sgid", ignoreCase = true)) {
+        if (!sgidSeen && name.length == 4 && foldEqualsAt(name, 0, "sgid")) {
             sgidSeen = true
             sgid = unescapeHtml(value)
         }
@@ -587,7 +587,7 @@ internal fun leadingBlockEnd(content: String): Int {
     while (i < content.length && isHtmlSpace(content[i])) i++
     for (name in LEADING_BLOCK_TAGS) {
         if (content.length < i + name.length) continue
-        if (!content.regionMatches(i, name, 0, name.length, ignoreCase = true)) continue
+        if (!foldEqualsAt(content, i, name)) continue
         val after = i + name.length
         if (after < content.length && !isTagNameEnd(content[after])) continue
         return parseAttributes(content, after)?.end ?: -1
@@ -706,7 +706,12 @@ private fun globalIdModelAndId(raw: String): Pair<String, String>? {
     if (gid.any { it < ' ' || it == '\u007F' }) return null
     val schemeEnd = gid.indexOf(':')
     if (schemeEnd != 3) return null
-    if (!gid.regionMatches(0, "gid", 0, 3, ignoreCase = true)) return null
+    // The scheme is ASCII-folded, NOT case-folded: a URL parser's scheme grammar
+    // admits only `[A-Za-z][A-Za-z0-9+-.]*`, so a non-ASCII letter makes the
+    // whole thing scheme-less rather than a `gid`. Kotlin's `ignoreCase` is
+    // Unicode-aware and matched `gıd://` (U+0131) and `gİd://` (U+0130), which
+    // the reference reads as no scheme at all. This is the write side too.
+    if (!asciiEqualsAt(gid, 0, "gid")) return null
     if (!gid.startsWith("://", schemeEnd)) return null
     var rest = gid.substring(schemeEnd + 3)
     // The query is dropped unvalidated: a URL parser keeps it raw, so `?%zz` is
@@ -961,6 +966,54 @@ private fun Char.isHexDigit(): Boolean = this in '0'..'9' || this in 'a'..'f' ||
 
 private fun isHostChar(c: Char): Boolean =
     c in 'a'..'z' || c in 'A'..'Z' || c in '0'..'9' || c in "-._~" || c in "!$&'()*+,;=" || c in ":[]<>\""
+
+/**
+ * Whether [text] at [at] equals the ASCII [literal] under the reference's own
+ * case folding.
+ *
+ * NOT Kotlin's `ignoreCase`, which is Unicode-aware and matched `sgıd` (U+0131)
+ * and `sgİd` (U+0130) where the reference does not. NOT plain ASCII folding
+ * either: the reference's fold walks the Unicode simple-folding orbit, and for
+ * an ASCII letter that orbit is just the two cases EXCEPT for `s` and `k`, which
+ * also carry U+017F LATIN SMALL LETTER LONG S and U+212A KELVIN SIGN. So
+ * `<bc-attachment ſgid="…">` IS a mention, there and here — measured, not
+ * reasoned. The `k` orbit is here because the reference's fold has it; no
+ * literal this compares against contains a `k`, so it is unreachable today.
+ */
+private fun foldEqualsAt(text: String, at: Int, literal: String): Boolean {
+    if (at + literal.length > text.length) return false
+    for (i in literal.indices) {
+        val want = literal[i]
+        val got = text[at + i]
+        if (got == want || got == want.flipAsciiCase()) continue
+        val lower = if (want in 'A'..'Z') want + 32 else want
+        if (lower == 's' && got == '\u017F') continue
+        if (lower == 'k' && got == '\u212A') continue
+        return false
+    }
+    return true
+}
+
+/**
+ * Whether [text] at [at] equals the ASCII [literal] ignoring ASCII case only.
+ * Used where the reference has already constrained the input to ASCII — a URL
+ * scheme — so a wider fold would match text the reference never sees as a scheme.
+ */
+private fun asciiEqualsAt(text: String, at: Int, literal: String): Boolean {
+    if (at + literal.length > text.length) return false
+    for (i in literal.indices) {
+        val want = literal[i]
+        val got = text[at + i]
+        if (got != want && got != want.flipAsciiCase()) return false
+    }
+    return true
+}
+
+private fun Char.flipAsciiCase(): Char = when (this) {
+    in 'a'..'z' -> this - 32
+    in 'A'..'Z' -> this + 32
+    else -> this
+}
 
 /** Whether every `%` in the text opens a well-formed escape, without decoding them. */
 private fun hasWellFormedEscapes(text: String): Boolean {
