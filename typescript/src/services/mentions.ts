@@ -167,11 +167,46 @@ function isParsableHost(authority: string): boolean {
 function isIPv6Literal(inner: string): boolean {
   const zoneAt = inner.indexOf("%25");
   if (zoneAt >= 0) {
-    const zone = inner.slice(zoneAt + 3);
-    if (zone === "" || !hasValidEscapes(zone)) return false;
+    if (!isParsableZone(inner.slice(zoneAt + 3))) return false;
     return isIPv6Address(inner.slice(0, zoneAt));
   }
   return isIPv6Address(inner);
+}
+
+/**
+ * Whether an RFC 6874 zone is one `unescape(…, encodeZone)` accepts.
+ *
+ * `hasValidEscapes` is the wrong rule here, and that was the defect: `unescape`
+ * requires different things per mode, and the zone gets the other one. Swept
+ * from Go rather than read off `shouldEscape`: every printable ASCII planted in
+ * a zone, and all 256 two-digit escapes.
+ *
+ * Literals: everything is allowed except the nine below — the host's forbidden
+ * set plus `@`. Non-ASCII is allowed (é, CJK, emoji and NBSP all parse); DEL is
+ * refused, but as a control byte it never reaches here.
+ *
+ * Escapes: `%XX` must be two hex digits AND decode into the 85-byte set below —
+ * `%20` and `%25` among them, and nothing above U+007F, so 171 of the 256 are
+ * refused.
+ */
+const FORBIDDEN_IN_ZONE = /[ @[\\^`{|}]/;
+const ESCAPABLE_IN_ZONE = /^[A-Za-z0-9 !"$%&'()*+,\-.:;<=>[\]_~]$/;
+
+function isParsableZone(zone: string): boolean {
+  if (zone === "") return false;
+  for (let i = 0; i < zone.length; ) {
+    if (zone.charCodeAt(i) === 0x25 /* % */) {
+      const high = hexDigit(zone.charCodeAt(i + 1), true);
+      const low = hexDigit(zone.charCodeAt(i + 2), true);
+      if (high < 0 || low < 0) return false;
+      if (!ESCAPABLE_IN_ZONE.test(String.fromCharCode(high * 16 + low))) return false;
+      i += 3;
+      continue;
+    }
+    if (FORBIDDEN_IN_ZONE.test(zone[i]!)) return false;
+    i++;
+  }
+  return true;
 }
 
 function isIPv6Address(text: string): boolean {
@@ -185,12 +220,15 @@ function isIPv6Address(text: string): boolean {
     ...(head === "" ? [] : head.split(":")),
     ...(tail === "" ? [] : tail.split(":")),
   ];
+  // A dotted quad is legal only at the END OF THE ADDRESS. The flattened list
+  // is head ++ tail, so its last element is the address's last only when the
+  // address does not END with the compression: with a trailing "::" the last
+  // element of `parts` sits in FRONT of it, and "1.2.3.4::" is not an address.
+  const quadIndex = !compressed || tail !== "" ? parts.length - 1 : -1;
   let groups = 0;
   for (let i = 0; i < parts.length; i++) {
     const part = parts[i]!;
-    // A dotted quad is only legal as the last element, where it stands for the
-    // low two groups.
-    if (i === parts.length - 1 && part.includes(".")) {
+    if (i === quadIndex && part.includes(".")) {
       if (!isIPv4Address(part)) return false;
       groups += 2;
       continue;
