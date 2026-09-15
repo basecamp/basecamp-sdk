@@ -256,13 +256,20 @@ def _text(record: dict[str, Any], keys: tuple[str, ...]) -> str:
     return ""
 
 
+def _id_or_zero(value: int | None) -> int:
+    """The id, or 0 where the payload carried none -- Go's zero value."""
+    return 0 if value is None else value
+
+
 def _project(record: dict[str, Any], read: _Read, *, campfire_id: int | None = None) -> RecordingSummary:
     content = _text(record, read.content)
     return RecordingSummary(
         # 0, not None, where the payload carries no id: `id` is declared `int`
-        # and Go cannot produce anything else — nor can it produce a bool or a
-        # string, which its typed decode refuses and a dict does not.
-        id=_recording_id(record.get("id")) or 0,
+        # and Go cannot produce anything else -- nor can it produce a bool or a
+        # string, which its typed decode refuses and a dict does not. No VALUE
+        # test: Go hands `cf.ID` to the summary untouched, so a negative id is
+        # reported as itself rather than flattened to 0.
+        id=_id_or_zero(_recording_id(record.get("id"))),
         status=_text(record, ("status",)),
         type=_text(record, ("type",)),
         title=_text(record, read.title),
@@ -307,10 +314,35 @@ def _check_bucket(summary: RecordingSummary, bucket_id: int, recording_id: int) 
     check is what keeps a pointer from one project from ever resolving to a
     recording in another.
     """
-    bucket = summary.get("bucket") or {}
+    bucket = summary.get("bucket")
+    if bucket is None:
+        # Go's `summary.Bucket` is a `*Bucket`, and its check begins
+        # `summary.Bucket != nil`: absent or null skips it there too.
+        return
+    if not isinstance(bucket, dict):
+        # Anything else fails Go's decode and the read never returns. Here the
+        # payload is whatever was on the wire, so the choice is ours, and it
+        # has to be to REFUSE: skipping the check on an unreadable bucket is
+        # how a recording in another project gets waved through, which is the
+        # one outcome this function exists to prevent. (The previous spelling,
+        # `summary.get("bucket") or {}`, raised a bare AttributeError here --
+        # outside the SDK's error taxonomy.)
+        raise BucketMismatchError(bucket_id=0, recording_id=recording_id, requested_bucket_id=bucket_id)
     found = bucket.get("id")
-    if found and found != bucket_id:
+    if found is None:
+        return
+    # Read through the type guard, then compare. `found` reaching the
+    # comparison as a float is the dangerous shape: `2085958499.0 == 2085958499`
+    # is True in Python, so an untyped id would WAVE THROUGH a recording from
+    # another project -- the one thing this check exists to stop. Go refuses
+    # the read instead, so neither answers "match"; failing closed is the half
+    # of Go's behaviour available here.
+    checked = _recording_id(found)
+    if checked is None:
         raise BucketMismatchError(bucket_id=found, recording_id=recording_id, requested_bucket_id=bucket_id)
+    # Go: `summary.Bucket.ID != 0 && summary.Bucket.ID != ref.BucketID`.
+    if checked != 0 and checked != bucket_id:
+        raise BucketMismatchError(bucket_id=checked, recording_id=recording_id, requested_bucket_id=bucket_id)
 
 
 def _too_many_candidates() -> str:

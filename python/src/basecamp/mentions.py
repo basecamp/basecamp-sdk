@@ -131,17 +131,21 @@ def _split_gid(gid: str) -> tuple[str, str] | None:
     """A gid's authority and path, split as Go's ``url.Parse`` splits them.
 
     Hand-written rather than handed to ``urlparse``, because Python's parser
-    implements a DIFFERENT standard — WHATWG rather than RFC 3986 as Go reads
-    it — and the disagreements land on the write path, where a parser stricter
-    than Go's refuses to build a tag Go builds.
+    implements a DIFFERENT standard -- WHATWG rather than RFC 3986 as Go reads
+    it -- and it disagrees in BOTH directions. Stricter in places (an unmatched
+    "]" is a ValueError where Go keeps the host), but also LAXER, which is the
+    dangerous one: ``urlsplit`` silently strips a tab, CR or LF, so
+    "gid://bc3/Person/104\n9715915" repairs itself into person 1049715915,
+    where Go refuses the URL outright and names nobody. A read that invents a
+    mention the API never made is worse than one that declines to build a tag.
 
-    Deliberately no list of those disagreements here. Two were found and
-    written down, a third was found later, and an enumeration in a comment is
-    exactly the thing that stops the next sweep happening. The shape is what
-    matters: a general parser normalises and rejects on its own schedule, a gid
-    is a fixed trivial form, and parity is established by differential against
-    a linked ``url.Parse`` rather than by reasoning about either. The harness
-    lives with the port's review notes.
+    The two above are examples, not an inventory -- three were found at
+    different times, and an enumeration in a comment is exactly the thing that
+    stops the next sweep happening. The shape is what matters: a general parser
+    normalises and rejects on its own schedule, a gid is a fixed trivial form,
+    and parity is established by differential against a linked ``url.Parse``
+    rather than by reasoning about either. The harness lives with the port's
+    review notes.
     """
     if gid[:6].casefold() != "gid://":
         return None
@@ -214,15 +218,13 @@ def _valid_bracketed_host(host: str) -> bool:
     # every spelling fails there. Python's `IPv6Address` accepts a `%scope`
     # suffix of its own, which would otherwise let the whole family through:
     # "[fe80::1%ab%25eth0]" parsed as address "fe80::1%ab" and named a person.
+    # This also settles a bare "%": it is not a zone marker, so partition leaves
+    # it in the address half, and Go refuses "[fe80::1%eth0]" too.
     if "%" in address:
         return False
-    if zoned:
-        # RFC 6874 spells a zone "%25<zone>". The zone may not be empty, and it
-        # is held to its own character rule -- see _valid_host_characters.
-        if not zone or not _valid_host_characters(zone, zone_identifier=True):
-            return False
-    elif "%" in inside:
-        # A bare "%" is not a zone marker; Go refuses "[fe80::1%eth0]".
+    # RFC 6874 spells a zone "%25<zone>". The zone may not be empty, and it is
+    # held to its own character rule -- see _valid_host_characters.
+    if zoned and (not zone or not _valid_host_characters(zone, zone_identifier=True)):
         return False
     try:
         ipaddress.IPv6Address(address)

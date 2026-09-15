@@ -209,6 +209,91 @@ class TestExpandMentions:
                 _comments().expand_mentions(content="<div>x</div>", person_ids=[VICTOR_ID])
 
     @respx.mock
+    def test_a_non_list_notes_does_not_escape_the_annotation(self):
+        # The note path's own suppress. `__notes__` is a plain list anyone may
+        # touch; a non-iterable one raises out of the comprehension, and that
+        # must cost the annotation, never the 404 it was describing.
+        failure = OSError(2, "No such file")
+        failure.__notes__ = 5
+        respx.get(url__regex=rf"{BASE}/people/\d+").mock(side_effect=failure)
+
+        with pytest.raises(OSError) as raised:
+            _comments().expand_mentions(content="<div>x</div>", person_ids=[VICTOR_ID])
+
+        assert raised.value is failure
+        assert raised.value.args == (2, "No such file")
+
+    @respx.mock
+    def test_a_non_string_note_costs_nothing(self):
+        # Items in `__notes__` that are not ours are not ours to drop, and a
+        # non-string one must not take the annotation down with it: the filter
+        # tests `isinstance` before it tests the prefix.
+        failure = OSError(2, "No such file")
+        failure.__notes__ = [object()]
+        respx.get(url__regex=rf"{BASE}/people/\d+").mock(side_effect=failure)
+
+        with pytest.raises(OSError) as raised:
+            _comments().expand_mentions(content="<div>x</div>", person_ids=[VICTOR_ID])
+
+        notes = raised.value.__notes__
+        assert len(notes) == 2, f"the foreign note is kept and ours is added; got {notes}"
+        assert notes[-1] == f"resolving mention for person {VICTOR_ID}"
+
+    @respx.mock
+    def test_the_saved_args_are_trusted_only_when_they_are_args(self):
+        # `_ORIGINAL_ARGS` is read off the exception, and an exception is free
+        # to answer every getattr. Only a tuple is the saved args; anything
+        # else means nothing was saved, and the message must be built from
+        # `error.args` rather than from whatever __getattr__ invented.
+        class Inventive(Exception):
+            def __getattr__(self, name):
+                return "x"
+
+        failure = Inventive("boom")
+        respx.get(url__regex=rf"{BASE}/people/\d+").mock(side_effect=failure)
+
+        with pytest.raises(Inventive) as raised:
+            _comments().expand_mentions(content="<div>x</div>", person_ids=[VICTOR_ID])
+
+        assert str(raised.value) == f"resolving mention for person {VICTOR_ID}: boom"
+
+    @respx.mock
+    def test_the_args_path_does_not_also_leave_a_note(self):
+        # The two paths are alternatives, not a sequence. Falling through after
+        # rewriting `args` annotates the same failure twice, once in the
+        # message and once in a note.
+        failure = NotFoundError("Not found", http_status=404)
+        respx.get(url__regex=rf"{BASE}/people/\d+").mock(side_effect=failure)
+
+        with pytest.raises(NotFoundError) as raised:
+            _comments().expand_mentions(content="<div>x</div>", person_ids=[VICTOR_ID])
+
+        assert str(raised.value) == f"resolving mention for person {VICTOR_ID}: Not found"
+        assert not getattr(raised.value, "__notes__", []), "the args path annotates once, in the message"
+
+    @respx.mock
+    def test_saving_the_original_args_never_costs_the_annotation(self):
+        # The saved-args write is a courtesy for the NEXT annotation; a type
+        # that refuses the attribute for any reason -- not only the
+        # AttributeError a __slots__ class raises -- must still get annotated
+        # this time round.
+        class Rigid(Exception):
+            def __setattr__(self, name, value):
+                # Only the bookkeeping attribute is refused; `args` and the
+                # dunders the interpreter itself writes must still go through.
+                if not name.startswith("__") and name != "args":
+                    raise TypeError("nothing else may be set")
+                super().__setattr__(name, value)
+
+        failure = Rigid("boom")
+        respx.get(url__regex=rf"{BASE}/people/\d+").mock(side_effect=failure)
+
+        with pytest.raises(Rigid) as raised:
+            _comments().expand_mentions(content="<div>x</div>", person_ids=[VICTOR_ID])
+
+        assert str(raised.value) == f"resolving mention for person {VICTOR_ID}: boom"
+
+    @respx.mock
     def test_the_note_path_also_names_only_the_latest_person(self):
         # The args path was made idempotent; the note path had the same defect
         # left standing, so a reused instance named every person it ever failed

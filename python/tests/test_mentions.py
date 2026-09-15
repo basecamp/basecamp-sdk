@@ -14,6 +14,7 @@ import json
 
 import pytest
 
+from basecamp import mentions as _mentions
 from basecamp.errors import UsageError
 from basecamp.mentions import (
     _unescape_like_go,
@@ -333,20 +334,37 @@ class TestPersonIDFromSGID:
         assert respelled != payload
         assert mentioned_person_ids(f'<bc-attachment sgid="{respelled}"></bc-attachment>') == [77]
 
-    def test_a_run_of_ampersands_does_not_sweep_the_table_per_character(self):
+    def test_a_run_of_ampersands_does_not_sweep_the_table_per_character(self, monkeypatch):
         # Longest-match-against-the-table is the right RULE; sweeping every
         # length up to the longest name in the table is the wrong mechanism for
-        # it. That costs a few hundred comparisons per "&" whatever follows,
+        # it. That costs a table probe per length per "&" whatever follows,
         # which is linear with a constant big enough to matter on content an
-        # author writes — and a run of ampersands is its worst case.
+        # author writes -- and a run of ampersands is its worst case.
         #
-        # The bound is generous by three orders of magnitude against the
-        # sweeping version, so this catches a regression without timing noise.
-        import time
+        # Counted, not timed. The sweeping version costs _MAX_ENTITY_NAME
+        # probes per ampersand and the bounded one costs none, so a count is
+        # exact, machine-independent, and states the property directly; a
+        # wall-clock bound loose enough to be stable on CI was also loose
+        # enough to pass with the sweep in place.
+        #
+        # The ampersands go INSIDE an sgid, which is the other half of what
+        # this test got wrong before: `mentioned_person_ids` scans for "<"
+        # first, so a bare run of ampersands never reaches the decoder at all
+        # and the old version measured nothing.
+        probes = 0
 
-        start = time.perf_counter()
-        assert mentioned_person_ids("&" * 200_000) == []
-        assert time.perf_counter() - start < 2.0
+        class CountingTable(dict):
+            def get(self, name, default=None):
+                nonlocal probes
+                probes += 1
+                return super().get(name, default)
+
+        monkeypatch.setattr(_mentions, "html5", CountingTable(_mentions.html5))
+
+        run = "&" * 20_000
+        assert mentioned_person_ids(f'<bc-attachment sgid="{run}"></bc-attachment>') == []
+
+        assert probes == 0, f"a bare ampersand can match no table name; {probes} probes is a sweep"
 
     @pytest.mark.parametrize(
         ("reference", "expected"),
@@ -373,6 +391,14 @@ class TestPersonIDFromSGID:
             # A wrap that lands negative is still refused, as Go's EncodeRune
             # refuses it.
             ("&#2147483713;", "\ufffd"),
+            # A wrap that lands ON A SURROGATE is refused for that reason, not
+            # for its size: the test has to run on the WRAPPED value.
+            ("&#4295022592;", "\ufffd"),
+            # And one that lands just past U+10FFFF.
+            ("&#4296081408;", "\ufffd"),
+            # Hex without a terminating ";" needs only one digit, and the wrap
+            # applies there too.
+            ("&#x100000041", "A"),
         ],
     )
     def test_numeric_overflow_wraps_as_gos_int32_does(self, reference, expected):
@@ -413,9 +439,24 @@ class TestPersonIDFromSGID:
             ("#%zz", False),
             ("?q=1", True),
             ("\n#x", False),
+            # The QUERY is the third rule, and the one that catches a single
+            # rule applied uniformly: `url.Parse` NEVER unescapes it, so a
+            # malformed escape there parses on both sides. Validating the
+            # query the way the fragment is validated diverges on 47 cases of
+            # the port's gid corpus; each row below is Go's own answer.
+            ("?%zz", True),
+            ("?%", True),
+            ("?a=%zz", True),
+            ("?%zz#ok", True),
+            # ...and both together: the fragment still decides it.
+            ("?%zz#%zz", False),
+            # A "?" INSIDE the fragment is part of the fragment, not a query.
+            ("#%zz?ok", False),
+            # The PATH is stricter than either -- it is unescaped too.
+            ("/%zz", False),
         ],
     )
-    def test_the_fragment_is_cut_before_the_control_character_check(self, suffix, resolves):
+    def test_the_fragment_query_and_path_get_three_different_rules(self, suffix, resolves):
         sgid = json_sgid(f"gid://bc3/Person/77{suffix}")
         assert (person_id_from_sgid(sgid) == 77) is resolves
 

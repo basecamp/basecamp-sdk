@@ -541,14 +541,25 @@ class AsyncTTLCache(Generic[K, V]):
 
 
 def _recording_id(value: Any) -> int | None:
-    """An id from a payload, or ``None`` when it is not one.
+    """An id from a payload when it is INTEGER-TYPED, else ``None``.
 
-    The type is checked as well as the value. Go decodes these into `int64`, so
-    a JSON `true` or a string never reaches its discovery loop at all; a
-    dict-based SDK has to say so itself, and `bool` is an `int` in Python — an
+    Type only -- no value test. Go decodes these fields into `int64`, so a JSON
+    `true`, a string or a float never reaches its discovery loop; a dict-based
+    SDK has to say so itself, and `bool` is an `int` in Python, so an
     `if item["id"]` test admits `True` and then builds a request path from it.
+
+    What it deliberately does NOT do is judge the VALUE. Go applies a different
+    value rule at each site -- the dock skips a 0, the listing checks the
+    bucket id and lets the campfire id through untouched -- so each caller
+    spells its own out. A single `<= 0` here read as though it were Go's rule
+    and was not: it dropped candidates Go keeps, and a dropped candidate moves
+    the candidate budget, so it changed the VERDICT and not merely the ids.
+
+    One divergence is left and is not reachable from here: a wrong TYPE fails
+    Go's whole decode, where nothing typed stands between this and the wire.
+    See SPEC Appendix F.
     """
-    if not isinstance(value, int) or isinstance(value, bool) or value <= 0:
+    if not isinstance(value, int) or isinstance(value, bool):
         return None
     return value
 
@@ -560,7 +571,10 @@ def _dock_campfire_ids(project: dict[str, Any]) -> list[int]:
         if not isinstance(item, dict) or item.get("name") != "chat":
             continue
         campfire_id = _recording_id(item.get("id"))
-        if campfire_id is not None:
+        # Go's rule is `item.ID != 0`, and a missing or null id decodes to 0.
+        # A NEGATIVE id IS a candidate there, so it is one here: it spends a
+        # unit of the candidate budget and 404s, both of which are observable.
+        if campfire_id is not None and campfire_id != 0:
             ids.append(campfire_id)
     return ids
 
@@ -573,12 +587,13 @@ def _campfires_by_bucket(campfires: list[dict[str, Any]]) -> dict[int, list[int]
         bucket = campfire.get("bucket")
         bucket_id = _recording_id(bucket.get("id")) if isinstance(bucket, dict) else None
         campfire_id = _recording_id(campfire.get("id"))
-        # Both ids are required, and an entry missing or mistyping either is
-        # skipped rather than turned into a KeyError or a request path built
-        # from a bool: this runs inside a cache loader whose failure is shared
-        # with every waiter on the key, and a bare KeyError would escape the
-        # SDK's error taxonomy entirely.
-        if bucket_id is None or campfire_id is None:
+        # Go checks the BUCKET id only -- `c.Bucket == nil || c.Bucket.ID == 0`
+        # -- and appends `c.ID` with no test whatever, so a campfire id of 0 or
+        # below is a candidate and gets its request. The id is still read
+        # through the type guard, because this runs inside a cache loader whose
+        # failure is shared with every waiter on the key: a request path built
+        # from a bool, or a bare KeyError, would escape the error taxonomy.
+        if bucket_id is None or bucket_id == 0 or campfire_id is None:
             continue
         by_bucket.setdefault(bucket_id, []).append(campfire_id)
     return by_bucket

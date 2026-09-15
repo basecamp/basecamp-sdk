@@ -229,6 +229,47 @@ class TestProjection:
         summary = _account().recordings.summarize(bucket_id=BUCKET, recording_id=1, event_type="comment.created")
         assert summary["bucket"] is None
 
+    # Parametrized, not looped: respx keeps the FIRST route registered for a
+    # pattern, so re-mocking the same URL inside one `respx.mock` leaves every
+    # iteration after the first answering with iteration one's body -- a loop
+    # here tests its first value and nothing else.
+    @respx.mock
+    @pytest.mark.parametrize("bad", [float(BUCKET), str(BUCKET), True])
+    def test_a_bucket_id_that_is_not_an_integer_fails_closed(self, bad):
+        # The dangerous shape is the FLOAT: `2085958499.0 == 2085958499` is
+        # True in Python, so an untyped id would wave a recording from another
+        # project straight through the one check that exists to stop it. Go
+        # refuses the whole read at decode, so it never answers "match"
+        # either; with no typed layer here, refusing is the half available.
+        respx.get(f"{BASE}/comments/1").mock(
+            return_value=httpx.Response(200, json={"id": 1, "type": "Comment", "content": "", "bucket": {"id": bad}})
+        )
+        with pytest.raises(BucketMismatchError):
+            _account().recordings.summarize(bucket_id=BUCKET, recording_id=1, event_type="comment.created")
+
+    @respx.mock
+    @pytest.mark.parametrize("bad", ["Elsewhere", [{"id": BUCKET}], 7])
+    def test_a_bucket_that_is_not_an_object_fails_closed(self, bad):
+        # Go's `*Bucket` refuses these at decode. Reading `.get` off them used
+        # to raise a bare AttributeError from inside the safety check, and
+        # skipping the check instead would wave the recording through -- the
+        # list row is the one that would otherwise LOOK like a bucket.
+        respx.get(f"{BASE}/comments/1").mock(
+            return_value=httpx.Response(200, json={"id": 1, "type": "Comment", "content": "", "bucket": bad})
+        )
+        with pytest.raises(BucketMismatchError):
+            _account().recordings.summarize(bucket_id=BUCKET, recording_id=1, event_type="comment.created")
+
+    @respx.mock
+    def test_a_bucket_id_of_zero_is_not_a_mismatch(self):
+        # Go: `summary.Bucket.ID != 0 && summary.Bucket.ID != ref.BucketID`.
+        # A zero id is the decoded absence of one, not a different project.
+        respx.get(f"{BASE}/comments/1").mock(
+            return_value=httpx.Response(200, json={"id": 1, "type": "Comment", "content": "", "bucket": {"id": 0}})
+        )
+        summary = _account().recordings.summarize(bucket_id=BUCKET, recording_id=1, event_type="comment.created")
+        assert summary["bucket"] == {"id": 0}
+
     @respx.mock
     def test_a_payload_with_no_id_projects_zero_not_none(self):
         # `id` is declared `int`, and Go cannot produce anything but 0 here.
@@ -385,6 +426,39 @@ class TestChatLineDiscovery:
         assert "was spent before the account listing was consulted" in raised.value.reason
 
     @respx.mock
+    def test_a_cached_dock_that_spends_the_budget_exactly_is_not_re_read(self):
+        # The `search.budget > 0` half of the pass-2 dock guard, which is the
+        # ONLY half the other budget tests reach: they drive a freshly fetched
+        # dock, where `dock.cached` is False and the budget term is never
+        # evaluated. Reaching it needs a CACHED dock holding exactly the budget
+        # in candidates, on a second call, past the refresh floor -- otherwise
+        # the floor declines the re-read and a guard that has been deleted
+        # looks identical to one that holds.
+        clock = [0.0]
+        project = respx.get(f"{BASE}/projects/{BUCKET}").mock(
+            return_value=httpx.Response(200, json=_project(*range(1, MAX_CAMPFIRE_CANDIDATES + 1)))
+        )
+        respx.get(url__regex=rf"{BASE}/chats/\d+/lines/{LINE_ID}").mock(return_value=_not_found())
+        respx.get(f"{BASE}/chats.json").mock(return_value=httpx.Response(500, json={"error": "boom"}))
+        account = _account(now=lambda: clock[0])
+
+        # First call fetches the dock and spends the whole budget on it.
+        with pytest.raises(CampfireDiscoveryIncompleteError):
+            account.recordings.summarize(bucket_id=BUCKET, recording_id=LINE_ID, event_type="chat.line.created")
+        assert project.call_count == 1
+
+        # Past the refresh floor, so a re-read WOULD issue a request; still
+        # inside the TTL, so the dock is served from cache and `dock.cached`
+        # is True. The budget is spent again on the 50 cached candidates, and
+        # the guard is what stops the re-read.
+        clock[0] = _campfire_index.CAMPFIRE_INDEX_MIN_REFRESH + 1
+        with pytest.raises(CampfireDiscoveryIncompleteError) as raised:
+            account.recordings.summarize(bucket_id=BUCKET, recording_id=LINE_ID, event_type="chat.line.created")
+
+        assert project.call_count == 1, "a spent budget must not buy a dock re-read that cannot help"
+        assert "was spent before the account listing was consulted" in raised.value.reason
+
+    @respx.mock
     def test_a_spent_budget_with_the_listing_already_consulted_is_unresolved(self):
         # The other half of Go's rule: when BOTH sources were consulted,
         # running out of budget is not "something was left unsearched" — every
@@ -466,9 +540,17 @@ class TestChatLineDiscovery:
 
         assert summary["campfire_id"] == 5
 
+    # The two halves of the id rule are separated on purpose. The TYPE half is
+    # ours: nothing typed stands between the composite and the wire, so a
+    # `true` would otherwise become a request path. The VALUE half is Go's, and
+    # it is DIFFERENT AT EVERY SITE -- a single `<= 0` looked like Go's rule,
+    # was not, and silently dropped candidates Go tries. Each site's value rows
+    # below were taken from a Go oracle driving `Summarize` end to end and
+    # printing the request sequence, not from reading this implementation.
+
     @respx.mock
-    @pytest.mark.parametrize("bad_id", [True, False, "5", 5.0, None, 0, -1, {"id": 5}])
-    def test_a_listing_entry_whose_id_is_not_an_id_is_skipped(self, bad_id):
+    @pytest.mark.parametrize("bad_id", [True, False, "5", 5.0, None, {"id": 5}])
+    def test_a_listing_entry_whose_id_is_not_integer_typed_is_skipped(self, bad_id):
         # Go decodes these into int64, so a JSON `true` or a string never
         # reaches its discovery loop; a dict-based SDK has to say so itself.
         # `bool` is an `int` in Python, so a truthiness test admits True and
@@ -481,9 +563,7 @@ class TestChatLineDiscovery:
             )
         )
         line = respx.get(f"{BASE}/chats/5/lines/{LINE_ID}").mock(return_value=httpx.Response(200, json=_line(5)))
-        bogus = respx.get(url__regex=rf"{BASE}/chats/(True|False|5\.0|None|0|-1)/lines/\d+").mock(
-            return_value=_not_found()
-        )
+        bogus = respx.get(url__regex=rf"{BASE}/chats/(True|False|5\.0|None)/lines/\d+").mock(return_value=_not_found())
 
         summary = _account().recordings.summarize(
             bucket_id=BUCKET, recording_id=LINE_ID, event_type="chat.line.created"
@@ -494,8 +574,32 @@ class TestChatLineDiscovery:
         assert not bogus.called, "a mistyped id must never become a request path"
 
     @respx.mock
+    @pytest.mark.parametrize("listed_id", [0, -1])
+    def test_a_listing_entry_keeps_an_id_go_does_not_screen(self, listed_id):
+        # Go's listing loader tests `c.Bucket == nil || c.Bucket.ID == 0` and
+        # appends `c.ID` UNVALIDATED -- oracle: `{"id": 0, "bucket": {...}}`
+        # produces `GET /chats/0/lines/N`. Screening these here would cost a
+        # unit of the candidate budget that Go spends, which moves the verdict.
+        respx.get(f"{BASE}/projects/{BUCKET}").mock(return_value=_not_found())
+        respx.get(f"{BASE}/chats.json").mock(
+            return_value=httpx.Response(
+                200,
+                json=[{"id": listed_id, "type": "Chat::Transcript", "bucket": {"id": BUCKET}}, _campfire(5)],
+            )
+        )
+        tried = respx.get(f"{BASE}/chats/{listed_id}/lines/{LINE_ID}").mock(return_value=_not_found())
+        respx.get(f"{BASE}/chats/5/lines/{LINE_ID}").mock(return_value=httpx.Response(200, json=_line(5)))
+
+        summary = _account().recordings.summarize(
+            bucket_id=BUCKET, recording_id=LINE_ID, event_type="chat.line.created"
+        )
+
+        assert summary["campfire_id"] == 5
+        assert tried.called, "Go issues this request, so the budget it spends must be spent here too"
+
+    @respx.mock
     @pytest.mark.parametrize("bad_id", [True, "5", 5.0, None])
-    def test_a_dock_entry_whose_id_is_not_an_id_is_skipped(self, bad_id):
+    def test_a_dock_entry_whose_id_is_not_integer_typed_is_skipped(self, bad_id):
         respx.get(f"{BASE}/projects/{BUCKET}").mock(
             return_value=httpx.Response(
                 200,
@@ -512,6 +616,37 @@ class TestChatLineDiscovery:
         assert summary["campfire_id"] == 7
         assert line.called
         assert not bogus.called
+
+    @respx.mock
+    def test_a_dock_entry_of_zero_is_skipped_and_a_negative_one_is_tried(self):
+        # Go's dock rule is `item.ID != 0` -- so 0 (which is also what a missing
+        # or null id decodes to) is skipped, and -1 IS tried. The two halves
+        # travel together because a single test asserting "both skipped" is
+        # what the `<= 0` mis-port would have passed.
+        respx.get(f"{BASE}/projects/{BUCKET}").mock(
+            return_value=httpx.Response(
+                200,
+                json={
+                    "id": BUCKET,
+                    "dock": [
+                        {"id": 0, "name": "chat"},
+                        {"id": -1, "name": "chat"},
+                        {"id": 7, "name": "chat"},
+                    ],
+                },
+            )
+        )
+        zero = respx.get(f"{BASE}/chats/0/lines/{LINE_ID}").mock(return_value=_not_found())
+        negative = respx.get(f"{BASE}/chats/-1/lines/{LINE_ID}").mock(return_value=_not_found())
+        respx.get(f"{BASE}/chats/7/lines/{LINE_ID}").mock(return_value=httpx.Response(200, json=_line(7)))
+
+        summary = _account().recordings.summarize(
+            bucket_id=BUCKET, recording_id=LINE_ID, event_type="chat.line.created"
+        )
+
+        assert summary["campfire_id"] == 7
+        assert not zero.called, "Go's `item.ID != 0` skips this one"
+        assert negative.called, "Go's `item.ID != 0` does NOT skip this one"
 
     @respx.mock
     def test_a_listing_over_its_cap_is_incomplete_and_is_not_cached(self):

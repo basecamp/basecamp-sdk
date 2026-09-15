@@ -764,7 +764,7 @@ class TestAsyncCache:
         assert pending.error.http_status == 403
         assert pending.error.retryable is False
 
-    async def test_a_waiter_with_a_cancellation_on_the_books_does_not_load(self):
+    async def test_a_waiter_with_a_cancellation_on_the_books_does_not_load(self, monkeypatch):
         # The `not _cancellation_pending()` clause — the exact one round two
         # removed and round three restored. Go's condition is
         # `callerDone && ctx.Err() == nil && !reacquired`; without the third
@@ -787,19 +787,15 @@ class TestAsyncCache:
         pending = _AsyncLoad()
         cache._inflight["k"] = pending
 
-        real_current_task = _campfire_index.asyncio.current_task
-        _campfire_index.asyncio.current_task = lambda: _Cancelling()
-        try:
-            waiter = asyncio.create_task(cache.get("k", refresh=False, load=load))
-            await asyncio.sleep(0)
-            pending.error = asyncio.CancelledError()
-            pending.owner_cancelled = True
-            del cache._inflight["k"]
-            pending.done.set()
-            with pytest.raises(CampfireIndexLoadAbortedError):
-                await asyncio.wait_for(waiter, timeout=5)
-        finally:
-            _campfire_index.asyncio.current_task = real_current_task
+        monkeypatch.setattr(_campfire_index.asyncio, "current_task", lambda: _Cancelling())
+        waiter = asyncio.create_task(cache.get("k", refresh=False, load=load))
+        await asyncio.sleep(0)
+        pending.error = asyncio.CancelledError()
+        pending.owner_cancelled = True
+        del cache._inflight["k"]
+        pending.done.set()
+        with pytest.raises(CampfireIndexLoadAbortedError):
+            await asyncio.wait_for(waiter, timeout=5)
 
         assert loads == [], "a task with a cancellation on the books must not issue a request"
 
@@ -824,12 +820,8 @@ class TestAsyncCache:
             except BaseException as error:  # noqa: BLE001 - the point is what reaches a waiter
                 outcomes.append(error)
 
-        waiter_errors = [e for e in outcomes if not isinstance(e, BaseExceptionGroup)] + [
-            e for e in outcomes if isinstance(e, ExceptionGroup)
-        ]
         found = [e for e in outcomes if isinstance(e, ExceptionGroup) and e.subgroup(ForbiddenError)]
         assert found, f"the waiter must keep the 403; got {[type(e).__name__ for e in outcomes]}"
-        del waiter_errors
 
     async def test_a_group_of_only_cancellations_is_attributed_as_one(self):
         # `_contains_cancelled` must look INSIDE a group, as Go's errors.Is
@@ -927,3 +919,72 @@ class TestAsyncCache:
         # its OWN load's failure is its own to raise.
         with pytest.raises(RuntimeError):
             await asyncio.wait_for(waiter, timeout=5)
+
+
+class TestPublicationOutcome:
+    """The `recorded` guard, driven the way a caller reaches it.
+
+    The async twin's other tests put a cancellation on the publish lock, which
+    takes substituting the cache's own lock to arrange: `_lock` is never held
+    across an await, so acquiring it never suspends and never takes a
+    cancellation. The REACHABLE trigger on both twins is a store that raises,
+    and until these tests nothing covered it -- reverting the guard in the sync
+    twin alone left the whole suite green.
+
+    Only the value direction is testable. `_publish` skips the store entirely
+    when the load FAILED, so on the sync twin nothing in the guarded block can
+    raise once an error is in hand: a `threading.Lock` takes no cancellation,
+    and `_record_outcome` with an error is three assignments. A test of that
+    direction here would pass with the guard reverted, which is why there
+    isn't one -- the async twin covers it, where the lock is a delivery point.
+    """
+
+    class Boom(Exception):
+        pass
+
+    def _store_that_raises(self, cache):
+        def store(*_args, **_kwargs):
+            raise self.Boom("the shared store failed")
+
+        cache._store.store = store
+
+    def test_a_store_failure_does_not_rewrite_a_value_the_load_returned(self):
+        # What a waiter reads is `pending`; the owner gets the store's failure.
+        # Without the guard the waiter is told a load that RETURNED A VALUE was
+        # abandoned, and re-loads -- or worse, reports the store's error as the
+        # read's.
+        cache = _cache(Clock())
+        self._store_that_raises(cache)
+        seen = []
+
+        def load():
+            seen.append(cache._inflight["k"])
+            return "THE VALUE"
+
+        with pytest.raises(self.Boom):
+            cache.get("k", refresh=False, load=load)
+
+        pending = seen[0]
+        assert pending.done.is_set(), "waiters must be released whatever happened"
+        assert pending.error is None, "a load that returned a value is not 'abandoned'"
+        assert pending.value == "THE VALUE"
+        assert "k" not in cache._inflight, "the slot is released on every path"
+
+    @pytest.mark.asyncio
+    async def test_the_async_twin_keeps_the_outcome_too(self):
+        cache = _async_cache(Clock())
+        self._store_that_raises(cache)
+        seen = []
+
+        async def load():
+            seen.append(cache._inflight["k"])
+            return "THE VALUE"
+
+        with pytest.raises(self.Boom):
+            await cache.get("k", refresh=False, load=load)
+
+        pending = seen[0]
+        assert pending.done.is_set()
+        assert pending.error is None
+        assert pending.value == "THE VALUE"
+        assert "k" not in cache._inflight

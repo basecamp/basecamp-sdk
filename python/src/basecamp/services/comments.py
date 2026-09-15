@@ -119,7 +119,14 @@ def _annotate(error: BaseException, person_id: int) -> None:
     # re-raised instance must name the person that just failed, not every
     # person it has ever failed on.
     with contextlib.suppress(Exception):
-        notes = [note for note in getattr(error, "__notes__", []) if not note.startswith(_NOTE_PREFIX)]
+        # `isinstance` first: __notes__ is a plain list anyone may append to,
+        # and a non-string item in it would raise out of the comprehension and
+        # cost the annotation entirely. Items that are not ours are kept.
+        notes = [
+            note
+            for note in getattr(error, "__notes__", [])
+            if not (isinstance(note, str) and note.startswith(_NOTE_PREFIX))
+        ]
         notes.append(context)
         error.__notes__ = notes
 
