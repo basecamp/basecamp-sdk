@@ -325,8 +325,11 @@ class CampfireDiscoveryIncompleteError(BasecampError):
     def __init__(self, *, bucket_id: int, recording_id: int, reason: str, **kwargs: Any):
         # Overwrite -- never setdefault -- so a caller's `retryable` kwarg
         # cannot flip the invariant, exactly as `DeviceFlowError` does it. The
-        # coarse code is `api_error`, whose table row is retryable; this is
-        # not, because both reasons are deterministic for the same account
+        # coarse code is `api_error`. That code is retryable only on the 5xx
+        # rows -- SPEC rule 13 and the malformed-body rule both make it
+        # non-retryable -- so this is not an exception to a single rule so
+        # much as the same answer those give. It is forced rather than left
+        # to the default because both reasons are deterministic for the same account
         # state and a retry loop would re-run the identical search forever.
         # Claiming that override in a commit message without writing it here is
         # how the invariant would have been lost at the first caller who passed
@@ -359,7 +362,15 @@ class CampfireIndexLoadAbortedError(BasecampError):
     """
 
     def __init__(self, message: str = "campfire index load was abandoned by the caller that owned it", **kwargs: Any):
-        super().__init__(message, code=_COMPOSITE_CODE["campfire_index_load_aborted"], retryable=True, **kwargs)
+        # Overwrite rather than pass positionally, for the same reason its
+        # sibling does: forwarding `**kwargs` alongside a fixed `retryable=`
+        # meant `CampfireIndexLoadAbortedError(retryable=False)` raised a bare
+        # TypeError about duplicate keyword arguments instead of an error from
+        # this SDK's own taxonomy. The invariant is the same either way -- the
+        # load was abandoned, so the next caller loads again -- but a caller
+        # passing the flag now gets the invariant, not a crash.
+        kwargs["retryable"] = True
+        super().__init__(message, code=_COMPOSITE_CODE["campfire_index_load_aborted"], **kwargs)
 
 
 class BucketMismatchError(BasecampError):

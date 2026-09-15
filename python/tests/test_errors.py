@@ -513,28 +513,41 @@ class TestRowKeyedErrors:
 class TestCompositeIdentities:
     """Identity is the class; `code` is the canonical SPEC section 6 answer."""
 
-    def test_every_composite_code_is_inside_the_enum(self):
-        # Swept rather than listed: the first version of this table missed one
-        # of the six, and a hand-written list here would have missed it again.
-        from basecamp import errors as _errors
+    def test_no_error_in_the_module_carries_a_code_outside_the_enum(self):
+        # A REAL sweep this time. The previous version filtered `vars(errors)`
+        # down to a hard-coded list of six names, so it could only fail on a
+        # rename -- adding a seventh subclass with a code outside the enum left
+        # it green, which is exactly the recurrence its comment claimed to
+        # prevent. Parsing the source catches a class nobody thought to list.
+        import ast
+        import pathlib
 
-        composites = [
-            value
-            for name, value in vars(_errors).items()
-            if isinstance(value, type)
-            and issubclass(value, _errors.BasecampError)
-            and name in _errors.__dict__
-            and name
-            in {
-                "NoRecordingTypeError",
-                "UnknownRecordingTypeError",
-                "RecordingUnresolvedError",
-                "CampfireDiscoveryIncompleteError",
-                "BucketMismatchError",
-                "CampfireIndexLoadAbortedError",
-            }
-        ]
-        assert len(composites) == 6, "all six identities must be covered"
+        import basecamp.errors as _errors
+
+        source = pathlib.Path(_errors.__file__).read_text()
+        canonical = {member.value for member in _errors.ErrorCode}
+        literals: dict[str, str] = {}
+        for node in ast.walk(ast.parse(source)):
+            if not isinstance(node, ast.Call):
+                continue
+            for keyword in node.keywords:
+                if (
+                    keyword.arg == "code"
+                    and isinstance(keyword.value, ast.Constant)
+                    and isinstance(keyword.value.value, str)
+                ):
+                    literals[keyword.value.value] = f"line {keyword.value.lineno}"
+        outside = {code: where for code, where in literals.items() if code not in canonical}
+        assert not outside, f"a `code=` literal outside the closed ErrorCode enum: {outside}"
+
+    def test_each_composite_exit_code_is_the_one_its_own_code_maps_to(self):
+        # The previous assertion was `exit_code in {1, 2, 7}`, which cannot
+        # detect the fall-through its comment named: 7 IS the catch-all, and
+        # the unfixed error produced exactly 7. Deriving the expectation from
+        # the code makes an out-of-enum code raise here instead of passing.
+        import basecamp.errors as _errors
+        from basecamp.errors import _EXIT_CODE_MAP, ErrorCode
+
         built = [
             _errors.NoRecordingTypeError(routing_key="boost.created"),
             _errors.UnknownRecordingTypeError(routing_key="x.y"),
@@ -543,12 +556,11 @@ class TestCompositeIdentities:
             _errors.BucketMismatchError(bucket_id=1, recording_id=2, requested_bucket_id=3),
             _errors.CampfireIndexLoadAbortedError(),
         ]
-        codes = {type(e).__name__: e.code for e in built}
-        outside = {n: c for n, c in codes.items() if c not in set(_errors.ErrorCode)}
-        assert not outside, f"a public error carrying a code outside the closed enum: {outside}"
-        # ...and none of them falls through to the catch-all exit code by
-        # accident, which is the harm the enum rule exists to prevent.
-        assert all(e.exit_code in {1, 2, 7} for e in built)
+        for error in built:
+            assert error.exit_code == _EXIT_CODE_MAP[ErrorCode(error.code)], type(error).__name__
+        # ...and the set is not all-catch-all, so a regression to exit 7
+        # everywhere would show as a failure rather than as agreement.
+        assert {e.exit_code for e in built} == {1, 2, 7}
 
     def test_discovery_incomplete_cannot_be_told_it_is_retryable(self):
         # `DeviceFlowError` overwrites rather than setdefaults so a caller's
@@ -558,3 +570,16 @@ class TestCompositeIdentities:
 
         error = CampfireDiscoveryIncompleteError(bucket_id=1, recording_id=2, reason="r", retryable=True)
         assert error.retryable is False
+
+    def test_neither_composite_raises_a_bare_type_error_on_the_retryable_kwarg(self):
+        # The sibling was left forwarding `**kwargs` beside a fixed
+        # `retryable=`, so passing the flag raised TypeError about duplicate
+        # keyword arguments -- outside this SDK's taxonomy entirely.
+        from basecamp.errors import CampfireDiscoveryIncompleteError, CampfireIndexLoadAbortedError
+
+        assert CampfireIndexLoadAbortedError(retryable=False).retryable is True
+        assert CampfireIndexLoadAbortedError(retryable=True).retryable is True
+        assert (
+            CampfireDiscoveryIncompleteError(bucket_id=1, recording_id=2, reason="r", retryable=False).retryable
+            is False
+        )

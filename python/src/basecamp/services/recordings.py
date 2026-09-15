@@ -374,7 +374,9 @@ def _decoded_person(value: Any, what: str) -> dict[str, Any] | None:
     if "id" not in person:
         return person
     decoded = _decoded_flexible_int64(person["id"], f"{what} id")
-    if decoded == person["id"] and not isinstance(person["id"], bool):
+    # No `isinstance(..., bool)` guard here: `_decoded_flexible_int64` has
+    # already raised for a bool, so the clause that used to be here was dead.
+    if decoded == person["id"]:
         return person
     # Go's decode CONVERTS as well as validating -- `"7"` becomes 7 and a
     # non-numeric system-actor id becomes 0 -- so the summary Go hands back
@@ -388,8 +390,10 @@ def _decoded_parent(value: Any, what: str, *, has_bucket: bool) -> dict[str, Any
     """A parent, decoded as whichever of Go's TWO parent structs applies.
 
     `Todo` and `Todolist` carry a `TodoParent`, which has NO `bucket` field, so
-    Go drops an unknown `bucket` key there silently. Everything else carries a
-    `RecordingParent`, whose `Bucket` is a fully typed `*RecordingBucket`.
+    Go drops an unknown `bucket` key there silently. Every OTHER ROUTED type
+    carries a `RecordingParent`, whose `Bucket` is a fully typed
+    `*RecordingBucket`. (Not every model in the generated package does --
+    three more parent shapes exist and none of them is routed here.)
     Applying one shape to both refused `{"parent": {"bucket": 7}}` on a todo --
     a body the reference ACCEPTS, which is the vanishing direction.
     """

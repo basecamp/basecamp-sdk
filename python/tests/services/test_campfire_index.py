@@ -1041,3 +1041,29 @@ class TestPublicationOutcome:
         assert pending.error is None
         assert pending.value == "THE VALUE"
         assert "k" not in cache._inflight
+
+
+class TestListingIndex:
+    def test_an_entry_whose_bucket_is_absent_is_not_indexed_under_zero(self):
+        # Go's listing loop is `if c.Bucket == nil || c.Bucket.ID == 0 {
+        # continue }`, so an entry with no usable bucket is skipped rather than
+        # filed under bucket 0.
+        #
+        # Tested HERE rather than through `summarize`, and that is the point of
+        # the test: through the composite the rule is UNOBSERVABLE, because
+        # `_check_pointer` refuses a bucket id of 0, so nothing can ever look
+        # up the key such an entry would be filed under. An end-to-end test of
+        # it passes whether the skip exists or not -- one did, until a
+        # mutation showed it could not fail.
+        from basecamp.services._campfire_index import _campfires_by_bucket
+
+        mapped = _campfires_by_bucket(
+            [
+                {"id": 11, "bucket": None},
+                {"id": 12, "bucket": {"id": 0}},
+                {"id": 13},
+                {"id": 5, "bucket": {"id": 7}},
+            ]
+        )
+
+        assert mapped == {7: [5]}, "a zero or absent bucket id is skipped, never indexed under 0"

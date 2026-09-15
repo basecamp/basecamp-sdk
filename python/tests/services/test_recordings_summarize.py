@@ -406,11 +406,28 @@ class TestProjection:
     # whose `Bucket` is fully typed. Every row is Go's own answer.
     @respx.mock
     @pytest.mark.parametrize("bucket", [7, "x", {"id": "7"}, [], True])
-    def test_a_todo_parent_has_no_bucket_so_anything_there_is_dropped(self, bucket):
-        respx.get(f"{BASE}/todos/9").mock(
-            return_value=httpx.Response(200, json={"id": 9, "type": "Todo", "parent": {"id": 1, "bucket": bucket}})
+    @pytest.mark.parametrize(
+        ("routed", "path", "route"),
+        [
+            # BOTH rows of the table, because pinning one leaves the other
+            # free: reverting `parent_has_bucket=False` on Todolist alone left
+            # the whole suite green.
+            # Todo routes by event type; Todolist has no event subject and
+            # routes by recording_type, so the rows differ in how they reach
+            # the read as well as in which read they reach.
+            ("Todo", "todos/9", {"event_type": "todo.created"}),
+            ("Todolist", "todolists/9", {"recording_type": "Todolist"}),
+        ],
+    )
+    def test_a_todo_parent_bucket_is_not_validated_because_go_has_no_such_field(self, bucket, routed, path, route):
+        respx.get(f"{BASE}/{path}").mock(
+            return_value=httpx.Response(200, json={"id": 9, "type": routed, "parent": {"id": 1, "bucket": bucket}})
         )
-        summary = _account().recordings.summarize(bucket_id=BUCKET, recording_id=9, event_type="todo.created")
+        summary = _account().recordings.summarize(bucket_id=BUCKET, recording_id=9, **route)
+        # What Go drops is the VALIDATION, not the key: `TodoParent` has no
+        # `Bucket` field, so an unknown `bucket` never reaches a typed check.
+        # This port returns raw payload dicts throughout, so the key rides
+        # along -- refusing it is what would lose a read the reference makes.
         assert summary["parent"] == {"id": 1, "bucket": bucket}, "Go accepts this; refusing it loses a read"
 
     @respx.mock
@@ -446,6 +463,7 @@ class TestProjection:
             ({"admin": 1}, "creator admin was not a bool"),
             ({"company": 7}, "creator company was not an object"),
             ({"company": {"id": "7"}}, "creator company id was not an int64"),
+            ({"company": {"name": 7}}, "creator company name was not a string"),
             ({"created_at": 7}, "creator created_at was not a string"),
         ],
     )
@@ -455,6 +473,29 @@ class TestProjection:
         )
         with pytest.raises(ApiError, match=match):
             _account().recordings.summarize(bucket_id=BUCKET, recording_id=1, event_type="comment.created")
+
+    def test_the_person_table_covers_every_field_go_decodes(self):
+        # The two tuples were transcribed by hand from Go's struct, and 16 of
+        # the 21 names were pinned by nothing -- dropping "owner", "can_ping"
+        # or "tagline" broke no test. Asserting the table PARTITIONS the known
+        # field set pins every name at once, and pins the bool/string split
+        # too, which is where a transcription error would actually land.
+        import typing
+
+        from basecamp.generated.types import Person
+        from basecamp.services.recordings import _PERSON_BOOLS, _PERSON_STRINGS
+
+        hints = typing.get_type_hints(Person)
+        # `id` is excluded because it is FlexibleInt64, not a plain scalar.
+        # `system_label` is excluded because it is PYTHON-ONLY: the SDK's own
+        # normalizer synthesizes it, Go's `generated.Person` has no such field
+        # and drops it as unknown, so validating it would refuse a body the
+        # reference accepts -- the vanishing direction.
+        expected = {name for name in hints if name not in {"id", "system_label"}}
+        covered = set(_PERSON_STRINGS) | set(_PERSON_BOOLS) | {"company"}
+        assert covered == expected, f"table and model disagree: {covered ^ expected}"
+        assert {name for name in expected if hints[name] is bool} == set(_PERSON_BOOLS)
+        assert not set(_PERSON_STRINGS) & set(_PERSON_BOOLS)
 
     @respx.mock
     @pytest.mark.parametrize("creator", [{"admin": None}, {"admin": True}, {"name": "A"}])
@@ -916,7 +957,7 @@ class TestChatLineDiscovery:
         assert summary["campfire_id"] == 7, "a null element is a zero DockItem, whose name is not 'chat'"
 
     @respx.mock
-    def test_a_null_campfire_bucket_is_skipped_not_a_failure(self):
+    def test_a_null_campfire_bucket_is_not_a_failure(self):
         respx.get(f"{BASE}/projects/{BUCKET}").mock(return_value=_not_found())
         respx.get(f"{BASE}/chats.json").mock(
             return_value=httpx.Response(200, json=[{"id": 11, "bucket": None}, _campfire(5)])
@@ -929,7 +970,12 @@ class TestChatLineDiscovery:
         )
 
         assert summary["campfire_id"] == 5
-        assert not elsewhere.called, "a null bucket decodes to id 0, which Go skips"
+        # This pins "a null bucket is not a FAILURE" -- it does not pin the
+        # skip. Entry 11 is filed under bucket 0 with or without it, and the
+        # lookup is by BUCKET, so the assertion holds either way. The skip is
+        # pinned where it is expressible, over `_campfires_by_bucket` itself,
+        # in test_campfire_index.py.
+        assert not elsewhere.called
 
     @respx.mock
     @pytest.mark.parametrize("listed_id", [0, -1])
