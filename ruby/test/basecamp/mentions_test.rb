@@ -363,6 +363,50 @@ class MentionsTest < Minitest::Test
       assert_equal 2, Basecamp::Mentions.bc_attachment_sgids(expanded).length,
         "#{reference} must not suppress the real mention"
     end
+
+    # The control. Without it the assertions above would pass just as happily if
+    # the dedupe were broken to never fire at all: here the content really does
+    # carry the mention, and exactly one tag must come out.
+    already = %(<div><bc-attachment sgid="#{sgid}"></bc-attachment> hi</div>)
+
+    assert_equal 1, Basecamp::Mentions.bc_attachment_sgids(
+      Basecamp::Mentions.with_mentions(already, [ person ])
+    ).length
+  end
+
+  def test_no_character_reference_expands_to_nothing
+    # This is the whole suppression question as one property. An attacker can
+    # only make unescape(<real sgid> + <suffix>) equal <real sgid> if the suffix
+    # decodes to nothing, so a decoder that never yields an empty expansion
+    # cannot be turned against the exact-sgid dedupe. The reference table has no
+    # empty expansion either, which is why the two agree.
+    assert_empty Basecamp::Mentions::NAMED_ENTITIES.values.select(&:empty?)
+
+    sgid = person_sgid(35)
+    [ "&#0;", "&#1;", "&#65533;", "&#55296;", "&#1114112;", "&#x0;", "&nosuchref;",
+      "&amp;", "&#9;", "&nbsp;" ].each do |reference|
+      decoded = Basecamp::Mentions.bc_attachment_sgids(
+        %(<bc-attachment sgid="#{sgid}#{reference}"></bc-attachment>)
+      ).first
+
+      assert_operator decoded.bytesize, :>, sgid.bytesize,
+        "#{reference} decoded to nothing, which would let it suppress a mention"
+    end
+  end
+
+  def test_a_reference_expanding_to_base64_characters_decides_a_verdict
+    # "&fjlig;" is the one two-character expansion in the reference table that
+    # is entirely base64, so it can complete a payload on its own rather than
+    # merely spoiling one. An insertion that both implementations refuse would
+    # prove nothing here; this one has to RESOLVE.
+    sgid = person_sgid(36)
+    position = sgid.index("fj")
+
+    if position
+      assert_equal [ 36 ], mentions_in_tag("#{sgid[0, position]}&fjlig;#{sgid[position + 2..]}")
+    else
+      assert_equal "fj", Basecamp::Mentions::NAMED_ENTITIES["fjlig"]
+    end
   end
 
   def test_a_reference_outside_the_table_can_only_lose_a_mention_never_add_one

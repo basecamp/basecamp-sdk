@@ -123,7 +123,10 @@ module Basecamp
       "numsp" => "\u2007", "puncsp" => "\u2008",
       "thinsp" => "\u2009", "ThinSpace" => "\u2009",
       "hairsp" => "\u200A", "VeryThinSpace" => "\u200A",
-      "MediumSpace" => "\u205F", "ThickSpace" => "\u205F\u200A"
+      "MediumSpace" => "\u205F", "ThickSpace" => "\u205F\u200A",
+      # Two-character expansions that carry a base64 character. "fjlig" is the
+      # one that decides a verdict on its own — it expands to two of them.
+      "fjlig" => "fj", "bne" => "=\u20E5"
     }.freeze
 
     # The references the HTML5 legacy list also accepts without their closing
