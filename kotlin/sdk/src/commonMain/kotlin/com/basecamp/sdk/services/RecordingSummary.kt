@@ -37,8 +37,11 @@ data class RecordingRef(
  *
  * A field a type does not have is either MISSING from the JSON or present and
  * empty, and which one is not a property of nullability — it is whether the
- * field has a DEFAULT. Nothing in this SDK encodes a summary; the conformance
- * runner does, with kotlinx's default `Json`, which leaves `encodeDefaults` off
+ * field has a DEFAULT. Nothing in `commonMain` encodes a summary — `summarize`
+ * returns the object — so the rule below is exercised in two places only: the
+ * conformance runner, and `aTypeWithNoAssigneesEmitsNoAssigneesKey` in
+ * `RecordingsSummarizeTest`, which is what pins it. Both use kotlinx's default
+ * `Json`, which leaves `encodeDefaults` off
  * so a property equal to its default is omitted, and `explicitNulls` on so a
  * nullable property with NO default would serialize as `null` rather than
  * vanish.
