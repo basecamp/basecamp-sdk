@@ -317,7 +317,9 @@ func TestSummarize_ReadErrorsPassThrough(t *testing.T) {
 // other Campfire answers 404 for it, or whatever lineStatus says.
 type chatFixture struct {
 	listing    atomic.Pointer[[]byte]
+	mu         sync.Mutex
 	docks      map[int64]int64 // bucket -> the dock's chat tool id
+	buckets    map[int64]int64 // campfire -> its bucket, for the served line
 	foundUnder atomic.Int64
 	lineStatus func(campfireID int64) int
 	dockStatus int // non-zero: the project read answers this instead of a dock
@@ -325,9 +327,8 @@ type chatFixture struct {
 
 func newChatFixture(t *testing.T, foundUnder int64, pairs ...[2]int64) *chatFixture {
 	t.Helper()
-	f := &chatFixture{docks: map[int64]int64{}}
-	body := campfireListJSON(t, pairs...)
-	f.listing.Store(&body)
+	f := &chatFixture{docks: map[int64]int64{}, buckets: map[int64]int64{}}
+	f.setListing(t, pairs...)
 	f.foundUnder.Store(foundUnder)
 	return f
 }
@@ -336,6 +337,21 @@ func (f *chatFixture) setListing(t *testing.T, pairs ...[2]int64) {
 	t.Helper()
 	body := campfireListJSON(t, pairs...)
 	f.listing.Store(&body)
+	f.mu.Lock()
+	for _, p := range pairs {
+		f.buckets[p[0]] = p[1]
+	}
+	f.mu.Unlock()
+}
+
+// setDock names a bucket's dock Campfire (0 for a project with none).
+func (f *chatFixture) setDock(bucket, campfire int64) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.docks[bucket] = campfire
+	if campfire != 0 {
+		f.buckets[campfire] = bucket
+	}
 }
 
 func (f *chatFixture) route(t *testing.T) func(w http.ResponseWriter, r *http.Request, path string) bool {
@@ -347,7 +363,9 @@ func (f *chatFixture) route(t *testing.T) func(w http.ResponseWriter, r *http.Re
 				writeJSON(w, f.dockStatus, []byte(`{"error":"nope"}`))
 				return true
 			}
+			f.mu.Lock()
 			chatID, isProject := f.docks[parseID(bucket)]
+			f.mu.Unlock()
 			if !isProject {
 				writeJSON(w, http.StatusNotFound, []byte(`{"error":"Record not found"}`))
 				return true
@@ -383,7 +401,16 @@ func (f *chatFixture) route(t *testing.T) func(w http.ResponseWriter, r *http.Re
 			}
 		}
 		if id == f.foundUnder.Load() {
-			writeJSON(w, http.StatusOK, line)
+			// The served line belongs to the Campfire's bucket.
+			var l map[string]any
+			_ = json.Unmarshal(line, &l)
+			f.mu.Lock()
+			bucketID, known := f.buckets[id]
+			f.mu.Unlock()
+			if known {
+				l["bucket"].(map[string]any)["id"] = bucketID
+			}
+			writeJSON(w, http.StatusOK, mustJSON(l))
 			return true
 		}
 		writeJSON(w, http.StatusNotFound, []byte(`{"error":"Record not found"}`))
@@ -417,7 +444,7 @@ func lineRead(campfireID int64) string {
 
 func TestSummarize_ChatLineFoundViaProjectDock(t *testing.T) {
 	fx := newChatFixture(t, 1069479341, [2]int64{1069479341, letoLaptop})
-	fx.docks[letoLaptop] = 1069479341
+	fx.setDock(letoLaptop, 1069479341)
 	account, srv, _ := newSummaryClient(t, fx.route(t))
 
 	got, err := account.Recordings().Summarize(context.Background(), lineRef())
@@ -488,7 +515,7 @@ func TestSummarize_ChatLineDockMissFallsBackToListing(t *testing.T) {
 	// The dock names a Campfire the line is not in (it was posted in a ping
 	// listed for the same bucket); the listing supplies the rest.
 	fx := newChatFixture(t, 1069479345, [2]int64{1069479341, letoLaptop}, [2]int64{1069479345, letoLaptop})
-	fx.docks[letoLaptop] = 1069479341
+	fx.setDock(letoLaptop, 1069479341)
 	account, srv, _ := newSummaryClient(t, fx.route(t))
 	got, err := account.Recordings().Summarize(context.Background(), lineRef())
 	if err != nil {
@@ -956,19 +983,36 @@ func strOrNil(p *string) string {
 }
 
 func TestSummarize_ChatLineDockRefreshIsNotBlockedByTheListing(t *testing.T) {
-	// The dock was cached without a chat tool (the project had none when the
-	// cache filled); now it has one, and the account listing is down. Past the
-	// refresh floor, the dock's one re-read finds the line before the listing
-	// is consulted at all.
-	fx := newChatFixture(t, 1069479341, [2]int64{1069479341, letoLaptop})
-	fx.docks[letoLaptop] = 0 // a project whose dock names no Campfire
+	// Two buckets age their docks independently while sharing one listing.
+	// Bucket B's dock was cached without a chat tool; the project has one now.
+	// The listing has since expired and is down. B's line must be found by the
+	// dock's one re-read, with no listing fetch attempted first.
+	const bucketA, bucketB = letoLaptop, letoLocator
+	fx := newChatFixture(t, 1069479345, [2]int64{1069479345, bucketA}, [2]int64{1069479400, bucketB})
+	fx.setDock(bucketA, 0)
+	fx.setDock(bucketB, 0)
 	account, srv, clock := newSummaryClient(t, fx.route(t))
+	listings := func() int { return srv.count(listingRead) - srv.count(listingRead+"/") }
+
+	// T: bucket A primes its dock and the shared listing.
 	if _, err := account.Recordings().Summarize(context.Background(), lineRef()); err != nil {
-		t.Fatalf("priming: %v", err) // found through the listing this time
+		t.Fatalf("priming A: %v", err)
 	}
-	*clock = clock.Add(campfireIndexMinRefresh)
-	fx.docks[letoLaptop] = 1069479341
-	listingWasUp := srv.count(listingRead) - srv.count(listingRead+"/")
+	// T+9:30: bucket B primes its dock (empty); the listing is still cached.
+	*clock = clock.Add(CampfireIndexTTL - 30*time.Second)
+	fx.foundUnder.Store(1069479400)
+	refB := RecordingRef{BucketID: bucketB, RecordingID: 1069479350, EventType: "chat.line.created"}
+	if _, err := account.Recordings().Summarize(context.Background(), refB); err != nil {
+		t.Fatalf("priming B: %v", err)
+	}
+	if listings() != 1 {
+		t.Fatalf("listings = %d while priming, want 1", listings())
+	}
+	// T+10:30: the listing has expired; B's dock is a minute old — past the
+	// floor, inside the TTL. The project gained a Campfire; the listing is down.
+	*clock = clock.Add(time.Minute)
+	fx.setDock(bucketB, 1069479777)
+	fx.foundUnder.Store(1069479777)
 	inner := fx.route(t)
 	srv.mu.Lock()
 	srv.route = func(w http.ResponseWriter, r *http.Request, path string) bool {
@@ -979,17 +1023,15 @@ func TestSummarize_ChatLineDockRefreshIsNotBlockedByTheListing(t *testing.T) {
 		return inner(w, r, path)
 	}
 	srv.mu.Unlock()
-	// Expire the listing so a fresh call would have to re-list — and cannot.
-	*clock = clock.Add(CampfireIndexTTL)
-	got, err := account.Recordings().Summarize(context.Background(), lineRef())
+	got, err := account.Recordings().Summarize(context.Background(), refB)
 	if err != nil {
 		t.Fatalf("Summarize: %v", err)
 	}
-	if got.CampfireID != 1069479341 {
-		t.Fatalf("CampfireID = %d, want the dock's Campfire", got.CampfireID)
+	if got.CampfireID != 1069479777 {
+		t.Fatalf("CampfireID = %d, want the dock's new Campfire", got.CampfireID)
 	}
-	if n := srv.count(listingRead) - srv.count(listingRead+"/"); n != listingWasUp {
-		t.Fatalf("the listing was consulted (%d listings) although the dock refresh found the line", n)
+	if listings() != 1 {
+		t.Fatalf("listings = %d: the expired listing was fetched although the dock refresh found the line", listings())
 	}
 }
 
@@ -1010,12 +1052,15 @@ func TestTTLCache_LoaderPanicReleasesTheKey(t *testing.T) {
 		})
 	}()
 	<-started
+	waiting := make(chan struct{})
+	cache.onWait = func() { close(waiting) }
 	waiterDone := make(chan error, 1)
 	go func() {
 		_, _, err := cache.get(context.Background(), "k", false, func(context.Context) (int, error) { return 1, nil })
 		waiterDone <- err
 	}()
-	time.Sleep(10 * time.Millisecond) // let the waiter reach the in-flight wait
+	<-waiting // the waiter is on the in-flight path before the loader is released
+	cache.onWait = nil
 	close(release)
 	if r := <-loaderDone; r == nil {
 		t.Fatal("the panic did not propagate to the loading caller")
@@ -1057,15 +1102,57 @@ func TestTTLCache_WaiterGetsTheLoadItWaitedOnAsFresh(t *testing.T) {
 		cached bool
 		err    error
 	}
+	waiting := make(chan struct{})
+	cache.onWait = func() { close(waiting) }
 	done := make(chan outcome, 1)
 	go func() {
 		v, cached, err := cache.get(context.Background(), "k", false, func(context.Context) (int, error) { return -1, nil })
 		done <- outcome{v, cached, err}
 	}()
-	time.Sleep(10 * time.Millisecond)
+	<-waiting
 	close(release)
 	got := <-done
 	if got.err != nil || got.v != 42 || got.cached {
 		t.Fatalf("waiter got %+v, want the awaited load's value reported fresh (cached=false)", got)
+	}
+}
+
+func TestSummarize_ChatLineMentionsOnlyOnRichTextSubtypes(t *testing.T) {
+	// The same content — a rendered mention — served as a code line, a plain
+	// text line, a rich text line and an integration line. Only the two rich
+	// text subtypes can carry a mention BC3 read as markup.
+	mention := renderedMention(fixtureSGIDPerson, 1049715915, "Victor Cooper")
+	for _, tc := range []struct {
+		lineType string
+		want     []int64
+	}{
+		{"Chat::Lines::Code", []int64{}},
+		{"Chat::Lines::Text", []int64{}},
+		{"Chat::Lines::RichText", []int64{1049715915}},
+		{"Chat::Lines::Integration", []int64{1049715915}},
+	} {
+		t.Run(tc.lineType, func(t *testing.T) {
+			fx := newChatFixture(t, 1069479341, [2]int64{1069479341, letoLaptop})
+			fx.setDock(letoLaptop, 1069479341)
+			inner := fx.route(t)
+			account, _, _ := newSummaryClient(t, func(w http.ResponseWriter, r *http.Request, path string) bool {
+				if path != lineRead(1069479341) {
+					return inner(w, r, path)
+				}
+				var l map[string]any
+				_ = json.Unmarshal(loadSummaryFixture(t, "campfires/line_get.json"), &l)
+				l["type"] = tc.lineType
+				l["content"] = "<div>" + mention + " look</div>"
+				writeJSON(w, http.StatusOK, mustJSON(l))
+				return true
+			})
+			got, err := account.Recordings().Summarize(context.Background(), lineRef())
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(got.MentionedPersonIDs, tc.want) {
+				t.Fatalf("MentionedPersonIDs = %v, want %v", got.MentionedPersonIDs, tc.want)
+			}
+		})
 	}
 }

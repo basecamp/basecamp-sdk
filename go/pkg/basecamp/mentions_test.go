@@ -144,6 +144,7 @@ func TestMentionedPersonIDs(t *testing.T) {
 		{"two attachments back to back", `<bc-attachment sgid="` + rubySGIDPersonWide + `"></bc-attachment><bc-attachment sgid="` + rubySGIDPerson + `"></bc-attachment>`, []int64{9007199254740993, 1049715915}},
 		{"inside an HTML comment is not an element", `<!-- <bc-attachment sgid="` + rubySGIDPerson + `"></bc-attachment> --><div>hi</div>`, nil},
 		{"inside another element's attribute is not an element", `<div title='<bc-attachment sgid="` + rubySGIDPerson + `">'>text</div>`, nil},
+		{"inside a double-quoted attribute with a single-quoted sgid", `<div data-example="<bc-attachment sgid='` + rubySGIDPerson + `'>">x</div>`, nil},
 		{"a real one after a commented one", `<!-- <bc-attachment sgid="` + rubySGIDPersonWide + `"> -->` + victor, []int64{1049715915}},
 		{"first sgid attribute wins, empty included", `<bc-attachment sgid="" sgid="` + rubySGIDPerson + `"></bc-attachment>`, nil},
 		{"first sgid attribute wins, valued", `<bc-attachment sgid="` + rubySGIDPerson + `" sgid="` + rubySGIDPersonWide + `"></bc-attachment>`, []int64{1049715915}},
@@ -155,6 +156,7 @@ func TestMentionedPersonIDs(t *testing.T) {
 		{"a > inside single quotes inside a double-quoted attribute", `<bc-attachment caption="it's a 'x > y' thing" sgid="` + rubySGIDPerson + `"></bc-attachment>`, []int64{1049715915}},
 		{"a bare < in text does not derail the walk", `<div>1 < 2 and ` + victor + `</div>`, []int64{1049715915}},
 		{"a closing tag and a doctype are skipped", `<!DOCTYPE html></p>` + victor, []int64{1049715915}},
+		{"a tag whose name only starts with bc-attachment", `<bc-attachment:preview sgid="` + rubySGIDPerson + `"></bc-attachment:preview><bc-attachment_x sgid="` + rubySGIDPersonWide + `"/>`, nil},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

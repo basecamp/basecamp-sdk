@@ -22,6 +22,13 @@ package basecamp
 // off content the API already served, and a caller that needs the id verified
 // reads the person back through People().Get.
 //
+// The markup is read as BC3 serves it: a sanitized tree of the tags
+// doc/api/sections/rich_text.md allows, which has no raw-text elements. The
+// tag walk skips comments and quoted attribute values but does not model
+// <script> or <style> content, which BC3 strips on write; a caller reading
+// mentions out of content it authored itself should not put a bc-attachment
+// inside such an element and expect it ignored.
+//
 // The envelope is decoded structurally, never searched as bytes, so a Person
 // gid that merely appears inside some other value — a Document gid built from
 // one, a purpose string that looks like one — is not a mention. Three
@@ -118,8 +125,12 @@ func bcAttachmentSGIDs(text string) []string {
 	return sgids
 }
 
+// isTagNameChar is what may follow "<" in a tag name. The whole name is
+// consumed, punctuation included, so "<bc-attachment:preview" or
+// "<bc-attachment_x" is its own name and never compares equal to
+// "bc-attachment".
 func isTagNameChar(c byte) bool {
-	return c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9' || c == '-'
+	return !isSpace(c) && c != '/' && c != '>' && c != '<' && c != '=' && c != '"' && c != '\''
 }
 
 func isTagNameEnd(c byte) bool {
