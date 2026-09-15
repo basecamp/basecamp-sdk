@@ -657,10 +657,28 @@ fn envelope_gid(payload: &str) -> Option<String> {
 fn parse_global_id(gid: &str) -> Option<(String, String)> {
     // A URL parser refuses a control byte anywhere up to the fragment, whatever part it
     // lands in, so that check comes before the URL is taken apart at all.
-    let before_fragment = gid.split('#').next().unwrap_or_default();
+    let (before_fragment, fragment) = match gid.split_once('#') {
+        Some((before, fragment)) => (before, Some(fragment)),
+        None => (gid, None),
+    };
     if before_fragment
         .bytes()
         .any(|byte| byte < b' ' || byte == 0x7f)
+    {
+        return None;
+    }
+    // The fragment is discarded, but not before it is CHECKED: a URL parser unescapes it,
+    // and a malformed escape there fails the whole parse. Nothing downstream can notice —
+    // which is exactly why this was wrong, and wrong in the accepting direction, naming a
+    // person for `gid://bc3/Person/77#%zz` where Go names nobody.
+    //
+    // The fragment's rule is its own and is NOT the host's: only "a `%` must be followed by
+    // two hex digits". The query, cut in the same breath below, is not checked at all,
+    // because a URL parser keeps it raw and never unescapes it — `?%zz` parses. Three
+    // positions, three rules; the escape rule verified at one of them says nothing about
+    // the others.
+    if let Some(fragment) = fragment
+        && !valid_escapes(fragment)
     {
         return None;
     }
@@ -681,6 +699,28 @@ fn parse_global_id(gid: &str) -> Option<(String, String)> {
         return None;
     }
     Some((model.to_string(), raw_id.to_string()))
+}
+
+/// Whether every `%` in a string introduces two hex digits — the plain unescape rule, with
+/// none of the extra conditions the host and the zone add. A `%` in the last two bytes is
+/// malformed for want of room.
+fn valid_escapes(text: &str) -> bool {
+    let bytes = text.as_bytes();
+    let mut index = 0;
+    while index < bytes.len() {
+        if bytes[index] == b'%' {
+            if index + 2 >= bytes.len()
+                || !bytes[index + 1].is_ascii_hexdigit()
+                || !bytes[index + 2].is_ascii_hexdigit()
+            {
+                return false;
+            }
+            index += 3;
+        } else {
+            index += 1;
+        }
+    }
+    true
 }
 
 /// What follows `gid://`, matching the scheme case-insensitively as a URL parser does.
@@ -1278,6 +1318,24 @@ mod tests {
             ("gid://%bc3/Person/77", Some(77)),
             ("gid://b%63%33/Person/77", None),
             ("gid://bc3%/Person/77", None),
+            // The FRAGMENT is discarded, but a URL parser unescapes it first, so a
+            // malformed escape there fails the whole parse — and nothing downstream can
+            // notice, which is why this went unnoticed in the accepting direction. The
+            // QUERY, cut in the same breath, is never unescaped and so is never checked.
+            // Three positions, three rules.
+            ("gid://bc3/Person/77#%zz", None),
+            ("gid://bc3/Person/77#%", None),
+            ("gid://bc3/Person/77#%2", None),
+            ("gid://bc3/Person/77#x%0gy", None),
+            ("gid://bc3/Person/77?ok#%zz", None),
+            ("gid://bc3/Person/77#a#%zz", None),
+            ("gid://bc3/Person/77#%41", Some(77)),
+            ("gid://bc3/Person/77#%ff", Some(77)),
+            ("gid://bc3/Person/77#ok", Some(77)),
+            ("gid://bc3/Person/77#", Some(77)),
+            ("gid://bc3/Person/77?%zz", Some(77)),
+            ("gid://bc3/Person/77?x=%zz", Some(77)),
+            ("gid://bc3/Person/77?%", Some(77)),
             // The host's character set is an allowlist, and these four are on opposite
             // sides of it from what a denylist would guess.
             ("gid://b<3/Person/77", Some(77)),
@@ -2050,15 +2108,21 @@ mod tests {
     /// ignores still yields its person. `serde_json` refuses the document instead, and the
     /// sgid names nobody.
     ///
-    /// It runs in ONE direction only — measured, not assumed, across every position an
-    /// envelope has: where the damage lands in the gid or the purpose both sides answer
-    /// "nobody", and where it lands in an ignored key or value Go answers 77 and this
-    /// answers nobody. So this port never names a person Go does not; it declines a few Go
-    /// would name. On a helper a connector admits events by, that is the direction to fail
-    /// in, and it is why this is pinned rather than chased: matching byte-for-byte needs a
-    /// lossy re-encode of the raw bytes AND a surrogate-replacing JSON reader, two
-    /// substitutions of someone else's parser, to accept input BC3 does not mint. The
-    /// Marshal branch, which is what BC3's own sgids actually use, matches exactly.
+    /// It runs in ONE direction only, measured rather than assumed: Go answers and this
+    /// declines, never the reverse. So this port never names a person Go does not; it
+    /// declines a few Go would name. On a helper a connector admits events by, that is the
+    /// direction to fail in, and it is why this is pinned rather than chased: matching
+    /// byte-for-byte needs a lossy re-encode of the raw bytes AND a surrogate-replacing
+    /// JSON reader — two substitutions of someone else's parser — to accept input BC3 does
+    /// not mint.
+    ///
+    /// What decides it is NOT which member the damage lands in. An earlier version of this
+    /// comment said the divergence appears only in members the decode ignores, and that is
+    /// wrong: a reviewer produced `{"gid":"gid://bc3/Person/77?x=<lone surrogate>", …}`,
+    /// where the damage is inside the gid — a member that is very much read — and Go still
+    /// answers 77, because U+FFFD lands in the query, which nothing parses. The rule is
+    /// that the divergence appears wherever the substitution would not have changed the
+    /// parse anyway. Both shapes are pinned below.
     #[test]
     fn a_malformed_byte_in_a_json_envelope_declines_where_go_substitutes() {
         let gid = br#""gid":"gid://bc3/Person/77","purpose":"attachable""#;
@@ -2109,12 +2173,49 @@ mod tests {
                 Some(77)
             );
         }
-        // Where the damage lands in a member that IS read, both sides answer nobody — the
-        // replacement character is not a digit either.
-        for damaged in [&b"\xff"[..], &br"\ud800"[..]] {
+        // Damage INSIDE the gid, where the substitution would not have changed the parse:
+        // Go answers 77 for all of these, and this declines. Same direction, a member the
+        // decode reads.
+        for (position, damaged_gid) in [
+            ("the query", &br"gid://bc3/Person/77?x=\ud800"[..]),
+            ("the query, raw", &b"gid://bc3/Person/77?x=\xff"[..]),
+            ("the fragment", &br"gid://bc3/Person/77#\ud800"[..]),
+            ("the fragment, raw", &b"gid://bc3/Person/77#\xff"[..]),
+            ("the host", &b"gid://bc\xff3/Person/77"[..]),
+        ] {
             let envelope = [
-                br#"{"gid":"gid://bc3/Person/77"#.as_slice(),
-                damaged,
+                br#"{"gid":""#.as_slice(),
+                damaged_gid,
+                br#"","purpose":"attachable"}"#,
+            ]
+            .concat();
+            assert_eq!(
+                person_id_from_sgid(&json_sgid_bytes(&envelope)),
+                None,
+                "damage in {position}: Go answers 77, this declines"
+            );
+        }
+        // The contrast that makes this a JSON-reader difference and not a decoding one:
+        // the SAME damage carried by a Marshal 4.8 envelope — the layout BC3's own sgids
+        // actually use — diverges nowhere, because Marshal carries bytes and nothing
+        // substitutes anything. Both of these answer 77 in Go and here.
+        for marshal in [
+            // {"gid" => "gid://bc3/Person/77", "purpose" => "attachable", "x" => "\xff"}
+            "BAh7CEkiCGdpZAY6BkVUSSIYZ2lkOi8vYmMzL1BlcnNvbi83NwY6BkVUSSIMcHVycG9zZQY6BkVUSSIPYXR0YWNoYWJsZQY6BkVUSSIGeAY6BkVUSSIG_wY6BkVU",
+            // {"gid" => "gid://bc3/Person/77?x=\xff", "purpose" => "attachable"}
+            "BAh7B0kiCGdpZAY6BkVUSSIcZ2lkOi8vYmMzL1BlcnNvbi83Nz94Pf8GOgZFVEkiDHB1cnBvc2UGOgZFVEkiD2F0dGFjaGFibGUGOgZFVA",
+        ] {
+            assert_eq!(person_id_from_sgid(marshal), Some(77));
+        }
+        // And where the substitution DOES change the parse, both answer nobody: U+FFFD is
+        // not a digit, and it is not a model name either.
+        for damaged_gid in [
+            &b"gid://bc3/Person/77\xff"[..],
+            &b"gid://bc3/Pers\xffon/77"[..],
+        ] {
+            let envelope = [
+                br#"{"gid":""#.as_slice(),
+                damaged_gid,
                 br#"","purpose":"attachable"}"#,
             ]
             .concat();
