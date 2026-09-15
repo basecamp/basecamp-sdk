@@ -101,10 +101,21 @@ module Basecamp
     # every member of it is Ruby's URI parser refusing an authority the
     # reference's parser tolerates: a raw non-ASCII byte, the four printable
     # bytes <tt>" < > ]</tt>, and a doubled port like <tt>:8080:90</tt>. Seven
-    # shapes across 270 swept, all in the direction that reports FEWER mentions,
-    # and none of them is an authority BC3 mints. Closing them means replacing
-    # the parser, which would trade a clean agreement on everything else for a
-    # hand-rolled one.
+    # shapes across 270 swept.
+    #
+    # What it COSTS is worse than "a mention is not reported", and that is worth
+    # being exact about, because the same parser is entered from both sides.
+    # Read side, an sgid like that reports nobody. WRITE side — {mention_markup}
+    # asks this whether the sgid names the person it is given — a refusal raises,
+    # and +expand_mentions+ fails the whole comment rather than posting it
+    # without one mention. Measured from both entry points, not reasoned about.
+    #
+    # It is left because the sgid on the write side comes from a people read, and
+    # BC3 mints <tt>gid://bc3/Person/N</tt> — the authority is a constant there,
+    # and none of the seven is a shape it produces. Closing them means replacing
+    # the parser with a hand-rolled one, which in a sibling port closed 4,167
+    # divergences and opened 1,282 in the ACCEPTING direction on its first
+    # attempt. That is the wrong trade for an authority the API does not emit.
     HOST_ASCII_ESCAPE = /%(?!25)[0-7][0-9A-Fa-f]/n
 
     # The largest person id an sgid may name, matching the 64-bit bound the
