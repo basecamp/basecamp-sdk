@@ -121,6 +121,34 @@ class RecordingsSummarizeTest < Minitest::Test
                  @account.recordings.summarizable_event_types
   end
 
+  def test_a_routed_kind_with_no_projection_is_refused_by_name
+    # The fallback the Go original carries: adding a routing row and forgetting
+    # the projection must refuse the pointer, not return nil and fail elsewhere.
+    service = @account.recordings
+
+    error = assert_raises(Basecamp::RecordingRoutingError) do
+      service.send(:read_summary, :a_kind_nobody_projected, bucket_id: BUCKET, recording_id: 1)
+    end
+
+    assert_equal "unknown_recording_type", error.kind
+  end
+
+  def test_a_listing_id_matches_a_dock_id_whatever_the_wire_spelled_it
+    # Both sources normalize their ids, so a candidate already tried from the
+    # dock is not tried again — and its budget not spent twice — when the
+    # listing reports the same Campfire as a string.
+    stub_dock([ 500 ])
+    stub_line(500, status: 404, body: { "error" => "Record not found" })
+    stub_get("/12345/chats.json", response_body: [
+      { "id" => "500", "bucket" => { "id" => BUCKET } }
+    ])
+
+    error = assert_raises(Basecamp::UnresolvedRecordingError) { summarize(event_type: "chat.line.created") }
+
+    assert_equal [ 500 ], error.campfire_ids
+    assert_requested(:get, "#{BASE_URL}/12345/chats/500/lines/1", times: 1)
+  end
+
   # --- projection ----------------------------------------------------------
 
   def test_refuses_a_read_that_came_back_from_another_bucket

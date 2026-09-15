@@ -149,6 +149,58 @@ class CampfireIndexTest < Minitest::Test
     assert_equal [ false ] * 4, hits.map(&:cached)
   end
 
+  def test_a_loader_that_leaves_without_an_outcome_releases_the_key
+    # Not a StandardError, so neither rescue arm runs: an Interrupt, a signal, a
+    # Thread#kill. Without the ensure the key stays in flight and every later
+    # caller parks on a wait that has no timeout — one killed thread wedging
+    # discovery for a whole account for the life of the process.
+    cache = Basecamp::CampfireIndex::TTLCache.new(ttl: 100.0, floor: 1.0, max_items: 10, clock: -> { @now })
+
+    Thread.new do
+      cache.get(:k) { raise Interrupt }
+    rescue Exception # rubocop:disable Lint/SuppressedException, Lint/RescueException
+    end.join
+
+    later = Thread.new { cache.get(:k) { "recovered" } }
+
+    assert later.join(5), "the key was never released; a later caller parked forever"
+    assert_equal "recovered", later.value.value
+  end
+
+  def test_a_killed_loader_releases_the_key_too
+    cache = Basecamp::CampfireIndex::TTLCache.new(ttl: 100.0, floor: 1.0, max_items: 10, clock: -> { @now })
+    started = Queue.new
+    owner = Thread.new { cache.get(:k) { started << :loading; sleep } }
+    started.pop
+    await_parked([ owner ])
+    owner.kill
+    owner.join
+
+    later = Thread.new { cache.get(:k) { "recovered" } }
+
+    assert later.join(5), "the key was never released; a later caller parked forever"
+    assert_equal "recovered", later.value.value
+  end
+
+  def test_waiters_on_an_abandoned_load_are_woken_with_an_error_not_left_parked
+    cache = Basecamp::CampfireIndex::TTLCache.new(ttl: 100.0, floor: 1.0, max_items: 10, clock: -> { @now })
+    started = Queue.new
+    owner = Thread.new { cache.get(:k) { started << :loading; sleep } }
+    started.pop
+    await_parked([ owner ])
+    waiter = Thread.new do
+      cache.get(:k) { flunk "the waiter must not load while one is in flight" }
+    rescue Basecamp::CampfireIndex::TTLCache::LoaderAbandoned => e
+      e
+    end
+    await_parked([ waiter ])
+    owner.kill
+    owner.join
+
+    assert waiter.join(5), "the waiter was left parked on an abandoned load"
+    assert_kind_of Basecamp::CampfireIndex::TTLCache::LoaderAbandoned, waiter.value
+  end
+
   # Blocks until every thread is parked, or fails the test rather than hanging.
   def await_parked(threads, timeout: 5)
     deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + timeout

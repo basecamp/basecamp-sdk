@@ -86,6 +86,27 @@ module Basecamp
     # its own name and never compares equal to "bc-attachment".
     SPACE_CHARS = [ " ", "\t", "\n", "\r", "\f" ].freeze
 
+    # The largest person id an sgid may name, matching the 64-bit bound Go's
+    # ParseInt applies.
+    MAX_PERSON_ID = (2**63) - 1
+
+    # The character references an attribute value is decoded through.
+    #
+    # DELIBERATELY not the whole HTML5 table Go's html.UnescapeString carries.
+    # It is the five predefined references plus every named reference whose
+    # expansion is a character one of the base64 alphabets or an sgid's
+    # separator uses — which is the complete set that can change whether an sgid
+    # DECODES. Every other named reference expands to a character outside both
+    # alphabets, so leaving it literal refuses the sgid exactly as expanding it
+    # would; only the undecodable literal differs, and nothing reads that.
+    NAMED_ENTITIES = {
+      "amp" => "&", "lt" => "<", "gt" => ">", "quot" => '"', "apos" => "'",
+      "plus" => "+", "sol" => "/", "equals" => "=", "lowbar" => "_", "UnderBar" => "_"
+    }.freeze
+
+    # One character reference: a decimal or hex numeric reference, or a name.
+    ENTITY_PATTERN = /&(\#[0-9]+|\#[Xx][0-9A-Fa-f]+|[A-Za-z][A-Za-z0-9]*);/
+
     module_function
 
     # Returns the ids of the people a rich text mentions: the Person named by
@@ -141,12 +162,25 @@ module Basecamp
       end
       return nil unless uri.scheme == "gid" && !uri.host.to_s.empty?
 
-      # A GlobalID path is exactly "/<Model>/<id>": no more, no less.
-      model, raw_id = uri.path.to_s.delete_prefix("/").split("/", 2)
+      # A GlobalID path is exactly "/<Model>/<id>": no more, no less. The path is
+      # unescaped first, as Go's url.Parse hands it over unescaped — so the two
+      # agree on a percent-encoded gid rather than one accepting what the other
+      # refuses. (One shape still differs: Ruby's URI parser refuses a non-ASCII
+      # authority outright where Go tolerates it. BC3 does not mint such a gid,
+      # and a mention is refused rather than misattributed, so it fails closed.)
+      path = begin
+        URI::RFC2396_PARSER.unescape(uri.path.to_s)
+      rescue ArgumentError
+        return nil
+      end
+      model, raw_id = path.delete_prefix("/").split("/", 2)
       return nil unless model == "Person" && raw_id.to_s.match?(/\A\d+\z/)
 
+      # Bounded like Go's ParseInt(rawID, 10, 64): an id past that range is not
+      # a Basecamp person id, and reporting a bignum as a mentioned person would
+      # carry it into a projection and into the write side's identity check.
       id = raw_id.to_i
-      id.positive? ? id : nil
+      id.positive? && id <= MAX_PERSON_ID ? id : nil
     end
 
     # Renders the +<bc-attachment>+ that mentions a person, from their
@@ -174,11 +208,15 @@ module Basecamp
           hint: "read the person through people.get to obtain one"
         )
       end
-      raise UsageError.new("person #{id} has a malformed attachable_sgid") if sgid.match?(/["'<>&]/)
+      # Scanned as bytes: an sgid whose encoding is broken is malformed, not an
+      # ArgumentError out of the regexp engine.
+      raise UsageError.new("person #{id} has a malformed attachable_sgid") if sgid.b.match?(/["'<>&]/n)
 
       # The tag mentions whoever the sgid names. Refuse to write one that names
-      # someone else — or a file — under this person's id.
-      unless person_id_from_sgid(sgid) == id
+      # someone else — or a file — under this person's id. Integer identity, not
+      # numeric equality: 12.0 == 12 in Ruby, and a person read that came back
+      # with a float id must not mint a tag on that basis.
+      unless id.is_a?(Integer) && person_id_from_sgid(sgid) == id
         raise UsageError.new(
           "person #{id}'s attachable_sgid does not name that person",
           hint: "read the person through people.get to obtain their own"
@@ -229,10 +267,13 @@ module Basecamp
       return content if tags.empty?
 
       prefix = "#{tags.join(" ")} "
+      # A byte offset (see {leading_block_end}), so the content is cut with
+      # byteslice. The cut lands just after a ">", which is never inside a
+      # character, so each half stays valid in the content's own encoding.
       block_end = leading_block_end(content)
       return prefix + content if block_end.negative?
 
-      content[0, block_end] + prefix + content[block_end..]
+      content.byteslice(0, block_end) + prefix + content.byteslice(block_end..)
     end
 
     # Returns the sgid attribute of every +<bc-attachment>+ in the text, in
@@ -250,9 +291,17 @@ module Basecamp
     # @param text [String]
     # @return [Array<String>]
     def bc_attachment_sgids(text)
+      # Scanned as BYTES. MRI indexes a multi-byte String in linear time, so
+      # walking one character at a time turns a document holding a single
+      # accent, smart quote or emoji into a quadratic scan — and this runs over
+      # every recording's rich text, which is whatever somebody else typed. The
+      # markup this recognizes is ASCII, so bytes lose nothing, and an sgid is
+      # ASCII too: a binary slice of one compares and hashes equal to the same
+      # bytes in UTF-8, so the write side's dedupe set is unaffected.
+      text = text.b
       sgids = []
       pos = 0
-      length = text.length
+      length = text.bytesize
 
       while pos < length
         open = text.index("<", pos)
@@ -300,7 +349,7 @@ module Basecamp
     #   the ">", and whether the tag was closed at all
     def parse_attributes(text, pos)
       attrs = { sgid: nil, sgid_seen: false }
-      length = text.length
+      length = text.bytesize
 
       while pos < length
         pos += 1 while pos < length && (space?(text[pos]) || text[pos] == "/")
@@ -339,7 +388,7 @@ module Basecamp
 
         if !attrs[:sgid_seen] && name.casecmp?("sgid")
           attrs[:sgid_seen] = true
-          attrs[:sgid] = CGI.unescapeHTML(value)
+          attrs[:sgid] = unescape_attribute_value(value)
         end
       end
 
@@ -355,21 +404,48 @@ module Basecamp
     # @param content [String]
     # @return [Integer]
     def leading_block_end(content)
+      # Byte offsets, for the reason {bc_attachment_sgids} gives; the caller
+      # slices with byteslice to match.
+      content = content.b
       i = 0
-      i += 1 while i < content.length && space?(content[i])
+      i += 1 while i < content.bytesize && space?(content[i])
 
       [ "<p", "<div" ].each do |name|
-        next if content.length < i + name.length
+        next if content.bytesize < i + name.length
         next unless content[i, name.length].casecmp?(name)
 
         after = i + name.length
-        next if after < content.length && !tag_name_end?(content[after])
+        next if after < content.bytesize && !tag_name_end?(content[after])
 
         _attrs, tag_end, closed = parse_attributes(content, after)
         return closed ? tag_end : -1
       end
 
       -1
+    end
+
+    # Decodes the character references in an attribute value, through
+    # {NAMED_ENTITIES} and numeric references that resolve to ASCII.
+    #
+    # One pass, so an escaped reference (<tt>&amp;amp;lowbar;</tt>) decodes to the
+    # literal <tt>&amp;lowbar;</tt> rather than being decoded twice. A numeric
+    # reference outside ASCII is left literal: Go resolves it to a character
+    # (or to U+FFFD), and every such character is outside both base64 alphabets,
+    # so the sgid is refused either way — and leaving it literal keeps the value
+    # a byte string, which is what the walker is scanning.
+    def unescape_attribute_value(value)
+      return value unless value.include?("&")
+
+      value.gsub(ENTITY_PATTERN) do |reference|
+        name = Regexp.last_match(1)
+        if name.start_with?("#")
+          digits = name[1..]
+          code = digits.match?(/\A[Xx]/) ? digits[1..].to_i(16) : digits.to_i
+          code.positive? && code < 128 ? code.chr : reference
+        else
+          NAMED_ENTITIES.fetch(name, reference)
+        end
+      end
     end
 
     # Returns the global id string an sgid's envelope carries, or nil.
@@ -446,7 +522,10 @@ module Basecamp
     def decode_payload(payload)
       return nil if payload.nil? || payload.empty? || payload.length > MAX_SGID_ENCODED_BYTES
 
-      normalized = payload.tr("-_", "+/").sub(/=+\z/, "")
+      # CR and LF are dropped before the alphabet check, because Go's
+      # base64.RawStdEncoding skips exactly those two — a newline-wrapped
+      # attribute value is legal HTML, and the two must not disagree on it.
+      normalized = payload.delete("\r\n").tr("-_", "+/").sub(/=+\z/, "")
       return nil unless normalized.match?(%r{\A[A-Za-z0-9+/]+\z})
       return nil if (normalized.length % 4) == 1
 
@@ -463,7 +542,7 @@ module Basecamp
     # Reads a field off a person hash, string keys first, symbol keys second, so
     # a hash the SDK returned and one a caller typed both work.
     def field(person, key)
-      return nil unless person.respond_to?(:[])
+      return nil unless person.is_a?(Hash)
 
       person.key?(key) ? person[key] : person[key.to_sym]
     end
@@ -485,8 +564,8 @@ module Basecamp
     # and private so the module's documented surface is the four — plus
     # {bc_attachment_sgids}, which a caller deduplicating its own writes needs.
     private_class_method :parse_attributes, :leading_block_end, :global_id_from_sgid,
-                         :envelope_gid, :decode_payload, :field, :space?,
-                         :tag_name_char?, :tag_name_end?
+                         :envelope_gid, :decode_payload, :unescape_attribute_value,
+                         :field, :space?, :tag_name_char?, :tag_name_end?
 
     # A reader for the subset of Ruby's Marshal 4.8 format a SignedGlobalID
     # payload uses — nil, booleans, fixnums, strings (with their encoding

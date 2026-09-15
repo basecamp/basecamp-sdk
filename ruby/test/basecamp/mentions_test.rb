@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "test_helper"
+require "benchmark"
 
 # Tests for Basecamp::Mentions — the read/write pair over <bc-attachment> sgids.
 #
@@ -189,6 +190,92 @@ class MentionsTest < Minitest::Test
     content = %(<bc-attachment sgid="#{sgid}"></bc-attachment><bc-attachment sgid=")
 
     assert_equal [ 9 ], Basecamp::Mentions.mentioned_person_ids(content)
+  end
+
+  def test_entity_references_that_matter_to_a_base64_payload_are_decoded
+    # A reference expanding to a base64url character changes whether the sgid
+    # decodes, not merely how it reads, so the decoder has to cover those.
+    sgid = person_sgid(20)
+    escaped = sgid.gsub("_", "&lowbar;").gsub("-", "&#45;")
+
+    assert_equal [ 20 ], Basecamp::Mentions.mentioned_person_ids(
+      %(<bc-attachment sgid="#{escaped}"></bc-attachment>)
+    )
+  end
+
+  def test_entity_decoding_is_a_single_pass
+    # An escaped reference decodes to the LITERAL reference, never twice. A
+    # second pass here would turn "&#66;" back into the "B" the payload needs
+    # and resolve a person; one pass leaves a value no base64 alphabet accepts.
+    sgid = person_sgid(21)
+    doubly = "&amp;#66;#{sgid[1..]}"
+
+    assert_equal "B", sgid[0]
+    assert_empty Basecamp::Mentions.mentioned_person_ids(%(<bc-attachment sgid="#{doubly}"></bc-attachment>))
+    # And the single-pass form of the same escape does resolve, so the
+    # assertion above is about the double decode and not about the payload.
+    assert_equal [ 21 ], Basecamp::Mentions.mentioned_person_ids(
+      %(<bc-attachment sgid="&#66;#{sgid[1..]}"></bc-attachment>)
+    )
+  end
+
+  def test_a_line_broken_sgid_still_decodes
+    # A line break inside an attribute value is legal HTML, and a base64
+    # decoder skips CR and LF — those two only. Indentation is NOT skipped, and
+    # is refused here exactly as it is by the reference implementation.
+    sgid = person_sgid(22)
+
+    assert_equal [ 22 ], Basecamp::Mentions.mentioned_person_ids(
+      %(<bc-attachment\n  sgid="#{sgid[0, 20]}\r\n#{sgid[20..]}"></bc-attachment>)
+    )
+    assert_empty Basecamp::Mentions.mentioned_person_ids(
+      %(<bc-attachment sgid="#{sgid[0, 20]}\n  #{sgid[20..]}"></bc-attachment>)
+    )
+  end
+
+  def test_a_person_id_past_the_64_bit_range_is_refused
+    assert_nil Basecamp::Mentions.person_id_from_sgid(marshal_sgid("gid://bc3/Person/99999999999999999999999"))
+  end
+
+  def test_a_percent_escaped_gid_path_decodes
+    assert_equal 12, Basecamp::Mentions.person_id_from_sgid(marshal_sgid("gid://bc3/Pe%72son/12"))
+    assert_equal 12, Basecamp::Mentions.person_id_from_sgid(marshal_sgid("gid://bc3/Person/%31%32"))
+  end
+
+  def test_the_walker_is_linear_in_multibyte_text
+    # Character indexing would make this quadratic, and the text is whatever
+    # somebody else typed. Compared against the same document in pure ASCII so
+    # the bound is relative rather than a wall-clock guess.
+    tags = %(<bc-attachment sgid="#{person_sgid(23)}"></bc-attachment>) * 200
+    ascii = "x#{tags}"
+    multibyte = "é#{tags}"
+
+    plain = Benchmark.realtime { Basecamp::Mentions.mentioned_person_ids(ascii) }
+    accented = Benchmark.realtime { Basecamp::Mentions.mentioned_person_ids(multibyte) }
+
+    assert_operator accented, :<, (plain * 10) + 0.5,
+      "one non-ASCII character should not change the walk's complexity"
+  end
+
+  def test_a_badly_encoded_sgid_is_malformed_rather_than_an_encoding_error
+    person = { "id" => 24, "attachable_sgid" => "abc\xC3(def".b }
+
+    assert_raises(Basecamp::UsageError) { Basecamp::Mentions.mention_markup(person) }
+  end
+
+  def test_a_float_id_never_mints_a_tag
+    # 12.0 == 12 in Ruby; the identity check is on integers.
+    sgid = person_sgid(25)
+
+    assert_raises(Basecamp::UsageError) do
+      Basecamp::Mentions.mention_markup({ "id" => 25.0, "attachable_sgid" => sgid })
+    end
+  end
+
+  def test_a_person_that_is_not_a_hash_is_refused_rather_than_raising_no_method_error
+    [ [ 26 ], "26", Object.new ].each do |person|
+      assert_raises(Basecamp::UsageError) { Basecamp::Mentions.mention_markup(person) }
+    end
   end
 
   def person(id, sgid: nil)

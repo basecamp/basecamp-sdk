@@ -123,6 +123,10 @@ module Basecamp
     # waiters, so N callers never re-run one failed load N times), and a refresh
     # is honoured only once the value is older than a floor.
     class TTLCache
+      # Handed to the waiters when a load left without publishing an outcome of
+      # its own — see the +ensure+ in {#get}.
+      class LoaderAbandoned < StandardError; end
+
       # What a cache read hands back: the value, when it was fetched, and
       # whether it predated the call (as opposed to being loaded during it, by
       # this caller or by one it waited on). The fetch time is what lets a
@@ -178,14 +182,28 @@ module Basecamp
 
         return await(pending) unless owner
 
+        published = false
         begin
           value = yield
+          publish(key, pending, value, nil)
+          published = true
+          Hit.new(value: value, fetched: pending[:fetched], cached: false)
         rescue StandardError => e
           publish(key, pending, nil, e)
+          published = true
           raise
+        ensure
+          # Publication is guaranteed, not merely attempted on the two paths
+          # above. A loader that leaves by anything else — Interrupt, a signal,
+          # NoMemoryError, a Thread#kill that raises nothing at all — would
+          # otherwise leave the key in flight forever, and since {#await} waits
+          # with no timeout, every later caller for that key would park on it
+          # permanently rather than erroring. The listing's key is the bare
+          # account id, so that is one killed thread wedging chat-line discovery
+          # for a whole account for the life of the process. Go publishes from a
+          # deferred recover for exactly this reason.
+          publish(key, pending, nil, LoaderAbandoned.new("cache loader did not complete")) unless published
         end
-        publish(key, pending, value, nil)
-        Hit.new(value: value, fetched: pending[:fetched], cached: false)
       end
 
       # Returns the cached value for key when one is within the TTL, without
