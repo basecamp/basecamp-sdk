@@ -175,24 +175,30 @@ module Basecamp
       )
     /x
 
-    # What an sgid is trimmed DOWN TO, expressed as the first character that is
-    # not whitespace. The whitespace set matches the reference implementation's
-    # TrimSpace: the Unicode space set, which includes NBSP and NEL and excludes
-    # NUL. Ruby's String#strip is neither — it misses every non-ASCII space and
+    # The whitespace an sgid is trimmed of, as UTF-8 BYTE SEQUENCES, keyed for
+    # exact lookup. The set matches the reference implementation's TrimSpace —
+    # the Unicode space set, which includes NBSP and NEL and excludes NUL.
+    # Ruby's String#strip is neither: it misses every non-ASCII space and
     # removes NUL, which no trim there does.
     #
-    # Spelled as a NEGATED single character class, and used with index/rindex,
-    # rather than as an anchored `[[:space:]]+\z`. An anchored quantifier is
-    # what code scanning flags as polynomial here, and the input is an attribute
-    # value out of rich text somebody else wrote with no length bound before
-    # this point — so the shape is worth not having, even though MRI's engine
-    # optimises it and no quadratic case could actually be constructed against
-    # it. Two linear searches depend on nothing but the language.
-    SGID_NON_SPACE = /[^[:space:]]/
+    # Held as bytes, and matched one character at a time from each end, because
+    # the reference decodes a rune at each end INDEPENDENTLY of the rest of the
+    # string. Choosing an alphabet from whether the whole value is valid UTF-8 —
+    # which is what a `[[:space:]]` match has to do — loses a mention whenever a
+    # stray byte sits anywhere in the value, including in the signature half the
+    # separator throws away. That is a real shape: a valid payload with a
+    # non-ASCII space in front of it and one bad byte in its digest.
+    #
+    # No sequence here is a suffix or prefix of another (the one-byte members
+    # are all below 0x20 or are 0x20, and no continuation byte can be), so
+    # matching shortest-first is unambiguous.
+    UTF8_SPACE_BYTES = ([ " ", "\t", "\n", "\v", "\f", "\r", "\u0085", "\u00A0", "\u1680",
+                          "\u2028", "\u2029", "\u202F", "\u205F", "\u3000" ] +
+                        (0x2000..0x200A).map { |codepoint| codepoint.chr(Encoding::UTF_8) })
+                       .to_h { |character| [ character.b, true ] }.freeze
 
-    # The same, for bytes that are not valid UTF-8, where only the ASCII spaces
-    # can be recognized. Such a value cannot decode anyway.
-    BINARY_NON_SPACE = /[^ \t\n\v\f\r]/n
+    # The longest of those, in bytes.
+    MAX_SPACE_WIDTH = UTF8_SPACE_BYTES.keys.map(&:bytesize).max
     module_function
 
     # Returns the ids of the people a rich text mentions: the Person named by
@@ -585,27 +591,54 @@ module Basecamp
     # they are valid so the non-ASCII spaces are recognized too. The walker
     # hands over a byte string and a caller may hand over text; both have to
     # reach the same verdict.
+    # Always returns BYTES. Everything downstream reads the value as bytes —
+    # and a value carrying a stray byte would raise out of String#rindex if it
+    # were handed back tagged as text.
     def trim_sgid(value)
-      if value.encoding == Encoding::BINARY
-        text = value.dup.force_encoding(Encoding::UTF_8)
-        return trim_to(text, SGID_NON_SPACE).b if text.valid_encoding?
-
-        return trim_to(value, BINARY_NON_SPACE)
-      end
-
-      return trim_to(value, SGID_NON_SPACE) if value.valid_encoding?
-
-      trim_to(value.b, BINARY_NON_SPACE)
+      bytes = value.b
+      first = space_run_end(bytes)
+      bytes.byteslice(first, space_run_start(bytes, first) - first)
     end
 
-    # The span between the first and last character matching +non_space+, or ""
-    # when there is none. Two single-character-class searches and a slice, all
-    # linear — see {SGID_NON_SPACE} for why that matters.
-    def trim_to(value, non_space)
-      first = value.index(non_space)
-      return "" if first.nil?
+    # The byte offset just past the leading run of whitespace characters. Each
+    # step consumes one whole character, so a byte that starts no character —
+    # or starts a truncated one — ends the run, exactly as the reference's
+    # rune decode does.
+    def space_run_end(bytes)
+      offset = 0
+      while (width = space_width_at(bytes, offset, bytes.bytesize))
+        offset += width
+      end
+      offset
+    end
 
-      value[first..value.rindex(non_space)]
+    # The byte offset where the trailing run of whitespace begins, never going
+    # back past +floor+ (the end of the leading run, for an all-whitespace
+    # value).
+    def space_run_start(bytes, floor)
+      offset = bytes.bytesize
+      while (width = space_width_behind(bytes, offset, floor))
+        offset -= width
+      end
+      offset
+    end
+
+    # The width of the whitespace character starting at +offset+, or nil.
+    def space_width_at(bytes, offset, ceiling)
+      (1..MAX_SPACE_WIDTH).each do |width|
+        next if offset + width > ceiling
+        return width if UTF8_SPACE_BYTES.key?(bytes.byteslice(offset, width))
+      end
+      nil
+    end
+
+    # The width of the whitespace character ending at +offset+, or nil.
+    def space_width_behind(bytes, offset, floor)
+      (1..MAX_SPACE_WIDTH).each do |width|
+        next if offset - width < floor
+        return width if UTF8_SPACE_BYTES.key?(bytes.byteslice(offset - width, width))
+      end
+      nil
     end
 
     # Decodes one base64 payload and returns the gid its envelope carries.
@@ -728,7 +761,8 @@ module Basecamp
     # and private so the module's documented surface is the four — plus
     # {bc_attachment_sgids}, which a caller deduplicating its own writes needs.
     private_class_method :parse_attributes, :leading_block_end, :global_id_from_sgid,
-                         :envelope_gid, :decode_payload, :unescape_attribute_value, :codepoint_reference, :trim_sgid, :trim_to, :trim_padding,
+                         :envelope_gid, :decode_payload, :unescape_attribute_value, :codepoint_reference, :trim_sgid, :space_run_end, :space_run_start, :space_width_at,
+                         :space_width_behind, :trim_padding,
                          :field, :space?, :tag_name_char?, :tag_name_end?
 
     # A reader for the subset of Ruby's Marshal 4.8 format a SignedGlobalID

@@ -182,8 +182,12 @@ module Basecamp
       #   is held and immediately before a waiter releases it to wait. It is how
       #   a test knows a waiter has REACHED the wait rather than guessing from
       #   Thread#status, which reports a thread merely blocked on the lock as
-      #   sleeping too. The reference implementation carries the same seam, for
-      #   the same reason. Never set in production.
+      #   sleeping too. The reference implementation carries a seam for the same
+      #   reason, though it calls its own after releasing the lock, which leaves
+      #   the waiter able to be descheduled before it waits; under the lock is
+      #   the stronger barrier and the reason this one is placed there. It also
+      #   means a seam that BLOCKS would wedge the cache — never set in
+      #   production, and never anything but a signal in a test.
       def initialize(ttl:, floor:, max_items:, clock: nil, on_wait: nil)
         @ttl = ttl
         @floor = floor
@@ -320,7 +324,6 @@ module Basecamp
 
         Hit.new(value: pending[:value], fetched: pending[:fetched], cached: false)
       end
-
 
       # Releases the key and wakes the waiters. A failed load publishes no entry,
       # so the previous value — if any — stays in place and keeps serving until

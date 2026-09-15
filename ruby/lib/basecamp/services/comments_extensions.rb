@@ -65,6 +65,8 @@ module Basecamp
         raise UsageError.new("comment content is required") if content.to_s.empty?
 
         recording_id = Ids.integer(recording_id, "recording id")
+        raise UsageError.new("recording id is required") unless recording_id.positive?
+
         create(recording_id: recording_id, content: expand_mentions(content: content, person_ids: person_ids))
       end
     end

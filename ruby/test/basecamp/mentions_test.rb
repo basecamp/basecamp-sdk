@@ -443,6 +443,38 @@ class MentionsTest < Minitest::Test
     ).length
   end
 
+  def test_one_stray_byte_does_not_disarm_the_whitespace_trim
+    # The reference decodes a character at EACH END independently of the rest of
+    # the value. Choosing an alphabet from whether the whole string is valid
+    # UTF-8 loses a mention whenever a stray byte sits anywhere — including in
+    # the signature half the separator throws away, which is the reachable case:
+    # a clean payload, a non-ASCII space in front of it, and one bad byte in the
+    # digest.
+    sgid = person_sgid(38)
+
+    [ "\u00A0", "\u2003", "\u3000", "\u0085", "\t" ].each do |space|
+      assert_equal 38, Basecamp::Mentions.person_id_from_sgid("#{space}#{sgid}\xFF".b),
+        "#{space.inspect} before a payload whose digest carries a stray byte"
+      assert_equal 38, Basecamp::Mentions.person_id_from_sgid("#{space}#{sgid}\xFF#{space}".b),
+        "#{space.inspect} at both ends, stray byte still in the digest"
+      # A stray byte in the PAYLOAD half is refused by both, whatever the
+      # whitespace does — so the assertions above are about the trim and not
+      # about strays being tolerated.
+      assert_nil Basecamp::Mentions.person_id_from_sgid("#{space}\xFF#{sgid}".b)
+    end
+  end
+
+  def test_a_truncated_character_ends_the_trim_rather_than_extending_it
+    # A byte that starts no character, or starts one that is cut short, is not
+    # whitespace and stops the run — the reference's rune decode does the same.
+    sgid = person_sgid(39)
+
+    assert_nil Basecamp::Mentions.person_id_from_sgid("\xC2#{sgid}".b)
+    assert_nil Basecamp::Mentions.person_id_from_sgid("\xE2\x80#{sgid}".b)
+    # The whole of that character, though, is whitespace and is trimmed.
+    assert_equal 39, Basecamp::Mentions.person_id_from_sgid("\xE2\x80\x83#{sgid}".b)
+  end
+
   def test_invalid_utf8_is_undecodable_rather_than_an_encoding_error
     broken = "abc\xC3(def".b.force_encoding(Encoding::UTF_8)
 

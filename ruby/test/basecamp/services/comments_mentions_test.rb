@@ -160,6 +160,13 @@ class CommentsMentionsTest < Minitest::Test
     assert_raises(Basecamp::UsageError) do
       @account.comments.create_with_mentions(recording_id: "12oops", content: "<div>hi</div>")
     end
+    # And it checks the same positivity the other pointers do, rather than
+    # interpolating a zero or a negative into the path.
+    [ 0, -1, -(2**63) ].each do |id|
+      assert_raises(Basecamp::UsageError) do
+        @account.comments.create_with_mentions(recording_id: id, content: "<div>hi</div>")
+      end
+    end
     assert_not_requested(:any, %r{\A#{Regexp.escape(BASE_URL)}})
   end
 

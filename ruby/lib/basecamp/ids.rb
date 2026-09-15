@@ -38,7 +38,8 @@ module Basecamp
       # Matched on BYTES: a String carrying invalid UTF-8 makes the regexp
       # engine raise ArgumentError, and an id that is not a number is a usage
       # error naming the argument, not an exception out of a public method.
-      id ||= value.b.to_i if value.is_a?(String) && value.b.match?(/\A\d+\z/n)
+      digits = value.b if value.is_a?(String)
+      id ||= digits.to_i if digits&.match?(/\A\d+\z/n)
       raise UsageError.new("#{name} must be an integer, got #{value.inspect}") if id.nil?
       raise UsageError.new("#{name} is out of range: #{value.inspect}") unless id.between?(MIN, MAX)
 
