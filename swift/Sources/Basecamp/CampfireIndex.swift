@@ -129,16 +129,27 @@ struct CampfireListingOverflow: Error, CustomStringConvertible {
 /// value is older than a floor.
 ///
 /// The load runs in an unstructured `Task`, which does **not** inherit the
-/// cancellation of whichever caller happened to start it. That is the one place
-/// this diverges from the Go cache it is ported from, and it is a
-/// simplification rather than a gap: Go's loader runs under the loading
-/// caller's `context`, so that cache has to decide whether a failure belongs to
-/// the load or to the caller who owned it, and let a still-live waiter try
-/// again. Here the load belongs to no caller, so every waiter shares its one
-/// outcome and there is no owner-attributed failure to re-run. A caller that
-/// goes away leaves the load to finish for whoever else is waiting — one short
-/// read, and the snapshot it publishes is the one the next call would have paid
-/// for anyway.
+/// cancellation of whichever caller happened to start it, and every caller
+/// waits on a continuation the cache resumes. Those two together are how this
+/// differs from the Go cache it is ported from, and the pair is deliberate:
+///
+///   * Go's loader runs under the loading caller's `context`, so that cache has
+///     to decide whether a failure belongs to the load or to the caller who
+///     owned it, and let a still-live waiter go round again. Here the load
+///     belongs to no caller, so every waiter shares its one outcome and there
+///     is no owner-attributed failure to re-run. A caller that goes away leaves
+///     the load to finish for whoever else is waiting — one short read, and the
+///     snapshot it publishes is the one the next call would have paid for
+///     anyway.
+///
+///   * A cancelled caller still stops waiting *at once*, which is the half that
+///     does not come for free: `await someTask.value` is not interrupted by the
+///     awaiting task's cancellation, so a waiter that simply awaited the load
+///     task would sit there until the HTTP read returned. Go's waiter selects
+///     on `ctx.Done()` and leaves immediately, and a composite with a deadline
+///     needs the same, so each waiter registers a continuation and a
+///     cancellation handler resumes it with `CancellationError`. The load
+///     carries on for the waiters that remain.
 actor TTLCache<Key: Hashable & Sendable, Value: Sendable> {
     /// What a cache read hands back: the value, when it was fetched, and whether
     /// it predated the call (as opposed to being loaded during it, by this
@@ -164,7 +175,16 @@ actor TTLCache<Key: Hashable & Sendable, Value: Sendable> {
     private let maxItems: Int
 
     private var entries: [Key: Entry] = [:]
-    private var inFlight: [Key: Task<Hit, any Error>] = [:]
+    /// Keys with a load in progress, and the callers waiting on each. A waiter
+    /// is a continuation rather than an `await` on the load task, so that
+    /// cancelling one caller does not mean waiting out the read (see the type
+    /// comment).
+    private var waiting: [Key: [UUID: CheckedContinuation<Hit, any Error>]] = [:]
+    /// Waiters cancelled in the window between the cancellation handler being
+    /// armed and the continuation being registered. Without this the handler
+    /// finds nothing to resume and the continuation that arrives a moment later
+    /// is never resumed at all — a hang, and the one race this design has.
+    private var cancelledBeforeRegistering: Set<UUID> = []
     private var sequence: UInt64 = 0
 
     init(
@@ -190,25 +210,85 @@ actor TTLCache<Key: Hashable & Sendable, Value: Sendable> {
                 return Hit(value: entry.value, fetchedAt: entry.fetchedAt, cached: true)
             }
         }
-        if let pending = inFlight[key] {
-            // The load this call waited on is this call's load: its value is
-            // handed over as fresh, not as something that predated the call.
-            return try await pending.value
-        }
 
-        // Task.init inherits this actor's isolation, so `publish` and the
-        // in-flight bookkeeping below run under the actor without a second hop;
-        // awaiting the loader suspends the task, not the actor.
-        let task = Task<Hit, any Error> {
+        // Claim the key before suspending, so the caller that claims it is the
+        // one that starts the load and everyone else queues behind it.
+        let startsTheLoad = waiting[key] == nil
+        if startsTheLoad { waiting[key] = [:] }
+        // The load this call waited on is this call's load: its value is handed
+        // over as fresh, not as something that predated the call.
+        return try await waitForLoad(of: key, starting: startsTheLoad ? load : nil)
+    }
+
+    /// Suspends until the load for `key` publishes — or until this caller is
+    /// cancelled, whichever comes first.
+    ///
+    /// `load` is non-nil for the caller that claimed the key, and it is started
+    /// from inside the registration below rather than before it. That ordering
+    /// is what makes the wait safe: the load runs on this actor, so it cannot
+    /// publish — and cannot resume waiters — until the registration that started
+    /// it has returned.
+    private func waitForLoad(
+        of key: Key, starting load: (@Sendable () async throws -> Value)?
+    ) async throws -> Hit {
+        let id = UUID()
+        return try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { continuation in
+                register(id, waitingOn: key, continuation, starting: load)
+            }
+        } onCancel: {
+            Task { await self.stopWaiting(id, on: key) }
+        }
+    }
+
+    private func register(
+        _ id: UUID, waitingOn key: Key, _ continuation: CheckedContinuation<Hit, any Error>,
+        starting load: (@Sendable () async throws -> Value)?
+    ) {
+        guard cancelledBeforeRegistering.remove(id) == nil else {
+            // Cancelled in the window before this ran. Release the key when this
+            // was the caller that claimed it, or nothing would ever load it
+            // again.
+            if load != nil { waiting[key] = nil }
+            continuation.resume(throwing: CancellationError())
+            return
+        }
+        waiting[key]?[id] = continuation
+
+        guard let load else { return }
+        // Unstructured on purpose: the load must outlive any one caller.
+        // `Task.init` inherits this actor's isolation, so `publish` and `finish`
+        // run under the actor without a second hop; awaiting the loader suspends
+        // the task, not the actor.
+        Task {
             do {
-                return self.publish(key, try await load())
+                let hit = self.publish(key, try await load())
+                self.finish(key, .success(hit))
             } catch {
-                self.inFlight[key] = nil
-                throw error
+                self.finish(key, .failure(error))
             }
         }
-        inFlight[key] = task
-        return try await task.value
+    }
+
+    private func stopWaiting(_ id: UUID, on key: Key) {
+        if let continuation = waiting[key]?.removeValue(forKey: id) {
+            continuation.resume(throwing: CancellationError())
+        } else {
+            // The continuation is not registered yet, so leave a marker for the
+            // registration to find. (The other way to reach here is a cancel
+            // that lands after the load already resumed this waiter; ids are
+            // unique, so the marker it leaves is inert.)
+            cancelledBeforeRegistering.insert(id)
+        }
+    }
+
+    /// Hands one load's outcome to everyone waiting on it, and releases the key.
+    private func finish(_ key: Key, _ outcome: Result<Hit, any Error>) {
+        let waiters = waiting.removeValue(forKey: key) ?? [:]
+        for (id, continuation) in waiters {
+            cancelledBeforeRegistering.remove(id)
+            continuation.resume(with: outcome)
+        }
     }
 
     /// Returns the cached value for `key` when one is within the TTL, without
@@ -223,8 +303,12 @@ actor TTLCache<Key: Hashable & Sendable, Value: Sendable> {
     /// Entries currently held. Test seam for the bound and the sweep.
     var count: Int { entries.count }
 
+    /// Callers currently suspended on a load of `key`. Test seam: it is what
+    /// lets a single-flight test wait for both callers to have ARRIVED rather
+    /// than guess at it with a sleep.
+    func waiterCount(for key: Key) -> Int { waiting[key]?.count ?? 0 }
+
     private func publish(_ key: Key, _ value: Value) -> Hit {
-        inFlight[key] = nil
         sweep()
         makeRoom(for: key)
         sequence += 1

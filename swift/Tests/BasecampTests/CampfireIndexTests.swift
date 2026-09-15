@@ -99,15 +99,58 @@ final class CampfireIndexTests: XCTestCase {
             await started.wait()
             return loads.increment()
         }
-        // Both are queued on the actor before either load may finish, so the
-        // second necessarily arrives while the first is in flight.
-        try await Task.sleep(nanoseconds: 20_000_000)
+        // Wait for both callers to have ARRIVED, rather than guessing at it with
+        // a sleep: a sleep that ran long would let the first load publish and
+        // the second call read a cached snapshot, and the test would be asking a
+        // different question on a slow machine.
+        while await cache.waiterCount(for: "k") < 2 { await Task.yield() }
         await started.fulfill()
 
         let (first, second) = try await (a, b)
         XCTAssertEqual(loads.count, 1, "a waiter takes the load in progress rather than starting one")
         XCTAssertEqual(first.value, second.value)
         XCTAssertFalse(second.cached, "the load it waited on is its own load, not a prior snapshot")
+    }
+
+    /// Go's waiter selects on `ctx.Done()` and leaves the moment its caller is
+    /// cancelled. Awaiting an unstructured task's value does not do that in
+    /// Swift, so the cache resumes waiters itself — and this is the test that
+    /// says so. Without it a `summarize` under a deadline would sit out the
+    /// whole HTTP read it no longer wants.
+    func testACancelledWaiterStopsWaitingWhileTheLoadCarriesOnForTheRest() async throws {
+        let clock = TestClock()
+        let loads = LoadCounter()
+        let cache = makeCache(clock: clock)
+        let started = Expectation()
+
+        // The caller that claims the key and starts the load.
+        async let keeper = cache.value(for: "k", refresh: false) {
+            await started.wait()
+            return loads.increment()
+        }
+        while await cache.waiterCount(for: "k") < 1 { await Task.yield() }
+
+        // A second caller, which is then cancelled while the load is in flight.
+        let leaver = Task {
+            try await cache.value(for: "k", refresh: false) { loads.increment() }
+        }
+        while await cache.waiterCount(for: "k") < 2 { await Task.yield() }
+        leaver.cancel()
+
+        do {
+            _ = try await leaver.value
+            XCTFail("a cancelled waiter must stop waiting")
+        } catch is CancellationError {}
+
+        // The load was never the leaver's to cancel: it is still running, and it
+        // still answers the caller that is waiting on it.
+        await started.fulfill()
+        let kept = try await keeper
+        XCTAssertEqual(kept.value, 1)
+        XCTAssertEqual(loads.count, 1, "one load, whoever walked away from it")
+
+        let stored = await cache.cached("k")
+        XCTAssertEqual(stored?.value, 1, "and it published, so the next caller pays nothing")
     }
 
     func testAFailedLoadLeavesThePreviousValueInPlace() async throws {
