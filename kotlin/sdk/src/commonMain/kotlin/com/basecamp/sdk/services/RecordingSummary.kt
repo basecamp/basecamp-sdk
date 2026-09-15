@@ -191,27 +191,31 @@ internal fun chatLineIsRichText(lineType: String): Boolean =
 
 /** Picks the read for a ref. [RecordingRef.recordingType] wins when set. */
 internal fun routeRecording(ref: RecordingRef): SummaryKind {
+    // The routing key is trimmed; the MESSAGE renders what the caller wrote, so
+    // a pointer whose type is " Widget " reads back as " Widget " and the report
+    // is of the value that was actually handed over.
+    val reported = ref.recordingType.ifEmpty { ref.eventType }
     val recordingType = ref.recordingType.trim()
     if (recordingType.isNotEmpty()) {
         if (recordingType.startsWith(CHAT_LINE_TYPE_PREFIX)) return SummaryKind.CHAT_LINE
-        return RECORDING_TYPES[recordingType] ?: throw unknownRecordingType(recordingType)
+        return RECORDING_TYPES[recordingType] ?: throw unknownRecordingType(reported)
     }
     val eventType = ref.eventType.trim()
-    if (eventType.isEmpty()) throw unknownRecordingType("")
+    if (eventType.isEmpty()) throw unknownRecordingType(reported)
     // A feed type is "<subject>.<action>"; the subject names the recording type.
     // A string with no action is not a feed type and is not routed.
     val i = eventType.lastIndexOf('.')
-    if (i <= 0 || i == eventType.length - 1) throw unknownRecordingType(eventType)
+    if (i <= 0 || i == eventType.length - 1) throw unknownRecordingType(reported)
     val subject = eventType.substring(0, i)
     if (subject == "boost") {
         throw BasecampException.RecordingSummaryFailure(
             BasecampException.RECORDING_NO_TYPE,
-            "event type names no recording type: \"$eventType\"",
+            "event type names no recording type: \"$reported\"",
             "the row points at the boost's target, whose type it does not carry; " +
                 "resolve it from your own record of what you posted",
         )
     }
-    return EVENT_SUBJECTS[subject] ?: throw unknownRecordingType(eventType)
+    return EVENT_SUBJECTS[subject] ?: throw unknownRecordingType(reported)
 }
 
 private fun unknownRecordingType(key: String) = BasecampException.RecordingSummaryFailure(
@@ -251,7 +255,10 @@ internal fun summaryOf(
     parent = parent,
     bucket = bucket,
     creator = creator,
-    assignees = assignees,
+    // Empty and absent are one thing here, as Go's `omitempty` makes them: a
+    // type with no assignees emits no key rather than an empty array, so the
+    // projection reads the same in every SDK.
+    assignees = assignees?.takeIf { it.isNotEmpty() },
     mentionedPersonIds = mentions,
     content = content,
     updatedAt = updatedAt,

@@ -189,8 +189,9 @@ fun withMentions(content: String, people: List<Person>): String {
  * tag's attributes rather than pattern-matching them, so a `>` inside a quoted
  * value does not end the tag, an `sgid=` inside another attribute's value is not
  * an attribute, either quote style works, attribute order and case are free, the
- * first sgid attribute wins as in HTML, and entity escapes in the value are
- * decoded as a browser would.
+ * first sgid attribute wins as in HTML, and the character references an sgid
+ * could carry are decoded (see [unescapeHtml] for what that set is, and why it
+ * is narrower than a browser's).
  */
 internal fun bcAttachmentSgids(text: String): List<String> {
     val sgids = mutableListOf<String>()
@@ -467,6 +468,11 @@ private const val MARSHAL_MINOR: Byte = 0x08
  * the path a parser would report rather than against its spelling.
  */
 private fun globalIdModelAndId(gid: String): Pair<String, String>? {
+    // A URL parser refuses a control character anywhere in the input, and this
+    // is the write side too: MentionMarkup asks this helper whether an sgid names
+    // the person it is given, so a gid Go calls undecodable must not become a tag
+    // here.
+    if (gid.any { it < ' ' || it == '\u007F' }) return null
     val schemeEnd = gid.indexOf(':')
     if (schemeEnd != 3) return null
     if (!gid.regionMatches(0, "gid", 0, 3, ignoreCase = true)) return null
@@ -476,10 +482,29 @@ private fun globalIdModelAndId(gid: String): Pair<String, String>? {
     rest.indexOf('?').let { if (it >= 0) rest = rest.substring(0, it) }
     val slash = rest.indexOf('/')
     if (slash <= 0) return null // an empty authority names no app
+    if (!isValidAuthority(rest.substring(0, slash))) return null
     val path = percentDecode(rest.substring(slash + 1)) ?: return null
     val sep = path.indexOf('/')
     if (sep < 0) return null
     return path.substring(0, sep) to path.substring(sep + 1)
+}
+
+/**
+ * Whether an authority is one a URL parser would accept: a host, and — after the
+ * last `:` that is not inside brackets — a port made only of digits. `bc3:abc`
+ * is an invalid port and fails the parse there, so it names no app here either.
+ */
+private fun isValidAuthority(authority: String): Boolean {
+    if (authority.isEmpty()) return false
+    if (authority.startsWith("[")) {
+        val close = authority.indexOf(']')
+        if (close < 0) return false
+        val after = authority.substring(close + 1)
+        return after.isEmpty() || (after.startsWith(":") && after.drop(1).all { it.isDigit() })
+    }
+    val colon = authority.lastIndexOf(':')
+    if (colon < 0) return true
+    return authority.substring(colon + 1).all { it.isDigit() }
 }
 
 /** Decodes `%XX` escapes, or null when one is malformed (as a URL parser errors). */
@@ -502,16 +527,28 @@ private fun percentDecode(s: String): String? {
     return out.toString()
 }
 
-/** Decodes an unpadded standard-alphabet base64 string, or null when it is not one. */
+/**
+ * Decodes an unpadded standard-alphabet base64 string, or null when it is not
+ * one. Deliberately as lenient as Go's `base64.RawStdEncoding.DecodeString`,
+ * which is the reference: line breaks inside the encoded form are ignored (an
+ * `sgid` attribute may legally carry one, and a value Go reads as a mention must
+ * not silently stop being one here), and a final group's unused low bits are not
+ * required to be zero — non-strict decoding takes the bytes it can build. A
+ * final group of a single character carries no whole byte and is refused, as it
+ * is there.
+ */
 private fun decodeBase64(s: String): ByteArray? {
     if (s.isEmpty()) return null
-    val out = ByteArray(s.length * 3 / 4)
+    val out = ByteArray(s.length * 3 / 4 + 1)
     var written = 0
     var buffer = 0
     var bits = 0
+    var seen = 0
     for (c in s) {
+        if (c == '\n' || c == '\r') continue
         val v = base64Value(c)
         if (v < 0) return null
+        seen++
         buffer = (buffer shl 6) or v
         bits += 6
         if (bits >= 8) {
@@ -519,11 +556,10 @@ private fun decodeBase64(s: String): ByteArray? {
             out[written++] = ((buffer shr bits) and 0xFF).toByte()
         }
     }
-    // A trailing group of six leftover bits cannot be part of any byte, and the
-    // bits a smaller remainder carries must be zero — what a canonical encoder
-    // writes before the padding this already stripped.
+    if (seen == 0) return null
+    // Six leftover bits is a one-character final group: it encodes no byte at
+    // all, which is the one shape Go refuses too.
     if (bits >= 6) return null
-    if (bits > 0 && (buffer and ((1 shl bits) - 1)) != 0) return null
     return if (written == out.size) out else out.copyOf(written)
 }
 
