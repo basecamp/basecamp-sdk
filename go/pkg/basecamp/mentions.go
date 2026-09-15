@@ -29,10 +29,14 @@ package basecamp
 // proof that a valid mention already exists: a forged or stale sgid in
 // caller-supplied content naming the right id would otherwise make the writer
 // skip the authoritative people read and post a tag Basecamp will not honour,
-// so the person is silently not mentioned. The writer therefore resolves every
-// requested person and deduplicates only against the exact attachable_sgid
-// string that read returned. Do not reuse the read-side helpers to decide
-// whether a write can be skipped.
+// so the person is silently not mentioned. CommentsService.ExpandMentions
+// therefore resolves every requested person through People().Get and
+// deduplicates only against the exact attachable_sgid string that read
+// returned. The pure helpers beneath it — WithMentions, MentionMarkup — take
+// Person values the caller built and can only check that an sgid is
+// well-formed and names the person it is given, never that it is authentic:
+// hand them people the API returned, not people assembled from content. Do
+// not reuse the read-side helpers to decide whether a write can be skipped.
 //
 // The markup is read as BC3 serves it: a sanitized tree of the tags
 // doc/api/sections/rich_text.md allows, which has no raw-text elements. The
@@ -555,7 +559,11 @@ func (r *rubyMarshalReader) value(depth int) (any, error) {
 // attachable_sgid — the write-side form in doc/api/sections/rich_text.md, which
 // BC3 expands into the avatar figure on read. It errors when the person carries
 // no attachable_sgid, which is the case for a Person projection that came from
-// somewhere other than a people read (a webhook payload, say).
+// somewhere other than a people read (a webhook payload, say), and when the
+// sgid does not name the person it is given. That is all it can check: it
+// cannot verify the signature, so the Person must come from the API — a
+// People().Get, a recording's creator or assignees — not be assembled from an
+// sgid found in content.
 func MentionMarkup(person *Person) (string, error) {
 	if person == nil {
 		return "", &Error{Code: CodeUsage, Message: "cannot mention a nil person"}
@@ -612,8 +620,11 @@ func leadingBlockEnd(content string) int {
 // on the person id an existing tag's sgid decodes to: that id is unsigned, and
 // a forged or stale tag naming the right person must not stand in for the
 // real mention (see the trust boundary in the package comment). Every person
-// needs their own attachable_sgid (see MentionMarkup); the account-bound
-// CommentsService.ExpandMentions resolves ids to people first.
+// needs their own attachable_sgid, and it must be one the API returned: this
+// helper can check that an sgid is well-formed and names the person, not that
+// it is authentic (see MentionMarkup). The account-bound
+// CommentsService.ExpandMentions resolves ids to people first and is the
+// entry point that carries that guarantee.
 func WithMentions(content string, people []Person) (string, error) {
 	present := map[string]struct{}{}
 	for _, sgid := range bcAttachmentSGIDs(content) {
