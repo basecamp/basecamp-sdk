@@ -3086,6 +3086,7 @@ the category slug is the filename (basename, `_` written as `-`).
 | security | `security.json` | §9 Security |
 | status-codes | `status-codes.json` | §11 Response Semantics |
 | template-library | `template_library.json` | §3 Client Architecture (account path construction), §6 Error Taxonomy, §10 Type Fidelity, §11 Response Semantics |
+| templatifications | `templatifications.json` | §3 Client Architecture (account path construction), §10 Type Fidelity, §11 Response Semantics |
 | todolists-read | `todolists_read.json` | §5 Merge-Safe Write Surface (Todolists) — the flat read shape the composites read through |
 | todolists-write | `todolists_write.json` | §5 Merge-Safe Write Surface (Todolists), §18 Hand-Written Composite Methods |
 | todos-write | `todos_write.json` | §5 Merge-Safe Write Surface (Todos), §18 Hand-Written Composite Methods |

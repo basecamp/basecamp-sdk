@@ -383,9 +383,9 @@ func TestRouterMatch(t *testing.T) {
 		},
 		{
 			name:         "template library URL",
-			input:        "https://3.basecamp.com/123/template_library",
+			input:        "https://3.basecamp.com/123/template_library/todolists",
 			wantSource:   MatchedAPI,
-			wantOp:       "GetTemplateLibrary",
+			wantOp:       "GetTemplateLibraryTodolists",
 			wantAccount:  "123",
 			wantResource: "Templates",
 		},

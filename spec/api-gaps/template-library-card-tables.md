@@ -1,6 +1,6 @@
 ---
 gap: template-library-card-tables
-status: partial-coverage
+status: absorbed-in-sdk
 detected: 2026-09-11
 sdk_demand: high
 smithy_refs:
@@ -113,21 +113,9 @@ card table is the mirror image. One `CardTable` shape covers both.
 
 ## SDK absorption plan when this lands
 
-Absorbed in all seven SDKs ahead of the upstream merge, which is why this entry
-is `partial-coverage` rather than `absorbed-in-sdk`: the contract is open as BC3
-#13312 and is not yet servable in production, so `make bc3-route-parity` reports
-six route/method pairs across four paths as undocumented by bc3 at the current
-provenance pin. That failure is expected and is the whole reason this entry
-exists. It clears at the repin that follows the upstream merge, with no SDK
-change: the routes enter `spec/bc3-routes.json` from bc3's own
-`doc/api/sections/`, which already carries the bullets and markers for them.
-
-The status stays `partial-coverage` rather than `addressed-in-bc3-pr-13312`
-because every other entry using that status cites a bc3 PR that had already
-merged. #13312 is open, so claiming bc3 has shipped would overstate it. Flip
-this entry to `absorbed-in-sdk` at the repin that follows both merges. The SDK
-side is basecamp-sdk #877. Nothing else in the branch depends on the pin having
-moved.
+Absorbed in all seven SDKs and now present in the vendored BC3 route table. The
+SDK side is basecamp-sdk #877; the provenance repin that includes BC3 #13312
+moves this entry from `partial-coverage` to `absorbed-in-sdk`.
 
 Also absorbed here: creating an empty to-do list template, and the
 templatification endpoints that lift an existing to-do list or card table into
