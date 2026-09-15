@@ -159,12 +159,27 @@ export {
   type UpdateMessageRequest,
 } from "./generated/services/messages.js";
 
+// The plain name belongs to the mention composites (SPEC §18, Appendix F);
+// everything else on the service is the generated surface.
 export {
   CommentsService,
+  type MentionPeopleSource,
+} from "./services/comments-extensions.js";
+export {
   type Comment,
   type CreateCommentRequest,
   type UpdateCommentRequest,
 } from "./generated/services/comments.js";
+
+// Mention helpers over Basecamp rich text: the read side describes what a text
+// says it mentions, the write side renders a mention from a person the API
+// returned. See src/services/mentions.ts for the trust boundary between them.
+export {
+  mentionedPersonIds,
+  personIdFromSGID,
+  mentionMarkup,
+  withMentions,
+} from "./services/mentions.js";
 
 export {
   CampfiresService,
@@ -463,9 +478,26 @@ export {
   type PersonProgressReportOptions,
 } from "./generated/services/reports.js";
 
-// Recording services - generated
+// Recording services - generated, plus the summarize composite
+// (SPEC §18, Appendix F) that the plain service name carries.
 export {
   RecordingsService,
+  RecordingSummaryError,
+  RecordingRoutingError,
+  UnresolvedRecordingError,
+  CampfireDiscoveryIncompleteError,
+  BucketMismatchError,
+  summarizableRecordingTypes,
+  summarizableEventTypes,
+  CAMPFIRE_INDEX_TTL_MS,
+  MAX_CAMPFIRE_CANDIDATES,
+  MAX_CAMPFIRE_LISTING,
+  type RecordingRef,
+  type RecordingSummary,
+  type RecordingSummaryErrorKind,
+  type RecordingReadSources,
+} from "./services/recordings-extensions.js";
+export {
   type Recording,
   type ListRecordingOptions,
 } from "./generated/services/recordings.js";
