@@ -35,14 +35,23 @@ data class RecordingRef(
 /**
  * The compact projection `RecordingsService.summarize` returns.
  *
- * A field a type does not have is EMPTY rather than missing, the way the
- * reference states it ("fields a type does not have are zero"), and which of
- * the two a consumer sees follows the field's own nullability: [parent],
- * [bucket], [creator], [assignees] and [campfireId] are nullable and are
- * omitted from the JSON, while [mentionedPersonIds] and [content] are not, so
- * a vault reads `"content": ""` and not a missing key. Saying "absent" of all
- * of them was wrong about the two that carry the zero value — and [content]
- * was the example it gave.
+ * A field a type does not have is either MISSING from the JSON or present and
+ * empty, and which one is not a property of nullability — it is whether the
+ * field has a DEFAULT. `Json` here leaves `encodeDefaults` off, so a property
+ * equal to its default is omitted; `explicitNulls` is on, so a nullable
+ * property with no default would serialize as `null` rather than vanish.
+ *
+ *  - [parent], [bucket], [creator], [assignees] and [campfireId] declare
+ *    `= null` and so are omitted. [assignees] needs one more step to get there,
+ *    in [summaryOf]: an empty list is not the default, so it is narrowed to
+ *    null before it can be left out.
+ *  - Every other property has no default and is always written, including when
+ *    it is empty. A vault reads `"content": ""`, and a type whose read carries
+ *    no title reads `"title": ""` — [firstNonEmpty] returns the empty string
+ *    rather than null.
+ *
+ * The reference says the same thing about its own struct ("fields a type does
+ * not have are zero") and reaches the missing-key half with `omitempty`.
  *
  * @property type The recording type as BC3 spells it (`Comment`, `Kanban::Card`).
  * @property parent The recording this one hangs off — the commented recording

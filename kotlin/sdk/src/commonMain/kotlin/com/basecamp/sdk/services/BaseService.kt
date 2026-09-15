@@ -599,10 +599,9 @@ abstract class BaseService(
      * same [SerializationException] type, so wrapping the block instead of the
      * expression would relabel a request-encoding fault as a malformed
      * response — the same conflation in a new shape.
-     */
-    /**
-     * Protected, not private, because a SPEC §18 composite can have a decode of
-     * its own: the two cloud-storage reads are modeled as raw documents, so
+     *
+     * **Protected, not private**, because a SPEC §18 composite can have a decode
+     * of its own: the two cloud-storage reads are modeled as raw documents, so
      * `RecordingsService.summarize` projects them from decoded JSON by hand. That
      * decode has to fail the way every generated read's does — a statusless
      * `api_error` carrying the decoder's refusal in [BasecampException.Api.decodeFailure]
