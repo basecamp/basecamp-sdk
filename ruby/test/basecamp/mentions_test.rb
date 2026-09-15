@@ -497,6 +497,23 @@ class MentionsTest < Minitest::Test
     assert_nil Basecamp::Mentions.person_id_from_sgid(marshal_sgid("gid://bc3/Person/99999999999999999999999"))
   end
 
+  def test_an_escape_naming_an_ascii_byte_in_the_authority_is_refused
+    # Measured against the reference by planting every printable byte mid-host:
+    # it refuses an escape that names an ASCII byte, excepting "%25" which names
+    # the percent itself, and accepts one above ASCII. Without this the port
+    # resolved 95 hosts the reference refuses — the accepting direction, and the
+    # write side's only authenticity-adjacent check is whether an sgid names the
+    # person it is given.
+    assert_nil Basecamp::Mentions.person_id_from_sgid(marshal_sgid("gid://bc%203/Person/12"))
+    assert_nil Basecamp::Mentions.person_id_from_sgid(marshal_sgid("gid://bc%2F3/Person/12"))
+    assert_nil Basecamp::Mentions.person_id_from_sgid(marshal_sgid("gid://bc%7e3/Person/12"))
+    # The two exceptions.
+    assert_equal 12, Basecamp::Mentions.person_id_from_sgid(marshal_sgid("gid://bc%253/Person/12"))
+    assert_equal 12, Basecamp::Mentions.person_id_from_sgid(marshal_sgid("gid://b%C3%A9c3/Person/12"))
+    # And an escape in the PATH is still decoded, which is a different rule.
+    assert_equal 12, Basecamp::Mentions.person_id_from_sgid(marshal_sgid("gid://bc3/Pe%72son/12"))
+  end
+
   def test_a_percent_escaped_gid_path_decodes
     assert_equal 12, Basecamp::Mentions.person_id_from_sgid(marshal_sgid("gid://bc3/Pe%72son/12"))
     assert_equal 12, Basecamp::Mentions.person_id_from_sgid(marshal_sgid("gid://bc3/Person/%31%32"))
