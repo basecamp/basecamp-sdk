@@ -20,62 +20,29 @@ private let operationsHonoringPage: Set<String> = ["ListProjects"]
 
 /// Temporary capability skips, keyed by exact test name.
 ///
-/// Holds exactly the `recording_summary.json` cases — every case in that
-/// fixture — of a Go-first composite (SPEC Appendix F, Recording Summaries and
-/// Mention Helpers) this SDK has not ported; the fixture is the contract a port
-/// implements, and a port deletes them. Nothing else: Swift is three-gate (status,
-/// network and idempotent-POST retry) and since #563 retries the authenticated
-/// download hop too, so no other fixture asks for a capability the SDK lacks.
-/// The one standing exclusion beyond these is architectural rather than a gap
-/// — the `link-header` tag branch in the run loop, which no name-keyed entry
-/// can express.
-private let temporarySkips: [String: String] = [
-    "RecordingsSummarize routes comment.created to the comment read and reads its mentions": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    "RecordingsSummarize refuses boost.created before any request": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    "RecordingsSummarize finds a chat line under the second visible Campfire": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    "RecordingsSummarize reports a chat line under no visible Campfire as unresolved, not as a failed read": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    "RecordingsSummarize returns a Campfire candidate's 403 as that read's error": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    "CommentsCreateWithMentions resolves each person before posting and writes the mention from attachable_sgid": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    "RecordingsSummarize routes message.created (event type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    "RecordingsSummarize routes todo.created (event type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    "RecordingsSummarize routes card.created (event type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    "RecordingsSummarize routes Document (recording type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    "RecordingsSummarize routes Upload (recording type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    "RecordingsSummarize routes Schedule::Entry (recording type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    "RecordingsSummarize routes Question (recording type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    "RecordingsSummarize routes Question::Answer (recording type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    "RecordingsSummarize routes Todolist (recording type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    "RecordingsSummarize routes Vault (recording type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    "RecordingsSummarize routes Inbox::Forward (recording type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    "RecordingsSummarize routes Client::Approval (recording type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    "RecordingsSummarize routes Client::Correspondence (recording type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    "RecordingsSummarize routes GoogleDocument (recording type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    "RecordingsSummarize routes CloudFile (recording type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    "RecordingsSummarize routes Kanban::Step (recording type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    "RecordingsSummarize routes Questionnaire (recording type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    "RecordingsSummarize routes Schedule (recording type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    "RecordingsSummarize routes Todoset (recording type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    "RecordingsSummarize routes Message::Board (recording type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    "RecordingsSummarize routes Kanban::Board (recording type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    "RecordingsSummarize routes Kanban::Column (recording type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    "RecordingsSummarize routes Inbox (recording type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    "RecordingsSummarize routes todo.completed (event type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    "RecordingsSummarize routes todo.assignment_changed (event type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    "RecordingsSummarize routes card.completed (event type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    "RecordingsSummarize routes card.assignment_changed (event type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    "RecordingsSummarize routes Comment (recording type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    "RecordingsSummarize routes Message (recording type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    "RecordingsSummarize routes Todo (recording type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    "RecordingsSummarize routes Kanban::Card (recording type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    "RecordingsSummarize routes Chat::Transcript (recording type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    "RecordingsSummarize routes card.moved (event type) to one typed read and projects the recording": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-    "RecordingsSummarize routes Chat::Lines::Text (recording type) through Campfire discovery and projects the line": "Go-first composite (SPEC Appendix F, Recording Summaries and Mention Helpers); not ported to this SDK yet.",
-]
+/// EMPTY, and that is the whole claim: every case in `conformance/tests` that
+/// this runner can reach, it runs. It held the `recording_summary.json` cases —
+/// every case in that fixture — while the Go-first composite (SPEC Appendix F,
+/// Recording Summaries and Mention Helpers) had no Swift port; the port landed,
+/// and the roster's own rule is that a port deletes its entries, so they are
+/// gone rather than reworded. Swift is three-gate (status, network and
+/// idempotent-POST retry) and since #563 retries the authenticated download hop
+/// too, so no fixture asks for a capability the SDK lacks.
+///
+/// The one standing exclusion is architectural rather than a gap — the
+/// `link-header` tag branch in the run loop, which no name-keyed entry can
+/// express — and it does not live here.
+///
+/// Kept as a declared constant rather than deleted with its entries: it is the
+/// seam `SWIFT_CONFORMANCE_NO_SKIPS` and `spec/zero-skip-roster.yml` both name,
+/// and the next genuine capability gap is rostered by adding a line to it.
+private let temporarySkips: [String: String] = [:]
 
 /// The roster the run loop consults. `SWIFT_CONFORMANCE_NO_SKIPS=1` empties it,
-/// so a temporary skip can be proven genuine before it is added and proven
-/// ready to flip once the capability lands — running the Go-first composite's
-/// fixture against this SDK shows exactly what a port still owes.
+/// so a temporary skip can be proven genuine before it is added and proven ready
+/// to flip once the capability lands. With the roster already empty the variable
+/// changes nothing today; it stays wired because the next gap is rostered by
+/// adding a line above, not by re-adding the mechanism.
 ///
 /// The value is compared exactly: an inherited empty or `=0` variable must not
 /// quietly change what the suite covers.
@@ -291,6 +258,13 @@ struct Runner {
         let baseURL = tc.configOverrides?.baseUrl ?? "http://localhost:3000"
 
         var caughtError: BasecampError?
+        // A SPEC §18 composite's own error identity, which no BasecampError case
+        // can carry: "under no Campfire you can currently see" is neither an API
+        // read failure nor incomplete discovery, and a fixture has to be able to
+        // pin which one it got. Held apart from `caughtError` for the same
+        // reason that one withholds a decoder rejection — a fixture pinning a
+        // canonical HTTP code must never be satisfied by a semantic one.
+        var semanticError: SemanticError?
         var httpStatus: Int?
         var dispatch = DispatchResult()
 
@@ -383,6 +357,14 @@ struct Runner {
                     dispatchFailed = true
                     httpStatus = error.httpStatusCode
                 }
+            } catch let error as RecordingSummaryError {
+                // Thrown before or instead of an HTTP failure by the Appendix F
+                // composite. A constituent read that fails still throws its own
+                // BasecampError and is caught above, which is what lets the
+                // "returns a Campfire candidate's 403 as that read's error" case
+                // assert `forbidden` rather than a composite identity.
+                semanticError = SemanticError(type: semanticErrorType(error), message: error.message)
+                dispatchFailed = true
             } catch let error as RunnerError {
                 // A fixture the dispatch table cannot honor as written: an
                 // unknown operation, or a parameter that would have been
@@ -420,6 +402,7 @@ struct Runner {
             tc,
             transport: transport,
             caughtError: caughtError,
+            semanticError: semanticError,
             dispatchFailed: dispatchFailed,
             httpStatus: httpStatus,
             dispatch: dispatch

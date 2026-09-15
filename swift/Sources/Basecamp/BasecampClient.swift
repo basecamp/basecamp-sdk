@@ -25,6 +25,17 @@ public final class BasecampClient: Sendable {
     /// The internal HTTP client used by all services.
     package let httpClient: HTTPClient
 
+    /// Campfire discovery caches for `RecordingsService.summarize(_:)`'s
+    /// chat-line two-hop (SPEC §18, Appendix F).
+    ///
+    /// It lives here rather than on `AccountClient` because `forAccount(_:)`
+    /// builds a fresh `AccountClient` on every call: a cache hung off one would
+    /// be discarded between two summaries of the same bucket, which is the one
+    /// thing the cache exists to prevent. This client is bound to a single
+    /// credential, so nothing here crosses an authorization boundary, and every
+    /// key carries the account id besides. Not part of the public surface.
+    let campfireIndex = CampfireIndex()
+
     /// Creates a client with a static access token.
     ///
     /// - Parameters:
