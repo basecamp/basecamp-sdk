@@ -184,8 +184,10 @@ class TestFailures:
         owner = threading.Thread(target=call)
         owner.start()
         assert started.wait(5)
+        parked = _parked(cache, "k", 1)
         waiter = threading.Thread(target=call)
         waiter.start()
+        assert parked.wait(5), "without this the waiter becomes a SECOND OWNER"
         cache._store._now = lambda: (_ for _ in ()).throw(RuntimeError("clock is broken"))
         release.set()
         owner.join(5)
@@ -317,14 +319,35 @@ class TestBound:
         owner = threading.Thread(target=wait_for_it)
         owner.start()
         assert started.wait(5)
+
+        # The eviction has to land in the ONE window this test is named for:
+        # after publication, before the waiter reads. Doing it after both
+        # threads joined -- which is what this test used to do -- evicts an
+        # entry the waiter has already finished with, so it passed just as
+        # happily if waiters re-read the shared store. The waiter blocks on
+        # `pending.done` outside the lock, so wrapping that wait puts the
+        # eviction exactly between the two.
+        pending = cache._inflight["k"]
+        real_wait = pending.done.wait
+        evicted = threading.Event()
+
+        def evict_then_let_it_read(timeout=None):
+            outcome = real_wait(timeout)
+            # max_items=1, so storing another key evicts "k" through the real
+            # bound rather than by reaching into the store.
+            cache.get("other", refresh=False, load=lambda: "x")
+            evicted.set()
+            return outcome
+
+        pending.done.wait = evict_then_let_it_read
+
         waiter = threading.Thread(target=wait_for_it)
         waiter.start()
         release.set()
         owner.join(5)
         waiter.join(5)
-        # Evict it out from under them.
-        cache.get("other", refresh=False, load=lambda: "x")
 
+        assert evicted.is_set(), "the eviction must have happened, not been skipped"
         assert waiter_result == ["mine", "mine"]
         assert cache.peek("k") is None
         del value
@@ -403,10 +426,10 @@ class TestSingleFlight:
         threads = [threading.Thread(target=call) for _ in range(4)]
         threads[0].start()
         assert started.wait(5)
+        parked = _parked(cache, "k", 3)
         for thread in threads[1:]:
             thread.start()
-        # Give the waiters a moment to park on the in-flight load rather than
-        # racing ahead and loading for themselves.
+        assert parked.wait(5), "all three waiters must be parked before the owner is released"
         release.set()
         for thread in threads:
             thread.join(5)
