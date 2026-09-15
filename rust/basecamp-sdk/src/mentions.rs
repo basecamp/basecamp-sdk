@@ -330,12 +330,14 @@ fn parse_attributes(text: &[u8], mut pos: usize) -> Option<(Option<String>, usiz
 /// `strings.EqualFold` against an ASCII needle, which is what the reference compares tag
 /// and attribute names with — NOT an ASCII-only fold.
 ///
-/// Go folds by Unicode simple case folding, and exactly two non-ASCII runes share an orbit
-/// with an ASCII letter: U+017F LATIN SMALL LETTER LONG S with `s`, and U+212A KELVIN SIGN
-/// with `k`. Enumerated by walking `unicode.SimpleFold` over all 128 ASCII code points, not
-/// recalled — that list is short enough to be worth being sure about and easy to be wrong
-/// about. So `<bc-attachment ſgid="…">` names a person in Go, and an ASCII-only comparison
-/// silently reads it as an unknown attribute and names nobody.
+/// Go folds by Unicode simple case folding, and exactly two non-ASCII runes fold onto an
+/// ASCII letter: U+017F LATIN SMALL LETTER LONG S onto `s`, and U+212A KELVIN SIGN onto
+/// `k`. That was enumerated rather than recalled, and from the direction that does not
+/// assume anything: every rune from U+0080 to U+10FFFF asked against every ASCII character
+/// through `strings.EqualFold` itself. Walking the orbits out from the 128 ASCII code
+/// points gives the same two, but only if folding is symmetric, which is a second thing to
+/// be right about. So `<bc-attachment ſgid="…">` names a person in Go, and an ASCII-only
+/// comparison silently reads it as an unknown attribute and names nobody.
 ///
 /// Two of the three names compared here (`bc-attachment`, `<p`/`<div`) contain neither `s`
 /// nor `k`, so an ASCII fold happens to agree on them today. They go through this function
