@@ -201,11 +201,28 @@ function fractionalDigits(timestamp: string): string {
  * contract: "2024-01-20T15:30:00.000-06:00" and "2024-01-20T21:30:00Z" agree.
  * Mirrors the Go runner's `compareValues`.
  */
+function isRealCalendarDate(timestamp: string): boolean {
+  // Date.parse rolls an out-of-range day over into the next month, so
+  // "2024-02-30T00:00:00Z" and "2024-03-01T00:00:00Z" parse to one instant.
+  // Go's time.Parse rejects the first outright ("day out of range"), and an
+  // invalid timestamp must not be accepted here as equal to a valid one.
+  const parts = /^(\d{4})-(\d{2})-(\d{2})/.exec(timestamp);
+  if (parts === null) return false;
+  const year = Number(parts[1]);
+  const month = Number(parts[2]);
+  const day = Number(parts[3]);
+  const at = new Date(Date.UTC(year, month - 1, day));
+  return (
+    at.getUTCFullYear() === year && at.getUTCMonth() === month - 1 && at.getUTCDate() === day
+  );
+}
+
 function sameInstant(expected: unknown, actual: unknown): boolean {
   if (typeof expected !== "string" || typeof actual !== "string") return false;
   // Anchored so a bare number or a prose string can never be read as a date.
   const rfc3339 = /^\d{4}-\d{2}-\d{2}[Tt]\d{2}:\d{2}:\d{2}(\.\d+)?([Zz]|[+-]\d{2}:\d{2})$/;
   if (!rfc3339.test(expected) || !rfc3339.test(actual)) return false;
+  if (!isRealCalendarDate(expected) || !isRealCalendarDate(actual)) return false;
   const expectedAt = Date.parse(expected);
   if (!Number.isFinite(expectedAt) || expectedAt !== Date.parse(actual)) return false;
   return fractionalDigits(expected) === fractionalDigits(actual);
@@ -1491,10 +1508,23 @@ function substitutePathParams(
   });
 }
 
+/**
+ * What an executed case hands the assertions: the error it raised, if any, and
+ * the value it returned. `result` is declared here because the responseBody
+ * assertion reads it; leaving it off the type made that read depend on a
+ * property the signature did not admit to.
+ */
+interface OperationOutcome {
+  error?: BasecampError | Error;
+  httpStatus?: number;
+  meta?: Record<string, unknown>;
+  result?: unknown;
+}
+
 function checkAssertions(
   tc: TestCase,
   tracker: ReturnType<typeof installMockHandlers>,
-  result: { error?: BasecampError | Error; httpStatus?: number; meta?: Record<string, unknown> },
+  result: OperationOutcome,
 ): void {
   // DownloadURL implicit invariant: hop 1 must hit the test case path.
   // The MSW handler is origin-wide so hop 2's relative-resolved URL is
@@ -2137,7 +2167,7 @@ for (const { filename, tests } of suites) {
         const baseUrl = tc.configOverrides?.baseUrl
           ?? `http://localhost:9876/${TEST_ACCOUNT_ID}`;
 
-        let result: { error?: BasecampError | Error; httpStatus?: number };
+        let result: OperationOutcome;
         try {
           const client = createBasecampClient({
             accountId: TEST_ACCOUNT_ID,
