@@ -514,7 +514,7 @@ private val WINDOWS_1252 = charArrayOf(
 )
 
 /** The longest name in the tables above, so a `;` far away is not a candidate. */
-private const val MAX_ENTITY_NAME = 16
+internal const val MAX_ENTITY_NAME = 16
 
 /**
  * The code points the reference implementation's `TrimSpace` removes — its

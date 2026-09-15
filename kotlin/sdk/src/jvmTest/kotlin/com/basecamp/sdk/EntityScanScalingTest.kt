@@ -25,8 +25,9 @@ import kotlin.test.assertTrue
  */
 class EntityScanScalingTest {
 
-    /** The longest name in the decoder's tables; a scan is bounded by it. */
-    private val MAX_NAME = 16
+    // The bound comes from `Mentions.kt` rather than a copy of its value: a
+    // local `16` would let this test go on passing while claiming to exercise a
+    // worst case the decoder no longer has.
 
     private fun minNanosPer(run: Int, iterations: Int = 10, trials: Int = 5): Long {
         // `&` alone exercises the CHEAPEST path in the bounded scan: the next
@@ -34,7 +35,7 @@ class EntityScanScalingTest {
         // A name-shaped run makes every `&` pay the full bounded scan, which is
         // the work the bound is supposed to keep linear — and it still catches a
         // revert to searching for the next `;`.
-        val markup = "<bc-attachment sgid=\"" + ("&" + "a".repeat(MAX_NAME)).repeat(run) + "\"></bc-attachment>"
+        val markup = "<bc-attachment sgid=\"" + ("&" + "a".repeat(MAX_ENTITY_NAME)).repeat(run) + "\"></bc-attachment>"
         // Warm the JIT before measuring anything, or the first trial measures
         // the interpreter and every ratio after it is meaningless.
         repeat(20) { mentionedPersonIds(markup) }
