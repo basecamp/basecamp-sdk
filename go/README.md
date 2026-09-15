@@ -699,10 +699,11 @@ something it is not.
 Chat lines need discovery first: their read takes the Campfire id, which the
 pointer does not carry. `Summarize` reads the bucket's project dock, whose
 chat tool is the project's Campfire (one project read per bucket, cached ten
-minutes), and falls back to the account-wide Campfire listing filtered to the
-bucket (cached ten minutes per account) for buckets that are not projects. It
-tries the line under each candidate and reports `CampfireID` — the reply
-destination — on success. A candidate that answers anything but 404 stops the
+minutes), and consults the account-wide Campfire listing filtered to the
+bucket (cached ten minutes per account) when the dock does not settle it —
+a bucket that is not a project, or a line the dock's Campfire answers 404 for,
+such as a ping listed under the same bucket. It tries the line under each
+candidate and reports `CampfireID` — the reply destination — on success. A candidate that answers anything but 404 stops the
 loop with that error, so a 401, 403 or 5xx never reads as "not here". When
 every candidate says 404 the cached sources are re-read (at most once per 30
 seconds) and only what is new is tried; if the line is still under no
