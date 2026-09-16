@@ -47,6 +47,7 @@ from __future__ import annotations
 import re
 from collections.abc import MutableMapping
 from enum import Enum
+from itertools import islice
 from typing import Any
 
 _UINT64_MAX = 2**64 - 1
@@ -90,16 +91,19 @@ def parse_int64(text: str) -> int | Refusal:
     # One optional ASCII sign. `+` IS accepted -- the `^-?\d+$` regex most ports
     # reach for is not this grammar.
     sign = text[:1]
-    digits = text[1:] if sign in ("+", "-") else text
+    # An offset, not a slice: `text[1:]` copied the whole remaining id before a
+    # scan that reaches its verdict within ~20 digits, so a long malformed id
+    # cost a copy of itself for nothing.
+    start = 1 if sign in ("+", "-") else 0
     # An empty digit run, with or without a sign, is a syntax error: "", "+", "-".
-    if not digits:
+    if start == len(text):
         return Refusal.SYNTAX
 
     # `ParseUint`'s loop, byte for byte. `str.isdigit()` would be wrong here --
     # it is true for "৭" -- and so would `str.isdecimal()`; the test is on the
     # ASCII range itself.
     magnitude = 0
-    for character in digits:
+    for character in islice(text, start, None):
         if not ("0" <= character <= "9"):
             return Refusal.SYNTAX
         magnitude = magnitude * 10 + (ord(character) - ord("0"))
