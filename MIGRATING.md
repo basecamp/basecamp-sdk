@@ -96,7 +96,7 @@ null-is-empty rule stops at the envelope's door. Before and after:
 | `{"events": {"a": 1}, "person": …}` | `['a']` | `ApiError` |
 | `"abc"` or `[]` (body not an object) | `AttributeError` | `ApiError` |
 
-### Python: three errors accept a `retryable` keyword they used to crash on, and now ignore it
+### Python: three errors accept a `retryable` keyword they used to crash on, and now ignore it (#906)
 
 `RateLimitError`, `NetworkError` and `LimitExceededError` each forwarded
 `**kwargs` to the base constructor *alongside* a fixed `retryable=`, so passing
@@ -126,8 +126,12 @@ section exists for the one thing that is *silent*: code written against the
 crash. If you were passing `retryable=` to one of the three — in a test that
 asserted the `TypeError`, or in a call you had never actually reached — you now
 get an object back whose `.retryable` is the class's answer rather than yours,
-with no signal that your argument was dropped. Read `.retryable` after
-constructing, or use `ApiError` when you need to set it yourself.
+with no signal that your argument was dropped. Read `.retryable` back after
+constructing rather than assuming the value you passed. Reaching for `ApiError`
+instead is not the remedy: it changes the error's identity, taking `code` from
+`rate_limit`/`network`/`limit_exceeded` to `api_error` and `exit_code` from
+5/6/10 to 7. (`retry_after` still reaches it through `**kwargs` — what it loses
+is being a declared parameter, so nothing type-checks it.)
 
 ### Rust: new SDK
 
