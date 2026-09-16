@@ -630,12 +630,17 @@ func TestNewLiveValidatesAndConnects(t *testing.T) {
 		"unknown lane":   {cfg, "1", eventfeed.Lane(9)},
 		"cleartext base": {&basecamp.Config{BaseURL: "http://api.example.test"}, "1", eventfeed.AccountLane},
 		"nonnumeric id":  {cfg, "abc", eventfeed.AccountLane},
+		"userinfo base":  {&basecamp.Config{BaseURL: "https://user:s3cret-leak@api.example.test"}, "1", eventfeed.AccountLane},
+		"no origin":      {&basecamp.Config{BaseURL: "/s3cret-leak"}, "1", eventfeed.AccountLane},
 	} {
 		t.Run(name, func(t *testing.T) {
 			_, err := eventfeed.NewLive(tc.cfg, &basecamp.StaticTokenProvider{Token: "t"}, tc.id, tc.lane)
 			var te *eventfeed.TerminalError
 			if !errors.As(err, &te) || te.Reason != eventfeed.ReasonUsage {
 				t.Fatalf("NewLive error = %v, want a usage-coded construction error", err)
+			}
+			if strings.Contains(err.Error(), "s3cret-leak") {
+				t.Fatalf("the construction error renders the base URL: %v", err)
 			}
 		})
 	}

@@ -73,9 +73,16 @@ func NewLive(cfg *basecamp.Config, tokens basecamp.TokenProvider, accountID stri
 	if lane != AccountLane && lane != InboxLane {
 		return nil, usageError(fmt.Sprintf("unknown lane %s", lane))
 	}
+	// The base URL is host configuration, and it reaches the request hooks
+	// and logs whole through every request's URL, so a value carrying
+	// userinfo is refused here — with a fixed message, since echoing it would
+	// be the leak — and the origin is canonicalized from what remains.
+	if u, err := url.Parse(cfg.BaseURL); err != nil || u.User != nil {
+		return nil, usageError("the base URL must parse and carry no userinfo")
+	}
 	origin, err := CanonicalOrigin(cfg.BaseURL)
 	if err != nil {
-		return nil, usageError(err.Error())
+		return nil, usageError("the base URL does not name an origin")
 	}
 	if err := checkOriginScheme(origin); err != nil {
 		return nil, err
