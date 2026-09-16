@@ -109,8 +109,11 @@ func NewLive(cfg *basecamp.Config, tokens basecamp.TokenProvider, accountID stri
 		if u.RawQuery != "" || u.Fragment != "" || u.ForceQuery || u.RawFragment != "" {
 			return nil, usageError("the base URL must carry no query or fragment")
 		}
+		if strings.Contains(u.Path, "//") {
+			return nil, usageError("the base URL path must be canonical: no dot segments, no doubled slashes")
+		}
 		if strings.Trim(u.Path, "/") != "" {
-			if clean := path.Clean(u.Path); clean != strings.TrimSuffix(u.Path, "/") || strings.Contains(u.Path, "//") {
+			if clean := path.Clean(u.Path); clean != strings.TrimSuffix(u.Path, "/") {
 				return nil, usageError("the base URL path must be canonical: no dot segments, no doubled slashes")
 			}
 			basePath = "/" + strings.Trim(u.Path, "/") + "/"
@@ -240,7 +243,7 @@ func (g *redirectGuard) RoundTrip(req *http.Request) (*http.Response, error) {
 		return resp, nil
 	}
 	if hop, ok := req.Context().Value(refusedHopKey{}).(*refusedHop); ok {
-		hop.record(locationOrigin(resp.Header.Get("Location")))
+		hop.record(locationOrigin(req.URL, resp.Header.Get("Location")))
 	}
 	resp.Header.Del("Location")
 	resp.Header.Del("Content-Location")
@@ -309,16 +312,35 @@ func isDigits(s string) bool {
 // Location, never the status text.
 var errHopRefused = errors.New("eventfeed: refused a redirect off the API origin")
 
-// locationOrigin reduces a refused hop's Location to its origin — the one
-// component the seam contract lets a redirect_refused error carry — or the
-// fixed token `unparsable` when the header is absent or yields no complete
-// origin (§9).
-func locationOrigin(location string) string {
-	origin, err := CanonicalOrigin(location)
+// locationOrigin reduces a refused hop's Location — resolved against the
+// request's URL first, as a relative or scheme-relative reference would be
+// — to its origin, the one component the seam contract lets a
+// redirect_refused error carry; or the fixed token `unparsable` when the
+// header is absent or yields no complete origin (§9).
+func locationOrigin(base *url.URL, location string) string {
+	if location == "" || base == nil {
+		return "unparsable"
+	}
+	ref, err := url.Parse(location)
+	if err != nil {
+		return "unparsable"
+	}
+	origin, err := CanonicalOrigin(base.ResolveReference(ref).String())
 	if err != nil {
 		return "unparsable"
 	}
 	return origin
+}
+
+// continuationIsResume reports a followed URL that re-enters at a since —
+// a 410's resume, which starts a new walk — as opposed to a position
+// continuation of the walk in progress.
+func continuationIsResume(pageURL string) bool {
+	u, err := url.Parse(pageURL)
+	if err != nil {
+		return false
+	}
+	return u.Query().Get("since") != ""
 }
 
 // liveMinter is the TicketMinter over CreateStreamTicket.
@@ -445,7 +467,9 @@ type livePolls struct {
 func (p *livePolls) Poll(ctx context.Context, cursor Cursor, filters Filters) (PollPage, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	if cursor.PageURL == "" {
+	if cursor.PageURL == "" || continuationIsResume(cursor.PageURL) {
+		// A fresh cursor, or a 410's resume (a since re-entry), starts a
+		// new walk; only a position continuation carries the order over.
 		p.lastKey = 0
 	}
 	var page PollPage
@@ -511,6 +535,12 @@ func (p *livePolls) pollEvents(ctx context.Context, cursor Cursor, filters Filte
 	if err := checkNextCursor(page.Next); err != nil {
 		return PollPage{}, &PollError{Kind: PollUnrecoverable, Err: err}
 	}
+	if page.Events == nil {
+		// The envelope's events member is required; a page without one is
+		// not an empty page but a malformed one, and saving its position
+		// would skip whatever it should have carried.
+		return PollPage{}, &PollError{Kind: PollUnrecoverable, Err: errors.New("eventfeed: the page carries no events member")}
+	}
 	events := make([]Event, 0, len(page.Events))
 	for _, fe := range page.Events {
 		ev, err := eventFromFeed(fe)
@@ -559,6 +589,9 @@ func (p *livePolls) pollInbox(ctx context.Context, cursor Cursor, filters Filter
 	}
 	if err := checkNextCursor(page.Next); err != nil {
 		return PollPage{}, &PollError{Kind: PollUnrecoverable, Err: err}
+	}
+	if page.Items == nil {
+		return PollPage{}, &PollError{Kind: PollUnrecoverable, Err: errors.New("eventfeed: the page carries no items member")}
 	}
 	events := make([]Event, 0, len(page.Items))
 	for _, item := range page.Items {

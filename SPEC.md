@@ -4243,8 +4243,9 @@ END
 -- Resume URL Validation) → redirect_refused, carrying the refused Location redacted to
 -- its origin → Terminal(`invalid_continuation`), NEVER unrecoverable; anything else
 -- non-retryable (404, 405, unexpected shapes) → unrecoverable, carrying the generated
--- error verbatim. A same-origin Location may be followed inside the seam under the same
--- per-hop rule (no error surfaces).
+-- error verbatim. No Location is followed inside the seam, same-origin included: the API
+-- never redirects a feed call, and a continuation is followed by re-issuing the
+-- operation, never by a hop.
 
 INTERFACE CableTransport
   dial(ws_url, cancellation, max_frame_bytes) → CableConn
@@ -4352,11 +4353,11 @@ not an operable feed state.
 stacks auto-follow redirects (Go strips `Authorization` on a cross-origin hop but still
 egresses), which would falsify the zero-foreign-egress guarantee the moment a validated
 same-origin URL answers 3xx with a foreign `Location`. The Layer-1 adapter therefore
-**disables automatic redirect-following for `PollEvents`** (or per-hop validates every
-resolved `Location` under §8's hop-anchored rule): a 3xx from a validated URL yields its
-`Location` to the same same-origin + no-downgrade validation — cross-origin or downgraded
-→ Terminal(`invalid_continuation`) with zero egress to the foreign origin; same-origin →
-it may be followed, each hop under the same rule.
+**answers every 3xx to a feed operation itself and follows none**: a 3xx from a validated
+URL yields its `Location` reduced to its origin, with the hop refused — foreign,
+downgraded and same-origin alike, since the API never redirects a feed call and a
+continuation is followed by re-issuing the operation — → Terminal(`invalid_continuation`)
+with zero egress to the foreign origin.
 
 The mint's cable `url` is deliberately **not** under this rule: it is server-directed
 cable topology, cross-host by design, dialed verbatim with its own credential (the

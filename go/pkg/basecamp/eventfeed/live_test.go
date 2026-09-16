@@ -207,6 +207,88 @@ func TestLivePolls_FollowsAContinuationThroughTheOperation(t *testing.T) {
 	}
 }
 
+// TestLivePolls_ARelativeLocationResolvesToItsOrigin: a relative or
+// scheme-relative Location is resolved against the request before it is
+// reduced to an origin, so the seam reports the origin the hop named.
+func TestLivePolls_ARelativeLocationResolvesToItsOrigin(t *testing.T) {
+	for name, location := range map[string]string{"relative": "/maintenance", "scheme-relative": "//other.example.test/path"} {
+		t.Run(name, func(t *testing.T) {
+			f := newLiveFixture(t, eventfeed.AccountLane, func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Location", location)
+				w.WriteHeader(http.StatusFound)
+			})
+			_, err := f.live.Polls().Poll(context.Background(), eventfeed.Cursor{Position: "pos-0"}, eventfeed.Filters{})
+			var pe *eventfeed.PollError
+			if !errors.As(err, &pe) || pe.Kind != eventfeed.PollRedirectRefused {
+				t.Fatalf("error = %v, want redirect_refused", err)
+			}
+			want := f.server.URL
+			if name == "scheme-relative" {
+				want = "http://other.example.test"
+			}
+			if pe.LocationOrigin != want {
+				t.Fatalf("LocationOrigin = %q, want %q", pe.LocationOrigin, want)
+			}
+		})
+	}
+}
+
+// TestLivePolls_AResumeStartsANewWalk: a 410's resume re-enters at a since,
+// which is a new walk — its first page may carry keys below the previous
+// walk's last page — while a position continuation carries the order over.
+func TestLivePolls_AResumeStartsANewWalk(t *testing.T) {
+	const row = `"kind":"message_created","event_type":"message.created","action":"created","created_at":"2026-08-01T12:00:00Z","bucket_id":2,"creator_id":3,"performed_by_id":null,"recording_id":900`
+	f := newLiveFixture(t, eventfeed.AccountLane, func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("since") != "" {
+			jsonResponse(w, 200, `{"events":[{"id":50,`+row+`}],"position":"pos-r"}`)
+			return
+		}
+		jsonResponse(w, 200, `{"events":[{"id":100,`+row+`},{"id":102,`+row+`}],"position":"pos-1"}`)
+	})
+	polls := f.live.Polls()
+	if _, err := polls.Poll(context.Background(), eventfeed.Cursor{Position: "pos-0"}, eventfeed.Filters{}); err != nil {
+		t.Fatalf("first walk: %v", err)
+	}
+	if _, err := polls.Poll(context.Background(), eventfeed.Cursor{PageURL: f.server.URL + "/99999/events.json?since=5"}, eventfeed.Filters{}); err != nil {
+		t.Fatalf("a resume's first page below the previous walk: %v", err)
+	}
+}
+
+// TestLivePolls_APageWithoutItsCollectionIsMalformed: a 200 whose envelope
+// omits its events (or items) member — or sets it null — is not an empty
+// page but a malformed one, on either lane; an empty array is a page.
+func TestLivePolls_APageWithoutItsCollectionIsMalformed(t *testing.T) {
+	for name, tc := range map[string]struct {
+		lane eventfeed.Lane
+		body string
+		kind eventfeed.PollErrorKind
+		ok   bool
+	}{
+		"feed absent":  {eventfeed.AccountLane, `{"position":"p"}`, eventfeed.PollUnrecoverable, false},
+		"feed null":    {eventfeed.AccountLane, `{"events":null,"position":"p"}`, eventfeed.PollUnrecoverable, false},
+		"feed empty":   {eventfeed.AccountLane, `{"events":[],"position":"p"}`, 0, true},
+		"inbox absent": {eventfeed.InboxLane, `{"position":"p"}`, eventfeed.PollUnrecoverable, false},
+		"inbox empty":  {eventfeed.InboxLane, `{"items":[],"position":"p"}`, 0, true},
+	} {
+		t.Run(name, func(t *testing.T) {
+			f := newLiveFixture(t, tc.lane, func(w http.ResponseWriter, r *http.Request) {
+				jsonResponse(w, 200, tc.body)
+			})
+			_, err := f.live.Polls().Poll(context.Background(), eventfeed.Cursor{Position: "pos-0"}, eventfeed.Filters{})
+			if tc.ok {
+				if err != nil {
+					t.Fatalf("an empty page: %v", err)
+				}
+				return
+			}
+			var pe *eventfeed.PollError
+			if !errors.As(err, &pe) || pe.Kind != tc.kind {
+				t.Fatalf("error = %v, want %s", err, tc.kind)
+			}
+		})
+	}
+}
+
 // TestLivePolls_ANextMustContinueAtAPosition: a page whose `next` would
 // re-enter at a since — a present entry — is malformed, refused the way a
 // positionless page is, on either lane.
@@ -1077,6 +1159,7 @@ func TestNewLiveValidatesAndConnects(t *testing.T) {
 		"query":          {&basecamp.Config{BaseURL: "https://api.example.test/api?x=s3cret-leak"}, "1", eventfeed.AccountLane},
 		"fragment":       {&basecamp.Config{BaseURL: "https://api.example.test/api#s3cret-leak"}, "1", eventfeed.AccountLane},
 		"doubled slash":  {&basecamp.Config{BaseURL: "https://api.example.test/api//v1"}, "1", eventfeed.AccountLane},
+		"doubled root":   {&basecamp.Config{BaseURL: "https://api.example.test//"}, "1", eventfeed.AccountLane},
 		"no origin":      {&basecamp.Config{BaseURL: "/s3cret-leak"}, "1", eventfeed.AccountLane},
 	} {
 		t.Run(name, func(t *testing.T) {
