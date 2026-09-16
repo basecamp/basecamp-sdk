@@ -105,11 +105,16 @@ func NewLive(cfg *basecamp.Config, tokens basecamp.TokenProvider, accountID stri
 	// or a doubled slash would resolve to a different prefix than the one
 	// recorded here, and the guard would miss the seams' own calls.
 	basePath := "/"
-	if u, _ := url.Parse(cfg.BaseURL); u != nil && strings.Trim(u.Path, "/") != "" {
-		if clean := path.Clean(u.Path); clean != strings.TrimSuffix(u.Path, "/") || strings.Contains(u.Path, "//") {
-			return nil, usageError("the base URL path must be canonical: no dot segments, no doubled slashes")
+	if u, _ := url.Parse(cfg.BaseURL); u != nil {
+		if u.RawQuery != "" || u.Fragment != "" || u.ForceQuery || u.RawFragment != "" {
+			return nil, usageError("the base URL must carry no query or fragment")
 		}
-		basePath = "/" + strings.Trim(u.Path, "/") + "/"
+		if strings.Trim(u.Path, "/") != "" {
+			if clean := path.Clean(u.Path); clean != strings.TrimSuffix(u.Path, "/") || strings.Contains(u.Path, "//") {
+				return nil, usageError("the base URL path must be canonical: no dot segments, no doubled slashes")
+			}
+			basePath = "/" + strings.Trim(u.Path, "/") + "/"
+		}
 	}
 	opts = append(opts, basecamp.WithTransportWrapper(redirectGuardWrapper{basePath: basePath}))
 	client := basecamp.NewClient(cfg, tokens, opts...)
@@ -575,6 +580,27 @@ func checkPageOrder(sofar []Event, next Event) error {
 	return nil
 }
 
+// checkResumeCursor holds a 410's resume URL to the fence its body declares:
+// the feed's re-enters at since=<epoch_after_id>, the inbox's at since=0, and
+// neither carries a position. A resume that re-enters elsewhere — since=now,
+// a different id — would have an accepting handler skip retained history.
+// The URL is server-supplied text, so the error names nothing of it; its
+// origin is the connector's to validate before the URL is followed.
+func checkResumeCursor(resume, since string) error {
+	u, err := url.Parse(resume)
+	if err != nil {
+		return errors.New("eventfeed: the 410's resume URL does not parse")
+	}
+	values, err := url.ParseQuery(u.RawQuery)
+	if err != nil {
+		return errors.New("eventfeed: the 410's resume URL's query does not parse whole")
+	}
+	if len(values["since"]) != 1 || values["since"][0] != since || len(values["position"]) != 0 {
+		return errors.New("eventfeed: the 410's resume URL does not re-enter at the fence the body declares")
+	}
+	return nil
+}
+
 // positionRejectedMessage is the leading text of bc3's 400 for a malformed
 // (or foreign-account) position — the one 400 that is recoverable by a
 // since= re-entry. Every other 400 names an offending filter and is the
@@ -602,26 +628,50 @@ func mapPollError(ctx context.Context, err error, hop *refusedHop, lane Lane) er
 	}
 	var mismatch *basecamp.FeedFilterMismatchError
 	if errors.As(err, &mismatch) {
+		if mismatch.PositionDigest == "" || mismatch.FiltersDigest == "" {
+			// The conflict verdict is the status; the digests are what the
+			// connector reports and compares. A 409 missing either is not
+			// the documented conflict but a malformed response.
+			return &PollError{Kind: PollUnrecoverable, Err: errors.New("eventfeed: the 409 carries no position_digest or no filters_digest")}
+		}
 		return &PollError{Kind: PollFilterChanged, PositionDigest: mismatch.PositionDigest, FiltersDigest: mismatch.FiltersDigest, Err: err}
 	}
-	var gone *basecamp.FeedPositionGoneError
-	if errors.As(err, &gone) {
-		// The lane's 410 shape is the contract: the feed's names its epoch,
-		// the inbox's carries none. A body of the other lane's shape is not
-		// the documented gap but a malformed response — a gap raised from
-		// it would hand a handler a fence that does not exist, or a resume
-		// URL with none behind it. Unrecoverable, as a 200 that did not
-		// decode is.
-		var epoch int64
-		switch {
-		case lane == AccountLane && gone.EpochAfterID == nil:
-			return &PollError{Kind: PollUnrecoverable, Err: errors.New("eventfeed: the feed's 410 carries no epoch_after_id")}
-		case lane == InboxLane && gone.EpochAfterID != nil:
-			return &PollError{Kind: PollUnrecoverable, Err: errors.New("eventfeed: the inbox's 410 carries an epoch_after_id")}
-		case gone.EpochAfterID != nil:
-			epoch = *gone.EpochAfterID
+	// The two lanes' 410s are two generated types on purpose (the feed's
+	// names its epoch and re-enters there; the inbox's has none and re-enters
+	// at since=0), so each maps in its own arm, on its own lane only, and
+	// its resume URL must re-enter at the fence the body declares.
+	var feedGone *basecamp.FeedPositionGoneError
+	if errors.As(err, &feedGone) {
+		if lane != AccountLane {
+			return &PollError{Kind: PollUnrecoverable, Err: errors.New("eventfeed: the inbox answered with the feed's 410 shape")}
 		}
-		return &PollError{Kind: PollGone, EpochAfterID: epoch, ResumeURL: gone.Resume, Err: err}
+		if err := checkResumeCursor(feedGone.Resume, strconv.FormatInt(feedGone.EpochAfterID, 10)); err != nil {
+			return &PollError{Kind: PollUnrecoverable, Err: err}
+		}
+		return &PollError{Kind: PollGone, EpochAfterID: feedGone.EpochAfterID, ResumeURL: feedGone.Resume, Err: err}
+	}
+	var inboxGone *basecamp.InboxPositionGoneError
+	if errors.As(err, &inboxGone) {
+		if lane != InboxLane {
+			return &PollError{Kind: PollUnrecoverable, Err: errors.New("eventfeed: the feed answered with the inbox's 410 shape")}
+		}
+		if err := checkResumeCursor(inboxGone.Resume, "0"); err != nil {
+			return &PollError{Kind: PollUnrecoverable, Err: err}
+		}
+		return &PollError{Kind: PollGone, ResumeURL: inboxGone.Resume, Err: err}
+	}
+	var request *basecamp.FeedRequestError
+	if errors.As(err, &request) {
+		// The 400's reason keys the recover-versus-stop split. A server
+		// that sent none (it predates bc3 #13362) leaves the message as its
+		// only signal, and that is the fallback below — never a guess
+		// between the two on any other basis.
+		switch request.Reason {
+		case basecamp.FeedReasonInvalidPosition:
+			return &PollError{Kind: PollPositionInvalid, Msg: request.Err.Message, Err: err}
+		case basecamp.FeedReasonInvalidFilter:
+			return &PollError{Kind: PollFilterInvalid, Msg: request.Err.Message, Err: err}
+		}
 	}
 	if !errors.As(err, &apiErr) {
 		if isTransportFailure(err) {

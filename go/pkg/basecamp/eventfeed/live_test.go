@@ -217,6 +217,42 @@ func TestLivePolls_ErrorMatrix(t *testing.T) {
 					t.Fatalf("pe = %+v", pe)
 				}
 			}},
+		{"400 with reason invalid_position is position_invalid whatever the message", eventfeed.AccountLane, 400, "", `{"error":"anything at all","reason":"invalid_position"}`,
+			func(t *testing.T, pe *eventfeed.PollError) {
+				if pe.Kind != eventfeed.PollPositionInvalid {
+					t.Fatalf("kind = %s", pe.Kind)
+				}
+			}}, {"400 with reason invalid_filter is filter_invalid whatever the message", eventfeed.AccountLane, 400, "", `{"error":"Unrecognized position, said a server that means the filter","reason":"invalid_filter"}`,
+			func(t *testing.T, pe *eventfeed.PollError) {
+				if pe.Kind != eventfeed.PollFilterInvalid {
+					t.Fatalf("kind = %s", pe.Kind)
+				}
+			}}, {"inbox 400 with reason invalid_position is position_invalid", eventfeed.InboxLane, 400, "", `{"error":"bad","reason":"invalid_position"}`,
+			func(t *testing.T, pe *eventfeed.PollError) {
+				if pe.Kind != eventfeed.PollPositionInvalid {
+					t.Fatalf("kind = %s", pe.Kind)
+				}
+			}}, {"409 missing a digest is unrecoverable", eventfeed.AccountLane, 409, "", `{"error":"conflict","position_digest":"38b223c13c89dc89"}`,
+			func(t *testing.T, pe *eventfeed.PollError) {
+				if pe.Kind != eventfeed.PollUnrecoverable {
+					t.Fatalf("kind = %s", pe.Kind)
+				}
+			}}, {"410 whose resume does not re-enter at the epoch is unrecoverable", eventfeed.AccountLane, 410, "", `{"error":"gone","epoch_after_id":1071915000,"resume":"https://3.basecampapi.com/99999/events.json?since=now"}`,
+			func(t *testing.T, pe *eventfeed.PollError) {
+				if pe.Kind != eventfeed.PollUnrecoverable {
+					t.Fatalf("kind = %s", pe.Kind)
+				}
+			}}, {"inbox 410 whose resume does not re-enter at 0 is unrecoverable", eventfeed.InboxLane, 410, "", `{"error":"gone","resume":"https://3.basecampapi.com/99999/inbox.json?since=5"}`,
+			func(t *testing.T, pe *eventfeed.PollError) {
+				if pe.Kind != eventfeed.PollUnrecoverable {
+					t.Fatalf("kind = %s", pe.Kind)
+				}
+			}}, {"410 whose resume carries a position is unrecoverable", eventfeed.AccountLane, 410, "", `{"error":"gone","epoch_after_id":7,"resume":"https://3.basecampapi.com/99999/events.json?since=7&position=p"}`,
+			func(t *testing.T, pe *eventfeed.PollError) {
+				if pe.Kind != eventfeed.PollUnrecoverable {
+					t.Fatalf("kind = %s", pe.Kind)
+				}
+			}},
 		{"409 is filter_changed with both digests", eventfeed.AccountLane, 409, "", `{"error":"Positions are bound to the filter set they were minted for.","position_digest":"38b223c13c89dc89","filters_digest":"44136fa355b3678a"}`,
 			func(t *testing.T, pe *eventfeed.PollError) {
 				if pe.Kind != eventfeed.PollFilterChanged || pe.PositionDigest != "38b223c13c89dc89" || pe.FiltersDigest != "44136fa355b3678a" {
@@ -989,6 +1025,8 @@ func TestNewLiveValidatesAndConnects(t *testing.T) {
 		"userinfo base":  {&basecamp.Config{BaseURL: "https://user:s3cret-leak@api.example.test"}, "1", eventfeed.AccountLane},
 		"invalid utf-8":  {&basecamp.Config{BaseURL: "https://exa\xffmple.test"}, "1", eventfeed.AccountLane},
 		"dot segments":   {&basecamp.Config{BaseURL: "https://api.example.test/api/../v1"}, "1", eventfeed.AccountLane},
+		"query":          {&basecamp.Config{BaseURL: "https://api.example.test/api?x=s3cret-leak"}, "1", eventfeed.AccountLane},
+		"fragment":       {&basecamp.Config{BaseURL: "https://api.example.test/api#s3cret-leak"}, "1", eventfeed.AccountLane},
 		"doubled slash":  {&basecamp.Config{BaseURL: "https://api.example.test/api//v1"}, "1", eventfeed.AccountLane},
 		"no origin":      {&basecamp.Config{BaseURL: "/s3cret-leak"}, "1", eventfeed.AccountLane},
 	} {
