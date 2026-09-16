@@ -601,7 +601,10 @@ func splitInt64s(joined, name string) ([]int64, error) {
 	for _, part := range parts {
 		v, err := strconv.ParseInt(part, 10, 64)
 		if err != nil {
-			return nil, ErrUsage(fmt.Sprintf("continuation URL %s filter %q is not an integer id", name, part))
+			// The value is server-written text a continuation must never
+			// render (SPEC §23 "Continuation and Resume URL Validation"):
+			// the message names the filter, never the value.
+			return nil, ErrUsage(fmt.Sprintf("continuation URL %s filter carries a value that is not an integer id", name))
 		}
 		values = append(values, v)
 	}

@@ -35,6 +35,18 @@
 # sentence promising an issue owns something. Decrement or remove when the
 # sentence goes, and the gate stops asking.
 prose_tracking_issues:
+  - issue: 915
+    file: "go/pkg/basecamp/eventfeed/live.go"
+    site: "go/pkg/basecamp/eventfeed/live.go — the 409 digest and 400 reason shapes are held at the adapter until the wrapper's decode holds them"
+    mentions: 1
+  - issue: 915
+    file: "go/pkg/basecamp/eventfeed/live_test.go"
+    site: "go/pkg/basecamp/eventfeed/live_test.go — the inbox 410 accepts a member its shape does not declare until the wrapper's decode refuses one"
+    mentions: 1
+  - issue: 901
+    file: "ruby/lib/basecamp/http.rb"
+    site: "ruby/lib/basecamp/http.rb — declared-idempotent mutations such as CreateStreamTicket bypass the retry budget"
+    mentions: 1
   - issue: 589
     file: "Makefile"
     site: "Makefile — the vendored bc3-route table's freshness gate needs BC3_REPO_PATH, so it is not in CI"
@@ -119,19 +131,3 @@ prose_tracking_issues:
     file: "SPEC.md"
     site: "SPEC.md Appendix F — OAuth endpoint address enforcement beyond Go (§16 req 5–6) is pending #818's umbrella"
     mentions: 2
-  - issue: 819
-    file: "SPEC.md"
-    site: "SPEC.md §23 zero-egress paragraph — the Layer-1 302 test's adapters are pending #819"
-    mentions: 1
-  - issue: 819
-    file: "conformance/event-feed/README.md"
-    site: "conformance/event-feed/README.md — Layer-1 seam-adapter conformance (rows 15/30 and the row-15 note) is pending #819"
-    mentions: 3
-  - issue: 819
-    file: "conformance/event-feed/fixtures/30-continuation-redirect-cross-origin.json"
-    site: "fixture 30's description — the below-seam zero-request proof is pending #819's Layer-1 adapters"
-    mentions: 1
-  - issue: 819
-    file: "conformance/event-feed/schema.json"
-    site: "schema.json fixture-30 respond variant — the Layer-1 302 test is pending #819"
-    mentions: 1

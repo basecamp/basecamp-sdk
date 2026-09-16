@@ -39,6 +39,10 @@ type Client struct {
 	logger        *slog.Logger
 	httpOpts      HTTPOptions
 	hooks         Hooks
+	// transportWrapper, when set, wraps the resolved transport before the
+	// logging layer (WithTransportWrapper). An interface, not a func: Client
+	// stays comparable.
+	transportWrapper TransportWrapper
 
 	// Generated client (single shared instance, account passed per operation)
 	genOnce sync.Once
@@ -155,6 +159,25 @@ func WithHTTPClient(c *http.Client) ClientOption {
 	}
 }
 
+// TransportWrapper composes a RoundTripper over the transport a Client
+// resolves — the one WithTransport supplied, or the default — so a caller can
+// observe or rewrite every wire response without replacing the transport
+// beneath it. The wrapper sits under the client's logging layer: what it
+// returns is what hooks, logs and the redirect policy see. The SPEC §23 event
+// feed connector installs one that answers every 3xx itself, because an
+// authenticated poll must never egress to a foreign origin at all.
+type TransportWrapper interface {
+	WrapTransport(inner http.RoundTripper) http.RoundTripper
+}
+
+// WithTransportWrapper installs the TransportWrapper the client composes over
+// its transport. A later option replaces an earlier one.
+func WithTransportWrapper(w TransportWrapper) ClientOption {
+	return func(client *Client) {
+		client.transportWrapper = w
+	}
+}
+
 // WithUserAgent sets the User-Agent header.
 func WithUserAgent(ua string) ClientOption {
 	return func(client *Client) {
@@ -234,6 +257,10 @@ func NewClient(cfg *Config, tokenProvider TokenProvider, opts ...ClientOption) *
 	transport := c.httpOpts.Transport
 	if transport == nil {
 		transport = newDefaultTransport()
+	}
+
+	if c.transportWrapper != nil {
+		transport = c.transportWrapper.WrapTransport(transport)
 	}
 
 	// Wrap transport with logging transport

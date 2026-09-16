@@ -806,14 +806,16 @@ timer, and resumes after a disconnect. You consume it as one serial, deduplicate
 stream of events; the connector owns reconnection, backoff, staleness detection, and
 the durable position.
 
-**Experimental: the Layer-1 seam adapters have not landed yet.** The connector performs
-no HTTP API I/O of its own: every HTTP exchange reaches the wire through a seam backed by
-a generated operation. Its one direct wire act is the Action Cable dial above — the
-connector connects verbatim to the URL a generated `CreateStreamTicket` call returned,
-which is the sanctioned non-HTTP wire act. The adapters that build those seams over the
-generated `CreateStreamTicket` and `PollEvents` operations are still to come. Until they
-do, a consumer must supply the `TicketMinter` and `PollSource` implementations itself, and
-the exported surface may still change as they land.
+**Experimental.** The connector performs no HTTP API I/O of its own: every HTTP
+exchange reaches the wire through a seam backed by a generated operation, and its one
+direct wire act is the Action Cable dial above — the connector connects verbatim to the
+URL a generated `CreateStreamTicket` call returned, which is the sanctioned non-HTTP wire
+act. `eventfeed.NewLive` binds those seams to the generated `CreateStreamTicket`,
+`PollEvents` and `PollInbox` operations over a `basecamp.Client` it builds for you — with
+a transport guard that answers every 3xx at the wire instead of following it, so an
+authenticated poll never egresses off the API origin and no `Location` reaches a log —
+and `Connect` builds the connector over them. A host may still
+supply its own `TicketMinter` and `PollSource`; the exported surface may still change.
 
 ```go
 import (
@@ -822,21 +824,20 @@ import (
     "fmt"
     "log"
 
+    "github.com/basecamp/basecamp-sdk/go/pkg/basecamp"
     "github.com/basecamp/basecamp-sdk/go/pkg/basecamp/eventfeed"
 )
 
-// The two seams the host supplies until the Layer-1 adapters land. Each call is
-// exactly one generated operation:
-//
-//	MintStreamTicket(ctx) (eventfeed.StreamTicket, error)   // CreateStreamTicket
-//	Poll(ctx, cursor, filters) (eventfeed.PollPage, error)  // PollEvents
-var minter eventfeed.TicketMinter
-var polls eventfeed.PollSource
+var tokenProvider basecamp.TokenProvider
 var agentPersonID int64 // the acting principal's own person id
 
 ctx := context.Background()
 
-feed, err := eventfeed.New("https://3.basecampapi.com", "5951425", minter, polls,
+live, err := eventfeed.NewLive(basecamp.DefaultConfig(), tokenProvider, "5951425", eventfeed.AccountLane)
+if err != nil {
+    return err
+}
+feed, err := live.Connect(
     eventfeed.WithFilters(eventfeed.Filters{
         Types: []string{"message.created"},
         // The loop guard for an agent that acts on what it hears: its own
@@ -890,9 +891,13 @@ attempts.
 
 `Events` is single-shot: consuming it twice yields one `ReasonUsage` error element.
 
-The same connector consumes the principal's **inbox** — the low-noise lane of items that
-addressed the agent (mentions, assignments, subscriptions, watches, pings, boosts) — with
-`eventfeed.WithLane(eventfeed.InboxLane)` and a `PollSource` over the inbox endpoint.
+A second binding consumes the principal's **inbox** — the low-noise lane of items that
+addressed the agent (mentions, assignments, subscriptions, watches, pings, boosts):
+`eventfeed.NewLive(cfg, tokenProvider, "5951425", eventfeed.InboxLane)` binds the seams
+to `PollInbox`, and its `Connect` builds the inbox connector (the lane is the binding's;
+a `WithLane` naming the other lane is refused, never silently overridden). A host that
+supplies its own seams passes `eventfeed.WithLane(eventfeed.InboxLane)` to `New` with a
+`PollSource` over the inbox endpoint.
 Every delivered event then carries `ev.Addressing` (the item id, the reason, when), and
 the connector deduplicates and positions by that item id, since one event can address
 you for several reasons. Filter it with `Filters{Reasons: ...}` (plus `Types` and

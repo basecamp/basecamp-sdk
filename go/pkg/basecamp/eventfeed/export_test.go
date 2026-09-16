@@ -2,6 +2,7 @@ package eventfeed
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"time"
 )
@@ -146,6 +147,36 @@ func ExportInboxSubscribeIdentifier(f Filters) string { return subscribeIdentifi
 // writes.
 func ExportSubscribeFrame(f Filters) []byte {
 	return subscribeCommand(subscribeIdentifier(AccountLane, f))
+}
+
+// ExportMapPollErrorKind exposes the poll seam's error classification for an
+// error that never reached the wire.
+func ExportMapPollErrorKind(err error) PollErrorKind {
+	var pe *PollError
+	if errors.As(mapPollError(context.Background(), err, &refusedHop{}, AccountLane), &pe) {
+		return pe.Kind
+	}
+	return 0
+}
+
+// ExportMapMintErrorKind is ExportMapPollErrorKind for the mint seam.
+func ExportMapMintErrorKind(err error) MintErrorKind {
+	var me *MintError
+	if errors.As(mapMintError(context.Background(), err, &refusedHop{}), &me) {
+		return me.Kind
+	}
+	return 0
+}
+
+// ExportDecodePushEvent decodes one event object the way the push lane does,
+// so a test can hold the poll adapter to the same bytes.
+func ExportDecodePushEvent(raw []byte) (Event, error) {
+	return decodeEventObject(json.RawMessage(raw), true)
+}
+
+// ExportIsFeedOperationPath exposes the redirect guard's route match.
+func ExportIsFeedOperationPath(basePath, path string) bool {
+	return isFeedOperationPath(basePath, path)
 }
 
 // ExportInboxSubscribeFrame is ExportSubscribeFrame for the inbox lane.

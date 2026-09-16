@@ -4241,10 +4241,16 @@ END
 -- refresh and retry budget) → unauthorized; a 3xx whose Location fails the per-hop
 -- same-origin/no-downgrade validation (auto-follow is disabled — Continuation and
 -- Resume URL Validation) → redirect_refused, carrying the refused Location redacted to
--- its origin → Terminal(`invalid_continuation`), NEVER unrecoverable; anything else
+-- its origin — or, in its place, the fixed token `unparsable` when the Location yielded
+-- no complete origin (§9) and `unrecorded` when the hop was refused but the adapter
+-- could not attribute the origin to the call; the refusal and its zero egress never
+-- depend on that attribution, and the two tokens are never interchanged, since one
+-- reports what the server sent and the other what the adapter failed to keep
+-- → Terminal(`invalid_continuation`), NEVER unrecoverable; anything else
 -- non-retryable (404, 405, unexpected shapes) → unrecoverable, carrying the generated
--- error verbatim. A same-origin Location may be followed inside the seam under the same
--- per-hop rule (no error surfaces).
+-- error verbatim. No Location is followed inside the seam, same-origin included: the API
+-- never redirects a feed call, and a continuation is followed by re-issuing the
+-- operation, never by a hop.
 
 INTERFACE CableTransport
   dial(ws_url, cancellation, max_frame_bytes) → CableConn
@@ -4352,11 +4358,11 @@ not an operable feed state.
 stacks auto-follow redirects (Go strips `Authorization` on a cross-origin hop but still
 egresses), which would falsify the zero-foreign-egress guarantee the moment a validated
 same-origin URL answers 3xx with a foreign `Location`. The Layer-1 adapter therefore
-**disables automatic redirect-following for `PollEvents`** (or per-hop validates every
-resolved `Location` under §8's hop-anchored rule): a 3xx from a validated URL yields its
-`Location` to the same same-origin + no-downgrade validation — cross-origin or downgraded
-→ Terminal(`invalid_continuation`) with zero egress to the foreign origin; same-origin →
-it may be followed, each hop under the same rule.
+**answers every 3xx to a feed operation itself and follows none**: a 3xx from a validated
+URL yields its `Location` reduced to its origin, with the hop refused — foreign,
+downgraded and same-origin alike, since the API never redirects a feed call and a
+continuation is followed by re-issuing the operation — → Terminal(`invalid_continuation`)
+with zero egress to the foreign origin.
 
 The mint's cable `url` is deliberately **not** under this rule: it is server-directed
 cable topology, cross-host by design, dialed verbatim with its own credential (the
@@ -4383,9 +4389,13 @@ decides whether to follow one, which makes the foreign origin unreachable by
 construction of the harness — a harness that asserted no request reached it would be
 asserting something about itself. That obligation belongs to the Layer-1 seam
 adapter's own 302 test, where a real generated `PollEvents` call meets a real redirect
-against an adapter with automatic redirect-following disabled.
-`conformance/event-feed/README.md`'s row-15 note records it as a pending obligation
-rather than a proof the repository contains; the adapters are tracked in #819.
+against an adapter whose client refuses the hop: the Go adapters (`eventfeed.NewLive`)
+compose a guard over their client's transport that answers every 3xx at the wire —
+the `Location` reduced to its origin for the seam and stripped, with the body, before
+the HTTP stack, the operation hooks or any log sees it; no hop is followed, same-origin
+included, since the API never redirects a feed call — and their 302 test proves zero
+egress against a sentinel listener behind the foreign `Location`
+(`conformance/event-feed/README.md`, row 15).
 
 ### Clock, Timers, and Virtual Time `[conformance]`
 

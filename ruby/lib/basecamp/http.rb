@@ -629,7 +629,9 @@ module Basecamp
     def request(method, path, params: {}, body: nil, allow_cross_origin: false, operation: nil)
       url = build_url(path, allow_cross_origin: allow_cross_origin)
 
-      # Mutations don't retry on 429/5xx to avoid duplicating data
+      # Mutations don't retry on 429/5xx to avoid duplicating data. A mutation
+      # declared naturally idempotent (CreateStreamTicket) should retry per its
+      # operation metadata instead; routing it here is tracked in #901.
       if method == :get
         request_with_retry(method, url, params: params, allow_cross_origin: allow_cross_origin, operation: operation)
       else

@@ -48,17 +48,23 @@ templates, templatifications, backlinks, bulk enrollments and the unscoped
 recording show, each needing its own triage); the three routes are waived in
 `spec/bc3-route-allowlist.yml` with the evidence, to be deleted at the repin.
 
-What merged differs from the pre-merge record below in four places the
-connector (SPEC §23, layer 2) still has to absorb: the digest scheme is
-published as **`srv2`** (the `reasons` dimension joined it); the feed's 410
-`resume` re-enters at **`since=<epoch_after_id>`**, not `since=now`, while the
-inbox's re-enters at `since=0`; the filter set grew `performers`,
-`exclude_performers` (both accepting the literal `self`) and `actor_types`; and
-the inbox is a lane of its own (`GET /inbox.json`, agents only, items keyed by
-`addressing_id`, 30-day retention). Layer 2 — the connector, the
-`conformance/event-feed/` fixture family and its gate — continues on its own
-branches against SPEC §23, which keeps its provisional markings until it
-re-verifies against the merged head.
+What merged differed from the pre-merge record below in four places, and the
+connector (SPEC §23, layer 2) absorbed all four: the digest scheme is published
+as **`srv2`** (the `reasons` dimension joined it) and the connector's checkpoint
+namespace and 409 handling follow it; the feed's 410 `resume` re-enters at
+**`since=<epoch_after_id>`**, not `since=now`, while the inbox's re-enters at
+`since=0`, and the connector treats the accepted resume as a position-resume
+entry; the filter set grew `performers`, `exclude_performers` (both accepting
+the literal `self`) and `actor_types`, which the connector validates
+syntactically and carries into the digest; and the inbox is a lane of its own
+(`GET /inbox.json`, agents only, items keyed by `addressing_id`, 30-day
+retention), which the connector runs as `InboxLane` with a lane-keyed
+checkpoint. The Go adapters (`eventfeed.NewLive`) bind the seams to the
+generated `PollEvents`, `PollInbox` and `CreateStreamTicket` operations, and the
+`conformance/event-feed/` fixture family and its gate pin the absorbed contract.
+One wire-layer residue remains: Ruby's `create_stream_ticket` runs through the
+runtime's single-attempt mutation path rather than the operation's declared
+retry budget (#901).
 
 The pre-merge record follows, unedited, as history.
 
