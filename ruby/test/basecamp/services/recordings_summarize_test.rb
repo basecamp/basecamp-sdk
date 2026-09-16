@@ -580,6 +580,34 @@ class RecordingsSummarizeTest < Minitest::Test
     end
   end
 
+  def test_a_null_nested_label_is_emitted_as_an_empty_string
+    # The value the write-back produces, asserted on the EMITTED member rather
+    # than on the read succeeding. Without this, deleting the write-back leaves
+    # the whole suite and all 255 conformance cases green while the member goes
+    # back to carrying nil — which is exactly what happened for a full round,
+    # under a comment describing the behaviour a caller would get.
+    #
+    # This test exists because of that: a comment claiming a behaviour needs a
+    # test asserting that behaviour, in the same commit. It was written in the
+    # commit after, which is one round too late and is the point.
+    { "creator" => "name", "parent" => "title", "bucket" => "name" }.each do |member, label|
+      body = recording(member => { "id" => member == "bucket" ? BUCKET : 9, label => nil })
+      stub_get("/12345/comments/1", response_body: body)
+
+      emitted = summarize(event_type: "comment.created")[member]
+
+      assert_equal "", emitted[label], "a null #{member}.#{label} is emitted as an empty string"
+      assert_predicate emitted[label], :empty?, "and a caller can call .empty? on it, which nil could not"
+      WebMock.reset!
+    end
+
+    # An ABSENT label is not invented, which is the guard on the write-back —
+    # the reference emits a full struct and this tier passes the object through.
+    stub_get("/12345/comments/1", response_body: recording("creator" => { "id" => 7 }))
+
+    assert_equal({ "id" => 7 }, summarize(event_type: "comment.created")["creator"])
+  end
+
   def test_a_null_assignee_is_an_object_rather_than_a_nil
     # The reference decodes a null member as the zero Person and emits it as an
     # OBJECT, so passing nil through handed a consumer something that crashes on
@@ -593,11 +621,16 @@ class RecordingsSummarizeTest < Minitest::Test
 
     assert_equal 2, assignees.length
     # An empty OBJECT, not a nil — which was the actual complaint, since a nil
-    # member crashes a consumer on assignee["id"]. It is not the zero Person the
-    # reference marshals, and that is the pass-through boundary #project states
-    # rather than an oversight: the reference emits a whole typed struct for
-    # {}, {"id" => 5} and {"name" => "N"} too, and this tier passes all four
-    # through alike.
+    # member crashes a consumer on assignee["id"]. It is not what the reference
+    # marshals, and that is the pass-through boundary #project states rather
+    # than an oversight.
+    #
+    # The reference emits a FULL TWO-KEY STRUCT for all four of these — not the
+    # same value for all four, which an earlier version of this comment said:
+    # {} and null both give {"id":0,"name":""}, but {"id":5} gives
+    # {"id":5,"name":""} and {"name":"N"} gives {"id":0,"name":"N"}. What is
+    # uniform is that it always emits both keys and this tier always emits the
+    # object it was given.
     #
     # A previous version synthesised the zero Person for the null alone and
     # left the other three, which made this one row agree with the contract and
