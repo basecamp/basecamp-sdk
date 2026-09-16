@@ -243,7 +243,7 @@ public struct SearchResult: Codable, Sendable {
         self.soundUrl = try container.decodeIfPresent(String.self, forKey: .soundUrl)
         self.status = try container.decodeIfPresent(String.self, forKey: .status)
         self.subject = try container.decodeIfPresent(String.self, forKey: .subject)
-        self.subscribers = try container.decodeIfPresent([Person].self, forKey: .subscribers)
+        self.subscribers = try container.decodePeopleIfPresent([Person].self, forKey: .subscribers)
         self.subscriptionUrl = try container.decodeIfPresent(String.self, forKey: .subscriptionUrl)
         self.thumbnailUrl = try container.decodeIfPresent(String.self, forKey: .thumbnailUrl)
         self.title = try container.decodeIfPresent(String.self, forKey: .title)

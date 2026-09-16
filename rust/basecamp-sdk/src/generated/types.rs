@@ -430,10 +430,18 @@ pub struct Card {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub completer: Option<Person>,
     /// `assignees`.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        deserialize_with = "crate::types::person_list::deserialize_optional",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub assignees: Option<Vec<Person>>,
     /// `completion_subscribers`.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        deserialize_with = "crate::types::person_list::deserialize_optional",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub completion_subscribers: Option<Vec<Person>>,
     /// `steps`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -498,7 +506,11 @@ pub struct CardColumn {
     /// `creator`.
     pub creator: Person,
     /// `subscribers`.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        deserialize_with = "crate::types::person_list::deserialize_optional",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub subscribers: Option<Vec<Person>>,
     /// `on_hold`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -576,7 +588,11 @@ pub struct CardStep {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub completer: Option<Person>,
     /// `assignees`.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        deserialize_with = "crate::types::person_list::deserialize_optional",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub assignees: Option<Vec<Person>>,
     /// `completion_url`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -618,7 +634,11 @@ pub struct CardTable {
     /// `creator`.
     pub creator: Person,
     /// `subscribers`.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        deserialize_with = "crate::types::person_list::deserialize_optional",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub subscribers: Option<Vec<Person>>,
     /// `lists`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -3699,7 +3719,11 @@ pub struct Notification {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub previewable_attachments: Option<Vec<PreviewableAttachment>>,
     /// Present on ping notifications
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        deserialize_with = "crate::types::person_list::deserialize_optional",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub participants: Option<Vec<Person>>,
     /// Whether the ping has a custom name (pings only)
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -3784,7 +3808,7 @@ pub struct PeopleConfirmationRequiredErrorResponseContent {
 #[non_exhaustive]
 pub struct Person {
     /// `id`.
-    #[serde(deserialize_with = "crate::types::flexible_i64::deserialize")]
+    #[serde(default, deserialize_with = "crate::types::flexible_i64::deserialize")]
     pub id: i64,
     /// `attachable_sgid`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -4037,10 +4061,18 @@ pub struct Project {
 #[non_exhaustive]
 pub struct ProjectAccessResult {
     /// `granted`.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        deserialize_with = "crate::types::person_list::deserialize_optional",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub granted: Option<Vec<Person>>,
     /// `revoked`.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        deserialize_with = "crate::types::person_list::deserialize_optional",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub revoked: Option<Vec<Person>>,
 }
 
@@ -4828,7 +4860,11 @@ pub struct ScheduleEntry {
     /// Always sent. See starts_at for the date-vs-timestamp rendering.
     pub ends_at: FlexibleTime,
     /// `participants`.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        deserialize_with = "crate::types::person_list::deserialize_optional",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub participants: Option<Vec<Person>>,
     /// The entry's join link, or null when it has none.
     ///
@@ -5042,7 +5078,11 @@ pub struct SearchResult {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub sound_url: Option<String>,
     /// Everyone subscribed to the kanban list, as full Person projections.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        deserialize_with = "crate::types::person_list::deserialize_optional",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub subscribers: Option<Vec<Person>>,
     /// Color of a kanban list or gauge needle. Emitted unconditionally by both
     /// branches with a null value when unset, so it is nullable (the enhance
@@ -5258,7 +5298,11 @@ pub struct Subscription {
     /// `url`.
     pub url: String,
     /// `subscribers`.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        deserialize_with = "crate::types::person_list::deserialize_optional",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub subscribers: Option<Vec<Person>>,
 }
 
@@ -5660,10 +5704,18 @@ pub struct Todo {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub due_on: Option<Date>,
     /// `assignees`.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        deserialize_with = "crate::types::person_list::deserialize_optional",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub assignees: Option<Vec<Person>>,
     /// `completion_subscribers`.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        deserialize_with = "crate::types::person_list::deserialize_optional",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub completion_subscribers: Option<Vec<Person>>,
     /// `completion_url`.
     #[serde(default, skip_serializing_if = "Option::is_none")]

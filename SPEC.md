@@ -1717,6 +1717,24 @@ and they are closed to different extents:
   rather than rounded into a different person's id; and a JSON number spelled
   `1024.0` or `1e3` is ACCEPTED where the reference refuses it, because
   `JSON.parse` has made it an integer before any code can look.
+- **In Swift and Rust the decoder answers both shapes, on the read as well as
+  the write.** Neither has a reader of its own on the write path: the generated
+  model is the reader, so the two shapes are generated-model optionality. A
+  *person* here is a generated struct whose id is a required flexible id — the
+  `FlexibleInt64` marker, not the name, so the plain-`int64` person types in the
+  table above, and `TemplateLibraryConfirmationPerson`, are not persons and stay
+  strict. A person reads an absent `id` as
+  `0` while an explicit `"id": null` still fails; a member whose element type is
+  a person reads a `null` element as the zero person, while a non-object
+  element still fails and a `null` list is still no list. Being a decode rule,
+  it reaches a plain generated read too: `todos.get` gives `0` for such an
+  assignee, as Go does. Two positions Go also reads as the zero person are
+  **not** reached: a `null` element of a top-level people list (`ListPeople`
+  and its siblings, decoded by the generic page reader rather than a generated
+  member), and a `null` *required* single person such as `creator`, which would
+  put the system actor on "who acted". Swift keeps its float residual
+  (`FlexibleInt`): `1024.0`, `1e3` and `0.0` read as integers where Go fails
+  the read. **Kotlin** still refuses an absent `id` and a `null` element.
 - **The plain read is still open.** A generated service read in Ruby, Python
   and TypeScript still returns an untagged person's string id as the string,
   where the reference's decoder gives the number. (Ruby's generated
