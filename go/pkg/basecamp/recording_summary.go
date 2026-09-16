@@ -107,6 +107,48 @@ var (
 	ErrBucketMismatch = errors.New("recording is not in the requested bucket")
 )
 
+// RecordingSummaryCode reports the canonical SPEC §6 code a Summarize verdict
+// is classified under, and whether this SDK classifies it at all.
+//
+// The verdicts above are sentinel errors with no code slot, and that stays
+// true: the identity is the sentinel, matched with errors.Is, and it is
+// deliberately not a member of §6's closed taxonomy, which describes HTTP
+// answers. But a CLI still has to choose an exit status for one, and until
+// this existed every consumer chose its own — which is how
+// campfire_discovery_incomplete came to exit 1 from the Kotlin SDK and 7 from
+// Python's for the same condition. Card 40 settled that value as usage and
+// this is where the Go side of it is written down; ExitCodeFor turns the
+// answer into the status.
+//
+// https://app.basecamp.com/2914079/buckets/48699913/card_tables/cards/10308122086
+//
+// It answers only for the identities the seven ports agree on, which is what
+// makes it a shared contract rather than one more port's taste.
+// ErrBucketMismatch is not one of them: Rust classifies it not_found where
+// Python, Ruby, Kotlin and TypeScript say usage, so it is left unclassified
+// here rather than settled by the SDK that has no code slot to begin with. A
+// caller that reaches it gets ok == false and decides for itself, exactly as
+// every caller did before.
+func RecordingSummaryCode(err error) (code string, ok bool) {
+	switch {
+	case errors.Is(err, ErrNoRecordingType), errors.Is(err, ErrUnknownRecordingType):
+		// Refused from the caller's own arguments, before any request.
+		return CodeUsage, true
+	case errors.Is(err, ErrRecordingUnresolved):
+		// Every visible candidate answered 404: the line is not there.
+		return CodeNotFound, true
+	case errors.Is(err, ErrCampfireDiscoveryIncomplete):
+		// usage is the one coarse code no HTTP response can produce — the
+		// status mapping yields auth_required, forbidden, not_found,
+		// rate_limit, validation, limit_exceeded and api_error, never this one
+		// — so a verdict the composite reached on its own can never be read
+		// back as a constituent read's own answer. Never not_found: nothing
+		// left unsearched may be reported absent.
+		return CodeUsage, true
+	}
+	return "", false
+}
+
 // RecordingRoutingError reports a RecordingRef that Summarize cannot route. It
 // wraps ErrNoRecordingType or ErrUnknownRecordingType.
 type RecordingRoutingError struct {

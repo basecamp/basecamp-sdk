@@ -1437,12 +1437,21 @@ describe("recordings.summarize", () => {
 
       expect(err).toBeInstanceOf(CampfireDiscoveryIncompleteError);
       expect((err as CampfireDiscoveryIncompleteError).kind).toBe("campfire_discovery_incomplete");
-      // The code and the status it decides. Python and Rust agree on
-      // `api_error`; Kotlin maps this identity to `usage`, so the exit status
-      // differs between merged ports (7 against 1) and this assertion is what
-      // makes this port's side of that split checkable.
-      expect((err as BasecampError).code).toBe("api_error");
-      expect((err as BasecampError).exitCode).toBe(7);
+      // The code and the status it decides. The merged ports diverged here —
+      // Python, Ruby, Rust and this one said `api_error` (exit 7), Kotlin said
+      // `usage` (exit 1) — and card 40 settled it as `usage`, non-retryable,
+      // for every SDK:
+      // https://app.basecamp.com/2914079/buckets/48699913/card_tables/cards/10308122086
+      // `usage` is the one coarse code no HTTP response can produce, so this
+      // verdict can never be read back as a constituent read's own answer.
+      expect((err as BasecampError).code).toBe("usage");
+      expect((err as BasecampError).exitCode).toBe(1);
+      // The other half of that decision, and the half a code change could
+      // otherwise carry away with it: both reasons are deterministic for the
+      // same account state, so a retry loop would re-run the identical search.
+      expect((err as BasecampError).retryable).toBe(false);
+      // Statusless: no single read's status describes this verdict.
+      expect((err as BasecampError).httpStatus).toBeUndefined();
       expect((err as CampfireDiscoveryIncompleteError).reason).toBe(
         `the candidate budget of ${MAX_CAMPFIRE_CANDIDATES} was spent before the account listing was consulted`,
       );

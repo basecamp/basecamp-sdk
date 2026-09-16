@@ -291,7 +291,28 @@ export class UnresolvedRecordingError extends RecordingSummaryError {
   }
 }
 
-/** Discovery stopped short of a conclusion, and why. */
+/**
+ * Discovery stopped short of a conclusion, and why.
+ *
+ * `usage`, non-retryable, settled across every port on
+ * {@link https://app.basecamp.com/2914079/buckets/48699913/card_tables/cards/10308122086 | card 40}
+ * after the merged ports shipped two different answers — this one and Python
+ * said `api_error`, Kotlin said `usage`, and a caller got exit 7 from one SDK
+ * and exit 1 from another for the same condition.
+ *
+ * `usage` is the one coarse code no HTTP response can produce: the status
+ * mapping yields `auth_required`, `forbidden`, `not_found`, `rate_limit`,
+ * `validation`, `limit_exceeded` and `api_error`, never this one, so a verdict
+ * the composite reached on its own can never be read back as a constituent
+ * read's own answer — the property the composite exists to protect. It is
+ * explicitly not `not_found`, because nothing left unsearched may be reported
+ * absent.
+ *
+ * Retryability is a separate field and is unchanged: {@link
+ * RecordingSummaryError} forces `retryable: false` on every identity, and both
+ * of this one's reasons are deterministic for the same account state, so a
+ * retry loop would re-run the identical search forever.
+ */
 export class CampfireDiscoveryIncompleteError extends RecordingSummaryError {
   readonly bucketId: number;
   readonly recordingId: number;
@@ -300,7 +321,7 @@ export class CampfireDiscoveryIncompleteError extends RecordingSummaryError {
   constructor(init: { bucketId: number; recordingId: number; reason: string }) {
     super(
       "campfire_discovery_incomplete",
-      "api_error",
+      "usage",
       `campfire discovery incomplete: line ${init.recordingId} in bucket ${init.bucketId}: ${init.reason}`,
       { hint: "candidates were left unsearched, so the line cannot be reported absent" },
     );

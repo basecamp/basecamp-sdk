@@ -363,7 +363,8 @@ struct Runner {
                 // BasecampError and is caught above, which is what lets the
                 // "returns a Campfire candidate's 403 as that read's error" case
                 // assert `forbidden` rather than a composite identity.
-                semanticError = SemanticError(type: semanticErrorType(error), message: error.message)
+                semanticError = SemanticError(
+                    type: semanticErrorType(error), message: error.message, code: error.canonicalCode)
                 dispatchFailed = true
             } catch let error as RunnerError {
                 // A fixture the dispatch table cannot honor as written: an

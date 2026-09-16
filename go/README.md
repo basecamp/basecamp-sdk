@@ -688,6 +688,23 @@ if err != nil {
 fmt.Println(summary.Type, summary.Title, summary.MentionedPersonIDs)
 ```
 
+These verdicts are sentinels, not `*basecamp.Error`: they are not HTTP answers,
+so they carry no status and are not members of the `Code*` taxonomy. A CLI that
+still has to choose an exit status asks `RecordingSummaryCode`, which gives the
+one answer every SDK now agrees on rather than leaving each consumer to invent
+its own:
+
+```go
+if code, ok := basecamp.RecordingSummaryCode(err); ok {
+    os.Exit(basecamp.ExitCodeFor(code)) // usage (1) for routing refusals and
+                                        // incomplete discovery; not_found (2)
+                                        // for an unresolved chat line
+}
+```
+
+`ok` is false for `ErrBucketMismatch`, whose classification the ports have not
+settled, and for anything that is not one of these verdicts.
+
 The routed set is deliberate, not exhaustive. By event type, any action on
 these subjects routes to the subject's read; by recording type, exactly these
 (the `Chat::Lines::*` subtypes share one route). `SummarizableEventTypes()`

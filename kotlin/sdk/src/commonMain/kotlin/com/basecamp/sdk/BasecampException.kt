@@ -351,8 +351,16 @@ sealed class BasecampException(
      * | `recording_unresolved`          | `not_found` | every visible candidate answered 404 |
      * | `campfire_discovery_incomplete` | `usage`     | see below |
      *
-     * The last row is the one that does not fit cleanly, and it is stated rather
-     * than smoothed. Discovery stopping at its own bound is not a server fault,
+     * The last row is the one that did not fit cleanly, and the ports did not
+     * reach it together: this one said `usage` while Python, Ruby, Rust and
+     * TypeScript said `api_error`, so the same condition exited 1 from one SDK
+     * and 7 from another. Card 40 settled it as `usage`, non-retryable, for
+     * every SDK, and the shared conformance fixture now pins the code as well
+     * as the identity so the next port cannot diverge silently:
+     * https://app.basecamp.com/2914079/buckets/48699913/card_tables/cards/10308122086
+     *
+     * The reasoning that won, stated rather than smoothed. Discovery stopping
+     * at its own bound is not a server fault,
      * not an absence — `not_found` would say the line is not there, which is
      * exactly what this verdict refuses to say — and not multiple matches.
      * `usage` is chosen because no HTTP RESPONSE maps to it. [fromHttpStatus] can
@@ -365,6 +373,12 @@ sealed class BasecampException(
      * [Usage] elsewhere, for a bad argument or a URL it refuses — the claim is
      * about what a response can become, not about where the code appears.)
      * [reason] carries the precision either way.
+     *
+     * Retryability is a separate field, and the answer Python argued for is the
+     * one every port now carries: [RecordingSummaryFailure] leaves
+     * [BasecampException.retryable] at its `false` default, because both of
+     * this verdict's reasons are deterministic for the same account state and a
+     * retry loop would re-run the identical search forever.
      */
     class RecordingSummaryFailure internal constructor(
         /**

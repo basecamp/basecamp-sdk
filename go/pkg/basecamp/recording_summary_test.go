@@ -1827,3 +1827,57 @@ func TestSummarize_ChatLineBudgetSpentBeforeTheListingIsIncomplete(t *testing.T)
 		t.Fatalf("tried %d candidates, want the budget %d", n, MaxCampfireCandidates)
 	}
 }
+
+// The canonical code each composite verdict is classified under, and the exit
+// status it decides. Spelled out per identity rather than as a set: a set over
+// five verdicts lets four of them be misclassified without changing it, which
+// is how campfire_discovery_incomplete came to exit 1 from the Kotlin SDK and
+// 7 from Python's with every test green in both.
+func TestRecordingSummaryCode_PerIdentity(t *testing.T) {
+	classified := []struct {
+		name string
+		err  error
+		code string
+		exit int
+	}{
+		{"no_recording_type", &RecordingRoutingError{Err: ErrNoRecordingType}, CodeUsage, ExitUsage},
+		{"unknown_recording_type", &RecordingRoutingError{Err: ErrUnknownRecordingType}, CodeUsage, ExitUsage},
+		{"recording_unresolved", &UnresolvedRecordingError{BucketID: 1, RecordingID: 2}, CodeNotFound, ExitNotFound},
+		{"campfire_discovery_incomplete", &CampfireDiscoveryIncompleteError{BucketID: 1, RecordingID: 2, Reason: "r"}, CodeUsage, ExitUsage},
+	}
+	for _, tt := range classified {
+		code, ok := RecordingSummaryCode(tt.err)
+		if !ok {
+			t.Fatalf("%s: RecordingSummaryCode reported no classification", tt.name)
+		}
+		if code != tt.code {
+			t.Errorf("%s: code = %q, want %q", tt.name, code, tt.code)
+		}
+		if got := ExitCodeFor(code); got != tt.exit {
+			t.Errorf("%s: exit = %d, want %d", tt.name, got, tt.exit)
+		}
+	}
+
+	// Wrapping must not lose the classification: the verdict travels through
+	// fmt.Errorf on its way out of a consumer's own layers, and errors.Is is
+	// what the SDK documents for matching it.
+	wrapped := fmt.Errorf("while admitting an event: %w", &CampfireDiscoveryIncompleteError{BucketID: 1, RecordingID: 2, Reason: "r"})
+	if code, ok := RecordingSummaryCode(wrapped); !ok || code != CodeUsage {
+		t.Errorf("wrapped verdict: got (%q, %v), want (%q, true)", code, ok, CodeUsage)
+	}
+
+	// bucket_mismatch is deliberately UNCLASSIFIED: the merged ports disagree
+	// (Rust says not_found where Python, Ruby, Kotlin and TypeScript say
+	// usage), and the SDK with no code slot is not the one to settle it.
+	if code, ok := RecordingSummaryCode(&BucketMismatchError{}); ok {
+		t.Errorf("bucket_mismatch: got %q classified; want it left to the caller until the ports agree", code)
+	}
+
+	// A read that failed on its own terms is not a composite verdict at all.
+	if _, ok := RecordingSummaryCode(&Error{Code: CodeNotFound, Message: "Record not found"}); ok {
+		t.Error("a read's own error must not be classified as a composite verdict")
+	}
+	if _, ok := RecordingSummaryCode(nil); ok {
+		t.Error("nil must not be classified")
+	}
+}

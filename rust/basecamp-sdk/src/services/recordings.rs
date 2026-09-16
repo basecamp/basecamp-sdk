@@ -269,17 +269,30 @@ impl RecordingSummaryError {
     ///
     /// Routing refusals are `usage`: the pointer names no read, and nothing was sent.
     /// "Unresolved" and a bucket mismatch are `not_found`: the recording the pointer names
-    /// is not where it was looked for. Incomplete discovery is `api_error` — the caller
-    /// asked for nothing wrong and the server failed at nothing, and it is explicitly not
-    /// `not_found`, because nothing left unsearched may be reported absent.
+    /// is not where it was looked for.
+    ///
+    /// Incomplete discovery is `usage`, settled across every port on [card 40] after the
+    /// merged ports shipped two different answers — this one said `api_error`, Kotlin said
+    /// `usage`, and a caller got exit 7 from one SDK and exit 1 from another for the same
+    /// condition. `usage` is the one coarse code no HTTP response can produce:
+    /// [`ErrorCode::from_status`] yields `auth_required`, `forbidden`, `not_found`,
+    /// `rate_limit`, `validation`, `limit_exceeded` and `api_error`, never this one, so a
+    /// verdict the composite reached on its own can never be read back as a constituent
+    /// read's own answer. It is explicitly not `not_found`, because nothing left unsearched
+    /// may be reported absent. Retryability is a separate field and is unchanged: the
+    /// [`Error`] built from this carries `retryable = false`, because both reasons are
+    /// deterministic for the same account state and a retry loop would re-run the identical
+    /// search forever.
+    ///
+    /// [card 40]: https://app.basecamp.com/2914079/buckets/48699913/card_tables/cards/10308122086
     fn code(&self) -> ErrorCode {
         match self {
             RecordingSummaryError::NoRecordingType { .. }
-            | RecordingSummaryError::UnknownRecordingType { .. } => ErrorCode::Usage,
+            | RecordingSummaryError::UnknownRecordingType { .. }
+            | RecordingSummaryError::CampfireDiscoveryIncomplete { .. } => ErrorCode::Usage,
             RecordingSummaryError::Unresolved(_) | RecordingSummaryError::BucketMismatch { .. } => {
                 ErrorCode::NotFound
             }
-            RecordingSummaryError::CampfireDiscoveryIncomplete { .. } => ErrorCode::ApiError,
         }
     }
 }
@@ -1366,7 +1379,12 @@ mod tests {
             reason: "too many".to_string(),
         }
         .into();
-        assert_eq!(incomplete.code(), ErrorCode::ApiError);
+        // `usage`, settled on card 40: the one coarse code no HTTP response can
+        // produce, so this verdict can never be read back as a constituent read's
+        // own answer. Non-retryable, which is the other half of that decision and
+        // the half a code change could otherwise carry away with it.
+        assert_eq!(incomplete.code(), ErrorCode::Usage);
+        assert!(!incomplete.is_retryable());
         // Never not_found: nothing left unsearched may be reported absent.
         assert_ne!(incomplete.code(), unresolved.code());
 
