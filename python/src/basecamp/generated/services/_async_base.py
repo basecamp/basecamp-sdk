@@ -318,9 +318,14 @@ class AsyncBaseService:
                 _normalize_person_ids(items, embedded_people=_embedded_people(response))
             except Exception as e:
                 raise ApiError(f"Failed to parse paginated response (page {page}): {_security.truncate(str(e))}") from e
-            _decode_person_id_sites(items, _PERSON_ID_SITES, operation)
 
-            all_items.extend(decoded_array(items, f"the paginated response body (page {page})"))
+            page_items = decoded_array(items, f"the paginated response body (page {page})")
+            # Page 1 is Go's `Parse<Op>Response`, decoded whole. A followed page
+            # is raw items trimmed to the cap before any is decoded
+            # (`client.go:604-631`), so an item past the cap is never read.
+            kept = page_items if page == 1 or not max_items else page_items[: max_items - len(all_items)]
+            _decode_person_id_sites(kept, _PERSON_ID_SITES, operation, followed_page=page > 1)
+            all_items.extend(page_items)
 
             # SPEC section 8: a positive `page` selects exactly that page. The
             # follow loop stops here after a single request; a next link still
@@ -382,7 +387,10 @@ class AsyncBaseService:
                 _normalize_person_ids(data, embedded_people=_embedded_people(response))
             except Exception as e:
                 raise ApiError(f"Failed to parse paginated response (page {page}): {_security.truncate(str(e))}") from e
-            _decode_person_id_sites(data, _PERSON_ID_SITES, operation)
+            # A followed page reads only its items (see `_paginate_wrapped`).
+            _decode_person_id_sites(
+                data, _PERSON_ID_SITES, operation, followed_page=page > 1, only_under=key if page > 1 else None
+            )
 
             envelope = decoded_object(data, f"the paginated response body (page {page})")
             all_items.extend(decoded_envelope_array(envelope, key, f"the {key!r} list (page {page})"))
@@ -474,7 +482,10 @@ class AsyncBaseService:
                 _normalize_person_ids(data, embedded_people=_embedded_people(response))
             except Exception as e:
                 raise ApiError(f"Failed to parse paginated response (page {page}): {_security.truncate(str(e))}") from e
-            _decode_person_id_sites(data, _PERSON_ID_SITES, operation)
+            # Go reads a followed page as `struct{ Events []json.RawMessage }` and
+            # decodes every event before trimming, never the page's other members
+            # (`timeline.go:444-457`): only the sites under the items key.
+            _decode_person_id_sites(data, _PERSON_ID_SITES, operation, followed_page=True, only_under=key)
 
             envelope = decoded_object(data, f"the paginated response body (page {page})")
             all_items.extend(decoded_envelope_array(envelope, key, f"the {key!r} list (page {page})"))

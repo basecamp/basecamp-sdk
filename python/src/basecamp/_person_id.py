@@ -294,6 +294,9 @@ def decode_person_id_sites(
     body: Any,
     table: Mapping[str, Iterable[tuple[str, ...]]],
     operation: str | None,
+    *,
+    followed_page: bool = False,
+    only_under: str | None = None,
 ) -> None:
     """Read each person id at ``operation``'s sites in ``table`` as Go's ``types.FlexibleInt64``, in place.
 
@@ -319,16 +322,42 @@ def decode_person_id_sites(
     the wrong shape, are left alone: Go zero-fills or refuses those as part of a
     whole-body typed decode this SDK does not do for any field. Idempotent,
     because every surviving id is an ``int``.
+
+    FOLLOWED PAGES are not ``Parse<Op>Response``, and Go decodes less of them;
+    the paginators pass what Go reads and flag it:
+
+    * a bare-array list passes only the items the cap keeps -- ``followPagination``
+      trims the raw items before its caller decodes any (``client.go:604-631``);
+    * a wrapped listing passes ``only_under`` its items key, because Go reads a
+      followed page as ``struct{ Events []json.RawMessage }`` and decodes each
+      event, never the page's ``person`` (``timeline.go:444-457``);
+    * ``followed_page`` on :data:`HAND_DECODED_FOLLOWED_PAGES` lets a ``null`` id
+      through, below.
     """
     if operation is None:
         return
+    null_passes = followed_page and operation in HAND_DECODED_FOLLOWED_PAGES
     for site in table.get(operation, ()):
-        _decode_site(body, site, 0, operation)
+        if only_under is None or site[:1] == (only_under,):
+            _decode_site(body, site, 0, operation, null_passes)
 
 
-def _decode_site(node: Any, site: tuple[str, ...], index: int, operation: str | None) -> None:
+#: Operations whose FOLLOWED pages Go decodes into hand-written types rather than
+#: through the generated ``Person``: ``Gauge`` and ``GaugeNeedle``
+#: (``gauges.go:236-241, 307-312``) and ``Notification``
+#: (``my_notifications.go:285-305``), each after the positional normalizer. Their
+#: ``Person.ID`` is a plain ``int64``, which reads JSON ``null`` as ``0`` with no
+#: error where ``FlexibleInt64`` refuses it; every other refusal is the same. Go
+#: SDK behaviour, not schema, so it is listed by hand. Page 1 of each still goes
+#: through ``Parse<Op>Response`` and still refuses ``null``.
+HAND_DECODED_FOLLOWED_PAGES: frozenset[str] = frozenset({"ListGauges", "ListGaugeNeedles", "GetBubbleUps"})
+
+
+def _decode_site(node: Any, site: tuple[str, ...], index: int, operation: str | None, null_passes: bool) -> None:
     if index == len(site):
-        if isinstance(node, dict) and "id" in node:
+        # A passed `null` stays `null`, the same representation residual as an
+        # absent id, rather than the `0` Go's plain int64 leaves.
+        if isinstance(node, dict) and "id" in node and not (null_passes and node["id"] is None):
             node["id"] = _flexible_int64(node["id"], operation, site)
         return
     segment = site[index]
@@ -339,7 +368,7 @@ def _decode_site(node: Any, site: tuple[str, ...], index: int, operation: str | 
     else:
         children = (node[segment],) if isinstance(node, dict) and segment in node else ()
     for child in children:
-        _decode_site(child, site, index + 1, operation)
+        _decode_site(child, site, index + 1, operation, null_passes)
 
 
 def _flexible_int64(raw: Any, operation: str | None, site: tuple[str, ...]) -> int:

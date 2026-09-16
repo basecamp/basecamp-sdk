@@ -1772,7 +1772,29 @@ still left for the caller as it arrived.
 Each port's generator emits the table keyed by operation id, so the generator
 drift check guards it. The generated read path applies it after the normalizer,
 on every body it decodes: a single object, an unpaginated list, and every page of
-a paginated or wrapped listing, followed pages included.
+a paginated or wrapped listing. A FOLLOWED page is decoded exactly as far as Go
+decodes it, which is less than the first page, and three rules follow from Go's
+pagination code rather than from the schema:
+
+- **A capped list decodes only the items the cap keeps.** `followPagination`
+  (`go/pkg/basecamp/client.go`) trims a followed page's raw items to the limit
+  before anything decodes them, so a bad id past the cap never fails the read.
+  The first page went through `Parse<Op>Response` whole, so there it still does.
+- **A wrapped listing's followed page decodes only the wrapped key.**
+  `GetPersonProgress` reads nothing but `events` from page 2 onward
+  (`timeline.go`), every event on the page, before the limit trims them; that
+  page's `person` is never read.
+- **`ListGauges`, `ListGaugeNeedles` and `GetBubbleUps` read a `null` id on a
+  followed page.** Go decodes those pages into the hand-written `Gauge`,
+  `GaugeNeedle` and `Notification`, whose person id is a plain `int64`, where
+  `null` is `0` rather than an error (`gauges.go`, `my_notifications.go`). The
+  ports leave it `null`, the same representation residual as an absent id.
+  Every other refusal stands on those pages, and a `null` on their first page
+  still fails.
+
+Ruby fetches followed pages lazily, so with no cap a consumer that stops early
+(`first`, `take`) never decodes the items it did not reach, where Go, having
+collected them, would fail on a bad one.
 
 | SDK | table | applied by |
 |-----|-------|------------|

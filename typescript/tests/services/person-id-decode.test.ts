@@ -317,4 +317,92 @@ describe("person id typed decode", () => {
     // left it, rather than relabelling "0".
     expect(needles[1]!.creator).toEqual({ id: 0, name: "B", system_label: "basecamp" });
   });
+
+  describe("followed pages decode what Go decodes, and no more", () => {
+    /** Serves raw JSON bodies as pages 1..n, each linking to the next. */
+    function paged(path: string, bodies: string[]): void {
+      server.use(
+        http.get(`${BASE_URL}${path}`, ({ request }) => {
+          const n = Number(new URL(request.url).searchParams.get("page") ?? "1");
+          const headers: Record<string, string> = { "Content-Type": "application/json" };
+          if (n < bodies.length) headers.Link = `<${BASE_URL}${path}?page=${n + 1}>; rel="next"`;
+          return new HttpResponse(bodies[n - 1], { status: 200, headers });
+        }),
+      );
+    }
+
+    const BAD_IDS = ["null", "1.5", "true", '"18446744073709551616"'];
+
+    it("never decodes an item the cap drops from a followed page (client.go:620-631)", async () => {
+      for (const bad of BAD_IDS) {
+        paged("/recordings/1/comments.json", [
+          '[{"id":1,"creator":{"id":"7","name":"x"}},{"id":2,"creator":{"id":7,"name":"x"}}]',
+          `[{"id":3,"creator":{"id":"9","name":"x"}},{"id":4,"creator":{"id":${bad},"name":"x"}}]`,
+        ]);
+        const comments = await client.comments.list(1, { maxItems: 3 });
+        expect(comments.map((c) => c.creator!.id), bad).toEqual([7, 7, 9]);
+        expect(comments.meta.truncated, bad).toBe(true);
+      }
+    });
+
+    it("still decodes a dropped item on page 1, which Go decodes whole before the cap", async () => {
+      paged("/recordings/1/comments.json", [
+        '[{"id":1,"creator":{"id":"7","name":"x"}},{"id":2,"creator":{"id":null,"name":"x"}}]',
+      ]);
+      const error = await refusal(client.comments.list(1, { maxItems: 1 }));
+      expectMalformed(error, /ListComments returned a person id at \[\]\.creator that is not a valid int64/);
+    });
+
+    it("reads only the wrapped key on a followed GetPersonProgress page (timeline.go:445-458)", async () => {
+      for (const bad of BAD_IDS) {
+        paged("/reports/users/progress/5.json", [
+          '{"person":{"id":1,"name":"p"},"events":[{"id":1,"creator":{"id":"7","name":"x"}}]}',
+          `{"person":{"id":${bad},"name":"p"},"events":[{"id":2,"creator":{"id":"8","name":"x"}}]}`,
+        ]);
+        const progress = await client.reports.personProgress(5);
+        expect(progress.person.id, bad).toBe(1);
+        expect([...progress.events].map((e) => (e as unknown as { creator: Rec }).creator.id), bad).toEqual([7, 8]);
+      }
+    });
+
+    it("decodes every event of a followed wrapped page, including past the cap, as Go does", async () => {
+      paged("/reports/users/progress/5.json", [
+        '{"person":{"id":1,"name":"p"},"events":[{"id":1,"creator":{"id":"7","name":"x"}}]}',
+        '{"person":{"id":1,"name":"p"},"events":[{"id":2,"creator":{"id":"8","name":"x"}},{"id":3,"creator":{"id":1.5,"name":"x"}}]}',
+      ]);
+      const error = await refusal(client.reports.personProgress(5, { maxItems: 2 }));
+      expectMalformed(error, /GetPersonProgress returned a person id at events\.\[\]\.creator that is not a valid int64/);
+    });
+
+    it("reads a null id as the plain int64 Go reads on followed gauge, needle and bubble-up pages", async () => {
+      const calls: readonly [string, string, () => Promise<unknown[]>][] = [
+        ["ListGauges", "/reports/gauges.json", () => client.gauges.listGauges()],
+        ["ListGaugeNeedles", "/projects/1/gauge/needles.json", () => client.gauges.listGaugeNeedles(1)],
+        ["GetBubbleUps", "/my/readings/bubble_ups.json", () => client.myNotifications.bubbleUps()],
+      ];
+      for (const [op, path, call] of calls) {
+        paged(path, [
+          '[{"id":1,"creator":{"id":"7","name":"x"},"participants":[]}]',
+          '[{"id":2,"creator":{"id":null,"name":"x"},"participants":[{"id":null,"name":"y"}]}]',
+        ]);
+        const items = [...(await call())] as unknown as { creator: Rec }[];
+        expect(items.map((i) => i.creator.id), op).toEqual([7, null]);
+
+        // Everything else a plain int64 refuses is still refused there.
+        paged(path, ['[{"id":1,"creator":{"id":"7","name":"x"}}]', '[{"id":2,"creator":{"id":"9223372036854775808","name":"x"}}]']);
+        expectMalformed(await refusal(call()), new RegExp(`${op} returned a person id at \\[\\]\\.creator that overflows int64`));
+        paged(path, ['[{"id":1,"creator":{"id":"7","name":"x"}}]', '[{"id":2,"creator":{"id":1.5,"name":"x"}}]']);
+        expectMalformed(await refusal(call()), /is not a valid int64/);
+
+        // Page 1 goes through Parse<Op>Response, where FlexibleInt64 refuses null.
+        paged(path, ['[{"id":1,"creator":{"id":null,"name":"x"}}]']);
+        expectMalformed(await refusal(call()), new RegExp(`${op} returned a person id at \\[\\]\\.creator that is not a valid int64`));
+      }
+    });
+
+    it("refuses a null id on a followed page of an operation Go decodes through generated types", async () => {
+      paged("/recordings/1/comments.json", ['[{"id":1,"creator":{"id":7,"name":"x"}}]', '[{"id":2,"creator":{"id":null,"name":"x"}}]']);
+      expectMalformed(await refusal(client.comments.list(1)), /ListComments returned a person id at \[\]\.creator that is not a valid int64/);
+    });
+  });
 });

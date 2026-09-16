@@ -217,6 +217,107 @@ class PersonIdSitesTest < Minitest::Test
     assert_equal({ "creator" => { "id" => 7 } }, body)
   end
 
+  # --- followed pages decode what the reference decodes, and no more --------
+
+  BAD_IDS = [ nil, 1.5, true, "18446744073709551616" ].freeze
+
+  def test_a_followed_page_item_past_the_cap_is_never_decoded
+    # followPagination trims a followed page to the cap before anything is
+    # decoded (client.go:604-631), so the fourth item's id is never read.
+    BAD_IDS.each do |bad|
+      WebMock.reset!
+      stub_paged("/12345/recordings/1/comments.json",
+        [ { "creator" => { "id" => "7" } }, { "creator" => { "id" => 7 } } ],
+        [ { "creator" => { "id" => "9" } }, { "creator" => { "id" => bad } } ])
+
+      comments = @account.comments.list(recording_id: 1, max_items: 3)
+
+      assert_equal [ 7, 7, 9 ], comments.to_a.map { _1["creator"]["id"] }, "a capped-off id of #{bad.inspect}"
+      assert comments.meta.truncated
+    end
+  end
+
+  def test_a_bad_id_past_the_cap_on_page_one_still_fails
+    # Page 1 goes through Parse<Op>Response whole, before the cap applies.
+    stub_paged("/12345/recordings/1/comments.json",
+      [ { "creator" => { "id" => "7" } }, { "creator" => { "id" => nil } } ],
+      [ { "creator" => { "id" => "9" } } ])
+
+    assert_raises(Basecamp::ApiError) { @account.comments.list(recording_id: 1, max_items: 1) }
+  end
+
+  def test_a_followed_person_progress_page_never_reads_its_person
+    # timeline.go:444-457 unmarshals only struct{ Events } on a followed page.
+    BAD_IDS.each do |bad|
+      WebMock.reset!
+      stub_paged("/12345/reports/users/progress/5.json",
+        { "person" => { "id" => 1 }, "events" => [ { "creator" => { "id" => "7" } } ] },
+        { "person" => { "id" => bad }, "events" => [ { "creator" => { "id" => "8" } } ] })
+
+      result = @account.reports.person_progress(person_id: 5)
+
+      assert_equal [ 7, 8 ], result["events"].to_a.map { _1["creator"]["id"] }, "a page-2 person id of #{bad.inspect}"
+      assert_equal 1, result["person"]["id"]
+    end
+  end
+
+  def test_a_followed_person_progress_page_decodes_every_event_before_the_cap
+    # ...and decodes each event of that page before trimming to the limit.
+    stub_paged("/12345/reports/users/progress/5.json",
+      { "person" => { "id" => 1 }, "events" => [ { "creator" => { "id" => "7" } } ] },
+      { "person" => { "id" => 1 }, "events" => [ { "creator" => { "id" => "8" } }, { "creator" => { "id" => true } } ] })
+
+    events = @account.reports.person_progress(person_id: 5, max_items: 2)["events"]
+
+    assert_raises(Basecamp::ApiError) { events.to_a }
+  end
+
+  POSITIONAL_LISTINGS = {
+    "/12345/reports/gauges.json" => ->(account) { account.gauges.list_gauges },
+    "/12345/projects/1/gauge/needles.json" => ->(account) { account.gauges.list_gauge_needles(project_id: 1) },
+    "/12345/my/readings/bubble_ups.json" => ->(account) { account.my_notifications.get_bubble_ups }
+  }.freeze
+
+  def test_a_null_id_on_a_followed_gauge_needle_or_bubble_up_page_reads
+    # Those items decode into hand-written types whose Person.ID is a plain
+    # int64 (gauges.go:236-241, 307-312; my_notifications.go:285-305), which
+    # reads null as zero.
+    POSITIONAL_LISTINGS.each do |path, list|
+      WebMock.reset!
+      stub_paged(path,
+        [ { "creator" => { "id" => "7" }, "participants" => [] } ],
+        [ { "creator" => { "id" => nil }, "participants" => [ { "id" => nil } ] } ])
+
+      items = list.call(@account).to_a
+
+      assert_equal [ 7, nil ], items.map { _1["creator"]["id"] }, path
+    end
+  end
+
+  def test_a_null_id_on_page_one_of_a_gauge_needle_or_bubble_up_listing_still_fails
+    POSITIONAL_LISTINGS.each do |path, list|
+      WebMock.reset!
+      stub_paged(path, [ { "creator" => { "id" => nil } } ], [ { "creator" => { "id" => "7" } } ])
+
+      assert_raises(Basecamp::ApiError, path) { list.call(@account) }
+    end
+  end
+
+  def test_other_bad_ids_on_a_followed_gauge_page_still_fail
+    [ 1.5, true, "18446744073709551616" ].each do |bad|
+      WebMock.reset!
+      stub_paged("/12345/reports/gauges.json", [ { "creator" => { "id" => 1 } } ], [ { "creator" => { "id" => bad } } ])
+
+      assert_raises(Basecamp::ApiError, bad.inspect) { @account.gauges.list_gauges.to_a }
+    end
+  end
+
+  def test_a_null_id_on_a_followed_page_of_any_other_listing_still_fails
+    stub_paged("/12345/recordings/1/comments.json", [ { "creator" => { "id" => 1 } } ], [ { "creator" => { "id" => nil } } ])
+
+    assert_raises(Basecamp::ApiError) { @account.comments.list(recording_id: 1).to_a }
+  end
+
   private
 
   def stub_paged(path, page1, page2)

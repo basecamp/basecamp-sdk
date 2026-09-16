@@ -334,6 +334,183 @@ class TestTheGeneratedReadPathDecodes:
         assert [n["creator"] for n in needles] == [{"id": 0, "system_label": "basecamp"}, {"id": 7}]
 
 
+_BAD_IDS = ["null", "1.5", "true", '"18446744073709551616"']
+
+# The three operations whose followed pages Go decodes into hand-written types
+# with a plain int64 `Person.ID`: (service attribute, method, kwargs, path).
+_HAND_DECODED = {
+    "ListGauges": ("gauges", "list_gauges", {}, "/reports/gauges.json"),
+    "ListGaugeNeedles": ("gauges", "list_gauge_needles", {"project_id": 7}, "/projects/7/gauge/needles.json"),
+    "GetBubbleUps": ("my_notifications", "get_bubble_ups", {}, "/my/readings/bubble_ups.json"),
+}
+
+
+def _serve_raw_pages(path: str, bodies: list[str]) -> None:
+    """Serve raw JSON ``bodies`` in order behind Link headers (``null``/``1.5`` verbatim)."""
+    url = f"{_BASE}{path}"
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        index = int(request.url.params.get("page", "1")) - 1
+        headers = {"Content-Type": "application/json"}
+        if index + 1 < len(bodies):
+            headers["Link"] = f'<{url}?page={index + 2}>; rel="next"'
+        return httpx.Response(200, content=bodies[index].encode(), headers=headers)
+
+    respx.get(url__startswith=url).mock(side_effect=respond)
+
+
+class TestAFollowedPageDecodesWhatGoDecodes:
+    """Followed pages are not `Parse<Op>Response`: Go decodes less of them."""
+
+    @respx.mock
+    @pytest.mark.parametrize("bad", _BAD_IDS)
+    def test_an_item_past_the_cap_on_a_followed_page_is_never_read(self, bad):
+        # `followPagination` trims raw items to the cap before they are decoded
+        # (go/pkg/basecamp/client.go:604-631).
+        _serve_raw_pages(
+            "/recordings/1/comments.json",
+            [
+                '[{"id":1,"creator":{"id":"7"}},{"id":2,"creator":{"id":7}}]',
+                '[{"id":3,"creator":{"id":"9"}},{"id":4,"creator":{"id":@BAD@}}]'.replace("@BAD@", bad),
+            ],
+        )
+        with Client(access_token="t") as client:
+            result = _account(client).comments.list(recording_id=1, max_items=3)
+        assert [c["creator"]["id"] for c in result] == [7, 7, 9]
+        assert result.meta.truncated is True
+
+    @respx.mock
+    @pytest.mark.parametrize("bad", _BAD_IDS)
+    def test_an_item_inside_the_cap_on_a_followed_page_is_still_read(self, bad):
+        _serve_raw_pages(
+            "/recordings/1/comments.json",
+            [
+                '[{"id":1,"creator":{"id":"7"}}]',
+                '[{"id":2,"creator":{"id":@BAD@}},{"id":3,"creator":{"id":8}}]'.replace("@BAD@", bad),
+            ],
+        )
+        with Client(access_token="t") as client, pytest.raises(ApiError, match=r"ListComments: person id at \[\]"):
+            _account(client).comments.list(recording_id=1, max_items=3)
+
+    @respx.mock
+    def test_an_item_past_the_cap_on_the_first_page_is_still_read(self):
+        # Page 1 is `Parse<Op>Response`, decoded whole before the cap applies.
+        _serve_raw_pages(
+            "/recordings/1/comments.json",
+            [
+                '[{"id":1,"creator":{"id":1}},{"id":2,"creator":{"id":2}},{"id":3,"creator":{"id":3}},'
+                '{"id":4,"creator":{"id":null}}]'
+            ],
+        )
+        with Client(access_token="t") as client, pytest.raises(ApiError, match="ListComments"):
+            _account(client).comments.list(recording_id=1, max_items=3)
+
+    @respx.mock
+    @pytest.mark.parametrize("bad", _BAD_IDS)
+    def test_a_wrapped_followed_page_reads_only_its_events(self, bad):
+        # Go reads a followed page as `struct{ Events []json.RawMessage }`; its
+        # `person` is never decoded (go/pkg/basecamp/timeline.go:444-457).
+        _serve_raw_pages(
+            "/reports/users/progress/5.json",
+            [
+                '{"person":{"id":1,"name":"p"},"events":[{"id":1,"creator":{"id":"7"}}]}',
+                '{"person":{"id":@BAD@,"name":"p"},"events":[{"id":2,"creator":{"id":"8"}}]}'.replace("@BAD@", bad),
+            ],
+        )
+        with Client(access_token="t") as client:
+            progress = _account(client).reports.person_progress(person_id=5)
+        assert progress["person"]["id"] == 1
+        assert [e["creator"]["id"] for e in progress["events"]] == [7, 8]
+
+    @respx.mock
+    @pytest.mark.parametrize("bad", _BAD_IDS)
+    def test_a_wrapped_followed_page_still_reads_every_event(self, bad):
+        # Every event on the page is decoded, before any trim to the cap.
+        _serve_raw_pages(
+            "/reports/users/progress/5.json",
+            [
+                '{"person":{"id":1},"events":[{"id":1,"creator":{"id":"7"}}]}',
+                '{"events":[{"id":2,"creator":{"id":"8"}},{"id":3,"creator":{"id":@BAD@}}]}'.replace("@BAD@", bad),
+            ],
+        )
+        with (
+            Client(access_token="t") as client,
+            pytest.raises(ApiError, match=r"GetPersonProgress: person id at events"),
+        ):
+            _account(client).reports.person_progress(person_id=5, max_items=2)
+
+    @respx.mock
+    @pytest.mark.parametrize("operation", list(_HAND_DECODED))
+    def test_a_null_id_on_a_hand_decoded_followed_page_reads(self, operation):
+        # gauges.go:236-241, 307-312 and my_notifications.go:285-305 decode these
+        # pages into types whose `Person.ID` is a plain int64: `null` is no error.
+        service, method, kwargs, path = _HAND_DECODED[operation]
+        _serve_raw_pages(
+            path,
+            [
+                '[{"id":1,"creator":{"id":"7"},"participants":[]}]',
+                '[{"id":2,"creator":{"id":null,"name":"x"},"participants":[{"id":null,"name":"y"}]}]',
+            ],
+        )
+        with Client(access_token="t") as client:
+            items = list(getattr(getattr(_account(client), service), method)(**kwargs))
+        assert [i["creator"]["id"] for i in items] == [7, None]
+
+    @respx.mock
+    @pytest.mark.parametrize("operation", list(_HAND_DECODED))
+    def test_a_null_id_on_a_hand_decoded_first_page_still_fails(self, operation):
+        service, method, kwargs, path = _HAND_DECODED[operation]
+        _serve_raw_pages(path, ['[{"id":1,"creator":{"id":null}}]'])
+        with Client(access_token="t") as client, pytest.raises(ApiError, match=f"{operation}: person id at"):
+            getattr(getattr(_account(client), service), method)(**kwargs)
+
+    @respx.mock
+    @pytest.mark.parametrize("bad", ["1.5", "true", '"18446744073709551616"', "[]"])
+    @pytest.mark.parametrize("operation", list(_HAND_DECODED))
+    def test_every_other_refusal_on_a_hand_decoded_followed_page_stands(self, operation, bad):
+        service, method, kwargs, path = _HAND_DECODED[operation]
+        _serve_raw_pages(
+            path, ['[{"id":1,"creator":{"id":7}}]', '[{"id":2,"creator":{"id":@BAD@}}]'.replace("@BAD@", bad)]
+        )
+        with Client(access_token="t") as client, pytest.raises(ApiError, match=f"{operation}: person id at"):
+            getattr(getattr(_account(client), service), method)(**kwargs)
+
+    @respx.mock
+    def test_a_null_id_on_any_other_followed_page_still_fails(self):
+        _serve_raw_pages(
+            "/recordings/1/comments.json", ['[{"id":1,"creator":{"id":7}}]', '[{"id":2,"creator":{"id":null}}]']
+        )
+        with Client(access_token="t") as client, pytest.raises(ApiError, match="ListComments"):
+            _account(client).comments.list(recording_id=1)
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_the_async_base_follows_the_same_rules(self):
+        _serve_raw_pages(
+            "/recordings/1/comments.json",
+            [
+                '[{"id":1,"creator":{"id":"7"}},{"id":2,"creator":{"id":7}}]',
+                '[{"id":3,"creator":{"id":"9"}},{"id":4,"creator":{"id":null}}]',
+            ],
+        )
+        _serve_raw_pages(
+            "/reports/users/progress/5.json",
+            ['{"person":{"id":1},"events":[]}', '{"person":{"id":true},"events":[{"id":2,"creator":{"id":"8"}}]}'],
+        )
+        _serve_raw_pages("/reports/gauges.json", ['[{"id":1,"creator":{"id":7}}]', '[{"id":2,"creator":{"id":null}}]'])
+        client = AsyncClient(access_token="t")
+        try:
+            account = client.for_account("12345")
+            comments = await account.comments.list(recording_id=1, max_items=3)
+            progress = await account.reports.person_progress(person_id=5)
+            gauges = await account.gauges.list_gauges()
+        finally:
+            await client.close()
+        assert [c["creator"]["id"] for c in comments] == [7, 7, 9]
+        assert [e["creator"]["id"] for e in progress["events"]] == [8]
+        assert [g["creator"]["id"] for g in gauges] == [7, None]
+
+
 class TestAPlainInt64PersonStaysStrict:
     @respx.mock
     def test_the_upcoming_schedule(self):

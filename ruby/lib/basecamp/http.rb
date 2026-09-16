@@ -458,6 +458,11 @@ module Basecamp
 
           capped = false
           items.each_with_index do |item, index|
+            # A followed bare-array page is decoded item by item as each is
+            # KEPT: the reference trims a followed page to the cap before it
+            # decodes anything (client.go:604-631), so an item past the cap is
+            # never decoded there. Page 1 was decoded whole in parse_page.
+            PersonIdSites.decode_item!(item, operation) if page > 1 && key.nil?
             yielded += 1
             capped = max_items && yielded >= max_items
             # Truncation is recorded before the capping yield: consumers like
@@ -486,7 +491,12 @@ module Basecamp
           page += 1
           @hooks.on_paginate(next_url, page)
           response = get(next_url, operation: operation)
-          items = extract_page_items(parse_page(response, page: page, operation: operation), key: key, page: page)
+          # No whole-page decode on a followed page (operation: nil): see
+          # PersonIdSites.decode_item!. A wrapped listing decodes every item
+          # under its key before the cap trims them, as timeline.go:444-465
+          # does; a bare array decodes each kept item in the yield loop above.
+          items = extract_page_items(parse_page(response, page: page, operation: nil), key: key, page: page)
+          items.each { |item| PersonIdSites.decode_item!(item, operation, key: key) } if key
           url = next_url
         end
       end
@@ -507,9 +517,10 @@ module Basecamp
     end
 
     # Parses a pagination page body: size check, JSON parse, person-ID
-    # normalization, then the operation's typed person-id decode, with
-    # page-numbered error context. The decode runs on EVERY page, first and
-    # followed alike, because the table's paths are relative to one page body.
+    # normalization, then the operation's typed person-id decode of the whole
+    # page, with page-numbered error context. The whole-page decode is for
+    # page 1, which the reference decodes through Parse<Op>Response; a followed
+    # page passes operation: nil and is decoded per item by the caller.
     def parse_page(response, page:, operation:)
       Security.check_body_size!(response.body, Security::MAX_RESPONSE_BODY_BYTES)
       data = JSON.parse(response.body)

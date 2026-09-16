@@ -30,7 +30,7 @@ import { ListResult, parseTotalCount, type PaginationOptions } from "../paginati
 import { personIdNumber, scanPersonId } from "../person-id.js";
 import { parseNextLink, resolveURL, isSameOrigin, DEFAULT_MAX_PAGES, assertValidMaxPages } from "../pagination-utils.js";
 import { saturatingBackoff, timerSafeDelayMs } from "../retry.js";
-import { describeValue, malformedResponse } from "./merge-safe.js";
+import { malformedResponse } from "./merge-safe.js";
 import type { paths } from "../generated/schema.js";
 import type createClient from "openapi-fetch";
 
@@ -311,8 +311,11 @@ function siteSegments(operation: string): readonly (readonly string[])[] | undef
  * - `null`, a boolean, an array or an object is not an int64 and fails the read
  *   (`:56-61`).
  */
-function decodeFlexiblePersonId(person: Record<string, unknown>, operation: string, site: string): void {
+function decodeFlexiblePersonId(person: Record<string, unknown>, operation: string, site: string, scope: DecodeScope): void {
   const id = person.id;
+  // A plain `int64` field reads JSON null as 0 without error; left as null here,
+  // the same representation residual as an absent id. See {@link DecodeScope}.
+  if (id === null && scope.nullIdReadsZero) return;
   if (typeof id === "string") {
     const scan = scanPersonId(id);
     if (scan.kind === "syntax") {
@@ -334,7 +337,7 @@ function decodeFlexiblePersonId(person: Record<string, unknown>, operation: stri
 
 function malformedPersonId(operation: string, site: string, id: unknown, why: string): BasecampError {
   return malformedResponse(
-    `${operation} returned a person id at ${site} that ${why}: ${describeValue(id)}`,
+    `${operation} returned a person id at ${site} that ${why}: ${JSON.stringify(id)}`,
     "The reference SDK refuses this response when it decodes the person id; it is not retryable.",
   );
 }
@@ -345,6 +348,7 @@ function decodeSite(
   index: number,
   operation: string,
   site: string,
+  scope: DecodeScope,
 ): void {
   // The last `[]` of an array site is the list of people, handled below, so the
   // walk stops one segment short of it.
@@ -354,20 +358,20 @@ function decodeSite(
     if (arraySite) {
       if (!Array.isArray(node)) return;
       for (const person of node) {
-        if (isJSONObject(person) && Object.hasOwn(person, "id")) decodeFlexiblePersonId(person, operation, site);
+        if (isJSONObject(person) && Object.hasOwn(person, "id")) decodeFlexiblePersonId(person, operation, site, scope);
       }
     } else if (isJSONObject(node) && Object.hasOwn(node, "id")) {
-      decodeFlexiblePersonId(node, operation, site);
+      decodeFlexiblePersonId(node, operation, site, scope);
     }
     return;
   }
   const segment = segments[index]!;
   if (segment === "[]") {
-    if (Array.isArray(node)) for (const element of node) decodeSite(element, segments, index + 1, operation, site);
+    if (Array.isArray(node)) for (const element of node) decodeSite(element, segments, index + 1, operation, site, scope);
   } else if (segment === "{}") {
-    if (isJSONObject(node)) for (const value of Object.values(node)) decodeSite(value, segments, index + 1, operation, site);
+    if (isJSONObject(node)) for (const value of Object.values(node)) decodeSite(value, segments, index + 1, operation, site, scope);
   } else if (isJSONObject(node) && Object.hasOwn(node, segment)) {
-    decodeSite(node[segment], segments, index + 1, operation, site);
+    decodeSite(node[segment], segments, index + 1, operation, site, scope);
   }
 }
 
@@ -392,12 +396,47 @@ function decodeSite(
  * has no `id` is left alone: Go zero-fills or refuses it as part of a
  * whole-body decode this SDK does for no field.
  */
-function decodeResponsePersonIds(body: unknown, operation: string): void {
+function decodeResponsePersonIds(body: unknown, operation: string, scope: DecodeScope = {}): void {
   const segments = siteSegments(operation);
   if (segments === undefined) return;
   const sites = PERSON_ID_SITES[operation]!;
-  segments.forEach((path, i) => decodeSite(body, path, 0, operation, sites[i]!));
+  const prefix = scope.wrappedKey === undefined ? undefined : `${scope.wrappedKey}.`;
+  segments.forEach((path, i) => {
+    const site = sites[i]!;
+    if (prefix !== undefined && !site.startsWith(prefix)) return;
+    decodeSite(body, path, 0, operation, site, scope);
+  });
 }
+
+/**
+ * How much of a FOLLOWED page Go decodes, which is less than page 1.
+ *
+ * Page 1 of every generated read goes through `Parse<Op>Response`, whole. The
+ * pages after it do not, and the difference is Go SDK behaviour rather than
+ * schema, so it is written out here instead of generated:
+ *
+ * - `wrappedKey`: a wrapped listing's followed page is read as
+ *   `struct{ Events []json.RawMessage }` and each event decoded as
+ *   `generated.TimelineEvent` (`go/pkg/basecamp/timeline.go:445-458`); the
+ *   page's other keys (`person`) are never read. Only sites under the key apply.
+ * - `nullIdReadsZero`: see {@link PLAIN_INT64_FOLLOWED_PAGE_OPERATIONS}.
+ */
+interface DecodeScope {
+  readonly wrappedKey?: string;
+  readonly nullIdReadsZero?: boolean;
+}
+
+/**
+ * The operations whose followed-page items Go decodes into HAND-WRITTEN types
+ * after the positional normalizer — `Gauge`, `GaugeNeedle`, `Notification` —
+ * whose `Person.ID` is a plain `int64` (`go/pkg/basecamp/todos.go:77-78`), not
+ * `FlexibleInt64`: `gauges.go:236-241`, `gauges.go:307-312`,
+ * `my_notifications.go:266-268,295-304`. A plain `int64` refuses what
+ * `FlexibleInt64` refuses once the normalizer has run, with one exception —
+ * JSON `null`, which `encoding/json` leaves at 0 without error. Page 1 of these
+ * still goes through `Parse<Op>Response`, where `null` is refused.
+ */
+const PLAIN_INT64_FOLLOWED_PAGE_OPERATIONS: ReadonlySet<string> = new Set(["ListGauges", "ListGaugeNeedles", "GetBubbleUps"]);
 
 /**
  * Everything a generated read does to a decoded body's person ids, in Go's
@@ -406,6 +445,22 @@ function decodeResponsePersonIds(body: unknown, operation: string): void {
 function processResponsePersonIds(body: unknown, info: Pick<OperationInfo, "service" | "operation">): void {
   normalizeResponsePersonIds(body, info.service);
   decodeResponsePersonIds(body, info.operation);
+}
+
+/**
+ * The same, for a page reached by following `Link: rel="next"`: the kept items
+ * of a bare-array page, or a wrapped page. See {@link DecodeScope}.
+ */
+function processFollowedPagePersonIds(
+  body: unknown,
+  info: Pick<OperationInfo, "service" | "operation">,
+  wrappedKey?: string,
+): void {
+  normalizeResponsePersonIds(body, info.service);
+  decodeResponsePersonIds(body, info.operation, {
+    wrappedKey,
+    nullIdReadsZero: PLAIN_INT64_FOLLOWED_PAGE_OPERATIONS.has(info.operation),
+  });
 }
 
 /**
@@ -948,15 +1003,23 @@ export abstract class BaseService {
       }
 
       const pageItems: T[] = await this.parsePage<T[]>(response, page + 1);
-      processResponsePersonIds(pageItems, info);
-      allItems.push(...pageItems);
 
-      // Check maxItems cap. Only mark truncated when items were actually
-      // dropped, or the just-fetched page links to a further page.
-      if (maxItems && maxItems > 0 && allItems.length >= maxItems) {
-        const hasMore = allItems.length > maxItems
+      // Trim to the cap BEFORE decoding. Go collects followed pages as
+      // `[]json.RawMessage`, trims them to the limit, and only the kept items
+      // are decoded (`go/pkg/basecamp/client.go:620-631`), so an item past the
+      // cap on a followed page can never fail the read. Page 1 is decoded whole
+      // by `Parse<Op>Response` before the cap, and is processed that way above.
+      const capped = !!maxItems && maxItems > 0 && allItems.length + pageItems.length >= maxItems;
+      const kept = capped ? pageItems.slice(0, maxItems! - allItems.length) : pageItems;
+      processFollowedPagePersonIds(kept, info);
+      allItems.push(...kept);
+
+      // Only mark truncated when items were actually dropped, or the
+      // just-fetched page links to a further page.
+      if (capped) {
+        const hasMore = kept.length < pageItems.length
           || parseNextLink(response.headers.get("Link")) !== null;
-        return { items: allItems.slice(0, maxItems), truncated: hasMore };
+        return { items: allItems, truncated: hasMore };
       }
     }
 
@@ -1001,7 +1064,9 @@ export abstract class BaseService {
       }
 
       const pageData = await this.parsePage<Record<string, unknown>>(response, page + 1);
-      processResponsePersonIds(pageData, info);
+      // Every item on the page is decoded before the cap trims, as Go's
+      // `GetPersonProgress` loop does (timeline.go:452-464) — but only under the key.
+      processFollowedPagePersonIds(pageData, info, key);
       const pageItems: T[] = (pageData[key] as T[]) ?? [];
       allItems.push(...pageItems);
 
