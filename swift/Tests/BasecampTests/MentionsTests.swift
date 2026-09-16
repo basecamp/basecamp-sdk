@@ -998,6 +998,62 @@ final class MentionsTests: XCTestCase {
         XCTAssertEqual(Mentions.personId(fromAttachableSgid: doubled), 7)
     }
 
+    /// The Foundation behaviours this port leans on, asserted so the platform it
+    /// ships to has to agree with the platform it was written on.
+    ///
+    /// Every oracle behind this branch ran on swift-corelibs-foundation, and the
+    /// package ships against Darwin's. That gap is not hypothetical: an earlier
+    /// commit fixed a byte-order-mark divergence by relying on
+    /// `JSONSerialization` preserving an escaped U+FEFF, which is true on Linux
+    /// and false on macOS — five tests passed here and failed in CI. The fix was
+    /// to stop depending on the parser at all.
+    ///
+    /// What remains dependent is listed here rather than argued about. Each row
+    /// is a behaviour some ported rule assumes, with the divergence it would
+    /// cause named; each passes on Linux, so the only machine any of them can
+    /// fail on is the one that matters.
+    func testTheFoundationBehavioursThisPortDependsOn() {
+        // 1. `caseInsensitiveCompare` must fold the way `strings.EqualFold`
+        //    does. Go folds U+017F LATIN SMALL LETTER LONG S to `s`, so
+        //    `ſgid="…"` is an attribute Go reads. A fold that does not would
+        //    lose that mention — and one that folds MORE, length-changing folds
+        //    included, would read attributes Go does not.
+        XCTAssertEqual("\u{017F}gid".caseInsensitiveCompare("sgid"), .orderedSame)
+        XCTAssertEqual("SGID".caseInsensitiveCompare("sgid"), .orderedSame)
+        XCTAssertNotEqual("\u{FF53}gid".caseInsensitiveCompare("sgid"), .orderedSame)
+        XCTAssertEqual(
+            Mentions.attachmentSgids(in: "<bc-attachment \u{017F}gid=\"abc\"></bc-attachment>"),
+            ["abc"], "Go folds the long s, so this attribute is an sgid there")
+
+        // 2. `trimmingCharacters` must trim SCALARS, not grapheme clusters.
+        //    `strings.TrimSpace` stops at the first non-space byte, so a
+        //    combining mark after a space survives. A cluster-wise trim would
+        //    eat the mark with the space it hangs off — and then
+        //    `" \u{0301}Comment"` becomes a recording type this routes and Go
+        //    refuses before any request.
+        XCTAssertEqual(" \u{0301}Comment".trimmingCharacters(in: goWhitespace), "\u{0301}Comment")
+        XCTAssertEqual("Comment \u{0301}".trimmingCharacters(in: goWhitespace), "Comment \u{0301}")
+        XCTAssertEqual("\u{200B}".trimmingCharacters(in: goWhitespace), "\u{200B}")
+        XCTAssertEqual("\r\n\t Comment \n".trimmingCharacters(in: goWhitespace), "Comment")
+
+        // 3. `Data(base64Encoded:)` must not be more forgiving than Go's
+        //    `RawStdEncoding`, which refuses every byte outside the alphabet.
+        //    The CR and LF it DOES refuse are stripped before it sees them,
+        //    because Go ignores those two; a decoder that also skipped a space
+        //    or a tab would decode an sgid Go calls illegal.
+        XCTAssertNil(Data(base64Encoded: "QU JD"))
+        XCTAssertNil(Data(base64Encoded: "QU\tJD"))
+        XCTAssertNotNil(Data(base64Encoded: "QUJD"))
+
+        // 4. `JSONSerialization` must refuse a raw control character inside a
+        //    string, as `encoding/json` does. Nothing pre-processes that, so a
+        //    parser that accepted one would read an envelope Go refuses.
+        let withControl = #"{"_rails":{"data":"gid://bc3/Person/42\#u{01}","pur":"attachable"}}"#
+        var encoded = Data(withControl.utf8).base64EncodedString()
+        while encoded.hasSuffix("=") { encoded.removeLast() }
+        XCTAssertNil(Mentions.personId(fromAttachableSgid: encoded))
+    }
+
     /// The `--` separator is found by a BYTE scan, as `strings.LastIndex` finds
     /// it, and this is the last place in the file where it was not.
     ///

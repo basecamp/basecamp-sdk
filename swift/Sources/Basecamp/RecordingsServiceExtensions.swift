@@ -431,9 +431,9 @@ extension RecordingsService {
     /// GREEK QUESTION MARK is `;`, U+1FEF GREEK VARIA is a backtick, and U+212A
     /// KELVIN SIGN is `K`. One of them lands here: `"\u{212A}anban::Card"` is a
     /// recording type Go refuses before any request, and it matched
-    /// `"Kanban::Card"` and issued a read. The byte comparison is O(n) over a
-    /// table of twenty-seven, which is the wrong thing to optimise against being
-    /// wrong.
+    /// `"Kanban::Card"` and issued a read. The byte comparison is O(n) over
+    /// tables of twenty-five and five rows, which is the wrong thing to optimise
+    /// against being wrong.
     ///
     /// Applied to BOTH tables, though only one has a key an alias can reach:
     /// none of `comment`, `message`, `todo`, `card` or `chat.line` contains a
