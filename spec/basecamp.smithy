@@ -7523,9 +7523,11 @@ structure FeedEvent {
 /// **Pagination**: the body envelope (`items`, `position`, `next`), exactly as
 /// PollEvents — not the Link header, and not the generic paginator.
 ///
-/// **Errors** follow PollEvents, except that 410 (FeedPositionGoneError) here
-/// means the position fell behind the retention window: `epoch_after_id` is
-/// absent and `resume` re-enters at `since=0`, the earliest retained item.
+/// **Errors** follow PollEvents, except that 403 carries no body — the agent
+/// guard's bare `head :forbidden` (BareForbiddenError) — and that 410
+/// (FeedPositionGoneError) here means the position fell behind the retention
+/// window: `epoch_after_id` is absent and `resume` re-enters at `since=0`,
+/// the earliest retained item.
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "GET", uri: "/{accountId}/inbox.json")
