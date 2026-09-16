@@ -269,9 +269,9 @@ describe("TemplatesService", () => {
   });
 
   describe("template library", () => {
-    it("gets the account template library", async () => {
+    it("gets the to-do list templates from the per-kind path", async () => {
       server.use(
-        http.get(`${BASE_URL}/template_library.json`, () => {
+        http.get(`${BASE_URL}/template_library/todolists.json`, () => {
           return HttpResponse.json({
             bucket: { id: 1, name: "To-do List Templates", type: "TemplateLibrary" },
             todoset: { id: 2, title: "To-do List Templates", type: "Todoset" },
@@ -280,20 +280,131 @@ describe("TemplatesService", () => {
         })
       );
 
-      const library = await client.templates.getLibrary();
+      const library = await client.templates.getLibraryTodolists();
       expect(library.bucket.type).toBe("TemplateLibrary");
       expect(library.todoset.id).toBe(2);
       expect(library.todolists[0]?.name).toBe("Project kickoff");
     });
 
-    it("surfaces a forbidden template library read", async () => {
+    it("gets the card table templates and their container", async () => {
       server.use(
-        http.get(`${BASE_URL}/template_library.json`, () => {
+        http.get(`${BASE_URL}/template_library/card_tables.json`, () => {
+          return HttpResponse.json({
+            bucket: { id: 1, name: "To-do List Templates", type: "TemplateLibrary" },
+            kanban_boardset: { id: 2, title: "Card Table Templates", type: "Kanban::Boardset" },
+            card_tables: [{ id: 3, title: "Client onboarding", type: "Kanban::Board" }],
+          });
+        })
+      );
+
+      const library = await client.templates.getLibraryCardTables();
+      expect(library.kanban_boardset?.id).toBe(2);
+      expect(library.card_tables[0]?.title).toBe("Client onboarding");
+    });
+
+    it("tolerates a library with no card table container yet", async () => {
+      server.use(
+        http.get(`${BASE_URL}/template_library/card_tables.json`, () => {
+          return HttpResponse.json({
+            bucket: { id: 1, name: "To-do List Templates", type: "TemplateLibrary" },
+            kanban_boardset: null,
+            card_tables: [],
+          });
+        })
+      );
+
+      const library = await client.templates.getLibraryCardTables();
+      expect(library.kanban_boardset).toBeNull();
+      expect(library.card_tables).toHaveLength(0);
+    });
+
+    it("creates a card table template, sending the name flat", async () => {
+      let sentBody: unknown;
+      server.use(
+        http.post(`${BASE_URL}/template_library/card_tables.json`, async ({ request }) => {
+          sentBody = await request.json();
+          return HttpResponse.json(
+            {
+              id: 3,
+              title: "Client onboarding",
+              type: "Kanban::Board",
+              parent: { id: 2, title: "Card Table Templates", type: "Kanban::Boardset" },
+              lists: [{ id: 10, title: "Triage" }],
+            },
+            { status: 201 }
+          );
+        })
+      );
+
+      const cardTable = await client.templates.createLibraryCardTable({
+        name: "Client onboarding",
+      });
+      expect(sentBody).toEqual({ name: "Client onboarding" });
+      expect(cardTable.title).toBe("Client onboarding");
+      expect(cardTable.parent?.id).toBe(2);
+    });
+
+    it("surfaces a rejected card table template creation", async () => {
+      server.use(
+        http.post(`${BASE_URL}/template_library/card_tables.json`, () => {
+          return HttpResponse.json({ error: "Name can't be blank" }, { status: 422 });
+        })
+      );
+
+      await expect(
+        client.templates.createLibraryCardTable({ name: "Client onboarding" })
+      ).rejects.toMatchObject({ code: "validation", httpStatus: 422 });
+    });
+
+    it("creates a to-do list template, sending the name flat", async () => {
+      let sentBody: unknown;
+      server.use(
+        http.post(`${BASE_URL}/template_library/todolists.json`, async ({ request }) => {
+          sentBody = await request.json();
+          return HttpResponse.json(
+            {
+              id: 3,
+              name: "Project kickoff",
+              type: "Todolist",
+              description: "<div>Everything to open a project</div>",
+            },
+            { status: 201 }
+          );
+        })
+      );
+
+      const todolist = await client.templates.createLibraryTodolist({
+        name: "Project kickoff",
+        description: "<div>Everything to open a project</div>",
+      });
+      expect(sentBody).toEqual({
+        name: "Project kickoff",
+        description: "<div>Everything to open a project</div>",
+      });
+      expect(todolist.id).toBe(3);
+      expect(todolist.name).toBe("Project kickoff");
+    });
+
+    it("surfaces a rejected to-do list template creation", async () => {
+      server.use(
+        http.post(`${BASE_URL}/template_library/todolists.json`, () => {
+          return HttpResponse.json({ error: "Name can't be blank" }, { status: 422 });
+        })
+      );
+
+      await expect(
+        client.templates.createLibraryTodolist({ name: "Project kickoff" })
+      ).rejects.toMatchObject({ code: "validation", httpStatus: 422 });
+    });
+
+    it("surfaces a forbidden card table template read", async () => {
+      server.use(
+        http.get(`${BASE_URL}/template_library/card_tables.json`, () => {
           return HttpResponse.json({ error: "Forbidden" }, { status: 403 });
         })
       );
 
-      await expect(client.templates.getLibrary()).rejects.toMatchObject({
+      await expect(client.templates.getLibraryCardTables()).rejects.toMatchObject({
         code: "forbidden",
         httpStatus: 403,
       });
@@ -382,6 +493,131 @@ describe("TemplatesService", () => {
       expect((error as PeopleConfirmationRequiredError).people).toEqual([
         { id: 4, name: "Victor", avatarUrl: "https://example.test/avatar.png" },
       ]);
+    });
+
+    it("templatifies a recording, sending none of the optional keys when unset", async () => {
+      let sentBody: unknown;
+      server.use(
+        http.post(
+          `${BASE_URL}/buckets/1/recordings/2/templatifications.json`,
+          async ({ request }) => {
+            sentBody = await request.json();
+            return HttpResponse.json(
+              {
+                id: 7,
+                status: "pending",
+                source_recording_id: 2,
+                url: `${BASE_URL}/buckets/1/recordings/2/templatifications/7.json`,
+              },
+              { status: 201 }
+            );
+          }
+        )
+      );
+
+      const templatification = await client.templates.createTemplatification(1, 2, {});
+      expect(sentBody).toEqual({});
+      expect(templatification.id).toBe(7);
+      expect(templatification.status).toBe("pending");
+      expect(templatification.source_recording_id).toBe(2);
+      expect(templatification).not.toHaveProperty("destination_parent_id");
+    });
+
+    it("sends the optional templatification settings when the caller sets them", async () => {
+      let sentBody: unknown;
+      server.use(
+        http.post(
+          `${BASE_URL}/buckets/1/recordings/2/templatifications.json`,
+          async ({ request }) => {
+            sentBody = await request.json();
+            return HttpResponse.json(
+              {
+                id: 7,
+                status: "pending",
+                source_recording_id: 2,
+                url: `${BASE_URL}/buckets/1/recordings/2/templatifications/7.json`,
+              },
+              { status: 201 }
+            );
+          }
+        )
+      );
+
+      await client.templates.createTemplatification(1, 2, {
+        templateName: "Client onboarding",
+        copyComments: true,
+        copyAssignments: false,
+        moveCardsToTriage: true,
+      });
+      expect(sentBody).toEqual({
+        template_name: "Client onboarding",
+        copy_comments: true,
+        copy_assignments: false,
+        move_cards_to_triage: true,
+      });
+    });
+
+    it("surfaces a forbidden templatification of a recording that is neither kind", async () => {
+      server.use(
+        http.post(`${BASE_URL}/buckets/1/recordings/2/templatifications.json`, () => {
+          return HttpResponse.json({ error: "Forbidden" }, { status: 403 });
+        })
+      );
+
+      await expect(
+        client.templates.createTemplatification(1, 2, {})
+      ).rejects.toMatchObject({ code: "forbidden", httpStatus: 403 });
+    });
+
+    it("gets a completed templatification with its destination to-do list and no card table", async () => {
+      server.use(
+        http.get(`${BASE_URL}/buckets/1/recordings/2/templatifications/7`, () => {
+          return HttpResponse.json({
+            id: 7,
+            status: "completed",
+            source_recording_id: 2,
+            url: `${BASE_URL}/buckets/1/recordings/2/templatifications/7.json`,
+            destination_todolist: { id: 10, name: "Project kickoff" },
+          });
+        })
+      );
+
+      const templatification = await client.templates.getTemplatification(1, 2, 7);
+      expect(templatification.status).toBe("completed");
+      expect(templatification.destination_todolist?.id).toBe(10);
+      expect(templatification.destination_card_table).toBeUndefined();
+      expect(templatification).not.toHaveProperty("destination_parent_id");
+    });
+
+    it("gets a completed templatification with its destination card table and no to-do list", async () => {
+      server.use(
+        http.get(`${BASE_URL}/buckets/1/recordings/2/templatifications/8`, () => {
+          return HttpResponse.json({
+            id: 8,
+            status: "completed",
+            source_recording_id: 2,
+            url: `${BASE_URL}/buckets/1/recordings/2/templatifications/8.json`,
+            destination_card_table: { id: 11, title: "Client onboarding", type: "Kanban::Board" },
+          });
+        })
+      );
+
+      const templatification = await client.templates.getTemplatification(1, 2, 8);
+      expect(templatification.destination_card_table?.id).toBe(11);
+      expect(templatification.destination_todolist).toBeUndefined();
+    });
+
+    it("surfaces a missing templatification started by somebody else", async () => {
+      server.use(
+        http.get(`${BASE_URL}/buckets/1/recordings/2/templatifications/404`, () => {
+          return HttpResponse.json({ error: "Not found" }, { status: 404 });
+        })
+      );
+
+      await expect(client.templates.getTemplatification(1, 2, 404)).rejects.toMatchObject({
+        code: "not_found",
+        httpStatus: 404,
+      });
     });
   });
 });

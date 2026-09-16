@@ -70,6 +70,15 @@ extension Optional where Wrapped == [String: JSON] {
         return string
     }
 
+    func optLong(_ key: String) throws -> Int? {
+        guard let value = self?[key] else { return nil }
+        guard let number = value.intValue else {
+            throw RunnerError.badParameter(
+                "parameter \"\(key)\" must be an integer, got \(value.display)")
+        }
+        return number
+    }
+
     func optBool(_ key: String) throws -> Bool? {
         guard let value = self?[key] else { return nil }
         guard let bool = value.boolValue else {
@@ -236,12 +245,42 @@ private func summarizeUpcoming(_ envelope: GetUpcomingScheduleResponseContent) -
 }
 
 /// Exposes representative decoded template-library fields as portable scalars.
-private func summarizeTemplateLibrary(_ library: TemplateLibrary) -> JSON {
+private func summarizeTemplateLibraryTodolists(_ library: TemplateLibraryTodolists) -> JSON {
     .object([
         "bucket_id": .int(Int64(library.bucket.id)),
         "todoset_id": .int(Int64(library.todoset.id)),
         "first_todolist_id": .int(Int64(library.todolists.first?.id ?? 0)),
     ])
+}
+
+private func summarizeTemplateLibraryCardTables(_ library: TemplateLibraryCardTables) -> JSON {
+    var summary: [String: JSON] = [
+        "bucket_id": .int(Int64(library.bucket.id)),
+        "has_kanban_boardset": .bool(library.kanbanBoardset != nil),
+        "card_tables_count": .int(Int64(library.cardTables.count)),
+    ]
+    if let boardset = library.kanbanBoardset {
+        summary["kanban_boardset_id"] = .int(Int64(boardset.id))
+    }
+    if let first = library.cardTables.first {
+        summary["first_card_table_id"] = .int(Int64(first.id))
+    }
+    return .object(summary)
+}
+
+private func summarizeCardTable(_ cardTable: CardTable) -> JSON {
+    var summary: [String: JSON] = [
+        "id": .int(Int64(cardTable.id)),
+        "title": .string(cardTable.title),
+        "lists_count": .int(Int64(cardTable.lists?.count ?? 0)),
+    ]
+    if let parent = cardTable.parent {
+        summary["parent_id"] = .int(Int64(parent.id))
+    }
+    if let position = cardTable.position {
+        summary["position"] = .int(Int64(position))
+    }
+    return .object(summary)
 }
 
 private func summarizeTemplateLibraryCopy(_ copy: TemplateLibraryCopy) -> JSON {
@@ -252,7 +291,31 @@ private func summarizeTemplateLibraryCopy(_ copy: TemplateLibraryCopy) -> JSON {
     if let destination = copy.destinationTodolist {
         summary["destination_todolist_id"] = .int(Int64(destination.id))
     }
+    if let cardTable = copy.destinationCardTable {
+        summary["destination_card_table_id"] = .int(Int64(cardTable.id))
+    }
     return .object(summary)
+}
+
+private func summarizeTemplatification(_ templatification: Templatification) -> JSON {
+    var summary: [String: JSON] = [
+        "id": .int(Int64(templatification.id)),
+        "status": .string(templatification.status),
+    ]
+    if let destination = templatification.destinationTodolist {
+        summary["destination_todolist_id"] = .int(Int64(destination.id))
+    }
+    if let cardTable = templatification.destinationCardTable {
+        summary["destination_card_table_id"] = .int(Int64(cardTable.id))
+    }
+    return .object(summary)
+}
+
+private func summarizeTodolist(_ todolist: Todolist) -> JSON {
+    .object([
+        "id": .int(Int64(todolist.id)),
+        "title": .string(todolist.title),
+    ])
 }
 
 /// Flattens an accumulated project list into top-level scalars.
@@ -339,15 +402,50 @@ func dispatchOperation(_ tc: TestCase, _ account: AccountClient) async throws ->
         try await account.projects.recordProjectVisit(projectId: pathParams.longParam("projectId"))
         return DispatchResult()
 
-    case "GetTemplateLibrary":
-        let library = try await account.templates.getLibrary()
-        return DispatchResult(resultJSON: summarizeTemplateLibrary(library))
+    case "GetTemplateLibraryTodolists":
+        let library = try await account.templates.getLibraryTodolists()
+        return DispatchResult(resultJSON: summarizeTemplateLibraryTodolists(library))
+
+    case "GetTemplateLibraryCardTables":
+        let library = try await account.templates.getLibraryCardTables()
+        return DispatchResult(resultJSON: summarizeTemplateLibraryCardTables(library))
+
+    case "CreateTemplateLibraryCardTable":
+        let cardTable = try await account.templates.createLibraryCardTable(
+            req: CreateTemplateLibraryCardTableRequest(name: rb.stringParam("name")))
+        return DispatchResult(resultJSON: summarizeCardTable(cardTable))
+
+    case "CreateTemplateLibraryTodolist":
+        let todolist = try await account.templates.createLibraryTodolist(
+            req: CreateTemplateLibraryTodolistRequest(
+                description: rb.optString("description"),
+                name: rb.stringParam("name")))
+        return DispatchResult(resultJSON: summarizeTodolist(todolist))
+
+    case "CreateTemplatification":
+        let templatification = try await account.templates.createTemplatification(
+            bucketId: pathParams.longParam("bucketId"),
+            recordingId: pathParams.longParam("recordingId"),
+            req: CreateTemplatificationRequest(
+                copyAssignments: rb.optBool("copy_assignments"),
+                copyComments: rb.optBool("copy_comments"),
+                moveCardsToTriage: rb.optBool("move_cards_to_triage"),
+                templateName: rb.optString("template_name")))
+        return DispatchResult(resultJSON: summarizeTemplatification(templatification))
+
+    case "GetTemplatification":
+        let templatification = try await account.templates.getTemplatification(
+            bucketId: pathParams.longParam("bucketId"),
+            recordingId: pathParams.longParam("recordingId"),
+            templatificationId: pathParams.longParam("templatificationId"))
+        return DispatchResult(resultJSON: summarizeTemplatification(templatification))
 
     case "CreateTemplateLibraryCopy":
         let libraryCopy = try await account.templates.createLibraryCopy(
             req: CreateTemplateLibraryCopyRequest(
                 addingPeopleConfirmed: rb.optBool("adding_people_confirmed"),
-                destinationParentId: rb.longParam("destination_parent_id"),
+                destinationParentId: rb.optLong("destination_parent_id"),
+                destinationProjectId: rb.optLong("destination_project_id"),
                 templateRecordingId: rb.longParam("template_recording_id")))
         return DispatchResult(resultJSON: summarizeTemplateLibraryCopy(libraryCopy))
 

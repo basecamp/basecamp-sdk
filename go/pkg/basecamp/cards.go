@@ -13,23 +13,33 @@ import (
 
 // CardTable represents a Basecamp card table (kanban board).
 type CardTable struct {
-	ID               int64        `json:"id"`
-	Status           string       `json:"status"`
-	VisibleToClients bool         `json:"visible_to_clients"`
-	CreatedAt        time.Time    `json:"created_at"`
-	UpdatedAt        time.Time    `json:"updated_at"`
-	Title            string       `json:"title"`
-	InheritsStatus   bool         `json:"inherits_status"`
-	Type             string       `json:"type"`
-	URL              string       `json:"url"`
-	AppURL           string       `json:"app_url"`
-	BookmarkURL      string       `json:"bookmark_url"`
-	SubscriptionURL  string       `json:"subscription_url"`
-	Bucket           *Bucket      `json:"bucket,omitempty"`
-	Creator          *Person      `json:"creator,omitempty"`
-	Subscribers      []Person     `json:"subscribers,omitempty"`
-	Lists            []CardColumn `json:"lists,omitempty"`
-	Wormholes        []Wormhole   `json:"wormholes,omitempty"`
+	ID               int64     `json:"id"`
+	Status           string    `json:"status"`
+	VisibleToClients bool      `json:"visible_to_clients"`
+	CreatedAt        time.Time `json:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at"`
+	Title            string    `json:"title"`
+	InheritsStatus   bool      `json:"inherits_status"`
+	Type             string    `json:"type"`
+	URL              string    `json:"url"`
+	AppURL           string    `json:"app_url"`
+	BookmarkURL      string    `json:"bookmark_url"`
+	SubscriptionURL  string    `json:"subscription_url"`
+	// Position is the ordinal position on the project's dock. Nil for a card
+	// table template, which the template library orders by title instead.
+	Position *int32 `json:"position,omitempty"`
+	// Parent is the containing recording. Populated for a card table template,
+	// which hangs off the library's Kanban::Boardset; nil for a project card
+	// table, which sits on the dock and reports Position instead.
+	Parent *Parent `json:"parent,omitempty"`
+	// PublicLinkURL is the card table's public sharing URL. Empty when the
+	// current person fails bc3's can_share_publicly? gate.
+	PublicLinkURL string       `json:"public_link_url,omitempty"`
+	Bucket        *Bucket      `json:"bucket,omitempty"`
+	Creator       *Person      `json:"creator,omitempty"`
+	Subscribers   []Person     `json:"subscribers,omitempty"`
+	Lists         []CardColumn `json:"lists,omitempty"`
+	Wormholes     []Wormhole   `json:"wormholes,omitempty"`
 }
 
 // CardColumn represents a column in a card table.
@@ -1372,8 +1382,20 @@ func cardTableFromGenerated(gc generated.CardTable) CardTable {
 		AppURL:           gc.AppUrl,
 		BookmarkURL:      deref(gc.BookmarkUrl),
 		SubscriptionURL:  deref(gc.SubscriptionUrl),
+		PublicLinkURL:    deref(gc.PublicLinkUrl),
+		Position:         gc.Position,
 		CreatedAt:        gc.CreatedAt,
 		UpdatedAt:        gc.UpdatedAt,
+	}
+
+	if gc.Parent != nil {
+		ct.Parent = &Parent{
+			ID:     gc.Parent.Id,
+			Title:  gc.Parent.Title,
+			Type:   gc.Parent.Type,
+			URL:    gc.Parent.Url,
+			AppURL: gc.Parent.AppUrl,
+		}
 	}
 
 	if gc.Id != 0 {

@@ -613,6 +613,17 @@ pub struct CardTable {
     /// `subscription_url`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub subscription_url: Option<String>,
+    /// Position on the project dock. Absent on a card table template, which the
+    /// library orders by title instead.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub position: Option<i32>,
+    /// `parent`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub parent: Option<RecordingParent>,
+    /// Public sharing URL. Absent for callers who may not share publicly, so the
+    /// same card table can carry it for one person and not another.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub public_link_url: Option<String>,
     /// `bucket`.
     pub bucket: TodoBucket,
     /// `creator`.
@@ -1506,13 +1517,32 @@ pub struct CreateScheduleEntryRequestContent {
 /// `CreateScheduleEntryResponseContent`.
 pub type CreateScheduleEntryResponseContent = ScheduleEntry;
 
+/// The `CreateTemplateLibraryCardTableRequestContent` shape of the Basecamp API.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct CreateTemplateLibraryCardTableRequestContent {
+    /// The template's name. Write-only: the response carries it as `title`.
+    pub name: String,
+}
+
+/// `CreateTemplateLibraryCardTableResponseContent`.
+pub type CreateTemplateLibraryCardTableResponseContent = CardTable;
+
 /// The `CreateTemplateLibraryCopyRequestContent` shape of the Basecamp API.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct CreateTemplateLibraryCopyRequestContent {
-    /// `template_recording_id`.
+    /// The to-do list or card table in the library to copy.
     pub template_recording_id: i64,
-    /// `destination_parent_id`.
-    pub destination_parent_id: i64,
+    /// The destination project. Basecamp resolves the container from the
+    /// template's kind, so a caller naming a project needs to know nothing about
+    /// docks or to-do sets. Supply this or destination_parent_id; if both are
+    /// sent, destination_parent_id wins.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub destination_project_id: Option<i64>,
+    /// The container to copy into, for a caller that already holds one: the
+    /// project's to-do set for a to-do list template, or its dock for a card
+    /// table. A caller who may not edit it gets 404, not 403.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub destination_parent_id: Option<i64>,
     /// Confirm granting destination-project access to people referenced by the template.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub adding_people_confirmed: Option<bool>,
@@ -1520,6 +1550,19 @@ pub struct CreateTemplateLibraryCopyRequestContent {
 
 /// `CreateTemplateLibraryCopyResponseContent`.
 pub type CreateTemplateLibraryCopyResponseContent = TemplateLibraryCopy;
+
+/// The `CreateTemplateLibraryTodolistRequestContent` shape of the Basecamp API.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct CreateTemplateLibraryTodolistRequestContent {
+    /// What to call the template.
+    pub name: String,
+    /// Rich text describing the template.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+}
+
+/// `CreateTemplateLibraryTodolistResponseContent`.
+pub type CreateTemplateLibraryTodolistResponseContent = Todolist;
 
 /// The `CreateTemplateRequestContent` shape of the Basecamp API.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -1533,6 +1576,27 @@ pub struct CreateTemplateRequestContent {
 
 /// `CreateTemplateResponseContent`.
 pub type CreateTemplateResponseContent = Template;
+
+/// The `CreateTemplatificationRequestContent` shape of the Basecamp API.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct CreateTemplatificationRequestContent {
+    /// What to call the template. Defaults to the source recording's own title.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub template_name: Option<String>,
+    /// Carry the comments across.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub copy_comments: Option<bool>,
+    /// Carry assignees and the people involved across, adding them to the library
+    /// if they are not already there.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub copy_assignments: Option<bool>,
+    /// Gather the cards into Triage. Card tables only, and ignored otherwise.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub move_cards_to_triage: Option<bool>,
+}
+
+/// `CreateTemplatificationResponseContent`.
+pub type CreateTemplatificationResponseContent = Templatification;
 
 /// The `CreateTimesheetEntryRequestContent` shape of the Basecamp API.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -2830,14 +2894,20 @@ pub type GetSearchMetadataResponseContent = SearchMetadata;
 /// `GetSubscriptionResponseContent`.
 pub type GetSubscriptionResponseContent = Subscription;
 
+/// `GetTemplateLibraryCardTablesResponseContent`.
+pub type GetTemplateLibraryCardTablesResponseContent = TemplateLibraryCardTables;
+
 /// `GetTemplateLibraryCopyResponseContent`.
 pub type GetTemplateLibraryCopyResponseContent = TemplateLibraryCopy;
 
-/// `GetTemplateLibraryResponseContent`.
-pub type GetTemplateLibraryResponseContent = TemplateLibrary;
+/// `GetTemplateLibraryTodolistsResponseContent`.
+pub type GetTemplateLibraryTodolistsResponseContent = TemplateLibraryTodolists;
 
 /// `GetTemplateResponseContent`.
 pub type GetTemplateResponseContent = Template;
+
+/// `GetTemplatificationResponseContent`.
+pub type GetTemplatificationResponseContent = Templatification;
 
 /// `GetTimesheetEntryResponseContent`.
 pub type GetTimesheetEntryResponseContent = TimesheetEntry;
@@ -5103,16 +5173,18 @@ pub struct Template {
     pub dock: Option<Vec<DockItem>>,
 }
 
-/// The `TemplateLibrary` shape of the Basecamp API.
+/// The `TemplateLibraryCardTables` shape of the Basecamp API.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
-pub struct TemplateLibrary {
+pub struct TemplateLibraryCardTables {
     /// `bucket`.
     pub bucket: RecordingBucket,
-    /// `todoset`.
-    pub todoset: RecordingParent,
-    /// `todolists`.
-    pub todolists: Vec<Todolist>,
+    /// `kanban_boardset`.
+    #[serde(deserialize_with = "serde::Deserialize::deserialize")]
+    pub kanban_boardset: Option<RecordingParent>,
+    /// Active templates in title order, as recording projections: read one through
+    /// GetCardTable to see its columns.
+    pub card_tables: Vec<Recording>,
 }
 
 /// The `TemplateLibraryConfirmationPerson` shape of the Basecamp API.
@@ -5144,6 +5216,42 @@ pub struct TemplateLibraryCopy {
     /// `destination_todolist`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub destination_todolist: Option<Todolist>,
+    /// `destination_card_table`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub destination_card_table: Option<CardTable>,
+}
+
+/// The `TemplateLibraryTodolists` shape of the Basecamp API.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct TemplateLibraryTodolists {
+    /// `bucket`.
+    pub bucket: RecordingBucket,
+    /// `todoset`.
+    pub todoset: RecordingParent,
+    /// `todolists`.
+    pub todolists: Vec<Todolist>,
+}
+
+/// The record of templatifying a recording into the library. Carries no
+/// destination parent, unlike a copy: the destination is always the library.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct Templatification {
+    /// `id`.
+    pub id: i64,
+    /// pending|processing|completed|failed
+    pub status: String,
+    /// `source_recording_id`.
+    pub source_recording_id: i64,
+    /// `url`.
+    pub url: String,
+    /// `destination_todolist`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub destination_todolist: Option<Todolist>,
+    /// `destination_card_table`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub destination_card_table: Option<CardTable>,
 }
 
 /// A single timeline-event attachment. This is an optional-field superset over
