@@ -892,7 +892,11 @@ class TestRetryableKeywordDoesNotCollide:
 
            left ``LimitExceededError("x", retryable=True, retry_after=5)``
            retryable -- the invariant this whole change exists to defend -- and
-           passed all 2218 tests in the repo. So the flag is crossed with
+           passed the repo as it stood against the v2 file, all 2218 tests of
+           it. (That count and the 2219 quoted in
+           :meth:`test_a_fixed_retryability_is_overwritten_unconditionally` are
+           two different suites a test apart, not one number drifting; both
+           were re-run on this head.) So the flag is crossed with
            companion keywords and with a custom message, and classes whose
            retryability is DERIVED are probed at every value of the argument it
            derives from.
@@ -977,11 +981,45 @@ class TestRetryableKeywordDoesNotCollide:
                         # NOTE, and it is a real one rather than a shrug: this
                         # branch pins today's Python behaviour, and for the
                         # composite and discovery identities that behaviour
-                        # DIVERGES from the other SDKs. TypeScript's
-                        # `RecordingSummaryError` forces `retryable: false` for
-                        # the whole family (`super(code, message, {...options,
-                        # retryable: false})`), and Ruby's takes no `retryable:`
-                        # keyword at all. Python lets a caller set
+                        # DIVERGES from five of the six other SDKs. Not from
+                        # all six, and not "Python is the outlier": an earlier
+                        # draft of this note said that, and Rust is the
+                        # counter-example it had not read.
+                        #
+                        # The five that refuse the caller structurally:
+                        # TypeScript's `RecordingSummaryError` forces
+                        # `retryable: false` over the caller's options for the
+                        # whole family (`super(code, message, {...options,
+                        # retryable: false})`), and its
+                        # `DiscoverySelectionError` declares an options type of
+                        # `cause` and `httpStatus` only; Ruby's
+                        # `RecordingSummaryError#initialize(kind:, message:,
+                        # code:, hint:)` and `DiscoverySelectionError#initialize
+                        # (reason, message, http_status:)` take no `retryable:`
+                        # keyword; Kotlin's `RecordingSummaryFailure` is an
+                        # `internal constructor` with no such parameter, and its
+                        # `DiscoverySelection` passes `false` itself; Go models
+                        # the composite identities as their own structs
+                        # (`RecordingRoutingError`, `UnresolvedRecordingError`,
+                        # `BucketMismatchError`,
+                        # `CampfireDiscoveryIncompleteError`) that unwrap to
+                        # sentinels and carry no retryable field at all, the
+                        # field living on the unrelated `basecamp.Error`; and
+                        # Swift's `RecordingSummaryError` is a plain enum with
+                        # no retryability anywhere.
+                        #
+                        # Rust is NOT on that side. Its `RecordingSummaryError`
+                        # and `SelectionFailure` carry no retryability either,
+                        # and `From<RecordingSummaryError> for Error` builds at
+                        # `Error::new`'s `retryable: false` -- but
+                        # `Error::retryable(bool)` is a public builder, so
+                        # `Error::from(reason).retryable(true)` is exactly this
+                        # hazard, and `RecordingSummaryError::of` still
+                        # identifies the result as the composite's verdict.
+                        # Python's keyword is the easiest route to a retryable
+                        # deterministic refusal; it is not the only one.
+                        #
+                        # Python lets a caller set
                         # `NoRecordingTypeError(routing_key=..., retryable=True)`
                         # -- a deterministic refusal, decided from the caller's
                         # own arguments before any request, that then invites a
@@ -1055,7 +1093,11 @@ class TestRetryableKeywordDoesNotCollide:
         chosen after the net. And widening alone does not even close the
         obvious cases -- an unconditional overwrite followed by a *nested*
         ``kwargs.update({"retryable": True})`` under a condition on an unprobed
-        value leaked with all 2220 tests green.
+        status leaks past the value sweep entirely: with this test deselected,
+        the other 2219 pass. It is the only thing that sees it, which is the
+        argument for its existence and also the reason not to overstate it --
+        "the whole suite stayed green" would be a claim about a suite this test
+        is a member of.
 
         So this asserts the FORM, which is where the property is decidable.
         Each class that fixes its retryability must mention the flag exactly
