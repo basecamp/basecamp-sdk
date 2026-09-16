@@ -1046,6 +1046,14 @@ function wireInteger(value: unknown, what: string, hint = DISCOVERY_HINT): numbe
   // "any whole number" rule was wider than the reference at the top end, so a
   // bucket id of 1e20 — a body Go refuses — came back as a bucket_mismatch
   // naming a bucket that cannot exist.
+  //
+  // MEASURED IN GO, NOT IN THIS RUNTIME, and the two differ at exactly one
+  // point: `JSON.parse("9223372036854775807")` is 2^63 here, so the top of the
+  // window does NOT survive the parse and this guard refuses it. The negative
+  // end does survive. That over-refusal is reachable at one literal value, in
+  // the refusing direction, and it is declared in the TypeScript row of
+  // Appendix F rather than left for a reader to discover from this sentence
+  // asserting the opposite.
   if (typeof value !== "number" || !Number.isInteger(value) || value >= INT64_LIMIT || value < -INT64_LIMIT) {
     throw Errors.apiError(
       truncateErrorMessage(`${what} has an id that is not a usable whole number (${describeIdValue(value)})`),
@@ -1405,6 +1413,8 @@ export class RecordingsService extends GeneratedRecordingsService {
           bucket: t.bucket,
           creator: t.creator,
           assignees: t.assignees,
+          // A todo carries a TodoParent, which has no bucket field at all.
+          parentHasBucket: false,
         });
       }
       case "card": {
@@ -1471,6 +1481,8 @@ export class RecordingsService extends GeneratedRecordingsService {
           parent: l.parent,
           bucket: l.bucket,
           creator: l.creator,
+          // A todolist carries a TodoParent too — same shape, same absence.
+          parentHasBucket: false,
         });
       }
       case "vault": {
@@ -1719,6 +1731,15 @@ interface SummarizableNested {
   bucket?: RecordingBucket;
   creator?: Person;
   assignees?: Person[];
+  /**
+   * Whether this read's parent is a `RecordingParent` (which has a typed
+   * `bucket`) or a `TodoParent` (which has no such field). Only a todo and a
+   * todolist carry the latter, so it defaults to true and those two arms say
+   * otherwise. Threaded from the routing arm rather than guessed from the
+   * payload: the same key is a typed struct under one containing type and an
+   * ignored unknown under another, and only the reference says which.
+   */
+  parentHasBucket?: boolean;
 }
 
 /** Builds the projection, keeping only the keys the recording actually has. */
@@ -1762,13 +1783,35 @@ function projectRecording(
   // array in any of these slots is a decode error, while null and {} are the
   // zero value. Two of the four had no rule at all, three lines from the one
   // that did — the sweep stopped one field short of where it said it stopped.
-  const parent = nestedIdentity(nested.parent, "a recording parent");
+  const parent = withEmptyLabel(
+    nestedIdentity(nested.parent, "a recording parent", "parent", nested.parentHasBucket ?? true),
+    "title",
+  );
   if (parent !== undefined) summary.parent = parent;
   // Assigned when PRESENT, not when truthy: a falsy non-object (0, false, "")
   // is a decode error in Go, and dropping the key here hid it from the
-  // cross-project check, which then found nothing to disagree with.
-  if (nested.bucket !== undefined && nested.bucket !== null) summary.bucket = nested.bucket;
-  const creator = nestedIdentity(nested.creator, "a recording creator");
+  // cross-project check, which then found nothing to disagree with. Its own
+  // fields go through the same gate as every other member's; the id stays with
+  // the cross-project check below, which is the one place it is INTERPRETED
+  // rather than reported.
+  if (nested.bucket !== undefined && nested.bucket !== null) {
+    // The RETURN value, not the original: the bucket arm decodes its id the way
+    // the parent arm does, and calling it for its refusals alone dropped the
+    // conversion on the floor — so a null bucket id stayed `null` where Go and
+    // Ruby both give 0. The first spelling of this line did exactly that.
+    //
+    // No nullish fallback, for the reason the assignees paragraph below gives:
+    // the guard above has already excluded the only two inputs for which
+    // `nestedIdentity` returns `undefined`, so a `?? nested.bucket` here was
+    // unreachable — and it fell back to the ORIGINAL, the very thing the
+    // sentence above says not to emit. A mutation replacing it with a cast left
+    // the whole suite green, which is what an unreachable branch looks like.
+    summary.bucket = withEmptyLabel(
+      nestedIdentity(nested.bucket, "a recording bucket", "bucket"),
+      "name",
+    ) as NonNullable<typeof nested.bucket>;
+  }
+  const creator = withEmptyLabel(nestedIdentity(nested.creator, "a recording creator", "person"), "name");
   if (creator !== undefined) summary.creator = creator;
   // `assignees` is a LIST of them: Go refuses a non-array and a non-object
   // element, and takes null as the nil slice. Go's own `omitempty` is why an
@@ -1781,7 +1824,23 @@ function projectRecording(
   const assignees = wireItems(nested.assignees, "a recording assignees list") as NonNullable<
     typeof nested.assignees
   >;
-  if (assignees.length > 0) summary.assignees = assignees;
+  // Each element through the SAME Person gate the creator takes. Go decodes
+  // `[]Person`, so a wrong-typed `avatar_url` on the second assignee fails its
+  // read exactly as it does on the first — and a rule applied to the creator
+  // but not to the assignees would be the same inconsistency one level out.
+  // Mapped rather than walked in place: the flexible id CONVERTS, so an element
+  // whose id arrived as "007" has to be replaced by the decoded one.
+  //
+  // No nullish fallback on the result, and that is not an oversight: `wireItems`
+  // has already mapped a null or absent element to `{}` (see `sourceObject`),
+  // so nothing nullish reaches `nestedIdentity` and its `undefined` branch is
+  // unreachable from here. A `?? assignee` here READ as if it were preserving a
+  // null element Go emits as the zero Person, and preserved nothing — a guard
+  // whose only effect was to make a reader believe a case was handled.
+  const typedAssignees = assignees.map(
+    (assignee) => nestedIdentity(assignee, "a recording assignee", "person") as (typeof assignees)[number],
+  );
+  if (typedAssignees.length > 0) summary.assignees = typedAssignees;
   return summary;
 }
 
@@ -1913,10 +1972,264 @@ function recordingInstant(value: unknown): string {
 }
 
 /**
- * A nested identity the projection carries verbatim, or `undefined` for Go's
- * zero value. A shape Go's decoder refuses fails the read here too.
+ * The fields of a nested member the reference types, by the model it decodes
+ * into.
+ *
+ * TRANSCRIBED FROM `generated`, NOT FROM `pkg/basecamp`, and the difference is
+ * load-bearing rather than pedantic. The Go service wrapper the composite calls
+ * hands the body to the GENERATED client and converts afterwards
+ * (`commentFromGenerated`), so the decode — the thing that fails a read —
+ * happens against the generated model. The two disagree in exactly the two
+ * places that would have bitten: `system_label` is a field of the hand-written
+ * Person and NOT of the generated one, so it is an unknown key the reference
+ * IGNORES and typing it here would refuse a body the reference accepts; and a
+ * person's id is `FlexibleInt64` there against a plain `int64` here.
+ *
+ * `created_at` / `updated_at` are `*time.Time` in Go: a non-string fails on
+ * both sides, and a string that is not RFC 3339 fails only there. That residue
+ * is declared rather than closed, alongside the recording's own unread
+ * top-level fields.
  */
-function nestedIdentity<T>(value: T, what: string): T | undefined {
+const PERSON_STRING_FIELDS = [
+  "attachable_sgid",
+  "avatar_url",
+  "bio",
+  "created_at",
+  "email_address",
+  "location",
+  "name",
+  "personable_type",
+  "tagline",
+  "time_zone",
+  "title",
+  "updated_at",
+] as const;
+
+const PERSON_BOOL_FIELDS = [
+  "admin",
+  "can_access_hill_charts",
+  "can_access_timesheet",
+  "can_manage_people",
+  "can_manage_projects",
+  "can_ping",
+  "client",
+  "employee",
+  "owner",
+] as const;
+
+const PARENT_STRING_FIELDS = ["title", "type", "url", "app_url"] as const;
+
+const BUCKET_STRING_FIELDS = ["name", "type"] as const;
+
+type NestedKind = "person" | "parent" | "bucket";
+
+/** Go's int64 window, the bound `FlexibleInt64` decodes within. */
+const INT64_MAX = 9223372036854775807n;
+const INT64_MIN = -9223372036854775808n;
+
+function memberString(member: Record<string, unknown>, field: string, what: string): void {
+  const value = member[field];
+  // NULL IS NOT A WRONG TYPE. Every one of these is a `*string` or a plain
+  // `string` in the model and `json.Unmarshal` of `null` is a no-op at any
+  // depth, so only a PRESENT value of the wrong type fails.
+  if (value === undefined || value === null || typeof value === "string") return;
+  throw Errors.apiError(
+    truncateErrorMessage(`${what} ${field} is ${describeWireValue(value)} rather than a string`),
+    undefined,
+    { retryable: false, hint: "the response is malformed; the recording cannot be summarized from it" },
+  );
+}
+
+function memberBool(member: Record<string, unknown>, field: string, what: string): void {
+  const value = member[field];
+  // `1` does NOT pass. JavaScript would read it as truthy; Go refuses a number
+  // for a bool outright, and this is the read side of a payload nobody here
+  // wrote.
+  if (value === undefined || value === null || typeof value === "boolean") return;
+  throw Errors.apiError(
+    truncateErrorMessage(`${what} ${field} is ${describeWireValue(value)} rather than a boolean`),
+    undefined,
+    { retryable: false, hint: "the response is malformed; the recording cannot be summarized from it" },
+  );
+}
+
+/**
+ * A person's `company`: `PersonCompany{Id int64, Name string}`.
+ *
+ * Its id takes the PLAIN reader, not the flexible one the person's own id
+ * takes — `{"company":{"id":"1"}}` fails the read in the reference where
+ * `{"id":"1"}` on the person beside it resolves.
+ */
+function memberCompany(member: Record<string, unknown>, what: string): void {
+  const company = member["company"];
+  if (company === undefined || company === null) return;
+  if (typeof company !== "object" || Array.isArray(company)) {
+    throw Errors.apiError(
+      truncateErrorMessage(`${what} company is ${describeWireValue(company)} rather than an object`),
+      undefined,
+      { retryable: false, hint: "the response is malformed; the recording cannot be summarized from it" },
+    );
+  }
+  const fields = company as Record<string, unknown>;
+  wireInteger(fields["id"], `${what} company`, RECORDING_HINT);
+  memberString(fields, "name", `${what} company`);
+}
+
+/**
+ * `types.FlexibleInt64`, which is what a person's id — and only a person's id —
+ * decodes through in the generated model.
+ *
+ * It differs from a plain `int64` in three directions that are easy to get
+ * backwards, all measured against the reference rather than inferred:
+ *
+ *   - a NON-NUMERIC string is 0, not an error. That 0 is the system-actor
+ *     sentinel ("basecamp", "campfire"), so reading it as a person id would
+ *     name a real person where Go names no one.
+ *   - `null` IS an error here, where a plain int64 field reads it as 0:
+ *     `FlexibleInt64.UnmarshalJSON` is called for null and decodes it as a
+ *     number.
+ *   - the int64 WINDOW still applies to both forms. A number is not exempt
+ *     from it because it arrived as a number: `1e20` and `9223372036854775808`
+ *     are `flexibleint64: not a valid int64` in the reference, and an earlier
+ *     spelling of this function bounded the string branch and left the number
+ *     branch on a bare `Number.isInteger` — the same clause `wireInteger` four
+ *     definitions above already carries, dropped in a copy of its own policy.
+ *
+ * It CONVERTS as well as validates, and the conversion is the half TypeScript
+ * was missing: `"007"` is 7 in the summary Go hands back, so validating the
+ * string and then emitting it left this port's projection a different shape
+ * from the contract it shares — a `creator.id` of type `string` where the other
+ * six SDKs emit a number.
+ *
+ * WHAT REACHES THIS READER, which is narrower than it looks and which two
+ * rounds of review were needed to state correctly. `normalizePersonIds`
+ * (`services/base.ts`) runs over every response body before any composite sees
+ * it, and rewrites the `id` of any object carrying `personable_type` — a
+ * numeric string in safe range becomes the number, and anything else becomes
+ * `0` plus a manufactured `system_label`. Every real BC3 person carries
+ * `personable_type`, so on a realistic body the conversion below has already
+ * happened upstream. This reader governs the person objects that LACK it,
+ * which is where this port used to emit `"007"` as a string.
+ *
+ * THREE RESIDUES, declared because this runtime cannot close them and because
+ * two earlier versions of this comment called a shorter list exhaustive:
+ *
+ *   - `7.0` is accepted as 7. `JSON.parse` cannot see the fraction, so nothing
+ *     at this layer can tell it from `7`, while Go's decoder reads the raw
+ *     bytes and refuses it. Ruby and Python both refuse it; this port cannot.
+ *   - `created_at` / `updated_at` are `*time.Time` in the model, so Go refuses
+ *     an unparseable string as well as a non-string. This port checks only the
+ *     TYPE, the same residue Ruby's `#read_member_fields` and its SPEC row
+ *     declare for the same two fields.
+ *   - an id past `Number.MAX_SAFE_INTEGER` is REFUSED here rather than rounded.
+ *     The reference accepts `"9223372036854775807"` and carries it exactly;
+ *     JavaScript cannot, and `Number(BigInt("9223372036854775807"))` is 2^63 —
+ *     a value this function's own overflow guard exists to reject, arrived at
+ *     one line after passing it. Refusing is the direction that does not hand a
+ *     caller a person id naming someone else.
+ *
+ *     This is deliberately STRICTER than the sibling ids, and the inconsistency
+ *     is stated rather than smoothed over: `summary.id` and `parent.id` emit
+ *     the rounded value under retained waiver 1B.6, and an earlier version of
+ *     this paragraph claimed the refusal was "the rule `numericId` and
+ *     `summarize` already apply", which it is not — those two apply it to ids
+ *     that ADDRESS something and to ids the CALLER supplied. The argument for
+ *     the stricter rule here is only that a person id names a person; whether
+ *     1B.6 should be revisited for the others is its own question and not
+ *     this change's to answer.
+ *
+ *     Where the pre-pass above DID run, this branch is unreachable and the
+ *     caller has already been handed `0` and a `system_label` the reference
+ *     never emits. That is a divergence in `normalizePersonIds` rather than in
+ *     this composite, it is SDK-wide rather than local to the summary, and it
+ *     is recorded on card 39 for the person-id card rather than patched here.
+ */
+function flexiblePersonId(value: unknown, what: string): number {
+  if (typeof value === "string") {
+    // Go's `strconv.ParseInt` takes a sign and rejects everything else whole;
+    // there is no prefix parsing and no whitespace trimming.
+    if (!/^[+-]?\d+$/.test(value)) return 0;
+    return boundedPersonId(BigInt(value), value, what);
+  }
+  if (typeof value !== "number" || !Number.isInteger(value)) {
+    throw Errors.apiError(
+      truncateErrorMessage(`${what} id is ${describeWireValue(value)} rather than a person id`),
+      undefined,
+      { retryable: false, hint: RECORDING_HINT },
+    );
+  }
+  // A number reaching here has already been through `JSON.parse`, so anything
+  // past 2^53 was rounded before this port could see it and the exactness this
+  // guard asks for was lost upstream. The WINDOW is still checkable and still
+  // the reference's, which is what this enforces.
+  return boundedPersonId(BigInt(value), value, what);
+}
+
+/** The int64 window and this runtime's exactness limit, for a person id. */
+function boundedPersonId(parsed: bigint, raw: unknown, what: string): number {
+  if (parsed > INT64_MAX || parsed < INT64_MIN) {
+    throw Errors.apiError(
+      truncateErrorMessage(`${what} id overflows int64 (${describeIdValue(raw)})`),
+      undefined,
+      { retryable: false, hint: RECORDING_HINT },
+    );
+  }
+  const id = Number(parsed);
+  if (!Number.isSafeInteger(id)) {
+    throw Errors.apiError(
+      truncateErrorMessage(
+        `${what} id cannot be represented exactly by this runtime (${describeIdValue(raw)})`,
+      ),
+      undefined,
+      { retryable: false, hint: RECORDING_HINT },
+    );
+  }
+  return id;
+}
+
+/**
+ * A nested identity, typed as the reference types it, or `undefined` for Go's
+ * zero value.
+ *
+ * This used to check only that the slot held an OBJECT and then carry the
+ * member verbatim, under a doc comment claiming "a shape Go's decoder refuses
+ * fails the read here too" — which was true of the container and false of every
+ * field inside it, so `{"creator":{"name":7}}` produced a summary whose `name`
+ * was a number in a field the contract declares a string. Card 39 settled the
+ * cross-port fork in favour of the reference's line: four of the seven SDKs
+ * reproduce the whole nested decode for free through a typed decoder and cannot
+ * stop short of it, so a port that stopped at the container was the outlier.
+ *
+ * "Typed as the reference types it" is meant literally and is held to it by
+ * `conformance/tests/recording_summary.json`. What falls short is enumerated in
+ * full in SPEC's TypeScript row rather than here, because every partial copy of
+ * that list in this file has drifted from it. Of the eight named there, SEVEN
+ * pass through this function — all but `normalizePersonIds`, which rewrites the
+ * body before any composite sees it:
+ *
+ *   - the three `flexiblePersonId` names: a `7.0` this runtime cannot see, a
+ *     person's `created_at` / `updated_at` checked for type and not parsed, and
+ *     an id past 2^53 it cannot hold;
+ *   - `9223372036854775807` as a parent or bucket id, which `wireInteger` in the
+ *     two arms below refuses for the same parse reason;
+ *   - an assignee's null `name`, which the person arm passes through where Go
+ *     emits `""` (see `withEmptyLabel`);
+ *   - the EMPTINESS rule, on a different axis. Go builds a nested member only
+ *     when `Id != 0 || Name != ""`, so an all-zero member leaves the key out
+ *     there and Ruby drops it too, while this port emits `{}`. That is the
+ *     projection's shape rather than its typing, and it predates this rule;
+ *   - and the parent's nested bucket, below.
+ *
+ * The first version of this comment claimed a completeness it did not have,
+ * which is the failure mode this whole card exists to correct.
+ *
+ * The parent's nested bucket, on the EMISSION side and shared with Ruby: a parent's nested `bucket` is
+ * typed here — a wrong-typed one fails the read, as the generated decode does —
+ * and then passed through whole with its id undecoded, while the reference's
+ * conversion builds a `Parent` without a bucket and emits no such key at all.
+ * The recursive call below is for its refusals only, and says so.
+ */
+function nestedIdentity<T>(value: T, what: string, kind: NestedKind, parentHasBucket = true): T | undefined {
   if (value === undefined || value === null) return undefined;
   if (typeof value !== "object" || Array.isArray(value)) {
     throw Errors.apiError(
@@ -1925,7 +2238,93 @@ function nestedIdentity<T>(value: T, what: string): T | undefined {
       { retryable: false, hint: "the response is malformed; the recording cannot be summarized from it" },
     );
   }
-  return value;
+  const member = value as Record<string, unknown>;
+  switch (kind) {
+    case "person": {
+      for (const field of PERSON_STRING_FIELDS) memberString(member, field, what);
+      for (const field of PERSON_BOOL_FIELDS) memberBool(member, field, what);
+      memberCompany(member, what);
+      // Absent is the zero value and is NOT invented — the reference emits a
+      // whole struct and this tier emits the object it was given, so writing an
+      // id in would be half a decode in the other direction.
+      if (!("id" in member)) return value;
+      const id = flexiblePersonId(member["id"], what);
+      if (id === member["id"]) return value;
+      // Copied rather than mutated: the caller's response object is not ours.
+      return { ...member, id } as T;
+    }
+    case "parent": {
+      for (const field of PARENT_STRING_FIELDS) memberString(member, field, what);
+      // A parent's `Id` is a PLAIN `int64` — not the `FlexibleInt64` a person's
+      // is, so `"7"` fails the read here and resolves one member over. This was
+      // missing while the doc above claimed the member was typed as the
+      // reference types it, which is the one kind of comment this file's own
+      // history says to distrust.
+      const parentId = wireInteger(member["id"], what, RECORDING_HINT);
+      // A parent's bucket is a typed `*RecordingBucket` under
+      // `RecordingParent` and does not exist AT ALL under `TodoParent`, which
+      // is what a todo and a todolist carry. The same key is a typed struct
+      // under one containing type and an ignored unknown under another, and
+      // only the reference says which — hence the flag, threaded from the
+      // routing arm rather than guessed from the payload. One shape for both
+      // would refuse `{"parent":{"bucket":7}}` on a todo, a body the reference
+      // ACCEPTS, which is the direction that matters.
+      // For its REFUSALS only — the return value is discarded, so the nested
+      // bucket is emitted as it arrived. See the emission residue above.
+      if (parentHasBucket) nestedIdentity(member["bucket"], `${what} bucket`, "bucket");
+      return withDecodedId(member, parentId, value);
+    }
+    case "bucket": {
+      for (const field of BUCKET_STRING_FIELDS) memberString(member, field, what);
+      // `RecordingBucket` and `TodoBucket` are `{id int64, name string, type
+      // string}` — THREE fields, and this arm walked two of them. The
+      // top-level bucket's id is read again by the cross-project check below,
+      // which is why the gap was invisible there; a PARENT's bucket has no such
+      // second reader, so `{"parent":{"bucket":{"id":"7"}}}` projected a
+      // summary where the reference fails the read.
+      return withDecodedId(member, wireInteger(member["id"], what, RECORDING_HINT), value);
+    }
+  }
+}
+
+/**
+ * The member with its DECODED id, for the two members whose id is a plain
+ * `int64`.
+ *
+ * Reading an id one way and emitting it another is the defect this file has
+ * already fixed twice, one member over: a `null` id is the zero value in Go and
+ * reaches a caller as `0` there and in Ruby, while passing the member through
+ * verbatim left it as `null` — a shape no other SDK produces, in a field typed
+ * `number`. An ABSENT id is still not invented; only a present one is written
+ * back.
+ */
+function withDecodedId<T>(member: Record<string, unknown>, id: number, value: T): T {
+  if (!("id" in member) || member["id"] === id) return value;
+  return { ...member, id } as T;
+}
+
+/**
+ * The member with a present-but-null LABEL written back as `""`.
+ *
+ * The label is the one string field the reference's emptiness rule reads —
+ * `Name` for a bucket and a creator, `Title` for a parent — and all three are
+ * `string` in the generated model, so a JSON null is the zero value and Go
+ * emits `""`. Ruby writes it back the same way (`#read_member`). This port
+ * passed the member through and emitted `null` in a field typed `string`, the
+ * same read-one-way-emit-another shape `withDecodedId` closes for the id.
+ *
+ * Only these three members, and NOT an assignee — which is a divergence, stated
+ * rather than hidden: Go decodes `[]Person` and emits a null assignee name as
+ * `""` too, while this port and Ruby's `#read_assignees` both pass it through
+ * as null. It is left matching Ruby rather than moved alone, because a port
+ * fixing one member of a shared residue in isolation is how the ports came to
+ * disagree in the first place. An ABSENT label is not invented.
+ */
+function withEmptyLabel<T>(value: T | undefined, label: string): T | undefined {
+  if (value === undefined) return undefined;
+  const member = value as Record<string, unknown>;
+  if (!(label in member) || member[label] !== null) return value;
+  return { ...member, [label]: "" } as T;
 }
 
 /**
