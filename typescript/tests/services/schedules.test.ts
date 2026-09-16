@@ -1182,16 +1182,58 @@ describe("SchedulesService", () => {
       expectResponseError(error, /Schedule entry field "highlighted" is not a boolean/, requests);
     });
 
-    it("editEntry refuses a malformed participants list before writing", async () => {
+    it("editEntry refuses a null participant id before writing", async () => {
       const requests: string[] = [];
-      serve(sampleEntry(4101, { participants: [{ name: "No ID" }] }), requests);
+      serve(sampleEntry(4101, { participants: [{ id: null, name: "No ID" }] }), requests);
 
       const error = await rejection(
         service.editEntry(4101, (e) => {
           e.summary = "New summary";
         }),
       );
-      expectResponseError(error, /Schedule entry field "participants"\[0\] has no "id"/, requests);
+      expectResponseError(error, /Schedule entry field "participants"\[0\]\.id is not a person id/, requests);
+    });
+
+    // The other half of the same guard, and the reason the null above is NOT
+    // tested together with an absent id: the reference answers the two
+    // differently. A missing `id` never reaches its flexible decoder and is the
+    // zero value; a JSON null DOES reach it and fails the read. A null ELEMENT
+    // decodes to the zero `Person`, id and all. Both measured through the
+    // reference's own EditEntry composite.
+    it.each([
+      ["an element with no id", [{ name: "No ID" }]],
+      ["a null element", [null]],
+    ])("editEntry reads %s as the system actor 0", async (_label, participants) => {
+      const requests: string[] = [];
+      let putBody: Record<string, unknown> = {};
+      server.use(
+        http.get(`${BASE_URL}/schedule_entries/4101`, () => {
+          requests.push("GET");
+          return HttpResponse.json(sampleEntry(4101, { participants }));
+        }),
+        http.put(`${BASE_URL}/schedule_entries/4101`, async ({ request }) => {
+          requests.push("PUT");
+          putBody = (await request.json()) as Record<string, unknown>;
+          return HttpResponse.json(sampleEntry(4101));
+        }),
+      );
+
+      await service.editEntry(4101, (e) => {
+        // Writing back what the guard read is the ADDRESS, not a no-op: the
+        // carve-out reaches the wire only when the setter fires, and
+        // `editEntry` tracks that through a Proxy rather than by diffing a
+        // snapshot, precisely so that assigning the read-back value still
+        // counts as asking for a write. It is the reference's
+        // `f.SetParticipantIDs(f.ParticipantIDs())`, which is how the oracle
+        // measured the projection at this site. Held in a local so the read is
+        // asserted on its own, and so the assignment is not a self-assignment.
+        const readBack = e.participantIds;
+        expect(readBack).toEqual([0]);
+        e.participantIds = readBack;
+      });
+
+      expect(requests).toEqual(["GET", "PUT"]);
+      expect(putBody.participant_ids).toEqual([0]);
     });
 
     // One level up from the field guards: a successful GET can return a

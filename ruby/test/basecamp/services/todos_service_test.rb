@@ -340,6 +340,11 @@ class TodosServiceTest < Minitest::Test
   WRITABLE_STRINGS = %w[content description due_on starts_on].freeze
   ID_LIST_FIELDS = %w[assignees completion_subscribers].freeze
 
+  # The response key each id list is read from, and the request key it is
+  # written back to.
+  ID_LIST_BODY_KEYS = { "assignees" => "assignee_ids",
+                        "completion_subscribers" => "completion_subscriber_ids" }.freeze
+
   WRITABLE_STRINGS.each do |field|
     MALFORMED_VALUES.each do |malformed|
       define_method("test_update_refuses_a_malformed_#{field}_#{malformed.inspect}") do
@@ -422,10 +427,12 @@ class TodosServiceTest < Minitest::Test
       assert_not_requested :put, "#{BASE_URL}/12345/todos/456"
     end
 
-    # The id lists are resent in full, so a string, float or null id would be
-    # written as the complete assignee set.
-    [ "100", 10.5, nil, true, [], {} ].each do |bad_id|
-      define_method("test_update_refuses_a_non_integer_#{field}_id_#{bad_id.inspect}") do
+    # The id lists are resent in full, so a float, boolean, null or
+    # out-of-int64 id would be written as the complete assignee set. A STRING is
+    # not in this list and must not be: the reference decodes a person id
+    # flexibly, so it reads one — see the acceptance cases below.
+    [ 10.5, 10.0, nil, true, [], {}, 2**63, -(2**63) - 1, "9223372036854775808" ].each do |bad_id|
+      define_method("test_update_refuses_a_non_person_#{field}_id_#{bad_id.inspect}") do
         stub_todo_get_and_put(todo: full_todo(field => [ { "id" => bad_id, "name" => "Jane" } ]))
 
         error = assert_raises(Basecamp::ApiError) do
@@ -434,6 +441,51 @@ class TodosServiceTest < Minitest::Test
 
         assert_includes error.message, "Todo field \"#{field}\"[0]"
         assert_not_requested :put, "#{BASE_URL}/12345/todos/456"
+      end
+    end
+
+    # The other half of the same guard. Measured through the reference's own
+    # todos Update composite: Person#id is the one field the generated model
+    # decodes flexibly, and fieldsFromTodo appends what that produced with no
+    # filter at all. These ids reach the guard exactly as BC3 sent them whenever
+    # the pre-decode normalizer did not find the person first, and which people
+    # it finds is the walk's rule, not the guard's: 3 of 7 `assignees` people in
+    # spec/fixtures omit the `personable_type` marker it keys on.
+    { "1049715914" => 1049715914,          # the live case: a bare numeric string
+      "007" => 7,                          # ParseInt takes leading zeros at base 10
+      "-5" => -5,
+      "+5" => 5,                           # ...and a leading plus, which /\A-?\d+\z/ does not
+      "9223372036854775807" => (2**63) - 1,
+      "-9223372036854775808" => -(2**63),
+      "basecamp" => 0,                     # the LocalPerson sentinel, read as the system actor
+      "" => 0,
+      " 12" => 0,                          # Go trims nothing; Integer(" 12") would say 12
+      "0x10" => 0,                         # ...and would say 16 here
+      "010" => 10,                         # ...and 8 here: not a refusal, a different PERSON
+      "12.0" => 0,
+      "1_0" => 0,
+      "\uFF17" => 0 }.each do |raw, expected|                # fullwidth seven
+      define_method("test_update_reads_the_#{field}_id_#{raw.inspect}_as_the_reference_does") do
+        captured = stub_todo_get_and_put(todo: full_todo(field => [ { "id" => raw, "name" => "Jane" } ]))
+
+        @account.todos.update(todo_id: 456, content: "New title")
+
+        assert_equal [ expected ], captured[:body][ID_LIST_BODY_KEYS.fetch(field)]
+      end
+    end
+
+    # An ABSENT id is the zero value with no error, while a NULL one fails the
+    # read: the reference's flexible decoder is only called for a value that is
+    # there, and its number path turns a JSON null into ParseInt(""), which
+    # fails. A null ELEMENT decodes to the zero Person, id and all.
+    { "an element with no id" => [ { "name" => "Jane" } ],
+      "a null element" => [ nil ] }.each do |label, people|
+      define_method("test_update_writes_back_#{label.tr(" ", "_")}_in_#{field}_as_zero") do
+        captured = stub_todo_get_and_put(todo: full_todo(field => people))
+
+        @account.todos.update(todo_id: 456, content: "New title")
+
+        assert_equal [ 0 ], captured[:body][ID_LIST_BODY_KEYS.fetch(field)]
       end
     end
   end

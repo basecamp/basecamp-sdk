@@ -35,8 +35,14 @@ from __future__ import annotations
 
 from typing import Any
 
+from basecamp._person_id import Refusal, parse_int64
 from basecamp._security import truncate as _truncate
 from basecamp.errors import ApiError
+
+# The wire's person id is an `int64`. Named here rather than imported, because
+# `basecamp._person_id` keeps its own copies private to its scan.
+_INT64_MIN = -(2**63)
+_INT64_MAX = 2**63 - 1
 
 _RESEND_HINT = (
     "The merge-safe update/edit resend this field verbatim, so a coerced or empty value "
@@ -192,6 +198,60 @@ def writable_boolean(body: dict[str, Any], key: str, *, record: str, escape: str
     return required_writable_boolean(body, key, record=record, escape=escape)
 
 
+def _person_id_from_wire(value: object) -> int | None:
+    """A PERSON's id as the reference reads one, or ``None`` when it could not.
+
+    A person id is the one field in the generated model the reference decodes
+    *flexibly* (``types.FlexibleInt64``, reached through ``Person.Id``), so it
+    does not follow the rule the other id fields do:
+
+    * an ``int`` in int64 range is itself — and one OUTSIDE that range is a
+      decode failure there, so it is a refusal here;
+    * ``bool`` is not an id, even though it is an ``int`` in Python;
+    * a STRING is what ``ParseInt`` makes of it, sign included;
+    * a string that refuses on SYNTAX is ``0`` and *not an error*, because that
+      is the sentinel BC3 serves for system-generated entities (``"basecamp"``,
+      ``"campfire"``) and the reference reads it as the system actor;
+    * a string that refuses on RANGE fails the read;
+    * anything else — a float, a list, a mapping, ``None`` — is a decode
+      failure.
+
+    The grammar is :func:`basecamp._person_id.parse_int64`, the same scan the
+    pre-decode normalizer walks with, so the walk and this reader cannot drift:
+    a person the walk reached and a person it did not must land on the same id,
+    and until this called the shared scan they did not.
+
+    ``None`` is a refusal and an ABSENT key is not, which is the one place the
+    two part company: ``encoding/json`` calls the flexible decoder's own
+    ``UnmarshalJSON`` for a JSON null, its number path leaves the buffer empty,
+    and ``ParseInt("")`` fails — so ``{"id": null}`` fails the read while a
+    missing ``"id"`` is the zero value with no error at all. The caller keeps
+    them apart; an absent key never reaches this function.
+
+    The message belongs to the field rather than to this reader, so a refusal is
+    reported as ``None`` and the caller raises.
+    """
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        # A direct range check, not `parse_int64(str(value))`. Routing it
+        # through the scan would avoid naming the bounds twice, but `str` of an
+        # `int` past 4300 digits raises a raw ValueError under Python's
+        # default int-string limit — and, where a host has lifted that limit,
+        # is quadratic. Python's arbitrary-precision `int` is the reason a check
+        # is needed at all: the reference's decoder refuses a JSON number past
+        # int64, and without this it would sail through into the PUT.
+        return value if _INT64_MIN <= value <= _INT64_MAX else None
+    if isinstance(value, str):
+        parsed = parse_int64(value)
+        if parsed is Refusal.SYNTAX:
+            return 0
+        if parsed is Refusal.RANGE:
+            return None
+        return parsed
+    return None
+
+
 def writable_id_list(body: dict[str, Any], key: str, *, record: str, escape: str) -> list[int]:
     """Read a list of person records and project it to their integer IDs.
 
@@ -199,13 +259,38 @@ def writable_id_list(body: dict[str, Any], key: str, *, record: str, escape: str
     comprehension it replaces (``[p["id"] for p in body.get(key) or []]``) has
     three ways to go wrong on malformed data: a non-list iterates as something
     else (a string yields characters, a dict yields its keys), a non-mapping
-    element raises ``TypeError``, and a non-integer ``id`` rides through
+    element raises ``TypeError``, and a wrong-typed ``id`` rides through
     verbatim into the full-replace PUT — the same corruption as a wrong-typed
     string, one level down.
 
-    ``bool`` is excluded explicitly: it subclasses ``int`` in Python, so
-    ``isinstance(True, int)`` is true and ``True`` would otherwise pass as a
-    person ID.
+    What it must NOT do is refuse an id the reference accepts, which is the
+    other half of the same defect and the one this guard had (#913). The
+    reference reads each element through the generated ``Person``, whose ``Id``
+    is the flexible decoder, and ``fieldsFromTodo`` appends what that produced
+    with no filter of any kind — 0 included. So a string id, an absent id and a
+    null ELEMENT are all values the reference writes back, and refusing them
+    fails a call the reference completes.
+
+    It must not lean on the pre-decode normalizer having reached the person
+    first. Which people that walk finds is the walk's rule — the reference's own
+    positional pass covers ``creator`` and ``participants`` and nothing else —
+    and a person it did not find arrives here exactly as BC3 sent it. How often
+    that is a string the fixtures cannot say: none of the person objects in
+    ``spec/fixtures`` carries a string id. What they do show is that the marker
+    the ``personable_type`` pass keys on is often missing — 3 of 7 ``assignees``
+    people omit it.
+
+    Per-element shapes and where each comes from:
+
+    * a ``None`` element is ``0``. A JSON ``null`` in the array decodes to the
+      reference's zero ``Person``, whose ``Id`` is 0 and is appended like any
+      other.
+    * a non-mapping element is a malformed response. The reference cannot
+      unmarshal a number, string or boolean into a ``Person`` and fails the
+      whole decode.
+    * an ABSENT ``"id"`` is ``0`` (the zero value, no error), while a ``None``
+      one is malformed — see :func:`_person_id_from_wire` for why those two
+      differ here and nowhere else.
     """
     value = body.get(key)
     if value is None:
@@ -217,20 +302,21 @@ def writable_id_list(body: dict[str, Any], key: str, *, record: str, escape: str
         )
     ids: list[int] = []
     for index, element in enumerate(value):
+        if element is None:
+            ids.append(0)
+            continue
         if not isinstance(element, dict):
             raise malformed(
                 f"{record} field {key!r}[{index}] is not an object: {describe(element)}",
                 _RESEND_HINT.format(escape=escape),
             )
-        person_id = element.get("id")
+        if "id" not in element:
+            ids.append(0)
+            continue
+        person_id = _person_id_from_wire(element["id"])
         if person_id is None:
             raise malformed(
-                f"{record} field {key!r}[{index}] has no 'id'",
-                _RESEND_HINT.format(escape=escape),
-            )
-        if isinstance(person_id, bool) or not isinstance(person_id, int):
-            raise malformed(
-                f"{record} field {key!r}[{index}].id is not an integer: {describe(person_id)}",
+                f"{record} field {key!r}[{index}].id is not a person id: {describe(element['id'])}",
                 _RESEND_HINT.format(escape=escape),
             )
         ids.append(person_id)

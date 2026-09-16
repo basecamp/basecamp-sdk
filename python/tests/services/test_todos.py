@@ -441,6 +441,10 @@ _WRITABLE_STRINGS = ["content", "description", "due_on", "starts_on"]
 
 _ID_LISTS = ["assignees", "completion_subscribers"]
 
+# The response key each id list is read from, and the request key it is written
+# back to.
+_ID_LIST_BODY_KEYS = {"assignees": "assignee_ids", "completion_subscribers": "completion_subscriber_ids"}
+
 
 def _malformed_routes(todo: dict):
     get_route = respx.get(f"{BASE}/todos/42").mock(return_value=httpx.Response(200, json=todo))
@@ -540,13 +544,18 @@ class TestMalformedResponseFields:
         assert not put_route.called
 
     @respx.mock
-    @pytest.mark.parametrize("bad_id", ["100", 10.5, None, True, [], {}])
+    @pytest.mark.parametrize("bad_id", [10.5, 10.0, None, True, [], {}, 2**63, -(2**63) - 1])
     @pytest.mark.parametrize("field", _ID_LISTS)
-    def test_update_refuses_a_non_integer_person_id_before_writing(self, field, bad_id):
-        # The ID lists are resent in full, so a string, float, bool or null id
-        # would be written as the complete assignee set. `True` matters
-        # specifically: bool subclasses int in Python, so a naive isinstance
-        # check passes it.
+    def test_update_refuses_a_non_person_id_before_writing(self, field, bad_id):
+        # The ID lists are resent in full, so a float, bool, null or
+        # out-of-int64 id would be written as the complete assignee set. `True`
+        # matters specifically: bool subclasses int in Python, so a naive
+        # isinstance check passes it. `10.0` matters for the same reason one
+        # level over: it is integral, and the reference still refuses it, because
+        # `json.Number("10.0").Int64()` is a syntax error there.
+        #
+        # A STRING is not in this list and must not be: see
+        # test_update_reads_a_string_person_id_the_way_the_reference_does.
         get_route, put_route = _malformed_routes(_todo(**{field: [{"id": bad_id, "name": "Jane"}]}))
 
         with pytest.raises(ApiError) as excinfo:
@@ -555,6 +564,81 @@ class TestMalformedResponseFields:
         assert f"Todo field {field!r}[0]" in str(excinfo.value)
         assert get_route.called
         assert not put_route.called
+
+    # Measured through the reference's own todos Update composite: a Person's id
+    # is the one field the generated model decodes flexibly (types.FlexibleInt64
+    # via Person.Id), and `fieldsFromTodo` appends whatever that produced with no
+    # filter at all. These ids reach this guard exactly as BC3 sent them whenever
+    # the pre-decode normalizer did not find the person first — and which people
+    # it finds is the walk's rule, not this guard's: 3 of 7 `assignees` people
+    # in spec/fixtures omit the `personable_type` marker it keys on.
+    @respx.mock
+    @pytest.mark.parametrize(
+        ("raw_id", "expected"),
+        [
+            ("1049715914", 1049715914),  # the live case: a bare numeric string
+            ("007", 7),  # ParseInt takes leading zeros at base 10
+            ("-5", -5),
+            ("+5", 5),  # ParseInt takes a leading plus; a `^-?\\d+$` regex does not
+            ("9223372036854775807", 2**63 - 1),
+            ("-9223372036854775808", -(2**63)),
+            ("basecamp", 0),  # the LocalPerson sentinel, read as the system actor
+            ("", 0),
+            (" 12", 0),  # Go trims nothing; int(" 12") would say 12
+            ("0x10", 0),  # no base detection
+            ("12.0", 0),
+            ("1_0", 0),  # PEP 515 underscores are not Go digits
+            ("\uff17", 0),  # fullwidth seven: Go tests the ASCII byte range
+            ("18446744073709551615x", 0),  # syntax refusal wins, uint64 max intact
+        ],
+    )
+    @pytest.mark.parametrize("field", _ID_LISTS)
+    def test_update_reads_a_string_person_id_the_way_the_reference_does(self, field, raw_id, expected):
+        get_route, put_route = _malformed_routes(_todo(**{field: [{"id": raw_id, "name": "Jane"}]}))
+
+        _sync_todos().update(todo_id=42, content="New title")
+
+        assert get_route.called
+        assert _put_body(put_route)[_ID_LIST_BODY_KEYS[field]] == [expected]
+
+    @respx.mock
+    @pytest.mark.parametrize("raw_id", ["9223372036854775808", "18446744073709551616x"])
+    @pytest.mark.parametrize("field", _ID_LISTS)
+    def test_update_refuses_a_string_person_id_that_overflows_int64(self, field, raw_id):
+        # The RANGE refusal and the SYNTAX refusal go opposite ways, and which
+        # one fires depends on where the disqualifying byte sits.
+        # "18446744073709551615x" is the system actor (0, above);
+        # "18446744073709551616x" is one digit larger, overflows inside the scan
+        # before the 'x' is ever reached, and fails the read.
+        get_route, put_route = _malformed_routes(_todo(**{field: [{"id": raw_id, "name": "Jane"}]}))
+
+        with pytest.raises(ApiError) as excinfo:
+            _sync_todos().update(todo_id=42, content="New title")
+
+        assert f"Todo field {field!r}[0].id is not a person id" in str(excinfo.value)
+        assert get_route.called
+        assert not put_route.called
+
+    @respx.mock
+    @pytest.mark.parametrize(
+        ("people", "expected"),
+        [
+            ([{"name": "Jane"}], [0]),  # id absent is the zero value, not an error
+            ([None], [0]),  # a null element decodes to the reference's zero Person
+            ([{"id": 7}, {"id": "basecamp"}], [7, 0]),  # one real person, one system actor
+        ],
+    )
+    @pytest.mark.parametrize("field", _ID_LISTS)
+    def test_update_writes_back_the_person_shapes_the_reference_writes_back(self, field, people, expected):
+        # An ABSENT id is 0 with no error while a NULL id fails the read: the
+        # reference's flexible decoder is only called for a value that is there,
+        # and its number path turns a JSON null into ParseInt(""), which fails.
+        get_route, put_route = _malformed_routes(_todo(**{field: people}))
+
+        _sync_todos().update(todo_id=42, content="New title")
+
+        assert get_route.called
+        assert _put_body(put_route)[_ID_LIST_BODY_KEYS[field]] == expected
 
     @respx.mock
     @pytest.mark.parametrize("raw", [b"[]", b'"todo"', b"42", b"null", b"true"])

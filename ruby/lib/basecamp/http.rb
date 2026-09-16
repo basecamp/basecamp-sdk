@@ -28,10 +28,11 @@ module Basecamp
     # unconverted: 62 of the 74 measured rows of GoPersonIds::CORPUS differed
     # from the reference for a bare {"creator":{"id":…}}, and the twelve that
     # agreed did so only because "leave the string" is also what doing nothing
-    # looks like. The visible cost was on a WRITE: {Services::MergeSafe} requires
-    # an Integer id, so a merge-safe update of a schedule entry whose
+    # looks like. The visible cost was on a WRITE: {Services::MergeSafe} then
+    # required an Integer id, so a merge-safe update of a schedule entry whose
     # participants came back with string ids raised where the reference reads
-    # the number and proceeds.
+    # the number and proceeds. (It now reads a person id itself, through
+    # {Ids.person_from_wire}; this pass is still what the reference does here.)
     #
     # Whichever way a person is found, the id rule is the same one
     # ({coerce_person_id}, the reference's shared coercePersonID):
@@ -123,12 +124,13 @@ module Basecamp
     #
     # Ruby has no decoder on the generated path — +get+ returns a raw Hash — so
     # that second route does not exist here, and an "assignees" id that arrives
-    # as a string stays one. That is a real gap, measured on a write
-    # (MergeSafe refuses it where the reference completes the update), and it is
+    # as a string stays one. That gap was measured on a write, and it is
     # deliberately NOT closed by widening this list: the faithful site is the
     # reader, field by field against the reference, because some person ids in
     # the model really are plain int64 there (TemplateLibraryConfirmationPerson)
-    # and a blanket sweep would break them. Tracked as its own unit of work.
+    # and a blanket sweep would break them. It is closed at that reader:
+    # {Services::MergeSafe.writable_id_list} reads a string person id through
+    # {Ids.person_from_wire}.
     def self.coerce_embedded_person_ids(obj)
       creator = obj["creator"]
       coerce_person_id(creator) if creator.is_a?(Hash)

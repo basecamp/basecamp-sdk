@@ -2,12 +2,13 @@
 
 BC3 serializes person ids as JSON strings in some responses and as JSON numbers
 in others, and it spells the system actors -- ``LocalPerson``, whose id is
-``"basecamp"`` or ``"campfire"`` -- in the same string field. Two places in this
-SDK have to turn that string into a number: the pre-decode normalizer that every
-response body walks (``generated/services/_base.py`` and its async twin) and the
-flexible id reader in the recording-summary decode
-(``services/_campfire_index.py``). The rule lives HERE so those two cannot drift
-apart; they had two copies of it, and the copies disagreed.
+``"basecamp"`` or ``"campfire"`` -- in the same string field. Three places in
+this SDK have to turn that string into a number: the pre-decode normalizer that
+every response body walks (``generated/services/_base.py`` and its async twin),
+the flexible id reader in the recording-summary decode
+(``services/_campfire_index.py``), and the merge-safe composites' id-list guard
+(``services/_merge_safe.py``). The rule lives HERE so they cannot drift apart;
+the first two had two copies of it, and the copies disagreed.
 
 So does the WALK that finds those objects (:func:`normalize_person_ids`), for the
 same reason: the sync and async base services had a copy each, and which people a
@@ -137,10 +138,11 @@ def coerce_person_id(obj: MutableMapping[str, Any]) -> None:
     * a range error leaves the string UNTOUCHED (``:63``) so the reader refuses
       it. The readers that do refuse it are the ones with a Go struct behind
       them: ``services/_campfire_index._decoded_flexible_int64`` raises
-      "overflows int64", and ``services/_merge_safe`` refuses a non-int id
-      outright. Coercing it here instead -- which ``int()`` was doing -- hands
-      back a Python arbitrary-precision int for a value that does not fit the
-      wire's ``int64``, and every reader downstream then believes it.
+      "overflows int64", and ``services/_merge_safe`` refuses a RANGE
+      refusal as not a person id. Coercing it here instead -- which ``int()``
+      was doing -- hands back a Python arbitrary-precision int for a value that
+      does not fit the wire's ``int64``, and every reader downstream then
+      believes it.
 
     An object whose ``id`` is already a number, or absent, is left alone -- which
     is also what makes this IDEMPOTENT, and :func:`normalize_person_ids` depends
@@ -192,10 +194,11 @@ def normalize_person_ids(obj: Any, *, embedded_people: bool = False) -> None:
     That missing decoder is also why this pass does NOT close every string person
     id off the wire, and does not try to -- see "WHERE PASS 2 RUNS" below. Off
     Go's two surfaces a string id in ``creator``, ``assignees`` or a schedule's
-    ``participants`` stays a string, which ``services/_merge_safe``'s
-    ``writable_id_list`` refuses: ``schedules.edit_entry`` refuses a body the
-    reference accepts. That is decoder coverage rather than normalizer reach, and
-    it is tracked in PR #913.
+    ``participants`` stays a string. That is decoder coverage rather than
+    normalizer reach, and it is closed at the reader rather than here:
+    ``services/_merge_safe``'s ``writable_id_list`` reads a string person id
+    through :func:`parse_int64` itself (PR #913), where it used to require an
+    ``int`` and made ``schedules.edit_entry`` refuse a body the reference accepts.
 
     ONE walk here where Go runs two, and the two are equivalent because
     :func:`coerce_person_id` is idempotent and both passes apply it unchanged.
@@ -224,12 +227,14 @@ def normalize_person_ids(obj: Any, *, embedded_people: bool = False) -> None:
     for a body the reference refuses outright. Accepting direction, identity
     field, which is the class this work exists to remove.
 
-    The cost of narrowing is real and is stated rather than hidden: the
-    ``schedules.edit_entry`` write path described above refuses string
-    ``participants`` ids again, because schedules is not one of Go's two
-    surfaces and Python has no decoder standing in for ``FlexibleInt64``
-    there. That is decoder coverage, not normalizer reach, and PR #913
-    (card 42) owns it.
+    The cost of narrowing is real and is stated rather than hidden: schedules is
+    not one of Go's two surfaces and Python has no decoder standing in for
+    ``FlexibleInt64`` there, so string ``participants`` ids are no longer
+    converted on the way in. That is decoder coverage, not normalizer reach.
+    The ``schedules.edit_entry`` WRITE path is closed at the reader instead --
+    ``services/_merge_safe`` reads the id by :func:`parse_int64` (PR #913) --
+    while a plain generated read still hands the string back (SPEC.md section 10,
+    "Person Ids Off the Wire").
     """
     if isinstance(obj, list):
         for item in obj:

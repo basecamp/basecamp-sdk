@@ -555,6 +555,12 @@ describe("TodosService", () => {
 
     const writableStrings = ["content", "description", "due_on", "starts_on"] as const;
     const idLists = ["assignees", "completion_subscribers"] as const;
+    // The response key each id list is read from, and the request key it is
+    // written back to.
+    const idListBodyKeys: Record<string, string> = {
+      assignees: "assignee_ids",
+      completion_subscribers: "completion_subscriber_ids",
+    };
 
     // Serve a GET carrying `body` and a PUT that records that it happened.
     // `body` is typed as MSW's own response-body type rather than `unknown`:
@@ -681,25 +687,18 @@ describe("TodosService", () => {
       // The ID lists are resent in full, so a float, boolean or null id would
       // be written as the complete assignee set.
       //
-      // A STRING id is on this list and its presence is a KNOWN DIVERGENCE,
-      // pinned here rather than left to be discovered. BC3 serializes person
-      // ids as strings on some payloads, and `generated.Person.Id` is a
-      // `types.FlexibleInt64`, so the reference reads `"007"` as person 7 and
-      // completes the update; this refuses it.
-      //
-      // The normalizer briefly converted it, by walking `assignees` on every
-      // response. That over-reached — the same key name carries plain-`int64`
-      // people on other schemas, which the reference refuses and this turned
-      // into the system actor — so the walk was narrowed to the two keys and
-      // the two services Go actually normalizes. Closing this properly is
-      // decoder coverage, field by field against the reference, not normalizer
-      // reach: PR #913 (card 42) owns it.
+      // A STRING id is not on this list. BC3 serializes person ids as strings
+      // on some payloads, and `generated.Person.Id` is a `types.FlexibleInt64`,
+      // so the reference reads `"007"` as person 7 and completes the update.
+      // The normalizer does not reach `assignees` — that key carries a plain
+      // `int64` person on another schema, so walking it by name over-reached —
+      // and the guard reads the id itself instead, which is decoder coverage at
+      // exactly this field rather than normalizer reach at every field so named.
       it.each([
         ["float", 10.5],
         ["NaN", Number.NaN],
         ["null", null],
         ["boolean", true],
-        ["string", "007"],
       ])(`update refuses a %s ${field} id before writing`, async (_label, badId) => {
         const requests: string[] = [];
         serve(fullTodo(42, { [field]: [{ id: badId, name: "Jane" }] }), requests);
@@ -708,28 +707,121 @@ describe("TodosService", () => {
         expectResponseError(error, new RegExp(`Todo field "${field}"\\[0\\]`), requests);
       });
 
-      it(`refuses a string ${field} id that the reference accepts, and PR #913 owns`, async () => {
-        // THE DIVERGENCE, STATED AS A TEST so it cannot be mistaken for
-        // correctness. Go reads `"007"` as person 7 through `FlexibleInt64` and
-        // completes this update. This SDK has no decoder, the positional
-        // normalizer no longer reaches `assignees` (it never should have: that
-        // key carries `MyAssignmentAssignee`, a plain `int64`, on another
-        // schema), and so the merge-safe guard refuses the response.
-        //
-        // The refusal is at least honest -- it does not invent an id or write a
-        // partial assignee set -- and it is the pre-existing gap card 42 was
-        // filed for. When PR #913 lands the decoder coverage, this test is the
-        // one to flip.
+      it(`completes an update whose ${field} id arrived as a string, as the reference does`, async () => {
+        // The divergence this test used to pin, flipped. Go reads `"007"` as
+        // person 7 through `FlexibleInt64` and completes this update. The
+        // positional normalizer does not reach `assignees` (that key carries
+        // `MyAssignmentAssignee`, a plain `int64`, on another schema), so the
+        // string arrives at the merge-safe guard untouched — and the guard now
+        // reads it by the same scan the normalizer uses, rather than refusing.
         const requests: string[] = [];
-        serve(fullTodo(42, { [field]: [{ id: "007", name: "Jane" }] }), requests);
+        let putBody: Record<string, unknown> = {};
+        server.use(
+          http.get(`${BASE_URL}/todos/42`, () => {
+            requests.push("GET");
+            return HttpResponse.json(fullTodo(42, { [field]: [{ id: "007", name: "Jane" }] }) as JsonBodyType);
+          }),
+          http.put(`${BASE_URL}/todos/42`, async ({ request }) => {
+            requests.push("PUT");
+            putBody = (await request.json()) as Record<string, unknown>;
+            return HttpResponse.json(fullTodo(42) as JsonBodyType);
+          })
+        );
 
-        const error = await rejection(client.todos.update(42, { content: "New title" }));
-        expectResponseError(error, new RegExp(`Todo field "${field}"\\[0\\]`), requests);
+        await client.todos.update(42, { content: "New title" });
 
-        // No PUT happened: the guard runs before the write, so a refused read
-        // never turns into a partial update.
-        expect(requests).toEqual(["GET"]);
+        expect(requests).toEqual(["GET", "PUT"]);
+        expect(putBody[idListBodyKeys[field]]).toEqual([7]);
       });
+
+      // A string id read the way the reference reads one, through the whole
+      // composite. The normalizer does not walk `assignees`, so these ids reach
+      // the guard as strings and the guard is what reads them; merge-safe.test.ts
+      // pins the guard on its own as well, independent of what any walk covers.
+      // Measured through the reference's own Update composite.
+      it.each([
+        ["a bare numeric string", "1049715914", 1049715914],
+        ["leading zeros", "007", 7],
+        ["a minus sign", "-5", -5],
+        ["a plus sign", "+5", 5], // which /^-?\d+$/ rejects and ParseInt accepts
+        ["the LocalPerson sentinel", "basecamp", 0],
+        ["an empty string", "", 0],
+        ["a leading space", " 12", 0], // Go trims nothing; Number(" 12") says 12
+        ["a hex literal", "0x10", 0],
+        ["a decimal point", "12.0", 0],
+        ["a numeric separator", "1_0", 0],
+        ["a fullwidth digit", "\uFF17", 0],
+        ["junk after uint64 max", "18446744073709551615x", 0], // syntax wins the scan
+      ])(
+        `update reads %s ${field} id the way the reference does`,
+        async (_label, rawId, expected) => {
+          let putBody: Record<string, unknown> = {};
+          server.use(
+            http.get(`${BASE_URL}/todos/42`, () =>
+              HttpResponse.json(fullTodo(42, { [field]: [{ id: rawId, name: "Jane" }] }) as JsonBodyType)
+            ),
+            http.put(`${BASE_URL}/todos/42`, async ({ request }) => {
+              putBody = (await request.json()) as Record<string, unknown>;
+              return HttpResponse.json(fullTodo(42) as JsonBodyType);
+            })
+          );
+
+          await client.todos.update(42, { content: "New title" });
+
+          expect(putBody[idListBodyKeys[field]]).toEqual([expected]);
+        }
+      );
+
+      // The RANGE refusal, which goes the other way from the SYNTAX one above
+      // and is decided one digit earlier: "…615x" is the system actor, "…616x"
+      // overflows inside the scan before the 'x' is reached and fails the read.
+      it.each([["9223372036854775808"], ["18446744073709551616x"]])(
+        `update refuses the ${field} id %s, whose digits overflow int64`,
+        async (rawId) => {
+          const requests: string[] = [];
+          serve(fullTodo(42, { [field]: [{ id: rawId, name: "Jane" }] }), requests);
+
+          const error = await rejection(client.todos.update(42, { content: "New title" }));
+          expectResponseError(
+            error,
+            new RegExp(`Todo field "${field}"\\[0\\]\\.id is not a person id`),
+            requests
+          );
+        }
+      );
+
+      // Two shapes the reference WRITES BACK rather than refusing, measured
+      // through its own Update composite: an element with no `id` is the zero
+      // value of the flexible decoder, and a null ELEMENT decodes to the zero
+      // `Person`. An explicit `"id": null` is neither — it reaches the decoder,
+      // whose number path fails on an empty buffer — which is why it stays in
+      // the refusal table above.
+      it.each([
+        ["an element with no id", [{ name: "Jane" }]],
+        ["a null element", [null]],
+      ])(
+        `update writes back %s in ${field} as the system actor 0`,
+        async (_label, people) => {
+          const requests: string[] = [];
+          let putBody: Record<string, unknown> = {};
+          server.use(
+            http.get(`${BASE_URL}/todos/42`, () => {
+              requests.push("GET");
+              return HttpResponse.json(fullTodo(42, { [field]: people }) as JsonBodyType);
+            }),
+            http.put(`${BASE_URL}/todos/42`, async ({ request }) => {
+              requests.push("PUT");
+              putBody = (await request.json()) as Record<string, unknown>;
+              return HttpResponse.json(fullTodo(42) as JsonBodyType);
+            })
+          );
+
+          await client.todos.update(42, { content: "New title" });
+
+          expect(requests).toEqual(["GET", "PUT"]);
+          expect(putBody[idListBodyKeys[field]]).toEqual([0]);
+        }
+      );
     }
 
     // One level up from the field guards: a successful GET can return a
