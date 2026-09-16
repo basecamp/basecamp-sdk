@@ -90,7 +90,8 @@ fn a_null_element_in_a_person_list_is_the_zero_person() {
 #[test]
 fn only_the_element_is_lenient() {
     // A null or absent list is still no list, not a list of one zero person.
-    assert_eq!(assignee_ids(&json!(null)).unwrap(), Vec::<i64>::new());
+    let null_list: Todo = serde_json::from_value(todo_with(&json!(null), &json!([]))).unwrap();
+    assert_eq!(null_list.assignees, None);
     let todo: Todo = serde_json::from_value({
         let mut body = todo_with(&json!([]), &json!([]));
         body.as_object_mut().unwrap().remove("assignees");

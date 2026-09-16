@@ -1722,7 +1722,8 @@ and they are closed to different extents:
   model is the reader, so the two shapes are generated-model optionality. A
   *person* here is a generated struct whose id is a required flexible id — the
   `FlexibleInt64` marker, not the name, so the plain-`int64` person types in the
-  table above are not persons and stay strict. A person reads an absent `id` as
+  table above, and `TemplateLibraryConfirmationPerson`, are not persons and stay
+  strict. A person reads an absent `id` as
   `0` while an explicit `"id": null` still fails; a member whose element type is
   a person reads a `null` element as the zero person, while a non-object
   element still fails and a `null` list is still no list. Being a decode rule,

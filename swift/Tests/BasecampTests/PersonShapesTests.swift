@@ -78,12 +78,27 @@ final class PersonShapesTests: XCTestCase {
         XCTAssertThrowsError(try assigneeIds(#"{"id": 7}"#))
     }
 
-    /// `MyAssignmentAssignee.ID` is a plain `int64` in Go, not the flexible
-    /// reader: the rule above is the flexible id's, and does not reach it.
+    /// `MyAssignmentAssignee.ID`, `UpcomingSchedulePerson.ID` and
+    /// `OutOfOfficePerson.ID` are plain `int64` in Go, not the flexible reader:
+    /// the rule above is the flexible id's, and does not reach them.
     func testAPersonTypeWithoutTheFlexibleIdStaysStrict() throws {
         XCTAssertThrowsError(try decode(MyAssignmentAssignee.self, #"{"name": "A", "avatar_url": ""}"#))
+        XCTAssertThrowsError(try decode(UpcomingSchedulePerson.self, #"{"name": "A", "avatar_url": ""}"#))
+        XCTAssertThrowsError(try decode(OutOfOfficePerson.self, #"{"name": "A", "avatar_url": ""}"#))
         XCTAssertNoThrow(try decode(MyAssignment.self, #"{"id": 1, "assignees": [{"id": 7, "name": "A", "avatar_url": ""}]}"#))
         XCTAssertThrowsError(try decode(MyAssignment.self, #"{"id": 1, "assignees": [null]}"#))
+
+        func entry(participants: String) -> String {
+            """
+            {"id": 1, "all_day": false, "app_url": "", "bucket": {"id": 1, "name": "P"},
+             "comments_count": 0, "creator": {"id": 7, "name": "A", "avatar_url": ""},
+             "starts_at": "", "ends_at": "", "recurring": false, "status": "active",
+             "summary": "", "type": "Schedule::Entry", "url": "", "visible_to_clients": false,
+             "participants": \(participants)}
+            """
+        }
+        XCTAssertNoThrow(try decode(UpcomingScheduleEntry.self, entry(participants: #"[{"id": 7, "name": "A", "avatar_url": ""}]"#)))
+        XCTAssertThrowsError(try decode(UpcomingScheduleEntry.self, entry(participants: "[null]")))
     }
 
     /// Through the merge-safe composite: the reference sends `0` for both shapes.
