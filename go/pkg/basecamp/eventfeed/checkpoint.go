@@ -24,7 +24,7 @@ type CheckpointKey struct {
 	// whenever a store is configured: a configured store with an empty
 	// namespace fails construction with a usage-coded error.
 	ConsumerNamespace string
-	// FilterKey is "srv1-" + the bare 16-hex server digest
+	// FilterKey is "srv2-" + the bare 16-hex server digest
 	// (Filters.FilterKey).
 	FilterKey string
 }
@@ -32,7 +32,7 @@ type CheckpointKey struct {
 // FlatKey renders the identity as the compact RFC 8259 JSON array of the four
 // strings — e.g.
 //
-//	["https://3.basecampapi.com","5951425","openclaw","srv1-9f2ab04e5c11d3a7"]
+//	["https://3.basecampapi.com","5951425","openclaw","srv2-9f2ab04e5c11d3a7"]
 //
 // JSON escaping removes all delimiter ambiguity: no bespoke path-joining, no
 // percent-encoding. This is the flat key the file store (and any store keyed
@@ -52,7 +52,7 @@ func (k CheckpointKey) FlatKey() string {
 }
 
 // checkIdentityText rejects an identity component that is not valid UTF-8.
-// FlatKey (and the srv1 digest, and the subscription identifier) encode
+// FlatKey (and the srv2 digest, and the subscription identifier) encode
 // rune-wise through writeJSONString, which decodes every invalid byte to the
 // SAME U+FFFD replacement rune — so the encoding is one-to-one over valid
 // UTF-8 and many-to-one outside it. Two distinct consumer namespaces

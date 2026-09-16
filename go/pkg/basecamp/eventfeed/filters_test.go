@@ -17,6 +17,12 @@ func TestFiltersValidate_AcceptsValidFilters(t *testing.T) {
 		// Catalog membership is server-owned and never client-validated: a
 		// syntactically valid but uncataloged type passes.
 		{Types: []string{"not.a.cataloged.type"}},
+		{Performers: ids, ExcludePerformers: []int64{9}, ActorTypes: []string{ActorTypeAgent, ActorTypePerson}},
+		// The actor-type vocabulary is server-owned like the type catalog:
+		// syntactically valid strings pass, and the server's filter 400
+		// decides membership.
+		{ActorTypes: []string{"integration"}},
+		{Reasons: []string{"mentioned", "assigned"}},
 	}
 	for _, f := range valid {
 		if err := f.Validate(); err != nil {
@@ -47,6 +53,16 @@ func TestFiltersValidate_RejectsInvalidFilters(t *testing.T) {
 		{"negative creator id", Filters{Creators: []int64{-1}}},
 		{"over 100 buckets", Filters{Buckets: tooMany}},
 		{"over 100 creators", Filters{Creators: tooMany}},
+		{"zero performer id", Filters{Performers: []int64{0}}},
+		{"negative excluded performer id", Filters{ExcludePerformers: []int64{-1}}},
+		{"over 100 performers", Filters{Performers: tooMany}},
+		{"over 100 excluded performers", Filters{ExcludePerformers: tooMany}},
+		{"empty actor type", Filters{ActorTypes: []string{""}}},
+		{"actor type with comma", Filters{ActorTypes: []string{"agent,person"}}},
+		{"actor type with space", Filters{ActorTypes: []string{"agent person"}}},
+		{"actor type with quote", Filters{ActorTypes: []string{`"agent"`}}},
+		{"empty reason", Filters{Reasons: []string{""}}},
+		{"reason with comma", Filters{Reasons: []string{"mentioned,assigned"}}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -75,9 +91,13 @@ func TestFiltersValidate_RejectsInvalidFilters(t *testing.T) {
 // lineage AFTER Validate passed, including into a set Validate rejects.
 func TestFiltersCloneDoesNotAliasCallerSlices(t *testing.T) {
 	caller := Filters{
-		Types:    []string{"message.created"},
-		Buckets:  []int64{1},
-		Creators: []int64{2},
+		Types:             []string{"message.created"},
+		Buckets:           []int64{1},
+		Creators:          []int64{2},
+		Performers:        []int64{3},
+		ExcludePerformers: []int64{4},
+		ActorTypes:        []string{ActorTypeAgent},
+		Reasons:           []string{"mentioned"},
 	}
 	got := caller.clone()
 
@@ -87,6 +107,10 @@ func TestFiltersCloneDoesNotAliasCallerSlices(t *testing.T) {
 	caller.Types[0] = "" // a value Validate rejects
 	caller.Buckets[0] = -1
 	caller.Creators[0] = -1
+	caller.Performers[0] = -1
+	caller.ExcludePerformers[0] = -1
+	caller.ActorTypes[0] = ""
+	caller.Reasons[0] = ""
 
 	if got.Types[0] != "message.created" {
 		t.Errorf("clone().Types[0] = %q after caller mutation, want %q", got.Types[0], "message.created")
@@ -96,6 +120,9 @@ func TestFiltersCloneDoesNotAliasCallerSlices(t *testing.T) {
 	}
 	if got.Creators[0] != 2 {
 		t.Errorf("clone().Creators[0] = %d after caller mutation, want 2", got.Creators[0])
+	}
+	if got.Performers[0] != 3 || got.ExcludePerformers[0] != 4 || got.ActorTypes[0] != ActorTypeAgent || got.Reasons[0] != "mentioned" {
+		t.Errorf("clone() = %+v after caller mutation, want performers 3 / excluded 4 / actor type agent / reason mentioned", got)
 	}
 	if err := got.Validate(); err != nil {
 		t.Errorf("clone().Validate() = %v after the caller mutated itself into an invalid set, want nil", err)
@@ -108,7 +135,8 @@ func TestFiltersCloneDoesNotAliasCallerSlices(t *testing.T) {
 // the filter key is identical either way, as the second assertion shows.
 func TestFiltersCloneKeepsNilDistinctFromEmpty(t *testing.T) {
 	got := Filters{}.clone()
-	if got.Types != nil || got.Buckets != nil || got.Creators != nil {
+	if got.Types != nil || got.Buckets != nil || got.Creators != nil ||
+		got.Performers != nil || got.ExcludePerformers != nil || got.ActorTypes != nil || got.Reasons != nil {
 		t.Errorf("Filters{}.clone() = %#v, want all-nil slices", got)
 	}
 	if want := (Filters{}).FilterKey(); want != got.FilterKey() {

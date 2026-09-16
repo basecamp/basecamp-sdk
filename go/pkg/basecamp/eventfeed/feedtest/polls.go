@@ -135,8 +135,12 @@ func (p *Polls) Poll(ctx context.Context, cursor eventfeed.Cursor, filters event
 // Calls snapshot, must not change what the log says was passed at call time.
 func cloneFilters(f eventfeed.Filters) eventfeed.Filters {
 	return eventfeed.Filters{
-		Types:    slices.Clone(f.Types),
-		Buckets:  slices.Clone(f.Buckets),
-		Creators: slices.Clone(f.Creators),
+		Types:             slices.Clone(f.Types),
+		Buckets:           slices.Clone(f.Buckets),
+		Creators:          slices.Clone(f.Creators),
+		Performers:        slices.Clone(f.Performers),
+		ExcludePerformers: slices.Clone(f.ExcludePerformers),
+		ActorTypes:        slices.Clone(f.ActorTypes),
+		Reasons:           slices.Clone(f.Reasons),
 	}
 }

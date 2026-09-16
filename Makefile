@@ -736,7 +736,7 @@ event-feed-fixtures-check:
 		conformance/event-feed/schema.json conformance/event-feed/pin-probes '$(CHECK_JSONSCHEMA_VERSION)'
 
 event-feed-digest-fixtures-check:
-	@echo "==> Validating event-feed srv1 digest vectors..."
+	@echo "==> Validating event-feed srv2 digest vectors..."
 	uvx --from 'check-jsonschema==$(CHECK_JSONSCHEMA_VERSION)' check-jsonschema \
 		--check-metaschema conformance/event-feed-digest/schema.json
 	uvx --from 'check-jsonschema==$(CHECK_JSONSCHEMA_VERSION)' check-jsonschema \
@@ -1801,7 +1801,7 @@ help:
 	@echo "  oauth-fixtures-check       Validate OAuth discovery fixtures against their schema"
 	@echo "  oauth-token-fixtures-check Validate OAuth token wire-behavior fixtures against their schema"
 	@echo "  event-feed-fixtures-check Validate event-feed tier-2 scenario fixtures against their schema"
-	@echo "  event-feed-digest-fixtures-check Validate event-feed srv1 digest vectors against their schema"
+	@echo "  event-feed-digest-fixtures-check Validate event-feed srv2 digest vectors against their schema"
 	@echo "  conformance-fixtures-check Validate conformance/tests fixtures against schema.json (and pin the search bodies to spec/fixtures)"
 	@echo "  check-runner-test-reachability  Assert every runner test file is reachable from discovery"
 	@echo "  check-replay-decoder-parity  Assert all five replay/dispatch tables cover the live fixture"

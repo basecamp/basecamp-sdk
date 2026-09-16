@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -451,24 +452,34 @@ func isJSONObject(data []byte) bool {
 }
 
 // decodeMessageEvent decodes a correlated message frame's payload as an
-// Event. All NINE push-payload keys are required with correct types; a
-// missing required key or a wrong-typed value is the invalid-frame class's
-// decode shape.
+// Event. All ELEVEN push-payload keys are required with correct types — the
+// eight the poll lane shares (id, kind, event_type, action, created_at,
+// bucket_id, creator_id, recording_id), performed_by_id (present on both
+// lanes, JSON null when the action was not delegated), and the two
+// transport-only fields the push lane alone carries (actor_type,
+// visible_to_clients) — plus the optional details object; a missing required
+// key or a wrong-typed value is the invalid-frame class's decode shape.
 //
-// visible_to_clients is required here and only here. It is presence-bearing
-// on the Event — absent ≠ false, which is why it is a *bool — and this
-// decoder sees push payloads exclusively, where §23's presence asymmetry says
-// the key is always carried ("push payloads carry it, poll rows omit it";
-// conformance/event-feed/schema.json requires all 9 keys on pushEvent and
-// forbids the key outright on pollEvent). A push frame that omits it, or
-// sends JSON null, has erased the distinction the pointer exists to carry:
-// the decoded Event would be indistinguishable from a poll row. That is a
-// peer protocol violation, so it takes the invalid-frame class's
-// socket-failure path rather than being delivered.
+// visible_to_clients and actor_type are required here and only here. The
+// former is presence-bearing on the Event — absent ≠ false, which is why it
+// is a *bool — and this decoder sees push payloads exclusively, where §23's
+// presence asymmetry says both keys are always carried ("push payloads carry
+// it, poll rows omit it"; conformance/event-feed/schema.json requires all 11
+// keys on pushEvent and forbids both outright on pollEvent). A push frame
+// that omits one, or sends JSON null for visible_to_clients, has erased the
+// distinction the asymmetry exists to carry: the decoded Event would be
+// indistinguishable from a poll row. That is a peer protocol violation, so it
+// takes the invalid-frame class's socket-failure path rather than being
+// delivered.
+//
+// performed_by_id is the one required key whose JSON null is a VALUE: the
+// wire carries the key on every event and nulls it when no agent performed
+// the action, so null decodes to a nil pointer and only an absent key or a
+// wrong type is the decode shape.
 //
 // The poll lane is untouched by this: poll rows never reach this function —
 // they arrive through the PollSource seam as Events — and the plain
-// encoding/json decoding of an Event keeps its 8-key tolerance.
+// encoding/json decoding of an Event keeps its tolerance of absent keys.
 func decodeMessageEvent(raw json.RawMessage) (Event, error) {
 	// parseFrame's gate already covers a payload sliced from a gated frame;
 	// this one binds for any other caller, so the function is total on its
@@ -489,18 +500,18 @@ func decodeMessageEvent(raw json.RawMessage) (Event, error) {
 		return Event{}, newInvalidFrameError(invalidFrameEventDecode)
 	}
 	var (
-		id, bucketID, creatorID, recordingID *int64
-		kind, eventType, action              *string
-		createdAt                            *time.Time
-		visibleToClients                     *bool
+		id, bucketID, creatorID, performedByID, recordingID *int64
+		kind, eventType, action, actorType                  *string
+		createdAt                                           *time.Time
+		visibleToClients                                    *bool
 	)
-	// The nine required keys, fetched by EXACT spelling — the map, unlike a
-	// tagged struct, never case-folds, so "ID" is an absent key, not a
+	// The eleven required keys, fetched by EXACT spelling — the map, unlike
+	// a tagged struct, never case-folds, so "ID" is an absent key, not a
 	// misspelt present one — in conformance/event-feed/schema.json's
 	// pushEvent order. An absent key and a JSON null both leave the pointer
 	// nil, and a wrong-typed value fails its unmarshal; each is the decode
-	// shape, and none of them names the offender in the error (see
-	// invalidFrameError).
+	// shape (performed_by_id's null excepted, below), and none of them names
+	// the offender in the error (see invalidFrameError).
 	for _, f := range []struct {
 		key string
 		dst any
@@ -512,6 +523,8 @@ func decodeMessageEvent(raw json.RawMessage) (Event, error) {
 		{"created_at", &createdAt},
 		{"bucket_id", &bucketID},
 		{"creator_id", &creatorID},
+		{"performed_by_id", &performedByID},
+		{"actor_type", &actorType},
 		{"recording_id", &recordingID},
 		{"visible_to_clients", &visibleToClients},
 	} {
@@ -524,18 +537,35 @@ func decodeMessageEvent(raw json.RawMessage) (Event, error) {
 		}
 	}
 	if id == nil || kind == nil || eventType == nil || action == nil || createdAt == nil ||
-		bucketID == nil || creatorID == nil || recordingID == nil || visibleToClients == nil {
+		bucketID == nil || creatorID == nil || actorType == nil || recordingID == nil || visibleToClients == nil {
 		// JSON null carries no value: the same decode shape as an absent key.
 		return Event{}, newInvalidFrameError(invalidFrameEventDecode)
 	}
 	// The schema's value bounds (pushEvent: every id `minimum: 1`, every
 	// string `minLength: 1`): a zero or negative id and an empty kind,
-	// event_type or action are out of contract, and a frame carrying one is
-	// the decode shape rather than an event that reaches delivery and the
-	// dedup ledger with a key nothing real can share.
+	// event_type, action or actor_type are out of contract, and a frame
+	// carrying one is the decode shape rather than an event that reaches
+	// delivery and the dedup ledger with a key nothing real can share.
 	if *id < 1 || *bucketID < 1 || *creatorID < 1 || *recordingID < 1 ||
-		*kind == "" || *eventType == "" || *action == "" {
+		(performedByID != nil && *performedByID < 1) ||
+		*kind == "" || *eventType == "" || *action == "" || *actorType == "" {
 		return Event{}, newInvalidFrameError(invalidFrameEventDecode)
+	}
+	// details is optional and, when present, a JSON object — the type's own
+	// per-key shape is not decoded here (Event.Details). Null is treated as
+	// absent rather than as a violation: the doc's "appears exactly when the
+	// type publishes one" describes presence, and a null carries nothing
+	// worth tearing a socket down over.
+	var details json.RawMessage
+	if detailsRaw, ok := payload["details"]; ok {
+		trimmed := bytes.TrimSpace(detailsRaw)
+		switch {
+		case bytes.Equal(trimmed, []byte("null")):
+		case isJSONObject(trimmed):
+			details = json.RawMessage(slices.Clone(trimmed))
+		default:
+			return Event{}, newInvalidFrameError(invalidFrameEventDecode)
+		}
 	}
 	return Event{
 		ID:               *id,
@@ -545,14 +575,18 @@ func decodeMessageEvent(raw json.RawMessage) (Event, error) {
 		CreatedAt:        *createdAt,
 		BucketID:         *bucketID,
 		CreatorID:        *creatorID,
+		PerformedByID:    performedByID,
 		RecordingID:      *recordingID,
+		Details:          details,
+		ActorType:        *actorType,
 		VisibleToClients: visibleToClients,
 	}, nil
 }
 
 // subscribeIdentifier builds the EventsChannel subscription identifier: the
 // JSON encoding of an ORDERED object
-// {"channel":"EventsChannel"[,"types":"a,b"][,"buckets":"1,2"][,"creators":"3"]}
+// {"channel":"EventsChannel"[,"types":"a,b"][,"buckets":"1,2"][,"creators":"3"]
+// [,"performers":"4"][,"exclude_performers":"5"][,"actor_types":"agent"]}
 // — fixed key order, comma-joined values in configured order, absent filters
 // omitted. Hand-built rather than map-marshaled so any retransmit is
 // byte-identical: the server absorbs identical resubscribes and rejects
@@ -564,20 +598,26 @@ func subscribeIdentifier(f Filters) string {
 	var b strings.Builder
 	b.WriteString(`{"channel":`)
 	writeJSONString(&b, channelName)
-	if len(f.Types) > 0 {
-		b.WriteString(`,"types":`)
-		writeJSONString(&b, strings.Join(f.Types, ","))
-	}
-	if len(f.Buckets) > 0 {
-		b.WriteString(`,"buckets":`)
-		writeJSONString(&b, joinIDs(f.Buckets))
-	}
-	if len(f.Creators) > 0 {
-		b.WriteString(`,"creators":`)
-		writeJSONString(&b, joinIDs(f.Creators))
-	}
+	writeIdentifierParam(&b, "types", strings.Join(f.Types, ","))
+	writeIdentifierParam(&b, "buckets", joinIDs(f.Buckets))
+	writeIdentifierParam(&b, "creators", joinIDs(f.Creators))
+	writeIdentifierParam(&b, "performers", joinIDs(f.Performers))
+	writeIdentifierParam(&b, "exclude_performers", joinIDs(f.ExcludePerformers))
+	writeIdentifierParam(&b, "actor_types", strings.Join(f.ActorTypes, ","))
 	b.WriteByte('}')
 	return b.String()
+}
+
+// writeIdentifierParam appends one `,"key":"value"` member, omitting the
+// member entirely when the filter is absent (an empty joined value).
+func writeIdentifierParam(b *strings.Builder, key, value string) {
+	if value == "" {
+		return
+	}
+	b.WriteString(`,"`)
+	b.WriteString(key)
+	b.WriteString(`":`)
+	writeJSONString(b, value)
 }
 
 // subscribeCommand marshals the subscribe command as an exact byte string:

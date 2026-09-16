@@ -156,7 +156,8 @@ const (
 	// PollFilterInvalid — 400-filter → Terminal(filter_invalid); Msg carries
 	// the server's message naming the offending list, verbatim.
 	PollFilterInvalid
-	// PollFilterChanged — 409: discard the held position, re-enter since=.
+	// PollFilterChanged — 409: PositionDigest and FiltersDigest set (the
+	// body's two sides); discard the held position, re-enter since=.
 	PollFilterChanged
 	// PollGone — 410: EpochAfterID and ResumeURL set; dispatched as the
 	// FeedGap semantic signal (a 410 never silently auto-continues).
@@ -211,6 +212,14 @@ type PollError struct {
 	EpochAfterID int64
 	// ResumeURL is the 410 body's resume URL (gone only).
 	ResumeURL string
+	// PositionDigest is the 409 body's position_digest — the bare srv2
+	// digest the refused position was minted for (filter_changed only).
+	PositionDigest string
+	// FiltersDigest is the 409 body's filters_digest — the bare srv2 digest
+	// of the filter set this request presented (filter_changed only). A
+	// value that differs from Filters.Digest() for the same set means the
+	// SDK's local canonicalization has drifted from the server's scheme.
+	FiltersDigest string
 	// Msg carries the server's message for filter_invalid, naming the
 	// offending list, verbatim.
 	Msg string

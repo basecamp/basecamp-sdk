@@ -22,7 +22,7 @@ import (
 // "Checkpoint Identity"), e.g.
 //
 //	{
-//	  "[\"https://3.basecampapi.com\",\"5951425\",\"openclaw\",\"srv1-9f2ab04e5c11d3a7\"]": "…"
+//	  "[\"https://3.basecampapi.com\",\"5951425\",\"openclaw\",\"srv2-9f2ab04e5c11d3a7\"]": "…"
 //	}
 //
 // # One file, not one file per key

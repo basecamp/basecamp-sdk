@@ -110,7 +110,7 @@ func TestParseFrame_DisconnectMatrix(t *testing.T) {
 }
 
 func TestParseFrame_MessageFrame(t *testing.T) {
-	payload := `{"id":105,"kind":"message","event_type":"message.created","action":"created","created_at":"2026-08-01T12:00:00Z","bucket_id":2,"creator_id":3,"recording_id":900,"visible_to_clients":false}`
+	payload := `{"id":105,"kind":"message","event_type":"message.created","action":"created","created_at":"2026-08-01T12:00:00Z","bucket_id":2,"creator_id":3,"performed_by_id":null,"actor_type":"person","recording_id":900,"visible_to_clients":false}`
 	raw := []byte(`{"identifier":"{\"channel\":\"EventsChannel\"}","message":` + payload + `}`)
 	f, err := parseFrame(raw)
 	if err != nil {
@@ -257,7 +257,7 @@ func TestParseFrame_NullIsInvalid(t *testing.T) {
 // type to recognize is the unrecognized-type case — liveness-only, never
 // invalid, so a frame the protocol says to ignore never tears the socket down.
 func TestParseFrame_NullTypeIsNeverABroadcast(t *testing.T) {
-	payload := `{"id":105,"kind":"message","event_type":"message.created","action":"created","created_at":"2026-08-01T12:00:00Z","bucket_id":2,"creator_id":3,"recording_id":900,"visible_to_clients":false}`
+	payload := `{"id":105,"kind":"message","event_type":"message.created","action":"created","created_at":"2026-08-01T12:00:00Z","bucket_id":2,"creator_id":3,"performed_by_id":null,"actor_type":"person","recording_id":900,"visible_to_clients":false}`
 	for _, raw := range []string{
 		`{"type":null,"identifier":"{\"channel\":\"EventsChannel\"}","message":` + payload + `}`,
 		// Key order must not decide it either.
@@ -321,7 +321,7 @@ func TestInvalidFrameErrorRendersShapeOnly(t *testing.T) {
 			name: "event decode shape",
 			err: mustErr(t, func() error {
 				_, err := decodeMessageEvent([]byte(`{"id":105,"kind":"message","event_type":"message.created","action":"created","created_at":"` +
-					frameCanary + `","bucket_id":2,"creator_id":3,"recording_id":900,"visible_to_clients":false}`))
+					frameCanary + `","bucket_id":2,"creator_id":3,"performed_by_id":null,"actor_type":"person","recording_id":900,"visible_to_clients":false}`))
 				return err
 			}),
 			wantShape:       invalidFrameEventDecode,
@@ -330,7 +330,7 @@ func TestInvalidFrameErrorRendersShapeOnly(t *testing.T) {
 		{
 			name: "event decode shape, missing key",
 			err: mustErr(t, func() error {
-				_, err := decodeMessageEvent([]byte(`{"id":105,"kind":"message","event_type":"message.created","action":"created","bucket_id":2,"creator_id":3,"recording_id":900,"visible_to_clients":false}`))
+				_, err := decodeMessageEvent([]byte(`{"id":105,"kind":"message","event_type":"message.created","action":"created","bucket_id":2,"creator_id":3,"performed_by_id":null,"actor_type":"person","recording_id":900,"visible_to_clients":false}`))
 				return err
 			}),
 			wantShape: invalidFrameEventDecode,
@@ -340,7 +340,7 @@ func TestInvalidFrameErrorRendersShapeOnly(t *testing.T) {
 			err: mustErr(t, func() error {
 				// Every key present and well-typed; id is below the schema's
 				// minimum of 1 and action is below its minLength of 1.
-				_, err := decodeMessageEvent([]byte(`{"id":0,"kind":"message","event_type":"message.created","action":"","created_at":"2026-01-01T00:00:00Z","bucket_id":2,"creator_id":3,"recording_id":900,"visible_to_clients":false}`))
+				_, err := decodeMessageEvent([]byte(`{"id":0,"kind":"message","event_type":"message.created","action":"","created_at":"2026-01-01T00:00:00Z","bucket_id":2,"creator_id":3,"performed_by_id":null,"actor_type":"person","recording_id":900,"visible_to_clients":false}`))
 				return err
 			}),
 			wantShape: invalidFrameEventDecode,
@@ -414,7 +414,7 @@ func TestFrameDerivedErrorsAreFlat(t *testing.T) {
 	// 4096 bytes, every assertion below is satisfied by the 500-byte cap
 	// regardless of what the chain holds.
 	raw := []byte(`{"id":105,"kind":"message","event_type":"message.created","action":"created","created_at":"` +
-		frameCanary + `","bucket_id":2,"creator_id":3,"recording_id":900,"visible_to_clients":false}`)
+		frameCanary + `","bucket_id":2,"creator_id":3,"performed_by_id":null,"actor_type":"person","recording_id":900,"visible_to_clients":false}`)
 
 	for _, tc := range []struct {
 		name string
@@ -464,27 +464,28 @@ func mustErr(t *testing.T, f func() error) error {
 
 // TestDecodeMessageEvent_RequiresVisibleToClients: decodeMessageEvent decodes
 // PUSH payloads only, and conformance/event-feed/schema.json's `pushEvent`
-// requires all nine keys ("Push-payload event: all 9 keys required, including
-// visible_to_clients (presence-bearing; absent ≠ false)"). The asymmetry is
-// the whole point — `pollEvent` requires eight and forbids the ninth
-// outright — so a push frame that omits it, or sends JSON null, has broken
+// requires all eleven keys ("Push-payload event: all 11 keys required,
+// including visible_to_clients (presence-bearing; absent ≠ false)"). The
+// asymmetry is the whole point — `pollEvent` requires nine and forbids the
+// two transport-only keys outright — so a push frame that omits it, or sends
+// JSON null, has broken
 // the contract that makes absence meaningful and takes the invalid-frame
 // class's socket-failure path. Accepting it would deliver an Event whose
 // presence-bearing pointer is nil, i.e. a push row indistinguishable from a
 // poll row.
 func TestDecodeMessageEvent_RequiresVisibleToClients(t *testing.T) {
-	const eightKeys = `"id":7,"kind":"todo","event_type":"todo.completed","action":"completed","created_at":"2026-08-01T12:00:00Z","bucket_id":1,"creator_id":2,"recording_id":3`
+	const tenKeys = `"id":7,"kind":"todo","event_type":"todo.completed","action":"completed","created_at":"2026-08-01T12:00:00Z","bucket_id":1,"creator_id":2,"performed_by_id":null,"actor_type":"person","recording_id":3`
 	t.Run("absent", func(t *testing.T) {
-		assertEventDecodeFails(t, []byte(`{`+eightKeys+`}`))
+		assertEventDecodeFails(t, []byte(`{`+tenKeys+`}`))
 	})
 	t.Run("explicit null", func(t *testing.T) {
-		assertEventDecodeFails(t, []byte(`{`+eightKeys+`,"visible_to_clients":null}`))
+		assertEventDecodeFails(t, []byte(`{`+tenKeys+`,"visible_to_clients":null}`))
 	})
 	// Present is still presence-bearing on the way out: a false must decode
 	// to a non-nil pointer, never a defaulted boolean.
 	for _, want := range []bool{false, true} {
 		t.Run(fmt.Sprintf("present %v", want), func(t *testing.T) {
-			raw := []byte(fmt.Sprintf(`{%s,"visible_to_clients":%v}`, eightKeys, want))
+			raw := []byte(fmt.Sprintf(`{%s,"visible_to_clients":%v}`, tenKeys, want))
 			ev, err := decodeMessageEvent(raw)
 			if err != nil {
 				t.Fatalf("decodeMessageEvent: %v", err)
@@ -503,12 +504,14 @@ func TestDecodeMessageEvent_Failures(t *testing.T) {
 	full := map[string]any{
 		"id": int64(105), "kind": "message", "event_type": "message.created",
 		"action": "created", "created_at": "2026-08-01T12:00:00Z",
-		"bucket_id": int64(2), "creator_id": int64(3), "recording_id": int64(900),
+		"bucket_id": int64(2), "creator_id": int64(3), "performed_by_id": nil,
+		"actor_type": "person", "recording_id": int64(900),
 		"visible_to_clients": false,
 	}
 	requiredKeys := []string{
 		"id", "kind", "event_type", "action", "created_at",
-		"bucket_id", "creator_id", "recording_id", "visible_to_clients",
+		"bucket_id", "creator_id", "performed_by_id", "actor_type", "recording_id",
+		"visible_to_clients",
 	}
 	for _, missing := range requiredKeys {
 		t.Run("missing "+missing, func(t *testing.T) {
@@ -525,31 +528,31 @@ func TestDecodeMessageEvent_Failures(t *testing.T) {
 			assertEventDecodeFails(t, raw)
 		})
 	}
-	// Both malformed-VALUE cases carry all nine required keys, the flagged
+	// Both malformed-VALUE cases carry all eleven required keys, the flagged
 	// value included: with any key missing, the presence check fails the
 	// decode on its own and the case passes even when the validation it
 	// names has regressed.
 	t.Run("wrong-typed id", func(t *testing.T) {
-		assertEventDecodeFails(t, []byte(`{"id":"911","kind":"message","event_type":"message.created","action":"created","created_at":"2026-08-01T12:00:00Z","bucket_id":2,"creator_id":3,"recording_id":900,"visible_to_clients":false}`))
+		assertEventDecodeFails(t, []byte(`{"id":"911","kind":"message","event_type":"message.created","action":"created","created_at":"2026-08-01T12:00:00Z","bucket_id":2,"creator_id":3,"performed_by_id":null,"actor_type":"person","recording_id":900,"visible_to_clients":false}`))
 	})
 	t.Run("malformed created_at", func(t *testing.T) {
-		assertEventDecodeFails(t, []byte(`{"id":105,"kind":"message","event_type":"message.created","action":"created","created_at":"yesterday","bucket_id":2,"creator_id":3,"recording_id":900,"visible_to_clients":false}`))
+		assertEventDecodeFails(t, []byte(`{"id":105,"kind":"message","event_type":"message.created","action":"created","created_at":"yesterday","bucket_id":2,"creator_id":3,"performed_by_id":null,"actor_type":"person","recording_id":900,"visible_to_clients":false}`))
 	})
 	t.Run("duplicate member", func(t *testing.T) {
 		// Last-wins would silently let the second id decide which event this
 		// is; ambiguity about identity is the decode shape.
-		assertEventDecodeFails(t, []byte(`{"id":105,"kind":"message","event_type":"message.created","action":"created","created_at":"2026-08-01T12:00:00Z","bucket_id":2,"creator_id":3,"recording_id":900,"visible_to_clients":false,"id":106}`))
+		assertEventDecodeFails(t, []byte(`{"id":105,"kind":"message","event_type":"message.created","action":"created","created_at":"2026-08-01T12:00:00Z","bucket_id":2,"creator_id":3,"performed_by_id":null,"actor_type":"person","recording_id":900,"visible_to_clients":false,"id":106}`))
 	})
 	t.Run("wrong-case keys are absent keys", func(t *testing.T) {
-		// encoding/json binds struct fields case-insensitively, so the nine
+		// encoding/json binds struct fields case-insensitively, so the eleven
 		// required-key checks passed on a payload spelling every key in
 		// uppercase — a payload no exact-dictionary SDK would accept.
-		assertEventDecodeFails(t, []byte(`{"ID":105,"KIND":"message","EVENT_TYPE":"message.created","ACTION":"created","CREATED_AT":"2026-08-01T12:00:00Z","BUCKET_ID":2,"CREATOR_ID":3,"RECORDING_ID":900,"VISIBLE_TO_CLIENTS":false}`))
+		assertEventDecodeFails(t, []byte(`{"ID":105,"KIND":"message","EVENT_TYPE":"message.created","ACTION":"created","CREATED_AT":"2026-08-01T12:00:00Z","BUCKET_ID":2,"CREATOR_ID":3,"PERFORMED_BY_ID":null,"ACTOR_TYPE":"person","RECORDING_ID":900,"VISIBLE_TO_CLIENTS":false}`))
 	})
 	t.Run("escaped lone surrogate in a string", func(t *testing.T) {
 		// The escape door into the same U+FFFD mutation as the raw-byte case
 		// below: ASCII bytes, utf8.Valid passes, decoder mutates.
-		assertEventDecodeFails(t, []byte(`{"id":105,"kind":"message","event_type":"message.\ud800created","action":"created","created_at":"2026-08-01T12:00:00Z","bucket_id":2,"creator_id":3,"recording_id":900,"visible_to_clients":false}`))
+		assertEventDecodeFails(t, []byte(`{"id":105,"kind":"message","event_type":"message.\ud800created","action":"created","created_at":"2026-08-01T12:00:00Z","bucket_id":2,"creator_id":3,"performed_by_id":null,"actor_type":"person","recording_id":900,"visible_to_clients":false}`))
 	})
 	t.Run("raw invalid UTF-8 in a string", func(t *testing.T) {
 		// Ungated, the decoder swaps the byte for U+FFFD and returns a VALID
@@ -565,6 +568,77 @@ func TestDecodeMessageEvent_Failures(t *testing.T) {
 	})
 	t.Run("absent payload", func(t *testing.T) {
 		assertEventDecodeFails(t, nil)
+	})
+	t.Run("null actor_type", func(t *testing.T) {
+		// actor_type is push-only and presence-bearing like
+		// visible_to_clients: null erases the asymmetry.
+		assertEventDecodeFails(t, []byte(`{"id":105,"kind":"message","event_type":"message.created","action":"created","created_at":"2026-08-01T12:00:00Z","bucket_id":2,"creator_id":3,"performed_by_id":null,"actor_type":null,"recording_id":900,"visible_to_clients":false}`))
+	})
+	t.Run("wrong-typed performed_by_id", func(t *testing.T) {
+		assertEventDecodeFails(t, []byte(`{"id":105,"kind":"message","event_type":"message.created","action":"created","created_at":"2026-08-01T12:00:00Z","bucket_id":2,"creator_id":3,"performed_by_id":"9","actor_type":"agent","recording_id":900,"visible_to_clients":false}`))
+	})
+	t.Run("out-of-bounds performed_by_id", func(t *testing.T) {
+		assertEventDecodeFails(t, []byte(`{"id":105,"kind":"message","event_type":"message.created","action":"created","created_at":"2026-08-01T12:00:00Z","bucket_id":2,"creator_id":3,"performed_by_id":0,"actor_type":"agent","recording_id":900,"visible_to_clients":false}`))
+	})
+	t.Run("non-object details", func(t *testing.T) {
+		assertEventDecodeFails(t, []byte(`{"id":105,"kind":"message","event_type":"message.created","action":"created","created_at":"2026-08-01T12:00:00Z","bucket_id":2,"creator_id":3,"performed_by_id":null,"actor_type":"person","recording_id":900,"visible_to_clients":false,"details":[1]}`))
+	})
+}
+
+// TestDecodeMessageEvent_DelegationAndDetails pins the shipped event shape's
+// two additions: performed_by_id is the one required key whose JSON null is
+// a value (a direct action), an integer when an agent performed the action;
+// details rides through verbatim for the types that publish one and is nil
+// — not an empty object — for the rest, null included.
+func TestDecodeMessageEvent_DelegationAndDetails(t *testing.T) {
+	const base = `"id":105,"kind":"card_moved","event_type":"card.moved","action":"moved","created_at":"2026-08-01T12:00:00Z","bucket_id":2,"creator_id":3,"recording_id":900,"visible_to_clients":false`
+	t.Run("direct action, no details", func(t *testing.T) {
+		ev, err := decodeMessageEvent([]byte(`{` + base + `,"performed_by_id":null,"actor_type":"person"}`))
+		if err != nil {
+			t.Fatalf("decodeMessageEvent: %v", err)
+		}
+		if ev.PerformedByID != nil {
+			t.Errorf("PerformedByID = %d, want nil", *ev.PerformedByID)
+		}
+		if ev.ActorType != ActorTypePerson {
+			t.Errorf("ActorType = %q, want %q", ev.ActorType, ActorTypePerson)
+		}
+		if ev.Details != nil {
+			t.Errorf("Details = %s, want nil", ev.Details)
+		}
+	})
+	t.Run("null details is absent", func(t *testing.T) {
+		ev, err := decodeMessageEvent([]byte(`{` + base + `,"performed_by_id":null,"actor_type":"person","details":null}`))
+		if err != nil {
+			t.Fatalf("decodeMessageEvent: %v", err)
+		}
+		if ev.Details != nil {
+			t.Errorf("Details = %s, want nil", ev.Details)
+		}
+	})
+	t.Run("delegated action with details", func(t *testing.T) {
+		// A 64-bit id above 2^53 inside details must survive intact, which
+		// is why Details is raw bytes rather than a decoded map (§10).
+		ev, err := decodeMessageEvent([]byte(`{` + base + `,"performed_by_id":9007199254740993,"actor_type":"agent","details":{"column_id":9007199254740993,"previous_column_id":7}}`))
+		if err != nil {
+			t.Fatalf("decodeMessageEvent: %v", err)
+		}
+		if ev.PerformedByID == nil || *ev.PerformedByID != 9007199254740993 {
+			t.Errorf("PerformedByID = %v, want 9007199254740993", ev.PerformedByID)
+		}
+		if ev.ActorType != ActorTypeAgent {
+			t.Errorf("ActorType = %q, want %q", ev.ActorType, ActorTypeAgent)
+		}
+		var details struct {
+			ColumnID         int64 `json:"column_id"`
+			PreviousColumnID int64 `json:"previous_column_id"`
+		}
+		if err := json.Unmarshal(ev.Details, &details); err != nil {
+			t.Fatalf("decoding Details %s: %v", ev.Details, err)
+		}
+		if details.ColumnID != 9007199254740993 || details.PreviousColumnID != 7 {
+			t.Errorf("Details = %+v, want column 9007199254740993 from 7", details)
+		}
 	})
 }
 
@@ -588,16 +662,20 @@ func TestSubscribeIdentifier_ChannelOnly(t *testing.T) {
 }
 
 func TestSubscribeIdentifier_AllFilters(t *testing.T) {
-	// Fixed key order channel/types/buckets/creators, comma-joined values in
-	// configured order, absent filters omitted (SPEC §23 "Cable Protocol
-	// Details"). Hand-built, so the bytes are exact.
+	// Fixed key order channel/types/buckets/creators/performers/
+	// exclude_performers/actor_types, comma-joined values in configured
+	// order, absent filters omitted (SPEC §23 "Cable Protocol Details").
+	// Hand-built, so the bytes are exact.
 	f := Filters{
-		Types:    []string{"chat.line.created", "message.created"},
-		Buckets:  []int64{2, 1},
-		Creators: []int64{3},
+		Types:             []string{"chat.line.created", "message.created"},
+		Buckets:           []int64{2, 1},
+		Creators:          []int64{3},
+		Performers:        []int64{9, 4},
+		ExcludePerformers: []int64{5},
+		ActorTypes:        []string{ActorTypePerson, ActorTypeAgent},
 	}
 	got := subscribeIdentifier(f)
-	want := `{"channel":"EventsChannel","types":"chat.line.created,message.created","buckets":"2,1","creators":"3"}`
+	want := `{"channel":"EventsChannel","types":"chat.line.created,message.created","buckets":"2,1","creators":"3","performers":"9,4","exclude_performers":"5","actor_types":"person,agent"}`
 	if got != want {
 		t.Errorf("subscribeIdentifier =\n %s, want\n %s", got, want)
 	}
@@ -606,6 +684,11 @@ func TestSubscribeIdentifier_AllFilters(t *testing.T) {
 func TestSubscribeIdentifier_PartialFilters(t *testing.T) {
 	got := subscribeIdentifier(Filters{Buckets: []int64{5951425}})
 	if want := `{"channel":"EventsChannel","buckets":"5951425"}`; got != want {
+		t.Errorf("subscribeIdentifier = %s, want %s", got, want)
+	}
+	// The loop guard alone: an agent excluding its own performances.
+	got = subscribeIdentifier(Filters{ExcludePerformers: []int64{77}})
+	if want := `{"channel":"EventsChannel","exclude_performers":"77"}`; got != want {
 		t.Errorf("subscribeIdentifier = %s, want %s", got, want)
 	}
 }

@@ -696,11 +696,11 @@ func TestFileCheckpointStore_HostileKeysCannotEscapeTheStoreFile(t *testing.T) {
 	}
 
 	hostile := []CheckpointKey{
-		{Origin: "https://../../etc", AccountID: "1", ConsumerNamespace: "../../../sentinel", FilterKey: "srv1-0000000000000000"},
-		{Origin: "https://x", AccountID: "../..", ConsumerNamespace: "a/b/c", FilterKey: "srv1-1111111111111111"},
+		{Origin: "https://../../etc", AccountID: "1", ConsumerNamespace: "../../../sentinel", FilterKey: "srv2-0000000000000000"},
+		{Origin: "https://x", AccountID: "../..", ConsumerNamespace: "a/b/c", FilterKey: "srv2-1111111111111111"},
 		{Origin: "..", AccountID: "..", ConsumerNamespace: "..", FilterKey: ".."},
-		{Origin: `https://x`, AccountID: `1`, ConsumerNamespace: "with\x00nul and /slashes/", FilterKey: "srv1-2222222222222222"},
-		{Origin: "https://x", AccountID: "1", ConsumerNamespace: string(make([]byte, 4096)), FilterKey: "srv1-3333333333333333"},
+		{Origin: `https://x`, AccountID: `1`, ConsumerNamespace: "with\x00nul and /slashes/", FilterKey: "srv2-2222222222222222"},
+		{Origin: "https://x", AccountID: "1", ConsumerNamespace: string(make([]byte, 4096)), FilterKey: "srv2-3333333333333333"},
 	}
 
 	store := NewFileCheckpointStore(path)
@@ -1256,7 +1256,7 @@ func TestFileStore_SaveRefusesToWritePastTheReadLimit(t *testing.T) {
 func TestFileStore_AcceptsFileUnderTheLimit(t *testing.T) {
 	dir := t.TempDir()
 	store := NewFileCheckpointStore(filepath.Join(dir, "feed.json"))
-	key := CheckpointKey{Origin: "https://3.basecampapi.com", AccountID: "5951425", ConsumerNamespace: "openclaw", FilterKey: "srv1-0000000000000000"}
+	key := CheckpointKey{Origin: "https://3.basecampapi.com", AccountID: "5951425", ConsumerNamespace: "openclaw", FilterKey: "srv2-0000000000000000"}
 	if err := store.Save(context.Background(), key, "pos-1"); err != nil {
 		t.Fatal(err)
 	}

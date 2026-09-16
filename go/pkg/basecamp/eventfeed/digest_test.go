@@ -1,8 +1,8 @@
 package eventfeed
 
 // Drives the shared, data-only vectors in
-// conformance/event-feed-digest/fixtures/srv1-vectors.json: the published
-// srv1 digest table (SPEC.md §23 "Checkpoint Identity") and the checkpoint
+// conformance/event-feed-digest/fixtures/srv2-vectors.json: the published
+// srv2 digest table (SPEC.md §23 "Checkpoint Identity") and the checkpoint
 // flat-key cases. Every SDK asserts every case; the fixture file is the
 // single source — no vector value is inlined here.
 
@@ -15,14 +15,14 @@ import (
 	"testing"
 )
 
-// srv1Fixture mirrors the fixture file's shape.
-type srv1Fixture struct {
-	Srv1Vectors []struct {
+// srv2Fixture mirrors the fixture file's shape.
+type srv2Fixture struct {
+	Srv2Vectors []struct {
 		Name          string         `json:"name"`
 		Filters       fixtureFilters `json:"filters"`
 		CanonicalJSON string         `json:"canonical_json"`
 		Digest        string         `json:"digest"`
-	} `json:"srv1_vectors"`
+	} `json:"srv2_vectors"`
 	FlatKeyCases []struct {
 		Name              string         `json:"name"`
 		Origin            string         `json:"origin"`
@@ -38,22 +38,30 @@ type srv1Fixture struct {
 // numbers and as strings ("1", "01") to pin post-coercion dedup, so each
 // entry is base-10 coerced here exactly as a query parameter would be.
 type fixtureFilters struct {
-	Types    []string          `json:"types"`
-	Buckets  []json.RawMessage `json:"buckets"`
-	Creators []json.RawMessage `json:"creators"`
+	Types             []string          `json:"types"`
+	Buckets           []json.RawMessage `json:"buckets"`
+	Creators          []json.RawMessage `json:"creators"`
+	Performers        []json.RawMessage `json:"performers"`
+	ExcludePerformers []json.RawMessage `json:"exclude_performers"`
+	ActorTypes        []string          `json:"actor_types"`
+	Reasons           []string          `json:"reasons"`
 }
 
 func (ff fixtureFilters) toFilters(t *testing.T) Filters {
 	t.Helper()
 	return Filters{
-		Types:    ff.Types,
-		Buckets:  fixtureIDs(t, ff.Buckets),
-		Creators: fixtureIDs(t, ff.Creators),
+		Types:             ff.Types,
+		Buckets:           fixtureIDs(t, ff.Buckets),
+		Creators:          fixtureIDs(t, ff.Creators),
+		Performers:        fixtureIDs(t, ff.Performers),
+		ExcludePerformers: fixtureIDs(t, ff.ExcludePerformers),
+		ActorTypes:        ff.ActorTypes,
+		Reasons:           ff.Reasons,
 	}
 }
 
 // fixtureIDs coerces raw fixture id entries — JSON numbers or strings — to
-// int64, the same base-10 coercion the srv1 contract applies ("1" and "01"
+// int64, the same base-10 coercion the srv2 contract applies ("1" and "01"
 // are one id).
 func fixtureIDs(t *testing.T, raws []json.RawMessage) []int64 {
 	t.Helper()
@@ -77,32 +85,32 @@ func fixtureIDs(t *testing.T, raws []json.RawMessage) []int64 {
 	return ids
 }
 
-func loadSrv1Fixture(t *testing.T) srv1Fixture {
+func loadSrv2Fixture(t *testing.T) srv2Fixture {
 	t.Helper()
 	_, thisFile, _, ok := runtime.Caller(0)
 	if !ok {
 		t.Fatal("runtime.Caller failed")
 	}
 	root := filepath.Join(filepath.Dir(thisFile), "..", "..", "..", "..")
-	path := filepath.Join(root, "conformance", "event-feed-digest", "fixtures", "srv1-vectors.json")
+	path := filepath.Join(root, "conformance", "event-feed-digest", "fixtures", "srv2-vectors.json")
 	data, err := os.ReadFile(path)
 	if err != nil {
-		t.Fatalf("reading srv1 fixture %s: %v", path, err)
+		t.Fatalf("reading srv2 fixture %s: %v", path, err)
 	}
-	var fx srv1Fixture
+	var fx srv2Fixture
 	if err := json.Unmarshal(data, &fx); err != nil {
-		t.Fatalf("parsing srv1 fixture %s: %v", path, err)
+		t.Fatalf("parsing srv2 fixture %s: %v", path, err)
 	}
-	if len(fx.Srv1Vectors) == 0 || len(fx.FlatKeyCases) == 0 {
-		t.Fatalf("srv1 fixture %s carries no vectors (srv1_vectors=%d, flat_key_cases=%d)",
-			path, len(fx.Srv1Vectors), len(fx.FlatKeyCases))
+	if len(fx.Srv2Vectors) == 0 || len(fx.FlatKeyCases) == 0 {
+		t.Fatalf("srv2 fixture %s carries no vectors (srv2_vectors=%d, flat_key_cases=%d)",
+			path, len(fx.Srv2Vectors), len(fx.FlatKeyCases))
 	}
 	return fx
 }
 
-func TestFiltersDigest_Srv1Vectors(t *testing.T) {
-	fx := loadSrv1Fixture(t)
-	for _, v := range fx.Srv1Vectors {
+func TestFiltersDigest_Srv2Vectors(t *testing.T) {
+	fx := loadSrv2Fixture(t)
+	for _, v := range fx.Srv2Vectors {
 		t.Run(v.Name, func(t *testing.T) {
 			f := v.Filters.toFilters(t)
 			if got := f.canonicalJSON(); got != v.CanonicalJSON {
@@ -115,8 +123,8 @@ func TestFiltersDigest_Srv1Vectors(t *testing.T) {
 	}
 }
 
-func TestCheckpointKeyFlatKey_Srv1FlatKeyCases(t *testing.T) {
-	fx := loadSrv1Fixture(t)
+func TestCheckpointKeyFlatKey_Srv2FlatKeyCases(t *testing.T) {
+	fx := loadSrv2Fixture(t)
 	for _, c := range fx.FlatKeyCases {
 		t.Run(c.Name, func(t *testing.T) {
 			f := c.Filters.toFilters(t)

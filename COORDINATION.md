@@ -94,7 +94,8 @@ branch, has its contract decisions recorded pre-merge:
    (a branch-head verification record, not a provenance pin): the poll
    response body envelope `{"events", "position", "next"}` is the contract
    (headers are echoes); the filter digest is published as a versioned
-   `srv1` contract (bare 16-hex on the wire; `srv1-<digest>` is the SDK's
+   contract — `srv1` pre-merge, shipped as `srv2` (a JSON object keyed by
+   present dimension; bare 16-hex on the wire; `srv2-<digest>` is the SDK's
    checkpoint-lineage namespace); the 409 filter-mismatch body names
    `position_digest` and `filters_digest`; the disconnect-reason matrix is
    four rows (including `remote`/reconnect:true server-initiated disconnect

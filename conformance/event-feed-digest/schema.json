@@ -1,13 +1,13 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://basecamp.com/schemas/event-feed-digest.json",
-  "title": "Event-feed srv1 digest and checkpoint flat-key vectors",
+  "title": "Event-feed srv2 digest and checkpoint flat-key vectors",
   "type": "object",
   "additionalProperties": false,
   "required": [
     "description",
-    "provisional",
-    "srv1_vectors",
+    "scheme",
+    "srv2_vectors",
     "flat_key_cases"
   ],
   "properties": {
@@ -15,26 +15,13 @@
       "type": "string",
       "minLength": 1
     },
-    "provisional": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "verified_at",
-        "freezes_at"
-      ],
-      "properties": {
-        "verified_at": {
-          "type": "string",
-          "pattern": "^[0-9a-f]{10,40}$"
-        },
-        "freezes_at": {
-          "const": "bc3 merge-time gate (regenerated vectors)"
-        }
-      }
+    "scheme": {
+      "const": "srv2",
+      "description": "The digest scheme version these vectors pin. A server-side change to the canonicalization or algorithm ships as srv3 with new vectors; the SDK checkpoint-lineage namespace (`<scheme>-<digest>`) moves with it."
     },
-    "srv1_vectors": {
+    "srv2_vectors": {
       "type": "array",
-      "minItems": 5,
+      "minItems": 11,
       "items": {
         "type": "object",
         "additionalProperties": false,
@@ -76,12 +63,52 @@
                     "string"
                   ]
                 }
+              },
+              "performers": {
+                "type": "array",
+                "items": {
+                  "type": [
+                    "integer",
+                    "string"
+                  ]
+                }
+              },
+              "exclude_performers": {
+                "type": "array",
+                "items": {
+                  "type": [
+                    "integer",
+                    "string"
+                  ]
+                }
+              },
+              "actor_types": {
+                "type": "array",
+                "items": {
+                  "enum": [
+                    "agent",
+                    "person"
+                  ]
+                }
+              },
+              "reasons": {
+                "type": "array",
+                "items": {
+                  "enum": [
+                    "mentioned",
+                    "assigned",
+                    "subscribed",
+                    "watched",
+                    "pinged",
+                    "boosted"
+                  ]
+                }
               }
             }
           },
           "canonical_json": {
             "type": "string",
-            "pattern": "^\\["
+            "pattern": "^\\{.*\\}$"
           },
           "digest": {
             "type": "string",
@@ -123,11 +150,11 @@
             "minLength": 1
           },
           "filters": {
-            "$ref": "#/properties/srv1_vectors/items/properties/filters"
+            "$ref": "#/properties/srv2_vectors/items/properties/filters"
           },
           "filter_key": {
             "type": "string",
-            "pattern": "^srv1-[0-9a-f]{16}$"
+            "pattern": "^srv2-[0-9a-f]{16}$"
           },
           "flat_key": {
             "type": "string",

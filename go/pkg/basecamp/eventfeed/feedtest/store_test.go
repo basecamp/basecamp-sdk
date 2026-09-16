@@ -67,8 +67,8 @@ func TestStore_FailNextSaveIsFIFOThenSucceeds(t *testing.T) {
 
 func TestStore_LedgersRecordEveryCallInOrder(t *testing.T) {
 	s := NewStore()
-	k1 := eventfeed.CheckpointKey{AccountID: "1", FilterKey: "srv1-a"}
-	k2 := eventfeed.CheckpointKey{AccountID: "2", FilterKey: "srv1-b"}
+	k1 := eventfeed.CheckpointKey{AccountID: "1", FilterKey: "srv2-a"}
+	k2 := eventfeed.CheckpointKey{AccountID: "2", FilterKey: "srv2-b"}
 	_, _, _ = s.Load(context.Background(), k1)
 	_ = s.Save(context.Background(), k2, "pos-1")
 	_, _, _ = s.Load(context.Background(), k2)

@@ -70,7 +70,7 @@ files are gate inputs, not scenario fixtures (and are not scenario-shaped).
 
 This directory contains exactly one shape: tier-2 scenario scripts. If a second
 shape is ever needed, it gets a sibling directory with its own schema — never a
-second schema here. The srv1 digest vectors are exactly that sibling:
+second schema here. The srv2 digest vectors are exactly that sibling:
 `conformance/event-feed-digest/` (gated by `make event-feed-digest-fixtures-check`),
 following the `conformance/oauth/` / `conformance/oauth-token/` precedent.
 
@@ -246,11 +246,11 @@ reason via a constant, not the literal.
 | Disconnect reason literal `remote`, `reconnect:true` | 1 — **no transcript capture exists**; source-verified against the pinned Rails; its freeze rides bc3's disconnect-matrix re-verification plus the one requested capture frame | 17 |
 | Poll body envelope keys `events` / `position` / `next` | 1 | every fixture serving a 200 poll: 01, 02, 05, 07, 12, 16, 17, 19, 20, 22, 26, 29, 30 (mechanically derived from the fixture files; re-derive when the set changes) |
 | Mint response body `{ticket, expires_in, url}`, status 200 | 1 | every fixture with `expectMint` (all but 28) |
-| Subscribe identifier literals: channel `EventsChannel`, param spellings `types`/`buckets`/`creators`, comma-joined values | 1 | channel: every `expectSubscribe`; `types` spelling: 01 (its `expectSubscribe` pins `params` explicitly, single-valued); `buckets`/`creators` spellings + comma-joining: no PR-2 fixture — pinned at PR-4 (fixture 15, whose retransmit case also pins byte-identity of the identifier) |
-| 409 body: all three keys `error` / `position_digest` / `filters_digest` required; digest values bare 16-hex (no `srv1-` prefix), `error` content unconstrained | 1 | schema-pinned shape only (the 409 respond variant requires all three keys); **no PR-2 fixture serves a 409** — pinned live at PR-4 (the tier-1 dispatch case additionally owns the wire pin when tier 1 lands) |
+| Subscribe identifier literals: channel `EventsChannel`, param spellings `types`/`buckets`/`creators`/`performers`/`exclude_performers`/`actor_types`, comma-joined values | 1 | channel: every `expectSubscribe`; `types` spelling: 01 (its `expectSubscribe` pins `params` explicitly, single-valued); `buckets`/`creators` spellings + comma-joining: no PR-2 fixture — pinned at PR-4 (fixture 15, whose retransmit case also pins byte-identity of the identifier) |
+| 409 body: all three keys `error` / `position_digest` / `filters_digest` required; digest values bare 16-hex (no `srv2-` prefix), `error` content unconstrained | 1 | schema-pinned shape only (the 409 respond variant requires all three keys); **no PR-2 fixture serves a 409** — pinned live at PR-4 (the tier-1 dispatch case additionally owns the wire pin when tier 1 lands) |
 | 410 body keys `epoch_after_id` / `resume` | 1 | 16, 23, 25, 27 |
 | 400 position-vs-filter discriminating bodies (verbatim transcript shapes) | 1 | no PR-2 fixture — pinned at PR-4 (tier 1 additionally owns it when `PollEvents` lands); the schema's 400 variant requires a verbatim body and this table is its source of truth |
-| srv1 digest vectors (five-vector table) + canonicalization algorithm | 1 (vectors) / 2 (algorithm) | sibling family `conformance/event-feed-digest/` |
+| srv2 digest vectors (eleven-vector table) + canonicalization algorithm | 1 (vectors) / 2 (algorithm) | sibling family `conformance/event-feed-digest/` |
 | Maximum inbound frame (`EVENT_FEED_MAX_FRAME_BYTES`, 1 MiB), transport-enforced during the read | SDK-owned constant; enforcement seam-contractual | no PR-2 fixture — tier 3 + a later raw-bounds fixture |
 | Filter raw bounds: a filter list of > 1,000 elements or > 16 KB → filter 400 | 2 | unreachable through validated construction (the client caps at 100 ids); recorded, unpinned |
 | `since=now` / bare entry mints the cursor at the newest visible id; an empty entry page positions above an in-flight lower id N | 2 | 19, 20 |
@@ -261,7 +261,7 @@ reason via a constant, not the literal.
 | Ticket statelessness + ~120s TTL (server-owned `expires_in`) | 2 | 05 (TTL-advance premise; `expires_in` never schedules anything) |
 | 3-second server heartbeat cadence (input to the 7500ms staleness policy) | 2 | no PR-2 fixture — PR 4 (staleness fixture 08) |
 | Subscribe retransmit contract (identical absorbed, different rejected) | 2 | no PR-2 fixture — PR 4 (fixture 15) |
-| Push payload 9-key shape incl. the `visible_to_clients` presence asymmetry (push carries it, poll rows omit it) | 2 | schema-enforced on every `serve message` (9 keys) and every poll envelope row (8 keys, `visible_to_clients` forbidden) |
+| Push payload 11-key shape — the poll row's nine (`performed_by_id` present, null for a direct action) plus the transport-only `actor_type` and `visible_to_clients` (push carries them, poll rows omit them), and an optional `details` object for the types that publish one | 2 | schema-enforced on every `serve message` (11 keys) and every poll envelope row (9 keys, `actor_type` and `visible_to_clients` forbidden) |
 
 ## Deliberate tier-2 slack (tier-3/PR-4 ownership)
 
@@ -293,7 +293,7 @@ when every line is done:
    transcript diffs cannot prove these.
 3. `remote`: confirm the disconnect-matrix re-verification covers it and land the
    requested capture frame; only then does its row carry transcript provenance.
-4. Re-verify the srv1 five-vector table at the rebased head (sibling digest family).
+4. Re-verify the srv2 eleven-vector table at the shipped head (sibling digest family).
 5. Re-confirm `CreateStreamTicket`'s `idempotent: true` (safe-to-retry sense) — flag
    if changed.
 6. Update this README's banner SHA and the fixtures' provenance note; remove
