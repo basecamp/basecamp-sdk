@@ -383,22 +383,33 @@ func TestLiveClient_DownloadsKeepTheirDispatchingRedirect(t *testing.T) {
 	}
 }
 
-// TestLivePolls_AFeed410WithoutAnEpochIsMalformed: the feed's 410 names its
-// epoch; one that does not is unrecoverable rather than a gap with a fence
-// of 0 — the inbox's, whose contract carries none, stays a gap.
-func TestLivePolls_AFeed410WithoutAnEpochIsMalformed(t *testing.T) {
+// TestLivePolls_A410OfTheOtherLanesShapeIsMalformed: the feed's 410 names
+// its epoch and the inbox's carries none; a body of the other lane's shape
+// is unrecoverable rather than a gap with a fence that does not exist.
+func TestLivePolls_A410OfTheOtherLanesShapeIsMalformed(t *testing.T) {
+	const withEpoch = `{"error":"gone","epoch_after_id":500,"resume":"https://3.basecampapi.com/99999/events.json?since=500"}`
+	const withoutEpoch = `{"error":"gone","resume":"https://3.basecampapi.com/99999/inbox.json?since=0"}`
 	for _, tc := range []struct {
+		name string
 		lane eventfeed.Lane
+		body string
 		kind eventfeed.PollErrorKind
-	}{{eventfeed.AccountLane, eventfeed.PollUnrecoverable}, {eventfeed.InboxLane, eventfeed.PollGone}} {
-		f := newLiveFixture(t, tc.lane, func(w http.ResponseWriter, r *http.Request) {
-			jsonResponse(w, 410, `{"error":"gone","resume":"https://3.basecampapi.com/99999/inbox.json?since=0"}`)
+	}{
+		{"feed with epoch", eventfeed.AccountLane, withEpoch, eventfeed.PollGone},
+		{"feed without epoch", eventfeed.AccountLane, withoutEpoch, eventfeed.PollUnrecoverable},
+		{"inbox without epoch", eventfeed.InboxLane, withoutEpoch, eventfeed.PollGone},
+		{"inbox with epoch", eventfeed.InboxLane, withEpoch, eventfeed.PollUnrecoverable},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			f := newLiveFixture(t, tc.lane, func(w http.ResponseWriter, r *http.Request) {
+				jsonResponse(w, 410, tc.body)
+			})
+			_, err := f.live.Polls().Poll(context.Background(), eventfeed.Cursor{Position: "pos-0"}, eventfeed.Filters{})
+			var pe *eventfeed.PollError
+			if !errors.As(err, &pe) || pe.Kind != tc.kind {
+				t.Fatalf("error = %v, want %s", err, tc.kind)
+			}
 		})
-		_, err := f.live.Polls().Poll(context.Background(), eventfeed.Cursor{Position: "pos-0"}, eventfeed.Filters{})
-		var pe *eventfeed.PollError
-		if !errors.As(err, &pe) || pe.Kind != tc.kind {
-			t.Fatalf("lane %s: error = %v, want %s", tc.lane, err, tc.kind)
-		}
 	}
 }
 

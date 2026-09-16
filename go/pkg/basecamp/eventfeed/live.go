@@ -498,16 +498,20 @@ func mapPollError(ctx context.Context, err error, hop *refusedHop, lane Lane) er
 	}
 	var gone *basecamp.FeedPositionGoneError
 	if errors.As(err, &gone) {
+		// The lane's 410 shape is the contract: the feed's names its epoch,
+		// the inbox's carries none. A body of the other lane's shape is not
+		// the documented gap but a malformed response — a gap raised from
+		// it would hand a handler a fence that does not exist, or a resume
+		// URL with none behind it. Unrecoverable, as a 200 that did not
+		// decode is.
 		var epoch int64
 		switch {
+		case lane == AccountLane && gone.EpochAfterID == nil:
+			return &PollError{Kind: PollUnrecoverable, Err: errors.New("eventfeed: the feed's 410 carries no epoch_after_id")}
+		case lane == InboxLane && gone.EpochAfterID != nil:
+			return &PollError{Kind: PollUnrecoverable, Err: errors.New("eventfeed: the inbox's 410 carries an epoch_after_id")}
 		case gone.EpochAfterID != nil:
 			epoch = *gone.EpochAfterID
-		case lane == AccountLane:
-			// The feed's 410 names its epoch; one that does not is not the
-			// documented gap but a malformed response, and a gap raised
-			// from it would hand a handler a resume URL with no fence
-			// behind it. Unrecoverable, as a 200 that did not decode is.
-			return &PollError{Kind: PollUnrecoverable, Err: errors.New("eventfeed: the feed's 410 carries no epoch_after_id")}
 		}
 		return &PollError{Kind: PollGone, EpochAfterID: epoch, ResumeURL: gone.Resume, Err: err}
 	}
