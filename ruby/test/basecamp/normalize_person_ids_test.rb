@@ -11,7 +11,7 @@ class NormalizePersonIdsTest < Minitest::Test
         "personable_type" => "LocalPerson"
       }
     }
-    Basecamp::Http.normalize_person_ids(data)
+    Basecamp::Http.normalize_person_ids(data, embedded_people: true)
 
     assert_equal 0, data["creator"]["id"]
     assert_equal "basecamp", data["creator"]["system_label"]
@@ -25,7 +25,7 @@ class NormalizePersonIdsTest < Minitest::Test
         "personable_type" => "User"
       }
     }
-    Basecamp::Http.normalize_person_ids(data)
+    Basecamp::Http.normalize_person_ids(data, embedded_people: true)
 
     assert_equal 99999, data["creator"]["id"]
     assert_nil data["creator"]["system_label"]
@@ -39,7 +39,7 @@ class NormalizePersonIdsTest < Minitest::Test
         "personable_type" => "User"
       }
     }
-    Basecamp::Http.normalize_person_ids(data)
+    Basecamp::Http.normalize_person_ids(data, embedded_people: true)
 
     assert_equal 12345, data["creator"]["id"]
     assert_nil data["creator"]["system_label"]
@@ -55,7 +55,7 @@ class NormalizePersonIdsTest < Minitest::Test
         }
       }
     ]
-    Basecamp::Http.normalize_person_ids(data)
+    Basecamp::Http.normalize_person_ids(data, embedded_people: true)
 
     assert_equal 0, data[0]["creator"]["id"]
     assert_equal "campfire", data[0]["creator"]["system_label"]
@@ -74,7 +74,7 @@ class NormalizePersonIdsTest < Minitest::Test
     { "1_2" => 0, "0x10" => 0, "0b11" => 0, " 7" => 0, "7 " => 0, "1e3" => 0,
       "010" => 10, "+7" => 7, "-7" => 7 * -1, "7" => 7 }.each do |wire, id|
       data = { "personable_type" => "User", "id" => wire }
-      Basecamp::Http.normalize_person_ids(data)
+      Basecamp::Http.normalize_person_ids(data, embedded_people: true)
 
       assert_equal id, data["id"], "a person id of #{wire.inspect}"
     end
@@ -101,6 +101,59 @@ class NormalizePersonIdsTest < Minitest::Test
   # the reference in each of them, and the twelve that matched did so only
   # because "leave the string" is also what doing nothing looks like.
   # ---------------------------------------------------------------------
+
+  # ---------------------------------------------------------------------
+  # WHERE the positional pass runs, which is a correction. It used to run on
+  # every response body. Go calls normalizeEmbeddedPeopleJSON from exactly two
+  # places -- decodeGaugePayload (gauges.go:170) and the notification decoders
+  # (my_notifications.go:171, 281, 296) -- and "creator" / "participants" are
+  # not unique to those wrappers: on UpcomingScheduleEntry they hold
+  # UpcomingSchedulePerson, a plain int64 id in the reference, so a string there
+  # is a decode error in Go. Running everywhere turned it into the system actor.
+  # ---------------------------------------------------------------------
+
+  def test_the_positional_pass_does_not_run_off_the_reference_surfaces
+    # THE NEGATIVE TEST. An upcoming-schedule entry, which the reference never
+    # normalizes: its creator and participants keep the strings they arrived
+    # with, rather than becoming person 0 with a system_label -- the SYSTEM
+    # ACTOR, for a body Go refuses to decode at all.
+    data = {
+      "schedule_entries" => [
+        { "id" => 1,
+          "creator" => { "id" => "basecamp", "name" => "Basecamp" },
+          "participants" => [ { "id" => "007", "name" => "Padded" } ] }
+      ]
+    }
+    Basecamp::Http.normalize_person_ids(data)
+
+    entry = data["schedule_entries"][0]
+    assert_equal "basecamp", entry["creator"]["id"]
+    assert_not entry["creator"].key?("system_label"),
+           "a strict site must not be handed the system actor's label"
+    assert_equal "007", entry["participants"][0]["id"]
+  end
+
+  def test_the_personable_type_pass_still_runs_everywhere
+    # The other half: narrowing the positional pass must not narrow the tagged
+    # one, which predates this work and whose reach is unchanged. An object that
+    # declares personable_type IS the Person projection.
+    data = { "report" => { "actor" => { "id" => "007", "personable_type" => "User" } } }
+    Basecamp::Http.normalize_person_ids(data)
+
+    assert_equal 7, data["report"]["actor"]["id"]
+  end
+
+  def test_the_reference_surfaces_are_exactly_gauges_and_notifications
+    base = "https://3.basecampapi.com/999"
+    %w[/my/readings.json /my/readings/bubble_ups.json /gauge_needles/5
+       /projects/1/gauge/needles.json /reports/gauges.json].each do |path|
+      assert Basecamp::Http.embedded_people_url?("#{base}#{path}?page=2"), path
+    end
+    %w[/reports/schedules/upcoming.json /my/assignments.json
+       /schedule_entries/9.json /todos/42.json /my/out_of_office.json].each do |path|
+      assert_not Basecamp::Http.embedded_people_url?("#{base}#{path}"), path
+    end
+  end
 
   def test_the_measured_go_corpus_at_an_untagged_creator
     assert_corpus_at("an untagged creator") do |wire|
@@ -135,7 +188,7 @@ class NormalizePersonIdsTest < Minitest::Test
       "creator" => { "id" => "7" },
       "participants" => [ { "id" => "8" } ]
     }
-    Basecamp::Http.normalize_person_ids(data)
+    Basecamp::Http.normalize_person_ids(data, embedded_people: true)
 
     assert_equal "7", data["assignees"][0]["id"], "an assignee is not found by position"
     assert_equal "7", data["person"]["id"], "a \"person\" key is not one of the two"
@@ -149,8 +202,8 @@ class NormalizePersonIdsTest < Minitest::Test
     # non-object elements inside one.
     data = { "creator" => "basecamp", "participants" => "none" }
     other = { "creator" => [ { "id" => "7" } ], "participants" => [ "7", nil, 7, { "id" => "9" } ] }
-    Basecamp::Http.normalize_person_ids(data)
-    Basecamp::Http.normalize_person_ids(other)
+    Basecamp::Http.normalize_person_ids(data, embedded_people: true)
+    Basecamp::Http.normalize_person_ids(other, embedded_people: true)
 
     assert_equal({ "creator" => "basecamp", "participants" => "none" }, data)
     assert_equal [ { "id" => "7" } ], other["creator"], "an array under \"creator\" is not a person"
@@ -166,9 +219,9 @@ class NormalizePersonIdsTest < Minitest::Test
     GoPersonIds::CORPUS.each do |wire, _expected|
       once = { "personable_type" => "User", "id" => wire,
                "creator" => { "id" => wire }, "participants" => [ { "id" => wire } ] }
-      Basecamp::Http.normalize_person_ids(once)
+      Basecamp::Http.normalize_person_ids(once, embedded_people: true)
       twice = Marshal.load(Marshal.dump(once))
-      Basecamp::Http.normalize_person_ids(twice)
+      Basecamp::Http.normalize_person_ids(twice, embedded_people: true)
 
       assert_equal once, twice, "a second normalization of #{wire.inspect}"
     end
@@ -182,8 +235,8 @@ class NormalizePersonIdsTest < Minitest::Test
     # and started walking it the way the reference does.
     sentinel = { "personable_type" => "User", "id" => "18446744073709551615x" }
     refused = { "personable_type" => "User", "id" => "18446744073709551616x" }
-    Basecamp::Http.normalize_person_ids(sentinel)
-    Basecamp::Http.normalize_person_ids(refused)
+    Basecamp::Http.normalize_person_ids(sentinel, embedded_people: true)
+    Basecamp::Http.normalize_person_ids(refused, embedded_people: true)
 
     assert_equal 0, sentinel["id"]
     assert_equal "18446744073709551615x", sentinel["system_label"]
@@ -194,7 +247,7 @@ class NormalizePersonIdsTest < Minitest::Test
 
   def test_a_sentinel_keeps_its_original_text_and_an_overflow_is_left_alone
     data = { "personable_type" => "User", "id" => "0x10" }
-    Basecamp::Http.normalize_person_ids(data)
+    Basecamp::Http.normalize_person_ids(data, embedded_people: true)
 
     assert_equal "0x10", data["system_label"], "the original text is preserved"
 
@@ -202,7 +255,7 @@ class NormalizePersonIdsTest < Minitest::Test
     # refuse rather than substituting a sentinel, because it is a real number
     # that does not fit rather than a label.
     overflow = { "personable_type" => "User", "id" => (2**63).to_s }
-    Basecamp::Http.normalize_person_ids(overflow)
+    Basecamp::Http.normalize_person_ids(overflow, embedded_people: true)
 
     assert_equal (2**63).to_s, overflow["id"]
     assert_not overflow.key?("system_label")
@@ -218,7 +271,7 @@ class NormalizePersonIdsTest < Minitest::Test
     def assert_corpus_at(shape)
       GoPersonIds::CORPUS.each do |wire, expected|
         document, path = yield(wire)
-        Basecamp::Http.normalize_person_ids(document)
+        Basecamp::Http.normalize_person_ids(document, embedded_people: true)
         person = path.empty? ? document : document.dig(*path)
         where = "#{wire.inspect} as #{shape}"
 

@@ -50,11 +50,23 @@ from tests.person_id_corpus import PERSON_ID_CORPUS
 #: documented Python breadth difference (this SDK normalizes every response
 #: body) and it is additive -- an extra key beside the id Go agrees on, never a
 #: different id.
+# A syntax refusal reads as the system actor, 0, with NO ``system_label``. That is
+# what Go's summary carries: ``readSummary`` reads the recording through the
+# generated decoder, and ``personFromGenerated`` (go/pkg/basecamp/people.go:920)
+# never sets ``SystemLabel`` -- the label is ``omitempty``, so it is absent. Go's
+# own note says so (todos.go:68-77): "Endpoints that decode through the generated
+# parser lose the label".
+#
+# These rows used to expect the label, and matched only because the positional
+# normalizer then ran on EVERY response body and wrote one onto the recording's
+# untagged ``creator`` before the summary read it. That pass runs only on Go's
+# two surfaces now (gauges, notifications), and a recording read is neither, so
+# the summary carries what the reference's does.
 _FLEXIBLE_STRING_ROWS = [
     (
         raw,
         kind == "refuse",
-        None if kind == "refuse" else ({"id": value} if kind == "value" else {"id": 0, "system_label": raw}),
+        None if kind == "refuse" else ({"id": value} if kind == "value" else {"id": 0}),
     )
     for raw, kind, value in PERSON_ID_CORPUS
 ]
@@ -379,8 +391,8 @@ class TestProjection:
             # side of a boundary the corpus crosses only at uint64: the tail is
             # reached in both, so both are the system-actor 0 even though the
             # digits ahead of it are past int64.
-            ("9223372036854775807x", False, {"id": 0, "system_label": "9223372036854775807x"}),
-            ("-9223372036854775809x", False, {"id": 0, "system_label": "-9223372036854775809x"}),
+            ("9223372036854775807x", False, {"id": 0}),
+            ("-9223372036854775809x", False, {"id": 0}),
         ],
     )
     def test_a_creator_id_follows_the_flexible_int64_rule(self, creator_id, fails, creator):

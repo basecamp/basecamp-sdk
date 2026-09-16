@@ -44,6 +44,7 @@ sites, on purpose: do not hoist either into the other, in either direction.
 
 from __future__ import annotations
 
+import re
 from collections.abc import MutableMapping
 from enum import Enum
 from typing import Any
@@ -153,7 +154,7 @@ def coerce_person_id(obj: MutableMapping[str, Any]) -> None:
     obj["id"] = outcome
 
 
-def normalize_person_ids(obj: Any) -> None:
+def normalize_person_ids(obj: Any, *, embedded_people: bool = False) -> None:
     """Normalize every Person-shaped object in a decoded response body, in place.
 
     This stands where ``normalizeEmbeddedPeopleJSON`` stands
@@ -197,16 +198,33 @@ def normalize_person_ids(obj: Any) -> None:
     makes order not matter. One walk rather than two keeps this off a second
     full traversal of every response body.
 
-    One deliberate breadth difference from the reference, which pre-dates the
-    second pass: Go runs ``normalizeEmbeddedPeopleJSON`` on the notification and
-    gauge paths specifically, while this runs on every response body. That is
-    wider, never narrower, and wider in the accepting direction -- a string id Go
-    would coerce only on those paths is coerced here everywhere, rather than
-    reaching a caller as a string that no Python decoder is waiting to convert.
+    WHERE PASS 2 RUNS, which is a correction. Pass 1 runs on every body, as it
+    always has: an object that declares ``personable_type`` IS the Person
+    projection. Pass 2 runs only when ``embedded_people`` is true, which the
+    service base sets for exactly the endpoints Go calls
+    ``normalizeEmbeddedPeopleJSON`` from -- ``decodeGaugePayload``
+    (``gauges.go:170``) and the notification decoders
+    (``my_notifications.go:171, 281, 296``). See :data:`EMBEDDED_PEOPLE_PATHS`.
+
+    It used to run on every body, on the reasoning that wider is safe when it is
+    wider in the accepting direction. On these keys it is not. ``creator`` and
+    ``participants`` also sit on ``UpcomingScheduleEntry``, where they hold
+    ``UpcomingSchedulePerson`` -- a plain ``int64`` id in the reference
+    (``client.gen.go:4194-4198``) -- so a string there is a decode error in Go,
+    and this turned it into person 0 with a ``system_label``: the SYSTEM ACTOR,
+    for a body the reference refuses outright. Accepting direction, identity
+    field, which is the class this work exists to remove.
+
+    The cost of narrowing is real and is stated rather than hidden: the
+    ``schedules.edit_entry`` write path described above refuses string
+    ``participants`` ids again, because schedules is not one of Go's two
+    surfaces and Python has no decoder standing in for ``FlexibleInt64``
+    there. That is decoder coverage, not normalizer reach, and PR #913
+    (card 42) owns it.
     """
     if isinstance(obj, list):
         for item in obj:
-            normalize_person_ids(item)
+            normalize_person_ids(item, embedded_people=embedded_people)
         return
     if not isinstance(obj, dict):
         return
@@ -218,17 +236,38 @@ def normalize_person_ids(obj: Any) -> None:
     # object and a `participants` that is not an array are not people, so they
     # are skipped rather than coerced (`:85-95`). `dict` is what Go's
     # `.(map[string]any)` accepts and a list is not.
-    creator = obj.get("creator")
-    if isinstance(creator, dict):
-        coerce_person_id(creator)
-    participants = obj.get("participants")
-    if isinstance(participants, list):
-        for participant in participants:
-            if isinstance(participant, dict):
-                coerce_person_id(participant)
+    if embedded_people:
+        creator = obj.get("creator")
+        if isinstance(creator, dict):
+            coerce_person_id(creator)
+        participants = obj.get("participants")
+        if isinstance(participants, list):
+            for participant in participants:
+                if isinstance(participant, dict):
+                    coerce_person_id(participant)
     # Both of Go's passes then recurse through every child, so a creator nested
     # under a comment under an event is reached at whatever depth it sits
     # (`:22-24`, `:96-102`).
     for value in obj.values():
         if isinstance(value, (dict, list)):
-            normalize_person_ids(value)
+            normalize_person_ids(value, embedded_people=embedded_people)
+
+
+#: The endpoints the reference runs the POSITIONAL pass over, and only those.
+#:
+#: ``normalizeEmbeddedPeopleJSON`` is a function in the reference, not a layer:
+#: it is called from ``decodeGaugePayload`` (every gauge and needle body) and
+#: from the notification decoders, and from nowhere else. Matched on the request
+#: path because Go's own boundary is the call site.
+EMBEDDED_PEOPLE_PATHS: tuple[re.Pattern[str], ...] = (
+    re.compile(r"/my/readings(\.json|/)"),  # GetMyNotifications, GetBubbleUps
+    re.compile(r"/gauge_needles/"),  # GetGaugeNeedle, UpdateGaugeNeedle
+    re.compile(r"/gauge/needles\.json"),  # ListGaugeNeedles
+    re.compile(r"/reports/gauges\.json"),  # ListGauges
+)
+
+
+def embedded_people_url(url: str) -> bool:
+    """Whether ``url`` is one of the reference's two normalization surfaces."""
+    path = url.split("?", 1)[0]
+    return any(pattern.search(path) for pattern in EMBEDDED_PEOPLE_PATHS)

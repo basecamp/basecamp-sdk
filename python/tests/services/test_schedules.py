@@ -307,25 +307,31 @@ class TestSyncEdit:
         assert "notify" not in body
 
     @respx.mock
-    def test_a_participant_with_a_string_id_and_no_personable_type_still_seeds(self):
-        # The write-side reason the normalizer runs a second pass. BC3 writes a
-        # person id as a string on some paths, and an embedded participant
-        # frequently omits `personable_type` — so the `personable_type`-keyed
-        # pass alone left the id a `str`, and `writable_id_list` refuses a
-        # non-int, which made this composite REFUSE a body the reference
-        # accepts (Go's generated `Person.Id` is `types.FlexibleInt64`, which
-        # reads the number). A merge-safe update failing where the reference
-        # succeeds is the vanishing direction, on a write.
+    def test_a_participant_with_a_string_id_is_refused_where_the_reference_accepts_it(self):
+        # A KNOWN DIVERGENCE, PINNED rather than left to be discovered. BC3
+        # writes a person id as a string on some paths, and an embedded
+        # participant frequently omits `personable_type`. The reference reads it
+        # through its decoder -- generated `ScheduleEntry.Participants` is
+        # `[]Person`, and `Person.Id` is `types.FlexibleInt64` -- and completes
+        # the update. This refuses it.
         #
-        # The grammar's own rows are pinned in `tests/test_person_id.py`; this
-        # pins that the write path sees the result.
+        # The positional normalizer briefly covered this by running on every
+        # response body. That over-reached: the same `creator` / `participants`
+        # keys hold plain-`int64` people on `UpcomingScheduleEntry`, which the
+        # reference refuses and the normalizer turned into the system actor. It
+        # now runs only on Go's two surfaces (gauges, notifications), and
+        # schedules is not one of them.
+        #
+        # The refusal is the SAFE direction: no id is invented, and no PUT is
+        # sent, so a refused read never becomes a partial participant list.
+        # Closing it properly is decoder coverage, field by field against the
+        # reference, and PR #913 (card 42) owns it. This is the test to flip.
         _, put_route = _routes(_entry(participants=[{"id": "1049715915", "name": "Ann"}, {"id": "+007", "name": "Bo"}]))
 
-        with _sync_schedules().edit_entry(entry_id=5001) as e:
-            assert e.participant_ids == [1049715915, 7]
+        with pytest.raises(ApiError), _sync_schedules().edit_entry(entry_id=5001) as e:
             e.participant_ids = [*e.participant_ids, 1049715914]
 
-        assert _put_body(put_route)["participant_ids"] == [1049715915, 7, 1049715914]
+        assert not put_route.called
 
     @respx.mock
     def test_assigning_the_read_backs_own_value_still_sends_it(self):

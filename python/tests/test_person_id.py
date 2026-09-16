@@ -200,6 +200,97 @@ def _read_notifications(payload: dict) -> dict:
         client.close()
 
 
+class TestThePositionalPassRunsOnlyWhereTheReferenceRunsIt:
+    """WHERE the second pass runs, which is a correction.
+
+    It used to run on every response body. Go calls ``normalizeEmbeddedPeopleJSON``
+    from exactly two places -- ``decodeGaugePayload`` (gauges.go:170) and the
+    notification decoders (my_notifications.go:171, 281, 296) -- and nowhere else.
+    ``creator`` and ``participants`` are not unique to those wrappers, so running
+    everywhere reached schemas the reference decodes as a plain ``int64``.
+    """
+
+    @respx.mock
+    def test_a_strict_site_keeps_its_string_id(self):
+        # THE NEGATIVE TEST. ``UpcomingScheduleEntry.creator`` / ``.participants``
+        # are ``UpcomingSchedulePerson``, whose ``Id`` is a plain ``int64``
+        # (go/pkg/generated/client.gen.go:4194-4198), and the upcoming-schedule
+        # report is not one of Go's two surfaces. Go refuses this body:
+        #
+        #   json: cannot unmarshal string into Go struct field
+        #   UpcomingScheduleEntry.creator.id of type int64
+        #
+        # Unscoped, this SDK answered ``{"id": 0, "system_label": "basecamp"}`` --
+        # the SYSTEM ACTOR, on the field that says who acted. Now the strings
+        # stay exactly as they arrived.
+        from basecamp.generated.services.reports import ReportsService
+
+        respx.get(url__regex=r".*/reports/schedules/upcoming\.json.*").mock(
+            return_value=httpx.Response(
+                200,
+                json={
+                    "schedule_entries": [
+                        {
+                            "id": 1,
+                            "creator": {"id": "basecamp", "name": "Basecamp"},
+                            "participants": [{"id": "007", "name": "Padded"}],
+                        }
+                    ],
+                    "assignables": [],
+                    "recurring_schedule_entry_occurrences": [],
+                },
+            )
+        )
+        client = Client(access_token="test-token")
+        try:
+            report = ReportsService(client.for_account("12345")).upcoming(
+                window_starts_on="2024-01-01", window_ends_on="2024-01-31"
+            )
+        finally:
+            client.close()
+
+        entry = report["schedule_entries"][0]
+        assert entry["creator"]["id"] == "basecamp"
+        assert "system_label" not in entry["creator"]
+        assert entry["participants"][0]["id"] == "007"
+
+    def test_the_personable_type_pass_is_not_narrowed_with_it(self):
+        # The other half: the tagged pass predates this work and keeps its reach.
+        data = {"report": {"actor": {"id": "007", "personable_type": "User"}}}
+        normalize_person_ids(data)
+        assert data["report"]["actor"]["id"] == 7
+
+    @pytest.mark.parametrize(
+        "path",
+        [
+            "/my/readings.json",
+            "/my/readings/bubble_ups.json",
+            "/gauge_needles/5",
+            "/projects/1/gauge/needles.json",
+            "/reports/gauges.json",
+        ],
+    )
+    def test_the_reference_surfaces_are_recognised(self, path):
+        from basecamp._person_id import embedded_people_url
+
+        assert embedded_people_url(f"https://3.basecampapi.com/999{path}?page=2")
+
+    @pytest.mark.parametrize(
+        "path",
+        [
+            "/reports/schedules/upcoming.json",
+            "/my/assignments.json",
+            "/schedule_entries/9.json",
+            "/todos/42.json",
+            "/my/out_of_office.json",
+        ],
+    )
+    def test_every_other_path_is_not(self, path):
+        from basecamp._person_id import embedded_people_url
+
+        assert not embedded_people_url(f"https://3.basecampapi.com/999{path}")
+
+
 class TestTheWalkFindsAPersonTwoWays:
     """The second pass: people found by structural position, not by `personable_type`.
 

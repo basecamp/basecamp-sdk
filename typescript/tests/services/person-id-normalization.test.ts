@@ -11,13 +11,13 @@
  *
  * The positions are the two ways in, and the second is every key the SPEC types
  * as a Person: an object carrying `personable_type`, and — whether or not it
- * carries one — each key in `PERSON_VALUED_KEYS` in the shape the spec gives it,
+ * carries one — each key in `EMBEDDED_PERSON_KEYS` in the shape the spec gives it,
  * plus a `creator` nested deeper in the tree. They are pinned together because
  * they must land on the SAME table; the second way existing at all is the
  * difference between an `assignees` id reaching a caller as `7` and reaching it
  * as the string `"007"` in a field typed `number`.
  *
- * The shapes are DERIVED from `PERSON_VALUED_KEYS` rather than listed, so a key
+ * The shapes are DERIVED from `EMBEDDED_PERSON_KEYS` rather than listed, so a key
  * added to that map is covered by the corpus the moment the drift check accepts
  * it, and nobody has to remember to extend this file too.
  *
@@ -26,14 +26,12 @@
  * with a label IS `LocalPerson` to everything downstream. The corpus exists so
  * that direction cannot be re-entered by an edit that looks like a tidy-up.
  */
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
 import { describe, it, expect, beforeEach } from "vitest";
 import { http, HttpResponse } from "msw";
 import { server } from "../setup.js";
 import { createBasecampClient } from "../../src/client.js";
 import type { BasecampClient } from "../../src/client.js";
-import { PERSON_VALUED_KEYS } from "../../src/services/base.js";
+import { EMBEDDED_PERSON_KEYS } from "../../src/services/base.js";
 import { PERSON_ID_CORPUS, fitsNumber } from "../helpers/person-id-corpus.js";
 
 const BASE_URL = "https://3.basecampapi.com/12345";
@@ -42,7 +40,7 @@ const BASE_URL = "https://3.basecampapi.com/12345";
 function peopleFor(id: string): Record<string, unknown> {
   const person = () => ({ id, name: "Person" });
   return Object.fromEntries(
-    [...PERSON_VALUED_KEYS].map(([key, arity]) => [key, arity === "array" ? [person()] : person()]),
+    [...EMBEDDED_PERSON_KEYS].map(([key, arity]) => [key, arity === "array" ? [person()] : person()]),
   );
 }
 
@@ -50,7 +48,7 @@ function peopleFor(id: string): Record<string, unknown> {
 const SHAPES: readonly (readonly [string, (unread: Record<string, unknown>) => Record<string, unknown>])[] = [
   // `actor` is not a Person-valued key, so this one is found by pass 1 alone.
   ["personable_type person", (unread) => unread.actor as Record<string, unknown>],
-  ...[...PERSON_VALUED_KEYS].map(
+  ...[...EMBEDDED_PERSON_KEYS].map(
     ([key, arity]) =>
       [
         `${key} (${arity})`,
@@ -160,81 +158,97 @@ describe("person id normalization", () => {
     }
   });
 
-  it("covers every Person-valued key the spec declares, and no other", () => {
-    // THE DRIFT CHECK. A hand-maintained list of "where a person sits" rots,
-    // and the first one did: `creator` and `participants` were the WRAPPER's
-    // two keys (`normalizeEmbeddedPersonIds`), while Go converts every other
-    // Person-typed field through `FlexibleInt64` at decode — which this SDK has
-    // no equivalent of, so `assignees` and `subscribers` went un-normalized and
-    // a string id reached a `number`-typed field. The set therefore has to be
-    // the SPEC's, and the spec is right here to be read.
+  it("pins the positional key set to the reference's two, and refuses to be widened", () => {
+    // THIS SET IS THE REFERENCE'S, NOT THE SPEC'S, AND THAT IS THE CORRECTION.
     //
-    // Recomputed from the OpenAPI the SDK's own types are generated from, so a
-    // spec that gains a Person-valued key fails this test rather than silently
-    // going un-normalized. It is read from disk rather than imported: nothing at
-    // runtime should pull a 450-schema document into the bundle to answer a
-    // question that is settled at build time.
-    const specPath = fileURLToPath(new URL("../../src/generated/openapi-stripped.json", import.meta.url));
-    const spec = JSON.parse(readFileSync(specPath, "utf8")) as Record<string, unknown>;
+    // It was briefly the twelve keys the spec declares `Person`-valued, derived
+    // from the OpenAPI, to stand in for the `FlexibleInt64` decoder TypeScript
+    // does not have. The derivation was sound; the APPLICATION was not. The keys
+    // were matched by NAME at any depth in every response, so a name that is
+    // `Person`-valued on one schema reached every other schema using it -- and
+    // three of those have a plain `int64` id in the reference, where a string is
+    // a decode error rather than a person to coerce. See the strict-site test
+    // below for what that did.
+    //
+    // So the set is `normalizeEmbeddedPersonIds`'s two keys
+    // (go/pkg/basecamp/normalize.go:83-104), applied only where Go applies them.
+    expect(Object.fromEntries([...EMBEDDED_PERSON_KEYS].sort())).toEqual({
+      creator: "object",
+      participants: "array",
+    });
+  });
 
-    const PERSON_REF = "#/components/schemas/Person";
-    type Node = Record<string, unknown>;
-    // `Person` itself, or a composition that resolves to it. Only the `$ref`
-    // counts: `OutOfOfficePerson` and friends are person-SHAPED but are plain
-    // `int64` ids in the reference (`generated.Person.Id` is the only
-    // `FlexibleInt64` in the whole Go model), so a string id there is a decode
-    // error, not a person to coerce.
-    const isPerson = (node: unknown): boolean => {
-      if (node === null || typeof node !== "object") return false;
-      const rec = node as Node;
-      if (rec.$ref === PERSON_REF) return true;
-      return (["allOf", "oneOf", "anyOf"] as const).some(
-        (key) => Array.isArray(rec[key]) && (rec[key] as unknown[]).some(isPerson),
-      );
-    };
-    const arityOf = (node: unknown): "object" | "array" | undefined => {
-      if (isPerson(node)) return "object";
-      if (node !== null && typeof node === "object" && isPerson((node as Node).items)) return "array";
-      return undefined;
-    };
-
-    const declared = new Map<string, Set<string>>();
-    const walk = (node: unknown): void => {
-      if (node === null || typeof node !== "object") return;
-      if (Array.isArray(node)) {
-        for (const child of node) walk(child);
-        return;
-      }
-      const rec = node as Node;
-      const properties = rec.properties;
-      if (properties !== null && typeof properties === "object" && !Array.isArray(properties)) {
-        for (const [key, schema] of Object.entries(properties as Node)) {
-          const arity = arityOf(schema);
-          if (arity === undefined) continue;
-          const kinds = declared.get(key) ?? new Set<string>();
-          kinds.add(arity);
-          declared.set(key, kinds);
-        }
-      }
-      for (const child of Object.values(rec)) walk(child);
-    };
-    walk((spec.components as Node | undefined)?.schemas);
-    walk(spec.paths);
-
-    // Non-vacuity first: a walk that matched nothing would "agree" with an
-    // empty normalizer set, and a derivation that silently stops matching is
-    // exactly how this guard would rot in turn.
-    expect(declared.size).toBeGreaterThan(5);
-    // One shape per key. A key declared both ways would need the normalizer to
-    // accept both, and nothing here would have said so.
-    for (const [key, kinds] of declared) {
-      expect([...kinds], `${key} is declared with more than one shape`).toHaveLength(1);
-    }
-
-    const fromSpec = new Map([...declared].map(([key, kinds]) => [key, [...kinds][0]]));
-    expect(Object.fromEntries([...fromSpec].sort())).toEqual(
-      Object.fromEntries([...PERSON_VALUED_KEYS].sort()),
+  it("leaves a strict schema's creator alone, because the reference refuses it", async () => {
+    // THE NEGATIVE TEST. `GetUpcomingSchedule` is served by the Reports service,
+    // which is not one of the two Go calls `normalizeEmbeddedPeopleJSON` from,
+    // and `UpcomingScheduleEntry.creator` / `.participants` are
+    // `UpcomingSchedulePerson`, whose `Id` is a plain `int64`
+    // (go/pkg/generated/client.gen.go:4194-4198). Go answers:
+    //
+    //   json: cannot unmarshal string into Go struct field
+    //   UpcomingScheduleEntry.creator.id of type int64
+    //
+    // While the walk ran everywhere by key name, this SDK instead answered
+    // `{"id": 0, "system_label": "basecamp"}` -- the SYSTEM ACTOR, on the field
+    // that says who acted, for a body the reference refuses outright. Latent,
+    // because BC3 sends integers at all six of these sites today, and wrong
+    // regardless: a divergence in the ACCEPTING direction on an identity field.
+    //
+    // The string is left exactly as it arrived, which is the honest answer: this
+    // SDK did not decode it, so it does not pretend to have read a person.
+    server.use(
+      http.get(`${BASE_URL}/reports/schedules/upcoming.json`, () =>
+        HttpResponse.json({
+          schedule_entries: [
+            {
+              id: 1,
+              creator: { id: "basecamp", name: "Basecamp" },
+              participants: [{ id: "007", name: "Padded" }],
+            },
+          ],
+          assignables: [],
+          recurring_schedule_entry_occurrences: [],
+        }),
+      ),
     );
+
+    const report = (await client.reports.upcoming("2024-01-01", "2024-01-31")) as unknown as {
+      schedule_entries: { creator: Record<string, unknown>; participants: Record<string, unknown>[] }[];
+    };
+    const entry = report.schedule_entries[0]!;
+
+    expect(entry.creator.id).toBe("basecamp");
+    expect(entry.creator.system_label).toBeUndefined();
+    expect(entry.participants[0]!.id).toBe("007");
+  });
+
+  it("still runs the positional pass on the two services the reference runs it on", async () => {
+    // The other half, so the scoping cannot be "fixed" by deleting the pass.
+    // `myNotifications` is one of Go's two call sites, and a creator with no
+    // `personable_type` there is exactly what the pass exists for.
+    server.use(
+      http.get(`${BASE_URL}/my/readings.json`, () =>
+        HttpResponse.json({
+          unreads: [
+            {
+              id: 1,
+              title: "n",
+              created_at: "2024-01-01T00:00:00Z",
+              updated_at: "2024-01-01T00:00:00Z",
+              creator: { id: "007", name: "Padded" },
+            },
+          ],
+          reads: [],
+          memories: [],
+          bubble_ups_count: 0,
+          scheduled_bubble_ups_count: 0,
+        }),
+      ),
+    );
+
+    const result = await client.myNotifications.myNotifications();
+    const unread = result.unreads![0] as unknown as { creator: Record<string, unknown> };
+    expect(unread.creator.id).toBe(7);
   });
 
   it("has exactly 11 rows JS cannot represent, and they are the large ones", () => {

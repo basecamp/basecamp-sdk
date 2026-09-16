@@ -48,15 +48,49 @@ module Basecamp
     # against a literal two-walk transcription of normalize.go over the corpus
     # in nineteen document shapes; if that idempotence is ever weakened, split
     # this back into two walks.
-    def self.normalize_person_ids(obj)
+    def self.normalize_person_ids(obj, embedded_people: false)
       case obj
       when Hash
         coerce_person_id(obj) if obj.key?("personable_type")
-        coerce_embedded_person_ids(obj)
-        obj.each_value { |v| normalize_person_ids(v) }
+        coerce_embedded_person_ids(obj) if embedded_people
+        obj.each_value { |v| normalize_person_ids(v, embedded_people: embedded_people) }
       when Array
-        obj.each { |item| normalize_person_ids(item) }
+        obj.each { |item| normalize_person_ids(item, embedded_people: embedded_people) }
       end
+    end
+
+    # The endpoints the reference runs the POSITIONAL pass over, and only those.
+    #
+    # +normalizeEmbeddedPeopleJSON+ is a function in the reference, not a layer.
+    # It is called from +decodeGaugePayload+ (gauges.go:170, reached by every
+    # gauge and needle body) and from the three notification decoders
+    # (my_notifications.go:171, 281, 296). Nothing else in Go calls it, so
+    # nothing else here runs it.
+    #
+    # WHY THIS GATE EXISTS AT ALL, which is a correction. The pass used to run
+    # on every response body. Its two keys are the reference's two, but "creator"
+    # and "participants" are not unique to the wrapper types: on
+    # +UpcomingScheduleEntry+ they hold +UpcomingSchedulePerson+, whose +Id+ is a
+    # plain int64 in the reference (client.gen.go:4194-4198), so a string id
+    # there is a decode error in Go and became person 0 with a +system_label+
+    # here — the SYSTEM ACTOR, on the field that says who acted, for a body the
+    # reference refuses outright. +MyAssignment.assignees+ and
+    # +DisableOutOfOfficeOutput.person+ are the same shape of mistake.
+    #
+    # Matched on the request path rather than an operation name because Go's own
+    # boundary is the call site, and because +update_gauge_needle+ reaches
+    # +decodeGaugePayload+ in the reference while passing no operation id here.
+    EMBEDDED_PEOPLE_PATHS = [
+      %r{/my/readings(\.json|/)},          # GetMyNotifications, GetBubbleUps
+      %r{/gauge_needles/},                 # GetGaugeNeedle, UpdateGaugeNeedle
+      %r{/gauge/needles\.json},            # ListGaugeNeedles
+      %r{/reports/gauges\.json}            # ListGauges
+    ].freeze
+
+    # Whether +url+ is one of the reference's two normalization surfaces.
+    def self.embedded_people_url?(url)
+      path = url.to_s.split("?", 2).first.to_s
+      EMBEDDED_PEOPLE_PATHS.any? { |pattern| pattern.match?(path) }
     end
 
     # The people this object carries by POSITION rather than by type tag: its
@@ -465,7 +499,7 @@ module Basecamp
     def parse_page(response, page:)
       Security.check_body_size!(response.body, Security::MAX_RESPONSE_BODY_BYTES)
       data = JSON.parse(response.body)
-      Http.normalize_person_ids(data)
+      Http.normalize_person_ids(data, embedded_people: response.embedded_people)
       data
     rescue JSON::ParserError => e
       # +cause+ carries the parser's own error, not just its message (#750). The
@@ -732,7 +766,8 @@ module Basecamp
         Response.new(
           body: response.body,
           status: response.status,
-          headers: response.headers
+          headers: response.headers,
+          embedded_people: Http.embedded_people_url?(url)
         )
       rescue Faraday::TimeoutError => e
         # Faraday::TimeoutError < Faraday::ServerError: named before the status
@@ -824,7 +859,8 @@ module Basecamp
         Response.new(
           body: response.body,
           status: response.status,
-          headers: response.headers
+          headers: response.headers,
+          embedded_people: Http.embedded_people_url?(url)
         )
       rescue Faraday::TimeoutError => e
         transport_failure(e, info: info, start_time: start_time)
@@ -1132,10 +1168,16 @@ module Basecamp
     # @return [Hash] response headers
     attr_reader :headers
 
-    def initialize(body:, status:, headers:)
+    # Whether this response came from one of the reference's two positional
+    # normalization surfaces. See +Http::EMBEDDED_PEOPLE_PATHS+.
+    # @return [Boolean]
+    attr_reader :embedded_people
+
+    def initialize(body:, status:, headers:, embedded_people: false)
       @body = body
       @status = status
       @headers = headers
+      @embedded_people = embedded_people
     end
 
     # Parses the response body as JSON, normalizing Person-shaped objects.
@@ -1144,7 +1186,7 @@ module Basecamp
       @json ||= begin
         Security.check_body_size!(@body, Security::MAX_RESPONSE_BODY_BYTES)
         result = JSON.parse(@body)
-        Http.normalize_person_ids(result)
+        Http.normalize_person_ids(result, embedded_people: @embedded_people)
         result
       end
     end
