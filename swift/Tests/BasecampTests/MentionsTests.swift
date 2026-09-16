@@ -748,10 +748,14 @@ final class MentionsTests: XCTestCase {
              "&#x\u{FF14}\u{FF12};yJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef",
              "&#x\u{FF14}\u{FF12};yJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef",
              []),
-            ("an unknown name is left verbatim",
+            // Not "left verbatim": `&not` is a legacy name, so Go expands the
+             // PREFIX and leaves `aname;` behind. This row asserted the verbatim
+             // form for as long as the table was a subset, under a comment
+             // saying the column was Go-derived. It was not.
+            ("an unknown name expands through its longest legacy prefix",
              "&notaname;eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef",
-             "&notaname;eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef",
-             []),  // narrower than Go here, verdict-identical
+             "\u{AC}aname;eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef",
+             []),
             ("a legacy name expands without its semicolon",
              "&ampeyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef",
              "&eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef",
@@ -760,10 +764,15 @@ final class MentionsTests: XCTestCase {
              "eyJfcmFpbHMiOnsiZGF0&UnderBar;YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef",
              "eyJfcmFpbHMiOnsiZGF0_YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef",
              []),
-            ("hyphen does NOT spell a hyphen",
+            // `&hyphen;` IS expanded — to U+2010, which is not ASCII `-`, so it
+             // still cannot complete a separator. The distinction the old row
+             // collapsed: not expanding it and expanding it to the wrong
+             // character give the same verdict and different bytes, and the
+             // bytes are what the write-side dedupe compares.
+            ("hyphen expands, and not to a hyphen",
              "eyJfcmFpbHMiOnsiZGF0&hyphen;YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef",
-             "eyJfcmFpbHMiOnsiZGF0&hyphen;YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef",
-             []),  // narrower than Go here, verdict-identical
+             "eyJfcmFpbHMiOnsiZGF0\u{2010}YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef",
+             []),
             ("lowbar inside the payload",
              "eyJfcmFpbHMiOnsiZGF0&lowbar;YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef",
              "eyJfcmFpbHMiOnsiZGF0_YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef",
@@ -812,12 +821,102 @@ final class MentionsTests: XCTestCase {
             Mentions.attachmentSgids(in: "<bc-attachment sgid=\"a&lowbar;b\"></bc-attachment>"),
             ["a_b"])
         // `&hyphen;` and `&dash;` name U+2010, not ASCII `-` — measured against
-        // html.UnescapeString, not assumed. Decoding them to a hyphen would make
-        // this the lenient side, so they are left verbatim, which is also what
-        // the base64 decode does with them either way.
+        // html.UnescapeString, not assumed. They ARE expanded, and to a character
+        // the base64 alphabet does not contain, so they cannot complete a
+        // separator; decoding them to an ASCII `-` would make this the lenient
+        // side.
         XCTAssertEqual(
             Mentions.attachmentSgids(in: "<bc-attachment sgid=\"a&hyphen;b\"></bc-attachment>"),
-            ["a&hyphen;b"])
+            ["a\u{2010}b"])
+        XCTAssertEqual(
+            Mentions.attachmentSgids(in: "<bc-attachment sgid=\"a&dash;b\"></bc-attachment>"),
+            ["a\u{2010}b"])
+    }
+
+    /// The table is Go's WHOLE table, because a narrower one changes what the
+    /// write side compares.
+    ///
+    /// The old 41-row subset was chosen on a real argument: every other
+    /// reference expands to something the base64 alphabet does not contain, so
+    /// the envelope fails to decode whether it was expanded or left verbatim.
+    /// That is true of the DECODE and false of `adding(_:to:)`, which compares
+    /// the content's decoded sgid BYTE-FOR-BYTE against the person's — and Go's
+    /// expansion deletes the reference's bytes where a narrower table keeps
+    /// them. So a mention Go sees as already present was added a second time.
+    ///
+    /// Every expectation here is `html.UnescapeString`'s.
+    func testTheEntityTableIsGosWholeTable() throws {
+        let p = "eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19"
+        func decoded(_ sgid: String) -> [String] {
+            Mentions.attachmentSgids(in: "<bc-attachment sgid=\"\(sgid)\"></bc-attachment>")
+        }
+        // Names the subset did not carry, with and without their semicolon.
+        XCTAssertEqual(decoded("a&not;b"), ["a\u{AC}b"])
+        XCTAssertEqual(decoded("a&notb"), ["a\u{AC}b"])
+        XCTAssertEqual(decoded("a&copy;b"), ["a\u{A9}b"])
+        XCTAssertEqual(decoded("a&copyb"), ["a\u{A9}b"])
+        XCTAssertEqual(decoded("a&frac12;b"), ["a\u{BD}b"])
+        // `frac12` IS in Go's no-semicolon set and is exactly six characters —
+        // the descent's bound — so it is the last prefix the loop tries. A
+        // seven-character legacy name would not be reachable, which is what the
+        // bound means.
+        XCTAssertEqual(decoded("a&frac12b"), ["a\u{BD}b"])
+        XCTAssertEqual(decoded("a&frac12;b"), ["a\u{BD}b"])
+        // The descent takes the longest legacy PREFIX and leaves the rest.
+        XCTAssertEqual(decoded("a&notit;b"), ["a\u{AC}it;b"])
+        // A two-rune expansion, which a classification of the single-rune table
+        // alone would miss.
+        XCTAssertEqual(decoded("a&fjlig;b"), ["afjb"])
+        XCTAssertEqual(decoded("a&bne;b"), ["a=\u{20E5}b"])
+        // In Go's source and NOT expanded by Go, so not in the table either.
+        XCTAssertEqual(decoded("a&nGt;b"), ["a&nGt;b"])
+        XCTAssertEqual(decoded("a&nLt;b"), ["a&nLt;b"])
+
+        // And the write-side consequence, which is why the subset was wrong:
+        // the content already mentions this person, so Go adds nothing.
+        let content = "<bc-attachment sgid=\"\(p)--&not\"></bc-attachment>"
+        XCTAssertEqual(try Mentions.adding([person(42, "\(p)--\u{AC}")], to: content), content)
+    }
+
+    /// A byte-order mark at the head of a JSON string is a byte Go keeps and
+    /// `JSONSerialization` eats.
+    ///
+    /// That made `{"\u{FEFF}_rails":…}` an envelope Go reads as neither layout
+    /// and this read as a mention — the accepting direction, and it reached
+    /// `markup(for:)`, which rendered a tag Go refuses to write. Written back as
+    /// its own escape it survives both parsers, so the answer no longer depends
+    /// on which Foundation is underneath.
+    func testAByteOrderMarkInTheEnvelopeIsNotEaten() {
+        func sgid(_ payload: String) -> String {
+            var encoded = Data(payload.utf8).base64EncodedString()
+            while encoded.hasSuffix("=") { encoded.removeLast() }
+            return encoded
+        }
+        let bom = "\u{FEFF}"
+        // A BOM anywhere in a key or a value Go compares is a mention lost.
+        for payload in [
+            "{\"\(bom)_rails\":{\"data\":\"gid://bc3/Person/7\",\"pur\":\"attachable\"}}",
+            "{\"_rails\":{\"data\":\"\(bom)gid://bc3/Person/7\",\"pur\":\"attachable\"}}",
+            "{\"_rails\":{\"data\":\"gid://bc3/Person/7\",\"pur\":\"\(bom)attachable\"}}",
+            "{\"\(bom)gid\":\"gid://bc3/Person/7\",\"purpose\":\"attachable\"}",
+            "{\"gid\":\"\(bom)gid://bc3/Person/7\",\"purpose\":\"attachable\"}",
+        ] {
+            XCTAssertNil(Mentions.personId(fromAttachableSgid: sgid(payload)), payload.debugDescription)
+        }
+        // And it is only the mark that is refused, not the envelope shape.
+        XCTAssertEqual(
+            Mentions.personId(
+                fromAttachableSgid:
+                    sgid("{\"_rails\":{\"data\":\"gid://bc3/Person/7\",\"pur\":\"attachable\"}}")),
+            7)
+        // A BOM in a field nothing reads is still not an error.
+        XCTAssertEqual(
+            Mentions.personId(
+                fromAttachableSgid:
+                    sgid(
+                        "{\"x\":\"\(bom)y\",\"_rails\":{\"data\":\"gid://bc3/Person/7\","
+                            + "\"pur\":\"attachable\"}}")),
+            7)
     }
 
     /// The `--` separator is found by a BYTE scan, as `strings.LastIndex` finds

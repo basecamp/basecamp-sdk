@@ -62,10 +62,16 @@ public struct RecordingRef: Sendable, Equatable {
     /// field arrives as `"Comment\n"`, and a recording type of `"\n"` beside a
     /// usable event type has to read as ABSENT: otherwise a pointer Go resolves
     /// to a summary becomes an unknown-type refusal here.
+    ///
+    /// Against ``goWhitespace`` and not `CharacterSet.whitespacesAndNewlines`,
+    /// which is that set plus U+200B ZERO WIDTH SPACE. The difference is one
+    /// scalar and it runs the permissive way: a recording type of `"\u{200B}"`
+    /// is a type Go cannot route and this trimmed to nothing, fell through to
+    /// the event type, and issued a read.
     var routingKey: String {
-        let type = recordingType?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let type = recordingType?.trimmingCharacters(in: goWhitespace) ?? ""
         if !type.isEmpty { return type }
-        return eventType?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return eventType?.trimmingCharacters(in: goWhitespace) ?? ""
     }
 }
 
@@ -383,26 +389,32 @@ extension RecordingsService {
     }
 
     /// Picks the read for a ref. ``RecordingRef/recordingType`` wins when set.
+    ///
+    /// Every comparison here is over UTF-8 BYTES, because Go's are. `hasPrefix`
+    /// and `lastIndex(of:)` walk grapheme clusters, so
+    /// `"Chat::Lines::\u{0301}RichText"` hid the prefix from one and
+    /// `"comment.\u{0301}created"` hid the dot from the other — a pointer Go
+    /// routes, refused here — while the trim above went the other way.
     static func route(_ ref: RecordingRef) throws -> RecordingSummaryKind {
-        let type = ref.recordingType?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let type = ref.recordingType?.trimmingCharacters(in: goWhitespace) ?? ""
         if !type.isEmpty {
-            if type.hasPrefix(chatLineTypePrefix) { return .chatLine }
+            if Array(type.utf8).starts(with: Array(chatLineTypePrefix.utf8)) { return .chatLine }
             guard let kind = summarizableTypes[type] else {
                 throw RecordingSummaryError.unknownRecordingType(ref)
             }
             return kind
         }
 
-        let eventType = ref.eventType?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let eventType = ref.eventType?.trimmingCharacters(in: goWhitespace) ?? ""
         guard !eventType.isEmpty else { throw RecordingSummaryError.unknownRecordingType(ref) }
         // A feed type is "<subject>.<action>"; the subject names the recording
         // type. A string with no action is not a feed type and is not routed.
-        guard let dot = eventType.lastIndex(of: "."), dot != eventType.startIndex,
-            eventType.index(after: dot) != eventType.endIndex
+        let bytes = Array(eventType.utf8)
+        guard let dot = bytes.lastIndex(of: UInt8(ascii: ".")), dot != 0, dot != bytes.count - 1
         else {
             throw RecordingSummaryError.unknownRecordingType(ref)
         }
-        let subject = String(eventType[..<dot])
+        let subject = String(decoding: bytes[..<dot], as: UTF8.self)
         if subject == "boost" { throw RecordingSummaryError.noRecordingType(ref) }
         guard let kind = summarizableEventSubjects[subject] else {
             throw RecordingSummaryError.unknownRecordingType(ref)

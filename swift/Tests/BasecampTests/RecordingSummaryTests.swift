@@ -55,6 +55,61 @@ final class RecordingSummaryTests: XCTestCase {
         XCTAssertEqual(server.paths, [])
     }
 
+    /// Routing is decided over UTF-8 BYTES and over Go's whitespace set, and
+    /// each of the three comparisons it makes was wrong in a different way.
+    ///
+    ///   * `CharacterSet.whitespacesAndNewlines` is Go's `unicode.IsSpace` PLUS
+    ///     U+200B ZERO WIDTH SPACE. One scalar, and it runs the permissive way:
+    ///     a recording type of `"\u{200B}"` is a type Go cannot route, and it
+    ///     trimmed to nothing here, fell through to the event type, and ISSUED
+    ///     A READ.
+    ///   * `hasPrefix` walks grapheme clusters, so a combining mark on the
+    ///     prefix's last character hides it — `"Chat::Lines::\u{0301}RichText"`
+    ///     is a chat line Go routes and this refused.
+    ///   * `lastIndex(of: ".")` the same, for the feed type's separator.
+    ///
+    /// Two directions from three lines, and the first of them reaches the
+    /// network: routing is what decides whether a request happens at all.
+    func testRoutingComparesBytesAndGosWhitespace() async throws {
+        let server = RecordingServer()
+        let account = makeTestAccountClient(transport: server.makeTransport())
+
+        for ref in [
+            // A zero-width space is not whitespace to Go, so these are types it
+            // cannot route — and no request may leave for them.
+            RecordingRef(
+                bucketId: 1, recordingId: 2, eventType: "comment.created",
+                recordingType: "\u{200B}"),
+            RecordingRef(
+                bucketId: 1, recordingId: 2, eventType: "comment.created",
+                recordingType: "\u{200B}Comment"),
+            RecordingRef(bucketId: 1, recordingId: 2, eventType: "\u{200B}comment.created"),
+        ] {
+            await assertSummarizeFails(account, ref) { error in
+                guard case .unknownRecordingType = error else {
+                    return XCTFail("expected unknownRecordingType for \(ref), got \(error)")
+                }
+            }
+        }
+        XCTAssertEqual(server.paths, [], "a type Go cannot route must not reach the network")
+
+        // The whitespace Go DOES trim still trims, or a type read off a
+        // line-terminated field stops routing.
+        XCTAssertEqual(
+            try RecordingsService.route(
+                RecordingRef(bucketId: 1, recordingId: 2, recordingType: "Comment\n\t ")),
+            .comment)
+        // And a mark inside the prefix or on the dot is not the prefix or the
+        // dot, here as in Go.
+        for ref in [
+            RecordingRef(
+                bucketId: 1, recordingId: 2, recordingType: "Chat::Lines::\u{0301}RichText"),
+            RecordingRef(bucketId: 1, recordingId: 2, eventType: "comment.\u{0301}created"),
+        ] {
+            XCTAssertNoThrow(try RecordingsService.route(ref), "\(ref)")
+        }
+    }
+
     func testTheRecordingTypeWinsOverTheEventType() async throws {
         let server = RecordingServer()
         let account = makeTestAccountClient(transport: server.makeTransport())
