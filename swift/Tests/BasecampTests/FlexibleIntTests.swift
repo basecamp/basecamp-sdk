@@ -289,8 +289,131 @@ final class FlexibleIntTests: XCTestCase {
             }
         }
     }
+
+    // MARK: - The number path
+
+    // The other half of the wire form. Go decodes a JSON number through
+    // `json.Decoder`/`UseNumber()` and then `json.Number.Int64()`, which is the
+    // same `strconv.ParseInt(s, 10, 64)` the string path runs — but with no
+    // sentinel branch: `go/pkg/types/flexible_int64.go:60-62` errors on either
+    // refusal. So the number path has exactly two outcomes, an integer or a
+    // failed read, and the `0` that the string path answers to `"basecamp"` has
+    // no counterpart here. Answering it anyway is the accepting direction on the
+    // field that says who acted.
+
+    enum NumberExpectation {
+        case value(Int)
+        case refuse
+    }
+
+    /// Literals are spliced into the document verbatim, because the point of
+    /// several of these rows is the *spelling* of the number, which building the
+    /// body through `JSONSerialization` would normalize away.
+    private static func numberCorpus() -> [(literal: String, expected: NumberExpectation)] {
+        [
+            // Integers Go reads, including both int64 boundaries as bare numbers.
+            ("7", .value(7)),
+            ("-7", .value(-7)),
+            ("0", .value(0)),
+            ("-0", .value(0)),
+            ("9223372036854775806", .value(9223372036854775806)),
+            ("9223372036854775807", .value(9223372036854775807)),
+            ("-9223372036854775808", .value(-9223372036854775808)),
+            ("9007199254740993", .value(9007199254740993)),
+            // Past int64 as a BARE NUMBER — the same range refusal the string
+            // path raises, on the half that used to answer the system actor.
+            ("9223372036854775808", .refuse),
+            ("-9223372036854775809", .refuse),
+            ("18446744073709551616", .refuse),
+            ("99999999999999999999999", .refuse),
+            // Non-integral: `json.Number("7.5").Int64()` is a syntax error.
+            ("7.5", .refuse),
+            ("-0.5", .refuse),
+            ("1e30", .refuse),
+            // Not a number at all. `dec.Decode(&num)` refuses each of these
+            // outright (`flexible_int64.go:56-58`).
+            ("true", .refuse),
+            ("false", .refuse),
+            ("[7]", .refuse),
+            ("{\"a\":7}", .refuse),
+            ("\"\"", .value(0)),  // empty STRING is the string path's sentinel
+            // `null` reaches `UnmarshalJSON`, leaves the `json.Number` empty,
+            // and `ParseInt("")` fails. An ABSENT key is a different thing and
+            // is covered by `testAbsentIdIsNotTheSameAsNull` below.
+            ("null", .refuse),
+        ]
+    }
+
+    func testNumberPathMatchesGo() {
+        for (literal, expected) in Self.numberCorpus() {
+            let data = Data("{\"id\": \(literal)}".utf8)
+            let context = "id = \(literal)"
+            switch expected {
+            case .value(let n):
+                XCTAssertEqual(
+                    try? JSONDecoder().decode(Wrapper.self, from: data).id.value, n, context)
+            case .refuse:
+                XCTAssertThrowsError(
+                    try JSONDecoder().decode(Wrapper.self, from: data), context)
+            }
+        }
+    }
+
+    /// `null` and an absent key are NOT the same, and only the flexible reader
+    /// draws the distinction. Go calls `UnmarshalJSON` for a `null`, so
+    /// `{"id": null}` fails the read; it is never called for a missing key, so
+    /// the field keeps its zero value. `ruby/lib/basecamp/ids.rb`'s
+    /// `person_from_wire` documents the same asymmetry, measured there through
+    /// the real decode path.
+    ///
+    /// In Swift it falls out of the model shape: `Person.id` is a non-optional
+    /// `FlexibleInt`, so a `null` reaches the initializer and throws, while an
+    /// absent key is the container's `keyNotFound` and never reaches it. Both
+    /// halves are pinned because the shape is what makes them true — turning
+    /// that field optional would silently make a served `null` read as `nil`
+    /// without this type ever seeing it.
+    func testAbsentIdIsNotTheSameAsNull() {
+        XCTAssertThrowsError(
+            try JSONDecoder().decode(Wrapper.self, from: Data(#"{"id": null}"#.utf8)),
+            "a served null must fail the read")
+        XCTAssertThrowsError(
+            try JSONDecoder().decode(Wrapper.self, from: Data(#"{}"#.utf8)),
+            "an absent id is keyNotFound on a non-optional field")
+        // The distinction is only meaningful while the field is non-optional.
+        XCTAssertNoThrow(
+            try JSONDecoder().decode(OptionalWrapper.self, from: Data(#"{}"#.utf8)))
+    }
+
+    /// The one residual, pinned so it is a decision on the record rather than a
+    /// gap. Go refuses a float-spelled number outright —
+    /// `json.Number("7.0").Int64()` is a syntax error — but `JSONDecoder`
+    /// unboxes through `Int(exactly: Double)`, and `7` and `7.0` are
+    /// indistinguishable through every accessor a `SingleValueDecodingContainer`
+    /// offers. Reading the literal text needs a pre-decode pass over the bytes.
+    ///
+    /// The divergence is accepting-direction but benign in the way that matters:
+    /// it reads the *correct* id for a spelling Go refuses, and can never
+    /// produce the system actor or name a different person. Not to be confused
+    /// with SPEC §10's `width`/`height`, a bare `Int32?` that is deliberately
+    /// float-tolerant because BC3 really does serialize those float-spelled.
+    func testFloatSpelledIntegerIsAKnownResidual() {
+        for (literal, swiftReads) in [("7.0", 7), ("1e3", 1000), ("7e0", 7), ("0.0", 0), ("-0.0", 0)] {
+            let data = Data("{\"id\": \(literal)}".utf8)
+            XCTAssertEqual(
+                try? JSONDecoder().decode(Wrapper.self, from: data).id.value, swiftReads,
+                "residual: Go refuses \(literal); Swift reads \(swiftReads)")
+        }
+    }
 }
 
 private struct Wrapper: Codable {
     let id: FlexibleInt
+}
+
+/// Only for `testAbsentIdIsNotTheSameAsNull`. No generated model declares an
+/// optional `FlexibleInt` — `Person.id` is the type's single use site and is
+/// non-optional — so this exists to show what optionality would change, not to
+/// mirror a real shape.
+private struct OptionalWrapper: Codable {
+    let id: FlexibleInt?
 }

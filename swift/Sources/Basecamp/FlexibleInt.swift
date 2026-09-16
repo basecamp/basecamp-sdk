@@ -140,6 +140,8 @@ func parsePersonID(_ text: String) -> PersonIDReading {
 /// - JSON string `"12345"` → `value = 12345`
 /// - JSON string `"basecamp"` → `value = 0` (non-numeric sentinel)
 /// - JSON string `"9223372036854775808"` → throws (numeric overflow)
+/// - JSON number `9223372036854775808`, `7.5`, `null`, `true`, `[…]`, `{…}` →
+///   throws. **Only the string path has a sentinel**; see ``init(from:)``.
 public struct FlexibleInt: Codable, Sendable, Hashable, CustomStringConvertible, ExpressibleByIntegerLiteral {
     public let value: Int
 
@@ -151,6 +153,53 @@ public struct FlexibleInt: Codable, Sendable, Hashable, CustomStringConvertible,
         self.value = value
     }
 
+    /// Reads the id, from a JSON number or a JSON string.
+    ///
+    /// **The sentinel belongs to the string path alone.** Go runs the number
+    /// through `json.Decoder` with `UseNumber()` and then calls
+    /// `json.Number.Int64()` (`go/pkg/types/flexible_int64.go:52-62`), and
+    /// `Int64()` *is* `strconv.ParseInt(s, 10, 64)` over the number's literal
+    /// text — the same scan the string path runs. But the number path has no
+    /// `ErrSyntax`-becomes-`0` branch: `:60-62` returns an error for **either**
+    /// refusal. So everything a person id can be spelled as that is not an
+    /// integer fails the read there, and must fail it here. Answering `0` to any
+    /// of them is the accepting direction on the field that says *who acted* —
+    /// `0` is the system actor, `LocalPerson` / `"basecamp"` / `"campfire"` —
+    /// which is the whole defect this type exists to close, reappearing on the
+    /// half of it that is not a string.
+    ///
+    /// **`null` fails the read; an absent key does not.** `encoding/json` calls
+    /// `UnmarshalJSON` for a `null`, the number path leaves the `json.Number`
+    /// empty, and `ParseInt("")` is a syntax error — so `{"id": null}` fails,
+    /// while a missing `"id"` never reaches the decoder and is the zero value.
+    /// A plain `int64` field has no `UnmarshalJSON` and reads both as `0`, which
+    /// is why only the flexible reader draws the distinction. The asymmetry is
+    /// the same one `ruby/lib/basecamp/ids.rb`'s `person_from_wire` documents,
+    /// measured there through the real decode path. Here it falls out of the
+    /// model shape rather than needing a branch: `Person.id` is a non-optional
+    /// `FlexibleInt`, so a `null` reaches this initializer and throws, and an
+    /// absent key is the container's `keyNotFound`, never this code.
+    ///
+    /// **Do not reach for SPEC §10's rule here.** A rich-text/upload `width` or
+    /// `height` is a *different type* — a bare `Int32?`, decoded by the
+    /// synthesized decoder — and it is deliberately float-tolerant, because BC3
+    /// really does serialize a present dimension float-spelled (`1024.0`) and
+    /// `null` there is a legitimate value meaning "not an image". A pixel count
+    /// may be lenient; an identity may not. The two look alike and are governed
+    /// by opposite rules.
+    ///
+    /// **Residual, measured.** A float-spelled but integral number in `Int`
+    /// range — `7.0`, `1e3`, `7e0`, `0.0`, `-0.0` — reads as that integer here
+    /// and is a decode failure in Go. It is not reachable through the `Decoder`
+    /// API: measured under Swift 6.0, `7` and `7.0` are indistinguishable
+    /// through every accessor a `SingleValueDecodingContainer` offers
+    /// (`decode(Int.self)` yields `7` for both, `Double` `7.0` for both, and
+    /// there is no access to the literal text), because `JSONDecoder` unboxes
+    /// through `Int(exactly: Double)`. The divergence is accepting-direction but
+    /// benign in the way that matters: it reads the *correct* id for a spelling
+    /// Go refuses, and can never produce the system actor or name a different
+    /// person. Closing it needs the raw number literal, which only a pre-decode
+    /// pass over the bytes can see.
     public init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
         if let i = try? container.decode(Int.self) {
@@ -171,7 +220,15 @@ public struct FlexibleInt: Codable, Sendable, Hashable, CustomStringConvertible,
                 )
             }
         } else {
-            value = 0
+            // Neither an integer nor a string: a non-integral or out-of-range
+            // number, `null`, a bool, an array, an object. Go fails the read on
+            // every one of them (`go/pkg/types/flexible_int64.go:56-62`) — the
+            // number path has no sentinel. This used to answer `0`, which is the
+            // system actor.
+            throw DecodingError.dataCorruptedError(
+                in: container,
+                debugDescription: "FlexibleInt: expected an integer or a string holding one"
+            )
         }
     }
 
