@@ -88,10 +88,13 @@ branch, has its contract decisions recorded pre-merge:
    (status `absorbed-in-sdk`). Remaining tail is documentation only:
    `doc/api/sections/tools.md` still documents the removed clone contract
    (bc3#12364).
-4. Account-wide event feed (poll lane + Action Cable push lane) on BC3's
-   unmerged `eventstream+accountid` branch (BC3 #9646/#9659) — **contract
-   decisions recorded pre-merge**, verified at branch head `8be5c67de5`
-   (a branch-head verification record, not a provenance pin): the poll
+4. Account-wide event feed (poll lane + Action Cable push lane), shipped to
+   BC3 `master` on 2026-09-15 (BC3 #13049, #13053, #13056, #13058; earlier
+   lineage `eventstream+accountid`, BC3 #9646/#9659) — **contract decisions
+   recorded pre-merge**, verified at branch head `8be5c67de5` (a
+   branch-head verification record, not a provenance pin) and re-verified
+   against the shipped doc; the generated layer and the gap registry's
+   `absorbed-in-sdk` state are the spec-operations PR's: the poll
    response body envelope `{"events", "position", "next"}` is the contract
    (headers are echoes); the filter digest is published as a versioned
    contract — `srv1` pre-merge, shipped as `srv2` (a JSON object keyed by

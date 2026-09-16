@@ -249,6 +249,13 @@ func (c *Conn) ReadFrame(ctx context.Context) ([]byte, error) {
 			return nil, errConnClosed
 		case c.violation != nil:
 			return nil, c.violation
+		case c.dead != nil:
+			// A death already surfaced — a peer close, a scripted read
+			// failure — is final: a frame served after it is never
+			// delivered, as a real socket delivers nothing after it dies.
+			// Checked before the queue so a late Serve cannot revive the
+			// connection for one more read.
+			return nil, c.dead
 		case len(c.pending) > 0:
 			frame := c.pending[0]
 			c.pending = c.pending[1:]
