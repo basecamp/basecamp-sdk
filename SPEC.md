@@ -3918,13 +3918,15 @@ events), deliberately decoupled from the dedupe capacity.
 
 ### Dedupe `[conformance]`
 
-The connector keeps a bounded LRU (default 10,000 entries) of **actually-delivered event
-ids** — never position ordering. The rule is symmetric across lanes: **every delivery —
-poll page, drain, or streaming — checks the LRU before delivering and records the
-delivered id.** Poll-vs-push duplication is expected in both directions (pushes arrive
-instantly and polls re-serve the same events once they clear the safety horizon; a repair
-poll can equally re-serve what streaming already delivered), so duplicates are suppressed
-by id regardless of which lane delivered first.
+The connector keeps a bounded LRU (default 10,000 entries) of **actually-delivered keys
+in the lane's identity** — event ids on the account lane, addressing ids on the inbox lane
+(`Event.key()`; The Inbox Lane below) — never position ordering. The rule is symmetric
+across lanes: **every delivery — poll page, drain, or streaming — checks the LRU before
+delivering and records the delivered key.** Poll-vs-push duplication is expected in both
+directions (pushes arrive instantly and polls re-serve the same events once they clear the
+safety horizon; a repair poll can equally re-serve what streaming already delivered), so
+duplicates are suppressed by key regardless of which lane delivered first; on the inbox,
+one event addressing the principal under two ids is two deliveries.
 
 Two sharp edges, pinned:
 
@@ -4591,7 +4593,7 @@ Only `API_VERSION` is gated (`<!-- @api-version -->`, checked by `make doc-const
 | `EVENT_FEED_PING_INTERVAL` | 3 | seconds | server heartbeat cadence (bc3; provisional until the merge-time gate); input to `EVENT_FEED_STALE_AFTER` |
 | `EVENT_FEED_STALE_AFTER` | 7500 | milliseconds | §23 — two missed 3s heartbeats + 25% grace; SDK-pinned detection policy |
 | `EVENT_FEED_AUTH_FAILURE_THRESHOLD` | 3 | consecutive failures | §23 disconnect dispatch (one shared counter) |
-| `EVENT_FEED_DEDUPE_CAPACITY` | 10,000 | event ids | §23 (configurable; default) |
+| `EVENT_FEED_DEDUPE_CAPACITY` | 10,000 | delivered keys (event ids on the account lane, addressing ids on the inbox) | §23 (configurable; default) |
 | `EVENT_FEED_LIVE_BUFFER_CAPACITY` | 10,000 | events | §23 (configurable; default; decoupled from the dedupe capacity; only event-bearing frames are buffered) |
 | `EVENT_FEED_TICKET_TTL` | ~120 | seconds | server-owned (`expires_in`; provisional until the merge-time gate); never used for client scheduling |
 | `EVENT_FEED_MAX_FRAME_BYTES` | 1,048,576 (1 MiB) | bytes | §23 security invariants |

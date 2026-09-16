@@ -1725,8 +1725,7 @@
         "actor_type": {
           "type": "string",
           "minLength": 1,
-          "pattern": "^[^,\\s\"']+$",
-          "description": "The actor's kind — agent or person today; a server-owned vocabulary the connector never client-validates on the way in."
+          "description": "The actor's kind — agent or person today; a server-owned vocabulary the connector never client-validates on the way in, so any non-empty string is admitted."
         },
         "recording_id": {
           "type": "integer",
@@ -2386,8 +2385,7 @@
         "actor_type": {
           "type": "string",
           "minLength": 1,
-          "pattern": "^[^,\\s\"']+$",
-          "description": "The actor's kind — agent or person today; a server-owned vocabulary the connector never client-validates on the way in."
+          "description": "The actor's kind — agent or person today; a server-owned vocabulary the connector never client-validates on the way in, so any non-empty string is admitted."
         },
         "visible_to_clients": {
           "type": "boolean"
