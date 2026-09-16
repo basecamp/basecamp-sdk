@@ -136,11 +136,22 @@ func ExportSocketFailedErr() error { return errSocketFailed }
 
 // ExportSubscribeIdentifier exposes the exact EventsChannel subscription
 // identifier for frame construction in tests.
-func ExportSubscribeIdentifier(f Filters) string { return subscribeIdentifier(f) }
+func ExportSubscribeIdentifier(f Filters) string { return subscribeIdentifier(AccountLane, f) }
+
+// ExportInboxSubscribeIdentifier is ExportSubscribeIdentifier for the inbox
+// lane.
+func ExportInboxSubscribeIdentifier(f Filters) string { return subscribeIdentifier(InboxLane, f) }
 
 // ExportSubscribeFrame exposes the exact subscribe command bytes the connector
 // writes.
-func ExportSubscribeFrame(f Filters) []byte { return subscribeCommand(subscribeIdentifier(f)) }
+func ExportSubscribeFrame(f Filters) []byte {
+	return subscribeCommand(subscribeIdentifier(AccountLane, f))
+}
+
+// ExportInboxSubscribeFrame is ExportSubscribeFrame for the inbox lane.
+func ExportInboxSubscribeFrame(f Filters) []byte {
+	return subscribeCommand(subscribeIdentifier(InboxLane, f))
+}
 
 // OnSubscribeWritten registers a hook fired once the subscribe command has
 // been written and BEFORE the phase deadline is stopped. It is the only

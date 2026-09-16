@@ -1,0 +1,244 @@
+{
+  "name": "32-inbox-lane-dedupes-by-addressing-id",
+  "description": "The inbox lane end to end: the subscription carries `inbox: true` after the channel with the reasons param (class-1 identifier literal); the catch-up walk serves an {items, position, next} envelope whose two items address the principal through ONE event (id 100) under two addressing ids — both deliver, since an item is its own delivery — and a repeat of addressing id 11 is suppressed; a live item admitted before the entry page (addressing id 13, over event 101) drains once and the repair poll's re-serve of the same item is suppressed by addressing id, never by event id. Delivered ids are addressing ids. The checkpoint step for the entry page precedes the cumulative delivered assertion so the drain of the buffered item cannot race an intermediate expectDelivered (fixture 01's ordering).",
+  "config": {
+    "lane": "inbox",
+    "reasons": [
+      "mentioned",
+      "assigned"
+    ],
+    "position": "{{POS:0}}",
+    "repairPollBaseMs": 60000
+  },
+  "steps": [
+    {
+      "expectMint": {
+        "respond": {
+          "status": 200,
+          "body": {
+            "ticket": "{{TICKET:1}}",
+            "expires_in": 120,
+            "url": "{{CABLE_URL:1}}"
+          }
+        }
+      }
+    },
+    {
+      "expectConnect": {
+        "url": "{{CABLE_URL:1}}"
+      }
+    },
+    {
+      "serve": {
+        "frame": "welcome"
+      }
+    },
+    {
+      "expectSubscribe": {
+        "channel": "EventsChannel",
+        "inbox": true,
+        "params": {
+          "reasons": "mentioned,assigned"
+        }
+      }
+    },
+    {
+      "serve": {
+        "frame": "confirm"
+      }
+    },
+    {
+      "serve": {
+        "frame": "message",
+        "item": {
+          "addressing_id": 13,
+          "reason": "mentioned",
+          "addressed_at": "2026-08-01T12:00:01Z",
+          "event": {
+            "id": 101,
+            "kind": "comment_created",
+            "event_type": "comment.created",
+            "action": "created",
+            "created_at": "2026-08-01T12:00:00Z",
+            "bucket_id": 2,
+            "creator_id": 3,
+            "performed_by_id": null,
+            "recording_id": 900
+          }
+        }
+      }
+    },
+    {
+      "expectBuffered": {
+        "count": 1
+      }
+    },
+    {
+      "expectPoll": {
+        "query": {
+          "position": "{{POS:0}}",
+          "reasons": "mentioned,assigned"
+        },
+        "respond": {
+          "status": 200,
+          "body": {
+            "items": [
+              {
+                "addressing_id": 11,
+                "reason": "mentioned",
+                "addressed_at": "2026-08-01T12:00:01Z",
+                "event": {
+                  "id": 100,
+                  "kind": "comment_created",
+                  "event_type": "comment.created",
+                  "action": "created",
+                  "created_at": "2026-08-01T12:00:00Z",
+                  "bucket_id": 2,
+                  "creator_id": 3,
+                  "performed_by_id": null,
+                  "recording_id": 900
+                }
+              },
+              {
+                "addressing_id": 12,
+                "reason": "assigned",
+                "addressed_at": "2026-08-01T12:00:01Z",
+                "event": {
+                  "id": 100,
+                  "kind": "comment_created",
+                  "event_type": "comment.created",
+                  "action": "created",
+                  "created_at": "2026-08-01T12:00:00Z",
+                  "bucket_id": 2,
+                  "creator_id": 3,
+                  "performed_by_id": null,
+                  "recording_id": 900
+                }
+              },
+              {
+                "addressing_id": 11,
+                "reason": "mentioned",
+                "addressed_at": "2026-08-01T12:00:01Z",
+                "event": {
+                  "id": 100,
+                  "kind": "comment_created",
+                  "event_type": "comment.created",
+                  "action": "created",
+                  "created_at": "2026-08-01T12:00:00Z",
+                  "bucket_id": 2,
+                  "creator_id": 3,
+                  "performed_by_id": null,
+                  "recording_id": 900
+                }
+              }
+            ],
+            "position": "{{POS:1}}"
+          }
+        }
+      }
+    },
+    {
+      "expectCheckpoint": {
+        "position": "{{POS:1}}"
+      }
+    },
+    {
+      "expectDelivered": {
+        "exact": [
+          11,
+          12,
+          13
+        ]
+      }
+    },
+    {
+      "expectState": {
+        "is": "streaming"
+      }
+    },
+    {
+      "expectTimers": {
+        "exact": {
+          "staleness": 1,
+          "repair-poll": 1
+        }
+      }
+    },
+    {
+      "fireTimer": {
+        "kind": "repair-poll",
+        "assertDelayMs": {
+          "min": 48000,
+          "max": 72000
+        }
+      }
+    },
+    {
+      "expectPoll": {
+        "query": {
+          "position": "{{POS:1}}"
+        },
+        "respond": {
+          "status": 200,
+          "body": {
+            "items": [
+              {
+                "addressing_id": 13,
+                "reason": "mentioned",
+                "addressed_at": "2026-08-01T12:00:01Z",
+                "event": {
+                  "id": 101,
+                  "kind": "comment_created",
+                  "event_type": "comment.created",
+                  "action": "created",
+                  "created_at": "2026-08-01T12:00:00Z",
+                  "bucket_id": 2,
+                  "creator_id": 3,
+                  "performed_by_id": null,
+                  "recording_id": 900
+                }
+              }
+            ],
+            "position": "{{POS:2}}"
+          }
+        }
+      }
+    },
+    {
+      "expectCheckpoint": {
+        "position": "{{POS:2}}"
+      }
+    },
+    {
+      "expectState": {
+        "is": "streaming"
+      }
+    }
+  ],
+  "finally": {
+    "state": "streaming",
+    "mintCount": 1,
+    "connectCount": 1,
+    "pollCount": 2,
+    "delivered": {
+      "exact": [
+        11,
+        12,
+        13
+      ]
+    },
+    "checkpoints": {
+      "exact": [
+        "{{POS:1}}",
+        "{{POS:2}}"
+      ]
+    },
+    "timers": {
+      "exact": {
+        "staleness": 1,
+        "repair-poll": 1
+      }
+    },
+    "socket": "open"
+  }
+}

@@ -27,12 +27,22 @@ type CheckpointKey struct {
 	// FilterKey is "srv2-" + the bare 16-hex server digest
 	// (Filters.FilterKey).
 	FilterKey string
+	// Lane names the feed resource when it is not the account feed — "inbox"
+	// for InboxLane, empty for AccountLane. Inbox positions are bound to the
+	// principal and never interchangeable with feed positions, so the two
+	// lanes are two lineages even under one origin, account, namespace and
+	// filter set. Empty for the account lane so its flat key is unchanged.
+	Lane string
 }
 
 // FlatKey renders the identity as the compact RFC 8259 JSON array of the four
 // strings — e.g.
 //
 //	["https://3.basecampapi.com","5951425","openclaw","srv2-9f2ab04e5c11d3a7"]
+//
+// — with the lane as a fifth element only when it is set:
+//
+//	["https://3.basecampapi.com","5951425","openclaw","srv2-9f2ab04e5c11d3a7","inbox"]
 //
 // JSON escaping removes all delimiter ambiguity: no bespoke path-joining, no
 // percent-encoding. This is the flat key the file store (and any store keyed
@@ -47,6 +57,10 @@ func (k CheckpointKey) FlatKey() string {
 	writeJSONString(&b, k.ConsumerNamespace)
 	b.WriteByte(',')
 	writeJSONString(&b, k.FilterKey)
+	if k.Lane != "" {
+		b.WriteByte(',')
+		writeJSONString(&b, k.Lane)
+	}
 	b.WriteByte(']')
 	return b.String()
 }

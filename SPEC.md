@@ -4384,6 +4384,7 @@ ships off.
 | Concern (default) | Go option | TS field | Python / Ruby kwarg | Kotlin / Swift parameter | Rust builder |
 |---|---|---|---|---|---|
 | Filters (none) | `WithFilters` | `filters?` | `filters` | `filters` | `filters` |
+| Lane (account; also inbox — The Inbox Lane below) | `WithLane` | `lane?` | `lane` | `lane` | `lane` |
 | Entry mode (resume: stored position if any, else present; also present / beginning / after(id) / at-position(token)) | `WithStart` | `start?` | `start` | `start` | `start` |
 | Cable transport (default WebSocket impl) | `WithTransport` | `transport?` | `transport` | `transport` | `transport` |
 | Clock (system monotonic) | `WithClock` | `clock?` | `clock` | `clock` | `clock` |
@@ -4447,6 +4448,69 @@ heartbeat cadence 3s; staleness 7500ms; authorization-failure threshold 3; dedup
 10,000 ids; live buffer capacity 10,000 events; ticket TTL ~120s (server-owned —
 `expires_in` is never used for client-side scheduling; expiry is arbitrated by the server
 and the connector always mints fresh); maximum inbound frame 1 MiB.
+
+### The Inbox Lane `[conformance]`
+
+`GET /inbox.json` is the principal's **addressed items** — the low-noise "someone
+addressed you" lane, its own resource rather than a filter over the account feed, served
+to **agent principals only** (any other principal's polls answer `403`). The connector
+consumes it with the same protocol as the account feed, selected by the lane option, and
+everything in this section holds unless a row below says otherwise:
+
+- **Identity is the addressing id.** An item is a first-class delivery: the same event can
+  address the principal for several reasons, and each reason is its own item. The lane
+  deduplicates by `addressing_id`, never by event id — the feed's rule would discard every
+  reason but one — and the same key positions the reset cursor (`since` walks item ids
+  there), names the ids in a `BufferOverflow` signal, and is what `Event.key()` returns.
+  Every delivered event carries an `Addressing {addressing_id, reason, addressed_at}`;
+  account-lane events carry none.
+
+```
+RECORD Addressing
+  addressing_id : Integer   -- the item id: the lane's identity and its strict order
+  reason        : String    -- mentioned | assigned | subscribed | watched | pinged | boosted
+  addressed_at  : String    -- ISO 8601
+END
+```
+
+- **Dimensions.** The inbox filters by `reasons`, narrowed by `types` and `buckets`, and
+  nothing else: `creators`, `performers`, `exclude_performers` and `actor_types` are
+  refused at construction on the inbox lane (a `usage` error), as `reasons` is on the
+  account lane. Items are never self-addressed, so the lane needs no loop guard. The srv2
+  digest is the same scheme with `reasons` as its own dimension; inbox positions are bound
+  to the account, the principal and the filter set and are never interchangeable with feed
+  positions, so the checkpoint identity carries the lane — `flat_key` gains a fifth element
+  `"inbox"`, and the account lane's four-element key is unchanged.
+- **The live subscription** is `EventsChannel` with `"inbox":true` — a JSON boolean, right
+  after the channel key — plus `types`, `buckets` and `reasons` in that fixed order:
+  `{"channel":"EventsChannel","inbox":true[,"types":"a,b"][,"buckets":"1,2"][,"reasons":"mentioned"]}`.
+  An inbox subscription replaces the account streams for its connection rather than adding
+  to them. Each live frame is one item in the poll shape — the four envelope keys around an
+  event decoded to the poll row's contract (the nine keys both lanes carry required; the
+  push-only transport fields accepted when present). A frame that is not an item is the
+  invalid-frame class's decode shape, as on the account lane.
+- **The poll envelope** is `{items, position, next}` — `items` in place of `events`, oldest
+  first in strict item-id order; the `PollSource` seam is unchanged, and an inbox adapter
+  (over the generated `PollInbox` operation) maps each item onto an `Event` with its
+  `Addressing` set. `since=0` replays the earliest items still retained (30 days);
+  `since=now` and `position=` behave as on the feed.
+- **410 is the retention window**, not the epoch: the position fell behind the retained
+  backlog, and `resume` re-enters at `since=0`, the earliest retained item — exactly-once
+  continuation for a stale position that has seen none of it. Same `FeedGap` signal, same
+  handler contract, same position-resume class as the feed's 410 (Entry Boundary); the
+  default terminal's message names the retention window rather than the epoch.
+- **403** for a non-agent principal is the seam's `unauthorized` kind and rides the shared
+  authorization counter to Terminal(`authorization_failed`): a person's token on the inbox
+  lane is a configuration error the connector cannot distinguish from a revoked one on the
+  wire, and three cycles surface it.
+- **Brakes.** Agent-to-agent delivery on the inbox carries server-side brakes the
+  connector neither sees nor compensates for — a per-account delivery budget, a circuit
+  breaker on runs of agent-performed deliveries, an operator kill switch. A braked event is
+  counted, not delivered; a quiet inbox under a burst is that, not a connector fault.
+
+Required tier-2 coverage: the subscription spelling and the `items` envelope, delivery of
+two items over one event with a repeated addressing id suppressed across the poll and live
+lanes, and the accepted retention 410 followed as a position-resume entry (fixtures 32/33).
 
 ### Verification
 

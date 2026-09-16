@@ -181,9 +181,13 @@ func (l *loop) recoverGone(at *attempt, pe *PollError) (walkStep, cycleOutcome, 
 	// Terminate, or no handler: the typed terminal, and no save — the error
 	// names the epoch and never the resume URL.
 	l.disposeAttempt(at, nil)
+	msg := fmt.Sprintf("the feed's served history before event %d is gone", pe.EpochAfterID)
+	if l.cfg.lane == InboxLane {
+		msg = fmt.Sprintf("the inbox's retained items before item %d are gone", pe.EpochAfterID)
+	}
 	return walkStep{}, cycleOutcome{kind: outcomeTerminal, term: &TerminalError{
 		Reason: ReasonFeedGap,
-		Msg:    fmt.Sprintf("the feed's served history before event %d is gone", pe.EpochAfterID),
+		Msg:    msg,
 	}}, true
 }
 

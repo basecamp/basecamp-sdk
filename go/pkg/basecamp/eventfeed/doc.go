@@ -15,10 +15,15 @@
 // policy and its WebSocket transport, and the deterministic fakes the
 // conformance harness drives.
 //
+// The connector consumes either of the feed's two resources, selected by
+// WithLane: the account-wide feed (the default), or the principal's inbox of
+// addressed items, where the delivered Event carries its Addressing and the
+// addressing id is the lane's identity for dedupe and positioning.
+//
 // ONE piece is still to land, and it is what keeps the package from running
 // against the live API out of the box: the Layer-1 adapters over the
-// generated CreateStreamTicket and PollEvents operations that back the
-// TicketMinter and PollSource seams. Until they exist the package ships no
+// generated CreateStreamTicket, PollEvents and PollInbox operations that
+// back the TicketMinter and PollSource seams. Until they exist the package ships no
 // implementation of those two seams, and a host that wants the live feed
 // supplies its own over the generated operations — a supported path, and
 // the one the seam contracts are written for, not a workaround. Two

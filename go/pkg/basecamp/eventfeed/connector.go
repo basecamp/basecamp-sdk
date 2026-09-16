@@ -44,6 +44,39 @@ const (
 	closeCodeNormal = 1000
 )
 
+// Lane selects which of the feed's two resources the connector consumes
+// (SPEC.md §23 "The Inbox Lane"). The zero Lane is AccountLane.
+type Lane int
+
+const (
+	// AccountLane is the account-wide feed: GET /events.json for the poll
+	// lane and the EventsChannel account streams for the live lane, filtered
+	// by types, buckets, creators, performers, exclude_performers and
+	// actor_types. Delivered events carry no Addressing.
+	AccountLane Lane = iota
+	// InboxLane is the principal's addressed items: GET /inbox.json for the
+	// poll lane and an EventsChannel subscription with `inbox: true` for the
+	// live lane, filtered by reasons and narrowed by types and buckets. Every
+	// delivered event carries an Addressing, and the lane's identity — for
+	// dedupe, the reset cursor, and dropped ids — is the addressing id. The
+	// inbox serves agent principals only: any other principal's polls answer
+	// 403, which rides the shared authorization counter to
+	// Terminal(authorization_failed).
+	InboxLane
+)
+
+// String returns the lane's name.
+func (l Lane) String() string {
+	switch l {
+	case AccountLane:
+		return "account"
+	case InboxLane:
+		return "inbox"
+	default:
+		return fmt.Sprintf("Lane(%d)", int(l))
+	}
+}
+
 // Start selects the feed's entry mode (SPEC.md §23 "Options and Per-Language
 // Naming"). The zero Start is StartResume.
 type Start struct {
@@ -100,6 +133,7 @@ type config struct {
 	minter               TicketMinter
 	polls                PollSource
 	filters              Filters
+	lane                 Lane
 	start                Start
 	transport            CableTransport
 	clock                Clock
@@ -134,6 +168,11 @@ type Option func(*config)
 // or mutate its own arrays afterwards without reaching the subscription, the
 // polls, or the checkpoint key (Filters.clone).
 func WithFilters(f Filters) Option { return func(c *config) { c.filters = f.clone() } }
+
+// WithLane selects the feed resource (default AccountLane). The inbox lane
+// takes a PollSource backed by the generated PollInbox operation; the
+// connector's protocol is the same on both.
+func WithLane(l Lane) Option { return func(c *config) { c.lane = l } }
 
 // WithStart selects the entry mode (default StartResume).
 func WithStart(s Start) Option { return func(c *config) { c.start = s } }
@@ -358,7 +397,13 @@ func validateConfig(cfg *config) error {
 	if cfg.polls == nil {
 		return usageError("a PollSource is required")
 	}
+	if cfg.lane != AccountLane && cfg.lane != InboxLane {
+		return usageError(fmt.Sprintf("unknown lane %s", cfg.lane))
+	}
 	if err := cfg.filters.Validate(); err != nil {
+		return err
+	}
+	if err := cfg.filters.validateForLane(cfg.lane); err != nil {
 		return err
 	}
 	if cfg.dedupeCapacity <= 0 {

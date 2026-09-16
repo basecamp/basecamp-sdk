@@ -695,6 +695,7 @@ func (h *scenarioHarness) newConnector(cfg scenarioConfig) (*eventfeed.Connector
 			Performers:        cfg.Performers,
 			ExcludePerformers: cfg.ExcludePerformers,
 			ActorTypes:        cfg.ActorTypes,
+			Reasons:           cfg.Reasons,
 		}),
 		eventfeed.WithObserver(eventfeed.Observer{
 			Gap:                  func(epochAfterID int64, resumeURL string) { h.recordGap(epochAfterID, resumeURL) },
@@ -707,6 +708,9 @@ func (h *scenarioHarness) newConnector(cfg scenarioConfig) (*eventfeed.Connector
 				}
 			},
 		}),
+	}
+	if cfg.Lane == "inbox" {
+		opts = append(opts, eventfeed.WithLane(eventfeed.InboxLane))
 	}
 	if cfg.ConfirmationDeadlineMs.set {
 		opts = append(opts, eventfeed.WithConfirmationDeadline(millis(cfg.ConfirmationDeadlineMs.v)))

@@ -312,8 +312,8 @@ func (l *loop) walk(at *attempt, cursor Cursor, presentClass bool) (out cycleOut
 		// irrelevant to what the poll lane has served.
 		page := p.page
 		for _, ev := range page.Events {
-			if ev.ID > l.lastPollServedID {
-				l.lastPollServedID = ev.ID
+			if id := ev.Key(); id > l.lastPollServedID {
+				l.lastPollServedID = id
 			}
 		}
 
@@ -743,7 +743,7 @@ func (l *loop) admitDuringPoll(at *attempt, item pumpItem) (handled bool, out cy
 		if f.identifier != l.identifier {
 			break
 		}
-		e, derr := decodeMessageEvent(f.message)
+		e, derr := decodeLiveEvent(l.cfg.lane, f.message)
 		if derr != nil {
 			return false, cycleOutcome{}, false
 		}
@@ -1271,7 +1271,7 @@ func (l *loop) deliver(ev Event) bool {
 	if l.stopped || l.runCtx.Err() != nil {
 		return false
 	}
-	if l.dedupe.Seen(ev.ID) {
+	if l.dedupe.Seen(ev.Key()) {
 		return true
 	}
 	if !l.yield(ev, nil) {
@@ -1311,7 +1311,7 @@ func (l *loop) handleLiveFrame(at *attempt, pending Timer, item pumpItem, delive
 		if f.identifier != l.identifier {
 			return cycleOutcome{}, false
 		}
-		ev, derr := decodeMessageEvent(f.message)
+		ev, derr := decodeLiveEvent(l.cfg.lane, f.message)
 		if derr != nil {
 			// Invalid-frame class, decode shape.
 			return l.failSocket(at, pending, derr), true

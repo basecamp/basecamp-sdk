@@ -310,6 +310,30 @@
           },
           "description": "Filter: actor kinds (opt-in, never a default). The vocabulary is server-owned and never client-validated, like types: agent and person today, and a scenario may name an unknown one to draw the filter 400."
         },
+        "reasons": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 6,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "mentioned",
+              "assigned",
+              "subscribed",
+              "watched",
+              "pinged",
+              "boosted"
+            ]
+          },
+          "description": "Filter: inbox addressing reasons (the inbox lane's own dimension; construction refuses it on the account lane)."
+        },
+        "lane": {
+          "enum": [
+            "account",
+            "inbox"
+          ],
+          "description": "The feed resource the connector consumes. Absent means account. On the inbox lane the poll seam is the generated PollInbox operation, every delivered element is an item (its ids in expectDelivered/finally.delivered are ADDRESSING ids), the live subscription carries `inbox: true`, and only types/buckets/reasons may be configured."
+        },
         "position": {
           "type": "string",
           "minLength": 1,
@@ -752,10 +776,9 @@
           "type": "object",
           "additionalProperties": false,
           "required": [
-            "frame",
-            "event"
+            "frame"
           ],
-          "description": "Correlated broadcast carrying one push-payload event. All 9 payload keys required — push rows carry visible_to_clients; strict decoders must never trip on fixture data.",
+          "description": "Correlated broadcast carrying one push-payload event (the account lane, all 11 payload keys required — push rows carry actor_type and visible_to_clients) or one inbox item (the inbox lane; `item`, never both); strict decoders must never trip on fixture data.",
           "properties": {
             "frame": {
               "const": "message"
@@ -765,8 +788,23 @@
             },
             "identifier": {
               "type": "string"
+            },
+            "item": {
+              "$ref": "#/$defs/inboxItem"
             }
-          }
+          },
+          "oneOf": [
+            {
+              "required": [
+                "event"
+              ]
+            },
+            {
+              "required": [
+                "item"
+              ]
+            }
+          ]
         },
         {
           "type": "object",
@@ -835,7 +873,7 @@
           "type": "object",
           "additionalProperties": false,
           "minProperties": 1,
-          "description": "Comma-joined filter values as identifier params (class-1 spellings: types/buckets/creators/performers/exclude_performers/actor_types).",
+          "description": "Comma-joined filter values as identifier params (class-1 spellings: types/buckets/creators/performers/exclude_performers/actor_types; reasons on the inbox lane).",
           "properties": {
             "types": {
               "type": "string",
@@ -860,12 +898,20 @@
             "actor_types": {
               "type": "string",
               "minLength": 1
+            },
+            "reasons": {
+              "type": "string",
+              "minLength": 1
             }
           }
         },
         "identicalToPrevious": {
           "const": true,
           "description": "Additionally requires BYTE-identity with the previous subscribe on this connection (the retransmit-absorption case). Only `true` is valid — a false would assert nothing."
+        },
+        "inbox": {
+          "const": true,
+          "description": "The inbox lane's subscription: the identifier carries `inbox` as a JSON boolean (not a string param) right after the channel key. Only `true` is valid — absence means the account streams."
         }
       }
     },
@@ -941,6 +987,10 @@
             "actor_types": {
               "type": "string",
               "minLength": 1
+            },
+            "reasons": {
+              "type": "string",
+              "minLength": 1
             }
           }
         },
@@ -987,6 +1037,10 @@
                 "actor_types": {
                   "type": "string",
                   "minLength": 1
+                },
+                "reasons": {
+                  "type": "string",
+                  "minLength": 1
                 }
               }
             }
@@ -1003,13 +1057,20 @@
           "required": [
             "body"
           ],
-          "description": "Successful page. Absent `next` means the walk reached its frozen head.",
+          "description": "Successful page: the feed's {events, position, next} or, on the inbox lane, {items, position, next}. Absent `next` means the walk reached its frozen head.",
           "properties": {
             "status": {
               "const": 200
             },
             "body": {
-              "$ref": "#/$defs/pollEnvelope"
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/pollEnvelope"
+                },
+                {
+                  "$ref": "#/$defs/inboxEnvelope"
+                }
+              ]
             }
           }
         },
@@ -1619,7 +1680,7 @@
       "required": [
         "exact"
       ],
-      "description": "Cumulative, exact, ordered delivered-id assertion. The driver waits until the delivered sequence equals `exact`; a sequence that can no longer equal it (overshoot, wrong order, a duplicate delivery) fails. {\"exact\": []} is the non-vacuous nothing-delivered-yet assertion.",
+      "description": "Cumulative, exact, ordered delivered-id assertion — event ids on the account lane, ADDRESSING ids on the inbox lane (the lane's identity). The driver waits until the delivered sequence equals `exact`; a sequence that can no longer equal it (overshoot, wrong order, a duplicate delivery) fails. {\"exact\": []} is the non-vacuous nothing-delivered-yet assertion.",
       "properties": {
         "exact": {
           "type": "array",
@@ -1793,6 +1854,143 @@
           }
         }
       ]
+    },
+    "inboxItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "addressing_id",
+        "reason",
+        "addressed_at",
+        "event"
+      ],
+      "description": "One inbox item — the lane's unit of delivery and identity. The same event can address the principal for several reasons and each is its own item, so drivers deliver, deduplicate and position by addressing_id. The nested event is in the poll row's shape (nine required keys; the push-only transport keys are accepted when present, per the doc's \"same shape as above\").",
+      "properties": {
+        "addressing_id": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9223372036854775807
+        },
+        "reason": {
+          "enum": [
+            "mentioned",
+            "assigned",
+            "subscribed",
+            "watched",
+            "pinged",
+            "boosted"
+          ]
+        },
+        "addressed_at": {
+          "type": "string",
+          "minLength": 1
+        },
+        "event": {
+          "$ref": "#/$defs/inboxItemEvent"
+        }
+      }
+    },
+    "inboxItemEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "event_type",
+        "action",
+        "created_at",
+        "bucket_id",
+        "creator_id",
+        "performed_by_id",
+        "recording_id"
+      ],
+      "description": "An inbox item's event: the poll row's nine required keys, plus actor_type / visible_to_clients accepted when present (the item is documented in the poll shape; a server that also carries the push transport fields is not a violation).",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9223372036854775807
+        },
+        "kind": {
+          "type": "string",
+          "minLength": 1
+        },
+        "event_type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "action": {
+          "type": "string",
+          "minLength": 1
+        },
+        "created_at": {
+          "type": "string",
+          "minLength": 1
+        },
+        "bucket_id": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9223372036854775807
+        },
+        "creator_id": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9223372036854775807
+        },
+        "performed_by_id": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 9223372036854775807
+        },
+        "recording_id": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9223372036854775807
+        },
+        "details": {
+          "type": "object",
+          "description": "Type-specific detail object, forwarded verbatim (card.moved: column_id / previous_column_id; boost.created: boost_id / boosted_event_id / boosted_event_type). Present only for the types that publish one."
+        },
+        "actor_type": {
+          "enum": [
+            "agent",
+            "person"
+          ]
+        },
+        "visible_to_clients": {
+          "type": "boolean"
+        }
+      }
+    },
+    "inboxEnvelope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "items",
+        "position"
+      ],
+      "description": "The inbox lane's page: items (oldest first, strict item-id order), position, next — the same envelope contract as the feed's with `items` in place of `events`.",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/inboxItem"
+          }
+        },
+        "position": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The only thing that ever advances the checkpoint. Use {{POS:n}}."
+        },
+        "next": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Continuation URL, bound to this walk, never persisted. Use {{NEXT:n}} for same-origin; hostile fixtures use literal foreign origins."
+        }
+      }
     }
   }
 }

@@ -51,4 +51,34 @@ type Event struct {
 	// VisibleToClients is presence-bearing: push payloads carry it, poll rows
 	// omit it — absent is not false, never a defaulted boolean.
 	VisibleToClients *bool `json:"visible_to_clients,omitempty"`
+	// Addressing is set on every event the INBOX lane delivers and nil on
+	// the account lane: the item envelope the event arrived in, folded onto
+	// the event so the iteration element stays one type across lanes. Its
+	// ID — not the event id — is the inbox lane's identity: one event can
+	// address the principal for several reasons, and each reason is its own
+	// item, so the lane deduplicates, positions its reset cursor, and reports
+	// dropped ids by addressing id (Event.Key).
+	Addressing *Addressing `json:"addressing,omitempty"`
+}
+
+// Addressing is the inbox lane's per-item delivery record (SPEC.md §23 "The
+// Inbox Lane"): why the event addressed the principal, and when.
+type Addressing struct {
+	// ID is the item id — the inbox lane's identity and its strict order.
+	ID int64 `json:"addressing_id"`
+	// Reason is why the principal was addressed: mentioned, assigned,
+	// subscribed, watched, pinged, or boosted. Server-owned vocabulary.
+	Reason string `json:"reason"`
+	// AddressedAt is when the item was written (ISO 8601 on the wire).
+	AddressedAt time.Time `json:"addressed_at"`
+}
+
+// Key is the id the connector deduplicates and positions by: the event id
+// on the account lane, the addressing id on the inbox lane. Consumers that
+// keep their own ledgers should key them the same way.
+func (e Event) Key() int64 {
+	if e.Addressing != nil {
+		return e.Addressing.ID
+	}
+	return e.ID
 }

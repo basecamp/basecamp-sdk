@@ -889,6 +889,15 @@ valid UTF-8. Either violation is a `ReasonUsage` construction error with zero wi
 attempts.
 
 `Events` is single-shot: consuming it twice yields one `ReasonUsage` error element.
+
+The same connector consumes the principal's **inbox** — the low-noise lane of items that
+addressed the agent (mentions, assignments, subscriptions, watches, pings, boosts) — with
+`eventfeed.WithLane(eventfeed.InboxLane)` and a `PollSource` over the inbox endpoint.
+Every delivered event then carries `ev.Addressing` (the item id, the reason, when), and
+the connector deduplicates and positions by that item id, since one event can address
+you for several reasons. Filter it with `Filters{Reasons: ...}` (plus `Types` and
+`Buckets` as narrowing); the account lane's other dimensions are refused at construction
+there. The inbox serves agent principals only.
 `Close` stops the feed without draining, and cancelling the context, calling `Close`, or
 breaking out of the loop all end iteration with **no** error element — a clean stop, and
 the feed is resumable by design.

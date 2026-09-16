@@ -116,6 +116,36 @@ func (f Filters) Validate() error {
 	return nil
 }
 
+// validateForLane applies the lane's dimension rules on top of Validate
+// (SPEC.md §23 "The Inbox Lane"): the inbox filters by reasons, narrowed by
+// types and buckets, and nothing else; the account feed has no reasons. A
+// dimension the lane cannot honour is a usage error at construction rather
+// than a filter the server would reject on the first poll — or, worse,
+// silently ignore.
+func (f Filters) validateForLane(lane Lane) error {
+	switch lane {
+	case InboxLane:
+		for _, list := range []struct {
+			name string
+			n    int
+		}{
+			{"creators", len(f.Creators)},
+			{"performers", len(f.Performers)},
+			{"exclude_performers", len(f.ExcludePerformers)},
+			{"actor_types", len(f.ActorTypes)},
+		} {
+			if list.n > 0 {
+				return usageError("the inbox lane filters by reasons, types and buckets only; " + list.name + " is not an inbox dimension")
+			}
+		}
+	default:
+		if len(f.Reasons) > 0 {
+			return usageError("reasons is an inbox-lane filter; the account feed has no addressing reasons")
+		}
+	}
+	return nil
+}
+
 // validateFilterStrings enforces the string-dimension constraints: every
 // entry non-empty, valid UTF-8, free of commas, whitespace, and quotes.
 // Entries feed the srv2 digest — a checkpoint-identity component — and the

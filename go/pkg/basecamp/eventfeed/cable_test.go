@@ -655,7 +655,7 @@ func assertEventDecodeFails(t *testing.T, raw []byte) {
 }
 
 func TestSubscribeIdentifier_ChannelOnly(t *testing.T) {
-	got := subscribeIdentifier(Filters{})
+	got := subscribeIdentifier(AccountLane, Filters{})
 	if want := `{"channel":"EventsChannel"}`; got != want {
 		t.Errorf("subscribeIdentifier = %s, want %s", got, want)
 	}
@@ -674,7 +674,7 @@ func TestSubscribeIdentifier_AllFilters(t *testing.T) {
 		ExcludePerformers: []int64{5},
 		ActorTypes:        []string{ActorTypePerson, ActorTypeAgent},
 	}
-	got := subscribeIdentifier(f)
+	got := subscribeIdentifier(AccountLane, f)
 	want := `{"channel":"EventsChannel","types":"chat.line.created,message.created","buckets":"2,1","creators":"3","performers":"9,4","exclude_performers":"5","actor_types":"person,agent"}`
 	if got != want {
 		t.Errorf("subscribeIdentifier =\n %s, want\n %s", got, want)
@@ -682,19 +682,89 @@ func TestSubscribeIdentifier_AllFilters(t *testing.T) {
 }
 
 func TestSubscribeIdentifier_PartialFilters(t *testing.T) {
-	got := subscribeIdentifier(Filters{Buckets: []int64{5951425}})
+	got := subscribeIdentifier(AccountLane, Filters{Buckets: []int64{5951425}})
 	if want := `{"channel":"EventsChannel","buckets":"5951425"}`; got != want {
 		t.Errorf("subscribeIdentifier = %s, want %s", got, want)
 	}
 	// The loop guard alone: an agent excluding its own performances.
-	got = subscribeIdentifier(Filters{ExcludePerformers: []int64{77}})
+	got = subscribeIdentifier(AccountLane, Filters{ExcludePerformers: []int64{77}})
 	if want := `{"channel":"EventsChannel","exclude_performers":"77"}`; got != want {
 		t.Errorf("subscribeIdentifier = %s, want %s", got, want)
 	}
 }
 
+func TestSubscribeIdentifier_InboxLane(t *testing.T) {
+	// The inbox subscription: `inbox` is a JSON boolean right after the
+	// channel, then the lane's three dimensions in fixed order. The account
+	// lane's other dimensions never appear — construction refuses them.
+	got := subscribeIdentifier(InboxLane, Filters{})
+	if want := `{"channel":"EventsChannel","inbox":true}`; got != want {
+		t.Errorf("subscribeIdentifier = %s, want %s", got, want)
+	}
+	got = subscribeIdentifier(InboxLane, Filters{
+		Types:   []string{"comment.created"},
+		Buckets: []int64{7},
+		Reasons: []string{"mentioned", "assigned"},
+	})
+	want := `{"channel":"EventsChannel","inbox":true,"types":"comment.created","buckets":"7","reasons":"mentioned,assigned"}`
+	if got != want {
+		t.Errorf("subscribeIdentifier =\n %s, want\n %s", got, want)
+	}
+}
+
+// TestDecodeInboxItem pins the inbox lane's live shape: the four envelope
+// keys around an event decoded to the poll row's contract — the transport-only
+// push keys accepted when present, not required — with the addressing folded
+// onto the event and the addressing id as its Key.
+func TestDecodeInboxItem(t *testing.T) {
+	const event = `{"id":105,"kind":"comment_created","event_type":"comment.created","action":"created","created_at":"2026-08-01T12:00:00Z","bucket_id":2,"creator_id":3,"performed_by_id":null,"recording_id":900}`
+	t.Run("poll-shaped event", func(t *testing.T) {
+		ev, err := decodeInboxItem([]byte(`{"addressing_id":991,"reason":"mentioned","addressed_at":"2026-08-01T12:00:01Z","event":` + event + `}`))
+		if err != nil {
+			t.Fatalf("decodeInboxItem: %v", err)
+		}
+		if ev.Addressing == nil || ev.Addressing.ID != 991 || ev.Addressing.Reason != "mentioned" {
+			t.Fatalf("Addressing = %+v, want id 991 reason mentioned", ev.Addressing)
+		}
+		if ev.Key() != 991 || ev.ID != 105 {
+			t.Errorf("Key() = %d (ID %d), want the addressing id 991 over event id 105", ev.Key(), ev.ID)
+		}
+		if ev.ActorType != "" || ev.VisibleToClients != nil {
+			t.Errorf("transport-only fields = %q/%v, want absent", ev.ActorType, ev.VisibleToClients)
+		}
+	})
+	t.Run("push-shaped event accepted", func(t *testing.T) {
+		pushEvent := `{"id":105,"kind":"comment_created","event_type":"comment.created","action":"created","created_at":"2026-08-01T12:00:00Z","bucket_id":2,"creator_id":3,"performed_by_id":9,"actor_type":"agent","recording_id":900,"visible_to_clients":false}`
+		ev, err := decodeInboxItem([]byte(`{"addressing_id":992,"reason":"assigned","addressed_at":"2026-08-01T12:00:01Z","event":` + pushEvent + `}`))
+		if err != nil {
+			t.Fatalf("decodeInboxItem: %v", err)
+		}
+		if ev.ActorType != ActorTypeAgent || ev.VisibleToClients == nil || ev.PerformedByID == nil || *ev.PerformedByID != 9 {
+			t.Errorf("event = %+v, want the push fields carried through", ev)
+		}
+	})
+	for name, raw := range map[string]string{
+		"missing addressing_id": `{"reason":"mentioned","addressed_at":"2026-08-01T12:00:01Z","event":` + event + `}`,
+		"null addressing_id":    `{"addressing_id":null,"reason":"mentioned","addressed_at":"2026-08-01T12:00:01Z","event":` + event + `}`,
+		"zero addressing_id":    `{"addressing_id":0,"reason":"mentioned","addressed_at":"2026-08-01T12:00:01Z","event":` + event + `}`,
+		"empty reason":          `{"addressing_id":991,"reason":"","addressed_at":"2026-08-01T12:00:01Z","event":` + event + `}`,
+		"missing event":         `{"addressing_id":991,"reason":"mentioned","addressed_at":"2026-08-01T12:00:01Z"}`,
+		"event missing a key":   `{"addressing_id":991,"reason":"mentioned","addressed_at":"2026-08-01T12:00:01Z","event":{"id":105}}`,
+		"duplicate member":      `{"addressing_id":991,"reason":"mentioned","addressed_at":"2026-08-01T12:00:01Z","event":` + event + `,"addressing_id":992}`,
+		"bare push event":       `{"id":105,"kind":"comment_created","event_type":"comment.created","action":"created","created_at":"2026-08-01T12:00:00Z","bucket_id":2,"creator_id":3,"performed_by_id":null,"actor_type":"person","recording_id":900,"visible_to_clients":false}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			_, err := decodeInboxItem([]byte(raw))
+			var ife *invalidFrameError
+			if !errors.As(err, &ife) {
+				t.Fatalf("decodeInboxItem(%s) = %v, want *invalidFrameError", raw, err)
+			}
+		})
+	}
+}
+
 func TestSubscribeCommand_ByteExactness(t *testing.T) {
-	id := subscribeIdentifier(Filters{Types: []string{"message.created"}})
+	id := subscribeIdentifier(AccountLane, Filters{Types: []string{"message.created"}})
 	got := subscribeCommand(id)
 	want := `{"command":"subscribe","identifier":"{\"channel\":\"EventsChannel\",\"types\":\"message.created\"}"}`
 	if string(got) != want {

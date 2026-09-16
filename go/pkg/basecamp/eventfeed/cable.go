@@ -481,6 +481,15 @@ func isJSONObject(data []byte) bool {
 // they arrive through the PollSource seam as Events — and the plain
 // encoding/json decoding of an Event keeps its tolerance of absent keys.
 func decodeMessageEvent(raw json.RawMessage) (Event, error) {
+	return decodeEventObject(raw, true)
+}
+
+// decodeEventObject is the event-object decoder both live shapes share. With
+// push set, the two transport-only keys (actor_type, visible_to_clients) are
+// required — the account lane's push payload; without it they are accepted
+// when present and absent otherwise — the inbox item's nested event, which
+// the server documents in the poll row's shape.
+func decodeEventObject(raw json.RawMessage, push bool) (Event, error) {
 	// parseFrame's gate already covers a payload sliced from a gated frame;
 	// this one binds for any other caller, so the function is total on its
 	// own contract: no decoder-mutated routing field ever leaves it.
@@ -513,31 +522,36 @@ func decodeMessageEvent(raw json.RawMessage) (Event, error) {
 	// shape (performed_by_id's null excepted, below), and none of them names
 	// the offender in the error (see invalidFrameError).
 	for _, f := range []struct {
-		key string
-		dst any
+		key      string
+		dst      any
+		required bool
 	}{
-		{"id", &id},
-		{"kind", &kind},
-		{"event_type", &eventType},
-		{"action", &action},
-		{"created_at", &createdAt},
-		{"bucket_id", &bucketID},
-		{"creator_id", &creatorID},
-		{"performed_by_id", &performedByID},
-		{"actor_type", &actorType},
-		{"recording_id", &recordingID},
-		{"visible_to_clients", &visibleToClients},
+		{"id", &id, true},
+		{"kind", &kind, true},
+		{"event_type", &eventType, true},
+		{"action", &action, true},
+		{"created_at", &createdAt, true},
+		{"bucket_id", &bucketID, true},
+		{"creator_id", &creatorID, true},
+		{"performed_by_id", &performedByID, true},
+		{"actor_type", &actorType, push},
+		{"recording_id", &recordingID, true},
+		{"visible_to_clients", &visibleToClients, push},
 	} {
 		fieldRaw, ok := payload[f.key]
 		if !ok {
-			return Event{}, newInvalidFrameError(invalidFrameEventDecode)
+			if f.required {
+				return Event{}, newInvalidFrameError(invalidFrameEventDecode)
+			}
+			continue
 		}
 		if err := json.Unmarshal(fieldRaw, f.dst); err != nil {
 			return Event{}, newInvalidFrameError(invalidFrameEventDecode)
 		}
 	}
 	if id == nil || kind == nil || eventType == nil || action == nil || createdAt == nil ||
-		bucketID == nil || creatorID == nil || actorType == nil || recordingID == nil || visibleToClients == nil {
+		bucketID == nil || creatorID == nil || recordingID == nil ||
+		(push && (actorType == nil || visibleToClients == nil)) {
 		// JSON null carries no value: the same decode shape as an absent key.
 		return Event{}, newInvalidFrameError(invalidFrameEventDecode)
 	}
@@ -548,8 +562,13 @@ func decodeMessageEvent(raw json.RawMessage) (Event, error) {
 	// delivery and the dedup ledger with a key nothing real can share.
 	if *id < 1 || *bucketID < 1 || *creatorID < 1 || *recordingID < 1 ||
 		(performedByID != nil && *performedByID < 1) ||
-		*kind == "" || *eventType == "" || *action == "" || *actorType == "" {
+		*kind == "" || *eventType == "" || *action == "" ||
+		(actorType != nil && *actorType == "") {
 		return Event{}, newInvalidFrameError(invalidFrameEventDecode)
+	}
+	var actorTypeValue string
+	if actorType != nil {
+		actorTypeValue = *actorType
 	}
 	// details is optional and, when present, a JSON object — the type's own
 	// per-key shape is not decoded here (Event.Details). Null is treated as
@@ -578,7 +597,7 @@ func decodeMessageEvent(raw json.RawMessage) (Event, error) {
 		PerformedByID:    performedByID,
 		RecordingID:      *recordingID,
 		Details:          details,
-		ActorType:        *actorType,
+		ActorType:        actorTypeValue,
 		VisibleToClients: visibleToClients,
 	}, nil
 }
@@ -594,18 +613,92 @@ func decodeMessageEvent(raw json.RawMessage) (Event, error) {
 // whitespace-hostile inputs were already rejected by Filters.Validate, so
 // the minimal RFC 8259 escaping is a no-op in practice but correct by
 // construction.
-func subscribeIdentifier(f Filters) string {
+//
+// On the inbox lane the identifier is
+// {"channel":"EventsChannel","inbox":true[,"types":"a,b"][,"buckets":"1,2"][,"reasons":"mentioned"]}
+// — `inbox` a JSON boolean, as documented, and the lane's three dimensions
+// in the same fixed order. An inbox subscription replaces the account streams
+// for its connection rather than adding to them.
+func subscribeIdentifier(lane Lane, f Filters) string {
 	var b strings.Builder
 	b.WriteString(`{"channel":`)
 	writeJSONString(&b, channelName)
+	if lane == InboxLane {
+		b.WriteString(`,"inbox":true`)
+	}
 	writeIdentifierParam(&b, "types", strings.Join(f.Types, ","))
 	writeIdentifierParam(&b, "buckets", joinIDs(f.Buckets))
-	writeIdentifierParam(&b, "creators", joinIDs(f.Creators))
-	writeIdentifierParam(&b, "performers", joinIDs(f.Performers))
-	writeIdentifierParam(&b, "exclude_performers", joinIDs(f.ExcludePerformers))
-	writeIdentifierParam(&b, "actor_types", strings.Join(f.ActorTypes, ","))
+	if lane == InboxLane {
+		writeIdentifierParam(&b, "reasons", strings.Join(f.Reasons, ","))
+	} else {
+		writeIdentifierParam(&b, "creators", joinIDs(f.Creators))
+		writeIdentifierParam(&b, "performers", joinIDs(f.Performers))
+		writeIdentifierParam(&b, "exclude_performers", joinIDs(f.ExcludePerformers))
+		writeIdentifierParam(&b, "actor_types", strings.Join(f.ActorTypes, ","))
+	}
 	b.WriteByte('}')
 	return b.String()
+}
+
+// decodeLiveEvent decodes a correlated message frame's payload for the lane:
+// the account lane's push event, or the inbox lane's item envelope.
+func decodeLiveEvent(lane Lane, raw json.RawMessage) (Event, error) {
+	if lane == InboxLane {
+		return decodeInboxItem(raw)
+	}
+	return decodeMessageEvent(raw)
+}
+
+// decodeInboxItem decodes an inbox item — {addressing_id, reason,
+// addressed_at, event} — delivered live, in the same shape the poll lane
+// serves. The four envelope keys are required with correct types, and the
+// nested event is decoded to the poll row's contract: the nine keys both
+// lanes carry are required (performed_by_id present, null allowed) and the
+// two push-only transport fields are accepted when present, since the item
+// is documented in the poll shape rather than the push shape. Every failure
+// is the invalid-frame class's decode shape, as for the account lane.
+func decodeInboxItem(raw json.RawMessage) (Event, error) {
+	if !utf8.Valid(raw) || hasLoneSurrogateEscape(raw) {
+		return Event{}, newInvalidFrameError(invalidFrameEventDecode)
+	}
+	var envelope map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &envelope); err != nil {
+		return Event{}, newInvalidFrameError(invalidFrameEventDecode)
+	}
+	if n, err := topLevelMemberCount(raw); err != nil || n != len(envelope) {
+		return Event{}, newInvalidFrameError(invalidFrameEventDecode)
+	}
+	var (
+		addressingID *int64
+		reason       *string
+		addressedAt  *time.Time
+	)
+	for _, f := range []struct {
+		key string
+		dst any
+	}{
+		{"addressing_id", &addressingID},
+		{"reason", &reason},
+		{"addressed_at", &addressedAt},
+	} {
+		fieldRaw, ok := envelope[f.key]
+		if !ok {
+			return Event{}, newInvalidFrameError(invalidFrameEventDecode)
+		}
+		if err := json.Unmarshal(fieldRaw, f.dst); err != nil {
+			return Event{}, newInvalidFrameError(invalidFrameEventDecode)
+		}
+	}
+	eventRaw, ok := envelope["event"]
+	if !ok || addressingID == nil || reason == nil || addressedAt == nil || *addressingID < 1 || *reason == "" {
+		return Event{}, newInvalidFrameError(invalidFrameEventDecode)
+	}
+	ev, err := decodeEventObject(eventRaw, false)
+	if err != nil {
+		return Event{}, err
+	}
+	ev.Addressing = &Addressing{ID: *addressingID, Reason: *reason, AddressedAt: *addressedAt}
+	return ev, nil
 }
 
 // writeIdentifierParam appends one `,"key":"value"` member, omitting the
