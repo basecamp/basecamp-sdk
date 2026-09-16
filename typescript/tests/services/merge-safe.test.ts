@@ -9,8 +9,11 @@
  * person the walk did not reach.
  *
  * Every expectation is the reference's, measured through its own todos Update
- * and schedules EditEntry composites: `Person.Id` is `types.FlexibleInt64`, and
- * `fieldsFromTodo` appends whatever that produced with no filter.
+ * and schedules EditEntry composites (`Person.Id` is `types.FlexibleInt64`, and
+ * `fieldsFromTodo` appends whatever that produced with no filter) — with ONE
+ * deliberate exception, marked where it appears: an id past 2^53 the reference
+ * reads as a number is refused here, because JavaScript has already rounded it
+ * and the only alternative is writing a different person's id.
  */
 import { describe, it, expect } from "vitest";
 import { writableIdList } from "../../src/services/merge-safe.js";
