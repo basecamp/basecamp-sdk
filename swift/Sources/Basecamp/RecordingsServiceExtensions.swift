@@ -399,7 +399,7 @@ extension RecordingsService {
         let type = ref.recordingType?.trimmingCharacters(in: goWhitespace) ?? ""
         if !type.isEmpty {
             if Array(type.utf8).starts(with: Array(chatLineTypePrefix.utf8)) { return .chatLine }
-            guard let kind = summarizableTypes[type] else {
+            guard let kind = byteExactLookup(summarizableTypes, type) else {
                 throw RecordingSummaryError.unknownRecordingType(ref)
             }
             return kind
@@ -415,11 +415,37 @@ extension RecordingsService {
             throw RecordingSummaryError.unknownRecordingType(ref)
         }
         let subject = String(decoding: bytes[..<dot], as: UTF8.self)
-        if subject == "boost" { throw RecordingSummaryError.noRecordingType(ref) }
-        guard let kind = summarizableEventSubjects[subject] else {
+        if bytes[..<dot].elementsEqual("boost".utf8) {
+            throw RecordingSummaryError.noRecordingType(ref)
+        }
+        guard let kind = byteExactLookup(summarizableEventSubjects, subject) else {
             throw RecordingSummaryError.unknownRecordingType(ref)
         }
         return kind
+    }
+
+    /// A dictionary lookup that compares BYTES, as Go's map does.
+    ///
+    /// Swift `String` keys — and `String` equality — compare by canonical
+    /// equivalence, and exactly three scalars decompose to pure ASCII: U+037E
+    /// GREEK QUESTION MARK is `;`, U+1FEF GREEK VARIA is a backtick, and U+212A
+    /// KELVIN SIGN is `K`. One of them lands here: `"\u{212A}anban::Card"` is a
+    /// recording type Go refuses before any request, and it matched
+    /// `"Kanban::Card"` and issued a read. The byte comparison is O(n) over a
+    /// table of twenty-seven, which is the wrong thing to optimise against being
+    /// wrong.
+    ///
+    /// Applied to BOTH tables, though only one has a key an alias can reach:
+    /// none of `comment`, `message`, `todo`, `card` or `chat.line` contains a
+    /// `K`, a `;` or a backtick. That argument is correct and it is exactly the
+    /// shape of argument that has been wrong twice on this branch — an
+    /// equivalence proved over one operation and inherited by another — so the
+    /// second table gets the same comparison rather than the same reasoning. A
+    /// mutation that reverts it cannot be killed by a test, and that is the
+    /// reason to apply it rather than a reason not to.
+    private static func byteExactLookup<V>(_ table: [String: V], _ key: String) -> V? {
+        guard table[key] != nil else { return nil }
+        return table.first(where: { $0.key.utf8.elementsEqual(key.utf8) })?.value
     }
 }
 

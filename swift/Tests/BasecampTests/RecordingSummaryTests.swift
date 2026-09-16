@@ -100,14 +100,58 @@ final class RecordingSummaryTests: XCTestCase {
                 RecordingRef(bucketId: 1, recordingId: 2, recordingType: "Comment\n\t ")),
             .comment)
         // And a mark inside the prefix or on the dot is not the prefix or the
-        // dot, here as in Go.
-        for ref in [
-            RecordingRef(
-                bucketId: 1, recordingId: 2, recordingType: "Chat::Lines::\u{0301}RichText"),
-            RecordingRef(bucketId: 1, recordingId: 2, eventType: "comment.\u{0301}created"),
+        // dot, here as in Go — asserted as the KIND Go routes to, because
+        // "does not throw" is satisfied by routing to the wrong read.
+        XCTAssertEqual(
+            try RecordingsService.route(
+                RecordingRef(
+                    bucketId: 1, recordingId: 2, recordingType: "Chat::Lines::\u{0301}RichText")),
+            .chatLine)
+        XCTAssertEqual(
+            try RecordingsService.route(
+                RecordingRef(bucketId: 1, recordingId: 2, eventType: "comment.\u{0301}created")),
+            .comment)
+    }
+
+    /// The routing tables are looked up by BYTES, because Swift `String` keys
+    /// compare by canonical equivalence and Go's map keys do not.
+    ///
+    /// Exactly three scalars decompose to pure ASCII — U+037E is `;`, U+1FEF is
+    /// a backtick, U+212A KELVIN SIGN is `K` — and one of them reaches a key
+    /// here. `"\u{212A}anban::Card"` is a recording type Go refuses before any
+    /// request, and it matched `"Kanban::Card"` and issued a read.
+    ///
+    /// This sat one line below the `hasPrefix` that was moved to bytes in the
+    /// commit before: the lookups the byte comparisons FEED were left as they
+    /// were.
+    func testTheRoutingTablesAreLookedUpByBytes() async throws {
+        let server = RecordingServer()
+        let account = makeTestAccountClient(transport: server.makeTransport())
+
+        for type in [
+            "\u{212A}anban::Card", "\u{212A}anban::Step", "\u{212A}anban::Board",
+            "\u{212A}anban::Column",
         ] {
-            XCTAssertNoThrow(try RecordingsService.route(ref), "\(ref)")
+            await assertSummarizeFails(
+                account, RecordingRef(bucketId: 1, recordingId: 2, recordingType: type)
+            ) { error in
+                guard case .unknownRecordingType = error else {
+                    return XCTFail("expected unknownRecordingType for \(type), got \(error)")
+                }
+            }
         }
+        XCTAssertEqual(server.paths, [], "a type Go cannot route must not reach the network")
+
+        // The ASCII spellings still route, or the fix is a refusal rather than a
+        // comparison.
+        XCTAssertEqual(
+            try RecordingsService.route(
+                RecordingRef(bucketId: 1, recordingId: 2, recordingType: "Kanban::Card")),
+            .card)
+        XCTAssertEqual(
+            try RecordingsService.route(
+                RecordingRef(bucketId: 1, recordingId: 2, eventType: "card.created")),
+            .card)
     }
 
     func testTheRecordingTypeWinsOverTheEventType() async throws {

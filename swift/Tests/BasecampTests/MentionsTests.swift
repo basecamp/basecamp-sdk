@@ -857,9 +857,9 @@ final class MentionsTests: XCTestCase {
         XCTAssertEqual(decoded("a&copyb"), ["a\u{A9}b"])
         XCTAssertEqual(decoded("a&frac12;b"), ["a\u{BD}b"])
         // `frac12` IS in Go's no-semicolon set and is exactly six characters —
-        // the descent's bound — so it is the last prefix the loop tries. A
-        // seven-character legacy name would not be reachable, which is what the
-        // bound means.
+        // the descent's bound — so it is the FIRST prefix the loop tries, since
+        // the loop counts down from the bound. A seven-character legacy name
+        // would not be reachable at all, which is what the bound means.
         XCTAssertEqual(decoded("a&frac12b"), ["a\u{BD}b"])
         XCTAssertEqual(decoded("a&frac12;b"), ["a\u{BD}b"])
         // The descent takes the longest legacy PREFIX and leaves the rest.
@@ -871,6 +871,23 @@ final class MentionsTests: XCTestCase {
         // In Go's source and NOT expanded by Go, so not in the table either.
         XCTAssertEqual(decoded("a&nGt;b"), ["a&nGt;b"])
         XCTAssertEqual(decoded("a&nLt;b"), ["a&nLt;b"])
+
+        // The two rows whose VALUE is a control character, which a row-per-line
+        // table format cannot carry: the value ends the row that holds it.
+        // `&NewLine;` decoded to nothing, the count still came to 2,229, and the
+        // deletion RESTORED a `--` the reference does not see —
+        // `<payload>-&NewLine;-sig` named nobody there and person 42 here.
+        XCTAssertEqual(decoded("a&NewLine;b"), ["a\u{0A}b"])
+        XCTAssertEqual(decoded("a&Tab;b"), ["a\u{09}b"])
+        XCTAssertEqual(Mentions.personIds(in: "<bc-attachment sgid=\"\(p)-&NewLine;-sig\"></bc-attachment>"), [])
+
+        // And the invariant that makes the whole class impossible rather than
+        // this one row correct: no name in Go's table expands to nothing, so an
+        // empty value means the format ate it.
+        XCTAssertEqual(entityTable.count, 2229)
+        XCTAssertFalse(entityTable.values.contains(""), "a row whose value the format destroyed")
+        XCTAssertEqual(entityTable["NewLine;"], "\u{0A}")
+        XCTAssertEqual(entityTable["Tab;"], "\u{09}")
 
         // And the write-side consequence, which is why the subset was wrong:
         // the content already mentions this person, so Go adds nothing.
@@ -949,6 +966,36 @@ final class MentionsTests: XCTestCase {
                         "{\"x\":\"\(bom)y\",\"_rails\":{\"data\":\"gid://bc3/Person/7\","
                             + "\"pur\":\"attachable\"}}")),
             7)
+    }
+
+    /// The sentinel encoding belongs to the JSON branch and stops there.
+    ///
+    /// Only that branch smuggles a byte-order mark past `JSONSerialization`, so
+    /// only that branch decodes one back. A Ruby Marshal envelope goes nowhere
+    /// near the JSON parser, and running the inverse over it would rewrite bytes
+    /// nothing encoded: `U+E000 U+E001` in a Marshal gid would come back as
+    /// U+FEFF, and `U+E000 U+E000` as a single U+E000.
+    ///
+    /// It changes no verdict today — the mangling only ever lands in a host,
+    /// which is checked for validity and emptiness and nothing else — so this
+    /// asserts at the seam where it IS observable rather than pretending the
+    /// public answer can see it. Go's answers, from `globalIDFromSGID`.
+    func testTheSentinelDecodeDoesNotReachTheMarshalEnvelope() {
+        let pair =
+            "BAh7BkkiC19yYWlscwY6BkVUewdJIglkYXRhBjsAVEkiHWdpZDovL2LugIDugIFjMy9QZXJzb24vNwY7"
+            + "AFRJIghwdXIGOwBUSSIPYXR0YWNoYWJsZQY7AFQ"
+        let doubled =
+            "BAh7BkkiC19yYWlscwY6BkVUewdJIglkYXRhBjsAVEkiHWdpZDovL2LugIDugIBjMy9QZXJzb24vNwY7"
+            + "AFRJIghwdXIGOwBUSSIPYXR0YWNoYWJsZQY7AFQ"
+        XCTAssertEqual(
+            Mentions.envelopeGlobalId(Array(pair.utf8)[...]),
+            "gid://b\u{E000}\u{E001}c3/Person/7")
+        XCTAssertEqual(
+            Mentions.envelopeGlobalId(Array(doubled.utf8)[...]),
+            "gid://b\u{E000}\u{E000}c3/Person/7")
+        // And both are still a person, since a host may carry any non-ASCII byte.
+        XCTAssertEqual(Mentions.personId(fromAttachableSgid: pair), 7)
+        XCTAssertEqual(Mentions.personId(fromAttachableSgid: doubled), 7)
     }
 
     /// The `--` separator is found by a BYTE scan, as `strings.LastIndex` finds
