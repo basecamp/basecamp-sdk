@@ -20,6 +20,8 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/basecamp/basecamp-sdk/go/pkg/basecamp/eventfeed"
 )
 
 // scenario is one loaded tier-2 fixture.
@@ -378,7 +380,13 @@ func checkScenarioMs(what string, v, floor int64) error {
 // tier-2 tests run without the JSON-schema gate in front of them. The
 // ceiling makes that a load-time fixture error instead. 1,000,000 is 100×
 // the defaults and far past any overflow fixture, which sets a handful.
-const maxScenarioCapacity int64 = 1_000_000
+//
+// It is eventfeed.MaxCapacity by declaration rather than a second literal.
+// The same bound is stated in three places — the public option contract, the
+// schema's `maximum`, and this loader — and two of those three are now one
+// number: TestScenarioConfigBoundsMatchTheSchema compares the schema against
+// this constant, so the schema cannot drift from the option contract either.
+const maxScenarioCapacity int64 = eventfeed.MaxCapacity
 
 // checkScenarioCapacity enforces the schema's [1, maxScenarioCapacity] range
 // on one capacity at load — before any connector is constructed, so a

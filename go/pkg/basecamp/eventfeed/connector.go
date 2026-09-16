@@ -23,6 +23,21 @@ const (
 	// WithLiveBufferCapacity; deliberately decoupled from the dedupe
 	// capacity — only event-bearing frames are buffered).
 	DefaultLiveBufferCapacity = 10_000
+	// MaxCapacity is the inclusive ceiling on both configurable capacities
+	// (EVENT_FEED_MAX_CAPACITY; SPEC.md §23 states it as a shared API
+	// constraint every SDK's construction-time validation applies, and
+	// conformance/event-feed/schema.json declares the same number as its
+	// `maximum` for both fields). New refuses a larger value, before the
+	// validated config can reach a run: the capacity travels in it to
+	// newLoop, where newDedupe sizes its index map by the capacity eagerly,
+	// so an absurd value is not a slow run but an allocation the first Events
+	// iteration cannot decline. The live buffer grows to its capacity lazily
+	// and pays only for the events it admits; it carries the same ceiling
+	// because the two are one published contract, not because it allocates up
+	// front. #900 refused the value at fixture load, after a scenario asking
+	// for 2,147,483,647 took the test process down. The options are the same
+	// request on a path the loader does not cover.
+	MaxCapacity = 1_000_000
 
 	// handshakeDeadline (EVENT_FEED_HANDSHAKE_DEADLINE, 10s) spans
 	// dial-to-welcome: it is armed on entry to Connecting, before dial, so a
@@ -211,11 +226,12 @@ func WithConfirmationDeadline(d time.Duration) Option {
 func WithRepairInterval(d time.Duration) Option { return func(c *config) { c.repairInterval = d } }
 
 // WithDedupeCapacity overrides the delivered-id LRU capacity (default
-// 10,000; must be positive — there is no dedupe-disabled mode).
+// 10,000; must be positive — there is no dedupe-disabled mode — and at most
+// MaxCapacity).
 func WithDedupeCapacity(n int) Option { return func(c *config) { c.dedupeCapacity = n } }
 
 // WithLiveBufferCapacity overrides the live-buffer capacity (default 10,000
-// events; must be positive).
+// events; must be positive and at most MaxCapacity).
 func WithLiveBufferCapacity(n int) Option { return func(c *config) { c.liveBufferCapacity = n } }
 
 // WithSignalHandler registers the semantic-signal handler. With none
@@ -416,8 +432,14 @@ func validateConfig(cfg *config) error {
 	if cfg.dedupeCapacity <= 0 {
 		return usageError(fmt.Sprintf("dedupe capacity must be positive, got %d", cfg.dedupeCapacity))
 	}
+	if cfg.dedupeCapacity > MaxCapacity {
+		return usageError(fmt.Sprintf("dedupe capacity must be at most %d, got %d", MaxCapacity, cfg.dedupeCapacity))
+	}
 	if cfg.liveBufferCapacity <= 0 {
 		return usageError(fmt.Sprintf("live buffer capacity must be positive, got %d", cfg.liveBufferCapacity))
+	}
+	if cfg.liveBufferCapacity > MaxCapacity {
+		return usageError(fmt.Sprintf("live buffer capacity must be at most %d, got %d", MaxCapacity, cfg.liveBufferCapacity))
 	}
 	if cfg.confirmationDeadline <= 0 {
 		return usageError("confirmation deadline must be positive")

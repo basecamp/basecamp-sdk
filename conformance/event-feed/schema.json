@@ -653,13 +653,13 @@
         "liveBufferCapacity": {
           "type": "integer",
           "minimum": 1,
-          "description": "Default 10000 events. Overflow fixtures set a small value so overflow is reachable in a handful of frames. Capped at 1,000,000 — a resource ceiling, since a driver may allocate the capacity eagerly.",
+          "description": "Default 10000 events. Overflow fixtures set a small value so overflow is reachable in a handful of frames. Capped at 1,000,000 — SPEC §23's EVENT_FEED_MAX_CAPACITY, a resource ceiling, since a driver may allocate the capacity eagerly. This is the same bound the connector's own construction-time validation applies, so no fixture can ask for what a driver must refuse.",
           "maximum": 1000000
         },
         "dedupeCapacity": {
           "type": "integer",
           "minimum": 1,
-          "description": "Default 10000 delivered ids. Deliberately decoupled from liveBufferCapacity. Capped at 1,000,000 — a resource ceiling, since a driver may allocate the capacity eagerly.",
+          "description": "Default 10000 delivered ids. Deliberately decoupled from liveBufferCapacity. Capped at 1,000,000 — SPEC §23's EVENT_FEED_MAX_CAPACITY, a resource ceiling, since a driver may allocate the capacity eagerly. This is the same bound the connector's own construction-time validation applies, so no fixture can ask for what a driver must refuse.",
           "maximum": 1000000
         },
         "signalDisposition": {

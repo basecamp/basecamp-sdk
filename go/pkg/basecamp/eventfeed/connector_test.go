@@ -64,6 +64,20 @@ func TestNewValidation(t *testing.T) {
 		{"negative live buffer capacity", testOrigin, "1", minter, polls,
 			[]eventfeed.Option{eventfeed.WithLiveBufferCapacity(-1)},
 			"live buffer capacity"},
+		// Construction is where the ceiling has to bite: the validated
+		// capacity travels to the run loop, where the dedupe index sizes its
+		// map by it eagerly, so refusing here means the allocation is never
+		// requested. These call New directly; the fixture loader's ceiling
+		// (#900) covers a different path, and neither covers the other.
+		{"dedupe capacity over the ceiling", testOrigin, "1", minter, polls,
+			[]eventfeed.Option{eventfeed.WithDedupeCapacity(eventfeed.MaxCapacity + 1)},
+			"at most"},
+		{"dedupe capacity at int32 max", testOrigin, "1", minter, polls,
+			[]eventfeed.Option{eventfeed.WithDedupeCapacity(2147483647)},
+			"at most"},
+		{"live buffer capacity over the ceiling", testOrigin, "1", minter, polls,
+			[]eventfeed.Option{eventfeed.WithLiveBufferCapacity(eventfeed.MaxCapacity + 1)},
+			"at most"},
 		{"non-positive confirmation deadline", testOrigin, "1", minter, polls,
 			[]eventfeed.Option{eventfeed.WithConfirmationDeadline(0)},
 			"confirmation deadline"},
@@ -125,6 +139,29 @@ func TestNewValidation(t *testing.T) {
 			}
 			if !strings.Contains(err.Error(), tc.wantMsg) {
 				t.Fatalf("error %q does not mention %q", err, tc.wantMsg)
+			}
+		})
+	}
+}
+
+// TestNewAcceptsCapacitiesAtTheCeiling pins MaxCapacity as inclusive from the
+// side TestNewValidation cannot see. Every refusal case there is satisfied by
+// a bound tighter than the published one, so a comparison that slipped to >=
+// would narrow the contract with the whole suite still green; these fail.
+func TestNewAcceptsCapacitiesAtTheCeiling(t *testing.T) {
+	minter := feedtest.NewMinter()
+	polls := feedtest.NewPolls()
+
+	for _, tc := range []struct {
+		name string
+		opt  eventfeed.Option
+	}{
+		{"dedupe capacity", eventfeed.WithDedupeCapacity(eventfeed.MaxCapacity)},
+		{"live buffer capacity", eventfeed.WithLiveBufferCapacity(eventfeed.MaxCapacity)},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if _, err := eventfeed.New(testOrigin, "1", minter, polls, tc.opt); err != nil {
+				t.Fatalf("New at the ceiling (%d): %v", eventfeed.MaxCapacity, err)
 			}
 		})
 	}
