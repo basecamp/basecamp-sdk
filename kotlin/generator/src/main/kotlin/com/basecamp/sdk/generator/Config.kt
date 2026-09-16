@@ -312,6 +312,10 @@ val RESOURCE_TYPE_OVERRIDES = mapOf(
     // The whole family reports "bookmark"; the inferred "my_bookmark" would
     // split the list operation into its own telemetry category.
     "ListMyBookmarks" to "bookmark",
+    // "Poll" is not a verb pattern, so inference falls through to the generic
+    // "resource"; the feed's rows are feed events, the inbox's are inbox items.
+    "PollEvents" to "feed_event",
+    "PollInbox" to "inbox_item",
     // Creates and returns a Todo; the inferred "todoset_todo" would split
     // loose-to-do operations into their own telemetry category.
     "CreateTodosetTodo" to "todo",

@@ -24,6 +24,7 @@ from basecamp.generated.services.cloud_files import CloudFilesService, AsyncClou
 from basecamp.generated.services.comments import CommentsService, AsyncCommentsService
 from basecamp.generated.services.documents import DocumentsService, AsyncDocumentsService
 from basecamp.generated.services.drafts import DraftsService, AsyncDraftsService
+from basecamp.generated.services.event_feed import EventFeedService, AsyncEventFeedService
 from basecamp.generated.services.events import EventsService, AsyncEventsService
 from basecamp.generated.services.everything import EverythingService, AsyncEverythingService
 from basecamp.generated.services.folders import FoldersService, AsyncFoldersService
@@ -101,6 +102,8 @@ __all__ = [
     "AsyncDocumentsService",
     "DraftsService",
     "AsyncDraftsService",
+    "EventFeedService",
+    "AsyncEventFeedService",
     "EventsService",
     "AsyncEventsService",
     "EverythingService",

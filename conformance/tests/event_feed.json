@@ -1,0 +1,341 @@
+[
+  {
+    "name": "PollEvents decodes the poll envelope",
+    "description": "The account event feed's poll lane answers with a body envelope — `events`, `position`, and `next` while the walk continues — not a bare array and not a Link-header page. The three rows cover the shape's variants: a plain pointer with a null `performed_by_id` and no `details`; a delegated `boost.created` with a numeric `performed_by_id` and boost details; and a `card.moved` with column details. Every runner summarizes the DECODED page into flat scalars (a responseBody path is a top-level key only), and null/absence is asserted through boolean predicates because the six SDKs disagree about presence but agree about null. No mock runner consumes queryParams and no assertion can pin a query string, so the dispatch fixes `since=now`.",
+    "operation": "PollEvents",
+    "method": "GET",
+    "path": "/events.json",
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json",
+          "X-Feed-Position": "posAAA",
+          "Link": "<https://3.basecampapi.com/999/events.json?position=posAAA>; rel=\"next\""
+        },
+        "body": {
+          "events": [
+            {
+              "id": 1071915468,
+              "kind": "message_created",
+              "action": "created",
+              "created_at": "2026-07-14T06:10:00.159Z",
+              "event_type": "message.created",
+              "bucket_id": 2085958499,
+              "creator_id": 1049715945,
+              "performed_by_id": null,
+              "recording_id": 1069479766
+            },
+            {
+              "id": 1071915470,
+              "kind": "boost_created",
+              "action": "created",
+              "created_at": "2026-07-14T06:11:00.000Z",
+              "event_type": "boost.created",
+              "bucket_id": 2085958499,
+              "creator_id": 1049715946,
+              "performed_by_id": 1049715999,
+              "recording_id": 1069479766,
+              "details": {
+                "boost_id": 501,
+                "boosted_event_id": 1071915468,
+                "boosted_event_type": "message.created"
+              }
+            },
+            {
+              "id": 1071915471,
+              "kind": "kanban_card_moved",
+              "action": "moved",
+              "created_at": "2026-07-14T06:12:00.000Z",
+              "event_type": "card.moved",
+              "bucket_id": 2085958499,
+              "creator_id": 1049715945,
+              "performed_by_id": null,
+              "recording_id": 1069479800,
+              "details": {
+                "column_id": 77,
+                "previous_column_id": 76
+              }
+            }
+          ],
+          "position": "posAAA",
+          "next": "https://3.basecampapi.com/999/events.json?position=posAAA"
+        }
+      }
+    ],
+    "assertions": [
+      { "type": "noError" },
+      { "type": "requestCount", "expected": 1 },
+      { "type": "requestMethod", "expected": "GET" },
+      { "type": "requestPath", "expected": "/999/events.json" },
+      { "type": "responseBody", "path": "event_count", "expected": 3 },
+      { "type": "responseBody", "path": "position", "expected": "posAAA" },
+      { "type": "responseBody", "path": "has_next", "expected": true },
+      { "type": "responseBody", "path": "first_event_id", "expected": 1071915468 },
+      { "type": "responseBody", "path": "first_event_type", "expected": "message.created" },
+      { "type": "responseBody", "path": "first_recording_id", "expected": 1069479766 },
+      { "type": "responseBody", "path": "first_performed_by_null", "expected": true },
+      { "type": "responseBody", "path": "first_has_details", "expected": false },
+      { "type": "responseBody", "path": "boost_performed_by_id", "expected": 1049715999 },
+      { "type": "responseBody", "path": "boost_id", "expected": 501 },
+      { "type": "responseBody", "path": "boosted_event_id", "expected": 1071915468 },
+      { "type": "responseBody", "path": "boosted_event_type", "expected": "message.created" },
+      { "type": "responseBody", "path": "moved_column_id", "expected": 77 },
+      { "type": "responseBody", "path": "moved_previous_column_id", "expected": 76 }
+    ],
+    "tags": ["event-feed", "decode"]
+  },
+  {
+    "name": "PollEvents ends a walk without next",
+    "description": "When the walk has reached its frozen head the envelope omits `next`; the page still carries `position`, and an empty `events` array decodes as an empty page rather than an error.",
+    "operation": "PollEvents",
+    "method": "GET",
+    "path": "/events.json",
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": { "Content-Type": "application/json" },
+        "body": {
+          "events": [],
+          "position": "posEND"
+        }
+      }
+    ],
+    "assertions": [
+      { "type": "noError" },
+      { "type": "responseBody", "path": "event_count", "expected": 0 },
+      { "type": "responseBody", "path": "position", "expected": "posEND" },
+      { "type": "responseBody", "path": "has_next", "expected": false }
+    ],
+    "tags": ["event-feed", "decode"]
+  },
+  {
+    "name": "PollEvents surfaces a 409 filter mismatch as a non-retryable error",
+    "description": "A position minted for a different filter set answers 409 with `position_digest` and `filters_digest`. SPEC §6 maps 409 to `api_error`, non-retryable, with the server's message; re-entry with `since=` is the consumer's move, never an automatic retry.",
+    "operation": "PollEvents",
+    "method": "GET",
+    "path": "/events.json",
+    "mockResponses": [
+      {
+        "status": 409,
+        "headers": { "Content-Type": "application/json" },
+        "body": {
+          "error": "Positions are bound to the filter set they were minted for. Acknowledge the filter change by re-entering with since=<id> or since=now.",
+          "position_digest": "38b223c13c89dc89",
+          "filters_digest": "44136fa355b3678a"
+        }
+      }
+    ],
+    "assertions": [
+      { "type": "requestCount", "expected": 1 },
+      { "type": "errorCode", "expected": "api_error" },
+      { "type": "errorField", "path": "httpStatus", "expected": 409 },
+      { "type": "errorField", "path": "retryable", "expected": false },
+      { "type": "errorMessage", "expected": "Positions are bound to the filter set" }
+    ],
+    "tags": ["event-feed", "error-mapping"]
+  },
+  {
+    "name": "PollEvents surfaces a 410 stale position as a non-retryable error",
+    "description": "A position behind the feed's epoch answers 410 with `epoch_after_id` and a `resume` URL. SPEC §6 maps 410 to `api_error`, non-retryable; the consumer follows `resume` after validating it (SPEC §23), and nothing retries the same position.",
+    "operation": "PollEvents",
+    "method": "GET",
+    "path": "/events.json",
+    "mockResponses": [
+      {
+        "status": 410,
+        "headers": { "Content-Type": "application/json" },
+        "body": {
+          "error": "That position predates this feed's epoch, so the history behind it can't be served.",
+          "epoch_after_id": 1071915000,
+          "resume": "https://3.basecampapi.com/999/events.json?since=1071915000"
+        }
+      }
+    ],
+    "assertions": [
+      { "type": "requestCount", "expected": 1 },
+      { "type": "errorCode", "expected": "api_error" },
+      { "type": "errorField", "path": "httpStatus", "expected": 410 },
+      { "type": "errorField", "path": "retryable", "expected": false },
+      { "type": "errorMessage", "expected": "predates this feed's epoch" }
+    ],
+    "tags": ["event-feed", "error-mapping"]
+  },
+  {
+    "name": "PollEvents surfaces a malformed position 400 as validation",
+    "description": "The feed's 400 is the flat `{error}` body, so it rides SPEC §6's 400 → `validation` mapping with the server's message, which is what tells a malformed position (resume with `since=`) from a malformed filter (fix the filters) — the two cases share a status and a shape.",
+    "operation": "PollEvents",
+    "method": "GET",
+    "path": "/events.json",
+    "mockResponses": [
+      {
+        "status": 400,
+        "headers": { "Content-Type": "application/json" },
+        "body": {
+          "error": "Unrecognized position. Resume with since=<id> or since=now."
+        }
+      }
+    ],
+    "assertions": [
+      { "type": "requestCount", "expected": 1 },
+      { "type": "errorCode", "expected": "validation" },
+      { "type": "errorField", "path": "httpStatus", "expected": 400 },
+      { "type": "errorMessage", "expected": "Unrecognized position" }
+    ],
+    "tags": ["event-feed", "error-mapping"]
+  },
+  {
+    "name": "PollInbox decodes the inbox envelope",
+    "description": "The inbox is its own resource: `items` (each an addressing with its own `addressing_id`, `reason`, `addressed_at`, and the addressing `event` in the feed's shape), `position`, and `next` while the walk continues. Summarized to flat scalars as PollEvents is.",
+    "operation": "PollInbox",
+    "method": "GET",
+    "path": "/inbox.json",
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": { "Content-Type": "application/json" },
+        "body": {
+          "items": [
+            {
+              "addressing_id": 991,
+              "reason": "mentioned",
+              "addressed_at": "2026-07-14T06:10:00.159Z",
+              "event": {
+                "id": 1071915468,
+                "kind": "comment_created",
+                "action": "created",
+                "created_at": "2026-07-14T06:10:00.159Z",
+                "event_type": "comment.created",
+                "bucket_id": 2085958499,
+                "creator_id": 1049715945,
+                "performed_by_id": null,
+                "recording_id": 1069479766
+              }
+            },
+            {
+              "addressing_id": 992,
+              "reason": "assigned",
+              "addressed_at": "2026-07-14T06:10:00.159Z",
+              "event": {
+                "id": 1071915468,
+                "kind": "comment_created",
+                "action": "created",
+                "created_at": "2026-07-14T06:10:00.159Z",
+                "event_type": "comment.created",
+                "bucket_id": 2085958499,
+                "creator_id": 1049715945,
+                "performed_by_id": null,
+                "recording_id": 1069479766
+              }
+            }
+          ],
+          "position": "inboxPos"
+        }
+      }
+    ],
+    "assertions": [
+      { "type": "noError" },
+      { "type": "requestCount", "expected": 1 },
+      { "type": "requestMethod", "expected": "GET" },
+      { "type": "requestPath", "expected": "/999/inbox.json" },
+      { "type": "responseBody", "path": "item_count", "expected": 2 },
+      { "type": "responseBody", "path": "position", "expected": "inboxPos" },
+      { "type": "responseBody", "path": "has_next", "expected": false },
+      { "type": "responseBody", "path": "first_addressing_id", "expected": 991 },
+      { "type": "responseBody", "path": "first_reason", "expected": "mentioned" },
+      { "type": "responseBody", "path": "first_event_id", "expected": 1071915468 },
+      { "type": "responseBody", "path": "first_event_type", "expected": "comment.created" },
+      { "type": "responseBody", "path": "last_addressing_id", "expected": 992 },
+      { "type": "responseBody", "path": "last_reason", "expected": "assigned" }
+    ],
+    "tags": ["event-feed", "inbox", "decode"]
+  },
+  {
+    "name": "PollInbox is forbidden for a person principal",
+    "description": "The inbox serves agents only for now; any other principal receives a bodyless 403, which SPEC §6 maps to `forbidden`.",
+    "operation": "PollInbox",
+    "method": "GET",
+    "path": "/inbox.json",
+    "mockResponses": [
+      { "status": 403 }
+    ],
+    "assertions": [
+      { "type": "requestCount", "expected": 1 },
+      { "type": "errorCode", "expected": "forbidden" },
+      { "type": "errorField", "path": "httpStatus", "expected": 403 }
+    ],
+    "tags": ["event-feed", "inbox", "error-mapping"]
+  },
+  {
+    "name": "PollInbox surfaces a 410 retention gap with no epoch",
+    "description": "On the inbox a 410 means the position fell behind the 30-day retention window: the body carries `resume` (re-entering at `since=0`) and no `epoch_after_id`. Same `api_error`/410 mapping as the feed.",
+    "operation": "PollInbox",
+    "method": "GET",
+    "path": "/inbox.json",
+    "mockResponses": [
+      {
+        "status": 410,
+        "headers": { "Content-Type": "application/json" },
+        "body": {
+          "error": "That position predates the inbox's retention window, so the items behind it can't be served.",
+          "resume": "https://3.basecampapi.com/999/inbox.json?since=0"
+        }
+      }
+    ],
+    "assertions": [
+      { "type": "requestCount", "expected": 1 },
+      { "type": "errorCode", "expected": "api_error" },
+      { "type": "errorField", "path": "httpStatus", "expected": 410 },
+      { "type": "errorMessage", "expected": "retention window" }
+    ],
+    "tags": ["event-feed", "inbox", "error-mapping"]
+  },
+  {
+    "name": "CreateStreamTicket mints with a bodyless POST and decodes the mint",
+    "description": "The mint is a POST with no request body answering 200 (not 201) with `{ticket, expires_in, url}`. The values here are fixture literals, not credentials; the SDKs mark both `ticket` and `url` sensitive so real ones never reach a log.",
+    "operation": "CreateStreamTicket",
+    "method": "POST",
+    "path": "/events/stream_ticket.json",
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": { "Content-Type": "application/json", "Cache-Control": "no-store" },
+        "body": {
+          "ticket": "fixture-ticket-not-a-credential",
+          "expires_in": 120,
+          "url": "wss://cable.example.invalid/999?ticket=fixture-ticket-not-a-credential"
+        }
+      }
+    ],
+    "assertions": [
+      { "type": "noError" },
+      { "type": "requestCount", "expected": 1 },
+      { "type": "requestMethod", "expected": "POST" },
+      { "type": "requestPath", "expected": "/999/events/stream_ticket.json" },
+      { "type": "responseBody", "path": "ticket", "expected": "fixture-ticket-not-a-credential" },
+      { "type": "responseBody", "path": "expires_in", "expected": 120 },
+      { "type": "responseBody", "path": "url", "expected": "wss://cable.example.invalid/999?ticket=fixture-ticket-not-a-credential" }
+    ],
+    "tags": ["event-feed", "stream-ticket", "decode"]
+  },
+  {
+    "name": "CreateStreamTicket surfaces 401 as auth_required",
+    "description": "A revoked or expired token cannot mint; the 401 rides SPEC §6's `auth_required` mapping. The connector's mint seam classifies this as an authorization failure rather than a transient (SPEC §23).",
+    "operation": "CreateStreamTicket",
+    "method": "POST",
+    "path": "/events/stream_ticket.json",
+    "mockResponses": [
+      {
+        "status": 401,
+        "headers": { "Content-Type": "application/json" },
+        "body": { "error": "Unauthorized" }
+      }
+    ],
+    "assertions": [
+      { "type": "requestCount", "expected": 1 },
+      { "type": "errorCode", "expected": "auth_required" },
+      { "type": "errorField", "path": "httpStatus", "expected": 401 }
+    ],
+    "tags": ["event-feed", "stream-ticket", "error-mapping"]
+  }
+]

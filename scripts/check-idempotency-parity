@@ -139,8 +139,13 @@ jq -r '.operations | to_entries[] | select(.value.idempotent == true or .value.r
 # and EnableProjectClients' POST and DisableProjectClients' DELETE toggle a
 # boolean — re-enabling an enabled project re-answers the same state — so all
 # three land in both counts (+3 each). None is readonly.
-expected_idempotent=91
-expected_union=219
+# Event feed absorption (+3 ops): PollEvents and PollInbox are readonly (+2
+# union only); CreateStreamTicket's POST is naturally idempotent — the mint is a
+# stateless signed capability with no server-side consumption, so a replayed
+# request is harmless (SPEC §23 "safe-to-retry", deliberately not a claim of an
+# identical response) — so it lands in both counts (+1 each).
+expected_idempotent=92
+expected_union=222
 nIdempotent=$(wc -l < "$WORK/idempotentSet" | tr -d ' ')
 nUnion=$(wc -l < "$WORK/unionSet" | tr -d ' ')
 echo "    source of truth: $nIdempotent idempotent, $nUnion idempotent∪readonly"

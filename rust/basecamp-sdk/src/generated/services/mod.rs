@@ -23,6 +23,7 @@ pub mod cloud_files;
 pub mod comments;
 pub mod documents;
 pub mod drafts;
+pub mod event_feed;
 pub mod events;
 pub mod everything;
 pub mod folders;

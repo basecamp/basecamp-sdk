@@ -8,7 +8,10 @@ type WebhookEvent struct {
 	CreatedAt string                `json:"created_at"`
 	Recording WebhookEventRecording `json:"recording"`
 	Creator   WebhookEventPerson    `json:"creator"`
-	Copy      *WebhookCopy          `json:"copy,omitempty"`
+	// PerformedBy is the agent that carried out the action on the creator's
+	// behalf (personable_type "Agent"); absent for actions performed directly.
+	PerformedBy *WebhookEventPerson `json:"performed_by,omitempty"`
+	Copy        *WebhookCopy        `json:"copy,omitempty"`
 }
 
 // WebhookEventRecording is the recording included in webhook event payloads.

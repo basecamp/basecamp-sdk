@@ -969,6 +969,32 @@
       }
     },
     {
+      "pattern": "/{accountId}/events",
+      "resource": "EventFeed",
+      "operations": {
+        "GET": "PollEvents"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/events/stream_ticket",
+      "resource": "EventFeed",
+      "operations": {
+        "POST": "CreateStreamTicket"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        }
+      }
+    },
+    {
       "pattern": "/{accountId}/files",
       "resource": "Everything",
       "operations": {
@@ -1028,6 +1054,19 @@
         "googleDocumentId": {
           "role": "recording",
           "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/inbox",
+      "resource": "EventFeed",
+      "operations": {
+        "GET": "PollInbox"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
         }
       }
     },

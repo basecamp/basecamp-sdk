@@ -421,6 +421,12 @@ class AccountClient:
         return self._service("bookmarks", lambda: BookmarksService(self))
 
     @property
+    def event_feed(self):
+        from basecamp.generated.services.event_feed import EventFeedService
+
+        return self._service("event_feed", lambda: EventFeedService(self))
+
+    @property
     def bubble_ups(self):
         from basecamp.generated.services.bubble_ups import BubbleUpsService
 

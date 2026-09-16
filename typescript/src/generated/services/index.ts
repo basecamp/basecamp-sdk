@@ -21,6 +21,7 @@ export { EverythingService } from "./everything.js";
 export { PeopleService } from "./people.js";
 export { CommentsService } from "./comments.js";
 export { DocumentsService } from "./documents.js";
+export { EventFeedService } from "./event-feed.js";
 export { GaugesService } from "./gauges.js";
 export { ForwardsService } from "./forwards.js";
 export { AutomationService } from "./automation.js";

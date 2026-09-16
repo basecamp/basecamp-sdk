@@ -18,5 +18,6 @@ data class WebhookEvent(
     @SerialName("created_at") val createdAt: String? = null,
     val recording: Recording? = null,
     val creator: Person? = null,
+    @SerialName("performed_by") val performedBy: Person? = null,
     val copy: WebhookCopy? = null
 )

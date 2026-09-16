@@ -8,6 +8,7 @@ public struct WebhookEvent: Codable, Sendable {
     public var details: String?
     public var id: Int?
     public var kind: String?
+    public var performedBy: Person?
     public var recording: Recording?
 
     public init(
@@ -17,6 +18,7 @@ public struct WebhookEvent: Codable, Sendable {
         details: String? = nil,
         id: Int? = nil,
         kind: String? = nil,
+        performedBy: Person? = nil,
         recording: Recording? = nil
     ) {
         self.copy = copy
@@ -25,6 +27,7 @@ public struct WebhookEvent: Codable, Sendable {
         self.details = details
         self.id = id
         self.kind = kind
+        self.performedBy = performedBy
         self.recording = recording
     }
 }
