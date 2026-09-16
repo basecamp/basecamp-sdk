@@ -26,6 +26,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"reflect"
 	"slices"
 	"strconv"
 	"strings"
@@ -100,6 +101,12 @@ func runScenario(h *scenarioHarness, sc *scenario) (err error) {
 		defer close(iteration)
 		for event, iterErr := range conn.Events(ctx) {
 			if iterErr != nil {
+				// The terminal element is exactly (Event{}, error): an event
+				// riding beside the error would be stale data a consumer must
+				// guess the meaning of.
+				if !reflect.DeepEqual(event, eventfeed.Event{}) {
+					h.violate("the terminal element carried event %d beside its error; §23's final element is (Event{}, error)", event.ID)
+				}
 				h.recordTerminal(iterErr)
 				continue
 			}
@@ -564,6 +571,12 @@ func (d *driver) expectClientClose() error {
 	if frame.kind != "close" {
 		return fmt.Errorf("the connector sent a frame where the script expects its close: %s", frame.data)
 	}
+	// Every client-initiated close is a normal closure: the code is what the
+	// peer observes, and an abnormal or protocol-error status would read as
+	// a fault the connector never found.
+	if frame.code != 1000 {
+		return fmt.Errorf("the connector closed with status %d, want 1000 (normal closure)", frame.code)
+	}
 	return nil
 }
 
@@ -787,6 +800,9 @@ func matchSignal(step *expectSignalStep, signal eventfeed.Signal) string {
 		if got.EpochAfterID != *step.EpochAfterID {
 			return fmt.Sprintf("epoch_after_id %d, want %d", got.EpochAfterID, *step.EpochAfterID)
 		}
+		if step.ResumeURL != nil && got.ResumeURL != *step.ResumeURL {
+			return fmt.Sprintf("resume url %q, want the server's %q", got.ResumeURL, *step.ResumeURL)
+		}
 	default:
 		return fmt.Sprintf("unknown signal type %T", got)
 	}
@@ -990,6 +1006,24 @@ func (d *driver) assertNoResidue() error {
 		return fmt.Errorf("the scripted store calls %v were consumed %d deep — an unconsumed outcome fails the scenario",
 			d.h.saveScript, d.h.saveUsed)
 	}
+	// Observation ledgers are matched one record per expect step; a record
+	// nobody consumed is a callback the script never asked for — a duplicate
+	// Gap, a second signal, a stray PositionRejected — and it fails the
+	// scenario as an unmatched outbound action does.
+	for _, ledger := range []struct {
+		what        string
+		taken, seen int
+	}{
+		{"Observer.gap", d.h.gapsTaken, len(d.h.gaps)},
+		{"semantic signal", d.h.signalsTaken, len(d.h.signals)},
+		{"Observer.checkpointSaveFailed", d.h.saveFailuresTaken, d.h.saveFailures},
+		{"Observer.positionRejected", d.h.posRejectedTaken, len(d.h.positionRejected)},
+		{"invalid-frame disconnect", d.h.invalidFramesTaken, d.h.invalidFrames},
+	} {
+		if ledger.taken != ledger.seen {
+			return fmt.Errorf("%d %s record(s) happened, %d matched by an expect step", ledger.seen, ledger.what, ledger.taken)
+		}
+	}
 	return nil
 }
 
@@ -1071,9 +1105,19 @@ func (d *driver) pollOutcomeFrom(respond pollRespond) (pollOutcome, error) {
 	case 400:
 		return pollOutcome{}, errors.New("400 poll responses are not modeled: the position-vs-filter discriminating bodies are class-1 literals still PROVISIONAL in the family README's dependency table, so a driver cannot discriminate them without guessing")
 	case 409:
+		conflict := struct {
+			Error          string `json:"error"`
+			PositionDigest string `json:"position_digest"`
+			FiltersDigest  string `json:"filters_digest"`
+		}{}
+		if err := decodeStrict(respond.Body, &conflict); err != nil {
+			return pollOutcome{}, fmt.Errorf("409 body: %w", err)
+		}
 		return pollOutcome{err: &eventfeed.PollError{
-			Kind: eventfeed.PollFilterChanged,
-			Err:  errors.New("poll responded 409"),
+			Kind:           eventfeed.PollFilterChanged,
+			PositionDigest: conflict.PositionDigest,
+			FiltersDigest:  conflict.FiltersDigest,
+			Err:            errors.New("poll responded 409"),
 		}}, nil
 	case 410:
 		return goneOutcome(respond.Body)

@@ -1527,6 +1527,11 @@
             "epochAfterId": {
               "type": "integer",
               "minimum": 0
+            },
+            "resumeUrl": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The resume URL the FeedGap record carried — whole, as the handler receives it (Observer.gap carries only its origin). Use {{API_ORIGIN}}/... for a same-origin resume; hostile fixtures use their literal foreign URL."
             }
           }
         }

@@ -3566,7 +3566,10 @@ Two dispatch clarifications, pinned:
   map-marshaled so any retransmit is byte-identical. Subscription parameters mirror the
   poll filters with the same caps; `self` is resolved by the caller (Consumer Surface). The server absorbs identical
   retransmits and rejects different ones.
-- Subscribe is sent on each `welcome` received. Confirm/reject correlation is exact string
+- Subscribe is sent on the `welcome` that opens each connection — Action Cable sends exactly
+  one, before any other frame; a later frame of that type is liveness only, never a second
+  handshake (a mid-connection resubscribe would race the one already confirmed). Confirm/reject
+  correlation is exact string
   equality against the connector's identifier; frames carrying other identifiers are
   ignored.
 - Ping parsing accepts both `{"type":"ping"}` and `{"type":"ping","message":<epoch>}`.
@@ -4200,8 +4203,11 @@ server's), `stale_connection(since_last_frame)`,
   Values Are Never Rendered" names. A dial failure names the policy class it violated
   from a closed vocabulary, never any component of the URL, and never chains the
   transport's own error where a caller or runtime would render it. Poll and resume URLs
-  are not credentials — polls authenticate with the bearer header — so `gap(resume_url)`
-  and `catch_up_started(cursor)` carry them whole.
+  are not credentials — polls authenticate with the bearer header — but they are
+  server-chosen text arriving on a logging surface, so `gap(resume_url)` and
+  `catch_up_started(cursor)` carry them reduced to their origin (a fixed placeholder for a
+  cross-origin or unparsable one); the `FeedGap` signal hands the handler the resume URL
+  whole, since its disposition is a decision about which URL to follow.
 - **Bound the inbound frame size** (`EVENT_FEED_MAX_FRAME_BYTES`, 1 MiB default) and
   bound/truncate any error rendering of frame contents (§9's `MAX_ERROR_MESSAGE_LENGTH`
   applies).

@@ -229,6 +229,9 @@ type expectSignalStep struct {
 	DroppedIDs   []int64 `json:"droppedIds"`
 	DroppedCount *int    `json:"droppedCount"`
 	EpochAfterID *int64  `json:"epochAfterId"`
+	// ResumeURL pins the FeedGap record's resume URL — the handler receives
+	// it whole, so a fixture can assert the exact URL the signal carried.
+	ResumeURL *string `json:"resumeUrl"`
 }
 
 type expectPositionRejectedStep struct {
@@ -638,7 +641,8 @@ func decodePollQuery(step *expectPollStep) error {
 	}
 	for name := range params {
 		switch name {
-		case "position", "since", "types", "buckets", "creators":
+		case "position", "since", "types", "buckets", "creators",
+			"performers", "exclude_performers", "actor_types":
 		default:
 			return fmt.Errorf("unknown query param %q", name)
 		}
@@ -706,6 +710,9 @@ func validateSignalExpect(s *expectSignalStep) error {
 		}
 		if s.EpochAfterID != nil {
 			return fmt.Errorf("a bufferOverflow signal carries no epochAfterId")
+		}
+		if s.ResumeURL != nil {
+			return fmt.Errorf("a bufferOverflow signal carries no resumeUrl")
 		}
 	case "feedGap":
 		if s.EpochAfterID == nil {
