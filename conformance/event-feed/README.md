@@ -195,7 +195,9 @@ rejected with it — it orders nothing). Neither step alone settles. A set match
 can coincide with a transient mid-surgery set: the welcome transition stops
 `handshake-deadline` and arms `confirmation-deadline` in separate clock
 acquisitions, so an authored set can exist in the gap. An announcement can
-precede a tail arm: Backoff announces before its timer is armed. Together they
+precede a tail arm in a driver that announces first (the Go reference arms Backoff's
+timer before announcing, precisely so the set is already exact — a port need not, and
+the rendezvous must not depend on it). Together they
 settle — the announcement bounds the surgery, and any timer still unarmed at
 the announcement is exactly what the following exact-set match waits for. Both
 steps block under the scenario watchdog, so a wrongly authored state or set

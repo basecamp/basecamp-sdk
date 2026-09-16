@@ -797,7 +797,9 @@
       "properties": {
         "code": {
           "type": "integer",
-          "maximum": 65535
+          "maximum": 4999,
+          "minimum": 1000,
+          "description": "A WebSocket close status in the RFC 6455 range 1000–4999, decoded at a fixed 64-bit width by every driver."
         },
         "reason": {
           "type": "string"

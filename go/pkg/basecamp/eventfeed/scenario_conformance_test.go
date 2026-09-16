@@ -402,7 +402,7 @@ func (d *driver) serverClose(step *serverCloseStep) error {
 	if d.peer == nil {
 		return errors.New("no cable connection is open to close")
 	}
-	return d.h.closePeer(d.peer, step.Code, step.Reason)
+	return d.h.closePeer(d.peer, int(step.Code), step.Reason)
 }
 
 // sever drops the TCP connection abruptly: no close frame, no disconnect

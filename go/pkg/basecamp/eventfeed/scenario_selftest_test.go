@@ -154,13 +154,13 @@ func TestScenarioDriverRejectsMutatedFixtures(t *testing.T) {
 // the integer normalization must not judge — every other number in the
 // document is an integer field of the schema and is.
 func TestNormalizeNumbersLeavesDetailsAlone(t *testing.T) {
-	raw := []byte(`{"id":1e2,"details":{"ratio":0.5,"big":92233720368547758070,"nested":{"n":1.25}},"count":2.0}`)
+	raw := []byte(`{"id":1e2,"details":{"ratio":0.5,"big":92233720368547758070,"nested":{"n":1.25}},"count":2.0,"respond":{"status":500,"body":{"retry_factor":0.5}},"page":{"status":200,"body":{"position":"p","events":[{"id":1e1}]}}}`)
 	out, err := normalizeNumbers(raw)
 	if err != nil {
 		t.Fatalf("normalizeNumbers: %v", err)
 	}
 	got := string(out)
-	for _, want := range []string{`"ratio":0.5`, `"big":92233720368547758070`, `"n":1.25`, `"id":100`, `"count":2`} {
+	for _, want := range []string{`"ratio":0.5`, `"big":92233720368547758070`, `"n":1.25`, `"id":100`, `"count":2`, `"retry_factor":0.5`, `"id":10`} {
 		if !strings.Contains(got, want) {
 			t.Errorf("normalized document %s lacks %s", got, want)
 		}

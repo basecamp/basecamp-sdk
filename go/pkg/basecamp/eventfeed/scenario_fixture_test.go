@@ -192,7 +192,7 @@ type serveStep struct {
 }
 
 type serverCloseStep struct {
-	Code   int    `json:"code"`
+	Code   int64  `json:"code"`
 	Reason string `json:"reason"`
 }
 
@@ -1053,17 +1053,48 @@ func normalizeNumbers(raw []byte) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+// opaqueSubtree reports whether member, found under key in its parent
+// object, is a subtree the driver forwards or ignores without decoding —
+// an event's `details`, or a `respond.body` whose status the poll and mint
+// seams answer by status alone (every status but the 200 page and the 409
+// and 410 bodies, whose members the driver does decode). The integer walk
+// leaves such a subtree as spelled: the schema types it as an arbitrary
+// object, so its numbers are the server's to spell.
+func opaqueSubtree(key string, member any, parent map[string]any) bool {
+	if key == "details" {
+		return true
+	}
+	if key != "body" {
+		return false
+	}
+	if _, isObject := member.(map[string]any); !isObject {
+		return false
+	}
+	status, ok := parent["status"].(json.Number)
+	if !ok {
+		// A bodied respond with no status is the 200 page, which the driver
+		// decodes.
+		return false
+	}
+	switch status.String() {
+	case "200", "409", "410":
+		return false
+	}
+	return true
+}
+
 // integralizeNumbers rewrites, in place, every json.Number under doc to its
 // integer spelling, naming the member path in any refusal.
 func integralizeNumbers(doc any, path string) error {
 	switch v := doc.(type) {
 	case map[string]any:
 		for key, member := range v {
-			if key == "details" {
-				// An event's details object is server-owned and forwarded
-				// verbatim — the schema types it as an arbitrary object — so
-				// its numbers are whatever the server publishes, judged by
-				// no field of this schema. Left exactly as spelled.
+			if opaqueSubtree(key, member, v) {
+				// Server-owned or never-decoded: an event's details object,
+				// and the body of a response the driver forwards as a status
+				// without reading it. Their numbers are whatever the server
+				// publishes, judged by no field of this schema, and are left
+				// exactly as spelled.
 				continue
 			}
 			at := path + "." + key

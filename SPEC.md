@@ -3681,8 +3681,10 @@ Two dispatch clarifications, pinned:
   retained frame is in one of the three counted structures or in the hands of the pump
   or the state machine. The live buffer's weight is one per slot: a buffered `Event`
   retains only the chain's LAST representation — its strings are copies, since Go's
-  decoder never aliases its input buffer, and `Event` carries no raw-bytes field — so
-  no transient survives admission.
+  decoder never aliases its input buffer, and its `details` bytes are the decoder's own
+  clone of that member (a bounded slice of the frame, retained per slot alongside the
+  strings; never the frame itself) — so no transient survives admission, and a slot's
+  weight is the decoded event, details included.
 
   The formula is the cable lane's retention, and only that — every counted item is a
   raw socket frame or a buffered live event. The poll lane sits outside it on purpose:
