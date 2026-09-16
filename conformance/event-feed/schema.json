@@ -806,14 +806,14 @@
             },
             {
               "minimum": 1007,
-              "maximum": 1011
+              "maximum": 1014
             },
             {
               "minimum": 3000,
               "maximum": 4999
             }
           ],
-          "description": "A WebSocket close status a server can actually send in a close frame: the standard 1000–1003 and 1007–1011, or the registered/private 3000–4999 range (RFC 6455 §7.4). The reserved 1004–1006 and 1012–2999 are not sendable and a WebSocket stack refuses to frame them. Decoded at a fixed 64-bit width by every driver."
+          "description": "A WebSocket close status a server can actually send in a close frame, per the IANA WebSocket Close Code Number registry: the standard 1000–1003 and 1007–1014 (RFC 6455 §7.4.1 plus the registered 1012 Service Restart, 1013 Try Again Later, 1014 Bad Gateway), or the registered/private 3000–4999 range. The reserved 1004–1006 and 1015 are never sent in a frame, and 1016–2999 are unassigned. Decoded at a fixed 64-bit width by every driver."
         },
         "reason": {
           "type": "string"
