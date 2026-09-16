@@ -20,17 +20,16 @@
 // addressed items, where the delivered Event carries its Addressing and the
 // addressing id is the lane's identity for dedupe and positioning.
 //
-// ONE piece is still to land, and it is what keeps the package from running
-// against the live API out of the box: the Layer-1 adapters over the
-// generated CreateStreamTicket, PollEvents and PollInbox operations that
-// back the TicketMinter and PollSource seams. Until they exist the package ships no
-// implementation of those two seams, and a host that wants the live feed
-// supplies its own over the generated operations — a supported path, and
-// the one the seam contracts are written for, not a workaround. Two
-// obligations ride on whichever adapters back the seams rather than on
-// anything here — zero egress to a foreign redirect target
-// (conformance/event-feed/README.md's row-15 note), and the
-// no-automatic-redirect-following rule §23 places on PollEvents.
+// NewLive binds the seams to the generated CreateStreamTicket, PollEvents
+// and PollInbox operations through the basecamp client: Live.Minter and
+// Live.Polls are the TicketMinter and PollSource a live feed runs on, and
+// Live.Connect builds the Connector over them. The client it constructs
+// refuses cross-origin and downgraded redirects before any request is
+// issued, which is how the two obligations the seam contracts place on
+// whichever adapters back them — zero egress to a foreign redirect target
+// and no automatic redirect-following on the poll lane — are met here. A
+// host may still supply its own seams over the generated operations; that
+// is the path the seam contracts are written for, not a workaround.
 //
 // # Seams-first architecture
 //

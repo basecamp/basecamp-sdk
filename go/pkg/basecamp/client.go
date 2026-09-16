@@ -39,6 +39,9 @@ type Client struct {
 	logger        *slog.Logger
 	httpOpts      HTTPOptions
 	hooks         Hooks
+	// checkRedirect replaces the HTTP client's default redirect policy when
+	// set (WithCheckRedirect); nil keeps the SPEC §13 default below.
+	checkRedirect func(req *http.Request, via []*http.Request) error
 
 	// Generated client (single shared instance, account passed per operation)
 	genOnce sync.Once
@@ -155,6 +158,19 @@ func WithHTTPClient(c *http.Client) ClientOption {
 	}
 }
 
+// WithCheckRedirect replaces the HTTP client's redirect policy for every
+// request the client issues. The default (SPEC §13) follows up to ten hops
+// and strips Authorization on a cross-origin hop; a policy that returns an
+// error refuses the hop before any request reaches its target, and the
+// operation surfaces that error. The SPEC §23 event feed connector installs
+// one that refuses cross-origin and downgraded hops outright, because an
+// authenticated poll must never egress to a foreign origin at all.
+func WithCheckRedirect(policy func(req *http.Request, via []*http.Request) error) ClientOption {
+	return func(client *Client) {
+		client.checkRedirect = policy
+	}
+}
+
 // WithUserAgent sets the User-Agent header.
 func WithUserAgent(ua string) ClientOption {
 	return func(client *Client) {
@@ -239,10 +255,9 @@ func NewClient(cfg *Config, tokenProvider TokenProvider, opts ...ClientOption) *
 	// Wrap transport with logging transport
 	transport = &loggingTransport{inner: transport, client: c}
 
-	c.httpClient = &http.Client{
-		Timeout:   c.httpOpts.Timeout,
-		Transport: transport,
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+	checkRedirect := c.checkRedirect
+	if checkRedirect == nil {
+		checkRedirect = func(req *http.Request, via []*http.Request) error {
 			if len(via) >= 10 {
 				return fmt.Errorf("stopped after 10 redirects")
 			}
@@ -252,7 +267,12 @@ func NewClient(cfg *Config, tokenProvider TokenProvider, opts ...ClientOption) *
 				req.Header.Del("Authorization")
 			}
 			return nil
-		},
+		}
+	}
+	c.httpClient = &http.Client{
+		Timeout:       c.httpOpts.Timeout,
+		Transport:     transport,
+		CheckRedirect: checkRedirect,
 	}
 
 	// Validate configuration

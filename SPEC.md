@@ -4383,9 +4383,11 @@ decides whether to follow one, which makes the foreign origin unreachable by
 construction of the harness — a harness that asserted no request reached it would be
 asserting something about itself. That obligation belongs to the Layer-1 seam
 adapter's own 302 test, where a real generated `PollEvents` call meets a real redirect
-against an adapter with automatic redirect-following disabled.
-`conformance/event-feed/README.md`'s row-15 note records it as a pending obligation
-rather than a proof the repository contains; the adapters are tracked in #819.
+against an adapter whose client refuses the hop: the Go adapters (`eventfeed.NewLive`)
+install a redirect policy on their client that validates every hop's resolved `Location`
+under this rule before any request is issued, and their 302 test proves zero egress
+against a sentinel listener behind the foreign `Location`
+(`conformance/event-feed/README.md`, row 15).
 
 ### Clock, Timers, and Virtual Time `[conformance]`
 

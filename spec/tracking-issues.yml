@@ -119,19 +119,3 @@ prose_tracking_issues:
     file: "SPEC.md"
     site: "SPEC.md Appendix F — OAuth endpoint address enforcement beyond Go (§16 req 5–6) is pending #818's umbrella"
     mentions: 2
-  - issue: 819
-    file: "SPEC.md"
-    site: "SPEC.md §23 zero-egress paragraph — the Layer-1 302 test's adapters are pending #819"
-    mentions: 1
-  - issue: 819
-    file: "conformance/event-feed/README.md"
-    site: "conformance/event-feed/README.md — Layer-1 seam-adapter conformance (rows 15/30 and the row-15 note) is pending #819"
-    mentions: 3
-  - issue: 819
-    file: "conformance/event-feed/fixtures/30-continuation-redirect-cross-origin.json"
-    site: "fixture 30's description — the below-seam zero-request proof is pending #819's Layer-1 adapters"
-    mentions: 1
-  - issue: 819
-    file: "conformance/event-feed/schema.json"
-    site: "schema.json fixture-30 respond variant — the Layer-1 302 test is pending #819"
-    mentions: 1
