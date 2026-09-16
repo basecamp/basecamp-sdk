@@ -373,6 +373,12 @@ describe("recordings.summarize", () => {
       // but a cross-SDK check catches a seventh answer here.
       expect((err as BasecampError).code).toBe("usage");
       expect((err as BasecampError).httpStatus).toBeUndefined();
+      // The code's observable consequence, which is what a divergence would
+      // actually cost: `exitCode` derives from it, so this verdict exited 7
+      // ("API error") where Python's and Kotlin's exit 1 — a CLI reporting an
+      // outage for a caller's own bad pointer. Asserted here because the code
+      // string alone is a name; the exit status is what a script branches on.
+      expect((err as BasecampError).exitCode).toBe(1);
 
       // The other four identities' codes, from the same cross-SDK table:
       // `recording_unresolved` is `not_found` in Python and Kotlin both, the
