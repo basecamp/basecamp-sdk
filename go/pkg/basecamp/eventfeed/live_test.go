@@ -402,6 +402,69 @@ func TestLivePolls_AFeed410WithoutAnEpochIsMalformed(t *testing.T) {
 	}
 }
 
+// TestLivePolls_TheGuardSurvivesAHookThatReplacesTheContext: a host hook that
+// returns a fresh context from OnRequestStart drops the seam's per-call
+// record; the guard still answers the 3xx, because it recognizes the seam
+// call by its route, and the foreign origin still sees nothing.
+func TestLivePolls_TheGuardSurvivesAHookThatReplacesTheContext(t *testing.T) {
+	var sentinelHits atomic.Int32
+	sentinel := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		sentinelHits.Add(1)
+		jsonResponse(w, 200, `{"events":[],"position":"stolen"}`)
+	}))
+	t.Cleanup(sentinel.Close)
+	f := newLiveFixtureWith(t, eventfeed.AccountLane, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Location", sentinel.URL+"/99999/events.json?position=pos-0&token=leak")
+		w.WriteHeader(http.StatusFound)
+	}, basecamp.WithHooks(contextDroppingHooks{}))
+	_, err := f.live.Polls().Poll(context.Background(), eventfeed.Cursor{Position: "pos-0"}, eventfeed.Filters{})
+	var pe *eventfeed.PollError
+	if !errors.As(err, &pe) || pe.Kind != eventfeed.PollRedirectRefused {
+		t.Fatalf("error = %v, want redirect_refused", err)
+	}
+	if strings.Contains(pe.Error(), "leak") {
+		t.Fatalf("PollError renders the refused Location: %s", pe.Error())
+	}
+	if sentinelHits.Load() != 0 {
+		t.Fatalf("the foreign origin received %d request(s), want zero egress", sentinelHits.Load())
+	}
+}
+
+// contextDroppingHooks returns a fresh context from every start hook — the
+// misuse a guard keyed on context values would not survive.
+type contextDroppingHooks struct{ basecamp.NoopHooks }
+
+func (contextDroppingHooks) OnOperationStart(context.Context, basecamp.OperationInfo) context.Context {
+	return context.Background()
+}
+
+func (contextDroppingHooks) OnRequestStart(context.Context, basecamp.RequestInfo) context.Context {
+	return context.Background()
+}
+
+// TestLive_ATruncatedBodyIsTransient: a connection that ends after the
+// headers, mid-body, is a transport failure to retry — on the mint and on the
+// poll — not a malformed response to terminate on.
+func TestLive_ATruncatedBodyIsTransient(t *testing.T) {
+	truncate := func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Content-Length", "4096")
+		w.WriteHeader(200)
+		_, _ = w.Write([]byte(`{"events":[`))
+	}
+	f := newLiveFixture(t, eventfeed.AccountLane, truncate)
+	_, err := f.live.Polls().Poll(context.Background(), eventfeed.Cursor{Position: "pos-0"}, eventfeed.Filters{})
+	var pe *eventfeed.PollError
+	if !errors.As(err, &pe) || pe.Kind != eventfeed.PollTransient {
+		t.Fatalf("poll error = %v, want transient for a truncated body", err)
+	}
+	_, err = f.live.Minter().MintStreamTicket(context.Background())
+	var me *eventfeed.MintError
+	if !errors.As(err, &me) || me.Kind != eventfeed.MintTransient {
+		t.Fatalf("mint error = %v, want transient for a truncated body", err)
+	}
+}
+
 // TestLivePolls_DetailsMatchThePushLaneByteForByte: a row's details object
 // reaches the connector as the bytes the server sent on both lanes — an
 // explicit null member and a member of a type this SDK does not model

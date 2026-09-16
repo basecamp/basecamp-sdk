@@ -6,11 +6,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"net/url"
 	"slices"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 	"unicode/utf8"
@@ -188,21 +190,26 @@ func (redirectGuardWrapper) WrapTransport(inner http.RoundTripper) http.RoundTri
 // then the header and the body are dropped, and the 3xx goes on as a bare
 // status the generated call classifies. One mechanism covers every shape of
 // the class: a foreign Location, a same-origin one, a downgraded one, a
-// Location net/http could not parse, and a 3xx with none. A request carrying
-// no record is not a seam call and passes through untouched: the client's
-// other operations — a download's dispatching 302 above all — keep their own
-// redirect handling.
+// Location net/http could not parse, and a 3xx with none. A seam call is
+// recognized by its request path — the three feed operations' own routes,
+// which no other operation shares — rather than by the per-call record on
+// its context, which a host hook that returns a fresh context would drop;
+// the record, when it survives, carries the origin back to the seam, and
+// the strip does not depend on it. Every other request passes through
+// untouched: the client's other operations — a download's dispatching 302
+// above all — keep their own redirect handling.
 type redirectGuard struct {
 	inner http.RoundTripper
 }
 
 func (g *redirectGuard) RoundTrip(req *http.Request) (*http.Response, error) {
-	hop, seamCall := req.Context().Value(refusedHopKey{}).(*refusedHop)
 	resp, err := g.inner.RoundTrip(req)
-	if !seamCall || err != nil || resp == nil || !isRedirectStatus(resp.StatusCode) {
+	if err != nil || resp == nil || !isRedirectStatus(resp.StatusCode) || !isFeedOperationPath(req.URL.Path) {
 		return resp, err
 	}
-	hop.record(locationOrigin(resp.Header.Get("Location")))
+	if hop, ok := req.Context().Value(refusedHopKey{}).(*refusedHop); ok {
+		hop.record(locationOrigin(resp.Header.Get("Location")))
+	}
 	resp.Header.Del("Location")
 	resp.Header.Del("Content-Location")
 	if resp.Body != nil {
@@ -212,6 +219,27 @@ func (g *redirectGuard) RoundTrip(req *http.Request) (*http.Response, error) {
 	resp.ContentLength = 0
 	resp.Header.Del("Content-Length")
 	return resp, nil
+}
+
+// isFeedOperationPath reports a request path of one of the three feed
+// operations — /{account}/events.json, /{account}/inbox.json,
+// /{account}/events/stream_ticket.json — the routes the seams issue, whether
+// from a fresh cursor or a re-issued continuation, and no other operation.
+func isFeedOperationPath(path string) bool {
+	rest, ok := strings.CutPrefix(path, "/")
+	if !ok {
+		return false
+	}
+	account, route, ok := strings.Cut(rest, "/")
+	if !ok || account == "" {
+		return false
+	}
+	for _, r := range account {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return route == "events.json" || route == "inbox.json" || route == "events/stream_ticket.json"
 }
 
 // errHopRefused is the fixed cause a refused hop carries: never the
@@ -293,12 +321,17 @@ func mapMintError(ctx context.Context, err error, hop *refusedHop) error {
 
 // isTransportFailure reports an error that says nothing about the response
 // — the HTTP stack failed on the way to or from the server (a url.Error or a
-// net.Error), or the client's own resilience gate refused to send at all
-// (the circuit breaker, bulkhead or rate limiter, which recover on their
-// own clocks) — as opposed to one the generated call produced from a
-// response it received.
+// net.Error), the connection ended mid-body before the parser could read a
+// whole response (io.ErrUnexpectedEOF, or a bare io.EOF from a body read),
+// or the client's own resilience gate refused to send at all (the circuit
+// breaker, bulkhead or rate limiter, which recover on their own clocks) — as
+// opposed to one the generated call produced from a response it received
+// whole, such as a body that did not decode.
 func isTransportFailure(err error) bool {
 	if errors.Is(err, basecamp.ErrCircuitOpen) || errors.Is(err, basecamp.ErrBulkheadFull) || errors.Is(err, basecamp.ErrRateLimited) {
+		return true
+	}
+	if errors.Is(err, io.ErrUnexpectedEOF) || errors.Is(err, io.EOF) {
 		return true
 	}
 	var urlErr *url.Error
