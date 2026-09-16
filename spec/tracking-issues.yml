@@ -46,7 +46,7 @@ prose_tracking_issues:
   - issue: 775
     file: "typescript/tests/retry-after.test.ts"
     site: "typescript/tests/retry-after.test.ts — pins TypeScript's side of the Retry-After status divergence"
-    mentions: 1
+    mentions: 0
   - issue: 775
     file: "MIGRATING.md"
     site: "MIGRATING.md — the Retry-After migration note repeats the status-divergence promise"
@@ -98,7 +98,7 @@ prose_tracking_issues:
   - issue: 799
     file: "SPEC.md"
     site: "SPEC.md §6 — Python and Ruby still truncate the delay; #799 tracks the rounding convergence"
-    mentions: 1
+    mentions: 0
   - issue: 799
     file: "MIGRATING.md"
     site: "MIGRATING.md — #799 tracks the cross-SDK convergence on Retry-After rounding"
@@ -114,14 +114,6 @@ prose_tracking_issues:
   - issue: 799
     file: "go/pkg/basecamp/client_retry_after_test.go"
     site: "go/pkg/basecamp/client_retry_after_test.go — pins Go's side pending #799's convergence"
-    mentions: 0
-  - issue: 798
-    file: "SPEC.md"
-    site: "SPEC.md §6 — the generated Go parser stays Atoi until #798 lands the template change"
-    mentions: 0
-  - issue: 798
-    file: "MIGRATING.md"
-    site: "MIGRATING.md — the generated copy of the parse is untouched pending #798"
     mentions: 0
   - issue: 818
     file: "SPEC.md"

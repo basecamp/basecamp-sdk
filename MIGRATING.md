@@ -834,7 +834,7 @@ the backoff curve; and a delta-seconds above the schedulable ceiling saturates
 instead of wrapping. The wire operations those paths perform are unchanged, and they
 already honoured the header on 429 — it is what the header parses to that
 moved. Typed service methods run the generated retry loop, which has its own
-copy of the parse and is untouched (#798).
+copy of the parse; its clamping landed with #855 (the defect was #798).
 
 **Wrong behaviour you get if you ignore it:** none, but the wait between
 attempts on a throttled account can now be seconds or minutes where it used to
