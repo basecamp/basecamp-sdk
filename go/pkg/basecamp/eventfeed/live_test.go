@@ -180,19 +180,51 @@ func TestLivePolls_FollowsAContinuationThroughTheOperation(t *testing.T) {
 		jsonResponse(w, 200, `{"events":[],"position":"posBBB"}`)
 	})
 	next := f.server.URL + "/99999/events.json?position=posAAA&types=message.created%2Ccard.moved&buckets=2"
-	page, err := f.live.Polls().Poll(context.Background(), eventfeed.Cursor{PageURL: next}, eventfeed.Filters{Types: []string{"ignored"}})
+	// The lane's own filters go back, in the lane's spelling — the URL's
+	// filters are never trusted, only required to agree as sets.
+	page, err := f.live.Polls().Poll(context.Background(), eventfeed.Cursor{PageURL: next}, eventfeed.Filters{Types: []string{"card.moved", "message.created"}, Buckets: []int64{2}})
 	if err != nil {
 		t.Fatalf("Poll: %v", err)
 	}
 	req := f.last.Load()
-	// The query the server wrote into `next` is what goes back — never the
-	// configured filters, which the continuation already carries canonically.
-	want := url.Values{"position": {"posAAA"}, "types": {"message.created,card.moved"}, "buckets": {"2"}}
+	want := url.Values{"position": {"posAAA"}, "types": {"card.moved,message.created"}, "buckets": {"2"}}
 	if got := req.URL.Query(); got.Encode() != want.Encode() {
 		t.Fatalf("continuation query = %v, want %v", got, want)
 	}
 	if page.Position != "posBBB" || page.Next != "" {
 		t.Fatalf("page = %+v, want the walk's end", page)
+	}
+	// A URL whose filters differ from the lane's is refused, unissued.
+	before := f.requests.Load()
+	_, err = f.live.Polls().Poll(context.Background(), eventfeed.Cursor{PageURL: next}, eventfeed.Filters{Types: []string{"message.created"}})
+	var pe *eventfeed.PollError
+	if !errors.As(err, &pe) || pe.Kind != eventfeed.PollUnrecoverable || f.requests.Load() != before {
+		t.Fatalf("error = %v after %d requests, want unrecoverable with no request for differing filters", err, f.requests.Load()-before)
+	}
+}
+
+// TestLivePolls_ANextMustContinueAtAPosition: a page whose `next` would
+// re-enter at a since — a present entry — is malformed, refused the way a
+// positionless page is, on either lane.
+func TestLivePolls_ANextMustContinueAtAPosition(t *testing.T) {
+	for name, tc := range map[string]struct {
+		lane eventfeed.Lane
+		body string
+	}{
+		"feed next with since":       {eventfeed.AccountLane, `{"events":[],"position":"p","next":"https://3.basecampapi.com/99999/events.json?since=now"}`},
+		"feed next without position": {eventfeed.AccountLane, `{"events":[],"position":"p","next":"https://3.basecampapi.com/99999/events.json?types=message.created"}`},
+		"inbox next with since":      {eventfeed.InboxLane, `{"items":[],"position":"p","next":"https://3.basecampapi.com/99999/inbox.json?since=0"}`},
+	} {
+		t.Run(name, func(t *testing.T) {
+			f := newLiveFixture(t, tc.lane, func(w http.ResponseWriter, r *http.Request) {
+				jsonResponse(w, 200, tc.body)
+			})
+			_, err := f.live.Polls().Poll(context.Background(), eventfeed.Cursor{Position: "pos-0"}, eventfeed.Filters{})
+			var pe *eventfeed.PollError
+			if !errors.As(err, &pe) || pe.Kind != eventfeed.PollUnrecoverable {
+				t.Fatalf("error = %v, want unrecoverable for a next that is not a walk continuation", err)
+			}
+		})
 	}
 }
 
@@ -232,7 +264,20 @@ func TestLivePolls_ErrorMatrix(t *testing.T) {
 				if pe.Kind != eventfeed.PollPositionInvalid {
 					t.Fatalf("kind = %s", pe.Kind)
 				}
-			}}, {"409 missing a digest is unrecoverable", eventfeed.AccountLane, 409, "", `{"error":"conflict","position_digest":"38b223c13c89dc89"}`,
+			}},
+		{"409 with a malformed digest is unrecoverable", eventfeed.AccountLane, 409, "", `{"error":"conflict","position_digest":"38b223c13c89dc89","filters_digest":"x"}`,
+			func(t *testing.T, pe *eventfeed.PollError) {
+				if pe.Kind != eventfeed.PollUnrecoverable {
+					t.Fatalf("kind = %s", pe.Kind)
+				}
+			}},
+		{"400 with an unknown reason is surfaced, never guessed", eventfeed.AccountLane, 400, "", `{"error":"Unrecognized position. Resume with since=<id>.","reason":"invalid_something"}`,
+			func(t *testing.T, pe *eventfeed.PollError) {
+				if pe.Kind != eventfeed.PollUnrecoverable {
+					t.Fatalf("kind = %s", pe.Kind)
+				}
+			}},
+		{"409 missing a digest is unrecoverable", eventfeed.AccountLane, 409, "", `{"error":"conflict","position_digest":"38b223c13c89dc89"}`,
 			func(t *testing.T, pe *eventfeed.PollError) {
 				if pe.Kind != eventfeed.PollUnrecoverable {
 					t.Fatalf("kind = %s", pe.Kind)

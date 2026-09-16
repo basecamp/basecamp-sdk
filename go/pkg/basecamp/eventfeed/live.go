@@ -468,11 +468,22 @@ func (p *livePolls) Poll(ctx context.Context, cursor Cursor, filters Filters) (P
 }
 
 func (p *livePolls) pollEvents(ctx context.Context, cursor Cursor, filters Filters) (PollPage, error) {
-	var opts *basecamp.PollEventsOptions
+	opts := &basecamp.PollEventsOptions{
+		Since:             cursor.Since,
+		Position:          cursor.Position,
+		Types:             filters.Types,
+		Buckets:           filters.Buckets,
+		Creators:          filters.Creators,
+		Performers:        formatIDs(filters.Performers),
+		ExcludePerformers: formatIDs(filters.ExcludePerformers),
+		ActorTypes:        filters.ActorTypes,
+	}
 	if cursor.PageURL != "" {
 		// A validated continuation or resume URL: the same operation,
-		// re-issued with the query the server wrote into it. Only the query
-		// is read; the connector validated the origin before this call.
+		// re-issued at the URL's cursor under the lane's OWN canonical
+		// filters. The URL's filter dimensions are not trusted — they must
+		// equal the lane's, or the URL is refused — and only its cursor is
+		// read; the connector validated the origin before this call.
 		if err := checkContinuationQuery(cursor.PageURL); err != nil {
 			return PollPage{}, &PollError{Kind: PollUnrecoverable, Err: err}
 		}
@@ -483,18 +494,11 @@ func (p *livePolls) pollEvents(ctx context.Context, cursor Cursor, filters Filte
 		if err := checkContinuationCursor(parsed.Position, parsed.Since); err != nil {
 			return PollPage{}, &PollError{Kind: PollUnrecoverable, Err: err}
 		}
-		opts = parsed
-	} else {
-		opts = &basecamp.PollEventsOptions{
-			Since:             cursor.Since,
-			Position:          cursor.Position,
-			Types:             filters.Types,
-			Buckets:           filters.Buckets,
-			Creators:          filters.Creators,
-			Performers:        formatIDs(filters.Performers),
-			ExcludePerformers: formatIDs(filters.ExcludePerformers),
-			ActorTypes:        filters.ActorTypes,
+		if !sameStrings(parsed.Types, opts.Types) || !sameInt64s(parsed.Buckets, opts.Buckets) || !sameInt64s(parsed.Creators, opts.Creators) ||
+			!sameStrings(parsed.Performers, opts.Performers) || !sameStrings(parsed.ExcludePerformers, opts.ExcludePerformers) || !sameStrings(parsed.ActorTypes, opts.ActorTypes) {
+			return PollPage{}, &PollError{Kind: PollUnrecoverable, Err: errContinuationFilters}
 		}
+		opts.Since, opts.Position = parsed.Since, parsed.Position
 	}
 	ctx, hop := withRefusedHop(ctx)
 	page, err := p.svc.PollEvents(ctx, opts)
@@ -503,6 +507,9 @@ func (p *livePolls) pollEvents(ctx context.Context, cursor Cursor, filters Filte
 	}
 	if page == nil {
 		return PollPage{}, &PollError{Kind: PollUnrecoverable, Err: errors.New("the poll returned no page")}
+	}
+	if err := checkNextCursor(page.Next); err != nil {
+		return PollPage{}, &PollError{Kind: PollUnrecoverable, Err: err}
 	}
 	events := make([]Event, 0, len(page.Events))
 	for _, fe := range page.Events {
@@ -519,7 +526,13 @@ func (p *livePolls) pollEvents(ctx context.Context, cursor Cursor, filters Filte
 }
 
 func (p *livePolls) pollInbox(ctx context.Context, cursor Cursor, filters Filters) (PollPage, error) {
-	var opts *basecamp.PollInboxOptions
+	opts := &basecamp.PollInboxOptions{
+		Since:    cursor.Since,
+		Position: cursor.Position,
+		Reasons:  filters.Reasons,
+		Types:    filters.Types,
+		Buckets:  filters.Buckets,
+	}
 	if cursor.PageURL != "" {
 		if err := checkContinuationQuery(cursor.PageURL); err != nil {
 			return PollPage{}, &PollError{Kind: PollUnrecoverable, Err: err}
@@ -531,15 +544,10 @@ func (p *livePolls) pollInbox(ctx context.Context, cursor Cursor, filters Filter
 		if err := checkContinuationCursor(parsed.Position, parsed.Since); err != nil {
 			return PollPage{}, &PollError{Kind: PollUnrecoverable, Err: err}
 		}
-		opts = parsed
-	} else {
-		opts = &basecamp.PollInboxOptions{
-			Since:    cursor.Since,
-			Position: cursor.Position,
-			Reasons:  filters.Reasons,
-			Types:    filters.Types,
-			Buckets:  filters.Buckets,
+		if !sameStrings(parsed.Reasons, opts.Reasons) || !sameStrings(parsed.Types, opts.Types) || !sameInt64s(parsed.Buckets, opts.Buckets) {
+			return PollPage{}, &PollError{Kind: PollUnrecoverable, Err: errContinuationFilters}
 		}
+		opts.Since, opts.Position = parsed.Since, parsed.Position
 	}
 	ctx, hop := withRefusedHop(ctx)
 	page, err := p.svc.PollInbox(ctx, opts)
@@ -548,6 +556,9 @@ func (p *livePolls) pollInbox(ctx context.Context, cursor Cursor, filters Filter
 	}
 	if page == nil {
 		return PollPage{}, &PollError{Kind: PollUnrecoverable, Err: errors.New("the poll returned no page")}
+	}
+	if err := checkNextCursor(page.Next); err != nil {
+		return PollPage{}, &PollError{Kind: PollUnrecoverable, Err: err}
 	}
 	events := make([]Event, 0, len(page.Items))
 	for _, item := range page.Items {
@@ -628,11 +639,13 @@ func mapPollError(ctx context.Context, err error, hop *refusedHop, lane Lane) er
 	}
 	var mismatch *basecamp.FeedFilterMismatchError
 	if errors.As(err, &mismatch) {
-		if mismatch.PositionDigest == "" || mismatch.FiltersDigest == "" {
+		if !isServerDigest(mismatch.PositionDigest) || !isServerDigest(mismatch.FiltersDigest) {
 			// The conflict verdict is the status; the digests are what the
-			// connector reports and compares. A 409 missing either is not
-			// the documented conflict but a malformed response.
-			return &PollError{Kind: PollUnrecoverable, Err: errors.New("eventfeed: the 409 carries no position_digest or no filters_digest")}
+			// connector reports and compares. A 409 whose digests are
+			// missing or not bare 16-hex is not the documented conflict but
+			// a malformed response. (Holding the shape at the wrapper's
+			// decode, for every consumer, is tracked in #915.)
+			return &PollError{Kind: PollUnrecoverable, Err: errors.New("eventfeed: the 409's digests are missing or malformed")}
 		}
 		return &PollError{Kind: PollFilterChanged, PositionDigest: mismatch.PositionDigest, FiltersDigest: mismatch.FiltersDigest, Err: err}
 	}
@@ -671,6 +684,12 @@ func mapPollError(ctx context.Context, err error, hop *refusedHop, lane Lane) er
 			return &PollError{Kind: PollPositionInvalid, Msg: request.Err.Message, Err: err}
 		case basecamp.FeedReasonInvalidFilter:
 			return &PollError{Kind: PollFilterInvalid, Msg: request.Err.Message, Err: err}
+		case "":
+			// Falls through to the message fallback below.
+		default:
+			// A reason the contract does not name: the 400 is surfaced
+			// as undifferentiated, never guessed from its message.
+			return &PollError{Kind: PollUnrecoverable, Err: errors.New("eventfeed: the 400 carries a reason the contract does not name")}
 		}
 	}
 	if !errors.As(err, &apiErr) {
@@ -717,6 +736,69 @@ func isCancellation(ctx context.Context, err error) bool {
 // the wrapper could not turn into options: the wrapper's own error names the
 // offending value, which is server-chosen text a rendering must not carry.
 var errContinuationUnparsable = errors.New("eventfeed: the continuation URL carries a filter value that does not parse")
+
+// checkNextCursor holds a page's `next` to a walk continuation's shape: it
+// carries `position` and never `since`. A `next` that would re-enter at a
+// since — a present entry, which commits the head and skips the rest of the
+// walk — makes the page malformed, refused the way a positionless page is:
+// no re-entry, no save. The URL is server text; the error names none of it.
+func checkNextCursor(next string) error {
+	if next == "" {
+		return nil
+	}
+	u, err := url.Parse(next)
+	if err != nil {
+		return errors.New("eventfeed: the page's next URL does not parse")
+	}
+	values, err := url.ParseQuery(u.RawQuery)
+	if err != nil {
+		return errors.New("eventfeed: the page's next URL's query does not parse whole")
+	}
+	if len(values["position"]) != 1 || values["position"][0] == "" || len(values["since"]) != 0 {
+		return errors.New("eventfeed: the page's next URL must continue at a position, never a since")
+	}
+	return nil
+}
+
+// errContinuationFilters is the fixed cause for a followed URL whose filter
+// dimensions differ from the lane's own: the URL's filters are never
+// trusted, and a continuation that would change the lineage is refused.
+var errContinuationFilters = errors.New("eventfeed: the continuation URL's filters differ from the lane's")
+
+// sameStrings and sameInt64s compare two filter dimensions as sets.
+func sameStrings(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	as, bs := slices.Clone(a), slices.Clone(b)
+	slices.Sort(as)
+	slices.Sort(bs)
+	return slices.Equal(as, bs)
+}
+
+func sameInt64s(a, b []int64) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	as, bs := slices.Clone(a), slices.Clone(b)
+	slices.Sort(as)
+	slices.Sort(bs)
+	return slices.Equal(as, bs)
+}
+
+// isServerDigest reports a bare srv2 digest: exactly 16 lowercase hex.
+func isServerDigest(s string) bool {
+	if len(s) != 16 {
+		return false
+	}
+	for _, r := range s {
+		digit, hex := r >= '0' && r <= '9', r >= 'a' && r <= 'f'
+		if !digit && !hex {
+			return false
+		}
+	}
+	return true
+}
 
 // checkContinuationCursor requires a followed URL to carry exactly one cursor
 // — a position or a since — so a server URL that omits it, or spells it under
