@@ -1,0 +1,169 @@
+{
+  "name": "35-srv2-dimensions-carry-through-the-epoch-resume",
+  "description": "The srv2 filter dimensions on the wire, end to end on the account lane: performers, exclude_performers and actor_types — the dimensions srv2 added over srv1's types/buckets/creators, and exclude_performers the acting agent's loop guard — ride the subscription identifier with their class-1 spellings and comma-joined values, and reach the entry poll's seam call (the driver derives that query, so its wire spelling is tier 1's), and a 410 epoch gap under that filter set resumes at since=<epoch_after_id> by following the served resume URL verbatim, filters and all, never since=now. The resume is a position-resume entry: its first page's rows deliver and its position saves on acceptance. Fixture 16 pins the same resume with no filters; this one pins it under the filter set whose preservation the server documents. Values are configured in ascending order so the pin does not choose between configured-order and sorted joining. The resume URL spells its commas literally where bc3's URL helper escapes them as %2C and sorts the keys; the two are the same query, and the literal form is chosen so a driver that re-encodes the served URL instead of following it verbatim fails here.",
+  "config": {
+    "performers": [
+      4,
+      9
+    ],
+    "exclude_performers": [
+      77
+    ],
+    "actorTypes": [
+      "agent",
+      "person"
+    ],
+    "position": "{{POS:0}}",
+    "signalDisposition": {
+      "feedGap": "accept"
+    }
+  },
+  "steps": [
+    {
+      "expectMint": {
+        "respond": {
+          "status": 200,
+          "body": {
+            "ticket": "{{TICKET:1}}",
+            "expires_in": 120,
+            "url": "{{CABLE_URL:1}}"
+          }
+        }
+      }
+    },
+    {
+      "expectConnect": {
+        "url": "{{CABLE_URL:1}}"
+      }
+    },
+    {
+      "serve": {
+        "frame": "welcome"
+      }
+    },
+    {
+      "expectSubscribe": {
+        "channel": "EventsChannel",
+        "params": {
+          "performers": "4,9",
+          "exclude_performers": "77",
+          "actor_types": "agent,person"
+        }
+      }
+    },
+    {
+      "serve": {
+        "frame": "confirm"
+      }
+    },
+    {
+      "expectPoll": {
+        "query": {
+          "exact": {
+            "position": "{{POS:0}}",
+            "performers": "4,9",
+            "exclude_performers": "77",
+            "actor_types": "agent,person"
+          }
+        },
+        "respond": {
+          "status": 410,
+          "body": {
+            "error": "That position predates this feed's epoch.",
+            "epoch_after_id": 500,
+            "resume": "{{API_ORIGIN}}/events.json?since=500&performers=4,9&exclude_performers=77&actor_types=agent,person"
+          }
+        }
+      }
+    },
+    {
+      "expectGap": {
+        "epochAfterId": 500,
+        "resumeUrl": "{{API_ORIGIN}}"
+      }
+    },
+    {
+      "expectSignal": {
+        "kind": "feedGap",
+        "epochAfterId": 500,
+        "resumeUrl": "{{API_ORIGIN}}/events.json?since=500&performers=4,9&exclude_performers=77&actor_types=agent,person"
+      }
+    },
+    {
+      "expectHandlerInvocations": {
+        "exact": [
+          {
+            "kind": "feedGap",
+            "disposition": "accept"
+          }
+        ]
+      }
+    },
+    {
+      "expectPoll": {
+        "url": "{{API_ORIGIN}}/events.json?since=500&performers=4,9&exclude_performers=77&actor_types=agent,person",
+        "respond": {
+          "status": 200,
+          "body": {
+            "events": [
+              {
+                "id": 501,
+                "kind": "message",
+                "event_type": "message.created",
+                "action": "created",
+                "created_at": "2026-08-01T12:00:00Z",
+                "bucket_id": 2,
+                "creator_id": 3,
+                "performed_by_id": 4,
+                "recording_id": 900
+              }
+            ],
+            "position": "{{POS:1}}"
+          }
+        }
+      }
+    },
+    {
+      "expectDelivered": {
+        "exact": [
+          501
+        ]
+      }
+    },
+    {
+      "expectCheckpoint": {
+        "position": "{{POS:1}}"
+      }
+    }
+  ],
+  "finally": {
+    "state": "streaming",
+    "mintCount": 1,
+    "connectCount": 1,
+    "delivered": {
+      "exact": [
+        501
+      ]
+    },
+    "checkpoints": {
+      "exact": [
+        "{{POS:1}}"
+      ]
+    },
+    "timers": {
+      "exact": {
+        "staleness": 1,
+        "repair-poll": 1
+      }
+    },
+    "socket": "open",
+    "handlerInvocations": {
+      "exact": [
+        {
+          "kind": "feedGap",
+          "disposition": "accept"
+        }
+      ]
+    }
+  }
+}
