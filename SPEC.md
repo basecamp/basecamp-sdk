@@ -3880,7 +3880,8 @@ RECORD BufferOverflow
 END
 
 RECORD FeedGap
-  epoch_after_id : Integer
+  epoch_after_id : Integer   -- 0 on the inbox lane, whose 410 carries none: the fixed
+                             -- value for "no epoch"; the inbox's fence is its retention
   resume_url     : String
 END
 

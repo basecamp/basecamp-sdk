@@ -179,11 +179,12 @@ func (l *loop) recoverGone(at *attempt, pe *PollError) (walkStep, cycleOutcome, 
 		}, cycleOutcome{}, false
 	}
 	// Terminate, or no handler: the typed terminal, and no save — the error
-	// names the epoch and never the resume URL.
+	// names the epoch and never the resume URL. The inbox's 410 carries no
+	// epoch (its fence is the retention window), so its message names none.
 	l.disposeAttempt(at, nil)
 	msg := fmt.Sprintf("the feed's served history before event %d is gone", pe.EpochAfterID)
 	if l.cfg.lane == InboxLane {
-		msg = fmt.Sprintf("the inbox's retained items before item %d are gone", pe.EpochAfterID)
+		msg = "the inbox's retained items behind the held position are gone"
 	}
 	return walkStep{}, cycleOutcome{kind: outcomeTerminal, term: &TerminalError{
 		Reason: ReasonFeedGap,

@@ -264,7 +264,32 @@
                             ]
                           }
                         }
-                      }
+                      },
+                      "allOf": [
+                        {
+                          "if": {
+                            "required": [
+                              "status"
+                            ],
+                            "properties": {
+                              "status": {
+                                "const": 410
+                              }
+                            }
+                          },
+                          "then": {
+                            "properties": {
+                              "body": {
+                                "not": {
+                                  "required": [
+                                    "epoch_after_id"
+                                  ]
+                                }
+                              }
+                            }
+                          }
+                        }
+                      ]
                     },
                     "query": {
                       "allOf": [
@@ -367,12 +392,35 @@
                       }
                     }
                   }
+                },
+                "expectGap": {
+                  "properties": {
+                    "epochAfterId": {
+                      "const": 0
+                    }
+                  }
+                },
+                "expectSignal": {
+                  "if": {
+                    "properties": {
+                      "kind": {
+                        "const": "feedGap"
+                      }
+                    }
+                  },
+                  "then": {
+                    "properties": {
+                      "epochAfterId": {
+                        "const": 0
+                      }
+                    }
+                  }
                 }
               }
             }
           }
         },
-        "description": "An inbox scenario serves {items, position, next} pages and item frames: an `events` envelope or a bare `event` frame is the account feed's shape and cannot certify the inbox lane. An inbox subscribe expectation carries `inbox: true` and none of the account feed's other dimensions. A poll-query pin (subset or exact) names only the inbox's dimensions."
+        "description": "An inbox scenario serves {items, position, next} pages and item frames: an `events` envelope or a bare `event` frame is the account feed's shape and cannot certify the inbox lane. An inbox subscribe expectation carries `inbox: true` and none of the account feed's other dimensions. A poll-query pin (subset or exact) names only the inbox's dimensions. An inbox 410 carries no epoch_after_id, and the gap it raises carries epochAfterId 0 — the fixed value for none."
       },
       "else": {
         "properties": {
@@ -390,7 +438,30 @@
                             ]
                           }
                         }
-                      }
+                      },
+                      "allOf": [
+                        {
+                          "if": {
+                            "required": [
+                              "status"
+                            ],
+                            "properties": {
+                              "status": {
+                                "const": 410
+                              }
+                            }
+                          },
+                          "then": {
+                            "properties": {
+                              "body": {
+                                "required": [
+                                  "epoch_after_id"
+                                ]
+                              }
+                            }
+                          }
+                        }
+                      ]
                     },
                     "query": {
                       "allOf": [
@@ -443,7 +514,7 @@
             }
           }
         },
-        "description": "An account scenario serves {events, position, next} pages and event frames: an `items` envelope or an `item` frame is the inbox lane's shape. An account subscribe expectation carries neither `inbox` nor a reasons param. A poll-query pin (subset or exact) never names reasons."
+        "description": "An account scenario serves {events, position, next} pages and event frames: an `items` envelope or an `item` frame is the inbox lane's shape. An account subscribe expectation carries neither `inbox` nor a reasons param. A poll-query pin (subset or exact) never names reasons. An account-lane 410 carries epoch_after_id."
       }
     }
   ],
@@ -1431,7 +1502,6 @@
               "type": "object",
               "additionalProperties": false,
               "required": [
-                "epoch_after_id",
                 "resume"
               ],
               "properties": {
@@ -1441,7 +1511,8 @@
                 "epoch_after_id": {
                   "type": "integer",
                   "minimum": 0,
-                  "maximum": 9223372036854775807
+                  "maximum": 9223372036854775807,
+                  "description": "The feed's epoch (required on the account lane, forbidden on the inbox lane, whose 410 carries none)."
                 },
                 "resume": {
                   "type": "string",

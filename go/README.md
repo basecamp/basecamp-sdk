@@ -935,7 +935,8 @@ and the feed continues.
 
 A semantic signal is a condition that changes what the feed can promise, and there are
 exactly two: `BufferOverflow` (the live buffer dropped events, naming the exact ids) and
-`FeedGap` (a 410 — history before `EpochAfterID` is gone). The handler registered with
+`FeedGap` (a 410 — history before `EpochAfterID` is gone; on the inbox lane, whose 410
+carries no epoch, `EpochAfterID` is 0 and the fence is the retention window). The handler registered with
 `WithSignalHandler` is invoked exactly once per signal, synchronously, on your own
 execution context, and returns `Accept` or `Terminate`.
 

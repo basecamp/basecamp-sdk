@@ -169,14 +169,14 @@ func TestInboxLaneGapNamesRetention(t *testing.T) {
 	store.Stored("pos-0")
 	h := storedHarness(t, store, eventfeed.WithLane(eventfeed.InboxLane))
 	h.minter.ScriptTicket(ticket(1))
-	h.polls.ScriptError(&eventfeed.PollError{Kind: eventfeed.PollGone, EpochAfterID: 7, ResumeURL: testOrigin + "/999/inbox.json?since=0"})
+	h.polls.ScriptError(&eventfeed.PollError{Kind: eventfeed.PollGone, ResumeURL: testOrigin + "/999/inbox.json?since=0"})
 	h.start()
 
 	conn := h.driveToSubscribed()
 	conn.Serve(frameConfirm(eventfeed.ExportInboxSubscribeIdentifier(eventfeed.Filters{})))
 	h.join()
 	_, terminal, _ := h.snapshot()
-	if terminal == nil || terminal.Reason != eventfeed.ReasonFeedGap || terminal.Msg != "the inbox's retained items before item 7 are gone" {
+	if terminal == nil || terminal.Reason != eventfeed.ReasonFeedGap || terminal.Msg != "the inbox's retained items behind the held position are gone" {
 		t.Fatalf("terminal = %v, want feed_gap naming the retention window", terminal)
 	}
 }

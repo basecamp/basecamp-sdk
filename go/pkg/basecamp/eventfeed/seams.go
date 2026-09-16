@@ -218,7 +218,10 @@ type PollError struct {
 	Kind PollErrorKind
 	// RetryAfter is the server-directed wait, when present (throttled).
 	RetryAfter time.Duration
-	// EpochAfterID is the 410 body's epoch_after_id (gone only).
+	// EpochAfterID is the 410 body's epoch_after_id (gone only). The inbox's
+	// 410 carries none — its fence is the retention window and its resume
+	// re-enters at since=0 — so on the inbox lane this is 0, the fixed
+	// value for none, and nothing renders it as an id.
 	EpochAfterID int64
 	// ResumeURL is the 410 body's resume URL (gone only).
 	ResumeURL string
@@ -460,7 +463,8 @@ func (BufferOverflow) isSignal() {}
 // FeedGap reports a 410: the feed's history before EpochAfterID is gone. A
 // 410 never silently auto-continues.
 type FeedGap struct {
-	// EpochAfterID is the 410 body's epoch_after_id.
+	// EpochAfterID is the 410 body's epoch_after_id; 0 on the inbox lane,
+	// whose 410 carries none (the fence is the retention window).
 	EpochAfterID int64
 	// ResumeURL is the server-provided resume URL (it preserves the
 	// canonical filter set).

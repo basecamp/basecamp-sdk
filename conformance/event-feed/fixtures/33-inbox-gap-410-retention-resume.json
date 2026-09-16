@@ -1,6 +1,6 @@
 {
   "name": "33-inbox-gap-410-retention-resume",
-  "description": "The inbox lane's 410 is the retention window, not the epoch: the held position fell behind the 30-day retention, and the accepting handler follows the provided resume URL — the server's re-entry at since=0, the earliest retained item, which a stale position has seen none of — as a position-resume entry, saving its page on acceptance. Same signal, same handler contract, same class as the feed's 410 (fixture 16); what differs is what the fence means.",
+  "description": "The inbox lane's 410 is the retention window, not the epoch: the held position fell behind the 30-day retention, and the accepting handler follows the provided resume URL — the server's re-entry at since=0, the earliest retained item, which a stale position has seen none of — as a position-resume entry, saving its page on acceptance. Same signal, same handler contract, same class as the feed's 410 (fixture 16); what differs is what the fence means — and that the inbox's 410 body carries no epoch_after_id, so the gap's epochAfterId is 0, the fixed value for none.",
   "config": {
     "lane": "inbox",
     "position": "{{POS:0}}",
@@ -51,7 +51,6 @@
           "status": 410,
           "body": {
             "error": "position behind retention",
-            "epoch_after_id": 40,
             "resume": "{{API_ORIGIN}}/inbox.json?since=0"
           }
         }
@@ -59,13 +58,13 @@
     },
     {
       "expectGap": {
-        "epochAfterId": 40
+        "epochAfterId": 0
       }
     },
     {
       "expectSignal": {
         "kind": "feedGap",
-        "epochAfterId": 40,
+        "epochAfterId": 0,
         "resumeUrl": "{{API_ORIGIN}}/inbox.json?since=0"
       }
     },
