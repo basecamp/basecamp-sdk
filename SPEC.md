@@ -3199,7 +3199,9 @@ walk-end page without `next`, the 400 with and without `reason` plus the 409 and
 relative `Link: rel="next"` served beside `next`, one request), the agents-only bodyless
 403, the reasoned 400 and the retention 410 on the inbox, and the bodyless mint with its
 401. The feed's envelope case serves a continuation too and asserts one request, so both
-cursor lanes (§8) are caught by count if a walk is ever generated. The connector's
+cursor lanes (§8) go red if a walk is ever generated — by the request count where the
+method's return type survives the change, and at the runner's compile in the typed SDKs
+where it does not. The connector's
 own family stays under `conformance/event-feed/`.
 
 ### Provenance `[manual]`

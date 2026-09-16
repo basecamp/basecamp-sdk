@@ -58,8 +58,9 @@ structure basecampPagination {
     /// either way. A cursor operation's Go wrapper must not follow the walk, and
     /// the only thing that says so is conformance: each cursor lane's fixture
     /// serves a `Link: rel="next"` header and asserts a single request, so a Go
-    /// wrapper that started walking fails `make conformance` exactly as the
-    /// other six SDKs' generated methods would. A new cursor operation owes the
+    /// wrapper that started walking fails `make conformance` on the request
+    /// count (the other six fail there too, or at the runner's compile where a
+    /// walk would change the generated return type). A new cursor operation owes the
     /// same fixture, or its Go wrapper is back to discipline alone.
     ///
     /// A third value, "page", was documented here for years and no generator
