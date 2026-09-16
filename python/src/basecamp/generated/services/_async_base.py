@@ -4,7 +4,7 @@ import time
 from typing import Any
 
 from basecamp import _security
-from basecamp._decoding import decoded_array, decoded_object
+from basecamp._decoding import decoded_array, decoded_envelope_array, decoded_object
 from basecamp._pagination import (
     ListMeta,
     ListResult,
@@ -371,7 +371,7 @@ class AsyncBaseService:
                 raise ApiError(f"Failed to parse paginated response (page {page}): {_security.truncate(str(e))}") from e
 
             envelope = decoded_object(data, f"the paginated response body (page {page})")
-            all_items.extend(decoded_array(envelope.get(key), f"the {key!r} list in the response (page {page})"))
+            all_items.extend(decoded_envelope_array(envelope, key, f"the {key!r} list (page {page})"))
 
             # SPEC section 8: a positive `page` selects exactly that page. The
             # follow loop stops here after a single request; a next link still
@@ -430,7 +430,7 @@ class AsyncBaseService:
 
         first_data = decoded_object(first_data, "the paginated response body (page 1)")
         wrapper = {k: v for k, v in first_data.items() if k != key}
-        all_items = list(decoded_array(first_data.get(key), f"the {key!r} list in the response (page 1)"))
+        all_items = list(decoded_envelope_array(first_data, key, f"the {key!r} list (page 1)"))
 
         next_link = parse_next_link(first_response.headers.get("link"))
         url = base_url
@@ -461,7 +461,7 @@ class AsyncBaseService:
                 raise ApiError(f"Failed to parse paginated response (page {page}): {_security.truncate(str(e))}") from e
 
             envelope = decoded_object(data, f"the paginated response body (page {page})")
-            all_items.extend(decoded_array(envelope.get(key), f"the {key!r} list in the response (page {page})"))
+            all_items.extend(decoded_envelope_array(envelope, key, f"the {key!r} list (page {page})"))
             next_link = parse_next_link(response.headers.get("link"))
             url = next_url
 

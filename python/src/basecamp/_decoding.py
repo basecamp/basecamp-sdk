@@ -55,6 +55,36 @@ def decoded_array(value: Any, what: str) -> list[Any]:
     return value
 
 
+def decoded_envelope_array(envelope: dict[str, Any], key: str, what: str) -> list[Any]:
+    """A REQUIRED array member of a wrapped-pagination envelope.
+
+    Stricter than :func:`decoded_array`, and deliberately. SPEC §6 "Statusless
+    ``api_error`` for a malformed 2xx body" settles this one shape for every SDK:
+    a wrapped-pagination response is decoded in two halves — the items array on
+    every page, and the first page's remaining members — and *an absent or
+    wrong-typed member of the envelope is a malformed body and not an empty
+    result*, because BC3 writes these envelopes unconditionally.
+
+    So the null-is-empty rule stops at the envelope's door. It governs a bare
+    array body, where Go's `json.Unmarshal` and the wire contract agree that a
+    null list is no rows; it does not govern a member that the server always
+    writes, where absence or null means the body did not arrive intact. The
+    three typed-decoder SDKs get this from their decoders — Rust's `events` is a
+    bare `Vec<TimelineEvent>`, Kotlin's wrapper reader throws on an absent
+    member, Swift's `guard let` does the same — and Python has to check.
+
+    Conflating the two would hand the caller a 2xx-shaped result whose items are
+    silently empty and whose sibling members are missing: the loud-crash-for-a-
+    silent-wrong-answer trade this module exists to refuse.
+    """
+    if key not in envelope:
+        raise ApiError(f"{what} is absent from the response envelope")
+    value = envelope[key]
+    if not isinstance(value, list):
+        raise ApiError(f"{what} was not an array: {type(value).__name__}")
+    return value
+
+
 def decoded_string(value: Any, what: str) -> str:
     """A string field: ``""`` for null, the str itself, else a decode error."""
     if value is None:

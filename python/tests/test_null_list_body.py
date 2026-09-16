@@ -2,9 +2,21 @@
 
 Go hands each list response to ``json.Unmarshal`` against a typed destination, and
 ``null`` is a no-op there at any depth: it leaves the destination at its zero value
-and returns no error. A null body, a null value under the item key, and an absent
-item key are therefore *no rows* in the reference — not a failure. Everything else
-of the wrong type fails the decode of the whole response.
+and returns no error. A null BODY is therefore *no rows* in the reference, not a
+failure, and everything else of the wrong type fails the decode of the whole
+response.
+
+**The rule stops at the envelope's door, and that is a second rule, not an
+exception.** SPEC §6 "Statusless ``api_error`` for a malformed 2xx body" settles
+the wrapped-pagination shape for every SDK: the items array on every page and the
+first page's remaining members are all the primitive's decode, so *an absent or
+wrong-typed member of the envelope is a malformed body and not an empty result* —
+BC3 writes these envelopes unconditionally, and ``GetPersonProgress`` is the one
+operation it names. Reading a null envelope as empty would hand the caller a
+2xx-shaped result with ``events`` silently empty and ``person`` missing outright,
+which is the loud-crash-for-a-silent-wrong-answer trade this file exists to
+refuse. So the bare-array sites follow Go, the envelope sites follow §6, and each
+site's rows are derived from what the reference does AT THAT SITE.
 
 Measured against the real reference, not asserted from memory. A linked Go oracle
 calling ``encoding/json`` through the generated parsers
@@ -78,9 +90,12 @@ _NOT_AN_OBJECT = [
     pytest.param([{"id": 1}], id="non-empty-array"),
 ]
 
-# Wrong-typed values under the item key of an envelope. Go: "cannot unmarshal
-# <kind> into Go struct field ....events of type []T".
+# Values under the item key that are NOT an array. ``null`` belongs here, unlike
+# everywhere else in this file: SPEC §6 makes an absent or wrong-typed envelope
+# member a malformed body rather than an empty result, because BC3 writes these
+# envelopes unconditionally.
 _NOT_AN_ARRAY_UNDER_KEY = [
+    pytest.param(None, id="null"),
     pytest.param(0, id="number"),
     pytest.param(False, id="boolean"),
     pytest.param("abc", id="string"),
@@ -260,23 +275,24 @@ class TestPaginateKeyNullBody:
     test_max_items_public.py do for the same family."""
 
     @respx.mock
-    def test_null_body_is_an_empty_listing(self):
+    def test_null_body_fails_the_read(self):
+        """Every member of the envelope is absent, and SPEC §6 makes an absent
+        member a malformed body. This is where the null-is-empty rule stops."""
         respx.get(f"{_ACCOUNT_URL}/x.json").mock(return_value=_json(None))
 
-        assert list(_account().projects._paginate_key("/x.json", "events")) == []
+        with pytest.raises(ApiError) as excinfo:
+            _account().projects._paginate_key("/x.json", "events")
+
+        assert "is absent from the response envelope" in str(excinfo.value)
 
     @respx.mock
-    def test_absent_key_is_an_empty_listing(self):
-        """Go's zero struct leaves the field nil when the key never appears."""
+    def test_absent_key_fails_the_read(self):
         respx.get(f"{_ACCOUNT_URL}/x.json").mock(return_value=_json({"person": {"id": 9}}))
 
-        assert list(_account().projects._paginate_key("/x.json", "events")) == []
+        with pytest.raises(ApiError) as excinfo:
+            _account().projects._paginate_key("/x.json", "events")
 
-    @respx.mock
-    def test_null_under_the_key_is_an_empty_listing(self):
-        respx.get(f"{_ACCOUNT_URL}/x.json").mock(return_value=_json({"events": None}))
-
-        assert list(_account().projects._paginate_key("/x.json", "events")) == []
+        assert "is absent from the response envelope" in str(excinfo.value)
 
     @respx.mock
     def test_items_under_the_key_are_collected(self):
@@ -302,19 +318,24 @@ class TestPaginateKeyNullBody:
         with pytest.raises(ApiError) as excinfo:
             _account().projects._paginate_key("/x.json", "events")
 
-        assert "the 'events' list in the response" in str(excinfo.value)
+        assert "the 'events' list" in str(excinfo.value)
         assert "was not an array" in str(excinfo.value)
 
     @respx.mock
-    def test_null_on_a_later_page_keeps_the_earlier_pages(self):
+    def test_null_on_a_later_page_fails_the_read(self):
         """The later-page decode is a separate arm from the first-page one, and a
         guard on only the first page leaves the original crash reachable behind
-        any ``Link: rel="next"``."""
+        any ``Link: rel="next"``. SPEC §6 covers the items array on EVERY page,
+        so a null later page is malformed rather than the end of the listing."""
         url = f"{_ACCOUNT_URL}/x.json"
         respx.get(url, params={"page": "2"}).mock(return_value=_json(None))
         respx.get(url).mock(return_value=_json({"events": [{"id": 1}]}, _link_to(f"{url}?page=2")))
 
-        assert list(_account().projects._paginate_key("/x.json", "events")) == [{"id": 1}]
+        with pytest.raises(ApiError) as excinfo:
+            _account().projects._paginate_key("/x.json", "events")
+
+        assert "page 2" in str(excinfo.value)
+        assert "is absent from the response envelope" in str(excinfo.value)
 
     @respx.mock
     def test_wrong_typed_later_page_body_fails_the_read(self):
@@ -344,14 +365,15 @@ class TestPaginateKeyNullBody:
 class TestAsyncPaginateKeyNullBody:
     @pytest.mark.asyncio
     @respx.mock
-    async def test_null_body_is_an_empty_listing(self):
+    async def test_null_body_fails_the_read(self):
         respx.get(f"{_ACCOUNT_URL}/x.json").mock(return_value=_json(None))
 
         client = AsyncClient(access_token="test-token")
-        result = await client.for_account("12345").projects._paginate_key("/x.json", "events")
+        with pytest.raises(ApiError) as excinfo:
+            await client.for_account("12345").projects._paginate_key("/x.json", "events")
         await client.close()
 
-        assert list(result) == []
+        assert "is absent from the response envelope" in str(excinfo.value)
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize("value", _NOT_AN_ARRAY_UNDER_KEY)
@@ -364,7 +386,7 @@ class TestAsyncPaginateKeyNullBody:
             await client.for_account("12345").projects._paginate_key("/x.json", "events")
         await client.close()
 
-        assert "the 'events' list in the response" in str(excinfo.value)
+        assert "the 'events' list" in str(excinfo.value)
         assert "was not an array" in str(excinfo.value)
 
     @pytest.mark.asyncio
@@ -382,16 +404,18 @@ class TestAsyncPaginateKeyNullBody:
 
     @pytest.mark.asyncio
     @respx.mock
-    async def test_null_on_a_later_page_keeps_the_earlier_pages(self):
+    async def test_null_on_a_later_page_fails_the_read(self):
         url = f"{_ACCOUNT_URL}/x.json"
         respx.get(url, params={"page": "2"}).mock(return_value=_json(None))
         respx.get(url).mock(return_value=_json({"events": [{"id": 1}]}, _link_to(f"{url}?page=2")))
 
         client = AsyncClient(access_token="test-token")
-        result = await client.for_account("12345").projects._paginate_key("/x.json", "events")
+        with pytest.raises(ApiError) as excinfo:
+            await client.for_account("12345").projects._paginate_key("/x.json", "events")
         await client.close()
 
-        assert list(result) == [{"id": 1}]
+        assert "page 2" in str(excinfo.value)
+        assert "is absent from the response envelope" in str(excinfo.value)
 
     @pytest.mark.asyncio
     @respx.mock
@@ -417,25 +441,47 @@ class TestPaginateWrappedNullBody:
     ``reports.person_progress``."""
 
     @respx.mock
-    def test_null_body_is_an_empty_listing_under_the_key(self):
+    def test_null_body_fails_the_read(self):
+        """``GetPersonProgress`` is the operation SPEC §6 names. A null body is
+        an envelope with both members absent, and BC3 writes both of them
+        unconditionally — so this is a body that did not arrive intact.
+
+        Reading it as an empty listing would be the worst available answer:
+        ``events`` silently empty and ``person`` gone, handed back under a 2xx.
+        That is the loud-crash-for-a-silent-wrong-answer trade the rest of this
+        file exists to refuse."""
         respx.get(_PROGRESS_URL).mock(return_value=_json(None))
 
-        result = _account().reports.person_progress(person_id=1)
+        with pytest.raises(ApiError) as excinfo:
+            _account().reports.person_progress(person_id=1)
 
-        assert list(result["events"]) == []
+        assert "is absent from the response envelope" in str(excinfo.value)
 
     @respx.mock
-    def test_absent_key_keeps_the_rest_of_the_envelope(self):
+    def test_absent_key_fails_the_read(self):
         respx.get(_PROGRESS_URL).mock(return_value=_json({"person": {"id": 9}}))
+
+        with pytest.raises(ApiError) as excinfo:
+            _account().reports.person_progress(person_id=1)
+
+        assert "is absent from the response envelope" in str(excinfo.value)
+
+    @respx.mock
+    def test_a_well_formed_envelope_still_reads(self):
+        """The refusals above are not "refuse everything": the shape BC3 actually
+        sends comes back whole, items and sibling members alike."""
+        respx.get(_PROGRESS_URL).mock(return_value=_json({"events": [{"id": 1}], "person": {"id": 9}}))
 
         result = _account().reports.person_progress(person_id=1)
 
-        assert list(result["events"]) == []
+        assert list(result["events"]) == [{"id": 1}]
         assert result["person"] == {"id": 9}
 
     @respx.mock
-    def test_null_under_the_key_keeps_the_rest_of_the_envelope(self):
-        respx.get(_PROGRESS_URL).mock(return_value=_json({"events": None, "person": {"id": 9}}))
+    def test_an_empty_items_array_still_reads(self):
+        """An empty listing is spelled ``[]`` here, and that still works — the
+        member is present and is an array."""
+        respx.get(_PROGRESS_URL).mock(return_value=_json({"events": [], "person": {"id": 9}}))
 
         result = _account().reports.person_progress(person_id=1)
 
@@ -468,20 +514,21 @@ class TestPaginateWrappedNullBody:
         with pytest.raises(ApiError) as excinfo:
             _account().reports.person_progress(person_id=1)
 
-        assert "the 'events' list in the response" in str(excinfo.value)
+        assert "the 'events' list" in str(excinfo.value)
         assert "was not an array" in str(excinfo.value)
 
     @respx.mock
-    def test_null_on_a_later_page_keeps_the_earlier_pages(self):
+    def test_null_on_a_later_page_fails_the_read(self):
         respx.get(_PROGRESS_URL, params={"page": "2"}).mock(return_value=_json(None))
         respx.get(_PROGRESS_URL).mock(
             return_value=_json({"events": [{"id": 1}], "person": {"id": 9}}, _link_to(f"{_PROGRESS_URL}?page=2"))
         )
 
-        result = _account().reports.person_progress(person_id=1)
+        with pytest.raises(ApiError) as excinfo:
+            _account().reports.person_progress(person_id=1)
 
-        assert list(result["events"]) == [{"id": 1}]
-        assert result["person"] == {"id": 9}
+        assert "page 2" in str(excinfo.value)
+        assert "is absent from the response envelope" in str(excinfo.value)
 
     @pytest.mark.parametrize("body", _NOT_AN_OBJECT)
     @respx.mock
@@ -506,21 +553,34 @@ class TestPaginateWrappedNullBody:
             _account().reports.person_progress(person_id=1)
 
         assert "page 2" in str(excinfo.value)
-        assert "the 'events' list in the response" in str(excinfo.value)
+        assert "the 'events' list" in str(excinfo.value)
         assert "was not an array" in str(excinfo.value)
 
 
 class TestAsyncPaginateWrappedNullBody:
     @pytest.mark.asyncio
     @respx.mock
-    async def test_null_body_is_an_empty_listing_under_the_key(self):
+    async def test_null_body_fails_the_read(self):
         respx.get(_PROGRESS_URL).mock(return_value=_json(None))
+
+        client = AsyncClient(access_token="test-token")
+        with pytest.raises(ApiError) as excinfo:
+            await client.for_account("12345").reports.person_progress(person_id=1)
+        await client.close()
+
+        assert "is absent from the response envelope" in str(excinfo.value)
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_a_well_formed_envelope_still_reads(self):
+        respx.get(_PROGRESS_URL).mock(return_value=_json({"events": [{"id": 1}], "person": {"id": 9}}))
 
         client = AsyncClient(access_token="test-token")
         result = await client.for_account("12345").reports.person_progress(person_id=1)
         await client.close()
 
-        assert list(result["events"]) == []
+        assert list(result["events"]) == [{"id": 1}]
+        assert result["person"] == {"id": 9}
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize("value", _NOT_AN_ARRAY_UNDER_KEY)
@@ -533,7 +593,7 @@ class TestAsyncPaginateWrappedNullBody:
             await client.for_account("12345").reports.person_progress(person_id=1)
         await client.close()
 
-        assert "the 'events' list in the response" in str(excinfo.value)
+        assert "the 'events' list" in str(excinfo.value)
         assert "was not an array" in str(excinfo.value)
 
     @pytest.mark.asyncio
@@ -551,18 +611,19 @@ class TestAsyncPaginateWrappedNullBody:
 
     @pytest.mark.asyncio
     @respx.mock
-    async def test_null_on_a_later_page_keeps_the_earlier_pages(self):
+    async def test_null_on_a_later_page_fails_the_read(self):
         respx.get(_PROGRESS_URL, params={"page": "2"}).mock(return_value=_json(None))
         respx.get(_PROGRESS_URL).mock(
             return_value=_json({"events": [{"id": 1}], "person": {"id": 9}}, _link_to(f"{_PROGRESS_URL}?page=2"))
         )
 
         client = AsyncClient(access_token="test-token")
-        result = await client.for_account("12345").reports.person_progress(person_id=1)
+        with pytest.raises(ApiError) as excinfo:
+            await client.for_account("12345").reports.person_progress(person_id=1)
         await client.close()
 
-        assert list(result["events"]) == [{"id": 1}]
-        assert result["person"] == {"id": 9}
+        assert "page 2" in str(excinfo.value)
+        assert "is absent from the response envelope" in str(excinfo.value)
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize("body", _NOT_AN_OBJECT)
@@ -591,7 +652,7 @@ class TestAsyncPaginateWrappedNullBody:
         await client.close()
 
         assert "page 2" in str(excinfo.value)
-        assert "the 'events' list in the response" in str(excinfo.value)
+        assert "the 'events' list" in str(excinfo.value)
         assert "was not an array" in str(excinfo.value)
 
 
