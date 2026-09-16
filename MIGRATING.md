@@ -13,6 +13,85 @@ what wrong behaviour you get if you ignore one. This file is that half.
 
 # Unreleased
 
+### Rust changes the exit code for `bucket_mismatch`, Swift's classification accessors stop being optional
+
+A recording pointer that names a bucket the recording is not in is reported as
+`bucket_mismatch` in every SDK. Rust classified that verdict as `not_found`
+(exit 2) where Python, Ruby, Kotlin and TypeScript classified it as `usage`
+(exit 1), and Go and Swift classified it as nothing. It is now `usage`
+everywhere.
+
+| SDK | before | after |
+|---|---|---|
+| Rust | `not_found` — exit 2 | `usage` — exit 1 |
+| Python, Ruby, Kotlin, TypeScript | `usage` — exit 1 | unchanged |
+| Go, Swift | classified as nothing | `usage` — exit 1 |
+
+**Three breaks, two of them silent.**
+
+*Rust, silent.* `RecordingSummaryError::code()` and the `Error` built from it
+change from `ErrorCode::NotFound` to `ErrorCode::Usage`, and the CLI exit status
+from 2 to 1. A `match` on `ErrorCode::NotFound`, or a script testing `$? -eq 2`,
+stops matching — with a clean build. Match the verdict instead:
+`RecordingSummaryError::of(&err)` and the `BucketMismatch` variant, which did
+not change.
+
+*Go, silent.* `basecamp.RecordingSummaryCode(err)` now returns `("usage", true)`
+for `ErrBucketMismatch` where it returned `("", false)`. A caller shaped like
+`if code, ok := RecordingSummaryCode(err); ok { os.Exit(ExitCodeFor(code)) }`
+used to fall through to its own handling for this verdict and now exits 1. If
+you had your own answer for it, that answer is now unreachable.
+
+*Swift, loud.* `RecordingSummaryError.canonicalCode` becomes `String` from
+`String?`, and `.exitCode` becomes `Int` from `Int?`. `if let code =
+err.canonicalCode` no longer compiles, and `err.canonicalCode ?? "x"` /
+`err.exitCode ?? 7` become warnings. Drop the unwrap: every verdict is now
+classified, and the switch is total, so a verdict added later has to be
+classified or the build fails. That is the point of the change.
+
+**Retryability did not change** for any verdict in any SDK.
+
+### Four SDKs change the exit code for `campfire_discovery_incomplete`, and the change is silent
+
+A chat line whose Campfire discovery could not be carried to a conclusion is
+reported as `campfire_discovery_incomplete` in every SDK. The coarse SPEC §6
+code that verdict is classified under — and therefore the CLI exit status — was
+decided independently by each port, and they did not agree. It is now `usage`
+(exit 1) everywhere.
+
+| SDK | before | after |
+|---|---|---|
+| Python, Ruby, Rust, TypeScript | `api_error` — exit 7 | `usage` — exit 1 |
+| Kotlin | `usage` — exit 1 | unchanged |
+| Go, Swift | classified as nothing | `usage` — exit 1, through a new accessor |
+
+**Wrong behaviour you get if you ignore it, and it is silent in all four.**
+Nothing stops compiling and nothing starts throwing. A script that branches on
+the CLI's exit status — `if [ $? -eq 7 ]`, a retry wrapper that treats 7 as a
+server fault worth trying again — stops matching on Python, Ruby, Rust and
+TypeScript, and starts matching wherever it tested for 1. Code that switches on
+the error's `code` field (`err.code == "api_error"`, `ErrorCode::ApiError`,
+`error.code === "api_error"`) takes the same change with a clean build.
+
+**What to react to.** Branch on the IDENTITY, not the coarse code: the exception
+class in Python and Ruby (`CampfireDiscoveryIncompleteError`), `kind` in
+TypeScript, `reason` in Kotlin, `RecordingSummaryError::of(&err)` in Rust,
+`errors.Is(err, basecamp.ErrCampfireDiscoveryIncomplete)` in Go, and the enum
+case in Swift. Those did not change and will not: the coarse code is derived
+from them, and the whole point of this change is that the derivation is now the
+same in all seven.
+
+**Retryability did not change.** It was `false` in every SDK that carries the
+field before this change and is `false` after. Only the code moved.
+
+Go and Swift still keep the verdict out of their error taxonomies — the sentinel
+and the enum are what you match — and gained a read-only classification beside
+it, `basecamp.RecordingSummaryCode(err)` and
+`RecordingSummaryError.canonicalCode`, so a CLI built on either picks the same
+exit status as every other SDK instead of inventing one. In Go, **read the
+second return value**: `code, _ := RecordingSummaryCode(err)` yields `""` for
+anything unclassified, and `ExitCodeFor("")` is 7.
+
 ### Go: `Event` and `WebhookEvent` gain `PerformedBy` (#898)
 
 **The compile error, if you get one:** an unkeyed composite literal of

@@ -580,13 +580,16 @@ class TestCompositeIdentities:
         # documented answer, so it is spelled out per identity here.
         import basecamp.errors as _errors
 
+        # `retryable` is pinned alongside, because it is the other half of what
+        # card 40 settled for `campfire_discovery_incomplete` and the half a
+        # code change could silently carry away with it.
         expected = {
-            "NoRecordingTypeError": ("usage", 1),
-            "UnknownRecordingTypeError": ("usage", 1),
-            "BucketMismatchError": ("usage", 1),
-            "RecordingUnresolvedError": ("not_found", 2),
-            "CampfireDiscoveryIncompleteError": ("api_error", 7),
-            "CampfireIndexLoadAbortedError": ("api_error", 7),
+            "NoRecordingTypeError": ("usage", 1, False),
+            "UnknownRecordingTypeError": ("usage", 1, False),
+            "BucketMismatchError": ("usage", 1, False),
+            "RecordingUnresolvedError": ("not_found", 2, False),
+            "CampfireDiscoveryIncompleteError": ("usage", 1, False),
+            "CampfireIndexLoadAbortedError": ("api_error", 7, True),
         }
         built = [
             _errors.NoRecordingTypeError(routing_key="boost.created"),
@@ -599,7 +602,7 @@ class TestCompositeIdentities:
         assert {type(e).__name__ for e in built} == set(expected), "every identity must be built here"
         for error in built:
             name = type(error).__name__
-            assert (error.code, error.exit_code) == expected[name], name
+            assert (error.code, error.exit_code, error.retryable) == expected[name], name
 
     def test_discovery_incomplete_cannot_be_told_it_is_retryable(self):
         # `DeviceFlowError` overwrites rather than setdefaults so a caller's

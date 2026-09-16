@@ -291,7 +291,31 @@ export class UnresolvedRecordingError extends RecordingSummaryError {
   }
 }
 
-/** Discovery stopped short of a conclusion, and why. */
+/**
+ * Discovery stopped short of a conclusion, and why.
+ *
+ * `usage`, non-retryable, settled across every port on
+ * {@link https://app.basecamp.com/2914079/buckets/48699913/card_tables/cards/10308122086 | card 40}
+ * after the merged ports shipped two different answers — this one and Python
+ * said `api_error`, Kotlin said `usage`, and a caller got exit 7 from one SDK
+ * and exit 1 from another for the same condition.
+ *
+ * `usage` is one of only THREE coarse codes no HTTP response can produce: the
+ * status mapping yields `auth_required`, `forbidden`, `not_found`,
+ * `rate_limit`, `validation`, `limit_exceeded` and `api_error`, and `network`
+ * and `ambiguous` are equally unreachable from a status. `usage` is the one of
+ * those three that also describes a call the SDK declined to complete, which is
+ * why it and not the other two. A verdict the composite reached on its own
+ * therefore can never be read back as a constituent read's own answer — the
+ * property the composite exists to protect. It is
+ * explicitly not `not_found`, because nothing left unsearched may be reported
+ * absent.
+ *
+ * Retryability is a separate field and is unchanged: {@link
+ * RecordingSummaryError} forces `retryable: false` on every identity, and both
+ * of this one's reasons are deterministic for the same account state, so a
+ * retry loop would re-run the identical search forever.
+ */
 export class CampfireDiscoveryIncompleteError extends RecordingSummaryError {
   readonly bucketId: number;
   readonly recordingId: number;
@@ -300,7 +324,7 @@ export class CampfireDiscoveryIncompleteError extends RecordingSummaryError {
   constructor(init: { bucketId: number; recordingId: number; reason: string }) {
     super(
       "campfire_discovery_incomplete",
-      "api_error",
+      "usage",
       `campfire discovery incomplete: line ${init.recordingId} in bucket ${init.bucketId}: ${init.reason}`,
       { hint: "candidates were left unsearched, so the line cannot be reported absent" },
     );
@@ -321,15 +345,19 @@ export class CampfireDiscoveryIncompleteError extends RecordingSummaryError {
  * changed, which is the half of a rename that editor hover and generated API
  * docs actually show a consumer.
  *
- * The ports on `main` that have a code slot do NOT agree here, and the
- * disagreement is bigger than the value: `exitCode` derives from the code, so
- * this identity exits 1 in Python and Kotlin (`usage`) and 2 in Rust
- * (`not_found`, "the recording the pointer names is not where it was looked
- * for"). Go and Swift keep the composite's verdicts out of the taxonomy
- * entirely. This port follows the majority and the reasoning it can defend —
- * the pointer is the caller's — and the split is recorded rather than smoothed
- * over, in the README table and in {@link https://github.com/basecamp/basecamp-sdk/pull/884 | the port's PR},
- * because no one port can settle it.
+ * The ports on `main` did NOT agree here, and the disagreement was bigger than
+ * the value: `exitCode` derives from the code, so this identity exited 1 in
+ * Python, Ruby, Kotlin and this port (`usage`) and 2 in Rust (`not_found`, "the
+ * recording the pointer names is not where it was looked for"). Settled for
+ * every SDK on {@link https://app.basecamp.com/2914079/buckets/48699913/card_tables/cards/10308966794 | card 41} as `usage`, and on the
+ * argument rather than the four-to-one majority: `not_found` says the recording
+ * is not there, which is false — the read FOUND it, in another bucket, and
+ * returned it. Nothing is absent. What failed is the caller's pointer.
+ *
+ * The shared fixture had no case for this identity at all, so nothing pinned
+ * the code: five ports carried two answers and two carried none, with every
+ * case green in all seven. It has one now, and it pins the code alongside the
+ * identity.
  */
 export class BucketMismatchError extends RecordingSummaryError {
   readonly ref: RecordingRef;
@@ -339,19 +367,10 @@ export class BucketMismatchError extends RecordingSummaryError {
   constructor(ref: RecordingRef, bucketId: number) {
     super(
       "bucket_mismatch",
-      // Surveyed across every merged port rather than argued from first
-      // principles — and the first version of this survey read two of the
-      // three that have a code slot, which is how it came to describe them as
-      // agreeing. Python's `_COMPOSITE_CODE` and Kotlin's
-      // `recordingSummaryCode` map this identity to `usage`; Rust's
-      // `RecordingSummaryError::code` maps it to `not_found`. Two to one, and
-      // `usage` is the one whose reasoning this port can defend: the pointer is
-      // the caller's.
-      //
-      // The code is a CLOSED taxonomy a consumer branches on, and the fixture
-      // pins `errorType` — this `kind` — and says nothing about the code, which
-      // is exactly why three ports could diverge without a single case failing
-      // anywhere.
+      // Settled for every SDK on card 41; see the class doc above for the
+      // argument. The fixture had no case for this identity, so nothing pinned
+      // the code and five ports carried two answers with every case green. It
+      // has one now, so a port that reaches a different answer fails a case.
       "usage",
       `recording is not in the requested bucket: recording ${ref.recordingId} is in bucket ${bucketId}, not ${ref.bucketId}`,
     );

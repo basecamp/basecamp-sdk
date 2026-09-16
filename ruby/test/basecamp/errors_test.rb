@@ -424,4 +424,31 @@ class ErrorsTest < Minitest::Test
       assert_nil error.field_errors, "expected nil field_errors for #{body}"
     end
   end
+  # Each composite identity's coarse code, exit status and retryability,
+  # spelled out per identity rather than as a set: a set over five errors lets
+  # four of them be misclassified without changing it, which is how
+  # +campfire_discovery_incomplete+ came to answer +api_error+ here and +usage+
+  # in Kotlin with every test green in both. Settled on card 40:
+  # https://app.basecamp.com/2914079/buckets/48699913/card_tables/cards/10308122086
+  def test_each_composite_identity_carries_the_code_exit_status_and_retryability_it_settled_on
+    expected = {
+      "no_recording_type" => [ Basecamp::ErrorCode::USAGE, 1, false ],
+      "unknown_recording_type" => [ Basecamp::ErrorCode::USAGE, 1, false ],
+      "bucket_mismatch" => [ Basecamp::ErrorCode::USAGE, 1, false ],
+      "recording_unresolved" => [ Basecamp::ErrorCode::NOT_FOUND, 2, false ],
+      "campfire_discovery_incomplete" => [ Basecamp::ErrorCode::USAGE, 1, false ]
+    }
+    built = [
+      Basecamp::RecordingRoutingError.new(kind: "no_recording_type", routing_key: "boost.created"),
+      Basecamp::RecordingRoutingError.new(kind: "unknown_recording_type", routing_key: "x.y"),
+      Basecamp::BucketMismatchError.new(bucket_id: 1, actual_bucket_id: 3, recording_id: 2),
+      Basecamp::UnresolvedRecordingError.new(bucket_id: 1, recording_id: 2, campfire_ids: [], refreshed: false),
+      Basecamp::CampfireDiscoveryIncompleteError.new(bucket_id: 1, recording_id: 2, reason: "r")
+    ]
+
+    assert_equal expected.keys.sort, built.map(&:kind).sort, "every identity must be built here"
+    built.each do |error|
+      assert_equal expected[error.kind], [ error.code, error.exit_code, error.retryable? ], error.kind
+    end
+  end
 end

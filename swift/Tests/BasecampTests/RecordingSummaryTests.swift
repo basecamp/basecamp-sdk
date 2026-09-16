@@ -539,6 +539,51 @@ final class RecordingSummaryTests: XCTestCase {
         }
     }
 
+    // MARK: - Classification
+
+    /// The canonical code each verdict is classified under, and the exit status
+    /// it decides. Spelled out per identity rather than as a set: a set over
+    /// five verdicts lets four of them be misclassified without changing it,
+    /// which is how `campfire_discovery_incomplete` came to exit 1 from the
+    /// Kotlin SDK and 7 from Python's with every test green in both. Settled on
+    /// cards 40 (`campfire_discovery_incomplete`) and 41 (`bucket_mismatch`).
+    func testEachVerdictCarriesTheCodeAndExitStatusItSettledOn() {
+        let ref = RecordingRef(bucketId: 1, recordingId: 2, eventType: "chat.line.created")
+        let classified: [(RecordingSummaryError, String, Int)] = [
+            (.noRecordingType(ref), "usage", 1),
+            (.unknownRecordingType(ref), "usage", 1),
+            (.bucketMismatch(ref, 9), "usage", 1),
+            (
+                .recordingUnresolved(
+                    UnresolvedRecording(
+                        bucketId: 1, recordingId: 2, campfireIds: [], refreshed: false,
+                        staleCampfireIds: [])), "not_found", 2
+            ),
+            (
+                .campfireDiscoveryIncomplete(
+                    IncompleteCampfireDiscovery(bucketId: 1, recordingId: 2, reason: "r")),
+                "usage", 1
+            ),
+        ]
+        // SPEC §6's taxonomy, closed. Kotlin asserts this membership and Go gets
+        // it by construction (it returns the Code* constants); Swift has no
+        // public code vocabulary of its own, so without this the accessor could
+        // mint a name outside the taxonomy and only the per-identity literals
+        // above would notice — and they are the same literals, so they would
+        // not.
+        let canonical: Set<String> = [
+            "usage", "not_found", "auth_required", "forbidden", "rate_limit",
+            "network", "api_error", "ambiguous", "validation", "limit_exceeded",
+        ]
+        for (error, code, exit) in classified {
+            XCTAssertEqual(error.canonicalCode, code, error.message)
+            XCTAssertEqual(error.exitCode, exit, error.message)
+            XCTAssertTrue(
+                canonical.contains(error.canonicalCode),
+                "\(error.canonicalCode) is outside SPEC §6's closed taxonomy")
+        }
+    }
+
     // MARK: - Helpers
 
     private func assertSummarizeFails(

@@ -268,18 +268,42 @@ impl RecordingSummaryError {
     /// The taxonomy member this reason is reported under.
     ///
     /// Routing refusals are `usage`: the pointer names no read, and nothing was sent.
-    /// "Unresolved" and a bucket mismatch are `not_found`: the recording the pointer names
-    /// is not where it was looked for. Incomplete discovery is `api_error` — the caller
-    /// asked for nothing wrong and the server failed at nothing, and it is explicitly not
-    /// `not_found`, because nothing left unsearched may be reported absent.
+    /// "Unresolved" is `not_found`: every visible candidate answered 404, so the recording
+    /// the pointer names is not where it was looked for.
+    ///
+    /// A bucket mismatch is `usage`, settled across every port on [card 41] after this port
+    /// shipped `not_found` where Python, Ruby, Kotlin and TypeScript shipped `usage` — exit
+    /// 2 against exit 1 for the same condition. `not_found` says the recording is not there,
+    /// which is false: the read FOUND it, in another bucket, and returned it, so nothing is
+    /// absent. What failed is the caller's pointer, which named a bucket the recording is
+    /// not in, and that is what `usage` means everywhere else in the taxonomy. The majority
+    /// agreed, but the argument is what settles it.
+    ///
+    /// [card 41]: https://app.basecamp.com/2914079/buckets/48699913/card_tables/cards/10308966794
+    ///
+    /// Incomplete discovery is `usage`, settled across every port on [card 40] after the
+    /// merged ports shipped two different answers — this one said `api_error`, Kotlin said
+    /// `usage`, and a caller got exit 7 from one SDK and exit 1 from another for the same
+    /// condition. `usage` is one of only THREE coarse codes no HTTP response can produce:
+    /// [`ErrorCode::from_status`] yields `auth_required`, `forbidden`, `not_found`,
+    /// `rate_limit`, `validation`, `limit_exceeded` and `api_error`, and `network` and
+    /// `ambiguous` are equally unreachable from a status. `usage` is the one of those three
+    /// that also describes a call the SDK declined to complete, which is why it and not the
+    /// other two. A verdict the composite reached on its own therefore can never be read
+    /// back as a constituent read's own answer. It is explicitly not `not_found`, because nothing left unsearched
+    /// may be reported absent. Retryability is a separate field and is unchanged: the
+    /// [`Error`] built from this carries `retryable = false`, because both reasons are
+    /// deterministic for the same account state and a retry loop would re-run the identical
+    /// search forever.
+    ///
+    /// [card 40]: https://app.basecamp.com/2914079/buckets/48699913/card_tables/cards/10308122086
     fn code(&self) -> ErrorCode {
         match self {
             RecordingSummaryError::NoRecordingType { .. }
-            | RecordingSummaryError::UnknownRecordingType { .. } => ErrorCode::Usage,
-            RecordingSummaryError::Unresolved(_) | RecordingSummaryError::BucketMismatch { .. } => {
-                ErrorCode::NotFound
-            }
-            RecordingSummaryError::CampfireDiscoveryIncomplete { .. } => ErrorCode::ApiError,
+            | RecordingSummaryError::UnknownRecordingType { .. }
+            | RecordingSummaryError::BucketMismatch { .. }
+            | RecordingSummaryError::CampfireDiscoveryIncomplete { .. } => ErrorCode::Usage,
+            RecordingSummaryError::Unresolved(_) => ErrorCode::NotFound,
         }
     }
 }
@@ -1366,7 +1390,12 @@ mod tests {
             reason: "too many".to_string(),
         }
         .into();
-        assert_eq!(incomplete.code(), ErrorCode::ApiError);
+        // `usage`, settled on card 40: the one coarse code no HTTP response can
+        // produce, so this verdict can never be read back as a constituent read's
+        // own answer. Non-retryable, which is the other half of that decision and
+        // the half a code change could otherwise carry away with it.
+        assert_eq!(incomplete.code(), ErrorCode::Usage);
+        assert!(!incomplete.is_retryable());
         // Never not_found: nothing left unsearched may be reported absent.
         assert_ne!(incomplete.code(), unresolved.code());
 
@@ -1376,7 +1405,10 @@ mod tests {
             found_in: 9,
         }
         .into();
-        assert_eq!(mismatch.code(), ErrorCode::NotFound);
+        // `usage`, settled on card 41: the read found the recording, in another
+        // bucket, and returned it -- what failed is the caller's pointer.
+        assert_eq!(mismatch.code(), ErrorCode::Usage);
+        assert!(!mismatch.is_retryable());
         assert!(matches!(
             RecordingSummaryError::of(&mismatch),
             Some(RecordingSummaryError::BucketMismatch { found_in: 9, .. })
