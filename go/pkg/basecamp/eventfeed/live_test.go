@@ -336,6 +336,7 @@ func TestLivePolls_RefusesAContinuationWithoutACursor(t *testing.T) {
 	})
 	for name, next := range map[string]string{
 		"no cursor":     f.server.URL + "/99999/events.json?types=message.created",
+		"repeated key":  f.server.URL + "/99999/events.json?position=pos-new&position=pos-old",
 		"both cursors":  f.server.URL + "/99999/events.json?position=p&since=now",
 		"bad filter id": f.server.URL + "/99999/events.json?position=p&buckets=leaked-secret",
 	} {
@@ -408,6 +409,66 @@ func TestLivePolls_A410OfTheOtherLanesShapeIsMalformed(t *testing.T) {
 			var pe *eventfeed.PollError
 			if !errors.As(err, &pe) || pe.Kind != tc.kind {
 				t.Fatalf("error = %v, want %s", err, tc.kind)
+			}
+		})
+	}
+}
+
+// TestLivePolls_TheGuardRecognizesRoutesBeneathABasePath: a base URL with a
+// path prefix puts the feed routes beneath it; the guard still answers the
+// 3xx, and the foreign origin sees nothing.
+func TestLivePolls_TheGuardRecognizesRoutesBeneathABasePath(t *testing.T) {
+	var sentinelHits atomic.Int32
+	sentinel := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		sentinelHits.Add(1)
+		jsonResponse(w, 200, `{"events":[],"position":"stolen"}`)
+	}))
+	t.Cleanup(sentinel.Close)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/v1/99999/events.json" {
+			t.Errorf("request path %q, want the route beneath the base path", r.URL.Path)
+		}
+		w.Header().Set("Location", sentinel.URL+"/99999/events.json?position=pos-0&token=leak")
+		w.WriteHeader(http.StatusFound)
+	}))
+	t.Cleanup(server.Close)
+	cfg := basecamp.DefaultConfig()
+	cfg.BaseURL = server.URL + "/api/v1"
+	live, err := eventfeed.NewLive(cfg, &basecamp.StaticTokenProvider{Token: "t"}, "99999", eventfeed.AccountLane, basecamp.WithMaxRetries(0))
+	if err != nil {
+		t.Fatalf("NewLive: %v", err)
+	}
+	_, err = live.Polls().Poll(context.Background(), eventfeed.Cursor{Position: "pos-0"}, eventfeed.Filters{})
+	var pe *eventfeed.PollError
+	if !errors.As(err, &pe) || pe.Kind != eventfeed.PollRedirectRefused || pe.LocationOrigin != sentinel.URL {
+		t.Fatalf("error = %v, want redirect_refused carrying %q", err, sentinel.URL)
+	}
+	if sentinelHits.Load() != 0 {
+		t.Fatalf("the foreign origin received %d request(s), want zero egress", sentinelHits.Load())
+	}
+}
+
+// TestLivePolls_APageOutOfOrderIsMalformed: rows arrive in strict order of
+// the lane's identity; a page that repeats or reorders keys is unrecoverable
+// on either lane.
+func TestLivePolls_APageOutOfOrderIsMalformed(t *testing.T) {
+	const row = `"kind":"message_created","event_type":"message.created","action":"created","created_at":"2026-08-01T12:00:00Z","bucket_id":2,"creator_id":3,"performed_by_id":null,"recording_id":900`
+	for name, tc := range map[string]struct {
+		lane eventfeed.Lane
+		body string
+	}{
+		"feed reordered":  {eventfeed.AccountLane, `{"events":[{"id":102,` + row + `},{"id":101,` + row + `}],"position":"p"}`},
+		"feed duplicated": {eventfeed.AccountLane, `{"events":[{"id":101,` + row + `},{"id":101,` + row + `}],"position":"p"}`},
+		"inbox reordered": {eventfeed.InboxLane, `{"items":[{"addressing_id":12,"reason":"mentioned","addressed_at":"2026-08-01T12:00:01Z","event":{"id":101,` + row + `}},{"addressing_id":11,"reason":"assigned","addressed_at":"2026-08-01T12:00:01Z","event":{"id":102,` + row + `}}],"position":"p"}`},
+	} {
+		t.Run(name, func(t *testing.T) {
+			f := newLiveFixture(t, tc.lane, func(w http.ResponseWriter, r *http.Request) {
+				jsonResponse(w, 200, tc.body)
+			})
+			_, err := f.live.Polls().Poll(context.Background(), eventfeed.Cursor{Position: "pos-0"}, eventfeed.Filters{})
+			var pe *eventfeed.PollError
+			if !errors.As(err, &pe) || pe.Kind != eventfeed.PollUnrecoverable {
+				t.Fatalf("error = %v, want unrecoverable for a page out of order", err)
 			}
 		})
 	}

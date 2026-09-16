@@ -221,25 +221,33 @@ func (g *redirectGuard) RoundTrip(req *http.Request) (*http.Response, error) {
 	return resp, nil
 }
 
-// isFeedOperationPath reports a request path of one of the three feed
-// operations — /{account}/events.json, /{account}/inbox.json,
-// /{account}/events/stream_ticket.json — the routes the seams issue, whether
-// from a fresh cursor or a re-issued continuation, and no other operation.
+// isFeedOperationPath reports a request path ending in one of the three feed
+// operations' routes — {account}/events.json, {account}/inbox.json,
+// {account}/events/stream_ticket.json — beneath whatever path prefix the
+// configured base URL carries: the routes the seams issue, whether from a
+// fresh cursor or a re-issued continuation, and no other operation's.
 func isFeedOperationPath(path string) bool {
-	rest, ok := strings.CutPrefix(path, "/")
-	if !ok {
-		return false
+	segments := strings.Split(strings.TrimPrefix(path, "/"), "/")
+	for _, tail := range [][]string{{"events.json"}, {"inbox.json"}, {"events", "stream_ticket.json"}} {
+		n := len(tail) + 1
+		if len(segments) < n {
+			continue
+		}
+		account, route := segments[len(segments)-n], segments[len(segments)-n+1:]
+		if account != "" && isDigits(account) && slices.Equal(route, tail) {
+			return true
+		}
 	}
-	account, route, ok := strings.Cut(rest, "/")
-	if !ok || account == "" {
-		return false
-	}
-	for _, r := range account {
+	return false
+}
+
+func isDigits(s string) bool {
+	for _, r := range s {
 		if r < '0' || r > '9' {
 			return false
 		}
 	}
-	return route == "events.json" || route == "inbox.json" || route == "events/stream_ticket.json"
+	return true
 }
 
 // errHopRefused is the fixed cause a refused hop carries: never the
@@ -352,8 +360,17 @@ func checkContinuationQuery(rawURL string) error {
 	if err != nil {
 		return errors.New("eventfeed: the continuation URL does not parse")
 	}
-	if _, err := url.ParseQuery(u.RawQuery); err != nil {
+	values, err := url.ParseQuery(u.RawQuery)
+	if err != nil {
 		return errors.New("eventfeed: the continuation URL's query does not parse whole")
+	}
+	for _, v := range values {
+		if len(v) > 1 {
+			// The wrapper reads each key once (the first value); the API
+			// would read the last. A repeated key has no single meaning
+			// the seam can re-issue faithfully.
+			return errors.New("eventfeed: the continuation URL repeats a query key")
+		}
 	}
 	return nil
 }
@@ -414,6 +431,9 @@ func (p *livePolls) pollEvents(ctx context.Context, cursor Cursor, filters Filte
 		if err != nil {
 			return PollPage{}, &PollError{Kind: PollUnrecoverable, Err: err}
 		}
+		if err := checkPageOrder(events, ev); err != nil {
+			return PollPage{}, &PollError{Kind: PollUnrecoverable, Err: err}
+		}
 		events = append(events, ev)
 	}
 	return PollPage{Events: events, Position: page.Position, Next: page.Next}, nil
@@ -462,9 +482,23 @@ func (p *livePolls) pollInbox(ctx context.Context, cursor Cursor, filters Filter
 			return PollPage{}, &PollError{Kind: PollUnrecoverable, Err: err}
 		}
 		ev.Addressing = &Addressing{ID: item.AddressingID, Reason: item.Reason, AddressedAt: item.AddressedAt}
+		if err := checkPageOrder(events, ev); err != nil {
+			return PollPage{}, &PollError{Kind: PollUnrecoverable, Err: err}
+		}
 		events = append(events, ev)
 	}
 	return PollPage{Events: events, Position: page.Position, Next: page.Next}, nil
+}
+
+// checkPageOrder holds a page to the contract's strict order of the lane's
+// identity (PollPage.Events): a row whose key does not exceed the previous
+// row's is a malformed page — reordered or duplicated logical deliveries
+// the connector must not commit a position over.
+func checkPageOrder(sofar []Event, next Event) error {
+	if n := len(sofar); n > 0 && next.Key() <= sofar[n-1].Key() {
+		return fmt.Errorf("eventfeed: poll page rows are not in strict key order at %d", next.Key())
+	}
+	return nil
 }
 
 // positionRejectedMessage is the leading text of bc3's 400 for a malformed
