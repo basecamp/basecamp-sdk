@@ -24,6 +24,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, TypedDict
 
+from basecamp._decoding import (
+    decoded_array,
+    decoded_optional_object,
+    decoded_string,
+)
 from basecamp.errors import (
     ApiError,
     BucketMismatchError,
@@ -43,13 +48,10 @@ from basecamp.services._campfire_index import (
     CampfireListingOverflow,
     ChatLineSearch,
     SourceRead,
-    _decoded_array,
     _decoded_flexible_int64,
     _decoded_int64,
     _decoded_optional_bool,
-    _decoded_optional_object,
     _decoded_optional_string,
-    _decoded_string,
 )
 
 __all__ = [
@@ -288,7 +290,7 @@ def _text(record: dict[str, Any], keys: tuple[str, ...]) -> str:
     # "subject": 7}` answered "ok" where Go -- which has decoded the whole
     # struct before `firstNonEmpty` runs -- fails the read. That gap reached
     # the eleven routed types whose title or content tuple has two keys.
-    decoded = [_decoded_string(record.get(key), f"the recording {key}") for key in keys]
+    decoded = [decoded_string(record.get(key), f"the recording {key}") for key in keys]
     for value in decoded:
         if value:
             return value
@@ -360,17 +362,17 @@ def _decoded_person(value: Any, what: str) -> dict[str, Any] | None:
     the read there; the string's own RFC 3339 validity is the same documented
     residue as the recording's own `updated_at`.
     """
-    person = _decoded_optional_object(value, what)
+    person = decoded_optional_object(value, what)
     if person is None:
         return None
     for field in _PERSON_STRINGS:
         _decoded_optional_string(person.get(field), f"{what} {field}")
     for field in _PERSON_BOOLS:
         _decoded_optional_bool(person.get(field), f"{what} {field}")
-    company = _decoded_optional_object(person.get("company"), f"{what} company")
+    company = decoded_optional_object(person.get("company"), f"{what} company")
     if company is not None:
         _decoded_int64(company.get("id"), f"{what} company id")
-        _decoded_string(company.get("name"), f"{what} company name")
+        decoded_string(company.get("name"), f"{what} company name")
     if "id" not in person:
         return person
     decoded = _decoded_flexible_int64(person["id"], f"{what} id")
@@ -401,7 +403,7 @@ def _decoded_parent(value: Any, what: str, *, has_bucket: bool) -> dict[str, Any
     # function guessing from the payload: the same `bucket` key means a typed
     # struct under one containing type and an ignored unknown under another,
     # and only the reference says which.
-    parent = _decoded_optional_object(value, what)
+    parent = decoded_optional_object(value, what)
     if parent is None:
         return None
     # `Id` is a plain `int64` here, where a Person's is flexible: "7" resolves
@@ -409,7 +411,7 @@ def _decoded_parent(value: Any, what: str, *, has_bucket: bool) -> dict[str, Any
     # wrong in one direction whichever was chosen -- measured, not assumed.
     _decoded_int64(parent.get("id"), f"{what} id")
     for field in ("title", "type", "url", "app_url"):
-        _decoded_string(parent.get(field), f"{what} {field}")
+        decoded_string(parent.get(field), f"{what} {field}")
     if has_bucket:
         # `*RecordingBucket` is `{id int64, name string, type string}` -- the
         # same shape as the top-level bucket, so it gets the same decoder
@@ -420,12 +422,12 @@ def _decoded_parent(value: Any, what: str, *, has_bucket: bool) -> dict[str, Any
 
 def _decoded_bucket(value: Any, what: str) -> dict[str, Any] | None:
     """A `TodoBucket`: id, name, type."""
-    bucket = _decoded_optional_object(value, what)
+    bucket = decoded_optional_object(value, what)
     if bucket is None:
         return None
     _decoded_int64(bucket.get("id"), f"{what} id")
     for field in ("name", "type"):
-        _decoded_string(bucket.get(field), f"{what} {field}")
+        decoded_string(bucket.get(field), f"{what} {field}")
     return bucket
 
 
@@ -459,7 +461,7 @@ def _project(record: Any, read: _Read, *, campfire_id: int | None = None) -> Rec
         assignees=(
             [
                 _decoded_person(person, "an assignee") or {}
-                for person in _decoded_array(record.get("assignees"), "the recording assignees")
+                for person in decoded_array(record.get("assignees"), "the recording assignees")
             ]
             if read.assignees
             else []
