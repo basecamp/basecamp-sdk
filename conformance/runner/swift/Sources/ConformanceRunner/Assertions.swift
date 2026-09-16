@@ -520,6 +520,17 @@ func evaluateAssertions(
                         "Expected error code \"\(expected)\", but this SDK classifies "
                             + "\"\(semanticError.type)\" under no canonical code")
                 }
+                // The claim that `canonicalCode` only ever returns a member of
+                // the closed taxonomy is CHECKED here rather than trusted: a
+                // composite that minted a name of its own would otherwise
+                // satisfy this assertion against a fixture that named the same
+                // invented string, which is the confusion the split between
+                // errorType and errorCode exists to prevent.
+                guard knownErrorTypes.contains(actual) else {
+                    return .fail(
+                        "SDK classified \"\(semanticError.type)\" as \"\(actual)\", "
+                            + "which is outside SPEC §6's closed taxonomy")
+                }
                 if actual != expected {
                     return .fail("Expected error code \"\(expected)\", got \"\(actual)\"")
                 }

@@ -14,12 +14,15 @@ module Basecamp
   # card 40[https://app.basecamp.com/2914079/buckets/48699913/card_tables/cards/10308122086]
   # after the merged ports shipped two different answers.
   #
-  # +usage+ is the one coarse code no HTTP response can produce — the status
-  # mapping yields +auth_required+, +forbidden+, +not_found+, +rate_limit+,
-  # +validation+, +limit_exceeded+ and +api_error+, never this one — so a
-  # verdict the composite reached on its own can never be read back as a
-  # constituent read's own answer. This port previously said +api_error+, which
-  # a caller could not tell from a 500 one of those reads returned.
+  # +usage+ is one of only three coarse codes no HTTP response can produce —
+  # the status mapping yields +auth_required+, +forbidden+, +not_found+,
+  # +rate_limit+, +validation+, +limit_exceeded+ and +api_error+, and +network+
+  # and +ambiguous+ are equally unreachable from a status. +usage+ is the one of
+  # those three that also describes a call the SDK declined to complete, which
+  # is why it and not the other two. A verdict the composite reached on its own
+  # therefore can never be read back as a constituent read's own answer. This
+  # port previously said +api_error+, which a caller could not tell from a 500
+  # one of those reads returned.
   #
   # Retryability is a separate field and is unchanged: false, because the call
   # reached no verdict and no argument the caller can change would produce one

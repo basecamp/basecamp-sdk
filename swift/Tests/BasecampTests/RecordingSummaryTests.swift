@@ -564,9 +564,22 @@ final class RecordingSummaryTests: XCTestCase {
                 "usage", 1
             ),
         ]
+        // SPEC §6's taxonomy, closed. Kotlin asserts this membership and Go gets
+        // it by construction (it returns the Code* constants); Swift has no
+        // public code vocabulary of its own, so without this the accessor could
+        // mint a name outside the taxonomy and only the per-identity literals
+        // above would notice — and they are the same literals, so they would
+        // not.
+        let canonical: Set<String> = [
+            "usage", "not_found", "auth_required", "forbidden", "rate_limit",
+            "network", "api_error", "ambiguous", "validation", "limit_exceeded",
+        ]
         for (error, code, exit) in classified {
             XCTAssertEqual(error.canonicalCode, code, error.message)
             XCTAssertEqual(error.exitCode, exit, error.message)
+            XCTAssertTrue(
+                canonical.contains(error.canonicalCode ?? ""),
+                "\(error.canonicalCode ?? "nil") is outside SPEC §6's closed taxonomy")
         }
 
         // bucket_mismatch is deliberately UNCLASSIFIED: the merged ports

@@ -745,7 +745,9 @@ class TestChatLineDiscovery:
             _account().recordings.summarize(bucket_id=BUCKET, recording_id=LINE_ID, event_type="chat.line.created")
 
         assert isinstance(raised.value, CampfireDiscoveryIncompleteError)
-        # `usage` is the one coarse code no HTTP response can produce, so this
+        # `usage` is one of only three coarse codes no HTTP response can
+        # produce (with `network` and `ambiguous`), and the one of those three
+        # that also describes a call the SDK declined to complete, so this
         # verdict can never be read back as a constituent read's own answer.
         # Settled for every port on card 40 after this one shipped `api_error`
         # and Kotlin shipped `usage`; `exit_code` is the consequence a script
@@ -1332,7 +1334,9 @@ class TestAsync:
             await account.recordings.summarize(bucket_id=BUCKET, recording_id=LINE_ID, event_type="chat.line.created")
 
         assert isinstance(raised.value, CampfireDiscoveryIncompleteError)
-        # `usage` is the one coarse code no HTTP response can produce, so this
+        # `usage` is one of only three coarse codes no HTTP response can
+        # produce (with `network` and `ambiguous`), and the one of those three
+        # that also describes a call the SDK declined to complete, so this
         # verdict can never be read back as a constituent read's own answer.
         # Settled for every port on card 40 after this one shipped `api_error`
         # and Kotlin shipped `usage`; `exit_code` is the consequence a script
