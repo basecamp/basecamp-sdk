@@ -41,6 +41,20 @@ class PaginationStyleTest {
     private fun styleFailure(pagination: JsonElement?): String =
         assertFailsWith<IllegalArgumentException> { parse(pagination) }.message ?: ""
 
+    // A trait with no readable style refuses by naming `null` as the style.
+    //
+    // Asserting the MESSAGE, not just the exception type, is the whole point of
+    // this helper. `jsonPrimitive` throws IllegalArgumentException too, so a
+    // test that checked only the type would stay green if the parser went back
+    // to the cast that this file exists to rule out -- it would be catching the
+    // cast error and calling it a refusal.
+    private fun assertRefusedWithNoReadableStyle(pagination: JsonElement?) {
+        assertEquals(
+            "ListWidgets: unsupported pagination style null (expected \"link\" or \"cursor\")",
+            styleFailure(pagination)
+        )
+    }
+
     @Test
     fun `the link style paginates and keeps its key`() {
         val parsed = parse(
@@ -127,26 +141,26 @@ class PaginationStyleTest {
         // The hole: `as? JsonObject` answers null here, so a presence check
         // written against the CAST would exempt this and ship an unpaginated
         // method for a spec that plainly said "page".
-        styleFailure(JsonPrimitive("page"))
+        assertRefusedWithNoReadableStyle(JsonPrimitive("page"))
     }
 
     @Test
     fun `an array trait is refused`() {
-        styleFailure(buildJsonArray { add("link") })
+        assertRefusedWithNoReadableStyle(buildJsonArray { add("link") })
     }
 
     @Test
     fun `a boolean trait is refused`() {
-        styleFailure(JsonPrimitive(false))
+        assertRefusedWithNoReadableStyle(JsonPrimitive(false))
     }
 
     @Test
     fun `a numeric trait is refused`() {
-        styleFailure(JsonPrimitive(0))
+        assertRefusedWithNoReadableStyle(JsonPrimitive(0))
     }
 
     @Test
     fun `a non-primitive style is refused by name rather than throwing a cast error`() {
-        styleFailure(buildJsonObject { putJsonObject("style") { put("name", "link") } })
+        assertRefusedWithNoReadableStyle(buildJsonObject { putJsonObject("style") { put("name", "link") } })
     }
 }
