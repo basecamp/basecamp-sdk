@@ -87,21 +87,90 @@ class NormalizePersonIdsTest < Minitest::Test
     # files. The three outcomes are spelled as the normalizer writes them —
     # a number with no system_label, id 0 with the raw text kept, or the string
     # left exactly as it arrived so the reader is the one that refuses it.
-    GoPersonIds::CORPUS.each do |wire, expected|
-      data = { "personable_type" => "User", "id" => wire }
-      Basecamp::Http.normalize_person_ids(data)
+    assert_corpus_at("a tagged person") do |wire|
+      [ { "personable_type" => "User", "id" => wire }, [] ]
+    end
+  end
 
-      case expected
-      when :label
-        assert_equal 0, data["id"], "a person id of #{wire.inspect}"
-        assert_equal wire, data["system_label"], "the sentinel text of #{wire.inspect}"
-      when :refuse
-        assert_equal wire, data["id"], "a person id of #{wire.inspect} is left for the reader"
-        assert_not data.key?("system_label"), "#{wire.inspect} is a number, not a sentinel"
-      else
-        assert_equal expected.last, data["id"], "a person id of #{wire.inspect}"
-        assert_not data.key?("system_label"), "#{wire.inspect} is a number"
-      end
+  # ---------------------------------------------------------------------
+  # The people the reference finds by POSITION rather than by type tag:
+  # normalizeEmbeddedPersonIds (go/pkg/basecamp/normalize.go:83). These three
+  # shapes carry NO "personable_type" at all, which is the case BC3 actually
+  # serves for embedded people and the case this SDK used to miss entirely:
+  # measured before the second pass existed, 62 of the 74 rows differed from
+  # the reference in each of them, and the twelve that matched did so only
+  # because "leave the string" is also what doing nothing looks like.
+  # ---------------------------------------------------------------------
+
+  def test_the_measured_go_corpus_at_an_untagged_creator
+    assert_corpus_at("an untagged creator") do |wire|
+      [ { "creator" => { "id" => wire, "name" => "Ann" } }, [ "creator" ] ]
+    end
+  end
+
+  def test_the_measured_go_corpus_at_an_untagged_participant
+    assert_corpus_at("an untagged participant") do |wire|
+      [ { "participants" => [ { "id" => wire, "name" => "Ann" } ] }, [ "participants", 0 ] ]
+    end
+  end
+
+  def test_the_measured_go_corpus_at_a_creator_nested_in_a_collection
+    # "At any depth" is the reference's rule, so the pass has to recurse rather
+    # than look at the top level of the body: a schedule entry's creator sits
+    # under a bucket, inside an array, inside the document.
+    assert_corpus_at("a creator three levels down") do |wire|
+      [ { "recordings" => [ { "bucket" => { "creator" => { "id" => wire } } } ] },
+        [ "recordings", 0, "bucket", "creator" ] ]
+    end
+  end
+
+  def test_the_positional_pass_finds_only_creator_and_participants
+    # The reference names exactly two keys, so this must not become "any key
+    # holding something person-shaped". A todo's assignees are people too, but
+    # the reference reaches them through "personable_type" or not at all, and
+    # coercing them here would accept ids it leaves as strings.
+    data = {
+      "assignees" => [ { "id" => "7", "name" => "Ann" } ],
+      "person" => { "id" => "7" },
+      "creator" => { "id" => "7" },
+      "participants" => [ { "id" => "8" } ]
+    }
+    Basecamp::Http.normalize_person_ids(data)
+
+    assert_equal "7", data["assignees"][0]["id"], "an assignee is not found by position"
+    assert_equal "7", data["person"]["id"], "a \"person\" key is not one of the two"
+    assert_equal 7, data["creator"]["id"]
+    assert_equal 8, data["participants"][0]["id"]
+  end
+
+  def test_the_positional_pass_skips_what_is_not_person_shaped
+    # Matched key for key with normalize.go:86-95: a "creator" that is not an
+    # object and a "participants" that is not an array are left alone, as are
+    # non-object elements inside one.
+    data = { "creator" => "basecamp", "participants" => "none" }
+    other = { "creator" => [ { "id" => "7" } ], "participants" => [ "7", nil, 7, { "id" => "9" } ] }
+    Basecamp::Http.normalize_person_ids(data)
+    Basecamp::Http.normalize_person_ids(other)
+
+    assert_equal({ "creator" => "basecamp", "participants" => "none" }, data)
+    assert_equal [ { "id" => "7" } ], other["creator"], "an array under \"creator\" is not a person"
+    assert_equal [ "7", nil, 7, { "id" => 9 } ], other["participants"]
+  end
+
+  def test_normalizing_twice_changes_nothing
+    # This walk does in one pass what the reference does in two, which is only
+    # sound because coercing an id is idempotent: an object both passes reach
+    # must come out the same however many times it is visited. Asserted here
+    # rather than reasoned about, since it is the whole argument for the shape
+    # of the method.
+    GoPersonIds::CORPUS.each do |wire, _expected|
+      once = { "personable_type" => "User", "id" => wire,
+               "creator" => { "id" => wire }, "participants" => [ { "id" => wire } ] }
+      Basecamp::Http.normalize_person_ids(once)
+      twice = Marshal.load(Marshal.dump(once))
+      Basecamp::Http.normalize_person_ids(twice)
+
+      assert_equal once, twice, "a second normalization of #{wire.inspect}"
     end
   end
 
@@ -138,4 +207,32 @@ class NormalizePersonIdsTest < Minitest::Test
     assert_equal (2**63).to_s, overflow["id"]
     assert_not overflow.key?("system_label")
   end
+
+  private
+
+    # Runs all 74 measured rows through the real normalizer in one document
+    # shape, and asserts the reference's verdict on the person the block points
+    # at. The three outcomes are spelled as the normalizer writes them: a number
+    # with no system_label, id 0 with the raw text kept, or the string left
+    # exactly as it arrived so the READER is the one that refuses it.
+    def assert_corpus_at(shape)
+      GoPersonIds::CORPUS.each do |wire, expected|
+        document, path = yield(wire)
+        Basecamp::Http.normalize_person_ids(document)
+        person = path.empty? ? document : document.dig(*path)
+        where = "#{wire.inspect} as #{shape}"
+
+        case expected
+        when :label
+          assert_equal 0, person["id"], where
+          assert_equal wire, person["system_label"], "the sentinel text of #{where}"
+        when :refuse
+          assert_equal wire, person["id"], "#{where} is left for the reader"
+          assert_not person.key?("system_label"), "#{where} is a number, not a sentinel"
+        else
+          assert_equal expected.last, person["id"], where
+          assert_not person.key?("system_label"), "#{where} is a number"
+        end
+      end
+    end
 end

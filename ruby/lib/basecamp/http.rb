@@ -12,19 +12,71 @@ module Basecamp
     # Default User-Agent header
     USER_AGENT = "basecamp-sdk-ruby/#{VERSION} (api:#{API_VERSION})".freeze
 
-    # Normalizes Person-shaped objects in parsed JSON.
-    # For objects with personable_type and a string id:
+    # Normalizes Person-shaped objects in parsed JSON, finding them the TWO ways
+    # the reference finds them (go/pkg/basecamp/normalize.go):
+    #
+    # 1. by TYPE TAG — any object carrying "personable_type" (+normalizePersonIds+,
+    #    normalize.go:16);
+    # 2. by STRUCTURAL POSITION — the "creator" object and each "participants"
+    #    element, at any depth, WHETHER OR NOT they carry "personable_type"
+    #    (+normalizeEmbeddedPersonIds+, normalize.go:83).
+    #
+    # The second one is not a refinement of the first, and this method had only
+    # the first. BC3's embedded creator and participants people frequently omit
+    # "personable_type" — the reference's own comment (normalize.go:78-82) says
+    # that is why the pass exists — so their string ids reached callers
+    # unconverted: 62 of the 74 measured rows of GoPersonIds::CORPUS differed
+    # from the reference for a bare {"creator":{"id":…}}, and the twelve that
+    # agreed did so only because "leave the string" is also what doing nothing
+    # looks like. The visible cost was on a WRITE: {Services::MergeSafe} requires
+    # an Integer id, so a merge-safe update of a schedule entry whose
+    # participants came back with string ids raised where the reference reads
+    # the number and proceeds.
+    #
+    # Whichever way a person is found, the id rule is the same one
+    # ({coerce_person_id}, the reference's shared coercePersonID):
     # - Signed decimal strings: coerced to Integer, no system_label
     # - Non-numeric sentinels (e.g. "basecamp"): id becomes 0, system_label preserves original
     # - Numeric overflow: left as the string, for the reader to refuse
+    #
+    # ONE WALK, where the reference makes two passes over the same tree. That is
+    # sound only because {coerce_person_id} is idempotent — it returns untouched
+    # unless the id is a String, and it leaves a String behind only in the
+    # overflow case, where a second visit reaches the same refusal — so an
+    # object both passes find is coerced once and re-visited to no effect, and
+    # the order the two rules fire in cannot matter. Verified differentially
+    # against a literal two-walk transcription of normalize.go over the corpus
+    # in nineteen document shapes; if that idempotence is ever weakened, split
+    # this back into two walks.
     def self.normalize_person_ids(obj)
       case obj
       when Hash
-        coerce_person_id(obj) if obj.key?("personable_type") && obj["id"].is_a?(String)
+        coerce_person_id(obj) if obj.key?("personable_type")
+        coerce_embedded_person_ids(obj)
         obj.each_value { |v| normalize_person_ids(v) }
       when Array
         obj.each { |item| normalize_person_ids(item) }
       end
+    end
+
+    # The people this object carries by POSITION rather than by type tag: its
+    # "creator", and each element of its "participants" (normalize.go:86-95,
+    # matched key for key).
+    #
+    # Only those two keys, and only their immediate shape — an object under
+    # "creator", the object elements under "participants" — because the
+    # reference names exactly these: they are the keys its wrapper types embed a
+    # *Person under (Notification, Gauge, GaugeNeedle). A person anywhere else
+    # is found by the "personable_type" tag or not at all, and widening this to,
+    # say, "assignees" would coerce ids the reference leaves alone.
+    def self.coerce_embedded_person_ids(obj)
+      creator = obj["creator"]
+      coerce_person_id(creator) if creator.is_a?(Hash)
+
+      participants = obj["participants"]
+      return unless participants.is_a?(Array)
+
+      participants.each { |person| coerce_person_id(person) if person.is_a?(Hash) }
     end
 
     # One Person-shaped object's string id, by the reference's grammar.
@@ -51,6 +103,13 @@ module Basecamp
     # {Basecamp::Ids.person_from_wire}: one rule, both person-id sites.
     def self.coerce_person_id(obj)
       raw = obj["id"]
+      # An id that is already a number, or absent, is left alone — the guard the
+      # reference keeps inside this function rather than at its callers
+      # (normalize.go:41-44). Here it is also what makes the single walk above
+      # safe: both of the reference's passes can reach the same object, and the
+      # second visit has to be a no-op.
+      return unless raw.is_a?(String)
+
       # Bounded by construction: this runs over EVERY decoded response, and a
       # body may be 50 MB, so a long digit run built an arbitrarily large
       # Integer here before anything decided to discard it. The scan refuses

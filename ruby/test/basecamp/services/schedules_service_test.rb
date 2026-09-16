@@ -365,6 +365,62 @@ class SchedulesServiceTest < Minitest::Test
     assert_equal [ 1049715914 ], captured[:bodies].first["participant_ids"]
   end
 
+  # The read-back BC3 actually serves for an embedded person: a STRING id and no
+  # "personable_type" key. The reference normalizes these by structural position
+  # (normalizeEmbeddedPersonIds, go/pkg/basecamp/normalize.go:83) before
+  # anything decodes them, so its own merge-safe read sees the number.
+  #
+  # Ruby applied only the "personable_type"-keyed pass, so the string reached
+  # MergeSafe#writable_id_list, which requires an Integer, and the composite
+  # raised on a body the reference updates without comment — a refused WRITE,
+  # the worst direction for this defect to point. All 74 rows raised before the
+  # positional pass existed.
+  def entry_with_untagged_string_participants
+    full_entry(
+      "participants" => [
+        { "id" => "1049715914", "name" => "Victor Cooper" },
+        { "id" => "1049715915", "name" => "Ann Wells" }
+      ]
+    )
+  end
+
+  def test_update_entry_reads_participants_whose_ids_arrive_as_untagged_strings
+    captured = stub_entry_get_and_put(entry: entry_with_untagged_string_participants)
+
+    result = @account.schedules.update_entry(entry_id: 789, summary: "Team Meeting & Kickoff")
+
+    assert_equal 789, result["id"]
+    assert_equal preserved_full_state.merge("summary" => "Team Meeting & Kickoff"),
+                 captured[:bodies].first
+  end
+
+  def test_an_addressed_participant_list_travels_as_the_numbers_the_reference_reads
+    captured = stub_entry_get_and_put(entry: entry_with_untagged_string_participants)
+
+    # Re-addressing the seeded list is the composite's own idiom for "send what
+    # you read", and what it read has to be ids rather than the strings the wire
+    # spelled them as: a full-replace PUT carrying "1049715914" would be a
+    # different request than the reference sends.
+    @account.schedules.edit_entry(entry_id: 789) do |entry|
+      entry.participant_ids = entry.participant_ids
+    end
+
+    assert_equal PARTICIPANT_IDS, captured[:bodies].first["participant_ids"]
+  end
+
+  def test_a_sentinel_participant_is_the_system_actor_rather_than_a_refusal
+    entry = full_entry("participants" => [ { "id" => "basecamp", "name" => "Basecamp" } ])
+    captured = stub_entry_get_and_put(entry: entry)
+
+    @account.schedules.edit_entry(entry_id: 789) do |fields|
+      fields.participant_ids = fields.participant_ids
+    end
+
+    # 0 with the label kept, exactly as for a tagged person: one id rule,
+    # however the person was found.
+    assert_equal [ 0 ], captured[:bodies].first["participant_ids"]
+  end
+
   # notify is a directive, not state: it has nothing in the read-back to seed
   # it from, so it reaches the wire only when the caller says so.
   def test_update_entry_sends_notify_only_when_addressed
@@ -731,11 +787,23 @@ class SchedulesServiceTest < Minitest::Test
     assert_empty captured[:bodies]
   end
 
+  # A plain digit string was a row here — <tt>{ "id" => "1049715914" }</tt>,
+  # refused as "not an integer" — and it is not malformed at all: it is how BC3
+  # spells an embedded person's id, and the reference normalizes it to the
+  # number before its own merge-safe read ever sees it
+  # (normalizeEmbeddedPersonIds, go/pkg/basecamp/normalize.go:83). The row
+  # pinned this SDK refusing a body the reference updates. What remains below is
+  # what stays malformed after normalization: an id out of int64 range, which
+  # the reference also leaves a string — its decoder then fails the READ, where
+  # Ruby, having no decoder on this path, refuses the WRITE — and ids of a type
+  # no normalization touches.
   [
     [ "a non-array", "nope", %(Schedule entry field "participants" is not an array) ],
     [ "a non-object element", [ 42 ], %(Schedule entry field "participants"[0] is not an object) ],
     [ "an element with no id", [ { "name" => "Victor" } ], %(Schedule entry field "participants"[0] has no "id") ],
-    [ "a non-integer id", [ { "id" => "1049715914" } ], %(Schedule entry field "participants"[0].id is not an integer) ],
+    [ "an out of range id", [ { "id" => "18446744073709551616" } ],
+      %(Schedule entry field "participants"[0].id is not an integer) ],
+    [ "a float id", [ { "id" => 12.5 } ], %(Schedule entry field "participants"[0].id is not an integer) ],
     [ "a boolean id", [ { "id" => true } ], %(Schedule entry field "participants"[0].id is not an integer) ]
   ].each do |label, participants, message|
     define_method("test_update_entry_refuses_#{label.tr(" ", "_")}_in_participants") do
