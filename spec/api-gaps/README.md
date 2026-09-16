@@ -71,7 +71,7 @@ making the absorption journey publicly auditable.
 | [everything-boosts-withdrawn](everything-boosts-withdrawn.md) | no-json-contract | post-train | medium |
 | [everything-todo-card-filters](everything-todo-card-filters.md) | absorbed-in-sdk | post-train | medium |
 | [folders-api](folders-api.md) | absorbed-in-sdk | master | medium |
-| [event-feed](event-feed.md) | no-json-contract | n/a | high |
+| [event-feed](event-feed.md) | absorbed-in-sdk | master | high |
 | [project-archive-unarchive](project-archive-unarchive.md) | absorbed-in-sdk | master | medium |
 | [recording-spotlights](recording-spotlights.md) | absorbed-in-sdk | master | medium |
 | [notifications-sort-pings-first](notifications-sort-pings-first.md) | partial-coverage | master | low |
@@ -79,7 +79,7 @@ making the absorption journey publicly auditable.
 | [subtasks-canonical-rename](subtasks-canonical-rename.md) | partial-coverage | master | low |
 | [recent-projects](recent-projects.md) | absorbed-in-sdk | master | medium |
 | [template-library](template-library.md) | absorbed-in-sdk | master | high |
-| [delegated-events-performed-by](delegated-events-performed-by.md) | addressed-in-bc3-pr-13040 | master | low |
+| [delegated-events-performed-by](delegated-events-performed-by.md) | absorbed-in-sdk | master | low |
 | [recording-bubble-up-write](recording-bubble-up-write.md) | partial-coverage | master | medium |
 | [project-client-users](project-client-users.md) | absorbed-in-sdk | master | high |
 
