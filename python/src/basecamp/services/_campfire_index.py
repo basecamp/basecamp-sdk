@@ -59,6 +59,7 @@ from dataclasses import dataclass, field
 from typing import Any, Generic, NoReturn, TypeVar
 
 from basecamp._decoding import decoded_array, decoded_object, decoded_string
+from basecamp._person_id import Refusal, parse_int64
 from basecamp.errors import ApiError, CampfireIndexLoadAbortedError, NotFoundError
 
 #: How long a cached discovery source -- a bucket's project dock, the account's
@@ -564,45 +565,6 @@ _INT64_MIN = -(2**63)
 _INT64_MAX = 2**63 - 1
 
 
-_UINT64_MAX = 2**64 - 1
-
-
-def _go_parse_int64(text: str) -> tuple[int | None, bool]:
-    """Go's ``strconv.ParseInt(s, 10, 64)``: ``(value, overflowed)``.
-
-    ``value`` is None for a SYNTAX error, which the flexible type turns into 0
-    rather than a failure; ``overflowed`` marks the range error, which it
-    raises.
-
-    The order matters and is not the obvious one. ParseInt defers to ParseUint,
-    which checks magnitude INSIDE the scan, so the first disqualifying thing
-    wins -- and it is measured against **uint64**, not int64:
-
-        "9223372036854775807x"   syntax -> 0   (junk reached first)
-        "18446744073709551615x"  syntax -> 0   (equals uint64 max, then junk)
-        "18446744073709551616x"  RANGE  -> error (overflowed before the junk)
-
-    Writing this as "is it all digits? then parse" gets the third row wrong in
-    the accepting direction: it answers 0, and 0 is the system-actor sentinel,
-    so an unreadable id silently becomes "basecamp" instead of failing the
-    read. A corpus whose oversized cases are junk-free never shows it.
-    """
-    body = text[1:] if text[:1] in ("+", "-") else text
-    if not body:
-        return None, False
-    magnitude = 0
-    for character in body:
-        if not ("0" <= character <= "9"):
-            return None, False
-        magnitude = magnitude * 10 + (ord(character) - 48)
-        if magnitude > _UINT64_MAX:
-            return None, True
-    value = -magnitude if text[:1] == "-" else magnitude
-    if not (_INT64_MIN <= value <= _INT64_MAX):
-        return None, True
-    return value, False
-
-
 def _decoded_flexible_int64(value: Any, what: str) -> int:
     """``types.FlexibleInt64``: a JSON number, or a string holding one.
 
@@ -616,12 +578,21 @@ def _decoded_flexible_int64(value: Any, what: str) -> int:
       - ``null`` IS an error here, where a plain int64 field reads it as 0.
         Measured, not assumed: `FlexibleInt64.UnmarshalJSON` is called for
         null and decodes it as a number.
+
+    The string path is `basecamp._person_id.parse_int64`, shared with the
+    pre-decode normalizer in `generated/services/_base.py` rather than copied:
+    the same string reaching the two by different routes has to read the same
+    way, and `FlexibleInt64.UnmarshalJSON` (`go/pkg/types/flexible_int64.go:34`)
+    and `coercePersonID` (`go/pkg/basecamp/normalize.go:45`) are the same
+    `ParseInt` call. Only what each does with the two refusals differs, and both
+    of those are here: a syntax error is 0 (`flexible_int64.go:46`), a range
+    error is raised (`:43-44`).
     """
     if isinstance(value, str):
-        parsed, overflowed = _go_parse_int64(value)
-        if overflowed:
+        parsed = parse_int64(value)
+        if parsed is Refusal.RANGE:
             raise ApiError(f"{what} overflows int64: {value!r}")
-        return 0 if parsed is None else parsed
+        return 0 if parsed is Refusal.SYNTAX else parsed
     if value is None or not isinstance(value, int) or isinstance(value, bool):
         raise ApiError(f"{what} was not an int64: {value!r}")
     if not (_INT64_MIN <= value <= _INT64_MAX):

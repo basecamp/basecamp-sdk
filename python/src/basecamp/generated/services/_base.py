@@ -13,6 +13,7 @@ from basecamp._pagination import (
     selects_single_page,
 )
 from basecamp.errors import ApiError
+from basecamp._person_id import coerce_person_id
 from basecamp.hooks import OperationInfo, OperationResult, safe_hook
 
 if TYPE_CHECKING:
@@ -27,18 +28,20 @@ def _normalize_person_ids(obj: Any) -> None:
     with a personable_type field whose id is a string, coerce id to int
     (0 for non-numeric sentinels) and preserve the original label as
     system_label.
+
+    The id rule itself is `basecamp._person_id.coerce_person_id` -- shared with
+    the async twin of this file and with the flexible id reader in
+    `services/_campfire_index.py`, because it used to be three copies and they
+    disagreed. It is Go's `strconv.ParseInt(s, 10, 64)` written out rather than
+    Python's `int()`, which accepts whitespace, PEP 515 underscores, Unicode
+    digits and any magnitude at all -- every one of those an id BC3 never wrote.
     """
     if isinstance(obj, list):
         for item in obj:
             _normalize_person_ids(item)
     elif isinstance(obj, dict):
-        if "personable_type" in obj and isinstance(obj.get("id"), str):
-            raw_id = obj["id"]
-            try:
-                obj["id"] = int(raw_id)
-            except ValueError:
-                obj["system_label"] = raw_id
-                obj["id"] = 0
+        if "personable_type" in obj:
+            coerce_person_id(obj)
         for val in obj.values():
             if isinstance(val, (dict, list)):
                 _normalize_person_ids(val)

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import httpx
+import pytest
 import respx
 
 from basecamp import Client
@@ -88,3 +89,52 @@ class TestSystemActorNormalization:
         assert creator["id"] == 99999
         assert isinstance(creator["id"], int)
         assert "system_label" not in creator
+
+    # The grammar itself is pinned row by row in `tests/test_person_id.py`
+    # against the shared corpus. These four rows are here for what only a REAL
+    # response can show: the normalizer runs inside `_request`, and every one of
+    # them used to come out of that path wrong.
+    @respx.mock
+    @pytest.mark.parametrize(
+        ("wire_id", "normalized"),
+        [
+            # `int()` strips whitespace and reads Unicode digits, so these two
+            # arrived as a real person's id where Go names the system actor.
+            (" 99999 ", {"id": 0, "system_label": " 99999 "}),
+            ("９９", {"id": 0, "system_label": "９９"}),
+            # A leading "+" and leading zeros ARE ParseInt's grammar, and the
+            # normalizer writes the canonical digits back.
+            ("+00099999", {"id": 99999}),
+            # Past int64: left verbatim, so a reader with a struct behind it
+            # refuses rather than a Python bigint standing in for a wire int64.
+            ("18446744073709551616", {"id": "18446744073709551616"}),
+        ],
+    )
+    def test_the_id_grammar_is_parseint_and_not_pythons(self, wire_id, normalized):
+        respx.get("https://3.basecampapi.com/12345/my/readings.json").mock(
+            return_value=httpx.Response(
+                200,
+                json={
+                    "unreads": [
+                        {
+                            "id": 42,
+                            "title": "Notification",
+                            "created_at": "2024-01-01T00:00:00Z",
+                            "updated_at": "2024-01-01T00:00:00Z",
+                            "creator": {"id": wire_id, "personable_type": "User"},
+                        }
+                    ],
+                    "reads": [],
+                    "memories": [],
+                    "bubble_ups_count": 0,
+                    "scheduled_bubble_ups_count": 0,
+                },
+            )
+        )
+
+        from basecamp.generated.services.my_notifications import MyNotificationsService
+
+        result = MyNotificationsService(_make_account()).get_my_notifications()
+        creator = result["unreads"][0]["creator"]
+
+        assert creator == {"personable_type": "User", **normalized}

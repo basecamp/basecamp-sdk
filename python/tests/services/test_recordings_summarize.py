@@ -34,6 +34,15 @@ from basecamp.hooks import BasecampHooks
 from basecamp.services import _campfire_index
 from basecamp.services._campfire_index import MAX_CAMPFIRE_CANDIDATES, AsyncCampfireIndex, CampfireIndex
 from basecamp.services.recordings import _READS, summarizable_event_types, summarizable_recording_types
+from tests.person_id_corpus import PERSON_ID_CORPUS
+
+#: The shared person-id corpus in this table's shape. A `"refuse"` row fails the
+#: read; a `"label"` row is the system-actor 0, because a Go `int64` field has
+#: nowhere to put the `system_label` the pre-decode normalizer writes.
+_FLEXIBLE_STRING_ROWS = [
+    (raw, kind == "refuse", None if kind == "refuse" else (value if kind == "value" else 0))
+    for raw, kind, value in PERSON_ID_CORPUS
+]
 
 ACCOUNT = "12345"
 BASE = f"https://3.basecampapi.com/{ACCOUNT}"
@@ -333,35 +342,29 @@ class TestProjection:
     @pytest.mark.parametrize(
         ("creator_id", "fails", "decoded"),
         [
-            # `Person.Id` is FlexibleInt64, so a numeric STRING resolves and a
-            # non-numeric one is the system-actor 0 rather than a failure --
-            # and Go's decode CONVERTS, so the id in the summary is the int,
-            # never the string it arrived as. `decoded` is Go's own value.
-            ("7", False, 7),
-            ("basecamp", False, 0),
-            ("", False, 0),
-            ("007", False, 7),
-            ("+7", False, 7),
+            # The STRING rows are the shared corpus, one table for every site
+            # that reads a person id off the wire (see `tests.person_id_corpus`
+            # and `tests/test_person_id.py`) rather than a second list here that
+            # could drift from it. `Person.Id` is FlexibleInt64, so a numeric
+            # string resolves and a non-numeric one is the system-actor 0 rather
+            # than a failure -- and Go's decode CONVERTS, so the id in the
+            # summary is the int, never the string it arrived as.
+            *_FLEXIBLE_STRING_ROWS,
+            # Rows the shared corpus does not carry, because they are not
+            # strings and the id grammar has nothing to say about them. `null`
+            # IS an error here, where a plain int64 field reads it as 0 -- the
+            # two rules are neighbours and differ.
             (7, False, 7),
             (-7, False, -7),
-            # ...but `null` IS an error here, where a plain int64 field reads
-            # it as 0. The two rules are neighbours and differ.
             (None, True, None),
             (True, True, None),
             (7.0, True, None),
             (2**63, True, None),
-            # The magnitude check happens INSIDE Go's scan and against uint64,
-            # so the first disqualifying thing wins. These three rows are the
-            # whole point: a junk-free corpus never contains them, and "is it
-            # all digits? then parse" gets the last one wrong -- answering the
-            # system-actor 0 where Go fails the read.
+            # Two more measured junk-tail rows, kept because they land either
+            # side of a boundary the corpus crosses only at uint64: the tail is
+            # reached in both, so both are the system-actor 0 even though the
+            # digits ahead of it are past int64.
             ("9223372036854775807x", False, 0),
-            ("18446744073709551615x", False, 0),
-            ("18446744073709551616x", True, None),
-            ("9223372036854775808", True, None),
-            ("18446744073709551615", True, None),
-            ("-9223372036854775808", False, -9223372036854775808),
-            ("-9223372036854775809", True, None),
             ("-9223372036854775809x", False, 0),
         ],
     )

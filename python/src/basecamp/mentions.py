@@ -389,6 +389,16 @@ def person_id_from_sgid(sgid: str) -> int | None:
     # `str.isdigit` is true for non-ASCII digits, which `int()` would then
     # happily parse into an id BC3 never wrote. It is also what refuses a
     # percent-encoded control character, now that the path is decoded.
+    #
+    # This digit pre-walk is NOT the rule `basecamp._person_id.parse_int64`
+    # applies to a person id that arrived as a bare JSON string. The reference
+    # deliberately has two: here it walks the bytes and refuses anything outside
+    # 0-9 BEFORE parsing (`go/pkg/basecamp/mentions.go:252-256`), so a leading
+    # "+" is refused -- relaxing that to ParseInt's own grammar reintroduces the
+    # `+77` defect PR #886 closed. There it is `strconv.ParseInt(s, 10, 64)`
+    # whole, and `+77` is 77. Neither may be hoisted into the other, in either
+    # direction; both agree with Go on all 74 rows of the measured corpus in
+    # `tests/person_id_corpus.py`, and they agree with each other on 12 of them.
     if not (raw_id.isascii() and raw_id.isdigit()):
         return None
     person_id = int(raw_id)
