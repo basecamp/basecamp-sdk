@@ -13,6 +13,50 @@ what wrong behaviour you get if you ignore one. This file is that half.
 
 # Unreleased
 
+### Python: a malformed list body is now an `ApiError`, and one of those breaks is silent
+
+A list response the SDK could not read used to leave the Python SDK in one of
+three ways, none of them the SDK's own: a body of JSON `null` crashed with a
+bare `TypeError` from inside pagination, a truncated body escaped as
+`json.JSONDecodeError`, and a wrong-typed body was silently accepted and turned
+into fabricated rows. All of them now answer in the SDK's taxonomy: `null` is an
+empty listing, and everything else of the wrong shape is a statusless,
+non-retryable `ApiError`.
+
+Measured on the unpaginated full-array read (`folders.list_folders`), before and
+after:
+
+| body | before | after |
+|---|---|---|
+| `null` | `TypeError: object of type 'NoneType' has no len()` | `[]`, `total_count=0` |
+| `{}` | `[]` | `ApiError` |
+| `{"id": 1}` | `['id']` — the object's **keys** as items | `ApiError` |
+| `"abc"` | `['a', 'b', 'c']` — the string's **characters** as items | `ApiError` |
+| `[{"id": 1` (truncated) | `json.JSONDecodeError` | `ApiError`, decoder in `.cause` |
+
+**Wrong behaviour you get if you ignore it:** for the first four rows, an
+exception where you had none, or a different exception class — loud, and you
+will see it. The fifth row is the silent one. `json.JSONDecodeError` subclasses
+`ValueError`; `ApiError` does not. Code that wrapped a list call in
+`except ValueError:` to absorb a malformed body **stops catching**, and nothing
+about that failure announces itself at the call site — the exception simply
+propagates past a handler that used to hold it. Catch `basecamp.errors.ApiError`
+instead, or `BasecampError` for every SDK refusal.
+
+The nine operations behind the unpaginated read are affected, sync and async:
+`automation.list_lineup_markers`, `everything.get_everything_overdue_cards`,
+`everything.get_everything_overdue_todos`, `folders.list_folders`,
+`my_assignments.get_my_completed_assignments`,
+`my_assignments.get_my_due_assignments`, `people.list_assignable`,
+`projects.list_recent_projects`, and `timesheets.report`. Every
+paginated list operation is affected by the `null` row alone: those already
+raised `ApiError` for a malformed body, so only the crash-becomes-empty change
+reaches them, and nothing that used to succeed now fails.
+
+The wrapped-pagination read (`reports.person_progress`) additionally refuses an
+envelope whose `events` member is absent or null, per SPEC §6 — previously an
+absent member read as an empty listing, and a null body crashed.
+
 ### Rust: new SDK
 
 A seventh SDK, not a breaking change for anyone. The `basecamp-sdk` crate on

@@ -190,14 +190,18 @@ class TestDecodeHelpers:
 
 
 class TestRefusalTaxonomy:
-    """SPEC §6's shape for a malformed 2xx body, pinned on the refusals this file
+    """SPEC §6's shape for a malformed 2xx body, pinned at the sites this file
     adds: ``api_error`` with NO http_status and ``retryable`` false.
 
     Statusless because the request succeeded — no status describes a body the
-    SDK refused — and non-retryable because re-requesting cannot repair it. Only
-    the ``ApiError`` constructor's defaults hold the last two today, so a slip to
-    ``retryable=True`` would put a decode failure into the retry loop and ship
-    green without this row."""
+    SDK refused — and non-retryable because re-requesting cannot repair it.
+
+    What these rows add is the BINDING, not the constructor's behaviour:
+    ``test_errors.py`` already pins ``ApiError``'s defaults directly, and would
+    catch a slip in them. What it cannot see is a refusal site that stops
+    reaching those defaults — one that grew an explicit ``retryable=True``, or
+    that started raising some other class. These rows watch the four call sites
+    for that, which is the half a constructor test structurally cannot cover."""
 
     @pytest.mark.parametrize(
         ("path", "body", "call"),
@@ -592,7 +596,12 @@ class TestPaginateWrappedNullBody:
 
     @respx.mock
     def test_a_null_element_is_kept_as_an_item(self):
-        respx.get(_PROGRESS_URL).mock(return_value=_json({"events": [None]}))
+        """The envelope carries ``person`` because this row asserts SUCCESS, and a
+        body BC3 would never send is the wrong thing to pin as well-formed —
+        Rust, Kotlin and Swift all refuse an envelope missing it. The rule under
+        test is about the element, so the rest of the body should not be the odd
+        part of it."""
+        respx.get(_PROGRESS_URL).mock(return_value=_json({"events": [None], "person": {"id": 9}}))
 
         assert list(_account().reports.person_progress(person_id=1)["events"]) == [None]
 
