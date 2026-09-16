@@ -927,6 +927,9 @@ func TestScenarioConfigBoundsMatchTheSchema(t *testing.T) {
 	}
 	// The step-side ms fields share the config durations' bound; the delay
 	// envelope alone admits zero, which is the floor the loader passes there.
+	if got := bound(t, "minimum", "$defs", "advance", "properties", "ms"); got != 1 {
+		t.Errorf("advance.ms minimum = %d, the loader's floor is 1", got)
+	}
 	if got := bound(t, "maximum", "$defs", "advance", "properties", "ms"); got != maxScenarioMs {
 		t.Errorf("advance.ms maximum = %d, the loader's maxScenarioMs is %d", got, maxScenarioMs)
 	}
