@@ -208,12 +208,19 @@ func parseOperation(
     // consumer persists after accepting that page. Flattening the walk would
     // swallow every intermediate position and leave a crashed consumer with
     // nothing to resume from.
-    let paginationExt = operation["x-basecamp-pagination"] as? [String: Any]
+    // Presence is tested before the object cast on purpose: `as? [String: Any]`
+    // answers nil for a trait that is present but not an object, which would
+    // skip the refusal below and ship the operation as silently unpaginated —
+    // the one failure mode this check exists to remove. A literal null reads as
+    // absent, matching the other five generators.
+    let paginationValue = operation["x-basecamp-pagination"]
+    let paginationDeclared = paginationValue != nil && !(paginationValue is NSNull)
+    let paginationExt = paginationValue as? [String: Any]
     let paginationStyle = paginationExt?["style"] as? String
     // Only "link" and "cursor" are implemented. Anything else — a typo, or the
     // "page" style the trait used to advertise — must fail loudly: read as "not
     // paginated" it would silently ship a method that never walks.
-    if paginationExt != nil, paginationStyle != "link", paginationStyle != "cursor" {
+    if paginationDeclared, paginationStyle != "link", paginationStyle != "cursor" {
         fatalError("\(operationId): unsupported pagination style \(paginationStyle ?? "nil") (expected \"link\" or \"cursor\")")
     }
     let hasPagination = paginationStyle == "link"

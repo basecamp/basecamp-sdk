@@ -53,6 +53,11 @@ structure basecampPagination {
     /// generator refuses it — the refusal is a build gate, not a schema
     /// constraint.
     ///
+    /// Go reads this trait nowhere: its list wrappers are hand-written and call
+    /// `followPagination` by hand, so nothing there enforces the style either
+    /// way. The first cursor operation's Go wrapper is discipline, not a gate —
+    /// it must not follow the walk, and no build will say so.
+    ///
     /// A third value, "page", was documented here for years and no generator
     /// ever read it. That is not the same as page-number paging being
     /// unimplemented: `page` is a real query parameter across the SDKs (SPEC

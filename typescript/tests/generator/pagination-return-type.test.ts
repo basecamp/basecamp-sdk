@@ -58,6 +58,16 @@ const schemas: Record<string, Schema> = {
       events: { type: "array", items: { $ref: "#/components/schemas/TimelineEvent" } },
     },
   },
+  // A cursor envelope: items under a key, alongside the position that makes the
+  // page resumable. Structurally identical to a wrapped-pagination response,
+  // which is exactly why the key must not reach type resolution for it.
+  PollEventsResponseContent: {
+    type: "object",
+    properties: {
+      events: { type: "array", items: { $ref: "#/components/schemas/TimelineEvent" } },
+      position: { type: "string" },
+    },
+  },
   WidgetThing: { type: "object", properties: { id: { type: "integer" } } },
   Todo: { type: "object", properties: { id: { type: "integer" } } },
   Person: { type: "object", properties: { id: { type: "integer" } } },
@@ -195,6 +205,48 @@ describe("buildReturnType — paginated operations", () => {
         `return this.requestPaginatedWrapped<"${key}", ${element}>(`,
       );
       expect(buildReturnType(op, "Reports")).toContain(`${key}: ListResult<${element}>`);
+    });
+  });
+
+  // A cursor operation answers one page and is typed as the envelope it sends.
+  // The trap is that a cursor envelope is structurally identical to a
+  // wrapped-pagination one, and `findUnderlyingEntitySchema` unwraps on the
+  // presence of `paginationKey` alone — `buildReturnType` passes it through
+  // without consulting `hasPagination`. The parser therefore withholds the key
+  // from any non-link style, and these two tests are the pair that pins it:
+  // the first asserts the outcome, the second shows what the outcome depends
+  // on, so a regression cannot be misread as a fixture problem.
+  describe("cursor pagination", () => {
+    it("types a cursor operation as its envelope, not as the item under the key", () => {
+      const returnType = buildReturnType(
+        operation({
+          operationId: "PollEvents",
+          methodName: "pollEvents",
+          responseSchemaRef: "PollEventsResponseContent",
+          returnsArray: false,
+          hasPagination: false,
+          paginationKey: undefined,
+        }),
+        "EventFeed",
+      );
+
+      expect(returnType).toBe('components["schemas"]["PollEventsResponseContent"]');
+    });
+
+    it("would unwrap to the item type if the key were ever passed through", () => {
+      const returnType = buildReturnType(
+        operation({
+          operationId: "PollEvents",
+          methodName: "pollEvents",
+          responseSchemaRef: "PollEventsResponseContent",
+          returnsArray: false,
+          hasPagination: false,
+          paginationKey: "events",
+        }),
+        "EventFeed",
+      );
+
+      expect(returnType).toBe("TimelineEvent");
     });
   });
 });
