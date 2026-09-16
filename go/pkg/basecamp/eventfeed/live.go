@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/basecamp/basecamp-sdk/go/pkg/basecamp"
@@ -55,6 +56,13 @@ func NewLive(cfg *basecamp.Config, tokens basecamp.TokenProvider, accountID stri
 	if accountID == "" {
 		return nil, usageError("accountID must be non-empty")
 	}
+	for _, r := range accountID {
+		if r < '0' || r > '9' {
+			// ForAccount panics on anything but digits; a configuration
+			// value reaches this constructor as an error, never a panic.
+			return nil, usageError("accountID must be numeric")
+		}
+	}
 	if lane != AccountLane && lane != InboxLane {
 		return nil, usageError(fmt.Sprintf("unknown lane %s", lane))
 	}
@@ -101,34 +109,70 @@ func (l *Live) Connect(opts ...Option) (*Connector, error) {
 	return New(l.origin, l.accountID, l.Minter(), l.Polls(), all...)
 }
 
-// redirectRefusedError is what the feed's redirect policy returns to the HTTP
-// client for a hop it will not take. It carries the refused Location reduced
-// to its origin — data for the seam's redirect_refused kind, never rendered
-// (§23: a hostile redirect can reflect the bearer into a host label).
-type redirectRefusedError struct {
-	locationOrigin string
+// refusedHop is the per-call record the redirect policy writes when it will
+// not take a hop: the refused Location reduced to its origin — data for the
+// seam's redirect_refused kind, never rendered (§23: a hostile redirect can
+// reflect the bearer into a host label). It travels on the call's context so
+// the policy, which sees only the redirected request, can hand it back to the
+// seam call that owns it.
+type refusedHop struct {
+	mu      sync.Mutex
+	refused bool
+	origin  string
 }
 
-func (e *redirectRefusedError) Error() string {
-	return "eventfeed: refused a redirect off the API origin"
+type refusedHopKey struct{}
+
+func (h *refusedHop) record(origin string) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.refused, h.origin = true, origin
+}
+
+func (h *refusedHop) get() (string, bool) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return h.origin, h.refused
+}
+
+// withRefusedHop attaches a fresh record to ctx for one seam call.
+func withRefusedHop(ctx context.Context) (context.Context, *refusedHop) {
+	hop := &refusedHop{}
+	return context.WithValue(ctx, refusedHopKey{}, hop), hop
 }
 
 // feedRedirectPolicy is the basecamp.Client redirect policy the feed installs:
 // every hop's resolved Location is validated against the API origin under §8's
 // same-origin algorithm plus downgrade rejection, before any request reaches
 // it. A same-origin hop is followed (the host's own origin, so the bearer may
-// travel); anything else is refused with the Location's origin recorded.
+// travel). Anything else is refused by returning http.ErrUseLastResponse —
+// the client then hands the 3xx back as an ordinary response, which the
+// generated call classifies by status — rather than an error, because
+// net/http wraps a policy error in a url.Error that renders the refused
+// Location whole, and that rendering would reach the operation hooks before
+// any seam could redact it. The refused origin is recorded on the call's
+// context for the seam to read.
 func feedRedirectPolicy(origin string) func(req *http.Request, via []*http.Request) error {
 	return func(req *http.Request, via []*http.Request) error {
-		if len(via) >= 10 {
-			return &redirectRefusedError{locationOrigin: locationOrigin(req)}
+		refuse := len(via) >= 10
+		if !refuse {
+			refuse = checkContinuation(origin, req.URL.String()) != nil
 		}
-		if terr := checkContinuation(origin, req.URL.String()); terr != nil {
-			return &redirectRefusedError{locationOrigin: locationOrigin(req)}
+		if !refuse {
+			return nil
 		}
-		return nil
+		if len(via) > 0 {
+			if hop, ok := via[0].Context().Value(refusedHopKey{}).(*refusedHop); ok {
+				hop.record(locationOrigin(req))
+			}
+		}
+		return http.ErrUseLastResponse
 	}
 }
+
+// errHopRefused is the fixed cause a refused hop carries: never the
+// Location, never the status text.
+var errHopRefused = errors.New("eventfeed: refused a redirect off the API origin")
 
 // locationOrigin reduces a refused hop's target to its origin — the one
 // component the seam contract lets a redirect_refused error carry — or the
@@ -147,9 +191,10 @@ type liveMinter struct {
 }
 
 func (m *liveMinter) MintStreamTicket(ctx context.Context) (StreamTicket, error) {
+	ctx, hop := withRefusedHop(ctx)
 	ticket, err := m.svc.CreateStreamTicket(ctx)
 	if err != nil {
-		return StreamTicket{}, mapMintError(err)
+		return StreamTicket{}, mapMintError(err, hop)
 	}
 	if ticket == nil || ticket.Ticket == "" || ticket.URL == "" {
 		// A malformed success: the mint answered 200 without the credential
@@ -161,18 +206,18 @@ func (m *liveMinter) MintStreamTicket(ctx context.Context) (StreamTicket, error)
 }
 
 // mapMintError maps a CreateStreamTicket outcome onto exactly one MintErrorKind.
-func mapMintError(err error) error {
+func mapMintError(err error, hop *refusedHop) error {
 	if isCancellation(err) {
 		return err
 	}
-	var refused *redirectRefusedError
-	if errors.As(err, &refused) {
-		// A mint that redirects is out of contract, and a fresh mint would
-		// redirect the same way: unrecoverable, carrying the typed error
-		// alone (see mapPollError on why never the url.Error chain).
-		return &MintError{Kind: MintUnrecoverable, Err: refused}
-	}
 	var apiErr *basecamp.Error
+	if errors.As(err, &apiErr) && isRedirectStatus(apiErr.HTTPStatus) {
+		// A mint that redirects is out of contract, and a fresh mint would
+		// redirect the same way: unrecoverable, with a fixed cause — the
+		// refused hop never reaches a rendering.
+		_, _ = hop.get()
+		return &MintError{Kind: MintUnrecoverable, Err: errHopRefused}
+	}
 	if !errors.As(err, &apiErr) {
 		// A transport-level failure the generated call could not classify
 		// (DNS, TLS, a dropped connection): transient, it rides the
@@ -229,9 +274,10 @@ func (p *livePolls) pollEvents(ctx context.Context, cursor Cursor, filters Filte
 			ActorTypes:        filters.ActorTypes,
 		}
 	}
+	ctx, hop := withRefusedHop(ctx)
 	page, err := p.svc.PollEvents(ctx, opts)
 	if err != nil {
-		return PollPage{}, mapPollError(err)
+		return PollPage{}, mapPollError(err, hop)
 	}
 	if page == nil {
 		return PollPage{}, &PollError{Kind: PollUnrecoverable, Err: errors.New("the poll returned no page")}
@@ -264,9 +310,10 @@ func (p *livePolls) pollInbox(ctx context.Context, cursor Cursor, filters Filter
 			Buckets:  filters.Buckets,
 		}
 	}
+	ctx, hop := withRefusedHop(ctx)
 	page, err := p.svc.PollInbox(ctx, opts)
 	if err != nil {
-		return PollPage{}, mapPollError(err)
+		return PollPage{}, mapPollError(err, hop)
 	}
 	if page == nil {
 		return PollPage{}, &PollError{Kind: PollUnrecoverable, Err: errors.New("the poll returned no page")}
@@ -291,18 +338,22 @@ const positionRejectedMessage = "Unrecognized position"
 
 // mapPollError maps a PollEvents/PollInbox outcome onto exactly one
 // PollErrorKind (SPEC.md §23 "Seam Contracts").
-func mapPollError(err error) error {
+func mapPollError(err error, hop *refusedHop) error {
 	if isCancellation(err) {
 		return err
 	}
-	var refused *redirectRefusedError
-	if errors.As(err, &refused) {
-		// The typed error alone, never the chain: net/http wraps a refused
-		// hop in a url.Error whose rendering carries the refused Location
-		// whole — exactly the value a hostile redirect can put the bearer
-		// into, and exactly what no rendering may carry (§23). The origin
-		// rides as data on LocationOrigin.
-		return &PollError{Kind: PollRedirectRefused, LocationOrigin: refused.locationOrigin, Err: refused}
+	var apiErr *basecamp.Error
+	if errors.As(err, &apiErr) && isRedirectStatus(apiErr.HTTPStatus) {
+		// A 3xx the policy refused — or one the client never asked the
+		// policy about: a bare 3xx with no Location, which is equally not a
+		// page. The origin the policy recorded rides as data on
+		// LocationOrigin (§9's fixed token where it recorded none), and the
+		// cause is fixed text: nothing of the response reaches a rendering.
+		origin := "unparsable"
+		if recorded, ok := hop.get(); ok && recorded != "" {
+			origin = recorded
+		}
+		return &PollError{Kind: PollRedirectRefused, LocationOrigin: origin, Err: errHopRefused}
 	}
 	var mismatch *basecamp.FeedFilterMismatchError
 	if errors.As(err, &mismatch) {
@@ -316,7 +367,6 @@ func mapPollError(err error) error {
 		}
 		return &PollError{Kind: PollGone, EpochAfterID: epoch, ResumeURL: gone.Resume, Err: err}
 	}
-	var apiErr *basecamp.Error
 	if !errors.As(err, &apiErr) {
 		return &PollError{Kind: PollTransient, Err: err}
 	}
@@ -337,6 +387,13 @@ func mapPollError(err error) error {
 	}
 }
 
+// isRedirectStatus reports a 3xx the generated call surfaced as its own
+// status: the redirect policy declined to follow it, or it carried no
+// Location to follow.
+func isRedirectStatus(status int) bool {
+	return status >= 300 && status <= 399
+}
+
 // isCancellation reports a context-driven end to the call, which the seam
 // returns as-is: the connector cancelled it and reads the context, not a kind.
 func isCancellation(err error) bool {
@@ -344,9 +401,11 @@ func isCancellation(err error) bool {
 }
 
 // eventFromFeed maps the wrapper's FeedEvent onto the connector's Event. The
-// typed details are re-serialized verbatim: Event.Details is the raw object,
-// so a consumer decodes it against the type's documented shape as on the push
-// lane.
+// details object is re-serialized from the wrapper's typed projection
+// (FeedEventDetails carries the members the SDK models; the generated layer
+// keeps it typed so every SDK decodes it, and drops members it does not
+// know), so on the poll lane Event.Details is that projection — the push
+// lane, which decodes the frame itself, keeps the server's bytes whole.
 func eventFromFeed(fe basecamp.FeedEvent) (Event, error) {
 	ev := Event{
 		ID:            fe.ID,

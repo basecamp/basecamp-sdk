@@ -331,6 +331,20 @@ func TestLivePolls_RefusesACrossOriginRedirectWithZeroEgress(t *testing.T) {
 	}
 }
 
+// TestLivePolls_ABare3xxIsRefusedToo: a 3xx with no Location never reaches
+// the redirect policy — net/http has nothing to follow — and is equally not
+// a page: the seam reports redirect_refused with the fixed unparsable token.
+func TestLivePolls_ABare3xxIsRefusedToo(t *testing.T) {
+	f := newLiveFixture(t, eventfeed.AccountLane, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusFound)
+	})
+	_, err := f.live.Polls().Poll(context.Background(), eventfeed.Cursor{Position: "pos-0"}, eventfeed.Filters{})
+	var pe *eventfeed.PollError
+	if !errors.As(err, &pe) || pe.Kind != eventfeed.PollRedirectRefused || pe.LocationOrigin != "unparsable" {
+		t.Fatalf("error = %v, want redirect_refused with the unparsable token", err)
+	}
+}
+
 func TestLivePolls_FollowsASameOriginRedirect(t *testing.T) {
 	var f *liveFixture
 	f = newLiveFixture(t, eventfeed.AccountLane, func(w http.ResponseWriter, r *http.Request) {
@@ -395,14 +409,16 @@ func TestNewLiveValidatesAndConnects(t *testing.T) {
 	}
 	for name, tc := range map[string]struct {
 		cfg  *basecamp.Config
+		id   string
 		lane eventfeed.Lane
 	}{
-		"nil config":     {nil, eventfeed.AccountLane},
-		"unknown lane":   {cfg, eventfeed.Lane(9)},
-		"cleartext base": {&basecamp.Config{BaseURL: "http://api.example.test"}, eventfeed.AccountLane},
+		"nil config":     {nil, "1", eventfeed.AccountLane},
+		"unknown lane":   {cfg, "1", eventfeed.Lane(9)},
+		"cleartext base": {&basecamp.Config{BaseURL: "http://api.example.test"}, "1", eventfeed.AccountLane},
+		"nonnumeric id":  {cfg, "abc", eventfeed.AccountLane},
 	} {
 		t.Run(name, func(t *testing.T) {
-			_, err := eventfeed.NewLive(tc.cfg, &basecamp.StaticTokenProvider{Token: "t"}, "1", tc.lane)
+			_, err := eventfeed.NewLive(tc.cfg, &basecamp.StaticTokenProvider{Token: "t"}, tc.id, tc.lane)
 			var te *eventfeed.TerminalError
 			if !errors.As(err, &te) || te.Reason != eventfeed.ReasonUsage {
 				t.Fatalf("NewLive error = %v, want a usage-coded construction error", err)

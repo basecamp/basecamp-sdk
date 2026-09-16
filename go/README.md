@@ -818,6 +818,9 @@ supply its own `TicketMinter` and `PollSource`; the exported surface may still c
 
 ```go
 import (
+    "context"
+    "errors"
+    "fmt"
     "log"
 
     "github.com/basecamp/basecamp-sdk/go/pkg/basecamp"
