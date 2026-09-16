@@ -65,6 +65,44 @@ additive for every caller, breaking only for Go code that implements the
 generated `ClientInterface` / `ClientWithResponsesInterface` itself, which the
 generated client is the only intended implementer of.
 
+### Rust changes the exit code for `bucket_mismatch`, Swift's classification accessors stop being optional
+
+A recording pointer that names a bucket the recording is not in is reported as
+`bucket_mismatch` in every SDK. Rust classified that verdict as `not_found`
+(exit 2) where Python, Ruby, Kotlin and TypeScript classified it as `usage`
+(exit 1), and Go and Swift classified it as nothing. It is now `usage`
+everywhere.
+
+| SDK | before | after |
+|---|---|---|
+| Rust | `not_found` — exit 2 | `usage` — exit 1 |
+| Python, Ruby, Kotlin, TypeScript | `usage` — exit 1 | unchanged |
+| Go, Swift | classified as nothing | `usage` — exit 1 |
+
+**Three breaks, two of them silent.**
+
+*Rust, silent.* `RecordingSummaryError::code()` and the `Error` built from it
+change from `ErrorCode::NotFound` to `ErrorCode::Usage`, and the CLI exit status
+from 2 to 1. A `match` on `ErrorCode::NotFound`, or a script testing `$? -eq 2`,
+stops matching — with a clean build. Match the verdict instead:
+`RecordingSummaryError::of(&err)` and the `BucketMismatch` variant, which did
+not change.
+
+*Go, silent.* `basecamp.RecordingSummaryCode(err)` now returns `("usage", true)`
+for `ErrBucketMismatch` where it returned `("", false)`. A caller shaped like
+`if code, ok := RecordingSummaryCode(err); ok { os.Exit(ExitCodeFor(code)) }`
+used to fall through to its own handling for this verdict and now exits 1. If
+you had your own answer for it, that answer is now unreachable.
+
+*Swift, loud.* `RecordingSummaryError.canonicalCode` becomes `String` from
+`String?`, and `.exitCode` becomes `Int` from `Int?`. `if let code =
+err.canonicalCode` no longer compiles, and `err.canonicalCode ?? "x"` /
+`err.exitCode ?? 7` become warnings. Drop the unwrap: every verdict is now
+classified, and the switch is total, so a verdict added later has to be
+classified or the build fails. That is the point of the change.
+
+**Retryability did not change** for any verdict in any SDK.
+
 ### Four SDKs change the exit code for `campfire_discovery_incomplete`, and the change is silent
 
 A chat line whose Campfire discovery could not be carried to a conclusion is

@@ -4889,7 +4889,8 @@ verdict added later must be classified or the build fails.
 alongside `errorType` on all five identities, which is what stops the next port
 diverging silently: a port can still reach a different answer, but no longer
 with a green suite. One thing is deliberately NOT pinned there and should not be
-mistaken for covered. RETRYABILITY is not expressible in this fixture at all: Go and Swift carry no
+mistaken for covered. RETRYABILITY is not expressible in this fixture at
+all: Go and Swift carry no
 retryable flag on a composite verdict — the sentinel and the enum have no such
 field — so an assertion on it could not be executed by two of the seven runners.
 It is pinned instead by a unit test in each of the five SDKs whose verdicts do
