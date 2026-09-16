@@ -392,6 +392,23 @@ class PaginationTest {
     }
 
     /**
+     * SPEC §6's parsing table: `1*DIGIT` has no sign, so `+5` is not a delay
+     * even though `toIntOrNull` reads one; and no digit string is malformed for
+     * its width — over the ceiling saturates, where `toIntOrNull` used to hand
+     * back null and drop the request onto the backoff curve.
+     */
+    @Test
+    fun parseRetryAfterRejectsSignAndSaturatesOverRange() {
+        assertNull(parseRetryAfter("+5"))
+        assertNull(parseRetryAfter("-5"))
+        assertEquals(120, parseRetryAfter("0120"))
+        assertEquals(MAX_RETRY_AFTER_SECONDS, parseRetryAfter("2147483647"))
+        assertEquals(MAX_RETRY_AFTER_SECONDS, parseRetryAfter("2147483648"))
+        assertEquals(MAX_RETRY_AFTER_SECONDS, parseRetryAfter("9223372036854775808"))
+        assertEquals(MAX_RETRY_AFTER_SECONDS, parseRetryAfter("99999999999999999999"))
+    }
+
+    /**
      * SPEC §6 step 2's POSITIVE half, which conformance cannot reach: a fixture
      * is a static literal with no clock, so a date near enough to assert a delay
      * against expires the day it is written and one far enough ahead to survive
@@ -402,8 +419,7 @@ class PaginationTest {
      * The date is written out as an IMF-fixdate literal rather than formatted by
      * the same library the parser uses, so the accepted wire format is pinned
      * independently of the round trip asserted below.
-     */
-    /**
+     *
      * The literal's job is the WIRE FORMAT, so the assertion is only that a
      * future IMF-fixdate yields a positive delay. The magnitude belongs to the
      * dynamic test below, which owns the arithmetic.
@@ -421,23 +437,6 @@ class PaginationTest {
      * formatter the parser uses. Recorded here rather than left to be
      * rediscovered.
      */
-    /**
-     * SPEC §6's parsing table: `1*DIGIT` has no sign, so `+5` is not a delay
-     * even though `toIntOrNull` reads one; and no digit string is malformed for
-     * its width — over the ceiling saturates, where `toIntOrNull` used to hand
-     * back null and drop the request onto the backoff curve.
-     */
-    @Test
-    fun parseRetryAfterRejectsSignAndSaturatesOverRange() {
-        assertNull(parseRetryAfter("+5"))
-        assertNull(parseRetryAfter("-5"))
-        assertEquals(120, parseRetryAfter("0120"))
-        assertEquals(MAX_RETRY_AFTER_SECONDS, parseRetryAfter("2147483647"))
-        assertEquals(MAX_RETRY_AFTER_SECONDS, parseRetryAfter("2147483648"))
-        assertEquals(MAX_RETRY_AFTER_SECONDS, parseRetryAfter("9223372036854775808"))
-        assertEquals(MAX_RETRY_AFTER_SECONDS, parseRetryAfter("99999999999999999999"))
-    }
-
     @Test
     fun parseRetryAfterParsesFutureHttpDate() {
         val seconds = parseRetryAfter("Thu, 01 Jan 2060 00:00:00 GMT")

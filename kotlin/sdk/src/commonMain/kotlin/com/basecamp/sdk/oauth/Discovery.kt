@@ -21,7 +21,7 @@ import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
-/**
+/*
  * OAuth 2.0 discovery for the Basecamp SDK.
  *
  * Two composable operations plus an orchestrator (SPEC.md §16, "Resource-First

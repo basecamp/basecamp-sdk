@@ -40,8 +40,8 @@ public enum BasecampError: Error, Sendable, LocalizedError {
     /// Server or API error (typically 5xx).
     ///
     /// `decodeFailure` is the response decoder's own refusal, and it is set on
-    /// exactly one thing: the SPEC §6 statusless `api_error` raised for a 2xx
-    /// body the model would not decode, plus the §18 composites' restatement of
+    /// exactly two things: the SPEC §6 statusless `api_error` raised for a 2xx
+    /// body the model would not decode, and the §18 composites' restatement of
     /// that same failure with their escape hatch attached. Nil on every other
     /// `.api`, including the *other* statusless one — the pagination
     /// same-origin refusal, which is a deliberate guard and not a bad body.

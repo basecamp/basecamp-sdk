@@ -78,13 +78,6 @@ function selectedPageResult<T>(
 }
 
 /**
- * Abstract base class for all Basecamp API services.
- *
- * Services extend this class to inherit common functionality
- * for making API requests, handling errors, and integrating
- * with the hooks system.
- */
-/**
  * Normalizes Person-shaped objects in API responses.
  *
  * The BC3 API conflates real Person records (numeric id) with system actors
@@ -149,6 +142,13 @@ function isJsonSyntaxError(err: unknown): err is SyntaxError {
   return typeof err === "object" && err !== null && (err as { name?: unknown }).name === "SyntaxError";
 }
 
+/**
+ * Abstract base class for all Basecamp API services.
+ *
+ * Services extend this class to inherit common functionality
+ * for making API requests, handling errors, and integrating
+ * with the hooks system.
+ */
 export abstract class BaseService {
   /** The underlying openapi-fetch client */
   protected readonly client: RawClient;

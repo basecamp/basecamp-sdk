@@ -27,7 +27,7 @@ import kotlin.time.Duration.Companion.seconds
 import kotlin.time.TimeMark
 import kotlin.time.TimeSource
 
-/**
+/*
  * RFC 8628 device authorization grant (SPEC.md §16).
  *
  * Three suspend functions mirror the shipping TypeScript reference in the Kotlin

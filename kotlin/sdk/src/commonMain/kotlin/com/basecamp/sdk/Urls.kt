@@ -3,7 +3,7 @@ package com.basecamp.sdk
 import io.ktor.http.Url
 import io.ktor.http.parseUrl
 
-/**
+/*
  * Shared URL helpers used by pagination guards, OAuth discovery, and the token
  * POST. Centralizing them keeps every SSRF/same-origin decision on the SAME
  * parser the transport dials with (Ktor's [parseUrl]) rather than a hand-rolled

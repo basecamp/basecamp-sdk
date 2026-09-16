@@ -279,14 +279,19 @@ class SchedulesService(client: AccountClient) :
      * of the failure: which record failed to decode, and the escape hatch for
      * writing it deliberately. That is what is restated here.
      *
-     * The restatement is keyed off [BasecampException.Api.decodeFailure], the
-     * slot the base layer's decoder wrapper alone fills, so any other
-     * [BasecampException.Api] passes through untouched — and it carries that
-     * slot forward through the internal factory, because a restatement of a
-     * malformed body is still a malformed body. Rebuilding through the public
-     * constructor would drop the marker and tell everything downstream this was
-     * not a decode failure (#750). Reading `cause is
-     * SerializationException` instead would catch more than this GET's decode:
+     * The restatement is keyed off [BasecampException.Api.decodeFailure], which
+     * is null on every other [BasecampException.Api] — so any other one passes
+     * through untouched. Two things fill that slot, as its own KDoc says: the
+     * base layer's decoder wrapper, and a SPEC §18 composite restating that
+     * same failure. This is one of the latter, so it carries the slot forward
+     * through the internal factory — a restatement of a malformed body is still
+     * a malformed body, and
+     * `SchedulesServiceTest.updateRefusesAWrongTypedSummary` asserts the marker
+     * survives this restatement rather than leaving it to be re-derived here.
+     * Rebuilding through the public constructor would drop the marker and tell
+     * everything downstream this was not a decode failure (#750). Reading
+     * `cause is SerializationException` instead would catch more than this
+     * GET's decode:
      * an auth strategy that classifies its own JSON failure that way has its
      * exception propagated untouched by `BasecampHttpClient`, and would arrive
      * here relabelled as a malformed schedule entry — for a request that was

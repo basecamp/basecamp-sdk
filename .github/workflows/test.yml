@@ -293,6 +293,25 @@ jobs:
       - name: README env-var gate self-test (synthetic repos)
         run: make test-check-readme-env-vars
 
+      # A `/** ... */` documents the declaration that follows it. When the next
+      # thing is another `/** ... */`, the first one is attached to nothing and
+      # renders nowhere, while its prose still reads as documentation of what is
+      # below. Eleven instances across Kotlin and TypeScript, two written by an
+      # emitter; Java is in scope too and clean today. Nothing else in CI can see
+      # the shape — it compiles and it lints. The gate also reports what it
+      # cannot lex, rather than reporting clean on a file it could not read.
+      - name: No doc comment documents another doc comment
+        run: make check-orphaned-doc-comments
+
+      # The live run only exercises a clean tree, which proves the gate can say
+      # yes. This drives the refusals — the one-line-follower spelling two hand
+      # sweeps walked past, and every defect three rounds of review found in the
+      # gate itself — and the acceptances that must keep passing: `/*` banners,
+      # an in-string `/**`, a multi-line template literal, CRLF, and a
+      # byte-order mark. Every case flips when the rule it guards is removed.
+      - name: Orphaned-doc-comment gate self-test (synthetic trees)
+        run: make test-check-orphaned-doc-comments
+
       # Offline by construction — compares openapi.json against the vendored
       # spec/bc3-routes.json, so it needs no bc3 checkout and no secret and
       # therefore cannot skip. A gate that skips when its input is absent is how

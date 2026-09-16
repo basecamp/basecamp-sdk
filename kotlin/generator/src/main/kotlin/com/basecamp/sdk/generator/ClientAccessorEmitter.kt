@@ -17,7 +17,16 @@ class ClientAccessorEmitter {
         sb.appendLine("import com.basecamp.sdk.AccountClient")
         sb.appendLine("import com.basecamp.sdk.generated.services.*")
         sb.appendLine()
-        sb.appendLine("/**")
+        // A file banner, NOT a KDoc: `/*`, not `/**`. Kotlin has no file-level
+        // doc comment, so a `/**` block here documents whatever declaration
+        // follows it — and the first thing this emitter writes after the banner
+        // is another `/**`, which wins. The banner would then document nothing
+        // and Dokka would render none of it. `/*` says "prose about the file"
+        // and is the shape the hand-written sources use for the same job.
+        // scripts/check-orphaned-doc-comments.py fails the build if this
+        // regresses to `/**`. Mentions.kt is the hand-written instance of the
+        // same banner, brackets and all.
+        sb.appendLine("/*")
         sb.appendLine(" * Generated service accessor extensions for [AccountClient].")
         sb.appendLine(" *")
         sb.appendLine(" * These properties provide lazy, cached access to all Basecamp API services.")

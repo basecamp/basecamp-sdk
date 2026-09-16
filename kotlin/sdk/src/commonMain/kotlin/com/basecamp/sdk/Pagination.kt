@@ -80,12 +80,6 @@ internal fun parseTotalCount(headers: Map<String, List<String>>): Long {
 }
 
 /**
- * Extracts the `rel="next"` URL from a Link header.
- * Returns null if no next link exists.
- *
- * Example: `<https://api.example.com/page?page=2>; rel="next"` → the URL
- */
-/**
  * Returns the contents of the first non-empty `<...>` pair, or null if there is none.
  *
  * Searching for `>` from after the `<` is what makes this correct: looking for
@@ -111,6 +105,12 @@ internal fun extractAngleBracketed(part: String): String? {
     }
 }
 
+/**
+ * Extracts the `rel="next"` URL from a Link header.
+ * Returns null if no next link exists.
+ *
+ * Example: `<https://api.example.com/page?page=2>; rel="next"` → the URL
+ */
 internal fun parseNextLink(linkHeader: String?): String? {
     if (linkHeader.isNullOrBlank()) return null
     for (part in linkHeader.split(",")) {
