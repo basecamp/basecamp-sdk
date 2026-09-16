@@ -376,7 +376,7 @@ describe("recordings.summarize", () => {
       expect((err as BasecampError).httpStatus).toBeUndefined();
       // The code's observable consequence, which is what a divergence actually
       // costs: `exitCode` derives from it, so this verdict exited 2 in Rust
-      // where it exits 1 here. Asserted because the code string alone is a
+      // before card 41, where it has always exited 1 here. Asserted because the code string alone is a
       // name; the exit status is what a script branches on.
       expect((err as BasecampError).exitCode).toBe(1);
 

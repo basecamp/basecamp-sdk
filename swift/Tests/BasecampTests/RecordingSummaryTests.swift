@@ -546,7 +546,7 @@ final class RecordingSummaryTests: XCTestCase {
     /// five verdicts lets four of them be misclassified without changing it,
     /// which is how `campfire_discovery_incomplete` came to exit 1 from the
     /// Kotlin SDK and 7 from Python's with every test green in both. Settled on
-    /// card 40.
+    /// cards 40 (`campfire_discovery_incomplete`) and 41 (`bucket_mismatch`).
     func testEachVerdictCarriesTheCodeAndExitStatusItSettledOn() {
         let ref = RecordingRef(bucketId: 1, recordingId: 2, eventType: "chat.line.created")
         let classified: [(RecordingSummaryError, String, Int)] = [

@@ -354,8 +354,10 @@ export class CampfireDiscoveryIncompleteError extends RecordingSummaryError {
  * is not there, which is false — the read FOUND it, in another bucket, and
  * returned it. Nothing is absent. What failed is the caller's pointer.
  *
- * The shared fixture now pins the code alongside the identity, which is what
- * let three ports reach three answers here with every case green.
+ * The shared fixture had no case for this identity at all, so nothing pinned
+ * the code: five ports carried two answers and two carried none, with every
+ * case green in all seven. It has one now, and it pins the code alongside the
+ * identity.
  */
 export class BucketMismatchError extends RecordingSummaryError {
   readonly ref: RecordingRef;
@@ -366,9 +368,9 @@ export class BucketMismatchError extends RecordingSummaryError {
     super(
       "bucket_mismatch",
       // Settled for every SDK on card 41; see the class doc above for the
-      // argument. The fixture now pins this code per identity, so a port that
-      // reaches a different answer can no longer do so with a green suite —
-      // which is exactly how three ports came to diverge here.
+      // argument. The fixture had no case for this identity, so nothing pinned
+      // the code and five ports carried two answers with every case green. It
+      // has one now, so a port that reaches a different answer fails a case.
       "usage",
       `recording is not in the requested bucket: recording ${ref.recordingId} is in bucket ${bucketId}, not ${ref.bucketId}`,
     );
