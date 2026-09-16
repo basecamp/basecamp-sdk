@@ -467,8 +467,9 @@ type BufferOverflow struct {
 
 func (BufferOverflow) isSignal() {}
 
-// FeedGap reports a 410: the feed's history before EpochAfterID is gone. A
-// 410 never silently auto-continues.
+// FeedGap reports a 410: the held position fell behind what the lane still
+// serves — the feed's epoch (EpochAfterID names it) or the inbox's retention
+// window (no epoch; EpochAfterID is 0). A 410 never silently auto-continues.
 type FeedGap struct {
 	// EpochAfterID is the 410 body's epoch_after_id; 0 on the inbox lane,
 	// whose 410 carries none (the fence is the retention window).

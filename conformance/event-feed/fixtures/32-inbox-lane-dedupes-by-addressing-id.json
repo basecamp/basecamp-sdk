@@ -1,6 +1,6 @@
 {
   "name": "32-inbox-lane-dedupes-by-addressing-id",
-  "description": "The inbox lane end to end: the subscription carries `inbox: true` after the channel with the reasons param (class-1 identifier literal); the catch-up walk serves an {items, position, next} envelope whose two items address the principal through ONE event (id 100) under two addressing ids — both deliver, since an item is its own delivery, and the page is in strict addressing-id order; a live item admitted before the entry page (addressing id 13, over event 101) drains once and the repair poll's re-serve of the same item is suppressed by addressing id, never by event id. Delivered ids are addressing ids. The checkpoint step for the entry page precedes the cumulative delivered assertion so the drain of the buffered item cannot race an intermediate expectDelivered (fixture 01's ordering).",
+  "description": "The inbox lane end to end: the subscription carries `inbox: true` after the channel with the reasons param (class-1 identifier literal); the catch-up walk serves {items, position, next} envelopes — the first page's `next` is followed for the second — whose two items address the principal through ONE event (id 100) under two addressing ids — both deliver, since an item is its own delivery, and the page is in strict addressing-id order; a live item admitted before the entry page (addressing id 13, over event 101) drains once and the repair poll's re-serve of the same item is suppressed by addressing id, never by event id. Delivered ids are addressing ids. The checkpoint step for the entry page precedes the cumulative delivered assertion so the drain of the buffered item cannot race an intermediate expectDelivered (fixture 01's ordering).",
   "config": {
     "lane": "inbox",
     "reasons": [
@@ -98,7 +98,26 @@
                   "performed_by_id": null,
                   "recording_id": 900
                 }
-              },
+              }
+            ],
+            "position": "{{POS:1}}",
+            "next": "{{NEXT:1}}"
+          }
+        }
+      }
+    },
+    {
+      "expectCheckpoint": {
+        "position": "{{POS:1}}"
+      }
+    },
+    {
+      "expectPoll": {
+        "url": "{{NEXT:1}}",
+        "respond": {
+          "status": 200,
+          "body": {
+            "items": [
               {
                 "addressing_id": 12,
                 "reason": "assigned",
@@ -116,14 +135,14 @@
                 }
               }
             ],
-            "position": "{{POS:1}}"
+            "position": "{{POS:2}}"
           }
         }
       }
     },
     {
       "expectCheckpoint": {
-        "position": "{{POS:1}}"
+        "position": "{{POS:2}}"
       }
     },
     {
@@ -160,7 +179,7 @@
     {
       "expectPoll": {
         "query": {
-          "position": "{{POS:1}}"
+          "position": "{{POS:2}}"
         },
         "respond": {
           "status": 200,
@@ -183,14 +202,14 @@
                 }
               }
             ],
-            "position": "{{POS:2}}"
+            "position": "{{POS:3}}"
           }
         }
       }
     },
     {
       "expectCheckpoint": {
-        "position": "{{POS:2}}"
+        "position": "{{POS:3}}"
       }
     },
     {
@@ -203,7 +222,7 @@
     "state": "streaming",
     "mintCount": 1,
     "connectCount": 1,
-    "pollCount": 2,
+    "pollCount": 3,
     "delivered": {
       "exact": [
         11,
@@ -214,7 +233,8 @@
     "checkpoints": {
       "exact": [
         "{{POS:1}}",
-        "{{POS:2}}"
+        "{{POS:2}}",
+        "{{POS:3}}"
       ]
     },
     "timers": {

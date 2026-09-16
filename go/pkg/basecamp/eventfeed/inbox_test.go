@@ -162,6 +162,39 @@ func TestInboxLaneResetCursorIsTheItemID(t *testing.T) {
 	}
 }
 
+// TestInboxLaneOverflowDropsAddressingIDs: the live buffer's overflow names
+// the lane's identity — on the inbox, the addressing id, not the event id
+// the item wraps.
+func TestInboxLaneOverflowDropsAddressingIDs(t *testing.T) {
+	signals := make(chan eventfeed.Signal, 4)
+	store := feedtest.NewStore()
+	store.Stored("pos-0")
+	h := storedHarness(t, store,
+		eventfeed.WithLane(eventfeed.InboxLane),
+		eventfeed.WithLiveBufferCapacity(1),
+		eventfeed.WithSignalHandler(func(s eventfeed.Signal) eventfeed.Disposition { signals <- s; return eventfeed.Accept }))
+	h.minter.ScriptTicket(ticket(1))
+	h.polls.ScriptPage(eventfeed.PollPage{Position: "pos-1"})
+	h.start()
+
+	identifier := eventfeed.ExportInboxSubscribeIdentifier(eventfeed.Filters{})
+	conn := h.driveToSubscribed()
+	h.serveSettled(conn, frameInboxItem(identifier, 31, 700, "mentioned"))
+	h.serveSettled(conn, frameInboxItem(identifier, 32, 701, "assigned"))
+	conn.Serve(frameConfirm(identifier))
+	h.awaitStreaming()
+
+	select {
+	case s := <-signals:
+		ov, ok := s.(eventfeed.BufferOverflow)
+		if !ok || ov.DroppedCount != 1 || len(ov.DroppedIDs) != 1 || ov.DroppedIDs[0] != 31 {
+			t.Fatalf("signal = %+v, want BufferOverflow{DroppedIDs:[31] (the addressing id, not event 700), DroppedCount:1}", s)
+		}
+	default:
+		t.Fatal("no BufferOverflow signal reached the handler")
+	}
+}
+
 // TestInboxLaneGapNamesRetention: the inbox's 410 is the retention window,
 // and the default-terminal message says so.
 func TestInboxLaneGapNamesRetention(t *testing.T) {

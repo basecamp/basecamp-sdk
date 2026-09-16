@@ -2236,7 +2236,7 @@
         "performed_by_id",
         "recording_id"
       ],
-      "description": "An inbox item's event: the poll row's nine required keys, plus actor_type / visible_to_clients accepted when present (the item is documented in the poll shape; a server that also carries the push transport fields is not a violation).",
+      "description": "An inbox item's event: the poll row's nine required keys and an optional details object, and — as on the account feed's poll rows — neither actor_type nor visible_to_clients: the generated FeedEvent carries neither, so an adapter over the generated operation cannot deliver them.",
       "properties": {
         "id": {
           "type": "integer",
@@ -2287,15 +2287,6 @@
         "details": {
           "type": "object",
           "description": "Type-specific detail object, forwarded verbatim (card.moved: column_id / previous_column_id; boost.created: boost_id / boosted_event_id / boosted_event_type). Present only for the types that publish one."
-        },
-        "actor_type": {
-          "type": "string",
-          "minLength": 1,
-          "pattern": "^[^,\\s\"']+$",
-          "description": "The actor's kind — agent or person today; a server-owned vocabulary the connector never client-validates on the way in."
-        },
-        "visible_to_clients": {
-          "type": "boolean"
         }
       }
     },

@@ -249,11 +249,6 @@ type pollEventRow struct {
 	PerformedByID *int64          `json:"performed_by_id"`
 	RecordingID   int64           `json:"recording_id"`
 	Details       json.RawMessage `json:"details"`
-	// The two push-only transport keys, which an inbox item's event may carry
-	// (the schema's inboxItemEvent); account-lane rows never do, and the
-	// schema gate refuses them there before this decode runs.
-	ActorType        *string `json:"actor_type"`
-	VisibleToClients *bool   `json:"visible_to_clients"`
 }
 
 type goneBody struct {
