@@ -82,13 +82,24 @@ def decoded_envelope_array(envelope: dict[str, Any], key: str, what: str) -> lis
     this function as closing it.
 
     **On null.** §6 says "absent or wrong-typed" and is silent on ``null``; this
-    reads a null member as wrong-typed. That is a deliberate divergence from Go,
-    whose ``json.Unmarshal`` leaves a null member at its zero value without
-    error. It follows the SDKs that already decode this shape through types:
-    Rust's ``events`` is a bare ``Vec<TimelineEvent>`` with no ``serde(default)``,
-    Kotlin's ``requiredMember`` passes ``JsonNull`` on to a decode that throws,
-    and Swift's ``guard let`` clears an ``NSNull`` that then fails the cast. No
-    SDK reads a null envelope member as an empty listing.
+    reads a null member as wrong-typed, and that is a real choice between two
+    camps rather than a consensus to join. The fleet splits three ways, measured
+    rather than assumed:
+
+    - **Refuse** — Rust's ``events`` is a bare ``Vec<TimelineEvent>`` with no
+      ``Option`` and no ``serde(default)``; Kotlin's ``requiredMember`` hands the
+      stored ``JsonNull`` to a decode that throws; Swift's member cast fails on
+      the ``NSNull`` that ``JSONSerialization`` produces.
+    - **Read it as empty** — Go, whose ``json.Unmarshal`` leaves the member at a
+      nil slice without error; Ruby's ``data[key] || []``; TypeScript's
+      ``(pageData[key] as T[]) ?? []``.
+
+    So Python joins the first camp and diverges from Go here, which is the
+    *opposite* of what it does at the bare-array sites. Both are deliberate and
+    both follow from the same principle — each site's rule comes from what the
+    contract says AT THAT SITE, and §6 is the contract here. Whether all seven
+    should converge, and on which camp, is a spec question this change does not
+    settle; it is not settled today and no conformance fixture pins it.
     """
     if key not in envelope:
         raise ApiError(f"{what} is absent from the response envelope")

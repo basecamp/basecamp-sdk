@@ -58,7 +58,7 @@ from collections.abc import Awaitable, Callable, Hashable
 from dataclasses import dataclass, field
 from typing import Any, Generic, NoReturn, TypeVar
 
-from basecamp._decoding import decoded_array, decoded_object, decoded_optional_object, decoded_string
+from basecamp._decoding import decoded_array, decoded_object, decoded_string
 from basecamp.errors import ApiError, CampfireIndexLoadAbortedError, NotFoundError
 
 #: How long a cached discovery source -- a bucket's project dock, the account's
@@ -564,17 +564,6 @@ _INT64_MIN = -(2**63)
 _INT64_MAX = 2**63 - 1
 
 
-# The four field readers below are the shared decode in ``basecamp._decoding``,
-# aliased under the names this module and ``recordings.py`` already import. The
-# rule they implement -- null is the zero value, anything else of the wrong type
-# fails the whole response -- is the same one the paginators apply, and it lives
-# in one place so the two cannot drift apart.
-_decoded_object = decoded_object
-_decoded_optional_object = decoded_optional_object
-_decoded_array = decoded_array
-_decoded_string = decoded_string
-
-
 _UINT64_MAX = 2**64 - 1
 
 
@@ -680,13 +669,13 @@ def _decoded_int64(value: Any, what: str) -> int:
 def _dock_campfire_ids(project: Any) -> list[int]:
     """The Campfire ids a project's dock names."""
     ids: list[int] = []
-    for item in _decoded_array(_decoded_object(project, "the project").get("dock"), "the project dock"):
-        entry = _decoded_object(item, "a dock item")
+    for item in decoded_array(decoded_object(project, "the project").get("dock"), "the project dock"):
+        entry = decoded_object(item, "a dock item")
         # Decoded BEFORE the name test, because Go decodes the whole body
         # before its loop sees any of it: a malformed id fails the read even
         # on an item this loop would go on to skip.
         campfire_id = _decoded_int64(entry.get("id"), "a dock item id")
-        if _decoded_string(entry.get("name"), "a dock item name") != "chat":
+        if decoded_string(entry.get("name"), "a dock item name") != "chat":
             continue
         # Go's rule is `item.ID != 0`, and a missing or null id decodes to 0.
         # A NEGATIVE id IS a candidate there, so it is one here: it spends a
@@ -698,8 +687,8 @@ def _dock_campfire_ids(project: Any) -> list[int]:
 
 def _campfires_by_bucket(campfires: Any) -> dict[int, list[int]]:
     by_bucket: dict[int, list[int]] = {}
-    for entry in _decoded_array(campfires, "the campfire listing"):
-        campfire = _decoded_object(entry, "a campfire")
+    for entry in decoded_array(campfires, "the campfire listing"):
+        campfire = decoded_object(entry, "a campfire")
         # Go checks the BUCKET id only -- `c.Bucket == nil || c.Bucket.ID == 0`
         # -- and appends `c.ID` with NO test whatever. So a campfire id of 0 is
         # a candidate and gets its request, and a null or absent `id` decodes
@@ -707,7 +696,7 @@ def _campfires_by_bucket(campfires: Any) -> dict[int, list[int]]:
         # unit of the budget Go spends, which turned "I could not finish
         # looking" into "it is not there" on the same payload.
         campfire_id = _decoded_int64(campfire.get("id"), "a campfire id")
-        bucket = _decoded_object(campfire.get("bucket"), "a campfire bucket")
+        bucket = decoded_object(campfire.get("bucket"), "a campfire bucket")
         bucket_id = _decoded_int64(bucket.get("id"), "a campfire bucket id")
         if bucket_id == 0:
             continue

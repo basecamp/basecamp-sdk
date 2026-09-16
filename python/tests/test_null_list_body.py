@@ -77,7 +77,7 @@ import respx
 
 from basecamp import AsyncClient, Client
 from basecamp._decoding import decoded_array, decoded_envelope_array, decoded_object
-from basecamp.errors import ApiError
+from basecamp.errors import ApiError, ErrorCode
 
 _ACCOUNT_URL = "https://3.basecampapi.com/12345"
 
@@ -187,6 +187,47 @@ class TestDecodeHelpers:
         is the answer Rust, Swift and Kotlin already give."""
         with pytest.raises(ApiError, match="was not an array"):
             decoded_envelope_array({"events": value}, "events", "the list")
+
+
+class TestRefusalTaxonomy:
+    """SPEC §6's shape for a malformed 2xx body, pinned on the refusals this file
+    adds: ``api_error`` with NO http_status and ``retryable`` false.
+
+    Statusless because the request succeeded — no status describes a body the
+    SDK refused — and non-retryable because re-requesting cannot repair it. Only
+    the ``ApiError`` constructor's defaults hold the last two today, so a slip to
+    ``retryable=True`` would put a decode failure into the retry loop and ship
+    green without this row."""
+
+    @pytest.mark.parametrize(
+        ("path", "body", "call"),
+        [
+            pytest.param("/projects.json", 0, lambda a: a.projects.list(), id="bare-array-page"),
+            pytest.param("/stacks.json", 0, lambda a: a.folders.list_folders(), id="unpaginated-list"),
+            pytest.param(
+                "/x.json",
+                {"person": {"id": 9}},
+                lambda a: a.projects._paginate_key("/x.json", "events"),
+                id="envelope-absent-key",
+            ),
+            pytest.param(
+                "/x.json",
+                {"events": 0},
+                lambda a: a.projects._paginate_key("/x.json", "events"),
+                id="envelope-wrong-typed-key",
+            ),
+        ],
+    )
+    @respx.mock
+    def test_a_refusal_is_a_statusless_non_retryable_api_error(self, path, body, call):
+        respx.get(f"{_ACCOUNT_URL}{path}").mock(return_value=_json(body))
+
+        with pytest.raises(ApiError) as excinfo:
+            call(_account())
+
+        assert excinfo.value.code == ErrorCode.API
+        assert excinfo.value.http_status is None
+        assert excinfo.value.retryable is False
 
 
 class TestPaginateNullBody:
@@ -333,6 +374,26 @@ class TestPaginateKeyNullBody:
         with pytest.raises(ApiError) as excinfo:
             _account().projects._paginate_key("/x.json", "events")
 
+        assert "is absent from the response envelope" in str(excinfo.value)
+
+    @respx.mock
+    def test_the_key_the_caller_named_is_the_one_read(self):
+        """Every other envelope row in this file uses ``events``, which is also
+        the only key any generated caller passes — so a reader that ignored its
+        ``key`` argument entirely would satisfy all of them. This row is the one
+        that names a different key."""
+        respx.get(f"{_ACCOUNT_URL}/x.json").mock(return_value=_json({"items": [{"id": 1}], "events": [{"id": 99}]}))
+
+        assert list(_account().projects._paginate_key("/x.json", "items")) == [{"id": 1}]
+
+    @respx.mock
+    def test_a_key_absent_from_a_populated_envelope_still_fails(self):
+        respx.get(f"{_ACCOUNT_URL}/x.json").mock(return_value=_json({"events": [{"id": 1}]}))
+
+        with pytest.raises(ApiError) as excinfo:
+            _account().projects._paginate_key("/x.json", "items")
+
+        assert "the 'items' list" in str(excinfo.value)
         assert "is absent from the response envelope" in str(excinfo.value)
 
     @respx.mock
