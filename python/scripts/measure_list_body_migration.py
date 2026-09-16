@@ -179,10 +179,107 @@ def table(before_root: Path, after_root: Path, family: str, bodies: list[tuple[s
     return "\n".join(rows)
 
 
+def note_rows(section: str) -> list[tuple[str, str, str]]:
+    """The note's table rows, as (body, before, after) with the pipes stripped."""
+    rows = []
+    for line in section.splitlines():
+        if not line.startswith("| `") or "---" in line:
+            continue
+        cells = [c.strip() for c in line.strip("|").split("|")]
+        if len(cells) == 3:
+            rows.append(tuple(cells))
+    return rows
+
+
+#: The note is a human-facing document and uses exactly two presentation
+#: conventions the probes do not. Both are named here so the matcher accommodates
+#: what the note actually does rather than being loosened until it passes:
+#:
+#:   1. A body cell may merge shapes that behave identically: "`0` / `false`".
+#:   2. A cell may split by family where the two differ:
+#:      "paginated: `ApiError`; unpaginated: `json.JSONDecodeError`".
+#:
+#: Anything beyond these two is drift, and fails.
+def states(note_cell: str, measured: str, family: str) -> bool:
+    """Does a note cell state the measured value, for this family?"""
+    bare = measured.strip("`")
+    forms = (measured, f"`json.{bare}`")
+
+    if ";" in note_cell and ":" in note_cell:  # convention 2
+        for part in note_cell.split(";"):
+            label, _, value = part.partition(":")
+            if label.strip() == family:
+                return value.strip().startswith(forms)
+        return False
+
+    return note_cell.startswith(forms)  # convention 1 needs nothing here
+
+
+def check(measured: list[tuple[str, str]], base_sha: str, head_sha: str, counts: dict[str, int]) -> int:
+    """Verify the committed note still states what the probes measure.
+
+    The note is prose around these numbers — it merges the two bare-array tables
+    where they agree, collapses `0`/`false`, and glosses cells. A generator that
+    emitted that prose would be writing the document, which is the wrong division
+    of labour. What has to be mechanical is that every measured value is stated
+    by the row for its own body, so the note cannot drift from the behaviour
+    without failing here.
+    """
+    note = (REPO_ROOT / "MIGRATING.md").read_text()
+    section = note[note.index("### Python: a malformed list body") : note.index("### Rust: new SDK")]
+    rows = note_rows(section)
+
+    problems = []
+    for family, block in measured:
+        for line in block.splitlines()[2:]:
+            body, before, after = (c.strip() for c in line.strip("|").split("|"))
+            candidates = [
+                r
+                for r in rows
+                # convention 1: a merged body cell states several shapes
+                if r[0] == body or body in [alt.strip() for alt in r[0].split("/")]
+                or r[0].startswith(body.split(" (")[0])
+            ]
+            if not candidates:
+                problems.append(f"{family}: no row in MIGRATING.md for body {body}")
+                continue
+            if not any(states(r[1], before, family) for r in candidates):
+                problems.append(
+                    f"{family}: body {body} measures before={before}, "
+                    f"note says {[r[1] for r in candidates]}"
+                )
+            if not any(states(r[2], after, family) for r in candidates):
+                problems.append(
+                    f"{family}: body {body} measures after={after}, "
+                    f"note says {[r[2] for r in candidates]}"
+                )
+    for name, n in counts.items():
+        if name != "wrapped" and str(n) not in section:
+            problems.append(f"operation count for {name} ({n}) is not stated in MIGRATING.md")
+    # Only the BASE is pinned in the note. A document cannot name the SHA of the
+    # commit that contains it, and the after-column is simply "whatever you are
+    # checking" — so the head travels as a ref, not a constant.
+    if base_sha not in section:
+        problems.append(f"base SHA {base_sha} is not named in MIGRATING.md")
+
+    if problems:
+        print("MIGRATING.md no longer matches the measured behaviour:")
+        for problem in problems:
+            print(f"  - {problem}")
+        return 1
+    print(f"MIGRATING.md matches the behaviour measured at {base_sha} -> {head_sha}.")
+    return 0
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--base", default="origin/main", help="git ref for the BEFORE column")
     parser.add_argument("--head", default="HEAD", help="git ref for the AFTER column")
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="re-measure and verify every cell still matches MIGRATING.md, instead of printing",
+    )
     args = parser.parse_args()
 
     def short(ref: str) -> str:
@@ -198,15 +295,21 @@ def main() -> None:
         before_root = tree_at(args.base, Path(tmpdir), "before")
         after_root = tree_at(args.head, Path(tmpdir), "after")
 
+        measured = []
+        for family, bodies in (("paginated", BARE_ARRAY_BODIES), ("unpaginated", BARE_ARRAY_BODIES)):
+            measured.append((family, table(before_root, after_root, family, bodies)))
+        measured.append(("wrapped", table(before_root, after_root, "wrapped", ENVELOPE_BODIES)))
+
+        if args.check:
+            raise SystemExit(check(measured, base_sha, head_sha, counts))
+
         print(f"before `{base_sha}` -> after `{head_sha}`. Sync operation counts, from the AST: "
               f"{counts['paginated']} paginated, {counts['unpaginated']} unpaginated, "
               f"{counts['wrapped']} wrapped.\n")
-        for family, bodies in (("paginated", BARE_ARRAY_BODIES), ("unpaginated", BARE_ARRAY_BODIES)):
+        for family, block in measured:
             print(f"## {family}\n")
-            print(table(before_root, after_root, family, bodies))
+            print(block)
             print()
-        print("## wrapped\n")
-        print(table(before_root, after_root, "wrapped", ENVELOPE_BODIES))
 
 
 if __name__ == "__main__":

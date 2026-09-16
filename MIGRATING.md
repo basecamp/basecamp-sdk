@@ -29,11 +29,18 @@ builds a scratch copy of the package for each of two revisions and drives every
 body shape through a real operation against both. Re-run it rather than editing
 the tables:
 
-    python scripts/measure_list_body_migration.py --base d57bcf1d --head 8dca9025
+    python scripts/measure_list_body_migration.py --base d57bcf1d --head HEAD
+    python scripts/measure_list_body_migration.py --base d57bcf1d --head HEAD --check
 
-`d57bcf1d` is `main` before this change; `8dca9025` is the change. Neither column
-reads a working tree, so the numbers are reproducible by anyone with the two
-SHAs.
+`d57bcf1d` is `main` before this change. Only the base is pinned — a document
+cannot name the SHA of the commit that contains it — and neither column reads a
+working tree, so the measurement is reproducible by anyone with that one SHA.
+The second form verifies that every number below still matches the behaviour
+rather than printing, so this section cannot drift from the code without failing.
+
+The tables merge the two bare-array families where they agree and gloss some
+cells in prose; the script emits the measurements, not the prose. `--check` is
+what binds the two.
 
 **The 60 paginated list operations** and **the 9 unpaginated ones** take the same
 change. Measured on `bookmarks.list_my_bookmarks` and `folders.list_folders`
