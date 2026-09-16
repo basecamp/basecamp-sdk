@@ -13,58 +13,6 @@ what wrong behaviour you get if you ignore one. This file is that half.
 
 # Unreleased
 
-### Go: `Event` and `WebhookEvent` gain `PerformedBy` (#898)
-
-**The compile error, if you get one:** an unkeyed composite literal of
-`basecamp.Event` or `basecamp.WebhookEvent` no longer compiles — each struct
-gained an exported `PerformedBy` field (the agent that carried out a delegated
-action; nil for a direct one), inserted after `Creator`, so the old value count
-is now too short. Same class of break as `Error.RetryAfter` (#795) and
-`Error.FieldErrors` (#541), and the remedy is the same, and permanent: use keyed
-fields.
-
-```go
-// before
-e := basecamp.Event{id, recordingID, "created", 0, "", nil, createdAt, &creator}
-// after — and it will not break again
-e := basecamp.Event{ID: id, RecordingID: recordingID, Action: "created", CreatedAt: createdAt, Creator: &creator}
-```
-
-`apidiff` reports the fields as compatible, and it is right about what it
-measures: they are additive to the exported API surface. Unkeyed literals are a
-source-compatibility hazard the tool does not model, which is why this note
-exists. Keyed literals, and every decode path, are unaffected; the field is
-`nil`/absent unless BC3 sent `performed_by`.
-
-**Swift: a Smithy document now renders as `JSONValue?`, not `String?`.** The
-generator mapped an untyped document member to `String?`, which cannot decode
-the object BC3 sends; `WebhookEvent.details` (and the new `FeedEvent.details`)
-are `JSONValue?` now, and `JSONValue` gained `Encodable`. A caller that typed
-`event.details` as `String?` needs `if case .object(let details)? = event.details`.
-Numbers in a `JSONValue` are `Double`.
-
-**Kotlin has the same hazard in a different spelling.** The generated `Event`
-and `WebhookEvent` data classes gain `performedBy: Person? = null` inserted
-before `boostsCount`/`boostsUrl` and before `copy` respectively, so a positional
-constructor call with values in the old order, and a positional destructuring
-(`val (id, recordingId, …) = event`) that reaches past `creator`, shift by one
-component. Use named arguments and property access; the decoders are unaffected.
-
-**TypeScript and Python: `Person`'s `email_address`, `title`, `bio`, `tagline`
-and `location` are typed nullable.** BC3's person partial always writes the five
-keys and writes `null` when there is no value — routinely so for an `Agent`
-performer, whose `email_address` and `title` are null — so the generated types
-now say `string | null` / `str | None` where they said `string` / `str`. Code
-that narrowed on `!== undefined` alone needs `!= null`; Go, Kotlin, Swift and
-Rust already rendered these as optional-nullable and are unchanged.
-
-The same change adds the account event feed's wire layer (`PollEvents`,
-`PollInbox`, `CreateStreamTicket` on the `EventFeed` tag, service `eventFeed`)
-to every SDK. Those are new operations and new generated interface methods —
-additive for every caller, breaking only for Go code that implements the
-generated `ClientInterface` / `ClientWithResponsesInterface` itself, which the
-generated client is the only intended implementer of.
-
 ### Rust changes the exit code for `bucket_mismatch`, Swift's classification accessors stop being optional
 
 A recording pointer that names a bucket the recording is not in is reported as
@@ -143,6 +91,58 @@ it, `basecamp.RecordingSummaryCode(err)` and
 exit status as every other SDK instead of inventing one. In Go, **read the
 second return value**: `code, _ := RecordingSummaryCode(err)` yields `""` for
 anything unclassified, and `ExitCodeFor("")` is 7.
+
+### Go: `Event` and `WebhookEvent` gain `PerformedBy` (#898)
+
+**The compile error, if you get one:** an unkeyed composite literal of
+`basecamp.Event` or `basecamp.WebhookEvent` no longer compiles — each struct
+gained an exported `PerformedBy` field (the agent that carried out a delegated
+action; nil for a direct one), inserted after `Creator`, so the old value count
+is now too short. Same class of break as `Error.RetryAfter` (#795) and
+`Error.FieldErrors` (#541), and the remedy is the same, and permanent: use keyed
+fields.
+
+```go
+// before
+e := basecamp.Event{id, recordingID, "created", 0, "", nil, createdAt, &creator}
+// after — and it will not break again
+e := basecamp.Event{ID: id, RecordingID: recordingID, Action: "created", CreatedAt: createdAt, Creator: &creator}
+```
+
+`apidiff` reports the fields as compatible, and it is right about what it
+measures: they are additive to the exported API surface. Unkeyed literals are a
+source-compatibility hazard the tool does not model, which is why this note
+exists. Keyed literals, and every decode path, are unaffected; the field is
+`nil`/absent unless BC3 sent `performed_by`.
+
+**Swift: a Smithy document now renders as `JSONValue?`, not `String?`.** The
+generator mapped an untyped document member to `String?`, which cannot decode
+the object BC3 sends; `WebhookEvent.details` (and the new `FeedEvent.details`)
+are `JSONValue?` now, and `JSONValue` gained `Encodable`. A caller that typed
+`event.details` as `String?` needs `if case .object(let details)? = event.details`.
+Numbers in a `JSONValue` are `Double`.
+
+**Kotlin has the same hazard in a different spelling.** The generated `Event`
+and `WebhookEvent` data classes gain `performedBy: Person? = null` inserted
+before `boostsCount`/`boostsUrl` and before `copy` respectively, so a positional
+constructor call with values in the old order, and a positional destructuring
+(`val (id, recordingId, …) = event`) that reaches past `creator`, shift by one
+component. Use named arguments and property access; the decoders are unaffected.
+
+**TypeScript and Python: `Person`'s `email_address`, `title`, `bio`, `tagline`
+and `location` are typed nullable.** BC3's person partial always writes the five
+keys and writes `null` when there is no value — routinely so for an `Agent`
+performer, whose `email_address` and `title` are null — so the generated types
+now say `string | null` / `str | None` where they said `string` / `str`. Code
+that narrowed on `!== undefined` alone needs `!= null`; Go, Kotlin, Swift and
+Rust already rendered these as optional-nullable and are unchanged.
+
+The same change adds the account event feed's wire layer (`PollEvents`,
+`PollInbox`, `CreateStreamTicket` on the `EventFeed` tag, service `eventFeed`)
+to every SDK. Those are new operations and new generated interface methods —
+additive for every caller, breaking only for Go code that implements the
+generated `ClientInterface` / `ClientWithResponsesInterface` itself, which the
+generated client is the only intended implementer of.
 
 ### Python: a malformed list body is now an `ApiError`, and two of those changes are silent
 
