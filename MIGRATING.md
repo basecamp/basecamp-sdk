@@ -13,50 +13,74 @@ what wrong behaviour you get if you ignore one. This file is that half.
 
 # Unreleased
 
-### Python: a malformed list body is now an `ApiError`, and one of those breaks is silent
+### Python: a malformed list body is now an `ApiError`, and two of those changes are silent
 
 A list response the SDK could not read used to leave the Python SDK in one of
-three ways, none of them the SDK's own: a body of JSON `null` crashed with a
-bare `TypeError` from inside pagination, a truncated body escaped as
-`json.JSONDecodeError`, and a wrong-typed body was silently accepted and turned
-into fabricated rows. All of them now answer in the SDK's taxonomy: `null` is an
-empty listing, and everything else of the wrong shape is a statusless,
-non-retryable `ApiError`.
+four ways, none of them the SDK's own: a body of JSON `null` crashed with a bare
+`TypeError` (or `AttributeError`, on the envelope-shaped read), `0` and `false`
+crashed the same way, a truncated body escaped as `json.JSONDecodeError`, and a
+wrong-typed body was **silently accepted and turned into fabricated rows**. All
+of them now answer in the SDK's taxonomy: a statusless, non-retryable `ApiError`
+— except a null body at a bare-array site, which is an empty listing.
 
-Measured on the unpaginated full-array read (`folders.list_folders`), before and
-after — the "before" column is this SDK running against `main` at `d57bcf1d`,
-observed rather than recalled:
+This reaches **every list operation in the SDK**, sync and async. Measured, not
+recalled: the "before" column throughout is this SDK running against `main` at
+`d57bcf1d`, observed by swapping that commit's pagination primitives into the
+worktree and driving each shape.
+
+**The 60 paginated list operations** and **the 9 unpaginated ones** take the same
+change. Measured on `bookmarks.list_my_bookmarks` and `folders.list_folders`
+respectively; both columns are identical for the two, and for their async twins:
 
 | body | before | after |
 |---|---|---|
-| `null` | `TypeError: object of type 'NoneType' has no len()` | `[]`, `total_count=0` |
+| `null` | `TypeError` | `[]` — an empty listing |
 | `{}` | `[]` | `ApiError` |
 | `{"id": 1}` | `['id']` — the object's **keys** as items | `ApiError` |
 | `"abc"` | `['a', 'b', 'c']` — the string's **characters** as items | `ApiError` |
-| `[{"id": 1` (truncated) | `json.JSONDecodeError` | `ApiError`, decoder in `.cause` |
+| `0` / `false` | `TypeError` | `ApiError` |
+| `[{"id": 1` (truncated) | paginated: `ApiError`; unpaginated: `json.JSONDecodeError` | `ApiError`, decoder in `.cause` |
 
-**Wrong behaviour you get if you ignore it:** for the first four rows, an
-exception where you had none, or a different exception class — loud, and you
-will see it. The fifth row is the silent one. `json.JSONDecodeError` subclasses
-`ValueError`; `ApiError` does not. Code that wrapped a list call in
-`except ValueError:` to absorb a malformed body **stops catching**, and nothing
-about that failure announces itself at the call site — the exception simply
-propagates past a handler that used to hold it. Catch `basecamp.errors.ApiError`
-instead, or `BasecampError` for every SDK refusal.
+**Wrong behaviour you get if you ignore it.** Three of these are loud — an
+exception where you had none. Two are not:
 
-The nine operations behind the unpaginated read are affected, sync and async:
-`automation.list_lineup_markers`, `everything.get_everything_overdue_cards`,
+- **`except ValueError:` stops catching, on the 9 unpaginated operations.**
+  `json.JSONDecodeError` subclasses `ValueError`; `ApiError` does not. A handler
+  that absorbed a truncated body now lets it through, and nothing at the call
+  site announces that. Catch `basecamp.errors.ApiError`, or `BasecampError` for
+  every SDK refusal. (The paginated operations already raised `ApiError` here, so
+  this row is theirs alone.)
+- **`except TypeError:` around a null body now sees a success.** Where you used
+  to get a crash you get `[]`, indistinguishable from a genuinely empty
+  collection. That is the fix this change exists for, but if you were catching
+  the crash to detect a bad response, that detection is gone.
+
+And the rows that *used to succeed* are worth reading as more than a withdrawn
+capability: `['id']` and `['a', 'b', 'c']` were wrong answers presented as
+successes. If you were consuming them, the new refusal is telling you something
+your code was previously acting on.
+
+The 9 unpaginated operations, sync and async: `automation.list_lineup_markers`,
+`everything.get_everything_overdue_cards`,
 `everything.get_everything_overdue_todos`, `folders.list_folders`,
 `my_assignments.get_my_completed_assignments`,
 `my_assignments.get_my_due_assignments`, `people.list_assignable`,
-`projects.list_recent_projects`, and `timesheets.report`. Every
-paginated list operation is affected by the `null` row alone: those already
-raised `ApiError` for a malformed body, so only the crash-becomes-empty change
-reaches them, and nothing that used to succeed now fails.
+`projects.list_recent_projects`, `timesheets.report`. The 60 paginated ones are
+every other `list`/`get`-shaped collection read.
 
-The wrapped-pagination read (`reports.person_progress`) additionally refuses an
-envelope whose `events` member is absent or null, per SPEC §6 — previously an
-absent member read as an empty listing, and a null body crashed.
+**The wrapped read, `reports.person_progress`, is stricter and differs from the
+rule above.** Per SPEC §6 its `events` member is required, so at that one
+operation a **null body is an `ApiError`, not an empty listing** — the
+null-is-empty rule stops at the envelope's door. Before and after:
+
+| body | before | after |
+|---|---|---|
+| `null` | `AttributeError` | `ApiError` |
+| `{"person": …}`, `events` absent | `[]` | `ApiError` |
+| `{"events": null, "person": …}` | `TypeError` | `ApiError` |
+| `{"events": "abc", "person": …}` | `['a', 'b', 'c']` | `ApiError` |
+| `{"events": {"a": 1}, "person": …}` | `['a']` | `ApiError` |
+| `"abc"` or `[]` (body not an object) | `AttributeError` | `ApiError` |
 
 ### Rust: new SDK
 

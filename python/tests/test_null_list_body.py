@@ -196,12 +196,14 @@ class TestRefusalTaxonomy:
     Statusless because the request succeeded — no status describes a body the
     SDK refused — and non-retryable because re-requesting cannot repair it.
 
-    What these rows add is the BINDING, not the constructor's behaviour:
-    ``test_errors.py`` already pins ``ApiError``'s defaults directly, and would
-    catch a slip in them. What it cannot see is a refusal site that stops
-    reaching those defaults — one that grew an explicit ``retryable=True``, or
-    that started raising some other class. These rows watch the four call sites
-    for that, which is the half a constructor test structurally cannot cover."""
+    What these rows add is the BINDING, and only partly the constructor's
+    behaviour. ``test_errors.py`` pins ``ApiError``'s ``retryable`` default and
+    would catch a slip in it; it does NOT pin ``http_status``'s, so these rows
+    are the only thing that fails if ``BasecampError`` starts handing refusals a
+    status. What neither can see from the constructor's side is a refusal SITE
+    that stops reaching those defaults — one that grew an explicit
+    ``retryable=True``, or started raising some other class — and every site this
+    change adds is driven below, so a slip at any one of them turns a row red."""
 
     @pytest.mark.parametrize(
         ("path", "body", "call"),
@@ -220,6 +222,13 @@ class TestRefusalTaxonomy:
                 lambda a: a.projects._paginate_key("/x.json", "events"),
                 id="envelope-wrong-typed-key",
             ),
+            pytest.param(
+                "/x.json",
+                "abc",
+                lambda a: a.projects._paginate_key("/x.json", "events"),
+                id="envelope-not-an-object",
+            ),
+            pytest.param("/projects.json", 0, lambda a: a.projects.list(), id="paginated-page"),
         ],
     )
     @respx.mock
@@ -232,6 +241,32 @@ class TestRefusalTaxonomy:
         assert excinfo.value.code == ErrorCode.API
         assert excinfo.value.http_status is None
         assert excinfo.value.retryable is False
+
+    @pytest.mark.parametrize(
+        ("path", "call"),
+        [
+            pytest.param("/stacks.json", lambda a: a.folders.list_folders(), id="unpaginated-list"),
+            pytest.param("/projects.json", lambda a: a.projects.list(), id="paginated-page"),
+        ],
+    )
+    @respx.mock
+    def test_an_undecodable_body_refuses_in_the_same_shape(self, path, call):
+        """The decode-FAILURE arms are separate refusal sites from the shape ones
+        above, and the unpaginated one is where the silent break lives — a caller
+        that had `except ValueError:` around it stops catching when this stops
+        being a `JSONDecodeError`. Its taxonomy is worth pinning for that reason
+        alone."""
+        respx.get(f"{_ACCOUNT_URL}{path}").mock(
+            return_value=httpx.Response(200, content='[{"id": 1', headers={"Content-Type": "application/json"})
+        )
+
+        with pytest.raises(ApiError) as excinfo:
+            call(_account())
+
+        assert excinfo.value.code == ErrorCode.API
+        assert excinfo.value.http_status is None
+        assert excinfo.value.retryable is False
+        assert isinstance(excinfo.value.cause, json.JSONDecodeError)
 
 
 class TestPaginateNullBody:
