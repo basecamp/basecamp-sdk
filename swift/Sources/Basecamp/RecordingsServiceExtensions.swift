@@ -62,10 +62,16 @@ public struct RecordingRef: Sendable, Equatable {
     /// field arrives as `"Comment\n"`, and a recording type of `"\n"` beside a
     /// usable event type has to read as ABSENT: otherwise a pointer Go resolves
     /// to a summary becomes an unknown-type refusal here.
+    ///
+    /// Against ``goWhitespace`` and not `CharacterSet.whitespacesAndNewlines`,
+    /// which is that set plus U+200B ZERO WIDTH SPACE. The difference is one
+    /// scalar and it runs the permissive way: a recording type of `"\u{200B}"`
+    /// is a type Go cannot route and this trimmed to nothing, fell through to
+    /// the event type, and issued a read.
     var routingKey: String {
-        let type = recordingType?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let type = recordingType?.trimmingCharacters(in: goWhitespace) ?? ""
         if !type.isEmpty { return type }
-        return eventType?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return eventType?.trimmingCharacters(in: goWhitespace) ?? ""
     }
 }
 
@@ -279,6 +285,14 @@ extension RecordingsService {
     /// cached sources, but not more often than this per source, so a run of
     /// unresolvable lines cannot turn into a listing per line.
     /// ``UnresolvedRecording/refreshed`` says whether the floor applied.
+    ///
+    /// It also makes the budget half of the pass-2 dock gate untestable from
+    /// outside. Two calls in one test are milliseconds apart, so the floor
+    /// declines the re-read whatever the budget says, and reverting
+    /// `budgetRemaining > 0` leaves the suite green. Reaching that half needs a
+    /// cached dock older than this floor, which needs a clock seam
+    /// ``BasecampClient`` does not expose — a deliberate gap, recorded here
+    /// rather than papered over with a test that passes for the other reason.
     static let campfireIndexMinRefresh: TimeInterval = 30
 
     /// Bounds how many Campfires one ``summarize(_:)`` call tries, across both
@@ -375,31 +389,63 @@ extension RecordingsService {
     }
 
     /// Picks the read for a ref. ``RecordingRef/recordingType`` wins when set.
+    ///
+    /// Every comparison here is over UTF-8 BYTES, because Go's are. `hasPrefix`
+    /// and `lastIndex(of:)` walk grapheme clusters, so
+    /// `"Chat::Lines::\u{0301}RichText"` hid the prefix from one and
+    /// `"comment.\u{0301}created"` hid the dot from the other — a pointer Go
+    /// routes, refused here — while the trim above went the other way.
     static func route(_ ref: RecordingRef) throws -> RecordingSummaryKind {
-        let type = ref.recordingType?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let type = ref.recordingType?.trimmingCharacters(in: goWhitespace) ?? ""
         if !type.isEmpty {
-            if type.hasPrefix(chatLineTypePrefix) { return .chatLine }
-            guard let kind = summarizableTypes[type] else {
+            if Array(type.utf8).starts(with: Array(chatLineTypePrefix.utf8)) { return .chatLine }
+            guard let kind = byteExactLookup(summarizableTypes, type) else {
                 throw RecordingSummaryError.unknownRecordingType(ref)
             }
             return kind
         }
 
-        let eventType = ref.eventType?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let eventType = ref.eventType?.trimmingCharacters(in: goWhitespace) ?? ""
         guard !eventType.isEmpty else { throw RecordingSummaryError.unknownRecordingType(ref) }
         // A feed type is "<subject>.<action>"; the subject names the recording
         // type. A string with no action is not a feed type and is not routed.
-        guard let dot = eventType.lastIndex(of: "."), dot != eventType.startIndex,
-            eventType.index(after: dot) != eventType.endIndex
+        let bytes = Array(eventType.utf8)
+        guard let dot = bytes.lastIndex(of: UInt8(ascii: ".")), dot != 0, dot != bytes.count - 1
         else {
             throw RecordingSummaryError.unknownRecordingType(ref)
         }
-        let subject = String(eventType[..<dot])
-        if subject == "boost" { throw RecordingSummaryError.noRecordingType(ref) }
-        guard let kind = summarizableEventSubjects[subject] else {
+        let subject = String(decoding: bytes[..<dot], as: UTF8.self)
+        if bytes[..<dot].elementsEqual("boost".utf8) {
+            throw RecordingSummaryError.noRecordingType(ref)
+        }
+        guard let kind = byteExactLookup(summarizableEventSubjects, subject) else {
             throw RecordingSummaryError.unknownRecordingType(ref)
         }
         return kind
+    }
+
+    /// A dictionary lookup that compares BYTES, as Go's map does.
+    ///
+    /// Swift `String` keys — and `String` equality — compare by canonical
+    /// equivalence, and exactly three scalars decompose to pure ASCII: U+037E
+    /// GREEK QUESTION MARK is `;`, U+1FEF GREEK VARIA is a backtick, and U+212A
+    /// KELVIN SIGN is `K`. One of them lands here: `"\u{212A}anban::Card"` is a
+    /// recording type Go refuses before any request, and it matched
+    /// `"Kanban::Card"` and issued a read. The byte comparison is O(n) over
+    /// tables of twenty-five and five rows, which is the wrong thing to optimise
+    /// against being wrong.
+    ///
+    /// Applied to BOTH tables, though only one has a key an alias can reach:
+    /// none of `comment`, `message`, `todo`, `card` or `chat.line` contains a
+    /// `K`, a `;` or a backtick. That argument is correct and it is exactly the
+    /// shape of argument that has been wrong twice on this branch — an
+    /// equivalence proved over one operation and inherited by another — so the
+    /// second table gets the same comparison rather than the same reasoning. A
+    /// mutation that reverts it cannot be killed by a test, and that is the
+    /// reason to apply it rather than a reason not to.
+    private static func byteExactLookup<V>(_ table: [String: V], _ key: String) -> V? {
+        guard table[key] != nil else { return nil }
+        return table.first(where: { $0.key.utf8.elementsEqual(key.utf8) })?.value
     }
 }
 

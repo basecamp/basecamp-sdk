@@ -107,6 +107,176 @@ final class MentionsTests: XCTestCase {
         }
     }
 
+    /// The gid PATH and SCHEME, against Go, over the whole sweep rather than a
+    /// handful of rows — the cross product is built here, and Go's answers to it
+    /// are the data below.
+    ///
+    /// 747 distinct shapes, from nine spellings of the scheme, three prefixes
+    /// and twenty-eight paths. Go names a person for 44, obtained by running each through
+    /// `PersonIDFromSGID` in `go/pkg/basecamp`. This parser must name a person
+    /// for exactly those 44 MINUS the 12 that differ, and for nothing else.
+    ///
+    /// The 12 are one mechanism, not one shape: Go reads `u.Path`, which is
+    /// percent-DECODED, and this reads the path as written — so an escape
+    /// spelling the model name, the id, or the separator between them names a
+    /// Person there and nobody here. The set difference is what makes the
+    /// direction a property rather than a claim: any shape this accepted and Go
+    /// did not would appear as an extra element, and there is none.
+    func testTheGidPathDisagreesWithGoInOneDirectionOnly() {
+        let paths = [
+            "Person/1",
+            "Person/01",
+            "Person/1/extra",
+            "Person/",
+            "Person",
+            "Pers%6Fn/1",
+            "Person/%31",
+            "person/1",
+            "PERSON/1",
+            "Person/1?x=y",
+            "Person/1#frag",
+            "Person/1#x?y",
+            "Person/1?y#x",
+            "Person//1",
+            "/Person/1",
+            "Person/1/",
+            "Person/-1",
+            "Person/+1",
+            "Person/ 1",
+            "Person/1 ",
+            "Person%2F1",
+            "Person/9223372036854775807",
+            "Person/9223372036854775808",
+            "Person/0",
+            "Person/00001",
+            "Per\u{A7}on/1",
+            "Person/\u{FF11}",
+            "Person/1\u{301}",
+        ]
+        let schemes = ["gid", "GID", "Gid", "gID", " gid", "gid ", "xgid", "", "g id"]
+        let prefixes = ["%@://bc3/", "%@:/", "%@:"]
+
+        // Every shape Go names a person for. The cross product yields 756
+        // constructions but 747 distinct gids — `scheme:` + `/Person/1` and
+        // `scheme:/` + `Person/1` spell the same thing — which is why this is a
+        // Set and why the count below is of shapes, not of constructions.
+        let goAccepts: Set<String> = [
+            "GID://bc3/Pers%6Fn/1",
+            "GID://bc3/Person%2F1",
+            "GID://bc3/Person/%31",
+            "GID://bc3/Person/00001",
+            "GID://bc3/Person/01",
+            "GID://bc3/Person/1",
+            "GID://bc3/Person/1#frag",
+            "GID://bc3/Person/1#x?y",
+            "GID://bc3/Person/1?x=y",
+            "GID://bc3/Person/1?y#x",
+            "GID://bc3/Person/9223372036854775807",
+            "Gid://bc3/Pers%6Fn/1",
+            "Gid://bc3/Person%2F1",
+            "Gid://bc3/Person/%31",
+            "Gid://bc3/Person/00001",
+            "Gid://bc3/Person/01",
+            "Gid://bc3/Person/1",
+            "Gid://bc3/Person/1#frag",
+            "Gid://bc3/Person/1#x?y",
+            "Gid://bc3/Person/1?x=y",
+            "Gid://bc3/Person/1?y#x",
+            "Gid://bc3/Person/9223372036854775807",
+            "gID://bc3/Pers%6Fn/1",
+            "gID://bc3/Person%2F1",
+            "gID://bc3/Person/%31",
+            "gID://bc3/Person/00001",
+            "gID://bc3/Person/01",
+            "gID://bc3/Person/1",
+            "gID://bc3/Person/1#frag",
+            "gID://bc3/Person/1#x?y",
+            "gID://bc3/Person/1?x=y",
+            "gID://bc3/Person/1?y#x",
+            "gID://bc3/Person/9223372036854775807",
+            "gid://bc3/Pers%6Fn/1",
+            "gid://bc3/Person%2F1",
+            "gid://bc3/Person/%31",
+            "gid://bc3/Person/00001",
+            "gid://bc3/Person/01",
+            "gid://bc3/Person/1",
+            "gid://bc3/Person/1#frag",
+            "gid://bc3/Person/1#x?y",
+            "gid://bc3/Person/1?x=y",
+            "gid://bc3/Person/1?y#x",
+            "gid://bc3/Person/9223372036854775807",
+        ]
+        // The subset this refuses, deliberately, and the only way the two differ.
+        let percentDecodedPath: Set<String> = [
+            "GID://bc3/Pers%6Fn/1",
+            "GID://bc3/Person%2F1",
+            "GID://bc3/Person/%31",
+            "Gid://bc3/Pers%6Fn/1",
+            "Gid://bc3/Person%2F1",
+            "Gid://bc3/Person/%31",
+            "gID://bc3/Pers%6Fn/1",
+            "gID://bc3/Person%2F1",
+            "gID://bc3/Person/%31",
+            "gid://bc3/Pers%6Fn/1",
+            "gid://bc3/Person%2F1",
+            "gid://bc3/Person/%31",
+        ]
+
+        var accepted: Set<String> = []
+        for scheme in schemes {
+            for prefix in prefixes {
+                for path in paths {
+                    let gid = prefix.replacingOccurrences(of: "%@", with: scheme) + path
+                    if Mentions.personId(fromGlobalId: gid) != nil { accepted.insert(gid) }
+                }
+            }
+        }
+
+        XCTAssertEqual(
+            accepted, goAccepts.subtracting(percentDecodedPath),
+            "this parser must accept exactly what Go accepts, less the percent-decoded-path shapes")
+        // Not `accepted.isSubset(of: goAccepts)`: that is implied by the
+        // equality above, since `subtracting` can only remove. This pins the
+        // PREMISE the equality rests on instead — that the twelve shapes named
+        // as the one mechanism are themselves gids Go accepts, so the set
+        // difference is narrowing the right set.
+        XCTAssertTrue(
+            percentDecodedPath.isSubset(of: goAccepts),
+            "the documented divergences must be shapes Go accepts, or the difference means nothing")
+    }
+
+    /// The fragment and the query are not equivalent, and truncating at the
+    /// first of either gets one of them wrong.
+    ///
+    /// Go splits the fragment off the whole URL and UNESCAPES it, so a malformed
+    /// escape there refuses the entire gid. It keeps `RawQuery` raw and
+    /// validates nothing. Truncating at `#` without looking accepted a gid Go
+    /// refuses — the permissive direction, on a path whose only
+    /// authenticity-adjacent gate is "does this sgid name this person".
+    ///
+    /// Measured over 364 shapes — two paths × seven queries × thirteen
+    /// fragments, in both orders — of which Go accepts 160, with zero
+    /// mismatches in either direction.
+    func testTheFragmentIsValidatedAndTheQueryIsNot() {
+        // Go unescapes the fragment, so a malformed escape in it refuses the gid.
+        for gid in [
+            "gid://bc3/Person/1#%zz", "gid://bc3/Person/1#%", "gid://bc3/Person/1#%2",
+            "gid://bc3/Person/1?x=y#%zz", "gid://bc3/Person/1#a%1", "gid://bc3/Person/1#%1g",
+        ] {
+            XCTAssertNil(Mentions.personId(fromGlobalId: gid), gid)
+        }
+        // A well-formed escape, or no escape at all, is fine there.
+        for gid in [
+            "gid://bc3/Person/1#frag", "gid://bc3/Person/1#%41", "gid://bc3/Person/1#%C3%A9",
+            "gid://bc3/Person/1#a b", "gid://bc3/Person/1#f%20g", "gid://bc3/Person/1#",
+            // And the query is never validated: Go keeps it raw.
+            "gid://bc3/Person/1?%zz", "gid://bc3/Person/1?%", "gid://bc3/Person/1?x=%zz",
+            "gid://bc3/Person/1?a b", "gid://bc3/Person/1?",
+        ] {
+            XCTAssertEqual(Mentions.personId(fromGlobalId: gid), 1, gid)
+        }
+    }
+
     /// The authority, against `net/url` in BOTH directions — measured over 1,824
     /// generated shapes, because a charset that looked about right was wrong
     /// each way, and a first fix that checked only the host was wrong again.
@@ -138,6 +308,310 @@ final class MentionsTests: XCTestCase {
             "gid://:8080/Person/1", "gid://user@:8080/Person/1",
         ] {
             XCTAssertEqual(Mentions.personId(fromGlobalId: gid), 1, gid)
+        }
+    }
+
+    /// A Swift `Character` is a grapheme cluster and a URL grammar's character
+    /// is a byte, and that gap runs BOTH ways at once.
+    ///
+    /// `%` followed by a combining acute is one `Character` equal to neither
+    /// `"%"` nor anything else, so a `Character`-based escape scan walks past a
+    /// malformed escape Go refuses; and `#` followed by one is a `Character`
+    /// that is not `"#"`, so a `Character`-based delimiter search never finds
+    /// the fragment Go splits off. The first is the accepting direction — a gid
+    /// Go rejects, read here as a mention — and no sweep of ASCII shapes can
+    /// see either, which is why this table exists next to one.
+    ///
+    /// Every expectation was produced by running the row through Go's
+    /// `url.Parse` and the `PersonIDFromSGID` gid rules, not by reading them.
+    func testAGraphemeClusterCannotHideADelimiter() {
+        let cases: [(gid: String, expected: Int?)] = [
+            // The escape is malformed in Go's eyes wherever the cluster hides it.
+            ("gid://bc3/Person/1#%\u{0301}zz", nil),
+            ("gid://bc3/Person/1#%\u{0300}", nil),
+            ("gid://bc3/Person/1#%2\u{0301}5", nil),
+            ("gid://bc3/Person/1#\u{0301}%zz", nil),
+            // The `#` is still a `#` to Go, so the fragment is still a fragment.
+            ("gid://bc3/Person/1#\u{0301}", 1),
+            ("gid://bc3/Person/1#\u{0301}ok", 1),
+            ("gid://bc3/Person/1?\u{0301}%zz", 1),
+            // A cluster over a structural byte elsewhere is not that byte.
+            ("gid://bc3/Person/1\u{0301}", nil),
+            ("gid://bc3/Person\u{0301}/1", nil),
+            ("gid://bc3/\u{0301}Person/1", nil),
+            ("gid:\u{0301}//bc3/Person/1", nil),
+            ("gid://bc3\u{0301}/Person/1", 1),
+        ]
+        for (gid, expected) in cases {
+            XCTAssertEqual(Mentions.personId(fromGlobalId: gid), expected, gid.debugDescription)
+        }
+    }
+
+    /// Only an IPv6 address may be bracketed, and `parseHost` enforces it with
+    /// `netip.ParseAddr` — so `[notanip]`, `[]`, `[::1]]` and even the perfectly
+    /// good IPv4 literal `[1.2.3.4]` are gids Go reads as nobody. A parser that
+    /// treats brackets as decoration accepts all four, which is the accepting
+    /// direction on the mention path.
+    ///
+    /// The cross product below is rebuilt here rather than described: ten group
+    /// spellings joined by `:` and by `::` at one, two and three positions,
+    /// 2,110 distinct literals, against the 60 Go names a person for. Compared
+    /// as a SET, so a literal this accepted and Go did not appears as an extra
+    /// element rather than as an unexamined claim.
+    ///
+    /// The `%25en0` rows are the ones worth reading twice. A zone begins at the
+    /// FIRST `%`, not the last, and everything after it is zone however many
+    /// more percents or colons it carries — which is why `0::%25en0::g` is a
+    /// host Go reads. Only four of the sixty carry a second `%`, so this sweep
+    /// is not where that rule was caught; splitting at the last `%` refused 108
+    /// shapes of a separate 45,816-gid fuzz. Four rows is enough to hold it once
+    /// it is known, which is what a regression test is for.
+    func testABracketedHostIsAnIPv6AddressOrNoHostAtAll() {
+        let groups = ["", "0", "1", "ffff", "fffff", "g", "1.2.3.4", "01.2.3.4", "%25en0", "%en0"]
+        var literals = Set<String>()
+        for separator in [":", "::"] {
+            for a in groups {
+                literals.insert(a)
+                for b in groups {
+                    literals.insert([a, b].joined(separator: separator))
+                    for c in groups {
+                        literals.insert([a, b, c].joined(separator: separator))
+                    }
+                }
+            }
+        }
+        XCTAssertEqual(literals.count, 2110)
+
+        // What `PersonIDFromSGID` names a person for, run rather than reasoned.
+        let goAccepts: Set<String> = [
+            "0::", "0::%25en0", "0::%25en0::", "0::%25en0::%25en0", "0::%25en0::0",
+            "0::%25en0::01.2.3.4", "0::%25en0::1", "0::%25en0::1.2.3.4", "0::%25en0::ffff",
+            "0::%25en0::fffff", "0::%25en0::g", "0::0", "0::1", "0::1.2.3.4", "0::ffff",
+            "1::", "1::%25en0", "1::%25en0::", "1::%25en0::%25en0", "1::%25en0::0",
+            "1::%25en0::01.2.3.4", "1::%25en0::1", "1::%25en0::1.2.3.4", "1::%25en0::ffff",
+            "1::%25en0::fffff", "1::%25en0::g", "1::0", "1::1", "1::1.2.3.4", "1::ffff",
+            "::", "::%25en0", "::%25en0::", "::%25en0::%25en0", "::%25en0::0",
+            "::%25en0::01.2.3.4", "::%25en0::1", "::%25en0::1.2.3.4", "::%25en0::ffff",
+            "::%25en0::fffff", "::%25en0::g", "::0", "::1", "::1.2.3.4", "::ffff",
+            "ffff::", "ffff::%25en0", "ffff::%25en0::", "ffff::%25en0::%25en0",
+            "ffff::%25en0::0", "ffff::%25en0::01.2.3.4", "ffff::%25en0::1",
+            "ffff::%25en0::1.2.3.4", "ffff::%25en0::ffff", "ffff::%25en0::fffff",
+            "ffff::%25en0::g", "ffff::0", "ffff::1", "ffff::1.2.3.4", "ffff::ffff",
+        ]
+        XCTAssertEqual(goAccepts.count, 60)
+        XCTAssertTrue(goAccepts.isSubset(of: literals))
+
+        var accepted = Set<String>()
+        for literal in literals where Mentions.personId(fromGlobalId: "gid://[\(literal)]/Person/1") != nil {
+            accepted.insert(literal)
+        }
+        XCTAssertEqual(accepted, goAccepts)
+        // And the port outside the brackets does not change which host it is.
+        for literal in goAccepts {
+            XCTAssertEqual(Mentions.personId(fromGlobalId: "gid://[\(literal)]:80/Person/1"), 1, literal)
+        }
+    }
+
+    /// The host and the userinfo have DIFFERENT alphabets, and neither is "any
+    /// printable byte". Go runs the host through `unescape(_, encodeHost)`,
+    /// which refuses an ASCII byte the host grammar requires to be escaped, and
+    /// the userinfo through `validUserinfo`, which is an allowlist over runes —
+    /// so every non-ASCII byte fails it, while a non-ASCII byte in the HOST is
+    /// fine.
+    ///
+    /// Both alphabets are swept here rather than asserted: every printable ASCII
+    /// byte but `/` — 94 of them, space included, since printable ASCII is
+    /// 0x20–0x7E and an off-by-one there would silently drop the one byte most
+    /// likely to be mishandled — placed once in each position, compared against
+    /// the set Go accepts. Reading `\\`, `^`, a backtick, `{`, `|` and `}` as
+    /// host bytes is six mentions Go does not report; the userinfo list is
+    /// longer. A third alphabet, the zone's, is swept in its own test.
+    func testTheHostAndUserinfoAlphabetsAreGos() {
+        let swept = (UInt8(ascii: " ")...UInt8(ascii: "~"))
+            .map { Character(UnicodeScalar($0)) }
+            .filter { $0 != "/" }
+        XCTAssertEqual(swept.count, 94)
+
+        let goAcceptsInHost = Set("!\"$%&'()*+,-.0123456789;<=>@ABCDEFGHIJKLMNOPQRSTUVWXYZ]_abcdefghijklmnopqrstuvwxyz~")
+        let goAcceptsInUserinfo = Set("!$%&'()*+,-.0123456789:;=@ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz~")
+
+        XCTAssertEqual(
+            Set(swept.filter { Mentions.personId(fromGlobalId: "gid://b\($0)c3/Person/1") != nil }),
+            goAcceptsInHost)
+        XCTAssertEqual(
+            Set(swept.filter { Mentions.personId(fromGlobalId: "gid://b\($0)c3@bc3/Person/1") != nil }),
+            goAcceptsInUserinfo)
+
+        // A non-ASCII byte is a host Go reads and a userinfo it refuses.
+        XCTAssertEqual(Mentions.personId(fromGlobalId: "gid://b\u{00E9}c3/Person/1"), 1)
+        XCTAssertNil(Mentions.personId(fromGlobalId: "gid://b\u{00E9}c3@bc3/Person/1"))
+    }
+
+    /// A zone identifier's escapes obey the MIRROR of the host's rule, and
+    /// reading the second rule as simply absent is permissive across most of the
+    /// byte space.
+    ///
+    /// In a host an escape exists only to spell a byte you could not write, so
+    /// `%41` is refused and `%C3` is fine. In a zone Go says the opposite — "you
+    /// can use escaping in the zone identifier but not to introduce bytes you
+    /// couldn't just write directly" — so `%C3` is refused and `%41` is fine,
+    /// with `%25` and `%20` (Windows puts spaces in zone names) excepted. The
+    /// two rules are not one rule, and they are not ordered by strictness.
+    ///
+    /// Both are swept here over all 256 byte values rather than asserted.
+    func testAZoneEscapeAndAHostEscapeAllowOppositeBytes() {
+        let everyByte = (0...255)
+
+        // A host escape: non-ASCII only, plus `%25`.
+        let goAcceptsInHostEscape = Set(everyByte.filter { $0 >= 0x80 || $0 == 0x25 })
+        XCTAssertEqual(goAcceptsInHostEscape.count, 129)
+        XCTAssertEqual(
+            Set(everyByte.filter {
+                Mentions.personId(fromGlobalId: String(format: "gid://b%%%02Xc3/Person/1", $0)) != nil
+            }),
+            goAcceptsInHostEscape)
+
+        // A zone escape: a literal host byte, plus space, plus `%25`. Measured
+        // through Go rather than derived from the sentence above.
+        let goAcceptsInZoneEscape = Set(
+            Array(" !\"$%&'()*+,-.0123456789:;<=>ABCDEFGHIJKLMNOPQRSTUVWXYZ[]_abcdefghijklmnopqrstuvwxyz~"
+                .unicodeScalars.map { Int($0.value) }))
+        XCTAssertEqual(goAcceptsInZoneEscape.count, 85)
+        XCTAssertEqual(
+            Set(everyByte.filter {
+                Mentions.personId(fromGlobalId: String(format: "gid://[::1%%25%%%02X]/Person/1", $0)) != nil
+            }),
+            goAcceptsInZoneEscape)
+
+        // With no zone rule at all every one of the 256 would be accepted, so
+        // the hole is 171 byte values wide — and the two rules overlap on
+        // exactly one byte, `%` itself.
+        XCTAssertEqual(256 - goAcceptsInZoneEscape.count, 171)
+        XCTAssertEqual(goAcceptsInHostEscape.intersection(goAcceptsInZoneEscape), [0x25])
+        XCTAssertNil(Mentions.personId(fromGlobalId: "gid://[::1%25%C3%A9]/Person/1"))
+        XCTAssertEqual(Mentions.personId(fromGlobalId: "gid://[::1%25%20]/Person/1"), 1)
+        XCTAssertEqual(Mentions.personId(fromGlobalId: "gid://[::1%25%41]/Person/1"), 1)
+    }
+
+    /// Go's control-character check runs on the URL with the fragment ALREADY
+    /// cut off, and only the fragment — `Parse` splits at the first `#` before
+    /// `parse` ever sees the string, while the query is split inside `parse`,
+    /// after the check. So a control in a fragment is a gid Go reads and a
+    /// control in a query is not.
+    ///
+    /// Checking the whole string instead reads as the safer choice and is not
+    /// one: it guards nothing, because the fragment is discarded either way, and
+    /// it loses every mention whose sgid carries a stray control after a `#`.
+    func testAControlIsRefusedWhereGoRefusesItAndNotInTheFragment() {
+        // 33 controls, plus space — which is not a control and is here to be
+        // the one byte of the 34 that the refusals below must skip.
+        let controls = (0...0x20).map { $0 } + [0x7F]
+        XCTAssertEqual(controls.count, 34)
+        let scalars = controls.map { Character(UnicodeScalar(UInt8($0))) }
+
+        // Accepted in a fragment, every one of them, at either position.
+        for c in scalars {
+            XCTAssertEqual(Mentions.personId(fromGlobalId: "gid://bc3/Person/1#\(c)"), 1, c.debugDescription)
+            XCTAssertEqual(Mentions.personId(fromGlobalId: "gid://bc3/Person/1#a\(c)b"), 1, c.debugDescription)
+        }
+        // Refused everywhere else — in the query, the host and the path tail —
+        // with space the one byte that is not a control.
+        for c in scalars where c != " " {
+            XCTAssertNil(Mentions.personId(fromGlobalId: "gid://bc3/Person/1?\(c)"), c.debugDescription)
+            XCTAssertNil(Mentions.personId(fromGlobalId: "gid://bc3\(c)/Person/1"), c.debugDescription)
+            XCTAssertNil(Mentions.personId(fromGlobalId: "gid://bc3/Person/1\(c)"), c.debugDescription)
+        }
+        XCTAssertEqual(Mentions.personId(fromGlobalId: "gid://bc3/Person/1? "), 1)
+        // The cut is at the FIRST `#`, as `strings.Cut` makes it: with a second
+        // one, a control before it is still inside the fragment. Cutting at the
+        // last `#` instead would refuse these, and every row above carries only
+        // one `#`, so nothing above can tell the two apart.
+        for c in scalars {
+            XCTAssertEqual(
+                Mentions.personId(fromGlobalId: "gid://bc3/Person/1#\(c)#y"), 1, c.debugDescription)
+            XCTAssertEqual(
+                Mentions.personId(fromGlobalId: "gid://bc3/Person/1#a#\(c)"), 1, c.debugDescription)
+        }
+    }
+
+    /// Go's `encoding/json` substitutes U+FFFD for text it cannot read as UTF-8;
+    /// `JSONSerialization` refuses the whole DOCUMENT. So one stray byte
+    /// anywhere in the envelope — in a field this code never looks at — loses an
+    /// sgid Go decodes.
+    ///
+    /// Two substitutions, because Go makes two: an invalid UTF-8 sequence, and a
+    /// `\uXXXX` escape naming an unpaired surrogate, which is all-ASCII on the
+    /// wire and so survives the first.
+    ///
+    /// Every expectation was produced by running the sgid through
+    /// `basecamp.PersonIDFromSGID`.
+    func testAnUnreadableByteInTheEnvelopeDoesNotLoseTheMention() {
+        func sgid(_ payload: [UInt8]) -> String {
+            var encoded = Data(payload).base64EncodedString()
+            while encoded.hasSuffix("=") { encoded.removeLast() }
+            return encoded
+        }
+        func envelope(_ extra: [UInt8]) -> [UInt8] {
+            Array(#"{"x":""#.utf8) + extra
+                + Array(#"","_rails":{"data":"gid://bc3/Person/7","pur":"attachable"}}"#.utf8)
+        }
+
+        // Invalid UTF-8 in a field nothing reads.
+        for stray: [UInt8] in [[0xFF], [0xC3], [0x80], [0xE2, 0x82], [0xED, 0xA0]] {
+            XCTAssertEqual(Mentions.personId(fromAttachableSgid: sgid(envelope(stray))), 7, "\(stray)")
+        }
+        // An unpaired surrogate escape, high and low.
+        for escape in ["\\ud800", "\\udc00", "\\udbff", "\\udfff", "\\ud800\\ud800", "\\udc00\\ud800"] {
+            XCTAssertEqual(
+                Mentions.personId(fromAttachableSgid: sgid(envelope(Array(escape.utf8)))), 7, escape)
+        }
+        // A PAIRED surrogate escape is a character, not a substitution, and must
+        // still decode; and `\\ud800` is a literal backslash then `ud800`, which
+        // is not an escape at all.
+        for escape in ["\\ud83d\\ude00", "\\\\ud800", "\\u0041", "ok"] {
+            XCTAssertEqual(
+                Mentions.personId(fromAttachableSgid: sgid(envelope(Array(escape.utf8)))), 7, escape)
+        }
+        // The walk is over unicode scalars, not `Character`s, and this is the
+        // half no ASCII shape can reach: a combining mark after the opening
+        // quote makes `"` + mark ONE grapheme cluster, so a `Character`-level
+        // walk never enters the string, never substitutes the surrogate, and
+        // loses the document. Every escape above sits directly after a plain
+        // quote and so cannot tell the two walks apart.
+        for hidden in ["\u{0301}\\ud800", "\u{200D}\\ud800", "\u{FE0F}\\udfff"] {
+            XCTAssertEqual(
+                Mentions.personId(fromAttachableSgid: sgid(envelope(Array(hidden.utf8)))), 7,
+                hidden.debugDescription)
+        }
+        // And in a KEY, where the opening quote is just as hideable.
+        let keyed = Array(
+            ("{\"\u{0301}\\ud800\":\"a\",\"_rails\":{\"data\":\"gid://bc3/Person/7\","
+                + "\"pur\":\"attachable\"}}").utf8)
+        XCTAssertEqual(Mentions.personId(fromAttachableSgid: sgid(keyed)), 7)
+
+        // The substitution does not make a broken document readable.
+        for broken in ["{\"_rails\":", "{\"_rails\":{\"data\":\"gid://bc3/Person/7\""] {
+            XCTAssertNil(Mentions.personId(fromAttachableSgid: sgid(Array(broken.utf8))), broken)
+        }
+        // A trailing comma runs the OTHER way: Foundation accepts it and Go's
+        // scanner does not, so it is an sgid that would be read here and nowhere
+        // else. Refused explicitly, since which Foundation is underneath is not
+        // something this can depend on.
+        for trailing in [
+            #"{"_rails":{"data":"gid://bc3/Person/7","pur":"attachable"},}"#,
+            #"{"_rails":{"data":"gid://bc3/Person/7","pur":"attachable",}}"#,
+            #"{"_rails":{"data":"gid://bc3/Person/7","pur":"attachable"},"x":[1,]}"#,
+        ] {
+            XCTAssertNil(Mentions.personId(fromAttachableSgid: sgid(Array(trailing.utf8))), trailing)
+        }
+        // A comma that is NOT trailing is untouched, including one inside a
+        // string, which the scan must not read as structure.
+        for fine in [
+            #"{"_rails":{"data":"gid://bc3/Person/7","pur":"attachable"},"x":[1,2]}"#,
+            #"{"x":",}","_rails":{"data":"gid://bc3/Person/7","pur":"attachable"}}"#,
+            #"{"x":", ]","_rails":{"data":"gid://bc3/Person/7","pur":"attachable"}}"#,
+        ] {
+            XCTAssertEqual(Mentions.personId(fromAttachableSgid: sgid(Array(fine.utf8))), 7, fine)
         }
     }
 
@@ -274,10 +748,14 @@ final class MentionsTests: XCTestCase {
              "&#x\u{FF14}\u{FF12};yJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef",
              "&#x\u{FF14}\u{FF12};yJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef",
              []),
-            ("an unknown name is left verbatim",
+            // Not "left verbatim": `&not` is a legacy name, so Go expands the
+             // PREFIX and leaves `aname;` behind. This row asserted the verbatim
+             // form for as long as the table was a subset, under a comment
+             // saying the column was Go-derived. It was not.
+            ("an unknown name expands through its longest legacy prefix",
              "&notaname;eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef",
-             "&notaname;eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef",
-             []),  // narrower than Go here, verdict-identical
+             "\u{AC}aname;eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef",
+             []),
             ("a legacy name expands without its semicolon",
              "&ampeyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef",
              "&eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef",
@@ -286,10 +764,15 @@ final class MentionsTests: XCTestCase {
              "eyJfcmFpbHMiOnsiZGF0&UnderBar;YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef",
              "eyJfcmFpbHMiOnsiZGF0_YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef",
              []),
-            ("hyphen does NOT spell a hyphen",
+            // `&hyphen;` IS expanded — to U+2010, which is not ASCII `-`, so it
+             // still cannot complete a separator. The distinction the old row
+             // collapsed: not expanding it and expanding it to the wrong
+             // character give the same verdict and different bytes, and the
+             // bytes are what the write-side dedupe compares.
+            ("hyphen expands, and not to a hyphen",
              "eyJfcmFpbHMiOnsiZGF0&hyphen;YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef",
-             "eyJfcmFpbHMiOnsiZGF0&hyphen;YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef",
-             []),  // narrower than Go here, verdict-identical
+             "eyJfcmFpbHMiOnsiZGF0\u{2010}YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef",
+             []),
             ("lowbar inside the payload",
              "eyJfcmFpbHMiOnsiZGF0&lowbar;YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef",
              "eyJfcmFpbHMiOnsiZGF0_YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19--deadbeef",
@@ -338,12 +821,440 @@ final class MentionsTests: XCTestCase {
             Mentions.attachmentSgids(in: "<bc-attachment sgid=\"a&lowbar;b\"></bc-attachment>"),
             ["a_b"])
         // `&hyphen;` and `&dash;` name U+2010, not ASCII `-` — measured against
-        // html.UnescapeString, not assumed. Decoding them to a hyphen would make
-        // this the lenient side, so they are left verbatim, which is also what
-        // the base64 decode does with them either way.
+        // html.UnescapeString, not assumed. They ARE expanded, and to a character
+        // the base64 alphabet does not contain, so they cannot complete a
+        // separator; decoding them to an ASCII `-` would make this the lenient
+        // side.
         XCTAssertEqual(
             Mentions.attachmentSgids(in: "<bc-attachment sgid=\"a&hyphen;b\"></bc-attachment>"),
-            ["a&hyphen;b"])
+            ["a\u{2010}b"])
+        XCTAssertEqual(
+            Mentions.attachmentSgids(in: "<bc-attachment sgid=\"a&dash;b\"></bc-attachment>"),
+            ["a\u{2010}b"])
+    }
+
+    /// The table is Go's WHOLE table, because a narrower one changes what the
+    /// write side compares.
+    ///
+    /// The old 41-row subset was chosen on a real argument: every other
+    /// reference expands to something the base64 alphabet does not contain, so
+    /// the envelope fails to decode whether it was expanded or left verbatim.
+    /// That is true of the DECODE and false of `adding(_:to:)`, which compares
+    /// the content's decoded sgid BYTE-FOR-BYTE against the person's — and Go's
+    /// expansion deletes the reference's bytes where a narrower table keeps
+    /// them. So a mention Go sees as already present was added a second time.
+    ///
+    /// Every expectation here is `html.UnescapeString`'s.
+    func testTheEntityTableIsGosWholeTable() throws {
+        let p = "eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNDIiLCJwdXIiOiJhdHRhY2hhYmxlIn19"
+        func decoded(_ sgid: String) -> [String] {
+            Mentions.attachmentSgids(in: "<bc-attachment sgid=\"\(sgid)\"></bc-attachment>")
+        }
+        // Names the subset did not carry, with and without their semicolon.
+        XCTAssertEqual(decoded("a&not;b"), ["a\u{AC}b"])
+        XCTAssertEqual(decoded("a&notb"), ["a\u{AC}b"])
+        XCTAssertEqual(decoded("a&copy;b"), ["a\u{A9}b"])
+        XCTAssertEqual(decoded("a&copyb"), ["a\u{A9}b"])
+        XCTAssertEqual(decoded("a&frac12;b"), ["a\u{BD}b"])
+        // `frac12` IS in Go's no-semicolon set and is exactly six characters —
+        // the descent's bound — so it is the FIRST prefix the loop tries, since
+        // the loop counts down from the bound. A seven-character legacy name
+        // would not be reachable at all, which is what the bound means.
+        XCTAssertEqual(decoded("a&frac12b"), ["a\u{BD}b"])
+        XCTAssertEqual(decoded("a&frac12;b"), ["a\u{BD}b"])
+        // The descent takes the longest legacy PREFIX and leaves the rest.
+        XCTAssertEqual(decoded("a&notit;b"), ["a\u{AC}it;b"])
+        // A two-rune expansion, which a classification of the single-rune table
+        // alone would miss.
+        XCTAssertEqual(decoded("a&fjlig;b"), ["afjb"])
+        XCTAssertEqual(decoded("a&bne;b"), ["a=\u{20E5}b"])
+        // In Go's source and NOT expanded by Go, so not in the table either.
+        XCTAssertEqual(decoded("a&nGt;b"), ["a&nGt;b"])
+        XCTAssertEqual(decoded("a&nLt;b"), ["a&nLt;b"])
+
+        // The two rows whose VALUE is a control character, which a row-per-line
+        // table format cannot carry: the value ends the row that holds it.
+        // `&NewLine;` decoded to nothing, the count still came to 2,229, and the
+        // deletion RESTORED a `--` the reference does not see —
+        // `<payload>-&NewLine;-sig` named nobody there and person 42 here.
+        XCTAssertEqual(decoded("a&NewLine;b"), ["a\u{0A}b"])
+        XCTAssertEqual(decoded("a&Tab;b"), ["a\u{09}b"])
+        XCTAssertEqual(Mentions.personIds(in: "<bc-attachment sgid=\"\(p)-&NewLine;-sig\"></bc-attachment>"), [])
+
+        // And the whole table against one number that came from Go rather than
+        // from here. A count is satisfied by 2,229 rows of anything — it was,
+        // while `NewLine;` was empty — and a hand-picked sample only covers what
+        // someone thought to pick. This is an FNV-1a of every row, name and
+        // value, in byte order, computed by running each of Go's 2,229 names
+        // through `html.UnescapeString` and hashing the result. It is not
+        // derived from `entityTable`, which is what makes it evidence: any wrong
+        // expansion anywhere moves it.
+        XCTAssertEqual(entityTable.count, 2229)
+        XCTAssertEqual(
+            entityTableFingerprint(), 0x3502_2B4E_D371_2543,
+            "the table is no longer the one html.UnescapeString produces")
+        // Kept beside it because a fingerprint says THAT something moved and
+        // these say what: the two rows a line-oriented format destroys.
+        XCTAssertFalse(entityTable.values.contains(""), "a row whose value the format destroyed")
+        XCTAssertEqual(entityTable["NewLine;"], "\u{0A}")
+        XCTAssertEqual(entityTable["Tab;"], "\u{09}")
+
+        // And the write-side consequence, which is why the subset was wrong:
+        // the content already mentions this person, so Go adds nothing.
+        let content = "<bc-attachment sgid=\"\(p)--&not\"></bc-attachment>"
+        XCTAssertEqual(try Mentions.adding([person(42, "\(p)--\u{AC}")], to: content), content)
+    }
+
+
+    /// FNV-1a over every row of ``entityTable``, name and value, NUL-separated,
+    /// in byte order — the same walk the Go side takes over
+    /// `html.UnescapeString`'s answers.
+    private func entityTableFingerprint() -> UInt64 {
+        var hash: UInt64 = 0xcbf2_9ce4_8422_2325
+        func mix(_ bytes: some Sequence<UInt8>) {
+            for byte in bytes {
+                hash ^= UInt64(byte)
+                hash = hash &* 0x100_0000_01b3
+            }
+        }
+        let sorted = entityTable.sorted {
+            Array($0.key.utf8).lexicographicallyPrecedes(Array($1.key.utf8))
+        }
+        for (name, value) in sorted {
+            mix(name.utf8)
+            mix([0])
+            mix(value.utf8)
+            mix([0])
+        }
+        return hash
+    }
+
+    /// A byte-order mark at the head of a JSON string is a byte Go keeps and
+    /// `JSONSerialization` eats.
+    ///
+    /// That made `{"\u{FEFF}_rails":…}` an envelope Go reads as neither layout
+    /// and this read as a mention — the accepting direction, and it reached
+    /// `markup(for:)`, which rendered a tag Go refuses to write.
+    ///
+    /// Writing it back as its own `\uFEFF` escape was the first fix, it passed
+    /// here, and CI failed it: Darwin's parser removes the mark from the escape
+    /// too. So the mark never reaches the parser now — it is carried through in
+    /// private-use scalars and decoded out again. The rows below are the ones
+    /// that failed on macOS and passed on Linux, which is the point of keeping
+    /// them: this is the one mechanism on this branch whose fix could not be
+    /// verified on the machine it was written on.
+    func testAByteOrderMarkInTheEnvelopeIsNotEaten() {
+        func sgid(_ payload: String) -> String {
+            var encoded = Data(payload.utf8).base64EncodedString()
+            while encoded.hasSuffix("=") { encoded.removeLast() }
+            return encoded
+        }
+        let bom = "\u{FEFF}"
+        // A BOM anywhere in a key or a value Go compares is a mention lost.
+        for payload in [
+            "{\"\(bom)_rails\":{\"data\":\"gid://bc3/Person/7\",\"pur\":\"attachable\"}}",
+            "{\"_rails\":{\"data\":\"\(bom)gid://bc3/Person/7\",\"pur\":\"attachable\"}}",
+            "{\"_rails\":{\"data\":\"gid://bc3/Person/7\",\"pur\":\"\(bom)attachable\"}}",
+            "{\"\(bom)gid\":\"gid://bc3/Person/7\",\"purpose\":\"attachable\"}",
+            "{\"gid\":\"\(bom)gid://bc3/Person/7\",\"purpose\":\"attachable\"}",
+        ] {
+            XCTAssertNil(Mentions.personId(fromAttachableSgid: sgid(payload)), payload.debugDescription)
+        }
+        // And it is only the mark that is refused, not the envelope shape.
+        XCTAssertEqual(
+            Mentions.personId(
+                fromAttachableSgid:
+                    sgid("{\"_rails\":{\"data\":\"gid://bc3/Person/7\",\"pur\":\"attachable\"}}")),
+            7)
+        // A mark inside the HOST is a gid Go still reads, because a host may
+        // carry any non-ASCII byte — so the substitution has to be reversible
+        // rather than merely refusing.
+        XCTAssertEqual(
+            Mentions.personId(
+                fromAttachableSgid:
+                    sgid(
+                        "{\"_rails\":{\"data\":\"gid://b\(bom)c3/Person/7\","
+                            + "\"pur\":\"attachable\"}}")),
+            7)
+        // A BOM OUTSIDE a string is a syntax error to Go's scanner.
+        for payload in [
+            "{\(bom)\"_rails\":{\"data\":\"gid://bc3/Person/7\",\"pur\":\"attachable\"}}",
+            "{\"_rails\":{\"data\":\"gid://bc3/Person/7\",\"pur\":\"attachable\"}\(bom)}",
+        ] {
+            XCTAssertNil(Mentions.personId(fromAttachableSgid: sgid(payload)), payload.debugDescription)
+        }
+        // A private-use scalar is an ordinary character to both, and the
+        // encoding that carries the mark must not eat it.
+        XCTAssertEqual(
+            Mentions.personId(
+                fromAttachableSgid:
+                    sgid(
+                        "{\"x\":\"\u{E000}\u{E001}\",\"_rails\":{\"data\":"
+                            + "\"gid://b\u{E000}c3/Person/7\",\"pur\":\"attachable\"}}")),
+            7)
+        // A BOM in a field nothing reads is still not an error.
+        XCTAssertEqual(
+            Mentions.personId(
+                fromAttachableSgid:
+                    sgid(
+                        "{\"x\":\"\(bom)y\",\"_rails\":{\"data\":\"gid://bc3/Person/7\","
+                            + "\"pur\":\"attachable\"}}")),
+            7)
+    }
+
+    /// The sentinel encoding belongs to the JSON branch and stops there.
+    ///
+    /// Only that branch smuggles a byte-order mark past `JSONSerialization`, so
+    /// only that branch decodes one back. A Ruby Marshal envelope goes nowhere
+    /// near the JSON parser, and running the inverse over it would rewrite bytes
+    /// nothing encoded: `U+E000 U+E001` in a Marshal gid would come back as
+    /// U+FEFF, and `U+E000 U+E000` as a single U+E000.
+    ///
+    /// It changes no verdict today — the mangling only ever lands in a host,
+    /// which is checked for validity and emptiness and nothing else — so this
+    /// asserts at the seam where it IS observable rather than pretending the
+    /// public answer can see it. Go's answers, from `globalIDFromSGID`.
+    func testTheSentinelDecodeDoesNotReachTheMarshalEnvelope() {
+        let pair =
+            "BAh7BkkiC19yYWlscwY6BkVUewdJIglkYXRhBjsAVEkiHWdpZDovL2LugIDugIFjMy9QZXJzb24vNwY7"
+            + "AFRJIghwdXIGOwBUSSIPYXR0YWNoYWJsZQY7AFQ"
+        let doubled =
+            "BAh7BkkiC19yYWlscwY6BkVUewdJIglkYXRhBjsAVEkiHWdpZDovL2LugIDugIBjMy9QZXJzb24vNwY7"
+            + "AFRJIghwdXIGOwBUSSIPYXR0YWNoYWJsZQY7AFQ"
+        XCTAssertEqual(
+            Mentions.envelopeGlobalId(Array(pair.utf8)[...]),
+            "gid://b\u{E000}\u{E001}c3/Person/7")
+        XCTAssertEqual(
+            Mentions.envelopeGlobalId(Array(doubled.utf8)[...]),
+            "gid://b\u{E000}\u{E000}c3/Person/7")
+        // And both are still a person, since a host may carry any non-ASCII byte.
+        XCTAssertEqual(Mentions.personId(fromAttachableSgid: pair), 7)
+        XCTAssertEqual(Mentions.personId(fromAttachableSgid: doubled), 7)
+    }
+
+    /// The Foundation behaviours this port leans on, asserted so the platform it
+    /// ships to has to agree with the platform it was written on.
+    ///
+    /// Every oracle behind this branch ran on swift-corelibs-foundation, and the
+    /// package ships against Darwin's. That gap is not hypothetical: an earlier
+    /// commit fixed a byte-order-mark divergence by relying on
+    /// `JSONSerialization` preserving an escaped U+FEFF, which is true on Linux
+    /// and false on macOS — five tests passed here and failed in CI. The fix was
+    /// to stop depending on the parser at all.
+    ///
+    /// What remains dependent is listed here rather than argued about. Each row
+    /// is a behaviour some ported rule assumes, with the divergence it would
+    /// cause named; each passes on Linux, so the only machine any of them can
+    /// fail on is the one that matters.
+    func testTheFoundationBehavioursThisPortDependsOn() {
+        // 1. `caseInsensitiveCompare` must fold the way `strings.EqualFold`
+        //    does. Go folds U+017F LATIN SMALL LETTER LONG S to `s`, so
+        //    `ſgid="…"` is an attribute Go reads. A fold that does not would
+        //    lose that mention — and one that folds MORE, length-changing folds
+        //    included, would read attributes Go does not.
+        XCTAssertEqual("\u{017F}gid".caseInsensitiveCompare("sgid"), .orderedSame)
+        XCTAssertEqual("SGID".caseInsensitiveCompare("sgid"), .orderedSame)
+        XCTAssertNotEqual("\u{FF53}gid".caseInsensitiveCompare("sgid"), .orderedSame)
+        XCTAssertEqual(
+            Mentions.attachmentSgids(in: "<bc-attachment \u{017F}gid=\"abc\"></bc-attachment>"),
+            ["abc"], "Go folds the long s, so this attribute is an sgid there")
+
+        // 2. `trimmingCharacters` must trim SCALARS, not grapheme clusters.
+        //    `strings.TrimSpace` stops at the first non-space byte, so a
+        //    combining mark after a space survives. A cluster-wise trim would
+        //    eat the mark with the space it hangs off — and then
+        //    `" \u{0301}Comment"` becomes a recording type this routes and Go
+        //    refuses before any request.
+        XCTAssertEqual(" \u{0301}Comment".trimmingCharacters(in: goWhitespace), "\u{0301}Comment")
+        XCTAssertEqual("Comment \u{0301}".trimmingCharacters(in: goWhitespace), "Comment \u{0301}")
+        XCTAssertEqual("\u{200B}".trimmingCharacters(in: goWhitespace), "\u{200B}")
+        XCTAssertEqual("\r\n\t Comment \n".trimmingCharacters(in: goWhitespace), "Comment")
+
+        // 3. `Data(base64Encoded:)` must not be more forgiving than Go's
+        //    `RawStdEncoding`, which refuses every byte outside the alphabet.
+        //    The CR and LF it DOES refuse are stripped before it sees them,
+        //    because Go ignores those two; a decoder that also skipped a space
+        //    or a tab would decode an sgid Go calls illegal.
+        XCTAssertNil(Data(base64Encoded: "QU JD"))
+        XCTAssertNil(Data(base64Encoded: "QU\tJD"))
+        XCTAssertNotNil(Data(base64Encoded: "QUJD"))
+
+        // 4. `JSONSerialization` must refuse a raw control character inside a
+        //    string, as `encoding/json` does. Nothing pre-processes that, so a
+        //    parser that accepted one would read an envelope Go refuses.
+        let withControl = #"{"_rails":{"data":"gid://bc3/Person/42\#u{01}","pur":"attachable"}}"#
+        var encoded = Data(withControl.utf8).base64EncodedString()
+        while encoded.hasSuffix("=") { encoded.removeLast() }
+        XCTAssertNil(Mentions.personId(fromAttachableSgid: encoded))
+    }
+
+    /// The `--` separator is found by a BYTE scan, as `strings.LastIndex` finds
+    /// it, and this is the last place in the file where it was not.
+    ///
+    /// `String.range(of:options:.backwards)` searches grapheme clusters, so a
+    /// `--` whose second dash carries a combining mark is invisible to it and
+    /// plain to Go. The two sides then split the envelope at DIFFERENT places:
+    /// in `<payload>--x--\u{0301}` Go splits at the last `--` and reads `…--x`,
+    /// which is not base64, while this split at the first and read a person.
+    /// That is the accepting direction, and it reaches the WRITE side too —
+    /// `markup(for:)`'s gate is "does this sgid name this person", and the sgid
+    /// carries no character that gate escapes, so a tag Go refuses to write
+    /// would have been rendered.
+    ///
+    /// The alphabet-mapping step had the same shape:
+    /// `replacingOccurrences(of: "-", with: "+")` leaves a `-` that carries a
+    /// mark alone, where Go's replacer maps the byte.
+    ///
+    /// Six marks, each in six positions, plus the four unmarked controls. Every
+    /// expectation was produced by running the sgid through
+    /// `basecamp.PersonIDFromSGID`.
+    func testTheSeparatorIsFoundByByteAsGoFindsIt() {
+        let seven = "eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNyIsInB1ciI6ImF0dGFjaGFibGUifX0"
+        let nine = "eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vOSIsInB1ciI6ImF0dGFjaGFibGUifX0"
+        for mark in ["\u{0301}", "\u{0300}", "\u{0308}", "\u{FE0F}", "\u{20E3}", "\u{200D}"] {
+            // The mark sits on the LAST separator, so Go splits there and finds
+            // a payload that is not base64.
+            XCTAssertNil(Mentions.personId(fromAttachableSgid: "\(seven)--x--\(mark)"))
+            XCTAssertNil(Mentions.personId(fromAttachableSgid: "\(seven)--x--\(mark)sig"))
+            XCTAssertNil(Mentions.personId(fromAttachableSgid: "\(seven)--\(nine)--\(mark)"))
+            // The mark sits after the only separator, or inside the digest, or
+            // on the payload — none of which moves the split.
+            XCTAssertEqual(Mentions.personId(fromAttachableSgid: "\(seven)--\(mark)sig"), 7)
+            XCTAssertEqual(Mentions.personId(fromAttachableSgid: "\(seven)--sig\(mark)"), 7)
+            XCTAssertNil(Mentions.personId(fromAttachableSgid: "\(seven)\(mark)--sig"))
+        }
+        // The unmarked controls, so a regression cannot be read as "marks are
+        // simply refused".
+        XCTAssertEqual(Mentions.personId(fromAttachableSgid: seven), 7)
+        XCTAssertEqual(Mentions.personId(fromAttachableSgid: "\(seven)--sig"), 7)
+        XCTAssertNil(Mentions.personId(fromAttachableSgid: "\(seven)--x--sig"))
+        XCTAssertNil(Mentions.personId(fromAttachableSgid: "\(seven)--\(nine)--sig"))
+        // And the same sgid on the write side, which is where it would have
+        // rendered a tag Go will not write: the gate is "does this sgid name
+        // this person", and the sgid carries no character the markup check
+        // escapes, so only the split decides it.
+        XCTAssertThrowsError(
+            try Mentions.markup(for: person(7, "\(seven)--x--\u{0301}")))
+        // Both base64 alphabets, since the mapping step is the other place a
+        // grapheme-level search sat: `replacingOccurrences(of: "-", with: "+")`
+        // leaves a dash that carries a mark alone where Go's replacer maps the
+        // byte. These two payloads are the same envelope written in the standard
+        // and the URL-safe alphabet, and the URL-safe one exercises BOTH
+        // substitutions — it carries a `-` and a `_`.
+        let standard =
+            "eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNyIsInB1ciI6ImF0dGFjaGFibGUifSwieCI6"
+            + "Ij1+Q1soNzhiLTQ/ZlVwcyJ9"
+        let urlSafe =
+            "eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNyIsInB1ciI6ImF0dGFjaGFibGUifSwieCI6"
+            + "Ij1-Q1soNzhiLTQ_ZlVwcyJ9"
+        XCTAssertTrue(urlSafe.contains("-") && urlSafe.contains("_"), "precondition")
+        XCTAssertEqual(Mentions.personId(fromAttachableSgid: standard), 7)
+        XCTAssertEqual(Mentions.personId(fromAttachableSgid: urlSafe), 7)
+    }
+
+
+    /// A combining mark on a digit truncated the character-reference scan, and
+    /// the reference it truncated to was the sgid SEPARATOR.
+    ///
+    /// `unescapeEntities` was the last `Character`-level walk in the module.
+    /// `4`,`5`,`5` followed by U+0301 is three digits and a mark to Go's byte
+    /// scan — `&#455` is `Ǉ` — and to a grapheme walk the third digit and the
+    /// mark are ONE `Character` that is not a digit, so the scan stopped at
+    /// `&#45`, which is `-`. Two sides, two different characters, from the same
+    /// eight bytes.
+    ///
+    /// That made `<payload>-&#455\u{0301};x` an sgid Go reads as nobody and this
+    /// read as person 7, because the `-` it invented completed the `--` the
+    /// envelope splits on. It reaches the WRITE side as the mirror: `adding`
+    /// dedupes against the content's DECODED sgids, so a reference that decodes
+    /// differently here silently suppresses a mention Go inserts — which is the
+    /// outcome the package comment forbids in as many words.
+    ///
+    /// Nine references, measured through `MentionedPersonIDs`.
+    func testAGraphemeClusterCannotTruncateACharacterReference() {
+        let p = "eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNyIsInB1ciI6ImF0dGFjaGFibGUifX0"
+        func ids(_ sgid: String) -> [Int] {
+            Mentions.personIds(in: "<bc-attachment sgid=\"\(sgid)\"></bc-attachment>")
+        }
+        let mark = "\u{0301}"
+
+        // The mark ends the scan one digit early only if the walk is by
+        // grapheme. `&#455` is `Ǉ`, and `Ǉ` does not complete a separator.
+        XCTAssertEqual(ids("\(p)-&#455\(mark);x"), [])
+        XCTAssertEqual(ids("\(p)--&#45\(mark);"), [])
+        XCTAssertEqual(ids("\(p)-&#455;x"), [])
+        // And where the reference really is `-`, with or without a mark after
+        // the digits, the separator completes and the payload decodes.
+        XCTAssertEqual(ids("\(p)-&#45\(mark);x"), [7])
+        XCTAssertEqual(ids("\(p)-&#x2D\(mark);x"), [7])
+        XCTAssertEqual(ids("\(p)-&#45;x"), [7])
+        XCTAssertEqual(ids("\(p)--sig"), [7])
+        // The same truncation on a leading `&#32;`: expanded it is a space Go
+        // trims, truncated it leaves a mark that is not whitespace anywhere.
+        XCTAssertEqual(ids("&#32;\(p)--sig"), [7])
+        XCTAssertEqual(ids("&#32\(mark);\(p)--sig"), [])
+
+        // The write side, which is where the divergence costs a mention rather
+        // than inventing one: the content's tag decodes to something that is not
+        // this person's sgid, so Go inserts and so must this.
+        let content = "<p><bc-attachment sgid=\"\(p)-&#455\(mark);x\"></bc-attachment></p>"
+        let added = try? Mentions.adding([person(7, "\(p)--5\(mark);x")], to: content)
+        XCTAssertEqual(
+            added,
+            "<p><bc-attachment sgid=\"\(p)--5\(mark);x\"></bc-attachment> "
+                + "<bc-attachment sgid=\"\(p)-&#455\(mark);x\"></bc-attachment></p>")
+    }
+
+    /// The encoded-length bound, which nothing pinned.
+    ///
+    /// Go applies `maxSGIDEncodedBytes` to the ENCODED form, before any
+    /// normalization, so an oversized sgid costs no decode buffer. Dropping the
+    /// guard is permissive, not merely wasteful: `<payload>` followed by six
+    /// thousand `=` is refused there on length and would decode here, because
+    /// the trailing `=` are trimmed before anything else looks at it.
+    func testTheEncodedLengthBoundIsAppliedBeforeNormalization() {
+        let p = "eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNyIsInB1ciI6ImF0dGFjaGFibGUifX0"
+        XCTAssertEqual(Mentions.personId(fromAttachableSgid: p), 7, "the control")
+        XCTAssertNil(
+            Mentions.personId(fromAttachableSgid: p + String(repeating: "=", count: 6000)),
+            "trailing padding is trimmed, but only after the bound has refused it")
+        XCTAssertEqual(
+            Mentions.personId(fromAttachableSgid: p + String(repeating: "\r\n", count: 4000)), 7,
+            "but TRAILING CR/LF is whitespace, and the trim runs before the bound")
+        XCTAssertNil(
+            Mentions.personId(
+                fromAttachableSgid: String(p.prefix(40)) + String(repeating: "\r\n", count: 4000)
+                    + String(p.dropFirst(40))),
+            "interior CR/LF survives the trim, so the bound sees it and the decoder would not")
+        XCTAssertEqual(
+            Mentions.personId(fromAttachableSgid: p + String(repeating: "=", count: 10)), 7,
+            "a little padding is trimmed and decodes; it is the LENGTH that refuses the rest")
+    }
+
+    /// An UNTERMINATED opening tag is not a block, so the mention goes before
+    /// the content rather than inside it.
+    ///
+    /// `leadingBlockEnd` returns the index past `<p …>` only when the tag was
+    /// actually closed. Dropping that condition puts the mention after `<p a=`
+    /// — inside an attribute value that never ended — which is markup Go does
+    /// not write, and nothing pinned it.
+    ///
+    /// Measured through `WithMentions`, ten shapes.
+    func testAnUnterminatedOpeningTagIsNotABlock() throws {
+        let p = "eyJfcmFpbHMiOnsiZGF0YSI6ImdpZDovL2JjMy9QZXJzb24vNyIsInB1ciI6ImF0dGFjaGFibGUifX0"
+        let tag = "<bc-attachment sgid=\"\(p)\"></bc-attachment>"
+        func added(_ content: String) throws -> String {
+            try Mentions.adding([person(7, p)], to: content)
+        }
+        // Closed: the mention goes inside the block.
+        XCTAssertEqual(try added("<p>x</p>"), "<p>\(tag) x</p>")
+        XCTAssertEqual(try added("<p a=b>x"), "<p a=b>\(tag) x")
+        XCTAssertEqual(try added("<p/>x"), "<p/>\(tag) x")
+        XCTAssertEqual(try added("<p >x"), "<p >\(tag) x")
+        // Unterminated, or not a leading block at all: the mention is a prefix.
+        for content in ["<p a=", "<div", "<p", "x<p>", "<p a='b>", "<p a=\"b>"] {
+            XCTAssertEqual(try added(content), "\(tag) \(content)", content)
+        }
     }
 
     /// Go trims the trailing `=` BEFORE decoding, and its decoder then refuses
@@ -356,12 +1267,14 @@ final class MentionsTests: XCTestCase {
         let padded = Data(json.utf8).base64EncodedString()
         XCTAssertTrue(padded.hasSuffix("="), "precondition: this payload is padded")
 
-        XCTAssertEqual(Mentions.envelopeGlobalId(padded), "gid://bc3/Person/42")
+        func envelope(_ text: String) -> String? { Mentions.envelopeGlobalId(Array(text.utf8)[...]) }
+
+        XCTAssertEqual(envelope(padded), "gid://bc3/Person/42")
         XCTAssertNil(
-            Mentions.envelopeGlobalId(padded + "\n"),
+            envelope(padded + "\n"),
             "the padding is no longer trailing, so it stays — and an interior = is illegal")
         XCTAssertEqual(
-            Mentions.envelopeGlobalId(String(padded.dropLast()) + "\n="),
+            envelope(String(padded.dropLast()) + "\n="),
             "gid://bc3/Person/42",
             "here the = IS trailing, so it is trimmed and the newline ignored")
     }
@@ -534,7 +1447,7 @@ final class MentionsTests: XCTestCase {
     func testBase64LeniencyMatchesGoRowForRow() {
         // A payload for person 42, and the same payload mutilated six ways.
         func decodes(_ payload: String) -> Bool {
-            Mentions.envelopeGlobalId(payload) == "gid://bc3/Person/42"
+            Mentions.envelopeGlobalId(Array(payload.utf8)[...]) == "gid://bc3/Person/42"
         }
         let base = railsJSONSgid
         let head = String(base.prefix(20))

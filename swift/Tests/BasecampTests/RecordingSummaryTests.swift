@@ -55,6 +55,105 @@ final class RecordingSummaryTests: XCTestCase {
         XCTAssertEqual(server.paths, [])
     }
 
+    /// Routing is decided over UTF-8 BYTES and over Go's whitespace set, and
+    /// each of the three comparisons it makes was wrong in a different way.
+    ///
+    ///   * `CharacterSet.whitespacesAndNewlines` is Go's `unicode.IsSpace` PLUS
+    ///     U+200B ZERO WIDTH SPACE. One scalar, and it runs the permissive way:
+    ///     a recording type of `"\u{200B}"` is a type Go cannot route, and it
+    ///     trimmed to nothing here, fell through to the event type, and ISSUED
+    ///     A READ.
+    ///   * `hasPrefix` walks grapheme clusters, so a combining mark on the
+    ///     prefix's last character hides it — `"Chat::Lines::\u{0301}RichText"`
+    ///     is a chat line Go routes and this refused.
+    ///   * `lastIndex(of: ".")` the same, for the feed type's separator.
+    ///
+    /// Two directions from three lines, and the first of them reaches the
+    /// network: routing is what decides whether a request happens at all.
+    func testRoutingComparesBytesAndGosWhitespace() async throws {
+        let server = RecordingServer()
+        let account = makeTestAccountClient(transport: server.makeTransport())
+
+        for ref in [
+            // A zero-width space is not whitespace to Go, so these are types it
+            // cannot route — and no request may leave for them.
+            RecordingRef(
+                bucketId: 1, recordingId: 2, eventType: "comment.created",
+                recordingType: "\u{200B}"),
+            RecordingRef(
+                bucketId: 1, recordingId: 2, eventType: "comment.created",
+                recordingType: "\u{200B}Comment"),
+            RecordingRef(bucketId: 1, recordingId: 2, eventType: "\u{200B}comment.created"),
+        ] {
+            await assertSummarizeFails(account, ref) { error in
+                guard case .unknownRecordingType = error else {
+                    return XCTFail("expected unknownRecordingType for \(ref), got \(error)")
+                }
+            }
+        }
+        XCTAssertEqual(server.paths, [], "a type Go cannot route must not reach the network")
+
+        // The whitespace Go DOES trim still trims, or a type read off a
+        // line-terminated field stops routing.
+        XCTAssertEqual(
+            try RecordingsService.route(
+                RecordingRef(bucketId: 1, recordingId: 2, recordingType: "Comment\n\t ")),
+            .comment)
+        // And a mark inside the prefix or on the dot is not the prefix or the
+        // dot, here as in Go — asserted as the KIND Go routes to, because
+        // "does not throw" is satisfied by routing to the wrong read.
+        XCTAssertEqual(
+            try RecordingsService.route(
+                RecordingRef(
+                    bucketId: 1, recordingId: 2, recordingType: "Chat::Lines::\u{0301}RichText")),
+            .chatLine)
+        XCTAssertEqual(
+            try RecordingsService.route(
+                RecordingRef(bucketId: 1, recordingId: 2, eventType: "comment.\u{0301}created")),
+            .comment)
+    }
+
+    /// The routing tables are looked up by BYTES, because Swift `String` keys
+    /// compare by canonical equivalence and Go's map keys do not.
+    ///
+    /// Exactly three scalars decompose to pure ASCII — U+037E is `;`, U+1FEF is
+    /// a backtick, U+212A KELVIN SIGN is `K` — and one of them reaches a key
+    /// here. `"\u{212A}anban::Card"` is a recording type Go refuses before any
+    /// request, and it matched `"Kanban::Card"` and issued a read.
+    ///
+    /// This sat one line below the `hasPrefix` that was moved to bytes in the
+    /// commit before: the lookups the byte comparisons FEED were left as they
+    /// were.
+    func testTheRoutingTablesAreLookedUpByBytes() async throws {
+        let server = RecordingServer()
+        let account = makeTestAccountClient(transport: server.makeTransport())
+
+        for type in [
+            "\u{212A}anban::Card", "\u{212A}anban::Step", "\u{212A}anban::Board",
+            "\u{212A}anban::Column",
+        ] {
+            await assertSummarizeFails(
+                account, RecordingRef(bucketId: 1, recordingId: 2, recordingType: type)
+            ) { error in
+                guard case .unknownRecordingType = error else {
+                    return XCTFail("expected unknownRecordingType for \(type), got \(error)")
+                }
+            }
+        }
+        XCTAssertEqual(server.paths, [], "a type Go cannot route must not reach the network")
+
+        // The ASCII spellings still route, or the fix is a refusal rather than a
+        // comparison.
+        XCTAssertEqual(
+            try RecordingsService.route(
+                RecordingRef(bucketId: 1, recordingId: 2, recordingType: "Kanban::Card")),
+            .card)
+        XCTAssertEqual(
+            try RecordingsService.route(
+                RecordingRef(bucketId: 1, recordingId: 2, eventType: "card.created")),
+            .card)
+    }
+
     func testTheRecordingTypeWinsOverTheEventType() async throws {
         let server = RecordingServer()
         let account = makeTestAccountClient(transport: server.makeTransport())
@@ -314,6 +413,53 @@ final class RecordingSummaryTests: XCTestCase {
             server.paths.filter { $0.contains("/lines/") }.count,
             RecordingsService.maxCampfireCandidates,
             "every candidate the budget allows was tried first")
+    }
+
+    /// A second line in a bucket whose dock is cached costs no project read, and
+    /// still concludes incomplete when the budget was spent before the listing.
+    ///
+    /// What this does NOT isolate, and the next person should not assume it
+    /// does: the `budgetRemaining > 0` half of the pass-2 dock gate. Two calls
+    /// in one test are milliseconds apart, so the 30-second refresh floor
+    /// declines the re-read on its own — reverting the budget half of the gate
+    /// leaves this test, and the whole suite, green. Driving that half needs the
+    /// cached dock to be older than the floor, which needs a clock seam the
+    /// client does not expose; see the note on
+    /// `RecordingsService.campfireIndexMinRefresh`. The floor and the budget
+    /// gate are two independent reasons not to re-read, and only the floor is
+    /// reachable from here.
+    func testASpentBudgetDoesNotReReadASourceAlreadyConsulted() async throws {
+        // Exactly the budget, in the dock, so the second call finds it cached
+        // and spends the budget on it before reaching the refresh.
+        let campfireIds = Array(100..<(100 + RecordingsService.maxCampfireCandidates))
+        let server = RecordingServer(dockCampfireIds: campfireIds)
+        server.lineFoundUnder = nil
+        let account = makeTestAccountClient(transport: server.makeTransport())
+
+        await assertSummarizeFails(
+            account, RecordingRef(bucketId: 1, recordingId: 7, eventType: "chat.line.created")
+        ) { _ in }
+        let afterFirst = server.paths.count
+        XCTAssertEqual(
+            server.paths.filter { $0.hasSuffix("/projects/1") }.count, 1,
+            "precondition: the first call read the dock once and cached it")
+
+        await assertSummarizeFails(
+            account, RecordingRef(bucketId: 1, recordingId: 8, eventType: "chat.line.created")
+        ) { error in
+            guard case .campfireDiscoveryIncomplete = error else {
+                return XCTFail("expected campfireDiscoveryIncomplete, got \(error)")
+            }
+        }
+
+        let secondCall = Array(server.paths.dropFirst(afterFirst))
+        XCTAssertEqual(
+            secondCall.filter { $0.contains("/lines/") }.count,
+            RecordingsService.maxCampfireCandidates,
+            "every candidate the budget allows was tried")
+        XCTAssertFalse(
+            secondCall.contains { $0.hasSuffix("/projects/1") },
+            "and the dock was NOT re-read: the budget it would hand back is already spent")
     }
 
     /// The third property of the budget rule, and the one that produces a WRONG

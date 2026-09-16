@@ -114,6 +114,15 @@ enum RubyMarshal {
                 return try integer()
             case UInt8(ascii: "\""):
                 let n = try count()
+                // A Marshal string is bytes, and Go's `string(raw)` keeps them
+                // as they are where this substitutes U+FFFD for any sequence
+                // that is not UTF-8. Nothing downstream can currently tell:
+                // U+FFFD's bytes are all ≥ 0x80, so the result is never a
+                // delimiter, a digit or part of `gid`, `://` or `Person`, and a
+                // gid carrying one fails the same way in both. It is written
+                // down rather than fixed because `String` is what the envelope
+                // hands on, and the JSON side makes the same substitution
+                // deliberately — but this one is Foundation's choice, not Go's.
                 return String(decoding: try bytes(n), as: UTF8.self)
             case UInt8(ascii: ":"):
                 let n = try count()
