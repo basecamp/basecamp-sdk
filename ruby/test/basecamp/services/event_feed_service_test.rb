@@ -50,7 +50,7 @@ class EventFeedServiceTest < Minitest::Test
     assert_includes page["next"], "position=posAAA"
     assert_equal 2, page["events"].length
     assert_nil page["events"][0]["performed_by_id"]
-    refute page["events"][0].key?("details")
+    assert_not page["events"][0].key?("details")
     assert_equal 1049715999, page["events"][1]["performed_by_id"]
     assert_equal 501, page["events"][1].dig("details", "boost_id")
   end
@@ -64,7 +64,7 @@ class EventFeedServiceTest < Minitest::Test
 
     assert_equal [], page["events"]
     assert_equal "posNOW", page["position"]
-    refute page.key?("next")
+    assert_not page.key?("next")
   end
 
   def test_poll_events_409_filter_mismatch_is_a_non_retryable_error
@@ -76,7 +76,7 @@ class EventFeedServiceTest < Minitest::Test
     error = assert_raises(Basecamp::Error) { @account.event_feed.poll_events(position: "posAAA") }
 
     assert_equal 409, error.http_status
-    refute error.retryable
+    assert_not error.retryable
     assert_includes error.message, "Positions are bound"
   end
 
@@ -90,7 +90,7 @@ class EventFeedServiceTest < Minitest::Test
     error = assert_raises(Basecamp::Error) { @account.event_feed.poll_events(position: "posOLD") }
 
     assert_equal 410, error.http_status
-    refute error.retryable
+    assert_not error.retryable
   end
 
   def test_poll_inbox_decodes_the_envelope_and_sends_reasons

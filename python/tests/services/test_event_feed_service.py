@@ -45,7 +45,11 @@ class TestPollEvents:
                             kind="boost_created",
                             event_type="boost.created",
                             performed_by_id=1049715999,
-                            details={"boost_id": 501, "boosted_event_id": 1071915468, "boosted_event_type": "message.created"},
+                            details={
+                                "boost_id": 501,
+                                "boosted_event_id": 1071915468,
+                                "boosted_event_type": "message.created",
+                            },
                         ),
                     ],
                     "position": "posAAA",
@@ -133,7 +137,9 @@ class TestPollEvents:
     @respx.mock
     def test_400_malformed_position_is_validation(self):
         respx.get(f"{BASE}/events.json").mock(
-            return_value=httpx.Response(400, json={"error": "Unrecognized position. Resume with since=<id> or since=now."})
+            return_value=httpx.Response(
+                400, json={"error": "Unrecognized position. Resume with since=<id> or since=now."}
+            )
         )
 
         with pytest.raises(ValidationError) as excinfo:

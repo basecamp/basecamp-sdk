@@ -130,19 +130,22 @@ async fn event_feed_poll_events_reaches_the_wire() {
     Mock::given(method("GET"))
         .and(path("/999/events.json"))
         .and(wiremock::matchers::query_param("since", "0"))
-        .and(wiremock::matchers::query_param("types", "message.created,boost.created"))
+        .and(wiremock::matchers::query_param(
+            "types",
+            "message.created,boost.created",
+        ))
         .and(header("Authorization", "Bearer test-token"))
         .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
             "events": [{
-                "id": 1071915468,
+                "id": 1_071_915_468,
                 "kind": "message_created",
                 "action": "created",
                 "created_at": "2026-07-14T06:10:00.159Z",
                 "event_type": "message.created",
-                "bucket_id": 2085958499,
-                "creator_id": 1049715945,
+                "bucket_id": 2_085_958_499,
+                "creator_id": 1_049_715_945,
                 "performed_by_id": null,
-                "recording_id": 1069479766
+                "recording_id": 1_069_479_766
             }],
             "position": "posAAA"
         })))
