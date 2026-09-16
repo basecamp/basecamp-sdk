@@ -34,9 +34,11 @@ const (
 	// iteration cannot decline. The live buffer grows to its capacity lazily
 	// and pays only for the events it admits; it carries the same ceiling
 	// because the two are one published contract, not because it allocates up
-	// front. #900 refused the value at fixture load, after a scenario asking
-	// for 2,147,483,647 took the test process down. The options are the same
-	// request on a path the loader does not cover.
+	// front. That New itself spends nothing on either capacity is proven
+	// rather than asserted here: TestNewAllocationSizeDoesNotVaryWithCapacity
+	// measures it. #900 refused the value at fixture load, after a scenario
+	// asking for 2,147,483,647 took the test process down. The options are
+	// the same request on a path the loader does not cover.
 	MaxCapacity = 1_000_000
 
 	// handshakeDeadline (EVENT_FEED_HANDSHAKE_DEADLINE, 10s) spans
