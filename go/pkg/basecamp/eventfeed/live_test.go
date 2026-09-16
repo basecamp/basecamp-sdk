@@ -763,7 +763,10 @@ func TestLivePolls_APageOutOfOrderIsMalformed(t *testing.T) {
 // TestLivePolls_TheGuardSurvivesAHookThatReplacesTheContext: a host hook that
 // returns a fresh context from OnRequestStart drops the seam's per-call
 // record; the guard still answers the 3xx, because it recognizes the seam
-// call by its route, and the foreign origin still sees nothing.
+// call by its route, and the foreign origin still sees nothing. What the
+// dropped record costs is the origin, and the seam says so: `unrecorded`,
+// never `unparsable` — an operator reading the §9 token would go looking for
+// a Location the server never malformed.
 func TestLivePolls_TheGuardSurvivesAHookThatReplacesTheContext(t *testing.T) {
 	var sentinelHits atomic.Int32
 	sentinel := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -782,6 +785,9 @@ func TestLivePolls_TheGuardSurvivesAHookThatReplacesTheContext(t *testing.T) {
 	}
 	if strings.Contains(pe.Error(), "leak") {
 		t.Fatalf("PollError renders the refused Location: %s", pe.Error())
+	}
+	if pe.LocationOrigin != "unrecorded" {
+		t.Fatalf("LocationOrigin = %q, want %q for a refusal whose record the hook dropped", pe.LocationOrigin, "unrecorded")
 	}
 	if sentinelHits.Load() != 0 {
 		t.Fatalf("the foreign origin received %d request(s), want zero egress", sentinelHits.Load())

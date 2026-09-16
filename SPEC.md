@@ -4241,7 +4241,12 @@ END
 -- refresh and retry budget) → unauthorized; a 3xx whose Location fails the per-hop
 -- same-origin/no-downgrade validation (auto-follow is disabled — Continuation and
 -- Resume URL Validation) → redirect_refused, carrying the refused Location redacted to
--- its origin → Terminal(`invalid_continuation`), NEVER unrecoverable; anything else
+-- its origin — or, in its place, the fixed token `unparsable` when the Location yielded
+-- no complete origin (§9) and `unrecorded` when the hop was refused but the adapter
+-- could not attribute the origin to the call; the refusal and its zero egress never
+-- depend on that attribution, and the two tokens are never interchanged, since one
+-- reports what the server sent and the other what the adapter failed to keep
+-- → Terminal(`invalid_continuation`), NEVER unrecoverable; anything else
 -- non-retryable (404, 405, unexpected shapes) → unrecoverable, carrying the generated
 -- error verbatim. No Location is followed inside the seam, same-origin included: the API
 -- never redirects a feed call, and a continuation is followed by re-issuing the

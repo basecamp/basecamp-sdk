@@ -244,7 +244,17 @@ type PollError struct {
 	// offending list, verbatim.
 	Msg string
 	// LocationOrigin is the refused redirect Location reduced to its origin
-	// (redirect_refused only). DATA, never a rendering — the CloseError.Reason
+	// (redirect_refused only), or one of two fixed tokens in its place:
+	// `unparsable` when the Location was absent or yielded no complete
+	// origin (§9), and `unrecorded` when the hop was refused but the
+	// adapter could not attribute the origin to this call — a host hook
+	// that returns a context unrelated to the one it was handed drops the
+	// per-call record the transport writes it on. The refusal and its zero
+	// egress hold in every case; only the origin is lost. The two tokens
+	// stay distinct so a reader of `unparsable` can keep taking it for what
+	// it says — a statement about what the server sent.
+	//
+	// DATA, never a rendering — the CloseError.Reason
 	// precedent: a hostile redirect can reflect the caller's bearer into a
 	// host label, so no rendering may carry this value. PollError.Error
 	// deliberately omits it, and a terminal built from a refused redirect

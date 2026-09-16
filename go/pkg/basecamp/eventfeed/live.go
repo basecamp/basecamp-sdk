@@ -41,11 +41,11 @@ import (
 // call as a status it classifies. No hop is ever followed, same-origin
 // included: the API never redirects a feed call, and a continuation is
 // followed by re-issuing the operation, not by a hop. The guard acts only on
-// the seams' own calls — it recognizes them by the per-call record they
-// carry — so every other request through the same client keeps the client's
-// own redirect handling: a host can use it for its own refetches
-// (Live.Client), downloads included, whose first hop legitimately 302s to a
-// signed URL. The host keeps every other option — its hooks, logger,
+// the seams' own calls — it recognizes them by their routes beneath the
+// configured base path — so every other request through the same client
+// keeps the client's own redirect handling: a host can use it for its own
+// refetches (Live.Client), downloads included, whose first hop legitimately
+// 302s to a signed URL. The host keeps every other option — its hooks, logger,
 // transport, auth strategy — by passing them through.
 
 // Live is the connector's wire binding: the seams for one account on one
@@ -167,9 +167,17 @@ func (l *Live) Connect(opts ...Option) (*Connector, error) {
 // refusedHop is the per-call record the redirect guard writes when it
 // answers a 3xx: the refused Location reduced to its origin — data for the
 // seam's redirect_refused kind, never rendered (§23: a hostile redirect can
-// reflect the bearer into a host label). It travels on the call's context so
-// the guard, which sees only the wire exchange, can hand it back to the seam
-// call that owns it.
+// reflect the bearer into a host label). It travels on the call's context,
+// the only per-call channel between a seam call and the transport under it,
+// so the guard — which sees only the wire exchange — can hand the origin
+// back to the call that owns it. The refusal itself does not depend on the
+// record: the guard answers a 3xx off the request's route, so a record that
+// does not survive costs the origin, never the egress guarantee. A host hook
+// that returns a context unrelated to the one it was handed is what loses it
+// — the same channel carries the client's own per-request state (the retry
+// attempt, the download projection marker) and the caller's cancellation —
+// and the seam then reports `unrecorded` rather than claiming the server
+// sent a Location it could not parse.
 type refusedHop struct {
 	mu      sync.Mutex
 	refused bool
@@ -312,6 +320,20 @@ func isDigits(s string) bool {
 // Location, never the status text.
 var errHopRefused = errors.New("eventfeed: refused a redirect off the API origin")
 
+// The two fixed tokens a redirect_refused carries in place of an origin.
+// originUnparsable is §9's: the Location was absent, or yielded no complete
+// origin. originUnrecorded is the other thing that can be true — the guard
+// refused a hop, and the seam cannot say where to: the call's record travels
+// on its context, and a host hook that returns a context unrelated to the
+// one it was handed drops it. They are distinct because they say different
+// things: the first is a statement about the server's header, the second
+// about this connector's own bookkeeping, and an operator reading the first
+// for the second would go looking for a malformed Location that never was.
+const (
+	originUnparsable = "unparsable"
+	originUnrecorded = "unrecorded"
+)
+
 // locationOrigin reduces a refused hop's Location — resolved against the
 // request's URL first, as a relative or scheme-relative reference would be
 // — to its origin, the one component the seam contract lets a
@@ -319,15 +341,15 @@ var errHopRefused = errors.New("eventfeed: refused a redirect off the API origin
 // header is absent or yields no complete origin (§9).
 func locationOrigin(base *url.URL, location string) string {
 	if location == "" || base == nil {
-		return "unparsable"
+		return originUnparsable
 	}
 	ref, err := url.Parse(location)
 	if err != nil {
-		return "unparsable"
+		return originUnparsable
 	}
 	origin, err := CanonicalOrigin(base.ResolveReference(ref).String())
 	if err != nil {
-		return "unparsable"
+		return originUnparsable
 	}
 	return origin
 }
@@ -661,10 +683,13 @@ func mapPollError(ctx context.Context, err error, hop *refusedHop, lane Lane) er
 	var apiErr *basecamp.Error
 	if errors.As(err, &apiErr) && isRedirectStatus(apiErr.HTTPStatus) {
 		// A 3xx the guard answered: the origin it recorded rides as data on
-		// LocationOrigin (§9's fixed token for a Location that was absent
-		// or did not parse), and the cause is fixed text — nothing of the
-		// response reaches a rendering.
-		origin := "unparsable"
+		// LocationOrigin, and the cause is fixed text — nothing of the
+		// response reaches a rendering. A refusal whose record did not reach
+		// the seam reports `unrecorded`, never `unparsable`: the guard
+		// refuses the hop off the request's route, so zero egress holds
+		// either way, but the two tokens answer different questions and only
+		// one of them is about the server's header.
+		origin := originUnrecorded
 		if recorded, ok := hop.get(); ok && recorded != "" {
 			origin = recorded
 		}
