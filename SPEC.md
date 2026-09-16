@@ -3674,8 +3674,11 @@ is an allocation the process cannot decline rather than a slow run. An SDK that 
 2,147,483,647 is not being more permissive, it is shipping a different contract. The same
 number is the conformance schema's `maximum` for both fields
 (`conformance/event-feed/schema.json`), so no fixture can ask for what the consumer surface
-refuses, and the Go loader's bound is the exported constant by declaration so the three
-cannot drift. A
+refuses. The schema and the Go reference are held together by a test — the tier-2 loader's
+bound is the exported constant by declaration, and the schema's `maximum` is compared
+against it — but this sentence and Appendix A's row are hand-maintained, like every other
+`EVENT_FEED_*` row and for the reason given there, so moving the ceiling means moving all
+three. A
 violation is a `usage`-coded construction error (Consumer Surface above) — zero wire
 attempts. Positions are filter-bound; changing filters starts a new checkpoint lineage (the
 server enforces this with 409).
