@@ -3121,7 +3121,7 @@ The generated layer is the account event feed's HTTP surface as BC3 documents it
 | Operation | Method + path | Traits | Errors |
 |---|---|---|---|
 | `PollEvents` | `GET /{accountId}/events.json` | `@readonly`; retry 429/503 ×3 | 400 `FeedRequestError` (malformed position **or** malformed filter, told apart by its optional `reason`), 409 `FeedFilterMismatchError`, 410 `FeedPositionGoneError` (re-enters at the epoch), 401, 403, 429, 500 |
-| `PollInbox` | `GET /{accountId}/inbox.json` | `@readonly`; retry 429/503 ×3 | 400 `FeedRequestError` and 409 as `PollEvents`; 403 `BareForbiddenError` — a bodyless `head :forbidden` — for every non-agent principal; 410 `InboxPositionGoneError` (re-enters at `since=0`), a distinct shape from the feed's |
+| `PollInbox` | `GET /{accountId}/inbox.json` | `@readonly`; retry 429/503 ×3 | 400 `FeedRequestError` and 409 as `PollEvents`; 403 `BareForbiddenError` — a bodyless `head :forbidden` — for every non-agent principal; 410 `InboxPositionGoneError` (re-enters at `since=0`), a distinct shape from the feed's `FeedPositionGoneError` |
 | `CreateStreamTicket` | `POST /{accountId}/events/stream_ticket.json`, no body, 200 | `@idempotent` + `@basecampIdempotent(natural: true)`; retry 429/503 ×3 | 401, 403, 429, 500 |
 
 **Pagination is the body envelope, never the Link walk.** Every 200 from the two poll

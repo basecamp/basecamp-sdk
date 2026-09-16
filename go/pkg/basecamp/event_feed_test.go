@@ -228,6 +228,23 @@ func TestEventFeedService_PollEvents_PositionGone(t *testing.T) {
 	}
 }
 
+func TestEventFeedService_PollEvents_GoneWithoutEpochStaysCanonical(t *testing.T) {
+	svc := testEventFeedServer(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(410)
+		_, _ = w.Write([]byte(`{"error": "That position predates this feed's epoch.", "resume": "https://3.basecampapi.com/99999/events.json?since=0"}`))
+	})
+	_, err := svc.PollEvents(context.Background(), &PollEventsOptions{Position: "posOLD"})
+	var gone *FeedPositionGoneError
+	if errors.As(err, &gone) {
+		t.Fatalf("a feed 410 without epoch_after_id must not be typed with a fabricated epoch, got %+v", gone)
+	}
+	var base *Error
+	if !errors.As(err, &base) || base.HTTPStatus != 410 {
+		t.Fatalf("expected the canonical 410 *Error, got %v", err)
+	}
+}
+
 func TestEventFeedService_PollEvents_MalformedPositionWithoutReasonIsUndifferentiated(t *testing.T) {
 	svc := testEventFeedServer(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")

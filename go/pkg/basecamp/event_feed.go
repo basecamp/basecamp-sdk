@@ -483,9 +483,15 @@ func checkFeedResponse(resp *http.Response, body []byte, lane feedLaneKind) erro
 			}
 			return err
 		}
-		var gone generated.FeedPositionGoneErrorResponseContent
-		if json.Unmarshal(body, &gone) == nil && gone.Resume != "" {
-			return &FeedPositionGoneError{Err: base, EpochAfterID: gone.EpochAfterId, Resume: gone.Resume}
+		// Decoded with a pointer rather than the generated int64 so a 410 that
+		// omits (or nulls) the required epoch is not typed with a fabricated 0
+		// boundary; it stays the canonical error.
+		var gone struct {
+			EpochAfterID *int64 `json:"epoch_after_id"`
+			Resume       string `json:"resume"`
+		}
+		if json.Unmarshal(body, &gone) == nil && gone.Resume != "" && gone.EpochAfterID != nil {
+			return &FeedPositionGoneError{Err: base, EpochAfterID: *gone.EpochAfterID, Resume: gone.Resume}
 		}
 	}
 	return err
