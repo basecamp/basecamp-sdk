@@ -1,7 +1,7 @@
 use std::fmt::Write;
 
 use crate::emit::{HEADER, string_literal};
-use crate::model::{Body, Model, Operation, ParamKind, Response};
+use crate::model::{Body, Model, Operation, PaginationMode, ParamKind, Response};
 use crate::naming::constant_name;
 
 pub(crate) fn render(model: &Model) -> String {
@@ -70,11 +70,15 @@ fn render_route(out: &mut String, operation: &Operation) {
     };
     writeln!(out, "    response: {response},").unwrap();
     let pagination = match &operation.pagination {
-        None => "Pagination::None".to_string(),
-        Some(pagination) => format!(
+        PaginationMode::None => "Pagination::None".to_string(),
+        PaginationMode::Link(pagination) => format!(
             "Pagination::Link {{ key: {}, total_count_header: {} }}",
             option_literal(pagination.key.as_deref()),
             option_literal(pagination.total_count_header.as_deref())
+        ),
+        PaginationMode::Cursor { key } => format!(
+            "Pagination::Cursor {{ key: {} }}",
+            option_literal(key.as_deref())
         ),
     };
     writeln!(out, "    pagination: {pagination},").unwrap();

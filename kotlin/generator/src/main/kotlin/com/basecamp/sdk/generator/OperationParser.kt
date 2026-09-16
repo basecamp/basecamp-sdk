@@ -190,8 +190,38 @@ class OperationParser(private val api: OpenApiParser) {
         val returnsVoid = isVoidResponse(responses)
         val isMutation = httpMethod != "GET"
         val resourceType = extractResourceType(operationId)
-        val hasPagination = operation.containsKey("x-basecamp-pagination")
-        val paginationKey = operation["x-basecamp-pagination"]?.jsonObject?.get("key")?.jsonPrimitive?.content
+        // Auto-pagination is the "link" style alone. The generated method follows
+        // Link: rel="next" and flattens the whole walk into one array, which is right
+        // when the only thing a page carries is more items.
+        //
+        // The "cursor" style (the event feed's PollEvents/PollInbox) is declared so
+        // the catalogue and behavior model describe the operation honestly, and
+        // deliberately generates no auto-pagination: each call returns ONE page
+        // carrying its own opaque `position`, which is the durable checkpoint a
+        // consumer persists after accepting that page. Flattening the walk would
+        // swallow every intermediate position and leave a crashed consumer with
+        // nothing to resume from.
+        // `?.jsonObject` throws on JsonNull, which is not Kotlin null -- a literal
+        // "x-basecamp-pagination": null would crash here where the other five
+        // generators read it as unpaginated. Narrow to a real object first.
+        val paginationExtension = operation["x-basecamp-pagination"] as? JsonObject
+        val paginationStyle = paginationExtension?.get("style")?.jsonPrimitive?.content
+        // Only "link" and "cursor" are implemented. Anything else -- a typo, or
+        // the "page" style the trait used to advertise -- must fail loudly: read
+        // as "not paginated" it would silently ship a method that never walks.
+        require(paginationExtension == null || paginationStyle in setOf("link", "cursor")) {
+            "$operationId: unsupported pagination style $paginationStyle (expected \"link\" or \"cursor\")"
+        }
+        val hasPagination = paginationStyle == "link"
+        // Link-style only. findUnderlyingEntitySchema unwraps an envelope whenever
+        // the key is set, and OperationParser:315 calls it without checking
+        // hasPagination -- so a cursor operation would be typed as the item under
+        // its key instead of the envelope the wire actually sends.
+        val paginationKey = if (paginationStyle == "link") {
+            paginationExtension?.get("key")?.jsonPrimitive?.content
+        } else {
+            null
+        }
 
         // Note: wrapped pagination (paginationKey != null) does NOT force returnsArray.
         // The response is an object with a paginated array inside — handled separately

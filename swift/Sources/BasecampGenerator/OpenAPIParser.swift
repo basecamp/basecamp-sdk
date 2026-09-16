@@ -197,9 +197,37 @@ func parseOperation(
     let returnsVoid = isVoidResponse(responses)
     let isMutation = httpMethod != "GET"
     let resourceType = extractResourceType(operationId)
-    let paginationExt = operation["x-basecamp-pagination"] as? [String: Any]
-    let hasPagination = paginationExt != nil
-    let paginationKey = paginationExt?["key"] as? String
+    // Auto-pagination is the "link" style alone. The generated method follows
+    // Link: rel="next" and flattens the whole walk into one array, which is right
+    // when the only thing a page carries is more items.
+    //
+    // The "cursor" style (the event feed's PollEvents/PollInbox) is declared so
+    // the catalogue and behavior model describe the operation honestly, and
+    // deliberately generates no auto-pagination: each call returns ONE page
+    // carrying its own opaque `position`, which is the durable checkpoint a
+    // consumer persists after accepting that page. Flattening the walk would
+    // swallow every intermediate position and leave a crashed consumer with
+    // nothing to resume from.
+    // Presence is tested before the object cast on purpose: `as? [String: Any]`
+    // answers nil for a trait that is present but not an object, which would
+    // skip the refusal below and ship the operation as silently unpaginated —
+    // the one failure mode this check exists to remove. A literal null reads as
+    // absent, matching the other five generators.
+    let paginationValue = operation["x-basecamp-pagination"]
+    let paginationDeclared = paginationValue != nil && !(paginationValue is NSNull)
+    let paginationExt = paginationValue as? [String: Any]
+    let paginationStyle = paginationExt?["style"] as? String
+    // Only "link" and "cursor" are implemented. Anything else — a typo, or the
+    // "page" style the trait used to advertise — must fail loudly: read as "not
+    // paginated" it would silently ship a method that never walks.
+    if paginationDeclared, paginationStyle != "link", paginationStyle != "cursor" {
+        fatalError("\(operationId): unsupported pagination style \(paginationStyle ?? "nil") (expected \"link\" or \"cursor\")")
+    }
+    let hasPagination = paginationStyle == "link"
+    // Link-style only: getEntityTypeName unwraps an envelope whenever the key is
+    // set and ServiceEmitter calls it without checking hasPagination, so a cursor
+    // operation would take the item type as its public return type.
+    let paginationKey = paginationStyle == "link" ? paginationExt?["key"] as? String : nil
 
     // Note: wrapped pagination (paginationKey != nil) does NOT force returnsArray.
     // The response is an object with a paginated array inside — handled separately

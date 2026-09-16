@@ -37,11 +37,35 @@ list RetryStatusCodes {
 @trait(selector: "operation")
 @specificationExtension(as: "x-basecamp-pagination")
 structure basecampPagination {
-    /// Pagination style: "link" (Link header RFC5988), "cursor", or "page"
+    /// Pagination style, and only the two the generators implement:
+    ///
+    /// "link"   — RFC 5988 `Link: rel="next"`. The generated method follows the
+    ///            chain and flattens the walk into one array.
+    /// "cursor" — one call answers one page, which carries its own opaque
+    ///            position. Never walked: flattening would swallow every
+    ///            position, and a position is the only thing a consumer can
+    ///            resume from.
+    ///
+    /// The six service generators reject any other value rather than reading it
+    /// as "not paginated", which would silently ship a method that never walks.
+    /// The metadata emitters and the behavior model copy `style` through
+    /// unvalidated, so a bad value reaches those artifacts before a service
+    /// generator refuses it — the refusal is a build gate, not a schema
+    /// constraint.
+    ///
+    /// Go reads this trait nowhere: its list wrappers are hand-written and call
+    /// `followPagination` by hand, so nothing there enforces the style either
+    /// way. The first cursor operation's Go wrapper is discipline, not a gate —
+    /// it must not follow the walk, and no build will say so.
+    ///
+    /// A third value, "page", was documented here for years and no generator
+    /// ever read it. That is not the same as page-number paging being
+    /// unimplemented: `page` is a real query parameter across the SDKs (SPEC
+    /// "The `page` Query Parameter"), reached without this trait. What never
+    /// existed was a pagination *style* by that name, so the word was removed
+    /// rather than left as a promise. Add it back with a generator that reads
+    /// it, not before.
     style: String
-
-    /// Name of the query parameter for page number (if style is "page")
-    pageParam: String
 
     /// Name of the response header containing total count
     totalCountHeader: String
@@ -204,7 +228,7 @@ structure basecampAuthRoutableUrl {}
 @documentation("Pagination semantics for BasecampJson protocol (legacy)")
 @deprecated(message: "Use basecampPagination instead for OpenAPI bridge support")
 structure pagination {
-    @documentation("Pagination style: link | cursor | none")
+    @documentation("Pagination style. Deprecated and read by nothing; basecampPagination's `style` is the live vocabulary.")
     style: String
 }
 

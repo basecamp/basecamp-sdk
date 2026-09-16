@@ -79,11 +79,17 @@ fn the_mini_model_renders_the_golden_output() {
     let _ = fs::remove_dir_all(&scratch);
 }
 
-/// A copy of the mini model with one edit applied to `openapi.json`, generated into a
-/// scratch directory; answers the generator's stderr on failure.
-fn refusal(edit: impl FnOnce(&mut serde_json::Value, &mut serde_json::Value)) -> String {
+/// A copy of the mini model with one edit applied, in a scratch directory ready
+/// to generate from. The single place that knows which files the mini model is
+/// made of -- `refusal` and `acceptance` both build on it, so a fourth input
+/// cannot reach one and miss the other.
+fn prepared(
+    edit: impl FnOnce(&mut serde_json::Value, &mut serde_json::Value),
+    kind: &str,
+) -> PathBuf {
     let root = std::env::temp_dir().join(format!(
-        "basecamp-sdk-generator-refusal-{}-{:?}-{}",
+        "basecamp-sdk-generator-{}-{}-{:?}-{}",
+        kind,
         std::process::id(),
         std::thread::current().id(),
         rand_suffix()
@@ -112,13 +118,37 @@ fn refusal(edit: impl FnOnce(&mut serde_json::Value, &mut serde_json::Value)) ->
         root.join("rust/generator/names.toml"),
     )
     .unwrap();
+    root
+}
+
+/// Generated from an edit the generator must REFUSE; answers its stderr.
+fn refusal(edit: impl FnOnce(&mut serde_json::Value, &mut serde_json::Value)) -> String {
+    let root = prepared(edit, "refusal");
     let output = generate(&root, &root.join("out"));
+    let stderr = String::from_utf8_lossy(&output.stderr).into_owned();
+    let accepted = output.status.success();
     let _ = fs::remove_dir_all(&root);
-    assert!(
-        !output.status.success(),
-        "the generator should have refused"
-    );
-    String::from_utf8_lossy(&output.stderr).into_owned()
+    assert!(!accepted, "the generator should have refused");
+    stderr
+}
+
+/// Generated from an edit the generator must ACCEPT; answers the file at
+/// `relative`. The mirror of `refusal`, for edits where the question is what
+/// was emitted rather than what was said. Cleanup happens before the assert so
+/// a failure does not leave the scratch directory behind.
+fn acceptance(
+    edit: impl FnOnce(&mut serde_json::Value, &mut serde_json::Value),
+    relative: &str,
+) -> String {
+    let root = prepared(edit, "acceptance");
+    let out = root.join("out");
+    let output = generate(&root, &out);
+    let rendered = fs::read_to_string(out.join(relative)).ok();
+    let stderr = String::from_utf8_lossy(&output.stderr).into_owned();
+    let accepted = output.status.success();
+    let _ = fs::remove_dir_all(&root);
+    assert!(accepted, "the generator should have accepted: {stderr}");
+    rendered.unwrap_or_else(|| panic!("{relative} was not generated"))
 }
 
 fn rand_suffix() -> u64 {
@@ -199,6 +229,167 @@ fn a_pagination_key_that_is_not_a_required_array_fails_generation() {
     assert!(
         stderr.contains("GetWidgetProgress paginates over `missing`, which is not a member of GetWidgetProgressResponseContent"),
         "{stderr}"
+    );
+}
+
+// The cursor-page mode: declared so the catalogue and behavior model describe
+// the operation honestly, and generating no auto-pagination on purpose. A page
+// carries its own opaque position, and the Link-following walk would flatten
+// the pages and swallow every one of them -- leaving a crashed consumer with
+// nothing to resume from. Before this, `style` was read only to reject
+// anything that was not "link", so the mode the trait has always documented
+// could not be spelled at all.
+#[test]
+fn the_cursor_style_generates_a_single_page_rather_than_a_flattening_walk() {
+    let widgets = acceptance(
+        |openapi, _| {
+            openapi["paths"]["/{accountId}/widgets/{widgetId}/progress.json"]["get"]["x-basecamp-pagination"]
+                ["style"] = serde_json::json!("cursor");
+        },
+        "services/widgets.rs",
+    );
+
+    assert!(
+        widgets.contains("Result<GetWidgetProgressResponseContent, Error>"),
+        "a cursor-page operation returns one page, not a Page<>: {widgets}"
+    );
+    assert!(
+        !widgets.contains("Page<GetWidgetProgressResponseContent>"),
+        "a cursor-page operation must not be wired into the Link-following paginator: {widgets}"
+    );
+}
+
+// The key is the cursor style's one piece of unvalidated data: no emitter
+// consumes it, only the catalogue carries it, so without an explicit check a
+// typo would ship to consumers with nothing having read it. The link style has
+// been refusing a bad key since before this mode existed; cursor must too.
+#[test]
+fn a_cursor_key_that_is_not_a_required_array_is_refused_like_a_link_key() {
+    let stderr = refusal(|openapi, _| {
+        let pagination = &mut openapi["paths"]["/{accountId}/widgets/{widgetId}/progress.json"]["get"]
+            ["x-basecamp-pagination"];
+        pagination["style"] = serde_json::json!("cursor");
+        pagination["key"] = serde_json::json!("totally_not_a_member");
+    });
+    assert!(
+        stderr.contains("paginates over `totally_not_a_member`"),
+        "a cursor key must be checked against the response schema: {stderr}"
+    );
+
+    let stderr = refusal(|openapi, _| {
+        openapi["paths"]["/{accountId}/widgets/{widgetId}/progress.json"]["get"]["x-basecamp-pagination"]
+            ["style"] = serde_json::json!("cursor");
+        openapi["components"]["schemas"]["GetWidgetProgressResponseContent"]["properties"]["events"] =
+            serde_json::json!({"type": "string"});
+    });
+    assert!(
+        stderr.contains("is not an array"),
+        "a cursor key naming a non-array must be refused: {stderr}"
+    );
+}
+
+// The catalogue is the half that is easy to get wrong: collapsing cursor into
+// "no pagination" makes the shipped route table say a paginated operation
+// answers once, which is the opposite of true.
+#[test]
+fn the_cursor_style_reaches_the_route_catalogue_as_cursor_not_as_none() {
+    let routes = acceptance(
+        |openapi, _| {
+            openapi["paths"]["/{accountId}/widgets/{widgetId}/progress.json"]["get"]["x-basecamp-pagination"]
+                ["style"] = serde_json::json!("cursor");
+        },
+        "routes.rs",
+    );
+
+    // Scoped to the one route the edit touched -- the fixture has another
+    // Link-paginated operation and several unpaginated ones, so a whole-file
+    // match would prove nothing.
+    let route = routes
+        .split("pub static ")
+        .find(|block| block.starts_with("GET_WIDGET_PROGRESS:"))
+        .expect("the edited route is in the catalogue");
+
+    assert!(
+        route.contains("Pagination::Cursor"),
+        "the catalogue must name the cursor mode: {route}"
+    );
+    assert!(
+        route.contains(r#"key: Some("events")"#),
+        "the cursor entry must carry the page's items key: {route}"
+    );
+    assert!(
+        !route.contains("Pagination::None"),
+        "a cursor operation is paginated; the catalogue must not say it answers once: {route}"
+    );
+    assert!(
+        !route.contains("Pagination::Link"),
+        "a cursor operation must not be catalogued as a Link walk: {route}"
+    );
+}
+
+#[test]
+fn a_style_that_is_not_link_or_cursor_is_refused() {
+    // Two cases that differ: "page" is a style the trait advertised for years
+    // and nothing implemented, and a typo is what actually happens. Both must
+    // fail loudly rather than read as "not paginated", which would ship a
+    // method that silently never walks.
+    for style in ["page", "linkk", "Link", ""] {
+        let stderr = refusal(move |openapi, _| {
+            openapi["paths"]["/{accountId}/widgets/{widgetId}/progress.json"]["get"]["x-basecamp-pagination"]
+                ["style"] = serde_json::json!(style);
+        });
+        assert!(
+            stderr.contains("unsupported pagination style"),
+            "style {style:?} must be refused by name: {stderr}"
+        );
+    }
+}
+
+// The style is checked before the behavior model, so an unsupported style is
+// reported as what it is rather than sending the reader off to regenerate a
+// behavior model that was never the problem.
+// A style key that is missing, null, or not a string at all. Python and Ruby
+// cover these; Rust did not, and they are the spellings a hand-edit produces.
+#[test]
+fn a_style_that_is_absent_null_or_not_a_string_is_refused() {
+    for style in [
+        serde_json::Value::Null,
+        serde_json::json!(7),
+        serde_json::json!({}),
+    ] {
+        let stderr = refusal(move |openapi, _| {
+            openapi["paths"]["/{accountId}/widgets/{widgetId}/progress.json"]["get"]["x-basecamp-pagination"]
+                ["style"] = style;
+        });
+        assert!(
+            stderr.contains("unsupported pagination style"),
+            "a non-string style must be refused: {stderr}"
+        );
+    }
+
+    let stderr = refusal(|openapi, _| {
+        let pagination = openapi["paths"]["/{accountId}/widgets/{widgetId}/progress.json"]["get"]
+            ["x-basecamp-pagination"]
+            .as_object_mut()
+            .expect("the fixture declares pagination");
+        pagination.remove("style");
+    });
+    assert!(
+        stderr.contains("unsupported pagination style"),
+        "an absent style must be refused, not read as link: {stderr}"
+    );
+}
+
+#[test]
+fn an_unsupported_style_is_named_even_when_the_behavior_model_is_silent() {
+    let stderr = refusal(|openapi, behavior| {
+        openapi["paths"]["/{accountId}/widgets/{widgetId}/progress.json"]["get"]["x-basecamp-pagination"]
+            ["style"] = serde_json::json!("page");
+        behavior["operations"]["GetWidgetProgress"]["pagination"] = serde_json::Value::Null;
+    });
+    assert!(
+        stderr.contains("unsupported pagination style"),
+        "the style is the problem, not the behavior model: {stderr}"
     );
 }
 

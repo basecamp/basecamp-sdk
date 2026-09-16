@@ -499,9 +499,31 @@ def parse_operation(
     returns_array = (resolved_response or {}).get("type") == "array"
 
     # Pagination
+    # Auto-pagination is the "link" style alone. The generated method follows
+    # Link: rel="next" and flattens the whole walk into one array, which is right
+    # when the only thing a page carries is more items.
+    #
+    # The "cursor" style (the event feed's PollEvents/PollInbox) is declared so
+    # the catalogue and behavior model describe the operation honestly, and
+    # deliberately generates no auto-pagination: each call returns ONE page
+    # carrying its own opaque `position`, which is the durable checkpoint a
+    # consumer persists after accepting that page. Flattening the walk would
+    # swallow every intermediate position and leave a crashed consumer with
+    # nothing to resume from.
     pagination = operation.get("x-basecamp-pagination")
-    has_pagination = pagination is not None
-    pagination_key = (pagination or {}).get("key")
+    pagination_style = (pagination or {}).get("style")
+    # Only "link" and "cursor" are implemented. Anything else -- a typo, or the
+    # "page" style the trait used to advertise -- must fail loudly: read as "not
+    # paginated" it would silently ship a method that never walks.
+    if pagination is not None and pagination_style not in ("link", "cursor"):
+        raise ValueError(
+            f"{operation_id}: unsupported pagination style {pagination_style!r} (expected 'link' or 'cursor')"
+        )
+    has_pagination = pagination_style == "link"
+    # Link-style only: the key drives envelope unwrapping in type resolution, and
+    # a cursor operation must be typed as its envelope, not as the item under the
+    # key. Withheld at the source rather than gated at each consumer.
+    pagination_key = (pagination or {}).get("key") if pagination_style == "link" else None
 
     return {
         "operation_id": operation_id,

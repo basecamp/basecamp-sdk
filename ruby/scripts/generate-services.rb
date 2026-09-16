@@ -441,6 +441,14 @@ class ServiceGenerator
     # Extract body parameters from schema
     body_params = extract_body_params(body_schema_ref)
 
+    # Only "link" and "cursor" are implemented. Anything else -- a typo, or the
+    # "page" style the trait used to advertise -- must fail loudly: read as "not
+    # paginated" it would silently ship a method that never walks.
+    pagination_style = operation.dig('x-basecamp-pagination', 'style')
+    if operation['x-basecamp-pagination'] && !%w[ link cursor ].include?(pagination_style)
+      raise "#{operation_id}: unsupported pagination style #{pagination_style.inspect} (expected \"link\" or \"cursor\")"
+    end
+
     # Check response
     success_response = operation.dig('responses', '200') || operation.dig('responses', '201')
     response_schema = success_response&.dig('content', 'application/json', 'schema')
@@ -471,8 +479,18 @@ class ServiceGenerator
       returns_array: returns_array,
       returns_bare_array: returns_bare_array,
       is_mutation: http_method != 'GET',
-      has_pagination: !!operation['x-basecamp-pagination'],
-      pagination_key: operation.dig('x-basecamp-pagination', 'key')
+      # Auto-pagination is the "link" style alone: the generated method follows
+      # Link: rel="next" and flattens the walk into one array. The "cursor"
+      # style is declared for the catalogue and generates none -- each call
+      # returns one page carrying its own opaque position, and flattening would
+      # swallow every intermediate one.
+      has_pagination: pagination_style == 'link',
+      # Carried separately because has_pagination is false for cursor, and the
+      # bare-array gate below would otherwise walk it anyway.
+      cursor_pagination: pagination_style == 'cursor',
+      # Link-style only: the key drives envelope unwrapping, and a cursor
+      # operation must be typed as its envelope rather than the item under it.
+      pagination_key: (pagination_style == 'link' ? operation.dig('x-basecamp-pagination', 'key') : nil)
     }
   end
 
@@ -658,7 +676,10 @@ class ServiceGenerator
   def generate_method(op, service_name:)
     lines = []
 
-    is_paginated = (op[:returns_array] || op[:has_pagination]) && !op[:pagination_key]
+    # A cursor operation never walks, whatever its response shape: has_pagination
+    # is already false for it, but a bare-array response would otherwise send it
+    # down the Link-following path through returns_array.
+    is_paginated = !op[:cursor_pagination] && (op[:returns_array] || op[:has_pagination]) && !op[:pagination_key]
     is_wrapped_paginated = op[:has_pagination] && op[:pagination_key]
 
     # Method signature (paginated operations gain a trailing max_items: kwarg)
