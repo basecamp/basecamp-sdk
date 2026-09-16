@@ -72,17 +72,46 @@ private fun decodeFailureMessage(e: SerializationException): String =
     }
 
 /**
- * Tests the Kotlin runner's operation dispatcher has no implementation for.
+ * Tests the Kotlin runner does not execute, each with the reason. Historically
+ * these were cases its operation dispatcher had no implementation for.
  *
- * Empty: the Go-first composite that filled it — every case in
- * `recording_summary.json` — is ported (SPEC Appendix F, Recording Summaries and
- * Mention Helpers), and the roster's own rule is that a port deletes its
- * entries. The constant stays so the next gap has somewhere to go, and so the
- * named-roster branch below keeps its only caller; the one skip this runner
- * still reports comes from the `link-header` tag branch, not from here. Every
- * entry added here must be rostered in `spec/zero-skip-roster.yml`.
+ * The Go-first composite that once filled this emptied it when the port landed
+ * (SPEC Appendix F, Recording Summaries and Mention Helpers), and the roster's
+ * own rule is that a port deletes its entries. Two came back, and they are NOT
+ * a missing dispatch: they are the one nested-decode case card 39 found this
+ * runtime cannot answer.
+ *
+ * `kotlinx.serialization` accepts a QUOTED NUMBER wherever a model declares a
+ * numeric primitive — the lexer consumes `"7"` into a `Long` with no regard for
+ * `isLenient`, which is off here (#598) and does not reach this. The reference
+ * refuses it: `RecordingParent.Id` and `RecordingBucket.Id` are plain `int64`
+ * there, and only a `Person.Id` is a `FlexibleInt64` — which is why the flexible
+ * case one member over passes in both. So the whole typed decode this port
+ * relies on is a hair LOOSER than Go's at every integer field not already routed
+ * through a flexible serializer — the same lexer serves `Int` — which is 178
+ * fields (91 `Long`, 81 `Int`, 6 integer lists) across 83 of the 94 generated
+ * models, and this composite is only where a fixture finally looked. Closing it is a generator change — a strict serializer emitted beside
+ * [com.basecamp.sdk.serialization.FlexibleLongSerializer] and applied to every
+ * plain integer field — held to its own sweep on card 43, not a repair to make inside a
+ * change about two other ports.
+ *
+ * Declared in the ACCEPTING direction, which is the worse one: a body the
+ * reference rejects is read here rather than refused. It is recorded in SPEC's
+ * Kotlin row and rostered below rather than left to a green suite to hide.
+ *
+ * The constant stays whatever its contents, so the next gap has somewhere to go
+ * and the named-roster branch below keeps a caller; the third skip this runner
+ * reports comes from the `link-header` tag branch, not from here. Every entry
+ * added here must be rostered in `spec/zero-skip-roster.yml`.
  */
-private val KOTLIN_SKIPS: Map<String, String> = emptyMap()
+private val KOTLIN_SKIPS: Map<String, String> = mapOf(
+    "RecordingsSummarize refuses a wrong-typed parent id, which is not a person's flexible one" to
+        "kotlinx.serialization reads a quoted number into any numeric primitive, so a plain int64 " +
+        "cannot be made strict without a generator-emitted serializer",
+    "RecordingsSummarize refuses a wrong-typed id on a parent's bucket" to
+        "kotlinx.serialization reads a quoted number into any numeric primitive, so a plain int64 " +
+        "cannot be made strict without a generator-emitted serializer",
+)
 
 
 /**

@@ -805,6 +805,253 @@ describe("recordings.summarize", () => {
       expect("parent" in rendered).toBe(false);
     });
 
+    // Card 39: the container check used to be the whole of it, so
+    // `{"creator":{"name":7}}` produced a summary whose `name` was a number in
+    // a field the contract declares a string. Every field rather than a sample,
+    // and written out as LITERALS rather than imported from the source tables,
+    // which is what this protects and what it does not: a row DELETED from
+    // PERSON_STRING_FIELDS goes red here, because the literal still sends it;
+    // a row ADDED to the source is invisible here, because nothing sends it.
+    // The first is the regression card 39 exists to stop, under-typing, and an
+    // earlier version of this comment claimed the second protection instead.
+    const PERSON_STRINGS = [
+      "attachable_sgid", "avatar_url", "bio", "created_at", "email_address", "location",
+      "name", "personable_type", "tagline", "time_zone", "title", "updated_at",
+    ];
+    const PERSON_BOOLS = [
+      "admin", "can_access_hill_charts", "can_access_timesheet", "can_manage_people",
+      "can_manage_projects", "can_ping", "client", "employee", "owner",
+    ];
+
+    const summarizeBody = async (body: string, recordingType = "Comment", path = "comments") => {
+      const fresh = createBasecampClient({ accountId: "12345", accessToken: "t", enableRetry: false });
+      server.use(
+        http.get(`${BASE_URL}/${path}/1`, () =>
+          HttpResponse.text(body, { headers: { "content-type": "application/json" } }),
+        ),
+      );
+      return await fresh.recordings
+        .summarize({ bucketId: BUCKET, recordingId: 1, recordingType })
+        .catch((e: unknown) => e);
+    };
+
+    const BUCKET_JSON = `"bucket":{"id":${BUCKET},"name":"B","type":"Project"}`;
+
+    it("types every field of a nested member, not only the container", async () => {
+      const bodies: [string, string][] = [
+        ...PERSON_STRINGS.map((f): [string, string] => [
+          `creator.${f}`,
+          `{"id":1,"title":"t","content":"c",${BUCKET_JSON},"creator":{"id":9,"name":"A","${f}":7}}`,
+        ]),
+        ...PERSON_BOOLS.map((f): [string, string] => [
+          `creator.${f}`,
+          `{"id":1,"title":"t","content":"c",${BUCKET_JSON},"creator":{"id":9,"name":"A","${f}":"yes"}}`,
+        ]),
+        ...["title", "type", "url", "app_url"].map((f): [string, string] => [
+          `parent.${f}`,
+          `{"id":1,"title":"t","content":"c",${BUCKET_JSON},"parent":{"id":2,"title":"T","${f}":7}}`,
+        ]),
+        ...["name", "type"].map((f): [string, string] => [
+          `bucket.${f}`,
+          `{"id":1,"title":"t","content":"c","bucket":{"id":${BUCKET},"name":"B","type":"Project","${f}":7}}`,
+        ]),
+        // A person's company, both levels. Its id takes the PLAIN reader, not
+        // the flexible one the person's own id takes.
+        ["creator.company", `{"id":1,"title":"t","content":"c",${BUCKET_JSON},"creator":{"id":9,"name":"A","company":7}}`],
+        ["creator.company.name", `{"id":1,"title":"t","content":"c",${BUCKET_JSON},"creator":{"id":9,"name":"A","company":{"id":1,"name":7}}}`],
+        ["creator.company.id", `{"id":1,"title":"t","content":"c",${BUCKET_JSON},"creator":{"id":9,"name":"A","company":{"id":"1","name":"N"}}}`],
+        // A RecordingParent's bucket, which is a typed struct there — all
+        // THREE of its fields. The id had no coverage in any port: a nested
+        // bucket has no second reader, where the TOP-LEVEL bucket's id is read
+        // again by the cross-project check, and that is what hid it.
+        ["parent.bucket", `{"id":1,"title":"t","content":"c",${BUCKET_JSON},"parent":{"id":2,"title":"T","bucket":7}}`],
+        ["parent.bucket.name", `{"id":1,"title":"t","content":"c",${BUCKET_JSON},"parent":{"id":2,"title":"T","bucket":{"id":1,"name":7}}}`],
+        ["parent.bucket.type", `{"id":1,"title":"t","content":"c",${BUCKET_JSON},"parent":{"id":2,"title":"T","bucket":{"id":1,"type":7}}}`],
+        ...['"7"', "true", "7.5", "1e20"].map((bad): [string, string] => [
+          `parent.bucket.id ${bad}`,
+          `{"id":1,"title":"t","content":"c",${BUCKET_JSON},"parent":{"id":2,"title":"T","bucket":{"id":${bad},"name":"N"}}}`,
+        ]),
+        // A parent's own id is a PLAIN int64, not the FlexibleInt64 a person's
+        // is: `"7"` resolves for a creator and fails the read here.
+        ...['"7"', "true", "7.5", "1e20"].map((bad): [string, string] => [
+          `parent.id ${bad}`,
+          `{"id":1,"title":"t","content":"c",${BUCKET_JSON},"parent":{"id":${bad},"title":"T"}}`,
+        ]),
+      ];
+      for (const [label, body] of bodies) {
+        const err = await summarizeBody(body);
+        expect(err, label).toBeInstanceOf(BasecampError);
+        expect((err as BasecampError).code, label).toBe("api_error");
+        expect((err as BasecampError).hint, label).not.toContain("Campfire");
+      }
+    });
+
+    it("refuses no body the reference accepts", async () => {
+      // NULL is a no-op at any depth in Go's decoder, so a present null is not
+      // a wrong type at any of these positions.
+      for (const field of [...PERSON_STRINGS, ...PERSON_BOOLS]) {
+        const summary = await summarizeBody(
+          `{"id":1,"title":"t","content":"c",${BUCKET_JSON},"creator":{"id":9,"name":"A","${field}":null}}`,
+        );
+        expect(summary, `creator.${field}`).not.toBeInstanceOf(BasecampError);
+      }
+
+      // `system_label` is NOT a field of generated.Person — the reference
+      // ignores it as an unknown key. Typing it here (it IS a field of the
+      // hand-written wrapper Person) would refuse a body the reference accepts,
+      // which is the direction that matters.
+      for (const key of ["system_label", "zzz_unknown"]) {
+        const summary = await summarizeBody(
+          `{"id":1,"title":"t","content":"c",${BUCKET_JSON},"creator":{"id":9,"name":"A","${key}":7}}`,
+        );
+        expect(summary, key).not.toBeInstanceOf(BasecampError);
+      }
+
+      // A todo carries a TodoParent, which has no `bucket` field at all, so the
+      // very body that fails on a comment is accepted here.
+      const todo = await summarizeBody(
+        `{"id":1,"title":"t","content":"c",${BUCKET_JSON},"parent":{"id":2,"title":"T","bucket":7}}`,
+        "Todo",
+        "todos",
+      );
+      expect(todo).not.toBeInstanceOf(BasecampError);
+
+      // And the declared residue: the recording's own unread top-level fields
+      // are NOT typed here, where Go's whole-body decode refuses them.
+      const residue = await summarizeBody(`{"id":1,"title":"t","content":"c","url":7,${BUCKET_JSON}}`);
+      expect(residue).not.toBeInstanceOf(BasecampError);
+    });
+
+    it("emits a person id decoded, as the FlexibleInt64 it is", async () => {
+      // The conversion, not only the validation. Go's decode turns "007" into
+      // 7 and the non-numeric sentinel into 0, so emitting the raw string left
+      // this port's `creator.id` a string where every other SDK gives a number.
+      const seven = await summarizeBody(
+        `{"id":1,"title":"t","content":"c",${BUCKET_JSON},"creator":{"id":"007","name":"A"}}`,
+      );
+      expect((seven as { creator?: { id?: unknown } }).creator?.id).toBe(7);
+
+      const sentinel = await summarizeBody(
+        `{"id":1,"title":"t","content":"c",${BUCKET_JSON},"creator":{"id":"basecamp","name":"A"}}`,
+      );
+      expect((sentinel as { creator?: { id?: unknown } }).creator?.id).toBe(0);
+
+      // A shape FlexibleInt64 refuses outright fails the read. The int64
+      // WINDOW applies to a number as well as to a string: an earlier spelling
+      // bounded the string branch and left the number branch on a bare
+      // `Number.isInteger`, so `1e20` — which Go, Ruby and Python all refuse —
+      // came back as a person id of 10^20.
+      for (const value of ["{}", "true", "7.5", '"9223372036854775808"', "1e20", "-1e300", "9223372036854775808"]) {
+        const err = await summarizeBody(
+          `{"id":1,"title":"t","content":"c",${BUCKET_JSON},"creator":{"id":${value},"name":"A"}}`,
+        );
+        expect(err, value).toBeInstanceOf(BasecampError);
+      }
+
+      // An id this runtime cannot hold EXACTLY is refused rather than rounded.
+      // The reference accepts these and carries them exactly; JavaScript
+      // cannot, and `Number(BigInt("9223372036854775807"))` is 2^63 — the very
+      // value the overflow guard one line above exists to reject. Refusing is
+      // the direction that does not hand a caller a person id naming someone
+      // else.
+      for (const value of ['"9223372036854775807"', '"9007199254740993"']) {
+        const err = await summarizeBody(
+          `{"id":1,"title":"t","content":"c",${BUCKET_JSON},"creator":{"id":${value},"name":"A"}}`,
+        );
+        expect(err, value).toBeInstanceOf(BasecampError);
+        expect((err as BasecampError).message, value).toContain("exactly");
+      }
+
+      // The largest id that IS exact still resolves, so the guard above cannot
+      // be satisfied by refusing every large id.
+      const safe = await summarizeBody(
+        `{"id":1,"title":"t","content":"c",${BUCKET_JSON},"creator":{"id":"9007199254740991","name":"A"}}`,
+      );
+      expect((safe as { creator?: { id?: unknown } }).creator?.id).toBe(9007199254740991);
+
+      // And the reader above governs a NARROWER set of bodies than it looks:
+      // `normalizePersonIds` rewrites the id of anything carrying
+      // `personable_type` before a composite sees the body, so the same id that
+      // is refused above comes back as the 0-plus-system_label that pre-pass
+      // produces. Pinned so the declared residue is not mistaken for the
+      // behaviour a caller actually sees on a real person.
+      const prepassed = await summarizeBody(
+        `{"id":1,"title":"t","content":"c",${BUCKET_JSON},"creator":{"id":"9223372036854775807","name":"A","personable_type":"User"}}`,
+      );
+      expect(prepassed).not.toBeInstanceOf(BasecampError);
+      expect((prepassed as { creator?: { id?: unknown } }).creator?.id).toBe(0);
+    });
+
+    it("emits a parent's and a bucket's id decoded, as the plain int64 they are", async () => {
+      // A null id is the zero value in Go and reaches a caller as 0 there and
+      // in Ruby. Reading it and then emitting the member verbatim left it as
+      // `null` in a field typed `number` — the same read-one-way-emit-another
+      // defect this file already fixed on a person id, one member over.
+      const summary = await summarizeBody(
+        `{"id":1,"title":"t","content":"c","bucket":{"id":null,"name":"B","type":"Project"},"parent":{"id":null,"title":"P"}}`,
+      );
+      expect(summary).not.toBeInstanceOf(BasecampError);
+      expect((summary as { parent?: { id?: unknown } }).parent?.id).toBe(0);
+      expect((summary as { bucket?: { id?: unknown } }).bucket?.id).toBe(0);
+
+      // An ABSENT id is still not invented, for a parent or for a creator.
+      const absentParent = await summarizeBody(
+        `{"id":1,"title":"t","content":"c",${BUCKET_JSON},"parent":{"title":"P"}}`,
+      );
+      expect("id" in ((absentParent as { parent?: object }).parent ?? {})).toBe(false);
+
+      const absentCreator = await summarizeBody(
+        `{"id":1,"title":"t","content":"c",${BUCKET_JSON},"creator":{"name":"A"}}`,
+      );
+      expect("id" in ((absentCreator as { creator?: object }).creator ?? {})).toBe(false);
+    });
+
+    it("emits a null nested label as the empty string, as Go and Ruby do", async () => {
+      // `Person.name` and `RecordingBucket.name` are `string` and
+      // `RecordingParent.title` is `string`, so a JSON null is Go's zero value
+      // and reaches a caller as "" there and in Ruby. Passing the member
+      // through left it as `null` in a field typed `string` — the same
+      // read-one-way-emit-another defect the id tests above close, on the one
+      // other field the emptiness rule reads. Ruby pins its side in
+      // `test_a_null_nested_label_is_emitted_as_an_empty_string`.
+      const cases: [string, string, string][] = [
+        ["creator", "name", `${BUCKET_JSON},"creator":{"id":9,"name":null}`],
+        ["parent", "title", `${BUCKET_JSON},"parent":{"id":9,"title":null}`],
+        ["bucket", "name", `"bucket":{"id":${BUCKET},"name":null,"type":"Project"}`],
+      ];
+      for (const [member, label, json] of cases) {
+        const summary = await summarizeBody(`{"id":1,"title":"t","content":"c",${json}}`);
+        expect(summary, `${member}.${label}`).not.toBeInstanceOf(BasecampError);
+        const emitted = (summary as Record<string, Record<string, unknown> | undefined>)[member];
+        expect(emitted?.[label], `${member}.${label}`).toBe("");
+      }
+
+      // An ABSENT label is not invented: the write-back is for a present null.
+      const absent = await summarizeBody(
+        `{"id":1,"title":"t","content":"c",${BUCKET_JSON},"creator":{"id":9}}`,
+      );
+      expect("name" in ((absent as { creator?: object }).creator ?? {})).toBe(false);
+    });
+
+    it("types every assignee exactly as it types the creator", async () => {
+      // Go decodes `[]Person`, so the rule reaches every element — including
+      // one past the first, which is where a short-circuit would hide.
+      const err = await summarizeBody(
+        `{"id":1,"title":"t","content":"c",${BUCKET_JSON},"assignees":[{"id":1,"name":"A"},{"id":2,"name":"B","avatar_url":7}]}`,
+        "Todo",
+        "todos",
+      );
+      expect(err).toBeInstanceOf(BasecampError);
+
+      // And the flexible id converts at that level too.
+      const summary = await summarizeBody(
+        `{"id":1,"title":"t","content":"c",${BUCKET_JSON},"assignees":[{"id":"007","name":"A"}]}`,
+        "Todo",
+        "todos",
+      );
+      expect((summary as { assignees?: { id?: unknown }[] }).assignees?.[0]?.id).toBe(7);
+    });
+
     it("reads updated_at as the time.Time it is, not as one more string", async () => {
       // Its Go type is not a string, and its rules are not the string rules.
       // Measured through generated.Comment: null is the zero instant and no

@@ -181,16 +181,24 @@ runners:
       - case: "Large integer IDs preserved without precision loss"
         reason: "`Number` is 53-bit (waiver 1B.6)."
 
-  # No section-level classification: the two kinds of entry below differ in
-  # status and must not share a label. The `link-header` case is architectural
-  # and says so in its reason; every `recording_summary.json` case — the
-  # Go-first composite's whole fixture — is unwaivered tracked work (SPEC
-  # Appendix F), and each reason says that.
+  # No section-level classification: the kinds of entry below differ in status
+  # and must not share a label. The `link-header` case is architectural and says
+  # so in its reason. The two `recording_summary.json` cases are a runtime
+  # limit, not a missing port: `kotlinx.serialization` reads a quoted number
+  # into any integer primitive, so this SDK is looser than the reference at
+  # every integer field it declares outside a flexible serializer — 178 fields
+  # across 83 of the 94 generated models — and these two cases are where a
+  # fixture first looked. Closing it is a generator
+  # change with its own sweep, tracked separately; each reason says so.
   kotlin:
-    source: "`kotlin/conformance/.../Main.kt` — the entry below comes from the `link-header` tag branch, not from `KOTLIN_SKIPS`, which the port of the Go-first composite emptied"
+    source: "`kotlin/conformance/.../Main.kt` `KOTLIN_SKIPS`, plus the `link-header` entry below, which comes from the tag branch rather than from the constant"
     skips:
       - case: "List operation returns first page with Link header"
         reason: "architectural: the SDK auto-paginates, and its status model reports the last consumed response, so a one-response queue yields \"no response\" (see the tag-branch discussion above)."
+      - case: "RecordingsSummarize refuses a wrong-typed parent id, which is not a person's flexible one"
+        reason: "accepting-direction: `kotlinx.serialization` reads a quoted number into any numeric primitive regardless of `isLenient`, so a plain int64 is not strict here until the generator emits a serializer that makes it so (card 43)."
+      - case: "RecordingsSummarize refuses a wrong-typed id on a parent's bucket"
+        reason: "accepting-direction: the same quoted-number read, one member further in."
 
   swift:
     source: "`conformance/runner/swift/.../Runner.swift` — `temporarySkips` is empty since the Go-first composite was ported; the one entry below comes from the `link-header` tag branch"

@@ -580,6 +580,146 @@ class RecordingsSummarizeTest < Minitest::Test
     end
   end
 
+  # The four tables, transcribed from +generated+ and written out here as
+  # LITERALS. This is what pins their CONTENTS.
+  #
+  # The refusal test below used to iterate the source constants, which made the
+  # test the table: a row deleted from PERSON_STRING_FIELDS deleted its own test
+  # with it, and a reviewer's mutation removing `tagline` and `owner` left all
+  # 74 tests and all 280 conformance cases green. Under-typing — a field the
+  # reference types that this port stops typing — is the regression card 39
+  # exists to stop, and nothing caught it. The comment above that loop claimed
+  # the opposite protection, which iterating the constant made vacuous.
+  #
+  # Equality rather than inclusion, so an ADDED row fails too: a field the
+  # reference does not type is an over-refusal, and adding one should have to
+  # say so here.
+  PERSON_STRINGS = %w[
+    attachable_sgid avatar_url bio created_at email_address location
+    name personable_type tagline time_zone title updated_at
+  ].freeze
+  PERSON_BOOLS = %w[
+    admin can_access_hill_charts can_access_timesheet can_manage_people
+    can_manage_projects can_ping client employee owner
+  ].freeze
+  PARENT_STRINGS = %w[title type url app_url].freeze
+  BUCKET_STRINGS = %w[name type].freeze
+
+  def test_the_field_tables_are_the_generated_models_fields
+    ext = Basecamp::Services::RecordingsExtensions
+
+    assert_equal PERSON_STRINGS.sort, ext::PERSON_STRING_FIELDS.sort, "generated.Person string fields"
+    assert_equal PERSON_BOOLS.sort, ext::PERSON_BOOL_FIELDS.sort, "generated.Person bool fields"
+    assert_equal PARENT_STRINGS.sort, ext::PARENT_STRING_FIELDS.sort, "generated.RecordingParent string fields"
+    assert_equal BUCKET_STRINGS.sort, ext::BUCKET_STRING_FIELDS.sort, "generated.RecordingBucket string fields"
+  end
+
+  # Every field of every nested member, driven from the LITERALS above rather
+  # than the source tables, so a row missing from a source table still sends
+  # its body here and fails its refusal. Enumerated rather than sampled, for
+  # the reason the null table gives: a sample says "no more found yet". This is
+  # the closure card 39 decided — before it, exactly three of these refused.
+  def test_every_typed_field_of_a_nested_member_fails_the_read
+    PERSON_STRINGS.each do |field|
+      assert_nested_refusal("creator", { "id" => 9, "name" => "V" }.merge(field => 7), "creator.#{field}")
+    end
+    PERSON_BOOLS.each do |field|
+      assert_nested_refusal("creator", { "id" => 9, "name" => "V" }.merge(field => "yes"), "creator.#{field}")
+    end
+    PARENT_STRINGS.each do |field|
+      assert_nested_refusal("parent", { "id" => 9, "title" => "T" }.merge(field => 7), "parent.#{field}")
+    end
+    BUCKET_STRINGS.each do |field|
+      assert_nested_refusal("bucket", { "id" => BUCKET, "name" => "B" }.merge(field => 7), "bucket.#{field}")
+    end
+
+    # A person's company, both levels. Its id is a PLAIN int64 on
+    # PersonCompany, not the flexible reader the person's own id takes.
+    assert_nested_refusal("creator", { "id" => 9, "name" => "V", "company" => 7 }, "creator.company")
+    assert_nested_refusal("creator", { "id" => 9, "name" => "V", "company" => { "id" => 1, "name" => 7 } },
+      "creator.company.name")
+    assert_nested_refusal("creator", { "id" => 9, "name" => "V", "company" => { "id" => "1", "name" => "N" } },
+      "creator.company.id")
+
+    # The parent's bucket, which exists only on a RecordingParent. All THREE of
+    # its fields, the id included: a RecordingBucket is
+    # `{id int64, name string, type string}`, and the id had no test until a
+    # reviewer deleted the four lines that check it and watched 74 unit tests
+    # and 265 conformance cases stay green. A nested bucket has no second
+    # reader — the top-level one is read again by the cross-bucket check, which
+    # is what hid the same gap in a sibling port.
+    assert_nested_refusal("parent", { "id" => 9, "title" => "T", "bucket" => 7 }, "parent.bucket")
+    assert_nested_refusal("parent", { "id" => 9, "title" => "T", "bucket" => { "id" => 1, "name" => 7 } },
+      "parent.bucket.name")
+    assert_nested_refusal("parent", { "id" => 9, "title" => "T", "bucket" => { "id" => 1, "type" => 7 } },
+      "parent.bucket.type")
+    [ "7", true, 7.5, [], {} ].each do |bad|
+      assert_nested_refusal("parent", { "id" => 9, "title" => "T", "bucket" => { "id" => bad, "name" => "N" } },
+        "parent.bucket.id #{bad.inspect}")
+    end
+
+    # A parent's and a bucket's own id take the PLAIN reader, not the flexible
+    # one a person's takes: "7" resolves for a creator and fails the read here.
+    [ "7", true, 7.5 ].each do |bad|
+      assert_nested_refusal("parent", { "id" => bad, "title" => "T" }, "parent.id #{bad.inspect}")
+    end
+  end
+
+  # The two directions this closure must NOT move, measured against the
+  # generated model rather than assumed from the hand-written one.
+  def test_the_nested_tables_refuse_no_body_the_reference_accepts
+    # NULL is a no-op at any depth in the reference's decoder, so a present
+    # null is not a wrong type at any of these positions.
+    (Basecamp::Services::RecordingsExtensions::PERSON_STRING_FIELDS +
+     Basecamp::Services::RecordingsExtensions::PERSON_BOOL_FIELDS).each do |field|
+      stub_get("/12345/comments/1",
+        response_body: recording("creator" => { "id" => 9, "name" => "V", field => nil }))
+
+      assert summarize(event_type: "comment.created"), "a null creator.#{field} is the zero value"
+      WebMock.reset!
+    end
+
+    # system_label is NOT a field of generated.Person — the reference ignores
+    # it as an unknown key. Typing it here would refuse a body the reference
+    # accepts, which is the direction that matters. Same for any other key the
+    # model does not carry.
+    [ "system_label", "zzz_unknown" ].each do |key|
+      stub_get("/12345/comments/1",
+        response_body: recording("creator" => { "id" => 9, "name" => "V", key => 7 }))
+
+      assert summarize(event_type: "comment.created"), "a wrong-typed #{key} is an unknown key, not a field"
+      WebMock.reset!
+    end
+
+    # A todo carries a TodoParent, which has no bucket field at all, so the
+    # same body that fails on a comment is accepted here.
+    stub_get("/12345/todos/1",
+      response_body: recording("type" => "Todo", "parent" => { "id" => 9, "title" => "T", "bucket" => 7 }))
+
+    assert summarize(event_type: "todo.created"), "a TodoParent's bucket is an unknown key"
+  end
+
+  # Every assignee takes the same Person table the creator takes, at every
+  # position — including one past the first, which is where a short-circuit
+  # would hide.
+  def test_an_assignee_is_typed_exactly_as_a_creator_is
+    [ [ { "id" => 1, "name" => "A" }, { "id" => 2, "name" => "B", "avatar_url" => 7 } ],
+      [ { "id" => 1, "name" => "A", "admin" => "yes" } ],
+      [ { "id" => 1, "name" => "A", "company" => { "id" => 1, "name" => 7 } } ] ].each do |assignees|
+      stub_get("/12345/todos/1", response_body: recording("type" => "Todo", "assignees" => assignees))
+
+      assert_raises(Basecamp::ApiError, assignees.inspect) { summarize(event_type: "todo.created") }
+      WebMock.reset!
+    end
+  end
+
+  def assert_nested_refusal(member, value, label)
+    stub_get("/12345/comments/1", response_body: recording(member => value))
+
+    assert_raises(Basecamp::ApiError, label) { summarize(event_type: "comment.created") }
+    WebMock.reset!
+  end
+
   def test_a_null_nested_label_is_emitted_as_an_empty_string
     # The value the write-back produces, asserted on the EMITTED member rather
     # than on the read succeeding. Without this, deleting the write-back leaves

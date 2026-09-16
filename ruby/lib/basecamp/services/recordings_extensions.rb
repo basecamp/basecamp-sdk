@@ -53,6 +53,35 @@ module Basecamp
         "The recording summary reads this field to decide which Campfires a chat line could " \
         "be in, so a value of the wrong type cannot be used."
 
+      # The fields of a nested member the reference types, by the model it
+      # decodes into. See #read_member_fields for why these are transcribed from
+      # +generated+ rather than from the hand-written wrapper types, and for
+      # what deliberately stays out of them.
+      #
+      # +generated.Person+: every one of these is a +*string+ but +name+, which
+      # is a plain +string+ — null is a no-op for both, so they take one rule.
+      # +created_at+ and +updated_at+ are +*time.Time+ there; a non-string fails
+      # on both sides and an unparseable string fails only there.
+      # +system_label+ is deliberately ABSENT: the generated model has no such
+      # field, so the reference ignores it as an unknown key.
+      PERSON_STRING_FIELDS = %w[
+        attachable_sgid avatar_url bio created_at email_address location
+        name personable_type tagline time_zone title updated_at
+      ].freeze
+
+      # +generated.Person+'s +*bool+ fields.
+      PERSON_BOOL_FIELDS = %w[
+        admin can_access_hill_charts can_access_timesheet can_manage_people
+        can_manage_projects can_ping client employee owner
+      ].freeze
+
+      # +generated.RecordingParent+ / +generated.TodoParent+. Their +bucket+ is
+      # the difference between the two and is handled separately.
+      PARENT_STRING_FIELDS = %w[title type url app_url].freeze
+
+      # +generated.TodoBucket+ / +generated.RecordingBucket+.
+      BUCKET_STRING_FIELDS = %w[name type].freeze
+
       # Maps BC3's recording type strings to a read. It is the routing contract,
       # and it is a DELIBERATE set, not an exhaustive one: the recording types
       # the account event feed's trigger matrix names (comment, message, to-do,
@@ -355,7 +384,9 @@ module Basecamp
             record,
             title: first_non_empty(record["title"], record["content"]),
             content: record["description"],
-            assignees: record["assignees"]
+            assignees: record["assignees"],
+            # A todo carries a TodoParent, which has no bucket field at all.
+            parent_has_bucket: false
           )
         when :card
           record = read_record(@client.cards.get(card_id: id))
@@ -391,7 +422,9 @@ module Basecamp
           project(
             record,
             title: first_non_empty(record["title"], record["name"]),
-            content: record["description"]
+            content: record["description"],
+            # A todolist carries a TodoParent too — same shape, same absence.
+            parent_has_bucket: false
           )
         when :vault
           project(@client.vaults.get(vault_id: id), content: "")
@@ -487,41 +520,68 @@ module Basecamp
       # reference refuses, and the check was already written, four times, on the
       # sibling id fields in this same file.
       #
-      # PASSED THROUGH — "parent", "bucket" and "creator", which are nested
-      # objects, and "updated_at". Their ID is the exception and is decoded,
-      # because this composite reads it to decide whether the member appears at
-      # all, and reading a value one way while emitting it another is what made
-      # a caller see "007" where the contract gives 7. An ABSENT id is still not
+      # ALSO TYPED, as of card 39 — "parent", "bucket" and "creator", the
+      # nested objects, FIELD BY FIELD against the model the reference decodes
+      # into. #read_member_fields carries the table and the reasoning; the
+      # short version is that these used to be passed through whole, and this
+      # paragraph used to argue that widening meant writing a decoder. The
+      # survey that settled the card showed the argument was scoped wrong:
+      # a nested identity is a bounded, enumerable set — Person's 12 strings,
+      # 9 bools and a company, Parent's 4 strings and its bucket, Bucket's 2 —
+      # and it was only the WHOLE-RECORDING decode that was out of reach.
+      # Four of the seven SDKs get the nested half for free through a typed
+      # decoder, so stopping short of it made this port the minority rather
+      # than the careful one.
+      #
+      # Their ID is decoded rather than merely checked, because this composite
+      # reads it to decide whether the member appears at all, and reading a
+      # value one way while emitting it another is what made a caller see
+      # "007" where the contract gives 7. An ABSENT id is still not
       # synthesised: the reference emits a whole typed struct with every field
       # present, and inventing one of them while passing the rest through would
-      # be half a decode. The three objects are where reproducing the
-      # decoder would actually begin: validating them means writing the type the
-      # generated layer deliberately does not have. What IS honoured for them is
-      # the reference's emptiness rule — it builds each only when it has an id
-      # or a name, so an empty object leaves the key out rather than appearing
-      # as "{}". "updated_at" is a deliberate divergence rather than a gap: the
-      # reference parses an instant and every port here keeps the API's own
-      # string, which Appendix F records.
+      # be half a decode. What is also honoured is the reference's emptiness
+      # rule — it builds each member only when it has an id or a name, so an
+      # empty object leaves the key out rather than appearing as "{}".
       #
       # "bucket" appears in both lists above for a reason worth stating rather
-      # than tidying: its OBJECT is passed through to the caller, and its ID is
-      # read by the cross-bucket check. It is the one member that is both
-      # reported and interpreted, which is exactly why it has been the source of
-      # four separate defects on this branch.
+      # than tidying: its OBJECT is reported to the caller, and its ID is read
+      # by the cross-bucket check. It is the one member that is both reported
+      # and interpreted, which is exactly why it has been the source of four
+      # separate defects on this branch.
       #
       # The rule that produced three rounds of findings, stated so the next
-      # person does not rediscover it: when a change makes this composite READ a
-      # field it used to only report, the field moves into the typed set and
-      # this paragraph has to move with it. A
-      # malformed one of those reaches the caller as it arrived, where the
-      # reference would have failed the read.
+      # person does not rediscover it: when a change makes this composite READ
+      # a field it used to only report, the field moves into the typed set and
+      # this paragraph has to move with it.
       #
-      # Checking a few more of them would not close that gap; it would only move
-      # the edge somewhere less defensible and make the next reader think the
-      # projection is validated. Widening it means validating the WHOLE
-      # projection, and that is a decoder — a different change, deliberately not
-      # this one.
-      def project(record, title: :default, content: :default, assignees: nil, parent: :default)
+      # THE RESIDUE — the one place it is enumerated in this file. The other
+      # comments that mention part of it point here rather than repeating it,
+      # because three spellings of this list in one file had already drifted
+      # into three different lists, under a heading calling one of them whole.
+      # * the recording's own fields this projection never reads — "url",
+      #   "visible_to_clients", "bookmark_url", "created_at",
+      #   "content_attachments". The reference decodes the entire typed model,
+      #   so a wrong-typed one of those fails ITS read and not this one.
+      #   Closing that is the whole-recording decoder across every routed type,
+      #   which is a different change and deliberately not this one. Python and
+      #   TypeScript carry the identical residue and their SPEC rows say so.
+      # * "updated_at", a deliberate divergence rather than a gap: the
+      #   reference parses an instant and every port here keeps the API's own
+      #   string, which Appendix F records. The TYPE is checked; the VALUE is
+      #   not.
+      # * the same for a PERSON's "created_at" / "updated_at", one level down
+      #   (#read_member_fields): <tt>*time.Time</tt> in the model, so a string
+      #   that is not RFC 3339 fails only in the reference.
+      # * an assignee's null "name", emitted as nil where the reference emits
+      #   "" — the label write-back #read_member does for a creator, a parent
+      #   and a bucket does not reach #read_assignees. TypeScript matches this
+      #   port there rather than moving alone.
+      # * a parent's nested "bucket", which is TYPED (a wrong-typed one fails
+      #   the read, as the generated decode does) but then passed through
+      #   whole, id undecoded, where the reference's conversion builds a
+      #   <tt>Parent</tt> without a bucket and emits no such key at all.
+      def project(record, title: :default, content: :default, assignees: nil, parent: :default,
+                  parent_has_bucket: true)
         record = read_record(record)
         title = record["title"] if title == :default
         content = record["content"] if content == :default
@@ -571,17 +631,17 @@ module Basecamp
         # what this now does in the same order.
         summary[BUCKET_ID_MEMO] = read_bucket_id(record)
 
-        parent_member = read_member(parent, "title", "parent")
+        parent_member = read_member(parent, "title", "parent", kind: :parent, parent_has_bucket: parent_has_bucket)
         parent_member.nil? ? summary.delete("parent") : summary["parent"] = parent_member
 
-        bucket_member = read_member(summary["bucket"], "name", "bucket")
+        bucket_member = read_member(summary["bucket"], "name", "bucket", kind: :bucket)
         bucket_member.nil? ? summary.delete("bucket") : summary["bucket"] = bucket_member
         # A creator's id is decoded FLEXIBLY, because a creator is a Person and
         # that is the one id in the generated model typed that way. Reading it
         # with the strict decoder made {"id" => "basecamp"} — the sentinel the
         # API serves for system-generated entities — look malformed, so the
         # member was kept where the reference reads 0 and drops it.
-        creator_member = read_member(summary["creator"], "name", "creator", person: true)
+        creator_member = read_member(summary["creator"], "name", "creator", kind: :person)
         creator_member.nil? ? summary.delete("creator") : summary["creator"] = creator_member
         # Absent or empty is genuinely nothing to report — the reference's
         # +omitempty+ leaves an empty slice out of its summary too, so the key
@@ -603,17 +663,25 @@ module Basecamp
 
       # The assignees, which the reference decodes as a slice of people.
       #
-      # Each member is checked for being an object and its ID is decoded and
-      # re-emitted; every other field passes through whole. That is the
-      # deliberate edge of this port's rule, the same one #read_member states:
-      # it refuses what it would otherwise read wrongly and does not attempt the
-      # reference's whole-body decode.
+      # Each member is checked for being an object, its ID is decoded FLEXIBLY
+      # and re-emitted, and EVERY OTHER FIELD the reference types is typed here
+      # too — the same Person table #read_member_fields applies to the creator,
+      # applied one level down and to EVERY element rather than only the first.
+      # What this does NOT do — including emitting a null name as nil where the
+      # reference emits "" — is enumerated once, on #project.
       #
-      # This paragraph used to end "a person id is the one place the two
-      # genuinely differ", and by the time it was written that was false three
-      # ways: the id is where the two now AGREE, the NAME is where they differ,
-      # and the reader it cited is the strict one while this path uses the
-      # flexible one. It sat directly above the gap it denied.
+      # This paragraph used to end "every other field passes through whole" and
+      # called that the deliberate edge of this port's rule. Card 39 moved the
+      # edge — the reference decodes <tt>[]Person</tt>, so a wrong-typed
+      # <tt>avatar_url</tt> on the SECOND assignee fails its read there — and
+      # the sentence survived the change that contradicted it. That is twice now
+      # for this one comment.
+      #
+      # Before that it ended "a person id is the one place the two genuinely
+      # differ", and by the time it was written that was false three ways: the
+      # id is where the two now AGREE, the NAME is where they differ, and the
+      # reader it cited is the strict one while this path uses the flexible one.
+      # It sat directly above the gap it denied.
       def read_assignees(assignees)
         unless assignees.is_a?(Array)
           raise malformed_response("the recording's \"assignees\" is #{MergeSafe.describe(assignees)}, not an array")
@@ -639,8 +707,10 @@ module Basecamp
           # struct and this tier emits the object it was given. An empty hash is
           # still indexable, which was the actual complaint — a nil member
           # crashed on assignee["id"]. Whether to close this uniformly across
-          # all four inputs, and across parent, bucket and creator, is the
-          # cross-port decision recorded on the pull request.
+          # all four inputs, and across parent, bucket and creator, is still
+          # open: card 39 settled how far a nested member is TYPED, not whether
+          # this tier synthesises the zero Person the reference emits, and this
+          # line should not be read as if it had.
           next {} if assignee.nil?
 
           unless assignee.is_a?(Hash)
@@ -651,13 +721,15 @@ module Basecamp
           # is emitted decoded — the same rule as the creator, one level down,
           # and the level the first version of that fix did not reach.
           #
-          # Its NAME is not type-checked here, which is the same stopping point
-          # #read_member states: the reference fails the read on a non-string
-          # name and this passes it through. An earlier comment on this block
-          # said a person id was "the one place the two genuinely differ",
-          # which was false three ways by the time it was written — the id is
-          # where they now agree, the name is where they differ, and this path
-          # uses the flexible reader rather than the strict one it named.
+          # Its OTHER FIELDS take the same Person table the creator takes. They
+          # used to pass through untyped, which was the stopping point
+          # #read_member declared and card 39 closed: the reference decodes
+          # <tt>[]Person</tt>, so a wrong-typed <tt>avatar_url</tt> on the
+          # SECOND assignee fails its read exactly as it does on the first, and
+          # a rule applied to the creator but not to the assignees would have
+          # been the same inconsistency one level out.
+          read_member_fields(assignee, "assignee", kind: :person)
+
           id = read_member_id(assignee, person: true)
           if id.nil?
             raise malformed_response("an assignee's id is #{MergeSafe.describe(assignee["id"])}, not a person id")
@@ -707,27 +779,33 @@ module Basecamp
       # across all 17 conversions. A predicate over every value instead kept
       # <tt>{"type" => "Project"}</tt>, which the reference drops.
       #
-      # WHAT IS AND IS NOT VALIDATED, stated exactly, because the previous
+      # WHAT IS AND IS NOT VALIDATED, stated exactly, because a previous
       # version of this claimed the line was drawn where the reference draws it
-      # and that is measurably false. Validated: the member is an object, its
-      # ID decodes, and its LABEL is a string — the three values this composite
-      # reads. Passed through: every other field of the member. The reference
-      # decodes the whole nested struct, so a <tt>parent.type</tt> or a
-      # <tt>creator.avatar_url</tt> of the wrong type fails its read and
-      # reaches a caller here.
+      # and that was measurably false. Validated: the member is an object, its
+      # ID decodes, its LABEL is a string, and EVERY OTHER FIELD the reference
+      # types is typed here too — see #read_member_fields for the table and for
+      # why it is transcribed from the generated model rather than the
+      # hand-written one. What is NOT validated, or is emitted differently, is
+      # enumerated once, on #project, and deliberately not restated here: a
+      # partial copy of that list under the words "stated exactly" is what this
+      # paragraph was until a review counted it.
       #
-      # That is the same whole-body-decode limit stated on #project, one level
-      # down, and it is a DELIBERATE stopping point rather than an oversight —
-      # but a sibling port validates all twelve of a person's string fields, so
-      # the two ports differ on it and that is worth a decision rather than
-      # drift. It is recorded in the pull request rather than settled here.
-      def read_member(member, label, member_name, person: false)
+      # This used to stop at the three values the composite reads, and said so
+      # as a deliberate limit. Card 39 settled it the other way: four of the
+      # seven SDKs reproduce the whole nested decode for free through a typed
+      # decoder and cannot stop short of it, so the contract is the reference's
+      # line rather than this port's, and a port that stopped earlier was the
+      # minority rather than the rule.
+      def read_member(member, label, member_name, kind:, parent_has_bucket: true)
         return nil if member.nil?
 
         unless member.is_a?(Hash)
           raise malformed_response("the recording's #{member_name} is " \
                                    "#{MergeSafe.describe(member)}, not an object")
         end
+
+        person = kind == :person
+        read_member_fields(member, member_name, kind: kind, parent_has_bucket: parent_has_bucket)
 
         # REFUSED, not kept. The reference holds a plain string for a name or a
         # title and a typed integer for an id, so a value of another type is a
@@ -767,6 +845,108 @@ module Basecamp
         # the reference builds these under: `Id != 0 || Name != ""` for a bucket
         # and a creator, `Id != 0 || Title != ""` for a parent.
         (!id.zero? || !name.to_s.empty?) ? decoded : nil
+      end
+
+      # Every field of a nested member that the reference types, typed here too.
+      #
+      # THE TABLE IS TRANSCRIBED FROM <tt>generated</tt>, NOT FROM
+      # <tt>pkg/basecamp</tt>, and the distinction is not academic. The service
+      # wrapper the composite calls hands the body to the GENERATED client and
+      # converts the result afterwards (<tt>commentFromGenerated</tt>), so the
+      # decode — the thing that fails a read — happens against the generated
+      # model. The two disagree in exactly the places that would have bitten:
+      # <tt>system_label</tt> is a field of the hand-written Person and NOT of
+      # the generated one, so it is an unknown key the reference IGNORES and
+      # refusing it here would reject a body the reference accepts; and a
+      # person's id is <tt>FlexibleInt64</tt> there against a plain
+      # <tt>int64</tt> here, which is why #read_member_id keeps two readers.
+      #
+      # NULL IS NOT A WRONG TYPE. Every field below is a pointer or a plain
+      # string in the model, and <tt>json.Unmarshal</tt> of <tt>null</tt> is a
+      # no-op at any depth, so only a PRESENT value of the wrong type fails.
+      # The same asymmetry #read_record applies to the body applies to each
+      # field of each member.
+      #
+      # NOT VALIDATED here: the VALUE of a person's <tt>created_at</tt> /
+      # <tt>updated_at</tt>, which the reference holds as a
+      # <tt>*time.Time</tt> and therefore parses. A non-string fails on both
+      # sides; a string that is not RFC 3339 fails only there. That and the
+      # rest of what this port declares rather than closes are enumerated once,
+      # on #project.
+      def read_member_fields(member, member_name, kind:, parent_has_bucket: true)
+        case kind
+        when :person
+          PERSON_STRING_FIELDS.each { |field| read_member_string(member, field, member_name) }
+          PERSON_BOOL_FIELDS.each { |field| read_member_bool(member, field, member_name) }
+          read_person_company(member, member_name)
+        when :parent
+          PARENT_STRING_FIELDS.each { |field| read_member_string(member, field, member_name) }
+          # A parent's bucket is a typed <tt>*RecordingBucket</tt> under
+          # <tt>RecordingParent</tt> and does not exist at all under
+          # <tt>TodoParent</tt>, which is what a todo and a todolist carry. So
+          # the same key is a typed struct under one containing type and an
+          # ignored unknown under another, and only the reference says which —
+          # hence the flag, threaded from the routing arm rather than guessed
+          # from the payload. Applying one shape to both would refuse
+          # <tt>{"parent" => {"bucket" => 7}}</tt> on a todo, which the
+          # reference accepts.
+          read_nested_bucket(member["bucket"], "#{member_name}'s bucket") if parent_has_bucket
+        when :bucket
+          BUCKET_STRING_FIELDS.each { |field| read_member_string(member, field, member_name) }
+        end
+      end
+
+      # A nested bucket — the parent's, whose shape is the top-level one's.
+      def read_nested_bucket(value, member_name)
+        return if value.nil?
+
+        unless value.is_a?(Hash)
+          raise malformed_response("the recording's #{member_name} is " \
+                                   "#{MergeSafe.describe(value)}, not an object")
+        end
+
+        id = Ids.from_wire(value["id"])
+        if id.nil?
+          raise malformed_response("the #{member_name} id is #{MergeSafe.describe(value["id"])}, not an integer")
+        end
+        BUCKET_STRING_FIELDS.each { |field| read_member_string(value, field, member_name) }
+      end
+
+      # A person's company: an object, with a plain integer id and a string name.
+      def read_person_company(member, member_name)
+        company = member["company"]
+        return if company.nil?
+
+        unless company.is_a?(Hash)
+          raise malformed_response("the #{member_name}'s company is " \
+                                   "#{MergeSafe.describe(company)}, not an object")
+        end
+
+        # Plain <tt>int64</tt> on <tt>PersonCompany</tt>, NOT the flexible
+        # reader the person's own id takes — a company id of "1" fails the read
+        # there where the person's resolves.
+        id = Ids.from_wire(company["id"])
+        if id.nil?
+          raise malformed_response("the #{member_name}'s company id is " \
+                                   "#{MergeSafe.describe(company["id"])}, not an integer")
+        end
+        read_member_string(company, "name", "#{member_name}'s company")
+      end
+
+      def read_member_string(member, field, member_name)
+        value = member[field]
+        return if value.nil? || value.is_a?(String)
+
+        raise malformed_response("the #{member_name}'s #{field} is " \
+                                 "#{MergeSafe.describe(value)}, not a string")
+      end
+
+      def read_member_bool(member, field, member_name)
+        value = member[field]
+        return if value.nil? || value == true || value == false
+
+        raise malformed_response("the #{member_name}'s #{field} is " \
+                                 "#{MergeSafe.describe(value)}, not a boolean")
       end
 
       # A nested member's id, by the decoder the reference types that field with.
