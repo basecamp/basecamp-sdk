@@ -66,9 +66,25 @@ module Basecamp
     # Only those two keys, and only their immediate shape — an object under
     # "creator", the object elements under "participants" — because the
     # reference names exactly these: they are the keys its wrapper types embed a
-    # *Person under (Notification, Gauge, GaugeNeedle). A person anywhere else
-    # is found by the "personable_type" tag or not at all, and widening this to,
-    # say, "assignees" would coerce ids the reference leaves alone.
+    # *Person under (Notification, Gauge, GaugeNeedle).
+    #
+    # NOT because the reference leaves other person ids as strings. It does not.
+    # An earlier version of this comment said widening to "assignees" would
+    # "coerce ids the reference leaves alone", and that is false about the
+    # reference as a whole: Go spells the rule TWICE. This normalizer covers
+    # creator/participants for the wrapper types whose Person.ID is a plain
+    # int64, and Go's generated decoder covers every other person-valued field,
+    # because generated.Person.Id is a types.FlexibleInt64. So Go's OBSERVABLE
+    # answer at "assignees" is the number, reached by the other route.
+    #
+    # Ruby has no decoder on the generated path — +get+ returns a raw Hash — so
+    # that second route does not exist here, and an "assignees" id that arrives
+    # as a string stays one. That is a real gap, measured on a write
+    # (MergeSafe refuses it where the reference completes the update), and it is
+    # deliberately NOT closed by widening this list: the faithful site is the
+    # reader, field by field against the reference, because some person ids in
+    # the model really are plain int64 there (TemplateLibraryConfirmationPerson)
+    # and a blanket sweep would break them. Tracked as its own unit of work.
     def self.coerce_embedded_person_ids(obj)
       creator = obj["creator"]
       coerce_person_id(creator) if creator.is_a?(Hash)

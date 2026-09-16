@@ -269,7 +269,14 @@ class TestTheWalkFindsAPersonTwoWays:
     @respx.mock
     def test_a_person_key_that_is_not_creator_or_participants_still_needs_personable_type(self):
         # The second pass is keyed on TWO names, not "anything person-shaped".
-        # `assignees` is not one of them, and Go does not widen it either, so a
+        # `assignees` is not one of them, and Go does not widen its NORMALIZER
+        # either — but Go's generated decoder converts that id anyway, because
+        # `generated.Person.Id` is a `types.FlexibleInt64`, so the reference's
+        # observable answer there is the number. Python has no decoder on the
+        # generated path, so this row pins a REAL GAP rather than agreement:
+        # tracked as its own unit of work, because the faithful fix is at the
+        # reader, field by field, and some person ids in the model are plain
+        # int64 where a sweep would break them. So a
         # string id there stays a string unless the object says what it is.
         body = _read_notifications({"id": 42, "assignees": [{"id": "7", "name": "Ann"}]})
         assert body["unreads"][0]["assignees"][0]["id"] == "7"
