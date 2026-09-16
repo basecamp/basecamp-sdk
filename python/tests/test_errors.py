@@ -1055,23 +1055,28 @@ class TestRetryableKeywordDoesNotCollide:
                         # builder, so `Error::from(reason).retryable(true)` is this
                         # hazard, still identified by `RecordingSummaryError::of`.
                         #
-                        # The discovery identity is split rather than lopsided.
-                        # TypeScript's `DiscoverySelectionError` refuses at the
-                        # signature (its options type is `cause` and `httpStatus`),
-                        # Ruby's `initialize(reason, message, http_status:)` refuses,
-                        # and Kotlin's `DiscoverySelection` passes `false` itself.
-                        # Go does something none of those do: `SelectionError.Unwrap`
-                        # copies `Retryable` from the `*basecamp.Error` in its
-                        # `Cause`, so it can be TRUE -- by design, for an
-                        # `as_fetch_failed` over a network failure -- and `Cause` is
-                        # an exported field a caller can set. Rust's
-                        # `SelectionFailure` reaches the same public builder as its
-                        # composites. Swift has no discovery-selection identity.
+                        # The discovery identity is split rather than lopsided, and
+                        # the split is itself informative. TypeScript's
+                        # `DiscoverySelectionError` refuses at the signature (its
+                        # options type is `cause` and `httpStatus`), Ruby's
+                        # `initialize(reason, message, http_status:)` refuses, and
+                        # Kotlin's `DiscoverySelection` passes `false` itself. Go and
+                        # Rust do neither: both DERIVE it from the underlying cause,
+                        # so it can be TRUE by design -- an `as_fetch_failed` over a
+                        # retryable 503 or network failure. Go's
+                        # `SelectionError.Unwrap` copies `Retryable` from the
+                        # `*basecamp.Error` in `Cause`, an exported field a caller
+                        # can set; Rust's `SelectionError::into_error` does
+                        # `error.retryable(cause.is_retryable())` from a private
+                        # cause, so a Rust caller's only route is the public builder
+                        # afterwards. Swift has no discovery-selection identity. For
+                        # Python that is a third option beside caller-wins and
+                        # overwrite -- `DiscoverySelectionError` reading its cause --
+                        # which is part of why this is not decided here.
                         #
                         # So Python's keyword is the easiest route to a retryable
                         # deterministic refusal, not the only one; and for discovery
-                        # "deterministic" is itself not true of every reason, which
-                        # is one more reason the question below is not decided here.
+                        # "deterministic" is itself not true of every reason.
                         #
                         # Python lets a caller set
                         # `NoRecordingTypeError(routing_key=..., retryable=True)`
@@ -1170,6 +1175,20 @@ class TestRetryableKeywordDoesNotCollide:
         the canonical form costs nothing; the alternatives cost a test that
         cannot see them.
 
+        Its limits, recorded rather than chased -- three adversarial rounds
+        have now been spent on this test, and these are where the last one
+        stopped finding plausible edits and started finding obfuscation or
+        strictness. It cannot see a name bound through a string field of the
+        syntax tree (a ``match`` capture ``case retryable:``, ``except ... as``,
+        ``import ... as``) inside a caller-wins constructor. And it REJECTS
+        some correct edits, which is the price of keeping the property
+        checkable: normalising an argument before deriving from it
+        (``reason = reason.strip()``), coercing a forward
+        (``retryable=bool(retryable)`` in ``ApiError``), reusing a derived
+        argument's name as a loop variable anywhere in the constructor, and a
+        ``__slots__`` entry named ``retryable``. Each fails with a message that
+        says what to write instead.
+
         This does not replace the value sweep, which catches what a form cannot:
         ``kwargs.setdefault(...)`` and a simply wrong invariant are both
         single-statement and both wrong. The two together are the check.
@@ -1217,10 +1236,51 @@ class TestRetryableKeywordDoesNotCollide:
             # And a metaclass `__call__` can rewrite the instance after every
             # constructor has returned -- the same hazard with no `__init__` in
             # sight. Nothing in the package uses one.
+            # Neither guard sees a hook that intercepts the attribute rather
+            # than defining it: `__setattr__` flipping the value when
+            # "webhook" is in the message put a 507 back to retryable through
+            # `error_from_response`, as did the same through
+            # `__getattribute__`. Package classes only -- `BaseException`
+            # itself defines `__getattribute__`.
+            for klass in cls.__mro__:
+                if klass.__module__ == "basecamp" or klass.__module__.startswith("basecamp."):
+                    hooks = {"__setattr__", "__getattribute__", "__getattr__", "__delattr__"} & set(vars(klass))
+                    assert not hooks, f"{klass.__name__} defines attribute hooks {sorted(hooks)}"
             assert type(cls) is type, (
                 f"{cls.__name__} has a metaclass ({type(cls).__name__}), whose `__call__` can "
                 "set `retryable` after the constructor this test reads."
             )
+
+        # The base is not a subclass, so nothing above reads it -- and every
+        # rule here can be dodged one class up. `self.retryable = True if
+        # http_status in (502, 504) else retryable` in `BasecampError.__init__`
+        # made `ApiError(retryable=False, http_status=502)`,
+        # `LimitExceededError(http_status=504)` and `UsageError(http_status=502)`
+        # all retryable with every test green. The base stores the caller's
+        # value untouched, in exactly one statement, and says the flag nowhere
+        # else: the parameter, the attribute, the name.
+        from basecamp.errors import BasecampError
+
+        base = ast.parse(textwrap.dedent(inspect.getsource(BasecampError.__init__))).body[0]
+        stores = [
+            stmt
+            for stmt in base.body
+            if isinstance(stmt, ast.Assign)
+            and len(stmt.targets) == 1
+            and isinstance(stmt.targets[0], ast.Attribute)
+            and stmt.targets[0].attr == "retryable"
+            and isinstance(stmt.targets[0].value, ast.Name)
+            and stmt.targets[0].value.id == "self"
+            and isinstance(stmt.value, ast.Name)
+            and stmt.value.id == "retryable"
+        ]
+        base_mentions = [node for node in ast.walk(base) if names_the_flag(node)]
+        assert len(stores) == 1 and len(base_mentions) == 3, (
+            "`BasecampError.__init__` must store the caller's flag untouched -- exactly one top-level "
+            f"`self.retryable = retryable`, and no other mention; found {len(stores)} such "
+            f"statement(s) and {len(base_mentions)} mention(s) at line(s) "
+            f"{sorted({m.lineno for m in base_mentions})}."
+        )
 
         for name in sorted(_FIXED_RETRYABILITY):
             cls = next(c for c in _error_subclasses() if c.__name__ == name)
@@ -1287,9 +1347,35 @@ class TestRetryableKeywordDoesNotCollide:
                 {n.id for n in ast.walk(canonical[0].value) if isinstance(n, ast.Name) and n.id in assigned}
             )
             assert not laundered, (
-                f"{name}'s overwrite reads {laundered}, assigned earlier in the constructor, so this "
+                f"{name}'s overwrite reads {laundered}, assigned somewhere in the constructor, so this "
                 "test cannot see where the value comes from. Write the expression on the right-hand "
                 "side itself."
+            )
+
+            # A nested `def permanent(): return "certificate" in message` then
+            # `= not permanent()` binds with no Assign and names only the
+            # helper -- and `except ... as`, `import ... as`, `match` captures
+            # and nested classes bind the same way. So beyond refusing locals,
+            # the right-hand side may name only a declared argument, a module
+            # global, or a builtin.
+            import builtins
+
+            declared = {
+                p.arg
+                for p in (function.args.posonlyargs + function.args.args + function.args.kwonlyargs)
+                if p.arg != "self"
+            }
+            readable = declared | set(cls.__init__.__globals__) | set(dir(builtins))
+            unknown = sorted(
+                {
+                    n.id
+                    for n in ast.walk(canonical[0].value)
+                    if isinstance(n, ast.Name) and n.id not in readable and n.id != "kwargs"
+                }
+            )
+            assert not unknown, (
+                f"{name}'s overwrite reads {unknown}, which is neither a declared argument, a module "
+                "global nor a builtin -- a helper or binding this test cannot see into."
             )
 
             reads_kwargs = [
@@ -1312,11 +1398,6 @@ class TestRetryableKeywordDoesNotCollide:
             # unconditionally while the class had quietly become conditional.
             # So a derived value forces the two things that make it visible: a
             # per-variant expectation, and rows that actually reach both arms.
-            declared = {
-                p.arg
-                for p in (function.args.posonlyargs + function.args.args + function.args.kwonlyargs)
-                if p.arg != "self"
-            }
             derived_from = sorted(
                 {node.id for node in ast.walk(canonical[0].value) if isinstance(node, ast.Name) and node.id in declared}
             )
