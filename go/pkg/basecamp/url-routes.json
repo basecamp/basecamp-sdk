@@ -1537,7 +1537,7 @@
     },
     {
       "pattern": "/{accountId}/projects/recordings",
-      "resource": "Automation",
+      "resource": "Recordings",
       "operations": {
         "GET": "ListRecordings"
       },
@@ -2067,7 +2067,7 @@
     },
     {
       "pattern": "/{accountId}/recordings/{recordingId}/spotlight",
-      "resource": "Automation",
+      "resource": "Recordings",
       "operations": {
         "DELETE": "UnspotlightRecording",
         "POST": "SpotlightRecording"
@@ -2085,7 +2085,7 @@
     },
     {
       "pattern": "/{accountId}/recordings/{recordingId}/status/active",
-      "resource": "Automation",
+      "resource": "Recordings",
       "operations": {
         "PUT": "UnarchiveRecording"
       },
@@ -2102,7 +2102,7 @@
     },
     {
       "pattern": "/{accountId}/recordings/{recordingId}/status/archived",
-      "resource": "Automation",
+      "resource": "Recordings",
       "operations": {
         "PUT": "ArchiveRecording"
       },
@@ -2119,7 +2119,7 @@
     },
     {
       "pattern": "/{accountId}/recordings/{recordingId}/status/trashed",
-      "resource": "Automation",
+      "resource": "Recordings",
       "operations": {
         "PUT": "TrashRecording"
       },
