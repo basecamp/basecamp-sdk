@@ -520,7 +520,10 @@ def parse_operation(
             f"{operation_id}: unsupported pagination style {pagination_style!r} (expected 'link' or 'cursor')"
         )
     has_pagination = pagination_style == "link"
-    pagination_key = (pagination or {}).get("key")
+    # Link-style only: the key drives envelope unwrapping in type resolution, and
+    # a cursor operation must be typed as its envelope, not as the item under the
+    # key. Withheld at the source rather than gated at each consumer.
+    pagination_key = (pagination or {}).get("key") if pagination_style == "link" else None
 
     return {
         "operation_id": operation_id,

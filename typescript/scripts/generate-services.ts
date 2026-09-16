@@ -840,7 +840,12 @@ function parseOperation(
     );
   }
   const hasPagination = paginationStyle === "link";
-  const paginationKey = operation["x-basecamp-pagination"]?.key;
+  // The key belongs to the link walk alone. Type resolution unwraps an envelope
+  // whenever it is set — `findUnderlyingEntitySchema` turns `{events: [...],
+  // position}` into the item type — and several of those consumers never check
+  // `hasPagination`. A cursor operation must be typed as its envelope, so the
+  // key never reaches them rather than every consumer having to remember.
+  const paginationKey = paginationStyle === "link" ? operation["x-basecamp-pagination"]?.key : undefined;
   const multipartField = operation["x-basecamp-multipart"]?.field;
 
   return {

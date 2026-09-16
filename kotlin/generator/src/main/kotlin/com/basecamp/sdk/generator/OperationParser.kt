@@ -209,7 +209,15 @@ class OperationParser(private val api: OpenApiParser) {
             "$operationId: unsupported pagination style $paginationStyle (expected \"link\" or \"cursor\")"
         }
         val hasPagination = paginationStyle == "link"
-        val paginationKey = operation["x-basecamp-pagination"]?.jsonObject?.get("key")?.jsonPrimitive?.content
+        // Link-style only. findUnderlyingEntitySchema unwraps an envelope whenever
+        // the key is set, and OperationParser:315 calls it without checking
+        // hasPagination -- so a cursor operation would be typed as the item under
+        // its key instead of the envelope the wire actually sends.
+        val paginationKey = if (paginationStyle == "link") {
+            operation["x-basecamp-pagination"]?.jsonObject?.get("key")?.jsonPrimitive?.content
+        } else {
+            null
+        }
 
         // Note: wrapped pagination (paginationKey != null) does NOT force returnsArray.
         // The response is an object with a paginated array inside — handled separately

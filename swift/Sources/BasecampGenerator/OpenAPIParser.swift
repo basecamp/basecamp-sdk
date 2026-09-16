@@ -217,7 +217,10 @@ func parseOperation(
         fatalError("\(operationId): unsupported pagination style \(paginationStyle ?? "nil") (expected \"link\" or \"cursor\")")
     }
     let hasPagination = paginationStyle == "link"
-    let paginationKey = paginationExt?["key"] as? String
+    // Link-style only: getEntityTypeName unwraps an envelope whenever the key is
+    // set and ServiceEmitter calls it without checking hasPagination, so a cursor
+    // operation would take the item type as its public return type.
+    let paginationKey = paginationStyle == "link" ? paginationExt?["key"] as? String : nil
 
     // Note: wrapped pagination (paginationKey != nil) does NOT force returnsArray.
     // The response is an object with a paginated array inside — handled separately

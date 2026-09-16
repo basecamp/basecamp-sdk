@@ -34,6 +34,14 @@ class GenerateServicesPaginationStyleTest < Minitest::Test
     assert_not parse(style: :none)[:cursor_pagination]
   end
 
+  # The key drives envelope unwrapping in type resolution: set, it turns
+  # `{events: [...], position}` into the item type. A cursor operation is typed
+  # as its envelope, so the key must not reach those consumers at all.
+  def test_the_key_is_withheld_from_a_cursor_operation
+    assert_equal "events", parse(style: "link")[:pagination_key]
+    assert_nil parse(style: "cursor")[:pagination_key]
+  end
+
   # The disjunction Ruby alone carries: a bare-array response sets returns_array,
   # which would send a cursor operation down the Link-following path even though
   # has_pagination is false for it.

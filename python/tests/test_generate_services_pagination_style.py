@@ -48,6 +48,14 @@ def test_no_trait_at_all_is_simply_unpaginated():
     assert _parse(None)["has_pagination"] is False
 
 
+def test_the_key_is_withheld_from_a_cursor_operation():
+    # The key drives envelope unwrapping in type resolution: set, it turns
+    # `{events: [...], position}` into the item type. A cursor operation is
+    # typed as its envelope, so the key must not reach those consumers at all.
+    assert _parse("link")["pagination_key"] == "events"
+    assert _parse("cursor")["pagination_key"] is None
+
+
 @pytest.mark.parametrize("style", ["page", "linkk", "Link", "", None])
 def test_an_unrecognised_style_is_refused_rather_than_read_as_unpaginated(style):
     operation = _operation("link")

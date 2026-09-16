@@ -488,7 +488,9 @@ class ServiceGenerator
       # Carried separately because has_pagination is false for cursor, and the
       # bare-array gate below would otherwise walk it anyway.
       cursor_pagination: pagination_style == 'cursor',
-      pagination_key: operation.dig('x-basecamp-pagination', 'key')
+      # Link-style only: the key drives envelope unwrapping, and a cursor
+      # operation must be typed as its envelope rather than the item under it.
+      pagination_key: (pagination_style == 'link' ? operation.dig('x-basecamp-pagination', 'key') : nil)
     }
   end
 
