@@ -448,6 +448,98 @@ func TestLivePolls_TheGuardRecognizesRoutesBeneathABasePath(t *testing.T) {
 	}
 }
 
+// TestRedirectGuard_MatchesOnlyTheFeedRoutes: the guard claims exactly the
+// three feed routes beneath the configured base path — never a recording's
+// audit trail, whose path also ends in {id}/events.json, and never a route
+// outside the base path.
+func TestRedirectGuard_MatchesOnlyTheFeedRoutes(t *testing.T) {
+	for _, tc := range []struct {
+		base, path string
+		want       bool
+	}{
+		{"/", "/99999/events.json", true},
+		{"/", "/99999/inbox.json", true},
+		{"/", "/99999/events/stream_ticket.json", true},
+		{"/api/v1/", "/api/v1/99999/events.json", true},
+		{"/", "/api/v1/99999/events.json", false},
+		{"/api/v1/", "/99999/events.json", false},
+		{"/", "/99999/recordings/12345/events.json", false},
+		{"/", "/99999/buckets/2085958499/recordings/12345/events.json", false},
+		{"/", "/abc/events.json", false},
+		{"/", "/99999/events.json/extra", false},
+	} {
+		if got := eventfeed.ExportIsFeedOperationPath(tc.base, tc.path); got != tc.want {
+			t.Errorf("isFeedOperationPath(%q, %q) = %v, want %v", tc.base, tc.path, got, tc.want)
+		}
+	}
+}
+
+// TestLive_AResetBodyIsTransient: a body whose read fails after the headers
+// — whatever error type the HTTP stack chose — is a transport failure on
+// both seams, told apart from a whole body that did not decode.
+func TestLive_AResetBodyIsTransient(t *testing.T) {
+	f := newLiveFixtureWith(t, eventfeed.AccountLane, func(w http.ResponseWriter, r *http.Request) {
+		jsonResponse(w, 200, `{"events":[],"position":"p"}`)
+	}, basecamp.WithTransport(resettingBodyTransport{inner: http.DefaultTransport}))
+	_, err := f.live.Polls().Poll(context.Background(), eventfeed.Cursor{Position: "pos-0"}, eventfeed.Filters{})
+	var pe *eventfeed.PollError
+	if !errors.As(err, &pe) || pe.Kind != eventfeed.PollTransient {
+		t.Fatalf("poll error = %v, want transient for a reset body", err)
+	}
+	_, err = f.live.Minter().MintStreamTicket(context.Background())
+	var me *eventfeed.MintError
+	if !errors.As(err, &me) || me.Kind != eventfeed.MintTransient {
+		t.Fatalf("mint error = %v, want transient for a reset body", err)
+	}
+}
+
+// resettingBodyTransport answers every request with a body whose read fails
+// with a plain error after the headers — the shape of an HTTP/2 stream
+// reset, which is neither a url.Error nor a net.Error.
+type resettingBodyTransport struct{ inner http.RoundTripper }
+
+func (t resettingBodyTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	resp, err := t.inner.RoundTrip(req)
+	if err != nil {
+		return nil, err
+	}
+	_ = resp.Body.Close()
+	resp.Body = io.NopCloser(resetReader{})
+	return resp, nil
+}
+
+type resetReader struct{}
+
+func (resetReader) Read([]byte) (int, error) { return 0, errors.New("stream error: RST_STREAM") }
+
+// TestLivePolls_AContinuationOutOfOrderIsMalformed: strict order holds
+// across a walk's pages — a continuation whose first row does not follow the
+// previous page's last is unrecoverable, while a fresh cursor starts over.
+func TestLivePolls_AContinuationOutOfOrderIsMalformed(t *testing.T) {
+	const row = `"kind":"message_created","event_type":"message.created","action":"created","created_at":"2026-08-01T12:00:00Z","bucket_id":2,"creator_id":3,"performed_by_id":null,"recording_id":900`
+	var f *liveFixture
+	f = newLiveFixture(t, eventfeed.AccountLane, func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Query().Get("position") {
+		case "pos-0":
+			jsonResponse(w, 200, `{"events":[{"id":100,`+row+`},{"id":102,`+row+`}],"position":"pos-1","next":"`+f.server.URL+`/99999/events.json?position=pos-cont"}`)
+		default:
+			jsonResponse(w, 200, `{"events":[{"id":101,`+row+`}],"position":"pos-2"}`)
+		}
+	})
+	page, err := f.live.Polls().Poll(context.Background(), eventfeed.Cursor{Position: "pos-0"}, eventfeed.Filters{})
+	if err != nil || page.Next == "" {
+		t.Fatalf("first page = %+v, %v", page, err)
+	}
+	_, err = f.live.Polls().Poll(context.Background(), eventfeed.Cursor{PageURL: page.Next}, eventfeed.Filters{})
+	var pe *eventfeed.PollError
+	if !errors.As(err, &pe) || pe.Kind != eventfeed.PollUnrecoverable {
+		t.Fatalf("continuation error = %v, want unrecoverable for a row behind the previous page", err)
+	}
+	if _, err := f.live.Polls().Poll(context.Background(), eventfeed.Cursor{Position: "pos-fresh"}, eventfeed.Filters{}); err != nil {
+		t.Fatalf("a fresh cursor after the refused continuation: %v", err)
+	}
+}
+
 // TestLivePolls_APageOutOfOrderIsMalformed: rows arrive in strict order of
 // the lane's identity; a page that repeats or reorders keys is unrecoverable
 // on either lane.

@@ -55,6 +55,7 @@ type Live struct {
 	origin    string
 	accountID string
 	lane      Lane
+	polls     *livePolls
 }
 
 // NewLive builds the seams for accountID on lane over a basecamp.Client
@@ -99,14 +100,20 @@ func NewLive(cfg *basecamp.Config, tokens basecamp.TokenProvider, accountID stri
 	}
 	opts := make([]basecamp.ClientOption, 0, len(clientOpts)+1)
 	opts = append(opts, clientOpts...)
-	opts = append(opts, basecamp.WithTransportWrapper(redirectGuardWrapper{}))
+	basePath := "/"
+	if u, err := url.Parse(cfg.BaseURL); err == nil && strings.Trim(u.Path, "/") != "" {
+		basePath = "/" + strings.Trim(u.Path, "/") + "/"
+	}
+	opts = append(opts, basecamp.WithTransportWrapper(redirectGuardWrapper{basePath: basePath}))
 	client := basecamp.NewClient(cfg, tokens, opts...)
+	svc := client.ForAccount(accountID).EventFeed()
 	return &Live{
 		client:    client,
-		svc:       client.ForAccount(accountID).EventFeed(),
+		svc:       svc,
 		origin:    origin,
 		accountID: accountID,
 		lane:      lane,
+		polls:     &livePolls{svc: svc, lane: lane},
 	}, nil
 }
 
@@ -121,8 +128,9 @@ func (l *Live) Origin() string { return l.origin }
 func (l *Live) Minter() TicketMinter { return &liveMinter{svc: l.svc} }
 
 // Polls is the PollSource seam over PollEvents (AccountLane) or PollInbox
-// (InboxLane).
-func (l *Live) Polls() PollSource { return &livePolls{svc: l.svc, lane: l.lane} }
+// (InboxLane) — one source per binding, so a walk's order is held across
+// its pages.
+func (l *Live) Polls() PollSource { return l.polls }
 
 // Connect builds the Connector over these seams: New with this binding's
 // origin, account and lane, plus opts. The lane is the binding's — the seams
@@ -174,11 +182,12 @@ func withRefusedHop(ctx context.Context) (context.Context, *refusedHop) {
 	return context.WithValue(ctx, refusedHopKey{}, hop), hop
 }
 
-// redirectGuardWrapper installs redirectGuard over the client's transport.
-type redirectGuardWrapper struct{}
+// redirectGuardWrapper installs redirectGuard over the client's transport,
+// anchored at the configured base URL's path ("/" when it has none).
+type redirectGuardWrapper struct{ basePath string }
 
-func (redirectGuardWrapper) WrapTransport(inner http.RoundTripper) http.RoundTripper {
-	return &redirectGuard{inner: inner}
+func (w redirectGuardWrapper) WrapTransport(inner http.RoundTripper) http.RoundTripper {
+	return &redirectGuard{inner: inner, basePath: w.basePath}
 }
 
 // redirectGuard is the RoundTripper the feed composes over the host's
@@ -192,20 +201,32 @@ func (redirectGuardWrapper) WrapTransport(inner http.RoundTripper) http.RoundTri
 // the class: a foreign Location, a same-origin one, a downgraded one, a
 // Location net/http could not parse, and a 3xx with none. A seam call is
 // recognized by its request path — the three feed operations' own routes,
-// which no other operation shares — rather than by the per-call record on
-// its context, which a host hook that returns a fresh context would drop;
-// the record, when it survives, carries the origin back to the seam, and
-// the strip does not depend on it. Every other request passes through
-// untouched: the client's other operations — a download's dispatching 302
-// above all — keep their own redirect handling.
+// exactly, beneath the configured base path — rather than by the per-call
+// record on its context, which a host hook that returns a fresh context
+// would drop; the record, when it survives, carries the origin back to the
+// seam, and the strip does not depend on it. Every other request passes
+// through untouched: the client's other operations — a download's
+// dispatching 302 above all — keep their own redirect handling.
+//
+// The guard also marks a seam call's response body, so that a read that
+// fails after the headers arrived — a reset stream, a connection cut
+// mid-body — reaches the seam as a bodyReadError the classifier can tell
+// from a body that arrived whole and did not decode.
 type redirectGuard struct {
-	inner http.RoundTripper
+	inner    http.RoundTripper
+	basePath string
 }
 
 func (g *redirectGuard) RoundTrip(req *http.Request) (*http.Response, error) {
 	resp, err := g.inner.RoundTrip(req)
-	if err != nil || resp == nil || !isRedirectStatus(resp.StatusCode) || !isFeedOperationPath(req.URL.Path) {
+	if err != nil || resp == nil || !isFeedOperationPath(g.basePath, req.URL.Path) {
 		return resp, err
+	}
+	if !isRedirectStatus(resp.StatusCode) {
+		if resp.Body != nil && resp.Body != http.NoBody {
+			resp.Body = &markedBody{ReadCloser: resp.Body}
+		}
+		return resp, nil
 	}
 	if hop, ok := req.Context().Value(refusedHopKey{}).(*refusedHop); ok {
 		hop.record(locationOrigin(resp.Header.Get("Location")))
@@ -221,25 +242,48 @@ func (g *redirectGuard) RoundTrip(req *http.Request) (*http.Response, error) {
 	return resp, nil
 }
 
-// isFeedOperationPath reports a request path ending in one of the three feed
-// operations' routes — {account}/events.json, {account}/inbox.json,
-// {account}/events/stream_ticket.json — beneath whatever path prefix the
-// configured base URL carries: the routes the seams issue, whether from a
-// fresh cursor or a re-issued continuation, and no other operation's.
-func isFeedOperationPath(path string) bool {
-	segments := strings.Split(strings.TrimPrefix(path, "/"), "/")
-	for _, tail := range [][]string{{"events.json"}, {"inbox.json"}, {"events", "stream_ticket.json"}} {
-		n := len(tail) + 1
-		if len(segments) < n {
-			continue
-		}
-		account, route := segments[len(segments)-n], segments[len(segments)-n+1:]
-		if account != "" && isDigits(account) && slices.Equal(route, tail) {
-			return true
-		}
+// isFeedOperationPath reports a request path that is exactly one of the
+// three feed operations' routes — {account}/events.json,
+// {account}/inbox.json, {account}/events/stream_ticket.json — directly
+// beneath the configured base path (basePath, "/"-terminated): the routes
+// the seams issue, whether from a fresh cursor or a re-issued continuation.
+// Anchoring at the base path and at the account segment keeps a recording's
+// audit trail (/{account}/recordings/{id}/events.json) and every other
+// route a host issues through the same client outside the guard.
+func isFeedOperationPath(basePath, path string) bool {
+	rest, ok := strings.CutPrefix(path, basePath)
+	if !ok {
+		return false
 	}
-	return false
+	account, route, ok := strings.Cut(rest, "/")
+	if !ok || account == "" || !isDigits(account) {
+		return false
+	}
+	return route == "events.json" || route == "inbox.json" || route == "events/stream_ticket.json"
 }
+
+// markedBody wraps a seam call's response body so a read failure after the
+// headers — as opposed to io.EOF, the body's own end — surfaces as a
+// bodyReadError.
+type markedBody struct{ io.ReadCloser }
+
+func (b *markedBody) Read(p []byte) (int, error) {
+	n, err := b.ReadCloser.Read(p)
+	if err != nil && !errors.Is(err, io.EOF) {
+		err = &bodyReadError{err: err}
+	}
+	return n, err
+}
+
+// bodyReadError is a response body that could not be read whole: the
+// connection ended, the stream was reset — a transport failure by
+// construction, whatever type the HTTP stack chose for it.
+type bodyReadError struct{ err error }
+
+func (e *bodyReadError) Error() string {
+	return "eventfeed: reading the response body: " + e.err.Error()
+}
+func (e *bodyReadError) Unwrap() error { return e.err }
 
 func isDigits(s string) bool {
 	for _, r := range s {
@@ -339,7 +383,8 @@ func isTransportFailure(err error) bool {
 	if errors.Is(err, basecamp.ErrCircuitOpen) || errors.Is(err, basecamp.ErrBulkheadFull) || errors.Is(err, basecamp.ErrRateLimited) {
 		return true
 	}
-	if errors.Is(err, io.ErrUnexpectedEOF) || errors.Is(err, io.EOF) {
+	var bodyErr *bodyReadError
+	if errors.As(err, &bodyErr) || errors.Is(err, io.ErrUnexpectedEOF) || errors.Is(err, io.EOF) {
 		return true
 	}
 	var urlErr *url.Error
@@ -375,17 +420,40 @@ func checkContinuationQuery(rawURL string) error {
 	return nil
 }
 
-// livePolls is the PollSource over PollEvents or PollInbox.
+// livePolls is the PollSource over PollEvents or PollInbox. It remembers the
+// last key of the page it served so a continuation's first row can be held
+// to the walk's strict order across pages; a fresh cursor starts a new walk.
 type livePolls struct {
 	svc  *basecamp.EventFeedService
 	lane Lane
+
+	mu      sync.Mutex
+	lastKey int64
 }
 
 func (p *livePolls) Poll(ctx context.Context, cursor Cursor, filters Filters) (PollPage, error) {
-	if p.lane == InboxLane {
-		return p.pollInbox(ctx, cursor, filters)
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if cursor.PageURL == "" {
+		p.lastKey = 0
 	}
-	return p.pollEvents(ctx, cursor, filters)
+	var page PollPage
+	var err error
+	if p.lane == InboxLane {
+		page, err = p.pollInbox(ctx, cursor, filters)
+	} else {
+		page, err = p.pollEvents(ctx, cursor, filters)
+	}
+	if err != nil {
+		return PollPage{}, err
+	}
+	if len(page.Events) > 0 {
+		if page.Events[0].Key() <= p.lastKey {
+			return PollPage{}, &PollError{Kind: PollUnrecoverable, Err: fmt.Errorf("eventfeed: the continuation's first row %d does not follow the previous page", page.Events[0].Key())}
+		}
+		p.lastKey = page.Events[len(page.Events)-1].Key()
+	}
+	return page, nil
 }
 
 func (p *livePolls) pollEvents(ctx context.Context, cursor Cursor, filters Filters) (PollPage, error) {

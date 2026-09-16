@@ -174,6 +174,11 @@ func ExportDecodePushEvent(raw []byte) (Event, error) {
 	return decodeEventObject(json.RawMessage(raw), true)
 }
 
+// ExportIsFeedOperationPath exposes the redirect guard's route match.
+func ExportIsFeedOperationPath(basePath, path string) bool {
+	return isFeedOperationPath(basePath, path)
+}
+
 // ExportInboxSubscribeFrame is ExportSubscribeFrame for the inbox lane.
 func ExportInboxSubscribeFrame(f Filters) []byte {
 	return subscribeCommand(subscribeIdentifier(InboxLane, f))
