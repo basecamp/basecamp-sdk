@@ -24,7 +24,8 @@ empty listing, and everything else of the wrong shape is a statusless,
 non-retryable `ApiError`.
 
 Measured on the unpaginated full-array read (`folders.list_folders`), before and
-after:
+after — the "before" column is this SDK running against `main` at `d57bcf1d`,
+observed rather than recalled:
 
 | body | before | after |
 |---|---|---|
