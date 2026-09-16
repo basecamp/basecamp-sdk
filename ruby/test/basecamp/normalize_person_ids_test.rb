@@ -3,6 +3,7 @@
 require "test_helper"
 
 class NormalizePersonIdsTest < Minitest::Test
+  include TestHelper
   def test_sentinel_creator_id_normalized
     data = {
       "creator" => {
@@ -133,6 +134,77 @@ class NormalizePersonIdsTest < Minitest::Test
     assert_equal "007", entry["participants"][0]["id"]
   end
 
+  # ---------------------------------------------------------------------
+  # THROUGH THE HTTP LAYER. The tests above call the walk with a flag; these
+  # prove the flag is actually SET from the request on each reference surface,
+  # and left unset elsewhere. Without them, hard-coding embedded_people: false
+  # in both Response#json and parse_page left every run green.
+  # ---------------------------------------------------------------------
+
+  JSON_HEADERS = { "Content-Type" => "application/json" }.freeze
+  API = "https://3.basecampapi.com/12345"
+
+  def account
+    @account ||= create_account_client(account_id: "12345")
+  end
+
+  def test_a_gauge_needle_read_coerces_its_untagged_creator
+    # Single object: Response#json. decodeGaugePayload normalizes this in Go.
+    stub_request(:get, "#{API}/gauge_needles/5")
+      .to_return(status: 200, headers: JSON_HEADERS,
+                 body: { "id" => 5, "creator" => { "id" => "007", "name" => "Padded" } }.to_json)
+
+    needle = account.gauges.get_gauge_needle(needle_id: 5)
+
+    assert_equal 7, needle["creator"]["id"]
+  end
+
+  def test_a_notifications_read_coerces_its_untagged_creator
+    stub_request(:get, "#{API}/my/readings.json")
+      .to_return(status: 200, headers: JSON_HEADERS,
+                 body: { "unreads" => [ { "id" => 1, "creator" => { "id" => "basecamp" } } ],
+                         "reads" => [], "memories" => [] }.to_json)
+
+    unread = account.my_notifications.get_my_notifications["unreads"].first
+
+    assert_equal 0, unread["creator"]["id"]
+    assert_equal "basecamp", unread["creator"]["system_label"]
+  end
+
+  def test_every_page_of_a_gauge_needle_list_coerces_its_untagged_creator
+    # Paginated: parse_page, on the first page AND a followed one.
+    url = "#{API}/projects/7/gauge/needles.json"
+    stub_request(:get, url)
+      .to_return(status: 200,
+                 headers: JSON_HEADERS.merge("Link" => "<#{url}?page=2>; rel=\"next\""),
+                 body: [ { "id" => 1, "creator" => { "id" => "007" } } ].to_json)
+    stub_request(:get, url).with(query: { "page" => "2" })
+      .to_return(status: 200, headers: JSON_HEADERS,
+                 body: [ { "id" => 2, "creator" => { "id" => "+8" } } ].to_json)
+
+    needles = account.gauges.list_gauge_needles(project_id: 7).to_a
+
+    assert_equal [ 1, 2 ], needles.map { |n| n["id"] }
+    assert_equal [ 7, 8 ], needles.map { |n| n["creator"]["id"] }
+  end
+
+  def test_an_upcoming_schedule_read_leaves_its_strict_creator_alone
+    # The negative, through the HTTP layer: the report is not a reference
+    # surface, so the flag must come out false for its URL.
+    stub_request(:get, %r{\A#{Regexp.escape(API)}/reports/schedules/upcoming\.json})
+      .to_return(status: 200, headers: JSON_HEADERS,
+                 body: { "schedule_entries" => [
+                   { "id" => 1, "creator" => { "id" => "basecamp" },
+                     "participants" => [ { "id" => "007" } ] }
+                 ] }.to_json)
+
+    entry = account.reports.upcoming(window_starts_on: "2024-01-01", window_ends_on: "2024-01-31")["schedule_entries"].first
+
+    assert_equal "basecamp", entry["creator"]["id"]
+    assert_not entry["creator"].key?("system_label")
+    assert_equal "007", entry["participants"].first["id"]
+  end
+
   def test_the_personable_type_pass_still_runs_everywhere
     # The other half: narrowing the positional pass must not narrow the tagged
     # one, which predates this work and whose reach is unchanged. An object that
@@ -152,6 +224,19 @@ class NormalizePersonIdsTest < Minitest::Test
     %w[/reports/schedules/upcoming.json /my/assignments.json
        /schedule_entries/9.json /todos/42.json /my/out_of_office.json].each do |path|
       assert_not Basecamp::Http.embedded_people_url?("#{base}#{path}"), path
+    end
+
+    # Anchored to the END of the PATH, so nothing around a surface's spelling can
+    # switch the pass on: not a base URL whose own path contains one, not a host
+    # that spells one, not a trailing segment after one.
+    [
+      "https://proxy.example/gauge_needles/1/12345/todos/42.json",
+      "https://proxy.example/reports/gauges.json/12345/todos/42.json",
+      "https://my.readings.json.example/12345/todos/42.json",
+      "#{base}/my/readings.json/extra",
+      "#{base}/gauge_needles/5/comments.json"
+    ].each do |url|
+      assert_not Basecamp::Http.embedded_people_url?(url), url
     end
   end
 

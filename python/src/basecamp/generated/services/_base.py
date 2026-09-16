@@ -38,8 +38,15 @@ def _embedded_people(response: object) -> bool:
     normalization surfaces (gauges, notifications). Read off the request URL the
     response actually answered, so a followed pagination page is judged by the
     page it fetched. See ``basecamp._person_id.EMBEDDED_PEOPLE_PATHS``."""
-    request = getattr(response, "request", None)
-    url = getattr(request, "url", None) if request is not None else None
+    # `httpx.Response.request` RAISES `RuntimeError` when the response was built
+    # without one, rather than being absent, so `getattr`'s default never fires
+    # for it. A response with no request has no URL to judge, which is "not a
+    # reference surface".
+    try:
+        request = response.request  # type: ignore[attr-defined]
+    except (AttributeError, RuntimeError):
+        return False
+    url = getattr(request, "url", None)
     return _embedded_people_url(str(url)) if url is not None else False
 
 

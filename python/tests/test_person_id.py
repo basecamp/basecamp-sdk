@@ -14,7 +14,7 @@ import httpx
 import pytest
 import respx
 
-from basecamp import Client
+from basecamp import AsyncClient, Client
 from basecamp._person_id import Refusal, coerce_person_id, normalize_person_ids, parse_int64
 from basecamp.errors import ApiError
 from basecamp.generated.services import _async_base, _base
@@ -200,6 +200,22 @@ def _read_notifications(payload: dict) -> dict:
         client.close()
 
 
+def _serve_two_needle_pages() -> None:
+    """Two pages of gauge needles, each with an untagged string creator id."""
+    base = "https://3.basecampapi.com/12345/projects/7/gauge/needles.json"
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        if request.url.params.get("page") == "2":
+            return httpx.Response(200, json=[{"id": 2, "creator": {"id": "+8"}}])
+        return httpx.Response(
+            200,
+            json=[{"id": 1, "creator": {"id": "007"}}],
+            headers={"Link": f'<{base}?page=2>; rel="next"'},
+        )
+
+    respx.get(url__regex=r".*/projects/7/gauge/needles\.json.*").mock(side_effect=respond)
+
+
 class TestThePositionalPassRunsOnlyWhereTheReferenceRunsIt:
     """WHERE the second pass runs, which is a correction.
 
@@ -254,6 +270,71 @@ class TestThePositionalPassRunsOnlyWhereTheReferenceRunsIt:
         assert "system_label" not in entry["creator"]
         assert entry["participants"][0]["id"] == "007"
 
+    @respx.mock
+    def test_every_page_of_a_sync_gauge_needle_list_coerces_its_untagged_creator(self):
+        # Paginated, sync, first page AND a followed one. Gauge lists, needle
+        # lists and bubble-ups all paginate, and nothing pinned the gate on any
+        # of them: forcing it off at every paginated call site left the suite green.
+        _serve_two_needle_pages()
+        client = Client(access_token="test-token")
+        try:
+            needles = list(client.for_account("12345").gauges.list_gauge_needles(project_id=7))
+        finally:
+            client.close()
+        assert [n["id"] for n in needles] == [1, 2]
+        assert [n["creator"]["id"] for n in needles] == [7, 8]
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_the_async_client_coerces_an_untagged_creator_on_a_single_read(self):
+        # The async base carries its own copy of the gate, and nothing ran it:
+        # making it always answer False left the suite green.
+        respx.get(url__regex=r".*/gauge_needles/5$").mock(
+            return_value=httpx.Response(200, json={"id": 5, "creator": {"id": "007", "name": "Padded"}})
+        )
+        client = AsyncClient(access_token="test-token")
+        try:
+            needle = await client.for_account("12345").gauges.get_gauge_needle(needle_id=5)
+        finally:
+            await client.close()
+        assert needle["creator"]["id"] == 7
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_every_page_of_an_async_gauge_needle_list_coerces_its_untagged_creator(self):
+        _serve_two_needle_pages()
+        client = AsyncClient(access_token="test-token")
+        try:
+            result = await client.for_account("12345").gauges.list_gauge_needles(project_id=7)
+            needles = list(result)
+        finally:
+            await client.close()
+        assert [n["creator"]["id"] for n in needles] == [7, 8]
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_the_async_client_leaves_a_strict_creator_alone(self):
+        # The negative, async: the report is not a reference surface.
+        respx.get(url__regex=r".*/reports/schedules/upcoming\.json.*").mock(
+            return_value=httpx.Response(200, json={"schedule_entries": [{"id": 1, "creator": {"id": "basecamp"}}]})
+        )
+        client = AsyncClient(access_token="test-token")
+        try:
+            report = await client.for_account("12345").reports.upcoming(
+                window_starts_on="2024-01-01", window_ends_on="2024-01-31"
+            )
+        finally:
+            await client.close()
+        assert report["schedule_entries"][0]["creator"]["id"] == "basecamp"
+
+    @pytest.mark.parametrize("base", [_base, _async_base], ids=["sync", "async"])
+    def test_a_response_with_no_request_is_not_a_surface_rather_than_an_error(self, base):
+        # `httpx.Response.request` RAISES RuntimeError when unset; it is never
+        # merely absent. `getattr(response, "request", None)` therefore did not
+        # default -- it let the RuntimeError out of the gate.
+        response = httpx.Response(200, json={"creator": {"id": "007"}})
+        assert base._embedded_people(response) is False
+
     def test_the_personable_type_pass_is_not_narrowed_with_it(self):
         # The other half: the tagged pass predates this work and keeps its reach.
         data = {"report": {"actor": {"id": "007", "personable_type": "User"}}}
@@ -289,6 +370,25 @@ class TestThePositionalPassRunsOnlyWhereTheReferenceRunsIt:
         from basecamp._person_id import embedded_people_url
 
         assert not embedded_people_url(f"https://3.basecampapi.com/999{path}")
+
+    @pytest.mark.parametrize(
+        "url",
+        [
+            # A base URL whose own path contains a surface's spelling.
+            "https://proxy.example/gauge_needles/1/12345/todos/42.json",
+            "https://proxy.example/reports/gauges.json/12345/todos/42.json",
+            # A host that spells one.
+            "https://my.readings.json.example/12345/todos/42.json",
+            # A trailing segment after one.
+            "https://3.basecampapi.com/999/my/readings.json/extra",
+            "https://3.basecampapi.com/999/gauge_needles/5/comments.json",
+        ],
+    )
+    def test_nothing_around_a_surface_spelling_switches_the_pass_on(self, url):
+        # Anchored to the END of the PATH, and only the path is matched.
+        from basecamp._person_id import embedded_people_url
+
+        assert not embedded_people_url(url)
 
 
 class TestTheWalkFindsAPersonTwoWays:

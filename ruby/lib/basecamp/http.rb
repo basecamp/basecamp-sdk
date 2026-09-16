@@ -80,16 +80,26 @@ module Basecamp
     # Matched on the request path rather than an operation name because Go's own
     # boundary is the call site, and because +update_gauge_needle+ reaches
     # +decodeGaugePayload+ in the reference while passing no operation id here.
+    #
+    # Each pattern is anchored to the END of the URL's path, and only the path
+    # is matched — never the host, never the query. An unanchored pattern over
+    # the whole URL would let a base URL whose own path happened to contain
+    # "/gauge_needles/" switch the pass on for every request.
     EMBEDDED_PEOPLE_PATHS = [
-      %r{/my/readings(\.json|/)},          # GetMyNotifications, GetBubbleUps
-      %r{/gauge_needles/},                 # GetGaugeNeedle, UpdateGaugeNeedle
-      %r{/gauge/needles\.json},            # ListGaugeNeedles
-      %r{/reports/gauges\.json}            # ListGauges
+      %r{/my/readings\.json\z},                  # GetMyNotifications
+      %r{/my/readings/bubble_ups\.json\z},       # GetBubbleUps
+      %r{/gauge_needles/\d+\z},                   # GetGaugeNeedle, UpdateGaugeNeedle
+      %r{/projects/\d+/gauge/needles\.json\z},    # ListGaugeNeedles, CreateGaugeNeedle
+      %r{/reports/gauges\.json\z}                 # ListGauges
     ].freeze
 
     # Whether +url+ is one of the reference's two normalization surfaces.
     def self.embedded_people_url?(url)
-      path = url.to_s.split("?", 2).first.to_s
+      path = begin
+        URI.parse(url.to_s).path.to_s
+      rescue URI::InvalidURIError
+        return false
+      end
       EMBEDDED_PEOPLE_PATHS.any? { |pattern| pattern.match?(path) }
     end
 

@@ -251,6 +251,46 @@ describe("person id normalization", () => {
     expect(unread.creator.id).toBe(7);
   });
 
+  it("runs the positional pass on the Gauges surface too, not only on notifications", async () => {
+    // The OTHER of the reference's two surfaces. `decodeGaugePayload`
+    // (go/pkg/basecamp/gauges.go:170) runs every gauge and needle body through
+    // `normalizeEmbeddedPeopleJSON`, so an untagged creator on a needle is
+    // coerced there. Without this, dropping "Gauges" from the gate left every
+    // test green.
+    server.use(
+      http.get(`${BASE_URL}/gauge_needles/5`, () =>
+        HttpResponse.json({ id: 5, description: "n", creator: { id: "007", name: "Padded" } }),
+      ),
+    );
+
+    const needle = (await client.gauges.gaugeNeedle(5)) as unknown as { creator: Record<string, unknown> };
+    expect(needle.creator.id).toBe(7);
+  });
+
+  it("runs the positional pass on a FOLLOWED page, judged by the service that fetched it", async () => {
+    // Pages after the first are normalized inside the pagination helpers, which
+    // get the service threaded in separately from the first page. Nothing pinned
+    // that: passing the wrong service there left every test green, which would
+    // have skipped the pass on page two of every gauge list.
+    server.use(
+      http.get(`${BASE_URL}/projects/1/gauge/needles.json`, ({ request }) => {
+        const page = new URL(request.url).searchParams.get("page");
+        if (page === "2") {
+          return HttpResponse.json([{ id: 2, description: "second", creator: { id: "+8", name: "Signed" } }]);
+        }
+        return HttpResponse.json([{ id: 1, description: "first", creator: { id: "007", name: "Padded" } }], {
+          headers: { Link: `<${BASE_URL}/projects/1/gauge/needles.json?page=2>; rel="next"` },
+        });
+      }),
+    );
+
+    const result = await client.gauges.listGaugeNeedles(1);
+    const needles = [...result] as unknown as { id: number; creator: Record<string, unknown> }[];
+    expect(needles.map((n) => n.id)).toEqual([1, 2]);
+    expect(needles[0]!.creator.id).toBe(7);
+    expect(needles[1]!.creator.id).toBe(8);
+  });
+
   it("has exactly 11 rows JS cannot represent, and they are the large ones", () => {
     // Pinned as a count so the residual set cannot quietly grow: a change that
     // starts refusing representable ids has to come and edit this number.

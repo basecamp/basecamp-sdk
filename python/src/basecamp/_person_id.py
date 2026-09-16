@@ -49,6 +49,7 @@ from collections.abc import MutableMapping
 from enum import Enum
 from itertools import islice
 from typing import Any
+from urllib.parse import urlsplit
 
 _UINT64_MAX = 2**64 - 1
 _INT64_MIN = -(2**63)
@@ -91,9 +92,11 @@ def parse_int64(text: str) -> int | Refusal:
     # One optional ASCII sign. `+` IS accepted -- the `^-?\d+$` regex most ports
     # reach for is not this grammar.
     sign = text[:1]
-    # An offset, not a slice: `text[1:]` copied the whole remaining id before a
-    # scan that reaches its verdict within ~20 digits, so a long malformed id
-    # cost a copy of itself for nothing.
+    # An offset, not a slice: `text[1:]` copied the whole remaining id before the
+    # scan even started. The scan itself stops at the first non-digit or at the
+    # first overflow -- within ~20 significant digits -- so a long malformed id
+    # cost a copy of itself for nothing. (Leading zeros carry no magnitude, so an
+    # all-zero-padded id is still walked in full, exactly as Go walks it.)
     start = 1 if sign in ("+", "-") else 0
     # An empty digit run, with or without a sign, is a syntax error: "", "+", "-".
     if start == len(text):
@@ -176,21 +179,23 @@ def normalize_person_ids(obj: Any, *, embedded_people: bool = False) -> None:
     embedded creator and participant people frequently omit ``personable_type``,
     so the first pass skips exactly the payloads the second exists to fix.
 
-    Missing it was observable HERE, where in most ports it would not be. Every
+    Missing it is observable HERE, where in most ports it would not be. Every
     port with a runtime decoder behind the normalizer -- Kotlin's
     ``FlexibleLongSerializer``, Swift's ``FlexibleInt``, Rust's ``flexible_i64``
     -- converts the string at read time whichever pass did or did not touch it.
     Python's only such decoder, ``_decoded_flexible_int64``, runs inside the
     recording-summary composite and nowhere else; the generated services hand
-    back a plain ``dict`` with nothing between it and the wire. So an
-    un-normalized ``creator.id`` reached the caller as the STRING it arrived as,
-    and on a WRITE path it did worse than that: ``services/_merge_safe``'s
-    ``writable_id_list`` requires an ``int``, so a schedule entry whose
-    ``participants`` carry string ids and no ``personable_type`` made
-    ``schedules.edit_entry`` REFUSE a body the reference accepts (Go's generated
-    ``Person.Id`` is ``types.FlexibleInt64``, which reads it as the number). A
-    merge-safe update refusing what the reference accepts is the vanishing
-    direction, on a write.
+    back a plain ``dict`` with nothing between it and the wire. So on a
+    notification or gauge body an un-normalized ``creator.id`` would reach the
+    caller as the STRING it arrived as, where the reference reads the number.
+
+    That missing decoder is also why this pass does NOT close every string person
+    id off the wire, and does not try to -- see "WHERE PASS 2 RUNS" below. Off
+    Go's two surfaces a string id in ``creator``, ``assignees`` or a schedule's
+    ``participants`` stays a string, which ``services/_merge_safe``'s
+    ``writable_id_list`` refuses: ``schedules.edit_entry`` refuses a body the
+    reference accepts. That is decoder coverage rather than normalizer reach, and
+    it is tracked in PR #913.
 
     ONE walk here where Go runs two, and the two are equivalent because
     :func:`coerce_person_id` is idempotent and both passes apply it unchanged.
@@ -263,15 +268,21 @@ def normalize_person_ids(obj: Any, *, embedded_people: bool = False) -> None:
 #: it is called from ``decodeGaugePayload`` (every gauge and needle body) and
 #: from the notification decoders, and from nowhere else. Matched on the request
 #: path because Go's own boundary is the call site.
+#:
+#: Each pattern is anchored to the END of the URL's path, and only the path is
+#: matched -- never the host, never the query. An unanchored pattern over the
+#: whole URL would let a base URL whose own path contained ``/gauge_needles/``
+#: switch the pass on for every request.
 EMBEDDED_PEOPLE_PATHS: tuple[re.Pattern[str], ...] = (
-    re.compile(r"/my/readings(\.json|/)"),  # GetMyNotifications, GetBubbleUps
-    re.compile(r"/gauge_needles/"),  # GetGaugeNeedle, UpdateGaugeNeedle
-    re.compile(r"/gauge/needles\.json"),  # ListGaugeNeedles
-    re.compile(r"/reports/gauges\.json"),  # ListGauges
+    re.compile(r"/my/readings\.json\Z"),  # GetMyNotifications
+    re.compile(r"/my/readings/bubble_ups\.json\Z"),  # GetBubbleUps
+    re.compile(r"/gauge_needles/\d+\Z"),  # GetGaugeNeedle, UpdateGaugeNeedle
+    re.compile(r"/projects/\d+/gauge/needles\.json\Z"),  # ListGaugeNeedles, CreateGaugeNeedle
+    re.compile(r"/reports/gauges\.json\Z"),  # ListGauges
 )
 
 
 def embedded_people_url(url: str) -> bool:
     """Whether ``url`` is one of the reference's two normalization surfaces."""
-    path = url.split("?", 1)[0]
+    path = urlsplit(url).path
     return any(pattern.search(path) for pattern in EMBEDDED_PEOPLE_PATHS)
