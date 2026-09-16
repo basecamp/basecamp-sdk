@@ -571,17 +571,17 @@ module Basecamp
         # what this now does in the same order.
         summary[BUCKET_ID_MEMO] = read_bucket_id(record)
 
-        parent_member = read_member(parent, "title")
+        parent_member = read_member(parent, "title", "parent")
         parent_member.nil? ? summary.delete("parent") : summary["parent"] = parent_member
 
-        bucket_member = read_member(summary["bucket"], "name")
+        bucket_member = read_member(summary["bucket"], "name", "bucket")
         bucket_member.nil? ? summary.delete("bucket") : summary["bucket"] = bucket_member
         # A creator's id is decoded FLEXIBLY, because a creator is a Person and
         # that is the one id in the generated model typed that way. Reading it
         # with the strict decoder made {"id" => "basecamp"} — the sentinel the
         # API serves for system-generated entities — look malformed, so the
         # member was kept where the reference reads 0 and drops it.
-        creator_member = read_member(summary["creator"], "name", person: true)
+        creator_member = read_member(summary["creator"], "name", "creator", person: true)
         creator_member.nil? ? summary.delete("creator") : summary["creator"] = creator_member
         # Absent or empty is genuinely nothing to report — the reference's
         # +omitempty+ leaves an empty slice out of its summary too, so the key
@@ -603,11 +603,17 @@ module Basecamp
 
       # The assignees, which the reference decodes as a slice of people.
       #
-      # The members are checked for being objects and are then passed through
-      # whole. Their FIELDS are not checked, and that is the deliberate edge of
-      # this port's rule: it refuses what it would otherwise read wrongly, and
-      # it does not attempt the reference's whole-body decode. A person id is
-      # the one place the two genuinely differ — see {Basecamp::Ids.from_wire}.
+      # Each member is checked for being an object and its ID is decoded and
+      # re-emitted; every other field passes through whole. That is the
+      # deliberate edge of this port's rule, the same one #read_member states:
+      # it refuses what it would otherwise read wrongly and does not attempt the
+      # reference's whole-body decode.
+      #
+      # This paragraph used to end "a person id is the one place the two
+      # genuinely differ", and by the time it was written that was false three
+      # ways: the id is where the two now AGREE, the NAME is where they differ,
+      # and the reader it cited is the strict one while this path uses the
+      # flexible one. It sat directly above the gap it denied.
       def read_assignees(assignees)
         unless assignees.is_a?(Array)
           raise malformed_response("the recording's \"assignees\" is #{MergeSafe.describe(assignees)}, not an array")
@@ -617,7 +623,12 @@ module Basecamp
           # A null member is the ZERO PERSON there, and the reference emits it
           # as an object — so passing nil through handed a consumer something
           # that crashes on `assignee["id"]` where the contract gives 0.
-          next {} if assignee.nil?
+          # The ZERO PERSON, as the reference emits it — not an empty hash. Go
+          # decodes a null member into a zero-valued Person and marshals every
+          # field, so `assignee["id"]` is 0 and `["name"]` is "". An empty hash
+          # gave nil for both, and the test pinning it asserted nil directly
+          # under a comment saying the contract gives 0.
+          next { "id" => 0, "name" => "" } if assignee.nil?
 
           unless assignee.is_a?(Hash)
             raise malformed_response("an assignee is #{MergeSafe.describe(assignee)}, not an object")
@@ -626,6 +637,14 @@ module Basecamp
           # Every assignee is a Person, so its id takes the flexible decoder and
           # is emitted decoded — the same rule as the creator, one level down,
           # and the level the first version of that fix did not reach.
+          #
+          # Its NAME is not type-checked here, which is the same stopping point
+          # #read_member states: the reference fails the read on a non-string
+          # name and this passes it through. An earlier comment on this block
+          # said a person id was "the one place the two genuinely differ",
+          # which was false three ways by the time it was written — the id is
+          # where they now agree, the name is where they differ, and this path
+          # uses the flexible reader rather than the strict one it named.
           id = read_member_id(assignee, person: true)
           if id.nil?
             raise malformed_response("an assignee's id is #{MergeSafe.describe(assignee["id"])}, not a person id")
@@ -661,33 +680,39 @@ module Basecamp
         raise malformed_response("the recording's id is #{MergeSafe.describe(value)}, not an integer")
       end
 
-      # Whether a nested member belongs in the projection.
+      # A nested member as the projection should carry it, or nil to drop it.
       #
-      # The reference builds a bucket, parent or creator only when it has an id
-      # or a name, so an EMPTY object leaves the key out of its summary where
-      # this port emitted `{}`.
+      # The name and the shape both changed when this stopped being a predicate,
+      # and this paragraph described the predicate for two rounds after — down
+      # to citing a mutation result that no longer reproduces. What it does now:
+      # refuse a member the reference could not decode, decode its id, and
+      # return it or nil by the emptiness rule.
       #
-      # A member that is not an object, or whose id is not one, is KEPT — but
-      # this is no longer what makes the cross-bucket check safe, and the
-      # comment here used to say that it was. Twice this predicate dropped a
-      # malformed bucket before that check could object, because an
-      # output-shape rule was silently doing safety work. The bucket is
-      # validated in #project now, before any key is dropped, so these two
-      # clauses are belt-and-braces: mutating either to false leaves the suite
-      # green, which is the evidence that the coupling is gone.
+      # EMPTINESS IS TWO NAMED FIELDS, and the label differs by member: the
+      # reference tests <tt>Id != 0 || Name != ""</tt> for a bucket and a
+      # creator and <tt>Id != 0 || Title != ""</tt> for a parent, uniformly
+      # across all 17 conversions. A predicate over every value instead kept
+      # <tt>{"type" => "Project"}</tt>, which the reference drops.
       #
-      # TWO NAMED FIELDS, not "any value present", and the label differs by
-      # member: the reference tests <tt>Id != 0 || Name != ""</tt> for a bucket
-      # and a creator, and <tt>Id != 0 || Title != ""</tt> for a parent —
-      # uniformly, across all 17 conversions. A predicate over every value
-      # instead kept <tt>{"type" => "Project"}</tt> and <tt>{"url" => "u"}</tt>,
-      # which the reference drops. That is the per-site rule lesson again: the
-      # shared part here is the shape of the test, not the field it reads.
-      def read_member(member, label, person: false)
+      # WHAT IS AND IS NOT VALIDATED, stated exactly, because the previous
+      # version of this claimed the line was drawn where the reference draws it
+      # and that is measurably false. Validated: the member is an object, its
+      # ID decodes, and its LABEL is a string — the three values this composite
+      # reads. Passed through: every other field of the member. The reference
+      # decodes the whole nested struct, so a <tt>parent.type</tt> or a
+      # <tt>creator.avatar_url</tt> of the wrong type fails its read and
+      # reaches a caller here.
+      #
+      # That is the same whole-body-decode limit stated on #project, one level
+      # down, and it is a DELIBERATE stopping point rather than an oversight —
+      # but a sibling port validates all twelve of a person's string fields, so
+      # the two ports differ on it and that is worth a decision rather than
+      # drift. It is recorded in the pull request rather than settled here.
+      def read_member(member, label, member_name, person: false)
         return nil if member.nil?
 
         unless member.is_a?(Hash)
-          raise malformed_response("the recording's #{label == "title" ? "parent" : label} is " \
+          raise malformed_response("the recording's #{member_name} is " \
                                    "#{MergeSafe.describe(member)}, not an object")
         end
 
@@ -699,10 +724,12 @@ module Basecamp
         # a reader; for a parent and a creator nothing else ever looked, so
         # "kept for the reader" was under-refusal with a justification that did
         # not apply at two of its three call sites.
-        name = member[label]
-        unless name.nil? || name.is_a?(String)
-          raise malformed_response("a #{label} is #{MergeSafe.describe(name)}, not a string")
-        end
+        # Normalized to "" for a null, like every other string field — the
+        # boundary paragraph on #project already claims that for the top-level
+        # ones and the nested labels were silently exempt, so a null title came
+        # back as nil where the contract gives "" and `creator["name"].empty?`
+        # raised for a caller.
+        name = read_text(member[label], label)
 
         id = read_member_id(member, person: person)
         if id.nil?

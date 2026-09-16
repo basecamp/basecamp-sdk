@@ -586,9 +586,37 @@ class RecordingsSummarizeTest < Minitest::Test
     assignees = summarize(event_type: "todo.created")["assignees"]
 
     assert_equal 2, assignees.length
-    assert_equal({}, assignees.first)
-    assert_nil assignees.first["id"], "an empty object is indexable, which nil was not"
+    # The ZERO PERSON, which is what the reference emits for a null member —
+    # every field marshalled, so id is 0 and name is "". This row used to assert
+    # `assert_nil assignees.first["id"]` directly beneath a comment saying the
+    # contract gives 0: the test and its own explanation disagreed, and the
+    # test won for three rounds.
+    assert_equal({ "id" => 0, "name" => "" }, assignees.first)
+    assert_equal 0, assignees.first["id"]
     assert_equal({ "id" => 3 }, assignees.last)
+  end
+
+  def test_a_member_with_only_an_id_is_kept
+    # The `Id != 0` half of the reference's disjunction. Every "kept" row in the
+    # sibling test carries a name or a title, so a mutation deleting this half
+    # of `Id != 0 || Name != ""` survived the whole suite and the conformance
+    # run — the rule was half-verified while its test's own comment claimed to
+    # pin "the shapes that carry something OTHER than the two named fields".
+    stub_get("/12345/comments/1", response_body: recording(
+      "bucket" => { "id" => BUCKET }, "parent" => { "id" => 9 }, "creator" => { "id" => 7 }
+    ))
+
+    summary = summarize(event_type: "comment.created")
+
+    assert_equal({ "id" => BUCKET }, summary["bucket"])
+    assert_equal({ "id" => 9 }, summary["parent"])
+    assert_equal({ "id" => 7 }, summary["creator"])
+
+    # And a negative id counts, since the rule is non-zero rather than positive.
+    WebMock.reset!
+    stub_get("/12345/comments/1", response_body: recording("creator" => { "id" => -7 }))
+
+    assert_equal({ "id" => -7 }, summarize(event_type: "comment.created")["creator"])
   end
 
   def test_an_empty_nested_object_is_omitted_as_the_reference_omits_it

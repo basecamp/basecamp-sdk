@@ -11,11 +11,13 @@ require "test_helper"
 # whole suite stayed green, because the method is only ever reached incidentally
 # through inputs that are not entirely spaces.
 #
-# Every non-ASCII character in a test VALUE here is written as an escape. Prose
-# punctuation is not, because it is visible; an invisible character in an input
-# or an expectation is the hazard, and the distinction is the claim. That was
-# not true of the first two versions. The first asserted a plain space against
-# an input carrying a literal U+2003 — the expectation looked right in the diff
+# Every character in this file is ASCII. Not "every character in a test value",
+# which is what the second version of this paragraph said while the prose kept
+# em-dashes -- the exemption was true and it was also a loophole that let the
+# file drift back, twice. A flat rule is checkable by one grep; a rule with a
+# carve-out needs a reader to judge which side a character falls on, and three
+# iterations of this paragraph say that judgement does not survive editing. The first asserted a plain space against
+# an input carrying a literal U+2003 -- the expectation looked right in the diff
 # and was a different string. The second added this very paragraph claiming the
 # rule while leaving the literals in place, which a reviewer found with cat -A:
 # a comment asserting a property of the file it sits in, contradicted by the
