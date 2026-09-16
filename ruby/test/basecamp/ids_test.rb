@@ -145,6 +145,98 @@ class IdsTest < Minitest::Test
     assert_nil Basecamp::Ids.person_from_wire((MIN - 1).to_s)
   end
 
+  def test_the_measured_go_corpus_at_the_flexible_reader
+    # All 74 rows of GoPersonIds::CORPUS through the real reader. The reader
+    # cannot tell a value of 0 from a sentinel — the reference returns 0 for
+    # both, which is exactly why the sentinel is safe — so :label expects 0
+    # here and the three-way verdict is pinned at parse_int below.
+    GoPersonIds::CORPUS.each do |wire, expected|
+      want =
+        case expected
+        when :label then 0
+        when :refuse then nil
+        else expected.last
+        end
+
+      assert_equal want.inspect, Basecamp::Ids.person_from_wire(wire).inspect,
+                   "person_from_wire(#{wire.inspect})"
+    end
+  end
+
+  # --- Ids.parse_int: strconv.ParseInt(s, 10, 64), scan order included -----
+
+  def test_the_measured_go_corpus_at_the_scan
+    # The same 74 rows against the scan itself, where the three verdicts are
+    # still distinct: a value, ErrSyntax (:syntax, which the two person-id
+    # sites read as the "basecamp" sentinel) and ErrRange (:range, which they
+    # refuse). Both sites route through this one function, so this is the row
+    # that fails first if the rule drifts.
+    GoPersonIds::CORPUS.each do |wire, expected|
+      want =
+        case expected
+        when :label then :syntax
+        when :refuse then :range
+        else expected.last
+        end
+
+      assert_equal want.inspect, Basecamp::Ids.parse_int(wire).inspect, "parse_int(#{wire.inspect})"
+    end
+  end
+
+  def test_which_refusal_comes_first_is_decided_by_the_scan_and_not_by_the_shape
+    # ParseUint checks the magnitude INSIDE its loop and returns ErrRange the
+    # instant the accumulator would overflow uint64 — before the scan reaches
+    # the junk. So one digit separates a sentinel from a failed read, and the
+    # boundary is u64, not int64. A port that tests the whole string for
+    # well-formedness first gets this pair backwards, which is the defect this
+    # method exists to fix: an oversized malformed id silently became the
+    # "basecamp" system actor.
+    assert_equal :syntax, Basecamp::Ids.parse_int("18446744073709551615x")
+    assert_equal :range, Basecamp::Ids.parse_int("18446744073709551616x")
+
+    # And a lexical rule cannot express that, which is why both rules live
+    # here rather than one: bounded_decimal answers the SAME thing for both,
+    # correctly for its own callers, and neither may be hoisted into the other.
+    assert_equal :not_decimal, Basecamp::Ids.bounded_decimal("18446744073709551615x")
+    assert_equal :not_decimal, Basecamp::Ids.bounded_decimal("18446744073709551616x")
+  end
+
+  def test_the_scan_bounds_itself_without_a_length_gate
+    # No length gate here and none needed: the accumulator passes uint64 within
+    # twenty digits, so the scan answers without ever building the number. On
+    # the clock, because that is the only observable difference — every answer
+    # is identical with and without it (see the same argument at
+    # bounded_decimal's gate, which needs one because it converts the run).
+    digits = "9" * 5_000_000
+
+    elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    assert_equal :range, Basecamp::Ids.parse_int(digits)
+    assert_equal :syntax, Basecamp::Ids.parse_int("x#{digits}")
+    elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - elapsed
+
+    assert_operator elapsed, :<, 1.0,
+      "five million digits took #{elapsed.round(3)}s — the scan is accumulating past uint64 " \
+      "instead of refusing at it"
+  end
+
+  def test_an_empty_digit_run_is_a_syntax_error_however_it_is_spelled
+    # Unobservable through either consumer, since both read a syntax refusal as
+    # 0 and an empty run would accumulate 0 anyway — but it is what ParseInt
+    # does, and it matters the moment a third caller tells the two apart.
+    assert_equal :syntax, Basecamp::Ids.parse_int("")
+    assert_equal :syntax, Basecamp::Ids.parse_int("+")
+    assert_equal :syntax, Basecamp::Ids.parse_int("-")
+  end
+
+  def test_the_scan_reads_bytes_rather_than_characters
+    # A String carrying invalid UTF-8 reaches this from a response body, and
+    # the regexp engine raises ArgumentError on one. The scan compares bytes,
+    # so a broken encoding is just a non-digit byte: a syntax refusal, not an
+    # exception out of a public method.
+    assert_equal :syntax, Basecamp::Ids.parse_int("7\xC3".dup.force_encoding("UTF-8"))
+    assert_equal 7, Basecamp::Ids.parse_int("7".dup.force_encoding("ASCII-8BIT"))
+  end
+
   def test_a_person_id_of_another_type_is_still_a_decode_failure
     # Flexible is not lenient: the decoder takes a number or a string and
     # nothing else.

@@ -44,18 +44,23 @@ module Basecamp
     #
     # Overflow is left as a String on purpose, which is what the reference does:
     # the id is out of range for the field, so the reader refuses it rather than
-    # this silently substituting a sentinel.
+    # this silently substituting a sentinel. WHICH strings are overflows is
+    # decided by Go's scan order and not by their shape — "18446744073709551616x"
+    # is one and "18446744073709551615x" is a sentinel — so this reads them with
+    # {Basecamp::Ids.parse_int}, which is that scan, and shares it with
+    # {Basecamp::Ids.person_from_wire}: one rule, both person-id sites.
     def self.coerce_person_id(obj)
       raw = obj["id"]
-      # Bounded before conversion: this runs over EVERY decoded response, and a
+      # Bounded by construction: this runs over EVERY decoded response, and a
       # body may be 50 MB, so a long digit run built an arbitrarily large
-      # Integer here before anything decided to discard it.
-      parsed = Ids.bounded_decimal(raw)
+      # Integer here before anything decided to discard it. The scan refuses
+      # past 64 bits within 20 digits and never converts the rest.
+      parsed = Ids.parse_int(raw)
       case parsed
-      when :not_decimal
+      when :syntax
         obj["system_label"] = raw
         obj["id"] = 0
-      when :overflow
+      when :range
         nil # left as the string, for the reader to refuse
       else
         obj["id"] = parsed

@@ -276,6 +276,115 @@ end
 # Also expose as TestHelper for compatibility
 TestHelper = TestHelpers
 
+# The person-id corpus, every row a MEASURED verdict of the reference's own
+# reader rather than a reading of its documentation: a probe linked against
+# go/pkg/types.FlexibleInt64 and against normalizeEmbeddedPeopleJSON produced
+# all 74. Both Ruby sites that read a person id off the wire are pinned to it —
+# Basecamp::Http.normalize_person_ids and Basecamp::Ids.person_from_wire — so
+# the table lives here rather than in either test file.
+#
+# The three outcomes are strconv.ParseInt's three, which the sites spell
+# differently and mean identically:
+#
+#   [ :value, n ]  ParseInt returned n. The normalizer writes the number and no
+#                  system_label; the reader returns n.
+#   :label         ErrSyntax. The normalizer writes id 0 and system_label = the
+#                  raw string (the reference's non-numeric sentinel — the
+#                  "basecamp" system actor); the reader returns 0.
+#   :refuse        ErrRange. The normalizer LEAVES THE STRING alone so the
+#                  reader refuses it; the reader fails the read (nil).
+#
+# Rows that exist to discriminate and must not be pruned as redundant: "+7" and
+# "+007" (the sign a ^-?\d+$ regex refuses); "007", "010" and
+# "0009223372036854775807" (leading zeros — "010" is TEN, and Ruby's Integer()
+# read it as eight); the Unicode digit rows ("１２３", "٠١٢", "৭", "۷", "７",
+# "৭7", "7৭"), which Ruby refuses today — both its /\d/ and Integer() are
+# ASCII-only — but which a \p{Nd}-aware rewrite would turn into ids the
+# reference reads as sentinels; the whitespace and underscore rows, which
+# Integer() DOES accept (" 7" is 7 there, "1_2" is 12); "9007199254740992" and
+# "9007199254740993" (past JS's safe-integer range, real int64 ids); and the
+# scan-order pair "18446744073709551615x" against "18446744073709551616x" —
+# one digit apart and opposite refusals, because ParseUint checks the magnitude
+# inside the scan and never reaches the "x" once it has overflowed.
+module GoPersonIds
+  CORPUS = [
+    [ "7", [ :value, 7 ] ],
+    [ "0", [ :value, 0 ] ],
+    [ "-0", [ :value, 0 ] ],
+    [ "+0", [ :value, 0 ] ],
+    [ "+7", [ :value, 7 ] ],
+    [ "-7", [ :value, -7 ] ],
+    [ "007", [ :value, 7 ] ],
+    [ "+007", [ :value, 7 ] ],
+    [ "-007", [ :value, -7 ] ],
+    [ "0009223372036854775807", [ :value, 9223372036854775807 ] ],
+    [ "0000000000000000000000009", [ :value, 9 ] ],
+    [ "", :label ],
+    [ " ", :label ],
+    [ "+", :label ],
+    [ "-", :label ],
+    [ " 7", :label ],
+    [ "7 ", :label ],
+    [ " 7 ", :label ],
+    [ "\n7", :label ],
+    [ "7\n", :label ],
+    [ "\t7", :label ],
+    [ "7\t", :label ],
+    [ "1_0", :label ],
+    [ "1_2", :label ],
+    [ "0x10", :label ],
+    [ "0b11", :label ],
+    [ "0o17", :label ],
+    [ "010", [ :value, 10 ] ],
+    [ "0X1F", :label ],
+    [ "7x", :label ],
+    [ "x7", :label ],
+    [ "12.0", :label ],
+    [ "1e3", :label ],
+    [ "12,3", :label ],
+    [ "basecamp", :label ],
+    [ "campfire", :label ],
+    [ "LocalPerson", :label ],
+    [ "\uff11\uff12\uff13", :label ],
+    [ "\uff17", :label ],
+    [ "\u0660\u0661\u0662", :label ],
+    [ "\u09ed", :label ],
+    [ "\u06f7", :label ],
+    [ "9223372036854775806", [ :value, 9223372036854775806 ] ],
+    [ "9223372036854775807", [ :value, 9223372036854775807 ] ],
+    [ "9223372036854775808", :refuse ],
+    [ "9223372036854775809", :refuse ],
+    [ "-9223372036854775807", [ :value, -9223372036854775807 ] ],
+    [ "-9223372036854775808", [ :value, -9223372036854775808 ] ],
+    [ "-9223372036854775809", :refuse ],
+    [ "18446744073709551614", :refuse ],
+    [ "18446744073709551615", :refuse ],
+    [ "18446744073709551616", :refuse ],
+    [ "18446744073709551615x", :label ],
+    [ "18446744073709551616x", :refuse ],
+    [ "1844674407370955161x", :label ],
+    [ "-18446744073709551615x", :label ],
+    [ "-18446744073709551616x", :refuse ],
+    [ "99999999999999999999999", :refuse ],
+    [ "99999999999999999999999x", :refuse ],
+    [ "00000000000000000000018446744073709551616", :refuse ],
+    [ "0000000000000000000009223372036854775807", [ :value, 9223372036854775807 ] ],
+    [ "9007199254740991", [ :value, 9007199254740991 ] ],
+    [ "9007199254740992", [ :value, 9007199254740992 ] ],
+    [ "9007199254740993", [ :value, 9007199254740993 ] ],
+    [ "90071992547409931", [ :value, 90071992547409931 ] ],
+    [ "-9007199254740993", [ :value, -9007199254740993 ] ],
+    [ "+9223372036854775807", [ :value, 9223372036854775807 ] ],
+    [ "+9223372036854775808", :refuse ],
+    [ "00", [ :value, 0 ] ],
+    [ "0000", [ :value, 0 ] ],
+    [ "-00", [ :value, 0 ] ],
+    [ "\u0660", :label ],
+    [ "\u09ed7", :label ],
+    [ "7\u09ed", :label ]
+  ].freeze
+end
+
 module Minitest
   # Assertion aliases for readable tests (like ActiveSupport provides).
   # rubocop:disable Rails/RefuteMethods
