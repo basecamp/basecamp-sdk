@@ -31563,7 +31563,6 @@ type PollInboxResponse struct {
 	JSON200      *PollInboxResponseContent
 	JSON400      *BadRequestErrorResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
-	JSON403      *ForbiddenErrorResponseContent
 	JSON409      *FeedFilterMismatchErrorResponseContent
 	JSON410      *FeedPositionGoneErrorResponseContent
 	JSON429      *RateLimitErrorResponseContent
@@ -45425,11 +45424,8 @@ func ParsePollInboxResponse(rsp *http.Response) (*PollInboxResponse, error) {
 			response.JSON401 = &dest
 		}
 
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest ForbiddenErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
-			response.JSON403 = &dest
-		}
+	case rsp.StatusCode == 403:
+		break // No content-type
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
 		var dest FeedFilterMismatchErrorResponseContent

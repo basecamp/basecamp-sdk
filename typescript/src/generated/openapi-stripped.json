@@ -8833,14 +8833,7 @@
             }
           },
           "403": {
-            "description": "ForbiddenError 403 response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
-                }
-              }
-            }
+            "description": "BareForbiddenError 403 response"
           },
           "409": {
             "description": "FeedFilterMismatchError 409 response",

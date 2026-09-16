@@ -478,6 +478,18 @@ structure ForbiddenError {
   message: String
 }
 
+/// 403 with no response body — the bare `head :forbidden` rendering, the
+/// treatment BareNotFoundError already gets at 404. `PollInbox` uses it: the
+/// inbox is agents-only until registrations open it to people, and
+/// `Events::InboxesController#require_agent_principal` answers a human
+/// principal with `head :forbidden` and no JSON at all. Modeling the flat
+/// {error, message} ForbiddenError there would advertise a decodable body the
+/// server never sends, on the one operation where 403 is the documented,
+/// expected outcome rather than an edge.
+@error("client")
+@httpError(403)
+structure BareForbiddenError {}
+
 @error("client")
 @httpError(400)
 structure BadRequestError {
@@ -7516,7 +7528,7 @@ structure FeedEvent {
 operation PollInbox {
   input: PollInboxInput
   output: PollInboxOutput
-  errors: [BadRequestError, FeedFilterMismatchError, FeedPositionGoneError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+  errors: [BadRequestError, FeedFilterMismatchError, FeedPositionGoneError, UnauthorizedError, BareForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure PollInboxInput {

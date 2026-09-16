@@ -13909,14 +13909,12 @@ export interface operations {
                     "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
                 };
             };
-            /** @description ForbiddenError 403 response */
+            /** @description BareForbiddenError 403 response */
             403: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
-                };
+                content?: never;
             };
             /** @description FeedFilterMismatchError 409 response */
             409: {
