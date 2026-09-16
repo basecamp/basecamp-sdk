@@ -1120,7 +1120,7 @@
               "type": "string"
             },
             "item": {
-              "$ref": "#/$defs/inboxItem"
+              "$ref": "#/$defs/inboxLiveItem"
             }
           },
           "oneOf": [
@@ -2198,7 +2198,7 @@
         "addressed_at",
         "event"
       ],
-      "description": "One inbox item — the lane's unit of delivery and identity. The same event can address the principal for several reasons and each is its own item, so drivers deliver, deduplicate and position by addressing_id. The nested event is in the poll row's shape (nine required keys; the push-only transport keys are accepted when present, per the doc's \"same shape as above\").",
+      "description": "One polled inbox item — the lane's unit of delivery and identity. The same event can address the principal for several reasons and each is its own item, so drivers deliver, deduplicate and position by addressing_id. The nested event is the poll row (nine required keys, no transport keys: the generated FeedEvent carries none).",
       "properties": {
         "addressing_id": {
           "type": "integer",
@@ -2314,6 +2314,116 @@
           "type": "string",
           "minLength": 1,
           "description": "Continuation URL, bound to this walk, never persisted. Use {{NEXT:n}} for same-origin; hostile fixtures use literal foreign origins."
+        }
+      }
+    },
+    "inboxItemLiveEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "event_type",
+        "action",
+        "created_at",
+        "bucket_id",
+        "creator_id",
+        "performed_by_id",
+        "recording_id"
+      ],
+      "description": "A live inbox item's event, as an item FRAME carries it: the poll row's nine required keys and an optional details object, plus the push transport keys actor_type and visible_to_clients accepted when present (never a present null) — the shape the cable decoder preserves.",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9223372036854775807
+        },
+        "kind": {
+          "type": "string",
+          "minLength": 1
+        },
+        "event_type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "action": {
+          "type": "string",
+          "minLength": 1
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[+-]\\d{2}:\\d{2})$",
+          "description": "RFC 3339, validated as a calendar instant (format) and as the exact spelling every driver parses (pattern)."
+        },
+        "bucket_id": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9223372036854775807
+        },
+        "creator_id": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9223372036854775807
+        },
+        "performed_by_id": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 9223372036854775807
+        },
+        "recording_id": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9223372036854775807
+        },
+        "details": {
+          "type": "object",
+          "description": "Type-specific detail object, forwarded verbatim (card.moved: column_id / previous_column_id; boost.created: boost_id / boosted_event_id / boosted_event_type). Present only for the types that publish one."
+        },
+        "actor_type": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[^,\\s\"']+$",
+          "description": "The actor's kind — agent or person today; a server-owned vocabulary the connector never client-validates on the way in."
+        },
+        "visible_to_clients": {
+          "type": "boolean"
+        }
+      }
+    },
+    "inboxLiveItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "addressing_id",
+        "reason",
+        "addressed_at",
+        "event"
+      ],
+      "description": "One live inbox item, as an item frame carries it: the same addressing as a polled item around an event that may also carry the push transport keys.",
+      "properties": {
+        "addressing_id": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9223372036854775807
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[^,\\s\"']+$",
+          "description": "Why the item addressed the principal — server-owned vocabulary."
+        },
+        "addressed_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[+-]\\d{2}:\\d{2})$",
+          "description": "RFC 3339, validated as a calendar instant (format) and as the exact spelling every driver parses (pattern)."
+        },
+        "event": {
+          "$ref": "#/$defs/inboxItemLiveEvent"
         }
       }
     }

@@ -1342,6 +1342,13 @@ var placeholderPattern = regexp.MustCompile(`\{\{([A-Z_]+)(?::(\d+))?\}\}`)
 // unknown placeholder fails the fixture rather than surviving into a URL.
 func substitutePlaceholders(raw []byte, h *scenarioHarness) ([]byte, error) {
 	var failure error
+	var laneOf struct {
+		Config struct {
+			Lane string `json:"lane"`
+		} `json:"config"`
+	}
+	_ = json.Unmarshal(raw, &laneOf)
+	lane := laneOf.Config.Lane
 	out := placeholderPattern.ReplaceAllFunc(raw, func(token []byte) []byte {
 		groups := placeholderPattern.FindSubmatch(token)
 		name := string(groups[1])
@@ -1359,7 +1366,12 @@ func substitutePlaceholders(raw []byte, h *scenarioHarness) ([]byte, error) {
 		case "POS":
 			return []byte(fmt.Sprintf("pos-%d", index))
 		case "NEXT":
-			return []byte(fmt.Sprintf("%s/events.json?continuation=%d", h.apiOrigin, index))
+			// A continuation continues the lane's own operation.
+			route := "events.json"
+			if lane == "inbox" {
+				route = "inbox.json"
+			}
+			return []byte(fmt.Sprintf("%s/%s?continuation=%d", h.apiOrigin, route, index))
 		default:
 			if failure == nil {
 				failure = fmt.Errorf("unknown placeholder %s", token)
