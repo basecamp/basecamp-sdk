@@ -170,6 +170,36 @@ fn the_route_table_is_complete_and_consistent() {
         })
         .count();
     assert_eq!(paginated, 61);
+    // The cursor style is the event feed's two poll lanes and nothing else: the
+    // route table must say they page (SPEC §8, §23) while keeping them out of
+    // the Link walk counted above, and must say CreateStreamTicket does not page
+    // at all — one call mints one ticket.
+    let mut cursor_paged: Vec<&str> = ROUTES
+        .iter()
+        .filter(|route| {
+            matches!(
+                route.pagination,
+                basecamp_sdk::routes::Pagination::Cursor { .. }
+            )
+        })
+        .map(|route| route.id)
+        .collect();
+    cursor_paged.sort_unstable();
+    assert_eq!(cursor_paged, vec!["PollEvents", "PollInbox"]);
+    assert_eq!(
+        basecamp_sdk::routes::POLL_EVENTS.pagination,
+        basecamp_sdk::routes::Pagination::Cursor {
+            key: Some("events")
+        }
+    );
+    assert_eq!(
+        basecamp_sdk::routes::POLL_INBOX.pagination,
+        basecamp_sdk::routes::Pagination::Cursor { key: Some("items") }
+    );
+    assert_eq!(
+        basecamp_sdk::routes::CREATE_STREAM_TICKET.pagination,
+        basecamp_sdk::routes::Pagination::None
+    );
     let route: &Route = &basecamp_sdk::routes::GET_PROJECT;
     assert_eq!(route.fill(&[&12345]), "/projects/12345");
     assert_eq!(

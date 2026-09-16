@@ -1129,10 +1129,11 @@ export interface paths {
          *     resumes from a token a previous page issued — signed, opaque, bound to the
          *     account and the filter set.
          *
-         *     **Pagination**: the body envelope, not the Link header. `position` is the
-         *     durable cursor (persist it only after processing the page's events); `next`
-         *     is an absolute continuation URL present only while this walk has more to
-         *     serve. Not wired into the generic Link paginator — see the section note.
+         *     **Pagination**: cursor style — the body envelope, not the Link header.
+         *     `position` is the durable cursor (persist it only after processing the
+         *     page's events); `next` is an absolute continuation URL present only while
+         *     this walk has more to serve. One call answers one page; no generator emits
+         *     a walk for the cursor style — see the section note.
          *
          *     **Errors.** 400 (FeedRequestError) for a malformed position (resume with
          *     `since=`) or a malformed filter (fix the filters; a position reset will not
@@ -1304,8 +1305,9 @@ export interface paths {
          *     account, the principal, and the filter set, and are never interchangeable
          *     with feed positions.
          *
-         *     **Pagination**: the body envelope (`items`, `position`, `next`), exactly as
-         *     PollEvents — not the Link header, and not the generic paginator.
+         *     **Pagination**: cursor style, exactly as PollEvents — the body envelope
+         *     (`items`, `position`, `next`), not the Link header and not the generic
+         *     paginator. Up to 100 items per page.
          *
          *     **Errors** follow PollEvents (FeedRequestError 400, FeedFilterMismatchError
          *     409), except that 403 carries no body — the agent guard's bare

@@ -1,7 +1,7 @@
 {
   "$schema": "https://basecamp.com/schemas/sdk-metadata.json",
   "version": "1.0.0",
-  "generated": "2026-09-16T11:59:59Z",
+  "generated": "2026-09-16T13:06:18Z",
   "operations": {
     "GetAccount": {
       "retry": {
@@ -1074,6 +1074,10 @@
           429,
           503
         ]
+      },
+      "pagination": {
+        "style": "cursor",
+        "maxPageSize": 100
       }
     },
     "CreateStreamTicket": {
@@ -1195,6 +1199,10 @@
           429,
           503
         ]
+      },
+      "pagination": {
+        "style": "cursor",
+        "maxPageSize": 100
       }
     },
     "GetForward": {

@@ -97,6 +97,38 @@ describe("EventFeedService", () => {
       expect(page.next).toBeUndefined();
     });
 
+    // The cursor style declares paging and generates no walk. A Link: rel="next"
+    // header is exactly what the link style follows, and the feed sends one on
+    // every page that has a continuation — so serving one here is the way to
+    // catch a walk being generated for these operations. Flattening would
+    // swallow the per-page `position`, which is the only thing a consumer can
+    // resume from. (This is a tripwire against a future style change, not a
+    // guard on the trait's presence: an undeclared operation also makes one
+    // request.)
+    it("answers one page and never follows the continuation", async () => {
+      let requests = 0;
+      server.use(
+        http.get(`${BASE_URL}/events.json`, () => {
+          requests += 1;
+          return HttpResponse.json(
+            {
+              events: [feedEvent(1071915468)],
+              position: "posAAA",
+              next: `${BASE_URL}/events.json?position=posAAA`,
+            },
+            { headers: { Link: `<${BASE_URL}/events.json?position=posAAA>; rel="next"` } }
+          );
+        })
+      );
+
+      const page = await client.eventFeed.pollEvents({ since: "0" });
+
+      expect(requests).toBe(1);
+      expect(page.events).toHaveLength(1);
+      expect(page.position).toBe("posAAA");
+      expect(page.next).toBe(`${BASE_URL}/events.json?position=posAAA`);
+    });
+
     it("surfaces a 409 filter mismatch as a non-retryable BasecampError", async () => {
       server.use(
         http.get(`${BASE_URL}/events.json`, () => {

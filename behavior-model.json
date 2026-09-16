@@ -2568,6 +2568,10 @@
     },
     "PollEvents": {
       "readonly": true,
+      "pagination": {
+        "style": "cursor",
+        "maxPageSize": 100
+      },
       "retry": {
         "max": 3,
         "base_delay_ms": 1000,
@@ -2580,6 +2584,10 @@
     },
     "PollInbox": {
       "readonly": true,
+      "pagination": {
+        "style": "cursor",
+        "maxPageSize": 100
+      },
       "retry": {
         "max": 3,
         "base_delay_ms": 1000,
