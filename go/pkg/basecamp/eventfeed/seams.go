@@ -165,11 +165,13 @@ const (
 	// another). The parsing algorithm yields only positive values, so
 	// RetryAfter is always > 0; it is waited exactly, cap-exempt.
 	PollThrottled
-	// PollPositionInvalid — 400-position: re-enter since=<last poll-served
-	// id> (or a present-class entry with none).
+	// PollPositionInvalid — 400 with reason invalid_position (or, from a
+	// server that sends no reason, the position message): re-enter
+	// since=<last poll-served id> (or a present-class entry with none).
 	PollPositionInvalid
-	// PollFilterInvalid — 400-filter → Terminal(filter_invalid); Msg carries
-	// the server's message naming the offending list, verbatim.
+	// PollFilterInvalid — 400 with reason invalid_filter (or, from a server
+	// that sends no reason, any other message) → Terminal(filter_invalid);
+	// Msg carries the server's message naming the offending list, verbatim.
 	PollFilterInvalid
 	// PollFilterChanged — 409: PositionDigest and FiltersDigest set (the
 	// body's two sides); discard the held position, re-enter since=.

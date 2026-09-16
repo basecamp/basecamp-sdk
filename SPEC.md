@@ -4035,7 +4035,11 @@ END
 -- The adapter maps every §6/§7 outcome of the generated call onto exactly one kind:
 -- 429/503 and §7-retryable outcomes exhausted inside the seam → throttled(retry_after)
 -- when the last response carried a parsed Retry-After, at ANY status, else transient;
--- the feed's 400/409/410 matrix → its four kinds; 401/403 (after the seam's own token
+-- the poll lanes' 400/409/410 matrix → its four kinds: the 400 keyed by its `reason`
+-- (`invalid_position` → position_invalid, `invalid_filter` → filter_invalid) and, when the
+-- server sent none, by the only signal it gives — its message — never by guessing; the
+-- 409 → filter_changed; the two 410 shapes → gone, with the feed's epoch or the inbox's
+-- none (0); 401/403 (after the seam's own token
 -- refresh and retry budget) → unauthorized; a 3xx whose Location fails the per-hop
 -- same-origin/no-downgrade validation (auto-follow is disabled — Continuation and
 -- Resume URL Validation) → redirect_refused, carrying the refused Location redacted to
