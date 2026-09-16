@@ -520,8 +520,11 @@ class SchedulesServiceTest {
      * that does not decode as a schedule entry", with the merge-safe hint
      * attached, for a request that was never sent.
      *
-     * The discriminator is now the internal slot only the response decoder
-     * fills, so the strategy's exception arrives as itself.
+     * The discriminator is now the internal slot only this SDK's own decode
+     * paths fill — the response decoder, and a composite restating one of its
+     * failures, which `updateRefusesAWrongTypedSummary` above asserts is the
+     * second of the two. An auth strategy reaches neither, so its exception
+     * arrives as itself.
      */
     @Test
     fun updateDoesNotRelabelAnAuthStrategyFailure() = runTest {

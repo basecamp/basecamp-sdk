@@ -1401,7 +1401,7 @@ tools:
 # Spec-shape lints
 #------------------------------------------------------------------------------
 
-.PHONY: check-gradle-serialization test-check-gradle-serialization check-bucket-flat-parity check-service-inventory-parity test-check-service-inventory-parity check-operation-assignment-parity test-check-operation-assignment-parity validate-api-gaps check-deprecation-parity kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-fixture-coverage check-idempotency-parity check-write-semantics-parity check-retry-metadata-parity check-runner-test-reachability check-fixture-execution check-replay-decoder-parity check-readme-env-vars test-check-readme-env-vars lint-npm-lockfile-writes test-lint-npm-lockfile-writes test-assert-sdk-built test-assert-lockfiles-unchanged check-projected-examples
+.PHONY: check-gradle-serialization test-check-gradle-serialization check-bucket-flat-parity check-service-inventory-parity test-check-service-inventory-parity check-operation-assignment-parity test-check-operation-assignment-parity validate-api-gaps check-deprecation-parity kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-fixture-coverage check-idempotency-parity check-write-semantics-parity check-retry-metadata-parity check-runner-test-reachability check-fixture-execution check-replay-decoder-parity check-readme-env-vars test-check-readme-env-vars check-orphaned-doc-comments test-check-orphaned-doc-comments lint-npm-lockfile-writes test-lint-npm-lockfile-writes test-assert-sdk-built test-assert-lockfiles-unchanged check-projected-examples
 
 # Verify every bucket-scoped GET list operation has a flat-path counterpart
 # (or is justified in spec/bucket-scoped-allowlist.txt). Cross-project SDK
@@ -1566,6 +1566,30 @@ check-readme-env-vars:
 test-check-readme-env-vars:
 	@python3 ./scripts/test-check-readme-env-vars.py
 
+# Refuse a doc comment that documents nothing because another doc comment
+# follows it. Eleven instances across Kotlin, TypeScript and (in scope, clean
+# today) Java, two of them written by an emitter and so unfixable in the output.
+# Nothing else here can see the shape: it compiles, it lints, and the prose
+# reads as documentation of whatever is below it. It also reports what it cannot
+# lex rather than reporting clean, because a gate whose failure mode is silent
+# passing is worse than no gate.
+# Python3 — runs anywhere, enforced in CI (spec-gates).
+check-orphaned-doc-comments:
+	@python3 ./scripts/check-orphaned-doc-comments.py
+
+# The run above only exercises a CLEAN tree, which proves the gate can say yes
+# and nothing about whether it can say no. This drives both directions through
+# synthetic trees. Refusals: the one-line-follower and blank-line spellings two
+# hand sweeps missed, plus every defect review found in the gate itself — a
+# literal closed in the wrong place, a form the scanner did not know was a form
+# (three shapes of regex literal), a language left out, and the false positives
+# that are the direction which gets a gate deleted. Acceptances: `/*` banners,
+# empty comments, a `/**` written inside a string or a template literal, CRLF,
+# and a block that closes mid-line. Every case was checked to flip when the rule
+# it guards is removed — one early case did not, and guarded nothing.
+test-check-orphaned-doc-comments:
+	@python3 ./scripts/test-check-orphaned-doc-comments.py
+
 # Best-effort DIAGNOSTIC, not the guarantee: which npm invocations could write a
 # lockfile? It prints and exits 0. The guarantee is assert-lockfiles-unchanged,
 # which compares the bytes of every manifest before and after — here and at the
@@ -1715,7 +1739,7 @@ check:
 	 if [ $$rc -ne 0 ]; then exit $$rc; fi; \
 	 echo "==> All checks passed"
 
-check-targets: check-gradle-serialization test-check-gradle-serialization test-promote-migrating lint-actions sync-spec-version-check smithy-check smithy-mapper-test behavior-model-check provenance-check sync-api-version-check doc-constants-check url-routes-check bc3-route-parity test-bc3-route-parity go-check-drift go-check-wrapper-drift go-check-generated-drift check-grouped-client-coverage test-check-grouped-client-coverage auth-routable-check check-service-inventory-parity test-check-service-inventory-parity check-operation-assignment-parity test-check-operation-assignment-parity kt-check-drift swift-check-drift rs-check-drift go-check ts-check rb-check kt-check swift-check py-check rs-check check-bucket-flat-parity validate-api-gaps check-deprecation-parity check-fixture-coverage kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-idempotency-parity check-write-semantics-parity check-retry-metadata-parity check-runner-test-reachability conformance check-fixture-execution check-replay-decoder-parity check-readme-env-vars test-check-readme-env-vars lint-npm-lockfile-writes test-lint-npm-lockfile-writes test-assert-sdk-built test-assert-lockfiles-unchanged check-projected-examples
+check-targets: check-gradle-serialization test-check-gradle-serialization test-promote-migrating lint-actions sync-spec-version-check smithy-check smithy-mapper-test behavior-model-check provenance-check sync-api-version-check doc-constants-check url-routes-check bc3-route-parity test-bc3-route-parity go-check-drift go-check-wrapper-drift go-check-generated-drift check-grouped-client-coverage test-check-grouped-client-coverage auth-routable-check check-service-inventory-parity test-check-service-inventory-parity check-operation-assignment-parity test-check-operation-assignment-parity kt-check-drift swift-check-drift rs-check-drift go-check ts-check rb-check kt-check swift-check py-check rs-check check-bucket-flat-parity validate-api-gaps check-deprecation-parity check-fixture-coverage kt-check-optional-arrays-and-scalars go-check-optional-pointers test-enhance-request-reachability check-idempotency-parity check-write-semantics-parity check-retry-metadata-parity check-runner-test-reachability conformance check-fixture-execution check-replay-decoder-parity check-readme-env-vars test-check-readme-env-vars check-orphaned-doc-comments test-check-orphaned-doc-comments lint-npm-lockfile-writes test-lint-npm-lockfile-writes test-assert-sdk-built test-assert-lockfiles-unchanged check-projected-examples
 	@:
 
 # Clean all build artifacts

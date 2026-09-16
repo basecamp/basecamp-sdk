@@ -921,45 +921,6 @@ class CampfireListingOverflow extends Error {
 }
 
 /**
- * The id a discovery source carried, read the way Go's decoder reads it.
- *
- * Three outcomes, and the first version of this had two of them wrong.
- * `json.Unmarshal` into an `int64` treats an ABSENT key and a JSON `null` as
- * the zero value and succeeds — Go then skips a zero id at its own filter — so
- * neither is an error here either. A string, a fraction, or a number past
- * int64 fails Go's decode outright and takes the whole read with it, which is
- * the malformed-response shape SPEC §6 spells for a composite that cannot
- * proceed with a 2xx body: `api_error`, statusless, non-retryable.
- *
- * Getting the first two wrong turned "skip this dock entry" into a failure of
- * the entire summarize; getting the last wrong let a fractional id through to
- * a request for `/chats/1.5/lines/{id}`.
- *
- * TWO GAPS, both stated rather than papered over. Go refuses the LITERAL — its
- * decoder runs `strconv.ParseInt` over the raw token — so `1.0`, `1e2` and
- * `7.7e1` are decode errors there. By the time this runs, `JSON.parse` has
- * turned every one of those into the number 77, and the literal is gone: an
- * exponent or trailing-zero spelling of a whole number is accepted here and
- * refused there — `1.0` arrives as 1, `1e2` as 100, `7.7e1` as 77 — and this
- * layer, which receives an already-parsed value, cannot tell any of them from
- * the literal Go refuses. Not an impossibility, a placement: on the supported
- * Node floor a `JSON.parse` reviver can read `context.source` and see the
- * spelling (SPEC §19 says so for the large-integer case), so a decoder that
- * wanted these distinctions could have them. This composite does not reach for
- * one, because it would mean parsing every response body twice to refuse a
- * spelling no BC3 endpoint emits. And
- * the upper bound is 2^53, not int64, which is the same limit SPEC §19 waives for this SDK: an id
- * past it cannot be held without rounding it into a different id, so refusing
- * it is the honest answer even though Go decodes it.
- *
- * The int64 window's own two ends are not symmetric after rounding, and the
- * message says so rather than pretending otherwise: 9223372036854775808 rounds
- * to exactly 2^63 and is refused, while -9223372036854775809 — a decode error
- * in Go — rounds to exactly -2^63, a legal value, and nothing at this layer can
- * tell the two apart. One end is measurable after JSON.parse and the other is
- * not.
- */
-/**
  * The body of a routed read, refused when it is not a recording object.
  *
  * Go decodes each read into a struct, so a body that is not a JSON object never
@@ -1076,6 +1037,45 @@ function wireInteger(value: unknown, what: string, hint = DISCOVERY_HINT): numbe
   return value;
 }
 
+/**
+ * The id a discovery source carried, read the way Go's decoder reads it.
+ *
+ * Three outcomes, and the first version of this had two of them wrong.
+ * `json.Unmarshal` into an `int64` treats an ABSENT key and a JSON `null` as
+ * the zero value and succeeds — Go then skips a zero id at its own filter — so
+ * neither is an error here either. A string, a fraction, or a number past
+ * int64 fails Go's decode outright and takes the whole read with it, which is
+ * the malformed-response shape SPEC §6 spells for a composite that cannot
+ * proceed with a 2xx body: `api_error`, statusless, non-retryable.
+ *
+ * Getting the first two wrong turned "skip this dock entry" into a failure of
+ * the entire summarize; getting the last wrong let a fractional id through to
+ * a request for `/chats/1.5/lines/{id}`.
+ *
+ * TWO GAPS, both stated rather than papered over. Go refuses the LITERAL — its
+ * decoder runs `strconv.ParseInt` over the raw token — so `1.0`, `1e2` and
+ * `7.7e1` are decode errors there. By the time this runs, `JSON.parse` has
+ * turned every one of those into the number 77, and the literal is gone: an
+ * exponent or trailing-zero spelling of a whole number is accepted here and
+ * refused there — `1.0` arrives as 1, `1e2` as 100, `7.7e1` as 77 — and this
+ * layer, which receives an already-parsed value, cannot tell any of them from
+ * the literal Go refuses. Not an impossibility, a placement: on the supported
+ * Node floor a `JSON.parse` reviver can read `context.source` and see the
+ * spelling (SPEC §19 says so for the large-integer case), so a decoder that
+ * wanted these distinctions could have them. This composite does not reach for
+ * one, because it would mean parsing every response body twice to refuse a
+ * spelling no BC3 endpoint emits. And
+ * the upper bound is 2^53, not int64, which is the same limit SPEC §19 waives for this SDK: an id
+ * past it cannot be held without rounding it into a different id, so refusing
+ * it is the honest answer even though Go decodes it.
+ *
+ * The int64 window's own two ends are not symmetric after rounding, and the
+ * message says so rather than pretending otherwise: 9223372036854775808 rounds
+ * to exactly 2^63 and is refused, while -9223372036854775809 — a decode error
+ * in Go — rounds to exactly -2^63, a legal value, and nothing at this layer can
+ * tell the two apart. One end is measurable after JSON.parse and the other is
+ * not.
+ */
 function numericId(value: unknown, what: string, hint = DISCOVERY_HINT): number {
   const id = wireInteger(value, what, hint);
   if (!Number.isSafeInteger(id)) {
@@ -1785,16 +1785,6 @@ function firstNonEmpty(what: string, ...values: (string | undefined)[]): string 
   return "";
 }
 
-/**
- * A string field a routed read carries, refused when it is not one.
- *
- * Go's generated models decode these as `string`: a JSON null is the zero value
- * and no error, and a number, a boolean, an object or an array fails the read.
- * TypeScript carried whatever arrived into the projection, so `content: 42`
- * reached `mentionedPersonIds`, whose first string operation threw a raw
- * TypeError out of `summarize` — the same untyped-throw boundary the body and
- * container checks close, one level further in.
- */
 /** Go's zero `time.Time`, which is what it marshals for an absent instant. */
 const ZERO_INSTANT = "0001-01-01T00:00:00Z";
 // Measured against Go's decoder rather than read off RFC 3339, in three places
@@ -1919,6 +1909,16 @@ function nestedIdentity<T>(value: T, what: string): T | undefined {
   return value;
 }
 
+/**
+ * A string field a routed read carries, refused when it is not one.
+ *
+ * Go's generated models decode these as `string`: a JSON null is the zero value
+ * and no error, and a number, a boolean, an object or an array fails the read.
+ * TypeScript carried whatever arrived into the projection, so `content: 42`
+ * reached `mentionedPersonIds`, whose first string operation threw a raw
+ * TypeError out of `summarize` — the same untyped-throw boundary the body and
+ * container checks close, one level further in.
+ */
 function recordingText(value: unknown, what: string, hint = RECORDING_HINT): string {
   if (value === undefined || value === null) return "";
   if (typeof value !== "string") {

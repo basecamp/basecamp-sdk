@@ -53,7 +53,10 @@ class TypeEmitter(private val paramOrder: Map<String, List<String>> = emptyMap()
         sb.appendLine("import kotlinx.serialization.Serializable")
         sb.appendLine("import kotlinx.serialization.json.JsonObject")
         sb.appendLine()
-        sb.appendLine("/**")
+        // A file banner, NOT a KDoc — see ClientAccessorEmitter for why `/*`.
+        // The next thing written is `/** Request body for … */`, so a `/**`
+        // banner here documents nothing.
+        sb.appendLine("/*")
         sb.appendLine(" * Request body and options classes for generated service methods.")
         sb.appendLine(" *")
         sb.appendLine(" * @generated from OpenAPI spec — do not edit directly")

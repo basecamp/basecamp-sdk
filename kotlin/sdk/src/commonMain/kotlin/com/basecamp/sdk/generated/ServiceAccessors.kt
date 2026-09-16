@@ -3,7 +3,7 @@ package com.basecamp.sdk.generated
 import com.basecamp.sdk.AccountClient
 import com.basecamp.sdk.generated.services.*
 
-/**
+/*
  * Generated service accessor extensions for [AccountClient].
  *
  * These properties provide lazy, cached access to all Basecamp API services.

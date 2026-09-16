@@ -4,7 +4,7 @@ import com.basecamp.sdk.PaginationOptions
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
 
-/**
+/*
  * Request body and options classes for generated service methods.
  *
  * @generated from OpenAPI spec — do not edit directly
