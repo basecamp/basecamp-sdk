@@ -143,29 +143,30 @@ def probe(src_root: Path, path: str, body: str, expr: str) -> str:
 
 
 def tree_at(ref: str, tmp: Path, name: str) -> Path:
-    """A scratch copy of the package with ONE revision's primitives in place.
+    """The COMPLETE package as of one revision, materialised from git.
 
-    Both columns are built this way, including "after". Reading the working tree
-    for the after column would make the table a function of whatever is on disk
-    at the moment it runs — which is not reproducible, and on a repo where more
-    than one agent or shell may be mid-measurement in the same worktree, not even
-    stable. A generated table should be a function of two commits and nothing
-    else, so that two people running it on the same pair get the same bytes.
+    `git archive` rather than a copy-and-swap. An earlier version copied the
+    working tree and overwrote only the two pagination primitives, which is not
+    isolation: the before-column then ran an old `_base.py` against the current
+    `_decoding.py`, `errors.py` and generated call sites, and a change to any of
+    those would have moved a number the note attributes to the pagination fix.
+    It happened to produce the right answers here — main's primitives import
+    nothing that this change added — but "happened to" is not a property, and
+    the docstring claimed isolation it did not have.
+
+    Both columns are built this way. A generated table should be a function of
+    two commits and nothing else, so that two people running it on the same pair
+    get the same bytes.
     """
-    src = tmp / name / "src"
-    src.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copytree(PY_ROOT / "src", src)
-    for rel in PRIMITIVES:
-        blob = subprocess.run(
-            ["git", "show", f"{ref}:python/{rel}"],
-            cwd=REPO_ROOT,
-            capture_output=True,
-            text=True,
-            check=True,
-        ).stdout
-        target = src / Path(rel).relative_to("src")
-        assert tmp in target.parents, f"refusing to write outside the scratch tree: {target}"
-        target.write_text(blob)
+    root = tmp / name
+    root.mkdir(parents=True, exist_ok=True)
+    archive = subprocess.run(
+        ["git", "archive", ref, "python/src"], cwd=REPO_ROOT, capture_output=True, check=True
+    ).stdout
+    subprocess.run(["tar", "-x", "-C", str(root)], input=archive, check=True)
+    src = root / "python" / "src"
+    if not (src / "basecamp" / "__init__.py").exists():
+        raise SystemExit(f"{ref} has no python/src/basecamp — cannot measure against it")
     return src
 
 
