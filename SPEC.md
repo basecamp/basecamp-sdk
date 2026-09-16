@@ -1652,6 +1652,44 @@ an id as the string it arrived as. That is invisible in a port whose id field
 has a decoder behind it — the string is converted at read time either way — and
 it reaches the caller in a port that has none.
 
+**Where the second way runs is the reference's call sites, and no wider.**
+`normalizeEmbeddedPeopleJSON` is a function, not a layer: Go calls it from
+`decodeGaugePayload` (`gauges.go:170`, every gauge and needle body) and from the
+notification decoders (`my_notifications.go:171, 281, 296`), and from nowhere
+else. Every other person id in Go converts at *decode* instead, because
+`generated.Person.Id` is `types.FlexibleInt64`. A port runs the positional pass
+on exactly those two surfaces. The `personable_type` pass is not narrowed with
+it: an object that declares that key IS the `Person` projection.
+
+The keys are not unique to the wrappers, which is why the boundary matters.
+Ruby, Python and TypeScript once ran the positional pass on every response body
+(TypeScript over twelve spec-derived keys, the other two over the reference's
+two), and it reached schemas whose person id is a plain `int64` in the
+reference — where a string is a decode error, and the pass instead wrote person
+`0` with a `system_label`: **the system actor, for a body the reference refuses
+outright.** A divergence in the accepting direction on an identity field. Six
+sites, all now left strict:
+
+| type (plain `int64` id) | field |
+|---|---|
+| `UpcomingSchedulePerson` | `UpcomingScheduleEntry.creator`, `UpcomingScheduleEntry.participants`, `UpcomingAssignable.assignees`, `UpcomingAssignableCompletion.creator` |
+| `MyAssignmentAssignee` | `MyAssignment.assignees` |
+| `OutOfOfficePerson` | `DisableOutOfOfficeOutput.person` |
+
+It was latent — BC3 sends integers at every one of them today — and it was
+still wrong. None of the operations serving them (`GetUpcomingSchedule`,
+`GetMyAssignments` and its siblings, `DisableOutOfOffice`) carries a genuine
+`Person` field at any depth, so leaving them strict costs no coverage.
+
+What the wider reach WAS covering is a real gap and is not closed by this rule:
+a port with no decoder (Ruby, Python, TypeScript) leaves a string id in
+`assignees`, `subscribers`, `completion_subscribers` and schedule `participants`
+as a string, where Go's decoder reads the number, and the merge-safe composites
+refuse such a body before writing. That is the refusing direction — no id is
+invented and no partial update is sent — and it is decoder coverage, field by
+field against the reference, rather than normalizer reach. It is tracked in
+[PR #913](https://github.com/basecamp/basecamp-sdk/pull/913).
+
 **The oracle, not the documentation.** Every port that reasoned from
 `ParseInt`'s docs rather than probing it got something wrong. The corpus and
 both properties are pinned in `go/pkg/basecamp/person_id_grammar_test.go`,
@@ -1678,7 +1716,7 @@ ordinary `int64` values.
 | **Python** | `basecamp._person_id.parse_int64`, shared by the sync and async normalizers and by the `FlexibleInt64` reader in `services/_campfire_index.py`. `int()` is the wrong tool in four accepting directions at once: it strips whitespace, honours PEP 515 underscores, takes every Unicode decimal digit, and is arbitrary-precision. |
 | **Kotlin** | `serialization.parseInt64`, shared by `normalizePersonIds` and `FlexibleLongSerializer`. `String.toLongOrNull` is Unicode-aware through `digitOf` / `Character.digit`, so it read a fullwidth `"１２３"` as a real person. |
 | **Swift** | `parsePersonID` (`FlexibleInt.swift`), shared by `BaseService.normalizeWalk` and `FlexibleInt`. An `NSRegularExpression` `\d` is ICU's, which matches `\p{Nd}`, so the regex that stood in for the range check treated a fullwidth digit run as an overflow and failed the whole response — and ICU's `$` matches before a final newline while `range(of:options:)` matches a SUBSTRING, so `"7\n"` did the same. Bytes, not a regex, is what settles both permanently. |
-| **TypeScript** | `scanPersonId` (`src/person-id.ts`), shared by `normalizePersonIds` and `personIdValue`. **One residual, 11 of 74:** a JS `number` cannot carry an `int64` past 2^53 — the same constraint as waiver 1B.6 and `conformance/tests/integer-precision.json` — so an id Go reads is reported UNREADABLE rather than rounded: the normalizer leaves the string in place and the reader answers `undefined`. Writing `0` there, which is what it did before, hands back the system actor for a real person; throwing would discard every other record in the body. Both refuse the id rather than the response. The same limit reaches rule A's site too: `personIdFromSGID` answers "no person" for a gid naming an id past 2^53, rather than round it into a neighbouring one. |
+| **TypeScript** | `scanPersonId` (`src/person-id.ts`), shared by `normalizePersonIds` and `personIdValue`. **One residual, 11 of 74:** a JS `number` cannot carry an `int64` past 2^53 — the same constraint as waiver 1B.6 and `conformance/tests/integer-precision.json` — so an id Go reads is reported UNREADABLE rather than rounded: the normalizer leaves the string in place and the reader answers `undefined`. Writing `0` there, which is what it did before, hands back the system actor for a real person; throwing would discard every other record in the body. Both refuse the id rather than the response. The same limit reaches rule A's site too: `personIdFromSGID` answers "no person" for a gid naming an id past 2^53, rather than round it into a neighbouring one. **`mentionedPersonIds` SKIPS such a mention rather than throwing, an availability trade-off made deliberately.** It under-reports — a text naming `7, 9007199254740991, 9007199254740992, 9007199254740993, 9223372036854775807, 0009223372036854775807` gives Go 5 ids and this 2 — and it briefly threw so that a short list could not pass for a short text. The throw was worse: `recordings.summarize()` calls it on server-returned `content`, and no sgid signature is verified on that path, so the id is chosen by whoever wrote the comment and one crafted `<bc-attachment>` made the whole recording unreadable. Skipping is also the reference's failure mode — `MentionedPersonIDs` continues past every sgid it declines. The skip is not silent: `readMentions` returns the ids it could not name as decimal strings, and the summary carries them as `unnameable_mention_ids`, a key present only when the mention list is actually short. |
 
 ### Nullable Numeric Dimensions (rich-text attachment width/height)
 
