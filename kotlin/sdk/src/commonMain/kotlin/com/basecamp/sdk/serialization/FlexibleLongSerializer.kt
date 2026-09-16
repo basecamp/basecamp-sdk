@@ -22,6 +22,13 @@ import kotlinx.serialization.json.long
  * - JSON string `"12345"` → `12345L`
  * - JSON string `"basecamp"` → `0L` (non-numeric sentinel)
  * - JSON string `"9223372036854775808"` → throws (numeric overflow)
+ *
+ * The string path is `strconv.ParseInt(s, 10, 64)` and nothing looser — see
+ * [parseInt64] for the grammar, for which refusal Go turns into `0` and which
+ * it raises, and for why the two cannot be told apart without walking the
+ * string the way Go walks it. `go/pkg/types/flexible_int64.go:34-47` is the
+ * line being matched; the same scan runs one layer earlier in
+ * [normalizePersonIds], so the two agree on every value.
  */
 object FlexibleLongSerializer : KSerializer<Long> {
     override val descriptor: SerialDescriptor =
@@ -39,12 +46,12 @@ object FlexibleLongSerializer : KSerializer<Long> {
         if (element is JsonPrimitive) {
             if (element.isString) {
                 val s = element.content
-                return s.toLongOrNull()
-                    ?: if (Regex("^-?\\d+$").matches(s)) {
+                return when (val parsed = parseInt64(s)) {
+                    is ParsedInt64.Value -> parsed.value
+                    ParsedInt64.Syntax -> 0L // non-numeric sentinel
+                    ParsedInt64.Range ->
                         throw SerializationException("FlexibleLong: \"$s\" overflows Long")
-                    } else {
-                        0L // non-numeric sentinel
-                    }
+                }
             }
             // `JsonPrimitive.long` is `content.toLong()`, which raises
             // NumberFormatException — not SerializationException — on an
