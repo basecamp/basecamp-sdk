@@ -752,6 +752,10 @@ func TestDecodeInboxItem(t *testing.T) {
 		"event missing a key":   `{"addressing_id":991,"reason":"mentioned","addressed_at":"2026-08-01T12:00:01Z","event":{"id":105}}`,
 		"duplicate member":      `{"addressing_id":991,"reason":"mentioned","addressed_at":"2026-08-01T12:00:01Z","event":` + event + `,"addressing_id":992}`,
 		"bare push event":       `{"id":105,"kind":"comment_created","event_type":"comment.created","action":"created","created_at":"2026-08-01T12:00:00Z","bucket_id":2,"creator_id":3,"performed_by_id":null,"actor_type":"person","recording_id":900,"visible_to_clients":false}`,
+		// The optional transport keys may be absent, never present-and-null:
+		// the schema types them when present.
+		"null actor_type":         `{"addressing_id":991,"reason":"mentioned","addressed_at":"2026-08-01T12:00:01Z","event":{"id":105,"kind":"comment_created","event_type":"comment.created","action":"created","created_at":"2026-08-01T12:00:00Z","bucket_id":2,"creator_id":3,"performed_by_id":null,"actor_type":null,"recording_id":900}}`,
+		"null visible_to_clients": `{"addressing_id":991,"reason":"mentioned","addressed_at":"2026-08-01T12:00:01Z","event":{"id":105,"kind":"comment_created","event_type":"comment.created","action":"created","created_at":"2026-08-01T12:00:00Z","bucket_id":2,"creator_id":3,"performed_by_id":null,"recording_id":900,"visible_to_clients":null}}`,
 	} {
 		t.Run(name, func(t *testing.T) {
 			_, err := decodeInboxItem([]byte(raw))

@@ -427,7 +427,56 @@
             }
           }
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "lane": {
+                "const": "inbox"
+              }
+            },
+            "required": [
+              "lane"
+            ]
+          },
+          "then": {
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "creators"
+                  ]
+                },
+                {
+                  "required": [
+                    "performers"
+                  ]
+                },
+                {
+                  "required": [
+                    "exclude_performers"
+                  ]
+                },
+                {
+                  "required": [
+                    "actorTypes"
+                  ]
+                }
+              ]
+            },
+            "description": "The inbox lane filters by reasons, types and buckets only; construction refuses the account feed's other dimensions there."
+          },
+          "else": {
+            "not": {
+              "required": [
+                "reasons"
+              ]
+            },
+            "description": "reasons is an inbox-lane dimension; construction refuses it on the account feed."
+          }
+        }
+      ]
     },
     "step": {
       "type": "object",

@@ -4480,7 +4480,11 @@ END
   digest is the same scheme with `reasons` as its own dimension; inbox positions are bound
   to the account, the principal and the filter set and are never interchangeable with feed
   positions, so the checkpoint identity carries the lane — `flat_key` gains a fifth element
-  `"inbox"`, and the account lane's four-element key is unchanged.
+  `"inbox"`, and the account lane's four-element key is unchanged. The principal is not a
+  key component: the connector performs no wire I/O with which to learn who it is, so the
+  consumer namespace carries that identity — two principals sharing one store need two
+  namespaces, exactly as two consumers do — and the seam's `unauthorized` kind (below) is
+  what a position minted for another principal draws.
 - **The live subscription** is `EventsChannel` with `"inbox":true` — a JSON boolean, right
   after the channel key — plus `types`, `buckets` and `reasons` in that fixed order:
   `{"channel":"EventsChannel","inbox":true[,"types":"a,b"][,"buckets":"1,2"][,"reasons":"mentioned"]}`.

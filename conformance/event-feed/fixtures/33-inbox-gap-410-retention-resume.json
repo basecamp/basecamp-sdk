@@ -63,6 +63,13 @@
       }
     },
     {
+      "expectSignal": {
+        "kind": "feedGap",
+        "epochAfterId": 40,
+        "resumeUrl": "{{API_ORIGIN}}/inbox.json?since=0"
+      }
+    },
+    {
       "expectHandlerInvocations": {
         "exact": [
           {

@@ -1267,18 +1267,23 @@ func pollEventFrom(raw json.RawMessage) (eventfeed.Event, error) {
 	if err != nil {
 		return eventfeed.Event{}, fmt.Errorf("poll event created_at: %w", err)
 	}
-	return eventfeed.Event{
-		ID:            row.ID,
-		Kind:          row.Kind,
-		EventType:     row.EventType,
-		Action:        row.Action,
-		CreatedAt:     createdAt,
-		BucketID:      row.BucketID,
-		CreatorID:     row.CreatorID,
-		PerformedByID: row.PerformedByID,
-		RecordingID:   row.RecordingID,
-		Details:       row.Details,
-	}, nil
+	ev := eventfeed.Event{
+		ID:               row.ID,
+		Kind:             row.Kind,
+		EventType:        row.EventType,
+		Action:           row.Action,
+		CreatedAt:        createdAt,
+		BucketID:         row.BucketID,
+		CreatorID:        row.CreatorID,
+		PerformedByID:    row.PerformedByID,
+		RecordingID:      row.RecordingID,
+		Details:          row.Details,
+		VisibleToClients: row.VisibleToClients,
+	}
+	if row.ActorType != nil {
+		ev.ActorType = *row.ActorType
+	}
+	return ev, nil
 }
 
 func goneOutcome(body json.RawMessage) (pollOutcome, error) {

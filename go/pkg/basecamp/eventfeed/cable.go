@@ -520,7 +520,10 @@ func decodeEventObject(raw json.RawMessage, push bool) (Event, error) {
 	// pushEvent order. An absent key and a JSON null both leave the pointer
 	// nil, and a wrong-typed value fails its unmarshal; each is the decode
 	// shape (performed_by_id's null excepted, below), and none of them names
-	// the offender in the error (see invalidFrameError).
+	// the offender in the error (see invalidFrameError). The two optional
+	// keys of the inbox item's event record their presence: absent is
+	// tolerated there, a present null is a wrong-typed value.
+	present := map[string]bool{}
 	for _, f := range []struct {
 		key      string
 		dst      any
@@ -545,14 +548,17 @@ func decodeEventObject(raw json.RawMessage, push bool) (Event, error) {
 			}
 			continue
 		}
+		present[f.key] = true
 		if err := json.Unmarshal(fieldRaw, f.dst); err != nil {
 			return Event{}, newInvalidFrameError(invalidFrameEventDecode)
 		}
 	}
 	if id == nil || kind == nil || eventType == nil || action == nil || createdAt == nil ||
 		bucketID == nil || creatorID == nil || recordingID == nil ||
-		(push && (actorType == nil || visibleToClients == nil)) {
-		// JSON null carries no value: the same decode shape as an absent key.
+		(present["actor_type"] && actorType == nil) ||
+		(present["visible_to_clients"] && visibleToClients == nil) {
+		// JSON null carries no value: the same decode shape as an absent key
+		// — and, for the two optional keys, a present null is not absence.
 		return Event{}, newInvalidFrameError(invalidFrameEventDecode)
 	}
 	// The schema's value bounds (pushEvent: every id `minimum: 1`, every

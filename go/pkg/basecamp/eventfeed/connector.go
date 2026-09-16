@@ -61,7 +61,11 @@ const (
 	// dedupe, the reset cursor, and dropped ids — is the addressing id. The
 	// inbox serves agent principals only: any other principal's polls answer
 	// 403, which rides the shared authorization counter to
-	// Terminal(authorization_failed).
+	// Terminal(authorization_failed). Inbox positions are bound to the
+	// principal, and the connector performs no wire I/O with which to learn
+	// who that is: the consumer namespace is the principal's identity in the
+	// checkpoint key, so a store shared across principals needs a namespace
+	// that names each one.
 	InboxLane
 )
 
