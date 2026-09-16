@@ -348,14 +348,14 @@
         "liveBufferCapacity": {
           "type": "integer",
           "minimum": 1,
-          "description": "Default 10000 events. Overflow fixtures set a small value so overflow is reachable in a handful of frames.",
-          "maximum": 2147483647
+          "description": "Default 10000 events. Overflow fixtures set a small value so overflow is reachable in a handful of frames. Capped at 1,000,000 — a resource ceiling, since a driver may allocate the capacity eagerly.",
+          "maximum": 1000000
         },
         "dedupeCapacity": {
           "type": "integer",
           "minimum": 1,
-          "description": "Default 10000 delivered ids. Deliberately decoupled from liveBufferCapacity.",
-          "maximum": 2147483647
+          "description": "Default 10000 delivered ids. Deliberately decoupled from liveBufferCapacity. Capped at 1,000,000 — a resource ceiling, since a driver may allocate the capacity eagerly.",
+          "maximum": 1000000
         },
         "signalDisposition": {
           "type": "object",
@@ -797,9 +797,23 @@
       "properties": {
         "code": {
           "type": "integer",
-          "maximum": 4999,
           "minimum": 1000,
-          "description": "A WebSocket close status in the RFC 6455 range 1000–4999, decoded at a fixed 64-bit width by every driver."
+          "maximum": 4999,
+          "anyOf": [
+            {
+              "minimum": 1000,
+              "maximum": 1003
+            },
+            {
+              "minimum": 1007,
+              "maximum": 1011
+            },
+            {
+              "minimum": 3000,
+              "maximum": 4999
+            }
+          ],
+          "description": "A WebSocket close status a server can actually send in a close frame: the standard 1000–1003 and 1007–1011, or the registered/private 3000–4999 range (RFC 6455 §7.4). The reserved 1004–1006 and 1012–2999 are not sendable and a WebSocket stack refuses to frame them. Decoded at a fixed 64-bit width by every driver."
         },
         "reason": {
           "type": "string"

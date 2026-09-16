@@ -1076,7 +1076,14 @@ func opaqueSubtree(key string, member any, parent map[string]any) bool {
 		// decodes.
 		return false
 	}
-	switch status.String() {
+	// Judged on the status's VALUE, not its spelling: map iteration may
+	// reach the body before the walk has rewritten a `200.0` beside it, and
+	// a literal the walk will refuse anyway is not opaque either way.
+	lit, err := integerSpelling(status.String())
+	if err != nil {
+		return false
+	}
+	switch lit {
 	case "200", "409", "410":
 		return false
 	}
