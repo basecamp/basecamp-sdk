@@ -18,6 +18,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -798,6 +799,145 @@ func TestScenarioIntegerFieldsAcceptIntegralNumberSpellings(t *testing.T) {
 				t.Fatalf("err = %v, want one naming %q", err, tc.wants)
 			}
 		})
+	}
+}
+
+// TestScenarioCapacitiesAreRangedAtLoad pins the schema's capacity range on
+// the loader itself, because the loader is the only gate when the Go tier-2
+// tests run directly rather than behind the JSON-schema target. A capacity
+// is honored eagerly — newDedupe sizes its index map by it — so an accepted
+// 2^31-1 is an unrecoverable allocation, not a failed assertion. Every case
+// here goes through parseScenario alone: a refusal is the load's verdict,
+// reached before any connector exists to allocate anything, and the
+// at-the-ceiling control proves the bound is the schema's, not a tighter one.
+func TestScenarioCapacitiesAreRangedAtLoad(t *testing.T) {
+	base := `{"name":"x","description":"d","config":{%q:%s},"steps":[{"advance":{"ms":1}}],"finally":{"state":"closed"}}`
+	ceiling := strconv.FormatInt(maxScenarioCapacity, 10)
+	for _, field := range []string{"liveBufferCapacity", "dedupeCapacity"} {
+		loaded := func(sc *scenario) optionalInt {
+			if field == "liveBufferCapacity" {
+				return sc.Config.LiveBufferCapacity
+			}
+			return sc.Config.DedupeCapacity
+		}
+		t.Run(field, func(t *testing.T) {
+			t.Run("at the ceiling", func(t *testing.T) {
+				sc, err := parseScenario([]byte(fmt.Sprintf(base, field, ceiling)), "x.json")
+				if err != nil {
+					t.Fatalf("the ceiling itself is schema-valid and must load: %v", err)
+				}
+				if got := loaded(sc); !got.set || got.null || got.v != maxScenarioCapacity {
+					t.Fatalf("%s loaded as %+v, want set to %d", field, got, maxScenarioCapacity)
+				}
+			})
+			t.Run("absent", func(t *testing.T) {
+				sc, err := parseScenario([]byte(`{"name":"x","description":"d","config":{},"steps":[{"advance":{"ms":1}}],"finally":{"state":"closed"}}`), "x.json")
+				if err != nil {
+					t.Fatalf("an omitted capacity means the default: %v", err)
+				}
+				if got := loaded(sc); got.set {
+					t.Fatalf("%s loaded as %+v, want absent", field, got)
+				}
+			})
+			// The refusal names the field AND the ceiling, so a fixture author
+			// reads the bound from the error rather than from the schema.
+			wantsRange := field + " must be in [1, " + ceiling + "]"
+			for _, tc := range []struct{ name, value, wants string }{
+				{"one past the ceiling", strconv.FormatInt(maxScenarioCapacity+1, 10), wantsRange},
+				{"the allocation that would take the process down", "2147483647", wantsRange},
+				{"the largest int64", "9223372036854775807", wantsRange},
+				{"an exponent spelling past the ceiling", "1e7", wantsRange},
+				{"explicit zero", "0", wantsRange},
+				{"negative", "-1", wantsRange},
+				{"explicit null", "null", field + " supplied as JSON null"},
+				{"quoted", `"1000"`, "is a string"},
+			} {
+				t.Run(tc.name, func(t *testing.T) {
+					_, err := parseScenario([]byte(fmt.Sprintf(base, field, tc.value)), "x.json")
+					if err == nil || !strings.Contains(err.Error(), tc.wants) {
+						t.Fatalf("%s: %s => err = %v, want one naming %q", field, tc.value, err, tc.wants)
+					}
+				})
+			}
+		})
+	}
+}
+
+// TestScenarioConfigBoundsMatchTheSchema cross-checks the loader's copies of
+// the schema's integer bounds against schema.json itself, so the two cannot
+// drift apart silently: the schema is the family's contract and the loader
+// enforces it for the Go driver on its own, without the JSON-schema target
+// in front. Each bound the loader ranges is read back from the schema at the
+// member that declares it and compared to the constant the range check uses.
+func TestScenarioConfigBoundsMatchTheSchema(t *testing.T) {
+	raw, err := os.ReadFile(scenarioSchemaPath)
+	if err != nil {
+		t.Fatalf("reading %s: %v", scenarioSchemaPath, err)
+	}
+	var schema map[string]any
+	if err := json.Unmarshal(raw, &schema); err != nil {
+		t.Fatalf("decoding %s: %v", scenarioSchemaPath, err)
+	}
+	// bound reads one integer keyword at a JSON-pointer-like path, failing
+	// on an absent member: a bound that moved is a drift, and a bound that
+	// vanished is one too.
+	bound := func(t *testing.T, keyword string, path ...string) int64 {
+		t.Helper()
+		node := any(schema)
+		for _, key := range path {
+			object, ok := node.(map[string]any)
+			if !ok {
+				t.Fatalf("%s: %q is not an object", strings.Join(path, "/"), key)
+			}
+			if node, ok = object[key]; !ok {
+				t.Fatalf("%s: no member %q", strings.Join(path, "/"), key)
+			}
+		}
+		object, ok := node.(map[string]any)
+		if !ok {
+			t.Fatalf("%s is not a schema object", strings.Join(path, "/"))
+		}
+		v, ok := object[keyword].(float64)
+		if !ok {
+			t.Fatalf("%s declares no numeric %q", strings.Join(path, "/"), keyword)
+		}
+		if v != math.Trunc(v) || math.Abs(v) > 1<<53 {
+			t.Fatalf("%s %q = %v is not an exactly representable integer", strings.Join(path, "/"), keyword, v)
+		}
+		return int64(v)
+	}
+	config := []string{"$defs", "config", "properties"}
+	for _, field := range []string{"confirmationDeadlineMs", "repairPollBaseMs", "backoffBaseMs", "backoffCapMs", "stalenessMs"} {
+		path := append(append([]string{}, config...), field)
+		if got := bound(t, "minimum", path...); got != 1 {
+			t.Errorf("config.%s minimum = %d, the loader's floor is 1", field, got)
+		}
+		if got := bound(t, "maximum", path...); got != maxScenarioMs {
+			t.Errorf("config.%s maximum = %d, the loader's maxScenarioMs is %d", field, got, maxScenarioMs)
+		}
+	}
+	for _, field := range []string{"liveBufferCapacity", "dedupeCapacity"} {
+		path := append(append([]string{}, config...), field)
+		if got := bound(t, "minimum", path...); got != 1 {
+			t.Errorf("config.%s minimum = %d, the loader's floor is 1", field, got)
+		}
+		if got := bound(t, "maximum", path...); got != maxScenarioCapacity {
+			t.Errorf("config.%s maximum = %d, the loader's maxScenarioCapacity is %d", field, got, maxScenarioCapacity)
+		}
+	}
+	// The step-side ms fields share the config durations' bound; the delay
+	// envelope alone admits zero, which is the floor the loader passes there.
+	if got := bound(t, "maximum", "$defs", "advance", "properties", "ms"); got != maxScenarioMs {
+		t.Errorf("advance.ms maximum = %d, the loader's maxScenarioMs is %d", got, maxScenarioMs)
+	}
+	for _, edge := range []string{"min", "max"} {
+		path := []string{"$defs", "fireTimer", "properties", "assertDelayMs", "properties", edge}
+		if got := bound(t, "minimum", path...); got != 0 {
+			t.Errorf("fireTimer.assertDelayMs.%s minimum = %d, the loader's floor is 0", edge, got)
+		}
+		if got := bound(t, "maximum", path...); got != maxScenarioMs {
+			t.Errorf("fireTimer.assertDelayMs.%s maximum = %d, the loader's maxScenarioMs is %d", edge, got, maxScenarioMs)
+		}
 	}
 }
 

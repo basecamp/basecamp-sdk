@@ -47,40 +47,42 @@ type scenarioConfig struct {
 	ExcludePerformers []int64  `json:"exclude_performers"`
 	ActorTypes        []string `json:"actorTypes"`
 	Position          string   `json:"position"`
-	// The five durations are THREE-STATE because presence is meaning twice
-	// over: a plain int64 read an explicit zero as "absent, use the
-	// default", and a pointer read an explicit JSON null the same way —
-	// each accepting a value the schema rejects ("minimum": 1 for zero,
-	// "type": "integer" for null) and silently substituting another. The
-	// driver enforces the schema's judgments portably, so all three states
-	// the wire distinguishes are preserved: absent, null, and value.
-	ConfirmationDeadlineMs optionalMs        `json:"confirmationDeadlineMs"`
-	RepairPollBaseMs       optionalMs        `json:"repairPollBaseMs"`
-	BackoffBaseMs          optionalMs        `json:"backoffBaseMs"`
-	BackoffCapMs           optionalMs        `json:"backoffCapMs"`
-	StalenessMs            optionalMs        `json:"stalenessMs"`
-	LiveBufferCapacity     int               `json:"liveBufferCapacity"`
-	DedupeCapacity         int               `json:"dedupeCapacity"`
+	// The five durations and the two capacities are THREE-STATE because
+	// presence is meaning twice over: a plain integer read an explicit zero
+	// as "absent, use the default", and a pointer read an explicit JSON null
+	// the same way — each accepting a value the schema rejects ("minimum":
+	// 1 for zero, "type": "integer" for null) and silently substituting
+	// another. The driver enforces the schema's judgments portably, so all
+	// three states the wire distinguishes are preserved: absent, null, and
+	// value.
+	ConfirmationDeadlineMs optionalInt       `json:"confirmationDeadlineMs"`
+	RepairPollBaseMs       optionalInt       `json:"repairPollBaseMs"`
+	BackoffBaseMs          optionalInt       `json:"backoffBaseMs"`
+	BackoffCapMs           optionalInt       `json:"backoffCapMs"`
+	StalenessMs            optionalInt       `json:"stalenessMs"`
+	LiveBufferCapacity     optionalInt       `json:"liveBufferCapacity"`
+	DedupeCapacity         optionalInt       `json:"dedupeCapacity"`
 	SignalDisposition      map[string]string `json:"signalDisposition"`
 	CheckpointStore        *storeScript      `json:"checkpointStore"`
 }
 
-// optionalMs is one config duration in the three JSON states the schema
-// distinguishes: absent (the zero optionalMs — use the default), JSON null
-// (set, null — rejected, "type": "integer" refuses it), and a value (set,
-// ranged). encoding/json calls a value type's UnmarshalJSON for null where it
+// optionalInt is one optional integer — a config duration or capacity, a
+// delay-envelope bound — in the three JSON states the schema distinguishes:
+// absent (the zero optionalInt — use the default), JSON null (set, null —
+// rejected, "type": "integer" refuses it), and a value (set, ranged).
+// encoding/json calls a value type's UnmarshalJSON for null where it
 // short-circuits a pointer's, which is exactly why this is not a *int64. The
 // number itself arrives already judged and rewritten to its integer spelling
 // by normalizeNumbers, so only the STRING gate remains here: a quoted "1000"
 // is a string instance the schema refuses, though json.Number's own
 // Unmarshal would take it.
-type optionalMs struct {
+type optionalInt struct {
 	set  bool
 	null bool
 	v    int64
 }
 
-func (o *optionalMs) UnmarshalJSON(data []byte) error {
+func (o *optionalInt) UnmarshalJSON(data []byte) error {
 	o.set = true
 	if string(data) == "null" {
 		o.null = true
@@ -257,8 +259,8 @@ type fireTimerStep struct {
 // read an absent or null member as 0 — inside the allowed range, silently
 // converting the authored envelope into a different one.
 type delayEnvelope struct {
-	Min optionalMs `json:"min"`
-	Max optionalMs `json:"max"`
+	Min optionalInt `json:"min"`
+	Max optionalInt `json:"max"`
 }
 
 // optionalEnvelope is assertDelayMs in the three JSON states: absent (no
@@ -350,6 +352,26 @@ const maxScenarioMs int64 = 315_576_000_000
 func checkScenarioMs(what string, v, floor int64) error {
 	if v < floor || v > maxScenarioMs {
 		return fmt.Errorf("%s must be in [%d, %d] (10 virtual years): got %d", what, floor, maxScenarioMs, v)
+	}
+	return nil
+}
+
+// maxScenarioCapacity is the schema's `maximum` for liveBufferCapacity and
+// dedupeCapacity: a RESOURCE ceiling, not a domain one. A capacity is a
+// hint the connector may honor eagerly — newDedupe sizes its index map by
+// it — so a fixture naming 2^31-1 would pass every typed decode and then
+// take the test process down in an allocation, unrecoverably, when the Go
+// tier-2 tests run without the JSON-schema gate in front of them. The
+// ceiling makes that a load-time fixture error instead. 1,000,000 is 100×
+// the defaults and far past any overflow fixture, which sets a handful.
+const maxScenarioCapacity int64 = 1_000_000
+
+// checkScenarioCapacity enforces the schema's [1, maxScenarioCapacity] range
+// on one capacity at load — before any connector is constructed, so a
+// refused capacity is never allocated.
+func checkScenarioCapacity(what string, v int64) error {
+	if v < 1 || v > maxScenarioCapacity {
+		return fmt.Errorf("%s must be in [1, %d] (the schema's resource ceiling: a driver may allocate the capacity eagerly): got %d", what, maxScenarioCapacity, v)
 	}
 	return nil
 }
@@ -549,7 +571,7 @@ func decodeDirective(kind string, body json.RawMessage) (any, error) {
 			env := step.AssertDelayMs.env
 			for _, m := range []struct {
 				name string
-				o    optionalMs
+				o    optionalInt
 			}{{"min", env.Min}, {"max", env.Max}} {
 				if !m.o.set {
 					return nil, fmt.Errorf("assertDelayMs needs both min and max — the schema requires them, and an absent %s is a different envelope than the one authored", m.name)
@@ -662,7 +684,7 @@ func validateConfig(cfg scenarioConfig) error {
 	// ranged (explicit zero included) and null is refused outright.
 	for _, f := range []struct {
 		name string
-		o    optionalMs
+		o    optionalInt
 	}{
 		{"confirmationDeadlineMs", cfg.ConfirmationDeadlineMs},
 		{"repairPollBaseMs", cfg.RepairPollBaseMs},
@@ -680,6 +702,23 @@ func validateConfig(cfg scenarioConfig) error {
 	}
 	if cfg.BackoffBaseMs.set || cfg.BackoffCapMs.set {
 		return fmt.Errorf("backoffBaseMs/backoffCapMs are not modeled: SPEC §23 pins the Go connector's full-jitter base and cap as constants, with no construction option to override")
+	}
+	for _, f := range []struct {
+		name string
+		o    optionalInt
+	}{
+		{"liveBufferCapacity", cfg.LiveBufferCapacity},
+		{"dedupeCapacity", cfg.DedupeCapacity},
+	} {
+		switch {
+		case !f.o.set:
+		case f.o.null:
+			return fmt.Errorf("%s supplied as JSON null: the schema's type is integer and null is not one — omit the key for the default", f.name)
+		default:
+			if err := checkScenarioCapacity(f.name, f.o.v); err != nil {
+				return err
+			}
+		}
 	}
 	for kind, disposition := range cfg.SignalDisposition {
 		if kind != "bufferOverflow" && kind != "feedGap" {

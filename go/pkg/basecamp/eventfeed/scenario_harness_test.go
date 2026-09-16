@@ -714,11 +714,11 @@ func (h *scenarioHarness) newConnector(cfg scenarioConfig) (*eventfeed.Connector
 	if cfg.RepairPollBaseMs.set {
 		opts = append(opts, eventfeed.WithRepairInterval(millis(cfg.RepairPollBaseMs.v)))
 	}
-	if cfg.LiveBufferCapacity > 0 {
-		opts = append(opts, eventfeed.WithLiveBufferCapacity(cfg.LiveBufferCapacity))
+	if cfg.LiveBufferCapacity.set {
+		opts = append(opts, eventfeed.WithLiveBufferCapacity(int(cfg.LiveBufferCapacity.v)))
 	}
-	if cfg.DedupeCapacity > 0 {
-		opts = append(opts, eventfeed.WithDedupeCapacity(cfg.DedupeCapacity))
+	if cfg.DedupeCapacity.set {
+		opts = append(opts, eventfeed.WithDedupeCapacity(int(cfg.DedupeCapacity.v)))
 	}
 	if len(cfg.SignalDisposition) > 0 {
 		opts = append(opts, eventfeed.WithSignalHandler(h.signalHandler(cfg.SignalDisposition)))

@@ -43,6 +43,10 @@ import (
 // inputs to the schema gate, not scenarios.
 const scenarioFixtureGlob = "../../../../conformance/event-feed/fixtures/*.json"
 
+// scenarioSchemaPath is the family's schema, read by the loader's self-tests
+// to cross-check the integer bounds the loader enforces on its own.
+const scenarioSchemaPath = "../../../../conformance/event-feed/schema.json"
+
 // TestEventFeedScenarioConformance runs every tier-2 scenario fixture, one
 // subtest per fixture file.
 func TestEventFeedScenarioConformance(t *testing.T) {
