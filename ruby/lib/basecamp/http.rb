@@ -477,9 +477,17 @@ module Basecamp
 
     # Parses the X-Total-Count header, returning 0 when absent or malformed.
     def parse_total_count(headers)
-      Integer(headers["X-Total-Count"] || headers["x-total-count"], 10)
-    rescue ArgumentError, TypeError
-      0
+      raw = headers["X-Total-Count"] || headers["x-total-count"]
+      return 0 unless raw.is_a?(String)
+
+      # The reference reads this with Atoi, which takes a signed decimal and
+      # returns 0 on anything else — so a negative, an overflow or a padded
+      # value is 0 there and was the number itself here. And nothing caps a
+      # HEADER: the body has a 50 MB ceiling, so this was the LESS defended of
+      # the sites the person-id sweep hardened, reached on the first response of
+      # every paginated call.
+      count = Ids.bounded_decimal(raw)
+      count.is_a?(Integer) && count.positive? ? count : 0
     end
 
     def build_faraday_client
@@ -886,8 +894,17 @@ module Basecamp
       # since 1*DIGIT has no upper bound and no digit string is malformed for
       # its length.
       if value.match?(/\A\d+\z/)
-        seconds = value.to_i
-        return seconds.positive? ? [ seconds, MAX_RETRY_AFTER_SECONDS ].min : nil
+        # Bounded before conversion, which is what the reference does here too
+        # — its own comment says "the width test comes before ParseInt so no
+        # conversion can overflow". So this is a contract divergence rather
+        # than a hardening choice: the gate existed there and not here, and the
+        # comment above fixed the consequence (sleep raising on a bignum)
+        # rather than the conversion that produced it.
+        seconds = Ids.bounded_decimal(value, signed: false)
+        return MAX_RETRY_AFTER_SECONDS if seconds == :overflow
+        return nil unless seconds.is_a?(Integer) && seconds.positive?
+
+        return [ seconds, MAX_RETRY_AFTER_SECONDS ].min
       end
 
       # Try parsing as HTTP-date. Rounded UP (SPEC §6 step 2): truncating a

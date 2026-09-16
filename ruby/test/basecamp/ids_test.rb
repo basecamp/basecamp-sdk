@@ -22,15 +22,18 @@ require "test_helper"
 #   go/pkg/types/flexible_int64.go is the decoder for a person id;
 #   every other id in go/pkg/generated/client.gen.go is a plain int64.
 #   json.Unmarshal(`{"id":null}`) into a struct whose field is
-#   types.FlexibleInt64 returns an error, because the type has its own
-#   UnmarshalJSON, the number path decodes null into an empty json.Number, and
-#   Int64() then fails. The same input into a plain int64 field returns 0 with
-#   no error, because there is no hook and encoding/json handles the null
-#   itself. An ABSENT key is 0 for both.
+#   types.FlexibleInt64 returns an error: its number path decodes null into an
+#   empty json.Number and Int64() then fails. The same input into a plain int64
+#   field returns 0 with no error. An ABSENT key is 0 for both.
 #
-# That is the whole asymmetry, and it is a property of the field's TYPE rather
-# than of its name — so a port unifying null-handling across id fields will be
-# wrong for exactly one of the two kinds, whichever way it chooses.
+# The property that decides is what the type's decoder DOES with a null, not
+# whether it has one. time.Time also carries an UnmarshalJSON and explicitly
+# accepts null — a hundred fields in this model are non-pointer time.Time — so
+# "carries a hook" is the wrong test and a sentence here once said it.
+#
+# The asymmetry is still a property of the TYPE rather than of the name, so a
+# port unifying null-handling across id fields is wrong for one of the two
+# kinds whichever way it chooses.
 #
 # A header claiming "measured against the reference" is itself a claim, and the
 # most load-bearing one in a file of expectations.
@@ -182,6 +185,30 @@ class IdsTest < Minitest::Test
 
     # A run far past the bound answers without building the number.
     assert_equal :overflow, Basecamp::Ids.bounded_decimal("9" * 1_000_000)
+  end
+
+  def test_the_length_gate_is_what_makes_the_bound_cheap
+    # The gate has to be asserted on the CLOCK, because it is the only
+    # observable difference it makes: every answer is identical with and
+    # without it, so deleting it left the whole suite green — including the
+    # row above, which passes either way. The mechanism the bound exists for
+    # was verified by nothing.
+    #
+    # The previous version of this file justified omitting a timing assertion
+    # on the grounds that it would be flaky and "would not catch a bound that
+    # is fast and wrong". The second clause is right and is why the answer
+    # assertions above stay. The first is measurably false here: gated is
+    # 0.06s at five million digits and ungated is 2.58s, a 41x margin. A
+    # threshold an order of magnitude inside that is not a flaky test.
+    digits = "9" * 5_000_000
+
+    elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    assert_equal :overflow, Basecamp::Ids.bounded_decimal(digits)
+    elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - elapsed
+
+    assert_operator elapsed, :<, 1.0,
+      "five million digits took #{elapsed.round(3)}s — the length gate is not short-circuiting, " \
+      "which means the value is being converted before it is bounded"
   end
 
   def test_the_two_wire_readers_disagree_only_where_the_reference_does

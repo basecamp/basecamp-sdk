@@ -470,12 +470,18 @@ class RecordingsSummarizeTest < Minitest::Test
   # Every position a JSON null can occupy in a projected recording, against the
   # rule the reference's decoder actually implements.
   #
-  # The rule has exactly two forms, each measured against the reference twice:
-  # a field whose Go type carries its own UnmarshalJSON treats null as a DECODE
-  # ERROR, and every other field treats null as the zero value, identical to
-  # absent. In the whole generated model exactly one field is the first kind —
-  # Person.Id, typed types.FlexibleInt64 — so a person id refuses and nothing
-  # else does.
+  # Exactly one field in the generated model refuses a JSON null: Person.Id,
+  # typed types.FlexibleInt64, whose number path decodes null into an empty
+  # json.Number and then fails to parse it. Every other field takes null as the
+  # zero value, identical to absent.
+  #
+  # NOT "a field whose type carries its own UnmarshalJSON", which is what this
+  # said before and which its own updated_at row falsifies: there are a hundred
+  # non-pointer time.Time fields in this model, time.Time carries an
+  # UnmarshalJSON, and it explicitly ACCEPTS null. Carrying a hook is not the
+  # property that decides — what the hook does with a null is, and only one
+  # implementation here rejects it. Every row below was measured and every row
+  # was right; only the sentence explaining them was wrong.
   #
   # This exists because the null rule was found at five separate sites across
   # five review rounds, each time at a site the previous fix had created or not
@@ -586,14 +592,31 @@ class RecordingsSummarizeTest < Minitest::Test
     assignees = summarize(event_type: "todo.created")["assignees"]
 
     assert_equal 2, assignees.length
-    # The ZERO PERSON, which is what the reference emits for a null member —
-    # every field marshalled, so id is 0 and name is "". This row used to assert
-    # `assert_nil assignees.first["id"]` directly beneath a comment saying the
-    # contract gives 0: the test and its own explanation disagreed, and the
-    # test won for three rounds.
-    assert_equal({ "id" => 0, "name" => "" }, assignees.first)
-    assert_equal 0, assignees.first["id"]
+    # An empty OBJECT, not a nil — which was the actual complaint, since a nil
+    # member crashes a consumer on assignee["id"]. It is not the zero Person the
+    # reference marshals, and that is the pass-through boundary #project states
+    # rather than an oversight: the reference emits a whole typed struct for
+    # {}, {"id" => 5} and {"name" => "N"} too, and this tier passes all four
+    # through alike.
+    #
+    # A previous version synthesised the zero Person for the null alone and
+    # left the other three, which made this one row agree with the contract and
+    # the rest disagree. Consistency across the four is worth more than
+    # agreement on one of them, and closing all four is the cross-port decision
+    # recorded on the pull request.
+    assert_equal({}, assignees.first)
     assert_equal({ "id" => 3 }, assignees.last)
+
+    # The other three inputs the reference maps to the same zero Person, all
+    # travelling the same way — this row is what stops the inconsistency coming
+    # back one input at a time.
+    WebMock.reset!
+    stub_get("/12345/todos/1", response_body: recording(
+      "type" => "Todo", "assignees" => [ {}, { "id" => 5 }, { "name" => "N" } ]
+    ))
+
+    assert_equal [ {}, { "id" => 5 }, { "name" => "N" } ],
+                 summarize(event_type: "todo.created")["assignees"]
   end
 
   def test_a_member_with_only_an_id_is_kept

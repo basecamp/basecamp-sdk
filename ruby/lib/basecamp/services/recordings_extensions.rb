@@ -623,12 +623,25 @@ module Basecamp
           # A null member is the ZERO PERSON there, and the reference emits it
           # as an object — so passing nil through handed a consumer something
           # that crashes on `assignee["id"]` where the contract gives 0.
-          # The ZERO PERSON, as the reference emits it — not an empty hash. Go
-          # decodes a null member into a zero-valued Person and marshals every
-          # field, so `assignee["id"]` is 0 and `["name"]` is "". An empty hash
-          # gave nil for both, and the test pinning it asserted nil directly
-          # under a comment saying the contract gives 0.
-          next { "id" => 0, "name" => "" } if assignee.nil?
+          # An empty object, which is what this tier passes through for a member
+          # carrying nothing.
+          #
+          # The previous version emitted {"id" => 0, "name" => ""} here, which
+          # is what the reference marshals for a null member — and left {},
+          # {"id" => 5} and {"name" => "N"} alone, which the reference marshals
+          # the SAME way. So it synthesised the zero Person for one of the four
+          # inputs that produce it and passed the other three through, under a
+          # comment naming as fixed the very input it left. One inconsistency
+          # replaced by a smaller one is not a fix.
+          #
+          # Passing through is the boundary #project states and the one every
+          # other nested member follows: the reference emits a whole typed
+          # struct and this tier emits the object it was given. An empty hash is
+          # still indexable, which was the actual complaint — a nil member
+          # crashed on assignee["id"]. Whether to close this uniformly across
+          # all four inputs, and across parent, bucket and creator, is the
+          # cross-port decision recorded on the pull request.
+          next {} if assignee.nil?
 
           unless assignee.is_a?(Hash)
             raise malformed_response("an assignee is #{MergeSafe.describe(assignee)}, not an object")
@@ -729,11 +742,11 @@ module Basecamp
         # ones and the nested labels were silently exempt, so a null title came
         # back as nil where the contract gives "" and `creator["name"].empty?`
         # raised for a caller.
-        name = read_text(member[label], label)
+        name = read_text(member[label], "#{member_name}'s #{label}")
 
         id = read_member_id(member, person: person)
         if id.nil?
-          raise malformed_response("an id is #{MergeSafe.describe(member["id"])}, not an id")
+          raise malformed_response("the #{member_name}'s id is #{MergeSafe.describe(member["id"])}, not an id")
         end
 
         # The DECODED id is what travels, not the raw wire value. The reference
@@ -742,7 +755,13 @@ module Basecamp
         # decide whether to keep the member, while emitting the string, applied
         # half of the rule and left a caller reading a different type from the
         # contract's.
+        # The normalized LABEL is written back too. It used to be computed into a
+        # local, used for the emptiness test, and discarded — so a null title
+        # still reached the caller as nil while the comment above claimed it
+        # came back as "". A reviewer proved it a pure no-op: reverting the
+        # whole change altered not one assertion in the suite.
         decoded = member.key?("id") ? member.merge("id" => id) : member
+        decoded = decoded.merge(label => name) if member.key?(label)
 
         # Present only when it carries something, which is the emptiness rule
         # the reference builds these under: `Id != 0 || Name != ""` for a bucket

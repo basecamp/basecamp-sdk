@@ -289,6 +289,39 @@ class HttpPaginationMetaTest < Minitest::Test
     assert_not enum.meta.truncated
   end
 
+  def test_the_total_count_header_is_read_as_the_reference_reads_it
+    # A HEADER has no size cap — the body has a 50 MB ceiling and this does not
+    # — so an unbounded conversion here was the less defended of the sites the
+    # person-id sweep hardened, and it is read on the first response of every
+    # paginated call.
+    #
+    # The reference reads it with Atoi: a signed decimal, 0 on anything else.
+    # Ruby's Integer() returned the number itself for a negative, an overflow
+    # and a padded value.
+    { "42" => 42, "0" => 0, "-1" => 0, " 7" => 0, "9223372036854775808" => 0,
+      "#{"9" * 25}" => 0, "not-a-number" => 0, "0x10" => 0, "007" => 7 }.each do |header, expected|
+      stub_get("/things.json", response_body: [ { "id" => 1 } ], headers: { "X-Total-Count" => header })
+
+      assert_equal expected, @http.paginate("/things.json").meta.total_count, "a header of #{header.inspect}"
+      WebMock.reset!
+    end
+  end
+
+  def test_a_huge_total_count_header_is_bounded_rather_than_converted
+    # On the clock, because the answer is 0 either way and only the cost
+    # differs — the same reason the id bound needed a timing assertion.
+    stub_get("/things.json", response_body: [ { "id" => 1 } ],
+                             headers: { "X-Total-Count" => "9" * 2_000_000 })
+
+    elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+
+    assert_equal 0, @http.paginate("/things.json").meta.total_count
+
+    elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - elapsed
+
+    assert_operator elapsed, :<, 1.0, "a two-million-digit header took #{elapsed.round(3)}s"
+  end
+
   def test_a_paginated_body_that_is_not_a_list_fails_with_a_basecamp_error
     # extract_page_items returned the parsed body verbatim and the caller's loop
     # indexed it, so a scalar, a boolean or a null raised NoMethodError out of a
