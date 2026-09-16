@@ -1466,6 +1466,11 @@
         "epochAfterId": {
           "type": "integer",
           "minimum": 0
+        },
+        "resumeUrl": {
+          "type": "string",
+          "minLength": 1,
+          "description": "What Observer.gap received as its URL argument: the resume URL reduced to its origin ({{API_ORIGIN}} for a same-origin resume) or the fixed placeholder `[cross-origin URL]` — never the whole URL, which only the FeedGap signal carries (expectSignal.resumeUrl)."
         }
       }
     },

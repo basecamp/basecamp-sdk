@@ -35,7 +35,7 @@
         }
       }
     },
-    { "expectGap": { "epochAfterId": 100 } },
+    { "expectGap": { "epochAfterId": 100, "resumeUrl": "[cross-origin URL]" } },
     {"expectSignal": {"kind": "feedGap", "epochAfterId": 100, "resumeUrl": "https://attacker.example.com/events.json?since=100"}},
     {
       "expectHandlerInvocations": {

@@ -218,6 +218,11 @@ type expectStateStep struct {
 
 type expectGapStep struct {
 	EpochAfterID int64 `json:"epochAfterId"`
+	// ResumeURL pins what Observer.gap received as its URL argument: the
+	// resume URL REDUCED to its origin (the API origin for a same-origin
+	// resume) or the fixed cross-origin placeholder — never the whole URL,
+	// which only the FeedGap signal carries.
+	ResumeURL *string `json:"resumeUrl"`
 }
 
 type expectBufferedStep struct {

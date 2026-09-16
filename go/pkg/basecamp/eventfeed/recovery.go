@@ -88,6 +88,13 @@ func (l *loop) reenterWalk(at *attempt, pe *PollError) (walkStep, cycleOutcome, 
 		if l.cfg.observer.FilterConflict != nil {
 			l.cfg.observer.FilterConflict(pe.PositionDigest, pe.FiltersDigest)
 		}
+		// Close outranks the re-entry, as at every callback that precedes a
+		// further act: FilterConflict is a supported Close site, and the
+		// re-entry below would announce PositionRejected after Close returned.
+		if l.runCtx.Err() != nil {
+			l.disposeAttempt(at, nil)
+			return walkStep{}, cycleOutcome{kind: outcomeClosed}, true
+		}
 		// Transition 19: the held position is DISCARDED before the re-entry.
 		// Its lineage belongs to a filter set that is not this connector's, so
 		// it can never be resumed from again — an attempt torn down before the

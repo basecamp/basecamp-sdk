@@ -57,7 +57,8 @@
     },
     {
       "expectGap": {
-        "epochAfterId": 100
+        "epochAfterId": 100,
+        "resumeUrl": "{{API_ORIGIN}}"
       }
     },
     {

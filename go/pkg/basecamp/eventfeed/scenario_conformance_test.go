@@ -329,7 +329,7 @@ func (d *driver) runStep(step scenarioStep) error {
 	case *errorExpect:
 		return d.awaitTerminal(payload.Reason)
 	case *expectGapStep:
-		return d.expectGap(payload.EpochAfterID)
+		return d.expectGap(payload)
 	case *expectBufferedStep:
 		return d.expectBuffered(payload.Count)
 	case *expectSignalStep:
@@ -732,13 +732,17 @@ func (d *driver) awaitIterationEnded() error {
 	})
 }
 
-func (d *driver) expectGap(epochAfterID int64) error {
-	return d.h.await(fmt.Sprintf("Observer.gap(%d)", epochAfterID), func() (bool, string) {
+func (d *driver) expectGap(step *expectGapStep) error {
+	return d.h.await(fmt.Sprintf("Observer.gap(%d)", step.EpochAfterID), func() (bool, string) {
 		if d.h.gapsTaken >= len(d.h.gaps) {
 			return false, ""
 		}
-		if got := d.h.gaps[d.h.gapsTaken]; got != epochAfterID {
-			return false, fmt.Sprintf("gap epoch_after_id %d, want %d", got, epochAfterID)
+		got := d.h.gaps[d.h.gapsTaken]
+		if got.epochAfterID != step.EpochAfterID {
+			return false, fmt.Sprintf("gap epoch_after_id %d, want %d", got.epochAfterID, step.EpochAfterID)
+		}
+		if step.ResumeURL != nil && got.resumeURL != *step.ResumeURL {
+			return false, fmt.Sprintf("gap url argument %q, want the reduced %q", got.resumeURL, *step.ResumeURL)
 		}
 		d.h.gapsTaken++
 		return true, ""

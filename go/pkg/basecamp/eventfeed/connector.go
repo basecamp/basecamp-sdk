@@ -474,8 +474,17 @@ func (c *Connector) Events(ctx context.Context) iter.Seq2[Event, error] {
 			c.cancelRun = cancel
 		}
 		c.mu.Unlock()
-		defer cancel()
+		// Deferred in the order they must UNWIND, last first: the run's
+		// context is cancelled, then the registered cancel is cleared, and
+		// only then is quiescence published — so Wait never returns while
+		// the run context is live or a Close can still find a cancel to call.
 		defer close(done)
+		defer func() {
+			c.mu.Lock()
+			c.cancelRun = nil
+			c.mu.Unlock()
+		}()
+		defer cancel()
 		// Fired only once the cancellation is REGISTERED: before that point
 		// the run is protected by the isClosed latch checked just above, not
 		// by the cancel func, so a context handed out earlier would invite an
@@ -483,11 +492,6 @@ func (c *Connector) Events(ctx context.Context) iter.Seq2[Event, error] {
 		if c.hooks.runContext != nil {
 			c.hooks.runContext(runCtx)
 		}
-		defer func() {
-			c.mu.Lock()
-			c.cancelRun = nil
-			c.mu.Unlock()
-		}()
 		newLoop(runCtx, &c.cfg, c.hooks).run(yield)
 	}
 }

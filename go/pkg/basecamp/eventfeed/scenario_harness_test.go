@@ -112,7 +112,7 @@ type scenarioHarness struct {
 	signals            []eventfeed.Signal
 	signalsTaken       int
 	invocations        []invocation
-	gaps               []int64
+	gaps               []gapRecord
 	gapsTaken          int
 	saveFailures       int
 	saveFailuresTaken  int
@@ -612,10 +612,17 @@ func (h *scenarioHarness) recordInvocation(rec invocation) {
 	h.notifyLocked()
 }
 
-func (h *scenarioHarness) recordGap(epochAfterID int64) {
+// gapRecord is one Observer.gap notification: the epoch and the URL argument
+// as the connector rendered it for a logging surface.
+type gapRecord struct {
+	epochAfterID int64
+	resumeURL    string
+}
+
+func (h *scenarioHarness) recordGap(epochAfterID int64, resumeURL string) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	h.gaps = append(h.gaps, epochAfterID)
+	h.gaps = append(h.gaps, gapRecord{epochAfterID: epochAfterID, resumeURL: resumeURL})
 	h.notifyLocked()
 }
 
@@ -673,7 +680,7 @@ func (h *scenarioHarness) newConnector(cfg scenarioConfig) (*eventfeed.Connector
 			ActorTypes:        cfg.ActorTypes,
 		}),
 		eventfeed.WithObserver(eventfeed.Observer{
-			Gap:                  func(epochAfterID int64, _ string) { h.recordGap(epochAfterID) },
+			Gap:                  func(epochAfterID int64, resumeURL string) { h.recordGap(epochAfterID, resumeURL) },
 			CheckpointSaveFailed: func(error) { h.recordSaveFailed() },
 			PositionRejected:     func(kind eventfeed.PollErrorKind) { h.recordPositionRejected(kind.String()) },
 			Disconnected: func(_ string, err error) {
