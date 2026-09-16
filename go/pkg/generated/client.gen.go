@@ -929,6 +929,21 @@ type CreateScheduleEntryRequestContent struct {
 // CreateScheduleEntryResponseContent defines model for CreateScheduleEntryResponseContent.
 type CreateScheduleEntryResponseContent = ScheduleEntry
 
+// CreateStreamTicketResponseContent A minted stream ticket. `url` already carries the ticket in its query
+// string; connect to it verbatim.
+type CreateStreamTicketResponseContent struct {
+	// ExpiresIn Ticket lifetime in seconds (about 120). Server-owned: expiry is arbitrated
+	// by the server, so mint fresh per connection rather than scheduling on it.
+	ExpiresIn int32 `json:"expires_in"`
+
+	// Ticket The signed ticket — an opaque bearer credential, never parsed or logged.
+	Ticket string `json:"ticket"`
+
+	// Url The exact WebSocket URL to connect to, ticket included. Sensitive because
+	// it embeds the ticket.
+	Url string `json:"url"`
+}
+
 // CreateTemplateLibraryCopyRequestContent defines model for CreateTemplateLibraryCopyRequestContent.
 type CreateTemplateLibraryCopyRequestContent struct {
 	// AddingPeopleConfirmed Confirm granting destination-project access to people referenced by the template.
@@ -1245,6 +1260,7 @@ type Event struct {
 	Creator     Person        `json:"creator"`
 	Details     *EventDetails `json:"details,omitempty"`
 	Id          int64         `json:"id"`
+	PerformedBy *Person       `json:"performed_by,omitempty"`
 	RecordingId int64         `json:"recording_id"`
 }
 
@@ -1310,6 +1326,89 @@ type EverythingFile struct {
 
 	// Width Pixel width; null for non-image blobs and may be float-spelled (1024.0).
 	Width *types.FlexInt `json:"width,omitempty"`
+}
+
+// FeedEvent One feed row: a thin pointer, not resource state. Refetch the referenced
+// recording through the canonical resource APIs before acting on it. The same
+// shape rides the inbox (`InboxItem.event`) and, with two transport-only
+// extras, the live stream.
+type FeedEvent struct {
+	// Action The action that produced the event (e.g. `created`).
+	Action string `json:"action"`
+
+	// BucketId The bucket (project or circle) the recording lives in.
+	BucketId  int64     `json:"bucket_id"`
+	CreatedAt time.Time `json:"created_at"`
+
+	// CreatorId The person the action is attributed to.
+	CreatorId int64 `json:"creator_id"`
+
+	// Details Type-specific details, carried verbatim as a JSON document — present only
+	// for the types that publish one, absent (not empty) for every other type.
+	// `boost.created` publishes `boost_id`, plus `boosted_event_id` and
+	// `boosted_event_type`, both `null` for a boost on the recording itself
+	// (`boosted_event_type` also `null` when the boosted event's kind is not
+	// cataloged); `card.moved` publishes `column_id` and `previous_column_id`,
+	// the containing columns (going on hold within a column reports the same
+	// column twice). Verbatim on purpose: the connector's push lane delivers
+	// the same object, and a typed projection would drop explicit nulls and
+	// any member a newly cataloged type adds, making the two lanes disagree.
+	// Go carries it as `json.RawMessage`; TypeScript `unknown`; Python `Any`;
+	// Ruby a Hash; Kotlin `JsonElement`; Rust `serde_json::Value`; Swift the
+	// SDK's `JSONValue` (numbers as `Double`).
+	Details *json.RawMessage `json:"details,omitempty"`
+
+	// EventType Cataloged event type (e.g. `message.created`). Only cataloged types are served.
+	EventType string `json:"event_type"`
+
+	// Id Feed-global event id; the poll lane serves ids in strict ascending order.
+	Id int64 `json:"id"`
+
+	// Kind Event kind (e.g. `message_created`).
+	Kind string `json:"kind"`
+
+	// PerformedById The agent that carried out a delegated action; `null` on the wire when the
+	// action was performed directly. The effective performer — used by the
+	// `performers`/`exclude_performers` filters — is this when present, else
+	// `creator_id`.
+	PerformedById *int64 `json:"performed_by_id,omitempty"`
+
+	// RecordingId The recording the event references.
+	RecordingId int64 `json:"recording_id"`
+}
+
+// FeedFilterMismatchErrorResponseContent 409 from the event feed's poll lanes (PollEvents, PollInbox): the held
+// `position` was minted for a different filter set than the request presented.
+// Positions are bound to their filter set; re-enter with `since=<id>` or
+// `since=now` to acknowledge the filter change. Both digests are the bare
+// 16-lowercase-hex `srv2` filter digest BC3 publishes in
+// doc/api/sections/event_feed.md ("Filter digests").
+type FeedFilterMismatchErrorResponseContent struct {
+	Error string `json:"error"`
+
+	// FiltersDigest The digest of the filter set this request presented.
+	FiltersDigest string `json:"filters_digest"`
+
+	// PositionDigest The digest of the filter set the position was minted for.
+	PositionDigest string `json:"position_digest"`
+}
+
+// FeedPositionGoneErrorResponseContent 410 from the event feed's poll lanes: the held `position` predates what the
+// lane can still serve. On PollEvents that is the feed's epoch — an operational
+// fence that can be raised — and `epoch_after_id` names it; on PollInbox it is
+// the inbox's 30-day retention window, and `epoch_after_id` is absent. Either
+// way `resume` is an absolute URL that re-enters the same lane with the
+// request's canonical filters preserved: at the epoch (`since=<epoch_after_id>`)
+// for the feed, at the earliest retained item (`since=0`) for the inbox.
+// Consumers validate the URL (same origin as the API base, no scheme downgrade)
+// before following it — SPEC.md §23 "Continuation and Resume URL Validation".
+type FeedPositionGoneErrorResponseContent struct {
+	// EpochAfterId The feed's epoch: the event id after which history is servable. Feed only.
+	EpochAfterId *int64 `json:"epoch_after_id,omitempty"`
+	Error        string `json:"error"`
+
+	// Resume Absolute re-entry URL for the same lane, filters preserved.
+	Resume string `json:"resume"`
 }
 
 // FieldErrorMap defines model for FieldErrorMap.
@@ -1958,6 +2057,24 @@ type Inbox struct {
 	VisibleToClients bool       `json:"visible_to_clients"`
 }
 
+// InboxItem One addressed delivery. `addressing_id` is the item's own identity — the
+// dedupe key — since one event can address the same principal for several
+// reasons.
+type InboxItem struct {
+	AddressedAt  time.Time `json:"addressed_at"`
+	AddressingId int64     `json:"addressing_id"`
+
+	// Event One feed row: a thin pointer, not resource state. Refetch the referenced
+	// recording through the canonical resource APIs before acting on it. The same
+	// shape rides the inbox (`InboxItem.event`) and, with two transport-only
+	// extras, the live stream.
+	Event FeedEvent `json:"event"`
+
+	// Reason Why the principal was addressed: `mentioned`, `assigned`, `subscribed`,
+	// `watched`, `pinged`, or `boosted`.
+	Reason string `json:"reason"`
+}
+
 // InternalServerErrorResponseContent defines model for InternalServerErrorResponseContent.
 type InternalServerErrorResponseContent struct {
 	Error   string  `json:"error"`
@@ -2382,6 +2499,36 @@ type Person struct {
 type PersonCompany struct {
 	Id   int64  `json:"id"`
 	Name string `json:"name"`
+}
+
+// PollEventsResponseContent The poll envelope. Every 200 carries `events` and `position`; `next` only
+// while the walk continues.
+type PollEventsResponseContent struct {
+	// Events Up to 100 events, oldest first, strict event-id order. A page may be empty
+	// while the walk crosses history the filters exclude — keep following `next`.
+	Events []FeedEvent `json:"events"`
+
+	// Next Absolute continuation URL, present only while the current walk has more
+	// to serve; absent means the walk reached its (frozen) head — poll again
+	// later from `position`.
+	Next *string `json:"next,omitempty"`
+
+	// Position Durable position token for resuming later. Persist only after the page's
+	// events have been processed.
+	Position string `json:"position"`
+}
+
+// PollInboxResponseContent The inbox envelope: `items` and `position` on every 200, `next` while the
+// walk continues.
+type PollInboxResponseContent struct {
+	Items []InboxItem `json:"items"`
+
+	// Next Absolute continuation URL, present only while the walk has more to serve.
+	Next *string `json:"next,omitempty"`
+
+	// Position Durable inbox position. Persist only after the page's items have been
+	// processed.
+	Position string `json:"position"`
 }
 
 // Preferences defines model for Preferences.
@@ -4595,13 +4742,14 @@ type WebhookDeliveryResponse struct {
 // Also appears as the body field in WebhookDelivery.request.
 type WebhookEvent struct {
 	// Copy Reference to a copied/moved recording in copy events.
-	Copy      *WebhookCopy `json:"copy,omitempty"`
-	CreatedAt *time.Time   `json:"created_at,omitempty"`
-	Creator   *Person      `json:"creator,omitempty"`
-	Details   interface{}  `json:"details,omitempty"`
-	Id        *int64       `json:"id,omitempty"`
-	Kind      *string      `json:"kind,omitempty"`
-	Recording *Recording   `json:"recording,omitempty"`
+	Copy        *WebhookCopy `json:"copy,omitempty"`
+	CreatedAt   *time.Time   `json:"created_at,omitempty"`
+	Creator     *Person      `json:"creator,omitempty"`
+	Details     interface{}  `json:"details,omitempty"`
+	Id          *int64       `json:"id,omitempty"`
+	Kind        *string      `json:"kind,omitempty"`
+	PerformedBy *Person      `json:"performed_by,omitempty"`
+	Recording   *Recording   `json:"recording,omitempty"`
 }
 
 // WebhookHeadersMap defines model for WebhookHeadersMap.
@@ -4845,6 +4993,41 @@ type GetEverythingCommentsParams struct {
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
+// PollEventsParams defines parameters for PollEvents.
+type PollEventsParams struct {
+	// Since Entry point: a decimal event id (start after it; `0` replays served
+	// history back to the epoch), or the literal `now` (skip history). Mutually
+	// exclusive with `position` in practice; omit both to enter at the present.
+	Since *string `form:"since,omitempty" json:"since,omitempty"`
+
+	// Position Resume token from a previous page's `position`. Opaque and signed; never
+	// constructed or parsed client-side.
+	Position *string `form:"position,omitempty" json:"position,omitempty"`
+
+	// Types Comma-separated event types from the catalog (e.g. `message.created,comment.created`).
+	Types *string `form:"types,omitempty" json:"types,omitempty"`
+
+	// Buckets Comma-separated bucket (project) ids, at most 100.
+	Buckets *string `form:"buckets,omitempty" json:"buckets,omitempty"`
+
+	// Creators Comma-separated creator person ids, at most 100.
+	Creators *string `form:"creators,omitempty" json:"creators,omitempty"`
+
+	// Performers Comma-separated effective-performer ids (the agent on a delegated action,
+	// else the creator), at most 100. The literal `self` means the request's own
+	// effective actor and is resolved server-side before filtering.
+	Performers *string `form:"performers,omitempty" json:"performers,omitempty"`
+
+	// ExcludePerformers Comma-separated effective-performer ids to exclude, at most 100; `self`
+	// as on `performers`. `exclude_performers=self` is the loop guard for an
+	// agent that acts on what it hears.
+	ExcludePerformers *string `form:"exclude_performers,omitempty" json:"exclude_performers,omitempty"`
+
+	// ActorTypes Comma-separated actor kinds: `agent`, `person`, or both. A filter, not a
+	// default — agent activity is real account activity.
+	ActorTypes *string `form:"actor_types,omitempty" json:"actor_types,omitempty"`
+}
+
 // GetEverythingFilesParams defines parameters for GetEverythingFiles.
 type GetEverythingFilesParams struct {
 	// Kind Filter by file kind: all (default), images, pdfs, documents, or videos.
@@ -4861,6 +5044,26 @@ type GetEverythingFilesParams struct {
 type GetEverythingForwardsParams struct {
 	// Page Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8.
 	Page *int32 `form:"page,omitempty" json:"page,omitempty"`
+}
+
+// PollInboxParams defines parameters for PollInbox.
+type PollInboxParams struct {
+	// Since Entry point: `0` (earliest retained), `now` (present), or a decimal item
+	// id to start after.
+	Since *string `form:"since,omitempty" json:"since,omitempty"`
+
+	// Position Resume token from a previous inbox page's `position`.
+	Position *string `form:"position,omitempty" json:"position,omitempty"`
+
+	// Reasons Comma-separated addressing reasons: `mentioned`, `assigned`, `subscribed`,
+	// `watched`, `pinged`, `boosted`.
+	Reasons *string `form:"reasons,omitempty" json:"reasons,omitempty"`
+
+	// Types Comma-separated event types, as a narrowing filter.
+	Types *string `form:"types,omitempty" json:"types,omitempty"`
+
+	// Buckets Comma-separated bucket ids, as a narrowing filter (at most 100).
+	Buckets *string `form:"buckets,omitempty" json:"buckets,omitempty"`
 }
 
 // ListForwardRepliesParams defines parameters for ListForwardReplies.
@@ -6398,6 +6601,12 @@ type ClientInterface interface {
 
 	ReplaceDocument(ctx context.Context, accountId string, documentId int64, body ReplaceDocumentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// PollEvents request
+	PollEvents(ctx context.Context, accountId string, params *PollEventsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateStreamTicket request
+	CreateStreamTicket(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetEverythingFiles request
 	GetEverythingFiles(ctx context.Context, accountId string, params *GetEverythingFilesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -6422,6 +6631,9 @@ type ClientInterface interface {
 	UpdateGoogleDocumentWithBody(ctx context.Context, accountId string, googleDocumentId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	UpdateGoogleDocument(ctx context.Context, accountId string, googleDocumentId int64, body UpdateGoogleDocumentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PollInbox request
+	PollInbox(ctx context.Context, accountId string, params *PollInboxParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetForward request
 	GetForward(ctx context.Context, accountId string, forwardId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -8300,6 +8512,26 @@ func (c *Client) ReplaceDocument(ctx context.Context, accountId string, document
 
 }
 
+// PollEvents is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) PollEvents(ctx context.Context, accountId string, params *PollEventsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewPollEventsRequest(c.Server, accountId, params)
+	}, true, "PollEvents", reqEditors...)
+
+}
+
+// CreateStreamTicket is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) CreateStreamTicket(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewCreateStreamTicketRequest(c.Server, accountId)
+	}, true, "CreateStreamTicket", reqEditors...)
+
+}
+
 // GetEverythingFiles is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) GetEverythingFiles(ctx context.Context, accountId string, params *GetEverythingFilesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -8383,6 +8615,16 @@ func (c *Client) UpdateGoogleDocument(ctx context.Context, accountId string, goo
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateGoogleDocumentRequest(c.Server, accountId, googleDocumentId, body)
 	}, true, "UpdateGoogleDocument", reqEditors...)
+
+}
+
+// PollInbox is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) PollInbox(ctx context.Context, accountId string, params *PollInboxParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewPollInboxRequest(c.Server, accountId, params)
+	}, true, "PollInbox", reqEditors...)
 
 }
 
@@ -15338,6 +15580,208 @@ func NewReplaceDocumentRequestWithBody(server string, accountId string, document
 	return req, nil
 }
 
+// NewPollEventsRequest generates requests for PollEvents
+func NewPollEventsRequest(server string, accountId string, params *PollEventsParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/events.json", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Since != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "since", runtime.ParamLocationQuery, *params.Since); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Position != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "position", runtime.ParamLocationQuery, *params.Position); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Types != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "types", runtime.ParamLocationQuery, *params.Types); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Buckets != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "buckets", runtime.ParamLocationQuery, *params.Buckets); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Creators != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "creators", runtime.ParamLocationQuery, *params.Creators); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Performers != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "performers", runtime.ParamLocationQuery, *params.Performers); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.ExcludePerformers != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "exclude_performers", runtime.ParamLocationQuery, *params.ExcludePerformers); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.ActorTypes != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "actor_types", runtime.ParamLocationQuery, *params.ActorTypes); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCreateStreamTicketRequest generates requests for CreateStreamTicket
+func NewCreateStreamTicketRequest(server string, accountId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/events/stream_ticket.json", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGetEverythingFilesRequest generates requests for GetEverythingFiles
 func NewGetEverythingFilesRequest(server string, accountId string, params *GetEverythingFilesParams) (*http.Request, error) {
 	var err error
@@ -15709,6 +16153,126 @@ func NewUpdateGoogleDocumentRequestWithBody(server string, accountId string, goo
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewPollInboxRequest generates requests for PollInbox
+func NewPollInboxRequest(server string, accountId string, params *PollInboxParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/inbox.json", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Since != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "since", runtime.ParamLocationQuery, *params.Since); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Position != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "position", runtime.ParamLocationQuery, *params.Position); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Reasons != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "reasons", runtime.ParamLocationQuery, *params.Reasons); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Types != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "types", runtime.ParamLocationQuery, *params.Types); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Buckets != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "buckets", runtime.ParamLocationQuery, *params.Buckets); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -25126,6 +25690,8 @@ var operationMetadata = map[string]OperationMetadata{
 	"UpdateTool":                         {Idempotent: true, HasSensitiveParams: false},
 	"GetDocument":                        {Idempotent: true, HasSensitiveParams: false},
 	"ReplaceDocument":                    {Idempotent: true, HasSensitiveParams: false},
+	"PollEvents":                         {Idempotent: true, HasSensitiveParams: false},
+	"CreateStreamTicket":                 {Idempotent: true, HasSensitiveParams: false},
 	"GetEverythingFiles":                 {Idempotent: true, HasSensitiveParams: false},
 	"GetEverythingForwards":              {Idempotent: true, HasSensitiveParams: false},
 	"DestroyGaugeNeedle":                 {Idempotent: true, HasSensitiveParams: false},
@@ -25133,6 +25699,7 @@ var operationMetadata = map[string]OperationMetadata{
 	"UpdateGaugeNeedle":                  {Idempotent: true, HasSensitiveParams: false},
 	"GetGoogleDocument":                  {Idempotent: true, HasSensitiveParams: false},
 	"UpdateGoogleDocument":               {Idempotent: true, HasSensitiveParams: false},
+	"PollInbox":                          {Idempotent: true, HasSensitiveParams: false},
 	"GetForward":                         {Idempotent: true, HasSensitiveParams: false},
 	"ListForwardReplies":                 {Idempotent: true, HasSensitiveParams: false},
 	"GetForwardReply":                    {Idempotent: true, HasSensitiveParams: false},
@@ -25397,6 +25964,8 @@ var operationRetryMax = map[string]int{
 	"UpdateTool":                         3,
 	"GetDocument":                        3,
 	"ReplaceDocument":                    3,
+	"PollEvents":                         3,
+	"CreateStreamTicket":                 3,
 	"GetEverythingFiles":                 3,
 	"GetEverythingForwards":              3,
 	"DestroyGaugeNeedle":                 2,
@@ -25404,6 +25973,7 @@ var operationRetryMax = map[string]int{
 	"UpdateGaugeNeedle":                  2,
 	"GetGoogleDocument":                  3,
 	"UpdateGoogleDocument":               3,
+	"PollInbox":                          3,
 	"GetForward":                         3,
 	"ListForwardReplies":                 3,
 	"GetForwardReply":                    3,
@@ -25666,6 +26236,8 @@ var operationRetryOn = map[string][]int{
 	"UpdateTool":                         {429, 503},
 	"GetDocument":                        {429, 503},
 	"ReplaceDocument":                    {429, 503},
+	"PollEvents":                         {429, 503},
+	"CreateStreamTicket":                 {429, 503},
 	"GetEverythingFiles":                 {429, 503},
 	"GetEverythingForwards":              {429, 503},
 	"DestroyGaugeNeedle":                 {429, 503},
@@ -25673,6 +26245,7 @@ var operationRetryOn = map[string][]int{
 	"UpdateGaugeNeedle":                  {429, 503},
 	"GetGoogleDocument":                  {429, 503},
 	"UpdateGoogleDocument":               {429, 503},
+	"PollInbox":                          {429, 503},
 	"GetForward":                         {429, 503},
 	"ListForwardReplies":                 {429, 503},
 	"GetForwardReply":                    {429, 503},
@@ -27220,6 +27793,12 @@ type ClientWithResponsesInterface interface {
 
 	ReplaceDocumentWithResponse(ctx context.Context, accountId string, documentId int64, body ReplaceDocumentJSONRequestBody, reqEditors ...RequestEditorFn) (*ReplaceDocumentResponse, error)
 
+	// PollEventsWithResponse request
+	PollEventsWithResponse(ctx context.Context, accountId string, params *PollEventsParams, reqEditors ...RequestEditorFn) (*PollEventsResponse, error)
+
+	// CreateStreamTicketWithResponse request
+	CreateStreamTicketWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*CreateStreamTicketResponse, error)
+
 	// GetEverythingFilesWithResponse request
 	GetEverythingFilesWithResponse(ctx context.Context, accountId string, params *GetEverythingFilesParams, reqEditors ...RequestEditorFn) (*GetEverythingFilesResponse, error)
 
@@ -27244,6 +27823,9 @@ type ClientWithResponsesInterface interface {
 	UpdateGoogleDocumentWithBodyWithResponse(ctx context.Context, accountId string, googleDocumentId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateGoogleDocumentResponse, error)
 
 	UpdateGoogleDocumentWithResponse(ctx context.Context, accountId string, googleDocumentId int64, body UpdateGoogleDocumentJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateGoogleDocumentResponse, error)
+
+	// PollInboxWithResponse request
+	PollInboxWithResponse(ctx context.Context, accountId string, params *PollInboxParams, reqEditors ...RequestEditorFn) (*PollInboxResponse, error)
 
 	// GetForwardWithResponse request
 	GetForwardWithResponse(ctx context.Context, accountId string, forwardId int64, reqEditors ...RequestEditorFn) (*GetForwardResponse, error)
@@ -30663,6 +31245,77 @@ func (r ReplaceDocumentResponse) ContentType() string {
 	return ""
 }
 
+type PollEventsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *PollEventsResponseContent
+	JSON400      *BadRequestErrorResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON409      *FeedFilterMismatchErrorResponseContent
+	JSON410      *FeedPositionGoneErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r PollEventsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PollEventsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PollEventsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateStreamTicketResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *CreateStreamTicketResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateStreamTicketResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateStreamTicketResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateStreamTicketResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetEverythingFilesResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -30898,6 +31551,42 @@ func (r UpdateGoogleDocumentResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r UpdateGoogleDocumentResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type PollInboxResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *PollInboxResponseContent
+	JSON400      *BadRequestErrorResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON409      *FeedFilterMismatchErrorResponseContent
+	JSON410      *FeedPositionGoneErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r PollInboxResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PollInboxResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PollInboxResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -37842,6 +38531,24 @@ func (c *ClientWithResponses) ReplaceDocumentWithResponse(ctx context.Context, a
 	return ParseReplaceDocumentResponse(rsp)
 }
 
+// PollEventsWithResponse request returning *PollEventsResponse
+func (c *ClientWithResponses) PollEventsWithResponse(ctx context.Context, accountId string, params *PollEventsParams, reqEditors ...RequestEditorFn) (*PollEventsResponse, error) {
+	rsp, err := c.PollEvents(ctx, accountId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePollEventsResponse(rsp)
+}
+
+// CreateStreamTicketWithResponse request returning *CreateStreamTicketResponse
+func (c *ClientWithResponses) CreateStreamTicketWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*CreateStreamTicketResponse, error) {
+	rsp, err := c.CreateStreamTicket(ctx, accountId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateStreamTicketResponse(rsp)
+}
+
 // GetEverythingFilesWithResponse request returning *GetEverythingFilesResponse
 func (c *ClientWithResponses) GetEverythingFilesWithResponse(ctx context.Context, accountId string, params *GetEverythingFilesParams, reqEditors ...RequestEditorFn) (*GetEverythingFilesResponse, error) {
 	rsp, err := c.GetEverythingFiles(ctx, accountId, params, reqEditors...)
@@ -37919,6 +38626,15 @@ func (c *ClientWithResponses) UpdateGoogleDocumentWithResponse(ctx context.Conte
 		return nil, err
 	}
 	return ParseUpdateGoogleDocumentResponse(rsp)
+}
+
+// PollInboxWithResponse request returning *PollInboxResponse
+func (c *ClientWithResponses) PollInboxWithResponse(ctx context.Context, accountId string, params *PollInboxParams, reqEditors ...RequestEditorFn) (*PollInboxResponse, error) {
+	rsp, err := c.PollInbox(ctx, accountId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePollInboxResponse(rsp)
 }
 
 // GetForwardWithResponse request returning *GetForwardResponse
@@ -44187,6 +44903,124 @@ func ParseReplaceDocumentResponse(rsp *http.Response) (*ReplaceDocumentResponse,
 	return response, nil
 }
 
+// ParsePollEventsResponse parses an HTTP response from a PollEventsWithResponse call
+func ParsePollEventsResponse(rsp *http.Response) (*PollEventsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PollEventsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PollEventsResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequestErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON400 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON401 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON403 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest FeedFilterMismatchErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON409 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 410:
+		var dest FeedPositionGoneErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON410 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON429 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON500 = &dest
+		}
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateStreamTicketResponse parses an HTTP response from a CreateStreamTicketWithResponse call
+func ParseCreateStreamTicketResponse(rsp *http.Response) (*CreateStreamTicketResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateStreamTicketResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest CreateStreamTicketResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON401 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON403 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON429 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON500 = &dest
+		}
+
+	}
+
+	return response, nil
+}
+
 // ParseGetEverythingFilesResponse parses an HTTP response from a GetEverythingFilesWithResponse call
 func ParseGetEverythingFilesResponse(rsp *http.Response) (*GetEverythingFilesResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -44544,6 +45378,71 @@ func ParseUpdateGoogleDocumentResponse(rsp *http.Response) (*UpdateGoogleDocumen
 		var dest FieldValidationErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
 			response.JSON422 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON500 = &dest
+		}
+
+	}
+
+	return response, nil
+}
+
+// ParsePollInboxResponse parses an HTTP response from a PollInboxWithResponse call
+func ParsePollInboxResponse(rsp *http.Response) (*PollInboxResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PollInboxResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PollInboxResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequestErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON400 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON401 = &dest
+		}
+
+	case rsp.StatusCode == 403:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest FeedFilterMismatchErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON409 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 410:
+		var dest FeedPositionGoneErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON410 = &dest
+		}
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
+			response.JSON429 = &dest
 		}
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:

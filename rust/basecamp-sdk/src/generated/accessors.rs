@@ -112,6 +112,11 @@ impl AccountClient {
         services::drafts::DraftsService::new(self)
     }
 
+    /// `EventFeed` operations.
+    pub fn event_feed(&self) -> services::event_feed::EventFeedService<'_> {
+        services::event_feed::EventFeedService::new(self)
+    }
+
     /// `Events` operations.
     pub fn events(&self) -> services::events::EventsService<'_> {
         services::events::EventsService::new(self)

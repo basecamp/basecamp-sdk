@@ -581,6 +581,23 @@ pub static CREATE_SCHEDULE_ENTRY: Route = Route {
     metadata: &metadata::CREATE_SCHEDULE_ENTRY,
 };
 
+/// `POST /events/stream_ticket.json`.
+pub static CREATE_STREAM_TICKET: Route = Route {
+    id: "CreateStreamTicket",
+    service: "EventFeed",
+    method: Method::POST,
+    path: "/events/stream_ticket.json",
+    pattern: "/events/stream_ticket",
+    resource_type: "stream_ticket",
+    params: &[],
+    body: BodyKind::None,
+    response: Representation::Json,
+    pagination: Pagination::None,
+    write: None,
+    deprecated: false,
+    metadata: &metadata::CREATE_STREAM_TICKET,
+};
+
 /// `POST /templates.json`.
 pub static CREATE_TEMPLATE: Route = Route {
     id: "CreateTemplate",
@@ -4103,6 +4120,40 @@ pub static PIN_MESSAGE: Route = Route {
     metadata: &metadata::PIN_MESSAGE,
 };
 
+/// `GET /events.json`.
+pub static POLL_EVENTS: Route = Route {
+    id: "PollEvents",
+    service: "EventFeed",
+    method: Method::GET,
+    path: "/events.json",
+    pattern: "/events",
+    resource_type: "feed_event",
+    params: &[],
+    body: BodyKind::None,
+    response: Representation::Json,
+    pagination: Pagination::None,
+    write: None,
+    deprecated: false,
+    metadata: &metadata::POLL_EVENTS,
+};
+
+/// `GET /inbox.json`.
+pub static POLL_INBOX: Route = Route {
+    id: "PollInbox",
+    service: "EventFeed",
+    method: Method::GET,
+    path: "/inbox.json",
+    pattern: "/inbox",
+    resource_type: "inbox_item",
+    params: &[],
+    body: BodyKind::None,
+    response: Representation::Json,
+    pagination: Pagination::None,
+    write: None,
+    deprecated: false,
+    metadata: &metadata::POLL_INBOX,
+};
+
 /// `POST /my/priorities.json`.
 pub static PRIORITIZE_ASSIGNMENT: Route = Route {
     id: "PrioritizeAssignment",
@@ -5481,6 +5532,7 @@ pub static ROUTES: &[&Route] = &[
     &CREATE_QUESTION,
     &CREATE_RECORDING_BOOST,
     &CREATE_SCHEDULE_ENTRY,
+    &CREATE_STREAM_TICKET,
     &CREATE_TEMPLATE,
     &CREATE_TEMPLATE_LIBRARY_COPY,
     &CREATE_TIMESHEET_ENTRY,
@@ -5649,6 +5701,8 @@ pub static ROUTES: &[&Route] = &[
     &MOVE_CARD_COLUMN,
     &PAUSE_QUESTION,
     &PIN_MESSAGE,
+    &POLL_EVENTS,
+    &POLL_INBOX,
     &PRIORITIZE_ASSIGNMENT,
     &RECORD_PROJECT_VISIT,
     &REMOVE_ACCOUNT_LOGO,

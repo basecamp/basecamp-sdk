@@ -212,6 +212,7 @@ not_grouped:
   - CreateProjectFromTemplate
   - CreateQuestion
   - CreateRecordingBoost
+  - CreateStreamTicket
   - CreateTimesheetEntry
   - CreateTodolist
   - CreateTodolistGroup
@@ -233,12 +234,12 @@ not_grouped:
   - DestroyGaugeNeedle
   - DestroyTimesheetEntry
   - DisableCardColumnOnHold
-  - DisableProjectClients
   - DisableOutOfOffice
+  - DisableProjectClients
   - DisableTool
   - EnableCardColumnOnHold
-  - EnableProjectClients
   - EnableOutOfOffice
+  - EnableProjectClients
   - EnableTool
   - GetAccount
   - GetAnswer
@@ -338,6 +339,8 @@ not_grouped:
   - MoveCardColumn
   - PauseQuestion
   - PinMessage
+  - PollEvents
+  - PollInbox
   - PrioritizeAssignment
   - RemoveAccountLogo
   - ReorderUpNext

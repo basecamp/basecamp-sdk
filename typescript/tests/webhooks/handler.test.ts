@@ -13,6 +13,10 @@ const fixturesDir = join(__dirname, "..", "..", "..", "spec", "fixtures", "webho
 const todoCreatedBody = readFileSync(join(fixturesDir, "event-todo-created.json"), "utf8");
 const messageCopiedBody = readFileSync(join(fixturesDir, "event-message-copied.json"), "utf8");
 const unknownFutureBody = readFileSync(join(fixturesDir, "event-unknown-future.json"), "utf8");
+const todoCreatedDelegatedBody = readFileSync(
+  join(fixturesDir, "event-todo-created-delegated.json"),
+  "utf8"
+);
 
 const emptyHeaders = {};
 
@@ -27,6 +31,35 @@ describe("WebhookReceiver", () => {
 
       expect(events).toHaveLength(1);
       expect(events[0].kind).toBe("todo_created");
+    });
+
+    it("carries the performing agent on a delegated event", async () => {
+      const receiver = new WebhookReceiver();
+      const events: WebhookEvent[] = [];
+      receiver.on("todo_created", (e) => {
+        events.push(e);
+      });
+
+      await receiver.handleRequest(todoCreatedDelegatedBody, emptyHeaders);
+
+      expect(events).toHaveLength(1);
+      expect(events[0].creator?.name).toBe("Annie Bryan");
+      expect(events[0].performed_by?.personable_type).toBe("Agent");
+      expect(events[0].performed_by?.id).toBe(1049715999);
+      expect(events[0].performed_by?.email_address).toBeNull();
+      expect(events[0].performed_by?.tagline).toBeNull();
+    });
+
+    it("leaves performed_by absent on a direct event", async () => {
+      const receiver = new WebhookReceiver();
+      const events: WebhookEvent[] = [];
+      receiver.on("todo_created", (e) => {
+        events.push(e);
+      });
+
+      await receiver.handleRequest(todoCreatedBody, emptyHeaders);
+
+      expect(events[0].performed_by).toBeUndefined();
     });
 
     it("routes to glob prefix handler (todo_*)", async () => {

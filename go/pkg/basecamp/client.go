@@ -90,6 +90,7 @@ type AccountClient struct {
 	messageTypes          *MessageTypesService
 	webhooks              *WebhooksService
 	events                *EventsService
+	eventFeed             *EventFeedService
 	search                *SearchService
 	templates             *TemplatesService
 	tools                 *ToolsService
@@ -1397,6 +1398,18 @@ func (ac *AccountClient) Events() *EventsService {
 		ac.events = NewEventsService(ac)
 	}
 	return ac.events
+}
+
+// EventFeed returns the EventFeedService: the account event feed's poll lane,
+// the agent inbox, and stream-ticket minting (the wire layer beneath the
+// SPEC §23 connector).
+func (ac *AccountClient) EventFeed() *EventFeedService {
+	ac.mu.Lock()
+	defer ac.mu.Unlock()
+	if ac.eventFeed == nil {
+		ac.eventFeed = NewEventFeedService(ac)
+	}
+	return ac.eventFeed
 }
 
 // Search returns the SearchService for search operations.

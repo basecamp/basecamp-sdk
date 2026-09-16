@@ -123,6 +123,12 @@ func schemaToSwiftType(_ schema: [String: Any]) -> String {
         base["type"] = nonNull ?? "string"
         return schemaToSwiftType(base)
     }
+    // A Smithy document projects as an empty schema (no type, no $ref): carry
+    // it verbatim as JSONValue rather than pretending it is a String, which
+    // cannot decode an object or array. Numbers ride as Double.
+    if schema["type"] == nil, schema["properties"] == nil, schema["enum"] == nil {
+        return "JSONValue"
+    }
     let type = schema["type"] as? String ?? "String"
     switch type {
     case "integer":

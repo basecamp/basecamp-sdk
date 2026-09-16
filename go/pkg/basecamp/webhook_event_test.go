@@ -3,6 +3,8 @@ package basecamp
 import (
 	"encoding/json"
 	"testing"
+
+	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
 )
 
 func TestWebhookEvent_UnmarshalTodoCreated(t *testing.T) {
@@ -163,6 +165,59 @@ func TestWebhookEvent_UnmarshalMessageCopied(t *testing.T) {
 	// Creator is different in this fixture
 	if event.Creator.Name != "Matt Donahue" {
 		t.Errorf("expected creator name 'Matt Donahue', got %q", event.Creator.Name)
+	}
+}
+
+func TestWebhookEvent_UnmarshalDelegated(t *testing.T) {
+	data := loadWebhooksFixture(t, "event-todo-created-delegated.json")
+
+	var event WebhookEvent
+	if err := json.Unmarshal(data, &event); err != nil {
+		t.Fatalf("failed to unmarshal event-todo-created-delegated.json: %v", err)
+	}
+	if event.Creator.Name != "Annie Bryan" {
+		t.Errorf("expected creator to stay the attributed person, got %q", event.Creator.Name)
+	}
+	if event.PerformedBy == nil {
+		t.Fatal("expected PerformedBy on a delegated event")
+	}
+	if event.PerformedBy.ID != 1049715999 || event.PerformedBy.PersonableType != "Agent" {
+		t.Errorf("unexpected performer: %+v", event.PerformedBy)
+	}
+	// An Agent's email_address, title, bio, tagline and location are explicit
+	// nulls on the wire; the decoder must accept them.
+	if event.PerformedBy.EmailAddress != "" || event.PerformedBy.Title != "" || event.PerformedBy.Bio != nil || event.PerformedBy.Tagline != nil || event.PerformedBy.Location != nil {
+		t.Errorf("expected the agent's null-valued person fields to decode empty, got %+v", event.PerformedBy)
+	}
+	// A non-null tagline survives both the direct decode and the generated mapping.
+	var tagged WebhookEvent
+	if err := json.Unmarshal([]byte(`{"id": 1, "kind": "todo_created", "performed_by": {"id": 7, "name": "Agent", "personable_type": "Agent", "tagline": "Ships release notes"}}`), &tagged); err != nil {
+		t.Fatalf("failed to unmarshal a tagged performer: %v", err)
+	}
+	if tagged.PerformedBy == nil || tagged.PerformedBy.Tagline == nil || *tagged.PerformedBy.Tagline != "Ships release notes" {
+		t.Errorf("expected the performer's tagline to decode, got %+v", tagged.PerformedBy)
+	}
+	taggedFromGenerated := webhookPersonFromGenerated(generated.Person{Id: 7, Name: "Agent", Tagline: ptr("Ships release notes")})
+	if taggedFromGenerated.Tagline == nil || *taggedFromGenerated.Tagline != "Ships release notes" {
+		t.Errorf("expected webhookPersonFromGenerated to carry the tagline, got %+v", taggedFromGenerated)
+	}
+
+	// The generated decode path maps the same member through webhookEventFromGenerated.
+	var ge generated.WebhookEvent
+	if err := json.Unmarshal(data, &ge); err != nil {
+		t.Fatalf("failed to unmarshal into generated.WebhookEvent: %v", err)
+	}
+	mapped := webhookEventFromGenerated(ge)
+	if mapped.PerformedBy == nil || mapped.PerformedBy.ID != 1049715999 || mapped.PerformedBy.PersonableType != "Agent" {
+		t.Errorf("expected webhookEventFromGenerated to carry the performer, got %+v", mapped.PerformedBy)
+	}
+
+	var direct WebhookEvent
+	if err := json.Unmarshal(loadWebhooksFixture(t, "event-todo-created.json"), &direct); err != nil {
+		t.Fatalf("failed to unmarshal event-todo-created.json: %v", err)
+	}
+	if direct.PerformedBy != nil {
+		t.Error("a direct event must not carry PerformedBy")
 	}
 }
 

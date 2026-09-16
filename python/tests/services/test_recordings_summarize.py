@@ -745,11 +745,17 @@ class TestChatLineDiscovery:
             _account().recordings.summarize(bucket_id=BUCKET, recording_id=LINE_ID, event_type="chat.line.created")
 
         assert isinstance(raised.value, CampfireDiscoveryIncompleteError)
-        # No enum member fits "I could not finish looking", so it takes the
-        # residual one -- and stays NON-retryable despite that code's usual
-        # meaning, because both reasons are deterministic for the same account
-        # state and a retry loop would re-run the same search forever.
-        assert raised.value.code == "api_error"
+        # `usage` is one of only three coarse codes no HTTP response can
+        # produce (with `network` and `ambiguous`), and the one of those three
+        # that also describes a call the SDK declined to complete, so this
+        # verdict can never be read back as a constituent read's own answer.
+        # Settled for every port on card 40 after this one shipped `api_error`
+        # and Kotlin shipped `usage`; `exit_code` is the consequence a script
+        # actually branches on. NON-retryable is the other half of that
+        # decision: both reasons are deterministic for the same account state,
+        # so a retry loop would re-run the same search forever.
+        assert raised.value.code == "usage"
+        assert raised.value.exit_code == 1
         assert raised.value.retryable is False
         assert str(MAX_CAMPFIRE_CANDIDATES) in raised.value.reason
         assert lines.call_count == MAX_CAMPFIRE_CANDIDATES
@@ -1328,11 +1334,17 @@ class TestAsync:
             await account.recordings.summarize(bucket_id=BUCKET, recording_id=LINE_ID, event_type="chat.line.created")
 
         assert isinstance(raised.value, CampfireDiscoveryIncompleteError)
-        # No enum member fits "I could not finish looking", so it takes the
-        # residual one -- and stays NON-retryable despite that code's usual
-        # meaning, because both reasons are deterministic for the same account
-        # state and a retry loop would re-run the same search forever.
-        assert raised.value.code == "api_error"
+        # `usage` is one of only three coarse codes no HTTP response can
+        # produce (with `network` and `ambiguous`), and the one of those three
+        # that also describes a call the SDK declined to complete, so this
+        # verdict can never be read back as a constituent read's own answer.
+        # Settled for every port on card 40 after this one shipped `api_error`
+        # and Kotlin shipped `usage`; `exit_code` is the consequence a script
+        # actually branches on. NON-retryable is the other half of that
+        # decision: both reasons are deterministic for the same account state,
+        # so a retry loop would re-run the same search forever.
+        assert raised.value.code == "usage"
+        assert raised.value.exit_code == 1
         assert raised.value.retryable is False
 
     @respx.mock

@@ -115,6 +115,10 @@ private func compositeHopIsOnContract(
 struct SemanticError {
     let type: String
     let message: String
+    /// The canonical SPEC §6 code the SDK classifies this verdict under. Taken
+    /// from the SDK rather than from a table here, so a fixture pinning the
+    /// code pins what a consumer of the SDK would read.
+    let code: String
 }
 
 /// Maps the Swift SDK's composite error onto that shared vocabulary.
@@ -503,9 +507,30 @@ func evaluateAssertions(
             guard let expected = assertion.expected?.stringValue else {
                 return .fail("\(assertion.type) assertion missing expected value")
             }
-            // A composite identity answers `errorType` only. `errorCode` stays
-            // the HTTP-shaped vocabulary, so a fixture cannot accidentally
-            // satisfy a canonical code with a semantic one.
+            // A composite identity answers `errorType` with its own name, and
+            // `errorCode` with the canonical §6 code the SDK CLASSIFIES it
+            // under (`RecordingSummaryError.canonicalCode`). The two stay
+            // different questions: `canonicalCode` only ever returns a member
+            // of the closed taxonomy, so a fixture still cannot satisfy a
+            // canonical code with a semantic name.
+            if let semanticError, assertion.type == "errorCode" {
+                let actual = semanticError.code
+                // The claim that `canonicalCode` only ever returns a member of
+                // the closed taxonomy is CHECKED here rather than trusted: a
+                // composite that minted a name of its own would otherwise
+                // satisfy this assertion against a fixture that named the same
+                // invented string, which is the confusion the split between
+                // errorType and errorCode exists to prevent.
+                guard knownErrorTypes.contains(actual) else {
+                    return .fail(
+                        "SDK classified \"\(semanticError.type)\" as \"\(actual)\", "
+                            + "which is outside SPEC §6's closed taxonomy")
+                }
+                if actual != expected {
+                    return .fail("Expected error code \"\(expected)\", got \"\(actual)\"")
+                }
+                break
+            }
             if let semanticError, assertion.type == "errorType" {
                 guard knownSemanticErrorTypes.contains(expected)
                     || knownErrorTypes.contains(expected)

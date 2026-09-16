@@ -379,6 +379,42 @@ data class ListMyDraftsOptions(
     fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems, page = page)
 }
 
+/** Options for PollEvents. */
+data class PollEventsOptions(
+    /** Entry point: a decimal event id (start after it; `0` replays served history back to the epoch), or the literal `now` (skip history). Mutually exclusive with `position` in practice; omit both to enter at the present. */
+    val since: String? = null,
+    /** Resume token from a previous page's `position`. Opaque and signed; never constructed or parsed client-side. */
+    val position: String? = null,
+    /** Comma-separated event types from the catalog (e.g. `message.created,comment.created`). */
+    val types: String? = null,
+    /** Comma-separated bucket (project) ids, at most 100. */
+    val buckets: String? = null,
+    /** Comma-separated creator person ids, at most 100. */
+    val creators: String? = null,
+    /** Comma-separated effective-performer ids (the agent on a delegated action, else the creator), at most 100. The literal `self` means the request's own effective actor and is resolved server-side before filtering. */
+    val performers: String? = null,
+    /** Comma-separated effective-performer ids to exclude, at most 100; `self` as on `performers`. `exclude_performers=self` is the loop guard for an agent that acts on what it hears. */
+    val excludePerformers: String? = null,
+    /** Comma-separated actor kinds: `agent`, `person`, or both. A filter, not a default — agent activity is real account activity. */
+    val actorTypes: String? = null
+) {
+}
+
+/** Options for PollInbox. */
+data class PollInboxOptions(
+    /** Entry point: `0` (earliest retained), `now` (present), or a decimal item id to start after. */
+    val since: String? = null,
+    /** Resume token from a previous inbox page's `position`. */
+    val position: String? = null,
+    /** Comma-separated addressing reasons: `mentioned`, `assigned`, `subscribed`, `watched`, `pinged`, `boosted`. */
+    val reasons: String? = null,
+    /** Comma-separated event types, as a narrowing filter. */
+    val types: String? = null,
+    /** Comma-separated bucket ids, as a narrowing filter (at most 100). */
+    val buckets: String? = null
+) {
+}
+
 /** Options for ListEvents. */
 data class ListEventsOptions(
     /** Page number for paginating through results. Defaults to 1. A positive value selects exactly that page, not a starting offset; see SPEC section 8. */

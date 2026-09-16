@@ -10,9 +10,24 @@ module Basecamp
   # unsearched, so nothing can be reported absent. Nothing left unsearched is
   # ever called missing.
   #
-  # +code+ is +api_error+ with +retryable+ false: the call reached no verdict,
-  # and no argument the caller can change would produce one — the bounds are the
-  # SDK's, and a bucket past them is not a shape BC3 produces.
+  # +code+ is +usage+ with +retryable+ false, settled across every port on
+  # card 40[https://app.basecamp.com/2914079/buckets/48699913/card_tables/cards/10308122086]
+  # after the merged ports shipped two different answers.
+  #
+  # +usage+ is one of only three coarse codes no HTTP response can produce —
+  # the status mapping yields +auth_required+, +forbidden+, +not_found+,
+  # +rate_limit+, +validation+, +limit_exceeded+ and +api_error+, and +network+
+  # and +ambiguous+ are equally unreachable from a status. +usage+ is the one of
+  # those three that also describes a call the SDK declined to complete, which
+  # is why it and not the other two. A verdict the composite reached on its own
+  # therefore can never be read back as a constituent read's own answer. This
+  # port previously said +api_error+, which a caller could not tell from a 500
+  # one of those reads returned.
+  #
+  # Retryability is a separate field and is unchanged: false, because the call
+  # reached no verdict and no argument the caller can change would produce one
+  # — the bounds are the SDK's, both reasons are deterministic for the same
+  # account state, and a retry loop would re-run the identical search forever.
   class CampfireDiscoveryIncompleteError < RecordingSummaryError
     KIND = "campfire_discovery_incomplete"
 
@@ -31,7 +46,7 @@ module Basecamp
     def initialize(bucket_id:, recording_id:, reason:)
       super(
         kind: KIND,
-        code: ErrorCode::API,
+        code: ErrorCode::USAGE,
         message: "campfire discovery incomplete: line #{recording_id} in bucket #{bucket_id}: #{reason}"
       )
       @bucket_id = bucket_id

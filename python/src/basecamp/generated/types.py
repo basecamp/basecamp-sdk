@@ -592,6 +592,12 @@ class CreateScheduleEntryRequestContent(TypedDict):
     visible_to_clients: NotRequired[bool]
 
 
+class CreateStreamTicketResponseContent(TypedDict):
+    expires_in: int
+    ticket: str
+    url: str
+
+
 class CreateTemplateLibraryCopyRequestContent(TypedDict):
     adding_people_confirmed: NotRequired[bool]
     destination_parent_id: int
@@ -756,6 +762,7 @@ class Event(TypedDict):
     creator: Person
     details: NotRequired[EventDetails]
     id: int
+    performed_by: NotRequired[Person]
     recording_id: int
 
 
@@ -798,6 +805,31 @@ class EverythingFile(TypedDict):
     url: NotRequired[str]
     visible_to_clients: NotRequired[bool]
     width: NotRequired[Optional[int | float]]
+
+
+class FeedEvent(TypedDict):
+    action: str
+    bucket_id: int
+    created_at: str
+    creator_id: int
+    details: NotRequired[Any]
+    event_type: str
+    id: int
+    kind: str
+    performed_by_id: NotRequired[int | None]
+    recording_id: int
+
+
+class FeedFilterMismatchErrorResponseContent(TypedDict):
+    error: str
+    filters_digest: str
+    position_digest: str
+
+
+class FeedPositionGoneErrorResponseContent(TypedDict):
+    epoch_after_id: NotRequired[int]
+    error: str
+    resume: str
 
 
 class FieldKeyedErrors(TypedDict):
@@ -1054,6 +1086,13 @@ class Inbox(TypedDict):
     visible_to_clients: bool
 
 
+class InboxItem(TypedDict):
+    addressed_at: str
+    addressing_id: int
+    event: FeedEvent
+    reason: str
+
+
 class InternalServerErrorResponseContent(TypedDict):
     error: str
     message: NotRequired[str]
@@ -1253,7 +1292,7 @@ class Person(TypedDict):
     admin: NotRequired[bool]
     attachable_sgid: NotRequired[str]
     avatar_url: NotRequired[str]
-    bio: NotRequired[str]
+    bio: NotRequired[str | None]
     can_access_hill_charts: NotRequired[bool]
     can_access_timesheet: NotRequired[bool]
     can_manage_people: NotRequired[bool]
@@ -1262,23 +1301,35 @@ class Person(TypedDict):
     client: NotRequired[bool]
     company: NotRequired[PersonCompany]
     created_at: NotRequired[str]
-    email_address: NotRequired[str]
+    email_address: NotRequired[str | None]
     employee: NotRequired[bool]
     id: int
     system_label: NotRequired[str]
-    location: NotRequired[str]
+    location: NotRequired[str | None]
     name: str
     owner: NotRequired[bool]
     personable_type: NotRequired[str]
-    tagline: NotRequired[str]
+    tagline: NotRequired[str | None]
     time_zone: NotRequired[str]
-    title: NotRequired[str]
+    title: NotRequired[str | None]
     updated_at: NotRequired[str]
 
 
 class PersonCompany(TypedDict):
     id: int
     name: str
+
+
+class PollEventsResponseContent(TypedDict):
+    events: list[FeedEvent]
+    next: NotRequired[str]
+    position: str
+
+
+class PollInboxResponseContent(TypedDict):
+    items: list[InboxItem]
+    next: NotRequired[str]
+    position: str
 
 
 class Preferences(TypedDict):
@@ -2389,6 +2440,7 @@ class WebhookEvent(TypedDict):
     details: NotRequired[Any]
     id: NotRequired[int]
     kind: NotRequired[str]
+    performed_by: NotRequired[Person]
     recording: NotRequired[Recording]
 
 

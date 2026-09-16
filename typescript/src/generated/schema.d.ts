@@ -1112,6 +1112,77 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/events.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Poll the account event feed for events after a position (oldest first, strict event-id order, up to 100 per page).
+         *
+         *     **Entry.** With neither `since` nor `position` the feed begins at the present
+         *     (equivalent to `since=now`). `since=<event id>` starts after that id and
+         *     `since=0` replays all served history back to the feed's epoch; `since` is a
+         *     signed 64-bit integer written in decimal, or the literal `now`. `position`
+         *     resumes from a token a previous page issued — signed, opaque, bound to the
+         *     account and the filter set.
+         *
+         *     **Pagination**: the body envelope, not the Link header. `position` is the
+         *     durable cursor (persist it only after processing the page's events); `next`
+         *     is an absolute continuation URL present only while this walk has more to
+         *     serve. Not wired into the generic Link paginator — see the section note.
+         *
+         *     **Errors.** 400 for a malformed position (resume with `since=`) or a malformed
+         *     filter (the body names the filter; a position reset will not help) — both the
+         *     flat `{error}` body. 409 (FeedFilterMismatchError) when the position was
+         *     minted for a different filter set. 410 (FeedPositionGoneError) when the
+         *     position predates the feed's epoch; follow its `resume` URL.
+         */
+        get: operations["PollEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/events/stream_ticket.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Mint a short-lived stream ticket and the exact WebSocket URL to open a live event stream with.
+         *
+         *     The ticket is signed and lives about two minutes; the response's `url` is
+         *     the one to connect to. Connect to `url` verbatim — never assemble the WebSocket URL (scheme, host,
+         *     path, account prefix) client-side; the topology is the server's to change.
+         *     Mint a fresh ticket for every connection attempt: tickets expire and are not
+         *     refreshed by an open socket. The mint is a stateless signed capability with
+         *     no server-side consumption, so a replayed POST is harmless and the operation
+         *     is marked idempotent (safe to retry) — deliberately not a claim that two
+         *     mints return the same ticket. The ticket is a replayable bearer credential
+         *     within its window; `ticket` and `url` are marked sensitive (see StreamTicket).
+         *
+         *     Serves agent principals as well as people: an agent's client-credentials
+         *     token can mint tickets for its own live stream. A ticket minted on a
+         *     delegated request carries its agent, so `self` on the socket it opens
+         *     resolves to that agent.
+         */
+        post: operations["CreateStreamTicket"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/files.json": {
         parameters: {
             query?: never;
@@ -1200,6 +1271,49 @@ export interface paths {
          *     this flat spelling is the documented one.
          */
         put: operations["UpdateGoogleDocument"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/inbox.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Poll the authenticated agent's inbox for the items that addressed it (oldest first, strict item-id order); people receive 403.
+         *
+         *     The inbox is the low-noise "someone addressed you" lane as its own resource
+         *     rather than a filter over the account feed. **Agents only for now**: any
+         *     other principal receives 403.
+         *
+         *     An item is a first-class delivery with its own identity: one event can
+         *     address the same principal for several reasons, and each reason is its own
+         *     item. Deduplicate by `addressing_id`, never by event id. Items are never
+         *     self-addressed, are kept for 30 days, and are dropped at read time when the
+         *     event is no longer readable.
+         *
+         *     **Entry**: `since=0` replays the earliest retained items, `since=now` enters
+         *     at the present, `position` resumes. Inbox positions are bound to the
+         *     account, the principal, and the filter set, and are never interchangeable
+         *     with feed positions.
+         *
+         *     **Pagination**: the body envelope (`items`, `position`, `next`), exactly as
+         *     PollEvents — not the Link header, and not the generic paginator.
+         *
+         *     **Errors** follow PollEvents, except that 403 carries no body — the agent
+         *     guard's bare `head :forbidden` (BareForbiddenError) — and that 410
+         *     (FeedPositionGoneError) here means the position fell behind the retention
+         *     window: `epoch_after_id` is absent and `resume` re-enters at `since=0`,
+         *     the earliest retained item.
+         */
+        get: operations["PollInbox"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -4443,6 +4557,29 @@ export interface components {
             visible_to_clients?: boolean;
         };
         CreateScheduleEntryResponseContent: components["schemas"]["ScheduleEntry"];
+        /**
+         * @description A minted stream ticket. `url` already carries the ticket in its query
+         *     string; connect to it verbatim.
+         */
+        CreateStreamTicketResponseContent: {
+            /**
+             * Format: password
+             * @description The signed ticket — an opaque bearer credential, never parsed or logged.
+             */
+            ticket: string;
+            /**
+             * Format: int32
+             * @description Ticket lifetime in seconds (about 120). Server-owned: expiry is arbitrated
+             *     by the server, so mint fresh per connection rather than scheduling on it.
+             */
+            expires_in: number;
+            /**
+             * Format: password
+             * @description The exact WebSocket URL to connect to, ticket included. Sensitive because
+             *     it embeds the ticket.
+             */
+            url: string;
+        };
         CreateTemplateLibraryCopyRequestContent: {
             /** Format: int64 */
             template_recording_id: number;
@@ -4660,6 +4797,7 @@ export interface components {
             details?: components["schemas"]["EventDetails"];
             created_at: string;
             creator: components["schemas"]["Person"];
+            performed_by?: components["schemas"]["Person"];
             /** Format: int32 */
             boosts_count?: number;
             boosts_url?: string;
@@ -4734,6 +4872,101 @@ export interface components {
             /** @description Rich-text body of the Document variant (uploads/attachments omit it). */
             content?: string;
             content_attachments?: components["schemas"]["RichTextAttachment"][];
+        };
+        /**
+         * @description One feed row: a thin pointer, not resource state. Refetch the referenced
+         *     recording through the canonical resource APIs before acting on it. The same
+         *     shape rides the inbox (`InboxItem.event`) and, with two transport-only
+         *     extras, the live stream.
+         */
+        FeedEvent: {
+            /**
+             * Format: int64
+             * @description Feed-global event id; the poll lane serves ids in strict ascending order.
+             */
+            id: number;
+            /** @description Event kind (e.g. `message_created`). */
+            kind: string;
+            /** @description The action that produced the event (e.g. `created`). */
+            action: string;
+            /** @description Cataloged event type (e.g. `message.created`). Only cataloged types are served. */
+            event_type: string;
+            /**
+             * Format: int64
+             * @description The bucket (project or circle) the recording lives in.
+             */
+            bucket_id: number;
+            /**
+             * Format: int64
+             * @description The person the action is attributed to.
+             */
+            creator_id: number;
+            /**
+             * Format: int64
+             * @description The agent that carried out a delegated action; `null` on the wire when the
+             *     action was performed directly. The effective performer — used by the
+             *     `performers`/`exclude_performers` filters — is this when present, else
+             *     `creator_id`.
+             */
+            performed_by_id?: number | null;
+            /**
+             * Format: int64
+             * @description The recording the event references.
+             */
+            recording_id: number;
+            created_at: string;
+            /**
+             * @description Type-specific details, carried verbatim as a JSON document — present only
+             *     for the types that publish one, absent (not empty) for every other type.
+             *     `boost.created` publishes `boost_id`, plus `boosted_event_id` and
+             *     `boosted_event_type`, both `null` for a boost on the recording itself
+             *     (`boosted_event_type` also `null` when the boosted event's kind is not
+             *     cataloged); `card.moved` publishes `column_id` and `previous_column_id`,
+             *     the containing columns (going on hold within a column reports the same
+             *     column twice). Verbatim on purpose: the connector's push lane delivers
+             *     the same object, and a typed projection would drop explicit nulls and
+             *     any member a newly cataloged type adds, making the two lanes disagree.
+             *     Go carries it as `json.RawMessage`; TypeScript `unknown`; Python `Any`;
+             *     Ruby a Hash; Kotlin `JsonElement`; Rust `serde_json::Value`; Swift the
+             *     SDK's `JSONValue` (numbers as `Double`).
+             */
+            details?: unknown;
+        };
+        /**
+         * @description 409 from the event feed's poll lanes (PollEvents, PollInbox): the held
+         *     `position` was minted for a different filter set than the request presented.
+         *     Positions are bound to their filter set; re-enter with `since=<id>` or
+         *     `since=now` to acknowledge the filter change. Both digests are the bare
+         *     16-lowercase-hex `srv2` filter digest BC3 publishes in
+         *     doc/api/sections/event_feed.md ("Filter digests").
+         */
+        FeedFilterMismatchErrorResponseContent: {
+            error: string;
+            /** @description The digest of the filter set the position was minted for. */
+            position_digest: string;
+            /** @description The digest of the filter set this request presented. */
+            filters_digest: string;
+        };
+        /**
+         * @description 410 from the event feed's poll lanes: the held `position` predates what the
+         *     lane can still serve. On PollEvents that is the feed's epoch — an operational
+         *     fence that can be raised — and `epoch_after_id` names it; on PollInbox it is
+         *     the inbox's 30-day retention window, and `epoch_after_id` is absent. Either
+         *     way `resume` is an absolute URL that re-enters the same lane with the
+         *     request's canonical filters preserved: at the epoch (`since=<epoch_after_id>`)
+         *     for the feed, at the earliest retained item (`since=0`) for the inbox.
+         *     Consumers validate the URL (same origin as the API base, no scheme downgrade)
+         *     before following it — SPEC.md §23 "Continuation and Resume URL Validation".
+         */
+        FeedPositionGoneErrorResponseContent: {
+            error: string;
+            /**
+             * Format: int64
+             * @description The feed's epoch: the event id after which history is servable. Feed only.
+             */
+            epoch_after_id?: number;
+            /** @description Absolute re-entry URL for the same lane, filters preserved. */
+            resume: string;
         };
         FieldErrorMap: {
             [key: string]: string[];
@@ -5208,6 +5441,22 @@ export interface components {
             forwards_count?: number;
             forwards_url?: string;
         };
+        /**
+         * @description One addressed delivery. `addressing_id` is the item's own identity — the
+         *     dedupe key — since one event can address the same principal for several
+         *     reasons.
+         */
+        InboxItem: {
+            /** Format: int64 */
+            addressing_id: number;
+            /**
+             * @description Why the principal was addressed: `mentioned`, `assigned`, `subscribed`,
+             *     `watched`, `pinged`, or `boosted`.
+             */
+            reason: string;
+            addressed_at: string;
+            event: components["schemas"]["FeedEvent"];
+        };
         InternalServerErrorResponseContent: {
             error: string;
             message?: string;
@@ -5523,20 +5772,20 @@ export interface components {
             /** Format: password */
             name: string;
             /** Format: password */
-            email_address?: string;
+            email_address?: string | null;
             personable_type?: string;
             /** Format: password */
-            title?: string;
+            title?: string | null;
             /** Format: password */
-            bio?: string;
+            bio?: string | null;
             /**
              * Format: password
              * @description Alias of `bio` introduced in BC5. BC3 emits both keys with identical content;
              *     older BC4 responses may omit `tagline`. Prefer `bio` for cross-version reads.
              */
-            tagline?: string;
+            tagline?: string | null;
             /** Format: password */
-            location?: string;
+            location?: string | null;
             created_at?: string;
             updated_at?: string;
             admin?: boolean;
@@ -5558,6 +5807,42 @@ export interface components {
             id: number;
             /** Format: password */
             name: string;
+        };
+        /**
+         * @description The poll envelope. Every 200 carries `events` and `position`; `next` only
+         *     while the walk continues.
+         */
+        PollEventsResponseContent: {
+            /**
+             * @description Up to 100 events, oldest first, strict event-id order. A page may be empty
+             *     while the walk crosses history the filters exclude — keep following `next`.
+             */
+            events: components["schemas"]["FeedEvent"][];
+            /**
+             * @description Durable position token for resuming later. Persist only after the page's
+             *     events have been processed.
+             */
+            position: string;
+            /**
+             * @description Absolute continuation URL, present only while the current walk has more
+             *     to serve; absent means the walk reached its (frozen) head — poll again
+             *     later from `position`.
+             */
+            next?: string;
+        };
+        /**
+         * @description The inbox envelope: `items` and `position` on every 200, `next` while the
+         *     walk continues.
+         */
+        PollInboxResponseContent: {
+            items: components["schemas"]["InboxItem"][];
+            /**
+             * @description Durable inbox position. Persist only after the page's items have been
+             *     processed.
+             */
+            position: string;
+            /** @description Absolute continuation URL, present only while the walk has more to serve. */
+            next?: string;
         };
         Preferences: {
             url?: string;
@@ -7586,6 +7871,7 @@ export interface components {
             created_at?: string;
             recording?: components["schemas"]["Recording"];
             creator?: components["schemas"]["Person"];
+            performed_by?: components["schemas"]["Person"];
             copy?: components["schemas"]["WebhookCopy"];
         };
         WebhookHeadersMap: {
@@ -12944,6 +13230,180 @@ export interface operations {
             };
         };
     };
+    PollEvents: {
+        parameters: {
+            query?: {
+                /**
+                 * @description Entry point: a decimal event id (start after it; `0` replays served
+                 *     history back to the epoch), or the literal `now` (skip history). Mutually
+                 *     exclusive with `position` in practice; omit both to enter at the present.
+                 */
+                since?: string;
+                /**
+                 * @description Resume token from a previous page's `position`. Opaque and signed; never
+                 *     constructed or parsed client-side.
+                 */
+                position?: string;
+                /** @description Comma-separated event types from the catalog (e.g. `message.created,comment.created`). */
+                types?: string;
+                /** @description Comma-separated bucket (project) ids, at most 100. */
+                buckets?: string;
+                /** @description Comma-separated creator person ids, at most 100. */
+                creators?: string;
+                /**
+                 * @description Comma-separated effective-performer ids (the agent on a delegated action,
+                 *     else the creator), at most 100. The literal `self` means the request's own
+                 *     effective actor and is resolved server-side before filtering.
+                 */
+                performers?: string;
+                /**
+                 * @description Comma-separated effective-performer ids to exclude, at most 100; `self`
+                 *     as on `performers`. `exclude_performers=self` is the loop guard for an
+                 *     agent that acts on what it hears.
+                 */
+                exclude_performers?: string;
+                /**
+                 * @description Comma-separated actor kinds: `agent`, `person`, or both. A filter, not a
+                 *     default — agent activity is real account activity.
+                 */
+                actor_types?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description PollEvents 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollEventsResponseContent"];
+                };
+            };
+            /** @description BadRequestError 400 response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BadRequestErrorResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description FeedFilterMismatchError 409 response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeedFilterMismatchErrorResponseContent"];
+                };
+            };
+            /** @description FeedPositionGoneError 410 response */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeedPositionGoneErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    CreateStreamTicket: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description CreateStreamTicket 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreateStreamTicketResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
     GetEverythingFiles: {
         parameters: {
             query?: {
@@ -13385,6 +13845,104 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["FieldValidationErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    PollInbox: {
+        parameters: {
+            query?: {
+                /**
+                 * @description Entry point: `0` (earliest retained), `now` (present), or a decimal item
+                 *     id to start after.
+                 */
+                since?: string;
+                /** @description Resume token from a previous inbox page's `position`. */
+                position?: string;
+                /**
+                 * @description Comma-separated addressing reasons: `mentioned`, `assigned`, `subscribed`,
+                 *     `watched`, `pinged`, `boosted`.
+                 */
+                reasons?: string;
+                /** @description Comma-separated event types, as a narrowing filter. */
+                types?: string;
+                /** @description Comma-separated bucket ids, as a narrowing filter (at most 100). */
+                buckets?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description PollInbox 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PollInboxResponseContent"];
+                };
+            };
+            /** @description BadRequestError 400 response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BadRequestErrorResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description BareForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description FeedFilterMismatchError 409 response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeedFilterMismatchErrorResponseContent"];
+                };
+            };
+            /** @description FeedPositionGoneError 410 response */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeedPositionGoneErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
                 };
             };
             /** @description InternalServerError 500 response */

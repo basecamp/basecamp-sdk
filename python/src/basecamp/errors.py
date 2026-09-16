@@ -123,12 +123,28 @@ class ForbiddenError(BasecampError):
 
 class RateLimitError(BasecampError):
     def __init__(self, message: str = "Rate limited", *, retry_after: int | None = None, **kwargs: Any):
-        super().__init__(message, code=ErrorCode.RATE_LIMIT, retryable=True, retry_after=retry_after, **kwargs)
+        # Overwrite -- never setdefault, and never a fixed `retryable=`
+        # alongside `**kwargs` -- so a caller passing the flag GETS the
+        # invariant instead of colliding with it. The same shape the composite's
+        # two errors and `DeviceFlowError` already use, and for the same reason:
+        # forwarding `**kwargs` beside a fixed keyword made
+        # `RateLimitError(retryable=False)` raise a bare `TypeError` about
+        # duplicate keyword arguments -- from outside this SDK's taxonomy, so
+        # `except BasecampError` could not catch it, while the `**kwargs: Any`
+        # signature (and mypy reading it) said the call was legal.
+        #
+        # A 429 is retryable: SPEC section 6, and the whole point of the class.
+        kwargs["retryable"] = True
+        super().__init__(message, code=ErrorCode.RATE_LIMIT, retry_after=retry_after, **kwargs)
 
 
 class NetworkError(BasecampError):
     def __init__(self, message: str = "Connection failed", **kwargs: Any):
-        super().__init__(message, code=ErrorCode.NETWORK, retryable=True, **kwargs)
+        # Overwrite, for the reason spelled out on `RateLimitError`. A transport
+        # failure is retryable -- the same call that `DeviceFlowError` makes from
+        # its `transport` reason.
+        kwargs["retryable"] = True
+        super().__init__(message, code=ErrorCode.NETWORK, **kwargs)
 
 
 class ApiError(BasecampError):
@@ -145,7 +161,17 @@ class LimitExceededError(BasecampError):
     """
 
     def __init__(self, message: str = "Account limit reached", **kwargs: Any):
-        super().__init__(message, code=ErrorCode.LIMIT_EXCEEDED, retryable=False, **kwargs)
+        # Overwrite, for the reason spelled out on `RateLimitError`. The
+        # docstring above is the invariant: no amount of backoff frees storage,
+        # so a caller cannot talk this one into being retryable, and the 507 arm
+        # of `error_from_response` is decided before the 5xx arms for the same
+        # reason. The loop that would spin against a full disk is a CONSUMER's,
+        # not this SDK's -- `_http`/`_async_http` catch only
+        # `(RateLimitError, NetworkError, ApiError)`, so a 507 never reaches
+        # `_is_retryable_error` here. `.retryable` is a public answer that
+        # consumers act on, which is what makes it worth defending.
+        kwargs["retryable"] = False
+        super().__init__(message, code=ErrorCode.LIMIT_EXCEEDED, **kwargs)
 
 
 class AmbiguousError(BasecampError):
@@ -211,16 +237,33 @@ _COMPOSITE_CODE: dict[str, ErrorCode] = {
     "no_recording_type": ErrorCode.USAGE,
     "unknown_recording_type": ErrorCode.USAGE,
     # The pointer names a bucket the recording is not in -- also the caller's.
+    # Settled across every port on card 41 after Rust shipped `not_found` here:
+    # the read FOUND the recording, in another bucket, and returned it, so
+    # nothing is absent and `not_found` would be a false claim.
+    # https://app.basecamp.com/2914079/buckets/48699913/card_tables/cards/10308966794
     "bucket_mismatch": ErrorCode.USAGE,
     # Every visible candidate answered 404: the recording is not there.
     "recording_unresolved": ErrorCode.NOT_FOUND,
-    # Not an HTTP answer and not the caller's fault; no enum member fits, so it
-    # takes the residual one. Deliberately NOT retryable despite that code's
-    # usual meaning: both reasons -- too many visible campfires, and a budget
-    # spent before the listing -- are deterministic for the same account state,
-    # so a retry loop would re-run the same search forever. `DeviceFlowError`
-    # overrides retryability from the reason for the same kind of reason.
-    "campfire_discovery_incomplete": ErrorCode.API,
+    # Settled across every port on card 40 after Python and Kotlin shipped
+    # different answers: `usage`, non-retryable.
+    # https://app.basecamp.com/2914079/buckets/48699913/card_tables/cards/10308122086
+    #
+    # `usage` is one of only THREE coarse codes no HTTP response can produce:
+    # the status mapping yields `auth_required`, `forbidden`, `not_found`,
+    # `rate_limit`, `validation`, `limit_exceeded` and `api_error`, and
+    # `network` and `ambiguous` are equally unreachable from a status. `usage`
+    # is the one of those three that ALSO describes a call the SDK declined to
+    # complete, which is why it and not the other two. A verdict the composite
+    # reached on its own therefore can never be read back as a constituent
+    # read's own answer, which is the property the composite exists to protect.
+    # This port previously took the residual `api_error`, which a caller could
+    # not tell from a 500 one of those reads returned.
+    #
+    # Retryability is a SEPARATE field and keeps the answer this port already
+    # had: NOT retryable, because both reasons -- too many visible campfires,
+    # and a budget spent before the listing -- are deterministic for the same
+    # account state, so a retry loop would re-run the same search forever.
+    "campfire_discovery_incomplete": ErrorCode.USAGE,
     # The sixth identity, and the one the first pass of this table missed: it
     # is named in the same SPEC row and sits in the same section, so leaving it
     # out left one public error still carrying a name outside the enum and
@@ -325,15 +368,14 @@ class CampfireDiscoveryIncompleteError(BasecampError):
     def __init__(self, *, bucket_id: int, recording_id: int, reason: str, **kwargs: Any):
         # Overwrite -- never setdefault -- so a caller's `retryable` kwarg
         # cannot flip the invariant, exactly as `DeviceFlowError` does it. The
-        # coarse code is `api_error`. That code is retryable only on the 5xx
-        # rows -- SPEC rule 13 and the malformed-body rule both make it
-        # non-retryable -- so this is not an exception to a single rule so
-        # much as the same answer those give. It is forced rather than left
-        # to the default because both reasons are deterministic for the same account
-        # state and a retry loop would re-run the identical search forever.
-        # Claiming that override in a commit message without writing it here is
-        # how the invariant would have been lost at the first caller who passed
-        # the kwarg through.
+        # coarse code is `usage` (see `_COMPOSITE_CODE`), whose default is
+        # already non-retryable; forcing it here is what keeps that true of the
+        # IDENTITY rather than of whichever code it currently derives, and it
+        # is what the argument on card 40 actually rests on -- both reasons are
+        # deterministic for the same account state, so a retry loop would
+        # re-run the identical search forever. Claiming that override in a
+        # commit message without writing it here is how the invariant would
+        # have been lost at the first caller who passed the kwarg through.
         kwargs["retryable"] = False
         super().__init__(
             f"campfire discovery incomplete: line {recording_id} in bucket {bucket_id}: {reason}",

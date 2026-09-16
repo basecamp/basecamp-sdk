@@ -235,6 +235,12 @@ class ErrorTest {
             assertTrue(e.code in canonical, "$reason derives a code inside SPEC §6's table")
             assertNotEquals(e.reason, e.code, "$reason must not BE its own code")
             assertEquals(expectedExit, e.exitCode, "the exit code for $reason")
+            // Non-retryable, every one of them. For
+            // `campfire_discovery_incomplete` this is half of what card 40
+            // settled — the code says what the failure MEANS, `retryable` says
+            // whether to try again, and the ports that had to change their code
+            // to `usage` keep the non-retryable answer they already had.
+            assertFalse(e.retryable, "no composite verdict is retryable ($reason)")
         }
         // A reason with no row still lands inside the taxonomy, and on `usage`
         // rather than reaching `exitCodeFor`'s `else`: a verdict added later

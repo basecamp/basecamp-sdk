@@ -44,6 +44,11 @@ type Event struct {
 	Details     *EventDetails `json:"details,omitempty"`
 	CreatedAt   time.Time     `json:"created_at"`
 	Creator     *Person       `json:"creator,omitempty"`
+	// PerformedBy is the agent that carried out the action when it was
+	// performed on the creator's behalf (PersonableType "Agent", or
+	// "Tombstone" once the agent is deleted). Nil for actions performed
+	// directly; presence is the durable signal that an agent acted.
+	PerformedBy *Person `json:"performed_by,omitempty"`
 }
 
 // EventDetails contains action-specific information for an event.
@@ -188,6 +193,11 @@ func eventFromGenerated(ge generated.Event) Event {
 	if ge.Creator.Id != 0 || ge.Creator.Name != "" {
 		creator := personFromGenerated(ge.Creator)
 		e.Creator = &creator
+	}
+
+	if ge.PerformedBy != nil {
+		performer := personFromGenerated(*ge.PerformedBy)
+		e.PerformedBy = &performer
 	}
 
 	return e

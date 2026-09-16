@@ -1,20 +1,61 @@
 ---
 gap: event-feed
-status: no-json-contract
+status: absorbed-in-sdk
 sdk_demand: high
 detected: 2026-08-01
+bc3_pr: 13049
 bc3_refs:
-  introduced_in: eventstream+accountid (unmerged branch; BC3 PRs 9646/9659)
+  introduced_in: "Account event feed (BC3 #13049, 95cd1d290f), agent principals on both lanes (#13053), boosts as events (#13056), the inbox (#13058, 188b97cab7) — all merged to master 2026-09-15; earlier lineage eventstream+accountid (BC3 PRs 9646/9659)"
   routes:
     - GET /:account_id/events.json
+    - GET /:account_id/inbox.json
     - POST /:account_id/events/stream_ticket.json
   controllers:
     - app/controllers/events_controller.rb
+    - app/controllers/events/inboxes_controller.rb
     - app/controllers/events/stream_tickets_controller.rb
+    - app/controllers/concerns/event_feed_requests.rb
     - app/channels/events_channel.rb
   related_existing_api:
     - ListEvents (recording-scoped audit trail on one recording — a different concept from the account-wide feed)
+smithy_refs:
+  - PollEvents
+  - PollInbox
+  - CreateStreamTicket
+  - FeedEvent
+  - InboxItem
+  - FeedFilterMismatchError
+  - FeedPositionGoneError
 ---
+
+# Absorption record (layer 1)
+
+BC3 merged the contract to `master` on 2026-09-15 — #13049 (`95cd1d290f`, the
+feed's both lanes), #13053 (agent principals), #13056 (boosts as events) and
+#13058 (`188b97cab7`, the inbox) — and the SDK absorbed the **wire layer** in the
+same sweep: `PollEvents`, `PollInbox` and `CreateStreamTicket` on the `EventFeed`
+tag (service `eventFeed`), the `FeedEvent` (with `details` carried verbatim as a document) and `InboxItem`
+shapes, the typed 409 (`FeedFilterMismatchError`) and 410
+(`FeedPositionGoneError`) bodies, and `conformance/tests/event_feed.json`
+dispatched by all seven runners. The provenance pin was **not** advanced by that
+PR (the range from the pin to `188b97cab7` also carries subtasks, card-table
+templates, templatifications, backlinks, bulk enrollments and the unscoped
+recording show, each needing its own triage); the three routes are waived in
+`spec/bc3-route-allowlist.yml` with the evidence, to be deleted at the repin.
+
+What merged differs from the pre-merge record below in four places the
+connector (SPEC §23, layer 2) still has to absorb: the digest scheme is
+published as **`srv2`** (the `reasons` dimension joined it); the feed's 410
+`resume` re-enters at **`since=<epoch_after_id>`**, not `since=now`, while the
+inbox's re-enters at `since=0`; the filter set grew `performers`,
+`exclude_performers` (both accepting the literal `self`) and `actor_types`; and
+the inbox is a lane of its own (`GET /inbox.json`, agents only, items keyed by
+`addressing_id`, 30-day retention). Layer 2 — the connector, the
+`conformance/event-feed/` fixture family and its gate — continues on its own
+branches against SPEC §23, which keeps its provisional markings until it
+re-verifies against the merged head.
+
+The pre-merge record follows, unedited, as history.
 
 # Account-wide event feed (poll lane + Action Cable push lane)
 

@@ -97,6 +97,79 @@ async fn bookmarks_list_my_bookmarks_reaches_the_wire() {
 }
 
 #[tokio::test]
+async fn event_feed_create_stream_ticket_reaches_the_wire() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/999/events/stream_ticket.json"))
+        .and(header("Authorization", "Bearer test-token"))
+        .and(header("Accept", "application/json"))
+        .and(header(
+            "User-Agent",
+            basecamp_sdk::version::default_user_agent().as_str(),
+        ))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "ticket": "fixture-ticket-not-a-credential",
+            "expires_in": 120,
+            "url": "wss://cable.example.invalid/999?ticket=fixture-ticket-not-a-credential"
+        })))
+        .expect(1)
+        .mount(&server)
+        .await;
+    let ticket = account(&server)
+        .event_feed()
+        .create_stream_ticket()
+        .await
+        .unwrap();
+    assert_eq!(ticket.expires_in, 120);
+    assert_eq!(ticket.ticket.expose(), "fixture-ticket-not-a-credential");
+}
+
+#[tokio::test]
+async fn event_feed_poll_events_reaches_the_wire() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/999/events.json"))
+        .and(wiremock::matchers::query_param("since", "0"))
+        .and(wiremock::matchers::query_param(
+            "types",
+            "message.created,boost.created",
+        ))
+        .and(header("Authorization", "Bearer test-token"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "events": [{
+                "id": 1_071_915_468,
+                "kind": "message_created",
+                "action": "created",
+                "created_at": "2026-07-14T06:10:00.159Z",
+                "event_type": "message.created",
+                "bucket_id": 2_085_958_499,
+                "creator_id": 1_049_715_945,
+                "performed_by_id": null,
+                "recording_id": 1_069_479_766
+            }],
+            "position": "posAAA"
+        })))
+        .expect(1)
+        .mount(&server)
+        .await;
+    let params = basecamp_sdk::services::event_feed::PollEventsParams {
+        since: Some("0".to_string()),
+        types: Some("message.created,boost.created".to_string()),
+        ..Default::default()
+    };
+    let page = account(&server)
+        .event_feed()
+        .poll_events(&params)
+        .await
+        .unwrap();
+    assert_eq!(page.position, "posAAA");
+    assert!(page.next.is_none());
+    assert_eq!(page.events.len(), 1);
+    assert_eq!(page.events[0].performed_by_id, None);
+    assert!(page.events[0].details.is_none());
+}
+
+#[tokio::test]
 async fn boosts_get_reaches_the_wire() {
     let server = MockServer::start().await;
     Mock::given(method("GET"))
@@ -1150,6 +1223,13 @@ error_case!(
             .bookmarks()
             .list_my_bookmarks(&Default::default())
             .await
+    }
+);
+
+error_case!(
+    event_feed_create_stream_ticket_maps_a_rejection,
+    |account: basecamp_sdk::AccountClient| async move {
+        account.event_feed().create_stream_ticket().await
     }
 );
 

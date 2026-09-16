@@ -36,7 +36,7 @@ export interface MetadataOutput {
 const metadata: MetadataOutput = {
   "$schema": "https://basecamp.com/schemas/sdk-metadata.json",
   "version": "1.0.0",
-  "generated": "2026-09-16T10:45:34.176Z",
+  "generated": "2026-09-16T11:03:36.053Z",
   "operations": {
     "GetAccount": {
       "retry": {
@@ -1100,6 +1100,31 @@ const metadata: MetadataOutput = {
         "natural": true
       }
     },
+    "PollEvents": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      }
+    },
+    "CreateStreamTicket": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      },
+      "idempotent": {
+        "natural": true
+      }
+    },
     "GetEverythingFiles": {
       "retry": {
         "maxAttempts": 3,
@@ -1194,6 +1219,17 @@ const metadata: MetadataOutput = {
       },
       "idempotent": {
         "natural": true
+      }
+    },
+    "PollInbox": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
       }
     },
     "GetForward": {

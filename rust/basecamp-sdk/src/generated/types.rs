@@ -1506,6 +1506,21 @@ pub struct CreateScheduleEntryRequestContent {
 /// `CreateScheduleEntryResponseContent`.
 pub type CreateScheduleEntryResponseContent = ScheduleEntry;
 
+/// A minted stream ticket. `url` already carries the ticket in its query
+/// string; connect to it verbatim.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct CreateStreamTicketResponseContent {
+    /// The signed ticket — an opaque bearer credential, never parsed or logged.
+    pub ticket: SensitiveString,
+    /// Ticket lifetime in seconds (about 120). Server-owned: expiry is arbitrated
+    /// by the server, so mint fresh per connection rather than scheduling on it.
+    pub expires_in: i32,
+    /// The exact WebSocket URL to connect to, ticket included. Sensitive because
+    /// it embeds the ticket.
+    pub url: SensitiveString,
+}
+
 /// The `CreateTemplateLibraryCopyRequestContent` shape of the Basecamp API.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct CreateTemplateLibraryCopyRequestContent {
@@ -1931,6 +1946,9 @@ pub struct Event {
     pub created_at: DateTime,
     /// `creator`.
     pub creator: Person,
+    /// `performed_by`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub performed_by: Option<Person>,
     /// `boosts_count`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub boosts_count: Option<i32>,
@@ -2069,6 +2087,90 @@ pub struct EverythingFile {
     /// `content_attachments`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub content_attachments: Option<Vec<RichTextAttachment>>,
+}
+
+/// One feed row: a thin pointer, not resource state. Refetch the referenced
+/// recording through the canonical resource APIs before acting on it. The same
+/// shape rides the inbox (`InboxItem.event`) and, with two transport-only
+/// extras, the live stream.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct FeedEvent {
+    /// Feed-global event id; the poll lane serves ids in strict ascending order.
+    pub id: i64,
+    /// Event kind (e.g. `message_created`).
+    pub kind: String,
+    /// The action that produced the event (e.g. `created`).
+    pub action: String,
+    /// Cataloged event type (e.g. `message.created`). Only cataloged types are served.
+    pub event_type: String,
+    /// The bucket (project or circle) the recording lives in.
+    pub bucket_id: i64,
+    /// The person the action is attributed to.
+    pub creator_id: i64,
+    /// The agent that carried out a delegated action; `null` on the wire when the
+    /// action was performed directly. The effective performer — used by the
+    /// `performers`/`exclude_performers` filters — is this when present, else
+    /// `creator_id`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub performed_by_id: Option<i64>,
+    /// The recording the event references.
+    pub recording_id: i64,
+    /// `created_at`.
+    pub created_at: DateTime,
+    /// Type-specific details, carried verbatim as a JSON document — present only
+    /// for the types that publish one, absent (not empty) for every other type.
+    /// `boost.created` publishes `boost_id`, plus `boosted_event_id` and
+    /// `boosted_event_type`, both `null` for a boost on the recording itself
+    /// (`boosted_event_type` also `null` when the boosted event's kind is not
+    /// cataloged); `card.moved` publishes `column_id` and `previous_column_id`,
+    /// the containing columns (going on hold within a column reports the same
+    /// column twice). Verbatim on purpose: the connector's push lane delivers
+    /// the same object, and a typed projection would drop explicit nulls and
+    /// any member a newly cataloged type adds, making the two lanes disagree.
+    /// Go carries it as `json.RawMessage`; TypeScript `unknown`; Python `Any`;
+    /// Ruby a Hash; Kotlin `JsonElement`; Rust `serde_json::Value`; Swift the
+    /// SDK's `JSONValue` (numbers as `Double`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub details: Option<serde_json::Value>,
+}
+
+/// 409 from the event feed's poll lanes (PollEvents, PollInbox): the held
+/// `position` was minted for a different filter set than the request presented.
+/// Positions are bound to their filter set; re-enter with `since=\<id\>` or
+/// `since=now` to acknowledge the filter change. Both digests are the bare
+/// 16-lowercase-hex `srv2` filter digest BC3 publishes in
+/// doc/api/sections/event_feed.md ("Filter digests").
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct FeedFilterMismatchErrorResponseContent {
+    /// `error`.
+    pub error: String,
+    /// The digest of the filter set the position was minted for.
+    pub position_digest: String,
+    /// The digest of the filter set this request presented.
+    pub filters_digest: String,
+}
+
+/// 410 from the event feed's poll lanes: the held `position` predates what the
+/// lane can still serve. On PollEvents that is the feed's epoch — an operational
+/// fence that can be raised — and `epoch_after_id` names it; on PollInbox it is
+/// the inbox's 30-day retention window, and `epoch_after_id` is absent. Either
+/// way `resume` is an absolute URL that re-enters the same lane with the
+/// request's canonical filters preserved: at the epoch (`since=\<epoch_after_id\>`)
+/// for the feed, at the earliest retained item (`since=0`) for the inbox.
+/// Consumers validate the URL (same origin as the API base, no scheme downgrade)
+/// before following it — SPEC.md §23 "Continuation and Resume URL Validation".
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct FeedPositionGoneErrorResponseContent {
+    /// `error`.
+    pub error: String,
+    /// The feed's epoch: the event id after which history is servable. Feed only.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub epoch_after_id: Option<i64>,
+    /// Absolute re-entry URL for the same lane, filters preserved.
+    pub resume: String,
 }
 
 /// `FieldErrorMap`.
@@ -3032,6 +3134,23 @@ pub struct Inbox {
     pub forwards_url: Option<String>,
 }
 
+/// One addressed delivery. `addressing_id` is the item's own identity — the
+/// dedupe key — since one event can address the same principal for several
+/// reasons.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct InboxItem {
+    /// `addressing_id`.
+    pub addressing_id: i64,
+    /// Why the principal was addressed: `mentioned`, `assigned`, `subscribed`,
+    /// `watched`, `pinged`, or `boosted`.
+    pub reason: String,
+    /// `addressed_at`.
+    pub addressed_at: DateTime,
+    /// `event`.
+    pub event: FeedEvent,
+}
+
 /// The `InternalServerErrorResponseContent` shape of the Basecamp API.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
@@ -3707,6 +3826,39 @@ pub struct PersonCompany {
     pub id: i64,
     /// `name`.
     pub name: String,
+}
+
+/// The poll envelope. Every 200 carries `events` and `position`; `next` only
+/// while the walk continues.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct PollEventsResponseContent {
+    /// Up to 100 events, oldest first, strict event-id order. A page may be empty
+    /// while the walk crosses history the filters exclude — keep following `next`.
+    pub events: Vec<FeedEvent>,
+    /// Durable position token for resuming later. Persist only after the page's
+    /// events have been processed.
+    pub position: String,
+    /// Absolute continuation URL, present only while the current walk has more
+    /// to serve; absent means the walk reached its (frozen) head — poll again
+    /// later from `position`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub next: Option<String>,
+}
+
+/// The inbox envelope: `items` and `position` on every 200, `next` while the
+/// walk continues.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct PollInboxResponseContent {
+    /// `items`.
+    pub items: Vec<InboxItem>,
+    /// Durable inbox position. Persist only after the page's items have been
+    /// processed.
+    pub position: String,
+    /// Absolute continuation URL, present only while the walk has more to serve.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub next: Option<String>,
 }
 
 /// The `Preferences` shape of the Basecamp API.
@@ -6868,6 +7020,9 @@ pub struct WebhookEvent {
     /// `creator`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub creator: Option<Person>,
+    /// `performed_by`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub performed_by: Option<Person>,
     /// `copy`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub copy: Option<WebhookCopy>,

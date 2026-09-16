@@ -153,6 +153,10 @@ private let resourceTypeOverrides: [String: String] = [
     // The whole family reports "bookmark"; the inferred "my_bookmark" would
     // split the list operation into its own telemetry category.
     "ListMyBookmarks": "bookmark",
+    // "Poll" is not a verb pattern, so inference falls through to the generic
+    // "resource"; the feed's rows are feed events, the inbox's are inbox items.
+    "PollEvents": "feed_event",
+    "PollInbox": "inbox_item",
     // Creates and returns a Todo; the inferred "todoset_todo" would split
     // loose-to-do operations into their own telemetry category.
     "CreateTodosetTodo": "todo",

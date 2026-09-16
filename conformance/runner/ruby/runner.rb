@@ -477,6 +477,13 @@ class OperationMapper
       summarize_template_library_copy(
         @account.templates.get_library_copy(copy_id: path_params["copyId"])
       )
+    when "PollEvents"
+      summarize_event_feed_page(@account.event_feed.poll_events(since: "now"))
+    when "PollInbox"
+      summarize_inbox_page(@account.event_feed.poll_inbox(since: "now"))
+    when "CreateStreamTicket"
+      ticket = @account.event_feed.create_stream_ticket
+      { "ticket" => ticket["ticket"], "expires_in" => ticket["expires_in"], "url" => ticket["url"] }
     when "CreateProject"
       @account.projects.create(name: body["name"])
     when "ListTodos"
@@ -857,6 +864,65 @@ class OperationMapper
   # It is required, and the mock returns its queued body regardless of what is
   # asked for.
   SEARCH_QUERY = "Leto"
+
+  # Flattens a poll page into top-level scalars; null and absence become boolean
+  # predicates because a responseBody path is a top-level key only.
+  def summarize_event_feed_page(page)
+    events = page.fetch("events")
+    result = {
+      "event_count" => events.length,
+      "position" => page["position"],
+      "has_next" => !page["next"].to_s.empty?
+    }
+    return result if events.empty?
+
+    first = events.first
+    result["first_event_id"] = first["id"]
+    result["first_event_type"] = first["event_type"]
+    result["first_recording_id"] = first["recording_id"]
+    result["first_performed_by_null"] = first["performed_by_id"].nil?
+    result["first_has_details"] = !first["details"].nil?
+    events.each do |event|
+      details = event["details"]
+      next if details.nil?
+
+      unless details["boost_id"].nil?
+        if details.key?("boosted_event_id") && details["boosted_event_id"].nil? && details["boosted_event_type"].nil?
+          # A boost on the recording itself: both boosted_* members are explicit nulls.
+          result["recording_boost_id"] = details["boost_id"]
+          result["recording_boost_nulls"] = true
+        else
+          result["boost_id"] = details["boost_id"]
+          result["boost_performed_by_id"] = event["performed_by_id"] unless event["performed_by_id"].nil?
+          result["boosted_event_id"] = details["boosted_event_id"] unless details["boosted_event_id"].nil?
+          result["boosted_event_type"] = details["boosted_event_type"] unless details["boosted_event_type"].nil?
+        end
+      end
+      result["moved_column_id"] = details["column_id"] unless details["column_id"].nil?
+      result["moved_previous_column_id"] = details["previous_column_id"] unless details["previous_column_id"].nil?
+    end
+    result
+  end
+
+  def summarize_inbox_page(page)
+    items = page.fetch("items")
+    result = {
+      "item_count" => items.length,
+      "position" => page["position"],
+      "has_next" => !page["next"].to_s.empty?
+    }
+    return result if items.empty?
+
+    first = items.first
+    last = items.last
+    result["first_addressing_id"] = first["addressing_id"]
+    result["first_reason"] = first["reason"]
+    result["first_event_id"] = first.dig("event", "id")
+    result["first_event_type"] = first.dig("event", "event_type")
+    result["last_addressing_id"] = last["addressing_id"]
+    result["last_reason"] = last["reason"]
+    result
+  end
 
   # Exposes representative decoded template-library fields as portable scalars.
   def summarize_template_library(library)

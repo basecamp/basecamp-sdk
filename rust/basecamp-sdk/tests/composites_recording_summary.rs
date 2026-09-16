@@ -439,8 +439,15 @@ async fn more_candidates_than_the_budget_is_incomplete_discovery_never_unresolve
         panic!("expected incomplete discovery, got {error}");
     };
     assert!(reason.contains(&MAX_CAMPFIRE_CANDIDATES.to_string()));
-    // Never not_found: nothing left unsearched may be reported absent.
-    assert_eq!(error.code(), ErrorCode::ApiError);
+    // Never not_found: nothing left unsearched may be reported absent. `usage`
+    // is one of only three coarse codes no HTTP response can produce (with
+    // `network` and `ambiguous`), and the one of those three that also describes
+    // a call the SDK declined to complete, so this verdict can never be read back
+    // as a constituent read's own answer — settled for every port on card 40
+    // after this one shipped `api_error` and Kotlin `usage`.
+    // Non-retryable is the other half of that decision.
+    assert_eq!(error.code(), ErrorCode::Usage);
+    assert!(!error.is_retryable());
 }
 
 /// The boundary the `skipped` flag cannot express: a dock holding EXACTLY the budget, every
@@ -690,7 +697,12 @@ async fn a_read_from_another_bucket_is_refused() {
             ..
         })
     ));
-    assert_eq!(error.code(), ErrorCode::NotFound);
+    // `usage`, settled on card 41 after this port shipped `not_found` where the
+    // other four shipped `usage`: the read FOUND the recording, in another
+    // bucket, and returned it, so nothing is absent. What failed is the
+    // caller's pointer.
+    assert_eq!(error.code(), ErrorCode::Usage);
+    assert!(!error.is_retryable());
 }
 
 #[tokio::test]

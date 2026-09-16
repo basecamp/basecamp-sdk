@@ -20,7 +20,7 @@ use basecamp_sdk::services::schedules::UpdateScheduleEntryRequest;
 use basecamp_sdk::services::todolists::UpdateTodolistRequest;
 use basecamp_sdk::services::todos::UpdateTodoRequest;
 use basecamp_sdk::services::{
-    DateChange, bookmarks, drafts, projects, reports, search, timeline, timesheets,
+    DateChange, bookmarks, drafts, event_feed, projects, reports, search, timeline, timesheets,
     todolist_groups, todos,
 };
 use basecamp_sdk::{AccountClient, Client, Config, Date, Error, FlexibleTime, ListResult, Page};
@@ -226,6 +226,30 @@ async fn dispatch(account: &AccountClient, case: &TestCase) -> Result<Outcome, E
                 .record_project_visit(id("projectId"))
                 .await,
         ),
+        "PollEvents" => {
+            let params = event_feed::PollEventsParams {
+                since: Some("now".to_string()),
+                ..Default::default()
+            };
+            let page = account.event_feed().poll_events(&params).await?;
+            Ok(Outcome::Json(summarize_event_feed_page(&page)))
+        }
+        "PollInbox" => {
+            let params = event_feed::PollInboxParams {
+                since: Some("now".to_string()),
+                ..Default::default()
+            };
+            let page = account.event_feed().poll_inbox(&params).await?;
+            Ok(Outcome::Json(summarize_inbox_page(&page)))
+        }
+        "CreateStreamTicket" => {
+            let ticket = account.event_feed().create_stream_ticket().await?;
+            Ok(Outcome::Json(json!({
+                "ticket": ticket.ticket.expose(),
+                "expires_in": ticket.expires_in,
+                "url": ticket.url.expose(),
+            })))
+        }
         "CreateProject" => {
             let name = string_param_or(body, "name", "Conformance Test");
             let request = CreateProjectRequestContent {
@@ -1265,6 +1289,76 @@ fn exact_int64(params: &Params, key: &str) -> Result<i64, Error> {
 }
 
 // --- summaries ---------------------------------------------------------------------------
+
+/// Flattens a poll page into top-level scalars; null and absence become boolean
+/// predicates because a responseBody path is a top-level key only.
+fn summarize_event_feed_page(page: &PollEventsResponseContent) -> Value {
+    let mut summary = json!({
+        "event_count": page.events.len(),
+        "position": page.position,
+        "has_next": page.next.as_deref().is_some_and(|next| !next.is_empty()),
+    });
+    let Some(first) = page.events.first() else {
+        return summary;
+    };
+    summary["first_event_id"] = json!(first.id);
+    summary["first_event_type"] = json!(first.event_type);
+    summary["first_recording_id"] = json!(first.recording_id);
+    summary["first_performed_by_null"] = json!(first.performed_by_id.is_none());
+    summary["first_has_details"] = json!(first.details.is_some());
+    for event in &page.events {
+        // `details` is a verbatim document (serde_json::Value); read the members the fixture pins.
+        let Some(details) = event.details.as_ref().and_then(Value::as_object) else {
+            continue;
+        };
+        let int = |key: &str| details.get(key).and_then(Value::as_i64);
+        let string = |key: &str| details.get(key).and_then(Value::as_str);
+        let explicit_null = |key: &str| details.get(key).is_some_and(Value::is_null);
+        if let Some(boost_id) = int("boost_id") {
+            if explicit_null("boosted_event_id") && explicit_null("boosted_event_type") {
+                // A boost on the recording itself: both boosted_* members are explicit nulls.
+                summary["recording_boost_id"] = json!(boost_id);
+                summary["recording_boost_nulls"] = json!(true);
+            } else {
+                summary["boost_id"] = json!(boost_id);
+                if let Some(performer) = event.performed_by_id {
+                    summary["boost_performed_by_id"] = json!(performer);
+                }
+                if let Some(boosted) = int("boosted_event_id") {
+                    summary["boosted_event_id"] = json!(boosted);
+                }
+                if let Some(boosted_type) = string("boosted_event_type") {
+                    summary["boosted_event_type"] = json!(boosted_type);
+                }
+            }
+        }
+        if let Some(column) = int("column_id") {
+            summary["moved_column_id"] = json!(column);
+        }
+        if let Some(previous) = int("previous_column_id") {
+            summary["moved_previous_column_id"] = json!(previous);
+        }
+    }
+    summary
+}
+
+fn summarize_inbox_page(page: &PollInboxResponseContent) -> Value {
+    let mut summary = json!({
+        "item_count": page.items.len(),
+        "position": page.position,
+        "has_next": page.next.as_deref().is_some_and(|next| !next.is_empty()),
+    });
+    let (Some(first), Some(last)) = (page.items.first(), page.items.last()) else {
+        return summary;
+    };
+    summary["first_addressing_id"] = json!(first.addressing_id);
+    summary["first_reason"] = json!(first.reason);
+    summary["first_event_id"] = json!(first.event.id);
+    summary["first_event_type"] = json!(first.event.event_type);
+    summary["last_addressing_id"] = json!(last.addressing_id);
+    summary["last_reason"] = json!(last.reason);
+    summary
+}
 
 fn summarize_projects(projects: &[Project]) -> Value {
     json!({
