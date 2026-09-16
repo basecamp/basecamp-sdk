@@ -181,19 +181,32 @@ func TestNewAcceptsCapacitiesAtTheCeiling(t *testing.T) {
 // in New — is ONE allocation whether the capacity is 1 or a million, so the
 // count is identical in exactly the case that must fail.
 //
-// The assertion is the invariance, not the size: the two ends of the
-// permitted range are compared against each other, so an unrelated allocation
-// added to New stays green while a New that began sizing anything by the
-// capacity does not.
+// The assertion is the invariance, not the size: every configuration is
+// compared against the smallest one, so an unrelated allocation added to New
+// moves them all together and stays green while a New that began sizing
+// anything by a capacity does not. The two capacities move independently,
+// including in both orderings, so an allocation taken from their relationship
+// rather than from either alone is caught too.
 func TestNewAllocationSizeDoesNotVaryWithCapacity(t *testing.T) {
-	atOne := bytesAllocatedByNew(t, 1)
-	atCeiling := bytesAllocatedByNew(t, eventfeed.MaxCapacity)
-
-	if atOne == 0 {
+	smallest := bytesAllocatedByNew(t, 1, 1)
+	if smallest == 0 {
 		t.Fatal("New allocated no measurable bytes: the construction was optimized away, so this test can no longer observe it")
 	}
-	if atCeiling != atOne {
-		t.Fatalf("New allocated %d bytes at capacity 1 and %d at the ceiling (%d): construction now sizes something by the capacity, which only the run is supposed to do", atOne, atCeiling, eventfeed.MaxCapacity)
+
+	for _, tc := range []struct {
+		name               string
+		dedupe, liveBuffer int
+	}{
+		{"both capacities at the ceiling", eventfeed.MaxCapacity, eventfeed.MaxCapacity},
+		{"dedupe capacity alone at the ceiling", eventfeed.MaxCapacity, 1},
+		{"live buffer capacity alone at the ceiling", 1, eventfeed.MaxCapacity},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := bytesAllocatedByNew(t, tc.dedupe, tc.liveBuffer)
+			if got != smallest {
+				t.Fatalf("New allocated %d bytes at dedupe %d / live buffer %d and %d at 1/1: construction now sizes something by a capacity, which only the run is supposed to do", got, tc.dedupe, tc.liveBuffer, smallest)
+			}
+		})
 	}
 }
 
@@ -201,13 +214,13 @@ func TestNewAllocationSizeDoesNotVaryWithCapacity(t *testing.T) {
 // measured cannot be optimized away.
 var newSink *eventfeed.Connector
 
-// bytesAllocatedByNew measures one New at one capacity. TotalAlloc is a
-// process-wide counter and this package runs connectors on their own
+// bytesAllocatedByNew measures one New at one pair of capacities. TotalAlloc
+// is a process-wide counter and this package runs connectors on their own
 // goroutines throughout its suite, so an unrelated allocation landing between
 // the two reads can only ADD to a measurement. The lowest of several is
-// therefore the floor, and the floor is what the two capacities are compared
+// therefore the floor, and the floors are what the configurations are compared
 // at.
-func bytesAllocatedByNew(t *testing.T, capacity int) uint64 {
+func bytesAllocatedByNew(t *testing.T, dedupe, liveBuffer int) uint64 {
 	t.Helper()
 
 	minter := feedtest.NewMinter()
@@ -217,11 +230,11 @@ func bytesAllocatedByNew(t *testing.T, capacity int) uint64 {
 		var before, after runtime.MemStats
 		runtime.ReadMemStats(&before)
 		c, err := eventfeed.New(testOrigin, "1", minter, polls,
-			eventfeed.WithDedupeCapacity(capacity),
-			eventfeed.WithLiveBufferCapacity(capacity))
+			eventfeed.WithDedupeCapacity(dedupe),
+			eventfeed.WithLiveBufferCapacity(liveBuffer))
 		runtime.ReadMemStats(&after)
 		if err != nil {
-			t.Fatalf("New at capacity %d: %v", capacity, err)
+			t.Fatalf("New at dedupe %d / live buffer %d: %v", dedupe, liveBuffer, err)
 		}
 		newSink = c
 		lowest = min(lowest, after.TotalAlloc-before.TotalAlloc)
