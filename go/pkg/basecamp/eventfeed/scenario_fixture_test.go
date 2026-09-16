@@ -243,6 +243,14 @@ type expectPositionRejectedStep struct {
 	Kind string `json:"kind"`
 }
 
+// expectFilterConflictStep pins Observer.filterConflict: the 409 body's two
+// digests, in the rejection ledger's order (before the filter_changed
+// rejection it explains).
+type expectFilterConflictStep struct {
+	PositionDigest string `json:"positionDigest"`
+	FiltersDigest  string `json:"filtersDigest"`
+}
+
 // --- loading -------------------------------------------------------------
 
 // parseScenario decodes one substituted fixture, failing on anything the
@@ -444,6 +452,15 @@ func decodeDirective(kind string, body json.RawMessage) (any, error) {
 		}
 		if step.Kind != "position_invalid" && step.Kind != "filter_changed" {
 			return nil, fmt.Errorf("unknown kind %q", step.Kind)
+		}
+		return step, nil
+	case "expectFilterConflict":
+		step := &expectFilterConflictStep{}
+		if err := decodeStrict(body, step); err != nil {
+			return nil, err
+		}
+		if step.PositionDigest == "" || step.FiltersDigest == "" {
+			return nil, fmt.Errorf("a filter-conflict expectation needs both digests")
 		}
 		return step, nil
 	case "expectDisconnectedInvalidFrame":

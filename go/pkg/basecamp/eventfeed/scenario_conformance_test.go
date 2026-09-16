@@ -275,7 +275,7 @@ func (d *driver) stepSatisfiedLocked(step scenarioStep) bool {
 		return len(h.invocations) >= len(payload.Exact)
 	case *expectSaveFailedStep:
 		return h.saveFailuresTaken < h.saveFailures
-	case *expectPositionRejectedStep:
+	case *expectPositionRejectedStep, *expectFilterConflictStep:
 		return h.posRejectedTaken < len(h.positionRejected)
 	case *expectDisconnectedInvalidFrameStep:
 		return h.invalidFramesTaken < h.invalidFrames
@@ -340,6 +340,8 @@ func (d *driver) runStep(step scenarioStep) error {
 		return d.expectSaveFailed()
 	case *expectPositionRejectedStep:
 		return d.expectPositionRejected(payload.Kind)
+	case *expectFilterConflictStep:
+		return d.expectFilterConflict(payload)
 	case *expectDisconnectedInvalidFrameStep:
 		return d.expectInvalidFrameDisconnect()
 	default:
@@ -837,8 +839,29 @@ func (d *driver) expectPositionRejected(kind string) error {
 		if d.h.posRejectedTaken >= len(d.h.positionRejected) {
 			return false, ""
 		}
-		if got := d.h.positionRejected[d.h.posRejectedTaken]; got != kind {
-			return false, fmt.Sprintf("position_rejected kind %q, want %q", got, kind)
+		if got := d.h.positionRejected[d.h.posRejectedTaken]; got.kind != kind {
+			return false, fmt.Sprintf("rejection ledger next entry %q, want position_rejected %q", got.kind, kind)
+		}
+		d.h.posRejectedTaken++
+		return true, ""
+	})
+}
+
+// expectFilterConflict consumes the next rejection-ledger entry, which must be
+// the Observer.filterConflict firing carrying exactly the scripted digests —
+// so a script that places it before expectPositionRejected(filter_changed)
+// pins both the payload and the ordering.
+func (d *driver) expectFilterConflict(step *expectFilterConflictStep) error {
+	return d.h.await("Observer.filter_conflict", func() (bool, string) {
+		if d.h.posRejectedTaken >= len(d.h.positionRejected) {
+			return false, ""
+		}
+		got := d.h.positionRejected[d.h.posRejectedTaken]
+		if got.kind != "filter_conflict" {
+			return false, fmt.Sprintf("rejection ledger next entry %q, want filter_conflict", got.kind)
+		}
+		if got.positionDigest != step.PositionDigest || got.filtersDigest != step.FiltersDigest {
+			return false, fmt.Sprintf("filter_conflict digests %s/%s, want %s/%s", got.positionDigest, got.filtersDigest, step.PositionDigest, step.FiltersDigest)
 		}
 		d.h.posRejectedTaken++
 		return true, ""
@@ -1021,7 +1044,7 @@ func (d *driver) assertNoResidue() error {
 		{"Observer.gap", d.h.gapsTaken, len(d.h.gaps)},
 		{"semantic signal", d.h.signalsTaken, len(d.h.signals)},
 		{"Observer.checkpointSaveFailed", d.h.saveFailuresTaken, d.h.saveFailures},
-		{"Observer.positionRejected", d.h.posRejectedTaken, len(d.h.positionRejected)},
+		{"Observer.positionRejected / filterConflict", d.h.posRejectedTaken, len(d.h.positionRejected)},
 		{"invalid-frame disconnect", d.h.invalidFramesTaken, d.h.invalidFrames},
 	} {
 		if ledger.taken != ledger.seen {

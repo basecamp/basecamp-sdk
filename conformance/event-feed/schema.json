@@ -484,6 +484,25 @@
         "expectDisconnectedInvalidFrame": {
           "const": true,
           "description": "Rendezvous: Observer.disconnected fired carrying the invalid-frame indication. Only `true` is valid — a falsy value would assert nothing."
+        },
+        "expectFilterConflict": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "positionDigest",
+            "filtersDigest"
+          ],
+          "description": "Rendezvous: Observer.filter_conflict fired with exactly these two bare srv2 digests (the 409 body's position_digest and filters_digest). Shares one ordered ledger with expectPositionRejected, so placing it before expectPositionRejected(filter_changed) pins that the conflict callback precedes the rejection it explains.",
+          "properties": {
+            "positionDigest": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{16}$"
+            },
+            "filtersDigest": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{16}$"
+            }
+          }
         }
       }
     },

@@ -239,6 +239,7 @@ revoked-mint threshold).
 | 28 | `28-checkpoint-load-failure.json` | store load Failed → Terminal(`checkpoint_load`) with ZERO wire attempts; distinct from Missing (which proceeds to a present entry) |
 | 29 | `29-checkpoint-save-failure-continues.json` | save Failed → feed continues and a SUBSEQUENT save is attempted (exact store-call script: no save circuit breaker) |
 | 30 | `30-continuation-redirect-cross-origin.json` | validated same-origin `next` answering 302 + cross-origin Location → Terminal(`invalid_continuation`), zero foreign egress |
+| 34 | `34-filter-changed-409-reenters-at-the-present.json` | 409 with both digests → `Observer.filterConflict` (digests pinned) before `Observer.positionRejected(filter_changed)`; the held position is discarded and the walk re-enters at `since=now` (present-class, no poll-served id) |
 
 **Hostile-URL coverage note (stated author's choice, per the PR-1 review):** the
 downgrade (HTTPS→HTTP) variant is deliberately not a separate fixture here. Tier-2
@@ -267,7 +268,7 @@ reason via a constant, not the literal.
 | Poll body envelope keys `events` / `position` / `next` | 1 | every fixture serving a 200 poll: 01, 02, 05, 07, 12, 16, 17, 19, 20, 22, 26, 29, 30 (mechanically derived from the fixture files; re-derive when the set changes) |
 | Mint response body `{ticket, expires_in, url}`, status 200 | 1 | every fixture with `expectMint` (all but 28) |
 | Subscribe identifier literals: channel `EventsChannel`, param spellings `types`/`buckets`/`creators`/`performers`/`exclude_performers`/`actor_types`, comma-joined values | 1 | channel: every `expectSubscribe`; `types` spelling: 01 (its `expectSubscribe` pins `params` explicitly, single-valued); `buckets`/`creators` spellings + comma-joining: no PR-2 fixture — pinned at PR-4 (fixture 15, whose retransmit case also pins byte-identity of the identifier) |
-| 409 body: all three keys `error` / `position_digest` / `filters_digest` required; digest values bare 16-hex (no `srv2-` prefix), `error` content unconstrained | 1 | schema-pinned shape only (the 409 respond variant requires all three keys); **no PR-2 fixture serves a 409** — pinned live at PR-4 (the tier-1 dispatch case additionally owns the wire pin when tier 1 lands) |
+| 409 body: all three keys `error` / `position_digest` / `filters_digest` required; digest values bare 16-hex (no `srv2-` prefix), `error` content unconstrained | 1 | 34 (served, both digests forwarded to the connector and pinned on Observer.filterConflict); the tier-1 dispatch case additionally owns the wire pin |
 | 410 body keys `epoch_after_id` / `resume` | 1 | 16, 23, 25, 27 |
 | 400 position-vs-filter discriminating bodies (verbatim transcript shapes) | 1 | no PR-2 fixture — pinned at PR-4 (tier 1 additionally owns it when `PollEvents` lands); the schema's 400 variant requires a verbatim body and this table is its source of truth |
 | srv2 digest vectors (eleven-vector table) + canonicalization algorithm | 1 (vectors) / 2 (algorithm) | sibling family `conformance/event-feed-digest/` |
@@ -277,7 +278,7 @@ reason via a constant, not the literal.
 | Safety-horizon bound: position-relative, best-effort, ~30s — never wall-clock | 2 | premise of 19/20 (not directly assertable client-side; the entry-boundary fixtures encode its consequence) |
 | Frozen-head `next` predicate: absent `next` = the walk reached its head | 2 | every fixture whose walk ends on a 200 page without `next`: 01, 02, 05, 07, 12, 16, 17, 19, 20, 22, 29 (mechanically derived; re-derive when the set changes) |
 | 410 `resume` re-enters at the epoch (`since=<epoch_after_id>`, in served history — a position-resume entry) with the canonical filter set preserved | 2 | 16 (resume URL followed verbatim); 27 (hostile variant) |
-| 400-position / 409 re-entry semantics (`since=<last poll-served id>`, present-class fallback) | 2 | no PR-2 fixture — pinned at PR-4 |
+| 400-position / 409 re-entry semantics (`since=<last poll-served id>`, present-class fallback) | 2 | 34 (409, present-class fallback); the 400-position and poll-served-id variants remain PR-4's |
 | Ticket statelessness + ~120s TTL (server-owned `expires_in`) | 2 | 05 (TTL-advance premise; `expires_in` never schedules anything) |
 | 3-second server heartbeat cadence (input to the 7500ms staleness policy) | 2 | no PR-2 fixture — PR 4 (staleness fixture 08) |
 | Subscribe retransmit contract (identical absorbed, different rejected) | 2 | no PR-2 fixture — PR 4 (fixture 15) |

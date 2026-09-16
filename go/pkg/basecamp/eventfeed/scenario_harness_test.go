@@ -116,7 +116,7 @@ type scenarioHarness struct {
 	gapsTaken          int
 	saveFailures       int
 	saveFailuresTaken  int
-	positionRejected   []string
+	positionRejected   []rejectionRecord
 	posRejectedTaken   int
 	invalidFrames      int
 	invalidFramesTaken int
@@ -633,10 +633,27 @@ func (h *scenarioHarness) recordSaveFailed() {
 	h.notifyLocked()
 }
 
+// rejectionRecord is one entry of the ORDERED rejection ledger: an
+// Observer.positionRejected firing (kind position_invalid / filter_changed)
+// or an Observer.filterConflict firing (kind filter_conflict, with the 409
+// body's two digests). One ledger for both, so a script pins that the
+// conflict callback precedes the rejection it explains.
+type rejectionRecord struct {
+	kind                          string
+	positionDigest, filtersDigest string
+}
+
 func (h *scenarioHarness) recordPositionRejected(kind string) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	h.positionRejected = append(h.positionRejected, kind)
+	h.positionRejected = append(h.positionRejected, rejectionRecord{kind: kind})
+	h.notifyLocked()
+}
+
+func (h *scenarioHarness) recordFilterConflict(positionDigest, filtersDigest string) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.positionRejected = append(h.positionRejected, rejectionRecord{kind: "filter_conflict", positionDigest: positionDigest, filtersDigest: filtersDigest})
 	h.notifyLocked()
 }
 
@@ -683,6 +700,7 @@ func (h *scenarioHarness) newConnector(cfg scenarioConfig) (*eventfeed.Connector
 			Gap:                  func(epochAfterID int64, resumeURL string) { h.recordGap(epochAfterID, resumeURL) },
 			CheckpointSaveFailed: func(error) { h.recordSaveFailed() },
 			PositionRejected:     func(kind eventfeed.PollErrorKind) { h.recordPositionRejected(kind.String()) },
+			FilterConflict:       h.recordFilterConflict,
 			Disconnected: func(_ string, err error) {
 				if eventfeed.ExportIsInvalidFrameError(err) {
 					h.recordInvalidFrame()
