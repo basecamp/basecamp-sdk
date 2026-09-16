@@ -9,14 +9,16 @@
 import { describe, it, expect } from "vitest";
 import {
   mentionedPersonIds,
+  readMentions,
   personIdFromSGID,
   mentionMarkup,
   withMentions,
 } from "../../src/index.js";
-import { namedEntityNames, unescapeEntities } from "../../src/services/mentions.js";
+import { namedEntityNames, personIdValue, unescapeEntities } from "../../src/services/mentions.js";
 import { BasecampError } from "../../src/errors.js";
 import type { Person } from "../../src/generated/services/people.js";
 import { jsonSGID, legacySGID, personSGID, railsSGID } from "../helpers/sgid.js";
+import { PERSON_ID_CORPUS, fitsNumber } from "../helpers/person-id-corpus.js";
 
 const VICTOR = 1049715914;
 const ANNIE = 1049715915;
@@ -66,6 +68,45 @@ describe("personIdFromSGID", () => {
         expect(personIdFromSGID(`${space}${sgid}${stray}${space}`)).toBe(VICTOR);
       }
     }
+  });
+
+  it("walks the id's bytes before parsing, which is NOT the rule scanPersonId applies", () => {
+    // Rule A, pinned directly, because nothing else in this suite pins it.
+    //
+    // `PersonIDFromSGID` refuses anything outside `0..=9` BEFORE it parses
+    // (`go/pkg/basecamp/mentions.go:252-256`) and then refuses `id <= 0`
+    // (`:257-259`). `scanPersonId` in src/person-id.ts has no pre-walk, because
+    // the Go lines governing ITS two sites — `coercePersonID` and
+    // `FlexibleInt64` — have none: a leading `+` is a person there and a
+    // refusal here. Two co-resident rules, deliberately different, and neither
+    // may be hoisted into the other in either direction. Loosening this one
+    // reintroduces the `+77` defect PR #886 closed — on the field that decides
+    // WHO a mention names, so the failure is a tag pointing at the wrong
+    // person, not a dropped read.
+    const id = (raw: string): number | undefined =>
+      personIdFromSGID(legacySGID(`gid://bc3/Person/${raw}`));
+
+    // Refused, however readable ParseInt finds them. The signs are refused by
+    // the digit walk; `0` and `-0` by the `id <= 0` check that follows it.
+    for (const raw of ["+7", "-7", "+007", "+9223372036854775807", "-9223372036854775808", "0", "-0"]) {
+      expect(id(raw), raw).toBeUndefined();
+    }
+
+    // Accepted, because leading zeros carry no magnitude and pass the walk.
+    // This half matters as much as the first: without it, the refusals above
+    // could be satisfied by a walk that refuses too much, and "hardening" the
+    // rule into rejecting zero-padding diverges from the reference exactly as
+    // far as loosening it does.
+    expect(id("007")).toBe(7);
+    expect(id("010")).toBe(10);
+    expect(id("0009007199254740991")).toBe(9007199254740991);
+
+    // RESIDUAL DIVERGENCE, and the same one src/person-id.ts argues: Go reads
+    // `0009223372036854775807` as that int64, and a JS `number` cannot carry
+    // it. personIdFromSGID answers `undefined` rather than round it into a
+    // neighbouring person — the id is refused, never misattributed.
+    expect(id("0009223372036854775807")).toBeUndefined();
+    expect(id("9007199254740992")).toBeUndefined();
   });
 
   it("refuses a purpose BC3 does not accept in rich text", () => {
@@ -561,6 +602,85 @@ describe("mentionedPersonIds", () => {
     expect(perAmpersand).toBeGreaterThanOrEqual(1);
   });
 
+  it("skips a mention whose id no number can carry, and keeps the rest of the text", () => {
+    // THE UNDER-REPORT IS REAL AND IT IS STILL THE LESSER LOSS. Measured
+    // against the reference, this text names five people to Go and five to
+    // Ruby, and names two here, because three of the ids are past 2^53. A
+    // short list is indistinguishable from a shorter text, and it feeds
+    // `mentioned_person_ids`, which decides who gets notified.
+    //
+    // It was briefly a throw for exactly that reason, and the throw was worse.
+    // This function's input is rich text off the wire and the sgid's signature
+    // is never verified, so the id inside it is written by whoever wrote the
+    // comment: a throw handed any author of a `<bc-attachment>` a way to fail
+    // `recordings.summarize()` outright. Refusing to name one person beats
+    // refusing to read the recording. It is also the reference's own failure
+    // mode -- `MentionedPersonIDs` continues past every sgid it declines
+    // (go/pkg/basecamp/mentions.go:82-92) and never fails the text.
+    const mention = (raw: string): string => attachment(legacySGID(`gid://bc3/Person/${raw}`));
+    const text = [
+      mention("7"),
+      mention("9007199254740991"),
+      mention("9007199254740992"),
+      mention("9007199254740993"),
+      mention("9223372036854775807"),
+      mention("0009223372036854775807"),
+    ].join("");
+
+    // No throw, and every id it CAN carry survives the ones it cannot --
+    // including the two that sit after the unreadable ones in document order,
+    // which is the half a `continue` gets right and an early exit would not.
+    expect(mentionedPersonIds(text)).toEqual([7, 9007199254740991]);
+
+    // The unreadable id is still distinguishable one sgid at a time, which is
+    // where a caller that must not under-report goes.
+    expect(personIdFromSGID(legacySGID("gid://bc3/Person/9007199254740992"))).toBeUndefined();
+  });
+
+  it("reports each unnameable person once, by value, so the count is the reference's", () => {
+    // The point of `unnameable` is that a caller can see exactly how short the
+    // list is: `ids.length + unnameable.length` must be the number of people the
+    // reference names. Go deduplicates on the int64 (go/pkg/basecamp/mentions.go:87),
+    // so `9223372036854775807` and `0009223372036854775807` are ONE person. Keyed on
+    // the raw digits they were two, and this text -- which gives Go 5 -- gave 6.
+    const mention = (raw: string): string => attachment(legacySGID(`gid://bc3/Person/${raw}`));
+    const text = [
+      mention("7"),
+      mention("9007199254740991"),
+      mention("9007199254740992"),
+      mention("9007199254740993"),
+      mention("9223372036854775807"),
+      mention("0009223372036854775807"),
+    ].join("");
+
+    const { ids, unnameable } = readMentions(text);
+    expect(ids).toEqual([7, 9007199254740991]);
+    expect(unnameable).toEqual(["9007199254740992", "9007199254740993", "9223372036854775807"]);
+    expect(ids.length + unnameable.length).toBe(5);
+
+    // Canonical, not as spelled: a leading-zero spelling reports the digits a
+    // caller can match against a person id.
+    expect(readMentions(mention("09007199254740993")).unnameable).toEqual(["9007199254740993"]);
+    expect(readMentions(mention("9007199254740993") + mention("09007199254740993")).unnameable).toEqual([
+      "9007199254740993",
+    ]);
+  });
+
+  it("skips an id past int64 too, for a different reason, and reports neither", () => {
+    // NOT the case above. `strconv.ParseInt` raises on a magnitude past int64,
+    // Go's PersonIDFromSGID answers "not a person"
+    // (go/pkg/basecamp/mentions.go:257-259), so this is a non-mention in the
+    // reference rather than an id the reference could name and this cannot.
+    // The two reach the same outcome here and the distinction is still worth
+    // keeping, because only one of them is a divergence from Go.
+    const mention = (raw: string): string => attachment(legacySGID(`gid://bc3/Person/${raw}`));
+    expect(mentionedPersonIds(mention("9223372036854775808"))).toEqual([]);
+    expect(mentionedPersonIds(mention("99999999999999999999999"))).toEqual([]);
+
+    // Go names this one; this cannot, and skips it. The divergence, pinned.
+    expect(mentionedPersonIds(mention("9223372036854775807"))).toEqual([]);
+  });
+
   it("stops at an unterminated comment or tag rather than guessing", () => {
     const sgid = personSGID(VICTOR);
     expect(mentionedPersonIds(`<div><!-- ${attachment(sgid)}`)).toEqual([]);
@@ -612,6 +732,44 @@ describe("mentionMarkup", () => {
     // The one string Go refuses outright, taking the people read with it. This
     // layer cannot fail a read that already returned, so it refuses the write.
     expect(() => mentionMarkup(withId("9223372036854775808"))).toThrow(/does not name that person/);
+  });
+
+  it("answers all 74 measured corpus rows the way ParseInt does", () => {
+    // Pinned against personIdValue rather than against mentionMarkup, because
+    // the two refusals are indistinguishable through the public path: a 0 and
+    // an `undefined` both refuse the mention, so the verdict cannot see the
+    // difference between "Go read the system actor" and "Go failed the read".
+    // That is exactly where the scan-order defect lived.
+    expect(PERSON_ID_CORPUS.length).toBe(74);
+
+    for (const row of PERSON_ID_CORPUS) {
+      const where = JSON.stringify(row.id);
+      if (row.go === "syntax") {
+        // Go's sentinel zero. `toBe` is Object.is, so a `-0` fails here.
+        expect(personIdValue(row.id), where).toBe(0);
+      } else if (row.go === "range") {
+        // Go raises and the read fails; this layer can only report unreadable.
+        expect(personIdValue(row.id), where).toBeUndefined();
+      } else if (fitsNumber(row.value!)) {
+        expect(personIdValue(row.id), where).toBe(Number(row.value!));
+      } else {
+        // RESIDUAL DIVERGENCE (11 rows): Go reads an int64 no `number` holds.
+        // Unreadable, never a rounded neighbour and never the sentinel 0 —
+        // argued at `personIdNumber` in src/person-id.ts.
+        expect(personIdValue(row.id), where).toBeUndefined();
+      }
+    }
+  });
+
+  it("tells the scan-order pair apart, one digit and opposite refusals", () => {
+    // `ParseUint` overflows u64 mid-scan and returns before it ever reaches the
+    // `x`, so the LARGER string is a range error that fails the read, and the
+    // smaller one is a plain syntax error that reads the sentinel 0. A port
+    // that tests the whole string for shape first and checks the magnitude
+    // second gets this pair backwards — and backwards here means handing back
+    // the system actor for an id Go refused outright.
+    expect(personIdValue("18446744073709551615x")).toBe(0);
+    expect(personIdValue("18446744073709551616x")).toBeUndefined();
   });
 
   it("refuses an sgid that names someone else", () => {

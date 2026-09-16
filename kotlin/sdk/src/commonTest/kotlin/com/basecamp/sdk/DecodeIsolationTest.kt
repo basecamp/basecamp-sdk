@@ -138,18 +138,25 @@ class DecodeIsolationTest {
     /**
      * A *numeric* refusal.
      *
-     * `Person.id` decodes through `FlexibleLongSerializer`, which reaches
-     * `JsonPrimitive.long` for an unquoted number — and that is
-     * `content.toLong()`, so a fractional or out-of-range literal raises
-     * [NumberFormatException] rather than [SerializationException]. Nearly every
+     * `Person.id` decodes through `FlexibleLongSerializer`, and a fractional or
+     * out-of-range unquoted literal is a decode failure there. Nearly every
      * response carries a Person, so this is an ordinary operation's ordinary
-     * failure, not an exotic one, and before #604 it escaped the SDK entirely.
+     * failure, not an exotic one, and before #604 it escaped the SDK entirely:
+     * the path read the literal through `JsonPrimitive.long`, whose
+     * [NumberFormatException] is not a type anything downstream recognizes.
      *
-     * The serializer translates it rather than the helper catching it, so that
-     * exactly one exception type crosses the mapping boundary: the composites
-     * and the conformance runner both read `cause` to tell a decoder rejection
-     * from a real API failure, and a second cause type is a second thing each
-     * of them would have to learn. The numeric original is still underneath.
+     * What this pins is that exactly ONE exception type crosses the mapping
+     * boundary, because the composites and the conformance runner both read
+     * `cause` to tell a decoder rejection from a real API failure, and a second
+     * cause type is a second thing each of them would have to learn.
+     *
+     * It no longer pins a [NumberFormatException] beneath that type. The
+     * serializer used to catch one and re-throw, so the numeric original really
+     * was underneath; the number path now runs Go's own scan, which returns a
+     * verdict rather than throwing one, so there is no numeric original to carry
+     * and nothing that could leak. The guarantee moved from a catch to the shape
+     * of the code, and the assertion that read the inner cause went with it —
+     * asserting it still is there would only pin the old implementation.
      */
     @Test
     fun aNumericRefusalIsAStatuslessApiError() = runTest {
@@ -174,10 +181,6 @@ class DecodeIsolationTest {
             assertIs<SerializationException>(
                 cause,
                 "every decode failure must reach `cause` as one type, got $cause",
-            )
-            assertIs<NumberFormatException>(
-                cause.cause,
-                "the numeric original must survive beneath it, got ${cause.cause}",
             )
             assertTrue(
                 cause.message!!.contains(badId),

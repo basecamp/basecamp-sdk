@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-09-16T13:06:18Z
+# Generated: 2026-09-16T11:13:05Z
 
 require "json"
 require "time"
@@ -17,6 +17,23 @@ module TypeHelpers
   def parse_integer(value)
     return nil if value.nil?
     value.to_i
+  end
+
+  # A PERSON's id: the one field in this model the reference decodes
+  # flexibly (x-go-type: types.FlexibleInt64), and the only one that may
+  # arrive as a JSON string.
+  #
+  # Read with Basecamp::Ids.person_from_wire, which is Go's
+  # strconv.ParseInt(s, 10, 64) and is already the rule at the other two
+  # person-id sites (the pre-decode normalizer in Basecamp::Http and the
+  # flexible reader itself). NOT parse_integer, whose to_i answers 0 for
+  # "basecamp" without recording the label, 8 for "010", and — since the
+  # normalizer now leaves an out-of-range id as a String for the reader to
+  # refuse — a bignum for "18446744073709551616x", which is not an id any
+  # API can hold. A refused id is nil here, the same nil a malformed value
+  # of any other type gets.
+  def parse_flexible_person_id(value)
+    Basecamp::Ids.person_from_wire(value)
   end
 
   def parse_float(value)
@@ -3158,7 +3175,7 @@ module Basecamp
       end
 
       def initialize(data = {})
-        @id = parse_integer(data["id"])
+        @id = parse_flexible_person_id(data["id"])
         @system_label = data["system_label"]
         @name = data["name"]
         @admin = parse_boolean(data["admin"])

@@ -31,6 +31,17 @@ module Basecamp
     # range without converting it.
     MAX_DIGITS = MAX.to_s.length
 
+    # The magnitude ParseUint accumulates into before ParseInt applies its own
+    # bound: the scan refuses at UNSIGNED 64-bit, not at MAX (strconv/atoi.go,
+    # ParseUint's loop). See {parse_int}, where that one boundary is the whole
+    # difference between a syntax refusal and a range refusal.
+    U64_MAX = (2**64) - 1
+
+    PLUS = "+".ord
+    MINUS = "-".ord
+    ZERO = "0".ord
+    private_constant :PLUS, :MINUS, :ZERO
+
     module_function
 
     # A decimal string as an Integer, :overflow when it is out of range, or
@@ -48,6 +59,14 @@ module Basecamp
     # were the caller-argument reader and the sgid decoder, which is the one fed
     # by rich text other people wrote.
     #
+    # LEXICAL FIRST, THEN BOUNDED — which is a different rule from the one
+    # {parse_int} implements, and deliberately so: this one asks "is the whole
+    # string a decimal?" before it asks "does it fit?", so junk anywhere makes
+    # it :not_decimal however large the digits are. The sites that read a
+    # caller's argument, a header count, a Retry-After and an sgid's id want
+    # exactly that. The two sites that read a PERSON id off the wire do not,
+    # because Go's scan decides in the other order; they call {parse_int}.
+    #
     # @param value [String]
     # @param signed [Boolean] whether a leading "+" or "-" is allowed
     def bounded_decimal(value, signed: true)
@@ -59,6 +78,92 @@ module Basecamp
 
       parsed = digits.to_i
       parsed.between?(MIN, MAX) ? parsed : :overflow
+    end
+
+    # <tt>strconv.ParseInt(s, 10, 64)</tt>, scan order included: the Integer the
+    # string spells, :syntax when Go reports ErrSyntax, or :range when it
+    # reports ErrRange.
+    #
+    # The two refusals are kept APART because the reference does two different
+    # things with them, and no single "is this a number?" predicate can tell
+    # them apart: ErrSyntax is the "basecamp" sentinel and reads 0
+    # (go/pkg/types/flexible_int64.go:46), ErrRange fails the read
+    # (flexible_int64.go:43). Which one a string earns depends on where in it
+    # the first disqualifying byte sits, so the answer is a property of the
+    # SCAN, not of the string's shape.
+    #
+    # The grammar: one optional ASCII "+" or "-", then one or more ASCII
+    # digits, and nothing else. No surrounding whitespace (Go trims none, so
+    # " 7" is ErrSyntax and reads 0), no "_" separator (only base 0 allows one),
+    # and ASCII digits alone — a fullwidth "７" or an Arabic-Indic "٧" is not a
+    # digit. Ruby happens to agree on that last one, since both /\d/ and
+    # Integer() are ASCII-only here, but the rule is Go's rather than Ruby's:
+    # a \p{Nd}-aware rewrite would accept ids the reference calls sentinels,
+    # which is how the other ports of this scan drifted.
+    #
+    # THE SUBTLETY THAT COSTS THE HAND-ROLLED LOOP: ParseInt delegates the
+    # magnitude to ParseUint, which checks it INSIDE the scan and returns
+    # ErrRange the instant the accumulator would overflow uint64 — before it
+    # ever reaches the rest of the string. The first disqualifying byte wins,
+    # and the boundary it wins at is u64, not int64. So one digit decides which
+    # refusal a malformed id earns:
+    #
+    #   "18446744073709551615x"  digits still fit u64, the scan reaches the
+    #                            "x"                      -> :syntax, reads 0
+    #   "18446744073709551616x"  the overflow fires first -> :range, fails
+    #
+    # Testing the whole string for well-formedness first — which is what
+    # {bounded_decimal} does, correctly, for its own callers — gets that pair
+    # backwards and hands a malformed oversized id to the reader as the
+    # "basecamp" system actor. Measured against the reference on both rows.
+    #
+    # NOT the rule the sgid's person id gets. That one walks the bytes and
+    # refuses anything outside 0..9 BEFORE parsing (go/pkg/basecamp/mentions.go:
+    # 252-256), so it rejects the leading "+" this one accepts, and
+    # {Basecamp::Mentions.parse_global_id} carries that walk because the
+    # reference has that shape at THAT site. Two co-resident rules, deliberately
+    # different: do not hoist either into the other, in either direction —
+    # unifying them here would accept "+77" as a mentioned person again, and
+    # unifying them there would refuse a "+7" the people read accepts.
+    #
+    # Bounded by construction, so it needs no length gate: the accumulator
+    # passes u64 within 20 digits and every other byte ends the scan, so no
+    # input builds a large Integer however long it is. Read by BYTES for the
+    # same reason {bounded_decimal} is — a String carrying invalid UTF-8 makes
+    # the regexp engine raise, and +getbyte+ neither raises nor copies the
+    # string, which matters on a body that may be 50 MB.
+    #
+    # @param value [String]
+    # @return [Integer, Symbol] the value, :syntax, or :range
+    def parse_int(value)
+      index = 0
+      negative = false
+      case value.getbyte(0)
+      when PLUS then index = 1
+      when MINUS then index, negative = 1, true
+      end
+      # An empty digit run, after a sign or without one, is ErrSyntax.
+      return :syntax if index == value.bytesize
+
+      # ParseUint's loop, byte for byte.
+      magnitude = 0
+      while index < value.bytesize
+        digit = value.getbyte(index) - ZERO
+        return :syntax unless digit.between?(0, 9)
+
+        magnitude = (magnitude * 10) + digit
+        return :range if magnitude > U64_MAX
+
+        index += 1
+      end
+
+      # ParseInt's own bound, applied to what ParseUint returned: a negative may
+      # carry 2**63, which is MIN, and a positive may carry MAX.
+      if negative
+        magnitude > -MIN ? :range : -magnitude
+      else
+        magnitude > MAX ? :range : magnitude
+      end
     end
 
     # @param value [Object] the id as the caller supplied it
@@ -130,7 +235,10 @@ module Basecamp
     #   to ParseInt — which takes a leading sign;
     # * any OTHER string is 0 and not an error, because that is the sentinel the
     #   API serves for system-generated entities ("basecamp");
-    # * a string whose digits overflow is a range error, so it fails the read;
+    # * a string whose digits overflow is a range error, so it fails the read,
+    #   and so is one whose digits overflow BEFORE the junk that follows them
+    #   ("18446744073709551616x"), because ParseUint refuses the magnitude
+    #   inside the scan — the same junk one digit earlier reads 0;
     # * anything else — a float, a boolean, an array, an object — is a decode
     #   failure, as it is for every id.
     #
@@ -154,9 +262,14 @@ module Basecamp
       return nil if value.nil?
       return nil unless value.is_a?(String)
 
-      parsed = bounded_decimal(value)
-      return 0 if parsed == :not_decimal
-      return nil if parsed == :overflow
+      # Go's scan rather than a lexical test, because the reference's two
+      # refusals do not partition the string the way a regexp does: an
+      # oversized digit run followed by junk is a RANGE error there and fails
+      # the read, while the same junk one digit earlier is a syntax error and
+      # reads 0. See {parse_int}.
+      parsed = parse_int(value)
+      return 0 if parsed == :syntax
+      return nil if parsed == :range
 
       parsed
     end

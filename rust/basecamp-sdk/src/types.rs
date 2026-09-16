@@ -727,6 +727,10 @@ mod tests {
             ("\"0xg\"", Some(0)),   // string '0xg'
             ("\"#7\"", Some(0)),    // string '#7'
             ("\"07\"", Some(7)),    // string '07'
+            // TEN, not eight. Base is never detected from the literal: Ruby's `Integer()`
+            // read this one as 8, which is not a refusal against an acceptance but two
+            // different PEOPLE from one wire value (card 35).
+            ("\"010\"", Some(10)),  // string '010'
             ("\"0x7\"", Some(0)),   // string '0x7'
             ("\"-0x10\"", Some(0)), // string '-0x10'
             ("\"8#7\"", Some(0)),   // string '8#7'

@@ -67,6 +67,54 @@ class GeneratedTypesTest < Minitest::Test
     assert_equal false, person.owner
   end
 
+  # Person.id is the ONE field in the generated model the reference decodes
+  # flexibly (x-go-type: types.FlexibleInt64 in openapi.json), so it is the one
+  # field that may arrive as a JSON string — and the third place in this SDK
+  # that has to read a person id, after the pre-decode normalizer and
+  # Basecamp::Ids.person_from_wire.
+  #
+  # It read it with parse_integer, whose to_i has its own grammar: " 7" is 7
+  # where the reference says 0, "010" is 8 where the reference says ten, and an
+  # id the normalizer deliberately leaves as a string because it is out of
+  # range — "18446744073709551616x" — became the bignum 18446744073709551616,
+  # an id no API can hold. Measured over GoPersonIds::CORPUS, 29 of the 74 rows
+  # differed from the reference straight off the wire and 12 differed after
+  # normalization.
+  #
+  # The fix is in ruby/scripts/generate-types.rb, which emits
+  # parse_flexible_person_id for the field carrying that marker; types.rb is its
+  # output and is never edited by hand (AGENTS.md).
+  def test_person_id_is_read_by_the_references_flexible_rule
+    GoPersonIds::CORPUS.each do |wire, expected|
+      want =
+        case expected
+        when :label then 0
+        when :refuse then nil
+        else expected.last
+        end
+
+      assert_equal want.inspect, Basecamp::Types::Person.new({ "id" => wire }).id.inspect,
+                   "Person.new(\"id\" => #{wire.inspect}).id"
+    end
+  end
+
+  def test_person_id_keeps_the_sentinel_label_the_normalizer_wrote
+    data = { "personable_type" => "LocalPerson", "id" => "basecamp", "name" => "Basecamp" }
+    Basecamp::Http.normalize_person_ids(data)
+    person = Basecamp::Types::Person.new(data)
+
+    assert_equal 0, person.id
+    assert_equal "basecamp", person.system_label
+
+    # And an id the normalizer left alone because it is out of range is nil
+    # rather than a truncated or oversized number: the reference fails that read.
+    left_alone = { "personable_type" => "User", "id" => "18446744073709551616x" }
+    Basecamp::Http.normalize_person_ids(left_alone)
+
+    assert_equal "18446744073709551616x", left_alone["id"], "the normalizer leaves it for the reader"
+    assert_nil Basecamp::Types::Person.new(left_alone).id
+  end
+
   def test_todo_type_parses_data
     data = {
       "id" => 456,

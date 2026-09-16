@@ -307,6 +307,33 @@ class TestSyncEdit:
         assert "notify" not in body
 
     @respx.mock
+    def test_a_participant_with_a_string_id_is_refused_where_the_reference_accepts_it(self):
+        # A KNOWN DIVERGENCE, PINNED rather than left to be discovered. BC3
+        # writes a person id as a string on some paths, and an embedded
+        # participant frequently omits `personable_type`. The reference reads it
+        # through its decoder -- generated `ScheduleEntry.Participants` is
+        # `[]Person`, and `Person.Id` is `types.FlexibleInt64` -- and completes
+        # the update. This refuses it.
+        #
+        # The positional normalizer briefly covered this by running on every
+        # response body. That over-reached: the same `creator` / `participants`
+        # keys hold plain-`int64` people on `UpcomingScheduleEntry`, which the
+        # reference refuses and the normalizer turned into the system actor. It
+        # now runs only on Go's two surfaces (gauges, notifications), and
+        # schedules is not one of them.
+        #
+        # The refusal is the SAFE direction: no id is invented, and no PUT is
+        # sent, so a refused read never becomes a partial participant list.
+        # Closing it properly is decoder coverage, field by field against the
+        # reference, and PR #913 (card 42) owns it. This is the test to flip.
+        _, put_route = _routes(_entry(participants=[{"id": "1049715915", "name": "Ann"}, {"id": "+007", "name": "Bo"}]))
+
+        with pytest.raises(ApiError), _sync_schedules().edit_entry(entry_id=5001) as e:
+            e.participant_ids = [*e.participant_ids, 1049715914]
+
+        assert not put_route.called
+
+    @respx.mock
     def test_assigning_the_read_backs_own_value_still_sends_it(self):
         # The reason the contract is setter-invocation dirty tracking rather
         # than a snapshot diff. A value comparison concludes nothing changed
@@ -606,8 +633,18 @@ class TestMalformedResponseFields:
             pytest.param("nobody", id="string"),
             pytest.param([42], id="non-object-element"),
             pytest.param([{"name": "no id"}], id="missing-id"),
-            pytest.param([{"id": "1049715914"}], id="string-id"),
             pytest.param([{"id": True}], id="bool-id"),
+            # A plain numeric string is NOT here any more, and was wrong to be:
+            # the normalizer converts it before this guard sees it, and the
+            # reference accepts it too (Go's generated `Person.Id` is
+            # `types.FlexibleInt64`). See
+            # `TestSyncEdit.test_a_participant_with_a_string_id_and_no_personable_type_still_seeds`.
+            #
+            # A string past int64 still belongs here. The normalizer leaves it
+            # exactly as it arrived -- that is the RANGE outcome, and the whole
+            # point of leaving it is that the next reader refuses rather than
+            # inventing an id -- so this guard is the reader that refuses.
+            pytest.param([{"id": "9223372036854775808"}], id="range-string-id"),
         ],
     )
     def test_edit_refuses_malformed_participants_before_writing(self, participants):

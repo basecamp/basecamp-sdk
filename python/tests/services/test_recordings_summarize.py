@@ -34,6 +34,40 @@ from basecamp.hooks import BasecampHooks
 from basecamp.services import _campfire_index
 from basecamp.services._campfire_index import MAX_CAMPFIRE_CANDIDATES, AsyncCampfireIndex, CampfireIndex
 from basecamp.services.recordings import _READS, summarizable_event_types, summarizable_recording_types
+from tests.person_id_corpus import PERSON_ID_CORPUS
+
+#: The shared person-id corpus in this table's shape: `(wire id, fails, the
+#: creator the projection returns)`. A `"refuse"` row fails the read.
+#:
+#: A `"label"` row -- a syntax refusal -- reads as the system actor, `0`, with NO
+#: `system_label`. Go's summary carries no label for it either: `readSummary`
+#: reads the recording through the generated decoder, and `personFromGenerated`
+#: (go/pkg/basecamp/people.go:920) never sets `SystemLabel`.
+#:
+#: These rows used to expect a label, and matched only because the positional
+#: normalizer ran on EVERY response body and wrote one onto the recording's
+#: untagged `creator` first. It runs only on Go's two surfaces now (gauges,
+#: notifications), and a recording read is neither.
+#:
+#: ONE PRE-EXISTING DIVERGENCE THIS TABLE DOES NOT CLOSE, stated so that `{"id": 0}`
+#: is not mistaken for Go's answer. The fixture below sends a creator with an id
+#: and NO name. For such a creator Go's summary has no `creator` key at all:
+#: `commentFromGenerated` sets it only when `Id != 0 || Name != ""`
+#: (go/pkg/basecamp/comments.go:364), so a syntax refusal -- or `"0"` -- with no
+#: name is dropped. With a name, Go gives `{"id": 0, "name": ...}`, which is what
+#: this port's label-free answer now matches. Python and TypeScript both keep
+#: `{"id": 0}` here where Go omits the creator; Ruby omits it, as Go does. That
+#: presence rule is a projection rule, not the id grammar, and predates this
+#: table -- it is left as it was rather than folded into a change about person
+#: ids.
+_FLEXIBLE_STRING_ROWS = [
+    (
+        raw,
+        kind == "refuse",
+        None if kind == "refuse" else ({"id": value} if kind == "value" else {"id": 0}),
+    )
+    for raw, kind, value in PERSON_ID_CORPUS
+]
 
 ACCOUNT = "12345"
 BASE = f"https://3.basecampapi.com/{ACCOUNT}"
@@ -331,41 +365,35 @@ class TestProjection:
     # real generated types -- not derived from this implementation.
     @respx.mock
     @pytest.mark.parametrize(
-        ("creator_id", "fails", "decoded"),
+        ("creator_id", "fails", "creator"),
         [
-            # `Person.Id` is FlexibleInt64, so a numeric STRING resolves and a
-            # non-numeric one is the system-actor 0 rather than a failure --
-            # and Go's decode CONVERTS, so the id in the summary is the int,
-            # never the string it arrived as. `decoded` is Go's own value.
-            ("7", False, 7),
-            ("basecamp", False, 0),
-            ("", False, 0),
-            ("007", False, 7),
-            ("+7", False, 7),
-            (7, False, 7),
-            (-7, False, -7),
-            # ...but `null` IS an error here, where a plain int64 field reads
-            # it as 0. The two rules are neighbours and differ.
+            # The STRING rows are the shared corpus, one table for every site
+            # that reads a person id off the wire (see `tests.person_id_corpus`
+            # and `tests/test_person_id.py`) rather than a second list here that
+            # could drift from it. `Person.Id` is FlexibleInt64, so a numeric
+            # string resolves and a non-numeric one is the system-actor 0 rather
+            # than a failure -- and Go's decode CONVERTS, so the id in the
+            # summary is the int, never the string it arrived as.
+            *_FLEXIBLE_STRING_ROWS,
+            # Rows the shared corpus does not carry, because they are not
+            # strings and the id grammar has nothing to say about them. `null`
+            # IS an error here, where a plain int64 field reads it as 0 -- the
+            # two rules are neighbours and differ.
+            (7, False, {"id": 7}),
+            (-7, False, {"id": -7}),
             (None, True, None),
             (True, True, None),
             (7.0, True, None),
             (2**63, True, None),
-            # The magnitude check happens INSIDE Go's scan and against uint64,
-            # so the first disqualifying thing wins. These three rows are the
-            # whole point: a junk-free corpus never contains them, and "is it
-            # all digits? then parse" gets the last one wrong -- answering the
-            # system-actor 0 where Go fails the read.
-            ("9223372036854775807x", False, 0),
-            ("18446744073709551615x", False, 0),
-            ("18446744073709551616x", True, None),
-            ("9223372036854775808", True, None),
-            ("18446744073709551615", True, None),
-            ("-9223372036854775808", False, -9223372036854775808),
-            ("-9223372036854775809", True, None),
-            ("-9223372036854775809x", False, 0),
+            # Two more measured junk-tail rows, kept because they land either
+            # side of a boundary the corpus crosses only at uint64: the tail is
+            # reached in both, so both are the system-actor 0 even though the
+            # digits ahead of it are past int64.
+            ("9223372036854775807x", False, {"id": 0}),
+            ("-9223372036854775809x", False, {"id": 0}),
         ],
     )
-    def test_a_creator_id_follows_the_flexible_int64_rule(self, creator_id, fails, decoded):
+    def test_a_creator_id_follows_the_flexible_int64_rule(self, creator_id, fails, creator):
         respx.get(f"{BASE}/comments/1").mock(
             return_value=httpx.Response(200, json={"id": 1, "type": "Comment", "creator": {"id": creator_id}})
         )
@@ -374,7 +402,7 @@ class TestProjection:
                 _account().recordings.summarize(bucket_id=BUCKET, recording_id=1, event_type="comment.created")
         else:
             summary = _account().recordings.summarize(bucket_id=BUCKET, recording_id=1, event_type="comment.created")
-            assert summary["creator"] == {"id": decoded}, (
+            assert summary["creator"] == creator, (
                 "Go's decode converts as well as validating; the summary carries the int"
             )
 

@@ -13,28 +13,31 @@ from basecamp._pagination import (
     selects_single_page,
 )
 from basecamp.errors import ApiError
+
+# The SAME function object `_base.py` imports, not a second walk that agrees with
+# it today: the sync and async clients cannot answer the same body differently if
+# there is only one answer. Documented at
+# `basecamp._person_id.normalize_person_ids`.
+from basecamp._person_id import normalize_person_ids as _normalize_person_ids
+from basecamp._person_id import embedded_people_url as _embedded_people_url
 from basecamp.hooks import OperationInfo, OperationResult, safe_hook
 
 
-def _normalize_person_ids(obj: Any) -> None:
-    """Normalize Person-shaped objects in API responses.
-
-    See _base.py for full docstring.
-    """
-    if isinstance(obj, list):
-        for item in obj:
-            _normalize_person_ids(item)
-    elif isinstance(obj, dict):
-        if "personable_type" in obj and isinstance(obj.get("id"), str):
-            raw_id = obj["id"]
-            try:
-                obj["id"] = int(raw_id)
-            except ValueError:
-                obj["system_label"] = raw_id
-                obj["id"] = 0
-        for val in obj.values():
-            if isinstance(val, (dict, list)):
-                _normalize_person_ids(val)
+def _embedded_people(response: object) -> bool:
+    """Whether ``response`` answered one of the reference's two positional
+    normalization surfaces (gauges, notifications). Read off the request URL the
+    response actually answered, so a followed pagination page is judged by the
+    page it fetched. See ``basecamp._person_id.EMBEDDED_PEOPLE_PATHS``."""
+    # `httpx.Response.request` RAISES `RuntimeError` when the response was built
+    # without one, rather than being absent, so `getattr`'s default never fires
+    # for it. A response with no request has no URL to judge, which is "not a
+    # reference surface".
+    try:
+        request = response.request  # type: ignore[attr-defined]
+    except (AttributeError, RuntimeError):
+        return False
+    url = getattr(request, "url", None)
+    return _embedded_people_url(str(url)) if url is not None else False
 
 
 class AsyncBaseService:
@@ -75,7 +78,7 @@ class AsyncBaseService:
             else:
                 raise ValueError(f"Unsupported method: {method}")
             result = response.json()
-            _normalize_person_ids(result)
+            _normalize_person_ids(result, embedded_people=_embedded_people(response))
             duration_ms = int((time.monotonic() - start) * 1000)
             safe_hook(self._hooks.on_operation_end, info, OperationResult(duration_ms=duration_ms))
             return result
@@ -110,7 +113,7 @@ class AsyncBaseService:
                 raise ApiError(f"Failed to parse list response: {_security.truncate(str(e))}") from e
 
             items = decoded_array(body, "the list response body")
-            _normalize_person_ids(items)
+            _normalize_person_ids(items, embedded_people=_embedded_people(response))
             # Unpaginated feeds return the whole collection in a single response,
             # so the total count is simply the array length. This is authoritative
             # regardless of X-Total-Count (absent, present-and-equal, or present-
@@ -203,7 +206,7 @@ class AsyncBaseService:
                 operation=operation,
             )
             result = response.json()
-            _normalize_person_ids(result)
+            _normalize_person_ids(result, embedded_people=_embedded_people(response))
             duration_ms = int((time.monotonic() - start) * 1000)
             safe_hook(self._hooks.on_operation_end, info, OperationResult(duration_ms=duration_ms))
             return result
@@ -303,7 +306,7 @@ class AsyncBaseService:
 
             try:
                 items = response.json()
-                _normalize_person_ids(items)
+                _normalize_person_ids(items, embedded_people=_embedded_people(response))
             except Exception as e:
                 raise ApiError(f"Failed to parse paginated response (page {page}): {_security.truncate(str(e))}") from e
 
@@ -366,7 +369,7 @@ class AsyncBaseService:
 
             try:
                 data = response.json()
-                _normalize_person_ids(data)
+                _normalize_person_ids(data, embedded_people=_embedded_people(response))
             except Exception as e:
                 raise ApiError(f"Failed to parse paginated response (page {page}): {_security.truncate(str(e))}") from e
 
@@ -424,7 +427,7 @@ class AsyncBaseService:
 
         try:
             first_data = first_response.json()
-            _normalize_person_ids(first_data)
+            _normalize_person_ids(first_data, embedded_people=_embedded_people(first_response))
         except Exception as e:
             raise ApiError(f"Failed to parse paginated response (page 1): {_security.truncate(str(e))}") from e
 
@@ -456,7 +459,7 @@ class AsyncBaseService:
 
             try:
                 data = response.json()
-                _normalize_person_ids(data)
+                _normalize_person_ids(data, embedded_people=_embedded_people(response))
             except Exception as e:
                 raise ApiError(f"Failed to parse paginated response (page {page}): {_security.truncate(str(e))}") from e
 

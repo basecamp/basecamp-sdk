@@ -678,20 +678,57 @@ describe("TodosService", () => {
         );
       });
 
-      // The ID lists are resent in full, so a string, float, boolean or null
-      // id would be written as the complete assignee set.
+      // The ID lists are resent in full, so a float, boolean or null id would
+      // be written as the complete assignee set.
+      //
+      // A STRING id is on this list and its presence is a KNOWN DIVERGENCE,
+      // pinned here rather than left to be discovered. BC3 serializes person
+      // ids as strings on some payloads, and `generated.Person.Id` is a
+      // `types.FlexibleInt64`, so the reference reads `"007"` as person 7 and
+      // completes the update; this refuses it.
+      //
+      // The normalizer briefly converted it, by walking `assignees` on every
+      // response. That over-reached — the same key name carries plain-`int64`
+      // people on other schemas, which the reference refuses and this turned
+      // into the system actor — so the walk was narrowed to the two keys and
+      // the two services Go actually normalizes. Closing this properly is
+      // decoder coverage, field by field against the reference, not normalizer
+      // reach: PR #913 (card 42) owns it.
       it.each([
-        ["string", "100"],
         ["float", 10.5],
         ["NaN", Number.NaN],
         ["null", null],
         ["boolean", true],
+        ["string", "007"],
       ])(`update refuses a %s ${field} id before writing`, async (_label, badId) => {
         const requests: string[] = [];
         serve(fullTodo(42, { [field]: [{ id: badId, name: "Jane" }] }), requests);
 
         const error = await rejection(client.todos.update(42, { content: "New title" }));
         expectResponseError(error, new RegExp(`Todo field "${field}"\\[0\\]`), requests);
+      });
+
+      it(`refuses a string ${field} id that the reference accepts, and PR #913 owns`, async () => {
+        // THE DIVERGENCE, STATED AS A TEST so it cannot be mistaken for
+        // correctness. Go reads `"007"` as person 7 through `FlexibleInt64` and
+        // completes this update. This SDK has no decoder, the positional
+        // normalizer no longer reaches `assignees` (it never should have: that
+        // key carries `MyAssignmentAssignee`, a plain `int64`, on another
+        // schema), and so the merge-safe guard refuses the response.
+        //
+        // The refusal is at least honest -- it does not invent an id or write a
+        // partial assignee set -- and it is the pre-existing gap card 42 was
+        // filed for. When PR #913 lands the decoder coverage, this test is the
+        // one to flip.
+        const requests: string[] = [];
+        serve(fullTodo(42, { [field]: [{ id: "007", name: "Jane" }] }), requests);
+
+        const error = await rejection(client.todos.update(42, { content: "New title" }));
+        expectResponseError(error, new RegExp(`Todo field "${field}"\\[0\\]`), requests);
+
+        // No PUT happened: the guard runs before the write, so a refused read
+        // never turns into a partial update.
+        expect(requests).toEqual(["GET"]);
       });
     }
 

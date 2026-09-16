@@ -12,19 +12,131 @@ module Basecamp
     # Default User-Agent header
     USER_AGENT = "basecamp-sdk-ruby/#{VERSION} (api:#{API_VERSION})".freeze
 
-    # Normalizes Person-shaped objects in parsed JSON.
-    # For objects with personable_type and a string id:
+    # Normalizes Person-shaped objects in parsed JSON, finding them the TWO ways
+    # the reference finds them (go/pkg/basecamp/normalize.go):
+    #
+    # 1. by TYPE TAG — any object carrying "personable_type" (+normalizePersonIds+,
+    #    normalize.go:16);
+    # 2. by STRUCTURAL POSITION — the "creator" object and each "participants"
+    #    element, at any depth, WHETHER OR NOT they carry "personable_type"
+    #    (+normalizeEmbeddedPersonIds+, normalize.go:83).
+    #
+    # The second one is not a refinement of the first, and this method had only
+    # the first. BC3's embedded creator and participants people frequently omit
+    # "personable_type" — the reference's own comment (normalize.go:78-82) says
+    # that is why the pass exists — so their string ids reached callers
+    # unconverted: 62 of the 74 measured rows of GoPersonIds::CORPUS differed
+    # from the reference for a bare {"creator":{"id":…}}, and the twelve that
+    # agreed did so only because "leave the string" is also what doing nothing
+    # looks like. The visible cost was on a WRITE: {Services::MergeSafe} requires
+    # an Integer id, so a merge-safe update of a schedule entry whose
+    # participants came back with string ids raised where the reference reads
+    # the number and proceeds.
+    #
+    # Whichever way a person is found, the id rule is the same one
+    # ({coerce_person_id}, the reference's shared coercePersonID):
     # - Signed decimal strings: coerced to Integer, no system_label
     # - Non-numeric sentinels (e.g. "basecamp"): id becomes 0, system_label preserves original
     # - Numeric overflow: left as the string, for the reader to refuse
-    def self.normalize_person_ids(obj)
+    #
+    # ONE WALK, where the reference makes two passes over the same tree. That is
+    # sound only because {coerce_person_id} is idempotent — it returns untouched
+    # unless the id is a String, and it leaves a String behind only in the
+    # overflow case, where a second visit reaches the same refusal — so an
+    # object both passes find is coerced once and re-visited to no effect, and
+    # the order the two rules fire in cannot matter. Verified differentially
+    # against a literal two-walk transcription of normalize.go over the corpus
+    # in nineteen document shapes; if that idempotence is ever weakened, split
+    # this back into two walks.
+    def self.normalize_person_ids(obj, embedded_people: false)
       case obj
       when Hash
-        coerce_person_id(obj) if obj.key?("personable_type") && obj["id"].is_a?(String)
-        obj.each_value { |v| normalize_person_ids(v) }
+        coerce_person_id(obj) if obj.key?("personable_type")
+        coerce_embedded_person_ids(obj) if embedded_people
+        obj.each_value { |v| normalize_person_ids(v, embedded_people: embedded_people) }
       when Array
-        obj.each { |item| normalize_person_ids(item) }
+        obj.each { |item| normalize_person_ids(item, embedded_people: embedded_people) }
       end
+    end
+
+    # The endpoints the reference runs the POSITIONAL pass over, and only those.
+    #
+    # +normalizeEmbeddedPeopleJSON+ is a function in the reference, not a layer.
+    # It is called from +decodeGaugePayload+ (gauges.go:170, reached by every
+    # gauge and needle body) and from the three notification decoders
+    # (my_notifications.go:171, 281, 296). Nothing else in Go calls it, so
+    # nothing else here runs it.
+    #
+    # WHY THIS GATE EXISTS AT ALL, which is a correction. The pass used to run
+    # on every response body. Its two keys are the reference's two, but "creator"
+    # and "participants" are not unique to the wrapper types: on
+    # +UpcomingScheduleEntry+ they hold +UpcomingSchedulePerson+, whose +Id+ is a
+    # plain int64 in the reference (client.gen.go:4194-4198), so a string id
+    # there is a decode error in Go and became person 0 with a +system_label+
+    # here — the SYSTEM ACTOR, on the field that says who acted, for a body the
+    # reference refuses outright. +MyAssignment.assignees+ and
+    # +DisableOutOfOfficeOutput.person+ are the same shape of mistake.
+    #
+    # Matched on the request path rather than an operation name because Go's own
+    # boundary is the call site, and because +update_gauge_needle+ reaches
+    # +decodeGaugePayload+ in the reference while passing no operation id here.
+    #
+    # Each pattern is anchored to the END of the URL's path, and only the path
+    # is matched — never the host, never the query. An unanchored pattern over
+    # the whole URL would let a base URL whose own path happened to contain
+    # "/gauge_needles/" switch the pass on for every request.
+    EMBEDDED_PEOPLE_PATHS = [
+      %r{/my/readings\.json\z},                  # GetMyNotifications
+      %r{/my/readings/bubble_ups\.json\z},       # GetBubbleUps
+      %r{/gauge_needles/\d+\z},                   # GetGaugeNeedle, UpdateGaugeNeedle
+      %r{/projects/\d+/gauge/needles\.json\z},    # ListGaugeNeedles, CreateGaugeNeedle
+      %r{/reports/gauges\.json\z}                 # ListGauges
+    ].freeze
+
+    # Whether +url+ is one of the reference's two normalization surfaces.
+    def self.embedded_people_url?(url)
+      path = begin
+        URI.parse(url.to_s).path.to_s
+      rescue URI::InvalidURIError
+        return false
+      end
+      EMBEDDED_PEOPLE_PATHS.any? { |pattern| pattern.match?(path) }
+    end
+
+    # The people this object carries by POSITION rather than by type tag: its
+    # "creator", and each element of its "participants" (normalize.go:86-95,
+    # matched key for key).
+    #
+    # Only those two keys, and only their immediate shape — an object under
+    # "creator", the object elements under "participants" — because the
+    # reference names exactly these: they are the keys its wrapper types embed a
+    # *Person under (Notification, Gauge, GaugeNeedle).
+    #
+    # NOT because the reference leaves other person ids as strings. It does not.
+    # An earlier version of this comment said widening to "assignees" would
+    # "coerce ids the reference leaves alone", and that is false about the
+    # reference as a whole: Go spells the rule TWICE. This normalizer covers
+    # creator/participants for the wrapper types whose Person.ID is a plain
+    # int64, and Go's generated decoder covers every other person-valued field,
+    # because generated.Person.Id is a types.FlexibleInt64. So Go's OBSERVABLE
+    # answer at "assignees" is the number, reached by the other route.
+    #
+    # Ruby has no decoder on the generated path — +get+ returns a raw Hash — so
+    # that second route does not exist here, and an "assignees" id that arrives
+    # as a string stays one. That is a real gap, measured on a write
+    # (MergeSafe refuses it where the reference completes the update), and it is
+    # deliberately NOT closed by widening this list: the faithful site is the
+    # reader, field by field against the reference, because some person ids in
+    # the model really are plain int64 there (TemplateLibraryConfirmationPerson)
+    # and a blanket sweep would break them. Tracked as its own unit of work.
+    def self.coerce_embedded_person_ids(obj)
+      creator = obj["creator"]
+      coerce_person_id(creator) if creator.is_a?(Hash)
+
+      participants = obj["participants"]
+      return unless participants.is_a?(Array)
+
+      participants.each { |person| coerce_person_id(person) if person.is_a?(Hash) }
     end
 
     # One Person-shaped object's string id, by the reference's grammar.
@@ -44,18 +156,30 @@ module Basecamp
     #
     # Overflow is left as a String on purpose, which is what the reference does:
     # the id is out of range for the field, so the reader refuses it rather than
-    # this silently substituting a sentinel.
+    # this silently substituting a sentinel. WHICH strings are overflows is
+    # decided by Go's scan order and not by their shape — "18446744073709551616x"
+    # is one and "18446744073709551615x" is a sentinel — so this reads them with
+    # {Basecamp::Ids.parse_int}, which is that scan, and shares it with
+    # {Basecamp::Ids.person_from_wire}: one rule, both person-id sites.
     def self.coerce_person_id(obj)
       raw = obj["id"]
-      # Bounded before conversion: this runs over EVERY decoded response, and a
+      # An id that is already a number, or absent, is left alone — the guard the
+      # reference keeps inside this function rather than at its callers
+      # (normalize.go:41-44). Here it is also what makes the single walk above
+      # safe: both of the reference's passes can reach the same object, and the
+      # second visit has to be a no-op.
+      return unless raw.is_a?(String)
+
+      # Bounded by construction: this runs over EVERY decoded response, and a
       # body may be 50 MB, so a long digit run built an arbitrarily large
-      # Integer here before anything decided to discard it.
-      parsed = Ids.bounded_decimal(raw)
+      # Integer here before anything decided to discard it. The scan refuses
+      # past 64 bits within 20 digits and never converts the rest.
+      parsed = Ids.parse_int(raw)
       case parsed
-      when :not_decimal
+      when :syntax
         obj["system_label"] = raw
         obj["id"] = 0
-      when :overflow
+      when :range
         nil # left as the string, for the reader to refuse
       else
         obj["id"] = parsed
@@ -385,7 +509,7 @@ module Basecamp
     def parse_page(response, page:)
       Security.check_body_size!(response.body, Security::MAX_RESPONSE_BODY_BYTES)
       data = JSON.parse(response.body)
-      Http.normalize_person_ids(data)
+      Http.normalize_person_ids(data, embedded_people: response.embedded_people)
       data
     rescue JSON::ParserError => e
       # +cause+ carries the parser's own error, not just its message (#750). The
@@ -652,7 +776,8 @@ module Basecamp
         Response.new(
           body: response.body,
           status: response.status,
-          headers: response.headers
+          headers: response.headers,
+          embedded_people: Http.embedded_people_url?(url)
         )
       rescue Faraday::TimeoutError => e
         # Faraday::TimeoutError < Faraday::ServerError: named before the status
@@ -744,7 +869,8 @@ module Basecamp
         Response.new(
           body: response.body,
           status: response.status,
-          headers: response.headers
+          headers: response.headers,
+          embedded_people: Http.embedded_people_url?(url)
         )
       rescue Faraday::TimeoutError => e
         transport_failure(e, info: info, start_time: start_time)
@@ -1052,10 +1178,16 @@ module Basecamp
     # @return [Hash] response headers
     attr_reader :headers
 
-    def initialize(body:, status:, headers:)
+    # Whether this response came from one of the reference's two positional
+    # normalization surfaces. See +Http::EMBEDDED_PEOPLE_PATHS+.
+    # @return [Boolean]
+    attr_reader :embedded_people
+
+    def initialize(body:, status:, headers:, embedded_people: false)
       @body = body
       @status = status
       @headers = headers
+      @embedded_people = embedded_people
     end
 
     # Parses the response body as JSON, normalizing Person-shaped objects.
@@ -1064,7 +1196,7 @@ module Basecamp
       @json ||= begin
         Security.check_body_size!(@body, Security::MAX_RESPONSE_BODY_BYTES)
         result = JSON.parse(@body)
-        Http.normalize_person_ids(result)
+        Http.normalize_person_ids(result, embedded_people: @embedded_people)
         result
       end
     end

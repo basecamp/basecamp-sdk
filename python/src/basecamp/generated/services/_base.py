@@ -13,35 +13,41 @@ from basecamp._pagination import (
     selects_single_page,
 )
 from basecamp.errors import ApiError
+
+# Normalizes Person-shaped objects in API responses: the BC3 API conflates real
+# Person records (numeric id) with system actors like LocalPerson (symbolic id:
+# "basecamp", "campfire"), and serializes person ids as strings in some payloads.
+#
+# Imported rather than written here, and the WALK is imported, not just the id
+# rule. Both halves used to be copied into this file and its async twin, and a
+# copy drifts: which people the walk finds (an object carrying `personable_type`,
+# AND the `creator`/`participants` of any object, at any depth) is as much of the
+# reference's behaviour as what it does when it finds one. Both of Go's passes,
+# the grammar, and why the two files must not hold their own versions are all
+# documented at `basecamp._person_id.normalize_person_ids`.
+from basecamp._person_id import normalize_person_ids as _normalize_person_ids
+from basecamp._person_id import embedded_people_url as _embedded_people_url
 from basecamp.hooks import OperationInfo, OperationResult, safe_hook
 
 if TYPE_CHECKING:
     pass
 
 
-def _normalize_person_ids(obj: Any) -> None:
-    """Normalize Person-shaped objects in API responses.
-
-    The BC3 API conflates real Person records (numeric id) with system actors
-    like LocalPerson (symbolic id: "basecamp", "campfire"). For any object
-    with a personable_type field whose id is a string, coerce id to int
-    (0 for non-numeric sentinels) and preserve the original label as
-    system_label.
-    """
-    if isinstance(obj, list):
-        for item in obj:
-            _normalize_person_ids(item)
-    elif isinstance(obj, dict):
-        if "personable_type" in obj and isinstance(obj.get("id"), str):
-            raw_id = obj["id"]
-            try:
-                obj["id"] = int(raw_id)
-            except ValueError:
-                obj["system_label"] = raw_id
-                obj["id"] = 0
-        for val in obj.values():
-            if isinstance(val, (dict, list)):
-                _normalize_person_ids(val)
+def _embedded_people(response: object) -> bool:
+    """Whether ``response`` answered one of the reference's two positional
+    normalization surfaces (gauges, notifications). Read off the request URL the
+    response actually answered, so a followed pagination page is judged by the
+    page it fetched. See ``basecamp._person_id.EMBEDDED_PEOPLE_PATHS``."""
+    # `httpx.Response.request` RAISES `RuntimeError` when the response was built
+    # without one, rather than being absent, so `getattr`'s default never fires
+    # for it. A response with no request has no URL to judge, which is "not a
+    # reference surface".
+    try:
+        request = response.request  # type: ignore[attr-defined]
+    except (AttributeError, RuntimeError):
+        return False
+    url = getattr(request, "url", None)
+    return _embedded_people_url(str(url)) if url is not None else False
 
 
 class BaseService:
@@ -80,7 +86,7 @@ class BaseService:
             else:
                 raise ValueError(f"Unsupported method: {method}")
             result = response.json()
-            _normalize_person_ids(result)
+            _normalize_person_ids(result, embedded_people=_embedded_people(response))
             duration_ms = int((time.monotonic() - start) * 1000)
             safe_hook(self._hooks.on_operation_end, info, OperationResult(duration_ms=duration_ms))
             return result
@@ -115,7 +121,7 @@ class BaseService:
                 raise ApiError(f"Failed to parse list response: {_security.truncate(str(e))}") from e
 
             items = decoded_array(body, "the list response body")
-            _normalize_person_ids(items)
+            _normalize_person_ids(items, embedded_people=_embedded_people(response))
             # Unpaginated feeds return the whole collection in a single response,
             # so the total count is simply the array length. This is authoritative
             # regardless of X-Total-Count (absent, present-and-equal, or present-
@@ -208,7 +214,7 @@ class BaseService:
                 operation=operation,
             )
             result = response.json()
-            _normalize_person_ids(result)
+            _normalize_person_ids(result, embedded_people=_embedded_people(response))
             duration_ms = int((time.monotonic() - start) * 1000)
             safe_hook(self._hooks.on_operation_end, info, OperationResult(duration_ms=duration_ms))
             return result
@@ -308,7 +314,7 @@ class BaseService:
 
             try:
                 items = response.json()
-                _normalize_person_ids(items)
+                _normalize_person_ids(items, embedded_people=_embedded_people(response))
             except Exception as e:
                 raise ApiError(f"Failed to parse paginated response (page {page}): {_security.truncate(str(e))}") from e
 
@@ -371,7 +377,7 @@ class BaseService:
 
             try:
                 data = response.json()
-                _normalize_person_ids(data)
+                _normalize_person_ids(data, embedded_people=_embedded_people(response))
             except Exception as e:
                 raise ApiError(f"Failed to parse paginated response (page {page}): {_security.truncate(str(e))}") from e
 
@@ -429,7 +435,7 @@ class BaseService:
 
         try:
             first_data = first_response.json()
-            _normalize_person_ids(first_data)
+            _normalize_person_ids(first_data, embedded_people=_embedded_people(first_response))
         except Exception as e:
             raise ApiError(f"Failed to parse paginated response (page 1): {_security.truncate(str(e))}") from e
 
@@ -461,7 +467,7 @@ class BaseService:
 
             try:
                 data = response.json()
-                _normalize_person_ids(data)
+                _normalize_person_ids(data, embedded_people=_embedded_people(response))
             except Exception as e:
                 raise ApiError(f"Failed to parse paginated response (page {page}): {_security.truncate(str(e))}") from e
 

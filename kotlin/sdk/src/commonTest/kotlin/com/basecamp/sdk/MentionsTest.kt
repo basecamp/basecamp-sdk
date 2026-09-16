@@ -432,6 +432,44 @@ class MentionsTest {
         assertEquals(emptyList(), mention("bc-\u0430ttachment", "sgid"))
     }
 
+    /**
+     * Pins the disagreement between the gid rule here and the flexible id
+     * reader's `strconv.ParseInt` as a fact rather than an accident, in BOTH
+     * directions (`go/pkg/basecamp/person_id_grammar_test.go`,
+     * `TestPersonIDGidRuleStaysApart`).
+     *
+     * A reader who tightens the id reader to match this digit walk makes the
+     * same mistake as one who loosens the walk to match the reader, and the
+     * second reintroduces the defect PR #886 closed. The rows below are the ones
+     * where the two genuinely answer differently about a REAL person: a sentinel
+     * 0 matches no sgid, so the many rows where the reader reads 0 and this rule
+     * refuses are the same answer by two routes, and are not the interesting set.
+     */
+    @Test
+    fun theGidRuleStaysApartFromTheFlexibleIdRule() {
+        // The sign ParseInt takes and the digit walk refuses — #886's +77.
+        assertNull(personIdFromSgid(jsonSgidFor("gid://bc3/Person/+7")))
+        // Sign and leading zeros together.
+        assertNull(personIdFromSgid(jsonSgidFor("gid://bc3/Person/+007")))
+        // The sign survives all the way to int64 max, for the reader.
+        assertNull(personIdFromSgid(jsonSgidFor("gid://bc3/Person/+9223372036854775807")))
+        // The walk refuses the sign; this rule also refuses id <= 0.
+        assertNull(personIdFromSgid(jsonSgidFor("gid://bc3/Person/-7")))
+        // int64 min is a fine flexible id and never a person.
+        assertNull(personIdFromSgid(jsonSgidFor("gid://bc3/Person/-9223372036854775808")))
+
+        // And this rule is not simply the stricter of the two: leading zeros
+        // pass its digit walk, so it agrees with the reader on these. A port
+        // that "hardens" the walk by refusing them diverges from the reference
+        // just as surely as one that loosens it.
+        assertEquals(7L, personIdFromSgid(jsonSgidFor("gid://bc3/Person/007")))
+        assertEquals(10L, personIdFromSgid(jsonSgidFor("gid://bc3/Person/010")))
+        assertEquals(
+            9223372036854775807L,
+            personIdFromSgid(jsonSgidFor("gid://bc3/Person/0009223372036854775807")),
+        )
+    }
+
     private fun jsonSgidFor(gid: String): String {
         // The envelope is JSON, so a control character in the gid has to be
         // escaped to reach the decoder rather than breaking the envelope. A

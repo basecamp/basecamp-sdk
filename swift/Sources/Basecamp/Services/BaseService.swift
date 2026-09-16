@@ -675,6 +675,15 @@ open class BaseService: @unchecked Sendable {
     /// - Numeric strings: coerced to Int, no system_label
     /// - Numeric overflow: left as string for FlexibleInt to reject
     /// - Non-numeric sentinels: id becomes 0, original preserved as system_label
+    ///
+    /// "Numeric" is `strconv.ParseInt(s, 10, 64)` and nothing looser, the same
+    /// rule the reader applies — `coercePersonID` and `FlexibleInt64` are two
+    /// call sites of one `ParseInt` in the reference
+    /// (`go/pkg/basecamp/normalize.go:45`, `go/pkg/types/flexible_int64.go:34`),
+    /// so they are two call sites of one ``parsePersonID(_:)`` here. Which of
+    /// the two refusals fired decides between the last two bullets, and that
+    /// distinction is not one any single predicate can make; see
+    /// ``parsePersonID(_:)``.
     static func normalizePersonIds(in data: Data) -> Data {
         // Short-circuit: skip parsing if no Person-shaped objects
         guard data.range(of: Data("personable_type".utf8)) != nil else { return data }
@@ -693,14 +702,17 @@ open class BaseService: @unchecked Sendable {
     private static func normalizeWalk(_ obj: Any) {
         if let dict = obj as? NSMutableDictionary {
             if dict["personable_type"] != nil, let idStr = dict["id"] as? String {
-                if let n = Int(idStr) {
+                switch parsePersonID(idStr) {
+                case .value(let n):
                     dict["id"] = n
-                } else if idStr.range(of: #"^-?\d+$"#, options: .regularExpression) != nil {
-                    // Numeric overflow — leave as string, FlexibleInt will reject
-                } else {
-                    // Non-numeric sentinel
+                case .syntax:
+                    // Non-numeric sentinel (`go/pkg/basecamp/normalize.go:66-67`).
                     dict["system_label"] = idStr
                     dict["id"] = 0
+                case .range:
+                    // Numeric overflow — leave as string, FlexibleInt will
+                    // reject (`go/pkg/basecamp/normalize.go:62-63`).
+                    break
                 }
             }
             for (_, val) in dict {

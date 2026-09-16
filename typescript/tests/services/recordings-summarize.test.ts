@@ -27,7 +27,7 @@ import {
   summarizableRecordingTypes,
 } from "../../src/index.js";
 import type { RecordingReadSources } from "../../src/index.js";
-import { personSGID } from "../helpers/sgid.js";
+import { personSGID, legacySGID } from "../helpers/sgid.js";
 
 const BASE_URL = "https://3.basecampapi.com/12345";
 const BUCKET = 2085958499;
@@ -179,6 +179,76 @@ describe("recordings.summarize", () => {
 
       expect(summary.mentioned_person_ids).toEqual([VICTOR]);
       expect(summary.content).toContain("bc-attachment");
+      // Absent, not `[]`, when there is nothing to report: the key appears only
+      // on the payloads where the mention list is actually short.
+      expect("unnameable_mention_ids" in summary).toBe(false);
+    });
+
+    it("still reads a recording whose rich text carries an unnameable mention", async () => {
+      // THE AVAILABILITY CASE, and the reason mentionedPersonIds skips instead
+      // of throwing. `content` here is whatever some Basecamp user typed, and
+      // the sgid's signature is never verified on this path -- globalIDFromSGID
+      // takes a bare unsigned envelope -- so the person id inside it is chosen
+      // by the comment's author, not by BC3.
+      //
+      // While this threw, that made one crafted <bc-attachment> a denial of
+      // read: the summary, the content, the title and the creator all went with
+      // the one mention that could not be named. Anyone who could write a
+      // comment could make the recording unreadable to this SDK.
+      const crafted = legacySGID("gid://bc3/Person/9007199254740993");
+      const real = personSGID(VICTOR);
+      server.use(
+        http.get(`${BASE_URL}/comments/1`, () =>
+          HttpResponse.json(
+            recording(1, "Comment", {
+              content:
+                `<div><bc-attachment sgid="${crafted}"></bc-attachment>` +
+                `<bc-attachment sgid="${real}"></bc-attachment> hi</div>`,
+            }),
+          ),
+        ),
+      );
+
+      const summary = await client.recordings.summarize({
+        bucketId: BUCKET,
+        recordingId: 1,
+        recordingType: "Comment",
+      });
+
+      // The read completes, and the mention it CAN name still arrives -- the
+      // crafted one sits first in document order, so an early exit would have
+      // lost the real person behind it as well.
+      expect(summary.mentioned_person_ids).toEqual([VICTOR]);
+      expect(summary.content).toContain("bc-attachment");
+      expect(summary.id).toBe(1);
+
+      // AND THE SKIP IS NOT SILENT. The short list is distinguishable from a
+      // genuinely shorter text, which is the whole objection to skipping: the
+      // id it could not name is reported as the decimal string it arrived as,
+      // because reporting it as a number is exactly what it cannot do.
+      expect(summary.unnameable_mention_ids).toEqual(["9007199254740993"]);
+    });
+
+    it("reports no unnameable mention for a chat line BC3 never read as markup", async () => {
+      // A plain-text line mentions nobody, so it cannot mention someone this SDK
+      // is unable to name either. The rich-text walk runs over `content` before
+      // the projection learns the line is plain text; the key it would have set
+      // has to go with the list it belongs to, or the summary reports a short
+      // mention list where there is no list at all.
+      const crafted = legacySGID("gid://bc3/Person/9007199254740993");
+      const line = `<bc-attachment sgid="${crafted}"></bc-attachment>`;
+      server.use(
+        http.get(`${BASE_URL}/projects/${BUCKET}`, () =>
+          HttpResponse.json({ id: BUCKET, dock: [{ id: 77, name: "chat", title: "Campfire", enabled: true, url: "", app_url: "" }] }),
+        ),
+        http.get(`${BASE_URL}/chats/77/lines/9`, () =>
+          HttpResponse.json(recording(9, "Chat::Lines::Text", { content: line })),
+        ),
+      );
+
+      const text = await client.recordings.summarize({ bucketId: BUCKET, recordingId: 9, recordingType: "Chat::Lines::Text" });
+      expect(text.mentioned_person_ids).toEqual([]);
+      expect("unnameable_mention_ids" in text).toBe(false);
     });
 
     it("reports no mentions for a chat line BC3 never read as markup", async () => {
@@ -969,17 +1039,20 @@ describe("recordings.summarize", () => {
       );
       expect((safe as { creator?: { id?: unknown } }).creator?.id).toBe(9007199254740991);
 
-      // And the reader above governs a NARROWER set of bodies than it looks:
-      // `normalizePersonIds` rewrites the id of anything carrying
-      // `personable_type` before a composite sees the body, so the same id that
-      // is refused above comes back as the 0-plus-system_label that pre-pass
-      // produces. Pinned so the declared residue is not mistaken for the
-      // behaviour a caller actually sees on a real person.
+      // And the pre-pass no longer NARROWS that. `normalizePersonIds` rewrites
+      // the id of anything carrying `personable_type` before a composite sees
+      // the body, and it used to turn every id past 2^53 into 0-plus-system_label
+      // -- the SYSTEM ACTOR, for a real person Go reads exactly -- so this same id
+      // came back as person 0 when tagged while the untagged spelling above was
+      // refused. That collapse was a defect, fixed in #908: the pre-pass now
+      // reads the id Go reads and, unable to hold it in a number, leaves the
+      // string in place for the reader, which refuses it exactly as it does
+      // above. Tagged and untagged agree, and neither names the system actor.
       const prepassed = await summarizeBody(
         `{"id":1,"title":"t","content":"c",${BUCKET_JSON},"creator":{"id":"9223372036854775807","name":"A","personable_type":"User"}}`,
       );
-      expect(prepassed).not.toBeInstanceOf(BasecampError);
-      expect((prepassed as { creator?: { id?: unknown } }).creator?.id).toBe(0);
+      expect(prepassed).toBeInstanceOf(BasecampError);
+      expect((prepassed as BasecampError).message).toContain("exactly");
     });
 
     it("emits a parent's and a bucket's id decoded, as the plain int64 they are", async () => {

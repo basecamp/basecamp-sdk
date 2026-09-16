@@ -365,6 +365,61 @@ class SchedulesServiceTest < Minitest::Test
     assert_equal [ 1049715914 ], captured[:bodies].first["participant_ids"]
   end
 
+  # The read-back BC3 serves for an embedded person on some payloads: a STRING
+  # id and no "personable_type" key. The reference reads these through its
+  # decoder -- generated ScheduleEntry.Participants is []Person, and
+  # Person.Id is types.FlexibleInt64 -- so its merge-safe read sees the number
+  # and completes the update.
+  #
+  # THIS SDK REFUSES IT, AND THAT IS A KNOWN DIVERGENCE, PINNED rather than left
+  # to be discovered. Ruby has no decoder on the generated path. The positional
+  # normalizer briefly covered this by running on every response, and that
+  # over-reached: the same "creator" / "participants" keys hold plain-int64
+  # people on UpcomingScheduleEntry, which the reference refuses and the
+  # normalizer turned into the system actor. So it was narrowed to the two
+  # surfaces Go normalizes (gauges, notifications), and schedules is not one.
+  #
+  # The refusal is the SAFE direction -- no id is invented and no partial
+  # participant list is written, because the guard runs before the PUT. Closing
+  # it properly is decoder coverage, field by field against the reference, and
+  # PR #913 (card 42) owns it. These are the tests to flip when it lands.
+  def entry_with_untagged_string_participants
+    full_entry(
+      "participants" => [
+        { "id" => "1049715914", "name" => "Victor Cooper" },
+        { "id" => "1049715915", "name" => "Ann Wells" }
+      ]
+    )
+  end
+
+  def test_update_entry_refuses_string_participant_ids_the_reference_accepts
+    captured = stub_entry_get_and_put(entry: entry_with_untagged_string_participants)
+
+    error = assert_raises(Basecamp::ApiError) do
+      @account.schedules.update_entry(entry_id: 789, summary: "Team Meeting & Kickoff")
+    end
+
+    assert_match(/"participants"\[0\]\.id is not an integer/, error.message)
+    # No PUT: a refused read never becomes a partial update.
+    assert_empty captured[:bodies]
+  end
+
+  def test_edit_entry_refuses_a_sentinel_participant_rather_than_inventing_the_system_actor
+    # The reference reads "basecamp" here as person 0, through FlexibleInt64.
+    # This SDK does not normalize schedules, so it refuses -- and it must not
+    # get to 0 by some other route, which would be the accepting-direction
+    # mistake the narrowing exists to remove.
+    entry = full_entry("participants" => [ { "id" => "basecamp", "name" => "Basecamp" } ])
+    captured = stub_entry_get_and_put(entry: entry)
+
+    assert_raises(Basecamp::ApiError) do
+      @account.schedules.edit_entry(entry_id: 789) do |fields|
+        fields.participant_ids = fields.participant_ids
+      end
+    end
+    assert_empty captured[:bodies]
+  end
+
   # notify is a directive, not state: it has nothing in the read-back to seed
   # it from, so it reaches the wire only when the caller says so.
   def test_update_entry_sends_notify_only_when_addressed
@@ -731,11 +786,23 @@ class SchedulesServiceTest < Minitest::Test
     assert_empty captured[:bodies]
   end
 
+  # A plain digit string was a row here — <tt>{ "id" => "1049715914" }</tt>,
+  # refused as "not an integer" — and it is not malformed at all: it is how BC3
+  # spells an embedded person's id, and the reference normalizes it to the
+  # number before its own merge-safe read ever sees it
+  # (normalizeEmbeddedPersonIds, go/pkg/basecamp/normalize.go:83). The row
+  # pinned this SDK refusing a body the reference updates. What remains below is
+  # what stays malformed after normalization: an id out of int64 range, which
+  # the reference also leaves a string — its decoder then fails the READ, where
+  # Ruby, having no decoder on this path, refuses the WRITE — and ids of a type
+  # no normalization touches.
   [
     [ "a non-array", "nope", %(Schedule entry field "participants" is not an array) ],
     [ "a non-object element", [ 42 ], %(Schedule entry field "participants"[0] is not an object) ],
     [ "an element with no id", [ { "name" => "Victor" } ], %(Schedule entry field "participants"[0] has no "id") ],
-    [ "a non-integer id", [ { "id" => "1049715914" } ], %(Schedule entry field "participants"[0].id is not an integer) ],
+    [ "an out of range id", [ { "id" => "18446744073709551616" } ],
+      %(Schedule entry field "participants"[0].id is not an integer) ],
+    [ "a float id", [ { "id" => 12.5 } ], %(Schedule entry field "participants"[0].id is not an integer) ],
     [ "a boolean id", [ { "id" => true } ], %(Schedule entry field "participants"[0].id is not an integer) ]
   ].each do |label, participants, message|
     define_method("test_update_entry_refuses_#{label.tr(" ", "_")}_in_participants") do

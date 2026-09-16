@@ -102,7 +102,17 @@ fun personIdFromSgid(sgid: String): Long? {
     val gid = globalIdFromSgid(sgid) ?: return null
     val (model, rawId) = globalIdModelAndId(gid) ?: return null
     if (model != "Person" || rawId.isEmpty()) return null
+    // ASCII digits only, and BEFORE the parse: the reference walks the bytes
+    // here (`go/pkg/basecamp/mentions.go:252-256`), so this rule refuses a
+    // leading "+" that `strconv.ParseInt` — and so the flexible id reader in
+    // `serialization/ParseInt64.kt` — accepts. That disagreement is deliberate,
+    // not a hardened copy of the other rule: loosening it is the defect PR #886
+    // closed, where `gid://bc3/Person/+77` began naming person 77. Neither rule
+    // may be hoisted into the other, in either direction.
     if (rawId.any { it < '0' || it > '9' }) return null
+    // Safe only because of that walk. `toLongOrNull` goes through `digitOf`,
+    // which is Unicode-aware, but nothing but an ASCII digit reaches here; its
+    // null is therefore an id past 64 bits, which names nobody.
     val id = rawId.toLongOrNull() ?: return null
     return if (id > 0) id else null
 }

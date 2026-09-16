@@ -26,6 +26,7 @@ import type { BasecampHooks, OperationInfo, OperationResult } from "../hooks.js"
 import { BasecampError, errorFromParsedBody, errorFromResponse, parseRetryAfter, truncateErrorMessage } from "../errors.js";
 import metadata from "../generated/metadata.js";
 import { ListResult, parseTotalCount, type PaginationOptions } from "../pagination.js";
+import { personIdNumber, scanPersonId } from "../person-id.js";
 import { parseNextLink, resolveURL, isSameOrigin, DEFAULT_MAX_PAGES, assertValidMaxPages } from "../pagination-utils.js";
 import { saturatingBackoff, timerSafeDelayMs } from "../retry.js";
 import type { paths } from "../generated/schema.js";
@@ -78,15 +79,115 @@ function selectedPageResult<T>(
 }
 
 /**
- * Normalizes Person-shaped objects in API responses.
+ * Rewrites one Person-shaped object's string `id` in place.
+ *
+ * This is `coercePersonID` (`go/pkg/basecamp/normalize.go:38-68`), outcome for
+ * outcome, over the one rule in `../person-id.js` — Go's
+ * `strconv.ParseInt(s, 10, 64)`:
+ *
+ * - it reads a number: write the number, no `system_label` (`:58`)
+ * - SYNTAX ("basecamp", " 7", "12.0", "1e3"): id `0`, the raw string kept as
+ *   `system_label` (`:66-67`) — Go's non-numeric sentinel
+ * - RANGE ("9223372036854775808"): leave the string exactly as it arrived
+ *   (`:62-63`), so whoever reads it refuses rather than inventing an id
+ *
+ * An object whose `id` is already a number, or absent, is left alone — which is
+ * also what makes this IDEMPOTENT, and both passes below depend on that.
+ *
+ * The `^-?\d+$` + `Number.isSafeInteger` pair this replaces was wrong at both
+ * ends. It refused the leading `+` that `ParseInt` takes, so `"+7"` — a real
+ * person — became the sentinel. And it collapsed EVERY id past
+ * `Number.MAX_SAFE_INTEGER` to `id: 0` with a `system_label`: range errors and
+ * genuine large ids alike, which is to say it turned people into LocalPerson,
+ * silently, in the shape callers trust. Measured against the reference, 26 of
+ * the 74 corpus rows in `tests/helpers/person-id-corpus.ts` disagreed with Go
+ * (25 of them on the id itself; `"+0"` agreed on `0` and added a spurious
+ * label). The 11 that remain are the unrepresentable-value rows
+ * {@link personIdNumber} argues about.
+ */
+function coercePersonId(rec: Record<string, unknown>): void {
+  if (typeof rec.id !== "string") return;
+  const idStr = rec.id;
+  const scan = scanPersonId(idStr);
+  if (scan.kind === "syntax") {
+    // Go's non-numeric sentinel, with the label the id came in as.
+    rec.system_label = idStr;
+    rec.id = 0;
+  } else if (scan.kind === "value") {
+    const id = personIdNumber(scan.value);
+    // `undefined` is an id Go read and a `number` cannot hold. Leaving the
+    // string is the RANGE treatment, for the reason at personIdNumber: a
+    // rounded id names a different person and `0` names the system actor,
+    // while the digits, left alone, name whoever they always named.
+    if (id !== undefined) rec.id = id;
+  }
+  // RANGE: nothing. The string stays put and the caller refuses it.
+}
+
+/** A JSON object — what Go's `.(map[string]any)` assertion accepts, and no array. */
+function isJSONObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/**
+ * The keys Go's positional pass finds a person under, with the shape each holds.
+ *
+ * These are `normalizeEmbeddedPersonIds`'s two (`go/pkg/basecamp/normalize.go:83-104`)
+ * and nothing else, and the pass runs only on {@link EMBEDDED_PERSON_SERVICES}.
+ * `tests/services/person-id-normalization.test.ts` pins both halves.
+ *
+ * THIS REPLACED A WIDER SET, and the reason is worth keeping. Go has two ways a
+ * person id becomes a number: this normalizer, on the wrapper paths whose
+ * `basecamp.Person.ID` is a plain `int64`; and its decoder, because
+ * `generated.Person.Id` is `types.FlexibleInt64`, so every other `Person`-typed
+ * field converts at read time. TypeScript has no decoder, so the set was
+ * briefly widened to all twelve keys the spec types as `Person` — `assignees`,
+ * `subscribers`, `completion_subscribers` among them — to stand in for both.
+ *
+ * The derivation was right and the application was not. The keys were matched
+ * by NAME at any depth in every response, and a name that is `Person`-valued on
+ * one schema is not on every other: `creator`, `participants`, `assignees` and
+ * `person` also hold people whose id is a plain `int64` in the reference
+ * (`UpcomingSchedulePerson`, `MyAssignmentAssignee`, `OutOfOfficePerson`). A
+ * string there is a decode error in Go, and this turned it into the system
+ * actor. See {@link normalizeEmbeddedPersonIds} for the six sites.
+ *
+ * The arity is honoured because Go's type assertions carry it: the wrapper pass
+ * asserts `.(map[string]any)` for the creator and `[]any` for participants
+ * (`:85-95`), so a `creator` that is not an object is not a person.
+ */
+export const EMBEDDED_PERSON_KEYS: ReadonlyMap<string, "object" | "array"> = new Map([
+  ["creator", "object"],
+  ["participants", "array"],
+] as const);
+
+/**
+ * The services whose responses Go runs the positional pass over.
+ *
+ * `normalizeEmbeddedPeopleJSON` is a FUNCTION in the reference, not a layer, and
+ * it is called from exactly two places: `gauges.go:171` and
+ * `my_notifications.go:171,281,296`. Matching that is the whole point — see
+ * {@link normalizeEmbeddedPersonIds}.
+ */
+const EMBEDDED_PERSON_SERVICES: ReadonlySet<string> = new Set(["Gauges", "MyNotifications"]);
+
+/**
+ * Normalizes Person-shaped objects in API responses, by `personable_type`.
  *
  * The BC3 API conflates real Person records (numeric id) with system actors
- * like LocalPerson (symbolic id: "basecamp", "campfire"). This function
- * walks a response tree and, for any object with a `personable_type` field
- * whose `id` is a string:
- * - Numeric strings in safe integer range: coerced to number, no system_label
- * - Non-numeric sentinels (e.g. "basecamp"): id becomes 0, original preserved as system_label
- * - Numeric overflow (beyond Number.MAX_SAFE_INTEGER): id becomes 0, original preserved as system_label
+ * like LocalPerson (symbolic id: "basecamp", "campfire"), and it serializes
+ * person ids as strings in some payloads. This is Go's `normalizePersonIds`
+ * (`go/pkg/basecamp/normalize.go:16-29`): any object at any depth carrying a
+ * `personable_type` key, whatever its value, gets {@link coercePersonId}.
+ *
+ * The key's presence is the whole test, and it is a safe one to run on every
+ * response: an object that declares itself personable IS the Person projection,
+ * whose id is `FlexibleInt64` in the reference and therefore a number to every
+ * caller. This pass predates the person-id work and its reach is unchanged by
+ * it.
+ *
+ * The POSITIONAL pass is a separate function with a much smaller reach, for
+ * reasons {@link normalizeEmbeddedPersonIds} sets out.
  */
 function normalizePersonIds(obj: unknown): void {
   if (!obj || typeof obj !== "object") return;
@@ -95,27 +196,83 @@ function normalizePersonIds(obj: unknown): void {
     return;
   }
   const rec = obj as Record<string, unknown>;
-  if ("personable_type" in rec && typeof rec.id === "string") {
-    const idStr = rec.id as string;
-    // Strict integer check: only bare digits (with optional leading minus).
-    // Rejects "1e3", "123.0", "0x1F", "123abc" which Number() would accept.
-    if (/^-?\d+$/.test(idStr) && Number.isSafeInteger(Number(idStr))) {
-      // Numeric string in safe integer range (e.g. "12345") — coerce to number
-      rec.id = Number(idStr);
-    } else if (/^-?\d+$/.test(idStr)) {
-      // Pure digits but overflows JS safe integer range — preserve as
-      // system_label since we can't represent it losslessly as a number
-      rec.system_label = idStr;
-      rec.id = 0;
-    } else {
-      // Non-numeric sentinel (e.g. "basecamp" for LocalPerson)
-      rec.system_label = idStr;
-      rec.id = 0;
-    }
-  }
+  if ("personable_type" in rec) coercePersonId(rec);
   for (const val of Object.values(rec)) {
     if (typeof val === "object" && val !== null) normalizePersonIds(val);
   }
+}
+
+/**
+ * Coerces the string ids of people embedded under `creator` and `participants`.
+ *
+ * Go's `normalizeEmbeddedPersonIds` (`go/pkg/basecamp/normalize.go:83-104`),
+ * with Go's reach: it runs ONLY where `normalizeEmbeddedPeopleJSON` is called,
+ * which is `gauges.go:171` and `my_notifications.go:171,281,296` and nowhere
+ * else. {@link EMBEDDED_PERSON_SERVICES} is that call list.
+ *
+ * It exists because the wrapper types on those two paths (Notification, Gauge,
+ * GaugeNeedle) embed a `*Person` whose `ID` is a plain `int64`, and embedded
+ * creator and participant people frequently omit `personable_type`, so the pass
+ * above skips exactly the payloads this one exists to fix.
+ *
+ * WHY IT IS NOT WIDER, WHICH IS A CORRECTION. This walk briefly ran on every
+ * response over a twelve-key set derived from the spec's `Person`-valued
+ * fields, to stand in for the decoder TypeScript does not have. The derivation
+ * was right and the APPLICATION was wrong: the keys were matched by NAME at any
+ * depth, so a name that is `Person`-valued on one schema reached every other
+ * schema that happens to use it. Three schemas have a person-shaped field under
+ * one of these names whose id is a plain `int64` in the reference, so a string
+ * there is a decode error in Go and became the SYSTEM ACTOR here:
+ *
+ * - `UpcomingSchedulePerson` — `UpcomingScheduleEntry.creator`, `.participants`,
+ *   `UpcomingAssignable.assignees`, `UpcomingAssignableCompletion.creator`
+ * - `MyAssignmentAssignee` — `MyAssignment.assignees`
+ * - `OutOfOfficePerson` — `DisableOutOfOfficeOutput.person`
+ *
+ * A body the reference REFUSES outright read as person 0 with a `system_label`,
+ * on the field that says who acted — a divergence in the accepting direction on
+ * an identity field, which is the exact class this work exists to remove. It was
+ * latent (BC3 sends integers at all six sites today) and it was still wrong, and
+ * the rule it broke is the one that settles these: a port normalizes exactly
+ * where the reference does, never wider.
+ *
+ * The gap that widening was covering is real and is NOT closed here: `assignees`,
+ * `subscribers` and `completion_subscribers` carry string ids that this SDK now
+ * leaves as strings, where Go's decoder converts them. That is decoder coverage
+ * rather than normalizer reach, it needs a per-field audit against the
+ * reference, and it belongs to PR #913.
+ */
+function normalizeEmbeddedPersonIds(obj: unknown): void {
+  if (!obj || typeof obj !== "object") return;
+  if (Array.isArray(obj)) {
+    for (const item of obj) normalizeEmbeddedPersonIds(item);
+    return;
+  }
+  const rec = obj as Record<string, unknown>;
+  for (const [key, val] of Object.entries(rec)) {
+    // Go's type assertions skip anything else — a `creator: "me"` or a
+    // `participants: {}` is not a person (`:85-95`), and neither is a list
+    // element that is not an object.
+    const arity = EMBEDDED_PERSON_KEYS.get(key);
+    if (arity === "object") {
+      if (isJSONObject(val)) coercePersonId(val);
+    } else if (arity === "array" && Array.isArray(val)) {
+      for (const element of val) {
+        if (isJSONObject(element)) coercePersonId(element);
+      }
+    }
+    if (typeof val === "object" && val !== null) normalizeEmbeddedPersonIds(val);
+  }
+}
+
+/**
+ * Both of the reference's passes, applied the way the reference applies them:
+ * the `personable_type` pass to every response, the positional pass only on the
+ * services Go calls `normalizeEmbeddedPeopleJSON` from.
+ */
+function normalizeResponsePersonIds(obj: unknown, service: string): void {
+  normalizePersonIds(obj);
+  if (EMBEDDED_PERSON_SERVICES.has(service)) normalizeEmbeddedPersonIds(obj);
 }
 
 /**
@@ -384,7 +541,7 @@ export abstract class BaseService {
         return undefined as T;
       }
 
-      normalizePersonIds(data);
+      normalizeResponsePersonIds(data, info.service);
       return data;
     } catch (err) {
       result.durationMs = Math.round(performance.now() - start);
@@ -445,7 +602,7 @@ export abstract class BaseService {
       }
 
       const firstPageItems: T[] = data ?? [];
-      normalizePersonIds(firstPageItems);
+      normalizeResponsePersonIds(firstPageItems, info.service);
       const totalCount = parseTotalCount(response);
       const maxItems = paginationOpts?.maxItems;
 
@@ -470,6 +627,7 @@ export abstract class BaseService {
         response,
         firstPageItems,
         maxItems,
+        info.service,
       );
 
       // Update duration to reflect total time across all pages
@@ -528,7 +686,7 @@ export abstract class BaseService {
       }
 
       const firstPageData = (data ?? {}) as Record<string, unknown>;
-      normalizePersonIds(firstPageData);
+      normalizeResponsePersonIds(firstPageData, info.service);
       const totalCount = parseTotalCount(response);
 
       // Extract wrapper fields (everything except the paginated key)
@@ -562,6 +720,7 @@ export abstract class BaseService {
         firstPageItems,
         key,
         maxItems,
+        info.service,
       );
 
       result.durationMs = Math.round(performance.now() - start);
@@ -629,6 +788,7 @@ export abstract class BaseService {
     initialResponse: Response,
     firstPageItems: T[],
     maxItems: number | undefined,
+    service: string,
   ): Promise<{ items: T[]; truncated: boolean }> {
     const allItems = [...firstPageItems];
     let response = initialResponse;
@@ -655,7 +815,7 @@ export abstract class BaseService {
       }
 
       const pageItems: T[] = await this.parsePage<T[]>(response, page + 1);
-      normalizePersonIds(pageItems);
+      normalizeResponsePersonIds(pageItems, service);
       allItems.push(...pageItems);
 
       // Check maxItems cap. Only mark truncated when items were actually
@@ -682,6 +842,7 @@ export abstract class BaseService {
     firstPageItems: T[],
     key: string,
     maxItems: number | undefined,
+    service: string,
   ): Promise<{ items: T[]; truncated: boolean }> {
     const allItems = [...firstPageItems];
     let response = initialResponse;
@@ -707,7 +868,7 @@ export abstract class BaseService {
       }
 
       const pageData = await this.parsePage<Record<string, unknown>>(response, page + 1);
-      normalizePersonIds(pageData);
+      normalizeResponsePersonIds(pageData, service);
       const pageItems: T[] = (pageData[key] as T[]) ?? [];
       allItems.push(...pageItems);
 

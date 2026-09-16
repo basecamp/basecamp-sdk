@@ -176,6 +176,7 @@ export {
 // returned. See src/services/mentions.ts for the trust boundary between them.
 export {
   mentionedPersonIds,
+  readMentions,
   personIdFromSGID,
   mentionMarkup,
   withMentions,

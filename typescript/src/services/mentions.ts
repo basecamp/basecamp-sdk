@@ -64,6 +64,7 @@
  */
 
 import { Errors } from "../errors.js";
+import { personIdNumber, scanPersonId } from "../person-id.js";
 import type { Person } from "../generated/services/people.js";
 
 // =============================================================================
@@ -83,17 +84,98 @@ import type { Person } from "../generated/services/people.js";
  * Every `<bc-attachment>` in the text counts, including one inside a
  * `<blockquote>`: BC3 notifies quoted mentions too, so the read matches what
  * the server does with the write.
+ *
+ * An id a `number` cannot carry — a valid `int64` past
+ * `Number.MAX_SAFE_INTEGER` — is SKIPPED, like any other sgid this cannot
+ * resolve to a person.
+ *
+ * That is a real under-report, and it was briefly a throw for that reason: the
+ * count is the whole answer here, and dropping an id silently makes a short
+ * list indistinguishable from a genuinely shorter text, on a value that feeds
+ * `mentioned_person_ids` and decides who gets notified. Measured against the
+ * reference, a text naming `7, 9007199254740991, 9007199254740992,
+ * 9007199254740993, 9223372036854775807, 0009223372036854775807` gives Go 5 ids
+ * and gives this 2.
+ *
+ * THE THROW WAS WORSE, AND NOT BY A LITTLE. This function's input is rich text
+ * off the wire, and `recordingsExtensions.projectRecording` calls it unguarded
+ * on server-returned `content`. The sgid's signature is never verified here —
+ * `globalIDFromSGID` takes a bare unsigned envelope — so the id inside it is
+ * written by whoever wrote the comment. A throw therefore handed any author of
+ * a `<bc-attachment>` a way to fail `recordings.summarize()` outright: one
+ * crafted mention, and every other mention, the content, the title and the
+ * creator all go with it. Refusing to name one person is a smaller loss than
+ * refusing to read the recording, and the choice is not the SDK's to make on
+ * the caller's behalf when an adversary picks the input.
+ *
+ * It is also the reference's own failure mode: `MentionedPersonIDs`
+ * (`go/pkg/basecamp/mentions.go:82-92`) `continue`s on every sgid
+ * `PersonIDFromSGID` declines, and never fails the text. Go simply has fewer
+ * ids it must decline, because an `int64` fits its return type.
+ *
+ * `person-id.ts` argues the same trade the same way for the normalizer — one
+ * unrepresentable id must not discard every other record in the body — and this
+ * site is the one where the input is untrusted by construction, so it is the
+ * last place that argument should have been abandoned. The residual is recorded
+ * in SPEC §10 as an availability trade-off rather than hidden.
+ *
+ * A caller that must not under-report reads {@link readMentions} instead, which
+ * returns the same list alongside the ids it could not name. That is the
+ * distinguishable signal the skip would otherwise lack, and
+ * `recordings.summarize()` surfaces it as `unnameable_mention_ids`.
+ *
  */
 export function mentionedPersonIds(richText: string): number[] {
+  return readMentions(richText).ids;
+}
+
+/**
+ * The mentions a rich text names, and the ones it names that cannot be reported
+ * as numbers.
+ *
+ * {@link mentionedPersonIds} is `readMentions(text).ids`. This is the same walk
+ * with the skipped ids kept rather than dropped, so a caller that must not
+ * under-report can tell "this text mentions two people" from "this text mentions
+ * two people I can name and one I cannot".
+ *
+ * `unnameable` holds each id as its CANONICAL DECIMAL STRING — no leading zeros,
+ * what `strconv.ParseInt` would return — in document order, deduplicated on that
+ * value the way the reference deduplicates on the `int64`. So `0009223372036854775807`
+ * and `9223372036854775807` are one entry, and `ids.length + unnameable.length`
+ * is the count the reference gives. A string because that is the whole point:
+ * these are exactly the ids no `number` can carry, so reporting them as numbers
+ * would round them into a neighbouring person — the failure this refuses to make.
+ * They are real ids, not malformed ones: an sgid that does not decode, or names
+ * something other than a Person, or carries a magnitude past `int64`, is not a
+ * mention in the reference either and appears in neither list.
+ *
+ * Nothing here verifies the sgid's signature, so an id in `unnameable` is as
+ * untrusted as one in `ids` — see the trust boundary above.
+ */
+export function readMentions(richText: string): { ids: number[]; unnameable: string[] } {
   const ids: number[] = [];
+  const unnameable: string[] = [];
   const seen = new Set<number>();
+  const seenUnnameable = new Set<string>();
   for (const sgid of bcAttachmentSGIDs(richText)) {
-    const id = personIdFromSGID(sgid);
-    if (id === undefined || seen.has(id)) continue;
-    seen.add(id);
-    ids.push(id);
+    const mentioned = parsePersonSGID(sgid);
+    if (mentioned.kind === "none") continue;
+    // An id a `number` cannot carry is skipped, not thrown: see above. The
+    // input is attacker-written, so failing the whole text here would let one
+    // crafted mention take down the recording read that calls this. It is
+    // reported here instead, which is what keeps the skip from being silent.
+    if (mentioned.kind === "unrepresentable") {
+      if (!seenUnnameable.has(mentioned.id)) {
+        seenUnnameable.add(mentioned.id);
+        unnameable.push(mentioned.id);
+      }
+      continue;
+    }
+    if (seen.has(mentioned.id)) continue;
+    seen.add(mentioned.id);
+    ids.push(mentioned.id);
   }
-  return ids;
+  return { ids, unnameable };
 }
 
 /**
@@ -359,8 +441,39 @@ function isOptionalPort(port: string): boolean {
  * boundary in the module comment).
  */
 export function personIdFromSGID(sgid: string): number | undefined {
+  const parsed = parsePersonSGID(sgid);
+  return parsed.kind === "person" ? parsed.id : undefined;
+}
+
+/**
+ * What an sgid names, with the one case {@link personIdFromSGID}'s
+ * `number | undefined` cannot spell kept apart.
+ *
+ * `undefined` there means two unrelated things: "this is not a mention" — not a
+ * Person gid, an undecodable envelope, a `+7` the digit walk refuses, a
+ * non-positive id, a magnitude past `int64` — and "this IS a mention, of a
+ * person whose id a `number` cannot carry". Go never has to separate them
+ * because it returns an `int64`; here the second case is a real mention that
+ * cannot be reported, and {@link readMentions} reports it separately rather than
+ * letting it vanish into a short list. The exported signature is unchanged and so
+ * is every answer it gives: this only lets one caller in this file ask a sharper
+ * question.
+ *
+ * The unrepresentable case carries the id's CANONICAL decimal — what
+ * `strconv.ParseInt` returned, re-formatted — not the digits as the gid spelled
+ * them. `0009223372036854775807` and `9223372036854775807` are one person to the
+ * reference, which deduplicates on the `int64`, so they must be one person here.
+ */
+type MentionedPerson =
+  | { readonly kind: "person"; readonly id: number }
+  | { readonly kind: "unrepresentable"; readonly id: string }
+  | { readonly kind: "none" };
+
+const NOT_A_MENTION: MentionedPerson = { kind: "none" };
+
+function parsePersonSGID(sgid: string): MentionedPerson {
   const gid = globalIDFromSGID(sgid);
-  if (gid === undefined) return undefined;
+  if (gid === undefined) return NOT_A_MENTION;
 
   // A GlobalID is `gid://<app>/<Model>/<id>`, optionally with a query — BC3
   // mints `gid://bc3/Person/1049715915?expires_in=`. The query and fragment are
@@ -373,24 +486,34 @@ export function personIdFromSGID(sgid: string): number | undefined {
   // was wrong in both halves.
   const hash = gid.indexOf("#");
   const beforeFragment = hash < 0 ? gid : gid.slice(0, hash);
-  if (CONTROL_BYTE.test(beforeFragment)) return undefined;
-  if (hash >= 0 && !hasValidEscapes(gid.slice(hash + 1))) return undefined;
+  if (CONTROL_BYTE.test(beforeFragment)) return NOT_A_MENTION;
+  if (hash >= 0 && !hasValidEscapes(gid.slice(hash + 1))) return NOT_A_MENTION;
 
   const parsed = GID_URL.exec(gid);
-  if (parsed === null) return undefined;
-  if (!isParsableHost(parsed[1] ?? "")) return undefined;
+  if (parsed === null) return NOT_A_MENTION;
+  if (!isParsableHost(parsed[1] ?? "")) return NOT_A_MENTION;
   const path = percentDecodePath(parsed[2] ?? "");
-  if (path === undefined) return undefined;
+  if (path === undefined) return NOT_A_MENTION;
   const separator = path.indexOf("/", 1);
-  if (separator < 0) return undefined;
+  if (separator < 0) return NOT_A_MENTION;
   const model = path.slice(1, separator);
   const rawId = path.slice(separator + 1);
-  if (model !== "Person" || rawId === "" || !/^[0-9]+$/.test(rawId)) return undefined;
-  const id = Number(rawId);
+  if (model !== "Person" || rawId === "" || !/^[0-9]+$/.test(rawId)) return NOT_A_MENTION;
+  // Go parses the walked digits with `strconv.ParseInt(rawID, 10, 64)` and then
+  // refuses `id <= 0` (`go/pkg/basecamp/mentions.go:257-259`), so `scanPersonId`
+  // stands in for ParseInt here — NOT as the rule (the digit walk above is the
+  // rule, and it is the half that differs from the other two sites), but as the
+  // same int64 bound Go applies after it. `Number(rawId)` was the old spelling
+  // and gave every one of these answers too; it just could not tell a magnitude
+  // past int64, which is not a mention in Go either, from a real person past
+  // 2^53, which is.
+  const scan = scanPersonId(rawId);
+  if (scan.kind !== "value" || scan.value <= 0n) return NOT_A_MENTION;
+  const id = personIdNumber(scan.value);
   // A BC3 person id is well inside the safe range; one that is not cannot be
   // reported as a number without rounding it into a different person.
-  if (!Number.isSafeInteger(id) || id <= 0) return undefined;
-  return id;
+  if (id === undefined) return { kind: "unrepresentable", id: scan.value.toString() };
+  return { kind: "person", id };
 }
 
 /**
@@ -1184,13 +1307,34 @@ export function mentionMarkup(person: Person): string {
  * outright and takes the people read with it; nothing at this layer can fail a
  * read that already succeeded, so it reads as unreadable and the mention is
  * refused — a refusal either way, by a different route.
+ *
+ * The grammar itself is {@link scanPersonId}, shared with the pre-decode
+ * normalizer in `base.ts` so the two cannot answer differently about the same
+ * string. Reading `[+-]?\d+` off a regex first and only then checking the
+ * magnitude was the remaining defect here: it puts the whole-string test BEFORE
+ * the magnitude check, where Go's scan interleaves them. `"18446744073709551616x"`
+ * therefore read `0` — the SYSTEM ACTOR — where Go, which overflows u64 before
+ * it ever reaches the `x`, raises a range error and fails the read. Its
+ * neighbour `"18446744073709551615x"` really is a syntax error and really does
+ * read `0`. One digit apart, opposite verdicts; only a scan in Go's order gets
+ * both.
+ *
+ * Exported for `tests/services/mentions.test.ts`, which pins the corpus against
+ * this function rather than against `mentionMarkup`: the two refusals are
+ * INDISTINGUISHABLE through the public path, since `0` and `undefined` both
+ * refuse the mention, so a test that could only see the verdict could not see
+ * the defect above. It is not re-exported from `index.ts` and is not public API.
  */
-function personIdValue(value: unknown): number | undefined {
+export function personIdValue(value: unknown): number | undefined {
   if (typeof value === "number") return value;
   if (typeof value !== "string") return undefined;
-  if (!/^[+-]?\d+$/.test(value)) return 0;
-  const parsed = Number(value);
-  return Number.isSafeInteger(parsed) ? parsed : undefined;
+  const scan = scanPersonId(value);
+  // Go's sentinel zero for a syntax refusal; the number for a value this
+  // platform can hold; "unreadable" for a range refusal AND for a value past
+  // 2^53, which is the judgment call argued at personIdNumber.
+  if (scan.kind === "syntax") return 0;
+  if (scan.kind === "range") return undefined;
+  return personIdNumber(scan.value);
 }
 
 /**
