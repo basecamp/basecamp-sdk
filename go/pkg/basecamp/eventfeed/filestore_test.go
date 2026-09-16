@@ -23,7 +23,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"syscall"
 	"testing"
 	"time"
 )
@@ -1114,7 +1113,7 @@ func TestFileStore_RefusesNonRegularFiles(t *testing.T) {
 	t.Run("fifo", func(t *testing.T) {
 		dir := t.TempDir()
 		store := NewFileCheckpointStore(filepath.Join(dir, "feed.json"))
-		if err := syscall.Mkfifo(store.path, 0o600); err != nil {
+		if err := mkfifoForTest(store.path); err != nil {
 			t.Skipf("mkfifo unavailable: %v", err)
 		}
 		assertNotRegularRefusal(t, store)

@@ -298,15 +298,13 @@
         "actorTypes": {
           "type": "array",
           "minItems": 1,
-          "maxItems": 2,
           "uniqueItems": true,
           "items": {
-            "enum": [
-              "agent",
-              "person"
-            ]
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[^,\\s\"']+$"
           },
-          "description": "Filter: actor kinds (opt-in, never a default)."
+          "description": "Filter: actor kinds (opt-in, never a default). The vocabulary is server-owned and never client-validated, like types: agent and person today, and a scenario may name an unknown one to draw the filter 400."
         },
         "position": {
           "type": "string",
