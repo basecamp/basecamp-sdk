@@ -69,6 +69,45 @@ describe("personIdFromSGID", () => {
     }
   });
 
+  it("walks the id's bytes before parsing, which is NOT the rule scanPersonId applies", () => {
+    // Rule A, pinned directly, because nothing else in this suite pins it.
+    //
+    // `PersonIDFromSGID` refuses anything outside `0..=9` BEFORE it parses
+    // (`go/pkg/basecamp/mentions.go:252-256`) and then refuses `id <= 0`
+    // (`:257-259`). `scanPersonId` in src/person-id.ts has no pre-walk, because
+    // the Go lines governing ITS two sites — `coercePersonID` and
+    // `FlexibleInt64` — have none: a leading `+` is a person there and a
+    // refusal here. Two co-resident rules, deliberately different, and neither
+    // may be hoisted into the other in either direction. Loosening this one
+    // reintroduces the `+77` defect PR #886 closed — on the field that decides
+    // WHO a mention names, so the failure is a tag pointing at the wrong
+    // person, not a dropped read.
+    const id = (raw: string): number | undefined =>
+      personIdFromSGID(legacySGID(`gid://bc3/Person/${raw}`));
+
+    // Refused, however readable ParseInt finds them. The signs are refused by
+    // the digit walk; `0` and `-0` by the `id <= 0` check that follows it.
+    for (const raw of ["+7", "-7", "+007", "+9223372036854775807", "-9223372036854775808", "0", "-0"]) {
+      expect(id(raw), raw).toBeUndefined();
+    }
+
+    // Accepted, because leading zeros carry no magnitude and pass the walk.
+    // This half matters as much as the first: without it, the refusals above
+    // could be satisfied by a walk that refuses too much, and "hardening" the
+    // rule into rejecting zero-padding diverges from the reference exactly as
+    // far as loosening it does.
+    expect(id("007")).toBe(7);
+    expect(id("010")).toBe(10);
+    expect(id("0009007199254740991")).toBe(9007199254740991);
+
+    // RESIDUAL DIVERGENCE, and the same one src/person-id.ts argues: Go reads
+    // `0009223372036854775807` as that int64, and a JS `number` cannot carry
+    // it. personIdFromSGID answers `undefined` rather than round it into a
+    // neighbouring person — the id is refused, never misattributed.
+    expect(id("0009223372036854775807")).toBeUndefined();
+    expect(id("9007199254740992")).toBeUndefined();
+  });
+
   it("refuses a purpose BC3 does not accept in rich text", () => {
     expect(personIdFromSGID(legacySGID(`gid://bc3/Person/${VICTOR}`, { purpose: "readable" }))).toBeUndefined();
     expect(personIdFromSGID(railsSGID(`gid://bc3/Person/${VICTOR}`, { purpose: "bookmarkable" }))).toBeUndefined();
