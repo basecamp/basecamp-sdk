@@ -52,6 +52,28 @@ private fun normalizeElement(element: JsonElement): JsonElement = when (element)
                                 put("system_label", JsonPrimitive(idStr))
                             }
                         }
+                    } else if (key == "system_label" && parsed == ParsedInt64.Syntax) {
+                        // DROPPED, because the sentinel branch above already wrote
+                        // this key from the raw id. Copying the incoming value here
+                        // would overwrite it whenever the body happens to order
+                        // `system_label` AFTER `id` — a JSON object's members are
+                        // ordered, and this builder replays them in order, so the
+                        // last `put` for a key wins.
+                        //
+                        // The reference has no such hazard and therefore no such
+                        // branch: `coercePersonID` assigns into a map
+                        // (`go/pkg/basecamp/normalize.go:66-67`), so the label it
+                        // writes always wins however the body was spelled. Matching
+                        // that is what this drop is for, and it matters because the
+                        // value being overwritten came off the wire: a response
+                        // carrying its own `system_label` after a sentinel `id`
+                        // could otherwise choose the label this SDK reports for the
+                        // system actor.
+                        //
+                        // Only for the sentinel outcome. A value or a range refusal
+                        // leaves `system_label` alone in the reference — it is never
+                        // assigned on those paths — so an incoming one is preserved
+                        // here too, by falling through to the copy below.
                     } else {
                         put(key, normalizeElement(value))
                     }

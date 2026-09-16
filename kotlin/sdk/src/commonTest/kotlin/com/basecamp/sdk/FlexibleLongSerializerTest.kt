@@ -13,6 +13,7 @@ import kotlin.test.assertContains
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class FlexibleLongSerializerTest {
     private val json = Json { ignoreUnknownKeys = true }
@@ -308,6 +309,57 @@ class FlexibleLongSerializerTest {
                 ) { json.decodeFromString<CreatorEnvelope>(normalized) }
             }
         }
+    }
+
+    /**
+     * A `system_label` the BODY carries must never survive a sentinel id.
+     *
+     * The normalizer rebuilds the object by replaying its members in order, and a
+     * JSON object's members ARE ordered, so a `system_label` spelled after `id`
+     * used to be copied over the one the sentinel branch had just written. The
+     * reference cannot have that bug and so has no branch for it: `coercePersonID`
+     * assigns into a map (`go/pkg/basecamp/normalize.go:66-67`), and the label it
+     * writes wins however the body was spelled.
+     *
+     * It matters because the value being overwritten came off the wire. A response
+     * that carries its own `system_label` could otherwise choose the label this SDK
+     * reports for the system actor, which is the one field a caller reads to find
+     * out WHICH actor it was handed. Both orders are pinned, because only one of
+     * them was ever wrong and a test holding the other proves nothing.
+     */
+    @Test
+    fun aSentinelIdOverwritesAnyIncomingSystemLabelInEitherOrder() {
+        for (body in listOf(
+            """{"creator":{"id":"basecamp","system_label":"spoofed","name":"x","personable_type":"User"}}""",
+            """{"creator":{"system_label":"spoofed","id":"basecamp","name":"x","personable_type":"User"}}""",
+        )) {
+            val creator = json.decodeFromString<CreatorEnvelope>(normalizePersonIds(body, json)).creator
+            assertEquals(0L, creator.id, "the sentinel id")
+            assertEquals("basecamp", creator.systemLabel, "the label must be the id's own text, not the body's")
+        }
+    }
+
+    /**
+     * The other two outcomes leave `system_label` alone, which is also the
+     * reference's behaviour: it is assigned on the syntax path and nowhere else.
+     * Pinned so the fix above cannot be widened into dropping the key outright.
+     */
+    @Test
+    fun anIncomingSystemLabelSurvivesAValueAndARangeRefusal() {
+        val value = json.decodeFromString<CreatorEnvelope>(
+            normalizePersonIds(
+                """{"creator":{"id":"7","system_label":"kept","name":"x","personable_type":"User"}}""",
+                json,
+            ),
+        ).creator
+        assertEquals(7L, value.id)
+        assertEquals("kept", value.systemLabel)
+
+        val refused = normalizePersonIds(
+            """{"creator":{"id":"9223372036854775808","system_label":"kept","name":"x","personable_type":"User"}}""",
+            json,
+        )
+        assertTrue(refused.contains("\"kept\""), "a range refusal must not touch system_label")
     }
 
     @Serializable
