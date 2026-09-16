@@ -37,11 +37,12 @@ class EventFeedService(BaseService):
         is an absolute continuation URL present only while this walk has more to
         serve. Not wired into the generic Link paginator — see the section note.
 
-        **Errors.** 400 for a malformed position (resume with `since=`) or a malformed
-        filter (the body names the filter; a position reset will not help) — both the
-        flat `{error}` body. 409 (FeedFilterMismatchError) when the position was
-        minted for a different filter set. 410 (FeedPositionGoneError) when the
-        position predates the feed's epoch; follow its `resume` URL.
+        **Errors.** 400 (FeedRequestError) for a malformed position (resume with
+        `since=`) or a malformed filter (fix the filters; a position reset will not
+        help), told apart by its optional `reason` and undifferentiated when `reason`
+        is absent. 409 (FeedFilterMismatchError) when the position was minted for a
+        different filter set. 410 (FeedPositionGoneError) when the position predates
+        the feed's epoch; its `resume` re-enters at the epoch.
 
         Args:
             since: Entry point: a decimal event id (start after it; `0` replays served history back
@@ -133,11 +134,12 @@ class EventFeedService(BaseService):
         **Pagination**: the body envelope (`items`, `position`, `next`), exactly as
         PollEvents — not the Link header, and not the generic paginator.
 
-        **Errors** follow PollEvents, except that 403 carries no body — the agent
-        guard's bare `head :forbidden` (BareForbiddenError) — and that 410
-        (FeedPositionGoneError) here means the position fell behind the retention
-        window: `epoch_after_id` is absent and `resume` re-enters at `since=0`,
-        the earliest retained item.
+        **Errors** follow PollEvents (FeedRequestError 400, FeedFilterMismatchError
+        409), except that 403 carries no body — the agent guard's bare
+        `head :forbidden` (BareForbiddenError) — and that the 410 is the inbox's own
+        InboxPositionGoneError: the position fell behind the retention window, there
+        is no epoch, and `resume` re-enters at `since=0`, the earliest retained item
+        — not the feed's recovery, and not interchangeable with it.
 
         Args:
             since: Entry point: `0` (earliest retained), `now` (present), or a decimal item id to
@@ -184,11 +186,12 @@ class AsyncEventFeedService(AsyncBaseService):
         is an absolute continuation URL present only while this walk has more to
         serve. Not wired into the generic Link paginator — see the section note.
 
-        **Errors.** 400 for a malformed position (resume with `since=`) or a malformed
-        filter (the body names the filter; a position reset will not help) — both the
-        flat `{error}` body. 409 (FeedFilterMismatchError) when the position was
-        minted for a different filter set. 410 (FeedPositionGoneError) when the
-        position predates the feed's epoch; follow its `resume` URL.
+        **Errors.** 400 (FeedRequestError) for a malformed position (resume with
+        `since=`) or a malformed filter (fix the filters; a position reset will not
+        help), told apart by its optional `reason` and undifferentiated when `reason`
+        is absent. 409 (FeedFilterMismatchError) when the position was minted for a
+        different filter set. 410 (FeedPositionGoneError) when the position predates
+        the feed's epoch; its `resume` re-enters at the epoch.
 
         Args:
             since: Entry point: a decimal event id (start after it; `0` replays served history back
@@ -280,11 +283,12 @@ class AsyncEventFeedService(AsyncBaseService):
         **Pagination**: the body envelope (`items`, `position`, `next`), exactly as
         PollEvents — not the Link header, and not the generic paginator.
 
-        **Errors** follow PollEvents, except that 403 carries no body — the agent
-        guard's bare `head :forbidden` (BareForbiddenError) — and that 410
-        (FeedPositionGoneError) here means the position fell behind the retention
-        window: `epoch_after_id` is absent and `resume` re-enters at `since=0`,
-        the earliest retained item.
+        **Errors** follow PollEvents (FeedRequestError 400, FeedFilterMismatchError
+        409), except that 403 carries no body — the agent guard's bare
+        `head :forbidden` (BareForbiddenError) — and that the 410 is the inbox's own
+        InboxPositionGoneError: the position fell behind the retention window, there
+        is no epoch, and `resume` re-enters at `since=0`, the earliest retained item
+        — not the feed's recovery, and not interchangeable with it.
 
         Args:
             since: Entry point: `0` (earliest retained), `now` (present), or a decimal item id to

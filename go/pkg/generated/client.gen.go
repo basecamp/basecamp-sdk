@@ -1393,22 +1393,39 @@ type FeedFilterMismatchErrorResponseContent struct {
 	PositionDigest string `json:"position_digest"`
 }
 
-// FeedPositionGoneErrorResponseContent 410 from the event feed's poll lanes: the held `position` predates what the
-// lane can still serve. On PollEvents that is the feed's epoch — an operational
-// fence that can be raised — and `epoch_after_id` names it; on PollInbox it is
-// the inbox's 30-day retention window, and `epoch_after_id` is absent. Either
-// way `resume` is an absolute URL that re-enters the same lane with the
-// request's canonical filters preserved: at the epoch (`since=<epoch_after_id>`)
-// for the feed, at the earliest retained item (`since=0`) for the inbox.
-// Consumers validate the URL (same origin as the API base, no scheme downgrade)
-// before following it — SPEC.md §23 "Continuation and Resume URL Validation".
+// FeedPositionGoneErrorResponseContent 410 from PollEvents: the held `position` predates the feed's epoch — an
+// operational fence that can be raised. `epoch_after_id` names the epoch and
+// `resume` is an absolute URL that re-enters the feed AT THE EPOCH
+// (`since=<epoch_after_id>`) with the request's canonical filters preserved,
+// so the servable history above the fence is not skipped. Not interchangeable
+// with the inbox's InboxPositionGoneError, whose recovery re-enters at
+// `since=0`. Consumers validate the URL (same origin as the API base, no scheme
+// downgrade) before following it — SPEC.md §23 "Continuation and Resume URL
+// Validation".
 type FeedPositionGoneErrorResponseContent struct {
-	// EpochAfterId The feed's epoch: the event id after which history is servable. Feed only.
-	EpochAfterId *int64 `json:"epoch_after_id,omitempty"`
+	// EpochAfterId The feed's epoch: the event id after which history is servable.
+	EpochAfterId int64  `json:"epoch_after_id"`
 	Error        string `json:"error"`
 
-	// Resume Absolute re-entry URL for the same lane, filters preserved.
+	// Resume Absolute re-entry URL for the feed, at the epoch, filters preserved.
 	Resume string `json:"resume"`
+}
+
+// FeedRequestErrorResponseContent 400 from the event feed's poll lanes (PollEvents, PollInbox). Two distinct
+// cases share the status: a malformed `position` (recover by re-entering with
+// `since=`) and a malformed filter (fix the filters; a position reset will not
+// help). `reason` tells them apart — `invalid_position` or `invalid_filter`
+// (bc3 #13362) — and is OPTIONAL: a server that has not shipped it answers the
+// flat `{error}` body, and a consumer that finds `reason` absent must treat the
+// 400 as undifferentiated and surface it rather than guess between recovering
+// and stopping.
+type FeedRequestErrorResponseContent struct {
+	Error string `json:"error"`
+
+	// Reason `invalid_position` (re-enter with `since=`) or `invalid_filter` (fix the
+	// filters). Absent from servers that predate bc3 #13362: then the 400 is
+	// undifferentiated.
+	Reason *string `json:"reason,omitempty"`
 }
 
 // FieldErrorMap defines model for FieldErrorMap.
@@ -2073,6 +2090,21 @@ type InboxItem struct {
 	// Reason Why the principal was addressed: `mentioned`, `assigned`, `subscribed`,
 	// `watched`, `pinged`, or `boosted`.
 	Reason string `json:"reason"`
+}
+
+// InboxPositionGoneErrorResponseContent 410 from PollInbox: the held `position` fell behind the inbox's 30-day
+// retention window. There is no epoch; `resume` is an absolute URL that
+// re-enters the inbox at `since=0`, the earliest retained item — exactly-once
+// continuation, since a stale position has seen none of the retained backlog.
+// A distinct shape from the feed's FeedPositionGoneError on purpose: the two
+// recoveries are not interchangeable, and a consumer must not handle one lane's
+// 410 with the other's arm. Validate the URL before following it, as for the
+// feed.
+type InboxPositionGoneErrorResponseContent struct {
+	Error string `json:"error"`
+
+	// Resume Absolute re-entry URL for the inbox, at `since=0`, filters preserved.
+	Resume string `json:"resume"`
 }
 
 // InternalServerErrorResponseContent defines model for InternalServerErrorResponseContent.
@@ -31249,7 +31281,7 @@ type PollEventsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *PollEventsResponseContent
-	JSON400      *BadRequestErrorResponseContent
+	JSON400      *FeedRequestErrorResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
 	JSON409      *FeedFilterMismatchErrorResponseContent
@@ -31561,10 +31593,10 @@ type PollInboxResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *PollInboxResponseContent
-	JSON400      *BadRequestErrorResponseContent
+	JSON400      *FeedRequestErrorResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON409      *FeedFilterMismatchErrorResponseContent
-	JSON410      *FeedPositionGoneErrorResponseContent
+	JSON410      *InboxPositionGoneErrorResponseContent
 	JSON429      *RateLimitErrorResponseContent
 	JSON500      *InternalServerErrorResponseContent
 }
@@ -44925,7 +44957,7 @@ func ParsePollEventsResponse(rsp *http.Response) (*PollEventsResponse, error) {
 		response.JSON200 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest BadRequestErrorResponseContent
+		var dest FeedRequestErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
 			response.JSON400 = &dest
 		}
@@ -45413,7 +45445,7 @@ func ParsePollInboxResponse(rsp *http.Response) (*PollInboxResponse, error) {
 		response.JSON200 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest BadRequestErrorResponseContent
+		var dest FeedRequestErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
 			response.JSON400 = &dest
 		}
@@ -45434,7 +45466,7 @@ func ParsePollInboxResponse(rsp *http.Response) (*PollInboxResponse, error) {
 		}
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 410:
-		var dest FeedPositionGoneErrorResponseContent
+		var dest InboxPositionGoneErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
 			response.JSON410 = &dest
 		}

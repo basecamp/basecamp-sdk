@@ -216,7 +216,7 @@ func TestEventFeedService_PollEvents_PositionGone(t *testing.T) {
 	if !errors.As(err, &gone) {
 		t.Fatalf("expected *FeedPositionGoneError, got %T: %v", err, err)
 	}
-	if gone.EpochAfterID == nil || *gone.EpochAfterID != 1071915000 {
+	if gone.EpochAfterID != 1071915000 {
 		t.Errorf("expected epoch_after_id, got %v", gone.EpochAfterID)
 	}
 	resume, err := PollEventsOptionsFromURL(gone.Resume)
@@ -228,24 +228,61 @@ func TestEventFeedService_PollEvents_PositionGone(t *testing.T) {
 	}
 }
 
-func TestEventFeedService_PollEvents_MalformedPositionIsPlainError(t *testing.T) {
+func TestEventFeedService_PollEvents_GoneWithoutEpochStaysCanonical(t *testing.T) {
+	svc := testEventFeedServer(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(410)
+		_, _ = w.Write([]byte(`{"error": "That position predates this feed's epoch.", "resume": "https://3.basecampapi.com/99999/events.json?since=0"}`))
+	})
+	_, err := svc.PollEvents(context.Background(), &PollEventsOptions{Position: "posOLD"})
+	var gone *FeedPositionGoneError
+	if errors.As(err, &gone) {
+		t.Fatalf("a feed 410 without epoch_after_id must not be typed with a fabricated epoch, got %+v", gone)
+	}
+	var base *Error
+	if !errors.As(err, &base) || base.HTTPStatus != 410 {
+		t.Fatalf("expected the canonical 410 *Error, got %v", err)
+	}
+}
+
+func TestEventFeedService_PollEvents_MalformedPositionWithoutReasonIsUndifferentiated(t *testing.T) {
 	svc := testEventFeedServer(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(400)
 		_, _ = w.Write([]byte(`{"error": "Unrecognized position. Resume with since=<id> or since=now."}`))
 	})
 	_, err := svc.PollEvents(context.Background(), &PollEventsOptions{Position: "garbage"})
-	var base *Error
-	if !errors.As(err, &base) {
-		t.Fatalf("expected *Error, got %T", err)
+	var request *FeedRequestError
+	if !errors.As(err, &request) {
+		t.Fatalf("expected *FeedRequestError, got %T: %v", err, err)
 	}
-	if base.HTTPStatus != 400 || base.Code != "validation" {
-		t.Errorf("expected validation/400, got %s/%d", base.Code, base.HTTPStatus)
+	if request.Reason != "" {
+		t.Errorf("a body without reason must leave Reason empty, got %q", request.Reason)
+	}
+	var base *Error
+	if !errors.As(err, &base) || base.HTTPStatus != 400 || base.Code != "validation" {
+		t.Errorf("expected validation/400 underneath, got %+v", base)
 	}
 	var mismatch *FeedFilterMismatchError
 	var gone *FeedPositionGoneError
 	if errors.As(err, &mismatch) || errors.As(err, &gone) {
 		t.Error("a 400 must not be typed as a feed 409/410")
+	}
+}
+
+func TestEventFeedService_PollEvents_BadRequestCarriesReason(t *testing.T) {
+	svc := testEventFeedServer(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(400)
+		_, _ = w.Write([]byte(`{"error": "The types filter names an unknown type. Fix the filters; a position reset won't help.", "reason": "invalid_filter"}`))
+	})
+	_, err := svc.PollEvents(context.Background(), &PollEventsOptions{Types: []string{"nope.created"}})
+	var request *FeedRequestError
+	if !errors.As(err, &request) {
+		t.Fatalf("expected *FeedRequestError, got %T: %v", err, err)
+	}
+	if request.Reason != FeedReasonInvalidFilter {
+		t.Errorf("expected reason invalid_filter, got %q", request.Reason)
 	}
 }
 
@@ -319,12 +356,13 @@ func TestEventFeedService_PollInbox_RetentionGoneHasNoEpoch(t *testing.T) {
 		_, _ = w.Write([]byte(`{"error": "That position predates the inbox's retention window, so the items behind it can't be served.", "resume": "https://3.basecampapi.com/99999/inbox.json?since=0&reasons=mentioned"}`))
 	})
 	_, err := svc.PollInbox(context.Background(), &PollInboxOptions{Position: "stale"})
-	var gone *FeedPositionGoneError
+	var gone *InboxPositionGoneError
 	if !errors.As(err, &gone) {
-		t.Fatalf("expected *FeedPositionGoneError, got %T: %v", err, err)
+		t.Fatalf("expected *InboxPositionGoneError, got %T: %v", err, err)
 	}
-	if gone.EpochAfterID != nil {
-		t.Errorf("inbox 410 must not carry an epoch, got %d", *gone.EpochAfterID)
+	var feedGone *FeedPositionGoneError
+	if errors.As(err, &feedGone) {
+		t.Error("an inbox 410 must never type as the feed's FeedPositionGoneError")
 	}
 	resume, err := PollInboxOptionsFromURL(gone.Resume)
 	if err != nil {

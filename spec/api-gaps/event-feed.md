@@ -24,8 +24,11 @@ smithy_refs:
   - CreateStreamTicket
   - FeedEvent
   - InboxItem
+  - FeedRequestError
   - FeedFilterMismatchError
   - FeedPositionGoneError
+  - InboxPositionGoneError
+  - BareForbiddenError
 ---
 
 # Absorption record (layer 1)
@@ -35,8 +38,10 @@ feed's both lanes), #13053 (agent principals), #13056 (boosts as events) and
 #13058 (`188b97cab7`, the inbox) — and the SDK absorbed the **wire layer** in the
 same sweep: `PollEvents`, `PollInbox` and `CreateStreamTicket` on the `EventFeed`
 tag (service `eventFeed`), the `FeedEvent` (with `details` carried verbatim as a document) and `InboxItem`
-shapes, the typed 409 (`FeedFilterMismatchError`) and 410
-(`FeedPositionGoneError`) bodies, and `conformance/tests/event_feed.json`
+shapes, the typed 400 (`FeedRequestError`, with bc3 #13362's optional `reason`),
+409 (`FeedFilterMismatchError`) and per-lane 410 (`FeedPositionGoneError` on the
+feed, `InboxPositionGoneError` on the inbox) bodies, the inbox's bodyless 403
+(`BareForbiddenError`), and `conformance/tests/event_feed.json`
 dispatched by all seven runners. The provenance pin was **not** advanced by that
 PR (the range from the pin to `188b97cab7` also carries subtasks, card-table
 templates, templatifications, backlinks, bulk enrollments and the unscoped
