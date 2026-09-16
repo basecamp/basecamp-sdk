@@ -46,6 +46,8 @@ describe("WebhookReceiver", () => {
       expect(events[0].creator?.name).toBe("Annie Bryan");
       expect(events[0].performed_by?.personable_type).toBe("Agent");
       expect(events[0].performed_by?.id).toBe(1049715999);
+      expect(events[0].performed_by?.email_address).toBeNull();
+      expect(events[0].performed_by?.tagline).toBeNull();
     });
 
     it("leaves performed_by absent on a direct event", async () => {

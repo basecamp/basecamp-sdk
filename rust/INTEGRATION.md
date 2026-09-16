@@ -113,7 +113,7 @@ as the other five.)
 ## 3. Parity readers — one commit, all five together
 
 All five are exact-source readers and fail on a partial roster, which is why none of them
-was touched from the `rust/` lane. The shapes they read are stable now that all 262
+was touched from the `rust/` lane. The shapes they read are stable now that all 265
 operations are emitted.
 
 ### `scripts/check-retry-metadata-parity.py`

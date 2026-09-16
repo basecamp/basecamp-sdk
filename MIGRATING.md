@@ -36,6 +36,13 @@ source-compatibility hazard the tool does not model, which is why this note
 exists. Keyed literals, and every decode path, are unaffected; the field is
 `nil`/absent unless BC3 sent `performed_by`.
 
+**Kotlin has the same hazard in a different spelling.** The generated `Event`
+and `WebhookEvent` data classes gain `performedBy: Person? = null` inserted
+before `boostsCount`/`boostsUrl` and before `copy` respectively, so a positional
+constructor call with values in the old order, and a positional destructuring
+(`val (id, recordingId, …) = event`) that reaches past `creator`, shift by one
+component. Use named arguments and property access; the decoders are unaffected.
+
 **TypeScript and Python: `Person`'s `email_address`, `title`, `bio`, `tagline`
 and `location` are typed nullable.** BC3's person partial always writes the five
 keys and writes `null` when there is no value — routinely so for an `Agent`

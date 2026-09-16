@@ -34,6 +34,8 @@ class Basecamp::Webhooks::EventTest < Minitest::Test
     assert_equal "Agent", event.performed_by["personable_type"]
     assert_equal 1049715999, event.performed_by["id"]
     assert_nil event.performed_by["email_address"]
+    assert event.performed_by.key?("tagline")
+    assert_nil event.performed_by["tagline"]
   end
 
   def test_direct_event_has_no_performer

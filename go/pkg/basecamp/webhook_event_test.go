@@ -184,6 +184,11 @@ func TestWebhookEvent_UnmarshalDelegated(t *testing.T) {
 	if event.PerformedBy.ID != 1049715999 || event.PerformedBy.PersonableType != "Agent" {
 		t.Errorf("unexpected performer: %+v", event.PerformedBy)
 	}
+	// An Agent's email_address, title, bio, tagline and location are explicit
+	// nulls on the wire; the decoder must accept them.
+	if event.PerformedBy.EmailAddress != "" || event.PerformedBy.Title != "" || event.PerformedBy.Bio != nil || event.PerformedBy.Location != nil {
+		t.Errorf("expected the agent's null-valued person fields to decode empty, got %+v", event.PerformedBy)
+	}
 
 	// The generated decode path maps the same member through webhookEventFromGenerated.
 	var ge generated.WebhookEvent

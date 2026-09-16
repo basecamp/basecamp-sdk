@@ -143,6 +143,11 @@ func TestEvent_DelegatedPerformer(t *testing.T) {
 	if delegated.PerformedBy.ID != 1049715999 || delegated.PerformedBy.PersonableType != "Agent" {
 		t.Errorf("unexpected performer: %+v", delegated.PerformedBy)
 	}
+	// The agent's email_address, title, bio, tagline and location are explicit
+	// nulls on the wire and decode to their zero values.
+	if delegated.PerformedBy.EmailAddress != "" || delegated.PerformedBy.Title != "" || delegated.PerformedBy.Tagline != "" || delegated.PerformedBy.Location != "" {
+		t.Errorf("expected the agent's null-valued person fields to decode empty, got %+v", delegated.PerformedBy)
+	}
 	if delegated.Creator == nil || delegated.Creator.PersonableType != "User" {
 		t.Errorf("creator must stay the attributed person, got %+v", delegated.Creator)
 	}
