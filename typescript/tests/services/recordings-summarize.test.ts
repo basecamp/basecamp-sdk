@@ -1039,17 +1039,20 @@ describe("recordings.summarize", () => {
       );
       expect((safe as { creator?: { id?: unknown } }).creator?.id).toBe(9007199254740991);
 
-      // And the reader above governs a NARROWER set of bodies than it looks:
-      // `normalizePersonIds` rewrites the id of anything carrying
-      // `personable_type` before a composite sees the body, so the same id that
-      // is refused above comes back as the 0-plus-system_label that pre-pass
-      // produces. Pinned so the declared residue is not mistaken for the
-      // behaviour a caller actually sees on a real person.
+      // And the pre-pass no longer NARROWS that. `normalizePersonIds` rewrites
+      // the id of anything carrying `personable_type` before a composite sees
+      // the body, and it used to turn every id past 2^53 into 0-plus-system_label
+      // -- the SYSTEM ACTOR, for a real person Go reads exactly -- so this same id
+      // came back as person 0 when tagged while the untagged spelling above was
+      // refused. That collapse was a defect, fixed in #908: the pre-pass now
+      // reads the id Go reads and, unable to hold it in a number, leaves the
+      // string in place for the reader, which refuses it exactly as it does
+      // above. Tagged and untagged agree, and neither names the system actor.
       const prepassed = await summarizeBody(
         `{"id":1,"title":"t","content":"c",${BUCKET_JSON},"creator":{"id":"9223372036854775807","name":"A","personable_type":"User"}}`,
       );
-      expect(prepassed).not.toBeInstanceOf(BasecampError);
-      expect((prepassed as { creator?: { id?: unknown } }).creator?.id).toBe(0);
+      expect(prepassed).toBeInstanceOf(BasecampError);
+      expect((prepassed as BasecampError).message).toContain("exactly");
     });
 
     it("emits a parent's and a bucket's id decoded, as the plain int64 they are", async () => {
