@@ -27,7 +27,7 @@ import {
   summarizableRecordingTypes,
 } from "../../src/index.js";
 import type { RecordingReadSources } from "../../src/index.js";
-import { personSGID } from "../helpers/sgid.js";
+import { personSGID, legacySGID } from "../helpers/sgid.js";
 
 const BASE_URL = "https://3.basecampapi.com/12345";
 const BUCKET = 2085958499;
@@ -179,6 +179,54 @@ describe("recordings.summarize", () => {
 
       expect(summary.mentioned_person_ids).toEqual([VICTOR]);
       expect(summary.content).toContain("bc-attachment");
+      // Absent, not `[]`, when there is nothing to report: the key appears only
+      // on the payloads where the mention list is actually short.
+      expect("unnameable_mention_ids" in summary).toBe(false);
+    });
+
+    it("still reads a recording whose rich text carries an unnameable mention", async () => {
+      // THE AVAILABILITY CASE, and the reason mentionedPersonIds skips instead
+      // of throwing. `content` here is whatever some Basecamp user typed, and
+      // the sgid's signature is never verified on this path -- globalIDFromSGID
+      // takes a bare unsigned envelope -- so the person id inside it is chosen
+      // by the comment's author, not by BC3.
+      //
+      // While this threw, that made one crafted <bc-attachment> a denial of
+      // read: the summary, the content, the title and the creator all went with
+      // the one mention that could not be named. Anyone who could write a
+      // comment could make the recording unreadable to this SDK.
+      const crafted = legacySGID("gid://bc3/Person/9007199254740993");
+      const real = personSGID(VICTOR);
+      server.use(
+        http.get(`${BASE_URL}/comments/1`, () =>
+          HttpResponse.json(
+            recording(1, "Comment", {
+              content:
+                `<div><bc-attachment sgid="${crafted}"></bc-attachment>` +
+                `<bc-attachment sgid="${real}"></bc-attachment> hi</div>`,
+            }),
+          ),
+        ),
+      );
+
+      const summary = await client.recordings.summarize({
+        bucketId: BUCKET,
+        recordingId: 1,
+        recordingType: "Comment",
+      });
+
+      // The read completes, and the mention it CAN name still arrives -- the
+      // crafted one sits first in document order, so an early exit would have
+      // lost the real person behind it as well.
+      expect(summary.mentioned_person_ids).toEqual([VICTOR]);
+      expect(summary.content).toContain("bc-attachment");
+      expect(summary.id).toBe(1);
+
+      // AND THE SKIP IS NOT SILENT. The short list is distinguishable from a
+      // genuinely shorter text, which is the whole objection to skipping: the
+      // id it could not name is reported as the decimal string it arrived as,
+      // because reporting it as a number is exactly what it cannot do.
+      expect(summary.unnameable_mention_ids).toEqual(["9007199254740993"]);
     });
 
     it("reports no mentions for a chat line BC3 never read as markup", async () => {

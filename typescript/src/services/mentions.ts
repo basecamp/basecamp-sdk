@@ -85,58 +85,94 @@ import type { Person } from "../generated/services/people.js";
  * `<blockquote>`: BC3 notifies quoted mentions too, so the read matches what
  * the server does with the write.
  *
- * @throws {BasecampError} `api_error` when the text mentions a person whose id
- * is a valid `int64` past `Number.MAX_SAFE_INTEGER`, which no `number[]` can
- * report. It is a REFUSAL, deliberately, and not the silent skip the sentence
- * above would otherwise have been lying about.
+ * An id a `number` cannot carry — a valid `int64` past
+ * `Number.MAX_SAFE_INTEGER` — is SKIPPED, like any other sgid this cannot
+ * resolve to a person.
  *
- * The count is the whole answer here, which is what makes this site different
- * from the normalizer in `base.ts`. There, an unrepresentable id is left in the
- * body as its original string: nothing else in the response is harmed, and the
- * caller can see exactly which field it was. Here the return type is `number[]`
- * — there is no string to leave and no room to say "and one more I could not
- * name". Dropping it silently would make a short list indistinguishable from a
- * genuinely shorter text, on a value that feeds `mentioned_person_ids` and
- * decides who gets notified: measured against the reference, a text naming
- * `7, 9007199254740991, 9007199254740992, 9007199254740993,
- * 9223372036854775807, 0009223372036854775807` gave Go 5 ids and Ruby 5, and
- * gave this 2, with no error. Under-reporting a set is the one failure a caller
- * cannot detect, because the evidence it would need is the thing that was
- * dropped. A throw names the id in its message, so the caller learns what it
- * cannot have, and can catch it.
+ * That is a real under-report, and it was briefly a throw for that reason: the
+ * count is the whole answer here, and dropping an id silently makes a short
+ * list indistinguishable from a genuinely shorter text, on a value that feeds
+ * `mentioned_person_ids` and decides who gets notified. Measured against the
+ * reference, a text naming `7, 9007199254740991, 9007199254740992,
+ * 9007199254740993, 9223372036854775807, 0009223372036854775807` gives Go 5 ids
+ * and gives this 2.
  *
- * Both alternatives were weighed and cost more. Rounding the id to the nearest
- * `number` reports a DIFFERENT person, which is worse than reporting none.
- * Returning the representable ids and exposing the rest through a second
- * function or an options bag grows the public surface for an event BC3's own
- * ids — around 1e9 — never produce today; the choice here is only about which
- * failure the SDK makes on the day one does.
+ * THE THROW WAS WORSE, AND NOT BY A LITTLE. This function's input is rich text
+ * off the wire, and `recordingsExtensions.projectRecording` calls it unguarded
+ * on server-returned `content`. The sgid's signature is never verified here —
+ * `globalIDFromSGID` takes a bare unsigned envelope — so the id inside it is
+ * written by whoever wrote the comment. A throw therefore handed any author of
+ * a `<bc-attachment>` a way to fail `recordings.summarize()` outright: one
+ * crafted mention, and every other mention, the content, the title and the
+ * creator all go with it. Refusing to name one person is a smaller loss than
+ * refusing to read the recording, and the choice is not the SDK's to make on
+ * the caller's behalf when an adversary picks the input.
  *
- * An id past `int64` is NOT this case: `strconv.ParseInt` raises, Go's
- * `PersonIDFromSGID` answers "not a person" (`go/pkg/basecamp/mentions.go:257-259`),
- * and so does this — skipped silently, exactly as the reference skips it.
+ * It is also the reference's own failure mode: `MentionedPersonIDs`
+ * (`go/pkg/basecamp/mentions.go:82-92`) `continue`s on every sgid
+ * `PersonIDFromSGID` declines, and never fails the text. Go simply has fewer
+ * ids it must decline, because an `int64` fits its return type.
+ *
+ * `person-id.ts` argues the same trade the same way for the normalizer — one
+ * unrepresentable id must not discard every other record in the body — and this
+ * site is the one where the input is untrusted by construction, so it is the
+ * last place that argument should have been abandoned. The residual is recorded
+ * in SPEC §10 as an availability trade-off rather than hidden.
+ *
+ * A caller that must not under-report reads {@link readMentions} instead, which
+ * returns the same list alongside the ids it could not name. That is the
+ * distinguishable signal the skip would otherwise lack, and
+ * `recordings.summarize()` surfaces it as `unnameable_mention_ids`.
+ *
  */
 export function mentionedPersonIds(richText: string): number[] {
+  return readMentions(richText).ids;
+}
+
+/**
+ * The mentions a rich text names, and the ones it names that cannot be reported
+ * as numbers.
+ *
+ * {@link mentionedPersonIds} is `readMentions(text).ids`. This is the same walk
+ * with the skipped ids kept rather than dropped, so a caller that must not
+ * under-report can tell "this text mentions two people" from "this text mentions
+ * two people I can name and one I cannot".
+ *
+ * `unnameable` holds each id as the DECIMAL STRING it arrived as, in document
+ * order, deduplicated. A string because that is the whole point: these are
+ * exactly the ids no `number` can carry, so reporting them as numbers would
+ * round them into a neighbouring person — the failure this refuses to make.
+ * They are real ids, not malformed ones: an sgid that does not decode, or names
+ * something other than a Person, or carries a magnitude past `int64`, is not a
+ * mention in the reference either and appears in neither list.
+ *
+ * Nothing here verifies the sgid's signature, so an id in `unnameable` is as
+ * untrusted as one in `ids` — see the trust boundary above.
+ */
+export function readMentions(richText: string): { ids: number[]; unnameable: string[] } {
   const ids: number[] = [];
+  const unnameable: string[] = [];
   const seen = new Set<number>();
+  const seenRaw = new Set<string>();
   for (const sgid of bcAttachmentSGIDs(richText)) {
     const mentioned = parsePersonSGID(sgid);
     if (mentioned.kind === "none") continue;
+    // An id a `number` cannot carry is skipped, not thrown: see above. The
+    // input is attacker-written, so failing the whole text here would let one
+    // crafted mention take down the recording read that calls this. It is
+    // reported here instead, which is what keeps the skip from being silent.
     if (mentioned.kind === "unrepresentable") {
-      throw Errors.apiError(
-        `rich text mentions person ${mentioned.rawId}, whose id does not fit a JavaScript number`,
-        undefined,
-        {
-          hint: "ids beyond 2^53 cannot be reported as numbers; read the mention through the sgid itself",
-          retryable: false,
-        },
-      );
+      if (!seenRaw.has(mentioned.rawId)) {
+        seenRaw.add(mentioned.rawId);
+        unnameable.push(mentioned.rawId);
+      }
+      continue;
     }
     if (seen.has(mentioned.id)) continue;
     seen.add(mentioned.id);
     ids.push(mentioned.id);
   }
-  return ids;
+  return { ids, unnameable };
 }
 
 /**

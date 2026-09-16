@@ -601,15 +601,21 @@ describe("mentionedPersonIds", () => {
     expect(perAmpersand).toBeGreaterThanOrEqual(1);
   });
 
-  it("refuses a text whose mention names an id no number can carry", () => {
-    // The read side's residual, made visible instead of silent. Measured
-    // against the reference: this text names five people to Go and five to
-    // Ruby, and named TWO here with no error, because three of the ids are
-    // past 2^53 and were dropped on the floor. A short list is
-    // indistinguishable from a shorter text, and it feeds
-    // `mentioned_person_ids`, which decides who gets notified — so the drop
-    // had to become something a caller can see. The id is named in the
-    // message; rounding it would have reported a different person.
+  it("skips a mention whose id no number can carry, and keeps the rest of the text", () => {
+    // THE UNDER-REPORT IS REAL AND IT IS STILL THE LESSER LOSS. Measured
+    // against the reference, this text names five people to Go and five to
+    // Ruby, and names two here, because three of the ids are past 2^53. A
+    // short list is indistinguishable from a shorter text, and it feeds
+    // `mentioned_person_ids`, which decides who gets notified.
+    //
+    // It was briefly a throw for exactly that reason, and the throw was worse.
+    // This function's input is rich text off the wire and the sgid's signature
+    // is never verified, so the id inside it is written by whoever wrote the
+    // comment: a throw handed any author of a `<bc-attachment>` a way to fail
+    // `recordings.summarize()` outright. Refusing to name one person beats
+    // refusing to read the recording. It is also the reference's own failure
+    // mode -- `MentionedPersonIDs` continues past every sgid it declines
+    // (go/pkg/basecamp/mentions.go:82-92) and never fails the text.
     const mention = (raw: string): string => attachment(legacySGID(`gid://bc3/Person/${raw}`));
     const text = [
       mention("7"),
@@ -620,34 +626,29 @@ describe("mentionedPersonIds", () => {
       mention("0009223372036854775807"),
     ].join("");
 
-    const err = (() => {
-      try {
-        mentionedPersonIds(text);
-        return undefined;
-      } catch (e: unknown) {
-        return e;
-      }
-    })();
-    expect(err).toBeInstanceOf(BasecampError);
-    expect((err as BasecampError).code).toBe("api_error");
-    expect((err as BasecampError).message).toMatch(/9007199254740992/);
+    // No throw, and every id it CAN carry survives the ones it cannot --
+    // including the two that sit after the unreadable ones in document order,
+    // which is the half a `continue` gets right and an early exit would not.
+    expect(mentionedPersonIds(text)).toEqual([7, 9007199254740991]);
 
-    // The two it can carry are still read, when nothing unreadable is present.
-    expect(mentionedPersonIds(mention("7") + mention("9007199254740991"))).toEqual([
-      7, 9007199254740991,
-    ]);
+    // The unreadable id is still distinguishable one sgid at a time, which is
+    // where a caller that must not under-report goes.
+    expect(personIdFromSGID(legacySGID("gid://bc3/Person/9007199254740992"))).toBeUndefined();
   });
 
-  it("skips an id past int64 silently, because the reference skips it too", () => {
+  it("skips an id past int64 too, for a different reason, and reports neither", () => {
     // NOT the case above. `strconv.ParseInt` raises on a magnitude past int64,
     // Go's PersonIDFromSGID answers "not a person"
-    // (go/pkg/basecamp/mentions.go:257-259), and a non-mention is not something
-    // to refuse a whole text over. The two are one digit apart in the same
-    // direction, and only the int64 bound separates them.
+    // (go/pkg/basecamp/mentions.go:257-259), so this is a non-mention in the
+    // reference rather than an id the reference could name and this cannot.
+    // The two reach the same outcome here and the distinction is still worth
+    // keeping, because only one of them is a divergence from Go.
     const mention = (raw: string): string => attachment(legacySGID(`gid://bc3/Person/${raw}`));
     expect(mentionedPersonIds(mention("9223372036854775808"))).toEqual([]);
     expect(mentionedPersonIds(mention("99999999999999999999999"))).toEqual([]);
-    expect(() => mentionedPersonIds(mention("9223372036854775807"))).toThrow(BasecampError);
+
+    // Go names this one; this cannot, and skips it. The divergence, pinned.
+    expect(mentionedPersonIds(mention("9223372036854775807"))).toEqual([]);
   });
 
   it("stops at an unterminated comment or tag rather than guessing", () => {

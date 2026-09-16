@@ -31,7 +31,25 @@ import type { components } from "../generated/schema.js";
 import type { Person } from "../generated/services/people.js";
 import type { CampfireLine } from "../generated/services/campfires.js";
 import type { BasecampClient } from "../client.js";
-import { mentionedPersonIds } from "./mentions.js";
+import { readMentions } from "./mentions.js";
+
+/**
+ * The two mention fields of a summary, from one walk of the rich text.
+ *
+ * `unnameable_mention_ids` is omitted rather than set to `[]` when there is
+ * nothing to report, so the key appears only on the payloads where
+ * `mentioned_person_ids` is actually short. `mentioned_person_ids` is always
+ * present, which is the existing contract.
+ */
+function mentionsOf(richText: string): {
+  mentioned_person_ids: number[];
+  unnameable_mention_ids?: string[];
+} {
+  const { ids, unnameable } = readMentions(richText);
+  return unnameable.length > 0
+    ? { mentioned_person_ids: ids, unnameable_mention_ids: unnameable }
+    : { mentioned_person_ids: ids };
+}
 
 // =============================================================================
 // Public types
@@ -133,6 +151,23 @@ export interface RecordingSummary {
    * JSON consumer reads `[]` rather than a missing key.
    */
   mentioned_person_ids: number[];
+  /**
+   * The mentions in `content` that name a real person this SDK cannot report as
+   * a number — a valid `int64` past `Number.MAX_SAFE_INTEGER`, as the decimal
+   * string it arrived as.
+   *
+   * ABSENT whenever there are none, which is every payload BC3 sends today, so
+   * a JSON consumer sees no new key until one actually appears. Present only
+   * when `mentioned_person_ids` is therefore short, which is what makes the
+   * skip visible: without it a text naming three people and a text naming two
+   * would read identically.
+   *
+   * These ids are skipped rather than thrown over on purpose. `content` is
+   * written by whoever wrote the comment and the sgid's signature is never
+   * verified, so refusing the read would hand any author a way to make the
+   * recording unreadable. Reported, not fatal, and untrusted either way.
+   */
+  unnameable_mention_ids?: string[];
   /**
    * The recording's rich text, in full: the comment body, the message body, a
    * to-do's description, a card's content, the chat line.
@@ -1771,7 +1806,7 @@ function projectRecording(
     // resolve to "" through firstNonEmpty.
     title: recordingText(title, "a recording title"),
     app_url: recordingText(recording.app_url, "a recording app_url"),
-    mentioned_person_ids: mentionedPersonIds(body),
+    ...mentionsOf(body),
     content: body,
     // Go's zero value here is a `time.Time`, not a string, and it marshals as
     // the zero instant rather than as "".
