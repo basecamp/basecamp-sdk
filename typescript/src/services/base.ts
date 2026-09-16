@@ -26,6 +26,7 @@ import type { BasecampHooks, OperationInfo, OperationResult } from "../hooks.js"
 import { BasecampError, errorFromParsedBody, errorFromResponse, parseRetryAfter, truncateErrorMessage } from "../errors.js";
 import metadata from "../generated/metadata.js";
 import { ListResult, parseTotalCount, type PaginationOptions } from "../pagination.js";
+import { personIdNumber, scanPersonId } from "../person-id.js";
 import { parseNextLink, resolveURL, isSameOrigin, DEFAULT_MAX_PAGES, assertValidMaxPages } from "../pagination-utils.js";
 import { saturatingBackoff, timerSafeDelayMs } from "../retry.js";
 import type { paths } from "../generated/schema.js";
@@ -81,12 +82,28 @@ function selectedPageResult<T>(
  * Normalizes Person-shaped objects in API responses.
  *
  * The BC3 API conflates real Person records (numeric id) with system actors
- * like LocalPerson (symbolic id: "basecamp", "campfire"). This function
- * walks a response tree and, for any object with a `personable_type` field
- * whose `id` is a string:
- * - Numeric strings in safe integer range: coerced to number, no system_label
- * - Non-numeric sentinels (e.g. "basecamp"): id becomes 0, original preserved as system_label
- * - Numeric overflow (beyond Number.MAX_SAFE_INTEGER): id becomes 0, original preserved as system_label
+ * like LocalPerson (symbolic id: "basecamp", "campfire"). This function walks a
+ * response tree and rewrites the `id` of any object that carries a
+ * `personable_type` and a STRING `id`, by the one rule in `../person-id.js` —
+ * Go's `strconv.ParseInt(s, 10, 64)` — matching `coercePersonID`
+ * (`go/pkg/basecamp/normalize.go:38-68`) outcome for outcome:
+ *
+ * - it reads a number: write the number, no `system_label` (`:58`)
+ * - SYNTAX ("basecamp", " 7", "12.0", "1e3"): id `0`, the raw string kept as
+ *   `system_label` (`:66-67`) — Go's non-numeric sentinel
+ * - RANGE ("9223372036854775808"): leave the string exactly as it arrived
+ *   (`:62-63`), so whoever reads it refuses rather than inventing an id
+ *
+ * The `^-?\d+$` + `Number.isSafeInteger` pair this replaces was wrong at both
+ * ends. It refused the leading `+` that `ParseInt` takes, so `"+7"` — a real
+ * person — became the sentinel. And it collapsed EVERY id past
+ * `Number.MAX_SAFE_INTEGER` to `id: 0` with a `system_label`: range errors and
+ * genuine large ids alike, which is to say it turned people into LocalPerson,
+ * silently, in the shape callers trust. Measured against the reference, 26 of
+ * the 74 corpus rows in `tests/helpers/person-id-corpus.ts` disagreed with Go
+ * (25 of them on the id itself; `"+0"` agreed on `0` and added a spurious
+ * label). The 11 that remain are the unrepresentable-value rows
+ * {@link personIdNumber} argues about.
  */
 function normalizePersonIds(obj: unknown): void {
   if (!obj || typeof obj !== "object") return;
@@ -97,21 +114,20 @@ function normalizePersonIds(obj: unknown): void {
   const rec = obj as Record<string, unknown>;
   if ("personable_type" in rec && typeof rec.id === "string") {
     const idStr = rec.id as string;
-    // Strict integer check: only bare digits (with optional leading minus).
-    // Rejects "1e3", "123.0", "0x1F", "123abc" which Number() would accept.
-    if (/^-?\d+$/.test(idStr) && Number.isSafeInteger(Number(idStr))) {
-      // Numeric string in safe integer range (e.g. "12345") — coerce to number
-      rec.id = Number(idStr);
-    } else if (/^-?\d+$/.test(idStr)) {
-      // Pure digits but overflows JS safe integer range — preserve as
-      // system_label since we can't represent it losslessly as a number
+    const scan = scanPersonId(idStr);
+    if (scan.kind === "syntax") {
+      // Go's non-numeric sentinel, with the label the id came in as.
       rec.system_label = idStr;
       rec.id = 0;
-    } else {
-      // Non-numeric sentinel (e.g. "basecamp" for LocalPerson)
-      rec.system_label = idStr;
-      rec.id = 0;
+    } else if (scan.kind === "value") {
+      const id = personIdNumber(scan.value);
+      // `undefined` is an id Go read and a `number` cannot hold. Leaving the
+      // string is the RANGE treatment, for the reason at personIdNumber: a
+      // rounded id names a different person and `0` names the system actor,
+      // while the digits, left alone, name whoever they always named.
+      if (id !== undefined) rec.id = id;
     }
+    // RANGE: nothing. The string stays put and the caller refuses it.
   }
   for (const val of Object.values(rec)) {
     if (typeof val === "object" && val !== null) normalizePersonIds(val);

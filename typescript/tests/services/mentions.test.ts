@@ -13,10 +13,11 @@ import {
   mentionMarkup,
   withMentions,
 } from "../../src/index.js";
-import { namedEntityNames, unescapeEntities } from "../../src/services/mentions.js";
+import { namedEntityNames, personIdValue, unescapeEntities } from "../../src/services/mentions.js";
 import { BasecampError } from "../../src/errors.js";
 import type { Person } from "../../src/generated/services/people.js";
 import { jsonSGID, legacySGID, personSGID, railsSGID } from "../helpers/sgid.js";
+import { PERSON_ID_CORPUS, fitsNumber } from "../helpers/person-id-corpus.js";
 
 const VICTOR = 1049715914;
 const ANNIE = 1049715915;
@@ -612,6 +613,44 @@ describe("mentionMarkup", () => {
     // The one string Go refuses outright, taking the people read with it. This
     // layer cannot fail a read that already returned, so it refuses the write.
     expect(() => mentionMarkup(withId("9223372036854775808"))).toThrow(/does not name that person/);
+  });
+
+  it("answers all 74 measured corpus rows the way ParseInt does", () => {
+    // Pinned against personIdValue rather than against mentionMarkup, because
+    // the two refusals are indistinguishable through the public path: a 0 and
+    // an `undefined` both refuse the mention, so the verdict cannot see the
+    // difference between "Go read the system actor" and "Go failed the read".
+    // That is exactly where the scan-order defect lived.
+    expect(PERSON_ID_CORPUS.length).toBe(74);
+
+    for (const row of PERSON_ID_CORPUS) {
+      const where = JSON.stringify(row.id);
+      if (row.go === "syntax") {
+        // Go's sentinel zero. `toBe` is Object.is, so a `-0` fails here.
+        expect(personIdValue(row.id), where).toBe(0);
+      } else if (row.go === "range") {
+        // Go raises and the read fails; this layer can only report unreadable.
+        expect(personIdValue(row.id), where).toBeUndefined();
+      } else if (fitsNumber(row.value!)) {
+        expect(personIdValue(row.id), where).toBe(Number(row.value!));
+      } else {
+        // RESIDUAL DIVERGENCE (11 rows): Go reads an int64 no `number` holds.
+        // Unreadable, never a rounded neighbour and never the sentinel 0 —
+        // argued at `personIdNumber` in src/person-id.ts.
+        expect(personIdValue(row.id), where).toBeUndefined();
+      }
+    }
+  });
+
+  it("tells the scan-order pair apart, one digit and opposite refusals", () => {
+    // `ParseUint` overflows u64 mid-scan and returns before it ever reaches the
+    // `x`, so the LARGER string is a range error that fails the read, and the
+    // smaller one is a plain syntax error that reads the sentinel 0. A port
+    // that tests the whole string for shape first and checks the magnitude
+    // second gets this pair backwards — and backwards here means handing back
+    // the system actor for an id Go refused outright.
+    expect(personIdValue("18446744073709551615x")).toBe(0);
+    expect(personIdValue("18446744073709551616x")).toBeUndefined();
   });
 
   it("refuses an sgid that names someone else", () => {

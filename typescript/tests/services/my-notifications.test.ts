@@ -137,7 +137,7 @@ describe("MyNotificationsService", () => {
       expect(creator!.system_label).toBe("123abc");
     });
 
-    it("should treat overflow numeric string as sentinel (JS cannot represent losslessly)", async () => {
+    it("should leave an id Go's ParseInt refuses as a string, not collapse it to the sentinel", async () => {
       server.use(
         http.get(`${BASE_URL}/my/readings.json`, () => {
           return HttpResponse.json({
@@ -168,9 +168,15 @@ describe("MyNotificationsService", () => {
       const creator = result.unreads![0].creator;
       expect(creator).toBeDefined();
 
-      // Overflow can't be represented as a safe integer — preserved as label
-      expect(creator!.id).toBe(0);
-      expect(creator!.system_label).toBe("9223372036854775808");
+      // "9223372036854775808" is int64 + 1: `strconv.ParseInt` raises a RANGE
+      // error on it, and Go's coercePersonID leaves such a string untouched so
+      // the decoder refuses it (go/pkg/basecamp/normalize.go:62-63). Writing 0
+      // and a system_label — what this used to do — names LocalPerson for a
+      // string Go read no value from at all. The full grammar is pinned row by
+      // row in person-id-normalization.test.ts.
+      const creatorRecord = creator as unknown as Record<string, unknown>;
+      expect(creatorRecord.id).toBe("9223372036854775808");
+      expect(creatorRecord.system_label).toBeUndefined();
     });
   });
 

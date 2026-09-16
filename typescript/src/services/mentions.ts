@@ -64,6 +64,7 @@
  */
 
 import { Errors } from "../errors.js";
+import { personIdNumber, scanPersonId } from "../person-id.js";
 import type { Person } from "../generated/services/people.js";
 
 // =============================================================================
@@ -1184,13 +1185,34 @@ export function mentionMarkup(person: Person): string {
  * outright and takes the people read with it; nothing at this layer can fail a
  * read that already succeeded, so it reads as unreadable and the mention is
  * refused — a refusal either way, by a different route.
+ *
+ * The grammar itself is {@link scanPersonId}, shared with the pre-decode
+ * normalizer in `base.ts` so the two cannot answer differently about the same
+ * string. Reading `[+-]?\d+` off a regex first and only then checking the
+ * magnitude was the remaining defect here: it puts the whole-string test BEFORE
+ * the magnitude check, where Go's scan interleaves them. `"18446744073709551616x"`
+ * therefore read `0` — the SYSTEM ACTOR — where Go, which overflows u64 before
+ * it ever reaches the `x`, raises a range error and fails the read. Its
+ * neighbour `"18446744073709551615x"` really is a syntax error and really does
+ * read `0`. One digit apart, opposite verdicts; only a scan in Go's order gets
+ * both.
+ *
+ * Exported for `tests/services/mentions.test.ts`, which pins the corpus against
+ * this function rather than against `mentionMarkup`: the two refusals are
+ * INDISTINGUISHABLE through the public path, since `0` and `undefined` both
+ * refuse the mention, so a test that could only see the verdict could not see
+ * the defect above. It is not re-exported from `index.ts` and is not public API.
  */
-function personIdValue(value: unknown): number | undefined {
+export function personIdValue(value: unknown): number | undefined {
   if (typeof value === "number") return value;
   if (typeof value !== "string") return undefined;
-  if (!/^[+-]?\d+$/.test(value)) return 0;
-  const parsed = Number(value);
-  return Number.isSafeInteger(parsed) ? parsed : undefined;
+  const scan = scanPersonId(value);
+  // Go's sentinel zero for a syntax refusal; the number for a value this
+  // platform can hold; "unreadable" for a range refusal AND for a value past
+  // 2^53, which is the judgment call argued at personIdNumber.
+  if (scan.kind === "syntax") return 0;
+  if (scan.kind === "range") return undefined;
+  return personIdNumber(scan.value);
 }
 
 /**
