@@ -1586,6 +1586,89 @@ All integer IDs must use at least 64 bits of precision (e.g., Go `int64`, Kotlin
 
 `[CONFLICT: JavaScript Number.MAX_SAFE_INTEGER is 2^53 - 1. On the supported Node >=22.12 floor, JSON.parse reviver source access makes lossless bigint decoding feasible, but returning bigint would break the TypeScript SDK's number-typed API surface. The spec prescribes 64-bit precision; TypeScript implementations must document the retained limitation. See waiver 1B.6 in rubric-audit.json.]`
 
+### Person Ids Off the Wire `[static]`
+
+BC3 serializes a person id as a JSON **string** in some responses and a JSON
+number in others, and it uses non-numeric strings — `"basecamp"`,
+`"campfire"` — as the id of system-generated entities. Every SDK therefore
+turns an integer-shaped string into a number somewhere, and every SDK reached
+for its own language's integer parser to do it. **None of those parsers is
+`strconv.ParseInt(s, 10, 64)`**, which is the rule the reference actually
+applies, and the disagreements all landed in the same direction: an id the
+reference reads as **0 — the system actor** — read as a real person, or a real
+person read as the system actor.
+
+**The rule is `strconv.ParseInt(s, 10, 64)`, scan order included.** One
+optional ASCII `+` or `-`; then one or more ASCII digits `0`-`9` and nothing
+else. No surrounding whitespace of any kind (Go trims none), no `_` separator
+(base 10 never allows it, only base 0 does), no Unicode decimal digits, and
+leading zeros carry no meaning — `"010"` is **ten**, because the base is never
+detected from the literal.
+
+`ParseInt` refuses in two distinguishable ways and the SDK does something
+different with each, so a single "is this a number?" predicate cannot implement
+this:
+
+| `ParseInt` | pre-decode normalizer | reader |
+|---|---|---|
+| ok(n) | write the number `n`, no `system_label` | return `n` |
+| `ErrSyntax` | write id `0` and `system_label` = the raw string | return `0` |
+| `ErrRange` | **leave the string untouched**, so the reader refuses | **fail the read** |
+
+**Which refusal you get depends on where in the string the disqualifying byte
+sits.** `ParseUint` checks the magnitude *inside* the scan and returns
+`ErrRange` the instant the accumulator would overflow `uint64` — before it ever
+looks at the rest of the string — and the bound there is `uint64`'s, not
+`int64`'s. So `"18446744073709551615x"` is a **syntax** refusal that reads 0,
+and its one-digit-longer neighbour `"18446744073709551616x"` is a **range**
+refusal that fails the read. Testing the whole string for well-formedness first
+gets that pair backwards, and backwards means an oversized malformed id
+silently becoming the system actor.
+
+**Two rules for a person id live in the reference and they are deliberately
+different. Do not unify them.**
+
+| | site | rule |
+|---|---|---|
+| **A** | the person id inside `gid://bc3/Person/<id>`, `PersonIDFromSGID` (`go/pkg/basecamp/mentions.go:252-256`) | walks the bytes and refuses anything outside `0..=9` **before** parsing, then refuses `id <= 0`. It therefore **rejects a leading `+`** |
+| **B** | every other person id off the wire — `types.FlexibleInt64` (`go/pkg/types/flexible_int64.go:34`) and the pre-decode normalizer `coercePersonID` (`go/pkg/basecamp/normalize.go`) | `ParseInt` taken whole, no pre-walk. **Accepts a leading `+`** |
+
+Check-then-parse is **correct** at the gid site: loosening it to match B is the
+defect closed by "Port the recording-summary and mention composites to Rust"
+(#886), where `gid://bc3/Person/+77` began naming person 77. Tightening B to
+match A is the same mistake in the other direction. A is not simply the
+stricter of the two either — leading zeros pass its digit walk, so `"007"` is 7
+on both sides, and a port that "hardens" the walk by refusing them diverges
+just as surely.
+
+**The oracle, not the documentation.** Every port that reasoned from
+`ParseInt`'s docs rather than probing it got something wrong. The corpus and
+both properties are pinned in `go/pkg/basecamp/person_id_grammar_test.go`,
+which doubles as the probe:
+
+```
+ORACLE_OUT=/tmp/oracle.json go test ./pkg/basecamp/ -run TestPersonIDOracleDump
+```
+
+It writes each row's verdict under all three of `PersonIDFromSGID`,
+`FlexibleInt64` and the normalize-then-decode wrapper path, as the real code
+answers them. A port re-derives its table from that run. A corpus is only
+evidence about what it contains, so the shapes that **discriminate** are the
+point: the leading `+`, leading zeros and `"010"`; Unicode decimal digits from
+more than one script; ASCII whitespace before and after; PEP-515-style
+underscores; the `u64` scan-order pair above; and ids past 2^53 that are
+ordinary `int64` values.
+
+| SDK | state |
+|-----|-------|
+| **Go** | The reference. `coercePersonID` normalizes to the number `ParseInt` returned — it used to hold the string verbatim as a `json.Number`, which the JSON encoder then refused because the JSON number grammar allows neither a leading `+` nor leading zeros, so `"+7"` and `"007"` failed the whole response on the notification, gauge and bubble-up paths while `FlexibleInt64` read them fine. |
+| **Rust** | Already exact, and the only SDK with no pre-decode normalizer to get wrong: `flexible_i64::parse_int` is `ParseUint`'s loop written out, with the two refusals kept apart. `mentions::parse_global_id` carries rule A separately, and each comment points at the other. 0 of 74. |
+| **Ruby** | `Ids.parse_int`, shared by `Http.coerce_person_id` and `Ids.person_from_wire`. `Ids.bounded_decimal` is a DIFFERENT rule — lexical, then bounded — and stays that way for its four other callers, the gid walk among them. |
+| **Python** | `basecamp._person_id.parse_int64`, shared by the sync and async normalizers and by the `FlexibleInt64` reader in `services/_campfire_index.py`. `int()` is the wrong tool in four accepting directions at once: it strips whitespace, honours PEP 515 underscores, takes every Unicode decimal digit, and is arbitrary-precision. |
+| **Kotlin** | `serialization.parseInt64`, shared by `normalizePersonIds` and `FlexibleLongSerializer`. `String.toLongOrNull` is Unicode-aware through `digitOf` / `Character.digit`, so it read a fullwidth `"１２３"` as a real person. |
+| **Swift** | `parsePersonID` (`FlexibleInt.swift`), shared by `BaseService.normalizeWalk` and `FlexibleInt`. An `NSRegularExpression` `\d` is ICU's, which matches `\p{Nd}`, so the regex that stood in for the range check treated a fullwidth digit run as an overflow and failed the whole response — and ICU's `$` matches before a final newline while `range(of:options:)` matches a SUBSTRING, so `"7\n"` did the same. Bytes, not a regex, is what settles both permanently. |
+| **TypeScript** | `scanPersonId` (`src/person-id.ts`), shared by `normalizePersonIds` and `personIdValue`. **One residual, 11 of 74:** a JS `number` cannot carry an `int64` past 2^53 — the same constraint as waiver 1B.6 and `conformance/tests/integer-precision.json` — so an id Go reads is reported UNREADABLE rather than rounded: the normalizer leaves the string in place and the reader answers `undefined`. Writing `0` there, which is what it did before, hands back the system actor for a real person; throwing would discard every other record in the body. Both refuse the id rather than the response. |
+
 ### Nullable Numeric Dimensions (rich-text attachment width/height)
 
 Rich-text `*_attachments` elements — the companion array the API pairs with
