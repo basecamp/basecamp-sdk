@@ -1,6 +1,7 @@
 package eventfeed
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -8,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"slices"
 	"strconv"
 	"sync"
 	"time"
@@ -508,11 +510,10 @@ func checkContinuationCursor(position, since string) error {
 }
 
 // eventFromFeed maps the wrapper's FeedEvent onto the connector's Event. The
-// details object is re-serialized from the wrapper's typed projection
-// (FeedEventDetails carries the members the SDK models; the generated layer
-// keeps it typed so every SDK decodes it, and drops members it does not
-// know), so on the poll lane Event.Details is that projection — the push
-// lane, which decodes the frame itself, keeps the server's bytes whole.
+// details object passes through as the bytes the server sent, under the push
+// decoder's rule — an object is kept whole, null is absent, anything else is
+// refused — so the two lanes deliver byte-identical detail objects: explicit
+// nulls and the members of newly cataloged types survive on both.
 func eventFromFeed(fe basecamp.FeedEvent) (Event, error) {
 	// The generated model is value-typed, so a row missing a required member
 	// arrives as a zero value rather than a decode error; the push decoder
@@ -534,12 +535,11 @@ func eventFromFeed(fe basecamp.FeedEvent) (Event, error) {
 		PerformedByID: fe.PerformedByID,
 		RecordingID:   fe.RecordingID,
 	}
-	if fe.Details != nil {
-		raw, err := json.Marshal(fe.Details)
-		if err != nil {
-			return Event{}, fmt.Errorf("eventfeed: encoding event %d details: %w", fe.ID, err)
+	if trimmed := bytes.TrimSpace(fe.Details); len(trimmed) > 0 && !bytes.Equal(trimmed, []byte("null")) {
+		if !isJSONObject(trimmed) {
+			return Event{}, fmt.Errorf("eventfeed: poll row %d carries details that are not an object", fe.ID)
 		}
-		ev.Details = raw
+		ev.Details = json.RawMessage(slices.Clone(trimmed))
 	}
 	return ev, nil
 }

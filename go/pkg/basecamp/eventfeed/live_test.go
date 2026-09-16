@@ -1,6 +1,7 @@
 package eventfeed_test
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -351,6 +352,58 @@ func TestLivePolls_RefusesAContinuationWithoutACursor(t *testing.T) {
 	if f.requests.Load() != 0 {
 		t.Fatalf("requests = %d, want none", f.requests.Load())
 	}
+}
+
+// TestLivePolls_DetailsMatchThePushLaneByteForByte: a row's details object
+// reaches the connector as the bytes the server sent on both lanes — an
+// explicit null member and a member of a type this SDK does not model
+// survive the poll adapter exactly as they survive the push decoder — and a
+// details value that is not an object is refused as the push lane refuses it.
+func TestLivePolls_DetailsMatchThePushLaneByteForByte(t *testing.T) {
+	const row = `{"id":7001,"kind":"boost_created","event_type":"boost.created","action":"created","created_at":"2026-08-01T12:00:00Z","bucket_id":2,"creator_id":3,"performed_by_id":null,"recording_id":900,"actor_type":"user","visible_to_clients":true,"details":{"boost_id":5,"boosted_event_id":null,"boosted_event_type":null,"future_member":{"nested":[1,"two",null]}}}`
+	f := newLiveFixture(t, eventfeed.AccountLane, func(w http.ResponseWriter, r *http.Request) {
+		jsonResponse(w, 200, `{"events":[`+row+`],"position":"pos-1"}`)
+	})
+	page, err := f.live.Polls().Poll(context.Background(), eventfeed.Cursor{Position: "pos-0"}, eventfeed.Filters{})
+	if err != nil || len(page.Events) != 1 {
+		t.Fatalf("Poll = %+v, %v", page, err)
+	}
+	pushed, err := eventfeed.ExportDecodePushEvent([]byte(row))
+	if err != nil {
+		t.Fatalf("push decode: %v", err)
+	}
+	if !bytes.Equal(page.Events[0].Details, pushed.Details) {
+		t.Fatalf("poll details %s\nwant the push lane's %s", page.Events[0].Details, pushed.Details)
+	}
+	if !strings.Contains(string(page.Events[0].Details), `"boosted_event_id":null`) || !strings.Contains(string(page.Events[0].Details), `"future_member"`) {
+		t.Fatalf("details lost a null or an unmodeled member: %s", page.Events[0].Details)
+	}
+	for name, details := range map[string]string{"a null is absent": "null", "absent is absent": ""} {
+		t.Run(name, func(t *testing.T) {
+			body := strings.Replace(row, `,"details":{"boost_id":5,"boosted_event_id":null,"boosted_event_type":null,"future_member":{"nested":[1,"two",null]}}`, "", 1)
+			if details != "" {
+				body = strings.Replace(body, `"recording_id":900`, `"recording_id":900,"details":`+details, 1)
+			}
+			f := newLiveFixture(t, eventfeed.AccountLane, func(w http.ResponseWriter, r *http.Request) {
+				jsonResponse(w, 200, `{"events":[`+body+`],"position":"pos-1"}`)
+			})
+			page, err := f.live.Polls().Poll(context.Background(), eventfeed.Cursor{Position: "pos-0"}, eventfeed.Filters{})
+			if err != nil || len(page.Events) != 1 || page.Events[0].Details != nil {
+				t.Fatalf("Poll = %+v, %v; want one event with no details", page, err)
+			}
+		})
+	}
+	t.Run("a non-object is refused", func(t *testing.T) {
+		body := strings.Replace(row, `{"boost_id":5,"boosted_event_id":null,"boosted_event_type":null,"future_member":{"nested":[1,"two",null]}}`, `7`, 1)
+		f := newLiveFixture(t, eventfeed.AccountLane, func(w http.ResponseWriter, r *http.Request) {
+			jsonResponse(w, 200, `{"events":[`+body+`],"position":"pos-1"}`)
+		})
+		_, err := f.live.Polls().Poll(context.Background(), eventfeed.Cursor{Position: "pos-0"}, eventfeed.Filters{})
+		var pe *eventfeed.PollError
+		if !errors.As(err, &pe) || pe.Kind != eventfeed.PollUnrecoverable {
+			t.Fatalf("error = %v, want unrecoverable for non-object details", err)
+		}
+	})
 }
 
 // TestLivePolls_AMalformedLocationIsARefusedHop: a 3xx whose Location does

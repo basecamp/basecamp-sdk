@@ -2,6 +2,7 @@ package eventfeed
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"time"
 )
@@ -165,6 +166,12 @@ func ExportMapMintErrorKind(err error) MintErrorKind {
 		return me.Kind
 	}
 	return 0
+}
+
+// ExportDecodePushEvent decodes one event object the way the push lane does,
+// so a test can hold the poll adapter to the same bytes.
+func ExportDecodePushEvent(raw []byte) (Event, error) {
+	return decodeEventObject(json.RawMessage(raw), true)
 }
 
 // ExportInboxSubscribeFrame is ExportSubscribeFrame for the inbox lane.
