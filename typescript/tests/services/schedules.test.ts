@@ -1191,7 +1191,14 @@ describe("SchedulesService", () => {
           e.summary = "New summary";
         }),
       );
-      expectResponseError(error, /Schedule entry field "participants"\[0\]\.id is not a person id/, requests);
+      // Refused by the `GetScheduleEntry` read: `participants` is a
+      // `FlexibleInt64` site there, and a JSON null fails its number path
+      // (go/pkg/types/flexible_int64.go:56-61) before the guard is reached.
+      expectResponseError(
+        error,
+        /GetScheduleEntry returned a person id at participants\.\[\] that is not a valid int64/,
+        requests,
+      );
     });
 
     // The other half of the same guard, and the reason the null above is NOT

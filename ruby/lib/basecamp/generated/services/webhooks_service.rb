@@ -25,7 +25,7 @@ module Basecamp
       # @return [Hash] response data
       def create(bucket_id:, payload_url:, types:, active: nil)
         with_operation(service: "webhooks", operation: "create", is_mutation: true, project_id: bucket_id) do
-          http_post("/buckets/#{bucket_id}/webhooks.json", body: compact_params(payload_url: payload_url, types: types, active: active)).json
+          http_post("/buckets/#{bucket_id}/webhooks.json", body: compact_params(payload_url: payload_url, types: types, active: active)).json(operation: "CreateWebhook")
         end
       end
 
@@ -34,7 +34,7 @@ module Basecamp
       # @return [Hash] response data
       def get(webhook_id:)
         with_operation(service: "webhooks", operation: "get", is_mutation: false, resource_id: webhook_id) do
-          http_get("/webhooks/#{webhook_id}", operation: "GetWebhook").json
+          http_get("/webhooks/#{webhook_id}", operation: "GetWebhook").json(operation: "GetWebhook")
         end
       end
 
@@ -46,7 +46,7 @@ module Basecamp
       # @return [Hash] response data
       def update(webhook_id:, payload_url: nil, types: nil, active: nil)
         with_operation(service: "webhooks", operation: "update", is_mutation: true, resource_id: webhook_id) do
-          http_put("/webhooks/#{webhook_id}", body: compact_params(payload_url: payload_url, types: types, active: active)).json
+          http_put("/webhooks/#{webhook_id}", body: compact_params(payload_url: payload_url, types: types, active: active)).json(operation: "UpdateWebhook")
         end
       end
 

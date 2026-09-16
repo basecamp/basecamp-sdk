@@ -28,7 +28,7 @@ module Basecamp
       # @return [Hash] response data
       def create_chatbot(bucket_id:, campfire_id:, service_name:, command_url: nil)
         with_operation(service: "campfires", operation: "create_chatbot", is_mutation: true, project_id: bucket_id, resource_id: campfire_id) do
-          http_post("/buckets/#{bucket_id}/chats/#{campfire_id}/integrations.json", body: compact_params(service_name: service_name, command_url: command_url)).json
+          http_post("/buckets/#{bucket_id}/chats/#{campfire_id}/integrations.json", body: compact_params(service_name: service_name, command_url: command_url)).json(operation: "CreateChatbot")
         end
       end
 
@@ -39,7 +39,7 @@ module Basecamp
       # @return [Hash] response data
       def get_chatbot(bucket_id:, campfire_id:, chatbot_id:)
         with_operation(service: "campfires", operation: "get_chatbot", is_mutation: false, project_id: bucket_id, resource_id: chatbot_id) do
-          http_get("/buckets/#{bucket_id}/chats/#{campfire_id}/integrations/#{chatbot_id}", operation: "GetChatbot").json
+          http_get("/buckets/#{bucket_id}/chats/#{campfire_id}/integrations/#{chatbot_id}", operation: "GetChatbot").json(operation: "GetChatbot")
         end
       end
 
@@ -52,7 +52,7 @@ module Basecamp
       # @return [Hash] response data
       def update_chatbot(bucket_id:, campfire_id:, chatbot_id:, service_name:, command_url: nil)
         with_operation(service: "campfires", operation: "update_chatbot", is_mutation: true, project_id: bucket_id, resource_id: chatbot_id) do
-          http_put("/buckets/#{bucket_id}/chats/#{campfire_id}/integrations/#{chatbot_id}", body: compact_params(service_name: service_name, command_url: command_url)).json
+          http_put("/buckets/#{bucket_id}/chats/#{campfire_id}/integrations/#{chatbot_id}", body: compact_params(service_name: service_name, command_url: command_url)).json(operation: "UpdateChatbot")
         end
       end
 
@@ -84,7 +84,7 @@ module Basecamp
       # @return [Hash] response data
       def get(campfire_id:)
         with_operation(service: "campfires", operation: "get", is_mutation: false, resource_id: campfire_id) do
-          http_get("/chats/#{campfire_id}", operation: "GetCampfire").json
+          http_get("/chats/#{campfire_id}", operation: "GetCampfire").json(operation: "GetCampfire")
         end
       end
 
@@ -109,7 +109,7 @@ module Basecamp
       # @return [Hash] response data
       def create_line(campfire_id:, content:, content_type: nil)
         with_operation(service: "campfires", operation: "create_line", is_mutation: true, resource_id: campfire_id) do
-          http_post("/chats/#{campfire_id}/lines.json", body: compact_params(content: content, content_type: content_type)).json
+          http_post("/chats/#{campfire_id}/lines.json", body: compact_params(content: content, content_type: content_type)).json(operation: "CreateCampfireLine")
         end
       end
 
@@ -119,7 +119,7 @@ module Basecamp
       # @return [Hash] response data
       def get_line(campfire_id:, line_id:)
         with_operation(service: "campfires", operation: "get_line", is_mutation: false, resource_id: line_id) do
-          http_get("/chats/#{campfire_id}/lines/#{line_id}", operation: "GetCampfireLine").json
+          http_get("/chats/#{campfire_id}/lines/#{line_id}", operation: "GetCampfireLine").json(operation: "GetCampfireLine")
         end
       end
 
@@ -168,7 +168,7 @@ module Basecamp
       # @return [Hash] response data
       def create_upload(campfire_id:, data:, content_type:, name:)
         with_operation(service: "campfires", operation: "create_upload", is_mutation: true, resource_id: campfire_id) do
-          http_post_raw("/chats/#{campfire_id}/uploads.json?name=#{URI.encode_www_form_component(name.to_s)}", body: data, content_type: content_type).json
+          http_post_raw("/chats/#{campfire_id}/uploads.json?name=#{URI.encode_www_form_component(name.to_s)}", body: data, content_type: content_type).json(operation: "CreateCampfireUpload")
         end
       end
     end

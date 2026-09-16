@@ -26,7 +26,7 @@ module Basecamp
       # @return [Hash] response data
       def get(approval_id:)
         with_operation(service: "clientapprovals", operation: "get", is_mutation: false, resource_id: approval_id) do
-          http_get("/client/approvals/#{approval_id}", operation: "GetClientApproval").json
+          http_get("/client/approvals/#{approval_id}", operation: "GetClientApproval").json(operation: "GetClientApproval")
         end
       end
     end

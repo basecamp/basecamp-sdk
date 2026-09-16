@@ -1,0 +1,690 @@
+// Generated from OpenAPI by scripts/extract-person-id-sites.ts. Do not edit by hand.
+//
+// Operation id -> the paths in its response body where Go decodes a person id as
+// types.FlexibleInt64. "[]" is every array element, "{}" every map value, "$" the
+// body itself; a path ending in "[]" is an array of people.
+
+export const PERSON_ID_SITES: Readonly<Record<string, readonly string[]>> = {
+  "CreateAnswer": [
+    "creator"
+  ],
+  "CreateBookmark": [
+    "recording.creator"
+  ],
+  "CreateCampfireLine": [
+    "creator"
+  ],
+  "CreateCampfireUpload": [
+    "creator"
+  ],
+  "CreateCard": [
+    "assignees.[]",
+    "completer",
+    "completion_subscribers.[]",
+    "creator",
+    "steps.[].assignees.[]",
+    "steps.[].completer",
+    "steps.[].creator"
+  ],
+  "CreateCardColumn": [
+    "creator",
+    "subscribers.[]"
+  ],
+  "CreateCardStep": [
+    "assignees.[]",
+    "completer",
+    "creator"
+  ],
+  "CreateCloudFile": [
+    "creator"
+  ],
+  "CreateComment": [
+    "creator"
+  ],
+  "CreateDocument": [
+    "creator"
+  ],
+  "CreateEventBoost": [
+    "booster"
+  ],
+  "CreateGaugeNeedle": [
+    "creator"
+  ],
+  "CreateGoogleDocument": [
+    "creator"
+  ],
+  "CreateMessage": [
+    "creator"
+  ],
+  "CreateQuestion": [
+    "creator"
+  ],
+  "CreateRecordingBoost": [
+    "booster"
+  ],
+  "CreateScheduleEntry": [
+    "creator",
+    "participants.[]"
+  ],
+  "CreateTemplateLibraryCopy": [
+    "destination_todolist.creator"
+  ],
+  "CreateTimesheetEntry": [
+    "creator",
+    "person"
+  ],
+  "CreateTodo": [
+    "assignees.[]",
+    "completion_subscribers.[]",
+    "creator",
+    "steps.[].assignees.[]",
+    "steps.[].completer",
+    "steps.[].creator"
+  ],
+  "CreateTodolist": [
+    "creator"
+  ],
+  "CreateTodolistGroup": [
+    "creator"
+  ],
+  "CreateTodosetTodo": [
+    "assignees.[]",
+    "completion_subscribers.[]",
+    "creator",
+    "steps.[].assignees.[]",
+    "steps.[].completer",
+    "steps.[].creator"
+  ],
+  "CreateTool": [
+    "creator"
+  ],
+  "CreateUpload": [
+    "creator"
+  ],
+  "CreateUploadVersion": [
+    "creator"
+  ],
+  "CreateVault": [
+    "creator"
+  ],
+  "CreateWebhook": [
+    "recent_deliveries.[].request.body.creator",
+    "recent_deliveries.[].request.body.performed_by",
+    "recent_deliveries.[].request.body.recording.creator"
+  ],
+  "CreateWormhole": [
+    "creator"
+  ],
+  "DisableCardColumnOnHold": [
+    "creator",
+    "subscribers.[]"
+  ],
+  "EnableCardColumnOnHold": [
+    "creator",
+    "subscribers.[]"
+  ],
+  "GetAnswer": [
+    "creator"
+  ],
+  "GetAnswersByPerson": [
+    "[].creator"
+  ],
+  "GetAssignedTodos": [
+    "person",
+    "todos.[].assignees.[]",
+    "todos.[].completion_subscribers.[]",
+    "todos.[].creator",
+    "todos.[].steps.[].assignees.[]",
+    "todos.[].steps.[].completer",
+    "todos.[].steps.[].creator"
+  ],
+  "GetBoost": [
+    "booster"
+  ],
+  "GetBubbleUps": [
+    "[].creator",
+    "[].participants.[]"
+  ],
+  "GetCampfire": [
+    "creator"
+  ],
+  "GetCampfireLine": [
+    "creator"
+  ],
+  "GetCard": [
+    "assignees.[]",
+    "completer",
+    "completion_subscribers.[]",
+    "creator",
+    "steps.[].assignees.[]",
+    "steps.[].completer",
+    "steps.[].creator"
+  ],
+  "GetCardColumn": [
+    "creator",
+    "subscribers.[]"
+  ],
+  "GetCardStep": [
+    "assignees.[]",
+    "completer",
+    "creator"
+  ],
+  "GetCardTable": [
+    "creator",
+    "lists.[].creator",
+    "lists.[].subscribers.[]",
+    "subscribers.[]",
+    "wormholes.[].creator"
+  ],
+  "GetClientApproval": [
+    "approver",
+    "creator",
+    "responses.[].creator"
+  ],
+  "GetClientCorrespondence": [
+    "creator"
+  ],
+  "GetClientReply": [
+    "creator"
+  ],
+  "GetCloudFile": [
+    "creator"
+  ],
+  "GetComment": [
+    "creator"
+  ],
+  "GetDocument": [
+    "creator"
+  ],
+  "GetEverythingCheckins": [
+    "[].creator"
+  ],
+  "GetEverythingComments": [
+    "[].creator"
+  ],
+  "GetEverythingCompletedCards": [
+    "[].cards.[].assignees.[]",
+    "[].cards.[].completer",
+    "[].cards.[].completion_subscribers.[]",
+    "[].cards.[].creator",
+    "[].cards.[].steps.[].assignees.[]",
+    "[].cards.[].steps.[].completer",
+    "[].cards.[].steps.[].creator"
+  ],
+  "GetEverythingCompletedTodos": [
+    "[].todos.[].assignees.[]",
+    "[].todos.[].completion_subscribers.[]",
+    "[].todos.[].creator",
+    "[].todos.[].steps.[].assignees.[]",
+    "[].todos.[].steps.[].completer",
+    "[].todos.[].steps.[].creator"
+  ],
+  "GetEverythingFiles": [
+    "[].creator"
+  ],
+  "GetEverythingForwards": [
+    "[].creator"
+  ],
+  "GetEverythingMessages": [
+    "[].creator"
+  ],
+  "GetEverythingNoDueDateCards": [
+    "[].cards.[].assignees.[]",
+    "[].cards.[].completer",
+    "[].cards.[].completion_subscribers.[]",
+    "[].cards.[].creator",
+    "[].cards.[].steps.[].assignees.[]",
+    "[].cards.[].steps.[].completer",
+    "[].cards.[].steps.[].creator"
+  ],
+  "GetEverythingNoDueDateTodos": [
+    "[].todos.[].assignees.[]",
+    "[].todos.[].completion_subscribers.[]",
+    "[].todos.[].creator",
+    "[].todos.[].steps.[].assignees.[]",
+    "[].todos.[].steps.[].completer",
+    "[].todos.[].steps.[].creator"
+  ],
+  "GetEverythingNotNowCards": [
+    "[].cards.[].assignees.[]",
+    "[].cards.[].completer",
+    "[].cards.[].completion_subscribers.[]",
+    "[].cards.[].creator",
+    "[].cards.[].steps.[].assignees.[]",
+    "[].cards.[].steps.[].completer",
+    "[].cards.[].steps.[].creator"
+  ],
+  "GetEverythingOpenCards": [
+    "[].cards.[].assignees.[]",
+    "[].cards.[].completer",
+    "[].cards.[].completion_subscribers.[]",
+    "[].cards.[].creator",
+    "[].cards.[].steps.[].assignees.[]",
+    "[].cards.[].steps.[].completer",
+    "[].cards.[].steps.[].creator"
+  ],
+  "GetEverythingOpenTodos": [
+    "[].todos.[].assignees.[]",
+    "[].todos.[].completion_subscribers.[]",
+    "[].todos.[].creator",
+    "[].todos.[].steps.[].assignees.[]",
+    "[].todos.[].steps.[].completer",
+    "[].todos.[].steps.[].creator"
+  ],
+  "GetEverythingOverdueCards": [
+    "[].assignees.[]",
+    "[].completer",
+    "[].completion_subscribers.[]",
+    "[].creator",
+    "[].steps.[].assignees.[]",
+    "[].steps.[].completer",
+    "[].steps.[].creator"
+  ],
+  "GetEverythingOverdueTodos": [
+    "[].assignees.[]",
+    "[].completion_subscribers.[]",
+    "[].creator",
+    "[].steps.[].assignees.[]",
+    "[].steps.[].completer",
+    "[].steps.[].creator"
+  ],
+  "GetEverythingUnassignedCards": [
+    "[].cards.[].assignees.[]",
+    "[].cards.[].completer",
+    "[].cards.[].completion_subscribers.[]",
+    "[].cards.[].creator",
+    "[].cards.[].steps.[].assignees.[]",
+    "[].cards.[].steps.[].completer",
+    "[].cards.[].steps.[].creator"
+  ],
+  "GetEverythingUnassignedTodos": [
+    "[].todos.[].assignees.[]",
+    "[].todos.[].completion_subscribers.[]",
+    "[].todos.[].creator",
+    "[].todos.[].steps.[].assignees.[]",
+    "[].todos.[].steps.[].completer",
+    "[].todos.[].steps.[].creator"
+  ],
+  "GetForward": [
+    "creator"
+  ],
+  "GetForwardReply": [
+    "creator"
+  ],
+  "GetGaugeNeedle": [
+    "creator"
+  ],
+  "GetGoogleDocument": [
+    "creator"
+  ],
+  "GetInbox": [
+    "creator"
+  ],
+  "GetMessage": [
+    "creator"
+  ],
+  "GetMessageBoard": [
+    "creator"
+  ],
+  "GetMyNotifications": [
+    "bubble_ups.[].creator",
+    "bubble_ups.[].participants.[]",
+    "memories.[].creator",
+    "memories.[].participants.[]",
+    "reads.[].creator",
+    "reads.[].participants.[]",
+    "scheduled_bubble_ups.[].creator",
+    "scheduled_bubble_ups.[].participants.[]",
+    "unreads.[].creator",
+    "unreads.[].participants.[]"
+  ],
+  "GetMyProfile": [
+    "$"
+  ],
+  "GetOverdueTodos": [
+    "over_a_month_late.[].assignees.[]",
+    "over_a_month_late.[].completion_subscribers.[]",
+    "over_a_month_late.[].creator",
+    "over_a_month_late.[].steps.[].assignees.[]",
+    "over_a_month_late.[].steps.[].completer",
+    "over_a_month_late.[].steps.[].creator",
+    "over_a_week_late.[].assignees.[]",
+    "over_a_week_late.[].completion_subscribers.[]",
+    "over_a_week_late.[].creator",
+    "over_a_week_late.[].steps.[].assignees.[]",
+    "over_a_week_late.[].steps.[].completer",
+    "over_a_week_late.[].steps.[].creator",
+    "over_three_months_late.[].assignees.[]",
+    "over_three_months_late.[].completion_subscribers.[]",
+    "over_three_months_late.[].creator",
+    "over_three_months_late.[].steps.[].assignees.[]",
+    "over_three_months_late.[].steps.[].completer",
+    "over_three_months_late.[].steps.[].creator",
+    "under_a_week_late.[].assignees.[]",
+    "under_a_week_late.[].completion_subscribers.[]",
+    "under_a_week_late.[].creator",
+    "under_a_week_late.[].steps.[].assignees.[]",
+    "under_a_week_late.[].steps.[].completer",
+    "under_a_week_late.[].steps.[].creator"
+  ],
+  "GetPerson": [
+    "$"
+  ],
+  "GetPersonProgress": [
+    "events.[].attachments.[].creator",
+    "events.[].creator",
+    "person"
+  ],
+  "GetProgressReport": [
+    "[].attachments.[].creator",
+    "[].creator"
+  ],
+  "GetProjectTimeline": [
+    "[].attachments.[].creator",
+    "[].creator"
+  ],
+  "GetProjectTimesheet": [
+    "[].creator",
+    "[].person"
+  ],
+  "GetQuestion": [
+    "creator"
+  ],
+  "GetQuestionReminders": [
+    "[].question.creator"
+  ],
+  "GetQuestionnaire": [
+    "creator"
+  ],
+  "GetRecordingTimesheet": [
+    "[].creator",
+    "[].person"
+  ],
+  "GetSchedule": [
+    "creator"
+  ],
+  "GetScheduleEntry": [
+    "creator",
+    "participants.[]"
+  ],
+  "GetScheduleEntryOccurrence": [
+    "creator",
+    "participants.[]"
+  ],
+  "GetSubscription": [
+    "subscribers.[]"
+  ],
+  "GetTemplateLibrary": [
+    "todolists.[].creator"
+  ],
+  "GetTemplateLibraryCopy": [
+    "destination_todolist.creator"
+  ],
+  "GetTimesheetEntry": [
+    "creator",
+    "person"
+  ],
+  "GetTimesheetReport": [
+    "[].creator",
+    "[].person"
+  ],
+  "GetTodo": [
+    "assignees.[]",
+    "completion_subscribers.[]",
+    "creator",
+    "steps.[].assignees.[]",
+    "steps.[].completer",
+    "steps.[].creator"
+  ],
+  "GetTodolistOrGroup": [
+    "creator"
+  ],
+  "GetTodoset": [
+    "creator"
+  ],
+  "GetTool": [
+    "creator"
+  ],
+  "GetUpload": [
+    "creator"
+  ],
+  "GetVault": [
+    "creator"
+  ],
+  "GetWebhook": [
+    "recent_deliveries.[].request.body.creator",
+    "recent_deliveries.[].request.body.performed_by",
+    "recent_deliveries.[].request.body.recording.creator"
+  ],
+  "ListAnswers": [
+    "[].creator"
+  ],
+  "ListAssignablePeople": [
+    "[]"
+  ],
+  "ListCampfireLines": [
+    "[].creator"
+  ],
+  "ListCampfireUploads": [
+    "[].creator"
+  ],
+  "ListCampfires": [
+    "[].creator"
+  ],
+  "ListCards": [
+    "[].assignees.[]",
+    "[].completer",
+    "[].completion_subscribers.[]",
+    "[].creator",
+    "[].steps.[].assignees.[]",
+    "[].steps.[].completer",
+    "[].steps.[].creator"
+  ],
+  "ListClientApprovals": [
+    "[].approver",
+    "[].creator",
+    "[].responses.[].creator"
+  ],
+  "ListClientCorrespondences": [
+    "[].creator"
+  ],
+  "ListClientReplies": [
+    "[].creator"
+  ],
+  "ListComments": [
+    "[].creator"
+  ],
+  "ListDocuments": [
+    "[].creator"
+  ],
+  "ListEventBoosts": [
+    "[].booster"
+  ],
+  "ListEvents": [
+    "[].creator",
+    "[].performed_by"
+  ],
+  "ListForwardReplies": [
+    "[].creator"
+  ],
+  "ListForwards": [
+    "[].creator"
+  ],
+  "ListGaugeNeedles": [
+    "[].creator"
+  ],
+  "ListGauges": [
+    "[].creator"
+  ],
+  "ListMessages": [
+    "[].creator"
+  ],
+  "ListMyBookmarks": [
+    "[].recording.creator"
+  ],
+  "ListPeople": [
+    "[]"
+  ],
+  "ListPingablePeople": [
+    "[]"
+  ],
+  "ListProjectPeople": [
+    "[]"
+  ],
+  "ListQuestionAnswerers": [
+    "[]"
+  ],
+  "ListQuestions": [
+    "[].creator"
+  ],
+  "ListRecordingBoosts": [
+    "[].booster"
+  ],
+  "ListRecordings": [
+    "[].creator"
+  ],
+  "ListScheduleEntries": [
+    "[].creator",
+    "[].participants.[]"
+  ],
+  "ListTodolistGroups": [
+    "[].creator"
+  ],
+  "ListTodolists": [
+    "[].creator"
+  ],
+  "ListTodos": [
+    "[].assignees.[]",
+    "[].completion_subscribers.[]",
+    "[].creator",
+    "[].steps.[].assignees.[]",
+    "[].steps.[].completer",
+    "[].steps.[].creator"
+  ],
+  "ListUploadVersions": [
+    "[].creator"
+  ],
+  "ListUploads": [
+    "[].creator"
+  ],
+  "ListVaults": [
+    "[].creator"
+  ],
+  "ListWebhooks": [
+    "[].recent_deliveries.[].request.body.creator",
+    "[].recent_deliveries.[].request.body.performed_by",
+    "[].recent_deliveries.[].request.body.recording.creator"
+  ],
+  "ReplaceDocument": [
+    "creator"
+  ],
+  "ReplaceScheduleEntry": [
+    "creator",
+    "participants.[]"
+  ],
+  "ReplaceTodo": [
+    "assignees.[]",
+    "completion_subscribers.[]",
+    "creator",
+    "steps.[].assignees.[]",
+    "steps.[].completer",
+    "steps.[].creator"
+  ],
+  "Search": [
+    "[].creator",
+    "[].subscribers.[]"
+  ],
+  "SetCardColumnColor": [
+    "creator",
+    "subscribers.[]"
+  ],
+  "SetCardStepCompletion": [
+    "assignees.[]",
+    "completer",
+    "creator"
+  ],
+  "SetClientVisibility": [
+    "creator"
+  ],
+  "SpotlightRecording": [
+    "creator"
+  ],
+  "Subscribe": [
+    "subscribers.[]"
+  ],
+  "UpdateCard": [
+    "assignees.[]",
+    "completer",
+    "completion_subscribers.[]",
+    "creator",
+    "steps.[].assignees.[]",
+    "steps.[].completer",
+    "steps.[].creator"
+  ],
+  "UpdateCardColumn": [
+    "creator",
+    "subscribers.[]"
+  ],
+  "UpdateCardStep": [
+    "assignees.[]",
+    "completer",
+    "creator"
+  ],
+  "UpdateCloudFile": [
+    "creator"
+  ],
+  "UpdateComment": [
+    "creator"
+  ],
+  "UpdateGaugeNeedle": [
+    "creator"
+  ],
+  "UpdateGoogleDocument": [
+    "creator"
+  ],
+  "UpdateMessage": [
+    "creator"
+  ],
+  "UpdateProjectAccess": [
+    "granted.[]",
+    "revoked.[]"
+  ],
+  "UpdateProjectClientAccess": [
+    "granted.[]",
+    "revoked.[]"
+  ],
+  "UpdateQuestion": [
+    "creator"
+  ],
+  "UpdateScheduleSettings": [
+    "creator"
+  ],
+  "UpdateSubscription": [
+    "subscribers.[]"
+  ],
+  "UpdateTimesheetEntry": [
+    "creator",
+    "person"
+  ],
+  "UpdateTodolistOrGroup": [
+    "creator"
+  ],
+  "UpdateTool": [
+    "creator"
+  ],
+  "UpdateUpload": [
+    "creator"
+  ],
+  "UpdateVault": [
+    "creator"
+  ],
+  "UpdateWebhook": [
+    "recent_deliveries.[].request.body.creator",
+    "recent_deliveries.[].request.body.performed_by",
+    "recent_deliveries.[].request.body.recording.creator"
+  ],
+  "UpdateWormhole": [
+    "creator"
+  ]
+};
+

@@ -36,7 +36,7 @@ module Basecamp
       # @return [Hash] response data
       def create(todolist_id:, name:)
         with_operation(service: "todolistgroups", operation: "create", is_mutation: true, resource_id: todolist_id) do
-          http_post("/todolists/#{todolist_id}/groups.json", body: compact_params(name: name)).json
+          http_post("/todolists/#{todolist_id}/groups.json", body: compact_params(name: name)).json(operation: "CreateTodolistGroup")
         end
       end
     end

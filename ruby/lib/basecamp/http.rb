@@ -424,7 +424,7 @@ module Basecamp
 
       @hooks.on_paginate(base_url, 1)
       first_response = get(base_url, params: params, operation: operation)
-      first_data = parse_page(first_response, page: 1)
+      first_data = parse_page(first_response, page: 1, operation: operation)
       yield first_data if block_given?
       first_items = extract_page_items(first_data, key: key, page: 1)
 
@@ -439,7 +439,7 @@ module Basecamp
         else
           @hooks.on_paginate(base_url, 1)
           response = get(base_url, params: params, operation: operation)
-          items = extract_page_items(parse_page(response, page: 1), key: key, page: 1)
+          items = extract_page_items(parse_page(response, page: 1, operation: operation), key: key, page: 1)
           meta.restart!(total_count: parse_total_count(response.headers))
         end
 
@@ -486,7 +486,7 @@ module Basecamp
           page += 1
           @hooks.on_paginate(next_url, page)
           response = get(next_url, operation: operation)
-          items = extract_page_items(parse_page(response, page: page), key: key, page: page)
+          items = extract_page_items(parse_page(response, page: page, operation: operation), key: key, page: page)
           url = next_url
         end
       end
@@ -506,13 +506,15 @@ module Basecamp
       page.respond_to?(:to_i) && page.to_i.positive?
     end
 
-    # Parses a pagination page body: size check, JSON parse, and person-ID
-    # normalization, with page-numbered error context.
-    def parse_page(response, page:)
+    # Parses a pagination page body: size check, JSON parse, person-ID
+    # normalization, then the operation's typed person-id decode, with
+    # page-numbered error context. The decode runs on EVERY page, first and
+    # followed alike, because the table's paths are relative to one page body.
+    def parse_page(response, page:, operation:)
       Security.check_body_size!(response.body, Security::MAX_RESPONSE_BODY_BYTES)
       data = JSON.parse(response.body)
       Http.normalize_person_ids(data, embedded_people: response.embedded_people)
-      data
+      PersonIdSites.decode!(data, operation)
     rescue JSON::ParserError => e
       # +cause+ carries the parser's own error, not just its message (#750). The
       # message says what happened; the slot is what a caller can act on, and it
@@ -1193,14 +1195,26 @@ module Basecamp
     end
 
     # Parses the response body as JSON, normalizing Person-shaped objects.
+    #
+    # +operation+ is the channel the generated read path uses to name its
+    # operation for the typed person-id decode ({PersonIdSites}). It is kept
+    # apart from the +operation:+ a GET passes to {Http#get}, which selects the
+    # declared retry policy: a mutation passes none there on purpose, and must
+    # still have its response decoded.
+    #
+    # @param operation [String, nil] canonical operation id whose person-id
+    #   sites to decode; nil decodes none
     # @return [Hash, Array]
-    def json
+    # @raise [ApiError] when a person id at one of the operation's sites
+    #   cannot be decoded
+    def json(operation: nil)
       @json ||= begin
         Security.check_body_size!(@body, Security::MAX_RESPONSE_BODY_BYTES)
         result = JSON.parse(@body)
         Http.normalize_person_ids(result, embedded_people: @embedded_people)
         result
       end
+      PersonIdSites.decode!(@json, operation)
     end
 
     # Returns whether the response was successful (2xx).

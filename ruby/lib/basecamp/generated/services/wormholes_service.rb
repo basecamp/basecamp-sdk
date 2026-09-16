@@ -14,7 +14,7 @@ module Basecamp
       # @return [Hash] response data
       def update(bucket_id:, wormhole_id:, destination_recording_id:)
         with_operation(service: "wormholes", operation: "update", is_mutation: true, project_id: bucket_id, resource_id: wormhole_id) do
-          http_put("/buckets/#{bucket_id}/card_tables/wormholes/#{wormhole_id}", body: compact_params(destination_recording_id: destination_recording_id)).json
+          http_put("/buckets/#{bucket_id}/card_tables/wormholes/#{wormhole_id}", body: compact_params(destination_recording_id: destination_recording_id)).json(operation: "UpdateWormhole")
         end
       end
 
@@ -36,7 +36,7 @@ module Basecamp
       # @return [Hash] response data
       def create(bucket_id:, card_table_id:, destination_recording_id:)
         with_operation(service: "wormholes", operation: "create", is_mutation: true, project_id: bucket_id, resource_id: card_table_id) do
-          http_post("/buckets/#{bucket_id}/card_tables/#{card_table_id}/wormholes.json", body: compact_params(destination_recording_id: destination_recording_id)).json
+          http_post("/buckets/#{bucket_id}/card_tables/#{card_table_id}/wormholes.json", body: compact_params(destination_recording_id: destination_recording_id)).json(operation: "CreateWormhole")
         end
       end
     end

@@ -15,7 +15,7 @@ module Basecamp
       # @return [Hash] response data
       def create(bucket_id:, tool_type:, title: nil, visible_to_clients: nil)
         with_operation(service: "tools", operation: "create", is_mutation: true, project_id: bucket_id) do
-          http_post("/buckets/#{bucket_id}/dock/tools.json", body: compact_params(tool_type: tool_type, title: title, visible_to_clients: visible_to_clients)).json
+          http_post("/buckets/#{bucket_id}/dock/tools.json", body: compact_params(tool_type: tool_type, title: title, visible_to_clients: visible_to_clients)).json(operation: "CreateTool")
         end
       end
 
@@ -24,7 +24,7 @@ module Basecamp
       # @return [Hash] response data
       def get(tool_id:)
         with_operation(service: "tools", operation: "get", is_mutation: false, resource_id: tool_id) do
-          http_get("/dock/tools/#{tool_id}", operation: "GetTool").json
+          http_get("/dock/tools/#{tool_id}", operation: "GetTool").json(operation: "GetTool")
         end
       end
 
@@ -34,7 +34,7 @@ module Basecamp
       # @return [Hash] response data
       def update(tool_id:, title:)
         with_operation(service: "tools", operation: "update", is_mutation: true, resource_id: tool_id) do
-          http_put("/dock/tools/#{tool_id}", body: compact_params(title: title)).json
+          http_put("/dock/tools/#{tool_id}", body: compact_params(title: title)).json(operation: "UpdateTool")
         end
       end
 

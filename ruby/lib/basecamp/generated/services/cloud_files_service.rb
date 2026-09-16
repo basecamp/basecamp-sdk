@@ -24,7 +24,7 @@ module Basecamp
       # @return [Hash] response data
       def create_cloud_file(bucket_id:, vault_id:, url:, service:, title: nil, description: nil, subscriptions: nil, visible_to_clients: nil)
         with_operation(service: "cloudfiles", operation: "create_cloud_file", is_mutation: true, project_id: bucket_id, resource_id: vault_id) do
-          http_post("/buckets/#{bucket_id}/vaults/#{vault_id}/cloud_files.json", body: compact_params(url: url, service: service, title: title, description: description, subscriptions: subscriptions, visible_to_clients: visible_to_clients)).json
+          http_post("/buckets/#{bucket_id}/vaults/#{vault_id}/cloud_files.json", body: compact_params(url: url, service: service, title: title, description: description, subscriptions: subscriptions, visible_to_clients: visible_to_clients)).json(operation: "CreateCloudFile")
         end
       end
 
@@ -33,7 +33,7 @@ module Basecamp
       # @return [Hash] response data
       def get_cloud_file(cloud_file_id:)
         with_operation(service: "cloudfiles", operation: "get_cloud_file", is_mutation: false, resource_id: cloud_file_id) do
-          http_get("/cloud_files/#{cloud_file_id}", operation: "GetCloudFile").json
+          http_get("/cloud_files/#{cloud_file_id}", operation: "GetCloudFile").json(operation: "GetCloudFile")
         end
       end
 
@@ -49,7 +49,7 @@ module Basecamp
       # @return [Hash] response data
       def update_cloud_file(cloud_file_id:, url:, service:, title: nil, description: nil, subscriptions: nil)
         with_operation(service: "cloudfiles", operation: "update_cloud_file", is_mutation: true, resource_id: cloud_file_id) do
-          http_put("/cloud_files/#{cloud_file_id}", body: compact_params(url: url, service: service, title: title, description: description, subscriptions: subscriptions)).json
+          http_put("/cloud_files/#{cloud_file_id}", body: compact_params(url: url, service: service, title: title, description: description, subscriptions: subscriptions)).json(operation: "UpdateCloudFile")
         end
       end
     end

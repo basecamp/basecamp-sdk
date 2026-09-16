@@ -11,7 +11,7 @@ module Basecamp
       # @return [Array<Hash>] response data
       def list_folders()
         with_operation(service: "folders", operation: "list_folders", is_mutation: false) do
-          http_get("/stacks.json", operation: "ListFolders").json
+          http_get("/stacks.json", operation: "ListFolders").json(operation: "ListFolders")
         end
       end
 
@@ -24,7 +24,7 @@ module Basecamp
       # @return [Hash] response data
       def create_folder(name: nil, project_ids: nil)
         with_operation(service: "folders", operation: "create_folder", is_mutation: true) do
-          http_post("/stacks.json", body: compact_params(name: name, project_ids: project_ids)).json
+          http_post("/stacks.json", body: compact_params(name: name, project_ids: project_ids)).json(operation: "CreateFolder")
         end
       end
 
@@ -33,7 +33,7 @@ module Basecamp
       # @return [Hash] response data
       def get_folder(folder_id:)
         with_operation(service: "folders", operation: "get_folder", is_mutation: false, resource_id: folder_id) do
-          http_get("/stacks/#{folder_id}", operation: "GetFolder").json
+          http_get("/stacks/#{folder_id}", operation: "GetFolder").json(operation: "GetFolder")
         end
       end
 
@@ -44,7 +44,7 @@ module Basecamp
       # @return [Hash] response data
       def update_folder(folder_id:, name:)
         with_operation(service: "folders", operation: "update_folder", is_mutation: true, resource_id: folder_id) do
-          http_put("/stacks/#{folder_id}", body: compact_params(name: name)).json
+          http_put("/stacks/#{folder_id}", body: compact_params(name: name)).json(operation: "UpdateFolder")
         end
       end
 

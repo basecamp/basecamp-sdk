@@ -11,7 +11,7 @@ module Basecamp
       # @return [Hash] response data
       def get_my_note()
         with_operation(service: "mynotes", operation: "get_my_note", is_mutation: false) do
-          http_get("/my/notes.json", operation: "GetMyNote").json
+          http_get("/my/notes.json", operation: "GetMyNote").json(operation: "GetMyNote")
         end
       end
 
@@ -20,7 +20,7 @@ module Basecamp
       # @return [Hash] response data
       def update_my_note(note:)
         with_operation(service: "mynotes", operation: "update_my_note", is_mutation: true) do
-          http_put("/my/notes.json", body: compact_params(note: note)).json
+          http_put("/my/notes.json", body: compact_params(note: note)).json(operation: "UpdateMyNote")
         end
       end
     end

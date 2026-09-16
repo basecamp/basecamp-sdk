@@ -26,7 +26,7 @@ module Basecamp
       # @return [Hash] response data
       def create_google_document(bucket_id:, vault_id:, url:, document_type:, title: nil, description: nil, status: nil, subscriptions: nil, visible_to_clients: nil)
         with_operation(service: "googledocuments", operation: "create_google_document", is_mutation: true, project_id: bucket_id, resource_id: vault_id) do
-          http_post("/buckets/#{bucket_id}/vaults/#{vault_id}/google_documents.json", body: compact_params(url: url, document_type: document_type, title: title, description: description, status: status, subscriptions: subscriptions, visible_to_clients: visible_to_clients)).json
+          http_post("/buckets/#{bucket_id}/vaults/#{vault_id}/google_documents.json", body: compact_params(url: url, document_type: document_type, title: title, description: description, status: status, subscriptions: subscriptions, visible_to_clients: visible_to_clients)).json(operation: "CreateGoogleDocument")
         end
       end
 
@@ -35,7 +35,7 @@ module Basecamp
       # @return [Hash] response data
       def get_google_document(google_document_id:)
         with_operation(service: "googledocuments", operation: "get_google_document", is_mutation: false, resource_id: google_document_id) do
-          http_get("/google_documents/#{google_document_id}", operation: "GetGoogleDocument").json
+          http_get("/google_documents/#{google_document_id}", operation: "GetGoogleDocument").json(operation: "GetGoogleDocument")
         end
       end
 
@@ -53,7 +53,7 @@ module Basecamp
       # @return [Hash] response data
       def update_google_document(google_document_id:, url:, document_type:, title: nil, description: nil, status: nil, subscriptions: nil)
         with_operation(service: "googledocuments", operation: "update_google_document", is_mutation: true, resource_id: google_document_id) do
-          http_put("/google_documents/#{google_document_id}", body: compact_params(url: url, document_type: document_type, title: title, description: description, status: status, subscriptions: subscriptions)).json
+          http_put("/google_documents/#{google_document_id}", body: compact_params(url: url, document_type: document_type, title: title, description: description, status: status, subscriptions: subscriptions)).json(operation: "UpdateGoogleDocument")
         end
       end
     end

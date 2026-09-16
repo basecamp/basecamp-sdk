@@ -561,7 +561,10 @@ class TestMalformedResponseFields:
         with pytest.raises(ApiError) as excinfo:
             _sync_todos().update(todo_id=42, content="New title")
 
-        assert f"Todo field {field!r}[0]" in str(excinfo.value)
+        # Both lists are `Person` sites on GetTodo, so the generated read now
+        # refuses the id at typed decode, as Go's `FlexibleInt64` does, before
+        # the merge-safe guard ever sees it.
+        assert f"GetTodo: person id at {field}.[] is not an int64" in str(excinfo.value)
         assert get_route.called
         assert not put_route.called
 
@@ -615,7 +618,8 @@ class TestMalformedResponseFields:
         with pytest.raises(ApiError) as excinfo:
             _sync_todos().update(todo_id=42, content="New title")
 
-        assert f"Todo field {field!r}[0].id is not a person id" in str(excinfo.value)
+        # Refused at the generated read's typed decode (see above).
+        assert f"GetTodo: person id at {field}.[] is not an int64" in str(excinfo.value)
         assert get_route.called
         assert not put_route.called
 

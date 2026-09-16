@@ -35,7 +35,7 @@ module Basecamp
       # @return [Hash] response data
       def metadata()
         with_operation(service: "search", operation: "metadata", is_mutation: false) do
-          http_get("/searches/metadata.json", operation: "GetSearchMetadata").json
+          http_get("/searches/metadata.json", operation: "GetSearchMetadata").json(operation: "GetSearchMetadata")
         end
       end
     end

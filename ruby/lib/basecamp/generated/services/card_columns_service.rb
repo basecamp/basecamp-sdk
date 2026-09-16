@@ -14,7 +14,7 @@ module Basecamp
       # @return [Hash] response data
       def set_color(bucket_id:, column_id:, color:)
         with_operation(service: "cardcolumns", operation: "set_color", is_mutation: true, project_id: bucket_id, resource_id: column_id) do
-          http_put("/buckets/#{bucket_id}/card_tables/columns/#{column_id}/color.json", body: compact_params(color: color)).json
+          http_put("/buckets/#{bucket_id}/card_tables/columns/#{column_id}/color.json", body: compact_params(color: color)).json(operation: "SetCardColumnColor")
         end
       end
 
@@ -24,7 +24,7 @@ module Basecamp
       # @return [Hash] response data
       def enable_on_hold(bucket_id:, column_id:)
         with_operation(service: "cardcolumns", operation: "enable_on_hold", is_mutation: true, project_id: bucket_id, resource_id: column_id) do
-          http_post("/buckets/#{bucket_id}/card_tables/columns/#{column_id}/on_hold.json").json
+          http_post("/buckets/#{bucket_id}/card_tables/columns/#{column_id}/on_hold.json").json(operation: "EnableCardColumnOnHold")
         end
       end
 
@@ -34,7 +34,7 @@ module Basecamp
       # @return [Hash] response data
       def disable_on_hold(bucket_id:, column_id:)
         with_operation(service: "cardcolumns", operation: "disable_on_hold", is_mutation: true, project_id: bucket_id, resource_id: column_id) do
-          http_delete("/buckets/#{bucket_id}/card_tables/columns/#{column_id}/on_hold.json").json
+          http_delete("/buckets/#{bucket_id}/card_tables/columns/#{column_id}/on_hold.json").json(operation: "DisableCardColumnOnHold")
         end
       end
 
@@ -43,7 +43,7 @@ module Basecamp
       # @return [Hash] response data
       def get(column_id:)
         with_operation(service: "cardcolumns", operation: "get", is_mutation: false, resource_id: column_id) do
-          http_get("/card_tables/columns/#{column_id}", operation: "GetCardColumn").json
+          http_get("/card_tables/columns/#{column_id}", operation: "GetCardColumn").json(operation: "GetCardColumn")
         end
       end
 
@@ -54,7 +54,7 @@ module Basecamp
       # @return [Hash] response data
       def update(column_id:, title: nil, description: nil)
         with_operation(service: "cardcolumns", operation: "update", is_mutation: true, resource_id: column_id) do
-          http_put("/card_tables/columns/#{column_id}", body: compact_params(title: title, description: description)).json
+          http_put("/card_tables/columns/#{column_id}", body: compact_params(title: title, description: description)).json(operation: "UpdateCardColumn")
         end
       end
 
@@ -85,7 +85,7 @@ module Basecamp
       # @return [Hash] response data
       def create(card_table_id:, title:, description: nil)
         with_operation(service: "cardcolumns", operation: "create", is_mutation: true, resource_id: card_table_id) do
-          http_post("/card_tables/#{card_table_id}/columns.json", body: compact_params(title: title, description: description)).json
+          http_post("/card_tables/#{card_table_id}/columns.json", body: compact_params(title: title, description: description)).json(operation: "CreateCardColumn")
         end
       end
 

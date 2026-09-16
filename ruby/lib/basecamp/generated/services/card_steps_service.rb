@@ -27,7 +27,7 @@ module Basecamp
       # @return [Hash] response data
       def create(card_id:, title:, due_on: nil, assignee_ids: nil)
         with_operation(service: "cardsteps", operation: "create", is_mutation: true, resource_id: card_id) do
-          http_post("/card_tables/cards/#{card_id}/steps.json", body: compact_params(title: title, due_on: due_on, assignee_ids: assignee_ids)).json
+          http_post("/card_tables/cards/#{card_id}/steps.json", body: compact_params(title: title, due_on: due_on, assignee_ids: assignee_ids)).json(operation: "CreateCardStep")
         end
       end
 
@@ -36,7 +36,7 @@ module Basecamp
       # @return [Hash] response data
       def get(step_id:)
         with_operation(service: "cardsteps", operation: "get", is_mutation: false, resource_id: step_id) do
-          http_get("/card_tables/steps/#{step_id}", operation: "GetCardStep").json
+          http_get("/card_tables/steps/#{step_id}", operation: "GetCardStep").json(operation: "GetCardStep")
         end
       end
 
@@ -48,7 +48,7 @@ module Basecamp
       # @return [Hash] response data
       def update(step_id:, title: nil, due_on: nil, assignee_ids: nil)
         with_operation(service: "cardsteps", operation: "update", is_mutation: true, resource_id: step_id) do
-          http_put("/card_tables/steps/#{step_id}", body: compact_params(title: title, due_on: due_on, assignee_ids: assignee_ids)).json
+          http_put("/card_tables/steps/#{step_id}", body: compact_params(title: title, due_on: due_on, assignee_ids: assignee_ids)).json(operation: "UpdateCardStep")
         end
       end
 
@@ -58,7 +58,7 @@ module Basecamp
       # @return [Hash] response data
       def set_completion(step_id:, completion:)
         with_operation(service: "cardsteps", operation: "set_completion", is_mutation: true, resource_id: step_id) do
-          http_put("/card_tables/steps/#{step_id}/completions.json", body: compact_params(completion: completion)).json
+          http_put("/card_tables/steps/#{step_id}/completions.json", body: compact_params(completion: completion)).json(operation: "SetCardStepCompletion")
         end
       end
     end

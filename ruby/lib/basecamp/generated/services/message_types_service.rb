@@ -24,7 +24,7 @@ module Basecamp
       # @return [Hash] response data
       def create(bucket_id:, name:, icon:)
         with_operation(service: "messagetypes", operation: "create", is_mutation: true, project_id: bucket_id) do
-          http_post("/buckets/#{bucket_id}/categories.json", body: compact_params(name: name, icon: icon)).json
+          http_post("/buckets/#{bucket_id}/categories.json", body: compact_params(name: name, icon: icon)).json(operation: "CreateMessageType")
         end
       end
 
@@ -34,7 +34,7 @@ module Basecamp
       # @return [Hash] response data
       def get(bucket_id:, type_id:)
         with_operation(service: "messagetypes", operation: "get", is_mutation: false, project_id: bucket_id, resource_id: type_id) do
-          http_get("/buckets/#{bucket_id}/categories/#{type_id}", operation: "GetMessageType").json
+          http_get("/buckets/#{bucket_id}/categories/#{type_id}", operation: "GetMessageType").json(operation: "GetMessageType")
         end
       end
 
@@ -46,7 +46,7 @@ module Basecamp
       # @return [Hash] response data
       def update(bucket_id:, type_id:, name: nil, icon: nil)
         with_operation(service: "messagetypes", operation: "update", is_mutation: true, project_id: bucket_id, resource_id: type_id) do
-          http_put("/buckets/#{bucket_id}/categories/#{type_id}", body: compact_params(name: name, icon: icon)).json
+          http_put("/buckets/#{bucket_id}/categories/#{type_id}", body: compact_params(name: name, icon: icon)).json(operation: "UpdateMessageType")
         end
       end
 

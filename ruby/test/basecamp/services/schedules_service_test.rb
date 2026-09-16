@@ -801,18 +801,19 @@ class SchedulesServiceTest < Minitest::Test
   # (normalizeEmbeddedPersonIds, go/pkg/basecamp/normalize.go:83). The row
   # pinned this SDK refusing a body the reference updates. What remains below is
   # what stays malformed after normalization: an id out of int64 range, which
-  # the reference also leaves a string — its decoder then fails the READ, where
-  # Ruby, having no decoder on this path, refuses the WRITE — and ids of a type
-  # no normalization touches.
+  # the reference also leaves a string, and ids of a type no normalization
+  # touches. The reference's decoder fails the READ on every id row, and so does
+  # this SDK now: GetScheduleEntry decodes participants[].id as FlexibleInt64
+  # (Basecamp::PersonIdSites), so the refusal names the read, not the field.
   [
     [ "a non-array", "nope", %(Schedule entry field "participants" is not an array) ],
     [ "a non-object element", [ 42 ], %(Schedule entry field "participants"[0] is not an object) ],
-    [ "a boolean id", [ { "id" => true } ], %(Schedule entry field "participants"[0].id is not a person id) ],
-    [ "a null id", [ { "id" => nil } ], %(Schedule entry field "participants"[0].id is not a person id) ],
-    [ "a float id", [ { "id" => 12.5 } ], %(Schedule entry field "participants"[0].id is not a person id) ],
-    [ "an id beyond int64", [ { "id" => 2**63 } ], %(Schedule entry field "participants"[0].id is not a person id) ],
+    [ "a boolean id", [ { "id" => true } ], %(GetScheduleEntry returned a person id at participants) ],
+    [ "a null id", [ { "id" => nil } ], %(GetScheduleEntry returned a person id at participants) ],
+    [ "a float id", [ { "id" => 12.5 } ], %(GetScheduleEntry returned a person id at participants) ],
+    [ "an id beyond int64", [ { "id" => 2**63 } ], %(GetScheduleEntry returned a person id at participants) ],
     [ "an out of range string id", [ { "id" => "18446744073709551616" } ],
-      %(Schedule entry field "participants"[0].id is not a person id) ]
+      %(GetScheduleEntry returned a person id at participants) ]
   ].each do |label, participants, message|
     define_method("test_update_entry_refuses_#{label.tr(" ", "_")}_in_participants") do
       captured = stub_entry_get_and_put(entry: full_entry("participants" => participants))

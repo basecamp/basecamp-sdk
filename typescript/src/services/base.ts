@@ -25,10 +25,12 @@
 import type { BasecampHooks, OperationInfo, OperationResult } from "../hooks.js";
 import { BasecampError, errorFromParsedBody, errorFromResponse, parseRetryAfter, truncateErrorMessage } from "../errors.js";
 import metadata from "../generated/metadata.js";
+import { PERSON_ID_SITES } from "../generated/person-id-sites.js";
 import { ListResult, parseTotalCount, type PaginationOptions } from "../pagination.js";
 import { personIdNumber, scanPersonId } from "../person-id.js";
 import { parseNextLink, resolveURL, isSameOrigin, DEFAULT_MAX_PAGES, assertValidMaxPages } from "../pagination-utils.js";
 import { saturatingBackoff, timerSafeDelayMs } from "../retry.js";
+import { describeValue, malformedResponse } from "./merge-safe.js";
 import type { paths } from "../generated/schema.js";
 import type createClient from "openapi-fetch";
 
@@ -237,11 +239,11 @@ function normalizePersonIds(obj: unknown): void {
  * where the reference does, never wider.
  *
  * The gap that widening was covering is real and is NOT closed here: `assignees`,
- * `subscribers` and `completion_subscribers` carry string ids that this SDK now
- * leaves as strings, where Go's decoder converts them. That is decoder coverage
- * rather than normalizer reach. On the WRITE path it is closed at the reader —
- * `writableIdList` in `merge-safe.ts` reads the id by the same scan (PR #913).
- * On a plain generated read it is still open: see SPEC.md section 10, "Person Ids Off the Wire".
+ * `subscribers` and `completion_subscribers` carry string ids that Go's decoder
+ * converts. That is decoder coverage rather than normalizer reach, and it is
+ * closed by {@link decodeResponsePersonIds}, per operation at the generated
+ * `FlexibleInt64` sites. On the write path `writableIdList` in `merge-safe.ts`
+ * also reads the id by the same scan (PR #913).
  */
 function normalizeEmbeddedPersonIds(obj: unknown): void {
   if (!obj || typeof obj !== "object") return;
@@ -274,6 +276,136 @@ function normalizeEmbeddedPersonIds(obj: unknown): void {
 function normalizeResponsePersonIds(obj: unknown, service: string): void {
   normalizePersonIds(obj);
   if (EMBEDDED_PERSON_SERVICES.has(service)) normalizeEmbeddedPersonIds(obj);
+}
+
+/** `ParseInt`'s int64 bounds as doubles. `2^63 - 1` rounds to `2^63`; see {@link decodeFlexiblePersonId}. */
+const INT64_MIN_DOUBLE = -(2 ** 63);
+const INT64_MAX_DOUBLE = 2 ** 63;
+
+/** Parsed {@link PERSON_ID_SITES} paths, split once per operation. */
+const personIdSiteSegments = new Map<string, readonly (readonly string[])[]>();
+
+function siteSegments(operation: string): readonly (readonly string[])[] | undefined {
+  let segments = personIdSiteSegments.get(operation);
+  if (segments === undefined) {
+    const sites = Object.hasOwn(PERSON_ID_SITES, operation) ? PERSON_ID_SITES[operation] : undefined;
+    if (sites === undefined) return undefined;
+    segments = sites.map((site) => (site === "$" ? [] : site.split(".")));
+    personIdSiteSegments.set(operation, segments);
+  }
+  return segments;
+}
+
+/**
+ * Reads one person's `id` the way `types.FlexibleInt64.UnmarshalJSON` does
+ * (`go/pkg/types/flexible_int64.go:27-65`), writing the result in place.
+ *
+ * - a string goes through {@link scanPersonId}: a value is written as the
+ *   number (`:34-37`), SYNTAX writes `0` (`:46` — no `system_label`, which only
+ *   the pre-decode normalizer adds), RANGE fails the read (`:43-44`). A value
+ *   outside ±(2^53 − 1) leaves the string, the {@link personIdNumber} residual.
+ * - a number must be an integer inside int64 (`:59-61`). `JSON.parse` has
+ *   already rounded it, so `1024.0` and `1e3` are indistinguishable from `1024`
+ *   and `1000`, and the one double both `2^63 − 1` and `2^63` round to is
+ *   accepted rather than refusing a real int64 Go reads.
+ * - `null`, a boolean, an array or an object is not an int64 and fails the read
+ *   (`:56-61`).
+ */
+function decodeFlexiblePersonId(person: Record<string, unknown>, operation: string, site: string): void {
+  const id = person.id;
+  if (typeof id === "string") {
+    const scan = scanPersonId(id);
+    if (scan.kind === "syntax") {
+      person.id = 0;
+      return;
+    }
+    if (scan.kind === "value") {
+      const value = personIdNumber(scan.value);
+      if (value !== undefined) person.id = value;
+      return;
+    }
+    throw malformedPersonId(operation, site, id, "overflows int64");
+  }
+  if (typeof id === "number" && Number.isInteger(id) && id >= INT64_MIN_DOUBLE && id <= INT64_MAX_DOUBLE) {
+    return;
+  }
+  throw malformedPersonId(operation, site, id, "is not a valid int64");
+}
+
+function malformedPersonId(operation: string, site: string, id: unknown, why: string): BasecampError {
+  return malformedResponse(
+    `${operation} returned a person id at ${site} that ${why}: ${describeValue(id)}`,
+    "The reference SDK refuses this response when it decodes the person id; it is not retryable.",
+  );
+}
+
+function decodeSite(
+  node: unknown,
+  segments: readonly string[],
+  index: number,
+  operation: string,
+  site: string,
+): void {
+  // The last `[]` of an array site is the list of people, handled below, so the
+  // walk stops one segment short of it.
+  const arraySite = segments.length > 0 && segments[segments.length - 1] === "[]";
+  const end = arraySite ? segments.length - 1 : segments.length;
+  if (index === end) {
+    if (arraySite) {
+      if (!Array.isArray(node)) return;
+      for (const person of node) {
+        if (isJSONObject(person) && Object.hasOwn(person, "id")) decodeFlexiblePersonId(person, operation, site);
+      }
+    } else if (isJSONObject(node) && Object.hasOwn(node, "id")) {
+      decodeFlexiblePersonId(node, operation, site);
+    }
+    return;
+  }
+  const segment = segments[index]!;
+  if (segment === "[]") {
+    if (Array.isArray(node)) for (const element of node) decodeSite(element, segments, index + 1, operation, site);
+  } else if (segment === "{}") {
+    if (isJSONObject(node)) for (const value of Object.values(node)) decodeSite(value, segments, index + 1, operation, site);
+  } else if (isJSONObject(node) && Object.hasOwn(node, segment)) {
+    decodeSite(node[segment], segments, index + 1, operation, site);
+  }
+}
+
+/**
+ * The one typed decode Go performs on a person id, at the fields Go performs it.
+ *
+ * `generated.Person.Id` is `types.FlexibleInt64`, and every generated Go service
+ * decodes its body through `Parse<Op>Response`, so an untagged `creator` of
+ * `{"id": "7"}` on a comment is `7` in Go. This SDK has no decoder, and after
+ * the pre-decode normalizer it was still the string `"7"` in a field typed
+ * `number` (SPEC.md section 10, "Person Ids Off the Wire").
+ *
+ * The sites are {@link PERSON_ID_SITES}, generated per OPERATION from the
+ * `x-go-type` marker on `Person.id` — not by key name, which is what reached
+ * `UpcomingSchedulePerson`, `MyAssignmentAssignee` and `OutOfOfficePerson`
+ * (plain `int64` in Go) when the normalizer was widened. An operation with no
+ * entry is left exactly as the normalizer left it.
+ *
+ * Runs AFTER the normalizer on the same body, which keeps both idempotent: an id
+ * the normalizer converted is a number here, and one it left (RANGE) is refused
+ * here, as Go's decoder refuses it. A person that is `null`, not an object, or
+ * has no `id` is left alone: Go zero-fills or refuses it as part of a
+ * whole-body decode this SDK does for no field.
+ */
+function decodeResponsePersonIds(body: unknown, operation: string): void {
+  const segments = siteSegments(operation);
+  if (segments === undefined) return;
+  const sites = PERSON_ID_SITES[operation]!;
+  segments.forEach((path, i) => decodeSite(body, path, 0, operation, sites[i]!));
+}
+
+/**
+ * Everything a generated read does to a decoded body's person ids, in Go's
+ * order: the pre-decode normalizer, then the `FlexibleInt64` decode.
+ */
+function processResponsePersonIds(body: unknown, info: Pick<OperationInfo, "service" | "operation">): void {
+  normalizeResponsePersonIds(body, info.service);
+  decodeResponsePersonIds(body, info.operation);
 }
 
 /**
@@ -542,7 +674,7 @@ export abstract class BaseService {
         return undefined as T;
       }
 
-      normalizeResponsePersonIds(data, info.service);
+      processResponsePersonIds(data, info);
       return data;
     } catch (err) {
       result.durationMs = Math.round(performance.now() - start);
@@ -603,7 +735,7 @@ export abstract class BaseService {
       }
 
       const firstPageItems: T[] = data ?? [];
-      normalizeResponsePersonIds(firstPageItems, info.service);
+      processResponsePersonIds(firstPageItems, info);
       const totalCount = parseTotalCount(response);
       const maxItems = paginationOpts?.maxItems;
 
@@ -628,7 +760,7 @@ export abstract class BaseService {
         response,
         firstPageItems,
         maxItems,
-        info.service,
+        info,
       );
 
       // Update duration to reflect total time across all pages
@@ -687,7 +819,7 @@ export abstract class BaseService {
       }
 
       const firstPageData = (data ?? {}) as Record<string, unknown>;
-      normalizeResponsePersonIds(firstPageData, info.service);
+      processResponsePersonIds(firstPageData, info);
       const totalCount = parseTotalCount(response);
 
       // Extract wrapper fields (everything except the paginated key)
@@ -721,7 +853,7 @@ export abstract class BaseService {
         firstPageItems,
         key,
         maxItems,
-        info.service,
+        info,
       );
 
       result.durationMs = Math.round(performance.now() - start);
@@ -789,7 +921,7 @@ export abstract class BaseService {
     initialResponse: Response,
     firstPageItems: T[],
     maxItems: number | undefined,
-    service: string,
+    info: OperationInfo,
   ): Promise<{ items: T[]; truncated: boolean }> {
     const allItems = [...firstPageItems];
     let response = initialResponse;
@@ -816,7 +948,7 @@ export abstract class BaseService {
       }
 
       const pageItems: T[] = await this.parsePage<T[]>(response, page + 1);
-      normalizeResponsePersonIds(pageItems, service);
+      processResponsePersonIds(pageItems, info);
       allItems.push(...pageItems);
 
       // Check maxItems cap. Only mark truncated when items were actually
@@ -843,7 +975,7 @@ export abstract class BaseService {
     firstPageItems: T[],
     key: string,
     maxItems: number | undefined,
-    service: string,
+    info: OperationInfo,
   ): Promise<{ items: T[]; truncated: boolean }> {
     const allItems = [...firstPageItems];
     let response = initialResponse;
@@ -869,7 +1001,7 @@ export abstract class BaseService {
       }
 
       const pageData = await this.parsePage<Record<string, unknown>>(response, page + 1);
-      normalizeResponsePersonIds(pageData, service);
+      processResponsePersonIds(pageData, info);
       const pageItems: T[] = (pageData[key] as T[]) ?? [];
       allItems.push(...pageItems);
 

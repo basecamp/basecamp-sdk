@@ -12,7 +12,7 @@ module Basecamp
       # @return [Hash] response data
       def get(document_id:)
         with_operation(service: "documents", operation: "get", is_mutation: false, resource_id: document_id) do
-          http_get("/documents/#{document_id}", operation: "GetDocument").json
+          http_get("/documents/#{document_id}", operation: "GetDocument").json(operation: "GetDocument")
         end
       end
 
@@ -23,7 +23,7 @@ module Basecamp
       # @return [Hash] response data
       def replace(document_id:, title: nil, content: nil)
         with_operation(service: "documents", operation: "replace", is_mutation: true, resource_id: document_id) do
-          http_put("/documents/#{document_id}", body: compact_params(title: title, content: content)).json
+          http_put("/documents/#{document_id}", body: compact_params(title: title, content: content)).json(operation: "ReplaceDocument")
         end
       end
 
@@ -49,7 +49,7 @@ module Basecamp
       # @return [Hash] response data
       def create(vault_id:, title:, content: nil, status: nil, subscriptions: nil, visible_to_clients: nil)
         with_operation(service: "documents", operation: "create", is_mutation: true, resource_id: vault_id) do
-          http_post("/vaults/#{vault_id}/documents.json", body: compact_params(title: title, content: content, status: status, subscriptions: subscriptions, visible_to_clients: visible_to_clients)).json
+          http_post("/vaults/#{vault_id}/documents.json", body: compact_params(title: title, content: content, status: status, subscriptions: subscriptions, visible_to_clients: visible_to_clients)).json(operation: "CreateDocument")
         end
       end
     end

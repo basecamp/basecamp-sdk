@@ -12,7 +12,7 @@ module Basecamp
       # @return [Hash] response data
       def get_boost(boost_id:)
         with_operation(service: "boosts", operation: "get_boost", is_mutation: false, resource_id: boost_id) do
-          http_get("/boosts/#{boost_id}", operation: "GetBoost").json
+          http_get("/boosts/#{boost_id}", operation: "GetBoost").json(operation: "GetBoost")
         end
       end
 
@@ -44,7 +44,7 @@ module Basecamp
       # @return [Hash] response data
       def create_recording_boost(recording_id:, content:)
         with_operation(service: "boosts", operation: "create_recording_boost", is_mutation: true, resource_id: recording_id) do
-          http_post("/recordings/#{recording_id}/boosts.json", body: compact_params(content: content)).json
+          http_post("/recordings/#{recording_id}/boosts.json", body: compact_params(content: content)).json(operation: "CreateRecordingBoost")
         end
       end
 
@@ -68,7 +68,7 @@ module Basecamp
       # @return [Hash] response data
       def create_event_boost(recording_id:, event_id:, content:)
         with_operation(service: "boosts", operation: "create_event_boost", is_mutation: true, resource_id: event_id) do
-          http_post("/recordings/#{recording_id}/events/#{event_id}/boosts.json", body: compact_params(content: content)).json
+          http_post("/recordings/#{recording_id}/events/#{event_id}/boosts.json", body: compact_params(content: content)).json(operation: "CreateEventBoost")
         end
       end
     end

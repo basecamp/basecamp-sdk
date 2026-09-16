@@ -20,7 +20,7 @@ module Basecamp
       # @return [Hash] response data
       def get_my_preferences()
         with_operation(service: "people", operation: "get_my_preferences", is_mutation: false) do
-          http_get("/my/preferences.json", operation: "GetMyPreferences").json
+          http_get("/my/preferences.json", operation: "GetMyPreferences").json(operation: "GetMyPreferences")
         end
       end
 
@@ -29,7 +29,7 @@ module Basecamp
       # @return [Hash] response data
       def update_my_preferences(person:)
         with_operation(service: "people", operation: "update_my_preferences", is_mutation: true) do
-          http_put("/my/preferences.json", body: compact_params(person: person)).json
+          http_put("/my/preferences.json", body: compact_params(person: person)).json(operation: "UpdateMyPreferences")
         end
       end
 
@@ -37,7 +37,7 @@ module Basecamp
       # @return [Hash] response data
       def my_profile()
         with_operation(service: "people", operation: "my_profile", is_mutation: false) do
-          http_get("/my/profile.json", operation: "GetMyProfile").json
+          http_get("/my/profile.json", operation: "GetMyProfile").json(operation: "GetMyProfile")
         end
       end
 
@@ -74,7 +74,7 @@ module Basecamp
       # @return [Hash] response data
       def get(person_id:)
         with_operation(service: "people", operation: "get", is_mutation: false, resource_id: person_id) do
-          http_get("/people/#{person_id}", operation: "GetPerson").json
+          http_get("/people/#{person_id}", operation: "GetPerson").json(operation: "GetPerson")
         end
       end
 
@@ -83,7 +83,7 @@ module Basecamp
       # @return [Hash] response data
       def get_out_of_office(person_id:)
         with_operation(service: "people", operation: "get_out_of_office", is_mutation: false, resource_id: person_id) do
-          http_get("/people/#{person_id}/out_of_office.json", operation: "GetOutOfOffice").json
+          http_get("/people/#{person_id}/out_of_office.json", operation: "GetOutOfOffice").json(operation: "GetOutOfOffice")
         end
       end
 
@@ -93,7 +93,7 @@ module Basecamp
       # @return [Hash] response data
       def enable_out_of_office(person_id:, out_of_office:)
         with_operation(service: "people", operation: "enable_out_of_office", is_mutation: true, resource_id: person_id) do
-          http_post("/people/#{person_id}/out_of_office.json", body: compact_params(out_of_office: out_of_office)).json
+          http_post("/people/#{person_id}/out_of_office.json", body: compact_params(out_of_office: out_of_office)).json(operation: "EnableOutOfOffice")
         end
       end
 
@@ -112,7 +112,7 @@ module Basecamp
       # @return [Hash] response data
       def enable_project_clients(project_id:)
         with_operation(service: "people", operation: "enable_project_clients", is_mutation: true, project_id: project_id) do
-          http_post("/projects/#{project_id}/client_enablement.json").json
+          http_post("/projects/#{project_id}/client_enablement.json").json(operation: "EnableProjectClients")
         end
       end
 
@@ -121,7 +121,7 @@ module Basecamp
       # @return [Hash] response data
       def disable_project_clients(project_id:)
         with_operation(service: "people", operation: "disable_project_clients", is_mutation: true, project_id: project_id) do
-          http_delete("/projects/#{project_id}/client_enablement.json").json
+          http_delete("/projects/#{project_id}/client_enablement.json").json(operation: "DisableProjectClients")
         end
       end
 
@@ -145,7 +145,7 @@ module Basecamp
       # @return [Hash] response data
       def update_project_client_access(project_id:, grant: nil, revoke: nil, create: nil)
         with_operation(service: "people", operation: "update_project_client_access", is_mutation: true, project_id: project_id) do
-          http_put("/projects/#{project_id}/people/client_users.json", body: compact_params(grant: grant, revoke: revoke, create: create)).json
+          http_put("/projects/#{project_id}/people/client_users.json", body: compact_params(grant: grant, revoke: revoke, create: create)).json(operation: "UpdateProjectClientAccess")
         end
       end
 
@@ -157,7 +157,7 @@ module Basecamp
       # @return [Hash] response data
       def update_project_access(project_id:, grant: nil, revoke: nil, create: nil)
         with_operation(service: "people", operation: "update_project_access", is_mutation: true, project_id: project_id) do
-          http_put("/projects/#{project_id}/people/users.json", body: compact_params(grant: grant, revoke: revoke, create: create)).json
+          http_put("/projects/#{project_id}/people/users.json", body: compact_params(grant: grant, revoke: revoke, create: create)).json(operation: "UpdateProjectAccess")
         end
       end
 
@@ -165,7 +165,7 @@ module Basecamp
       # @return [Array<Hash>] response data
       def list_assignable()
         with_operation(service: "people", operation: "list_assignable", is_mutation: false) do
-          http_get("/reports/todos/assigned.json", operation: "ListAssignablePeople").json
+          http_get("/reports/todos/assigned.json", operation: "ListAssignablePeople").json(operation: "ListAssignablePeople")
         end
       end
     end

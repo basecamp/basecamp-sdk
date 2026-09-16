@@ -27,6 +27,12 @@ from basecamp.errors import ApiError
 # documented at `basecamp._person_id.normalize_person_ids`.
 from basecamp._person_id import normalize_person_ids as _normalize_person_ids
 from basecamp._person_id import embedded_people_url as _embedded_people_url
+
+# Then Go's typed decode of `Person.id` (`types.FlexibleInt64`), at exactly the
+# sites the generator derived for this operation, on the same body. Documented
+# at `basecamp._person_id.decode_person_id_sites`.
+from basecamp._person_id import decode_person_id_sites as _decode_person_id_sites
+from basecamp.generated.services._person_id_sites import PERSON_ID_SITES as _PERSON_ID_SITES
 from basecamp.hooks import OperationInfo, OperationResult, safe_hook
 
 if TYPE_CHECKING:
@@ -87,6 +93,7 @@ class BaseService:
                 raise ValueError(f"Unsupported method: {method}")
             result = response.json()
             _normalize_person_ids(result, embedded_people=_embedded_people(response))
+            _decode_person_id_sites(result, _PERSON_ID_SITES, operation)
             duration_ms = int((time.monotonic() - start) * 1000)
             safe_hook(self._hooks.on_operation_end, info, OperationResult(duration_ms=duration_ms))
             return result
@@ -122,6 +129,7 @@ class BaseService:
 
             items = decoded_array(body, "the list response body")
             _normalize_person_ids(items, embedded_people=_embedded_people(response))
+            _decode_person_id_sites(items, _PERSON_ID_SITES, operation)
             # Unpaginated feeds return the whole collection in a single response,
             # so the total count is simply the array length. This is authoritative
             # regardless of X-Total-Count (absent, present-and-equal, or present-
@@ -215,6 +223,7 @@ class BaseService:
             )
             result = response.json()
             _normalize_person_ids(result, embedded_people=_embedded_people(response))
+            _decode_person_id_sites(result, _PERSON_ID_SITES, operation)
             duration_ms = int((time.monotonic() - start) * 1000)
             safe_hook(self._hooks.on_operation_end, info, OperationResult(duration_ms=duration_ms))
             return result
@@ -317,6 +326,7 @@ class BaseService:
                 _normalize_person_ids(items, embedded_people=_embedded_people(response))
             except Exception as e:
                 raise ApiError(f"Failed to parse paginated response (page {page}): {_security.truncate(str(e))}") from e
+            _decode_person_id_sites(items, _PERSON_ID_SITES, operation)
 
             all_items.extend(decoded_array(items, f"the paginated response body (page {page})"))
 
@@ -380,6 +390,7 @@ class BaseService:
                 _normalize_person_ids(data, embedded_people=_embedded_people(response))
             except Exception as e:
                 raise ApiError(f"Failed to parse paginated response (page {page}): {_security.truncate(str(e))}") from e
+            _decode_person_id_sites(data, _PERSON_ID_SITES, operation)
 
             envelope = decoded_object(data, f"the paginated response body (page {page})")
             all_items.extend(decoded_envelope_array(envelope, key, f"the {key!r} list (page {page})"))
@@ -438,6 +449,7 @@ class BaseService:
             _normalize_person_ids(first_data, embedded_people=_embedded_people(first_response))
         except Exception as e:
             raise ApiError(f"Failed to parse paginated response (page 1): {_security.truncate(str(e))}") from e
+        _decode_person_id_sites(first_data, _PERSON_ID_SITES, operation)
 
         first_data = decoded_object(first_data, "the paginated response body (page 1)")
         wrapper = {k: v for k, v in first_data.items() if k != key}
@@ -470,6 +482,7 @@ class BaseService:
                 _normalize_person_ids(data, embedded_people=_embedded_people(response))
             except Exception as e:
                 raise ApiError(f"Failed to parse paginated response (page {page}): {_security.truncate(str(e))}") from e
+            _decode_person_id_sites(data, _PERSON_ID_SITES, operation)
 
             envelope = decoded_object(data, f"the paginated response body (page {page})")
             all_items.extend(decoded_envelope_array(envelope, key, f"the {key!r} list (page {page})"))

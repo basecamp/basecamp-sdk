@@ -690,10 +690,11 @@ describe("TodosService", () => {
       // A STRING id is not on this list. BC3 serializes person ids as strings
       // on some payloads, and `generated.Person.Id` is a `types.FlexibleInt64`,
       // so the reference reads `"007"` as person 7 and completes the update.
-      // The normalizer does not reach `assignees` — that key carries a plain
-      // `int64` person on another schema, so walking it by name over-reached —
-      // and the guard reads the id itself instead, which is decoder coverage at
-      // exactly this field rather than normalizer reach at every field so named.
+      //
+      // These are refused by the READ now, before the guard sees them: `GetTodo`
+      // decodes `assignees` / `completion_subscribers` as `FlexibleInt64`, whose
+      // number path fails on each of them, which is where Go's own Update
+      // composite fails too (go/pkg/types/flexible_int64.go:56-61).
       it.each([
         ["float", 10.5],
         ["NaN", Number.NaN],
@@ -704,16 +705,20 @@ describe("TodosService", () => {
         serve(fullTodo(42, { [field]: [{ id: badId, name: "Jane" }] }), requests);
 
         const error = await rejection(client.todos.update(42, { content: "New title" }));
-        expectResponseError(error, new RegExp(`Todo field "${field}"\\[0\\]`), requests);
+        expectResponseError(
+          error,
+          new RegExp(`GetTodo returned a person id at ${field}\\.\\[\\] that is not a valid int64`),
+          requests
+        );
       });
 
       it(`completes an update whose ${field} id arrived as a string, as the reference does`, async () => {
         // The divergence this test used to pin, flipped. Go reads `"007"` as
         // person 7 through `FlexibleInt64` and completes this update. The
         // positional normalizer does not reach `assignees` (that key carries
-        // `MyAssignmentAssignee`, a plain `int64`, on another schema), so the
-        // string arrives at the merge-safe guard untouched — and the guard now
-        // reads it by the same scan the normalizer uses, rather than refusing.
+        // `MyAssignmentAssignee`, a plain `int64`, on another schema); the
+        // `GetTodo` read converts it at its `FlexibleInt64` site instead, and
+        // the merge-safe guard reads any string that remains by the same scan.
         const requests: string[] = [];
         let putBody: Record<string, unknown> = {};
         server.use(
@@ -735,9 +740,9 @@ describe("TodosService", () => {
       });
 
       // A string id read the way the reference reads one, through the whole
-      // composite. The normalizer does not walk `assignees`, so these ids reach
-      // the guard as strings and the guard is what reads them; merge-safe.test.ts
-      // pins the guard on its own as well, independent of what any walk covers.
+      // composite. The normalizer does not walk `assignees`; the `GetTodo` read
+      // decodes them at its `FlexibleInt64` sites before the guard sees them, and
+      // merge-safe.test.ts pins the guard on its own, independent of either.
       // Measured through the reference's own Update composite.
       it.each([
         ["a bare numeric string", "1049715914", 1049715914],
@@ -774,7 +779,9 @@ describe("TodosService", () => {
 
       // The RANGE refusal, which goes the other way from the SYNTAX one above
       // and is decided one digit earlier: "…615x" is the system actor, "…616x"
-      // overflows inside the scan before the 'x' is reached and fails the read.
+      // overflows inside the scan before the 'x' is reached and fails the read —
+      // the `GetTodo` read itself, as `FlexibleInt64` fails it in Go
+      // (go/pkg/types/flexible_int64.go:43-44).
       it.each([["9223372036854775808"], ["18446744073709551616x"]])(
         `update refuses the ${field} id %s, whose digits overflow int64`,
         async (rawId) => {
@@ -784,7 +791,7 @@ describe("TodosService", () => {
           const error = await rejection(client.todos.update(42, { content: "New title" }));
           expectResponseError(
             error,
-            new RegExp(`Todo field "${field}"\\[0\\]\\.id is not a person id`),
+            new RegExp(`GetTodo returned a person id at ${field}\\.\\[\\] that overflows int64`),
             requests
           );
         }

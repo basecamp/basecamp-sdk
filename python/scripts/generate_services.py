@@ -1154,6 +1154,105 @@ def remove_stale_files(output_dir: Path, previous_modules: set[str], emitted_fil
             print(f"Removed stale {stale.name}")
 
 
+# The module holding the typed-decode table below. `_`-prefixed and never named by
+# the barrel, so the stale sweep cannot nominate it; the drift check diffs it with
+# the service modules because it lives in the same directory.
+PERSON_ID_SITES_FILE = "_person_id_sites.py"
+
+# The marker Go's generator reads to type a field `types.FlexibleInt64`. Selecting
+# on it -- never on a property NAME -- is the point: `creator`, `assignees` and
+# `person` also hold plain-int64 people (`UpcomingSchedulePerson`,
+# `MyAssignmentAssignee`, `OutOfOfficePerson`) where a string is a Go decode error.
+FLEXIBLE_INT64 = "types.FlexibleInt64"
+
+
+def person_id_sites(spec: dict) -> dict[str, list[tuple[str, ...]]]:
+    """Every place a 2xx response body holds a schema whose `id` Go decodes as
+    `types.FlexibleInt64`, keyed by operationId.
+
+    A site is a path of segments from the body: a property name, `[]` for each
+    element of an array, `{}` for each value of a map. The empty path is the body
+    itself; a path ending in `[]` is an array of people. The walk follows `$ref`,
+    `items`, `properties`, `additionalProperties` and `allOf`/`oneOf`/`anyOf`, and
+    stops at a schema already on the current `$ref` stack (the only recursive
+    schema, `MyAssignment`, holds no such person).
+    """
+    schemas = spec.get("components", {}).get("schemas", {})
+    responses = spec.get("components", {}).get("responses", {})
+
+    def is_flexible_person(name: str) -> bool:
+        id_schema = schemas.get(name, {}).get("properties", {}).get("id", {})
+        return id_schema.get("x-go-type") == FLEXIBLE_INT64
+
+    def walk(schema: dict, path: tuple[str, ...], stack: tuple[str, ...], found: set[tuple[str, ...]]) -> None:
+        if "$ref" in schema:
+            name = schema["$ref"].split("/")[-1]
+            if name in stack:
+                return
+            if is_flexible_person(name):
+                found.add(path)
+            walk(schemas.get(name, {}), path, (*stack, name), found)
+            return
+        for key in ("allOf", "oneOf", "anyOf"):
+            for sub in schema.get(key, []):
+                walk(sub, path, stack, found)
+        if schema.get("type") == "array" or "items" in schema:
+            walk(schema.get("items", {}), (*path, "[]"), stack, found)
+        for prop, prop_schema in schema.get("properties", {}).items():
+            walk(prop_schema, (*path, prop), stack, found)
+        additional = schema.get("additionalProperties")
+        if isinstance(additional, dict):
+            walk(additional, (*path, "{}"), stack, found)
+
+    table: dict[str, list[tuple[str, ...]]] = {}
+    for path_item in spec.get("paths", {}).values():
+        for method in METHODS:
+            op = path_item.get(method)
+            if not isinstance(op, dict) or "operationId" not in op:
+                continue
+            found: set[tuple[str, ...]] = set()
+            for code, response in op.get("responses", {}).items():
+                if not str(code).startswith("2"):
+                    continue
+                if "$ref" in response:
+                    response = responses.get(response["$ref"].split("/")[-1], {})
+                for content in response.get("content", {}).values():
+                    walk(content.get("schema", {}), (), (), found)
+            if found:
+                table[op["operationId"]] = sorted(found)
+    return table
+
+
+def generate_person_id_sites_file(spec: dict) -> str:
+    """The `PERSON_ID_SITES` module the service bases read after normalizing a body.
+
+    See `basecamp._person_id.decode_person_id_sites` for what happens at a site.
+    """
+    table = person_id_sites(spec)
+    lines = [
+        SERVICE_MODULE_MARKER,
+        '"""Where each operation\'s response holds a person id Go decodes as `types.FlexibleInt64`.',
+        "",
+        "Derived from the `x-go-type` marker on the `Person` schema's `id`, never from",
+        "property names. Applied by `basecamp._person_id.decode_person_id_sites`.",
+        '"""',
+        "",
+        "from __future__ import annotations",
+        "",
+        "PERSON_ID_SITES: dict[str, tuple[tuple[str, ...], ...]] = {",
+    ]
+    for op_id in sorted(table):
+        lines.append(f'    "{op_id}": (')
+        for site in table[op_id]:
+            segments = ", ".join(f'"{segment}"' for segment in site)
+            # No magic trailing comma past one segment, so `ruff format` keeps a site on one line.
+            lines.append(f"        ({segments}{',' if len(site) == 1 else ''}),")
+        lines.append("    ),")
+    lines.append("}")
+    lines.append("")
+    return "\n".join(lines)
+
+
 def main() -> None:
     import argparse
     parser = argparse.ArgumentParser(description="Generate Python service classes from OpenAPI spec")
@@ -1204,6 +1303,10 @@ def main() -> None:
     # itself, so `__init__` cannot be in `previous_modules`, and the `_` prefix
     # guard in the sweep would decline it anyway. Both of those are properties of
     # other code; this is the statement local to the sweep.
+    sites_path = output_dir / PERSON_ID_SITES_FILE
+    sites_path.write_text(generate_person_id_sites_file(spec), encoding="utf-8")
+    print(f"Generated {PERSON_ID_SITES_FILE}")
+
     emitted_files = [*generated_files, SERVICE_BARREL]
 
     # Sweep while the previous barrel is still on disk, and only then replace it.

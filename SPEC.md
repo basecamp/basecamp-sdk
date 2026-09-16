@@ -1681,28 +1681,17 @@ still wrong. None of the operations serving them (`GetUpcomingSchedule`,
 `GetMyAssignments` and its siblings, `DisableOutOfOffice`) carries a genuine
 `Person` field at any depth, so leaving them strict costs no coverage.
 
-What the wider reach WAS covering is a real gap and is not closed by this rule.
-Off the two surfaces, a port with no decoder on its generated path leaves an
-untagged string person id AS A STRING wherever Go's decoder would read the
-number. Stated in full, because a partial list is how this gap was
-under-counted once already:
+What the wider reach WAS covering was a real gap, and it is closed at typed
+decode rather than by a wider walk. Off the two surfaces, a port with no decoder
+on its generated path left an untagged string person id AS A STRING wherever
+Go's decoder reads the number: TypeScript's `comments.get` returned a
+`creator.id` of `"7"` as the string `"7"` in a field typed `number`, and Ruby and
+Python handed the string back in their hashes the same way. See "Person Ids at
+Typed Decode" below.
 
-- **Ruby, Python and TypeScript:** an untagged `creator` on every recording read
-  (a comment, a message, a to-do…), and `assignees`, `subscribers`,
-  `completion_subscribers` and a schedule entry's `participants`.
-- **TypeScript also**, having been the port that widened furthest: `approver`,
-  `booster`, `completer` (live in `spec/fixtures/cards/step.json`),
-  `performed_by`, `granted`, `revoked` and `person`.
-- **Where it is visible:** on a plain generated read. TypeScript's
-  `comments.get` returns an untagged `creator.id` of `"7"` as the string `"7"`
-  in a field typed `number`, where Go gives `7`; Ruby and Python hand back the
-  string in their untyped hashes the same way. The recording-summary composites
-  do NOT show it: all three now decode a nested person's id as the
-  `FlexibleInt64` it is, so `recordings.summarize()` gives `7` in every port.
-
-The gap shows on a merge-safe write as well as on a plain read. Both are decoder
-coverage, field by field against the reference, rather than normalizer reach,
-and they are closed to different extents:
+The merge-safe write path, and the ports whose generated model is the decoder,
+are decoder coverage too, field by field against the reference, rather than
+normalizer reach:
 
 - **The write path is closed, with one residual in TypeScript.** The
   merge-safe composites' id-list guard reads a person id itself, by the same
@@ -1735,11 +1724,6 @@ and they are closed to different extents:
   put the system actor on "who acted". Swift keeps its float residual
   (`FlexibleInt`): `1024.0`, `1e3` and `0.0` read as integers where Go fails
   the read. **Kotlin** still refuses an absent `id` and a `null` element.
-- **The plain read is still open.** A generated service read in Ruby, Python
-  and TypeScript still returns an untagged person's string id as the string,
-  where the reference's decoder gives the number. (Ruby's generated
-  `Types::Person` does read the id flexibly; the service hashes do not.)
-  Closing it needs a decoder at those reads, not a wider walk.
 
 **The oracle, not the documentation.** Every port that reasoned from
 `ParseInt`'s docs rather than probing it got something wrong. The corpus and
@@ -1768,6 +1752,69 @@ ordinary `int64` values.
 | **Kotlin** | `serialization.parseInt64`, shared by `normalizePersonIds` and `FlexibleLongSerializer`. `String.toLongOrNull` is Unicode-aware through `digitOf` / `Character.digit`, so it read a fullwidth `"１２３"` as a real person. |
 | **Swift** | `parsePersonID` (`FlexibleInt.swift`), shared by `BaseService.normalizeWalk` and `FlexibleInt`. An `NSRegularExpression` `\d` is ICU's, which matches `\p{Nd}`, so the regex that stood in for the range check treated a fullwidth digit run as an overflow and failed the whole response — and ICU's `$` matches before a final newline while `range(of:options:)` matches a SUBSTRING, so `"7\n"` did the same. Bytes, not a regex, is what settles both permanently. |
 | **TypeScript** | `scanPersonId` (`src/person-id.ts`), shared by `normalizePersonIds` and `personIdValue`. **One residual, 11 of 74:** a JS `number` cannot carry an `int64` past 2^53 — the same constraint as waiver 1B.6 and `conformance/tests/integer-precision.json` — so an id Go reads is reported UNREADABLE rather than rounded: the normalizer leaves the string in place and the reader answers `undefined`. Writing `0` there, which is what it did before, hands back the system actor for a real person; throwing would discard every other record in the body. Both refuse the id rather than the response. The same limit reaches rule A's site too: `personIdFromSGID` answers "no person" for a gid naming an id past 2^53, rather than round it into a neighbouring one. **`mentionedPersonIds` SKIPS such a mention rather than throwing, an availability trade-off made deliberately.** It under-reports — a text naming `7, 9007199254740991, 9007199254740992, 9007199254740993, 9223372036854775807, 0009223372036854775807` gives Go 5 ids and this 2 — and it briefly threw so that a short list could not pass for a short text. The throw was worse: `recordings.summarize()` calls it on server-returned `content`, and no sgid signature is verified on that path, so the id is chosen by whoever wrote the comment and one crafted `<bc-attachment>` made the whole recording unreadable. Skipping is also the reference's failure mode — `MentionedPersonIDs` continues past every sgid it declines. The skip is not silent: `readMentions` returns the ids it could not name as decimal strings, and the summary carries them as `unnameable_mention_ids`, a key present only when the mention list is actually short. |
+
+### Person Ids at Typed Decode `[static]`
+
+**A port with no decoder on its generated read path decodes a person id at
+exactly the sites Go's generated types read as `types.FlexibleInt64`, and
+nowhere else.** That marker is on one field in the whole model, `Person.id`
+(`x-go-type` in `openapi.json`, added by `scripts/enhance-openapi-go-types.sh`),
+and no hand-written Go wrapper type uses it. Every Go service decodes its
+response through the generated `Parse<Op>Response` before anything else, so the
+sites are the places an operation's 2xx response schema reaches `Person` through
+`$ref`: 161 operations, 359 sites. They are found by walking the schema and
+selecting on the marker, never on a key name. A key name is what reached the
+plain-`int64` people in "Person Ids Off the Wire", and it would reach them again:
+`UpcomingSchedulePerson`, `MyAssignmentAssignee`, `OutOfOfficePerson` and
+`TemplateLibraryConfirmationPerson` are not sites, and an untagged string id there is
+still left for the caller as it arrived.
+
+Each port's generator emits the table keyed by operation id, so the generator
+drift check guards it. The generated read path applies it after the normalizer,
+on every body it decodes: a single object, an unpaginated list, and every page of
+a paginated or wrapped listing, followed pages included.
+
+| SDK | table | applied by |
+|-----|-------|------------|
+| **Ruby** | `personIdSites` in `lib/basecamp/generated/metadata.json` (`scripts/generate-metadata.rb`) | `Basecamp::PersonIdSites.decode!`, called from `Response#json(operation:)` and `Http#parse_page` |
+| **Python** | `generated/services/_person_id_sites.py` (`scripts/generate_services.py`) | `_person_id.decode_person_id_sites`, called from every request and pagination path in `_base.py` and `_async_base.py` |
+| **TypeScript** | `src/generated/person-id-sites.ts` (`scripts/extract-person-id-sites.ts`) | `BaseService`'s request methods and both followed-page loops |
+
+At a site, a person that is an object carrying `id` has that id read the way
+`FlexibleInt64.UnmarshalJSON` reads it:
+
+| wire `id` | result |
+|---|---|
+| string, `ParseInt` ok(n) | the number `n` |
+| string, `ErrSyntax` | `0`, with no `system_label` (the decoder writes none; the normalizer's `personable_type` pass still does) |
+| string, `ErrRange` | **fail the read**: a non-retryable API error naming the operation and the site |
+| integer inside `int64` | unchanged |
+| anything else: a float, an integer outside `int64`, `null`, a boolean, an array, an object | **fail the read** |
+
+Some shapes are declared rather than closed, and a site does not touch them: a
+person that is `null`, not an object, or has no `id`, and a container that is not
+an array. Go zero-fills or refuses those as part of decoding the whole body, and
+these ports do that for no field.
+
+Measured against the reference over the card-42 id-shape corpus at all 359
+sites (13,239 cases, each also run through Go's real `Parse<Op>Response`):
+
+| | rows Go reads as a value | rows Go refuses |
+|---|---|---|
+| **Ruby**, before → after | 5,577 → **0** | 3,949 → **0** |
+| **Python**, before → after | 5,577 → **0** | 3,949 → **0** |
+| **TypeScript**, before → after | 5,987 → 1,436 | 3,949 → 1,077 |
+
+TypeScript's residue is the JavaScript number boundary and nothing else, four
+rows and three rows at every site. An id outside ±(2^53 − 1) is left as the
+string when it arrives as one (the `int64` bounds, and a string past 2^53), and
+arrives already rounded by `JSON.parse` when it is a number. The numbers
+`1024.0`, `1e3` and 2^63 are ordinary integers before any code can look, so a
+read Go refuses is accepted. This is waiver 1B.6 again.
+
+The merge-safe composites (§5) read through the same generated operations. A
+person id Go refuses now fails at that read, before the id-list guard above sees
+it, as it does in the reference. No write is sent either way.
 
 ### Nullable Numeric Dimensions (rich-text attachment width/height)
 

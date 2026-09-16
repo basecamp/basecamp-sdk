@@ -12,7 +12,7 @@ module Basecamp
       # @return [Hash] response data
       def get(id:)
         with_operation(service: "todolists", operation: "get", is_mutation: false, resource_id: id) do
-          http_get("/todolists/#{id}", operation: "GetTodolistOrGroup").json
+          http_get("/todolists/#{id}", operation: "GetTodolistOrGroup").json(operation: "GetTodolistOrGroup")
         end
       end
 
@@ -23,7 +23,7 @@ module Basecamp
       # @return [Hash] response data
       def replace(id:, name:, description: nil)
         with_operation(service: "todolists", operation: "replace", is_mutation: true, resource_id: id) do
-          http_put("/todolists/#{id}", body: compact_params(name: name, description: description)).json
+          http_put("/todolists/#{id}", body: compact_params(name: name, description: description)).json(operation: "UpdateTodolistOrGroup")
         end
       end
 
@@ -59,7 +59,7 @@ module Basecamp
       # @return [Hash] response data
       def create(todoset_id:, name:, description: nil, visible_to_clients: nil)
         with_operation(service: "todolists", operation: "create", is_mutation: true, resource_id: todoset_id) do
-          http_post("/todosets/#{todoset_id}/todolists.json", body: compact_params(name: name, description: description, visible_to_clients: visible_to_clients)).json
+          http_post("/todosets/#{todoset_id}/todolists.json", body: compact_params(name: name, description: description, visible_to_clients: visible_to_clients)).json(operation: "CreateTodolist")
         end
       end
     end

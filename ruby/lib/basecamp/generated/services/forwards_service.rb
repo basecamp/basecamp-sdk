@@ -12,7 +12,7 @@ module Basecamp
       # @return [Hash] response data
       def get(forward_id:)
         with_operation(service: "forwards", operation: "get", is_mutation: false, resource_id: forward_id) do
-          http_get("/inbox_forwards/#{forward_id}", operation: "GetForward").json
+          http_get("/inbox_forwards/#{forward_id}", operation: "GetForward").json(operation: "GetForward")
         end
       end
 
@@ -34,7 +34,7 @@ module Basecamp
       # @return [Hash] response data
       def get_reply(forward_id:, reply_id:)
         with_operation(service: "forwards", operation: "get_reply", is_mutation: false, resource_id: reply_id) do
-          http_get("/inbox_forwards/#{forward_id}/replies/#{reply_id}", operation: "GetForwardReply").json
+          http_get("/inbox_forwards/#{forward_id}/replies/#{reply_id}", operation: "GetForwardReply").json(operation: "GetForwardReply")
         end
       end
 
@@ -43,7 +43,7 @@ module Basecamp
       # @return [Hash] response data
       def get_inbox(inbox_id:)
         with_operation(service: "forwards", operation: "get_inbox", is_mutation: false, resource_id: inbox_id) do
-          http_get("/inboxes/#{inbox_id}", operation: "GetInbox").json
+          http_get("/inboxes/#{inbox_id}", operation: "GetInbox").json(operation: "GetInbox")
         end
       end
 

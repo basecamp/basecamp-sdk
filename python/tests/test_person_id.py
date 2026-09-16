@@ -404,6 +404,14 @@ class TestTheWalkFindsAPersonTwoWays:
     @pytest.mark.parametrize(("raw", "kind", "value"), PERSON_ID_CORPUS, ids=CORPUS_IDS)
     def test_every_shape_gets_the_same_row_verdict(self, shape, raw, kind, value):
         build, pick = _EMBEDDED_SHAPES[shape]
+        if kind == "refuse" and shape != "nested creator":
+            # The normalizer leaves a range string, and `creator` and
+            # `participants` are `Person` sites on GetMyNotifications, so Go's
+            # `FlexibleInt64` decode refuses the read (`flexible_int64.go:44`).
+            # `recording.comment.creator` is no site in the schema: left as is.
+            with pytest.raises(ApiError, match="GetMyNotifications: person id at unreads"):
+                _read_notifications(build(raw))
+            return
         person = pick(_read_notifications(build(raw)))
         if kind == "value":
             assert person["id"] == value

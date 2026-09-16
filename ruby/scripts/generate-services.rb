@@ -925,6 +925,11 @@ class ServiceGenerator
     # Only GETs are retry-governed in Ruby, and only Http#get accepts the
     # operation keyword — mutations go through single_request with no retry.
     operation_arg = http_method == 'get' ? ", operation: \"#{op[:operation_id]}\"" : ''
+    # Every verb names its operation to the body decode, which is a separate
+    # channel from the retry keyword above: the typed person-id decode
+    # (Basecamp::PersonIdSites) is keyed by operation id, and a mutation's
+    # response carries people exactly as a read's does.
+    json_call = ".json(operation: \"#{op[:operation_id]}\")"
 
     if op[:has_binary_body]
       # Binary upload - use raw body and set Content-Type header
@@ -936,18 +941,18 @@ class ServiceGenerator
         query_string = query_parts.join('&')
         # Modify path_expr to include query string
         path_expr_with_query = path_expr.sub(/"$/, "?#{query_string}\"")
-        lines << "        http_#{http_method}_raw(#{path_expr_with_query}, body: data, content_type: content_type).json"
+        lines << "        http_#{http_method}_raw(#{path_expr_with_query}, body: data, content_type: content_type)#{json_call}"
       else
-        lines << "        http_#{http_method}_raw(#{path_expr}, body: data, content_type: content_type).json"
+        lines << "        http_#{http_method}_raw(#{path_expr}, body: data, content_type: content_type)#{json_call}"
       end
     elsif op[:has_body]
       body_expr = build_body_expression(op)
-      lines << "        http_#{http_method}(#{path_expr}, body: #{body_expr}).json"
+      lines << "        http_#{http_method}(#{path_expr}, body: #{body_expr})#{json_call}"
     elsif op[:query_params].any?
       param_names = op[:query_params].map { |q| "#{to_snake_case(q[:name])}: #{to_snake_case(q[:name])}" }
-      lines << "        http_#{http_method}(#{path_expr}, params: compact_query_params(#{param_names.join(', ')})#{operation_arg}).json"
+      lines << "        http_#{http_method}(#{path_expr}, params: compact_query_params(#{param_names.join(', ')})#{operation_arg})#{json_call}"
     else
-      lines << "        http_#{http_method}(#{path_expr}#{operation_arg}).json"
+      lines << "        http_#{http_method}(#{path_expr}#{operation_arg})#{json_call}"
     end
 
     lines

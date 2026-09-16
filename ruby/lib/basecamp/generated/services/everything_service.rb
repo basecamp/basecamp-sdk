@@ -70,7 +70,7 @@ module Basecamp
       # @return [Array<Hash>] response data
       def get_everything_overdue_cards(assignee_ids: nil, due: nil)
         with_operation(service: "everything", operation: "get_everything_overdue_cards", is_mutation: false) do
-          http_get("/cards/overdue.json", params: compact_query_params(assignee_ids: assignee_ids, due: due), operation: "GetEverythingOverdueCards").json
+          http_get("/cards/overdue.json", params: compact_query_params(assignee_ids: assignee_ids, due: due), operation: "GetEverythingOverdueCards").json(operation: "GetEverythingOverdueCards")
         end
       end
 
@@ -194,7 +194,7 @@ module Basecamp
       # @return [Array<Hash>] response data
       def get_everything_overdue_todos(assignee_ids: nil, due: nil)
         with_operation(service: "everything", operation: "get_everything_overdue_todos", is_mutation: false) do
-          http_get("/todos/overdue.json", params: compact_query_params(assignee_ids: assignee_ids, due: due), operation: "GetEverythingOverdueTodos").json
+          http_get("/todos/overdue.json", params: compact_query_params(assignee_ids: assignee_ids, due: due), operation: "GetEverythingOverdueTodos").json(operation: "GetEverythingOverdueTodos")
         end
       end
 

@@ -12,7 +12,7 @@ module Basecamp
       # @return [Hash] response data
       def get(recording_id:)
         with_operation(service: "subscriptions", operation: "get", is_mutation: false, resource_id: recording_id) do
-          http_get("/recordings/#{recording_id}/subscription.json", operation: "GetSubscription").json
+          http_get("/recordings/#{recording_id}/subscription.json", operation: "GetSubscription").json(operation: "GetSubscription")
         end
       end
 
@@ -21,7 +21,7 @@ module Basecamp
       # @return [Hash] response data
       def subscribe(recording_id:)
         with_operation(service: "subscriptions", operation: "subscribe", is_mutation: true, resource_id: recording_id) do
-          http_post("/recordings/#{recording_id}/subscription.json").json
+          http_post("/recordings/#{recording_id}/subscription.json").json(operation: "Subscribe")
         end
       end
 
@@ -32,7 +32,7 @@ module Basecamp
       # @return [Hash] response data
       def update(recording_id:, subscriptions: nil, unsubscriptions: nil)
         with_operation(service: "subscriptions", operation: "update", is_mutation: true, resource_id: recording_id) do
-          http_put("/recordings/#{recording_id}/subscription.json", body: compact_params(subscriptions: subscriptions, unsubscriptions: unsubscriptions)).json
+          http_put("/recordings/#{recording_id}/subscription.json", body: compact_params(subscriptions: subscriptions, unsubscriptions: unsubscriptions)).json(operation: "UpdateSubscription")
         end
       end
 

@@ -431,6 +431,10 @@ class TodosServiceTest < Minitest::Test
     # out-of-int64 id would be written as the complete assignee set. A STRING is
     # not in this list and must not be: the reference decodes a person id
     # flexibly, so it reads one — see the acceptance cases below.
+    #
+    # Refused at the READ, as in the reference: GetTodo decodes these ids as
+    # FlexibleInt64 (Basecamp::PersonIdSites) before the merge-safe guard sees
+    # the body, so the message names the read rather than the field.
     [ 10.5, 10.0, nil, true, [], {}, 2**63, -(2**63) - 1, "9223372036854775808" ].each do |bad_id|
       define_method("test_update_refuses_a_non_person_#{field}_id_#{bad_id.inspect}") do
         stub_todo_get_and_put(todo: full_todo(field => [ { "id" => bad_id, "name" => "Jane" } ]))
@@ -439,7 +443,7 @@ class TodosServiceTest < Minitest::Test
           @account.todos.update(todo_id: 456, content: "New title")
         end
 
-        assert_includes error.message, "Todo field \"#{field}\"[0]"
+        assert_includes error.message, "GetTodo returned a person id at #{field}"
         assert_not_requested :put, "#{BASE_URL}/12345/todos/456"
       end
     end

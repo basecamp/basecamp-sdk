@@ -12,7 +12,7 @@ module Basecamp
       # @return [Hash] response data
       def get(upload_id:)
         with_operation(service: "uploads", operation: "get", is_mutation: false, resource_id: upload_id) do
-          http_get("/uploads/#{upload_id}", operation: "GetUpload").json
+          http_get("/uploads/#{upload_id}", operation: "GetUpload").json(operation: "GetUpload")
         end
       end
 
@@ -23,7 +23,7 @@ module Basecamp
       # @return [Hash] response data
       def update(upload_id:, description: nil, base_name: nil)
         with_operation(service: "uploads", operation: "update", is_mutation: true, resource_id: upload_id) do
-          http_put("/uploads/#{upload_id}", body: compact_params(description: description, base_name: base_name)).json
+          http_put("/uploads/#{upload_id}", body: compact_params(description: description, base_name: base_name)).json(operation: "UpdateUpload")
         end
       end
 
@@ -51,7 +51,7 @@ module Basecamp
       # @return [Hash] response data
       def create_version(upload_id:, attachable_sgid:, base_name: nil, description: nil, notify: nil, subscriptions: nil)
         with_operation(service: "uploads", operation: "create_version", is_mutation: true, resource_id: upload_id) do
-          http_post("/uploads/#{upload_id}/versions.json", body: compact_params(attachable_sgid: attachable_sgid, base_name: base_name, description: description, notify: notify, subscriptions: subscriptions)).json
+          http_post("/uploads/#{upload_id}/versions.json", body: compact_params(attachable_sgid: attachable_sgid, base_name: base_name, description: description, notify: notify, subscriptions: subscriptions)).json(operation: "CreateUploadVersion")
         end
       end
 
@@ -77,7 +77,7 @@ module Basecamp
       # @return [Hash] response data
       def create(vault_id:, attachable_sgid:, description: nil, base_name: nil, subscriptions: nil, visible_to_clients: nil)
         with_operation(service: "uploads", operation: "create", is_mutation: true, resource_id: vault_id) do
-          http_post("/vaults/#{vault_id}/uploads.json", body: compact_params(attachable_sgid: attachable_sgid, description: description, base_name: base_name, subscriptions: subscriptions, visible_to_clients: visible_to_clients)).json
+          http_post("/vaults/#{vault_id}/uploads.json", body: compact_params(attachable_sgid: attachable_sgid, description: description, base_name: base_name, subscriptions: subscriptions, visible_to_clients: visible_to_clients)).json(operation: "CreateUpload")
         end
       end
 
