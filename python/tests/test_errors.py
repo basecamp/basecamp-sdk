@@ -1062,8 +1062,10 @@ class TestRetryableKeywordDoesNotCollide:
                         # `initialize(reason, message, http_status:)` refuses, and
                         # Kotlin's `DiscoverySelection` passes `false` itself. Go and
                         # Rust do neither: both DERIVE it from the underlying cause,
-                        # so it can be TRUE by design -- an `as_fetch_failed` over a
-                        # retryable 503 or network failure. Go's
+                        # so it can be TRUE by design -- an `as_fetch_failed` is
+                        # retryable in Go over a network read failure (a non-2xx
+                        # goes through `ErrAPI`, which never sets it), and in Rust
+                        # over a network failure or a 5xx. Go's
                         # `SelectionError.Unwrap` copies `Retryable` from the
                         # `*basecamp.Error` in `Cause`, an exported field a caller
                         # can set; Rust's `SelectionError::into_error` does
@@ -1180,14 +1182,16 @@ class TestRetryableKeywordDoesNotCollide:
         stopped finding plausible edits and started finding obfuscation or
         strictness. It cannot see a name bound through a string field of the
         syntax tree (a ``match`` capture ``case retryable:``, ``except ... as``,
-        ``import ... as``) inside a caller-wins constructor. And it REJECTS
-        some correct edits, which is the price of keeping the property
-        checkable: normalising an argument before deriving from it
+        ``import ... as``) inside a caller-wins or the base constructor. And
+        it REJECTS some correct edits, which is the price of keeping the
+        property checkable: normalising an argument before deriving from it
         (``reason = reason.strip()``), coercing a forward
         (``retryable=bool(retryable)`` in ``ApiError``), reusing a derived
-        argument's name as a loop variable anywhere in the constructor, and a
-        ``__slots__`` entry named ``retryable``. Each fails with a message that
-        says what to write instead.
+        argument's name as a loop variable anywhere in the constructor, a
+        ``__slots__`` entry named ``retryable``, and a fixed class reading
+        ``self.TRANSIENT`` -- that last one on purpose, since a subclass can
+        override the constant from outside the constructor this test reads.
+        Each fails with a message that says what to write instead.
 
         This does not replace the value sweep, which catches what a form cannot:
         ``kwargs.setdefault(...)`` and a simply wrong invariant are both
@@ -1241,10 +1245,14 @@ class TestRetryableKeywordDoesNotCollide:
             # "webhook" is in the message put a 507 back to retryable through
             # `error_from_response`, as did the same through
             # `__getattribute__`. Package classes only -- `BaseException`
-            # itself defines `__getattribute__`.
+            # itself defines `__getattribute__`. `__getattr__` is deliberately
+            # NOT refused: it runs only for a missing attribute, the base check
+            # below guarantees `retryable` is always set, and a
+            # deprecated-alias `__getattr__` is a plausible edit that should
+            # not fail here.
             for klass in cls.__mro__:
                 if klass.__module__ == "basecamp" or klass.__module__.startswith("basecamp."):
-                    hooks = {"__setattr__", "__getattribute__", "__getattr__", "__delattr__"} & set(vars(klass))
+                    hooks = {"__setattr__", "__getattribute__", "__delattr__"} & set(vars(klass))
                     assert not hooks, f"{klass.__name__} defines attribute hooks {sorted(hooks)}"
             assert type(cls) is type, (
                 f"{cls.__name__} has a metaclass ({type(cls).__name__}), whose `__call__` can "
