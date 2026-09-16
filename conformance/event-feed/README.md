@@ -351,7 +351,7 @@ reason via a constant, not the literal.
 | Disconnect reason literal `unauthorized` (arrives only pre-welcome) | 1 (+ 2 for the pre-welcome timing) | 07 |
 | Disconnect reason literal `invalid_event_stream_command`, `reconnect:false` | 1 | 06 |
 | Disconnect reason literal `remote`, `reconnect:true` | 1 — **no transcript capture exists**; source-verified against the pinned Rails; its freeze rides bc3's disconnect-matrix re-verification plus the one requested capture frame | 17 |
-| Poll body envelope keys `events` / `position` / `next` | 1 | every fixture serving a 200 poll: 01, 02, 05, 07, 12, 16, 17, 19, 20, 22, 26, 29, 30, 31, 35 (mechanically derived from the fixture files; re-derive when the set changes) |
+| Poll body envelope keys `events` / `position` / `next` | 1 | every fixture serving a 200 poll on the account lane: 01, 02, 05, 07, 12, 16, 17, 19, 20, 22, 26, 29, 30, 31, 34, 35 (mechanically derived from the fixture files; re-derive when the set changes) |
 | Mint response body `{ticket, expires_in, url}`, status 200 | 1 | every fixture with `expectMint` (all but 28) |
 | Subscribe identifier literals: channel `EventsChannel`, param spellings `types`/`buckets`/`creators`/`performers`/`exclude_performers`/`actor_types`, comma-joined values | 1 | channel: every `expectSubscribe`; `types` spelling: 01 (its `expectSubscribe` pins `params` explicitly, single-valued); `performers`/`exclude_performers`/`actor_types` spellings + comma-joining: 35 (identifier and the poll query both); `buckets`/`creators` spellings: no PR-2 fixture — pinned at PR-4 (fixture 15, whose retransmit case also pins byte-identity of the identifier) |
 | Inbox envelope keys `items` / `position` / `next`; item keys `addressing_id` / `reason` / `addressed_at` / `event` (event in the poll row's shape) | 1 | 32, 33 |
@@ -366,7 +366,7 @@ reason via a constant, not the literal.
 | Filter raw bounds: a filter list of > 1,000 elements or > 16 KB → filter 400 | 2 | unreachable through validated construction (the client caps at 100 ids); recorded, unpinned |
 | `since=now` / bare entry mints the cursor at the newest visible id; an empty entry page positions above an in-flight lower id N | 2 | 19, 20 |
 | Safety-horizon bound: position-relative, best-effort, ~30s — never wall-clock | 2 | premise of 19/20 (not directly assertable client-side; the entry-boundary fixtures encode its consequence) |
-| Frozen-head `next` predicate: absent `next` = the walk reached its head | 2 | every fixture whose walk ends on a 200 page without `next`: 01, 02, 05, 07, 12, 16, 17, 19, 20, 22, 29, 31, 32, 33, 35 (mechanically derived; re-derive when the set changes) |
+| Frozen-head `next` predicate: absent `next` = the walk reached its head | 2 | every fixture whose walk ends on a 200 page without `next`: 01, 02, 05, 07, 12, 16, 17, 19, 20, 22, 29, 31, 32, 33, 34, 35 (mechanically derived; re-derive when the set changes) |
 | 410 `resume` re-enters at the epoch (`since=<epoch_after_id>`, in served history — a position-resume entry) with the canonical filter set preserved | 2 | 16 (resume URL followed verbatim); 35 (followed verbatim under a srv2 filter set, the filters riding the URL); 27 (hostile variant) |
 | 400-position / 409 re-entry semantics (`since=<last poll-served id>`, present-class fallback) | 2 | 34 (409, present-class fallback); the 400-position and poll-served-id variants remain PR-4's |
 | Ticket statelessness + ~120s TTL (server-owned `expires_in`) | 2 | 05 (TTL-advance premise; `expires_in` never schedules anything) |
