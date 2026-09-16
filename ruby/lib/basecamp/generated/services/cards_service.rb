@@ -12,7 +12,7 @@ module Basecamp
       # @return [Hash] response data
       def get(card_id:)
         with_operation(service: "cards", operation: "get", is_mutation: false, resource_id: card_id) do
-          http_get("/card_tables/cards/#{card_id}", operation: "GetCard").json
+          http_get("/card_tables/cards/#{card_id}", operation: "GetCard").json(operation: "GetCard")
         end
       end
 
@@ -25,7 +25,7 @@ module Basecamp
       # @return [Hash] response data
       def update_verbatim(card_id:, title: nil, content: nil, due_on: nil, assignee_ids: nil)
         with_operation(service: "cards", operation: "update_verbatim", is_mutation: true, resource_id: card_id) do
-          http_put("/card_tables/cards/#{card_id}", body: compact_params(title: title, content: content, due_on: due_on, assignee_ids: assignee_ids)).json
+          http_put("/card_tables/cards/#{card_id}", body: compact_params(title: title, content: content, due_on: due_on, assignee_ids: assignee_ids)).json(operation: "UpdateCard")
         end
       end
 
@@ -62,7 +62,7 @@ module Basecamp
       # @return [Hash] response data
       def create(column_id:, title:, content: nil, due_on: nil, notify: nil)
         with_operation(service: "cards", operation: "create", is_mutation: true, resource_id: column_id) do
-          http_post("/card_tables/lists/#{column_id}/cards.json", body: compact_params(title: title, content: content, due_on: due_on, notify: notify)).json
+          http_post("/card_tables/lists/#{column_id}/cards.json", body: compact_params(title: title, content: content, due_on: due_on, notify: notify)).json(operation: "CreateCard")
         end
       end
     end

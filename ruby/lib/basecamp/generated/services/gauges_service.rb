@@ -12,7 +12,7 @@ module Basecamp
       # @return [Hash] response data
       def get_gauge_needle(needle_id:)
         with_operation(service: "gauges", operation: "get_gauge_needle", is_mutation: false, resource_id: needle_id) do
-          http_get("/gauge_needles/#{needle_id}", operation: "GetGaugeNeedle").json
+          http_get("/gauge_needles/#{needle_id}", operation: "GetGaugeNeedle").json(operation: "GetGaugeNeedle")
         end
       end
 
@@ -22,7 +22,7 @@ module Basecamp
       # @return [Hash] response data
       def update_gauge_needle(needle_id:, gauge_needle:)
         with_operation(service: "gauges", operation: "update_gauge_needle", is_mutation: true, resource_id: needle_id) do
-          http_put("/gauge_needles/#{needle_id}", body: compact_params(gauge_needle: gauge_needle)).json
+          http_put("/gauge_needles/#{needle_id}", body: compact_params(gauge_needle: gauge_needle)).json(operation: "UpdateGaugeNeedle")
         end
       end
 
@@ -71,7 +71,7 @@ module Basecamp
       # @return [Hash] response data
       def create_gauge_needle(project_id:, gauge_needle:, notify: nil, subscriptions: nil)
         with_operation(service: "gauges", operation: "create_gauge_needle", is_mutation: true, project_id: project_id) do
-          http_post("/projects/#{project_id}/gauge/needles.json", body: compact_params(gauge_needle: gauge_needle, notify: notify, subscriptions: subscriptions)).json
+          http_post("/projects/#{project_id}/gauge/needles.json", body: compact_params(gauge_needle: gauge_needle, notify: notify, subscriptions: subscriptions)).json(operation: "CreateGaugeNeedle")
         end
       end
 

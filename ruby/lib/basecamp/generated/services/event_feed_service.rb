@@ -27,7 +27,7 @@ module Basecamp
       # @return [Hash] response data
       def poll_events(since: nil, position: nil, types: nil, buckets: nil, creators: nil, performers: nil, exclude_performers: nil, actor_types: nil)
         with_operation(service: "eventfeed", operation: "poll_events", is_mutation: false) do
-          http_get("/events.json", params: compact_query_params(since: since, position: position, types: types, buckets: buckets, creators: creators, performers: performers, exclude_performers: exclude_performers, actor_types: actor_types), operation: "PollEvents").json
+          http_get("/events.json", params: compact_query_params(since: since, position: position, types: types, buckets: buckets, creators: creators, performers: performers, exclude_performers: exclude_performers, actor_types: actor_types), operation: "PollEvents").json(operation: "PollEvents")
         end
       end
 
@@ -35,7 +35,7 @@ module Basecamp
       # @return [Hash] response data
       def create_stream_ticket()
         with_operation(service: "eventfeed", operation: "create_stream_ticket", is_mutation: true) do
-          http_post("/events/stream_ticket.json").json
+          http_post("/events/stream_ticket.json").json(operation: "CreateStreamTicket")
         end
       end
 
@@ -50,7 +50,7 @@ module Basecamp
       # @return [Hash] response data
       def poll_inbox(since: nil, position: nil, reasons: nil, types: nil, buckets: nil)
         with_operation(service: "eventfeed", operation: "poll_inbox", is_mutation: false) do
-          http_get("/inbox.json", params: compact_query_params(since: since, position: position, reasons: reasons, types: types, buckets: buckets), operation: "PollInbox").json
+          http_get("/inbox.json", params: compact_query_params(since: since, position: position, reasons: reasons, types: types, buckets: buckets), operation: "PollInbox").json(operation: "PollInbox")
         end
       end
     end

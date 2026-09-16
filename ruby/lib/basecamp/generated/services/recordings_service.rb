@@ -28,7 +28,7 @@ module Basecamp
       # @return [Hash] response data
       def spotlight(recording_id:)
         with_operation(service: "recordings", operation: "spotlight", is_mutation: true, resource_id: recording_id) do
-          http_post("/recordings/#{recording_id}/spotlight.json").json
+          http_post("/recordings/#{recording_id}/spotlight.json").json(operation: "SpotlightRecording")
         end
       end
 

@@ -11,7 +11,7 @@ module Basecamp
       # @return [Hash] response data
       def get_account()
         with_operation(service: "account", operation: "get_account", is_mutation: false) do
-          http_get("/account.json", operation: "GetAccount").json
+          http_get("/account.json", operation: "GetAccount").json(operation: "GetAccount")
         end
       end
 
@@ -41,7 +41,7 @@ module Basecamp
       # @return [Hash] response data
       def update_account_name(name:)
         with_operation(service: "account", operation: "update_account_name", is_mutation: true) do
-          http_put("/account/name.json", body: compact_params(name: name)).json
+          http_put("/account/name.json", body: compact_params(name: name)).json(operation: "UpdateAccountName")
         end
       end
     end

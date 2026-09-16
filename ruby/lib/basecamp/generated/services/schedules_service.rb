@@ -12,7 +12,7 @@ module Basecamp
       # @return [Hash] response data
       def get_entry(entry_id:)
         with_operation(service: "schedules", operation: "get_entry", is_mutation: false, resource_id: entry_id) do
-          http_get("/schedule_entries/#{entry_id}", operation: "GetScheduleEntry").json
+          http_get("/schedule_entries/#{entry_id}", operation: "GetScheduleEntry").json(operation: "GetScheduleEntry")
         end
       end
 
@@ -62,7 +62,7 @@ module Basecamp
       # @return [Hash] response data
       def replace_entry(entry_id:, starts_at:, ends_at:, summary: nil, description: nil, participant_ids: nil, all_day: nil, notify: nil, url: nil, highlighted: nil)
         with_operation(service: "schedules", operation: "replace_entry", is_mutation: true, resource_id: entry_id) do
-          http_put("/schedule_entries/#{entry_id}", body: compact_params(summary: summary, starts_at: starts_at, ends_at: ends_at, description: description, participant_ids: participant_ids, all_day: all_day, notify: notify, url: url, highlighted: highlighted)).json
+          http_put("/schedule_entries/#{entry_id}", body: compact_params(summary: summary, starts_at: starts_at, ends_at: ends_at, description: description, participant_ids: participant_ids, all_day: all_day, notify: notify, url: url, highlighted: highlighted)).json(operation: "ReplaceScheduleEntry")
         end
       end
 
@@ -72,7 +72,7 @@ module Basecamp
       # @return [Hash] response data
       def get_entry_occurrence(entry_id:, date:)
         with_operation(service: "schedules", operation: "get_entry_occurrence", is_mutation: false, resource_id: entry_id) do
-          http_get("/schedule_entries/#{entry_id}/occurrences/#{date}", operation: "GetScheduleEntryOccurrence").json
+          http_get("/schedule_entries/#{entry_id}/occurrences/#{date}", operation: "GetScheduleEntryOccurrence").json(operation: "GetScheduleEntryOccurrence")
         end
       end
 
@@ -81,7 +81,7 @@ module Basecamp
       # @return [Hash] response data
       def get(schedule_id:)
         with_operation(service: "schedules", operation: "get", is_mutation: false, resource_id: schedule_id) do
-          http_get("/schedules/#{schedule_id}", operation: "GetSchedule").json
+          http_get("/schedules/#{schedule_id}", operation: "GetSchedule").json(operation: "GetSchedule")
         end
       end
 
@@ -91,7 +91,7 @@ module Basecamp
       # @return [Hash] response data
       def update_settings(schedule_id:, include_due_assignments:)
         with_operation(service: "schedules", operation: "update_settings", is_mutation: true, resource_id: schedule_id) do
-          http_put("/schedules/#{schedule_id}", body: compact_params(include_due_assignments: include_due_assignments)).json
+          http_put("/schedules/#{schedule_id}", body: compact_params(include_due_assignments: include_due_assignments)).json(operation: "UpdateScheduleSettings")
         end
       end
 
@@ -168,7 +168,7 @@ module Basecamp
       # @return [Hash] response data
       def create_entry(schedule_id:, summary:, starts_at:, ends_at:, description: nil, participant_ids: nil, all_day: nil, notify: nil, url: nil, highlighted: nil, status: nil, subscriptions: nil, visible_to_clients: nil)
         with_operation(service: "schedules", operation: "create_entry", is_mutation: true, resource_id: schedule_id) do
-          http_post("/schedules/#{schedule_id}/entries.json", body: compact_params(summary: summary, starts_at: starts_at, ends_at: ends_at, description: description, participant_ids: participant_ids, all_day: all_day, notify: notify, url: url, highlighted: highlighted, status: status, subscriptions: subscriptions, visible_to_clients: visible_to_clients)).json
+          http_post("/schedules/#{schedule_id}/entries.json", body: compact_params(summary: summary, starts_at: starts_at, ends_at: ends_at, description: description, participant_ids: participant_ids, all_day: all_day, notify: notify, url: url, highlighted: highlighted, status: status, subscriptions: subscriptions, visible_to_clients: visible_to_clients)).json(operation: "CreateScheduleEntry")
         end
       end
     end

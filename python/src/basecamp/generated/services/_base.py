@@ -27,6 +27,12 @@ from basecamp.errors import ApiError
 # documented at `basecamp._person_id.normalize_person_ids`.
 from basecamp._person_id import normalize_person_ids as _normalize_person_ids
 from basecamp._person_id import embedded_people_url as _embedded_people_url
+
+# Then Go's typed decode of `Person.id` (`types.FlexibleInt64`), at exactly the
+# sites the generator derived for this operation, on the same body. Documented
+# at `basecamp._person_id.decode_person_id_sites`.
+from basecamp._person_id import decode_person_id_sites as _decode_person_id_sites
+from basecamp.generated.services._person_id_sites import PERSON_ID_SITES as _PERSON_ID_SITES
 from basecamp.hooks import OperationInfo, OperationResult, safe_hook
 
 if TYPE_CHECKING:
@@ -87,6 +93,7 @@ class BaseService:
                 raise ValueError(f"Unsupported method: {method}")
             result = response.json()
             _normalize_person_ids(result, embedded_people=_embedded_people(response))
+            _decode_person_id_sites(result, _PERSON_ID_SITES, operation)
             duration_ms = int((time.monotonic() - start) * 1000)
             safe_hook(self._hooks.on_operation_end, info, OperationResult(duration_ms=duration_ms))
             return result
@@ -122,6 +129,7 @@ class BaseService:
 
             items = decoded_array(body, "the list response body")
             _normalize_person_ids(items, embedded_people=_embedded_people(response))
+            _decode_person_id_sites(items, _PERSON_ID_SITES, operation)
             # Unpaginated feeds return the whole collection in a single response,
             # so the total count is simply the array length. This is authoritative
             # regardless of X-Total-Count (absent, present-and-equal, or present-
@@ -215,6 +223,7 @@ class BaseService:
             )
             result = response.json()
             _normalize_person_ids(result, embedded_people=_embedded_people(response))
+            _decode_person_id_sites(result, _PERSON_ID_SITES, operation)
             duration_ms = int((time.monotonic() - start) * 1000)
             safe_hook(self._hooks.on_operation_end, info, OperationResult(duration_ms=duration_ms))
             return result
@@ -318,7 +327,13 @@ class BaseService:
             except Exception as e:
                 raise ApiError(f"Failed to parse paginated response (page {page}): {_security.truncate(str(e))}") from e
 
-            all_items.extend(decoded_array(items, f"the paginated response body (page {page})"))
+            page_items = decoded_array(items, f"the paginated response body (page {page})")
+            # Page 1 is Go's `Parse<Op>Response`, decoded whole. A followed page
+            # is raw items trimmed to the cap before any is decoded
+            # (`client.go:604-631`), so an item past the cap is never read.
+            kept = page_items if page == 1 or not max_items else page_items[: max_items - len(all_items)]
+            _decode_person_id_sites(kept, _PERSON_ID_SITES, operation, followed_page=page > 1)
+            all_items.extend(page_items)
 
             # SPEC section 8: a positive `page` selects exactly that page. The
             # follow loop stops here after a single request; a next link still
@@ -380,6 +395,10 @@ class BaseService:
                 _normalize_person_ids(data, embedded_people=_embedded_people(response))
             except Exception as e:
                 raise ApiError(f"Failed to parse paginated response (page {page}): {_security.truncate(str(e))}") from e
+            # A followed page reads only its items (see `_paginate_wrapped`).
+            _decode_person_id_sites(
+                data, _PERSON_ID_SITES, operation, followed_page=page > 1, only_under=key if page > 1 else None
+            )
 
             envelope = decoded_object(data, f"the paginated response body (page {page})")
             all_items.extend(decoded_envelope_array(envelope, key, f"the {key!r} list (page {page})"))
@@ -438,6 +457,7 @@ class BaseService:
             _normalize_person_ids(first_data, embedded_people=_embedded_people(first_response))
         except Exception as e:
             raise ApiError(f"Failed to parse paginated response (page 1): {_security.truncate(str(e))}") from e
+        _decode_person_id_sites(first_data, _PERSON_ID_SITES, operation)
 
         first_data = decoded_object(first_data, "the paginated response body (page 1)")
         wrapper = {k: v for k, v in first_data.items() if k != key}
@@ -470,6 +490,10 @@ class BaseService:
                 _normalize_person_ids(data, embedded_people=_embedded_people(response))
             except Exception as e:
                 raise ApiError(f"Failed to parse paginated response (page {page}): {_security.truncate(str(e))}") from e
+            # Go reads a followed page as `struct{ Events []json.RawMessage }` and
+            # decodes every event before trimming, never the page's other members
+            # (`timeline.go:444-457`): only the sites under the items key.
+            _decode_person_id_sites(data, _PERSON_ID_SITES, operation, followed_page=True, only_under=key)
 
             envelope = decoded_object(data, f"the paginated response body (page {page})")
             all_items.extend(decoded_envelope_array(envelope, key, f"the {key!r} list (page {page})"))

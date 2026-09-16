@@ -23,7 +23,7 @@ module Basecamp
       # @return [Hash] response data
       def get_answer(answer_id:)
         with_operation(service: "checkins", operation: "get_answer", is_mutation: false, resource_id: answer_id) do
-          http_get("/question_answers/#{answer_id}", operation: "GetAnswer").json
+          http_get("/question_answers/#{answer_id}", operation: "GetAnswer").json(operation: "GetAnswer")
         end
       end
 
@@ -44,7 +44,7 @@ module Basecamp
       # @return [Hash] response data
       def get_questionnaire(questionnaire_id:)
         with_operation(service: "checkins", operation: "get_questionnaire", is_mutation: false, resource_id: questionnaire_id) do
-          http_get("/questionnaires/#{questionnaire_id}", operation: "GetQuestionnaire").json
+          http_get("/questionnaires/#{questionnaire_id}", operation: "GetQuestionnaire").json(operation: "GetQuestionnaire")
         end
       end
 
@@ -68,7 +68,7 @@ module Basecamp
       # @return [Hash] response data
       def create_question(questionnaire_id:, title:, schedule:, visible_to_clients: nil)
         with_operation(service: "checkins", operation: "create_question", is_mutation: true, resource_id: questionnaire_id) do
-          http_post("/questionnaires/#{questionnaire_id}/questions.json", body: compact_params(title: title, schedule: schedule, visible_to_clients: visible_to_clients)).json
+          http_post("/questionnaires/#{questionnaire_id}/questions.json", body: compact_params(title: title, schedule: schedule, visible_to_clients: visible_to_clients)).json(operation: "CreateQuestion")
         end
       end
 
@@ -77,7 +77,7 @@ module Basecamp
       # @return [Hash] response data
       def get_question(question_id:)
         with_operation(service: "checkins", operation: "get_question", is_mutation: false, resource_id: question_id) do
-          http_get("/questions/#{question_id}", operation: "GetQuestion").json
+          http_get("/questions/#{question_id}", operation: "GetQuestion").json(operation: "GetQuestion")
         end
       end
 
@@ -89,7 +89,7 @@ module Basecamp
       # @return [Hash] response data
       def update_question(question_id:, title: nil, schedule: nil, paused: nil)
         with_operation(service: "checkins", operation: "update_question", is_mutation: true, resource_id: question_id) do
-          http_put("/questions/#{question_id}", body: compact_params(title: title, schedule: schedule, paused: paused)).json
+          http_put("/questions/#{question_id}", body: compact_params(title: title, schedule: schedule, paused: paused)).json(operation: "UpdateQuestion")
         end
       end
 
@@ -112,7 +112,7 @@ module Basecamp
       # @return [Hash] response data
       def create_answer(question_id:, content:, group_on: nil)
         with_operation(service: "checkins", operation: "create_answer", is_mutation: true, resource_id: question_id) do
-          http_post("/questions/#{question_id}/answers.json", body: compact_params(content: content, group_on: group_on)).json
+          http_post("/questions/#{question_id}/answers.json", body: compact_params(content: content, group_on: group_on)).json(operation: "CreateAnswer")
         end
       end
 
@@ -146,7 +146,7 @@ module Basecamp
       # @return [Hash] response data
       def update_notification_settings(question_id:, notify_on_answer: nil, digest_include_unanswered: nil)
         with_operation(service: "checkins", operation: "update_notification_settings", is_mutation: true, resource_id: question_id) do
-          http_put("/questions/#{question_id}/notification_settings.json", body: compact_params(notify_on_answer: notify_on_answer, digest_include_unanswered: digest_include_unanswered)).json
+          http_put("/questions/#{question_id}/notification_settings.json", body: compact_params(notify_on_answer: notify_on_answer, digest_include_unanswered: digest_include_unanswered)).json(operation: "UpdateQuestionNotificationSettings")
         end
       end
 
@@ -155,7 +155,7 @@ module Basecamp
       # @return [Hash] response data
       def pause(question_id:)
         with_operation(service: "checkins", operation: "pause", is_mutation: true, resource_id: question_id) do
-          http_post("/questions/#{question_id}/pause.json").json
+          http_post("/questions/#{question_id}/pause.json").json(operation: "PauseQuestion")
         end
       end
 
@@ -164,7 +164,7 @@ module Basecamp
       # @return [Hash] response data
       def resume(question_id:)
         with_operation(service: "checkins", operation: "resume", is_mutation: true, resource_id: question_id) do
-          http_delete("/questions/#{question_id}/pause.json").json
+          http_delete("/questions/#{question_id}/pause.json").json(operation: "ResumeQuestion")
         end
       end
     end

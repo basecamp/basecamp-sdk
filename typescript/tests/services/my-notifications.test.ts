@@ -137,7 +137,7 @@ describe("MyNotificationsService", () => {
       expect(creator!.system_label).toBe("123abc");
     });
 
-    it("should leave an id Go's ParseInt refuses as a string, not collapse it to the sentinel", async () => {
+    it("should refuse an id Go's ParseInt refuses on range, not collapse it to the sentinel", async () => {
       server.use(
         http.get(`${BASE_URL}/my/readings.json`, () => {
           return HttpResponse.json({
@@ -162,21 +162,20 @@ describe("MyNotificationsService", () => {
         })
       );
 
-      const result = await client.myNotifications.myNotifications();
-      // See the note in the first case for why this reads the typed members.
-      expect(result.unreads).toBeDefined();
-      const creator = result.unreads![0].creator;
-      expect(creator).toBeDefined();
-
       // "9223372036854775808" is int64 + 1: `strconv.ParseInt` raises a RANGE
-      // error on it, and Go's coercePersonID leaves such a string untouched so
-      // the decoder refuses it (go/pkg/basecamp/normalize.go:62-63). Writing 0
-      // and a system_label — what this used to do — names LocalPerson for a
-      // string Go read no value from at all. The full grammar is pinned row by
-      // row in person-id-normalization.test.ts.
-      const creatorRecord = creator as unknown as Record<string, unknown>;
-      expect(creatorRecord.id).toBe("9223372036854775808");
-      expect(creatorRecord.system_label).toBeUndefined();
+      // error on it. Go's coercePersonID leaves such a string untouched
+      // (go/pkg/basecamp/normalize.go:62-63) and the decoder then refuses it
+      // (go/pkg/types/flexible_int64.go:43-44), so the read fails. Writing 0 and
+      // a system_label — what this once did — names LocalPerson for a string Go
+      // read no value from at all. The full grammar is pinned row by row in
+      // person-id-normalization.test.ts.
+      const error = await client.myNotifications.myNotifications().catch((err: unknown) => err);
+      expect(error).toBeInstanceOf(BasecampError);
+      expect((error as BasecampError).code).toBe("api_error");
+      expect((error as BasecampError).retryable).toBe(false);
+      expect((error as BasecampError).message).toMatch(
+        /GetMyNotifications returned a person id at unreads\.\[\]\.creator that overflows int64/
+      );
     });
   });
 

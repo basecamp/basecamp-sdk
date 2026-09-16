@@ -12,7 +12,7 @@ module Basecamp
       # @return [Hash] response data
       def get(comment_id:)
         with_operation(service: "comments", operation: "get", is_mutation: false, resource_id: comment_id) do
-          http_get("/comments/#{comment_id}", operation: "GetComment").json
+          http_get("/comments/#{comment_id}", operation: "GetComment").json(operation: "GetComment")
         end
       end
 
@@ -22,7 +22,7 @@ module Basecamp
       # @return [Hash] response data
       def update(comment_id:, content:)
         with_operation(service: "comments", operation: "update", is_mutation: true, resource_id: comment_id) do
-          http_put("/comments/#{comment_id}", body: compact_params(content: content)).json
+          http_put("/comments/#{comment_id}", body: compact_params(content: content)).json(operation: "UpdateComment")
         end
       end
 
@@ -44,7 +44,7 @@ module Basecamp
       # @return [Hash] response data
       def create(recording_id:, content:)
         with_operation(service: "comments", operation: "create", is_mutation: true, resource_id: recording_id) do
-          http_post("/recordings/#{recording_id}/comments.json", body: compact_params(content: content)).json
+          http_post("/recordings/#{recording_id}/comments.json", body: compact_params(content: content)).json(operation: "CreateComment")
         end
       end
     end

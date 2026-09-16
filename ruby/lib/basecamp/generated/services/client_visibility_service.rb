@@ -13,7 +13,7 @@ module Basecamp
       # @return [Hash] response data
       def set_visibility(recording_id:, visible_to_clients:)
         with_operation(service: "clientvisibility", operation: "set_visibility", is_mutation: true, resource_id: recording_id) do
-          http_put("/recordings/#{recording_id}/client_visibility.json", body: compact_params(visible_to_clients: visible_to_clients)).json
+          http_put("/recordings/#{recording_id}/client_visibility.json", body: compact_params(visible_to_clients: visible_to_clients)).json(operation: "SetClientVisibility")
         end
       end
     end

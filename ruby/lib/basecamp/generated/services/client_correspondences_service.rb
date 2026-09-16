@@ -26,7 +26,7 @@ module Basecamp
       # @return [Hash] response data
       def get(correspondence_id:)
         with_operation(service: "clientcorrespondences", operation: "get", is_mutation: false, resource_id: correspondence_id) do
-          http_get("/client/correspondences/#{correspondence_id}", operation: "GetClientCorrespondence").json
+          http_get("/client/correspondences/#{correspondence_id}", operation: "GetClientCorrespondence").json(operation: "GetClientCorrespondence")
         end
       end
     end

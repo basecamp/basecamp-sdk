@@ -16,7 +16,7 @@ module Basecamp
       # @return [Hash] response data
       def create(data:, content_type:, name:)
         with_operation(service: "attachments", operation: "create", is_mutation: true) do
-          http_post_raw("/attachments.json?name=#{URI.encode_www_form_component(name.to_s)}", body: data, content_type: content_type).json
+          http_post_raw("/attachments.json?name=#{URI.encode_www_form_component(name.to_s)}", body: data, content_type: content_type).json(operation: "CreateAttachment")
         end
       end
     end

@@ -23,7 +23,7 @@ module Basecamp
       # @return [Hash] response data
       def get_bookmark(recording_id:)
         with_operation(service: "bookmarks", operation: "get_bookmark", is_mutation: false, resource_id: recording_id) do
-          http_get("/recordings/#{recording_id}/bookmark.json", operation: "GetBookmark").json
+          http_get("/recordings/#{recording_id}/bookmark.json", operation: "GetBookmark").json(operation: "GetBookmark")
         end
       end
 
@@ -32,7 +32,7 @@ module Basecamp
       # @return [Hash] response data
       def create_bookmark(recording_id:)
         with_operation(service: "bookmarks", operation: "create_bookmark", is_mutation: true, resource_id: recording_id) do
-          http_post("/recordings/#{recording_id}/bookmark.json").json
+          http_post("/recordings/#{recording_id}/bookmark.json").json(operation: "CreateBookmark")
         end
       end
 

@@ -32,7 +32,7 @@ module Basecamp
       # @return [Hash] response data
       def create(board_id:, subject:, content: nil, status: nil, category_id: nil, subscriptions: nil, visible_to_clients: nil)
         with_operation(service: "messages", operation: "create", is_mutation: true, resource_id: board_id) do
-          http_post("/message_boards/#{board_id}/messages.json", body: compact_params(subject: subject, content: content, status: status, category_id: category_id, subscriptions: subscriptions, visible_to_clients: visible_to_clients)).json
+          http_post("/message_boards/#{board_id}/messages.json", body: compact_params(subject: subject, content: content, status: status, category_id: category_id, subscriptions: subscriptions, visible_to_clients: visible_to_clients)).json(operation: "CreateMessage")
         end
       end
 
@@ -41,7 +41,7 @@ module Basecamp
       # @return [Hash] response data
       def get(message_id:)
         with_operation(service: "messages", operation: "get", is_mutation: false, resource_id: message_id) do
-          http_get("/messages/#{message_id}", operation: "GetMessage").json
+          http_get("/messages/#{message_id}", operation: "GetMessage").json(operation: "GetMessage")
         end
       end
 
@@ -54,7 +54,7 @@ module Basecamp
       # @return [Hash] response data
       def update(message_id:, subject: nil, content: nil, status: nil, category_id: nil)
         with_operation(service: "messages", operation: "update", is_mutation: true, resource_id: message_id) do
-          http_put("/messages/#{message_id}", body: compact_params(subject: subject, content: content, status: status, category_id: category_id)).json
+          http_put("/messages/#{message_id}", body: compact_params(subject: subject, content: content, status: status, category_id: category_id)).json(operation: "UpdateMessage")
         end
       end
 

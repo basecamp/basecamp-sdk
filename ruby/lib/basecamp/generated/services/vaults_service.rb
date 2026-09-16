@@ -12,7 +12,7 @@ module Basecamp
       # @return [Hash] response data
       def get(vault_id:)
         with_operation(service: "vaults", operation: "get", is_mutation: false, resource_id: vault_id) do
-          http_get("/vaults/#{vault_id}", operation: "GetVault").json
+          http_get("/vaults/#{vault_id}", operation: "GetVault").json(operation: "GetVault")
         end
       end
 
@@ -22,7 +22,7 @@ module Basecamp
       # @return [Hash] response data
       def update(vault_id:, title: nil)
         with_operation(service: "vaults", operation: "update", is_mutation: true, resource_id: vault_id) do
-          http_put("/vaults/#{vault_id}", body: compact_params(title: title)).json
+          http_put("/vaults/#{vault_id}", body: compact_params(title: title)).json(operation: "UpdateVault")
         end
       end
 
@@ -44,7 +44,7 @@ module Basecamp
       # @return [Hash] response data
       def create(vault_id:, title:)
         with_operation(service: "vaults", operation: "create", is_mutation: true, resource_id: vault_id) do
-          http_post("/vaults/#{vault_id}/vaults.json", body: compact_params(title: title)).json
+          http_post("/vaults/#{vault_id}/vaults.json", body: compact_params(title: title)).json(operation: "CreateVault")
         end
       end
     end

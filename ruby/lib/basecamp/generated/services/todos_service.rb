@@ -20,7 +20,7 @@ module Basecamp
       # @return [Hash] response data
       def create_todoset_todo(bucket_id:, todoset_id:, content:, description: nil, assignee_ids: nil, completion_subscriber_ids: nil, notify: nil, due_on: nil, starts_on: nil)
         with_operation(service: "todos", operation: "create_todoset_todo", is_mutation: true, project_id: bucket_id, resource_id: todoset_id) do
-          http_post("/buckets/#{bucket_id}/todosets/#{todoset_id}/todos.json", body: compact_params(content: content, description: description, assignee_ids: assignee_ids, completion_subscriber_ids: completion_subscriber_ids, notify: notify, due_on: due_on, starts_on: starts_on)).json
+          http_post("/buckets/#{bucket_id}/todosets/#{todoset_id}/todos.json", body: compact_params(content: content, description: description, assignee_ids: assignee_ids, completion_subscriber_ids: completion_subscriber_ids, notify: notify, due_on: due_on, starts_on: starts_on)).json(operation: "CreateTodosetTodo")
         end
       end
 
@@ -50,7 +50,7 @@ module Basecamp
       # @return [Hash] response data
       def create(todolist_id:, content:, description: nil, assignee_ids: nil, completion_subscriber_ids: nil, notify: nil, due_on: nil, starts_on: nil)
         with_operation(service: "todos", operation: "create", is_mutation: true, resource_id: todolist_id) do
-          http_post("/todolists/#{todolist_id}/todos.json", body: compact_params(content: content, description: description, assignee_ids: assignee_ids, completion_subscriber_ids: completion_subscriber_ids, notify: notify, due_on: due_on, starts_on: starts_on)).json
+          http_post("/todolists/#{todolist_id}/todos.json", body: compact_params(content: content, description: description, assignee_ids: assignee_ids, completion_subscriber_ids: completion_subscriber_ids, notify: notify, due_on: due_on, starts_on: starts_on)).json(operation: "CreateTodo")
         end
       end
 
@@ -59,7 +59,7 @@ module Basecamp
       # @return [Hash] response data
       def get(todo_id:)
         with_operation(service: "todos", operation: "get", is_mutation: false, resource_id: todo_id) do
-          http_get("/todos/#{todo_id}", operation: "GetTodo").json
+          http_get("/todos/#{todo_id}", operation: "GetTodo").json(operation: "GetTodo")
         end
       end
 
@@ -75,7 +75,7 @@ module Basecamp
       # @return [Hash] response data
       def replace(todo_id:, content:, description: nil, assignee_ids: nil, completion_subscriber_ids: nil, notify: nil, due_on: nil, starts_on: nil)
         with_operation(service: "todos", operation: "replace", is_mutation: true, resource_id: todo_id) do
-          http_put("/todos/#{todo_id}", body: compact_params(content: content, description: description, assignee_ids: assignee_ids, completion_subscriber_ids: completion_subscriber_ids, notify: notify, due_on: due_on, starts_on: starts_on)).json
+          http_put("/todos/#{todo_id}", body: compact_params(content: content, description: description, assignee_ids: assignee_ids, completion_subscriber_ids: completion_subscriber_ids, notify: notify, due_on: due_on, starts_on: starts_on)).json(operation: "ReplaceTodo")
         end
       end
 

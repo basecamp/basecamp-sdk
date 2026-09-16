@@ -32,9 +32,19 @@ import { server } from "../setup.js";
 import { createBasecampClient } from "../../src/client.js";
 import type { BasecampClient } from "../../src/client.js";
 import { EMBEDDED_PERSON_KEYS } from "../../src/services/base.js";
+import { BasecampError } from "../../src/errors.js";
 import { PERSON_ID_CORPUS, fitsNumber } from "../helpers/person-id-corpus.js";
 
 const BASE_URL = "https://3.basecampapi.com/12345";
+
+/**
+ * The rows a notifications read survives. A RANGE row fails the whole read once
+ * it reaches `unreads.[].creator` or `.participants`, which are `FlexibleInt64`
+ * sites of `GetMyNotifications` (see person-id-decode.test.ts), so those rows are
+ * served on their own below.
+ */
+const READABLE_ROWS = PERSON_ID_CORPUS.filter((row) => row.go !== "range");
+const RANGE_ROWS = PERSON_ID_CORPUS.filter((row) => row.go === "range");
 
 /** One person per Person-valued key, in the shape the spec gives that key. */
 function peopleFor(id: string): Record<string, unknown> {
@@ -84,11 +94,11 @@ describe("person id normalization", () => {
    * found by structural position alone, which is the whole point of the second
    * way in.
    */
-  async function normalizedUnreads(): Promise<Record<string, unknown>[]> {
+  async function normalizedUnreads(rows: readonly (typeof PERSON_ID_CORPUS)[number][]): Promise<Record<string, unknown>[]> {
     server.use(
       http.get(`${BASE_URL}/my/readings.json`, () =>
         HttpResponse.json({
-          unreads: PERSON_ID_CORPUS.map((row, index) => ({
+          unreads: rows.map((row, index) => ({
             id: index + 1,
             title: `Notification ${index + 1}`,
             created_at: "2024-01-01T00:00:00Z",
@@ -107,7 +117,7 @@ describe("person id normalization", () => {
 
     const result = await client.myNotifications.myNotifications();
     expect(result.unreads).toBeDefined();
-    expect(result.unreads!.length).toBe(PERSON_ID_CORPUS.length);
+    expect(result.unreads!.length).toBe(rows.length);
     // The unreads come back typed, and `creator.id` is typed as a number —
     // holding a string in it is precisely one of the outcomes under test, so
     // these are read as plain records.
@@ -116,10 +126,10 @@ describe("person id normalization", () => {
 
   it("writes each of the 74 measured rows the way coercePersonID does, in all four positions", async () => {
     expect(PERSON_ID_CORPUS.length).toBe(74);
-    const unreads = await normalizedUnreads();
+    const unreads = await normalizedUnreads(READABLE_ROWS);
 
     for (const [shape, read] of SHAPES) {
-      for (const [index, row] of PERSON_ID_CORPUS.entries()) {
+      for (const [index, row] of READABLE_ROWS.entries()) {
         const person = read(unreads[index]);
         const where = `${shape} ${JSON.stringify(row.id)}`;
 
@@ -129,15 +139,6 @@ describe("person id normalization", () => {
           // Object.is, so a `-0` from a `Number()`-based port fails here.
           expect(person.id, where).toBe(0);
           expect(person.system_label, where).toBe(row.id);
-          continue;
-        }
-
-        if (row.go === "range") {
-          // A range error leaves the string exactly as it arrived (`:62-63`) so
-          // the reader refuses it. Writing 0 and a label here would name the
-          // system actor for a string Go read no value from at all.
-          expect(person.id, where).toBe(row.id);
-          expect(person.system_label, where).toBeUndefined();
           continue;
         }
 
@@ -154,6 +155,49 @@ describe("person id normalization", () => {
         // collapsed to the system actor's 0.
         expect(person.id, where).toBe(row.id);
         expect(person.system_label, where).toBeUndefined();
+      }
+    }
+
+    // A range error leaves the string exactly as it arrived (`:62-63`) so the
+    // reader refuses it. Writing 0 and a label here would name the system actor
+    // for a string Go read no value from at all. Where no decode follows —
+    // `actor` and a nested `comment.creator` are not `Person` sites of this
+    // operation — the string is what the caller gets; at `creator` and
+    // `participants` the decode refuses the read.
+    expect(RANGE_ROWS.length).toBeGreaterThan(0);
+    for (const row of RANGE_ROWS) {
+      server.use(
+        http.get(`${BASE_URL}/my/readings.json`, () =>
+          HttpResponse.json({
+            unreads: [
+              {
+                id: 1,
+                actor: { id: row.id, name: "Person", personable_type: "User" },
+                comment: { creator: { id: row.id, name: "Person" } },
+              },
+            ],
+          }),
+        ),
+      );
+      const unread = (await client.myNotifications.myNotifications()).unreads![0] as unknown as Record<string, unknown>;
+      for (const [shape, person] of [
+        ["personable_type person", unread.actor],
+        ["creator nested under a comment", (unread.comment as Record<string, unknown>).creator],
+      ] as const) {
+        expect((person as Record<string, unknown>).id, `${shape} ${row.id}`).toBe(row.id);
+        expect((person as Record<string, unknown>).system_label, `${shape} ${row.id}`).toBeUndefined();
+      }
+
+      for (const [key, arity] of EMBEDDED_PERSON_KEYS) {
+        const person = { id: row.id, name: "Person" };
+        server.use(
+          http.get(`${BASE_URL}/my/readings.json`, () =>
+            HttpResponse.json({ unreads: [{ id: 1, [key]: arity === "array" ? [person] : person }] }),
+          ),
+        );
+        const error = await client.myNotifications.myNotifications().catch((err: unknown) => err);
+        expect(error, `${key} ${row.id}`).toBeInstanceOf(BasecampError);
+        expect((error as BasecampError).message, `${key} ${row.id}`).toMatch(/overflows int64/);
       }
     }
   });
@@ -303,8 +347,8 @@ describe("person id normalization", () => {
     // The defect this corpus was written for, named on its own so a failure
     // reads as what it is. "+7" is person 7 to Go; it used to come back as
     // LocalPerson, because a `^-?\d+$` regex refuses the sign ParseInt takes.
-    const unreads = await normalizedUnreads();
-    const plusSeven = unreads[PERSON_ID_CORPUS.findIndex((row) => row.id === "+7")];
+    const unreads = await normalizedUnreads(READABLE_ROWS);
+    const plusSeven = unreads[READABLE_ROWS.findIndex((row) => row.id === "+7")];
     for (const [shape, read] of SHAPES) {
       expect(read(plusSeven).id, shape).toBe(7);
       expect(read(plusSeven).system_label, shape).toBeUndefined();
@@ -317,9 +361,9 @@ describe("person id normalization", () => {
     // creator/participants people frequently omit `personable_type` and the
     // first pass therefore skips exactly the payloads this exists to fix. Until
     // this pass existed, `"007"` reached the caller as the STRING "007" in a
-    // field typed `number` — this SDK has no runtime decoder behind the
-    // normalizer to convert it later, which is why the gap was observable here
-    // and in none of the other six ports.
+    // field typed `number`. (The typed decode in person-id-decode.test.ts now
+    // also converts it at `unreads.[].creator`; `comment.creator` below is not
+    // a `Person` site, so only this pass could reach it — and it leaves RANGE.)
     server.use(
       http.get(`${BASE_URL}/my/readings.json`, () =>
         HttpResponse.json({

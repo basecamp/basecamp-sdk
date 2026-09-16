@@ -11,7 +11,7 @@ module Basecamp
       # @return [Array<Hash>] response data
       def list_recent_projects()
         with_operation(service: "projects", operation: "list_recent_projects", is_mutation: false) do
-          http_get("/my/recent_projects.json", operation: "ListRecentProjects").json
+          http_get("/my/recent_projects.json", operation: "ListRecentProjects").json(operation: "ListRecentProjects")
         end
       end
 
@@ -33,7 +33,7 @@ module Basecamp
       # @return [Hash] response data
       def create(name:, description: nil)
         with_operation(service: "projects", operation: "create", is_mutation: true) do
-          http_post("/projects.json", body: compact_params(name: name, description: description)).json
+          http_post("/projects.json", body: compact_params(name: name, description: description)).json(operation: "CreateProject")
         end
       end
 
@@ -42,7 +42,7 @@ module Basecamp
       # @return [Hash] response data
       def get(project_id:)
         with_operation(service: "projects", operation: "get", is_mutation: false, project_id: project_id) do
-          http_get("/projects/#{project_id}", operation: "GetProject").json
+          http_get("/projects/#{project_id}", operation: "GetProject").json(operation: "GetProject")
         end
       end
 
@@ -55,7 +55,7 @@ module Basecamp
       # @return [Hash] response data
       def update(project_id:, name:, description: nil, admissions: nil, schedule_attributes: nil)
         with_operation(service: "projects", operation: "update", is_mutation: true, project_id: project_id) do
-          http_put("/projects/#{project_id}", body: compact_params(name: name, description: description, admissions: admissions, schedule_attributes: schedule_attributes)).json
+          http_put("/projects/#{project_id}", body: compact_params(name: name, description: description, admissions: admissions, schedule_attributes: schedule_attributes)).json(operation: "UpdateProject")
         end
       end
 

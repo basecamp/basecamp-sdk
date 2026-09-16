@@ -24,7 +24,7 @@ module Basecamp
       # @return [Hash] response data
       def upcoming(window_starts_on:, window_ends_on:)
         with_operation(service: "reports", operation: "upcoming", is_mutation: false) do
-          http_get("/reports/schedules/upcoming.json", params: compact_query_params(window_starts_on: window_starts_on, window_ends_on: window_ends_on), operation: "GetUpcomingSchedule").json
+          http_get("/reports/schedules/upcoming.json", params: compact_query_params(window_starts_on: window_starts_on, window_ends_on: window_ends_on), operation: "GetUpcomingSchedule").json(operation: "GetUpcomingSchedule")
         end
       end
 
@@ -34,7 +34,7 @@ module Basecamp
       # @return [Hash] response data
       def assigned(person_id:, group_by: nil)
         with_operation(service: "reports", operation: "assigned", is_mutation: false, resource_id: person_id) do
-          http_get("/reports/todos/assigned/#{person_id}", params: compact_query_params(group_by: group_by), operation: "GetAssignedTodos").json
+          http_get("/reports/todos/assigned/#{person_id}", params: compact_query_params(group_by: group_by), operation: "GetAssignedTodos").json(operation: "GetAssignedTodos")
         end
       end
 
@@ -42,7 +42,7 @@ module Basecamp
       # @return [Hash] response data
       def overdue()
         with_operation(service: "reports", operation: "overdue", is_mutation: false) do
-          http_get("/reports/todos/overdue.json", operation: "GetOverdueTodos").json
+          http_get("/reports/todos/overdue.json", operation: "GetOverdueTodos").json(operation: "GetOverdueTodos")
         end
       end
 

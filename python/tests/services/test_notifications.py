@@ -105,9 +105,6 @@ class TestSystemActorNormalization:
             # A leading "+" and leading zeros ARE ParseInt's grammar, and the
             # normalizer writes the canonical digits back.
             ("+00099999", {"id": 99999}),
-            # Past int64: left verbatim, so a reader with a struct behind it
-            # refuses rather than a Python bigint standing in for a wire int64.
-            ("18446744073709551616", {"id": "18446744073709551616"}),
         ],
     )
     def test_the_id_grammar_is_parseint_and_not_pythons(self, wire_id, normalized):
@@ -138,3 +135,28 @@ class TestSystemActorNormalization:
         creator = result["unreads"][0]["creator"]
 
         assert creator == {"personable_type": "User", **normalized}
+
+    # Past int64 the normalizer leaves the string, and `creator` is a `Person`
+    # site on this operation, so the typed decode behind it refuses the read --
+    # Go's `FlexibleInt64` returns "overflows int64" there
+    # (`go/pkg/types/flexible_int64.go:44`), rather than a Python bigint standing
+    # in for a wire int64.
+    @respx.mock
+    def test_a_person_id_past_int64_fails_the_read(self):
+        respx.get("https://3.basecampapi.com/12345/my/readings.json").mock(
+            return_value=httpx.Response(
+                200,
+                json={
+                    "unreads": [{"id": 42, "creator": {"id": "18446744073709551616", "personable_type": "User"}}],
+                    "reads": [],
+                    "memories": [],
+                },
+            )
+        )
+
+        from basecamp.errors import ApiError
+        from basecamp.generated.services.my_notifications import MyNotificationsService
+
+        with pytest.raises(ApiError, match=r"GetMyNotifications: person id at unreads\.\[\]\.creator") as raised:
+            MyNotificationsService(_make_account()).get_my_notifications()
+        assert raised.value.retryable is False

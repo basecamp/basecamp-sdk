@@ -45,12 +45,16 @@ sites, on purpose: do not hoist either into the other, in either direction.
 
 from __future__ import annotations
 
+import json
 import re
-from collections.abc import MutableMapping
+from collections.abc import Iterable, Mapping, MutableMapping
 from enum import Enum
 from itertools import islice
 from typing import Any
 from urllib.parse import urlsplit
+
+from basecamp._security import truncate as _truncate
+from basecamp.errors import ApiError
 
 _UINT64_MAX = 2**64 - 1
 _INT64_MIN = -(2**63)
@@ -185,20 +189,17 @@ def normalize_person_ids(obj: Any, *, embedded_people: bool = False) -> None:
     port with a runtime decoder behind the normalizer -- Kotlin's
     ``FlexibleLongSerializer``, Swift's ``FlexibleInt``, Rust's ``flexible_i64``
     -- converts the string at read time whichever pass did or did not touch it.
-    Python's only such decoder, ``_decoded_flexible_int64``, runs inside the
-    recording-summary composite and nowhere else; the generated services hand
-    back a plain ``dict`` with nothing between it and the wire. So on a
-    notification or gauge body an un-normalized ``creator.id`` would reach the
-    caller as the STRING it arrived as, where the reference reads the number.
+    The generated services hand back a plain ``dict``; the one decoder standing
+    in for ``FlexibleInt64`` there is :func:`decode_person_id_sites`, which reads
+    the id but writes no ``system_label``. So on a notification or gauge body
+    only this pass gives an untagged system actor its label, as the reference's
+    does.
 
-    That missing decoder is also why this pass does NOT close every string person
-    id off the wire, and does not try to -- see "WHERE PASS 2 RUNS" below. Off
-    Go's two surfaces a string id in ``creator``, ``assignees`` or a schedule's
-    ``participants`` stays a string. That is decoder coverage rather than
-    normalizer reach, and it is closed at the reader rather than here:
-    ``services/_merge_safe``'s ``writable_id_list`` reads a string person id
-    through :func:`parse_int64` itself (PR #913), where it used to require an
-    ``int`` and made ``schedules.edit_entry`` refuse a body the reference accepts.
+    This pass does NOT close every string person id off the wire, and does not
+    try to -- see "WHERE PASS 2 RUNS" below. Off Go's two surfaces a string id
+    in ``creator``, ``assignees`` or a schedule's ``participants`` is decoder
+    coverage rather than normalizer reach, and :func:`decode_person_id_sites`
+    closes it at exactly the ``Person`` sites the schema declares.
 
     ONE walk here where Go runs two, and the two are equivalent because
     :func:`coerce_person_id` is idempotent and both passes apply it unchanged.
@@ -227,14 +228,10 @@ def normalize_person_ids(obj: Any, *, embedded_people: bool = False) -> None:
     for a body the reference refuses outright. Accepting direction, identity
     field, which is the class this work exists to remove.
 
-    The cost of narrowing is real and is stated rather than hidden: schedules is
-    not one of Go's two surfaces and Python has no decoder standing in for
-    ``FlexibleInt64`` there, so string ``participants`` ids are no longer
-    converted on the way in. That is decoder coverage, not normalizer reach.
-    The ``schedules.edit_entry`` WRITE path is closed at the reader instead --
-    ``services/_merge_safe`` reads the id by :func:`parse_int64` (PR #913) --
-    while a plain generated read still hands the string back (SPEC.md section 10,
-    "Person Ids Off the Wire").
+    Narrowing costs no coverage: schedules is not one of Go's two surfaces, and
+    a string ``participants`` id on a ``Person`` site there is read by
+    :func:`decode_person_id_sites`, as Go's typed decode reads it (SPEC.md
+    section 10, "Person Ids Off the Wire").
     """
     if isinstance(obj, list):
         for item in obj:
@@ -291,3 +288,101 @@ def embedded_people_url(url: str) -> bool:
     """Whether ``url`` is one of the reference's two normalization surfaces."""
     path = urlsplit(url).path
     return any(pattern.search(path) for pattern in EMBEDDED_PEOPLE_PATHS)
+
+
+def decode_person_id_sites(
+    body: Any,
+    table: Mapping[str, Iterable[tuple[str, ...]]],
+    operation: str | None,
+    *,
+    followed_page: bool = False,
+    only_under: str | None = None,
+) -> None:
+    """Read each person id at ``operation``'s sites in ``table`` as Go's ``types.FlexibleInt64``, in place.
+
+    Go types ``Person.id`` as ``types.FlexibleInt64``
+    (``go/pkg/types/flexible_int64.go``) and every generated Go service decodes
+    its body through ``Parse<Op>Response`` first, so an untagged ``{"id": "7"}``
+    comes back as ``7`` wherever a ``Person`` sits. These dicts have no decoder,
+    so this stands in for that one field, at exactly the sites the generator
+    found by the ``x-go-type`` marker (``generated/services/_person_id_sites.py``)
+    -- never by key name, which would reach the plain-int64 people
+    (``UpcomingSchedulePerson`` and co.) where Go refuses a string.
+
+    Runs AFTER :func:`normalize_person_ids`, on the same body the paths are
+    relative to. Per id (``flexible_int64.go:28-63``):
+
+    * a string is ``ParseInt``: a value becomes the ``int``; a syntax refusal
+      becomes ``0`` with NO ``system_label`` (the decoder writes none, ``:47``);
+      a range refusal fails the read (``:44``);
+    * an ``int`` within int64 stays; any other JSON value -- float, out-of-range
+      int, ``null``, bool, array, object -- fails the read (``:55-60``).
+
+    A person that is not an object, or has no ``id`` key, and a container of
+    the wrong shape, are left alone: Go zero-fills or refuses those as part of a
+    whole-body typed decode this SDK does not do for any field. Idempotent,
+    because every surviving id is an ``int``.
+
+    FOLLOWED PAGES are not ``Parse<Op>Response``, and Go decodes less of them;
+    the paginators pass what Go reads and flag it:
+
+    * a bare-array list passes only the items the cap keeps -- ``followPagination``
+      trims the raw items before its caller decodes any (``client.go:604-631``);
+    * a wrapped listing passes ``only_under`` its items key, because Go reads a
+      followed page as ``struct{ Events []json.RawMessage }`` and decodes each
+      event, never the page's ``person`` (``timeline.go:444-457``);
+    * ``followed_page`` on :data:`HAND_DECODED_FOLLOWED_PAGES` lets a ``null`` id
+      through, below.
+    """
+    if operation is None:
+        return
+    null_passes = followed_page and operation in HAND_DECODED_FOLLOWED_PAGES
+    for site in table.get(operation, ()):
+        if only_under is None or site[:1] == (only_under,):
+            _decode_site(body, site, 0, operation, null_passes)
+
+
+#: Operations whose FOLLOWED pages Go decodes into hand-written types rather than
+#: through the generated ``Person``: ``Gauge`` and ``GaugeNeedle``
+#: (``gauges.go:236-241, 307-312``) and ``Notification``
+#: (``my_notifications.go:285-305``), each after the positional normalizer. Their
+#: ``Person.ID`` is a plain ``int64``, which reads JSON ``null`` as ``0`` with no
+#: error where ``FlexibleInt64`` refuses it; every other refusal is the same. Go
+#: SDK behaviour, not schema, so it is listed by hand. Page 1 of each still goes
+#: through ``Parse<Op>Response`` and still refuses ``null``.
+HAND_DECODED_FOLLOWED_PAGES: frozenset[str] = frozenset({"ListGauges", "ListGaugeNeedles", "GetBubbleUps"})
+
+
+def _decode_site(node: Any, site: tuple[str, ...], index: int, operation: str | None, null_passes: bool) -> None:
+    if index == len(site):
+        # A passed `null` stays `null`, the same representation residual as an
+        # absent id, rather than the `0` Go's plain int64 leaves.
+        if isinstance(node, dict) and "id" in node and not (null_passes and node["id"] is None):
+            node["id"] = _flexible_int64(node["id"], operation, site)
+        return
+    segment = site[index]
+    if segment == "[]":
+        children: Iterable[Any] = node if isinstance(node, list) else ()
+    elif segment == "{}":
+        children = node.values() if isinstance(node, dict) else ()
+    else:
+        children = (node[segment],) if isinstance(node, dict) and segment in node else ()
+    for child in children:
+        _decode_site(child, site, index + 1, operation, null_passes)
+
+
+def _flexible_int64(raw: Any, operation: str | None, site: tuple[str, ...]) -> int:
+    # `bool` is an `int` subclass in Python and a JSON boolean in Go: refused.
+    if isinstance(raw, int) and not isinstance(raw, bool):
+        if _INT64_MIN <= raw <= _INT64_MAX:
+            return raw
+    elif isinstance(raw, str):
+        outcome = parse_int64(raw)
+        if outcome is Refusal.SYNTAX:
+            return 0
+        if outcome is not Refusal.RANGE:
+            return outcome
+    where = ".".join(site) or "$"
+    raise ApiError(
+        f"{operation or 'response'}: person id at {where} is not an int64: {_truncate(json.dumps(raw, default=repr))}"
+    )

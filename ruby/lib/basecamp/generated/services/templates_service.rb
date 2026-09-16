@@ -11,7 +11,7 @@ module Basecamp
       # @return [Hash] response data
       def get_library()
         with_operation(service: "templates", operation: "get_library", is_mutation: false) do
-          http_get("/template_library.json", operation: "GetTemplateLibrary").json
+          http_get("/template_library.json", operation: "GetTemplateLibrary").json(operation: "GetTemplateLibrary")
         end
       end
 
@@ -22,7 +22,7 @@ module Basecamp
       # @return [Hash] response data
       def create_library_copy(template_recording_id:, destination_parent_id:, adding_people_confirmed: nil)
         with_operation(service: "templates", operation: "create_library_copy", is_mutation: true) do
-          http_post("/template_library/copies.json", body: compact_params(template_recording_id: template_recording_id, destination_parent_id: destination_parent_id, adding_people_confirmed: adding_people_confirmed)).json
+          http_post("/template_library/copies.json", body: compact_params(template_recording_id: template_recording_id, destination_parent_id: destination_parent_id, adding_people_confirmed: adding_people_confirmed)).json(operation: "CreateTemplateLibraryCopy")
         end
       end
 
@@ -31,7 +31,7 @@ module Basecamp
       # @return [Hash] response data
       def get_library_copy(copy_id:)
         with_operation(service: "templates", operation: "get_library_copy", is_mutation: false, resource_id: copy_id) do
-          http_get("/template_library/copies/#{copy_id}", operation: "GetTemplateLibraryCopy").json
+          http_get("/template_library/copies/#{copy_id}", operation: "GetTemplateLibraryCopy").json(operation: "GetTemplateLibraryCopy")
         end
       end
 
@@ -53,7 +53,7 @@ module Basecamp
       # @return [Hash] response data
       def create(name:, description: nil)
         with_operation(service: "templates", operation: "create", is_mutation: true) do
-          http_post("/templates.json", body: compact_params(name: name, description: description)).json
+          http_post("/templates.json", body: compact_params(name: name, description: description)).json(operation: "CreateTemplate")
         end
       end
 
@@ -62,7 +62,7 @@ module Basecamp
       # @return [Hash] response data
       def get(template_id:)
         with_operation(service: "templates", operation: "get", is_mutation: false, resource_id: template_id) do
-          http_get("/templates/#{template_id}", operation: "GetTemplate").json
+          http_get("/templates/#{template_id}", operation: "GetTemplate").json(operation: "GetTemplate")
         end
       end
 
@@ -73,7 +73,7 @@ module Basecamp
       # @return [Hash] response data
       def update(template_id:, name: nil, description: nil)
         with_operation(service: "templates", operation: "update", is_mutation: true, resource_id: template_id) do
-          http_put("/templates/#{template_id}", body: compact_params(name: name, description: description)).json
+          http_put("/templates/#{template_id}", body: compact_params(name: name, description: description)).json(operation: "UpdateTemplate")
         end
       end
 
@@ -93,7 +93,7 @@ module Basecamp
       # @return [Hash] response data
       def create_project(template_id:, project:)
         with_operation(service: "templates", operation: "create_project", is_mutation: true, resource_id: template_id) do
-          http_post("/templates/#{template_id}/project_constructions.json", body: compact_params(project: project)).json
+          http_post("/templates/#{template_id}/project_constructions.json", body: compact_params(project: project)).json(operation: "CreateProjectFromTemplate")
         end
       end
 
@@ -103,7 +103,7 @@ module Basecamp
       # @return [Hash] response data
       def get_construction(template_id:, construction_id:)
         with_operation(service: "templates", operation: "get_construction", is_mutation: false, resource_id: construction_id) do
-          http_get("/templates/#{template_id}/project_constructions/#{construction_id}", operation: "GetProjectConstruction").json
+          http_get("/templates/#{template_id}/project_constructions/#{construction_id}", operation: "GetProjectConstruction").json(operation: "GetProjectConstruction")
         end
       end
     end
