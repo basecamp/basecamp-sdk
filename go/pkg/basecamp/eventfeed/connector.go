@@ -115,8 +115,11 @@ func StartPresent() Start { return Start{kind: startPresent} }
 // whatever the store holds.
 func StartBeginning() Start { return Start{kind: startBeginning} }
 
-// StartAfter enters just after the given event id (since=<id>), whatever the
-// store holds.
+// StartAfter enters just after the given id (since=<id>), whatever the store
+// holds. The id is the lane's identity — an event id on the account lane, an
+// ADDRESSING id on the inbox lane (Event.Key, Addressing.ID), since the
+// inbox's since= walks item ids: an event id there would enter at an
+// unrelated point.
 func StartAfter(eventID int64) Start { return Start{kind: startAfter, eventID: eventID} }
 
 // StartAtPosition enters at an explicit position token. Mutually exclusive

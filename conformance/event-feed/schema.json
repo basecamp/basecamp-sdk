@@ -229,6 +229,91 @@
           }
         }
       }
+    },
+    {
+      "if": {
+        "required": [
+          "config"
+        ],
+        "properties": {
+          "config": {
+            "required": [
+              "lane"
+            ],
+            "properties": {
+              "lane": {
+                "const": "inbox"
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "steps": {
+            "items": {
+              "properties": {
+                "expectPoll": {
+                  "properties": {
+                    "respond": {
+                      "properties": {
+                        "body": {
+                          "not": {
+                            "required": [
+                              "events"
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "serve": {
+                  "not": {
+                    "required": [
+                      "event"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "description": "An inbox scenario serves {items, position, next} pages and item frames: an `events` envelope or a bare `event` frame is the account feed's shape and cannot certify the inbox lane."
+      },
+      "else": {
+        "properties": {
+          "steps": {
+            "items": {
+              "properties": {
+                "expectPoll": {
+                  "properties": {
+                    "respond": {
+                      "properties": {
+                        "body": {
+                          "not": {
+                            "required": [
+                              "items"
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "serve": {
+                  "not": {
+                    "required": [
+                      "item"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "description": "An account scenario serves {events, position, next} pages and event frames: an `items` envelope or an `item` frame is the inbox lane's shape."
+      }
     }
   ],
   "$defs": {
@@ -313,19 +398,13 @@
         "reasons": {
           "type": "array",
           "minItems": 1,
-          "maxItems": 6,
           "uniqueItems": true,
           "items": {
-            "enum": [
-              "mentioned",
-              "assigned",
-              "subscribed",
-              "watched",
-              "pinged",
-              "boosted"
-            ]
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[^,\\s\"']+$"
           },
-          "description": "Filter: inbox addressing reasons (the inbox lane's own dimension; construction refuses it on the account lane)."
+          "description": "Filter: inbox addressing reasons (the inbox lane's own dimension; construction refuses it on the account lane). The vocabulary is server-owned and never client-validated, like types: mentioned, assigned, subscribed, watched, pinged and boosted today, and a scenario may name an unknown one to draw the filter 400."
         },
         "lane": {
           "enum": [
@@ -1921,14 +2000,10 @@
           "maximum": 9223372036854775807
         },
         "reason": {
-          "enum": [
-            "mentioned",
-            "assigned",
-            "subscribed",
-            "watched",
-            "pinged",
-            "boosted"
-          ]
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[^,\\s\"']+$",
+          "description": "Why the item addressed the principal — server-owned vocabulary."
         },
         "addressed_at": {
           "type": "string",

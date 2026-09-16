@@ -1177,7 +1177,7 @@ func (d *driver) pollOutcomeFrom(respond pollRespond) (pollOutcome, error) {
 	}
 	switch status {
 	case 200:
-		return pollPageFrom(respond.Body)
+		return pollPageFrom(d.h.lane, respond.Body)
 	case 302:
 		return d.redirectRefusalFrom(respond.Headers)
 	case 400:
@@ -1221,7 +1221,7 @@ func (d *driver) pollOutcomeFrom(respond pollRespond) (pollOutcome, error) {
 	}
 }
 
-func pollPageFrom(body json.RawMessage) (pollOutcome, error) {
+func pollPageFrom(lane eventfeed.Lane, body json.RawMessage) (pollOutcome, error) {
 	envelope := pollEnvelope{}
 	if err := decodeStrict(body, &envelope); err != nil {
 		return pollOutcome{}, fmt.Errorf("poll envelope: %w", err)
@@ -1229,6 +1229,17 @@ func pollPageFrom(body json.RawMessage) (pollOutcome, error) {
 	page := eventfeed.PollPage{Position: envelope.Position, Next: envelope.Next}
 	if envelope.Events != nil && envelope.Items != nil {
 		return pollOutcome{}, fmt.Errorf("poll envelope carries both events and items")
+	}
+	// The envelope's member is the lane's: an inbox scenario answering with
+	// `events` would hand the connector rows with no Addressing, which it
+	// would deliver and deduplicate by event id — the very contract the lane
+	// exists to change — and an account scenario answering with `items`
+	// would certify the wrong shape.
+	if lane == eventfeed.InboxLane && envelope.Events != nil {
+		return pollOutcome{}, fmt.Errorf("an inbox scenario answered a poll with an events envelope")
+	}
+	if lane != eventfeed.InboxLane && envelope.Items != nil {
+		return pollOutcome{}, fmt.Errorf("an account scenario answered a poll with an items envelope")
 	}
 	for _, raw := range envelope.Events {
 		ev, err := pollEventFrom(raw)

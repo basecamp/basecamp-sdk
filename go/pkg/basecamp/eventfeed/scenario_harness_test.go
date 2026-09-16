@@ -58,6 +58,9 @@ type scenarioHarness struct {
 	changed chan struct{}
 
 	clock *feedtest.Clock
+	// lane is the scenario's configured lane; the poll seam binds the page
+	// envelope it accepts to it.
+	lane eventfeed.Lane
 
 	// Arrival strictness. program is the step script a checkpoint save or an
 	// outbound frame is judged against when it arrives, and cursor is the step
@@ -683,6 +686,9 @@ func (h *scenarioHarness) recordInvalidFrame() {
 // the per-signal default-terminal pins assert.
 func (h *scenarioHarness) newConnector(cfg scenarioConfig) (*eventfeed.Connector, error) {
 	h.applyStoreScript(cfg)
+	if cfg.Lane == "inbox" {
+		h.lane = eventfeed.InboxLane
+	}
 
 	opts := []eventfeed.Option{
 		eventfeed.WithClock(h.clock),
