@@ -535,6 +535,62 @@ def _project_id(item: Any) -> Any:
     return item.get("id", 0) if isinstance(item, dict) else 0
 
 
+def _summarize_event_feed_page(page: dict[str, Any]) -> dict[str, Any]:
+    """Flatten a poll page into top-level scalars; null and absence become boolean
+    predicates because a responseBody path is a top-level key only."""
+    events = page["events"]
+    result: dict[str, Any] = {
+        "event_count": len(events),
+        "position": page["position"],
+        "has_next": bool(page.get("next")),
+    }
+    if not events:
+        return result
+    first = events[0]
+    result["first_event_id"] = first["id"]
+    result["first_event_type"] = first["event_type"]
+    result["first_recording_id"] = first["recording_id"]
+    result["first_performed_by_null"] = first.get("performed_by_id") is None
+    result["first_has_details"] = first.get("details") is not None
+    for event in events:
+        details = event.get("details")
+        if not details:
+            continue
+        if details.get("boost_id") is not None:
+            result["boost_id"] = details["boost_id"]
+            if event.get("performed_by_id") is not None:
+                result["boost_performed_by_id"] = event["performed_by_id"]
+            if details.get("boosted_event_id") is not None:
+                result["boosted_event_id"] = details["boosted_event_id"]
+            if details.get("boosted_event_type") is not None:
+                result["boosted_event_type"] = details["boosted_event_type"]
+        if details.get("column_id") is not None:
+            result["moved_column_id"] = details["column_id"]
+        if details.get("previous_column_id") is not None:
+            result["moved_previous_column_id"] = details["previous_column_id"]
+    return result
+
+
+def _summarize_inbox_page(page: dict[str, Any]) -> dict[str, Any]:
+    """Flatten an inbox page into top-level scalars."""
+    items = page["items"]
+    result: dict[str, Any] = {
+        "item_count": len(items),
+        "position": page["position"],
+        "has_next": bool(page.get("next")),
+    }
+    if not items:
+        return result
+    first, last = items[0], items[-1]
+    result["first_addressing_id"] = first["addressing_id"]
+    result["first_reason"] = first["reason"]
+    result["first_event_id"] = first["event"]["id"]
+    result["first_event_type"] = first["event"]["event_type"]
+    result["last_addressing_id"] = last["addressing_id"]
+    result["last_reason"] = last["reason"]
+    return result
+
+
 def _summarize_template_library(library: dict[str, Any]) -> dict[str, Any]:
     """Expose representative decoded template-library fields as portable scalars."""
     return {
@@ -754,6 +810,13 @@ class OperationMapper:
                 return _summarize_template_library_copy(
                     self._account.templates.get_library_copy(copy_id=path_params["copyId"])
                 )
+            case "PollEvents":
+                return _summarize_event_feed_page(self._account.event_feed.poll_events(since="now"))
+            case "PollInbox":
+                return _summarize_inbox_page(self._account.event_feed.poll_inbox(since="now"))
+            case "CreateStreamTicket":
+                ticket = self._account.event_feed.create_stream_ticket()
+                return {"ticket": ticket["ticket"], "expires_in": ticket["expires_in"], "url": ticket["url"]}
             case "CreateProject":
                 return self._account.projects.create(name=body["name"])
             case "UpdateProject":

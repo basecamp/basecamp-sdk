@@ -157,6 +157,51 @@ private fun summarizeTemplateLibraryCopy(copy: TemplateLibraryCopy): JsonElement
  * the item count, so an SDK that fetched page 2 and discarded its body
  * satisfies both.
  */
+/**
+ * Flattens a poll page into top-level scalars; null and absence become boolean
+ * predicates because a responseBody path is a top-level key only. The feed
+ * service returns the envelope as JsonElement, so this reads the wire object.
+ */
+private fun summarizeEventFeedPage(page: JsonObject): JsonElement = buildJsonObject {
+    val events = page.getValue("events").jsonArray
+    put("event_count", events.size)
+    put("position", page.getValue("position").jsonPrimitive.content)
+    put("has_next", !(page["next"]?.jsonPrimitive?.contentOrNull.isNullOrEmpty()))
+    val first = events.firstOrNull()?.jsonObject ?: return@buildJsonObject
+    put("first_event_id", first.getValue("id").jsonPrimitive.long)
+    put("first_event_type", first.getValue("event_type").jsonPrimitive.content)
+    put("first_recording_id", first.getValue("recording_id").jsonPrimitive.long)
+    put("first_performed_by_null", first["performed_by_id"]?.jsonPrimitive?.longOrNull == null)
+    put("first_has_details", first["details"] != null && first["details"] !is JsonNull)
+    for (element in events) {
+        val event = element.jsonObject
+        val details = event["details"]?.takeUnless { it is JsonNull }?.jsonObject ?: continue
+        details["boost_id"]?.jsonPrimitive?.longOrNull?.let { boostId ->
+            put("boost_id", boostId)
+            event["performed_by_id"]?.jsonPrimitive?.longOrNull?.let { put("boost_performed_by_id", it) }
+            details["boosted_event_id"]?.jsonPrimitive?.longOrNull?.let { put("boosted_event_id", it) }
+            details["boosted_event_type"]?.jsonPrimitive?.contentOrNull?.let { put("boosted_event_type", it) }
+        }
+        details["column_id"]?.jsonPrimitive?.longOrNull?.let { put("moved_column_id", it) }
+        details["previous_column_id"]?.jsonPrimitive?.longOrNull?.let { put("moved_previous_column_id", it) }
+    }
+}
+
+private fun summarizeInboxPage(page: JsonObject): JsonElement = buildJsonObject {
+    val items = page.getValue("items").jsonArray
+    put("item_count", items.size)
+    put("position", page.getValue("position").jsonPrimitive.content)
+    put("has_next", !(page["next"]?.jsonPrimitive?.contentOrNull.isNullOrEmpty()))
+    val first = items.firstOrNull()?.jsonObject ?: return@buildJsonObject
+    val last = items.last().jsonObject
+    put("first_addressing_id", first.getValue("addressing_id").jsonPrimitive.long)
+    put("first_reason", first.getValue("reason").jsonPrimitive.content)
+    put("first_event_id", first.getValue("event").jsonObject.getValue("id").jsonPrimitive.long)
+    put("first_event_type", first.getValue("event").jsonObject.getValue("event_type").jsonPrimitive.content)
+    put("last_addressing_id", last.getValue("addressing_id").jsonPrimitive.long)
+    put("last_reason", last.getValue("reason").jsonPrimitive.content)
+}
+
 private fun summarizeProjects(projects: List<Project>): JsonElement = buildJsonObject {
     put("project_count", projects.size)
     put("first_project_id", projects.firstOrNull()?.id ?: 0L)
@@ -1143,6 +1188,25 @@ private suspend fun dispatchOperation(tc: TestCase, account: AccountClient): Dis
         "GetTemplateLibraryCopy" -> {
             val libraryCopy = account.templates.getLibraryCopy(tc.pathParams.longParam("copyId"))
             DispatchResult(resultJson = summarizeTemplateLibraryCopy(libraryCopy))
+        }
+
+        "PollEvents" -> {
+            val page = account.eventFeed.pollEvents(PollEventsOptions(since = "now")).jsonObject
+            DispatchResult(resultJson = summarizeEventFeedPage(page))
+        }
+
+        "PollInbox" -> {
+            val page = account.eventFeed.pollInbox(PollInboxOptions(since = "now")).jsonObject
+            DispatchResult(resultJson = summarizeInboxPage(page))
+        }
+
+        "CreateStreamTicket" -> {
+            val ticket = account.eventFeed.createStreamTicket().jsonObject
+            DispatchResult(resultJson = buildJsonObject {
+                put("ticket", ticket.getValue("ticket").jsonPrimitive.content)
+                put("expires_in", ticket.getValue("expires_in").jsonPrimitive.long)
+                put("url", ticket.getValue("url").jsonPrimitive.content)
+            })
         }
 
         "CreateProject" -> {

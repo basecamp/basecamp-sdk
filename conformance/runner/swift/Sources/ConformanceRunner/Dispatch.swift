@@ -267,6 +267,50 @@ private func summarizeTemplateLibraryCopy(_ copy: TemplateLibraryCopy) -> JSON {
 /// request happened, and meta.totalCount is the X-Total-Count header rather than
 /// the item count, so an SDK that fetched page 2 and discarded its body
 /// satisfies both.
+/// Flattens a poll page into top-level scalars; null and absence become boolean
+/// predicates because a responseBody path is a top-level key only.
+private func summarizeEventFeedPage(_ page: PollEventsResponseContent) -> JSON {
+    var result: [String: JSON] = [
+        "event_count": .int(Int64(page.events.count)),
+        "position": .string(page.position),
+        "has_next": .bool(!(page.next ?? "").isEmpty),
+    ]
+    guard let first = page.events.first else { return .object(result) }
+    result["first_event_id"] = .int(Int64(first.id))
+    result["first_event_type"] = .string(first.eventType)
+    result["first_recording_id"] = .int(Int64(first.recordingId))
+    result["first_performed_by_null"] = .bool(first.performedById == nil)
+    result["first_has_details"] = .bool(first.details != nil)
+    for event in page.events {
+        guard let details = event.details else { continue }
+        if let boostId = details.boostId {
+            result["boost_id"] = .int(Int64(boostId))
+            if let performer = event.performedById { result["boost_performed_by_id"] = .int(Int64(performer)) }
+            if let boosted = details.boostedEventId { result["boosted_event_id"] = .int(Int64(boosted)) }
+            if let boostedType = details.boostedEventType { result["boosted_event_type"] = .string(boostedType) }
+        }
+        if let column = details.columnId { result["moved_column_id"] = .int(Int64(column)) }
+        if let previous = details.previousColumnId { result["moved_previous_column_id"] = .int(Int64(previous)) }
+    }
+    return .object(result)
+}
+
+private func summarizeInboxPage(_ page: PollInboxResponseContent) -> JSON {
+    var result: [String: JSON] = [
+        "item_count": .int(Int64(page.items.count)),
+        "position": .string(page.position),
+        "has_next": .bool(!(page.next ?? "").isEmpty),
+    ]
+    guard let first = page.items.first, let last = page.items.last else { return .object(result) }
+    result["first_addressing_id"] = .int(Int64(first.addressingId))
+    result["first_reason"] = .string(first.reason)
+    result["first_event_id"] = .int(Int64(first.event.id))
+    result["first_event_type"] = .string(first.event.eventType)
+    result["last_addressing_id"] = .int(Int64(last.addressingId))
+    result["last_reason"] = .string(last.reason)
+    return .object(result)
+}
+
 private func summarizeProjects(_ projects: [Project]) -> JSON {
     .object([
         "project_count": .int(Int64(projects.count)),
@@ -367,6 +411,22 @@ func dispatchOperation(_ tc: TestCase, _ account: AccountClient) async throws ->
     case "GetTemplateLibraryCopy":
         let libraryCopy = try await account.templates.getLibraryCopy(copyId: pathParams.longParam("copyId"))
         return DispatchResult(resultJSON: summarizeTemplateLibraryCopy(libraryCopy))
+
+    case "PollEvents":
+        let page = try await account.eventFeed.pollEvents(options: PollEventsEventFeedOptions(since: "now"))
+        return DispatchResult(resultJSON: summarizeEventFeedPage(page))
+
+    case "PollInbox":
+        let page = try await account.eventFeed.pollInbox(options: PollInboxEventFeedOptions(since: "now"))
+        return DispatchResult(resultJSON: summarizeInboxPage(page))
+
+    case "CreateStreamTicket":
+        let ticket = try await account.eventFeed.createStreamTicket()
+        return DispatchResult(resultJSON: .object([
+            "ticket": .string(ticket.ticket),
+            "expires_in": .int(Int64(ticket.expiresIn)),
+            "url": .string(ticket.url),
+        ]))
 
     case "CreateProject":
         _ = try await account.projects.create(req: CreateProjectRequest(name: rb.stringParam("name")))

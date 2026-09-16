@@ -402,6 +402,76 @@ function summarizeUpcoming(
 }
 
 /** Exposes representative decoded template-library fields as portable scalars. */
+type FeedEventRow = {
+  id: number;
+  event_type: string;
+  recording_id: number;
+  performed_by_id?: number | null;
+  details?: {
+    boost_id?: number | null;
+    boosted_event_id?: number | null;
+    boosted_event_type?: string | null;
+    column_id?: number | null;
+    previous_column_id?: number | null;
+  };
+};
+
+// Flattens a poll page into top-level scalars; null and absence become boolean
+// predicates because a responseBody path is a top-level key only.
+function summarizeEventFeedPage(page: {
+  events: FeedEventRow[];
+  position: string;
+  next?: string;
+}): Record<string, unknown> {
+  const result: Record<string, unknown> = {
+    event_count: page.events.length,
+    position: page.position,
+    has_next: typeof page.next === "string" && page.next.length > 0,
+  };
+  const first = page.events[0];
+  if (!first) return result;
+  result.first_event_id = first.id;
+  result.first_event_type = first.event_type;
+  result.first_recording_id = first.recording_id;
+  result.first_performed_by_null = first.performed_by_id == null;
+  result.first_has_details = first.details != null;
+  for (const event of page.events) {
+    const details = event.details;
+    if (!details) continue;
+    if (details.boost_id != null) {
+      result.boost_id = details.boost_id;
+      if (event.performed_by_id != null) result.boost_performed_by_id = event.performed_by_id;
+      if (details.boosted_event_id != null) result.boosted_event_id = details.boosted_event_id;
+      if (details.boosted_event_type != null) result.boosted_event_type = details.boosted_event_type;
+    }
+    if (details.column_id != null) result.moved_column_id = details.column_id;
+    if (details.previous_column_id != null) result.moved_previous_column_id = details.previous_column_id;
+  }
+  return result;
+}
+
+function summarizeInboxPage(page: {
+  items: Array<{ addressing_id: number; reason: string; event: FeedEventRow }>;
+  position: string;
+  next?: string;
+}): Record<string, unknown> {
+  const result: Record<string, unknown> = {
+    item_count: page.items.length,
+    position: page.position,
+    has_next: typeof page.next === "string" && page.next.length > 0,
+  };
+  const first = page.items[0];
+  const last = page.items[page.items.length - 1];
+  if (!first || !last) return result;
+  result.first_addressing_id = first.addressing_id;
+  result.first_reason = first.reason;
+  result.first_event_id = first.event.id;
+  result.first_event_type = first.event.event_type;
+  result.last_addressing_id = last.addressing_id;
+  result.last_reason = last.reason;
+  return result;
+}
+
 function summarizeTemplateLibrary(library: {
   bucket: { id: number };
   todoset: { id: number };
@@ -651,6 +721,21 @@ async function executeOperation(
       case "GetTemplateLibraryCopy": {
         const libraryCopy = await client.templates.getLibraryCopy(Number(params.copyId));
         return { result: summarizeTemplateLibraryCopy(libraryCopy) };
+      }
+
+      case "PollEvents": {
+        const page = await client.eventFeed.pollEvents({ since: "now" });
+        return { result: summarizeEventFeedPage(page) };
+      }
+
+      case "PollInbox": {
+        const page = await client.eventFeed.pollInbox({ since: "now" });
+        return { result: summarizeInboxPage(page) };
+      }
+
+      case "CreateStreamTicket": {
+        const ticket = await client.eventFeed.createStreamTicket();
+        return { result: { ticket: ticket.ticket, expires_in: ticket.expires_in, url: ticket.url } };
       }
 
       case "CreateProject":
