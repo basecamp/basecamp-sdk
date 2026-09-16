@@ -11,7 +11,7 @@
         "headers": {
           "Content-Type": "application/json",
           "X-Feed-Position": "posAAA",
-          "Link": "<https://3.basecampapi.com/999/events.json?position=posAAA>; rel=\"next\""
+          "Link": "</999/events.json?position=posAAA>; rel=\"next\""
         },
         "body": {
           "events": [
@@ -314,6 +314,57 @@
       { "type": "responseBody", "path": "first_event_type", "expected": "comment.created" },
       { "type": "responseBody", "path": "last_addressing_id", "expected": 992 },
       { "type": "responseBody", "path": "last_reason", "expected": "assigned" }
+    ],
+    "tags": ["event-feed", "inbox", "decode"]
+  },
+  {
+    "name": "PollInbox answers one page and never walks the continuation",
+    "description": "The inbox lane declares @basecampPagination(style: \"cursor\"), which generates no walk: one call answers one page, and the caller follows `next` itself. The mock serves both continuation signals at once — the envelope's absolute `next`, which has_next decodes, and a `Link: rel=\"next\"` header — because the Link header is precisely what the link style follows, so serving one is how a generated walk gets caught. The Link is relative on purpose, as pagination.json's are: it resolves against the request, so it is same-origin in every runner whatever origin that runner mocks, and a walk anywhere is caught by requestCount rather than depending on each walker's cross-origin refusal (which would also let a wrapper that walks same-origin only slip through). Flattening the pages would swallow the per-page `position`, which is the only thing a crashed consumer can resume from.",
+    "operation": "PollInbox",
+    "method": "GET",
+    "path": "/inbox.json",
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json",
+          "X-Feed-Position": "inboxPosAAA",
+          "Link": "</999/inbox.json?position=inboxPosAAA>; rel=\"next\""
+        },
+        "body": {
+          "items": [
+            {
+              "addressing_id": 993,
+              "reason": "pinged",
+              "addressed_at": "2026-07-14T06:10:00.159Z",
+              "event": {
+                "id": 1071915471,
+                "kind": "comment_created",
+                "action": "created",
+                "created_at": "2026-07-14T06:10:00.159Z",
+                "event_type": "comment.created",
+                "bucket_id": 2085958499,
+                "creator_id": 1049715945,
+                "performed_by_id": null,
+                "recording_id": 1069479766
+              }
+            }
+          ],
+          "position": "inboxPosAAA",
+          "next": "https://3.basecampapi.com/999/inbox.json?position=inboxPosAAA"
+        }
+      }
+    ],
+    "assertions": [
+      { "type": "noError" },
+      { "type": "requestCount", "expected": 1 },
+      { "type": "requestMethod", "expected": "GET" },
+      { "type": "requestPath", "expected": "/999/inbox.json" },
+      { "type": "responseBody", "path": "item_count", "expected": 1 },
+      { "type": "responseBody", "path": "position", "expected": "inboxPosAAA" },
+      { "type": "responseBody", "path": "has_next", "expected": true },
+      { "type": "responseBody", "path": "first_addressing_id", "expected": 993 },
+      { "type": "responseBody", "path": "first_reason", "expected": "pinged" }
     ],
     "tags": ["event-feed", "inbox", "decode"]
   },

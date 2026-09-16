@@ -54,9 +54,13 @@ structure basecampPagination {
     /// constraint.
     ///
     /// Go reads this trait nowhere: its list wrappers are hand-written and call
-    /// `followPagination` by hand, so nothing there enforces the style either
-    /// way. The first cursor operation's Go wrapper is discipline, not a gate —
-    /// it must not follow the walk, and no build will say so.
+    /// `followPagination` by hand, so no generator enforces the style there
+    /// either way. A cursor operation's Go wrapper must not follow the walk, and
+    /// the only thing that says so is conformance: each cursor lane's fixture
+    /// serves a `Link: rel="next"` header and asserts a single request, so a Go
+    /// wrapper that started walking fails `make conformance` exactly as the
+    /// other six SDKs' generated methods would. A new cursor operation owes the
+    /// same fixture, or its Go wrapper is back to discipline alone.
     ///
     /// A third value, "page", was documented here for years and no generator
     /// ever read it. That is not the same as page-number paging being
@@ -76,6 +80,13 @@ structure basecampPagination {
     /// Key within the response object containing the paginated array.
     /// When present, the response is a wrapper object (not a bare array)
     /// and the paginated items live under this key.
+    ///
+    /// Only the link style reads it to unwrap. Every service generator
+    /// withholds it for "cursor", whose public return type must stay the whole
+    /// envelope — position and continuation included — rather than the items
+    /// under the key. On a cursor operation it is catalogue only: it names the
+    /// page's member for a reader and for the catalogues that carry it (the
+    /// Rust route table, the TypeScript metadata), and unwraps nothing.
     key: String
 }
 

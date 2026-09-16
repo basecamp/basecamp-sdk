@@ -1384,10 +1384,11 @@ FUNCTION paginate(initial_response, max_pages, max_items?, page?) → ListResult
 END
 ```
 
-Two carve-outs, so the rule is not read as universal:
+Three carve-outs, so the rule is not read as universal:
 
-- `ListWebhooks`, `ListMessageTypes`, `ListChatbots`, `ListPingablePeople`, `ListQuestionAnswerers`, and `ListUploadVersions` carry the pagination trait but declare **no** `page` parameter: their Basecamp index actions return the whole collection rather than paginating, so there is no page to select. Where an SDK's shared pagination options type still admits a `page` (TypeScript, Kotlin, Swift), passing one on those operations changes nothing — the responses carry no next link to suppress.
+- `ListWebhooks`, `ListMessageTypes`, `ListChatbots`, `ListPingablePeople`, `ListQuestionAnswerers`, and `ListUploadVersions` carry the link-style pagination trait but declare **no** `page` parameter: their Basecamp index actions return the whole collection rather than paginating, so there is no page to select. Where an SDK's shared pagination options type still admits a `page` (TypeScript, Kotlin, Swift), passing one on those operations changes nothing — the responses carry no next link to suppress.
 - `GetMyNotifications` declares `page` but carries **no** pagination trait, so no SDK follows links for it and this section is inapplicable — it returns the page you asked for, in all seven.
+- `PollEvents` and `PollInbox` carry the trait with `style: "cursor"` and declare no `page`, and this section is inapplicable to them from the other side: no walk is generated, so there is no page to pin within one. They page by the envelope's opaque `position`, never by number — §23 "Wire Operations".
 
 **How each SDK learns the pinned page.** The paginator reads it from whichever
 representation it already holds, so no SDK carries a second copy that can drift
@@ -3191,11 +3192,14 @@ adapters. `CreateStreamTicket` is marked idempotent because the mint is a statel
 capability with no server-side consumption — a replayed request is harmless — and not as
 a claim that two mints return the same ticket.
 
-**Fixtures.** `conformance/tests/event_feed.json` (twelve cases, all seven runners) pins
+**Fixtures.** `conformance/tests/event_feed.json` (thirteen cases, all seven runners) pins
 the envelope decode including a `null` `performed_by_id` and every `details` variant, the
 walk-end page without `next`, the 400 with and without `reason` plus the 409 and the epoch
-410 on the feed, the agents-only bodyless 403, the reasoned 400 and the retention 410 on
-the inbox, and the bodyless mint with its 401. The connector's
+410 on the feed, the inbox envelope decode and its one-page answer to a continuation (a
+relative `Link: rel="next"` served beside `next`, one request), the agents-only bodyless
+403, the reasoned 400 and the retention 410 on the inbox, and the bodyless mint with its
+401. The feed's envelope case serves a continuation too and asserts one request, so both
+cursor lanes (§8) are caught by count if a walk is ever generated. The connector's
 own family stays under `conformance/event-feed/`.
 
 ### Provenance `[manual]`
@@ -4672,7 +4676,7 @@ what `make doc-constants-check` asserts — not a case-by-case index.
 | `upcoming_schedule.json` | The reduced calendar projection: entry, recurring occurrence, assignable, empty envelope (4 cases) | §10 (Type Fidelity) |
 | `search.json` | The polymorphic search projection: the generic recording envelope plus all four special branches, and the file-attachment branch in isolation (2 cases) | §10 (Type Fidelity) |
 | `template_library.json` | Library read, copy creation, completed-copy decoding, and people-confirmation validation (4 cases) | §3, §6, §10, §11 |
-| `event_feed.json` | Poll envelope decode (null `performed_by_id`, verbatim boost and card-move details), walk end without `next`, 400 with and without `reason`, 409 and epoch 410 on the feed; inbox envelope, reasoned 400, agents-only bodyless 403, retention 410; bodyless stream-ticket mint and its 401 (12 cases) | §23, §6, §11 |
+| `event_feed.json` | Poll envelope decode (null `performed_by_id`, verbatim boost and card-move details), walk end without `next`, 400 with and without `reason`, 409 and epoch 410 on the feed; inbox envelope, one page despite a continuation, reasoned 400, agents-only bodyless 403, retention 410; bodyless stream-ticket mint and its 401 (13 cases) | §23, §6, §11 |
 | `project_constructions.json` | Project construction from a template: attributes nested under the `project` envelope, `start_date` carried when given and absent when omitted (2 cases) | §3, §10, §11 |
 | `live-my-surface.json` | Live schema validation, 31 read-surface cases (opt-in via `BASECAMP_LIVE`) | External governance (CONTRIBUTING.md, live canary) |
 <!-- @fixture-section-map:end -->
