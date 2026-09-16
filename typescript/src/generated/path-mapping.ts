@@ -96,6 +96,7 @@ export const PATH_TO_OPERATION: Record<string, string> = {
   "GET:/{accountId}/inbox_forwards/{forwardId}": "GetForward",
   "GET:/{accountId}/inbox_forwards/{forwardId}/replies.json": "ListForwardReplies",
   "GET:/{accountId}/inbox_forwards/{forwardId}/replies/{replyId}": "GetForwardReply",
+  "GET:/{accountId}/inbox.json": "PollInbox",
   "GET:/{accountId}/inboxes/{inboxId}": "GetInbox",
   "GET:/{accountId}/inboxes/{inboxId}/inbox_forwards.json": "ListForwards",
   "GET:/{accountId}/lineup/markers.json": "ListLineupMarkers",
@@ -221,6 +222,13 @@ export const PATH_TO_OPERATION: Record<string, string> = {
   "GET:/{accountId}/people/{personId}/out_of_office.json": "GetOutOfOffice",
   "POST:/{accountId}/people/{personId}/out_of_office.json": "EnableOutOfOffice",
 
+  // Events
+  "GET:/{accountId}/events.json": "PollEvents",
+  "POST:/{accountId}/events/stream_ticket.json": "CreateStreamTicket",
+  "GET:/{accountId}/recordings/{recordingId}/events.json": "ListEvents",
+  "GET:/{accountId}/recordings/{recordingId}/events/{eventId}/boosts.json": "ListEventBoosts",
+  "POST:/{accountId}/recordings/{recordingId}/events/{eventId}/boosts.json": "CreateEventBoost",
+
   // My Profile
   "GET:/{accountId}/my/assignments.json": "GetMyAssignments",
   "GET:/{accountId}/my/assignments/completed.json": "GetMyCompletedAssignments",
@@ -262,11 +270,6 @@ export const PATH_TO_OPERATION: Record<string, string> = {
   "GET:/{accountId}/projects/{projectId}/timeline.json": "GetProjectTimeline",
   "GET:/{accountId}/projects/{projectId}/timesheet.json": "GetProjectTimesheet",
   "GET:/{accountId}/projects/recordings.json": "ListRecordings",
-
-  // Events
-  "GET:/{accountId}/recordings/{recordingId}/events.json": "ListEvents",
-  "GET:/{accountId}/recordings/{recordingId}/events/{eventId}/boosts.json": "ListEventBoosts",
-  "POST:/{accountId}/recordings/{recordingId}/events/{eventId}/boosts.json": "CreateEventBoost",
 
   // Search
   "GET:/{accountId}/search.json": "Search",

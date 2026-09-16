@@ -89,6 +89,9 @@ pub static CREATE_RECORDING_BOOST: OperationMetadata = OperationMetadata { opera
 /// `CreateScheduleEntry`.
 #[rustfmt::skip]
 pub static CREATE_SCHEDULE_ENTRY: OperationMetadata = OperationMetadata { operation: "CreateScheduleEntry", idempotent: false, readonly: false, retry: RetryConfig { max_attempts: 2, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
+/// `CreateStreamTicket`.
+#[rustfmt::skip]
+pub static CREATE_STREAM_TICKET: OperationMetadata = OperationMetadata { operation: "CreateStreamTicket", idempotent: true, readonly: false, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
 /// `CreateTemplate`.
 #[rustfmt::skip]
 pub static CREATE_TEMPLATE: OperationMetadata = OperationMetadata { operation: "CreateTemplate", idempotent: false, readonly: false, retry: RetryConfig { max_attempts: 2, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
@@ -593,6 +596,12 @@ pub static PAUSE_QUESTION: OperationMetadata = OperationMetadata { operation: "P
 /// `PinMessage`.
 #[rustfmt::skip]
 pub static PIN_MESSAGE: OperationMetadata = OperationMetadata { operation: "PinMessage", idempotent: false, readonly: false, retry: RetryConfig { max_attempts: 2, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
+/// `PollEvents`.
+#[rustfmt::skip]
+pub static POLL_EVENTS: OperationMetadata = OperationMetadata { operation: "PollEvents", idempotent: false, readonly: true, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
+/// `PollInbox`.
+#[rustfmt::skip]
+pub static POLL_INBOX: OperationMetadata = OperationMetadata { operation: "PollInbox", idempotent: false, readonly: true, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
 /// `PrioritizeAssignment`.
 #[rustfmt::skip]
 pub static PRIORITIZE_ASSIGNMENT: OperationMetadata = OperationMetadata { operation: "PrioritizeAssignment", idempotent: true, readonly: false, retry: RetryConfig { max_attempts: 3, base_delay_ms: 1000, backoff: Backoff::Exponential, retry_on: &[429, 503] } };
@@ -822,6 +831,7 @@ pub static OPERATIONS: &[&OperationMetadata] = &[
     &CREATE_QUESTION,
     &CREATE_RECORDING_BOOST,
     &CREATE_SCHEDULE_ENTRY,
+    &CREATE_STREAM_TICKET,
     &CREATE_TEMPLATE,
     &CREATE_TEMPLATE_LIBRARY_COPY,
     &CREATE_TIMESHEET_ENTRY,
@@ -990,6 +1000,8 @@ pub static OPERATIONS: &[&OperationMetadata] = &[
     &MOVE_CARD_COLUMN,
     &PAUSE_QUESTION,
     &PIN_MESSAGE,
+    &POLL_EVENTS,
+    &POLL_INBOX,
     &PRIORITIZE_ASSIGNMENT,
     &RECORD_PROJECT_VISIT,
     &REMOVE_ACCOUNT_LOGO,

@@ -361,7 +361,12 @@ service Basecamp {
     GetFolder,
     CreateFolder,
     UpdateFolder,
-    DeleteFolder
+    DeleteFolder,
+
+    // Batch 20 - Event feed (account-wide feed, agent inbox, stream tickets)
+    PollEvents,
+    PollInbox,
+    CreateStreamTicket
   ]
 }
 
@@ -473,12 +478,68 @@ structure ForbiddenError {
   message: String
 }
 
+/// 403 with no response body — the bare `head :forbidden` rendering, the
+/// treatment BareNotFoundError already gets at 404. Used by operations whose
+/// own guard emits no JSON payload on 403, so the generated OpenAPI does not
+/// advertise a decodable body for what that guard answers.
+///
+/// Scoped to the operation's own guard on purpose. A cross-cutting 403 raised
+/// ahead of it can still carry a body — ApplicationController's 2FA
+/// enforcement renders a flat one, and being registered on the superclass it
+/// runs first — but that 403 is reachable on every operation in this spec and
+/// is modeled on none of them. Every SDK maps 403 to its forbidden error by
+/// status and parses whatever body arrives opportunistically, so nothing is
+/// lost by leaving it unmodeled here.
+@error("client")
+@httpError(403)
+structure BareForbiddenError {}
+
 @error("client")
 @httpError(400)
 structure BadRequestError {
   @required
   error: String
   message: String
+}
+
+/// 409 from the event feed's poll lanes (PollEvents, PollInbox): the held
+/// `position` was minted for a different filter set than the request presented.
+/// Positions are bound to their filter set; re-enter with `since=<id>` or
+/// `since=now` to acknowledge the filter change. Both digests are the bare
+/// 16-lowercase-hex `srv2` filter digest BC3 publishes in
+/// doc/api/sections/event_feed.md ("Filter digests").
+@error("client")
+@httpError(409)
+structure FeedFilterMismatchError {
+  @required
+  error: String
+  /// The digest of the filter set the position was minted for.
+  @required
+  position_digest: String
+  /// The digest of the filter set this request presented.
+  @required
+  filters_digest: String
+}
+
+/// 410 from the event feed's poll lanes: the held `position` predates what the
+/// lane can still serve. On PollEvents that is the feed's epoch — an operational
+/// fence that can be raised — and `epoch_after_id` names it; on PollInbox it is
+/// the inbox's 30-day retention window, and `epoch_after_id` is absent. Either
+/// way `resume` is an absolute URL that re-enters the same lane with the
+/// request's canonical filters preserved: at the epoch (`since=<epoch_after_id>`)
+/// for the feed, at the earliest retained item (`since=0`) for the inbox.
+/// Consumers validate the URL (same origin as the API base, no scheme downgrade)
+/// before following it — SPEC.md §23 "Continuation and Resume URL Validation".
+@error("client")
+@httpError(410)
+structure FeedPositionGoneError {
+  @required
+  error: String
+  /// The feed's epoch: the event id after which history is servable. Feed only.
+  epoch_after_id: Long
+  /// Absolute re-entry URL for the same lane, filters preserved.
+  @required
+  resume: String
 }
 
 @error("server")
@@ -767,6 +828,16 @@ structure RecordProjectVisitOutput {}
 
 @sensitive
 string PersonName
+
+/// A minted event-stream ticket: an opaque, replayable bearer credential for
+/// its ~2-minute window. Sensitive so SDK logging redacts it.
+@sensitive
+string StreamTicket
+
+/// The WebSocket URL a stream ticket mint returns. Sensitive because its query
+/// string carries the ticket.
+@sensitive
+string StreamTicketUrl
 
 @sensitive
 string EmailAddress
@@ -7250,6 +7321,341 @@ structure ListEventsOutput {
   events: EventList
 }
 
+// ===== Event Feed Operations =====
+//
+// The account-wide event feed (bc3 doc/api/sections/event_feed.md): a resumable
+// notification feed — not an audit log, not guaranteed delivery — served over a
+// catch-up poll lane (PollEvents), an agent-only addressed lane (PollInbox), and
+// a live push lane over Action Cable whose tickets CreateStreamTicket mints. The
+// SDK's connector over these three operations is SPEC.md §23; the operations
+// themselves are ordinary generated wire operations.
+//
+// PAGINATION IS NOT THE LINK-HEADER WALK. Every 200 body is an envelope whose
+// `position` is the durable cursor and whose `next` (present only while the
+// current walk has more to serve) is an absolute continuation URL for the same
+// operation. The `Link: rel="next"` and `X-Feed-Position` headers merely echo
+// those two body members. These operations therefore carry no
+// @basecampPagination trait and are deliberately NOT wired into the generic
+// Link-following paginator: flattening pages would swallow the per-page
+// `position` that is the only thing a consumer may persist. Follow `next` by
+// re-issuing the same operation with the query it carries (a `position` plus
+// the canonical filters), and poll again later from `position` once `next` is
+// absent.
+//
+// Filters are comma-joined strings, not repeated query members: bc3 accepts the
+// comma form and the `key[]=` array form, and a repeated scalar key would be
+// collapsed to its last value by Rails. `buckets`/`creators`/`performers`/
+// `exclude_performers` take at most 100 ids each; `types` any subset of the
+// catalog; raw input over 16 KB is rejected with the filter 400.
+
+/// Poll the account event feed for events after a position (oldest first, strict event-id order, up to 100 per page).
+///
+/// **Entry.** With neither `since` nor `position` the feed begins at the present
+/// (equivalent to `since=now`). `since=<event id>` starts after that id and
+/// `since=0` replays all served history back to the feed's epoch; `since` is a
+/// signed 64-bit integer written in decimal, or the literal `now`. `position`
+/// resumes from a token a previous page issued — signed, opaque, bound to the
+/// account and the filter set.
+///
+/// **Pagination**: the body envelope, not the Link header. `position` is the
+/// durable cursor (persist it only after processing the page's events); `next`
+/// is an absolute continuation URL present only while this walk has more to
+/// serve. Not wired into the generic Link paginator — see the section note.
+///
+/// **Errors.** 400 for a malformed position (resume with `since=`) or a malformed
+/// filter (the body names the filter; a position reset will not help) — both the
+/// flat `{error}` body. 409 (FeedFilterMismatchError) when the position was
+/// minted for a different filter set. 410 (FeedPositionGoneError) when the
+/// position predates the feed's epoch; follow its `resume` URL.
+@readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@http(method: "GET", uri: "/{accountId}/events.json")
+operation PollEvents {
+  input: PollEventsInput
+  output: PollEventsOutput
+  errors: [BadRequestError, FeedFilterMismatchError, FeedPositionGoneError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure PollEventsInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  /// Entry point: a decimal event id (start after it; `0` replays served
+  /// history back to the epoch), or the literal `now` (skip history). Mutually
+  /// exclusive with `position` in practice; omit both to enter at the present.
+  @httpQuery("since")
+  since: String
+
+  /// Resume token from a previous page's `position`. Opaque and signed; never
+  /// constructed or parsed client-side.
+  @httpQuery("position")
+  position: String
+
+  /// Comma-separated event types from the catalog (e.g. `message.created,comment.created`).
+  @httpQuery("types")
+  types: String
+
+  /// Comma-separated bucket (project) ids, at most 100.
+  @httpQuery("buckets")
+  buckets: String
+
+  /// Comma-separated creator person ids, at most 100.
+  @httpQuery("creators")
+  creators: String
+
+  /// Comma-separated effective-performer ids (the agent on a delegated action,
+  /// else the creator), at most 100. The literal `self` means the request's own
+  /// effective actor and is resolved server-side before filtering.
+  @httpQuery("performers")
+  performers: String
+
+  /// Comma-separated effective-performer ids to exclude, at most 100; `self`
+  /// as on `performers`. `exclude_performers=self` is the loop guard for an
+  /// agent that acts on what it hears.
+  @httpQuery("exclude_performers")
+  exclude_performers: String
+
+  /// Comma-separated actor kinds: `agent`, `person`, or both. A filter, not a
+  /// default — agent activity is real account activity.
+  @httpQuery("actor_types")
+  actor_types: String
+}
+
+/// The poll envelope. Every 200 carries `events` and `position`; `next` only
+/// while the walk continues.
+structure PollEventsOutput {
+  /// Up to 100 events, oldest first, strict event-id order. A page may be empty
+  /// while the walk crosses history the filters exclude — keep following `next`.
+  @required
+  events: FeedEventList
+
+  /// Durable position token for resuming later. Persist only after the page's
+  /// events have been processed.
+  @required
+  position: String
+
+  /// Absolute continuation URL, present only while the current walk has more
+  /// to serve; absent means the walk reached its (frozen) head — poll again
+  /// later from `position`.
+  next: String
+}
+
+list FeedEventList {
+  member: FeedEvent
+}
+
+/// One feed row: a thin pointer, not resource state. Refetch the referenced
+/// recording through the canonical resource APIs before acting on it. The same
+/// shape rides the inbox (`InboxItem.event`) and, with two transport-only
+/// extras, the live stream.
+structure FeedEvent {
+  /// Feed-global event id; the poll lane serves ids in strict ascending order.
+  @required
+  id: EventId
+
+  /// Event kind (e.g. `message_created`).
+  @required
+  kind: String
+
+  /// The action that produced the event (e.g. `created`).
+  @required
+  action: String
+
+  /// Cataloged event type (e.g. `message.created`). Only cataloged types are served.
+  @required
+  event_type: String
+
+  /// The bucket (project or circle) the recording lives in.
+  @required
+  bucket_id: Long
+
+  /// The person the action is attributed to.
+  @required
+  creator_id: PersonId
+
+  /// The agent that carried out a delegated action; `null` on the wire when the
+  /// action was performed directly. The effective performer — used by the
+  /// `performers`/`exclude_performers` filters — is this when present, else
+  /// `creator_id`.
+  performed_by_id: PersonId
+
+  /// The recording the event references.
+  @required
+  recording_id: RecordingId
+
+  @required
+  created_at: ISO8601Timestamp
+
+  /// Type-specific details, carried verbatim as a JSON document — present only
+  /// for the types that publish one, absent (not empty) for every other type.
+  /// `boost.created` publishes `boost_id`, plus `boosted_event_id` and
+  /// `boosted_event_type`, both `null` for a boost on the recording itself
+  /// (`boosted_event_type` also `null` when the boosted event's kind is not
+  /// cataloged); `card.moved` publishes `column_id` and `previous_column_id`,
+  /// the containing columns (going on hold within a column reports the same
+  /// column twice). Verbatim on purpose: the connector's push lane delivers
+  /// the same object, and a typed projection would drop explicit nulls and
+  /// any member a newly cataloged type adds, making the two lanes disagree.
+  /// Go carries it as `json.RawMessage`; TypeScript `unknown`; Python `Any`;
+  /// Ruby a Hash; Kotlin `JsonElement`; Rust `serde_json::Value`; Swift the
+  /// SDK's `JSONValue` (numbers as `Double`).
+  details: smithy.api#Document
+}
+
+/// Poll the authenticated agent's inbox for the items that addressed it (oldest first, strict item-id order); people receive 403.
+///
+/// The inbox is the low-noise "someone addressed you" lane as its own resource
+/// rather than a filter over the account feed. **Agents only for now**: any
+/// other principal receives 403.
+///
+/// An item is a first-class delivery with its own identity: one event can
+/// address the same principal for several reasons, and each reason is its own
+/// item. Deduplicate by `addressing_id`, never by event id. Items are never
+/// self-addressed, are kept for 30 days, and are dropped at read time when the
+/// event is no longer readable.
+///
+/// **Entry**: `since=0` replays the earliest retained items, `since=now` enters
+/// at the present, `position` resumes. Inbox positions are bound to the
+/// account, the principal, and the filter set, and are never interchangeable
+/// with feed positions.
+///
+/// **Pagination**: the body envelope (`items`, `position`, `next`), exactly as
+/// PollEvents — not the Link header, and not the generic paginator.
+///
+/// **Errors** follow PollEvents, except that 403 carries no body — the agent
+/// guard's bare `head :forbidden` (BareForbiddenError) — and that 410
+/// (FeedPositionGoneError) here means the position fell behind the retention
+/// window: `epoch_after_id` is absent and `resume` re-enters at `since=0`,
+/// the earliest retained item.
+@readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@http(method: "GET", uri: "/{accountId}/inbox.json")
+operation PollInbox {
+  input: PollInboxInput
+  output: PollInboxOutput
+  errors: [BadRequestError, FeedFilterMismatchError, FeedPositionGoneError, UnauthorizedError, BareForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure PollInboxInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  /// Entry point: `0` (earliest retained), `now` (present), or a decimal item
+  /// id to start after.
+  @httpQuery("since")
+  since: String
+
+  /// Resume token from a previous inbox page's `position`.
+  @httpQuery("position")
+  position: String
+
+  /// Comma-separated addressing reasons: `mentioned`, `assigned`, `subscribed`,
+  /// `watched`, `pinged`, `boosted`.
+  @httpQuery("reasons")
+  reasons: String
+
+  /// Comma-separated event types, as a narrowing filter.
+  @httpQuery("types")
+  types: String
+
+  /// Comma-separated bucket ids, as a narrowing filter (at most 100).
+  @httpQuery("buckets")
+  buckets: String
+}
+
+/// The inbox envelope: `items` and `position` on every 200, `next` while the
+/// walk continues.
+structure PollInboxOutput {
+  @required
+  items: InboxItemList
+
+  /// Durable inbox position. Persist only after the page's items have been
+  /// processed.
+  @required
+  position: String
+
+  /// Absolute continuation URL, present only while the walk has more to serve.
+  next: String
+}
+
+list InboxItemList {
+  member: InboxItem
+}
+
+/// One addressed delivery. `addressing_id` is the item's own identity — the
+/// dedupe key — since one event can address the same principal for several
+/// reasons.
+structure InboxItem {
+  @required
+  addressing_id: Long
+
+  /// Why the principal was addressed: `mentioned`, `assigned`, `subscribed`,
+  /// `watched`, `pinged`, or `boosted`.
+  @required
+  reason: String
+
+  @required
+  addressed_at: ISO8601Timestamp
+
+  /// The addressing event, in the feed's shape.
+  @required
+  event: FeedEvent
+}
+
+/// Mint a short-lived stream ticket and the exact WebSocket URL to open a live event stream with.
+///
+/// The ticket is signed and lives about two minutes; the response's `url` is
+/// the one to connect to. Connect to `url` verbatim — never assemble the WebSocket URL (scheme, host,
+/// path, account prefix) client-side; the topology is the server's to change.
+/// Mint a fresh ticket for every connection attempt: tickets expire and are not
+/// refreshed by an open socket. The mint is a stateless signed capability with
+/// no server-side consumption, so a replayed POST is harmless and the operation
+/// is marked idempotent (safe to retry) — deliberately not a claim that two
+/// mints return the same ticket. The ticket is a replayable bearer credential
+/// within its window; `ticket` and `url` are marked sensitive (see StreamTicket).
+///
+/// Serves agent principals as well as people: an agent's client-credentials
+/// token can mint tickets for its own live stream. A ticket minted on a
+/// delegated request carries its agent, so `self` on the socket it opens
+/// resolves to that agent.
+@idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
+@http(method: "POST", uri: "/{accountId}/events/stream_ticket.json")
+operation CreateStreamTicket {
+  input: CreateStreamTicketInput
+  output: CreateStreamTicketOutput
+  errors: [UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure CreateStreamTicketInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+}
+
+/// A minted stream ticket. `url` already carries the ticket in its query
+/// string; connect to it verbatim.
+structure CreateStreamTicketOutput {
+  /// The signed ticket — an opaque bearer credential, never parsed or logged.
+  @required
+  @basecampSensitive(category: "credential", redact: true)
+  ticket: StreamTicket
+
+  /// Ticket lifetime in seconds (about 120). Server-owned: expiry is arbitrated
+  /// by the server, so mint fresh per connection rather than scheduling on it.
+  @required
+  expires_in: Integer
+
+  /// The exact WebSocket URL to connect to, ticket included. Sensitive because
+  /// it embeds the ticket.
+  @required
+  @basecampSensitive(category: "credential", redact: true)
+  url: StreamTicketUrl
+}
+
 // ===== Recording Operations =====
 
 /// List recordings of a given type across projects
@@ -7487,6 +7893,14 @@ structure WebhookEvent {
   created_at: ISO8601Timestamp
   recording: Recording
   creator: Person
+
+  /// The agent that carried out the action when it was performed on the
+  /// creator's behalf — same shape and semantics as `Event.performed_by`
+  /// (`personable_type` `Agent`, or `Tombstone` for a deleted agent). Omitted
+  /// for actions performed directly. Documented in bc3
+  /// doc/api/sections/webhooks.md ("Delegated events").
+  performed_by: Person
+
   copy: WebhookCopy
 }
 
@@ -7549,6 +7963,16 @@ structure Event {
   created_at: ISO8601Timestamp
   @required
   creator: Person
+
+  /// The agent that carried out the action when it was performed on the
+  /// creator's behalf (a delegated action): a person object in the same shape
+  /// as `creator`, with `personable_type` `Agent` — or `Tombstone` once the
+  /// agent has been deleted, since historical events keep their performer.
+  /// `creator` stays the person the action is attributed to. Absent for
+  /// actions performed directly; presence is the durable signal that an agent
+  /// acted. Documented in bc3 doc/api/sections/events.md ("Delegated events").
+  performed_by: Person
+
   boosts_count: Integer
   boosts_url: String
 }

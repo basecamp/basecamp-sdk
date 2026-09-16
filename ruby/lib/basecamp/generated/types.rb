@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-09-10T03:48:29Z
+# Generated: 2026-09-16T08:42:38Z
 
 require "json"
 require "time"
@@ -1724,7 +1724,7 @@ module Basecamp
     # Event
     class Event
       include TypeHelpers
-      attr_accessor :action, :created_at, :creator, :id, :recording_id, :boosts_count, :boosts_url, :details
+      attr_accessor :action, :created_at, :creator, :id, :recording_id, :boosts_count, :boosts_url, :details, :performed_by
 
       # @return [Array<Symbol>]
       def self.required_fields
@@ -1740,6 +1740,7 @@ module Basecamp
         @boosts_count = parse_integer(data["boosts_count"])
         @boosts_url = data["boosts_url"]
         @details = parse_type(data["details"], "EventDetails")
+        @performed_by = parse_type(data["performed_by"], "Person")
       end
 
       def to_h
@@ -1752,6 +1753,7 @@ module Basecamp
           "boosts_count" => @boosts_count,
           "boosts_url" => @boosts_url,
           "details" => @details,
+          "performed_by" => @performed_by,
         }.compact
       end
 
@@ -1858,6 +1860,49 @@ module Basecamp
           "url" => @url,
           "visible_to_clients" => @visible_to_clients,
           "width" => @width,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # FeedEvent
+    class FeedEvent
+      include TypeHelpers
+      attr_accessor :action, :bucket_id, :created_at, :creator_id, :event_type, :id, :kind, :recording_id, :details, :performed_by_id
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[action bucket_id created_at creator_id event_type id kind recording_id].freeze
+      end
+
+      def initialize(data = {})
+        @action = data["action"]
+        @bucket_id = parse_integer(data["bucket_id"])
+        @created_at = parse_datetime(data["created_at"])
+        @creator_id = parse_integer(data["creator_id"])
+        @event_type = data["event_type"]
+        @id = parse_integer(data["id"])
+        @kind = data["kind"]
+        @recording_id = parse_integer(data["recording_id"])
+        @details = data["details"]
+        @performed_by_id = data["performed_by_id"]
+      end
+
+      def to_h
+        {
+          "action" => @action,
+          "bucket_id" => @bucket_id,
+          "created_at" => @created_at,
+          "creator_id" => @creator_id,
+          "event_type" => @event_type,
+          "id" => @id,
+          "kind" => @kind,
+          "recording_id" => @recording_id,
+          "details" => @details,
+          "performed_by_id" => @performed_by_id,
         }.compact
       end
 
@@ -2508,6 +2553,37 @@ module Basecamp
           "forwards_count" => @forwards_count,
           "forwards_url" => @forwards_url,
           "position" => @position,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # InboxItem
+    class InboxItem
+      include TypeHelpers
+      attr_accessor :addressed_at, :addressing_id, :event, :reason
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[addressed_at addressing_id event reason].freeze
+      end
+
+      def initialize(data = {})
+        @addressed_at = parse_datetime(data["addressed_at"])
+        @addressing_id = parse_integer(data["addressing_id"])
+        @event = parse_type(data["event"], "FeedEvent")
+        @reason = data["reason"]
+      end
+
+      def to_h
+        {
+          "addressed_at" => @addressed_at,
+          "addressing_id" => @addressing_id,
+          "event" => @event,
+          "reason" => @reason,
         }.compact
       end
 
@@ -5695,7 +5771,7 @@ module Basecamp
     # WebhookEvent
     class WebhookEvent
       include TypeHelpers
-      attr_accessor :copy, :created_at, :creator, :details, :id, :kind, :recording
+      attr_accessor :copy, :created_at, :creator, :details, :id, :kind, :performed_by, :recording
 
       def initialize(data = {})
         @copy = parse_type(data["copy"], "WebhookCopy")
@@ -5704,6 +5780,7 @@ module Basecamp
         @details = data["details"]
         @id = parse_integer(data["id"])
         @kind = data["kind"]
+        @performed_by = parse_type(data["performed_by"], "Person")
         @recording = parse_type(data["recording"], "Recording")
       end
 
@@ -5715,6 +5792,7 @@ module Basecamp
           "details" => @details,
           "id" => @id,
           "kind" => @kind,
+          "performed_by" => @performed_by,
           "recording" => @recording,
         }.compact
       end

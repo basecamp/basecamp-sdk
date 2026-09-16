@@ -320,3 +320,8 @@ apply GetFolder @tags(["Folders"])
 apply CreateFolder @tags(["Folders"])
 apply UpdateFolder @tags(["Folders"])
 apply DeleteFolder @tags(["Folders"])
+
+// Event Feed (account-wide feed, agent inbox, stream tickets; SPEC.md §23)
+apply PollEvents @tags(["EventFeed"])
+apply PollInbox @tags(["EventFeed"])
+apply CreateStreamTicket @tags(["EventFeed"])

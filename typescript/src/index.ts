@@ -327,6 +327,12 @@ export {
 } from "./generated/services/bookmarks.js";
 
 export {
+  EventFeedService,
+  type PollEventsEventFeedOptions,
+  type PollInboxEventFeedOptions,
+} from "./generated/services/event-feed.js";
+
+export {
   BubbleUpsService,
   type CreateBubbleUpBubbleUpRequest,
 } from "./generated/services/bubble-ups.js";

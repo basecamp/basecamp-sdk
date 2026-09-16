@@ -529,6 +529,93 @@ func summarizeTemplateLibrary(library *basecamp.TemplateLibrary) map[string]inte
 	return result
 }
 
+// summarizeEventFeedPage flattens a poll page into top-level scalars. Null and
+// absence are reported as boolean predicates (first_performed_by_null,
+// first_has_details) because a responseBody path is a top-level key only.
+func summarizeEventFeedPage(page *basecamp.EventFeedPage) map[string]interface{} {
+	result := map[string]interface{}{
+		"event_count": len(page.Events),
+		"position":    page.Position,
+		"has_next":    page.Next != "",
+	}
+	if len(page.Events) == 0 {
+		return result
+	}
+	first := page.Events[0]
+	result["first_event_id"] = first.ID
+	result["first_event_type"] = first.EventType
+	result["first_recording_id"] = first.RecordingID
+	result["first_performed_by_null"] = first.PerformedByID == nil
+	result["first_has_details"] = first.Details != nil
+	for _, event := range page.Events {
+		if event.Details == nil {
+			continue
+		}
+		// Details are verbatim JSON; decode the members this fixture pins.
+		var details struct {
+			BoostID          *int64  `json:"boost_id"`
+			BoostedEventID   *int64  `json:"boosted_event_id"`
+			BoostedEventType *string `json:"boosted_event_type"`
+			ColumnID         *int64  `json:"column_id"`
+			PreviousColumnID *int64  `json:"previous_column_id"`
+		}
+		if err := json.Unmarshal(event.Details, &details); err != nil {
+			continue
+		}
+		var keys map[string]json.RawMessage
+		_ = json.Unmarshal(event.Details, &keys)
+		_, hasBoostedID := keys["boosted_event_id"]
+		_, hasBoostedType := keys["boosted_event_type"]
+		if details.BoostID != nil {
+			if hasBoostedID && hasBoostedType && details.BoostedEventID == nil && details.BoostedEventType == nil {
+				// A boost on the recording itself: both boosted_* members are
+				// explicit nulls on the wire, and the verbatim bytes keep them.
+				result["recording_boost_id"] = *details.BoostID
+				result["recording_boost_nulls"] = true
+			} else {
+				result["boost_id"] = *details.BoostID
+				if event.PerformedByID != nil {
+					result["boost_performed_by_id"] = *event.PerformedByID
+				}
+				if details.BoostedEventID != nil {
+					result["boosted_event_id"] = *details.BoostedEventID
+				}
+				if details.BoostedEventType != nil {
+					result["boosted_event_type"] = *details.BoostedEventType
+				}
+			}
+		}
+		if details.ColumnID != nil {
+			result["moved_column_id"] = *details.ColumnID
+		}
+		if details.PreviousColumnID != nil {
+			result["moved_previous_column_id"] = *details.PreviousColumnID
+		}
+	}
+	return result
+}
+
+// summarizeInboxPage flattens an inbox page into top-level scalars.
+func summarizeInboxPage(page *basecamp.InboxPage) map[string]interface{} {
+	result := map[string]interface{}{
+		"item_count": len(page.Items),
+		"position":   page.Position,
+		"has_next":   page.Next != "",
+	}
+	if len(page.Items) == 0 {
+		return result
+	}
+	first := page.Items[0]
+	last := page.Items[len(page.Items)-1]
+	result["first_addressing_id"] = first.AddressingID
+	result["first_reason"] = first.Reason
+	result["first_event_id"] = first.Event.ID
+	result["first_event_type"] = first.Event.EventType
+	result["last_addressing_id"] = last.AddressingID
+	result["last_reason"] = last.Reason
+	return result
+}
+
 func summarizeProjectConstruction(construction *basecamp.ProjectConstruction) map[string]interface{} {
 	return map[string]interface{}{"id": construction.ID, "status": construction.Status}
 }
@@ -825,6 +912,31 @@ func executeOperation(ctx context.Context, account *basecamp.AccountClient, tc T
 			return operationResult{err: err}
 		}
 		return operationResult{result: summarizeTemplateLibraryCopy(libraryCopy)}
+
+	case "PollEvents":
+		page, err := account.EventFeed().PollEvents(ctx, &basecamp.PollEventsOptions{Since: basecamp.SinceNow})
+		if err != nil {
+			return operationResult{err: err}
+		}
+		return operationResult{result: summarizeEventFeedPage(page)}
+
+	case "PollInbox":
+		page, err := account.EventFeed().PollInbox(ctx, &basecamp.PollInboxOptions{Since: basecamp.SinceNow})
+		if err != nil {
+			return operationResult{err: err}
+		}
+		return operationResult{result: summarizeInboxPage(page)}
+
+	case "CreateStreamTicket":
+		ticket, err := account.EventFeed().CreateStreamTicket(ctx)
+		if err != nil {
+			return operationResult{err: err}
+		}
+		return operationResult{result: map[string]interface{}{
+			"ticket":     ticket.Ticket,
+			"expires_in": ticket.ExpiresIn,
+			"url":        ticket.URL,
+		}}
 
 	case "CreateProject":
 		name := getStringParam(tc.RequestBody, "name")

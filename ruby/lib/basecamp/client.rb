@@ -536,6 +536,12 @@ module Basecamp
       service(:bookmarks) { Services::BookmarksService.new(self) }
     end
 
+    # The account event feed, the agent inbox, and stream tickets (SPEC §23 wire layer).
+    # @return [Services::EventFeedService]
+    def event_feed
+      service(:event_feed) { Services::EventFeedService.new(self) }
+    end
+
     # @return [Services::BubbleUpsService]
     def bubble_ups
       service(:bubble_ups) { Services::BubbleUpsService.new(self) }

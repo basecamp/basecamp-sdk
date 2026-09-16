@@ -10,6 +10,7 @@ public struct Event: Codable, Sendable {
     public var boostsCount: Int32?
     public var boostsUrl: String?
     public var details: EventDetails?
+    public var performedBy: Person?
 
     public init(
         action: String,
@@ -19,7 +20,8 @@ public struct Event: Codable, Sendable {
         recordingId: Int,
         boostsCount: Int32? = nil,
         boostsUrl: String? = nil,
-        details: EventDetails? = nil
+        details: EventDetails? = nil,
+        performedBy: Person? = nil
     ) {
         self.action = action
         self.createdAt = createdAt
@@ -29,5 +31,6 @@ public struct Event: Codable, Sendable {
         self.boostsCount = boostsCount
         self.boostsUrl = boostsUrl
         self.details = details
+        self.performedBy = performedBy
     }
 }

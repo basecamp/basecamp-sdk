@@ -95,6 +95,10 @@ val AccountClient.documents: com.basecamp.sdk.services.DocumentsService
 val AccountClient.drafts: DraftsService
     get() = service("Drafts") { DraftsService(this) }
 
+/** EventFeed operations. */
+val AccountClient.eventFeed: EventFeedService
+    get() = service("EventFeed") { EventFeedService(this) }
+
 /** Events operations. */
 val AccountClient.events: EventsService
     get() = service("Events") { EventsService(this) }

@@ -462,6 +462,10 @@ func webhookEventFromGenerated(ge generated.WebhookEvent) WebhookEvent {
 	}
 
 	// Map top-level creator
+	if ge.PerformedBy != nil {
+		performer := webhookPersonFromGenerated(*ge.PerformedBy)
+		event.PerformedBy = &performer
+	}
 	if ge.Creator != nil {
 		event.Creator = webhookPersonFromGenerated(*ge.Creator)
 	}
@@ -512,6 +516,10 @@ func webhookPersonFromGenerated(gp generated.Person) WebhookEventPerson {
 	if gp.Bio != nil {
 		bio := *gp.Bio
 		p.Bio = &bio
+	}
+	if gp.Tagline != nil {
+		tagline := *gp.Tagline
+		p.Tagline = &tagline
 	}
 	if gp.Location != nil {
 		location := *gp.Location

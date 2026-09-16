@@ -316,6 +316,18 @@
         ]
       }
     },
+    "CreateStreamTicket": {
+      "idempotent": true,
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
     "CreateTemplate": {
       "retry": {
         "max": 2,
@@ -2554,6 +2566,30 @@
         ]
       }
     },
+    "PollEvents": {
+      "readonly": true,
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
+    "PollInbox": {
+      "readonly": true,
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
     "PrioritizeAssignment": {
       "idempotent": true,
       "retry": {
@@ -3390,6 +3426,10 @@
       "$.title",
       "$.company_name"
     ],
+    "CreateStreamTicketOutput": [
+      "$.ticket",
+      "$.url"
+    ],
     "MyAssignmentAssignee": [
       "$.name",
       "$.avatar_url"
@@ -3433,6 +3473,8 @@
     "PersonBio",
     "PersonLocation",
     "PersonName",
-    "PersonTitle"
+    "PersonTitle",
+    "StreamTicket",
+    "StreamTicketUrl"
   ]
 }

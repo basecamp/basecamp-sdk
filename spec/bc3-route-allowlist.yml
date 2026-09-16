@@ -96,6 +96,44 @@ scope_aliases:
 # ---------------------------------------------------------------------------
 sdk_routes_absent_from_bc3_docs:
   - method: GET
+    path: /events
+    reason: >-
+      PollEvents. Documented in bc3 master's doc/api/sections/event_feed.md
+      ("Poll events") by bc3 #13049 (95cd1d290f, merged 2026-09-15), which is
+      past the revision spec/api-provenance.json currently pins, so the vendored
+      route table cannot see it yet. Drawn at config/routes.rb as
+      `resources :events, only: :index`; EventsController#index (with
+      `allow_agent_principal`) renders app/views/api/events/index.json.jbuilder
+      (the {events, position, next} envelope) and is covered by
+      test/controllers/events_controller_test.rb. Delete this entry at the next
+      repin, when the route lands in spec/bc3-routes.json and the gate reports it
+      stale.
+
+  - method: GET
+    path: /inbox
+    reason: >-
+      PollInbox. Same event_feed.md ("Poll the inbox"), documented by bc3 #13058
+      (188b97cab7, merged 2026-09-15) past the current pin. Drawn as
+      `resource :inbox, only: :show, as: :event_inbox, controller:
+      "events/inboxes"`; Events::InboxesController#show (agents only — a person
+      principal gets 403 from `require_agent_principal`) renders
+      app/views/api/events/inboxes/show.json.jbuilder and is covered by
+      test/controllers/events/inboxes_controller_test.rb. Not the Inbox tool's
+      /buckets/:id/inboxes/:id (GetInbox), which keeps its own controller.
+      Delete at the next repin.
+
+  - method: POST
+    path: /events/stream_ticket
+    reason: >-
+      CreateStreamTicket. Same event_feed.md ("Create a stream ticket"), bc3
+      #13049 past the current pin. Drawn as `resource :stream_ticket, only:
+      :create` inside `namespace :events`; Events::StreamTicketsController#create
+      answers `render json: { ticket:, expires_in:, url: }` (no app/views/api
+      template needed) and is covered by
+      test/controllers/events/stream_tickets_controller_test.rb. Delete at the
+      next repin.
+
+  - method: GET
     path: /card_tables/steps/:id
     reason: >-
       bc3 draws it at config/routes.rb:167 (resources :steps, only: %i[show update

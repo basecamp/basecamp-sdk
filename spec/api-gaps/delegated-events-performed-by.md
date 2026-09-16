@@ -1,9 +1,12 @@
 ---
 gap: delegated-events-performed-by
-status: addressed-in-bc3-pr-13040
+status: absorbed-in-sdk
 detected: 2026-08-31
 sdk_demand: low
 bc3_pr: 13040
+smithy_refs:
+  - Event.performed_by
+  - WebhookEvent.performed_by
 bc3_refs:
   introduced_in: "Port delegated-events API docs back from the bc-api mirror (BC3 #13040; first documented in bc-api #436)"
   routes:
@@ -54,3 +57,11 @@ docs to `doc/api/`, keeping it the mirror's superset source of truth.
 A follow-up spec PR adds the optional member, regenerates all six SDKs, and
 extends an events fixture with a delegated entry so the coverage gates hold
 the shape. No service or route changes.
+
+Absorbed alongside the event-feed wire layer: `Event.performed_by` and
+`WebhookEvent.performed_by` are optional `Person` members in
+`spec/basecamp.smithy`, regenerated into every SDK, and the Go wrappers
+(`Event.PerformedBy`, `WebhookEvent.PerformedBy`) map them. `personable_type`
+stays an open string in every SDK, so `Agent` and `Tombstone` decode without a
+closed enum to widen. The account feed's rows carry the id form,
+`performed_by_id`, on `FeedEvent`.
