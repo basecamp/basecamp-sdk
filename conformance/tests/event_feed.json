@@ -1,7 +1,7 @@
 [
   {
     "name": "PollEvents decodes the poll envelope",
-    "description": "The account event feed's poll lane answers with a body envelope — `events`, `position`, and `next` while the walk continues — not a bare array and not a Link-header page. The four rows cover the shape's variants: a plain pointer with a null `performed_by_id` and no `details`; a delegated `boost.created` on an event, with a numeric `performed_by_id` and all three boost details; a `card.moved` with column details; and a `boost.created` on the recording itself, whose `boosted_event_id` and `boosted_event_type` are explicit nulls. Every runner summarizes the DECODED page into flat scalars (a responseBody path is a top-level key only), and null/absence is asserted through boolean predicates because the SDKs disagree about presence but agree about null. No mock runner consumes queryParams and no assertion can pin a query string, so the dispatch fixes `since=now`.",
+    "description": "The account event feed's poll lane answers with a body envelope — `events`, `position`, and `next` while the walk continues — not a bare array and not a Link-header page. The four rows cover the shape's variants: a plain pointer with a null `performed_by_id` and no `details`; a delegated `boost.created` on an event, with a numeric `performed_by_id` and all three boost details; a `card.moved` with column details; and a `boost.created` on the recording itself, whose `boosted_event_id` and `boosted_event_type` are explicit nulls. Every runner summarizes the DECODED page into flat scalars (a responseBody path is a top-level key only), and null/absence is asserted through boolean predicates because the SDKs disagree about presence but agree about null. No mock runner consumes queryParams and no assertion can pin a query string, so the dispatch fixes `since=now`. The Link header is relative on purpose, where bc3 sends it absolute beside the absolute body `next`: it resolves against the request, which makes it same-origin in every runner whatever origin that runner mocks; any walker that follows it makes a second request and requestCount catches it, instead of hinging on each walker's cross-origin refusal (Kotlin and Swift fail earlier, at the runner's compile; Rust's link-style method never walks, so its guard is the route-table test). has_next reads the body, so nothing depends on the header's form.",
     "operation": "PollEvents",
     "method": "GET",
     "path": "/events.json",
@@ -11,7 +11,7 @@
         "headers": {
           "Content-Type": "application/json",
           "X-Feed-Position": "posAAA",
-          "Link": "<https://3.basecampapi.com/999/events.json?position=posAAA>; rel=\"next\""
+          "Link": "</999/events.json?position=posAAA>; rel=\"next\""
         },
         "body": {
           "events": [
@@ -314,6 +314,57 @@
       { "type": "responseBody", "path": "first_event_type", "expected": "comment.created" },
       { "type": "responseBody", "path": "last_addressing_id", "expected": 992 },
       { "type": "responseBody", "path": "last_reason", "expected": "assigned" }
+    ],
+    "tags": ["event-feed", "inbox", "decode"]
+  },
+  {
+    "name": "PollInbox answers one page and never walks the continuation",
+    "description": "The inbox lane declares @basecampPagination(style: \"cursor\"), which generates no walk: one call answers one page, and the caller follows `next` itself. The mock serves both continuation signals at once — the envelope's absolute `next`, which has_next decodes, and a `Link: rel=\"next\"` header — because the Link header is precisely what the link style follows, so serving one is how a generated walk gets caught. The Link is relative on purpose, as pagination.json's are: it resolves against the request, so it is same-origin in every runner whatever origin that runner mocks, and any walker that follows it makes a second request that requestCount catches, rather than depending on each walker's cross-origin refusal, which a wrapper walking same-origin links only would slip past (Kotlin and Swift fail earlier, at the runner's compile; Rust's link-style method never walks, so its guard is the route-table test). Flattening the pages would swallow the per-page `position`, which is the only thing a crashed consumer can resume from.",
+    "operation": "PollInbox",
+    "method": "GET",
+    "path": "/inbox.json",
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json",
+          "X-Feed-Position": "inboxPosAAA",
+          "Link": "</999/inbox.json?position=inboxPosAAA>; rel=\"next\""
+        },
+        "body": {
+          "items": [
+            {
+              "addressing_id": 993,
+              "reason": "pinged",
+              "addressed_at": "2026-07-14T06:10:00.159Z",
+              "event": {
+                "id": 1071915471,
+                "kind": "comment_created",
+                "action": "created",
+                "created_at": "2026-07-14T06:10:00.159Z",
+                "event_type": "comment.created",
+                "bucket_id": 2085958499,
+                "creator_id": 1049715945,
+                "performed_by_id": null,
+                "recording_id": 1069479766
+              }
+            }
+          ],
+          "position": "inboxPosAAA",
+          "next": "https://3.basecampapi.com/999/inbox.json?position=inboxPosAAA"
+        }
+      }
+    ],
+    "assertions": [
+      { "type": "noError" },
+      { "type": "requestCount", "expected": 1 },
+      { "type": "requestMethod", "expected": "GET" },
+      { "type": "requestPath", "expected": "/999/inbox.json" },
+      { "type": "responseBody", "path": "item_count", "expected": 1 },
+      { "type": "responseBody", "path": "position", "expected": "inboxPosAAA" },
+      { "type": "responseBody", "path": "has_next", "expected": true },
+      { "type": "responseBody", "path": "first_addressing_id", "expected": 993 },
+      { "type": "responseBody", "path": "first_reason", "expected": "pinged" }
     ],
     "tags": ["event-feed", "inbox", "decode"]
   },

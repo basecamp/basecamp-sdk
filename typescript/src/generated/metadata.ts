@@ -36,7 +36,7 @@ export interface MetadataOutput {
 const metadata: MetadataOutput = {
   "$schema": "https://basecamp.com/schemas/sdk-metadata.json",
   "version": "1.0.0",
-  "generated": "2026-09-16T11:59:59.451Z",
+  "generated": "2026-09-16T13:06:18.082Z",
   "operations": {
     "GetAccount": {
       "retry": {
@@ -1109,6 +1109,11 @@ const metadata: MetadataOutput = {
           429,
           503
         ]
+      },
+      "pagination": {
+        "style": "cursor",
+        "key": "events",
+        "maxPageSize": 100
       }
     },
     "CreateStreamTicket": {
@@ -1230,6 +1235,11 @@ const metadata: MetadataOutput = {
           429,
           503
         ]
+      },
+      "pagination": {
+        "style": "cursor",
+        "key": "items",
+        "maxPageSize": 100
       }
     },
     "GetForward": {

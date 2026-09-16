@@ -7372,13 +7372,16 @@ structure ListEventsOutput {
 // `position` is the durable cursor and whose `next` (present only while the
 // current walk has more to serve) is an absolute continuation URL for the same
 // operation. The `Link: rel="next"` and `X-Feed-Position` headers merely echo
-// those two body members. These operations therefore carry no
-// @basecampPagination trait and are deliberately NOT wired into the generic
-// Link-following paginator: flattening pages would swallow the per-page
-// `position` that is the only thing a consumer may persist. Follow `next` by
-// re-issuing the same operation with the query it carries (a `position` plus
-// the canonical filters), and poll again later from `position` once `next` is
-// absent.
+// those two body members. The two poll lanes therefore declare
+// @basecampPagination(style: "cursor") — the mode that says one call answers
+// one page and generates no walk at all. They are still NOT wired into the
+// Link-following paginator, and declaring the style is what says so on the
+// wire contract rather than by omission: flattening pages would swallow the
+// per-page `position` that is the only thing a consumer may persist. Follow
+// `next` by re-issuing the same operation with the query it carries (a
+// `position` plus the canonical filters), and poll again later from `position`
+// once `next` is absent. CreateStreamTicket mints one ticket per call and
+// pages in no sense, so it carries no pagination trait.
 //
 // Filters are comma-joined strings, not repeated query members: bc3 accepts the
 // comma form and the `key[]=` array form, and a repeated scalar key would be
@@ -7395,10 +7398,11 @@ structure ListEventsOutput {
 /// resumes from a token a previous page issued — signed, opaque, bound to the
 /// account and the filter set.
 ///
-/// **Pagination**: the body envelope, not the Link header. `position` is the
-/// durable cursor (persist it only after processing the page's events); `next`
-/// is an absolute continuation URL present only while this walk has more to
-/// serve. Not wired into the generic Link paginator — see the section note.
+/// **Pagination**: cursor style — the body envelope, not the Link header.
+/// `position` is the durable cursor (persist it only after processing the
+/// page's events); `next` is an absolute continuation URL present only while
+/// this walk has more to serve. One call answers one page; no generator emits
+/// a walk for the cursor style — see the section note.
 ///
 /// **Errors.** 400 (FeedRequestError) for a malformed position (resume with
 /// `since=`) or a malformed filter (fix the filters; a position reset will not
@@ -7407,6 +7411,7 @@ structure ListEventsOutput {
 /// different filter set. 410 (FeedPositionGoneError) when the position predates
 /// the feed's epoch; its `resume` re-enters at the epoch.
 @readonly
+@basecampPagination(style: "cursor", key: "events", maxPageSize: 100)
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "GET", uri: "/{accountId}/events.json")
 operation PollEvents {
@@ -7559,8 +7564,9 @@ structure FeedEvent {
 /// account, the principal, and the filter set, and are never interchangeable
 /// with feed positions.
 ///
-/// **Pagination**: the body envelope (`items`, `position`, `next`), exactly as
-/// PollEvents — not the Link header, and not the generic paginator.
+/// **Pagination**: cursor style, exactly as PollEvents — the body envelope
+/// (`items`, `position`, `next`), not the Link header and not the generic
+/// paginator. Up to 100 items per page.
 ///
 /// **Errors** follow PollEvents (FeedRequestError 400, FeedFilterMismatchError
 /// 409), except that 403 carries no body — the agent guard's bare
@@ -7569,6 +7575,7 @@ structure FeedEvent {
 /// is no epoch, and `resume` re-enters at `since=0`, the earliest retained item
 /// — not the feed's recovery, and not interchangeable with it.
 @readonly
+@basecampPagination(style: "cursor", key: "items", maxPageSize: 100)
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "GET", uri: "/{accountId}/inbox.json")
 operation PollInbox {
