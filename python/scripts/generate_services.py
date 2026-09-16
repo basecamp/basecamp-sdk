@@ -59,6 +59,7 @@ SERVICE_SPLITS: dict[str, dict[str, list[str]]] = {
             "GetCardColumn", "UpdateCardColumn", "SetCardColumnColor",
             "EnableCardColumnOnHold", "DisableCardColumnOnHold",
             "CreateCardColumn", "MoveCardColumn",
+            "SubscribeToCardColumn", "UnsubscribeFromCardColumn",
         ],
         "CardSteps": [
             "GetCardStep", "CreateCardStep", "UpdateCardStep", "SetCardStepCompletion",

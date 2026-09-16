@@ -22,6 +22,7 @@ apply CreateTodosetTodo @tags(["Todos"])
 apply ReplaceTodo @tags(["Todos"])
 apply CompleteTodo @tags(["Todos"])
 apply UncompleteTodo @tags(["Todos"])
+apply RepositionTodo @tags(["Todos"])
 apply GetTodoset @tags(["Todos"])
 apply GetHillChart @tags(["Todos"])
 apply UpdateHillChartSettings @tags(["Todos"])
@@ -128,6 +129,8 @@ apply MoveCardColumn @tags(["Card Tables"])
 apply SetCardColumnColor @tags(["Card Tables"])
 apply EnableCardColumnOnHold @tags(["Card Tables"])
 apply DisableCardColumnOnHold @tags(["Card Tables"])
+apply SubscribeToCardColumn @tags(["Card Tables"])
+apply UnsubscribeFromCardColumn @tags(["Card Tables"])
 apply GetCardStep @tags(["Card Tables"])
 apply CreateCardStep @tags(["Card Tables"])
 apply UpdateCardStep @tags(["Card Tables"])
@@ -143,6 +146,7 @@ apply GetPerson @tags(["People"])
 apply GetMyProfile @tags(["People"])
 apply ListProjectPeople @tags(["People"])
 apply ListPingablePeople @tags(["People"])
+apply ListAssignablePeople @tags(["People"])
 apply UpdateProjectAccess @tags(["People"])
 apply UpdateProjectClientAccess @tags(["People"])
 apply EnableProjectClients @tags(["People"])
@@ -217,6 +221,18 @@ apply GetAnswer @tags(["Automation"])
 apply CreateAnswer @tags(["Automation"])
 apply UpdateAnswer @tags(["Automation"])
 
+// Checkins (question reminders, pausing, answerers, notification settings)
+// New domain tag: these question operations had no tag, and no existing
+// domain tag fit. The questionnaire/question/answer CRUD ops above stay under
+// Automation for now; consolidating the whole check-in family under Checkins
+// is a follow-up editorial call left to the maintainers.
+apply GetQuestionReminders @tags(["Checkins"])
+apply ListQuestionAnswerers @tags(["Checkins"])
+apply GetAnswersByPerson @tags(["Checkins"])
+apply UpdateQuestionNotificationSettings @tags(["Checkins"])
+apply PauseQuestion @tags(["Checkins"])
+apply ResumeQuestion @tags(["Checkins"])
+
 // Account
 apply GetAccount @tags(["Account"])
 apply UpdateAccountName @tags(["Account"])
@@ -257,6 +273,20 @@ apply GetEverythingCompletedCards @tags(["Everything"])
 apply GetEverythingUnassignedCards @tags(["Everything"])
 apply GetEverythingNoDueDateCards @tags(["Everything"])
 apply GetEverythingNotNowCards @tags(["Everything"])
+
+// Reports (account-wide report reads). New domain tag mirroring the Reports
+// service the SDK generators already emit for this family (each generator's
+// SERVICE_SPLITS routes these here while they are untagged); tagging them keeps
+// the generated grouping byte-identical and gives catalog.Load one tag per op.
+apply GetProgressReport @tags(["Reports"])
+apply GetUpcomingSchedule @tags(["Reports"])
+apply GetAssignedTodos @tags(["Reports"])
+apply GetOverdueTodos @tags(["Reports"])
+apply GetPersonProgress @tags(["Reports"])
+
+// Timeline (project/person activity feed). New domain tag mirroring the
+// existing Timeline service.
+apply GetProjectTimeline @tags(["Timeline"])
 
 // My Notifications
 apply GetMyNotifications @tags(["MyNotifications"])
