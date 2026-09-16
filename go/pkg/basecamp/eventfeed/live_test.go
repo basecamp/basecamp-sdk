@@ -96,6 +96,7 @@ func TestLiveMinter(t *testing.T) {
 		{"a Retry-After on a 404 is still unrecoverable", 404, "5", `{"error":"gone"}`, eventfeed.MintUnrecoverable, 0},
 		{"a 200 that does not decode is unrecoverable", 200, "", `{"ticket": `, eventfeed.MintUnrecoverable, 0},
 		{"a malformed success is unrecoverable", 200, "", `{"ticket":"","expires_in":120,"url":""}`, eventfeed.MintUnrecoverable, 0},
+		{"a non-positive lifetime is a malformed success", 200, "", `{"ticket":"t","expires_in":0,"url":"wss://cable.example.test/1?ticket=t"}`, eventfeed.MintUnrecoverable, 0},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -314,6 +315,75 @@ func TestLivePolls_RefusesAContinuationWhoseQueryDoesNotParse(t *testing.T) {
 	}
 	if strings.Contains(pe.Error(), "pos%ZZ") {
 		t.Fatalf("PollError renders the continuation: %s", pe.Error())
+	}
+}
+
+// TestLivePolls_RefusesAContinuationWithoutACursor: a followed URL that
+// carries filters but no position or since would re-issue as a bare present
+// entry; a value the wrapper cannot parse yields a fixed cause, never the value.
+func TestLivePolls_RefusesAContinuationWithoutACursor(t *testing.T) {
+	f := newLiveFixture(t, eventfeed.AccountLane, func(w http.ResponseWriter, r *http.Request) {
+		jsonResponse(w, 200, `{"events":[],"position":"p"}`)
+	})
+	for name, next := range map[string]string{
+		"no cursor":     f.server.URL + "/99999/events.json?types=message.created",
+		"both cursors":  f.server.URL + "/99999/events.json?position=p&since=now",
+		"bad filter id": f.server.URL + "/99999/events.json?position=p&buckets=leaked-secret",
+	} {
+		t.Run(name, func(t *testing.T) {
+			_, err := f.live.Polls().Poll(context.Background(), eventfeed.Cursor{PageURL: next}, eventfeed.Filters{})
+			var pe *eventfeed.PollError
+			if !errors.As(err, &pe) || pe.Kind != eventfeed.PollUnrecoverable {
+				t.Fatalf("error = %v, want unrecoverable", err)
+			}
+			if strings.Contains(pe.Error(), "leaked-secret") {
+				t.Fatalf("PollError renders the continuation's value: %s", pe.Error())
+			}
+		})
+	}
+	if f.requests.Load() != 0 {
+		t.Fatalf("requests = %d, want none", f.requests.Load())
+	}
+}
+
+// TestLivePolls_AMalformedLocationIsARefusedHop: net/http refuses a 3xx whose
+// Location does not parse before any policy runs; the seam still classifies it
+// as a refused hop rather than a transport failure to retry into.
+func TestLivePolls_AMalformedLocationIsARefusedHop(t *testing.T) {
+	f := newLiveFixture(t, eventfeed.AccountLane, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Location", "http://[::1]:namedport/leak")
+		w.WriteHeader(http.StatusFound)
+	})
+	_, err := f.live.Polls().Poll(context.Background(), eventfeed.Cursor{Position: "pos-0"}, eventfeed.Filters{})
+	var pe *eventfeed.PollError
+	if !errors.As(err, &pe) || pe.Kind != eventfeed.PollRedirectRefused || pe.LocationOrigin != "unparsable" {
+		t.Fatalf("error = %v, want redirect_refused with the unparsable token", err)
+	}
+	if strings.Contains(pe.Error(), "leak") {
+		t.Fatalf("PollError renders the malformed Location: %s", pe.Error())
+	}
+}
+
+// TestLivePolls_TheClientsOwnTimeoutIsTransient: the HTTP client's timeout
+// surfaces as a wrapped DeadlineExceeded while the connector's context is
+// live; that is a transport failure to retry, not the connector's cancellation.
+func TestLivePolls_TheClientsOwnTimeoutIsTransient(t *testing.T) {
+	f := &liveFixture{}
+	f.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		<-r.Context().Done()
+	}))
+	t.Cleanup(f.server.Close)
+	cfg := basecamp.DefaultConfig()
+	cfg.BaseURL = f.server.URL
+	live, err := eventfeed.NewLive(cfg, &basecamp.StaticTokenProvider{Token: "t"}, "99999", eventfeed.AccountLane,
+		basecamp.WithMaxRetries(0), basecamp.WithTimeout(50*time.Millisecond))
+	if err != nil {
+		t.Fatalf("NewLive: %v", err)
+	}
+	_, err = live.Polls().Poll(context.Background(), eventfeed.Cursor{Since: "now"}, eventfeed.Filters{})
+	var pe *eventfeed.PollError
+	if !errors.As(err, &pe) || pe.Kind != eventfeed.PollTransient {
+		t.Fatalf("error = %v, want transient for the client's own timeout", err)
 	}
 }
 

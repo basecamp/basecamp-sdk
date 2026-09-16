@@ -152,7 +152,7 @@ func ExportSubscribeFrame(f Filters) []byte {
 // error that never reached the wire.
 func ExportMapPollErrorKind(err error) PollErrorKind {
 	var pe *PollError
-	if errors.As(mapPollError(err, &refusedHop{}), &pe) {
+	if errors.As(mapPollError(context.Background(), err, &refusedHop{}), &pe) {
 		return pe.Kind
 	}
 	return 0
@@ -161,7 +161,7 @@ func ExportMapPollErrorKind(err error) PollErrorKind {
 // ExportMapMintErrorKind is ExportMapPollErrorKind for the mint seam.
 func ExportMapMintErrorKind(err error) MintErrorKind {
 	var me *MintError
-	if errors.As(mapMintError(err, &refusedHop{}), &me) {
+	if errors.As(mapMintError(context.Background(), err, &refusedHop{}), &me) {
 		return me.Kind
 	}
 	return 0

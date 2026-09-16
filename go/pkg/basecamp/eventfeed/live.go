@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -196,21 +197,24 @@ func (m *liveMinter) MintStreamTicket(ctx context.Context) (StreamTicket, error)
 	ctx, hop := withRefusedHop(ctx)
 	ticket, err := m.svc.CreateStreamTicket(ctx)
 	if err != nil {
-		return StreamTicket{}, mapMintError(err, hop)
+		return StreamTicket{}, mapMintError(ctx, err, hop)
 	}
-	if ticket == nil || ticket.Ticket == "" || ticket.URL == "" {
-		// A malformed success: the mint answered 200 without the credential
-		// or the URL the connector must dial. Nothing to dial and nothing a
-		// retry changes.
-		return StreamTicket{}, &MintError{Kind: MintUnrecoverable, Err: errors.New("the mint returned no ticket or no url")}
+	if ticket == nil || ticket.Ticket == "" || ticket.URL == "" || ticket.ExpiresIn <= 0 {
+		// A malformed success: the mint answered 200 without the credential,
+		// the URL the connector must dial, or a positive lifetime. Nothing
+		// to dial and nothing a retry changes.
+		return StreamTicket{}, &MintError{Kind: MintUnrecoverable, Err: errors.New("the mint returned no ticket, no url, or no lifetime")}
 	}
 	return StreamTicket{Ticket: ticket.Ticket, ExpiresIn: ticket.ExpiresIn, URL: ticket.URL}, nil
 }
 
 // mapMintError maps a CreateStreamTicket outcome onto exactly one MintErrorKind.
-func mapMintError(err error, hop *refusedHop) error {
-	if isCancellation(err) {
+func mapMintError(ctx context.Context, err error, hop *refusedHop) error {
+	if isCancellation(ctx, err) {
 		return err
+	}
+	if isMalformedRedirect(err) {
+		return &MintError{Kind: MintUnrecoverable, Err: errHopRefused}
 	}
 	var apiErr *basecamp.Error
 	if errors.As(err, &apiErr) && isRedirectStatus(apiErr.HTTPStatus) {
@@ -306,6 +310,9 @@ func (p *livePolls) pollEvents(ctx context.Context, cursor Cursor, filters Filte
 		}
 		parsed, err := basecamp.PollEventsOptionsFromURL(cursor.PageURL)
 		if err != nil {
+			return PollPage{}, &PollError{Kind: PollUnrecoverable, Err: errContinuationUnparsable}
+		}
+		if err := checkContinuationCursor(parsed.Position, parsed.Since); err != nil {
 			return PollPage{}, &PollError{Kind: PollUnrecoverable, Err: err}
 		}
 		opts = parsed
@@ -324,7 +331,7 @@ func (p *livePolls) pollEvents(ctx context.Context, cursor Cursor, filters Filte
 	ctx, hop := withRefusedHop(ctx)
 	page, err := p.svc.PollEvents(ctx, opts)
 	if err != nil {
-		return PollPage{}, mapPollError(err, hop)
+		return PollPage{}, mapPollError(ctx, err, hop)
 	}
 	if page == nil {
 		return PollPage{}, &PollError{Kind: PollUnrecoverable, Err: errors.New("the poll returned no page")}
@@ -348,6 +355,9 @@ func (p *livePolls) pollInbox(ctx context.Context, cursor Cursor, filters Filter
 		}
 		parsed, err := basecamp.PollInboxOptionsFromURL(cursor.PageURL)
 		if err != nil {
+			return PollPage{}, &PollError{Kind: PollUnrecoverable, Err: errContinuationUnparsable}
+		}
+		if err := checkContinuationCursor(parsed.Position, parsed.Since); err != nil {
 			return PollPage{}, &PollError{Kind: PollUnrecoverable, Err: err}
 		}
 		opts = parsed
@@ -363,7 +373,7 @@ func (p *livePolls) pollInbox(ctx context.Context, cursor Cursor, filters Filter
 	ctx, hop := withRefusedHop(ctx)
 	page, err := p.svc.PollInbox(ctx, opts)
 	if err != nil {
-		return PollPage{}, mapPollError(err, hop)
+		return PollPage{}, mapPollError(ctx, err, hop)
 	}
 	if page == nil {
 		return PollPage{}, &PollError{Kind: PollUnrecoverable, Err: errors.New("the poll returned no page")}
@@ -393,9 +403,18 @@ const positionRejectedMessage = "Unrecognized position"
 
 // mapPollError maps a PollEvents/PollInbox outcome onto exactly one
 // PollErrorKind (SPEC.md §23 "Seam Contracts").
-func mapPollError(err error, hop *refusedHop) error {
-	if isCancellation(err) {
+func mapPollError(ctx context.Context, err error, hop *refusedHop) error {
+	if isCancellation(ctx, err) {
 		return err
+	}
+	if isMalformedRedirect(err) {
+		// A 3xx whose Location net/http could not parse fails before any
+		// policy runs and would otherwise read as a transport failure and
+		// be retried into forever; it is a refused hop with no origin to
+		// report. The url.Error's text — which renders the header — is
+		// dropped here; the operation hooks upstream of this seam still
+		// receive it (the residual named on the PR).
+		return &PollError{Kind: PollRedirectRefused, LocationOrigin: "unparsable", Err: errHopRefused}
 	}
 	var apiErr *basecamp.Error
 	if errors.As(err, &apiErr) && isRedirectStatus(apiErr.HTTPStatus) {
@@ -454,10 +473,37 @@ func isRedirectStatus(status int) bool {
 	return status >= 300 && status <= 399
 }
 
-// isCancellation reports a context-driven end to the call, which the seam
-// returns as-is: the connector cancelled it and reads the context, not a kind.
-func isCancellation(err error) bool {
-	return errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded)
+// isCancellation reports an end to the call driven by the CONNECTOR's own
+// context, which the seam returns as-is: the connector cancelled it and reads
+// the context, not a kind. Judged on the context's state, not on the error
+// alone — the HTTP client's own timeout also surfaces as a wrapped
+// DeadlineExceeded, and that one is a transport failure to classify.
+func isCancellation(ctx context.Context, err error) bool {
+	return ctx.Err() != nil && (errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded))
+}
+
+// isMalformedRedirect reports net/http's own refusal of a 3xx whose Location
+// header did not parse — raised before any redirect policy runs, so the seam
+// never recorded a hop for it.
+func isMalformedRedirect(err error) bool {
+	var urlErr *url.Error
+	return errors.As(err, &urlErr) && urlErr.Err != nil && strings.HasPrefix(urlErr.Err.Error(), "failed to parse Location header")
+}
+
+// errContinuationUnparsable is the fixed cause for a continuation whose query
+// the wrapper could not turn into options: the wrapper's own error names the
+// offending value, which is server-chosen text a rendering must not carry.
+var errContinuationUnparsable = errors.New("eventfeed: the continuation URL carries a filter value that does not parse")
+
+// checkContinuationCursor requires a followed URL to carry exactly one cursor
+// — a position or a since — so a server URL that omits it, or spells it under
+// a key the parser does not know, is never re-issued as a bare present entry
+// that commits the head and skips the rest of the walk.
+func checkContinuationCursor(position, since string) error {
+	if (position == "") == (since == "") {
+		return errors.New("eventfeed: the continuation URL must carry exactly one of position and since")
+	}
+	return nil
 }
 
 // eventFromFeed maps the wrapper's FeedEvent onto the connector's Event. The
