@@ -631,16 +631,14 @@ class TestMalformedResponseFields:
             pytest.param([{"id": None}], id="null-id"),
             pytest.param([{"id": 2**63}], id="id-beyond-int64"),
             # A plain numeric string is NOT here any more, and was wrong to be:
-            # the normalizer converts it before this guard sees it, and the
-            # reference accepts it too (Go's generated `Person.Id` is
-            # `types.FlexibleInt64`). The guard reads one directly now as well,
-            # for a person the normalizer never reached -- see
+            # the reference accepts it (Go's generated `Person.Id` is
+            # `types.FlexibleInt64`). The normalizer does not reach schedule
+            # participants, so the guard reads the string itself -- see
             # `test_edit_reads_the_participant_ids_the_reference_reads`.
             #
-            # A string past int64 still belongs here. The normalizer leaves it
-            # exactly as it arrived -- that is the RANGE outcome, and the whole
-            # point of leaving it is that the next reader refuses rather than
-            # inventing an id -- so this guard is the reader that refuses.
+            # A string past int64 still belongs here: that is the RANGE outcome
+            # of the same scan, and the reference's decoder fails the read on
+            # it rather than inventing an id.
             pytest.param([{"id": "9223372036854775808"}], id="range-string-id"),
         ],
     )

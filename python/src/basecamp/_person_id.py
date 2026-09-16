@@ -139,9 +139,10 @@ def coerce_person_id(obj: MutableMapping[str, Any]) -> None:
       it. The readers that do refuse it are the ones with a Go struct behind
       them: ``services/_campfire_index._decoded_flexible_int64`` raises
       "overflows int64", and ``services/_merge_safe`` refuses a RANGE
-      refusal as not a person id. Coercing it here instead -- which ``int()`` was doing -- hands
-      back a Python arbitrary-precision int for a value that does not fit the
-      wire's ``int64``, and every reader downstream then believes it.
+      refusal as not a person id. Coercing it here instead -- which ``int()``
+      was doing -- hands back a Python arbitrary-precision int for a value that
+      does not fit the wire's ``int64``, and every reader downstream then
+      believes it.
 
     An object whose ``id`` is already a number, or absent, is left alone -- which
     is also what makes this IDEMPOTENT, and :func:`normalize_person_ids` depends

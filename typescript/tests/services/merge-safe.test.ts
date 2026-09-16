@@ -10,10 +10,14 @@
  *
  * Every expectation is the reference's, measured through its own todos Update
  * and schedules EditEntry composites (`Person.Id` is `types.FlexibleInt64`, and
- * `fieldsFromTodo` appends whatever that produced with no filter) — with ONE
- * deliberate exception, marked where it appears: an id past 2^53 the reference
- * reads as a number is refused here, because JavaScript has already rounded it
- * and the only alternative is writing a different person's id.
+ * `fieldsFromTodo` appends whatever that produced with no filter) — with two
+ * exceptions, both JavaScript's number boundary, marked where they appear. An
+ * id past 2^53 the reference reads as a number is refused here, because it has
+ * already been rounded and the alternative is writing a different person's id.
+ * And a JSON number spelled `1024.0` or `1e3`, which the reference refuses, is
+ * accepted: `JSON.parse` hands the guard `1024` and `1000`, so there is nothing
+ * left to tell apart. That second row is pinned below too, so a change in
+ * either direction is a decision rather than an accident.
  */
 import { describe, it, expect } from "vitest";
 import { writableIdList } from "../../src/services/merge-safe.js";
@@ -67,6 +71,14 @@ describe("writableIdList", () => {
   ])("refuses %s", (_label, id) => {
     expect(() => read([{ id, name: "Jane" }])).toThrow(BasecampError);
     expect(() => read([{ id, name: "Jane" }])).toThrow(/"assignees"\[0\]\.id is not a person id/);
+  });
+
+  it("accepts an integral-float or exponent JSON number, which the reference refuses", () => {
+    // A RESIDUAL DIVERGENCE, pinned so it is not mistaken for correctness: Go's
+    // decoder refuses `1024.0` and `1e3` as person ids. `JSON.parse` has already
+    // turned both into integers, so they are indistinguishable here.
+    const parsed = JSON.parse('{"assignees":[{"id":1024.0},{"id":1e3}]}') as Record<string, unknown>;
+    expect(writableIdList(parsed, "assignees", opts)).toEqual([1024, 1000]);
   });
 
   it("refuses a non-object element and a non-array field", () => {

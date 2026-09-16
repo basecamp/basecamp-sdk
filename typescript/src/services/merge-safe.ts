@@ -226,14 +226,22 @@ export function writableBoolean(
  * The analogue of {@link writableString} for the ID-list fields. The `.map()`
  * it replaces (`(body[key] ?? []).map((p) => p.id)`) has three ways to go wrong
  * on malformed data: a non-array has no `.map` (a raw `TypeError`), a
- * non-object element yields `undefined`, and a non-integer `id` rides through
+ * non-object element yields `undefined`, and a wrong-typed `id` rides through
  * verbatim into the full-replace PUT — the same corruption as a wrong-typed
  * string, one level down.
  *
- * `Number.isInteger` is the test rather than `typeof === "number"`: `1.5` and
- * `NaN` are numbers and neither is a person ID. Booleans fail it outright,
- * which is what we want — JavaScript would happily coerce `true` to `1`
- * downstream.
+ * What it must NOT do is refuse an id the reference accepts. A person id is the
+ * one field the reference decodes flexibly (`Person.Id` is
+ * `types.FlexibleInt64`), and its projection appends what that produced with no
+ * filter, `0` included. So a STRING id is read by the shared `ParseInt` scan,
+ * an absent id is `0` and a `null` element is `0`; the per-branch comments
+ * below give the reasons.
+ *
+ * Two residuals are JavaScript's, not choices this could make differently: a
+ * number past 2^53 is refused (`Number.isSafeInteger`) rather than written as a
+ * rounded, different person's id, where the reference reads it; and a JSON
+ * number spelled `1024.0` or `1e3` is accepted, where the reference refuses it,
+ * because `JSON.parse` has already made it an integer.
  */
 export function writableIdList(
   body: Record<string, unknown>,
