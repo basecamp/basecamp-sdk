@@ -64,6 +64,18 @@ func TestNewValidation(t *testing.T) {
 		{"negative live buffer capacity", testOrigin, "1", minter, polls,
 			[]eventfeed.Option{eventfeed.WithLiveBufferCapacity(-1)},
 			"live buffer capacity"},
+		// Both capacities are pre-allocated at construction, so a value the
+		// schema already forbids is an allocation the process cannot decline
+		// rather than a slow run. Refused here, where the loader reaches them.
+		{"dedupe capacity over the ceiling", testOrigin, "1", minter, polls,
+			[]eventfeed.Option{eventfeed.WithDedupeCapacity(eventfeed.MaxCapacity + 1)},
+			"at most"},
+		{"dedupe capacity at int32 max", testOrigin, "1", minter, polls,
+			[]eventfeed.Option{eventfeed.WithDedupeCapacity(2147483647)},
+			"at most"},
+		{"live buffer capacity over the ceiling", testOrigin, "1", minter, polls,
+			[]eventfeed.Option{eventfeed.WithLiveBufferCapacity(eventfeed.MaxCapacity + 1)},
+			"at most"},
 		{"non-positive confirmation deadline", testOrigin, "1", minter, polls,
 			[]eventfeed.Option{eventfeed.WithConfirmationDeadline(0)},
 			"confirmation deadline"},

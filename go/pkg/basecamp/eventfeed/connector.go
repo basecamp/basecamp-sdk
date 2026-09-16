@@ -23,6 +23,14 @@ const (
 	// WithLiveBufferCapacity; deliberately decoupled from the dedupe
 	// capacity — only event-bearing frames are buffered).
 	DefaultLiveBufferCapacity = 10_000
+	// MaxCapacity bounds both configurable capacities, matching the ceiling
+	// the conformance schema already declares. Both are pre-allocated the
+	// moment the connector is constructed — the dedupe index sizes its map to
+	// the capacity — so an absurd value is not a slow run, it is an allocation
+	// the process cannot decline. A fixture asking for 2,147,483,647 reached
+	// that allocation through the Go loader and took the test process with it,
+	// where the schema-checked path would have rejected it at load.
+	MaxCapacity = 1_000_000
 
 	// handshakeDeadline (EVENT_FEED_HANDSHAKE_DEADLINE, 10s) spans
 	// dial-to-welcome: it is armed on entry to Connecting, before dial, so a
@@ -416,8 +424,14 @@ func validateConfig(cfg *config) error {
 	if cfg.dedupeCapacity <= 0 {
 		return usageError(fmt.Sprintf("dedupe capacity must be positive, got %d", cfg.dedupeCapacity))
 	}
+	if cfg.dedupeCapacity > MaxCapacity {
+		return usageError(fmt.Sprintf("dedupe capacity must be at most %d, got %d", MaxCapacity, cfg.dedupeCapacity))
+	}
 	if cfg.liveBufferCapacity <= 0 {
 		return usageError(fmt.Sprintf("live buffer capacity must be positive, got %d", cfg.liveBufferCapacity))
+	}
+	if cfg.liveBufferCapacity > MaxCapacity {
+		return usageError(fmt.Sprintf("live buffer capacity must be at most %d, got %d", MaxCapacity, cfg.liveBufferCapacity))
 	}
 	if cfg.confirmationDeadline <= 0 {
 		return usageError("confirmation deadline must be positive")
