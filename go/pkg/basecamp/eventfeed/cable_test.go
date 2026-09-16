@@ -742,7 +742,7 @@ func TestDecodeInboxItem(t *testing.T) {
 		if err != nil {
 			t.Fatalf("decodeInboxItem: %v", err)
 		}
-		if ev.ActorType != ActorTypeAgent || ev.VisibleToClients == nil || ev.PerformedByID == nil || *ev.PerformedByID != 9 {
+		if ev.ActorType != ActorTypeAgent || ev.VisibleToClients == nil || *ev.VisibleToClients || ev.PerformedByID == nil || *ev.PerformedByID != 9 {
 			t.Errorf("event = %+v, want the push fields carried through", ev)
 		}
 	})
