@@ -36,11 +36,26 @@ from basecamp.services._campfire_index import MAX_CAMPFIRE_CANDIDATES, AsyncCamp
 from basecamp.services.recordings import _READS, summarizable_event_types, summarizable_recording_types
 from tests.person_id_corpus import PERSON_ID_CORPUS
 
-#: The shared person-id corpus in this table's shape. A `"refuse"` row fails the
-#: read; a `"label"` row is the system-actor 0, because a Go `int64` field has
-#: nowhere to put the `system_label` the pre-decode normalizer writes.
+#: The shared person-id corpus in this table's shape: `(wire id, fails, the
+#: creator the projection returns)`. A `"refuse"` row fails the read.
+#:
+#: A `"label"` row is the system-actor 0 AND carries a `system_label`, because
+#: the creator here sits at a `creator` key, which is one of the two structural
+#: positions the pre-decode normalizer's second pass finds
+#: (`go/pkg/basecamp/normalize.go:83-104`) -- so the string is already 0-with-a-
+#: label by the time `_decoded_flexible_int64` reads it. Go's own summary has no
+#: label on this path: its `generated.Person.Id` is `FlexibleInt64`, which
+#: converts at read time and has nowhere to put one, and Go runs the normalizer
+#: on the notification and gauge paths rather than this one. That is the
+#: documented Python breadth difference (this SDK normalizes every response
+#: body) and it is additive -- an extra key beside the id Go agrees on, never a
+#: different id.
 _FLEXIBLE_STRING_ROWS = [
-    (raw, kind == "refuse", None if kind == "refuse" else (value if kind == "value" else 0))
+    (
+        raw,
+        kind == "refuse",
+        None if kind == "refuse" else ({"id": value} if kind == "value" else {"id": 0, "system_label": raw}),
+    )
     for raw, kind, value in PERSON_ID_CORPUS
 ]
 
@@ -340,7 +355,7 @@ class TestProjection:
     # real generated types -- not derived from this implementation.
     @respx.mock
     @pytest.mark.parametrize(
-        ("creator_id", "fails", "decoded"),
+        ("creator_id", "fails", "creator"),
         [
             # The STRING rows are the shared corpus, one table for every site
             # that reads a person id off the wire (see `tests.person_id_corpus`
@@ -354,8 +369,8 @@ class TestProjection:
             # strings and the id grammar has nothing to say about them. `null`
             # IS an error here, where a plain int64 field reads it as 0 -- the
             # two rules are neighbours and differ.
-            (7, False, 7),
-            (-7, False, -7),
+            (7, False, {"id": 7}),
+            (-7, False, {"id": -7}),
             (None, True, None),
             (True, True, None),
             (7.0, True, None),
@@ -364,11 +379,11 @@ class TestProjection:
             # side of a boundary the corpus crosses only at uint64: the tail is
             # reached in both, so both are the system-actor 0 even though the
             # digits ahead of it are past int64.
-            ("9223372036854775807x", False, 0),
-            ("-9223372036854775809x", False, 0),
+            ("9223372036854775807x", False, {"id": 0, "system_label": "9223372036854775807x"}),
+            ("-9223372036854775809x", False, {"id": 0, "system_label": "-9223372036854775809x"}),
         ],
     )
-    def test_a_creator_id_follows_the_flexible_int64_rule(self, creator_id, fails, decoded):
+    def test_a_creator_id_follows_the_flexible_int64_rule(self, creator_id, fails, creator):
         respx.get(f"{BASE}/comments/1").mock(
             return_value=httpx.Response(200, json={"id": 1, "type": "Comment", "creator": {"id": creator_id}})
         )
@@ -377,7 +392,7 @@ class TestProjection:
                 _account().recordings.summarize(bucket_id=BUCKET, recording_id=1, event_type="comment.created")
         else:
             summary = _account().recordings.summarize(bucket_id=BUCKET, recording_id=1, event_type="comment.created")
-            assert summary["creator"] == {"id": decoded}, (
+            assert summary["creator"] == creator, (
                 "Go's decode converts as well as validating; the summary carries the int"
             )
 

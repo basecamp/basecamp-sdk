@@ -9,6 +9,10 @@ flexible id reader in the recording-summary decode
 (``services/_campfire_index.py``). The rule lives HERE so those two cannot drift
 apart; they had two copies of it, and the copies disagreed.
 
+So does the WALK that finds those objects (:func:`normalize_person_ids`), for the
+same reason: the sync and async base services had a copy each, and which people a
+walk finds is as much of the rule as what it does when it finds them.
+
 The grammar is Go's and nothing looser. One optional ASCII ``+`` or ``-``, then
 one or more ASCII digits, and nothing else. Python's built-in ``int()`` is the
 wrong tool in four separate directions, each of them ACCEPTING -- and every
@@ -130,7 +134,11 @@ def coerce_person_id(obj: MutableMapping[str, Any]) -> None:
       back a Python arbitrary-precision int for a value that does not fit the
       wire's ``int64``, and every reader downstream then believes it.
 
-    An object whose ``id`` is already a number, or absent, is left alone.
+    An object whose ``id`` is already a number, or absent, is left alone -- which
+    is also what makes this IDEMPOTENT, and :func:`normalize_person_ids` depends
+    on that. A second call after a value or a label finds an ``int`` and returns;
+    a second call after a range refusal re-reads the same string and refuses it
+    again, for the same reason.
     """
     raw_id = obj.get("id")
     if not isinstance(raw_id, str):
@@ -143,3 +151,84 @@ def coerce_person_id(obj: MutableMapping[str, Any]) -> None:
         obj["id"] = 0
         return
     obj["id"] = outcome
+
+
+def normalize_person_ids(obj: Any) -> None:
+    """Normalize every Person-shaped object in a decoded response body, in place.
+
+    This stands where ``normalizeEmbeddedPeopleJSON`` stands
+    (``go/pkg/basecamp/normalize.go:117-134``), so it owns BOTH of the passes
+    that function runs, and it finds a person TWO ways:
+
+    1. **By ``personable_type``** (``normalizePersonIds``, ``:16-29``) -- any
+       object at any depth carrying that key, whatever its value.
+    2. **By structural position** (``normalizeEmbeddedPersonIds``, ``:83-104``)
+       -- the ``creator`` object and each element of the ``participants`` array,
+       on any object at any depth, WHETHER OR NOT it carries a
+       ``personable_type``.
+
+    The second pass is not redundant, and Go's own comment says why (``:78-82``):
+    embedded creator and participant people frequently omit ``personable_type``,
+    so the first pass skips exactly the payloads the second exists to fix.
+
+    Missing it was observable HERE, where in most ports it would not be. Every
+    port with a runtime decoder behind the normalizer -- Kotlin's
+    ``FlexibleLongSerializer``, Swift's ``FlexibleInt``, Rust's ``flexible_i64``
+    -- converts the string at read time whichever pass did or did not touch it.
+    Python's only such decoder, ``_decoded_flexible_int64``, runs inside the
+    recording-summary composite and nowhere else; the generated services hand
+    back a plain ``dict`` with nothing between it and the wire. So an
+    un-normalized ``creator.id`` reached the caller as the STRING it arrived as,
+    and on a WRITE path it did worse than that: ``services/_merge_safe``'s
+    ``writable_id_list`` requires an ``int``, so a schedule entry whose
+    ``participants`` carry string ids and no ``personable_type`` made
+    ``schedules.edit_entry`` REFUSE a body the reference accepts (Go's generated
+    ``Person.Id`` is ``types.FlexibleInt64``, which reads it as the number). A
+    merge-safe update refusing what the reference accepts is the vanishing
+    direction, on a write.
+
+    ONE walk here where Go runs two, and the two are equivalent because
+    :func:`coerce_person_id` is idempotent and both passes apply it unchanged.
+    A decoded body is a tree, so each node is reached once per pass; the set of
+    coerced nodes is the union of "has ``personable_type``" and "is the
+    ``creator`` or a ``participants`` element of its parent", which is the same
+    set either way; and a node in both sets is coerced twice under both schemes,
+    a no-op the second time. Only the order differs, and idempotence is what
+    makes order not matter. One walk rather than two keeps this off a second
+    full traversal of every response body.
+
+    One deliberate breadth difference from the reference, which pre-dates the
+    second pass: Go runs ``normalizeEmbeddedPeopleJSON`` on the notification and
+    gauge paths specifically, while this runs on every response body. That is
+    wider, never narrower, and wider in the accepting direction -- a string id Go
+    would coerce only on those paths is coerced here everywhere, rather than
+    reaching a caller as a string that no Python decoder is waiting to convert.
+    """
+    if isinstance(obj, list):
+        for item in obj:
+            normalize_person_ids(item)
+        return
+    if not isinstance(obj, dict):
+        return
+    # Pass 1's test is the KEY'S PRESENCE, whatever its value (`:19`), not that
+    # it is a string naming a type.
+    if "personable_type" in obj:
+        coerce_person_id(obj)
+    # Pass 2's type assertions are Go's, mirrored: a `creator` that is not an
+    # object and a `participants` that is not an array are not people, so they
+    # are skipped rather than coerced (`:85-95`). `dict` is what Go's
+    # `.(map[string]any)` accepts and a list is not.
+    creator = obj.get("creator")
+    if isinstance(creator, dict):
+        coerce_person_id(creator)
+    participants = obj.get("participants")
+    if isinstance(participants, list):
+        for participant in participants:
+            if isinstance(participant, dict):
+                coerce_person_id(participant)
+    # Both of Go's passes then recurse through every child, so a creator nested
+    # under a comment under an event is reached at whatever depth it sits
+    # (`:22-24`, `:96-102`).
+    for value in obj.values():
+        if isinstance(value, (dict, list)):
+            normalize_person_ids(value)

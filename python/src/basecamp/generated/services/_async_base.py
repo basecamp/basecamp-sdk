@@ -13,26 +13,13 @@ from basecamp._pagination import (
     selects_single_page,
 )
 from basecamp.errors import ApiError
-from basecamp._person_id import coerce_person_id
+
+# The SAME function object `_base.py` imports, not a second walk that agrees with
+# it today: the sync and async clients cannot answer the same body differently if
+# there is only one answer. Documented at
+# `basecamp._person_id.normalize_person_ids`.
+from basecamp._person_id import normalize_person_ids as _normalize_person_ids
 from basecamp.hooks import OperationInfo, OperationResult, safe_hook
-
-
-def _normalize_person_ids(obj: Any) -> None:
-    """Normalize Person-shaped objects in API responses.
-
-    See _base.py for full docstring. The id rule is NOT copied here: both walks
-    call the one `basecamp._person_id.coerce_person_id`, so the sync and async
-    clients cannot answer the same body differently.
-    """
-    if isinstance(obj, list):
-        for item in obj:
-            _normalize_person_ids(item)
-    elif isinstance(obj, dict):
-        if "personable_type" in obj:
-            coerce_person_id(obj)
-        for val in obj.values():
-            if isinstance(val, (dict, list)):
-                _normalize_person_ids(val)
 
 
 class AsyncBaseService:

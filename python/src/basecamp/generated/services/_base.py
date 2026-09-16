@@ -13,38 +13,23 @@ from basecamp._pagination import (
     selects_single_page,
 )
 from basecamp.errors import ApiError
-from basecamp._person_id import coerce_person_id
+
+# Normalizes Person-shaped objects in API responses: the BC3 API conflates real
+# Person records (numeric id) with system actors like LocalPerson (symbolic id:
+# "basecamp", "campfire"), and serializes person ids as strings in some payloads.
+#
+# Imported rather than written here, and the WALK is imported, not just the id
+# rule. Both halves used to be copied into this file and its async twin, and a
+# copy drifts: which people the walk finds (an object carrying `personable_type`,
+# AND the `creator`/`participants` of any object, at any depth) is as much of the
+# reference's behaviour as what it does when it finds one. Both of Go's passes,
+# the grammar, and why the two files must not hold their own versions are all
+# documented at `basecamp._person_id.normalize_person_ids`.
+from basecamp._person_id import normalize_person_ids as _normalize_person_ids
 from basecamp.hooks import OperationInfo, OperationResult, safe_hook
 
 if TYPE_CHECKING:
     pass
-
-
-def _normalize_person_ids(obj: Any) -> None:
-    """Normalize Person-shaped objects in API responses.
-
-    The BC3 API conflates real Person records (numeric id) with system actors
-    like LocalPerson (symbolic id: "basecamp", "campfire"). For any object
-    with a personable_type field whose id is a string, coerce id to int
-    (0 for non-numeric sentinels) and preserve the original label as
-    system_label.
-
-    The id rule itself is `basecamp._person_id.coerce_person_id` -- shared with
-    the async twin of this file and with the flexible id reader in
-    `services/_campfire_index.py`, because it used to be three copies and they
-    disagreed. It is Go's `strconv.ParseInt(s, 10, 64)` written out rather than
-    Python's `int()`, which accepts whitespace, PEP 515 underscores, Unicode
-    digits and any magnitude at all -- every one of those an id BC3 never wrote.
-    """
-    if isinstance(obj, list):
-        for item in obj:
-            _normalize_person_ids(item)
-    elif isinstance(obj, dict):
-        if "personable_type" in obj:
-            coerce_person_id(obj)
-        for val in obj.values():
-            if isinstance(val, (dict, list)):
-                _normalize_person_ids(val)
 
 
 class BaseService:

@@ -10,9 +10,12 @@ from __future__ import annotations
 import base64
 import json
 
+import httpx
 import pytest
+import respx
 
-from basecamp._person_id import Refusal, coerce_person_id, parse_int64
+from basecamp import Client
+from basecamp._person_id import Refusal, coerce_person_id, normalize_person_ids, parse_int64
 from basecamp.errors import ApiError
 from basecamp.generated.services import _async_base, _base
 from basecamp.mentions import person_id_from_sgid
@@ -128,11 +131,12 @@ class TestThePreDecodeNormalizer:
             # rather than a Python bigint standing in for a wire int64.
             assert normalized == {"personable_type": "User", "id": raw}
 
-    def test_the_sync_and_async_walks_share_one_rule(self):
-        # Not "behave the same today": the SAME function object. They were two
-        # copies of the scan, and two copies drift.
-        assert _base.coerce_person_id is _async_base.coerce_person_id
-        assert _base.coerce_person_id is coerce_person_id
+    def test_the_sync_and_async_walks_are_one_walk(self):
+        # Not "behave the same today": the SAME function object. Both the scan
+        # and the walk around it were copied into the two base files, and both
+        # copies drifted -- the walk by missing a whole pass of the reference.
+        assert _base._normalize_person_ids is _async_base._normalize_person_ids
+        assert _base._normalize_person_ids is normalize_person_ids
 
     def test_an_id_that_is_already_a_number_is_left_alone(self):
         obj = {"personable_type": "User", "id": 1049715915}
@@ -143,6 +147,132 @@ class TestThePreDecodeNormalizer:
         obj = {"personable_type": "LocalPerson", "name": "Basecamp"}
         coerce_person_id(obj)
         assert obj == {"personable_type": "LocalPerson", "name": "Basecamp"}
+
+
+#: Where the walk finds a person, and where the person it found ends up. Go
+#: finds one TWO ways -- by `personable_type`, and by structural position: the
+#: `creator` object and each `participants` element, at any depth, whether or
+#: not they carry that key (`go/pkg/basecamp/normalize.go:83-104`). The three
+#: shapes below the first are the ones the `personable_type` pass alone misses,
+#: and they were 62/74 divergent until the second pass landed.
+_EMBEDDED_SHAPES = {
+    "personable_type person": (
+        lambda raw: {"id": 42, "creator": {"id": raw, "personable_type": "User"}},
+        lambda body: body["unreads"][0]["creator"],
+    ),
+    "bare creator": (
+        lambda raw: {"id": 42, "creator": {"id": raw, "name": "Ann"}},
+        lambda body: body["unreads"][0]["creator"],
+    ),
+    "participants element": (
+        lambda raw: {"id": 42, "participants": [{"id": raw, "name": "Ann"}]},
+        lambda body: body["unreads"][0]["participants"][0],
+    ),
+    "nested creator": (
+        lambda raw: {"id": 42, "recording": {"comment": {"creator": {"id": raw, "name": "Ann"}}}},
+        lambda body: body["unreads"][0]["recording"]["comment"]["creator"],
+    ),
+}
+
+_READINGS_URL = "https://3.basecampapi.com/12345/my/readings.json"
+
+
+def _read_notifications(payload: dict) -> dict:
+    """One real request through the real service, so the walk is exercised where it runs."""
+    from basecamp.generated.services.my_notifications import MyNotificationsService
+
+    respx.get(_READINGS_URL).mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "unreads": [payload],
+                "reads": [],
+                "memories": [],
+                "bubble_ups_count": 0,
+                "scheduled_bubble_ups_count": 0,
+            },
+        )
+    )
+    client = Client(access_token="test-token")
+    try:
+        return MyNotificationsService(client.for_account("12345")).get_my_notifications()
+    finally:
+        client.close()
+
+
+class TestTheWalkFindsAPersonTwoWays:
+    """The second pass: people found by structural position, not by `personable_type`.
+
+    Driven through the request path rather than by calling the walk directly,
+    because "does this run on a real response" is half of what was wrong: the
+    grammar was right and the coverage was not.
+    """
+
+    @respx.mock
+    @pytest.mark.parametrize("shape", list(_EMBEDDED_SHAPES), ids=list(_EMBEDDED_SHAPES))
+    @pytest.mark.parametrize(("raw", "kind", "value"), PERSON_ID_CORPUS, ids=CORPUS_IDS)
+    def test_every_shape_gets_the_same_row_verdict(self, shape, raw, kind, value):
+        build, pick = _EMBEDDED_SHAPES[shape]
+        person = pick(_read_notifications(build(raw)))
+        if kind == "value":
+            assert person["id"] == value
+            assert "system_label" not in person
+        elif kind == "label":
+            assert person["id"] == 0
+            assert person["system_label"] == raw
+        else:
+            assert person["id"] == raw
+            assert "system_label" not in person
+
+    @respx.mock
+    def test_a_creator_that_is_both_kinds_of_person_is_coerced_once(self):
+        # The idempotence the one-walk-for-Go's-two rests on. This node is in
+        # BOTH passes' sets: Go coerces it twice (a no-op the second time, its
+        # id no longer a string), and one walk coerces it once. Same answer, and
+        # the `system_label` must not be re-derived from the coerced id.
+        person = _read_notifications({"id": 42, "creator": {"id": "basecamp", "personable_type": "LocalPerson"}})
+        assert person["unreads"][0]["creator"] == {
+            "id": 0,
+            "system_label": "basecamp",
+            "personable_type": "LocalPerson",
+        }
+
+    def test_coercion_is_idempotent_on_every_row(self):
+        # Stated directly, because the one-walk argument depends on it and a
+        # walk-level test can only reach it by accident.
+        for raw, _, _ in PERSON_ID_CORPUS:
+            once = {"id": raw}
+            coerce_person_id(once)
+            twice = dict(once)
+            coerce_person_id(twice)
+            assert twice == once, raw
+
+    @respx.mock
+    @pytest.mark.parametrize(
+        "payload",
+        [
+            # Go's type assertions, mirrored: `.(map[string]any)` on the creator
+            # and `.([]any)` on participants. Anything else is not a person and
+            # is skipped, not coerced (`normalize.go:85-95`).
+            {"id": 42, "creator": "me"},
+            {"id": 42, "creator": ["7"]},
+            {"id": 42, "creator": 7},
+            {"id": 42, "creator": None},
+            {"id": 42, "participants": {"id": "7"}},
+            {"id": 42, "participants": "everyone"},
+            {"id": 42, "participants": ["7", 7, None]},
+        ],
+    )
+    def test_a_creator_or_participants_that_is_not_a_person_shape_is_left_alone(self, payload):
+        assert _read_notifications(payload)["unreads"][0] == payload
+
+    @respx.mock
+    def test_a_person_key_that_is_not_creator_or_participants_still_needs_personable_type(self):
+        # The second pass is keyed on TWO names, not "anything person-shaped".
+        # `assignees` is not one of them, and Go does not widen it either, so a
+        # string id there stays a string unless the object says what it is.
+        body = _read_notifications({"id": 42, "assignees": [{"id": "7", "name": "Ann"}]})
+        assert body["unreads"][0]["assignees"][0]["id"] == "7"
 
 
 class TestTheFlexibleReader:
