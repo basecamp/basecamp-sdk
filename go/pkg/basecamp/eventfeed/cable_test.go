@@ -726,6 +726,9 @@ func TestDecodeInboxItem(t *testing.T) {
 		if ev.Addressing == nil || ev.Addressing.ID != 991 || ev.Addressing.Reason != "mentioned" {
 			t.Fatalf("Addressing = %+v, want id 991 reason mentioned", ev.Addressing)
 		}
+		if want := time.Date(2026, 8, 1, 12, 0, 1, 0, time.UTC); !ev.Addressing.AddressedAt.Equal(want) {
+			t.Errorf("Addressing.AddressedAt = %v, want %v", ev.Addressing.AddressedAt, want)
+		}
 		if ev.Key() != 991 || ev.ID != 105 {
 			t.Errorf("Key() = %d (ID %d), want the addressing id 991 over event id 105", ev.Key(), ev.ID)
 		}

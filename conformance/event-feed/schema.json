@@ -274,12 +274,45 @@
                       "event"
                     ]
                   }
+                },
+                "expectSubscribe": {
+                  "required": [
+                    "inbox"
+                  ],
+                  "properties": {
+                    "params": {
+                      "not": {
+                        "anyOf": [
+                          {
+                            "required": [
+                              "creators"
+                            ]
+                          },
+                          {
+                            "required": [
+                              "performers"
+                            ]
+                          },
+                          {
+                            "required": [
+                              "exclude_performers"
+                            ]
+                          },
+                          {
+                            "required": [
+                              "actor_types"
+                            ]
+                          }
+                        ]
+                      }
+                    }
+                  }
                 }
               }
             }
           }
         },
-        "description": "An inbox scenario serves {items, position, next} pages and item frames: an `events` envelope or a bare `event` frame is the account feed's shape and cannot certify the inbox lane."
+        "description": "An inbox scenario serves {items, position, next} pages and item frames: an `events` envelope or a bare `event` frame is the account feed's shape and cannot certify the inbox lane. An inbox subscribe expectation carries `inbox: true` and none of the account feed's other dimensions."
       },
       "else": {
         "properties": {
@@ -307,12 +340,28 @@
                       "item"
                     ]
                   }
+                },
+                "expectSubscribe": {
+                  "not": {
+                    "required": [
+                      "inbox"
+                    ]
+                  },
+                  "properties": {
+                    "params": {
+                      "not": {
+                        "required": [
+                          "reasons"
+                        ]
+                      }
+                    }
+                  }
                 }
               }
             }
           }
         },
-        "description": "An account scenario serves {events, position, next} pages and event frames: an `items` envelope or an `item` frame is the inbox lane's shape."
+        "description": "An account scenario serves {events, position, next} pages and event frames: an `items` envelope or an `item` frame is the inbox lane's shape. An account subscribe expectation carries neither `inbox` nor a reasons param."
       }
     }
   ],
@@ -1517,10 +1566,10 @@
           "maximum": 9223372036854775807
         },
         "actor_type": {
-          "enum": [
-            "agent",
-            "person"
-          ]
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[^,\\s\"']+$",
+          "description": "The actor's kind — agent or person today; a server-owned vocabulary the connector never client-validates on the way in."
         },
         "recording_id": {
           "type": "integer",
@@ -2079,10 +2128,10 @@
           "description": "Type-specific detail object, forwarded verbatim (card.moved: column_id / previous_column_id; boost.created: boost_id / boosted_event_id / boosted_event_type). Present only for the types that publish one."
         },
         "actor_type": {
-          "enum": [
-            "agent",
-            "person"
-          ]
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[^,\\s\"']+$",
+          "description": "The actor's kind — agent or person today; a server-owned vocabulary the connector never client-validates on the way in."
         },
         "visible_to_clients": {
           "type": "boolean"
