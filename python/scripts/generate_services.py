@@ -499,8 +499,19 @@ def parse_operation(
     returns_array = (resolved_response or {}).get("type") == "array"
 
     # Pagination
+    # Auto-pagination is the "link" style alone. The generated method follows
+    # Link: rel="next" and flattens the whole walk into one array, which is right
+    # when the only thing a page carries is more items.
+    #
+    # The "cursor" style (the event feed's PollEvents/PollInbox) is declared so
+    # the catalogue and behavior model describe the operation honestly, and
+    # deliberately generates no auto-pagination: each call returns ONE page
+    # carrying its own opaque `position`, which is the durable checkpoint a
+    # consumer persists after accepting that page. Flattening the walk would
+    # swallow every intermediate position and leave a crashed consumer with
+    # nothing to resume from.
     pagination = operation.get("x-basecamp-pagination")
-    has_pagination = pagination is not None
+    has_pagination = (pagination or {}).get("style") == "link"
     pagination_key = (pagination or {}).get("key")
 
     return {

@@ -121,6 +121,56 @@ fn refusal(edit: impl FnOnce(&mut serde_json::Value, &mut serde_json::Value)) ->
     String::from_utf8_lossy(&output.stderr).into_owned()
 }
 
+/// A copy of the mini model with one edit applied, generated into a scratch
+/// directory; answers the generated file at `relative`. The mirror of
+/// `refusal`: for edits the generator must ACCEPT, where the question is what
+/// it emitted rather than what it said.
+fn acceptance(
+    edit: impl FnOnce(&mut serde_json::Value, &mut serde_json::Value),
+    relative: &str,
+) -> String {
+    let root = std::env::temp_dir().join(format!(
+        "basecamp-sdk-generator-acceptance-{}-{:?}-{}",
+        std::process::id(),
+        std::thread::current().id(),
+        rand_suffix()
+    ));
+    let _ = fs::remove_dir_all(&root);
+    fs::create_dir_all(root.join("rust/generator")).unwrap();
+    let mini = fixtures().join("mini");
+    let mut openapi: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(mini.join("openapi.json")).unwrap()).unwrap();
+    let mut behavior: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(mini.join("behavior-model.json")).unwrap())
+            .unwrap();
+    edit(&mut openapi, &mut behavior);
+    fs::write(
+        root.join("openapi.json"),
+        serde_json::to_string_pretty(&openapi).unwrap(),
+    )
+    .unwrap();
+    fs::write(
+        root.join("behavior-model.json"),
+        serde_json::to_string_pretty(&behavior).unwrap(),
+    )
+    .unwrap();
+    fs::copy(
+        mini.join("rust/generator/names.toml"),
+        root.join("rust/generator/names.toml"),
+    )
+    .unwrap();
+    let out = root.join("out");
+    let output = generate(&root, &out);
+    assert!(
+        output.status.success(),
+        "the generator should have accepted: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let rendered = fs::read_to_string(out.join(relative)).unwrap();
+    let _ = fs::remove_dir_all(&root);
+    rendered
+}
+
 fn rand_suffix() -> u64 {
     use std::time::{SystemTime, UNIX_EPOCH};
     u64::try_from(
@@ -199,6 +249,45 @@ fn a_pagination_key_that_is_not_a_required_array_fails_generation() {
     assert!(
         stderr.contains("GetWidgetProgress paginates over `missing`, which is not a member of GetWidgetProgressResponseContent"),
         "{stderr}"
+    );
+}
+
+// The cursor-page mode: declared so the catalogue and behavior model describe
+// the operation honestly, and generating no auto-pagination on purpose. A page
+// carries its own opaque position, and the Link-following walk would flatten
+// the pages and swallow every one of them -- leaving a crashed consumer with
+// nothing to resume from. Before this, `style` was read only to reject
+// anything that was not "link", so the mode the trait has always documented
+// could not be spelled at all.
+#[test]
+fn the_cursor_style_generates_a_single_page_rather_than_a_flattening_walk() {
+    let widgets = acceptance(
+        |openapi, _| {
+            openapi["paths"]["/{accountId}/widgets/{widgetId}/progress.json"]["get"]["x-basecamp-pagination"]
+                ["style"] = serde_json::json!("cursor");
+        },
+        "services/widgets.rs",
+    );
+
+    assert!(
+        widgets.contains("Result<GetWidgetProgressResponseContent, Error>"),
+        "a cursor-page operation returns one page, not a Page<>: {widgets}"
+    );
+    assert!(
+        !widgets.contains("Page<GetWidgetProgressResponseContent>"),
+        "a cursor-page operation must not be wired into the Link-following paginator: {widgets}"
+    );
+}
+
+#[test]
+fn an_unknown_pagination_style_is_still_refused() {
+    let stderr = refusal(|openapi, _| {
+        openapi["paths"]["/{accountId}/widgets/{widgetId}/progress.json"]["get"]["x-basecamp-pagination"]
+            ["style"] = serde_json::json!("page");
+    });
+    assert!(
+        stderr.contains("unsupported pagination style"),
+        "widening the match must not widen it to everything: {stderr}"
     );
 }
 

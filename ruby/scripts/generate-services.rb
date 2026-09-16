@@ -471,7 +471,12 @@ class ServiceGenerator
       returns_array: returns_array,
       returns_bare_array: returns_bare_array,
       is_mutation: http_method != 'GET',
-      has_pagination: !!operation['x-basecamp-pagination'],
+      # Auto-pagination is the "link" style alone: the generated method follows
+      # Link: rel="next" and flattens the walk into one array. The "cursor"
+      # style is declared for the catalogue and generates none -- each call
+      # returns one page carrying its own opaque position, and flattening would
+      # swallow every intermediate one.
+      has_pagination: operation.dig('x-basecamp-pagination', 'style') == 'link',
       pagination_key: operation.dig('x-basecamp-pagination', 'key')
     }
   end
