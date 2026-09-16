@@ -88,13 +88,17 @@ branch, has its contract decisions recorded pre-merge:
    (status `absorbed-in-sdk`). Remaining tail is documentation only:
    `doc/api/sections/tools.md` still documents the removed clone contract
    (bc3#12364).
-4. Account-wide event feed (poll lane + Action Cable push lane) on BC3's
-   unmerged `eventstream+accountid` branch (BC3 #9646/#9659) — **contract
-   decisions recorded pre-merge**, verified at branch head `8be5c67de5`
-   (a branch-head verification record, not a provenance pin): the poll
+4. Account-wide event feed (poll lane + Action Cable push lane), shipped to
+   BC3 `master` on 2026-09-15 (BC3 #13049, #13053, #13056, #13058; earlier
+   lineage `eventstream+accountid`, BC3 #9646/#9659) — **contract decisions
+   recorded pre-merge**, verified at branch head `8be5c67de5` (a
+   branch-head verification record, not a provenance pin) and re-verified
+   against the shipped doc; the generated layer and the gap registry's
+   `absorbed-in-sdk` state are the spec-operations PR's: the poll
    response body envelope `{"events", "position", "next"}` is the contract
    (headers are echoes); the filter digest is published as a versioned
-   `srv1` contract (bare 16-hex on the wire; `srv1-<digest>` is the SDK's
+   contract — `srv1` pre-merge, shipped as `srv2` (a JSON object keyed by
+   present dimension; bare 16-hex on the wire; `srv2-<digest>` is the SDK's
    checkpoint-lineage namespace); the 409 filter-mismatch body names
    `position_digest` and `filters_digest`; the disconnect-reason matrix is
    four rows (including `remote`/reconnect:true server-initiated disconnect

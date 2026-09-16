@@ -275,6 +275,37 @@
           },
           "description": "Filter: creator ids, ≤ 100, positive."
         },
+        "performers": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 100,
+          "items": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "description": "Filter: effective-performer ids, ≤ 100, positive (the server's `self` literal is caller-resolved to an id — SPEC §23 Consumer Surface)."
+        },
+        "exclude_performers": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 100,
+          "items": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "description": "Filter: excluded effective-performer ids, ≤ 100, positive — the loop guard for an acting agent."
+        },
+        "actorTypes": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[^,\\s\"']+$"
+          },
+          "description": "Filter: actor kinds (opt-in, never a default). The vocabulary is server-owned and never client-validated, like types: agent and person today, and a scenario may name an unknown one to draw the filter 400."
+        },
         "position": {
           "type": "string",
           "minLength": 1,
@@ -754,7 +785,7 @@
           "type": "object",
           "additionalProperties": false,
           "minProperties": 1,
-          "description": "Comma-joined filter values as identifier params (class-1 spellings: types/buckets/creators).",
+          "description": "Comma-joined filter values as identifier params (class-1 spellings: types/buckets/creators/performers/exclude_performers/actor_types).",
           "properties": {
             "types": {
               "type": "string",
@@ -765,6 +796,18 @@
               "minLength": 1
             },
             "creators": {
+              "type": "string",
+              "minLength": 1
+            },
+            "performers": {
+              "type": "string",
+              "minLength": 1
+            },
+            "exclude_performers": {
+              "type": "string",
+              "minLength": 1
+            },
+            "actor_types": {
               "type": "string",
               "minLength": 1
             }
@@ -836,6 +879,18 @@
             "creators": {
               "type": "string",
               "minLength": 1
+            },
+            "performers": {
+              "type": "string",
+              "minLength": 1
+            },
+            "exclude_performers": {
+              "type": "string",
+              "minLength": 1
+            },
+            "actor_types": {
+              "type": "string",
+              "minLength": 1
             }
           }
         },
@@ -868,6 +923,18 @@
                   "minLength": 1
                 },
                 "creators": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "performers": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "exclude_performers": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "actor_types": {
                   "type": "string",
                   "minLength": 1
                 }
@@ -948,7 +1015,7 @@
             "status",
             "body"
           ],
-          "description": "409 filter conflict. All three body keys are required on the wire (C-R4; events_controller renders error alongside both digests). Digests are bare 16-hex srv1 (the server never emits the srv1- prefix); only the digest VALUES are class-1-pinned — error content is unconstrained prose.",
+          "description": "409 filter conflict. All three body keys are required on the wire (C-R4; events_controller renders error alongside both digests). Digests are bare 16-hex srv2 (the server never emits the srv2- prefix); only the digest VALUES are class-1-pinned — error content is unconstrained prose.",
           "properties": {
             "status": {
               "const": 409
@@ -974,7 +1041,7 @@
                   "pattern": "^[0-9a-f]{16}$"
                 }
               },
-              "description": "BC3's enriched 409: all three keys are required on the wire (events_controller renders error alongside both digests — C-R4). Only the digest VALUES are class-1-pinned (bare 16-hex srv1); error content is unconstrained prose."
+              "description": "BC3's enriched 409: all three keys are required on the wire (events_controller renders error alongside both digests — C-R4). Only the digest VALUES are class-1-pinned (bare 16-hex srv2); error content is unconstrained prose."
             }
           }
         },
@@ -1097,9 +1164,10 @@
         "created_at",
         "bucket_id",
         "creator_id",
+        "performed_by_id",
         "recording_id"
       ],
-      "description": "Poll-lane event row: 8 keys, and visible_to_clients MUST be absent — additionalProperties:false enforces the push/poll presence asymmetry (class-2).",
+      "description": "Poll-lane event row: 9 required keys (performed_by_id is present and null for a direct action), an optional details object, and neither actor_type nor visible_to_clients — additionalProperties:false enforces the push/poll presence asymmetry (class-2).",
       "properties": {
         "id": {
           "type": "integer",
@@ -1129,9 +1197,20 @@
           "type": "integer",
           "minimum": 1
         },
+        "performed_by_id": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
         "recording_id": {
           "type": "integer",
           "minimum": 1
+        },
+        "details": {
+          "type": "object",
+          "description": "Type-specific detail object, forwarded verbatim (card.moved: column_id / previous_column_id; boost.created: boost_id / boosted_event_id / boosted_event_type). Present only for the types that publish one."
         }
       }
     },
@@ -1146,10 +1225,12 @@
         "created_at",
         "bucket_id",
         "creator_id",
+        "performed_by_id",
+        "actor_type",
         "recording_id",
         "visible_to_clients"
       ],
-      "description": "Push-payload event: all 9 keys required, including visible_to_clients (presence-bearing; absent ≠ false).",
+      "description": "Push-payload event: all 11 keys required — the poll row's nine plus the two transport-only fields actor_type and visible_to_clients (presence-bearing; absent ≠ false) — and an optional details object.",
       "properties": {
         "id": {
           "type": "integer",
@@ -1179,12 +1260,29 @@
           "type": "integer",
           "minimum": 1
         },
+        "performed_by_id": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "actor_type": {
+          "enum": [
+            "agent",
+            "person"
+          ]
+        },
         "recording_id": {
           "type": "integer",
           "minimum": 1
         },
         "visible_to_clients": {
           "type": "boolean"
+        },
+        "details": {
+          "type": "object",
+          "description": "Type-specific detail object, forwarded verbatim (card.moved: column_id / previous_column_id; boost.created: boost_id / boosted_event_id / boosted_event_type). Present only for the types that publish one."
         }
       }
     },

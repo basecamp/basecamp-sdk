@@ -3103,33 +3103,45 @@ event that drew a lower id and commits after entry — permanently behind the en
 so the live buffer is the only carrier of an in-flight-at-entry straggler (see Entry
 Boundary below).
 
-The wire operations beneath the connector — `PollEvents` and `CreateStreamTicket` — are
-ordinary generated operations, tracked in `spec/api-gaps/event-feed.md` until the BC3
-contract merges. The connector performs **no wire I/O of its own** except dialing the mint's
-URL verbatim through the transport seam; every HTTP exchange reaches the wire through a seam
-backed by a generated operation. That is what lets this section fix the connector contract
-ahead of the generated layer landing.
+The wire operations beneath the connector — `PollEvents` and `CreateStreamTicket` (and
+`PollInbox` for the inbox lane) — are ordinary generated operations, tracked in
+`spec/api-gaps/event-feed.md` until the generated layer lands. The connector performs **no
+wire I/O of its own** except dialing the mint's URL verbatim through the transport seam;
+every HTTP exchange reaches the wire through a seam backed by a generated operation. That
+is what lets this section fix the connector contract ahead of the generated layer landing.
 
 ### Provenance `[manual]`
 
-Everything bc3-derived in this section is verified at bc3 `8be5c67de5` (pre-merge; lineage
-`ee19670c02`); re-verified at bc3's merge-time gate. Until that gate clears, the
-bc3-derived material is **PROVISIONAL** — normative for SDK drafting, frozen only at the
-gate — and it comes in two classes with different re-verification mechanics:
+Everything bc3-derived in this section was drafted against bc3 `8be5c67de5` (pre-merge;
+lineage `ee19670c02`) and is now verified against the **shipped** contract:
+`doc/api/sections/event_feed.md` on bc3 `master`, which the feed's merged code matches.
+The feed shipped with more than the pre-merge branch carried — the srv2 digest scheme,
+the `performers` / `exclude_performers` / `actor_types` dimensions, `performed_by_id` and
+`details` on every event, a push-only `actor_type`, the inbox lane, and a 410 `resume`
+that re-enters at the epoch rather than the present — and each of those is reflected
+below. One re-verification step is still owed and keeps the class-1 literals
+**PROVISIONAL**: bc3's wire transcripts have not been regenerated against the shipped
+head, so the literal error-body shapes below are doc-verified, not transcript-frozen.
+The material comes in two classes with different re-verification mechanics:
 
-**Class 1 — wire literals**, frozen when bc3 regenerates transcripts against the rebased
+**Class 1 — wire literals**, frozen when bc3 regenerates transcripts against the shipped
 head:
 
 - disconnect reason strings `unauthorized`, `remote`, `invalid_event_stream_command`;
-- the poll body envelope keys `events` / `position` / `next`;
+- the poll body envelope keys `events` / `position` / `next` (the `X-Feed-Position` and
+  `Link: rel="next"` response headers echo the latter two and are never bound);
+- the event keys — `id`, `kind`, `action`, `event_type`, `bucket_id`, `creator_id`,
+  `performed_by_id` (null when the action was not delegated), `recording_id`,
+  `created_at`, and `details` for the types that publish one;
 - the 409 body's digest keys `position_digest` / `filters_digest`;
 - the 410 body's keys `epoch_after_id` / `resume`;
 - the 400-position and 400-filter error-body shapes (the discriminating matrix, as
   captured in the transcripts);
-- the published srv1 digest vectors (Checkpoint Identity below);
+- the published srv2 digest vectors (Checkpoint Identity below);
 - the mint response body `{ticket, expires_in, url}`;
 - the subscribe identifier literals — channel `EventsChannel`, filter param spellings
-  `types` / `buckets` / `creators`, comma-joined values.
+  `types` / `buckets` / `creators` / `performers` / `exclude_performers` /
+  `actor_types`, comma-joined values.
 
 One literal in that list carries a different verification basis: `remote` has **no
 transcript capture** (none exists in the provisional delivery, and the connection-outcome
@@ -3145,17 +3157,20 @@ so each is re-verified at the gate as its own row (against the rebased source an
   commits after entry (the Entry Boundary section's premise);
 - the best-effort, position-relative ~30-second safety-horizon bound;
 - the frozen-head `next` predicate (when a walk continues vs. terminates);
-- 409/410 re-entry semantics, including that a 410 `resume` URL re-enters at `since=now`
-  with the canonical filter set preserved;
-- the srv1 canonicalization algorithm itself (not just its vectors);
+- 409/410 re-entry semantics, including that a 410 `resume` URL re-enters **at the
+  epoch** with the canonical filter set preserved — positioned in served history, so the
+  servable history above the fence is not skipped;
+- the srv2 canonicalization algorithm itself (not just its vectors), and that the
+  server resolves the `self` performer literal to an id before digesting;
 - ticket statelessness and replayability, and the ~120-second TTL;
 - the 3-second server heartbeat cadence (the input to the SDK's staleness policy);
 - the 400 split's recovery semantics — a malformed-position 400 is recoverable by `since=`
   re-entry, a malformed-filter 400 is not;
 - the subscribe retransmit contract — identical resubscribes silently absorbed, different
   ones rejected;
-- the push payload's shape, including the `visible_to_clients` presence asymmetry (push
-  rows carry it, poll rows omit it);
+- the push payload's shape, including the presence asymmetry of its two transport-only
+  fields, `actor_type` and `visible_to_clients` (push rows carry them, poll rows omit
+  them), and that null-valued fields are present on the wire;
 - the disconnect matrix's completeness at the verified head, including that `unauthorized`
   arrives only pre-welcome.
 
@@ -3163,7 +3178,7 @@ so each is re-verified at the gate as its own row (against the rebased source an
 transitions, the ownership cut and the conjunctive save-ordering invariant (they *respond
 to* class-2 semantics — the premises re-verify at the gate; the discipline stands), the
 semantic-handler contract, the dedupe rule, timer kinds and the virtual-advance algorithm,
-the checkpoint-identity structure with origin canonicalization and the `srv1-` namespace
+the checkpoint-identity structure with origin canonicalization and the `srv2-` namespace
 prefix, continuation/resume-URL validation, the staleness detection policy (7500ms), the
 options surface, and the security invariants.
 
@@ -3228,23 +3243,56 @@ RECORD Event
   created_at         : String       -- ISO 8601
   bucket_id          : Integer
   creator_id         : Integer
+  performed_by_id    : Integer?     -- the agent that carried out a delegated action; null
+                                    -- (present on the wire) for a direct action. The
+                                    -- EFFECTIVE PERFORMER is this id when set, else creator_id
   recording_id       : Integer
+  details            : Object?      -- verbatim, only for the types that publish one
+                                    -- (`card.moved`: column_id, previous_column_id;
+                                    -- `boost.created`: boost_id, boosted_event_id,
+                                    -- boosted_event_type); retained undecoded so ids keep
+                                    -- §10's 64-bit fidelity and new keys survive
+  actor_type         : String?      -- push-only transport field: push payloads carry it,
+                                    -- poll rows omit it. "agent" | "person" today; the
+                                    -- vocabulary is server-owned and, like the type
+                                    -- catalog, never client-validated on the way in
   visible_to_clients : Boolean?     -- presence-bearing: push payloads carry it, poll rows
                                     -- omit it; absent ≠ false. Never a defaulted boolean.
 END
 
 RECORD Filters
-  types    : List<String>?      -- cataloged event types only
-  buckets  : List<Integer>?     -- ≤ 100 ids
-  creators : List<Integer>?     -- ≤ 100 ids
+  types              : List<String>?    -- cataloged event types only
+  buckets            : List<Integer>?   -- ≤ 100 ids
+  creators           : List<Integer>?   -- ≤ 100 ids
+  performers         : List<Integer>?   -- ≤ 100 ids; matched against the effective performer
+  exclude_performers : List<Integer>?   -- ≤ 100 ids; the loop guard for an acting agent
+  actor_types        : List<String>?    -- "agent" | "person"; opt-in, never a default
+  reasons            : List<String>?    -- inbox lane only: mentioned | assigned | subscribed |
+                                        -- watched | pinged | boosted
 END
 ```
 
 All id fields carry §10's 64-bit integer contract; no new type spelling is introduced for
 it.
 
-Filter validation is client-side and fail-closed `[conformance]`: ids must be positive; type
-strings non-empty with no commas, whitespace, or quotes; each id list capped at 100. The
+**The `self` literal is resolved by the caller, not the connector.** The server accepts
+`self` in `performers` / `exclude_performers` — the request's effective actor: the agent on
+a delegated (agent-linked) token, otherwise the authenticated person — and resolves it to
+that principal's id before filtering and before digesting, so continuation URLs and
+digests carry the id, never the literal. The connector takes ids only: it performs no wire
+I/O of its own with which to resolve a principal, and the checkpoint key IS the server
+digest, which is defined over the resolved id. A caller wanting the loop guard
+(`exclude_performers=self`, the documented way for an acting agent to avoid hearing its
+own performances without suppressing all agent activity) resolves its own id once through
+the identity surface and passes it as an id; the server treats the two spellings
+identically. The generated `PollEvents` operation accepts the literal directly for one-off
+polls outside the connector.
+
+Filter validation is client-side and fail-closed `[conformance]`: ids must be positive; type,
+actor-type and reason strings non-empty with no commas, whitespace, or quotes; each id list
+capped at 100. Vocabulary membership — the type catalog, the two actor types, the six
+reasons — is server-owned and never client-validated: an unknown value forms a well-defined
+filter key and draws the server's filter 400 on the first poll. The
 capacity options are validated the same way: `dedupeCapacity` and `liveBufferCapacity`
 must be positive (there is no dedupe-disabled mode — a zero capacity would silently break
 the deduplicated-surface promise). A
@@ -3441,9 +3489,10 @@ Two dispatch clarifications, pinned:
 - The subscribe command is built once per connection as an exact byte string:
   `{"command":"subscribe","identifier":"<json-escaped identifier>"}`, where the identifier
   is the JSON-encoded string of an **ordered** object
-  `{"channel":"EventsChannel"[,"types":"a,b"][,"buckets":"1,2"][,"creators":"3"]}` —
-  comma-joined values, fixed key order, absent filters omitted, hand-built rather than
-  map-marshaled so any retransmit is byte-identical. The server absorbs identical
+  `{"channel":"EventsChannel"[,"types":"a,b"][,"buckets":"1,2"][,"creators":"3"][,"performers":"4"][,"exclude_performers":"5"][,"actor_types":"agent"]}`
+  — comma-joined values, fixed key order, absent filters omitted, hand-built rather than
+  map-marshaled so any retransmit is byte-identical. Subscription parameters mirror the
+  poll filters with the same caps; `self` is resolved by the caller (Consumer Surface). The server absorbs identical
   retransmits and rejects different ones.
 - Subscribe is sent on each `welcome` received. Confirm/reject correlation is exact string
   equality against the connector's identifier; frames carrying other identifiers are
@@ -3801,7 +3850,7 @@ RECORD CheckpointKey
   origin             : String   -- canonicalized (Checkpoint Identity below)
   account_id         : String
   consumer_namespace : String   -- required whenever a store is configured
-  filter_key         : String   -- "srv1-" + bare server digest
+  filter_key         : String   -- "srv2-" + bare server digest
 END
 ```
 
@@ -3831,10 +3880,13 @@ configured base origin with §8's Same-Origin Validation Algorithm, and rejects 
 downgrade (HTTPS → HTTP) — the same rule, for the same reason, as §8's pagination `Link`
 rejection: a cross-origin or downgraded URL in a response body must never redirect an
 authenticated request (SSRF and token leakage). A URL that fails validation is
-Terminal(`invalid_continuation`) — no request is issued to the failing URL, and the
-rejected URL is carried redacted (origin only) in the error; a URL that yields no complete
-origin renders the fixed token `unparsable` (§9 "Credential-Bearing Values Are Never
-Rendered"). There is no retry and no handler for this condition: a hostile continuation is
+Terminal(`invalid_continuation`) — no request is issued to the failing URL, and the error
+names only the violation class: no component of the rejected URL is rendered, because a
+hostile continuation is precisely the case where every component is hostile text and the
+server can reflect the caller's bearer into a scheme or host label as easily as into a
+path (§9 "Credential-Bearing Values Are Never Rendered"). The refused Location of a
+redirect reaches the seam's `redirect_refused` kind reduced to its origin as DATA, never a
+rendering. There is no retry and no handler for this condition: a hostile continuation is
 not an operable feed state.
 
 **Prevalidation does not cover redirects, so the poll seam must.** The underlying HTTP
@@ -3940,54 +3992,71 @@ always:
   `:80` for http); no path, query, fragment, or trailing slash — canonical form exactly
   `scheme "://" host [":" nondefault-port]`. Hosts are used as configured after lowercasing
   (no IDN/punycode transformation).
-- `filter_key = "srv1-" + <bare 16-lowercase-hex server digest>`. The **server wire format
+- `filter_key = "srv2-" + <bare 16-lowercase-hex server digest>`. The **server wire format
   is the bare hex** — exactly what the 409 body's `position_digest`/`filters_digest` carry;
-  the server never emits the `srv1-` prefix. It is the SDK-side checkpoint-lineage
-  namespace only.
+  the server never emits the `srv2-` prefix. It is the SDK-side checkpoint-lineage
+  namespace only. `srv2` names the scheme version; any change to the canonicalization or
+  algorithm ships as `srv3` with new vectors, and the namespace moves with it so an old
+  lineage goes cold rather than resuming under a digest that no longer means the same
+  filter set. (`srv1`, the pre-merge positional-array scheme, never shipped.)
 
-**srv1 canonicalization (the published server contract; the SDK implements it as
+**srv2 canonicalization (the published server contract; the SDK implements it as
 published, not as a mirror of server internals):**
 
 ```
 digest = lowercase_hex(SHA-256(UTF-8(canonical_json)))[0:16]   -- 16 hex chars = first 8 bytes
-canonical_json = "[" T "," B "," C "]"     -- compact: no whitespace anywhere
-  T = null if no types,   else a JSON array of the type strings, deduped,
+canonical_json = a JSON OBJECT keyed by dimension name, PRESENT dimensions only, keys
+  sorted bytewise (actor_types, buckets, creators, exclude_performers, performers,
+  reasons, types), compact: no whitespace anywhere, no trailing newline
+  string dimensions (types, actor_types, reasons): a JSON array of the strings, deduped,
       sorted bytewise-ascending over their UTF-8 encodings
-  B = null if no buckets, else a JSON array of integers: base-10 coerced, deduped AFTER
-      coercion ("1" and "01" are one id), numerically ascending, canonical integer
-      rendering (no sign for positives, no leading zeros, no fraction, no exponent)
-  C = same as B, for creators
-  absent list ⇒ null; empty filter set ⇒ the input is exactly [null,null,null]
+  id dimensions (buckets, creators, performers, exclude_performers): a JSON array of
+      integers: base-10 coerced, deduped AFTER coercion ("1" and "01" are one id),
+      numerically ascending, canonical integer rendering (no sign for positives, no
+      leading zeros, no fraction, no exponent); the `self` literal is resolved to the
+      effective actor's id BEFORE digesting and never appears in canonical JSON
+  absent dimension ⇒ no member at all; empty filter set ⇒ the input is exactly {}
   string escaping: RFC 8259 minimal — only ", \, and control characters U+0000–U+001F;
   NO HTML escaping; no \uXXXX for non-control characters
 ```
 
+Keying by name is what makes the scheme extension-stable: an absent dimension
+contributes no bytes, so a filter dimension introduced later never moves the digest of
+any filter set that does not use it.
+
 The canonical bytes are hand-built (string builder plus a minimal escape helper) — no
 language's default JSON emitter is load-bearing, because several HTML-escape by default.
 **The algorithm is total over every client-validated input, and the SDK computes it for
-any filter set that passes construction validation** — catalog membership is deliberately
-NOT client-validated (the catalog is server-owned and grows), and the checkpoint key must
-form before the first poll can answer. A syntactically valid but uncataloged type
-therefore gets a well-defined `filter_key` and its `load` runs normally; the first poll
-then draws the server's filter 400 (Terminal(`filter_invalid`)) and that lineage simply
-never advances — harmless. The *server-side* srv1 domain is the cataloged ASCII type
-strings and integer ids: the server rejects unknown types with the filter 400 before
-computing any digest, which is why bc3 publishes no quoted-string or non-ASCII vectors.
+any filter set that passes construction validation** — vocabulary membership is
+deliberately NOT client-validated (the catalog is server-owned and grows), and the
+checkpoint key must form before the first poll can answer. A syntactically valid but
+uncataloged type therefore gets a well-defined `filter_key` and its `load` runs normally;
+the first poll then draws the server's filter 400 (Terminal(`filter_invalid`)) and that
+lineage simply never advances — harmless. The *server-side* srv2 domain is the cataloged
+type strings, the actor-type strings `agent` and `person`, the six addressing reasons,
+and integer ids: the server rejects unknown values with the filter 400 before computing
+any digest, which is why bc3 publishes no quoted-string or non-ASCII vectors.
 
-Published srv1 vectors (provisional until the merge-time gate; the conformance vector
-source):
+Published srv2 vectors (the conformance vector source, `conformance/event-feed-digest/`;
+the doc calls them stable):
 
 | Input | Canonical JSON | Digest |
 |---|---|---|
-| no filters | `[null,null,null]` | `fe44a8cccd89edae` |
-| `types=message.created` | `[["message.created"],null,null]` | `9eae6bbae1414746` |
-| `types=todo.completed,message.created&buckets=2,1` (unsorted multi-list) | `[["message.created","todo.completed"],[1,2],null]` | `00ed03e6196e77a2` |
-| `buckets=01` (also `buckets=1,01` — post-coercion dedup) | `[null,[1],null]` | `fb19e601cd033cad` |
-| `buckets=1,...,100` (the cap boundary) | `[null,[1,2,...,100],null]` | `832adbc56aa7c8f2` |
+| no filters | `{}` | `44136fa355b3678a` |
+| `types=message.created` | `{"types":["message.created"]}` | `38b223c13c89dc89` |
+| `types=todo.completed,message.created&buckets=2,1` | `{"buckets":[1,2],"types":["message.created","todo.completed"]}` | `90108e436c72bfd1` |
+| `types=todo.completed,message.created&buckets=2,1&creators=9` | `{"buckets":[1,2],"creators":[9],"types":["message.created","todo.completed"]}` | `5d0b83594d8e5630` |
+| `buckets=01` (also `buckets=1,01` — post-coercion dedup) | `{"buckets":[1]}` | `e545e11ffb55966a` |
+| `buckets=1,...,100` (the cap boundary) | `{"buckets":[1,2,...,100]}` | `e2acd9c77b72cd99` |
+| `performers=9` (also `performers=self` when the effective actor is person 9) | `{"performers":[9]}` | `97c45ef5d7ed59c2` |
+| `exclude_performers=9` | `{"exclude_performers":[9]}` | `e52acfcd22b34d9e` |
+| `actor_types=agent` | `{"actor_types":["agent"]}` | `cfcc84d9873823db` |
+| `reasons=mentioned` (inbox) | `{"reasons":["mentioned"]}` | `a68353156f17c45a` |
+| `reasons=mentioned,assigned&performers=9&types=comment.created` | `{"performers":[9],"reasons":["assigned","mentioned"],"types":["comment.created"]}` | `99b78eea305639b8` |
 
 The one built-in store is a file store: a single JSON file keyed by the compact RFC 8259
 JSON array of the four identity strings — e.g.
-`["https://3.basecampapi.com","5951425","openclaw","srv1-9f2ab04e5c11d3a7"]` — written
+`["https://3.basecampapi.com","5951425","openclaw","srv2-9f2ab04e5c11d3a7"]` — written
 atomically (temp + rename, 0600), documented as single-process (a server-side advisory
 checkpoint API is deliberately deferred until a multi-host connector needs a shared
 cursor). No `delete` method exists: after a 409 the connector re-enters via `since=` and
@@ -4036,8 +4105,8 @@ resume_url)`, `position_rejected(kind)`, `stale_connection(since_last_frame)`,
 
 - **Never log the ticket or the mint URL's query string** — the ticket rides in it, which
   makes the mint URL one of the credential-bearing values §9 "Credential-Bearing
-  Values Are Never Rendered" names. A dial failure renders that URL as its origin only,
-  projected from a parse (`unparsable` where there is none), and never chains the
+  Values Are Never Rendered" names. A dial failure names the policy class it violated
+  from a closed vocabulary, never any component of the URL, and never chains the
   transport's own error where a caller or runtime would render it. Poll and resume URLs
   are not credentials — polls authenticate with the bearer header — so `gap(resume_url)`
   and `catch_up_started(cursor)` carry them whole.

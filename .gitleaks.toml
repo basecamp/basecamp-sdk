@@ -1,11 +1,12 @@
 # Gitleaks configuration — extends the built-in default rules.
 #
-# The one allowlist entry: srv1-prefixed checkpoint filter keys. `srv1-<16 hex>` is the
+# The one allowlist entry: srv-prefixed checkpoint filter keys. `srv<n>-<16 hex>` is the
 # SDK's checkpoint-lineage namespace over BC3's PUBLISHED filter-digest vectors
-# (SPEC.md §23 "Checkpoint Identity"; the five digests are documented in BC3's
-# doc/api/sections/event_feed.md and recomputable from public canonical JSON).
-# They are entropy-shaped, which trips the generic-api-key rule, but they are contract
-# vocabulary, not secrets. Anchored to the exact shape so nothing else rides through.
+# (SPEC.md §23 "Checkpoint Identity"; the digests are documented in BC3's
+# doc/api/sections/event_feed.md and recomputable from public canonical JSON — srv2
+# today, srv3 when the scheme next changes). They are entropy-shaped, which trips the
+# generic-api-key rule, but they are contract vocabulary, not secrets. Anchored to the
+# exact shape so nothing else rides through.
 
 [extend]
 useDefault = true
@@ -13,5 +14,5 @@ useDefault = true
 [allowlist]
 regexTarget = "secret"
 regexes = [
-  '''^srv1-[0-9a-f]{16}$''',
+  '''^srv[0-9]+-[0-9a-f]{16}$''',
 ]

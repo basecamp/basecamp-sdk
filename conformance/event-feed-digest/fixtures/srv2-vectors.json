@@ -1,0 +1,286 @@
+{
+  "description": "srv2 digest vectors (the published bc3 table, doc/api/sections/event_feed.md § \"Filter digests (srv2)\") and checkpoint flat-key cases (SPEC §23 Checkpoint Identity). The srv2 algorithm is total over client-validated inputs; these vectors are the published server table, each recomputed independently from the canonicalization. Every SDK asserts every case. The `reasons` dimension belongs to the inbox lane; its vectors pin the scheme's extension stability and are asserted by every SDK once its connector carries the lane.",
+  "scheme": "srv2",
+  "srv2_vectors": [
+    {
+      "name": "empty-set",
+      "filters": {},
+      "canonical_json": "{}",
+      "digest": "44136fa355b3678a"
+    },
+    {
+      "name": "single-type",
+      "filters": {
+        "types": [
+          "message.created"
+        ]
+      },
+      "canonical_json": "{\"types\":[\"message.created\"]}",
+      "digest": "38b223c13c89dc89"
+    },
+    {
+      "name": "unsorted-multi-list",
+      "filters": {
+        "types": [
+          "todo.completed",
+          "message.created"
+        ],
+        "buckets": [
+          2,
+          1
+        ]
+      },
+      "canonical_json": "{\"buckets\":[1,2],\"types\":[\"message.created\",\"todo.completed\"]}",
+      "digest": "90108e436c72bfd1"
+    },
+    {
+      "name": "three-dimensions",
+      "filters": {
+        "types": [
+          "todo.completed",
+          "message.created"
+        ],
+        "buckets": [
+          2,
+          1
+        ],
+        "creators": [
+          9
+        ]
+      },
+      "canonical_json": "{\"buckets\":[1,2],\"creators\":[9],\"types\":[\"message.created\",\"todo.completed\"]}",
+      "digest": "5d0b83594d8e5630"
+    },
+    {
+      "name": "leading-zero-coercion-dedup",
+      "filters": {
+        "buckets": [
+          "1",
+          "01"
+        ]
+      },
+      "canonical_json": "{\"buckets\":[1]}",
+      "digest": "e545e11ffb55966a"
+    },
+    {
+      "name": "cap-boundary-100-ids",
+      "filters": {
+        "buckets": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26,
+          27,
+          28,
+          29,
+          30,
+          31,
+          32,
+          33,
+          34,
+          35,
+          36,
+          37,
+          38,
+          39,
+          40,
+          41,
+          42,
+          43,
+          44,
+          45,
+          46,
+          47,
+          48,
+          49,
+          50,
+          51,
+          52,
+          53,
+          54,
+          55,
+          56,
+          57,
+          58,
+          59,
+          60,
+          61,
+          62,
+          63,
+          64,
+          65,
+          66,
+          67,
+          68,
+          69,
+          70,
+          71,
+          72,
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          79,
+          80,
+          81,
+          82,
+          83,
+          84,
+          85,
+          86,
+          87,
+          88,
+          89,
+          90,
+          91,
+          92,
+          93,
+          94,
+          95,
+          96,
+          97,
+          98,
+          99,
+          100
+        ]
+      },
+      "canonical_json": "{\"buckets\":[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,99,100]}",
+      "digest": "e2acd9c77b72cd99"
+    },
+    {
+      "name": "performers",
+      "filters": {
+        "performers": [
+          9
+        ]
+      },
+      "canonical_json": "{\"performers\":[9]}",
+      "digest": "97c45ef5d7ed59c2"
+    },
+    {
+      "name": "exclude-performers",
+      "filters": {
+        "exclude_performers": [
+          9
+        ]
+      },
+      "canonical_json": "{\"exclude_performers\":[9]}",
+      "digest": "e52acfcd22b34d9e"
+    },
+    {
+      "name": "actor-types",
+      "filters": {
+        "actor_types": [
+          "agent"
+        ]
+      },
+      "canonical_json": "{\"actor_types\":[\"agent\"]}",
+      "digest": "cfcc84d9873823db"
+    },
+    {
+      "name": "reasons-inbox",
+      "filters": {
+        "reasons": [
+          "mentioned"
+        ]
+      },
+      "canonical_json": "{\"reasons\":[\"mentioned\"]}",
+      "digest": "a68353156f17c45a"
+    },
+    {
+      "name": "reasons-performers-types",
+      "filters": {
+        "reasons": [
+          "mentioned",
+          "assigned"
+        ],
+        "performers": [
+          9
+        ],
+        "types": [
+          "comment.created"
+        ]
+      },
+      "canonical_json": "{\"performers\":[9],\"reasons\":[\"assigned\",\"mentioned\"],\"types\":[\"comment.created\"]}",
+      "digest": "99b78eea305639b8"
+    }
+  ],
+  "flat_key_cases": [
+    {
+      "name": "empty-set-default-origin",
+      "origin": "https://3.basecampapi.com",
+      "account_id": "5951425",
+      "consumer_namespace": "openclaw",
+      "filters": {},
+      "filter_key": "srv2-44136fa355b3678a",
+      "flat_key": "[\"https://3.basecampapi.com\",\"5951425\",\"openclaw\",\"srv2-44136fa355b3678a\"]"
+    },
+    {
+      "name": "origin-canonicalization-case-and-default-port",
+      "origin": "HTTPS://Example.Basecampapi.COM:443",
+      "account_id": "1",
+      "consumer_namespace": "agent-a",
+      "filters": {
+        "types": [
+          "message.created"
+        ]
+      },
+      "filter_key": "srv2-38b223c13c89dc89",
+      "flat_key": "[\"https://example.basecampapi.com\",\"1\",\"agent-a\",\"srv2-38b223c13c89dc89\"]"
+    },
+    {
+      "name": "nondefault-port-preserved",
+      "origin": "https://localhost:3001",
+      "account_id": "195539477",
+      "consumer_namespace": "dev",
+      "filters": {
+        "buckets": [
+          "1",
+          "01"
+        ]
+      },
+      "filter_key": "srv2-e545e11ffb55966a",
+      "flat_key": "[\"https://localhost:3001\",\"195539477\",\"dev\",\"srv2-e545e11ffb55966a\"]"
+    },
+    {
+      "name": "loop-guard-exclude-performers",
+      "origin": "https://3.basecampapi.com",
+      "account_id": "5951425",
+      "consumer_namespace": "agent-b",
+      "filters": {
+        "exclude_performers": [
+          9
+        ],
+        "types": [
+          "comment.created"
+        ]
+      },
+      "filter_key": "srv2-a0e4cde1f02ecd36",
+      "flat_key": "[\"https://3.basecampapi.com\",\"5951425\",\"agent-b\",\"srv2-a0e4cde1f02ecd36\"]"
+    }
+  ]
+}

@@ -43,6 +43,8 @@
           "created_at": "2026-08-01T12:00:00Z",
           "bucket_id": 2,
           "creator_id": 3,
+          "performed_by_id": null,
+          "actor_type": "person",
           "recording_id": 900,
           "visible_to_clients": false
         }
@@ -59,6 +61,8 @@
           "created_at": "2026-08-01T12:00:00Z",
           "bucket_id": 2,
           "creator_id": 3,
+          "performed_by_id": null,
+          "actor_type": "person",
           "recording_id": 900,
           "visible_to_clients": false
         }
@@ -75,6 +79,8 @@
           "created_at": "2026-08-01T12:00:00Z",
           "bucket_id": 2,
           "creator_id": 3,
+          "performed_by_id": null,
+          "actor_type": "person",
           "recording_id": 900,
           "visible_to_clients": false
         }

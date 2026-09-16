@@ -4,6 +4,7 @@ go 1.26
 
 require (
 	github.com/basecamp/surfguard/go v0.1.0
+	github.com/coder/websocket v1.8.15
 	github.com/oapi-codegen/runtime v1.7.0
 	github.com/prometheus/client_golang v1.24.1
 	github.com/zalando/go-keyring v0.2.8
