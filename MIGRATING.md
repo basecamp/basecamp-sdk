@@ -11,7 +11,7 @@ what wrong behaviour you get if you ignore one. This file is that half.
 
 ---
 
-# Unreleased
+# v0.19.0
 
 ### Rust changes the exit code for `bucket_mismatch`, Swift's classification accessors stop being optional
 
@@ -143,6 +143,19 @@ to every SDK. Those are new operations and new generated interface methods —
 additive for every caller, breaking only for Go code that implements the
 generated `ClientInterface` / `ClientWithResponsesInterface` itself, which the
 generated client is the only intended implementer of.
+
+### Event feed: the poll lanes' error shapes settled before their first release (#912)
+
+Labelled breaking, and **nothing to migrate**: the `EventFeed` operations reach
+a tagged release for the first time in this one. `PollEvents`' 410 is now its
+own type carrying the epoch to re-enter at, distinct from `PollInbox`'s, which
+re-enters at `since=0`; the 400 gained a dedicated type with an optional
+`reason` naming which remedy applies. Those replaced shapes existed only on
+`main`, never in v0.18.0 or earlier, so no released code can be holding them.
+
+The note is here because the release notes are generated from labels: #912 will
+appear under ⚠️ Breaking Changes, and a reader who goes looking for what to do
+about it should find this rather than nothing.
 
 ### Python: a malformed list body is now an `ApiError`, and two of those changes are silent
 
