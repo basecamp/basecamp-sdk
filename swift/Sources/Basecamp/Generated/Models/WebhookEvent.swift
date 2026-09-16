@@ -5,7 +5,7 @@ public struct WebhookEvent: Codable, Sendable {
     public var copy: WebhookCopy?
     public var createdAt: String?
     public var creator: Person?
-    public var details: String?
+    public var details: JSONValue?
     public var id: Int?
     public var kind: String?
     public var performedBy: Person?
@@ -15,7 +15,7 @@ public struct WebhookEvent: Codable, Sendable {
         copy: WebhookCopy? = nil,
         createdAt: String? = nil,
         creator: Person? = nil,
-        details: String? = nil,
+        details: JSONValue? = nil,
         id: Int? = nil,
         kind: String? = nil,
         performedBy: Person? = nil,

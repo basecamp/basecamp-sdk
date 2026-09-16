@@ -2,6 +2,7 @@ package basecamp
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -57,6 +58,18 @@ const feedPageBody = `{
       "performed_by_id": null,
       "recording_id": 1069479800,
       "details": {"column_id": 77, "previous_column_id": 76}
+    },
+    {
+      "id": 1071915472,
+      "kind": "boost_created",
+      "action": "created",
+      "created_at": "2026-07-14T06:13:00.000Z",
+      "event_type": "boost.created",
+      "bucket_id": 2085958499,
+      "creator_id": 1049715947,
+      "performed_by_id": null,
+      "recording_id": 1069479766,
+      "details": {"boost_id": 502, "boosted_event_id": null, "boosted_event_type": null}
     }
   ],
   "position": "posAAA",
@@ -113,8 +126,8 @@ func TestEventFeedService_PollEvents_DecodesEnvelope(t *testing.T) {
 	if page.Next == "" {
 		t.Fatal("expected next continuation URL")
 	}
-	if len(page.Events) != 3 {
-		t.Fatalf("expected 3 events, got %d", len(page.Events))
+	if len(page.Events) != 4 {
+		t.Fatalf("expected 4 events, got %d", len(page.Events))
 	}
 	first := page.Events[0]
 	if first.ID != 1071915468 || first.EventType != "message.created" || first.RecordingID != 1069479766 {
@@ -133,18 +146,25 @@ func TestEventFeedService_PollEvents_DecodesEnvelope(t *testing.T) {
 	if boost.PerformedByID == nil || *boost.PerformedByID != 1049715999 {
 		t.Errorf("expected PerformedByID 1049715999, got %v", boost.PerformedByID)
 	}
-	if boost.Details == nil || boost.Details.BoostID == nil || *boost.Details.BoostID != 501 {
-		t.Fatalf("expected boost details, got %+v", boost.Details)
+	// Details are the server's bytes, verbatim — keys, order and explicit
+	// nulls included — never a typed projection.
+	if string(boost.Details) != `{"boost_id": 501, "boosted_event_id": 1071915468, "boosted_event_type": "message.created"}` {
+		t.Errorf("expected verbatim boost details, got %s", boost.Details)
 	}
-	if boost.Details.BoostedEventType == nil || *boost.Details.BoostedEventType != "message.created" {
-		t.Errorf("expected boosted_event_type, got %v", boost.Details.BoostedEventType)
+	var boostDetails struct {
+		BoostID          *int64  `json:"boost_id"`
+		BoostedEventType *string `json:"boosted_event_type"`
 	}
-	if boost.Details.ColumnID != nil {
-		t.Error("boost details must not carry column ids")
+	if err := json.Unmarshal(boost.Details, &boostDetails); err != nil || boostDetails.BoostID == nil || *boostDetails.BoostID != 501 || boostDetails.BoostedEventType == nil {
+		t.Errorf("expected boost details to decode, got %+v (%v)", boostDetails, err)
 	}
 	moved := page.Events[2]
-	if moved.Details == nil || moved.Details.ColumnID == nil || *moved.Details.ColumnID != 77 || *moved.Details.PreviousColumnID != 76 {
-		t.Errorf("expected card.moved column details, got %+v", moved.Details)
+	if string(moved.Details) != `{"column_id": 77, "previous_column_id": 76}` {
+		t.Errorf("expected verbatim card.moved details, got %s", moved.Details)
+	}
+	recordingBoost := page.Events[3]
+	if string(recordingBoost.Details) != `{"boost_id": 502, "boosted_event_id": null, "boosted_event_type": null}` {
+		t.Errorf("expected the explicit nulls to survive verbatim, got %s", recordingBoost.Details)
 	}
 }
 

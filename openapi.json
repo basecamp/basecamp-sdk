@@ -31721,7 +31721,8 @@
             }
           },
           "details": {
-            "$ref": "#/components/schemas/FeedEventDetails"
+            "description": "Type-specific details, carried verbatim as a JSON document — present only\nfor the types that publish one, absent (not empty) for every other type.\n`boost.created` publishes `boost_id`, plus `boosted_event_id` and\n`boosted_event_type`, both `null` for a boost on the recording itself\n(`boosted_event_type` also `null` when the boosted event's kind is not\ncataloged); `card.moved` publishes `column_id` and `previous_column_id`,\nthe containing columns (going on hold within a column reports the same\ncolumn twice). Verbatim on purpose: the connector's push lane delivers\nthe same object, and a typed projection would drop explicit nulls and\nany member a newly cataloged type adds, making the two lanes disagree.\nGo carries it as `json.RawMessage`; TypeScript `unknown`; Python `Any`;\nRuby a Hash; Kotlin `JsonElement`; Rust `serde_json::Value`; Swift the\nSDK's `JSONValue` (numbers as `Double`).",
+            "x-go-type": "json.RawMessage"
           }
         },
         "required": [
@@ -31734,39 +31735,6 @@
           "kind",
           "recording_id"
         ]
-      },
-      "FeedEventDetails": {
-        "type": "object",
-        "description": "Type-specific detail members, published for two types today. `boost.created`\ncarries `boost_id`, plus `boosted_event_id` and `boosted_event_type` when the\nboost landed on an event rather than the recording itself (both `null` for a\nboost on the recording; `boosted_event_type` also `null` when the boosted\nevent's kind is not cataloged). `card.moved` carries `column_id` and\n`previous_column_id`, the containing columns (going on hold within a column\nreports the same column twice). New types may publish further members;\ndecoders keep the ones they know and ignore the rest.",
-        "properties": {
-          "boost_id": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "boosted_event_id": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "int64",
-            "x-go-type": "int64"
-          },
-          "boosted_event_type": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "x-go-type": "string"
-          },
-          "column_id": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "previous_column_id": {
-            "type": "integer",
-            "format": "int64"
-          }
-        }
       },
       "FeedFilterMismatchErrorResponseContent": {
         "type": "object",

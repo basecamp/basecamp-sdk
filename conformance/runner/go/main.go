@@ -551,30 +551,45 @@ func summarizeEventFeedPage(page *basecamp.EventFeedPage) map[string]interface{}
 		if event.Details == nil {
 			continue
 		}
-		if event.Details.BoostID != nil {
-			if event.Details.BoostedEventID == nil && event.Details.BoostedEventType == nil {
+		// Details are verbatim JSON; decode the members this fixture pins.
+		var details struct {
+			BoostID          *int64  `json:"boost_id"`
+			BoostedEventID   *int64  `json:"boosted_event_id"`
+			BoostedEventType *string `json:"boosted_event_type"`
+			ColumnID         *int64  `json:"column_id"`
+			PreviousColumnID *int64  `json:"previous_column_id"`
+		}
+		if err := json.Unmarshal(event.Details, &details); err != nil {
+			continue
+		}
+		var keys map[string]json.RawMessage
+		_ = json.Unmarshal(event.Details, &keys)
+		_, hasBoostedID := keys["boosted_event_id"]
+		_, hasBoostedType := keys["boosted_event_type"]
+		if details.BoostID != nil {
+			if hasBoostedID && hasBoostedType && details.BoostedEventID == nil && details.BoostedEventType == nil {
 				// A boost on the recording itself: both boosted_* members are
-				// explicit nulls on the wire.
-				result["recording_boost_id"] = *event.Details.BoostID
+				// explicit nulls on the wire, and the verbatim bytes keep them.
+				result["recording_boost_id"] = *details.BoostID
 				result["recording_boost_nulls"] = true
 			} else {
-				result["boost_id"] = *event.Details.BoostID
+				result["boost_id"] = *details.BoostID
 				if event.PerformedByID != nil {
 					result["boost_performed_by_id"] = *event.PerformedByID
 				}
-				if event.Details.BoostedEventID != nil {
-					result["boosted_event_id"] = *event.Details.BoostedEventID
+				if details.BoostedEventID != nil {
+					result["boosted_event_id"] = *details.BoostedEventID
 				}
-				if event.Details.BoostedEventType != nil {
-					result["boosted_event_type"] = *event.Details.BoostedEventType
+				if details.BoostedEventType != nil {
+					result["boosted_event_type"] = *details.BoostedEventType
 				}
 			}
 		}
-		if event.Details.ColumnID != nil {
-			result["moved_column_id"] = *event.Details.ColumnID
+		if details.ColumnID != nil {
+			result["moved_column_id"] = *details.ColumnID
 		}
-		if event.Details.PreviousColumnID != nil {
-			result["moved_previous_column_id"] = *event.Details.PreviousColumnID
+		if details.PreviousColumnID != nil {
+			result["moved_previous_column_id"] = *details.PreviousColumnID
 		}
 	}
 	return result

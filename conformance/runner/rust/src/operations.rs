@@ -1307,11 +1307,15 @@ fn summarize_event_feed_page(page: &PollEventsResponseContent) -> Value {
     summary["first_performed_by_null"] = json!(first.performed_by_id.is_none());
     summary["first_has_details"] = json!(first.details.is_some());
     for event in &page.events {
-        let Some(details) = &event.details else {
+        // `details` is a verbatim document (serde_json::Value); read the members the fixture pins.
+        let Some(details) = event.details.as_ref().and_then(Value::as_object) else {
             continue;
         };
-        if let Some(boost_id) = details.boost_id {
-            if details.boosted_event_id.is_none() && details.boosted_event_type.is_none() {
+        let int = |key: &str| details.get(key).and_then(Value::as_i64);
+        let string = |key: &str| details.get(key).and_then(Value::as_str);
+        let explicit_null = |key: &str| details.get(key).is_some_and(Value::is_null);
+        if let Some(boost_id) = int("boost_id") {
+            if explicit_null("boosted_event_id") && explicit_null("boosted_event_type") {
                 // A boost on the recording itself: both boosted_* members are explicit nulls.
                 summary["recording_boost_id"] = json!(boost_id);
                 summary["recording_boost_nulls"] = json!(true);
@@ -1320,18 +1324,18 @@ fn summarize_event_feed_page(page: &PollEventsResponseContent) -> Value {
                 if let Some(performer) = event.performed_by_id {
                     summary["boost_performed_by_id"] = json!(performer);
                 }
-                if let Some(boosted) = details.boosted_event_id {
+                if let Some(boosted) = int("boosted_event_id") {
                     summary["boosted_event_id"] = json!(boosted);
                 }
-                if let Some(boosted_type) = &details.boosted_event_type {
+                if let Some(boosted_type) = string("boosted_event_type") {
                     summary["boosted_event_type"] = json!(boosted_type);
                 }
             }
         }
-        if let Some(column) = details.column_id {
+        if let Some(column) = int("column_id") {
             summary["moved_column_id"] = json!(column);
         }
-        if let Some(previous) = details.previous_column_id {
+        if let Some(previous) = int("previous_column_id") {
             summary["moved_previous_column_id"] = json!(previous);
         }
     }

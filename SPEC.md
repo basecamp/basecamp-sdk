@@ -3146,11 +3146,15 @@ use the comma form. `performers`/`exclude_performers` accept the literal `self`
 **Shapes.** `FeedEvent` — `id`, `kind`, `action`, `event_type`, `bucket_id`, `creator_id`,
 `performed_by_id` (present on the wire, `null` unless an agent performed the action),
 `recording_id`, `created_at`, and `details` only for the types that publish one.
-`FeedEventDetails` is a typed structure of optional members (`boost_id`,
-`boosted_event_id`, `boosted_event_type` for `boost.created`; `column_id`,
-`previous_column_id` for `card.moved`) rather than a Smithy document: the Swift generator
-renders a document as `String?`, which cannot decode an object, and unknown members of a
-future type are dropped by every decoder rather than failing it. `InboxItem` —
+`details` is a Smithy **document**, carried verbatim rather than projected into a typed
+structure: the push lane delivers the same object, and a typed projection would drop the
+explicit nulls (`boosted_event_id: null` for a boost on the recording itself) and any
+member a newly cataloged type adds, so the two lanes would disagree. Per language it is
+Go `json.RawMessage` (the bytes, untouched), TypeScript `unknown`, Python `Any`, Ruby a
+Hash, Kotlin `JsonElement`, Rust `serde_json::Value`, and Swift the SDK's `JSONValue`
+(the generator's rendering of every document, which used to be `String?`; numbers ride
+as `Double`, so a consumer that needs an exact 64-bit id reads it from a language with
+raw or integer-preserving JSON). `InboxItem` —
 `addressing_id` (the dedupe key: one event can address a principal for several reasons),
 `reason`, `addressed_at`, `event: FeedEvent`. The mint returns `{ticket, expires_in, url}`
 with `ticket` and `url` marked `@sensitive`: that records both members in
@@ -3178,14 +3182,6 @@ envelope decode including a `null` `performed_by_id` and both `details` variants
 walk-end page without `next`, the 400/409/410 mapping on the feed, the agents-only 403
 and the retention 410 on the inbox, and the bodyless mint with its 401. The connector's
 own family stays under `conformance/event-feed/`.
-
-**Contract deltas the merged head introduced** relative to the provisional record the
-rest of this section was drafted against, for the connector to absorb: the digest scheme
-is published as `srv2` (the `reasons` dimension joined it; vectors in
-`event_feed.md` "Filter digests"); the feed's 410 `resume` re-enters at the epoch, not the
-present; the filter set grew `performers`/`exclude_performers`/`actor_types`; and the
-inbox is a lane of its own. The connector text below keeps its provisional markings until
-it re-verifies against the merged head.
 
 ### Provenance `[manual]`
 

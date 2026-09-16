@@ -36,6 +36,13 @@ source-compatibility hazard the tool does not model, which is why this note
 exists. Keyed literals, and every decode path, are unaffected; the field is
 `nil`/absent unless BC3 sent `performed_by`.
 
+**Swift: a Smithy document now renders as `JSONValue?`, not `String?`.** The
+generator mapped an untyped document member to `String?`, which cannot decode
+the object BC3 sends; `WebhookEvent.details` (and the new `FeedEvent.details`)
+are `JSONValue?` now, and `JSONValue` gained `Encodable`. A caller that typed
+`event.details` as `String?` needs `if case .object(let details)? = event.details`.
+Numbers in a `JSONValue` are `Double`.
+
 **Kotlin has the same hazard in a different spelling.** The generated `Event`
 and `WebhookEvent` data classes gain `performedBy: Person? = null` inserted
 before `boostsCount`/`boostsUrl` and before `copy` respectively, so a positional

@@ -10,7 +10,7 @@ public struct FeedEvent: Codable, Sendable {
     public let id: Int
     public let kind: String
     public let recordingId: Int
-    public var details: FeedEventDetails?
+    public var details: JSONValue?
     public var performedById: Int?
 
     public init(
@@ -22,7 +22,7 @@ public struct FeedEvent: Codable, Sendable {
         id: Int,
         kind: String,
         recordingId: Int,
-        details: FeedEventDetails? = nil,
+        details: JSONValue? = nil,
         performedById: Int? = nil
     ) {
         self.action = action

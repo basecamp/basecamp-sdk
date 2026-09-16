@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-09-16T08:30:02Z
+# Generated: 2026-09-16T08:42:38Z
 
 require "json"
 require "time"
@@ -1887,7 +1887,7 @@ module Basecamp
         @id = parse_integer(data["id"])
         @kind = data["kind"]
         @recording_id = parse_integer(data["recording_id"])
-        @details = parse_type(data["details"], "FeedEventDetails")
+        @details = data["details"]
         @performed_by_id = data["performed_by_id"]
       end
 
@@ -1903,34 +1903,6 @@ module Basecamp
           "recording_id" => @recording_id,
           "details" => @details,
           "performed_by_id" => @performed_by_id,
-        }.compact
-      end
-
-      def to_json(*args)
-        to_h.to_json(*args)
-      end
-    end
-
-    # FeedEventDetails
-    class FeedEventDetails
-      include TypeHelpers
-      attr_accessor :boost_id, :boosted_event_id, :boosted_event_type, :column_id, :previous_column_id
-
-      def initialize(data = {})
-        @boost_id = parse_integer(data["boost_id"])
-        @boosted_event_id = data["boosted_event_id"]
-        @boosted_event_type = data["boosted_event_type"]
-        @column_id = parse_integer(data["column_id"])
-        @previous_column_id = parse_integer(data["previous_column_id"])
-      end
-
-      def to_h
-        {
-          "boost_id" => @boost_id,
-          "boosted_event_id" => @boosted_event_id,
-          "boosted_event_type" => @boosted_event_type,
-          "column_id" => @column_id,
-          "previous_column_id" => @previous_column_id,
         }.compact
       end
 

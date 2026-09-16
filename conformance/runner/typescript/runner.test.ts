@@ -418,7 +418,7 @@ type FeedEventRow = {
 // Flattens a poll page into top-level scalars; null and absence become boolean
 // predicates because a responseBody path is a top-level key only.
 function summarizeEventFeedPage(page: {
-  events: FeedEventRow[];
+  events: Array<Omit<FeedEventRow, "details"> & { details?: unknown }>;
   position: string;
   next?: string;
 }): Record<string, unknown> {
@@ -435,7 +435,8 @@ function summarizeEventFeedPage(page: {
   result.first_performed_by_null = first.performed_by_id == null;
   result.first_has_details = first.details != null;
   for (const event of page.events) {
-    const details = event.details;
+    // `details` is a verbatim document (`unknown` in the generated type).
+    const details = event.details as FeedEventRow["details"];
     if (!details) continue;
     if (details.boost_id != null) {
       if (details.boosted_event_id === null && details.boosted_event_type === null) {

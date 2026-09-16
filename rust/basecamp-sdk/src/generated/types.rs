@@ -2118,37 +2118,21 @@ pub struct FeedEvent {
     pub recording_id: i64,
     /// `created_at`.
     pub created_at: DateTime,
-    /// `details`.
+    /// Type-specific details, carried verbatim as a JSON document — present only
+    /// for the types that publish one, absent (not empty) for every other type.
+    /// `boost.created` publishes `boost_id`, plus `boosted_event_id` and
+    /// `boosted_event_type`, both `null` for a boost on the recording itself
+    /// (`boosted_event_type` also `null` when the boosted event's kind is not
+    /// cataloged); `card.moved` publishes `column_id` and `previous_column_id`,
+    /// the containing columns (going on hold within a column reports the same
+    /// column twice). Verbatim on purpose: the connector's push lane delivers
+    /// the same object, and a typed projection would drop explicit nulls and
+    /// any member a newly cataloged type adds, making the two lanes disagree.
+    /// Go carries it as `json.RawMessage`; TypeScript `unknown`; Python `Any`;
+    /// Ruby a Hash; Kotlin `JsonElement`; Rust `serde_json::Value`; Swift the
+    /// SDK's `JSONValue` (numbers as `Double`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub details: Option<FeedEventDetails>,
-}
-
-/// Type-specific detail members, published for two types today. `boost.created`
-/// carries `boost_id`, plus `boosted_event_id` and `boosted_event_type` when the
-/// boost landed on an event rather than the recording itself (both `null` for a
-/// boost on the recording; `boosted_event_type` also `null` when the boosted
-/// event's kind is not cataloged). `card.moved` carries `column_id` and
-/// `previous_column_id`, the containing columns (going on hold within a column
-/// reports the same column twice). New types may publish further members;
-/// decoders keep the ones they know and ignore the rest.
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
-#[non_exhaustive]
-pub struct FeedEventDetails {
-    /// `boost_id`.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub boost_id: Option<i64>,
-    /// `boosted_event_id`.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub boosted_event_id: Option<i64>,
-    /// `boosted_event_type`.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub boosted_event_type: Option<String>,
-    /// `column_id`.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub column_id: Option<i64>,
-    /// `previous_column_id`.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub previous_column_id: Option<i64>,
+    pub details: Option<serde_json::Value>,
 }
 
 /// 409 from the event feed's poll lanes (PollEvents, PollInbox): the held

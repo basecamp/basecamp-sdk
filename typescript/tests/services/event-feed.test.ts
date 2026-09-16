@@ -76,8 +76,10 @@ describe("EventFeedService", () => {
       expect(page.events[0].performed_by_id).toBeNull();
       expect(page.events[0].details).toBeUndefined();
       expect(page.events[1].performed_by_id).toBe(1049715999);
-      expect(page.events[1].details?.boost_id).toBe(501);
-      expect(page.events[1].details?.boosted_event_type).toBe("message.created");
+      // `details` is a verbatim document (`unknown`); the caller decides its shape.
+      const boostDetails = page.events[1].details as { boost_id?: number; boosted_event_type?: string };
+      expect(boostDetails.boost_id).toBe(501);
+      expect(boostDetails.boosted_event_type).toBe("message.created");
     });
 
     it("enters at the present with no query when called bare", async () => {

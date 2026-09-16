@@ -39,24 +39,15 @@ type FeedEvent struct {
 	RecordingID int64 `json:"recording_id"`
 	// CreatedAt is the event's creation time.
 	CreatedAt time.Time `json:"created_at"`
-	// Details is present only for types that publish one — boost.created and
-	// card.moved today. Nil (absent on the wire) for every other type.
-	Details *FeedEventDetails `json:"details,omitempty"`
-}
-
-// FeedEventDetails carries the type-specific members a feed event publishes.
-// boost.created sets BoostID, plus BoostedEventID and BoostedEventType when the
-// boost landed on an event rather than the recording itself (both nil for a
-// boost on the recording; BoostedEventType also nil when the boosted event's
-// kind is not cataloged). card.moved sets ColumnID and PreviousColumnID, the
-// containing columns (going on hold within a column reports the same column
-// twice). Members of types this SDK does not know are dropped by the decoder.
-type FeedEventDetails struct {
-	BoostID          *int64  `json:"boost_id,omitempty"`
-	BoostedEventID   *int64  `json:"boosted_event_id,omitempty"`
-	BoostedEventType *string `json:"boosted_event_type,omitempty"`
-	ColumnID         *int64  `json:"column_id,omitempty"`
-	PreviousColumnID *int64  `json:"previous_column_id,omitempty"`
+	// Details is the type-specific detail object, carried verbatim as the raw
+	// JSON bytes the server sent — present only for the types that publish
+	// one (boost.created: boost_id, boosted_event_id, boosted_event_type, the
+	// latter two null for a boost on the recording itself; card.moved:
+	// column_id, previous_column_id), nil for every other type. Raw so the
+	// poll lane and the connector's push lane deliver byte-identical detail
+	// objects: explicit nulls and members of newly cataloged types survive.
+	// Decode with json.Unmarshal into a shape of your choosing.
+	Details json.RawMessage `json:"details,omitempty"`
 }
 
 // EventFeedPage is one poll-lane page: the body envelope is the contract. The
@@ -483,20 +474,9 @@ func feedEventFromGenerated(ge generated.FeedEvent) FeedEvent {
 		CreatedAt:     ge.CreatedAt,
 	}
 	if ge.Details != nil {
-		details := feedEventDetailsFromGenerated(*ge.Details)
-		e.Details = &details
+		e.Details = append(json.RawMessage(nil), *ge.Details...)
 	}
 	return e
-}
-
-func feedEventDetailsFromGenerated(gd generated.FeedEventDetails) FeedEventDetails {
-	return FeedEventDetails{
-		BoostID:          gd.BoostId,
-		BoostedEventID:   gd.BoostedEventId,
-		BoostedEventType: gd.BoostedEventType,
-		ColumnID:         gd.ColumnId,
-		PreviousColumnID: gd.PreviousColumnId,
-	}
 }
 
 func streamTicketFromGenerated(gt generated.CreateStreamTicketResponseContent) StreamTicket {

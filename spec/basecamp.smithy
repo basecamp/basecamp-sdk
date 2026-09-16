@@ -7471,25 +7471,20 @@ structure FeedEvent {
   @required
   created_at: ISO8601Timestamp
 
-  /// Present only for types that publish details: `boost.created` and
-  /// `card.moved`. Absent — not empty — for every other type.
-  details: FeedEventDetails
-}
-
-/// Type-specific detail members, published for two types today. `boost.created`
-/// carries `boost_id`, plus `boosted_event_id` and `boosted_event_type` when the
-/// boost landed on an event rather than the recording itself (both `null` for a
-/// boost on the recording; `boosted_event_type` also `null` when the boosted
-/// event's kind is not cataloged). `card.moved` carries `column_id` and
-/// `previous_column_id`, the containing columns (going on hold within a column
-/// reports the same column twice). New types may publish further members;
-/// decoders keep the ones they know and ignore the rest.
-structure FeedEventDetails {
-  boost_id: Long
-  boosted_event_id: EventId
-  boosted_event_type: String
-  column_id: Long
-  previous_column_id: Long
+  /// Type-specific details, carried verbatim as a JSON document — present only
+  /// for the types that publish one, absent (not empty) for every other type.
+  /// `boost.created` publishes `boost_id`, plus `boosted_event_id` and
+  /// `boosted_event_type`, both `null` for a boost on the recording itself
+  /// (`boosted_event_type` also `null` when the boosted event's kind is not
+  /// cataloged); `card.moved` publishes `column_id` and `previous_column_id`,
+  /// the containing columns (going on hold within a column reports the same
+  /// column twice). Verbatim on purpose: the connector's push lane delivers
+  /// the same object, and a typed projection would drop explicit nulls and
+  /// any member a newly cataloged type adds, making the two lanes disagree.
+  /// Go carries it as `json.RawMessage`; TypeScript `unknown`; Python `Any`;
+  /// Ruby a Hash; Kotlin `JsonElement`; Rust `serde_json::Value`; Swift the
+  /// SDK's `JSONValue` (numbers as `Double`).
+  details: smithy.api#Document
 }
 
 /// Poll the authenticated agent's inbox for the items that addressed it (oldest first, strict item-id order); people receive 403.

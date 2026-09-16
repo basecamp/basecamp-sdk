@@ -270,21 +270,34 @@ private func summarizeEventFeedPage(_ page: PollEventsResponseContent) -> JSON {
     result["first_performed_by_null"] = .bool(first.performedById == nil)
     result["first_has_details"] = .bool(first.details != nil)
     for event in page.events {
-        guard let details = event.details else { continue }
-        if let boostId = details.boostId {
-            if details.boostedEventId == nil && details.boostedEventType == nil {
+        // `details` is a verbatim document (JSONValue); read the members the fixture pins.
+        guard case .object(let details)? = event.details else { continue }
+        func int(_ key: String) -> Int64? {
+            if case .number(let n)? = details[key] { return Int64(n) }
+            return nil
+        }
+        func string(_ key: String) -> String? {
+            if case .string(let s)? = details[key] { return s }
+            return nil
+        }
+        let explicitNull = { (key: String) -> Bool in
+            if case .null? = details[key] { return true }
+            return false
+        }
+        if let boostId = int("boost_id") {
+            if explicitNull("boosted_event_id") && explicitNull("boosted_event_type") {
                 // A boost on the recording itself: both boosted_* members are explicit nulls.
-                result["recording_boost_id"] = .int(Int64(boostId))
+                result["recording_boost_id"] = .int(boostId)
                 result["recording_boost_nulls"] = .bool(true)
             } else {
-                result["boost_id"] = .int(Int64(boostId))
+                result["boost_id"] = .int(boostId)
                 if let performer = event.performedById { result["boost_performed_by_id"] = .int(Int64(performer)) }
-                if let boosted = details.boostedEventId { result["boosted_event_id"] = .int(Int64(boosted)) }
-                if let boostedType = details.boostedEventType { result["boosted_event_type"] = .string(boostedType) }
+                if let boosted = int("boosted_event_id") { result["boosted_event_id"] = .int(boosted) }
+                if let boostedType = string("boosted_event_type") { result["boosted_event_type"] = .string(boostedType) }
             }
         }
-        if let column = details.columnId { result["moved_column_id"] = .int(Int64(column)) }
-        if let previous = details.previousColumnId { result["moved_previous_column_id"] = .int(Int64(previous)) }
+        if let column = int("column_id") { result["moved_column_id"] = .int(column) }
+        if let previous = int("previous_column_id") { result["moved_previous_column_id"] = .int(previous) }
     }
     return .object(result)
 }

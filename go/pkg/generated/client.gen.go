@@ -1343,15 +1343,20 @@ type FeedEvent struct {
 	// CreatorId The person the action is attributed to.
 	CreatorId int64 `json:"creator_id"`
 
-	// Details Type-specific detail members, published for two types today. `boost.created`
-	// carries `boost_id`, plus `boosted_event_id` and `boosted_event_type` when the
-	// boost landed on an event rather than the recording itself (both `null` for a
-	// boost on the recording; `boosted_event_type` also `null` when the boosted
-	// event's kind is not cataloged). `card.moved` carries `column_id` and
-	// `previous_column_id`, the containing columns (going on hold within a column
-	// reports the same column twice). New types may publish further members;
-	// decoders keep the ones they know and ignore the rest.
-	Details *FeedEventDetails `json:"details,omitempty"`
+	// Details Type-specific details, carried verbatim as a JSON document — present only
+	// for the types that publish one, absent (not empty) for every other type.
+	// `boost.created` publishes `boost_id`, plus `boosted_event_id` and
+	// `boosted_event_type`, both `null` for a boost on the recording itself
+	// (`boosted_event_type` also `null` when the boosted event's kind is not
+	// cataloged); `card.moved` publishes `column_id` and `previous_column_id`,
+	// the containing columns (going on hold within a column reports the same
+	// column twice). Verbatim on purpose: the connector's push lane delivers
+	// the same object, and a typed projection would drop explicit nulls and
+	// any member a newly cataloged type adds, making the two lanes disagree.
+	// Go carries it as `json.RawMessage`; TypeScript `unknown`; Python `Any`;
+	// Ruby a Hash; Kotlin `JsonElement`; Rust `serde_json::Value`; Swift the
+	// SDK's `JSONValue` (numbers as `Double`).
+	Details *json.RawMessage `json:"details,omitempty"`
 
 	// EventType Cataloged event type (e.g. `message.created`). Only cataloged types are served.
 	EventType string `json:"event_type"`
@@ -1370,22 +1375,6 @@ type FeedEvent struct {
 
 	// RecordingId The recording the event references.
 	RecordingId int64 `json:"recording_id"`
-}
-
-// FeedEventDetails Type-specific detail members, published for two types today. `boost.created`
-// carries `boost_id`, plus `boosted_event_id` and `boosted_event_type` when the
-// boost landed on an event rather than the recording itself (both `null` for a
-// boost on the recording; `boosted_event_type` also `null` when the boosted
-// event's kind is not cataloged). `card.moved` carries `column_id` and
-// `previous_column_id`, the containing columns (going on hold within a column
-// reports the same column twice). New types may publish further members;
-// decoders keep the ones they know and ignore the rest.
-type FeedEventDetails struct {
-	BoostId          *int64  `json:"boost_id,omitempty"`
-	BoostedEventId   *int64  `json:"boosted_event_id,omitempty"`
-	BoostedEventType *string `json:"boosted_event_type,omitempty"`
-	ColumnId         *int64  `json:"column_id,omitempty"`
-	PreviousColumnId *int64  `json:"previous_column_id,omitempty"`
 }
 
 // FeedFilterMismatchErrorResponseContent 409 from the event feed's poll lanes (PollEvents, PollInbox): the held

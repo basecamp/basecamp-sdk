@@ -14,7 +14,7 @@
 ///     print(name)
 /// }
 /// ```
-public enum JSONValue: Decodable, Sendable, Equatable {
+public enum JSONValue: Codable, Sendable, Equatable {
     case string(String)
     case number(Double)
     case bool(Bool)
@@ -31,5 +31,17 @@ public enum JSONValue: Decodable, Sendable, Equatable {
         else if let a = try? container.decode([JSONValue].self) { self = .array(a) }
         else if let o = try? container.decode([String: JSONValue].self) { self = .object(o) }
         else { throw DecodingError.dataCorruptedError(in: container, debugDescription: "Unsupported JSON type") }
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        switch self {
+        case .null: try container.encodeNil()
+        case .bool(let b): try container.encode(b)
+        case .number(let n): try container.encode(n)
+        case .string(let s): try container.encode(s)
+        case .array(let a): try container.encode(a)
+        case .object(let o): try container.encode(o)
+        }
     }
 }
