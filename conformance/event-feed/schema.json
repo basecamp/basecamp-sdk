@@ -689,8 +689,9 @@
             },
             "message": {
               "type": "integer",
-              "description": "Optional epoch payload — both wire ping forms are legal.",
-              "maximum": 9223372036854775807
+              "description": "Optional epoch payload — both wire ping forms are legal. A non-negative 64-bit integer, decoded at that width by every driver.",
+              "maximum": 9223372036854775807,
+              "minimum": 0
             }
           }
         },

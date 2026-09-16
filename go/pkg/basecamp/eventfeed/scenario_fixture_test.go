@@ -183,7 +183,7 @@ type connectOutcome struct {
 
 type serveStep struct {
 	Frame      string          `json:"frame"`
-	Message    *int            `json:"message"`
+	Message    *int64          `json:"message"`
 	Identifier *string         `json:"identifier"`
 	Reason     string          `json:"reason"`
 	Reconnect  *bool           `json:"reconnect"`
@@ -1059,6 +1059,13 @@ func integralizeNumbers(doc any, path string) error {
 	switch v := doc.(type) {
 	case map[string]any:
 		for key, member := range v {
+			if key == "details" {
+				// An event's details object is server-owned and forwarded
+				// verbatim — the schema types it as an arbitrary object — so
+				// its numbers are whatever the server publishes, judged by
+				// no field of this schema. Left exactly as spelled.
+				continue
+			}
 			at := path + "." + key
 			if n, ok := member.(json.Number); ok {
 				lit, err := integerSpelling(n.String())

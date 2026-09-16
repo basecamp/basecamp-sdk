@@ -148,6 +148,25 @@ func TestScenarioDriverRejectsMutatedFixtures(t *testing.T) {
 // witness is retained because the lookahead that computes the current step errs
 // deliberately permissive (see stepSatisfiedLocked), and it is the check that
 // still fires if a step's arm is ever loosened.
+// TestNormalizeNumbersLeavesDetailsAlone: an event's details object is
+// forwarded verbatim and typed by the schema as an arbitrary object, so a
+// fraction or an integer past int64 inside it is schema-valid fixture data
+// the integer normalization must not judge — every other number in the
+// document is an integer field of the schema and is.
+func TestNormalizeNumbersLeavesDetailsAlone(t *testing.T) {
+	raw := []byte(`{"id":1e2,"details":{"ratio":0.5,"big":92233720368547758070,"nested":{"n":1.25}},"count":2.0}`)
+	out, err := normalizeNumbers(raw)
+	if err != nil {
+		t.Fatalf("normalizeNumbers: %v", err)
+	}
+	got := string(out)
+	for _, want := range []string{`"ratio":0.5`, `"big":92233720368547758070`, `"n":1.25`, `"id":100`, `"count":2`} {
+		if !strings.Contains(got, want) {
+			t.Errorf("normalized document %s lacks %s", got, want)
+		}
+	}
+}
+
 func TestScenarioDriverEnforcesDeliveryBeforeCheckpoint(t *testing.T) {
 	const fixture = "02-confirmation-gating.json"
 	control := readFixture(t, fixture)
