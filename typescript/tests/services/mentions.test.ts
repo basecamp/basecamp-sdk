@@ -9,6 +9,7 @@
 import { describe, it, expect } from "vitest";
 import {
   mentionedPersonIds,
+  readMentions,
   personIdFromSGID,
   mentionMarkup,
   withMentions,
@@ -634,6 +635,35 @@ describe("mentionedPersonIds", () => {
     // The unreadable id is still distinguishable one sgid at a time, which is
     // where a caller that must not under-report goes.
     expect(personIdFromSGID(legacySGID("gid://bc3/Person/9007199254740992"))).toBeUndefined();
+  });
+
+  it("reports each unnameable person once, by value, so the count is the reference's", () => {
+    // The point of `unnameable` is that a caller can see exactly how short the
+    // list is: `ids.length + unnameable.length` must be the number of people the
+    // reference names. Go deduplicates on the int64 (go/pkg/basecamp/mentions.go:87),
+    // so `9223372036854775807` and `0009223372036854775807` are ONE person. Keyed on
+    // the raw digits they were two, and this text -- which gives Go 5 -- gave 6.
+    const mention = (raw: string): string => attachment(legacySGID(`gid://bc3/Person/${raw}`));
+    const text = [
+      mention("7"),
+      mention("9007199254740991"),
+      mention("9007199254740992"),
+      mention("9007199254740993"),
+      mention("9223372036854775807"),
+      mention("0009223372036854775807"),
+    ].join("");
+
+    const { ids, unnameable } = readMentions(text);
+    expect(ids).toEqual([7, 9007199254740991]);
+    expect(unnameable).toEqual(["9007199254740992", "9007199254740993", "9223372036854775807"]);
+    expect(ids.length + unnameable.length).toBe(5);
+
+    // Canonical, not as spelled: a leading-zero spelling reports the digits a
+    // caller can match against a person id.
+    expect(readMentions(mention("09007199254740993")).unnameable).toEqual(["9007199254740993"]);
+    expect(readMentions(mention("9007199254740993") + mention("09007199254740993")).unnameable).toEqual([
+      "9007199254740993",
+    ]);
   });
 
   it("skips an id past int64 too, for a different reason, and reports neither", () => {

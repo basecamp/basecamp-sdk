@@ -229,6 +229,28 @@ describe("recordings.summarize", () => {
       expect(summary.unnameable_mention_ids).toEqual(["9007199254740993"]);
     });
 
+    it("reports no unnameable mention for a chat line BC3 never read as markup", async () => {
+      // A plain-text line mentions nobody, so it cannot mention someone this SDK
+      // is unable to name either. The rich-text walk runs over `content` before
+      // the projection learns the line is plain text; the key it would have set
+      // has to go with the list it belongs to, or the summary reports a short
+      // mention list where there is no list at all.
+      const crafted = legacySGID("gid://bc3/Person/9007199254740993");
+      const line = `<bc-attachment sgid="${crafted}"></bc-attachment>`;
+      server.use(
+        http.get(`${BASE_URL}/projects/${BUCKET}`, () =>
+          HttpResponse.json({ id: BUCKET, dock: [{ id: 77, name: "chat", title: "Campfire", enabled: true, url: "", app_url: "" }] }),
+        ),
+        http.get(`${BASE_URL}/chats/77/lines/9`, () =>
+          HttpResponse.json(recording(9, "Chat::Lines::Text", { content: line })),
+        ),
+      );
+
+      const text = await client.recordings.summarize({ bucketId: BUCKET, recordingId: 9, recordingType: "Chat::Lines::Text" });
+      expect(text.mentioned_person_ids).toEqual([]);
+      expect("unnameable_mention_ids" in text).toBe(false);
+    });
+
     it("reports no mentions for a chat line BC3 never read as markup", async () => {
       // A Text line's content is HTML-escaped on the way out, so a literal
       // bc-attachment in it mentions nobody — only RichText and Integration

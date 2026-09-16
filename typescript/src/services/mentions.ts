@@ -138,10 +138,13 @@ export function mentionedPersonIds(richText: string): number[] {
  * under-report can tell "this text mentions two people" from "this text mentions
  * two people I can name and one I cannot".
  *
- * `unnameable` holds each id as the DECIMAL STRING it arrived as, in document
- * order, deduplicated. A string because that is the whole point: these are
- * exactly the ids no `number` can carry, so reporting them as numbers would
- * round them into a neighbouring person — the failure this refuses to make.
+ * `unnameable` holds each id as its CANONICAL DECIMAL STRING — no leading zeros,
+ * what `strconv.ParseInt` would return — in document order, deduplicated on that
+ * value the way the reference deduplicates on the `int64`. So `0009223372036854775807`
+ * and `9223372036854775807` are one entry, and `ids.length + unnameable.length`
+ * is the count the reference gives. A string because that is the whole point:
+ * these are exactly the ids no `number` can carry, so reporting them as numbers
+ * would round them into a neighbouring person — the failure this refuses to make.
  * They are real ids, not malformed ones: an sgid that does not decode, or names
  * something other than a Person, or carries a magnitude past `int64`, is not a
  * mention in the reference either and appears in neither list.
@@ -153,7 +156,7 @@ export function readMentions(richText: string): { ids: number[]; unnameable: str
   const ids: number[] = [];
   const unnameable: string[] = [];
   const seen = new Set<number>();
-  const seenRaw = new Set<string>();
+  const seenUnnameable = new Set<string>();
   for (const sgid of bcAttachmentSGIDs(richText)) {
     const mentioned = parsePersonSGID(sgid);
     if (mentioned.kind === "none") continue;
@@ -162,9 +165,9 @@ export function readMentions(richText: string): { ids: number[]; unnameable: str
     // crafted mention take down the recording read that calls this. It is
     // reported here instead, which is what keeps the skip from being silent.
     if (mentioned.kind === "unrepresentable") {
-      if (!seenRaw.has(mentioned.rawId)) {
-        seenRaw.add(mentioned.rawId);
-        unnameable.push(mentioned.rawId);
+      if (!seenUnnameable.has(mentioned.id)) {
+        seenUnnameable.add(mentioned.id);
+        unnameable.push(mentioned.id);
       }
       continue;
     }
@@ -451,13 +454,19 @@ export function personIdFromSGID(sgid: string): number | undefined {
  * non-positive id, a magnitude past `int64` — and "this IS a mention, of a
  * person whose id a `number` cannot carry". Go never has to separate them
  * because it returns an `int64`; here the second case is a real mention that
- * cannot be reported, and {@link mentionedPersonIds} has to refuse rather than
- * drop it. The exported signature is unchanged and so is every answer it gives:
- * this only lets one caller in this file ask a sharper question.
+ * cannot be reported, and {@link readMentions} reports it separately rather than
+ * letting it vanish into a short list. The exported signature is unchanged and so
+ * is every answer it gives: this only lets one caller in this file ask a sharper
+ * question.
+ *
+ * The unrepresentable case carries the id's CANONICAL decimal — what
+ * `strconv.ParseInt` returned, re-formatted — not the digits as the gid spelled
+ * them. `0009223372036854775807` and `9223372036854775807` are one person to the
+ * reference, which deduplicates on the `int64`, so they must be one person here.
  */
 type MentionedPerson =
   | { readonly kind: "person"; readonly id: number }
-  | { readonly kind: "unrepresentable"; readonly rawId: string }
+  | { readonly kind: "unrepresentable"; readonly id: string }
   | { readonly kind: "none" };
 
 const NOT_A_MENTION: MentionedPerson = { kind: "none" };
@@ -503,7 +512,7 @@ function parsePersonSGID(sgid: string): MentionedPerson {
   const id = personIdNumber(scan.value);
   // A BC3 person id is well inside the safe range; one that is not cannot be
   // reported as a number without rounding it into a different person.
-  if (id === undefined) return { kind: "unrepresentable", rawId };
+  if (id === undefined) return { kind: "unrepresentable", id: scan.value.toString() };
   return { kind: "person", id };
 }
 

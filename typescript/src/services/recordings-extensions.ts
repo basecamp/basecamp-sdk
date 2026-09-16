@@ -1473,6 +1473,12 @@ export class RecordingsService extends GeneratedRecordingsService {
           // A plain-text or code line's content is text BC3 never read as
           // markup, so a literal "<bc-attachment>" in it mentions nobody.
           summary.mentioned_person_ids = [];
+          // And no unnameable ones either: the rich-text walk ran over `content`
+          // before this branch knew the line was not rich text, so it may have
+          // found a "mention" here. There is none -- this text mentions nobody,
+          // in Go and here -- and leaving the key would report a short list
+          // where there is no list at all.
+          delete summary.unnameable_mention_ids;
         }
         // Omitted when zero, because Go's field is `omitempty` and a zero
         // marshals away there. A zero is reachable: the account listing keeps
